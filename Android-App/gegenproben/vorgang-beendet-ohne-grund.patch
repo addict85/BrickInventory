@@ -1,7 +1,7 @@
 Gegenprobe: beendet ohne Grund gilt als gescheitert
 Modul: core-model
 Test: ch.brickinventoryapp.model.OperationTest
-Rot: beendet ohne Grund ist fertig, mit Grund gescheitert
+Rot: ended without a reason is finished, with a reason failed
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt
 index 1d1e916..242b3e5 100644

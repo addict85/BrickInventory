@@ -48,7 +48,7 @@ import java.io.File
  *   (b) hidePreview() mit Vorgabe false → rot „eine neue Installation
  *       verbirgt die Vorschau …“ (gegenproben/vorschau-vorgabe-aus.patch)
  *   (c) Schrittsperre zeigt den Inhalt ohne Bestätigung (`if (entsperrt || grund.isNotEmpty())`) →
- *       rot „die Verwaltung zeigt sich erst nach der Geraetesperre“
+ *       rot „the management shows itself only after the device lock“
  *       (gegenproben/verwaltung-ohne-geraetesperre.patch)
  *   (d) saveServerUrl() ruft die Hörer nicht → rot „ein anderer Server bricht
  *       laufende Aufrufe ab …“ (gegenproben/serverwechsel-ohne-abbruch.patch)
@@ -97,7 +97,7 @@ class DevicesProtectionTest {
     }
 
     @Test
-    fun `ein teilweise verdecktes Fenster loest im geschuetzten Bereich keinen Klick aus`() {
+    fun `a partially obscured window triggers no click in the protected area`() {
         zeige(mutableStateOf(true))
         tap(MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED)
         assertEquals("Der Tipp unter einem fremden Fenster kam an", 0, klicks)
@@ -106,7 +106,7 @@ class DevicesProtectionTest {
     }
 
     @Test
-    fun `nach dem geschuetzten Bereich gilt der Tipp wieder`() {
+    fun `after the protected area the tap applies again`() {
         val geschuetzt = mutableStateOf(true)
         zeige(geschuetzt)
         geschuetzt.value = false
@@ -122,7 +122,7 @@ class DevicesProtectionTest {
      * der app-weite Wunsch „Vorschau verbergen“ bleibt ohne.
      */
     @Test
-    fun `heikle Seiten sind vor Ueberlagerung geschuetzt`() {
+    fun `sensitive pages are protected against overlays`() {
         val seite = mutableStateOf("keine")
         compose.setContent {
             BrickInventoryManagerTheme {
@@ -145,7 +145,7 @@ class DevicesProtectionTest {
     }
 
     @Test
-    fun `die Verwaltung zeigt sich erst nach der Geraetesperre`() {
+    fun `the management shows itself only after the device lock`() {
         var bestaetigen: (() -> Unit)? = null
         compose.setContent {
             BrickInventoryManagerTheme {
@@ -180,7 +180,7 @@ class DevicesProtectionTest {
      * Ein anderer Pfad auf demselben Host ein anderer Server.
      */
     @Test
-    fun `ein anderer Server bricht laufende Aufrufe ab, derselbe nicht`() {
+    fun `a different server cancels running calls, the same one does not`() {
         val (prefs, geraet) = stores()
         var abgebrochen = 0
         var userCa = 0
@@ -202,7 +202,7 @@ class DevicesProtectionTest {
 
     /** Der Token hält nur die Herkunft; den Pfad trägt die bisherige Adresse bei. */
     @Test
-    fun `ein anderer Pfad auf demselben Host verwirft den Token`() {
+    fun `a different path on the same host discards the token`() {
         val (prefs, _) = stores()
         kotlinx.coroutines.runBlocking {
             prefs.saveServerUrl("https://geteilt.example/brick")
@@ -215,7 +215,7 @@ class DevicesProtectionTest {
     }
 
     @Test
-    fun `eine neue Installation verbirgt die Vorschau, bis der Nutzer es ausschaltet`() {
+    fun `a new installation hides the preview until the user turns it off`() {
         val (_, prefs) = stores()
         assertTrue("Ohne Wahl zeigt die App-Übersicht alles", prefs.hidePreview())
         prefs.setzeVorschauVerbergen(false)

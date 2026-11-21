@@ -17,7 +17,7 @@ import java.io.File
 class ColorGermanTest {
 
     @Test
-    fun `zusammengesetzte Farben werden wie im Deutschen zusammengeschrieben`() {
+    fun `compound colors are written together as in German`() {
         assertEquals("Dunkelbläulichgrau", ColorGerman.translate("Dark Bluish Gray"))
         assertEquals("Trans-Klar", ColorGerman.translate("Trans-Clear"))
         assertEquals("Rot", ColorGerman.translate("Red"))
@@ -26,14 +26,14 @@ class ColorGermanTest {
     }
 
     @Test
-    fun `unbekannte Woerter bleiben stehen`() {
+    fun `unknown words stay`() {
         assertEquals("Vintage Blau", ColorGerman.translate("Vintage Blue"))
         assertEquals("", ColorGerman.translate(""))
     }
 
     /** Beide Oberflächen sollen dieselbe Farbe gleich nennen. */
     @Test
-    fun `derselbe Wortschatz wie in der Webapp`() {
+    fun `the same vocabulary as in the web app`() {
         val js = File("../../Web-App/public/i18n.js").readText()
         val block = js.substring(js.indexOf("const COLOR_WORDS_DE"), js.indexOf("};", js.indexOf("const COLOR_WORDS_DE")))
         // Schlüssel mit oder ohne Anführung: Der Formatierer lässt sie weg, wo JavaScript sie nicht braucht.

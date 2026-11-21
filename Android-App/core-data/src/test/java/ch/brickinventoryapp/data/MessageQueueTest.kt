@@ -21,7 +21,7 @@ import ch.brickinventoryapp.testing.text
 class MessageQueueTest {
 
     @Test
-    fun `die zweite Meldung wartet auf die Quittung der ersten`() {
+    fun `the second message waits for the acknowledgement of the first`() {
         val kanal = MeldungsKanal()
         kanal.zeige("gespeichert")
         kanal.zeige("offline gemerkt")
@@ -33,7 +33,7 @@ class MessageQueueTest {
     }
 
     @Test
-    fun `eine Ressource bleibt ein Fachwert, bis die Oberfläche sie zeigt`() {
+    fun `a resource stays a domain value until the UI shows it`() {
         val kanal = MeldungsKanal()
         kanal.zeige(Meldung.Resource(7, listOf(3)))
         kanal.zeige(Meldung.Resource(7, listOf(3)))
@@ -46,7 +46,7 @@ class MessageQueueTest {
     }
 
     @Test
-    fun `dieselbe Meldung hintereinander kommt einmal, null zeigt nichts`() {
+    fun `the same message in a row comes once, null shows nothing`() {
         val kanal = MeldungsKanal()
         kanal.zeige(null as String?)
         assertNull(kanal.text)
@@ -61,7 +61,7 @@ class MessageQueueTest {
     }
 
     @Test
-    fun `es warten hoechstens fuenf, die aeltesten bleiben`() {
+    fun `at most five wait, the oldest stay`() {
         val kanal = MeldungsKanal()
         (1..10).forEach { kanal.zeige("m$it") }
         val gesehen = mutableListOf<String>()
@@ -73,7 +73,7 @@ class MessageQueueTest {
     }
 
     @Test
-    fun `gleichzeitige Schreiber verlieren nichts`() {
+    fun `concurrent writers lose nothing`() {
         val kanal = MeldungsKanal()
         val pool = Executors.newFixedThreadPool(4)
         val los = CountDownLatch(1)

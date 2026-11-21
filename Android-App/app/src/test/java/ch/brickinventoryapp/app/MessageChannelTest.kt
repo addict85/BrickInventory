@@ -57,7 +57,7 @@ import ch.brickinventoryapp.testing.text
  *      seine eigene Instanz, und dann gäbe es wieder so viele Kanäle wie
  *      ViewModels — nur sähe man es nirgends im Quelltext.
  *   e) In AppMessages zeige() in einen eigenen MutableStateFlow →
- *      Teilschritt 4 rot und „zwei Bereiche melden in denselben Kanal“.
+ *      Teilschritt 4 rot und „two areas report into the same channel“.
  * Die Warteschlange selbst prüft MessageQueueTest (core-data).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -68,7 +68,7 @@ class MessageChannelTest {
         Quellen.alle().map { it.name to Quellen.withoutComments(it.readText()) }
 
     @Test
-    fun `nur der Meldungskanal haelt einen Snackbar-Fluss`() {
+    fun `only the message channel holds a snackbar flow`() {
         // Ein `MutableStateFlow<String?>` unter einem Namen, der nach Meldung
         // klingt, ist ein zweiter Kanal — egal wie er heisst.
         val treffer = allWithoutComments().filter { (name, s) ->
@@ -85,7 +85,7 @@ class MessageChannelTest {
     }
 
     @Test
-    fun `niemand leitet Meldungen von ViewModel zu ViewModel weiter`() {
+    fun `nobody forwards messages from ViewModel to ViewModel`() {
         // Der Block, den es nicht mehr geben soll. Gesucht wird die WIRKUNG
         // (ein fremder Fluss wird eingesammelt und an showSnackbar gereicht),
         // nicht der Wortlaut von damals.
@@ -103,7 +103,7 @@ class MessageChannelTest {
     }
 
     @Test
-    fun `der Kanal ist von aussen beschreibbar und lesbar`() {
+    fun `the channel is writable and readable from outside`() {
         // Ohne das kann kein ViewModel ihn benutzen — und der erste, der es
         // versucht, baut sich wieder einen eigenen.
         val kanal = MeldungsKanal()
@@ -117,7 +117,7 @@ class MessageChannelTest {
     }
 
     @Test
-    fun `alle ViewModels benutzen denselben Kanal`() {
+    fun `all ViewModels use the same channel`() {
         // Ein ViewModel, das Meldungen erzeugt, aber den Kanal nicht kennt,
         // hat entweder einen eigenen (Teilschritt 1 faengt das) oder gar keinen
         // Weg nach draussen. Beides ist ein Fehler.
@@ -141,7 +141,7 @@ class MessageChannelTest {
 
     /** Zwei Bereiche, ein Kanal: Was sie melden, steht dort, wo AppNavigation.kt liest. */
     @Test
-    fun `zwei Bereiche melden in denselben Kanal`() {
+    fun `two areas report into the same channel`() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val paths = PfadServer()
         paths.codes["/api/v1/sets/75192-1"] = 500

@@ -11,27 +11,27 @@ import org.junit.Test
  * Gegenprobe: `filter { it.isLetterOrDigit() }` entfernt →
  * rot in den beiden Tests mit Trennzeichen.
  * Gegenprobe: die Ausnahme für die Maske entfernt → rot
- * „die Maske des Servers bleibt stehen“ („3333“ statt „…3333“).
+ * „the server's mask stays“ („3333“ statt „…3333“).
  */
 class GroupsOfFourTest {
 
     @Test
-    fun `Bindestriche und Leerzeichen des Herausgebers verschwinden`() {
+    fun `hyphens and spaces of the issuer disappear`() {
         assertEquals("6036 1234 5678", inGroupsOfFour("6036-1234 5678"))
     }
 
     @Test
-    fun `der Rest steht als kurze letzte Gruppe`() {
+    fun `the rest stands as a short last group`() {
         assertEquals("AB12 CD34 5", inGroupsOfFour("AB12-CD34-5"))
     }
 
     @Test
-    fun `ohne Trennzeichen bleibt die Vierergruppierung`() {
+    fun `without separators the grouping by four stays`() {
         assertEquals("1234 5678", inGroupsOfFour("12345678"))
     }
 
     @Test
-    fun `die Maske des Servers bleibt stehen`() {
+    fun `the server's mask stays`() {
         assertEquals("…3333", inGroupsOfFour("…3333"))
     }
 }

@@ -83,7 +83,7 @@ class CounterChecksToolTest {
     }
 
     @Test
-    fun `eine rote Gegenprobe besteht, und danach ist die Quelle wieder heil`() {
+    fun `a red counter-check passes, and afterwards the source is intact again`() {
         probe("macht-kaputt", "kaputt", rot = "ist heil")
         val (code, text) = lauf()
         assertEquals(text, 0, code)
@@ -92,7 +92,7 @@ class CounterChecksToolTest {
     }
 
     @Test
-    fun `eine Gegenprobe, die gruen bleibt, macht den Job rot`() {
+    fun `a counter-check that stays green makes the job red`() {
         probe("harmlos", "harmlos")
         val (code, text) = lauf()
         assertEquals(text, 1, code)
@@ -101,7 +101,7 @@ class CounterChecksToolTest {
     }
 
     @Test
-    fun `ohne Testbericht zaehlt nichts als rot`() {
+    fun `without a test report nothing counts as red`() {
         probe("bricht-bau", "unuebersetzbar")
         val (code, text) = lauf()
         assertEquals(text, 1, code)
@@ -110,7 +110,7 @@ class CounterChecksToolTest {
     }
 
     @Test
-    fun `der genannte Test muss der rote sein`() {
+    fun `the named test must be the red one`() {
         probe("falscher-test", "kaputt", rot = "anderes")
         val (code, text) = lauf()
         assertEquals(text, 1, code)
@@ -118,7 +118,7 @@ class CounterChecksToolTest {
     }
 
     @Test
-    fun `auf einem Push misst es nur die Patches, deren Ziel sich geaendert hat`() {
+    fun `on a push it measures only the patches whose target changed`() {
         val andere = File(project, "andere.txt").apply { writeText("still\n") }
         git("add", ".")
         git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "andere")
@@ -138,7 +138,7 @@ class CounterChecksToolTest {
     }
 
     @Test
-    fun `ohne betroffenen Patch ist der Lauf gruen, ohne Basis misst er alle`() {
+    fun `without an affected patch the run is green, without a base it measures all`() {
         probe("harmlos", "harmlos")
         val kopf = git("rev-parse", "HEAD").trim()
         val (code, text) = lauf(kopf)
@@ -150,7 +150,7 @@ class CounterChecksToolTest {
     }
 
     @Test
-    fun `ein veralteter Patch und ein leerer Ordner sind Fehler, kein Erfolg`() {
+    fun `an outdated patch and an empty folder are errors, not success`() {
         assertEquals(1, lauf().first)
         probe("veraltet", "kaputt")
         datei.writeText("geaendert\n")

@@ -1,7 +1,7 @@
 Gegenprobe: Ein 401 vor dem ersten Sammler geht verloren (Ereignis statt Zustand)
 Modul: core-state
 Test: ch.brickinventoryapp.state.SessionServiceTest
-Rot: ein 401 vor dem Start geht nicht verloren
+Rot: a 401 before the start is not lost
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
 index 9092168..bdca144 100644

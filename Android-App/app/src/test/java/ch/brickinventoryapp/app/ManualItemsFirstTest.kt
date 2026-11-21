@@ -99,7 +99,7 @@ class ManualItemsFirstTest {
     private fun oben(text: String) = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
 
     @Test
-    fun `Teile - die manuell erfassten stehen vor denen aus Sets`() {
+    fun `parts - the manually added ones come before those from sets`() {
         world.paths.antworten["/api/v1/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1 manuell","color_id":1,"quantity":4}]}"""
         val vm = world.teile().also { it.loadParts() }
@@ -113,7 +113,7 @@ class ManualItemsFirstTest {
     }
 
     @Test
-    fun `Figuren - die manuell erfassten stehen vor denen aus Sets`() {
+    fun `figures - the manually added ones come before those from sets`() {
         world.paths.antworten["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia manuell","quantity":1}]}"""
         val vm = world.figuren().also { it.loadMinifigs() }
@@ -149,7 +149,7 @@ class ManualItemsFirstTest {
     }
 
     @Test
-    fun `ohne gespeicherte Stelle zieht die Liste nach oben, wenn oben Eintraege nachkommen`() {
+    fun `without a saved position the list moves up when entries arrive above`() {
         showRaster()
         stragglersCome()
         assertEquals("Erster sichtbarer Eintrag", 0, raster.firstVisibleItemIndex)
@@ -157,7 +157,7 @@ class ManualItemsFirstTest {
     }
 
     @Test
-    fun `eine gespeicherte Stelle bleibt, auch wenn oben Eintraege nachkommen`() {
+    fun `a saved position stays, even when entries arrive above`() {
         speicher.merke("teile", 10, 0)
         showRaster()
         assertEquals("Wiederhergestellt", 10, raster.firstVisibleItemIndex)
@@ -167,7 +167,7 @@ class ManualItemsFirstTest {
     }
 
     @Test
-    fun `nach einer eigenen Geste bleibt die Liste, wo der Nutzer sie hingerollt hat`() {
+    fun `after an own gesture the list stays where the user scrolled it`() {
         showRaster()
         compose.onNodeWithTag("raster").performTouchInput { swipeUp() }
         compose.waitForIdle()
@@ -177,7 +177,7 @@ class ManualItemsFirstTest {
     }
 
     @Test
-    fun `beide Listen zaehlen als geladen, nicht nur die aus den Sets`() {
+    fun `both lists count as loaded, not only the one from the sets`() {
         // Verdrahtung im Graphen: Erst wenn auch die manuellen Einträge da sind (null heisst
         // „noch nicht geladen“), stellt der Merker die Stelle wieder her.
         val graph = Quellen.withoutComments(Quellen.lies("parts/ui/TeileGraph.kt"))

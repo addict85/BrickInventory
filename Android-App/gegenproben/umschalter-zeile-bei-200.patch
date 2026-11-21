@@ -1,7 +1,7 @@
 Gegenprobe: Sets | Teile | Minifiguren auch bei 200 % in einer Zeile
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: der Sammlungs-Umschalter zeigt bei 200 Prozent
+Rot: the collection switcher shows all three views as segments at 200 percent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
 index 03e9500..4c7281f 100644

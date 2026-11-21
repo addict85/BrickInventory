@@ -52,27 +52,27 @@ class AppUnlockingTest {
     }
 
     @Test
-    fun `die freigegebene Signatur entsperrt`() {
+    fun `the authorized signature unlocks`() {
         assertEquals(1, lauf({ it }))
         assertEquals(1, entsperrt)
     }
 
     @Test
-    fun `Erfolg ohne Signatur entsperrt nicht und fragt nicht nach`() {
+    fun `success without a signature does not unlock and does not ask again`() {
         assertEquals(1, lauf({ null }))
         assertEquals(0, entsperrt)
         assertEquals(0, schluessel.verworfen)
     }
 
     @Test
-    fun `fremd signiert entsperrt nicht und fragt nur einmal nach`() {
+    fun `foreign-signed does not unlock and asks only once more`() {
         val fremd = paar()
         assertEquals(2, lauf({ signatur(fremd.private) }, { signatur(fremd.private) }, { signatur(fremd.private) }))
         assertEquals(0, entsperrt)
     }
 
     @Test
-    fun `ungueltiger Schluessel wird ersetzt und einmal nachgefragt`() {
+    fun `an invalid key is replaced and asked once more`() {
         // Eine Signatur zum Prüfen statt zum Signieren scheitert an sign() wie ein ungültig gewordener Schlüssel.
         val canNot: (Signature) -> Signature? = {
             Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initVerify(schluessel.paar.public) }
@@ -83,7 +83,7 @@ class AppUnlockingTest {
     }
 
     @Test
-    fun `ohne Schluessel bleibt die App gesperrt`() {
+    fun `without a key the app stays locked`() {
         schluessel.fehlt = true
         assertEquals(0, lauf({ it }))
         assertEquals(0, entsperrt)

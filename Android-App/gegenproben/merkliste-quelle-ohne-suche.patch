@@ -1,7 +1,7 @@
 Gegenprobe: Die Merkliste liest die Ablage ohne den Suchtext
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.WantedViewModelTest
-Rot: die Liste folgt der Ablage, auch gefiltert
+Rot: the list follows the store, also filtered
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
 index 0823fbd..b0b1d4f 100644

@@ -1,7 +1,7 @@
 Gegenprobe: Der PDF-Auftrag ruft wieder selbst ab und macht aus einem Netzfehler „unbekannt“
 Modul: core-data
 Test: ch.brickinventoryapp.data.PdfAndCsvFetchTest
-Rot: ein Netzfehler ist vorübergehend
+Rot: a network error is temporary, for every fetch of job and status
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetDateienRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetDateienRepository.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetDateienRepository.kt

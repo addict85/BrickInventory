@@ -14,7 +14,7 @@ import org.junit.Test
  *
  * Gegenprobe:
  *   KameraErlaubnis.erlauben() fragt immer das System (gegenproben/kamera-gesperrt-toter-knopf.patch)
- *   → rot „ist die Frage gesperrt, fuehrt der Knopf in die Einstellungen“
+ *   → rot „if the question is blocked, the button leads into the settings“
  */
 class CameraPermissionTest {
 
@@ -24,7 +24,7 @@ class CameraPermissionTest {
     private val erlaubnis = KameraErlaubnis(granted, gesperrt, { routes += "frage" }) { routes += "einstellungen" }
 
     @Test
-    fun `ist die Frage gesperrt, fuehrt der Knopf in die Einstellungen`() {
+    fun `if the question is blocked, the button leads into the settings`() {
         gesperrt.value = true
         assertTrue(erlaubnis.permanentDenied)
         erlaubnis.erlauben()
@@ -32,7 +32,7 @@ class CameraPermissionTest {
     }
 
     @Test
-    fun `sonst fragt der Knopf das System, und das Oeffnen des Scanners nie die Einstellungen`() {
+    fun `otherwise the button asks the system, and opening the scanner never the settings`() {
         erlaubnis.erlauben()
         gesperrt.value = true
         erlaubnis.requests()
@@ -40,7 +40,7 @@ class CameraPermissionTest {
     }
 
     @Test
-    fun `erteilt ist nichts verweigert, auch wenn die Frage einmal gesperrt war`() {
+    fun `granted nothing is denied, even if the question was blocked once`() {
         gesperrt.value = true
         granted.value = true
         assertFalse(erlaubnis.permanentDenied)

@@ -1,7 +1,7 @@
 Gegenprobe: Die Ordnung NUMMER laesst die Reihenfolge des Servers stehen
 Modul: app
 Test: ch.brickinventoryapp.app.UiUniformTest
-Rot: Minifiguren lassen sich sortieren
+Rot: minifigures can be sorted
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt

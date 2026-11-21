@@ -31,13 +31,13 @@ import org.junit.Test
  *
  * Gegenproben:
  *   A  in Offlineablage.uebernimm die Schleife über den Ausgang entfernt → rot
- *      „eine Serverantwort verschluckt keine wartende Änderung“ (Menge 1 statt 2)
+ *      „a server response swallows no pending change“ (Menge 1 statt 2)
  *   B  in Offlineablage.puffere `applyAn` weggelassen → rot „offline Bearbeitetes
  *      steht sofort in der Liste“
  *   C  in StorageInventory.cleanOther den Filter umgedreht → rot „ein anderes
  *      Konto sieht nichts davon“
  *   D  in VouchersRepository.withoutSecret `pin = null` entfernt → rot
- *      „ein Gutschein liegt ohne PIN und volle Nummer“
+ *      „a voucher lies without PIN and full number“
  */
 class OfflineablageTest {
 
@@ -48,7 +48,7 @@ class OfflineablageTest {
     private fun set(nr: String, menge: Int) = SetItem(setNumber = nr, name = "Set $nr", quantity = menge)
 
     @Test
-    fun `offline Bearbeitetes steht sofort in der Liste`() = runBlocking {
+    fun `things edited offline are in the list immediately`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(set("10001-1", 1), set("10002-1", 3)).map { it.alsAnsicht() })
         ablage.buffer(Editing.SetMenge("10001-1", 2))
         ablage.buffer(Editing.SetErfassen(Erfassungswunsch(setNumber = "10003-1", menge = 1, zustand = Zustand.NEU)))
@@ -58,14 +58,14 @@ class OfflineablageTest {
     }
 
     @Test
-    fun `eine Menge auf null nimmt das Set aus der Liste`() = runBlocking {
+    fun `a quantity of zero removes the set from the list`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.buffer(Editing.SetMenge("10001-1", -1))
         assertEquals(emptyList<SetItem>(), ablage.lies(Slots.SETS)!!.liste)
     }
 
     @Test
-    fun `eine Serverantwort verschluckt keine wartende Änderung`() = runBlocking {
+    fun `a server response swallows no pending change`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.buffer(Editing.SetMenge("10001-1", 1))
         // Der Server kennt die Änderung noch nicht und liefert den alten Stand.
@@ -77,7 +77,7 @@ class OfflineablageTest {
     }
 
     @Test
-    fun `Merkposten und manuelle Teile werden lokal angelegt und geändert`() = runBlocking {
+    fun `wishlist items and manual parts are created and changed locally`() = runBlocking {
         ablage.adopt(Slots.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 7)).map { it.alsAnsicht() })
         ablage.buffer(Editing.MerkpostenAnlegen(Merkwunsch("20002-1", Zustand.GEBRAUCHT, 7)))
         ablage.buffer(Editing.MerkpostenLoeschen("20001-1", Zustand.NEU, 7))
@@ -92,7 +92,7 @@ class OfflineablageTest {
     }
 
     @Test
-    fun `ein anderes Konto sieht nichts davon`() = runBlocking {
+    fun `a different account sees none of it`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.buffer(Editing.SetMenge("10001-1", 1))
         konto = "b"
@@ -105,7 +105,7 @@ class OfflineablageTest {
     }
 
     @Test
-    fun `Abmelden leert Listen und Ausgang`() = runBlocking {
+    fun `sign-out empties lists and outbox`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.buffer(Editing.SetMenge("10001-1", 1))
         ablage.leere()
@@ -114,7 +114,7 @@ class OfflineablageTest {
     }
 
     @Test
-    fun `ein Gutschein liegt ohne PIN und volle Nummer`() {
+    fun `a voucher lies without PIN and full number`() {
         val g = GutscheineRepositoryImpl.withoutSecret(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0).alsAnsicht())
         assertEquals("…3456", g.number)
         assertNull(g.pin)

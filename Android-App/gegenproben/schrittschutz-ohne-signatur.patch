@@ -1,7 +1,7 @@
 Gegenprobe: Der Schrittschutz nimmt jede Signatur als Freigabe, ohne sie zu prüfen (wie vor sec8 N3 ohne Bindung)
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.SchrittfreigabeTest
-Rot: anderer Schluessel
+Rot: a different key does not count
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittfreigabe.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittfreigabe.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittfreigabe.kt

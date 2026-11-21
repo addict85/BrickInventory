@@ -1,7 +1,7 @@
 Gegenprobe: Preisverlauf zeichnet schon zwei Punkte als Linie
 Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
-Rot: Preisverlauf
+Rot: price history shows no line below three points and names low and high
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt

@@ -16,14 +16,14 @@ import org.junit.Test
 class VoucherFormCheckTest {
 
     @Test
-    fun `ohne PDF fehlen leere Nummer und Betrag, in dieser Reihenfolge`() {
+    fun `without PDF empty number and amount are missing, in this order`() {
         assertEquals(listOf(NUMMER, AMOUNT), voucherError("", "", withPdf = false))
         assertEquals(listOf(AMOUNT), voucherError("6061 2345", "zwanzig", withPdf = false))
         assertEquals(emptyList<Any>(), voucherError("6061 2345", "20,50", withPdf = false))
     }
 
     @Test
-    fun `mit PDF darf leer bleiben, was der Server liest, ein unlesbarer Betrag nicht`() {
+    fun `with PDF what the server reads may stay empty, an unreadable amount may not`() {
         assertEquals(emptyList<Any>(), voucherError("", "", withPdf = true))
         assertEquals(listOf(AMOUNT), voucherError("", "1.2.3", withPdf = true))
     }

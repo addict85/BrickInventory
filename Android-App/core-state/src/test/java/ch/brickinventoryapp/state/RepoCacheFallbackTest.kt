@@ -23,12 +23,12 @@ import ch.brickinventoryapp.testing.TestApi
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen die Datenschicht; die Regel
  * stand damals im Antwort-Zwischenspeicher, heute in reconciledSingle()):
  *   A  die alte Regel zurück („bei jedem Fehler ausser 401 die Platte“) →
- *      rot: „ein Serverfehler wird nicht von alten Daten verdeckt“ und
- *      „ein 404 wird nicht von alten Daten verdeckt“
+ *      rot: „a server error is not hidden by old data“ und
+ *      „a 404 is not hidden by old data“
  *   B  im Rückfall `stand = stand` weggelassen → rot: „ohne Verbindung kommen
  *      die gespeicherten Daten, als veraltet gekennzeichnet“
  *   C  die transient-Bedingung weggelassen (Rückfall bei jedem Fehler) →
- *      rot: „eine abgelaufene Sitzung wird nicht vom Cache verdeckt“, dazu
+ *      rot: „an expired session is not hidden by the cache“, dazu
  *      die beiden aus A
  */
 class RepoCacheFallbackTest {
@@ -68,7 +68,7 @@ class RepoCacheFallbackTest {
     }
 
     @Test
-    fun `ohne Verbindung kommen die gespeicherten Daten, als veraltet gekennzeichnet`() = runTest {
+    fun `without a connection the saved data comes, marked as outdated`() = runTest {
         val vorher = System.currentTimeMillis() - 2000
         fillCache(1999)
         server.shutdown()   // Verbindung verweigert: ein echter Netzfehler
@@ -85,7 +85,7 @@ class RepoCacheFallbackTest {
     }
 
     @Test
-    fun `ein Serverfehler wird nicht von alten Daten verdeckt`() = runTest {
+    fun `a server error is not hidden by old data`() = runTest {
         fillCache()
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getCatalogMeta()
@@ -96,7 +96,7 @@ class RepoCacheFallbackTest {
     }
 
     @Test
-    fun `ein 404 wird nicht von alten Daten verdeckt`() = runTest {
+    fun `a 404 is not hidden by old data`() = runTest {
         fillCache()
         server.enqueue(TestApi.antwort("""{"success":false,"error":"Nicht gefunden"}""", 404))
         val r = repo.getCatalogMeta()
@@ -104,7 +104,7 @@ class RepoCacheFallbackTest {
     }
 
     @Test
-    fun `eine abgelaufene Sitzung wird nicht vom Cache verdeckt`() = runTest {
+    fun `an expired session is not hidden by the cache`() = runTest {
         fillCache()
         server.enqueue(MockResponse().setResponseCode(401))
         val r = repo.getCatalogMeta()
@@ -114,7 +114,7 @@ class RepoCacheFallbackTest {
     }
 
     @Test
-    fun `frische Daten verdraengen die gespeicherten`() = runTest {
+    fun `fresh data replaces the saved data`() = runTest {
         fillCache(1999)
         server.enqueue(TestApi.antwort(antwort(2024)))
         val neu = erfolg(repo.getCatalogMeta())
@@ -124,7 +124,7 @@ class RepoCacheFallbackTest {
     }
 
     @Test
-    fun `ohne gespeicherte Daten bleibt ein Netzfehler ein Fehler`() = runTest {
+    fun `without saved data a network error stays an error`() = runTest {
         server.shutdown()
         val r = repo.getCatalogMeta()
         assert(r is Ergebnis.Fehler && r.transient) {

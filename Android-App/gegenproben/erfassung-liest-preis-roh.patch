@@ -1,7 +1,7 @@
 Gegenprobe: erfassungsWerte liest den Preis wieder mit replace statt nach der Sprache
 Modul: core-ui-inventory
 Test: ch.brickinventoryapp.shared.ErfassungswerteTest
-Rot: die Erfassung liest den Preis
+Rot: adding reads the price like the field and reports unreadable input
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt

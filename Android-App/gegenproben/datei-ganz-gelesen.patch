@@ -1,7 +1,7 @@
 Gegenprobe: Eine gewählte Datei wird ganz gelesen und erst danach an der Grenze gemessen
 Modul: core-data
 Test: ch.brickinventoryapp.data.FileLimitTest
-Rot: ein endloser Strom wird nach der Grenze nicht weiter gelesen
+Rot: an endless stream is not read beyond the limit
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt

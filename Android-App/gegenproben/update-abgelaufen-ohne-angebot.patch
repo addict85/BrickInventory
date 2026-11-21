@@ -1,7 +1,7 @@
 Gegenprobe: eine abgelaufene, neuere Beschreibung bietet nichts an; das Gerät bliebe nach sieben Tagen ohne Etikett stehen (Stand vor and-sec-r3 M1)
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateFreshTest
-Rot: eine abgelaufene, neuere Beschreibung wird mit Hinweis angeboten
+Rot: an expired, newer description is offered with a hint
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt

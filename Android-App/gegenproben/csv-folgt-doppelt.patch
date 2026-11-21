@@ -1,7 +1,7 @@
 Gegenprobe: Ein zweiter Folger öffnet eine zweite Verbindung zum CSV-Strom
 Modul: app
 Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
-Rot: ein laufender Import startet den Dienst einmal
+Rot: a running import starts the service once, finished reloads and clears after five seconds
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt

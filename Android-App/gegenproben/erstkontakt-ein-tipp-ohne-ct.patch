@@ -1,7 +1,7 @@
 Gegenprobe: Der Erstkontakt unter öffentlicher CA gilt auch ohne CT-Pflicht mit einem Tipp
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: ohne CT-Pflicht genuegt beim Erstkontakt kein Tipp
+Rot: without CT requirement a tap is not enough on first contact, the fingerprint is transcribed
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

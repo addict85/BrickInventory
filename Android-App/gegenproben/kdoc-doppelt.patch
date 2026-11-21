@@ -1,7 +1,7 @@
 Gegenprobe: Ein KDoc-Block steht direkt vor einem zweiten und hängt an nichts
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: kein Verweis auf das Begruendungsarchiv
+Rot: no reference to the reasoning archive, and no KDoc hangs on nothing
 
 diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt
 --- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt

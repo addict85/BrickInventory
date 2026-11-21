@@ -1,7 +1,7 @@
 Gegenprobe: Die Vorschau-Ablage wird beim Leeren nicht geleert
 Modul: core-state
 Test: ch.brickinventoryapp.state.DevicesSettingsViewModelTest
-Rot: die Vorschau-Ablage laesst sich sehen und leeren
+Rot: the preview store can be viewed and cleared
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/GeraeteEinstellungenViewModel.kt

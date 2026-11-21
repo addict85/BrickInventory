@@ -1,7 +1,7 @@
 Gegenprobe: qrWechseltServer ist wieder öffentlich, obwohl nur feature-login es braucht
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: die oeffentliche Flaeche der Bereiche
+Rot: the public surface of the areas does not grow
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrAnmeldung.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrAnmeldung.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrAnmeldung.kt

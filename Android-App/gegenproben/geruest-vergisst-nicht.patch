@@ -1,7 +1,7 @@
 Gegenprobe: ReiterGeruest verwirft die Rollposition des angetippten Reiters nicht mehr
 Modul: app
 Test: ch.brickinventoryapp.app.TabOpensAtTopTest
-Rot: kein Reiter-Ziel
+Rot: no tab destination builds the scaffold itself
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 index b274d3e..b405d33 100644

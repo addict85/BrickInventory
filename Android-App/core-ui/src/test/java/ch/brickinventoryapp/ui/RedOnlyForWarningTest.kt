@@ -16,9 +16,9 @@ import org.junit.Test
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI):
  *   noppe-container-rot        primaryContainer von Noppe wieder NoppeRotHell
- *                              → rot „Wert- und Zustandsflaechen sind nie rot“ (noppe.primaryContainer)
+ *                              → rot „value and state surfaces are never red“ (noppe.primaryContainer)
  *   noppe-dunkel-container-rot Noppe im Dunkeln ohne eigenen primaryContainer (wieder #2a1415)
- *                              → rot „Wert- und Zustandsflaechen sind nie rot“ (noppe/dunkel.primaryContainer)
+ *                              → rot „value and state surfaces are never red“ (noppe/dunkel.primaryContainer)
  */
 class RedOnlyForWarningTest {
 
@@ -44,7 +44,7 @@ class RedOnlyForWarningTest {
     }
 
     @Test
-    fun `Wert- und Zustandsflaechen sind nie rot`() {
+    fun `value and state surfaces are never red`() {
         val versions = designs.map { it to false } + designs.filter { hatDarkVersion(it) }.map { it to true }
         val fehler = versions.flatMap { (design, dunkel) ->
             val s = farbschema(design, dunkel)
@@ -59,7 +59,7 @@ class RedOnlyForWarningTest {
 
     /** Die Messung selbst: Fehlerrot erkennt sie, Blau, Grau und Sand nicht. */
     @Test
-    fun `die Rotmessung trennt Rot von Blau, Grau und Sand`() {
+    fun `the red measurement separates red from blue, gray and sand`() {
         assertTrue(rot(Color(0xFFB91C1C)))
         assertTrue(rot(Color(0xFFFDECEC)))
         assertTrue(!rot(Color(0xFF2563EB)) && !rot(Color(0xFFF4F4F4)) && !rot(Color(0xFFE9DED0)))

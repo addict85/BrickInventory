@@ -1,7 +1,7 @@
 Gegenprobe: das Angebot fragt nicht mehr nach der Frische, auch eine zurückgesetzte Beschreibung bietet an (Stand vor sec12 H2)
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateFreshTest
-Rot: aus einer zurueckgesetzten Beschreibung wird nichts angeboten
+Rot: nothing is offered from a reset description
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt

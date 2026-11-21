@@ -1,7 +1,7 @@
 Gegenprobe: Ein Token älterer Fassung (ohne Präfix) wird über den Entsperr-Schlüssel geöffnet und ist weg
 Modul: core-security
 Test: ch.brickinventoryapp.security.VaultLockTest
-Rot: ein Geheimtext ohne Praefix bleibt
+Rot: a ciphertext without prefix stays readable via the old key
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt

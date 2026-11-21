@@ -119,7 +119,7 @@ class PartsTest {
     private fun Teile.filtere(aenderung: (Teilefilter) -> Teilefilter) = setFilter(aenderung(state.value.filter))
 
     @Test
-    fun `die Filter des Zustands erreichen Quelle und Abruf`() = runTest {
+    fun `the filters of the state reach source and fetch`() = runTest {
         val t = teile()
         t.filtere { it.copy(farbe = ColorPicker.Farbe("Red")) }; t.filtere { it.copy(kategorie = Kategoriewahl.Kategorie("11")) }
         t.filtere { it.copy(ersatz = Ersatzteilwahl.OHNE) }; t.filtere { it.copy(ansicht = ListView.TABLE) }
@@ -133,7 +133,7 @@ class PartsTest {
     }
 
     @Test
-    fun `ein Filterwechsel vergisst die Scrollstelle`() = runTest {
+    fun `a filter change forgets the scroll position`() = runTest {
         val t = teile()
         t.filtere { it.copy(farbe = ColorPicker.Farbe("5")) }; t.filtere { it.copy(kategorie = Kategoriewahl.Kategorie("11")) }
         t.filtere { it.copy(ersatz = Ersatzteilwahl.NUR) }; t.filtere { it.copy(suche = "stein") }
@@ -144,7 +144,7 @@ class PartsTest {
     }
 
     @Test
-    fun `die Liste folgt der Quelle, auch ohne Abruf`() = runTest {
+    fun `the list follows the source, even without a fetch`() = runTest {
         val t = teile()
         t.laden(); runCurrent()
         // Vorgabe ist „nach Farbe“ (TeileOrdnung): Blue vor Red, nicht die Reihenfolge der Quelle.
@@ -158,7 +158,7 @@ class PartsTest {
     }
 
     @Test
-    fun `nach einem Filterwechsel schreibt die alte Quelle nicht mehr hinein`() = runTest {
+    fun `after a filter change the old source no longer writes into it`() = runTest {
         val alt = MutableStateFlow(Local(listOf(TeilAnsicht(partNumber = "alt")), 1L))
         val neu = MutableStateFlow(Local(listOf(TeilAnsicht(partNumber = "neu")), 1L))
         val t = Teile(scope = foreground(), quelle = metrics, reportError = {}, vergissScroll = {},
@@ -172,7 +172,7 @@ class PartsTest {
     }
 
     @Test
-    fun `die Figurenliste wartet nicht auf die Kennzahlen und ein Fehlschlag laesst sie stehen`() = runTest {
+    fun `the figure list does not wait for the key figures and a failure leaves it`() = runTest {
         metrics.minifigDuration = 5_000
         val t = figurenliste()
         t.laden()
@@ -185,7 +185,7 @@ class PartsTest {
     }
 
     @Test
-    fun `beim Tippen fragt die Figurenliste einmal und zaehlt nicht neu`() = runTest {
+    fun `while typing the figure list asks once and does not recount`() = runTest {
         val t = figurenliste()
         t.setzeSuche("lu"); t.setzeSuche("luk"); t.setzeSuche("luke")
         advanceUntilIdle()
@@ -194,7 +194,7 @@ class PartsTest {
     }
 
     @Test
-    fun `ohne Netz bleiben die Figuren stehen, mit ihrem Stand`() = runTest {
+    fun `without network the figures stay, with their state`() = runTest {
         minifigsResponse = Ergebnis.Fehler.Netz()
         val t = figurenliste()
         t.laden(); runCurrent()
@@ -204,7 +204,7 @@ class PartsTest {
     }
 
     @Test
-    fun `eine nie geladene Quelle zeigt nichts und leert nichts`() = runTest {
+    fun `a never loaded source shows nothing and empties nothing`() = runTest {
         figuren.value = Local(listOf(FigurAnsicht(figNumber = "alt")), null)
         val t = figurenliste()
         t.laden(); runCurrent()
@@ -215,7 +215,7 @@ class PartsTest {
     }
 
     @Test
-    fun `Abmelden raeumt auf, und eine spaete Antwort kommt nicht zurueck`() = runTest {
+    fun `sign-out cleans up, and a late response does not come back`() = runTest {
         val t = teile()
         t.filtere { it.copy(farbe = ColorPicker.Farbe("Red")) }; runCurrent()
         t.reset()

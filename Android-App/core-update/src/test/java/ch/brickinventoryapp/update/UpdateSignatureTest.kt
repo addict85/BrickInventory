@@ -34,10 +34,10 @@ import ch.brickinventoryapp.testing.Quellen
  *      → rot „ein fremder Schluessel …“, „veraenderte Daten …“ und „eine
  *      unsignierte version.json …“; gegenproben/update-beschreibung-ungeprueft.patch
  *   B  checksumFits() vergleicht nur als Präfix (`startsWith`) und ohne die
- *      Leer-Abfrage → rot „das APK muss die signierte Pruefsumme tragen“
+ *      Leer-Abfrage → rot „the APK must carry the signed checksum“
  *   C  isAllowedApkAddress() ohne VERSION_LABEL.matches → rot „nur Fassungsetiketten …“
  *   D  SignedDescription liest wieder das Feld `signatur` als Beschreibungssignatur
- *      (`@SerialName("signatur")`) → rot „die Signatur des APK-Schluessels gilt nicht mehr“;
+ *      (`@SerialName("signatur")`) → rot „the signature of the APK key no longer applies“;
  *      gegenproben/beschreibung-ohne-schluesseltrennung.patch
  *   E  descriptionKey() nur den ersten Block (`.take(1)`) → rot „waehrend
  *      eines Schluesselwechsels gelten alter und neuer Schluessel“
@@ -63,7 +63,7 @@ class UpdateSignatureTest {
         """{"daten":"$daten","beschreibungssignatur":"$signatur"}"""
 
     @Test
-    fun `die vom Beschreibungsschluessel signierte Beschreibung gilt`() {
+    fun `the description signed by the description key applies`() {
         val b = checkedDescription(shell(signiere(own)), schluessel)
         assertNotNull("Die wie mit openssl signierte Beschreibung wird nicht erkannt", b)
         assertEquals(200001234, b!!.versionCode)
@@ -72,13 +72,13 @@ class UpdateSignatureTest {
     }
 
     @Test
-    fun `ein fremder Schluessel gilt nicht`() {
+    fun `a foreign key does not apply`() {
         assertNull(checkedDescription(shell(signiere(ecKey())), schluessel))
         assertNull("Ohne Beschreibungsschlüssel gilt nichts", checkedDescription(shell(signiere(own)), emptyList()))
     }
 
     @Test
-    fun `veraenderte Daten gelten nicht`() {
+    fun `changed data does not apply`() {
         val echt = String(b64.decode(DATA))
         val umgeleitet = echt.replace("BrickInventory-200001234.apk", "Anderes-200001234.apk")
         val enc = Base64.getEncoder().encodeToString(umgeleitet.toByteArray())
@@ -86,7 +86,7 @@ class UpdateSignatureTest {
     }
 
     @Test
-    fun `eine unsignierte version-json gilt nicht`() {
+    fun `an unsigned version-json does not apply`() {
         val alt = """{"versionCode":200009999,"versionName":"9","apkUrl":"$UPDATE_RELEASE_BASE/BrickInventory.apk"}"""
         assertNull(checkedDescription(alt, schluessel))
         assertNull(checkedDescription(shell(""), schluessel))
@@ -98,7 +98,7 @@ class UpdateSignatureTest {
      * nur im Feld des Beschreibungsschlüssels und nur, wenn die App diesen Schlüssel kennt.
      */
     @Test
-    fun `die Signatur des APK-Schluessels gilt nicht mehr`() {
+    fun `the signature of the APK key no longer applies`() {
         val apkKey = CertificateFactory.getInstance("X.509")
             .generateCertificate(b64.decode(FOREIGN_ZERT).inputStream()).publicKey.encoded
         val oldForm = """{"daten":"$DATA","signatur":"$FOREIGN_SIG"}"""
@@ -111,7 +111,7 @@ class UpdateSignatureTest {
     }
 
     @Test
-    fun `waehrend eines Schluesselwechsels gelten alter und neuer Schluessel`() {
+    fun `during a key change old and new key apply`() {
         val alt = ecKey()
         val neu = ecKey()
         val beide = descriptionKey(pem(alt, neu))
@@ -124,7 +124,7 @@ class UpdateSignatureTest {
 
     /** Die Datei, die die App liest: nur Kommentare oder lesbare EC-Schlüssel. */
     @Test
-    fun `die Schluesseldatei der App enthaelt nur lesbare Schluessel`() {
+    fun `the app's key file contains only readable keys`() {
         val datei = File(Quellen.project, "core-resources/src/main/res/raw/beschreibungs_schluessel.pem")
         val text = datei.readText()
         val schluessel = descriptionKey(text)
@@ -133,7 +133,7 @@ class UpdateSignatureTest {
     }
 
     @Test
-    fun `das APK muss die signierte Pruefsumme tragen`() {
+    fun `the APK must carry the signed checksum`() {
         val datei = File.createTempFile("update", ".apk").apply { deleteOnExit(); writeText("test") }
         assertTrue(checksumFits(datei, "9F86D081884C7D659A2FEAA0C55AD015A3BF4F1B2B0B822CD15D6C15B0F00A08"))
         assertFalse(checksumFits(datei, "0".repeat(64)))
@@ -141,7 +141,7 @@ class UpdateSignatureTest {
     }
 
     @Test
-    fun `nur Fassungsetiketten des eigenen Repositorys sind Ablagen`() {
+    fun `only version tags of the own repository are stores`() {
         assertTrue(isAllowedApkAddress("$UPDATE_RELEASE_ROOT/android-v1.2.3/BrickInventory-1.apk"))
         assertFalse(isAllowedApkAddress("$UPDATE_RELEASE_ROOT/v1.2.3/BrickInventory-1.apk"))
         assertFalse(isAllowedApkAddress("$UPDATE_RELEASE_ROOT/android-v1/x/BrickInventory-1.apk"))

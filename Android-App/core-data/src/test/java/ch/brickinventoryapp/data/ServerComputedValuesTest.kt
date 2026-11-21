@@ -26,7 +26,7 @@ class ServerComputedValuesTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die Summenzeile der Erfassungen kommt vom Server`() {
+    fun `the total row of the acquisitions comes from the server`() {
         for (f in listOf(
             "collection/ui/screens/AcquisitionManagementScreen.kt",
             "shared/ui/ManualItemComposables.kt",
@@ -52,7 +52,7 @@ class ServerComputedValuesTest {
      * Vorgabe `= AcquisitionTotals()` entfernt → rot.
      */
     @Test
-    fun `die Antwort traegt die Summe, mit sicherer Vorgabe`() {
+    fun `the response carries the total, with a safe default`() {
         val neu = BrickJson.decodeFromString(AcquisitionsResponse.serializer(),
             """{"success":true,"acquisitions":[],"totals":{"quantity":3,"amount":42.5,"priced_rows":2}}""")
         assertEquals(3, neu.totals.quantity)
@@ -63,7 +63,7 @@ class ServerComputedValuesTest {
     }
 
     @Test
-    fun `die Minifiguren-Kacheln kommen vom Server, nicht aus der gefilterten Liste`() {
+    fun `the minifigure tiles come from the server, not from the filtered list`() {
         val s = code(Quellen.bildschirm("parts/ui/screens/MinifigsScreen.kt"))
         for (pattern in listOf("figs.size", "figs.sumOf", "figs.count")) {
             assert(!s.contains(pattern)) {

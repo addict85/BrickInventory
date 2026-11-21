@@ -1,7 +1,7 @@
 Gegenprobe: Eine geänderte Teilefarbe erreicht die Ablage nicht
 Modul: core-data
 Test: ch.brickinventoryapp.data.FollowUpTest
-Rot: Lagerort und Farbe eines Teils
+Rot: storage location and color of a part and the location of a figure are in the store after the response
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
 index fc1caf6..09ecf13 100644

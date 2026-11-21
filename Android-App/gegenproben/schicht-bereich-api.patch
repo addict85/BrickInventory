@@ -1,7 +1,7 @@
 Gegenprobe: Ein Bereich importiert eine Retrofit-Schnittstelle
 Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
-Rot: ein Bereich kennt die Retrofit-Schnittstellen nicht
+Rot: an area does not know the Retrofit interfaces, only core-data knows the wire format
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt

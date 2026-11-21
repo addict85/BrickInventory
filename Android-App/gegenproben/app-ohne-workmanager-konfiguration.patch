@@ -1,7 +1,7 @@
 Gegenprobe: BrickInventoryApp liefert WorkManager keine Konfiguration
 Modul: app
 Test: ch.brickinventoryapp.app.WorkManagerConfigurationTest
-Rot: die App liefert WorkManager seine Konfiguration selbst
+Rot: the app supplies WorkManager its configuration itself
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt

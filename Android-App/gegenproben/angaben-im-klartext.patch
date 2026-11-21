@@ -1,7 +1,7 @@
 Gegenprobe: Adresse und Benutzername werden wieder im Klartext abgelegt
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenVaultTest
-Rot: Adresse und Name liegen nur verschluesselt, alte Klartexte werden beim Start uebernommen
+Rot: address and name lie only encrypted, old plaintexts are taken over at start
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 index 0287f52..6b37220 100644

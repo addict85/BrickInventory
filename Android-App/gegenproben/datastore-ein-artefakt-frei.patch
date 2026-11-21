@@ -1,7 +1,7 @@
 Gegenprobe: Ein DataStore-Artefakt ist nicht mehr festgenagelt
 Modul: app
 Test: ch.brickinventoryapp.app.SixteenKbAlignmentTest
-Rot: DataStore wird auf EINE Fassung festgenagelt
+Rot: DataStore is pinned to ONE version
 
 diff --git a/Android-App/app/build.gradle.kts b/Android-App/app/build.gradle.kts
 --- a/Android-App/app/build.gradle.kts

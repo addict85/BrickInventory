@@ -34,7 +34,7 @@ class PercentFormatTest {
         .apply { minimumFractionDigits = 1; maximumFractionDigits = 1 }.format(share)
 
     @Test
-    fun `ein Gewinn traegt ein Plus und eine Nachkommastelle`() {
+    fun `a profit carries a plus and one decimal place`() {
         for (sprache in listOf(Locale.GERMAN, Locale.ENGLISH)) {
             Locale.setDefault(sprache)
             assertEquals("+" + platform(0.123), fmtProzent(12.345))
@@ -43,14 +43,14 @@ class PercentFormatTest {
     }
 
     @Test
-    fun `ein Verlust traegt das Minus der Plattform`() {
+    fun `a loss carries the platform's minus`() {
         Locale.setDefault(Locale.ENGLISH)
         assertEquals(platform(-0.045), fmtProzent(-4.5))
         assertTrue(fmtProzent(-4.5).startsWith("-"))
     }
 
     @Test
-    fun `was auf null rundet, steht ohne Vorzeichen`() {
+    fun `what rounds to zero stands without sign`() {
         Locale.setDefault(Locale.ENGLISH)
         assertEquals(platform(0.0), fmtProzent(0.0))
         assertEquals(platform(0.0), fmtProzent(-0.04))
@@ -58,7 +58,7 @@ class PercentFormatTest {
     }
 
     @Test
-    fun `die Sprache entscheidet ueber das Trennzeichen`() {
+    fun `the language decides about the separator`() {
         Locale.setDefault(Locale.GERMAN)
         val de = fmtProzent(1234.5)
         Locale.setDefault(Locale.ENGLISH)
@@ -67,7 +67,7 @@ class PercentFormatTest {
     }
 
     @Test
-    fun `kein Bildschirm formatiert Prozente selbst`() {
+    fun `no screen formats percentages itself`() {
         val screens = Quellen.unter("ui/screens") + Quellen.unter("shared/ui")
         val ofHand = Regex("""%\.1f%%|"%\.1f"\s*,\s*pct|\+\s*" %"""")
         val treffer = screens.filter { ofHand.containsMatchIn(it.readText()) }.map { it.name }

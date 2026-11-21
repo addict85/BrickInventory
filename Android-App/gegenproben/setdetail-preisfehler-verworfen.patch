@@ -1,7 +1,7 @@
 Gegenprobe: Preis und Preisverlauf verwerfen ihren Fehler still
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.SetDetailViewModelTest
-Rot: scheitern Preis und Verlauf, steht der Fehler im Zustand
+Rot: if price and history fail, the error is in the state until a new fetch succeeds
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt

@@ -280,7 +280,7 @@ private fun DrawScope.endMarker(farbe: Color, stil: LinesStyle, middle: Offset, 
 private fun withFontHeight(basis: Dp): Dp = withFont(basis)
 
 /**
- * Marktpreis und Entwicklung je Zustand. Eine Zeile erscheint nur, wenn der Server
+ * market price and development per condition. Eine Zeile erscheint nur, wenn der Server
  * für diesen Zustand eine Erfassung kennt; ohne Markt- oder Kaufpreis bleibt die
  * Prozentangabe leer, statt gegen nichts zu rechnen.
  */
@@ -394,7 +394,7 @@ fun tileArrangement(breite: Dp, demand: Dp, abstand: Dp): TileArrangement = when
  * Marktwert, Kaufpreis und G&V oben auf jeder Detailseite, in jedem Design: Die Frage
  * „was ist es wert?“ beantwortet die Seite zuerst. Ein Betrag bricht nie um; reicht
  * die Breite nicht, rückt erst der Marktwert über die beiden anderen, dann alles
- * untereinander. Kacheln einer Reihe sind gleich hoch.
+ * untereinander. tiles of a row are equally high.
  */
 @Composable
 fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier, pnlBetrag: String? = null) {

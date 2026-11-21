@@ -69,7 +69,7 @@ class PriceHistorySerializationTest {
     }"""
 
     @Test
-    fun `beide Verlaufsreihen kommen getrennt an`() {
+    fun `both history series arrive separately`() {
         val r = json.decodeFromString<PriceHistoryResponse>(payload)
         assertEquals(2, r.historyNew.size)
         assertEquals(1, r.historyUsed.size)
@@ -77,7 +77,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `die Diagrammdaten tragen firstRealIndex`() {
+    fun `the chart data carry firstRealIndex`() {
         val chart = json.decodeFromString<PriceHistoryResponse>(payload).chart
         assertEquals(listOf("2026-01-01", "2026-02-01"), chart.x)
         val used = chart.values.first { it.name == "U" }
@@ -87,7 +87,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `Marktpreis und Entwicklung je Zustand`() {
+    fun `market price and development per condition`() {
         val r = json.decodeFromString<PriceHistoryResponse>(payload)
         assertEquals(812.5, r.byCondition.new!!.marketPrice!!, 0.0001)
         assertEquals(6.7, r.byCondition.used!!.pnlPct!!, 0.0001)
@@ -95,7 +95,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `nur ein Zustand erfasst ergibt genau eine Zeile`() {
+    fun `only one condition added gives exactly one row`() {
         // Der Server liefert keinen Eintrag für Zustände ohne Erfassung —
         // sonst stünde dort ein Marktpreis ohne Bezugsgrösse und die
         // Prozentangabe daneben wäre gegen nichts gerechnet.
@@ -113,7 +113,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `eine alte Antwort ohne die neuen Felder bricht nicht`() {
+    fun `an old response without the new fields does not break`() {
         // Falls App und Server einmal auseinanderlaufen: lieber ein leeres
         // Diagramm als ein Absturz im Detail-Dialog.
         val r = json.decodeFromString<PriceHistoryResponse>(
@@ -124,7 +124,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `die Bewertung liefert eine Zeile je Kaufpreis`() {
+    fun `the valuation delivers one row per purchase price`() {
         val v = json.decodeFromString<ValuationResponse>("""{
             "success": true, "currency": "CHF", "condition": "U",
             "totals": {"min": "0.00", "avg": "390.00", "max": "0.00", "qty_avg": "390.00"},
@@ -155,7 +155,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `ein Set ohne Erfassungen bleibt eine einzige Zeile`() {
+    fun `a set without acquisitions stays a single row`() {
         val v = json.decodeFromString<ValuationResponse>("""{
             "success": true, "currency": "CHF",
             "totals": {"min": "0.00", "avg": "50.00", "max": "0.00", "qty_avg": "50.00"},
@@ -167,7 +167,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `die Kachel bekommt eine Liste der erfassten Zustaende`() {
+    fun `the tile gets a list of the added conditions`() {
         // Ein Exemplar neu, eines gebraucht: Die Kachel zeigte bisher nur
         // „Gebraucht", weil `condition` ein Aggregat ist und nur einen Wert
         // kennt. `conditions` trägt beide — entschieden wird das auf dem
@@ -186,7 +186,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `eine alte Antwort ohne conditions bleibt brauchbar`() {
+    fun `an old response without conditions stays usable`() {
         // Dann sieht die Kachel aus wie bisher — eine Plakette aus `condition`.
         val r = json.decodeFromString<SetsResponse>("""{
             "success": true, "sets": [{"set_number": "10290-1", "condition": "N"}]
@@ -195,7 +195,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `manuelle Minifiguren tragen die Zustandsliste ebenfalls`() {
+    fun `manual minifigures also carry the condition list`() {
         val r = json.decodeFromString<MinifigsResponse>("""{
             "success": true,
             "figs": [{"fig_number": "sw0001", "condition": "U",
@@ -207,7 +207,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `manuelle Teile liefern ebenfalls eine Zeile je Kaufpreis`() {
+    fun `manual parts also deliver one row per purchase price`() {
         // Dieselbe Form wie bei Sets — der Finanzen-Reiter zeigt für alle drei
         // Arten dasselbe Muster.
         val v = json.decodeFromString<PartsValuationResponse>("""{
@@ -235,7 +235,7 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `der Verlauf eines Teils passt in dasselbe Modell wie der eines Sets`() {
+    fun `the history of a part fits into the same model as that of a set`() {
         // Die neuen Routen /api/v1/parts/…/price-history und
         // /api/v1/minifigs/…/price-history liefern denselben Umschlag ohne die
         // Set-Felder. Die müssen auf ihren Vorgaben landen statt zu werfen —

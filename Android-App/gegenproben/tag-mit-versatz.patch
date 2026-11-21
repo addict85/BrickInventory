@@ -1,7 +1,7 @@
 Gegenprobe: der Kalendertag in einer Zone östlich von UTC
 Modul: core-model
 Test: ch.brickinventoryapp.model.MoneyTest
-Rot: der Kalendertag ist der des Servers
+Rot: the calendar day is the server's, not that of the device zone
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt

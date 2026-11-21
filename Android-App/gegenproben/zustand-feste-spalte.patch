@@ -1,7 +1,7 @@
 Gegenprobe: Zustand-Beschriftung bei jeder Schrift in der festen Spalte
 Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
-Rot: Zustandszeile
+Rot: state row breaks no word at 200 percent
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt

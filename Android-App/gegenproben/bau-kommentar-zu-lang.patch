@@ -1,7 +1,7 @@
 Gegenprobe: Sechs Zeilen Prosa in gradle.properties
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: kein Kommentar in Build-Dateien
+Rot: no comment in build files has more than five lines of prose
 
 diff --git a/Android-App/gradle.properties b/Android-App/gradle.properties
 --- a/Android-App/gradle.properties

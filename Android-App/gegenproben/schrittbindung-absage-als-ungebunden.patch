@@ -1,7 +1,7 @@
 Gegenprobe: Jede Absage des Servers und jeder Netzfehler gilt als „kennt keinen Schrittschutz“; die App prüft dann nur im Gerät
 Modul: core-data
 Test: ch.brickinventoryapp.data.SchrittbindungTest
-Rot: eine Absage des Servers haelt an
+Rot: a refusal of the server stops
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
 index 1262215..d5cc626 100644

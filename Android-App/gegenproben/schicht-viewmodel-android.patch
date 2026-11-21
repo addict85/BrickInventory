@@ -1,7 +1,7 @@
 Gegenprobe: Ein ViewModel importiert android.net.Uri
 Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
-Rot: ein ViewModel kennt weder Android noch Netz noch Bildschirmcode
+Rot: a ViewModel knows neither Android nor network nor screen code
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/GutscheinViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/GutscheinViewModel.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/GutscheinViewModel.kt

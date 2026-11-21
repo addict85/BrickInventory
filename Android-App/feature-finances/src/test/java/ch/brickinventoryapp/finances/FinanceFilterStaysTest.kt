@@ -25,14 +25,14 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * ── Zwei Haelften, weil eine allein still falsch werden kann ────────────────
  *  1. AM VERHALTEN: Die Mengenrechnung stimmt — dazunehmen, wegnehmen, und die
- *     leere Auswahl zeigt alles.
+ *     an empty selection shows everything.
  *  2. AM QUELLTEXT: Der Bildschirm haelt den Filter nicht wieder selbst.
  *     Haelfte 1 bliebe gruen, waehrend der Filter wieder verloren ginge.
  */
 class FinanceFilterStaysTest {
 
     @Test
-    fun `leere Auswahl zeigt alles`() {
+    fun `an empty selection shows everything`() {
         val z = FinanceUiState()
         assert(z.zeigt("sets") && z.zeigt("parts") && z.zeigt("figs")) {
             "Ohne Einschraenkung muessen alle drei Zeilenarten sichtbar sein"
@@ -40,7 +40,7 @@ class FinanceFilterStaysTest {
     }
 
     @Test
-    fun `der Filter ist additiv`() {
+    fun `the filter is additive`() {
         val z = FinanceUiState()
             .withToggledCategory("sets")
             .withToggledCategory("figs")
@@ -53,7 +53,7 @@ class FinanceFilterStaysTest {
     }
 
     @Test
-    fun `dieselbe Art zweimal geklickt nimmt sie wieder weg`() {
+    fun `the same kind clicked twice removes it again`() {
         val z = FinanceUiState()
             .withToggledCategory("parts")
             .withToggledCategory("parts")
@@ -68,7 +68,7 @@ class FinanceFilterStaysTest {
     }
 
     @Test
-    fun `der Bildschirm haelt den Filter nicht selbst`() {
+    fun `the screen does not hold the filter itself`() {
         val src = Quellen.withoutComments(
             Quellen.lies("finances/ui/screens/FinanceScreen.kt"))
 

@@ -1,7 +1,7 @@
 Gegenprobe: Der Name eines Pin-Eintrags trägt wieder Host und Port
 Modul: core-data
 Test: ch.brickinventoryapp.data.TrustEncryptedTest
-Rot: kein Eintrag nennt den Server
+Rot: no entry names the server
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
 index c5ab2dd..f478d8f 100644

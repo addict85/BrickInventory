@@ -50,7 +50,7 @@ import ch.brickinventoryapp.model.ui.Meldung
  *
  * Gegenproben:
  *   update-angebot-ohne-frische  Angebot mit isNew statt offerableVersion →
- *                                rot „eine zurueckgesetzte Beschreibung bietet nichts an“
+ *                                rot „a reset description offers nothing“
  *   update-vm-abgelaufen-ohne-angebot  Angebot nur bei AKTUELL → rot „eine abgelaufene,
  *                                neuere Beschreibung bietet die Fassung mit Hinweis an“
  *   update-signatur-ungeprueft   die Signaturprüfung nach dem Download entfernt →
@@ -58,9 +58,9 @@ import ch.brickinventoryapp.model.ui.Meldung
  *   update-zweiter-weg-ungeprueft  startInstallation() ohne signatureFits →
  *                                rot „ohne Erlaubnis wartet das APK …“
  *   update-ohne-obergrenze       die Grenze im Download nie erreicht →
- *                                rot „mehr als angekuendigt wird nicht geschrieben“
+ *                                rot „more than announced is not written“
  *   update-still-mit-fehler      die stille Prüfung meldet Fehler →
- *                                rot „eine unsignierte Beschreibung meldet sich nur auf Knopfdruck“
+ *                                rot „an unsigned description reports only on button press“
  *   update-start-ohne-schalter   pruefeBeimStart() fragt den Schalter nicht →
  *                                rot „ausgeschaltet fragt der Start nicht bei GitHub“
  *   update-abmelden-behaelt      kein Zurücksetzen beim Abmelden → rot „beim Abmelden verfaellt …“
@@ -148,7 +148,7 @@ class UpdateViewModelTest {
     private fun zustand(): UpdateUiState = vm.updateState.value
 
     @Test
-    fun `eine signierte, aktuelle Beschreibung bietet die neuere Fassung an`() = runTest(takt) {
+    fun `a signed, current description offers the newer version`() = runTest(takt) {
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
         assertEquals(20, zustand().newerVersion?.versionCode)
@@ -158,7 +158,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `eine unsignierte Beschreibung meldet sich nur auf Knopfdruck`() = runTest(takt) {
+    fun `an unsigned description reports only on button press`() = runTest(takt) {
         val fremd = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung(schluessel = fremd)
         vm.pruefeAufUpdate(still = true)
@@ -172,7 +172,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `eine zurueckgesetzte Beschreibung bietet nichts an`() = runTest(takt) {
+    fun `a reset description offers nothing`() = runTest(takt) {
         ablage.stand = UpdateStatus(highestCode = 25, ausgestellt = 0)
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
@@ -181,7 +181,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `eine abgelaufene, neuere Beschreibung bietet die Fassung mit Hinweis an`() = runTest(takt) {
+    fun `an expired, newer description offers the version with a hint`() = runTest(takt) {
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung(ausgestellt = jetzt - 8 * 86_400, gueltigBis = jetzt - 86_400)
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
@@ -191,7 +191,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `ein passendes APK wird nach allen Pruefungen installiert`() = runTest(takt) {
+    fun `a matching APK is installed after all checks`() = runTest(takt) {
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
         vm.ladeUpdate()
@@ -203,7 +203,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `eine fremde Signatur loescht das APK und installiert nicht`() = runTest(takt) {
+    fun `a foreign signature deletes the APK and does not install`() = runTest(takt) {
         // Ohne Erlaubnis endet ladeUpdate() vor dem zweiten Weg: Geprüft hat dann nur der Download.
         geraet.signatureGood = false
         geraet.erlaubt = false
@@ -218,7 +218,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `eine falsche Pruefsumme oder Fassung installiert nicht`() = runTest(takt) {
+    fun `a wrong checksum or version does not install`() = runTest(takt) {
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung(sha = hex(byteArrayOf(1)))
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
@@ -237,7 +237,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `mehr als angekuendigt wird nicht geschrieben`() = runTest(takt) {
+    fun `more than announced is not written`() = runTest(takt) {
         // Angekündigt 10 Bytes; erlaubt ist das plus ein Megabyte, geliefert wird mehr.
         val toMuch = ByteArray(1024 * 1024 + 64 * 1024)
         antworten[apkAddress] = 200 to toMuch
@@ -252,7 +252,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `ohne Erlaubnis wartet das APK, und der zweite Weg prueft erneut`() = runTest(takt) {
+    fun `without permission the APK waits, and the second path checks again`() = runTest(takt) {
         geraet.erlaubt = false
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
@@ -272,7 +272,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `beim Abmelden verfaellt der Zustand, Spaeter nur fuer diesen Lauf`() = runTest(takt) {
+    fun `on sign-out the state expires, Later only for this run`() = runTest(takt) {
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
         vm.closeUpdateHint()
@@ -284,7 +284,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `die Anmeldung prueft still, ohne Anmeldung fragt niemand`() = runTest(takt) {
+    fun `the sign-in checks silently, without sign-in nobody asks`() = runTest(takt) {
         val anmeldung = MutableStateFlow<String?>(null)
         val eigenes = UpdateViewModel(UpdateLoader(client, AppVersion("2.10", 10), takt),
             object : Anmeldestand { override val authTokenState = anmeldung }, ablage, geraet, takt)
@@ -305,7 +305,7 @@ class UpdateViewModelTest {
     }
 
     @Test
-    fun `ausgeschaltet fragt der Start nicht bei GitHub, eingeschaltet genau einmal`() = runTest(takt) {
+    fun `switched off the start does not ask GitHub, switched on exactly once`() = runTest(takt) {
         // Das vm aus auf() ist angemeldet und prüft im init, solange der Schalter noch an
         // ist; diese Prüfung erst ablaufen lassen, sonst zählt sie hier mit.
         advanceUntilIdle()

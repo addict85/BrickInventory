@@ -1,7 +1,7 @@
 Gegenprobe: Der Sammlungs-Umschalter auf dem Telefon meldet erst nach der Navigation
 Modul: app
 Test: ch.brickinventoryapp.app.TabOpensAtTopTest
-Rot: der Sammlungs-Umschalter meldet
+Rot: the collection switcher reports the tab before it navigates
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 index b274d3e..88b864b 100644

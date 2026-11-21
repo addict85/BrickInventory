@@ -47,7 +47,7 @@ class AlarmabholungTest {
         Ergebnis.Erfolg(AlarmabrufView(alerts = a.toList(), marke = now))
 
     @Test
-    fun `der erste Durchgang markiert nur und meldet nichts`() = runTest {
+    fun `the first pass only marks and reports nothing`() = runTest {
         // Leer und null muessen sich GLEICH verhalten: Auf einem Geraet, das
         // die Marke schon einmal geschrieben hat, kann sie leer sein.
         for (ohne in listOf(null, "", "   ")) {
@@ -68,7 +68,7 @@ class AlarmabholungTest {
     }
 
     @Test
-    fun `ein weiterer Durchgang meldet und schreibt die Marke fort`() = runTest {
+    fun `a further pass reports and advances the mark`() = runTest {
         var askedWith: String? = null
         val e = Alarmabholung.fetch("2026-09-19T17:30:00.000Z") { seit ->
             askedWith = seit
@@ -85,7 +85,7 @@ class AlarmabholungTest {
     }
 
     @Test
-    fun `eine leere Antwort ist der Normalfall und schreibt die Marke trotzdem fort`() = runTest {
+    fun `an empty response is the normal case and still advances the mark`() = runTest {
         // Ohne das fragte der naechste Durchgang wieder ab dem alten Zeitpunkt
         // — und die Spanne wuechse mit jeder ruhigen Stunde.
         val e = Alarmabholung.fetch("2026-09-19T17:30:00.000Z") { antwort() }
@@ -96,7 +96,7 @@ class AlarmabholungTest {
     }
 
     @Test
-    fun `ohne brauchbare Antwort bleibt die Marke, wie sie war`() = runTest {
+    fun `without a usable response the mark stays as it was`() = runTest {
         val kaputt = listOf<Pair<String, Ergebnis<AlarmabrufView>>>(
             "Netz weg" to Ergebnis.Fehler.Netz("offline"),
             "Server sagt nein" to Ergebnis.Fehler.Absage(),
@@ -114,7 +114,7 @@ class AlarmabholungTest {
     }
 
     @Test
-    fun `der Text nennt Set, Preis und Schwelle — in der Waehrung des Alarms`() {
+    fun `the text names set, price and threshold — in the alert's currency`() {
         // Nicht in der aktuellen Kontowaehrung: Die Schwelle wurde in jener
         // Waehrung gesetzt, und 200 CHF sind nicht 200 EUR.
         assert(Alarmabholung.text(alarm(), "faellt unter", "steigt ueber", DE_CH) ==
@@ -130,10 +130,10 @@ class AlarmabholungTest {
 
     /**
      * Gegenprobe: gegenproben/alarm-betrag-fest-us.patch (wieder `Locale.US`) → rot
-     * „die Betraege stehen in der Zahlenform der App-Sprache“.
+     * „the amounts are in the number format of the app language“.
      */
     @Test
-    fun `die Betraege stehen in der Zahlenform der App-Sprache`() {
+    fun `the amounts are in the number format of the app language`() {
         val text = Alarmabholung.text(alarm(schwelle = 1200.0, preis = 999.5), "faellt unter", "steigt ueber",
             Locale.forLanguageTag("de-DE"))
         assert(text == "10179-1: 999,50\u00a0€ (faellt unter 1.200,00\u00a0€)") { text }

@@ -59,24 +59,24 @@ class SchrittfreigabeTest {
     private val offen = Schrittantwort.Challenge("c1", "BrickInventory-Schritt/1\ngutschein\nc1")
 
     @Test
-    fun `die vom Schluessel freigegebene Signatur zaehlt`() {
+    fun `the signature authorized by the key counts`() {
         assertTrue(freigabe.gilt(signatur(geraet.private)))
     }
 
     @Test
-    fun `ein anderer Schluessel zaehlt nicht`() {
+    fun `a different key does not count`() {
         assertFalse(freigabe.gilt(signatur(paar().private)))
     }
 
     @Test
-    fun `eine Signatur ohne Freigabe zaehlt nicht`() {
+    fun `a signature without authorization does not count`() {
         // Wie ein Keystore-Schlüssel vor der Freigabe: sign() wirft.
         assertFalse(freigabe.gilt(Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN)))
         assertFalse(freigabe.gilt(null))
     }
 
     @Test
-    fun `mit Challenge geht es erst weiter, wenn der Server die Signatur annimmt`() = runBlocking {
+    fun `with a challenge it continues only when the server accepts the signature`() = runBlocking {
         val server = Server(geraet.public, offen)
         val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
         assertEquals(Schrittablauf.Ausgang.Weiter, a)
@@ -84,7 +84,7 @@ class SchrittfreigabeTest {
     }
 
     @Test
-    fun `lehnt der Server die Signatur ab, geht es nicht weiter`() = runBlocking {
+    fun `if the server rejects the signature, it does not continue`() = runBlocking {
         // Der Server kennt einen anderen Schlüssel als das Gerät (neuer Fingerabdruck, fremdes Gerät).
         val server = Server(paar().public, offen)
         val a = Schrittablauf(server, Schrittfreigabe({ geraet.public })).confirm(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
@@ -92,7 +92,7 @@ class SchrittfreigabeTest {
     }
 
     @Test
-    fun `ein Rueckruf ohne CryptoObject laesst nicht weiter und fragt den Server nicht`() = runBlocking {
+    fun `a callback without CryptoObject does not let through and does not ask the server`() = runBlocking {
         val server = Server(geraet.public, offen)
         val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.GUTSCHEIN) { null }
         assertEquals(Schrittablauf.Ausgang.Abgebrochen, a)
@@ -100,7 +100,7 @@ class SchrittfreigabeTest {
     }
 
     @Test
-    fun `ohne Schluessel am Server fragt die App die Sperre gar nicht`() = runBlocking {
+    fun `without a key at the server the app does not ask for the lock at all`() = runBlocking {
         val server = Server(geraet.public, Schrittantwort.Rejected("Bitte neu anmelden."))
         var gefragt = 0
         val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.VERWALTUNG) { gefragt++; signatur(geraet.private) }
@@ -109,7 +109,7 @@ class SchrittfreigabeTest {
     }
 
     @Test
-    fun `ein Schritt ohne Aktion am Server bleibt bei der Pruefung im Geraet`() = runBlocking {
+    fun `a step without an action at the server stays with the check on the device`() = runBlocking {
         val server = Server(geraet.public, Schrittantwort.NotBound)
         assertEquals(Schrittablauf.Ausgang.Weiter,
             Schrittablauf(server, freigabe).confirm(Schrittaktion.LOKAL) { signatur(geraet.private) })

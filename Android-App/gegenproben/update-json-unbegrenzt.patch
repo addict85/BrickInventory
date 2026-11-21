@@ -1,7 +1,7 @@
 Gegenprobe: die Update-Beschreibung wird unbegrenzt gelesen
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateLoaderTest
-Rot: die Beschreibung wird hoechstens
+Rot: the description is read at most up to the upper limit
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt

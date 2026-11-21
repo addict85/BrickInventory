@@ -136,7 +136,7 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `ein Merkposten laesst sich nach dem Loeschen zurueckholen, samt Alarm`() {
+    fun `a wishlist item can be restored after deleting, including its alert`() {
         val vm = world.merkliste().also { it.loadWanted() }
         wait("Merkliste") { vm.wantedState.value.merkposten.isNotEmpty() }
         zeige {
@@ -183,7 +183,7 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `der Katalog zeigt im Fehler denselben Zustand wie die Galerie, ohne Trefferzahl`() {
+    fun `the catalog shows the same error state as the gallery, without a hit count`() {
         zeige {
             CatalogScreen(CatalogUiState(abruf = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text("Serverfehler (500)"))),
                 serverUrl = "", katalog = NoCatalogActions, imageLoader = bilder, onSetClick = {})
@@ -194,7 +194,7 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `ein leerer Katalog mit Filter bietet Zuruecksetzen, danach stehen Kacheln da`() {
+    fun `an empty catalog with a filter offers reset, afterwards tiles are shown`() {
         val sets = listOf(KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, numParts = 4514))
         var zustand by mutableStateOf(CatalogUiState(themeId = 721))
         val aktionen = object : KatalogAktionen by NoCatalogActions {
@@ -209,7 +209,7 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `die Erfassung nach dem Scan hat eine Anzahl und behaelt Eingaben ueber eine Drehung`() {
+    fun `adding after the scan has a quantity and keeps inputs across a rotation`() {
         var menge = 0
         var preis: Geld? = null
         val aktionen = object : ErfassungAktionen {
@@ -237,7 +237,7 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
+    fun `the catalog detail shows the wishlist item and opens it`() {
         var geoeffnet: Pair<String, Zustand>? = null
         val gemerkt = WantedItemView(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = Waehrung("CHF"),
             alarm = WantedItemAlarmView(richtung = Alarmrichtung.UNTER, schwelle = Geld.aus(349.0)!!))
@@ -255,7 +255,7 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `die Einladung laesst sich teilen und kopieren, mit Gueltigkeit und Sperrgrund`() {
+    fun `the invitation can be shared and copied, with validity and lock reason`() {
         world.paths.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
         world.paths.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
         val vm = world.t.merke(HouseholdViewModel(world.t.sitzung, world.t.filter(), world.t.sync,
@@ -272,7 +272,7 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `im Fehlerzustand steht kein Erfassen-Knopf, wie in Galerie und Merkliste`() {
+    fun `in the error state there is no add button, as in gallery and wishlist`() {
         world.paths.codes["/api/v1/parts"] = 500
         val vm = world.teile().also { it.loadParts() }
         wait("Fehler") { vm.teileState.value.let { it.partsFetch is Laden.Fehler } }

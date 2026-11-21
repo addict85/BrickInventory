@@ -59,7 +59,7 @@ class QrAddressTest {
     )
 
     @Test
-    fun `Benutzerangabe, Zeilenumbruch und Rueckstrich machen den Code ungueltig`() {
+    fun `user info, line break and backslash make the code invalid`() {
         for (url in deceptive) {
             assertTrue("angenommen: $url", qrAddressInvalid(url))
             assertTrue("von Hand angenommen: $url", NetworkPolicy.addressError(url, entwicklung = false) != null)
@@ -75,14 +75,14 @@ class QrAddressTest {
     }
 
     @Test
-    fun `Leerraum am Rand eines Codes macht ihn ungueltig, von Hand nicht`() {
+    fun `whitespace at the edge of a code makes it invalid, by hand it does not`() {
         assertTrue(qrAddressInvalid("https://evil.example\n"))
         assertTrue(qrAddressInvalid(" https://evil.example"))
         assertNull("Von Hand getippt trägt der Rand nichts", NetworkPolicy.addressError(" brick.fritz.box ", entwicklung = false))
     }
 
     @Test
-    fun `ein internationaler Host erscheint in Punycode und mit Warnung`() {
+    fun `an international host appears in punycode and with a warning`() {
         val a = NetworkPolicy.ansicht("https://brіck.meinserver.ch")!!   // kyrillisches і
         assertEquals("xn--brck-m9d.meinserver.ch", a.host)
         assertEquals("https://xn--brck-m9d.meinserver.ch", a.adresse)
@@ -95,7 +95,7 @@ class QrAddressTest {
     }
 
     @Test
-    fun `ein Code fuer einen anderen Host nennt den bisherigen, derselbe Server nicht`() {
+    fun `a code for a different host names the previous one, the same server does not`() {
         assertEquals("brick.meinserver.ch", qrSwitchesServer("https://brick.meinserver.ch", "https://xn--brck-m9d.meinserver.ch"))
         assertEquals("brick.meinserver.ch", qrSwitchesServer("https://brick.meinserver.ch", "https://brick.meinserver.ch:8443"))
         assertNull(qrSwitchesServer("https://brick.meinserver.ch", "https://BRICK.meinserver.ch/"))
@@ -135,7 +135,7 @@ class QrAddressTest {
     }
 
     @Test
-    fun `das ViewModel nimmt eine Adresse mit Benutzerangabe nicht an`() {
+    fun `the ViewModel does not accept an address with user info`() {
         val ablage = Ablage()
         val abmelden = SessionFake()
         val blickfeld = Scope(StorageStore(),

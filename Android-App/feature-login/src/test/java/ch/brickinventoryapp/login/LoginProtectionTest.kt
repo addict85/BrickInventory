@@ -69,7 +69,7 @@ class LoginProtectionTest {
     // Tastatur weitergibt, und fragt nach dem EditorInfo, das daraus entstünde.
     @OptIn(ExperimentalComposeUiApi::class)
     @Test
-    fun `Passwort und Code lernt die Tastatur nicht mit`() {
+    fun `the keyboard does not learn password and code`() {
         var gesehen: EditorInfo? = null
         compose.setContent {
             InterceptPlatformTextInput(interceptor = { anfrage, _ ->
@@ -94,20 +94,20 @@ class LoginProtectionTest {
     }
 
     @Test
-    fun `der Scanner fuer den Anmeldecode kommt in kein Bildschirmfoto`() {
+    fun `the scanner for the sign-in code gets into no screenshot`() {
         compose.setContent { BrickInventoryManagerTheme { QrSetupScannerScreen(onResult = {}, onDismiss = {}) } }
         compose.waitForIdle()
         assertTrue("Das Kamerabild mit dem Anmeldecode ist nicht geschützt", geschuetzt())
     }
 
     @Test
-    fun `die Anmeldung ist vor Ueberlagerung geschuetzt, auch der Passkey-Knopf`() {
+    fun `the sign-in is protected against overlays, the passkey button too`() {
         zeige()
         assertTrue("Berührungen durch ein fremdes Fenster kämen an", ctx.window.decorView.filterTouchesWhenObscured)
     }
 
     @Test
-    fun `ein sichtbares Passwort kommt in kein Bildschirmfoto`() {
+    fun `a visible password gets into no screenshot`() {
         zeige()
         assertFalse("Ohne sichtbares Passwort braucht es keinen Sichtschutz", geschuetzt())
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_show)).performClick()
@@ -119,7 +119,7 @@ class LoginProtectionTest {
     }
 
     @Test
-    fun `Vorschau verbergen bleibt, wenn das Passwort wieder verdeckt wird`() {
+    fun `hiding the preview stays when the password is hidden again`() {
         zeige(hidePreview = true)
         assertTrue(geschuetzt())
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_show)).performClick()

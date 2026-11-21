@@ -1,7 +1,7 @@
 Gegenprobe: Jedes /auth/me meldet die Pflicht, auch ohne Feld
 Modul: core-state
 Test: ch.brickinventoryapp.state.SecondFactorTakeoverTest
-Rot: auth me ohne Pflicht
+Rot: auth me without obligation leaves the app open
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt
 --- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt

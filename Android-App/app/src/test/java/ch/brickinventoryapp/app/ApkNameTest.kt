@@ -37,7 +37,7 @@ import ch.brickinventoryapp.testing.Quellen
  * ── Gegenprobe ───────────────────────────────
  * `build.gradle.kts` schrieb wieder „Brickinventory.apk" — also der Stand von
  * vorher. Ergebnis: `354 tests completed, 1 failed`, und zwar
- * `ApkNameTest > Gradle und Workflow meinen dieselbe Datei`.
+ * `ApkNameTest > Gradle and workflow mean the same file`.
  *
  * Die beiden anderen Regeln blieben grün, weil sie nicht gebrochen waren. Das
  * ist der Punkt: Ein Test, der bei jedem Bruch anschlägt, sagt nicht, welcher
@@ -84,7 +84,7 @@ class ApkNameTest {
     }
 
     @Test
-    fun `Gradle und Workflow meinen dieselbe Datei`() {
+    fun `Gradle and workflow mean the same file`() {
         // Gegenprobe: mit "Brickinventory.apk" (kleines i) in build.gradle.kts —
         // also dem Stand von vorher — schlägt dieser Test fehl.
         val ziel = zielname()
@@ -109,7 +109,7 @@ class ApkNameTest {
     }
 
     @Test
-    fun `der Workflow benennt keine APK mehr um`() {
+    fun `the workflow no longer renames any APK`() {
         // Gegenprobe: ein wieder eingefügtes `mv app-release.apk …` macht diesen
         // Test rot.
         //
@@ -150,7 +150,7 @@ class ApkNameTest {
     }
 
     @Test
-    fun `das APK wird roh ausgeliefert, nicht als Zip`() {
+    fun `the APK is delivered raw, not as a zip`() {
         // upload-artifact liefert immer ein Zip; die APK darf deshalb an keinem
         // Artefaktschritt hängen. Geprüft wird jeder Schritt, auch ein künftiger.
         val ziel = zielname()
@@ -190,7 +190,7 @@ class ApkNameTest {
     }
 
     @Test
-    fun `Gradle bevorzugt die signierte APK`() {
+    fun `Gradle prefers the signed APK`() {
         // Warum das hier steht: Die Kopie heisst in beiden Fällen gleich, der
         // Unterschied steckt allein im Quellnamen. Lagen nach einem Wechsel der
         // Schlüssel beide Dateien im Ordner, entschied vorher der Zeitstempel —

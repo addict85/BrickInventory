@@ -1,7 +1,7 @@
 Gegenprobe: abgeleitet() reicht jede Änderung des Quellzustands weiter
 Modul: core-session
 Test: ch.brickinventoryapp.session.DerivedStateTest
-Rot: ein abgeleiteter Zustand meldet nur echte Aenderungen
+Rot: a derived state reports only real changes
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AbgeleiteterZustand.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AbgeleiteterZustand.kt
 index 10de68f..4ea4a01 100644

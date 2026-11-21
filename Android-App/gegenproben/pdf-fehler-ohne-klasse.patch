@@ -1,7 +1,7 @@
 Gegenprobe: Ein gescheiterter PDF-Download trägt wieder nur den rohen Text, keine Fehlerklasse
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.PdfViewerViewModelTest
-Rot: ein Fehler traegt seine Klasse und die Ursache als Zusatz
+Rot: an error carries its class and the cause as addition, without a cause it is called download failed
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt

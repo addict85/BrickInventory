@@ -1,7 +1,7 @@
 Gegenprobe: das Wegräumen eines Fehlers beendet auch einen laufenden Vorgang
 Modul: core-model
 Test: ch.brickinventoryapp.model.OperationTest
-Rot: das Wegraeumen eines Fehlers haelt keinen laufenden Vorgang an
+Rot: clearing an error does not stop a running operation
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt
 index 1d1e916..7bdff2b 100644

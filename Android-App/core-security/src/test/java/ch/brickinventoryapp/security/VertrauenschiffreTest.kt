@@ -16,7 +16,7 @@ import java.io.IOException
  *   A  name() gibt die Bindung selbst zurück → rot „ein Name verraet den Server nicht …“;
  *      gegenproben/pin-name-im-klartext.patch
  *   B  openDetail() holt den Schlüssel innerhalb der Prüfung (gesperrt wird „weg“) → rot
- *      „gesperrt ist eine Angabe spaeter lesbar, nicht weg“; gegenproben/angabe-gesperrt-wie-weg.patch
+ *      „locked an entry is readable later, not gone“; gegenproben/angabe-gesperrt-wie-weg.patch
  */
 class VertrauenschiffreTest {
 
@@ -29,7 +29,7 @@ class VertrauenschiffreTest {
     }) { vertrauen }
 
     @Test
-    fun `ein Name verraet den Server nicht und bleibt gleich`() {
+    fun `a name does not reveal the server and stays the same`() {
         val name = cipher.name("brick.example.org:443")!!
         assertFalse(name, "brick" in name || "443" in name)
         assertEquals("Derselbe Server, derselbe Name", name, cipher.name("brick.example.org:443"))
@@ -41,7 +41,7 @@ class VertrauenschiffreTest {
     }
 
     @Test
-    fun `gesperrt ist eine Angabe spaeter lesbar, nicht weg`() {
+    fun `locked an entry is readable later, not gone`() {
         val geheim = cipher.verschluessleDetail("https://brick.example.org", "server_url")!!
         assertFalse(geheim, "brick" in geheim)
         gesperrt = true
@@ -52,7 +52,7 @@ class VertrauenschiffreTest {
     }
 
     @Test
-    fun `eine Angabe unter fremdem Namen oder Schluessel ist weg`() {
+    fun `an entry under a foreign name or key is gone`() {
         val geheim = cipher.verschluessleDetail("anna", "username")!!
         assertEquals(Tresorbefund.Weg, cipher.openDetail(geheim, "server_url"))
         assertEquals(Tresorbefund.Weg, Vertrauenschiffre { vertrauen }.openDetail(geheim, "username"))

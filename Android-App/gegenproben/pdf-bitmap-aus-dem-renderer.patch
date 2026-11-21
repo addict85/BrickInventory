@@ -1,7 +1,7 @@
 Gegenprobe: Der Hauptprozess packt wieder ein Bitmap-Parcel aus dem isolierten Renderer aus
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: PdfRenderer steht nur im isolierten Render-Dienst
+Rot: PdfRenderer lives only in the isolated render service
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt

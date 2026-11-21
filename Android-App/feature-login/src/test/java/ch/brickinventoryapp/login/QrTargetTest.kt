@@ -16,14 +16,14 @@ import org.junit.Test
 class QrTargetTest {
 
     @Test
-    fun `ohne Ja zum Ziel geht nichts hinaus, auch ohne Abtippen`() {
+    fun `without a yes to the target nothing goes out, even without typing`() {
         assertFalse(qrUebernehmbar(gesperrt = false, targetConfirmed = false, abtippen = false, eingabe = ""))
         assertFalse(qrUebernehmbar(gesperrt = false, targetConfirmed = false, abtippen = true, eingabe = "3F:A2"))
         assertTrue(qrUebernehmbar(gesperrt = false, targetConfirmed = true, abtippen = false, eingabe = ""))
     }
 
     @Test
-    fun `mit Ja gelten Sperre und Abtippen weiter`() {
+    fun `with a yes lock and typing still apply`() {
         assertFalse("Klartext-Adresse", qrUebernehmbar(gesperrt = true, targetConfirmed = true, abtippen = false, eingabe = ""))
         assertFalse("Nichts abgetippt", qrUebernehmbar(gesperrt = false, targetConfirmed = true, abtippen = true, eingabe = " "))
         assertTrue(qrUebernehmbar(gesperrt = false, targetConfirmed = true, abtippen = true, eingabe = "3F:A2"))

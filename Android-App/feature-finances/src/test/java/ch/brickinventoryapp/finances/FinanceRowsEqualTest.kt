@@ -19,7 +19,7 @@ import org.junit.Test
 class FinanceRowsEqualTest {
 
     @Test
-    fun `beide Aufrufstellen reichen den Kaufpreis durch`() {
+    fun `both call sites pass the purchase price through`() {
         // Die Erfassung geht vor dem Eintrag: Bei mehreren Kaeufen hat jede Zeile
         // ihren eigenen Kaufpreis, genau wie bei den Sets.
         val kaeufe = listOf(ValuationPurchaseView(id = 1, purchasePrice = Geld.aus(120.0)),

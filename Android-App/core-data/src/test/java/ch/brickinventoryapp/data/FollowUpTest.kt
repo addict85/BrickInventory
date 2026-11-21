@@ -80,7 +80,7 @@ class FollowUpTest {
     private fun set() = runBlocking { ablage.lies(Slots.SETS)!!.liste.single { it.setNumber == "10001-1" } }
 
     @Test
-    fun `Menge, Lagerort und Besitzer eines Sets stehen nach der Antwort in der Ablage`() = runBlocking {
+    fun `quantity, storage location and owner of a set are in the store after the response`() = runBlocking {
         sets.setQuantity("10001-1", 5)
         assertEquals("die Zahl des Servers, nicht die gewünschte", 3, set().quantity)
         sets.setSetStorage("10001-1", "kiste 2")
@@ -92,7 +92,7 @@ class FollowUpTest {
     }
 
     @Test
-    fun `ein verschobener und ein uebernommener Merkposten stehen nach der Antwort in der Ablage`() = runBlocking {
+    fun `a moved and a taken-over wishlist item are in the store after the response`() = runBlocking {
         merkliste.moveWantedItem("20001-1", Zustand.NEU, ofId = 1, toId = 2)
         merkliste.adoptWantedItem("20002-1", Zustand.NEU, quantity = 2, ownerUserId = 1)
         assertEquals(listOf("20001-1|2"), ablage.lies(Slots.MERKLISTE)!!.liste.map { "${it.setNumber}|${it.userId}" })
@@ -101,7 +101,7 @@ class FollowUpTest {
     }
 
     @Test
-    fun `Lagerort und Farbe eines Teils und der Ort einer Figur stehen nach der Antwort in der Ablage`() = runBlocking {
+    fun `storage location and color of a part and the location of a figure are in the store after the response`() = runBlocking {
         teile.setPartStorage("3001", 5, "regal")
         assertEquals("Regal", ablage.lies(Slots.MANUELLE_TEILE)!!.liste.first { it.colorId == 5 }.storage)
         // Die neue Farbe hat schon eine Zeile: Der Server legt beide zusammen.
@@ -112,7 +112,7 @@ class FollowUpTest {
     }
 
     @Test
-    fun `ein umbenannter Ort heisst ueberall neu`() = runBlocking {
+    fun `a renamed location has the new name everywhere`() = runBlocking {
         teile.nameLocationUm(3, alt = "Kiste 1", name = "Keller")
         assertEquals("Keller", set().storage)
         assertEquals("Keller", ablage.lies(Slots.MANUELLE_TEILE)!!.liste.first { it.colorId == 5 }.storage)
@@ -120,7 +120,7 @@ class FollowUpTest {
     }
 
     @Test
-    fun `eine Antwort, waehrend das Konto wechselt, aendert die neue Ablage nicht`() = runBlocking {
+    fun `a response while the account changes does not change the new store`() = runBlocking {
         // Das Gerät hält nur ein Konto; das neue lädt sein Set, während die alte Antwort unterwegs ist.
         paths.priority = { _, _ ->
             bereich = "b"
@@ -132,7 +132,7 @@ class FollowUpTest {
     }
 
     @Test
-    fun `eine abgelehnte Aenderung aendert die Ablage nicht`() = runBlocking {
+    fun `a rejected change does not change the store`() = runBlocking {
         paths.antworten["/api/v1/sets/10001-1/storage"] = """{"success":false,"error":"Ort unbekannt"}"""
         sets.setSetStorage("10001-1", "x")
         assertEquals("Kiste 1", set().storage)

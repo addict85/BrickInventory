@@ -1,7 +1,7 @@
 Gegenprobe: Die Snackbar quittiert ihre Meldung nicht, die nächste rückt nie nach
 Modul: core-state
 Test: ch.brickinventoryapp.state.AppViewModelTest
-Rot: die Snackbar zeigt den Kanal
+Rot: the snackbar shows the channel, acknowledged the next one moves up
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt

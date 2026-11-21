@@ -61,7 +61,7 @@ class SegmentChoiceTest {
             .fetchSemanticsNodes().sortedBy { it.positionInRoot.x }
 
     @Test
-    fun `alle Segmente sind gleich hoch und nicht hoeher als noetig, auch wenn eines zwei Zeilen hat`() {
+    fun `all segments are equally high and not higher than needed, even if one has two lines`() {
         zeige()
         val heights = segments().map { it.size.height }
         assertEquals("Drei Segmente erwartet", 3, heights.size)
@@ -72,7 +72,7 @@ class SegmentChoiceTest {
     }
 
     @Test
-    fun `das Haekchen neben der langen Beschriftung bleibt im Segment`() {
+    fun `the check mark next to the long label stays in the segment`() {
         zeige()
         val segment = segments().first()
         val beschriftung = compose.onNode(hasText(lang), useUnmergedTree = true).fetchSemanticsNode()

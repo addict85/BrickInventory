@@ -87,14 +87,14 @@ class FinancePurchasePriceRowsTest {
     }
 
     @Test
-    fun `Teile und Figuren zeigen ihren Kaufpreis wie die Sets`() {
+    fun `parts and figures show their purchase price like the sets`() {
         zeige()
         purchasePriceStands("0.96")
         purchasePriceStands("4.35")
     }
 
     @Test
-    fun `die Set-Zeile zeigt den Kaufpreis weiterhin`() {
+    fun `the set row still shows the purchase price`() {
         zeige()
         purchasePriceStands("700.00")
     }

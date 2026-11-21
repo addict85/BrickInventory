@@ -1,7 +1,7 @@
 Gegenprobe: ein Projektname steht wieder voll qualifiziert im Code
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: kein voll qualifizierter Projektname im Code
+Rot: no fully qualified project name in the code
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt

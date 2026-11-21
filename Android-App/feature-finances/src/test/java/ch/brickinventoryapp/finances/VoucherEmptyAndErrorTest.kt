@@ -52,7 +52,7 @@ class VoucherEmptyAndErrorTest {
     }
 
     @Test
-    fun `ein Serverfehler nennt den Rat seiner Klasse und laedt auf Wunsch neu`() {
+    fun `a server error names the advice of its class and reloads on request`() {
         var erneut = 0
         zeige(GutscheinUiState(abruf = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text("Serverfehler (502)")))) { erneut++ }
         compose.onNodeWithText(text(R.string.fehler_server_titel)).fetchSemanticsNode("Überschrift der Klasse fehlt")
@@ -63,7 +63,7 @@ class VoucherEmptyAndErrorTest {
     }
 
     @Test
-    fun `ohne Gutscheine steht eine Ueberschrift und darunter, wozu die Seite da ist`() {
+    fun `without vouchers a heading stands and below it what the page is for`() {
         zeige(GutscheinUiState())
         val titel = compose.onNodeWithText(text(R.string.vouchers_empty)).fetchSemanticsNode("Titel fehlt")
         assertTrue("„Noch keine Gutscheine“ ist keine Überschrift",

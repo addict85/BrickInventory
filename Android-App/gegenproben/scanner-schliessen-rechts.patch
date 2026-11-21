@@ -1,7 +1,7 @@
 Gegenprobe: der Scanner schliesst wieder oben rechts
 Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
-Rot: der Scanner schliesst oben links und schaltet das Licht ueber einen Knopf
+Rot: the scanner closes top left and switches the light via a button
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/BarcodeScannerScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/BarcodeScannerScreen.kt
 index ab99f57..66fd260 100644

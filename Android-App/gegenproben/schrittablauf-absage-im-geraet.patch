@@ -1,7 +1,7 @@
 Gegenprobe: Lehnt der Server die Challenge ab (kein Geräteschlüssel), prüft die App nur noch im Gerät
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.SchrittfreigabeTest
-Rot: ohne Schluessel am Server
+Rot: without a key at the server the app does not ask for the lock at all
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt

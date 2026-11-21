@@ -1,7 +1,7 @@
 Gegenprobe: der verschlüsselte Zwischenspeicher nimmt eine hinten gekürzte Datei wieder als vollständig (Stand vor sec12 H9)
 Modul: core-data
 Test: ch.brickinventoryapp.data.ImageCacheTest
-Rot: eine hinten gekuerzte Datei gilt nicht
+Rot: a file truncated at the end does not count, a continued one does
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt

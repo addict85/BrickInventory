@@ -24,7 +24,7 @@ class StateFlowWidthTest {
     private fun felder(k: Class<*>) = k.declaredFields.filterNot { Modifier.isStatic(it.modifiers) }.map { it.name }
 
     @Test
-    fun `die Galerie-Felder bleiben aus dem gemeinsamen Zustand heraus`() {
+    fun `the gallery fields stay out of the common state`() {
         val galerie = felder(GalleryUiState::class.java)
         assertTrue("Nur ${galerie.size} Felder in GalleryUiState", galerie.size >= 8)
         val fallback = galerie.filter { it in felder(AppUiState::class.java) }
@@ -32,7 +32,7 @@ class StateFlowWidthTest {
     }
 
     @Test
-    fun `der gemeinsame Zustand waechst nicht wieder`() {
+    fun `the common state does not grow again`() {
         // Wer hier aufschlägt, prüft, ob das Feld wirklich allen gehört, statt die Zahl zu heben.
         val n = felder(AppUiState::class.java).size
         assertTrue("AppUiState hat $n Felder (erlaubt: 10)", n <= 10)

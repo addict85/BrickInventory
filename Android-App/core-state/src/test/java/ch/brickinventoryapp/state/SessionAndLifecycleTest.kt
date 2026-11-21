@@ -41,7 +41,7 @@ class SessionAndLifecycleTest {
      * Gegenprobe: in sicherAufrufen() 401 als Server statt Abgewiesen → rot.
      */
     @Test
-    fun `sicherAufrufen meldet 401 als abgewiesen`() {
+    fun `sicherAufrufen reports 401 as rejected`() {
         val paths = PfadServer()
         paths.codes["/api/v1/stats"] = 401
         paths.codes["/api/v1/finance/pnl"] = 500
@@ -59,7 +59,7 @@ class SessionAndLifecycleTest {
     // ── ImageLoader-Lebensdauer ──────────────────────────────────────────────
 
     @Test
-    fun `der ImageLoader ist ein Singleton aus dem DI-Modul`() {
+    fun `the ImageLoader is a singleton from the DI module`() {
         val di = code(Quellen.di())
         assert(di.contains("fun provideImageLoader")) {
             "Kein ImageLoader-Provider in AppModule"
@@ -79,7 +79,7 @@ class SessionAndLifecycleTest {
     // ── Hintergrund-Polling ──────────────────────────────────────────────────
 
     @Test
-    fun `der Monitoring-Poll haengt am Lifecycle`() {
+    fun `the monitoring poll hangs on the lifecycle`() {
         val src = code(read("management/ui/screens/MonitoringScreen.kt"))
         assert(src.contains("repeatOnLifecycle")) {
             "Die 5s-Schleife im Monitoring läuft ohne repeatOnLifecycle. Ein " +

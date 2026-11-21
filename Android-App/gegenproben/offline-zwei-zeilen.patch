@@ -1,7 +1,7 @@
 Gegenprobe: Ausgangsleiste auch neben dem Offline-Hinweis
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: Offline-Hinweis nennt die wartenden Aenderungen
+Rot: offline hint names the pending changes in a banner
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt

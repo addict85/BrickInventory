@@ -69,7 +69,7 @@ class AnleitungsDownloadTest {
     fun zu() { server.shutdown() }
 
     @Test
-    fun `ein abgerissener Download wird an der Teildatei fortgesetzt und erst am Ende umbenannt`() = runTest {
+    fun `a broken download is resumed at the partial file and renamed only at the end`() = runTest {
         val ablage = InstructionStore(StoreCipher { ByteArray(32) { 6 } })
         val api = OkHttpClient.Builder().addInterceptor { kette ->
             kette.proceed(kette.request().newBuilder().header("Authorization", "Bearer token-marco").build())

@@ -1,7 +1,7 @@
 Gegenprobe: ein Aufräumschritt beim Start fängt wieder Exception und schluckt so das Abbrechen
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: kein breiter Fang verschluckt das Abbrechen
+Rot: no broad catch swallows the cancellation of a suspending call
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 index 757cf28..502823f 100644

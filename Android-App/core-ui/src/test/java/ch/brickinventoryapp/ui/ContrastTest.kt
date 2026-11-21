@@ -17,19 +17,19 @@ class ContrastTest {
     private fun farbe(rgb: Int) = (0xFF shl 24) or rgb
 
     @Test
-    fun `Schwarz auf Weiss ist 21 zu 1, gleich auf gleich 1 zu 1`() {
+    fun `black on white is 21 to 1, equal on equal 1 to 1`() {
         assertEquals(21.0, Contrast.verhaeltnis(farbe(0x000000), farbe(0xFFFFFF)), 1e-9)
         assertEquals(1.0, Contrast.verhaeltnis(farbe(0x777777), farbe(0x777777)), 1e-9)
     }
 
     @Test
-    fun `mittleres Grau auf Weiss ergibt die bekannten 4,54 zu 1`() {
+    fun `medium gray on white gives the known 4,54 to 1`() {
         // #767676 ist das hellste Grau, das auf Weiss 4,5:1 erreicht.
         assertEquals(4.54, Contrast.verhaeltnis(farbe(0x767676), farbe(0xFFFFFF)), 0.005)
     }
 
     @Test
-    fun `die alte Rahmenfarbe erreicht auf Weiss nur 1,23 zu 1`() {
+    fun `the old border color reaches only 1,23 to 1 on white`() {
         // Der Befund der UI-Prüfung: outline #E2E8F0 im Grunddesign.
         assertEquals(1.23, Contrast.verhaeltnis(farbe(0xE2E8F0), farbe(0xFFFFFF)), 0.005)
     }

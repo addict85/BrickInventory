@@ -45,7 +45,7 @@ class SetNumberCorpusTest {
     }
 
     @Test
-    fun `jeder Fall des gemeinsamen Korpus liefert denselben ersten Kandidaten`() {
+    fun `every case of the common corpus delivers the same first candidate`() {
         var withExpectation = 0
         var withoutCandidate = 0
         var threeDigit = 0

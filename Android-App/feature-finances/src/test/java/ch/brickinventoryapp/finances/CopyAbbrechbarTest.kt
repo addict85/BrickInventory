@@ -27,7 +27,7 @@ import java.io.InputStream
 class CopyAbbrechbarTest {
 
     @Test
-    fun `alles kommt an, in Stuecken`() = runTest(StandardTestDispatcher()) {
+    fun `everything arrives, in pieces`() = runTest(StandardTestDispatcher()) {
         val inhalt = ByteArray(200_000) { (it % 251).toByte() }
         val ziel = ByteArrayOutputStream()
         assertEquals(inhalt.size.toLong(), copyAbbrechbar(ByteArrayInputStream(inhalt), ziel, stueck = 4096))
@@ -35,7 +35,7 @@ class CopyAbbrechbarTest {
     }
 
     @Test
-    fun `ein Abbruch beendet das Kopieren nach dem laufenden Stueck`() = runTest(StandardTestDispatcher()) {
+    fun `an abort ends the copying after the running piece`() = runTest(StandardTestDispatcher()) {
         val ziel = ByteArrayOutputStream()
         lateinit var job: Job
         // 100 Stücke; nach dem dritten bricht der Druckdialog ab.

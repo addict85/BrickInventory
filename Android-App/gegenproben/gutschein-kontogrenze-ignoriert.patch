@@ -1,7 +1,7 @@
 Gegenprobe: Die Kontogrenze des Servers bricht den Guthaben-Durchgang nicht ab
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.VoucherViewModelTest
-Rot: Kontogrenze bricht den Durchgang ab
+Rot: the account limit aborts the pass
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/GutscheinViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/GutscheinViewModel.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/GutscheinViewModel.kt

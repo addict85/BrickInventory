@@ -45,7 +45,7 @@ class VoucherPrivacyScreenDisplayTest {
         (compose.activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
 
     @Test
-    fun `die Gutscheinseite ist geschuetzt, solange sie steht`() {
+    fun `the voucher page is protected as long as it is shown`() {
         val paths = PfadServer()
         val vm = GutscheinViewModel(
             repo = testVouchersRepository(paths.imTakt()),
@@ -67,7 +67,7 @@ class VoucherPrivacyScreenDisplayTest {
     }
 
     @Test
-    fun `ein Gutschein-PDF ist geschuetzt, eine Bauanleitung nicht`() {
+    fun `a voucher PDF is protected, a building instruction is not`() {
         val adresse = mutableStateOf(voucherPdfAddress("https://brick.example/", 7))
         compose.setContent { VoucherPdfProtection(adresse.value) }
         compose.waitForIdle()

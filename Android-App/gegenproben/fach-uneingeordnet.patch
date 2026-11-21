@@ -1,7 +1,7 @@
 Gegenprobe: ein neues Fach in Bestandsart, ohne es einzuordnen
 Modul: core-data
 Test: ch.brickinventoryapp.data.CacheAreaTest
-Rot: die Offline-Ablage kennt genau die eingeordneten Faecher
+Rot: the offline store knows exactly the classified compartments
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt
 index f3d66d9..7de19c9 100644

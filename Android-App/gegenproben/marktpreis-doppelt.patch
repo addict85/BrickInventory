@@ -1,7 +1,7 @@
 Gegenprobe: Die Preiskarte wiederholt den Marktpreis der Wert-Kachel
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.SetDetailDisplayTest
-Rot: der Marktpreis steht einmal in den Wert-Kacheln
+Rot: the market price appears once in the value tiles, not again in the price card
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt

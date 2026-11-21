@@ -1,7 +1,7 @@
 Gegenprobe: FilterWahl wieder als FilterChip (Rolle Kästchen statt Optionsfeld)
 Modul: app
 Test: ch.brickinventoryapp.app.AccessibilityTest
-Rot: Filterwahl ist eine Einfachwahl mit Ueberschrift und bricht um
+Rot: filter choice is a single choice with heading and wraps
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt

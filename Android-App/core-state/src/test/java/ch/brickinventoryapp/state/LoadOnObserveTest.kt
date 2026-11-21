@@ -45,7 +45,7 @@ class LoadOnObserveTest {
     }
 
     @Test
-    fun `ladeJeServer laedt je Adresse einmal, solange jemand beobachtet`() {
+    fun `ladeJeServer loads once per address as long as someone observes`() {
         val sitzung = Sitzung()
         val zustand = MutableStateFlow(0)
         var geladen = 0
@@ -66,7 +66,7 @@ class LoadOnObserveTest {
     }
 
     @Test
-    fun `Beobachtet zaehlt die Beobachter und meldet nur den ersten`() {
+    fun `Beobachtet counts the observers and reports only the first`() {
         val quelle = MutableStateFlow("x")
         var gemeldet = 0
         val b = Observed(quelle) { gemeldet++ }

@@ -31,33 +31,33 @@ class ColumnsFassung2Test {
     private val manualMinifig = """{"id":8,"fig_name":"Ohne Nummer","user_id":1}"""
 
     @Test
-    fun `Set - Nummer, Name, Thema, Jahr im Suchtext, Thema und Lagerort als Spalten`() {
+    fun `set - number, name, theme, year in the search text, theme and storage location as columns`() {
         assertEquals("Set: Nummer, Name, Thema, Jahr",
             Filterspalten("10294-1\ntitanic\nicons\n2021", thema = "Icons", lagerort = "Regal 3"),
             ColumnsFassung2.aus("SETS", set))
     }
 
     @Test
-    fun `Set ohne Thema und Jahr - leeres Thema und Jahr 0 wie in Fassung 2`() {
+    fun `set without theme and year - empty theme and year 0 as in version 2`() {
         assertEquals(Filterspalten("1-1\n\n0"), ColumnsFassung2.aus("SETS", """{"set_number":"1-1","theme":null}"""))
     }
 
     @Test
-    fun `Merkposten - Zustand als Spalte, ohne Zustand gilt N`() {
+    fun `wishlist item - condition as a column, without condition N applies`() {
         assertEquals(Filterspalten("75192-1\nmillennium falcon", zustand = "N"), ColumnsFassung2.aus("MERKLISTE", merkposten))
         assertEquals("Merkposten ohne Zustand", Filterspalten("", zustand = "N"), ColumnsFassung2.aus("MERKLISTE", "{}"))
         assertEquals(Filterspalten("1-1", zustand = "U"), ColumnsFassung2.aus("MERKLISTE", """{"set_number":"1-1","condition":"U"}"""))
     }
 
     @Test
-    fun `Teil - Farbe, Kategorie und Ersatzteil als Spalten`() {
+    fun `part - color, category and spare part as columns`() {
         assertEquals(Filterspalten("3001\nbrick 2 x 4\n3001b", farbe = "Red", kategorie = "Bricks", ersatzteil = true),
             ColumnsFassung2.aus("TEILE", teil))
         assertEquals(Filterspalten("3002", ersatzteil = false), ColumnsFassung2.aus("TEILE", """{"part_number":"3002"}"""))
     }
 
     @Test
-    fun `Figuren und manuelle Posten`() {
+    fun `figures and manual items`() {
         assertEquals(Filterspalten("sw0001\nluke skywalker"), ColumnsFassung2.aus("FIGUREN", figur))
         assertEquals(Filterspalten("3020\nplate 2 x 4", lagerort = "Kiste"), ColumnsFassung2.aus("MANUELLE_TEILE", manualPart))
         assertEquals(Filterspalten("\nohne nummer"), ColumnsFassung2.aus("MANUELLE_FIGUREN", manualMinifig))
@@ -65,7 +65,7 @@ class ColumnsFassung2Test {
     }
 
     @Test
-    fun `unlesbare Zeilen ergeben null`() {
+    fun `unreadable rows give null`() {
         assertNull("Set ohne Nummer ist unlesbar", ColumnsFassung2.aus("SETS", "{}"))
         assertNull("Teil ohne Nummer", ColumnsFassung2.aus("TEILE", """{"part_name":"x"}"""))
         assertNull("Figur ohne Nummer", ColumnsFassung2.aus("FIGUREN", """{"fig_name":"x"}"""))

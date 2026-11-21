@@ -66,13 +66,13 @@ class ImageHostGuardTest {
     ).execute().use { it.code }
 
     @Test
-    fun `ein fremder Host wird nicht angefragt`() {
+    fun `a foreign host is not requested`() {
         assertEquals(403, fetch("https://evil.example/x.jpg"))
         assertTrue("Die Anfrage ging trotzdem hinaus", gesehen.isEmpty())
     }
 
     @Test
-    fun `der eigene Server bekommt die Anfrage unveraendert`() {
+    fun `the own server gets the request unchanged`() {
         server.enqueue(MockResponse().setBody("bild"))
         assertEquals(200, fetch(server.url("/images/a.jpg").toString(), token = "t1"))
         val r = server.takeRequest()
@@ -82,7 +82,7 @@ class ImageHostGuardTest {
     }
 
     @Test
-    fun `auch ein Bild-CDN wird nicht direkt angefragt`() {
+    fun `an image CDN is not requested directly either`() {
         for (cdn in listOf("https://cdn.rebrickable.com/sets/1.jpg", "https://images.brickset.com/a.png",
                            "https://img.bricklink.com/a.png")) {
             assertEquals(cdn, 403, fetch(cdn))
@@ -91,7 +91,7 @@ class ImageHostGuardTest {
     }
 
     @Test
-    fun `eine Umleitung zu einem fremden Host wird nicht verfolgt`() {
+    fun `a redirect to a foreign host is not followed`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "https://evil.example/x.jpg"))
         assertEquals(403, fetch(server.url("/images/a.jpg").toString(), token = "t1"))
         assertEquals(1, server.requestCount)
@@ -99,7 +99,7 @@ class ImageHostGuardTest {
     }
 
     @Test
-    fun `eine Umleitung zum CDN wird nicht verfolgt`() {
+    fun `a redirect to the CDN is not followed`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "https://cdn.rebrickable.com/p.png"))
         assertEquals(403, fetch(server.url("/images/a.jpg").toString(), token = "t1"))
         assertTrue(gesehen.isEmpty())
@@ -120,7 +120,7 @@ class ImageHostGuardTest {
     ).execute().use { it.code }
 
     @Test
-    fun `eine Umleitung aus dem Basispfad heraus geht ohne Token`() {
+    fun `a redirect out of the base path goes without a token`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/fremd/bild.png"))
         server.enqueue(MockResponse().setBody("bild"))
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brickfremd/bild.png"))
@@ -139,7 +139,7 @@ class ImageHostGuardTest {
     }
 
     @Test
-    fun `eine Umleitung innerhalb des Basispfads behaelt den Token`() {
+    fun `a redirect within the base path keeps the token`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/bilder/b.png"))
         server.enqueue(MockResponse().setBody("bild"))
         assertEquals(200, fetchWithBase("/brick", "/brick/api/v1/bild.png"))
@@ -157,7 +157,7 @@ class ImageHostGuardTest {
         .build()
 
     @Test
-    fun `localhost gilt nur im Debug-Build als eigener Server`() {
+    fun `localhost counts as own server only in the debug build`() {
         val ziel = "http://localhost:${server.port}/images/a.jpg"
         server.enqueue(MockResponse().setBody("bild"))
         val release = withRule(entwicklung = false).newCall(Request.Builder().url(ziel).build()).execute().use { it.code }

@@ -15,7 +15,7 @@ import org.junit.Test
 class WorkManagerConfigurationTest {
 
     @Test
-    fun `die App liefert WorkManager seine Konfiguration selbst`() {
+    fun `the app supplies WorkManager its configuration itself`() {
         assertTrue("BrickInventoryApp ist kein Configuration.Provider",
             Configuration.Provider::class.java.isAssignableFrom(BrickInventoryApp::class.java))
     }

@@ -20,7 +20,7 @@ import java.security.ProviderException
 class StrongBoxFirstTest {
 
     @Test
-    fun `zuerst StrongBox, ohne Chip das TEE`() {
+    fun `first StrongBox, without the chip the TEE`() {
         val versuche = mutableListOf<Boolean>()
         assertEquals("chip", strongBoxFirst { s -> versuche += s; if (s) "chip" else "tee" })
         assertEquals(listOf(true), versuche)
@@ -35,7 +35,7 @@ class StrongBoxFirstTest {
     }
 
     @Test
-    fun `ein anderer Fehler des Keystores faellt nicht auf das TEE zurueck`() {
+    fun `another error of the keystore does not fall back to the TEE`() {
         val versuche = mutableListOf<Boolean>()
         assertThrows(IllegalStateException::class.java) {
             strongBoxFirst<String> { s -> versuche += s; error("Keystore") }

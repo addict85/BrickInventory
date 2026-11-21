@@ -1,7 +1,7 @@
 Gegenprobe: Der Schlüssel des Tokens arbeitet auch bei gesperrtem Gerät
 Modul: core-security
 Test: ch.brickinventoryapp.security.KeystoreVaultTest
-Rot: der Schluessel des Tokens arbeitet nur entsperrt
+Rot: the token's key works only unlocked, those of the stores always
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt

@@ -25,7 +25,7 @@ import org.junit.Test
  *   B  in applyAn() die Sperre entfernt → rot „zwei gleichzeitige applyAn zählen
  *      beide“ (Menge 2 statt 3)
  *   C  in Offlineablage `aktuell` aus `areaSource` statt aus `areaFlow` abgeleitet
- *      → rot „der beobachtete Bereich folgt der Sitzung, ohne dass jemand schreibt“
+ *      → rot „the observed area follows the session without anyone writing“
  */
 class OfflineablageLockTest {
 
@@ -51,7 +51,7 @@ class OfflineablageLockTest {
     private suspend fun menge() = ablage.lies(Slots.SETS)!!.liste.single().quantity
 
     @Test
-    fun `ein puffere waehrend einer Serverantwort geht nicht verloren`() = runBlocking {
+    fun `a puffere during a server response is not lost`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() })
         val gate = bestand.hold()
         // Der Server kennt die Änderung noch nicht: Seine Antwort hat den Ausgang
@@ -66,7 +66,7 @@ class OfflineablageLockTest {
     }
 
     @Test
-    fun `zwei gleichzeitige wendeAn zaehlen beide`() = runBlocking {
+    fun `two simultaneous wendeAn both count`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() })
         val gate = bestand.hold()
         val erste = launch { ablage.applyAn(Editing.SetMenge("10001-1", 1)) }
@@ -79,7 +79,7 @@ class OfflineablageLockTest {
     }
 
     @Test
-    fun `der beobachtete Bereich folgt der Sitzung, ohne dass jemand schreibt`() = runBlocking {
+    fun `the observed area follows the session without anyone writing`() = runBlocking {
         val sitzung = MutableStateFlow<String?>("a")
         // Die Punktabfrage bleibt bei „a“: Beobachtet wird allein der Fluss der Sitzung.
         val ablage = Offlineablage(StorageInventory(), StorageExit(), { "a" }, areaFlow = sitzung)

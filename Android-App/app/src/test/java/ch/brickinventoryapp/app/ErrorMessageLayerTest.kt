@@ -33,7 +33,7 @@ class ErrorMessageLayerTest {
     )
 
     @Test
-    fun `die Datenschicht baut keine Meldung fuer den Nutzer`() {
+    fun `the data layer builds no message for the user`() {
         // Gesucht: ein fester Satz als Meldung — Server(status, "…"), Abgewiesen("…")
         // oder message = "…". Erlaubt ist nur der leere Text — dann entscheidet die
         // Anzeige — oder eine durchgereichte Servermeldung (eine Variable).
@@ -54,7 +54,7 @@ class ErrorMessageLayerTest {
     }
 
     @Test
-    fun `die Zuordnung Ursache zu Text liegt ausserhalb von meldung`() {
+    fun `the mapping of cause to text lives outside of meldung`() {
         // Ob jede Fehlerart einen eigenen Satz hat, prüft
         // ErrorTextsTest — ausgeführt statt gelesen. Hier bleibt nur die
         // Aussage, die eine Textsuche wirklich treffen kann: dass die

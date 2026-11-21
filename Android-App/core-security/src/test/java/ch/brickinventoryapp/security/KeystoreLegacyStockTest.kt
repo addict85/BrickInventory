@@ -58,7 +58,7 @@ class KeystoreLegacyStockTest {
     }
 
     @Test
-    fun `ein neuer Geheimtext traegt die AAD, ein alter ohne bleibt lesbar und gilt als veraltet`() {
+    fun `a new ciphertext carries the AAD, an old one without stays readable and counts as outdated`() {
         val tresor = KeystoreTokenVault("t", bund = bund)
         val alt = alterCiphertext("t", "token-alt")
         assertEquals(Tresorbefund.Readable("token-alt"), tresor.oeffne(alt))
@@ -72,7 +72,7 @@ class KeystoreLegacyStockTest {
     }
 
     @Test
-    fun `der Altbestand legt keinen Schluessel an und meldet weg`() {
+    fun `the legacy stock creates no key and reports gone`() {
         val alt = KeystoreTokenVault("brickinventory_auth_token", readOnly = true, bund = bund)
         val geheim = KeystoreTokenVault("anderer", bund = bund).verschluessle("x").removePrefix("a1:")
         assertEquals(Tresorbefund.Weg, alt.oeffne(geheim))
@@ -82,7 +82,7 @@ class KeystoreLegacyStockTest {
     }
 
     @Test
-    fun `nach dem Umschluesseln ist der alte Alias der Ablage weg, der Schluessel bleibt derselbe`() {
+    fun `after rekeying the old alias of the store is gone, the key stays the same`() {
         // Der Stand früherer Fassungen: Ablageschlüssel ohne Präfix und AAD unter dem Alias ohne Bedingung.
         val hex = "ab".repeat(32)
         datei.writeText(alterCiphertext("brickinventory_ablage", hex))
@@ -97,7 +97,7 @@ class KeystoreLegacyStockTest {
     }
 
     @Test
-    fun `ein Geheimtext ohne AAD unter dem Entsperr-Schluessel wird ebenso umgeschluesselt`() {
+    fun `a ciphertext without AAD under the unlock key is rekeyed as well`() {
         val hex = "cd".repeat(32)
         datei.writeText(UNLOCKED_PREFIX + alterCiphertext("e", hex))
         val tresor = EntsperrVault(KeystoreTokenVault("e", onlyUnlocked = true, bund = bund),

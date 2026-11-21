@@ -1,7 +1,7 @@
 Gegenprobe: die Anfragen des Vorwärmers tragen keine Marke
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewWarmerTest
-Rot: es holt nur fehlende
+Rot: it fetches only missing thumbnails, each once, reading and marked
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt

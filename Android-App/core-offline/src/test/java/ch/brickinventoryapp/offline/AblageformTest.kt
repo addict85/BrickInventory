@@ -43,7 +43,7 @@ class AblageformTest {
     private val teil = Part(partNumber = "3001", blPartNumber = "3001b", partName = "Stein", colorId = 5, blColorId = 11, colorName = "Rot", colorHex = "FF0000", categoryName = "Steine", imageUrl = "u", imageLocal = "l", totalQuantity = 9, inSets = "10001-1", isSpare = true)
 
     @Test
-    fun `jedes Feld von Set, Merkposten und Teil uebersteht die Ablage`() {
+    fun `every field of set, wishlist item and part survives the store`() {
         assertEquals(set.alsAnsicht(), rund(Slots.SETS, set.alsAnsicht()))
         assertEquals(remember.alsAnsicht(), rund(Slots.MERKLISTE, remember.alsAnsicht()))
         assertEquals(teil.alsAnsicht(), rund(Slots.TEILE, teil.alsAnsicht()))
@@ -52,7 +52,7 @@ class AblageformTest {
     }
 
     @Test
-    fun `eine Zeile im frueheren Format bleibt lesbar`() {
+    fun `a row in the earlier format stays readable`() {
         // Das Servermodell selbst als JSON: so liegen Zeilen, die vor der eigenen Ablageform geschrieben wurden.
         val alt = BrickJson.encodeToString(SetItem.serializer(), set)
         assertEquals(set.alsAnsicht(), Slots.SETS.form.decode(BrickJson, alt))
@@ -64,7 +64,7 @@ class AblageformTest {
     }
 
     @Test
-    fun `eine unlesbare Zeile wird gezaehlt und gemeldet statt still zu fehlen`() = runBlocking {
+    fun `an unreadable row is counted and reported instead of silently missing`() = runBlocking {
         val bestand = StorageInventory()
         val meldungen = mutableListOf<String>()
         val ablage = Offlineablage(bestand, StorageExit(), { "a" }, protokoll = { meldungen += it })

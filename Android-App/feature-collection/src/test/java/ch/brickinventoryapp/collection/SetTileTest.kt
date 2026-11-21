@@ -44,7 +44,7 @@ import java.util.Locale
 
 /**
  * Die Setkachel der Galerie: Bei 200 % Schrift bricht weder Betrag noch Prozent um,
- * und Kacheln einer Reihe sind gleich hoch, wie lang ihr Name auch ist; ein kurzer Name
+ * und tiles of a row are equally high, wie lang ihr Name auch ist; ein kurzer Name
  * lässt dafür keine Leerzeile unter sich.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
@@ -89,7 +89,7 @@ class SetTileTest {
     }
 
     @Test
-    fun `Kachel bei 200 Prozent bricht weder Betrag noch Prozent um`() {
+    fun `tile at 200 percent wraps neither amount nor percent`() {
         val bilder = coil3.ImageLoader.Builder(ctx).build()
         zeige(schrift = 2f) {
             Box(Modifier.width(188.dp)) {
@@ -103,7 +103,7 @@ class SetTileTest {
     }
 
     @Test
-    fun `Kacheln einer Reihe sind gleich hoch`() {
+    fun `tiles of a row are equally high`() {
         val bilder = coil3.ImageLoader.Builder(ctx).build()
         val voll = SetAnsicht(setNumber = "10294-1", name = "Titanic mit sehr langem Namen über zwei Zeilen",
             theme = "Icons", pieces = 9090, condition = Zustand.NEU)
@@ -122,7 +122,7 @@ class SetTileTest {
     }
 
     @Test
-    fun `ein kurzer Name laesst keine Leerzeile unter sich`() {
+    fun `a short name leaves no empty line below it`() {
         val bilder = coil3.ImageLoader.Builder(ctx).build()
         zeige {
             Box(Modifier.width(188.dp)) {

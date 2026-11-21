@@ -16,13 +16,13 @@ import org.junit.Test
 class ProfileCheckTest {
 
     @Test
-    fun `leer fehlen Benutzername und E-Mail, in dieser Reihenfolge`() {
+    fun `empty username and e-mail are missing, in this order`() {
         assertEquals(listOf(BENUTZERNAME, EMAIL), profileError(" ", ""))
         assertEquals(listOf(EMAIL), profileError("anna", ""))
     }
 
     @Test
-    fun `ausgefuellt fehlt nichts`() {
+    fun `filled in nothing is missing`() {
         assertEquals(emptyList<Any>(), profileError("anna", "anna@example.org"))
     }
 }

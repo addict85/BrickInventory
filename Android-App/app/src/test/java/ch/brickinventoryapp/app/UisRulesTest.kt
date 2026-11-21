@@ -172,7 +172,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Tablet hat den Umschalter rechts der Seitenleiste`() {
+    fun `tablet has the switcher to the right of the side bar`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
             val nav = rememberNavController()
@@ -204,7 +204,7 @@ class UisRulesTest {
      * abgeschnitten, alle drei ganz im Bild.
      */
     @Test
-    fun `der Sammlungs-Umschalter zeigt bei 200 Prozent alle drei Ansichten als Segmente`() {
+    fun `the collection switcher shows all three views as segments at 200 percent`() {
         zeige(schrift = 2f) {
             val nav = rememberNavController()
             val tab = remember { listOf(Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung")) }
@@ -240,7 +240,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `App-Leiste weicht beim Rollen und kommt beim Zurueckrollen wieder`() {
+    fun `app bar yields when scrolling and comes back when scrolling back`() {
         zeige {
             val nav = rememberNavController()
             val tab = remember {
@@ -275,7 +275,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Telefon navigiert ohne Schublade und Kontomenue, Mehr sammelt den Rest`() {
+    fun `phone navigates without drawer and account menu, More collects the rest`() {
         zeige {
             val nav = rememberNavController()
             val tab = remember {
@@ -306,14 +306,14 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Fehlerhinweis nennt die Klasse und den Satz nur wo er mehr sagt`() {
+    fun `error hint names the class and the sentence only where it says more`() {
         zeige { ErrorHint("Serverfehler (500)", {}, Fehlerklasse.OFFLINE) }
         compose.onNodeWithText(ctx.getString(R.string.fehler_offline_titel)).fetchSemanticsNode()
         compose.onAllNodesWithText("Serverfehler (500)").assertCountEquals(0)
     }
 
     @Test
-    fun `Fehlerhinweis eines Serverfehlers zeigt den Code`() {
+    fun `error hint of a server error shows the code`() {
         zeige { ErrorHint("Serverfehler (500)", {}, Fehlerklasse.SERVER) }
         compose.onNodeWithText(ctx.getString(R.string.fehler_server_titel)).fetchSemanticsNode()
         compose.onNodeWithText("Serverfehler (500)").fetchSemanticsNode()
@@ -326,7 +326,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Set-Detail zeigt Marktwert, Kaufpreis und G&V oben im klassischen Design`() {
+    fun `set detail shows market value, purchase price and P&L at the top in the classic design`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.setDetail()
@@ -351,7 +351,7 @@ class UisRulesTest {
      * Vorher stand die Karte auf der Lesebreite mittig, die Kacheln über die ganze Breite.
      */
     @Test
-    fun `Set-Detail auf dem Tablet hochkant hat eine Breite fuer Kacheln und Preisverlauf`() {
+    fun `set detail on the tablet in portrait has a width for tiles and price history`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w800dp-h1280dp-port-xhdpi")
         val world = Examples.Welt(ContextTexts())
         try {
@@ -426,7 +426,7 @@ class UisRulesTest {
      * Knopf lag auf dem Text der untersten Kachel.
      */
     @Test
-    fun `Galerie bei 200 Prozent zeigt mehrere Sets ganz und Erfassen liegt auf keinem`() {
+    fun `gallery at 200 percent shows several sets fully and add lies on none`() {
         val world = Examples.Welt(ContextTexts())
         try {
             galleryWith(world, coil3.ImageLoader.Builder(ctx).build(), schrift = 2f)
@@ -441,7 +441,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Teile bei 200 Prozent zeigen mehrere Teile ganz und Erfassen liegt auf keinem`() {
+    fun `parts at 200 percent show several parts fully and add lies on none`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.teile().also { it.loadParts() }
@@ -465,7 +465,7 @@ class UisRulesTest {
      * Pfeil oben führt dorthin zurück wie auf den übrigen Mehr-Unterseiten.
      */
     @Test
-    fun `Vergleich und Bauliste markieren Mehr und fuehren mit Zurueck dorthin`() {
+    fun `comparison and build list mark More and lead back there with Back`() {
         val mehr = ctx.getString(R.string.nav_more)
         zeige {
             val nav = rememberNavController()
@@ -511,7 +511,7 @@ class UisRulesTest {
      * auch die Zurück-Geste führt: an den vorigen Eintrag, nicht auf „Mehr“.
      */
     @Test
-    fun `der Pfeil einer Mehr-Unterseite geht denselben Weg wie die Zurueck-Geste`() {
+    fun `the arrow of a More subpage goes the same way as the back gesture`() {
         val mehr = ctx.getString(R.string.nav_more)
         var nav: NavHostController? = null
         zeige {
@@ -548,7 +548,7 @@ class UisRulesTest {
         .fetchSemanticsNodes().size
 
     @Test
-    fun `Galerie zeigt ohne Bild das Ersatzbild auf jeder Kachel`() {
+    fun `gallery without image shows the placeholder image on every tile`() {
         val world = Examples.Welt(ContextTexts())
         try {
             // Jede Anfrage scheitert, wie offline oder bei fehlender Vorschau.
@@ -571,7 +571,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Galerie zeigt mit Bild kein Ersatzbild`() {
+    fun `gallery with image shows no placeholder image`() {
         val world = Examples.Welt(ContextTexts())
         try {
             galleryWith(world, SampleImages.loader(ctx))
@@ -582,7 +582,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Galerie hat einen schwebenden Knopf und Scannen neben der Suche`() {
+    fun `gallery has a floating button and scanning next to the search`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.galerie().also { it.loadSets() }
@@ -611,7 +611,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Teile bei 200 Prozent kuerzen keinen Namen`() {
+    fun `parts at 200 percent shorten no name`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.teile().also { it.loadParts() }
@@ -651,7 +651,7 @@ class UisRulesTest {
      * sind aber als Englisch ausgezeichnet, damit TalkBack sie richtig ausspricht.
      */
     @Test
-    fun `Teile nennen Farben auf Deutsch und Namen als Englisch`() {
+    fun `parts name colors in German and names as English`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.teile().also { it.loadParts() }
@@ -671,7 +671,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `Finanzen stehen auf dem Tablet in zwei Spalten`() {
+    fun `finances stand in two columns on the tablet`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val world = Examples.Welt(ContextTexts())
         try {
@@ -693,7 +693,7 @@ class UisRulesTest {
      * Menü und Einträge nennen die Nummer, die PIN-Zeile ist 48 dp hoch.
      */
     @Test
-    fun `Gutschein-Knoepfe nennen die Nummer und der PIN hat 48 dp`() {
+    fun `voucher buttons name the number and the PIN has 48 dp`() {
         zeige { Gutscheine() }
         val nummer = inGroupsOfFour("6061 2345 6789")
         val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, nummer))
@@ -710,7 +710,7 @@ class UisRulesTest {
 
     /** Das Formular steht nicht dauerhaft unter der Liste, sondern öffnet als Blatt. */
     @Test
-    fun `Gutschein hinzufuegen oeffnet das Formular erst auf Wunsch`() {
+    fun `adding a voucher opens the form only on request`() {
         zeige { Gutscheine() }
         compose.onAllNodesWithText(ctx.getString(R.string.vouchers_number)).assertCountEquals(0)
         compose.onNode(hasText(ctx.getString(R.string.vouchers_add)) and hasClickAction()).performClick()
@@ -724,7 +724,7 @@ class UisRulesTest {
      * Segmente gehören Ansichten. Die Sortierung ist ein Menü hinter einem Symbol.
      */
     @Test
-    fun `Merkliste filtert den Zustand mit Chips und sortiert ueber ein Menue`() {
+    fun `wishlist filters the condition with chips and sorts via a menu`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.merkliste().also { it.loadWanted() }
@@ -756,7 +756,7 @@ class UisRulesTest {
      * im Detail steht Schliessen statt eines Zurück-Pfeils, der eine Seite versprach.
      */
     @Test
-    fun `Tablet zeigt Merkliste und Detail nebeneinander`() {
+    fun `tablet shows wishlist and detail side by side`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val world = Examples.Welt(ContextTexts())
         try {
@@ -783,7 +783,7 @@ class UisRulesTest {
     }
 
     @Test
-    fun `leere Merkliste bietet Merken und Scannen`() {
+    fun `empty wishlist offers remembering and scanning`() {
         val world = Examples.Welt(ContextTexts())
         try {
             world.paths.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
@@ -816,7 +816,7 @@ class UisRulesTest {
      * ganz in einer Zeile. Als Segmente brach „Gebraucht“ zu „Gebrau/cht“.
      */
     @Test
-    fun `Einfachwahl bricht bei 200 Prozent kein Wort um`() {
+    fun `single choice breaks no word at 200 percent`() {
         val states = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used)
             .map { ctx.getString(it) }
         val period = listOf(R.string.chart_period_week, R.string.chart_period_month, R.string.chart_period_year,
@@ -835,7 +835,7 @@ class UisRulesTest {
      * über die volle Breite und als Optionsfeld vorgelesen. Als Chips las sie sich wie ein Filter.
      */
     @Test
-    fun `Einfachwahl steht bei 200 Prozent als Segmente untereinander in voller Breite`() {
+    fun `single choice stands as segments below each other in full width at 200 percent`() {
         val states = listOf(R.string.condition_new, R.string.condition_used).map { ctx.getString(it) }
         zeige(schrift = 2f) {
             Column(Modifier.width(360.dp).padding(horizontal = 16.dp).testTag("wahl")) {
@@ -860,7 +860,7 @@ class UisRulesTest {
 
     /** Titanic ×2: Marktwert und Kauf beide für zwei Stück, der Gewinn auch als Betrag. */
     @Test
-    fun `Finanzen nennen bei zwei Stueck den Kauf gesamt und den Gewinn als Betrag`() {
+    fun `finances name the purchase total and the profit as an amount for two pieces`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.finanzen().also { it.loadValuation() }
@@ -888,7 +888,7 @@ class UisRulesTest {
      * aufgehen, und nennt darunter die Position ohne Marktpreis — wie das Web.
      */
     @Test
-    fun `Finanzkopf zeigt Einstand plus G und V gleich Marktwert und die Basiszeile`() {
+    fun `finance header shows cost plus P and L equals market value and the basis row`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.finanzen().also { it.loadValuation() }
@@ -919,7 +919,7 @@ class UisRulesTest {
 
     /** Ohne Marktpreis liefert der Server den Kaufpreis (kachel_quelle "kauf"); die Kachel sagt es. */
     @Test
-    fun `Galeriekachel nennt den Kaufpreis als Kaufpreis`() {
+    fun `gallery tile names the purchase price as purchase price`() {
         val bilder = coil3.ImageLoader.Builder(ctx).build()
         val markt = ctx.getString(R.string.gallery_card_market)
         val kauf = ctx.getString(R.string.gallery_card_paid)

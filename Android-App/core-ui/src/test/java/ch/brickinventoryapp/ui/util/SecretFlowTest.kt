@@ -11,29 +11,29 @@ import org.junit.Test
  *   A  `!lesbar` aus der WARTEN-Bedingung entfernt → rot „im Hintergrund …“
  *      (FORGOTTEN statt WARTEN: Das Geheimnis bliebe für immer liegen)
  *   B  der Vergleich `idInClip == kennung` durch `true` ersetzt → rot
- *      „fremder Inhalt wird nicht geleert“
+ *      „foreign content is not cleared“
  */
 class SecretFlowTest {
 
     @Test
-    fun `vor Ablauf wird gewartet, danach der eigene Clip geleert`() {
+    fun `before expiry it waits, afterwards the own clip is cleared`() {
         assertEquals(SecretStep.WARTEN, secretStep("k1", 1000, 999, lesbar = true, idInClip = "k1"))
         assertEquals(SecretStep.LEEREN, secretStep("k1", 1000, 1000, lesbar = true, idInClip = "k1"))
     }
 
     @Test
-    fun `fremder Inhalt wird nicht geleert`() {
+    fun `foreign content is not cleared`() {
         assertEquals(SecretStep.FORGOTTEN, secretStep("k1", 1000, 2000, lesbar = true, idInClip = null))
         assertEquals(SecretStep.FORGOTTEN, secretStep("k1", 1000, 2000, lesbar = true, idInClip = "k2"))
     }
 
     @Test
-    fun `im Hintergrund wird gewartet, bis die Ablage lesbar ist`() {
+    fun `in the background it waits until the clipboard is readable`() {
         assertEquals(SecretStep.WARTEN, secretStep("k1", 1000, 2000, lesbar = false, idInClip = null))
     }
 
     @Test
-    fun `ohne offenes Geheimnis gibt es nichts zu tun`() {
+    fun `without an open secret there is nothing to do`() {
         assertEquals(SecretStep.FORGOTTEN, secretStep(null, 0, 2000, lesbar = true, idInClip = "k1"))
     }
 }

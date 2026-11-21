@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit
 class SecretClipboardTest {
 
     @Test
-    fun `ein Geheimnis ist fuer das System als sensibel markiert`() {
+    fun `a secret is marked as sensitive for the system`() {
         val clip = secretClip("BrickInventory", "4711")
         assertEquals("4711", clip.getItemAt(0).text.toString())
         assertEquals(ClipDescription.EXTRA_IS_SENSITIVE, IS_SECRET)
@@ -36,7 +36,7 @@ class SecretClipboardTest {
     }
 
     @Test
-    fun `ein kopiertes Geheimnis ist nach einer Minute weg, fremder Inhalt bleibt`() {
+    fun `a copied secret is gone after one minute, foreign content stays`() {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         val ablage = ctx.getSystemService(ClipboardManager::class.java)
         fun inhalt() = ablage.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString().orEmpty()

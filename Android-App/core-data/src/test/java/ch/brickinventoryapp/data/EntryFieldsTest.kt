@@ -18,7 +18,7 @@ import org.junit.Test
  *
  * Gegenprobe (am 28.10.2026 gemessen, kotlinc mit Serialisierungs-Plugin):
  *   A  @SerialName("price_estimated") in "preis_geschaetzt" geändert → rot:
- *      „Schaetzkennzeichen und Waehrung kommen an"
+ *      „estimate flag and currency arrive"
  */
 class EntryFieldsTest {
     private val antwort = """
@@ -31,7 +31,7 @@ class EntryFieldsTest {
     """.trimIndent()
 
     @Test
-    fun `Schaetzkennzeichen und Waehrung kommen an`() {
+    fun `estimate flag and currency arrive`() {
         val r = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), antwort)
         assertTrue(r.acquisitions[0].priceEstimated)
         assertEquals(Waehrung.CHF, r.acquisitions[0].currency)
@@ -40,7 +40,7 @@ class EntryFieldsTest {
     }
 
     @Test
-    fun `ein aelterer Server ohne die Felder gilt als bezahlt und ohne Waehrung`() {
+    fun `an older server without the fields counts as paid and without currency`() {
         val alt = """{"success":true,"acquisitions":[{"id":1,"quantity":1,"purchase_price":10.0}]}"""
         val a = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), alt).acquisitions.single()
         assertFalse(a.priceEstimated)

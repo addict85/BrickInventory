@@ -1,7 +1,7 @@
 Gegenprobe: Ein Token unter dem schwächeren Schlüssel wird nach dem Entsperren nicht hochgestuft, erst beim nächsten Start
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenVaultTest
-Rot: nach dem Entsperren kommt ein Token unter dem alten Schluessel sofort unter den strengen
+Rot: after unlocking a token under the old key goes under the strict one immediately
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt

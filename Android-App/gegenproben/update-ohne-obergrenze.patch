@@ -1,7 +1,7 @@
 Gegenprobe: der Download schreibt mehr als angekündigt
 Modul: feature-account
 Test: ch.brickinventoryapp.account.UpdateViewModelTest
-Rot: mehr als angekuendigt wird nicht geschrieben
+Rot: more than announced is not written
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt

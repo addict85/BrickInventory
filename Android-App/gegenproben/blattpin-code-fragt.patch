@@ -1,7 +1,7 @@
 Gegenprobe: Ein Code mit der Wurzel tauscht den Serverschlüssel nicht mehr, die App fragt
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: ein Code vom angemeldeten Bildschirm tauscht den Serverschluessel
+Rot: a code from the signed-in screen swaps the server key without a question
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 index 6ec1f8a..9459f32 100644

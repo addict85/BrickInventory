@@ -80,7 +80,7 @@ class ErrorStateTest {
     }
 
     @Test
-    fun `ein Fehler geht vor Leer und Kein Treffer, geladener Inhalt vor allem`() {
+    fun `an error comes before Empty and No hit, loaded content before everything`() {
         assertEquals(LoadingIndicator.FEHLER, loadingIndicator(hatContent = false, laedt = false, fehler = "weg", gefiltert = true))
         assertEquals(LoadingIndicator.LOADS, loadingIndicator(hatContent = false, laedt = true, fehler = "weg", gefiltert = false))
         assertEquals(LoadingIndicator.LISTE, loadingIndicator(hatContent = true, laedt = false, fehler = "weg", gefiltert = false))
@@ -89,7 +89,7 @@ class ErrorStateTest {
     }
 
     @Test
-    fun `die Merkliste meldet den Fehler und vergisst ihn beim Neuladen`() {
+    fun `the wishlist reports the error and forgets it on reload`() {
         val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alerts(), t.kontosicht,
             testCatalogRepository(t.api), testFinancesRepository(t.api), SavedStateHandle()))
         vm.loadWanted()
@@ -105,7 +105,7 @@ class ErrorStateTest {
     }
 
     @Test
-    fun `die Bewertung meldet den Fehler und vergisst ihn beim Neuladen`() {
+    fun `the valuation reports the error and forgets it on reload`() {
         val vm = t.merke(FinanceViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, testFinancesRepository(t.api), SavedStateHandle()))
         vm.loadValuation()
         assertTrue("Fehler", vm.financeState.value.bewertung is Laden.Fehler)
@@ -118,7 +118,7 @@ class ErrorStateTest {
     }
 
     @Test
-    fun `Teile und Figuren melden den Fehler je fuer sich`() {
+    fun `parts and figures report the error each on their own`() {
         val vm = t.merke(PartsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.scrollMemory, testPartsRepository(t.api), t.kontosicht, SavedStateHandle()))
         vm.loadParts()
         assertTrue("Teilefehler", vm.teileState.value.partsFetch is Laden.Fehler)
@@ -131,7 +131,7 @@ class ErrorStateTest {
     }
 
     @Test
-    fun `das Set-Detail meldet den Fehler statt ewig zu laden`() {
+    fun `the set detail reports the error instead of loading forever`() {
         val reader = object : FileReader { override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null }
         val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setCatalog(), t.alerts(), t.setFiles(),
             testFinancesRepository(t.api), testHouseholdRepository(t.api), reader,
@@ -142,7 +142,7 @@ class ErrorStateTest {
     }
 
     @Test
-    fun `die Gutscheine melden den Fehler`() {
+    fun `the vouchers report the error`() {
         val vm = GutscheinViewModel(
             repo = testVouchersRepository(t.api),
             texts = NumbersTexts,

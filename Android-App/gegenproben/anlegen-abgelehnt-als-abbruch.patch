@@ -1,7 +1,7 @@
 Gegenprobe: eine abgelehnte Verbindung zählt als Abbruch, der Ausgang springt nicht ein
 Modul: core-data
 Test: ch.brickinventoryapp.data.SetCreateStreamTest
-Rot: ohne Server ist es KeineVerbindung
+Rot: without a server it is KeineVerbindung, so that the outbox may step in
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt

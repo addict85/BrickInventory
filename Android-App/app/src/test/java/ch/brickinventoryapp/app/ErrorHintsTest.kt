@@ -66,7 +66,7 @@ class ErrorHintsTest {
     }
 
     @Test
-    fun `scheitert das Katalog-Detail, steht der Grund mit Erneut versuchen statt des Kringels`() {
+    fun `if the catalog detail fails, the reason with Retry is shown instead of the spinner`() {
         val geladen = mutableListOf<String>()
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",
@@ -84,7 +84,7 @@ class ErrorHintsTest {
     }
 
     @Test
-    fun `ist die Kamera dauerhaft verweigert, nennt der Hinweis den Weg ueber die Einstellungen`() {
+    fun `if the camera is permanently denied, the hint names the way via the settings`() {
         var getippt = 0
         zeige {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -99,7 +99,7 @@ class ErrorHintsTest {
     }
 
     @Test
-    fun `fehlt die Kamera, sagt der Hinweis wozu und bietet das Eintippen an`() {
+    fun `if the camera is missing, the hint says what for and offers typing`() {
         var typed = 0
         val zweck = ctx.getString(R.string.scanner_camera_zweck_barcode)
         val eintippen = ctx.getString(R.string.scanner_nummer_eintippen)

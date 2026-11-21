@@ -11,8 +11,8 @@ import org.junit.Test
  * AblaufTest mit einem Schrittschutz, der nie bestätigt.
  *
  * Gegenproben:
- *   A  gilt() mit `<=` statt `<` → rot „nach einer Minute wird wieder gefragt“
- *   B  vergiss() ohne Wirkung → rot „wer die App verlaesst, wird wieder gefragt“
+ *   A  gilt() mit `<=` statt `<` → rot „after one minute it asks again“
+ *   B  vergiss() ohne Wirkung → rot „whoever leaves the app is asked again“
  *   C  gilt() ohne Bestätigung `true` (`bis?.let { … } != false`) → rot „ohne
  *      Bestaetigung gilt nichts“ und „wer die App verlaesst …“
  */
@@ -22,12 +22,12 @@ class BestaetigungsfristTest {
     private val deadline = Bestaetigungsfrist(durationMs = 60_000, clock = { jetzt })
 
     @Test
-    fun `ohne Bestaetigung gilt nichts`() {
+    fun `without confirmation nothing applies`() {
         assertFalse(deadline.gilt())
     }
 
     @Test
-    fun `nach einer Minute wird wieder gefragt`() {
+    fun `after one minute it asks again`() {
         deadline.confirmed()
         jetzt += 59_999
         assertTrue(deadline.gilt())
@@ -36,7 +36,7 @@ class BestaetigungsfristTest {
     }
 
     @Test
-    fun `wer die App verlaesst, wird wieder gefragt`() {
+    fun `whoever leaves the app is asked again`() {
         deadline.confirmed()
         deadline.vergiss()
         assertFalse(deadline.gilt())

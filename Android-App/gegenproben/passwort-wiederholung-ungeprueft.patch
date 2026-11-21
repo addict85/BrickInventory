@@ -1,7 +1,7 @@
 Gegenprobe: Passwortwechsel prüft die Wiederholung nicht
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.components.PasswordSwitchTest
-Rot: verschiedene Wiederholung
+Rot: a different repetition is an error
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PasswortWechsel.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PasswortWechsel.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PasswortWechsel.kt

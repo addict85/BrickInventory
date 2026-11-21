@@ -29,7 +29,7 @@ class InventoryKeyTest {
     }
 
     @Test
-    fun `die Datenbank bekommt einen fertigen Schluessel und erkennt Klartext`() {
+    fun `the database gets a ready key and recognizes plaintext`() {
         val schluessel = ByteArray(32) { it.toByte() }
         val p = String(sqlcipherPassword(schluessel), Charsets.US_ASCII)
         assertEquals("x'000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'", p)

@@ -1,7 +1,7 @@
 Gegenprobe: der Keystore-Tresor verschlüsselt wieder ohne AAD (Stand vor and-sec-r3 N3)
 Modul: core-security
 Test: ch.brickinventoryapp.security.KeystoreLegacyStockTest
-Rot: ein neuer Geheimtext traegt die AAD, ein alter ohne bleibt lesbar und gilt als veraltet
+Rot: a new ciphertext carries the AAD, an old one without stays readable and counts as outdated
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt

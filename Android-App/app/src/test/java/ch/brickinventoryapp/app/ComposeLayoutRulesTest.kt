@@ -32,7 +32,7 @@ class ComposeLayoutRulesTest {
     }
 
     @Test
-    fun `keine FlowRow in einer waagerechten Row`() {
+    fun `no FlowRow in a horizontal Row`() {
         var flowRows = 0
         val findings = Quellen.unter("ui").filterNot { "/ui/theme/" in it.invariantSeparatorsPath }.flatMap { f ->
             val zeilen = Quellen.withoutComments(f.readText()).lines()
@@ -47,7 +47,7 @@ class ComposeLayoutRulesTest {
     }
 
     @Test
-    fun `die Tabellenzeile sagt der Sprachausgabe, was das Antippen tut`() {
+    fun `the table row tells the screen reader what tapping does`() {
         val zeile = Quellen.withoutComments(Quellen.lies("shared/ui/TabellenZeile.kt"))
         assertTrue("TabellenZeile nimmt keine Beschriftung für die Sprachausgabe",
             zeile.contains("onClickLabel: String? = null"))

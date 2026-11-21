@@ -1,7 +1,7 @@
 Gegenprobe: „Erweitert“ ohne Zustand und ohne Auf-/Zuklappen für TalkBack
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginEdgeTest
-Rot: Erweitert meldet ob der Bereich offen ist
+Rot: Advanced reports whether the area is open
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginAnmelden.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginAnmelden.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginAnmelden.kt

@@ -1,7 +1,7 @@
 Gegenprobe: uebernimm() räumt die Fächer früherer Konten nicht
 Modul: core-data
 Test: ch.brickinventoryapp.data.CacheAreaTest
-Rot: wer schreibt, raeumt die Faecher frueherer Konten
+Rot: whoever writes clears the compartments of earlier accounts
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 index 0c9232a..a231f87 100644

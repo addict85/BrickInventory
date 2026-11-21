@@ -34,7 +34,7 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `CameraX ist mindestens 1_4`() {
+    fun `CameraX is at least 1_4`() {
         val m = Regex("""camerax\s*=\s*"(\d+)\.(\d+)\.""").find(toml)
         assert(m != null) { "camerax-Version nicht gefunden" }
         val major = m!!.groupValues[1].toInt()
@@ -46,7 +46,7 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `ML Kit laeuft unbundled ueber die Play-Dienste`() {
+    fun `ML Kit runs unbundled via Play services`() {
         assert(toml.contains("play-services-mlkit-barcode-scanning")) {
             "Das gebündelte ML Kit (com.google.mlkit:barcode-scanning) ist zurück. " +
                 "Dessen libbarhopper_v3.so war auch in 17.3.0 noch 4-KB-ausgerichtet — " +
@@ -63,7 +63,7 @@ class SixteenKbAlignmentTest {
      * erste Scan ohne Netz nicht.
      */
     @Test
-    fun `das Barcode-Modul wird bei der Installation angefordert`() {
+    fun `the barcode module is requested on installation`() {
         assert(manifest.contains("com.google.mlkit.vision.DEPENDENCIES")) {
             "meta-data com.google.mlkit.vision.DEPENDENCIES fehlt im Manifest"
         }
@@ -73,7 +73,7 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `DataStore wird auf EINE Fassung festgenagelt`() {
+    fun `DataStore is pinned to ONE version`() {
         // ── Was diese Pruefung NICHT mehr tut ───────────────────────────────
         //
         // Hier stand `== "1.1.7"`: eine bestimmte NUMMER, weil 1.2.0 die
@@ -114,7 +114,7 @@ class SixteenKbAlignmentTest {
      * Oberfläche wäre.
      */
     @Test
-    fun `graphics-path ist direkt festgelegt`() {
+    fun `graphics-path is set directly`() {
         assert(toml.contains("graphics-path")) {
             "graphics-path wird nicht mehr direkt deklariert — dann zieht Compose " +
                 "wieder die transitive 1.0.x-Fassung mit der 4-KB-ausgerichteten " +
@@ -131,7 +131,7 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `native Bibliotheken werden unkomprimiert verpackt`() {
+    fun `native libraries are packaged uncompressed`() {
         assert(gradle.contains("useLegacyPackaging = false")) {
             "useLegacyPackaging steht wieder auf true. Legacy Packaging komprimiert " +
                 "die .so-Dateien und entpackt sie bei der Installation — an der " +

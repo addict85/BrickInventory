@@ -1,7 +1,7 @@
 Gegenprobe: AblageChiffre bindet Zweck und Dateiname nicht als AAD (Stand vor sec10 H7)
 Modul: core-data
 Test: ch.brickinventoryapp.data.StoreEncryptionTest
-Rot: eine Datei unter fremdem Namen gilt nicht
+Rot: a file under a foreign name does not count
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt

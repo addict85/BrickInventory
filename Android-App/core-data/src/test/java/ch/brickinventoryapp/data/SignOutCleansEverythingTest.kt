@@ -115,7 +115,7 @@ class SignOutCleansEverythingTest {
     }
 
     @Test
-    fun `nach dem Abmelden ist jede Ablage leer und der alte Schluessel wertlos`() = runBlocking {
+    fun `after sign-out every store is empty and the old key worthless`() = runBlocking {
         val adresse = server.url("/").toString().trimEnd('/')
         val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "abmelden-${System.nanoTime()}.preferences_pb") }
         val geraet = DevicesStore(ctx, store, testVertrauenschiffre())

@@ -1,7 +1,7 @@
 Gegenprobe: die Abbildung eines Kaufs verliert den Zeitpunkt
 Modul: core-contract
 Test: ch.brickinventoryapp.contract.UiModelFigureTest
-Rot: Betraege kommen als Geld
+Rot: amounts come as Money to four places, points in time as Instant, the origin as enumeration
 
 diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/HaushaltAbbildungen.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/HaushaltAbbildungen.kt
 --- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/HaushaltAbbildungen.kt

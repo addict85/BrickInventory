@@ -1,7 +1,7 @@
 Gegenprobe: Markenkopf auch bei 200 % gross und zweizeilig
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: Markenkopf bei 200 Prozent
+Rot: brand header at 200 percent takes at most an eighth of the height
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt

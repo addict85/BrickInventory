@@ -19,9 +19,9 @@ import ch.brickinventoryapp.testing.withRepo
  * AppViewModelTest aus, die Anzeige liest Quelltext (Gerät und Compose fehlen hier).
  *
  * Gegenprobe: in ManagementApi `@GET("api/v1/startup-status")`
- * auf "…/startstatus" → rot „die App fragt den Startzustand ab“.
+ * auf "…/startstatus" → rot „the app queries the startup state“.
  * Gegenprobe: gegenproben/startstatus-ganzzahl.patch
- * macht progress wieder zu Int → rot „ein Fortschritt mit Anteil wird gelesen“.
+ * macht progress wieder zu Int → rot „a progress with share is read“.
  */
 class ServerStartTest {
 
@@ -31,13 +31,13 @@ class ServerStartTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die App fragt den Startzustand ab`() = withRepo(::testManagementRepository) { paths, admin ->
+    fun `the app queries the startup state`() = withRepo(::testManagementRepository) { paths, admin ->
         runBlocking { admin.getStartupStatus() }
         assertEquals(listOf("GET /api/v1/startup-status"), paths.requests.toList())
     }
 
     @Test
-    fun `ein Fortschritt mit Anteil wird gelesen`() = withRepo(::testManagementRepository) { paths, admin ->
+    fun `a progress with share is read`() = withRepo(::testManagementRepository) { paths, admin ->
         // Der Server meldet Schritte samt Anteil des laufenden (2.37 von 8).
         paths.antworten["/api/v1/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
         val r = runBlocking { admin.getStartupStatus() }
@@ -46,7 +46,7 @@ class ServerStartTest {
     }
 
     @Test
-    fun `die Anmeldung zeigt den Fortschritt statt des Formulars`() {
+    fun `the sign-in shows the progress instead of the form`() {
         val s = code(read("login/ui/AnmeldungGraph.kt"))
         assert(s.contains("ServerStartAnzeige(serverStart)")) {
             "Die Anmeldung zeigt den Startfortschritt nicht"

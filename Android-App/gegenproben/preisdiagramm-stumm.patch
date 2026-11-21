@@ -1,7 +1,7 @@
 Gegenprobe: der Canvas des Preisdiagramms trägt keine Beschreibung
 Modul: core-ui-inventory
 Test: ch.brickinventoryapp.shared.PriceChartDescriptionTest
-Rot: das Preisdiagramm beschreibt
+Rot: the price chart describes its line in words
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt

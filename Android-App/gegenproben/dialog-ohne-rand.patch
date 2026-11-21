@@ -1,7 +1,7 @@
 Gegenprobe: Rückfrage und Erfassen ohne eigenen Rand zum Fenster
 Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
-Rot: Rueckfrage und Erfassen halten Abstand zum Fensterrand
+Rot: confirmation and adding keep distance to the window edge
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 index 148a98a..121078c 100644

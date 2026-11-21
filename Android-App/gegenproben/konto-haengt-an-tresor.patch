@@ -1,7 +1,7 @@
 Gegenprobe: feature-account bindet core-security wieder im Hauptcode ein
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: kein Bereich hängt an einem anderen Bereich
+Rot: no area depends on another area or on the app, none names foreign route types
 
 diff --git a/Android-App/feature-account/build.gradle.kts b/Android-App/feature-account/build.gradle.kts
 --- a/Android-App/feature-account/build.gradle.kts

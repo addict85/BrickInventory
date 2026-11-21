@@ -1,7 +1,7 @@
 Gegenprobe: Das Mengenfeld der Erfassung hat wieder nur bei einem Fehler eine Zeile darunter
 Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
-Rot: jedes Feld beim Set erfassen hat eine Hilfezeile
+Rot: every field when adding a set has a help line, also while typing
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
 index ec59d4d..b2b1ef6 100644

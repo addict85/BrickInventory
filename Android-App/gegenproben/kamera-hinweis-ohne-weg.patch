@@ -1,7 +1,7 @@
 Gegenprobe: Der Kamera-Hinweis zeigt trotz gesperrter Frage nur „Erlauben“, ohne Erklärung
 Modul: app
 Test: ch.brickinventoryapp.app.ErrorHintsTest
-Rot: ist die Kamera dauerhaft verweigert, nennt der Hinweis den Weg ueber die Einstellungen
+Rot: if the camera is permanently denied, the hint names the way via the settings
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
 index 4671faf..3404a35 100644

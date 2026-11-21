@@ -1,7 +1,7 @@
 Gegenprobe: fangeAusserAbbruch verschluckt das Abbrechen wie runCatching
 Modul: core-data
 Test: ch.brickinventoryapp.data.AbortTest
-Rot: ein abgebrochener Auftrag laeuft nicht weiter
+Rot: a cancelled job does not keep running
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Abbruch.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Abbruch.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Abbruch.kt

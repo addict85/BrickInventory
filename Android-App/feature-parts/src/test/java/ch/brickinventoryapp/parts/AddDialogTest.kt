@@ -90,7 +90,7 @@ class AddDialogTest {
     }
 
     @Test
-    fun `ohne Teilenummer bleibt der Dialog offen und das Feld sagt warum`() {
+    fun `without a part number the dialog stays open and the field says why`() {
         showPart()
         tap(R.string.parts_add_button)
         assertEquals("Der Dialog schloss ohne Erfassung", 0, closed)
@@ -104,7 +104,7 @@ class AddDialogTest {
     }
 
     @Test
-    fun `ohne Figurnummer bleibt der Dialog offen und das Feld sagt warum`() {
+    fun `without a figure number the dialog stays open and the field says why`() {
         showMinifig()
         tap(R.string.minifigs_add_button)
         assertEquals("Der Dialog schloss ohne Erfassung", 0, closed)
@@ -116,7 +116,7 @@ class AddDialogTest {
     }
 
     @Test
-    fun `eine unlesbare Anzahl sperrt Hinzufuegen`() {
+    fun `an unreadable quantity disables Add`() {
         showPart()
         feld(R.string.common_quantity).performTextClearance()
         feld(R.string.common_quantity).performTextInput("0")
@@ -126,7 +126,7 @@ class AddDialogTest {
     }
 
     @Test
-    fun `Zurueck fragt bei Eingaben erst nach`() {
+    fun `back asks first when there are inputs`() {
         showPart()
         feld(R.string.parts_part_number).performTextInput("3001")
         compose.waitForIdle()
@@ -138,14 +138,14 @@ class AddDialogTest {
     }
 
     @Test
-    fun `Zurueck schliesst einen leeren Dialog sofort`() {
+    fun `back closes an empty dialog immediately`() {
         showPart()
         zurueck()
         assertEquals("Ein leerer Dialog schliesst ohne Frage", 1, closed)
     }
 
     @Test
-    fun `daneben tippen schliesst nur einen leeren Dialog`() {
+    fun `tapping outside closes only an empty dialog`() {
         assertTrue(addClosable(geaendert = false).dismissOnClickOutside)
         assertFalse(addClosable(geaendert = true).dismissOnClickOutside)
         assertTrue("Zurück bleibt an und fragt dann nach", addClosable(geaendert = true).dismissOnBackPress)

@@ -74,7 +74,7 @@ class TokenBindingLockedTest {
     fun zu() = end()
 
     @Test
-    fun `ein gesperrter Keystore beim Serverwechsel laesst kein Token von A zurueck`() {
+    fun `a locked keystore during a server switch leaves no token from A behind`() {
         val a = "https://a.example"
         val b = "https://b.example"
         val erst = start(Tresor(0))
@@ -111,7 +111,7 @@ class TokenBindingLockedTest {
     }
 
     @Test
-    fun `ein Token aelterer Fassungen wird beim Start an den eingetragenen Server gebunden`() {
+    fun `a token of older versions is bound to the registered server at start`() {
         runBlocking {
             store.edit {
                 it[TokenAblage.SERVER_URL] = "https://alt.example/brick"

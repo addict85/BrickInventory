@@ -42,7 +42,7 @@ import ch.brickinventoryapp.testing.text
  *   C  im Besitzerwechsel die Zahlen der Antwort durch 0 ersetzt, oder das Nachziehen
  *      der Ablage entfernt → rot „ein Besitzerwechsel meldet die mitgewanderten Teile …“
  *   D  in lade() den Verlauf eines anderen Eintrags stehen gelassen → rot
- *      „der Preisverlauf eines anderen Eintrags bleibt nicht stehen“
+ *      „the price history of another entry does not stay“
  *   E  in changeForPiece() `purchasePrice = preis` statt
  *      `unitPrice = preis` → rot „ein Set schickt purchase_price, Teile und
  *      Figuren unit_price“ (Teil)
@@ -90,7 +90,7 @@ class PurchasesViewModelTest {
     }
 
     @Test
-    fun `ein geaenderter Kauf eines Sets schreibt seine Zusammenfassung in die Ablage und laedt die Liste neu`() {
+    fun `a changed purchase of a set writes its summary into the store and reloads the list`() {
         runBlocking { t.ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "75192-1", usedCount = 0)).map { it.alsAnsicht() }) }
         val vm = vm()
         vm.loadAcquisitions("75192-1")
@@ -104,7 +104,7 @@ class PurchasesViewModelTest {
     }
 
     @Test
-    fun `die Kaeufe eines Eintrags laden, sobald seine Seite sie zeigt`() {
+    fun `the purchases of an entry load as soon as its page shows them`() {
         val vm = vm()
         val zustand = vm.purchasesOf(Postenart.PART, "3001", 5)
         assertTrue("ohne Beobachter kein Abruf", paths.requestsAn("GET /api/v1/parts/3001/5/acquisitions").isEmpty())
@@ -117,7 +117,7 @@ class PurchasesViewModelTest {
     }
 
     @Test
-    fun `eine abgelehnte Datumsaenderung laedt die Liste neu`() {
+    fun `a rejected date change reloads the list`() {
         paths.codes["/api/v1/parts/3001/5/acquisitions/9"] = 409
         val vm = vm()
         vm.loadManualAcquisitions(Postenart.PART, "3001", 5)
@@ -129,7 +129,7 @@ class PurchasesViewModelTest {
     }
 
     @Test
-    fun `ein Besitzerwechsel meldet die mitgewanderten Teile und Figuren`() {
+    fun `an owner change reports the parts and figures that moved along`() {
         val vm = vm()
         var ergebnis: Triple<String?, Int, Int>? = null
         vm.changeAcquisitionOwner(Postenart.SET, "75192-1", 0, 7, toUserId = 4) { f, teile, figuren ->
@@ -155,7 +155,7 @@ class PurchasesViewModelTest {
     private fun gesetzt(feld: String, json: String) = Regex("\"$feld\":[0-9]").containsMatchIn(json)
 
     @Test
-    fun `ein Set schickt purchase_price, Teile und Figuren unit_price`() {
+    fun `a set sends purchase_price, parts and figures unit_price`() {
         // Der Server liest das Preisfeld unter dem Namen seiner Spalte; unter
         // dem falschen Namen lässt er den Preis still stehen.
         val vm = vm()
@@ -173,7 +173,7 @@ class PurchasesViewModelTest {
     }
 
     @Test
-    fun `der Preisverlauf eines anderen Eintrags bleibt nicht stehen`() {
+    fun `the price history of another entry does not stay`() {
         val vm = vm()
         vm.loadManualAcquisitions(Postenart.PART, "3001", 5)
         assertTrue("Verlauf geladen", vm.manDetailState.value.priceHistory != null)
@@ -185,7 +185,7 @@ class PurchasesViewModelTest {
     }
 
     @Test
-    fun `der Preisverlauf kommt fuer Teile und Figuren vom passenden Pfad`() {
+    fun `the price history for parts and figures comes from the matching path`() {
         val vm = vm()
         vm.loadManualPriceHistory(Postenart.FIG, "sw0001")
         assertTrue("Figur ohne Verlauf", vm.manDetailState.value.priceHistory != null)

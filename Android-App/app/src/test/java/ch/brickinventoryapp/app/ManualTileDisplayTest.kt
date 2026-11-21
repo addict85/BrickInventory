@@ -94,7 +94,7 @@ class ManualTileDisplayTest {
     }
 
     @Test
-    fun `das manuelle Teil zeigt Zustaende, Besitzer und den gemittelten Kaufpreis`() {
+    fun `the manual part shows conditions, owners and the averaged purchase price`() {
         world.paths.antworten["/api/v1/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1","color_id":1,$felder}]}"""
         val vm = world.teile().also { it.loadParts() }
@@ -105,7 +105,7 @@ class ManualTileDisplayTest {
     }
 
     @Test
-    fun `die manuelle Figur zeigt Zustaende, Besitzer und den gemittelten Kaufpreis`() {
+    fun `the manual figure shows conditions, owners and the averaged purchase price`() {
         world.paths.antworten["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia",$felder}]}"""
         val vm = world.figuren().also { it.loadMinifigs() }
@@ -116,7 +116,7 @@ class ManualTileDisplayTest {
     }
 
     @Test
-    fun `die Kennzahlen der Figuren bleiben, auch ohne Figuren aus Sets`() {
+    fun `the key figures of the figures stay, even without figures from sets`() {
         // Sie meinen die ganze Sammlung (/minifigs/stats), nicht die geladene Liste.
         world.paths.antworten["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
         world.paths.antworten["/api/v1/minifigs/manual"] =

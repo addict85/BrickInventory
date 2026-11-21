@@ -1,7 +1,7 @@
 Gegenprobe: Das abgelaufene Geheimnis bleibt in der Zwischenablage
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.util.SecretClipboardTest
-Rot: ein kopiertes Geheimnis ist nach einer Minute weg
+Rot: a copied secret is gone after one minute, foreign content stays
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt

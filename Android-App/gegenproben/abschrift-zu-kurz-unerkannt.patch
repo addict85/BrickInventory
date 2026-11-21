@@ -1,7 +1,7 @@
 Gegenprobe: Eine zu kurze Abschrift heisst wieder nur „passt nicht“
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: eine Abschrift mit Doppelpunkten ist zu kurz, nicht falsch
+Rot: a transcript with colons is too short, not wrong
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

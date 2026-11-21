@@ -43,7 +43,7 @@ class DialogPrivacyScreenTest {
     private fun dialogWindow() = checkNotNull(ShadowDialog.getLatestDialog()) { "Kein Dialog offen" }.window
 
     @Test
-    fun `ein aufgedecktes Passwort im Dialog ist sofort geschuetzt und danach wieder frei`() {
+    fun `a revealed password in the dialog is protected immediately and free again afterwards`() {
         compose.setContent {
             BrickInventoryManagerTheme {
                 PasswordPrompt(titel = "Bestätigen", text = "Passwort", bestaetigen = "OK", codeNoetig = false,

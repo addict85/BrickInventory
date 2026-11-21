@@ -90,7 +90,7 @@ class GalleryReportsAfterTopTest {
     }
 
     @Test
-    fun `Suchtext geht nach oben, die Liste bleibt die des Servers`() {
+    fun `search text goes up, the list stays the server's`() {
         zeige()
         compose.onNode(hasSetTextAction()).performTextInput("Lambo")
         compose.waitForIdle()
@@ -101,7 +101,7 @@ class GalleryReportsAfterTopTest {
     }
 
     @Test
-    fun `die Sortierung meldet die Schluessel des Servers`() {
+    fun `the sorting reports the server's keys`() {
         zeige()
         val menu = ctx.getString(R.string.sort_menu_cd, ctx.getString(R.string.gallery_sort_added_desc))
         val namen = mapOf(R.string.gallery_sort_added_asc to "added_asc", R.string.gallery_sort_name to "name_asc",
@@ -118,7 +118,7 @@ class GalleryReportsAfterTopTest {
     }
 
     @Test
-    fun `ein Thema aus dem Filter geht nach oben`() {
+    fun `a theme from the filter goes up`() {
         zeige()
         compose.onNodeWithContentDescription(ctx.getString(R.string.filter_button)).performClick()
         compose.waitForIdle()
@@ -128,7 +128,7 @@ class GalleryReportsAfterTopTest {
     }
 
     @Test
-    fun `der Kopf nennt die Zahl der Anleitungen`() {
+    fun `the header names the number of instructions`() {
         zeige()
         compose.onNodeWithText(ctx.resources.getQuantityString(R.plurals.gallery_stat_instructions, 7, "7"),
             useUnmergedTree = true).fetchSemanticsNode()

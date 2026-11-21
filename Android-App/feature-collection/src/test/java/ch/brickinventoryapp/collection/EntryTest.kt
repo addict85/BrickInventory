@@ -11,12 +11,12 @@ import org.junit.Test
  * Die Prüfanzeige vor dem Erfassen: zeigen und wieder räumen.
  *
  * Gegenprobe (am 27.10. gemessen, kotlinc gegen Erfassung.kt): fertig() ohne
- * Wirkung → rot: „fertig raeumt die Anzeige, auch nach einem Phasenwechsel".
+ * Wirkung → rot: „done clears the display, even after a phase change".
  */
 class EntryTest {
 
     @Test
-    fun `fertig raeumt die Anzeige, auch nach einem Phasenwechsel`() {
+    fun `done clears the display, even after a phase change`() {
         val e = Erfassung()
         e.zeige("4006381333931", CheckPhase.BARCODE)
         e.zeige("10305-1", CheckPhase.BESTAND)

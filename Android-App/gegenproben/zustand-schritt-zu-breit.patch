@@ -1,7 +1,7 @@
 Gegenprobe: waehrungUebernommen setzt auch die Bedingung
 Modul: app
 Test: ch.brickinventoryapp.app.StateDomainBoundaryTest
-Rot: jeder Schritt der Sitzung setzt nur seine Felder
+Rot: every step of the session sets only its fields
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt
 --- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt

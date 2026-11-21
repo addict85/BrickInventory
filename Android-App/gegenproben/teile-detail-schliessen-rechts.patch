@@ -1,7 +1,7 @@
 Gegenprobe: Detailkopf mit Schliessen rechts vom Titel
 Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
-Rot: Tablet zeigt Teil und Liste nebeneinander
+Rot: tablet shows part and list side by side
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt

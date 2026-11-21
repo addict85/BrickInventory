@@ -43,14 +43,14 @@ class CatalogYearMathTest {
     private fun jahr(share: Float) = CatalogYearMath.yearAnPosition(share, TOTAL, DISTRIBUTION)
 
     @Test
-    fun `neun Zehntel hinunter ist noch nicht beim aeltesten Jahrgang`() {
+    fun `nine tenths down is not yet at the oldest year`() {
         // Linear käme hier 1965 heraus. Tatsächlich reicht der
         // Jahrgang 2024 bis zur laufenden Nummer 89, und 0.9 * 99 = 89.
         assertEquals(2024, jahr(0.9f))
     }
 
     @Test
-    fun `die Raender treffen den ersten und den letzten Jahrgang`() {
+    fun `the edges hit the first and the last year`() {
         assertEquals(2024, jahr(0f))
         assertEquals(1965, jahr(1f))
         // Ausserhalb wird geklemmt, nicht gerechnet.
@@ -59,7 +59,7 @@ class CatalogYearMathTest {
     }
 
     @Test
-    fun `die Grenze zwischen zwei Jahrgaengen liegt an der richtigen Nummer`() {
+    fun `the boundary between two years lies at the right number`() {
         // Nummer 89 ist die letzte von 2024, Nummer 90 die erste von 2010.
         assertEquals(89, CatalogYearMath.numberFrom(0.9f, TOTAL))
         assertEquals(2024, jahr(89f / 99f))
@@ -67,7 +67,7 @@ class CatalogYearMathTest {
     }
 
     @Test
-    fun `das Jahr faellt mit der Position - nie umgekehrt`() {
+    fun `the year falls with the position - never the other way round`() {
         var vorher = Int.MAX_VALUE
         for (i in 0..100) {
             val j = jahr(i / 100f)!!
@@ -77,13 +77,13 @@ class CatalogYearMathTest {
     }
 
     @Test
-    fun `ohne Verteilung oder ohne Sets gibt es kein Etikett`() {
+    fun `without a distribution or without sets there is no label`() {
         assertNull(CatalogYearMath.yearAnPosition(0.5f, TOTAL, emptyList()))
         assertNull(CatalogYearMath.yearAnPosition(0.5f, 0, DISTRIBUTION))
     }
 
     @Test
-    fun `eine geladene Kachel schlaegt die Rechnung`() {
+    fun `a loaded tile beats the calculation`() {
         // Erste Wahl wie in der Webapp: Ist die Stelle geladen, gilt ihr Jahr —
         // auch wenn die Verteilung etwas anderes ergäbe.
         assertEquals(1999, CatalogYearMath.yearFor(0.9f, TOTAL, DISTRIBUTION) { 1999 })
@@ -92,7 +92,7 @@ class CatalogYearMathTest {
     }
 
     @Test
-    fun `Beruehrung und Griffposition sind zueinander umgekehrt`() {
+    fun `touch and handle position are inverse to each other`() {
         for (prozent in 0..100) {
             val share = prozent / 100f
             val offset = CatalogYearMath.thumbOffset(share, H, T)
@@ -105,7 +105,7 @@ class CatalogYearMathTest {
     }
 
     @Test
-    fun `Nummer und Anteil sind zueinander umgekehrt`() {
+    fun `number and share are inverse to each other`() {
         for (n in 0 until TOTAL) {
             assertEquals(n, CatalogYearMath.numberFrom(CatalogYearMath.anteilAusNummer(n, TOTAL), TOTAL))
         }
@@ -115,7 +115,7 @@ class CatalogYearMathTest {
     }
 
     @Test
-    fun `entartete Faelle stuerzen nicht ab`() {
+    fun `degenerate cases do not crash`() {
         // Leiste kleiner als der Griff (extrem kleines Layout)
         val a = CatalogYearMath.shareFrom(10f, 20, T)
         assertTrue(a in 0f..1f)

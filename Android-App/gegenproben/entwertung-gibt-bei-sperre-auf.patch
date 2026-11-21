@@ -1,7 +1,7 @@
 Gegenprobe: Der Abmeldeauftrag gibt auch bei gesperrtem Gerät nach den Höchstversuchen auf
 Modul: core-data
 Test: ch.brickinventoryapp.data.RedemptionTest
-Rot: bei gesperrtem Geraet gibt der Auftrag nicht auf
+Rot: with a locked device the job does not give up
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt

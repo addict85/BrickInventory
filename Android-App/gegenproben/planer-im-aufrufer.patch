@@ -1,7 +1,7 @@
 Gegenprobe: Der Alarmplaner ruft WorkManager auf dem Thread des Aufrufers
 Modul: core-services
 Test: ch.brickinventoryapp.services.AlarmScheduleTest
-Rot: der Planer wechselt fuer WorkManager auf seinen Dispatcher
+Rot: the scheduler switches to its dispatcher for WorkManager
 
 diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt
 --- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt

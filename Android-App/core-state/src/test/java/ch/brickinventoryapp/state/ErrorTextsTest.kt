@@ -22,9 +22,9 @@ import ch.brickinventoryapp.data.repository.Ergebnis
  *
  * Gegenproben:
  *   fehlertext-zeit-wie-netz      Zeitueberschreitung auf err_network gelegt → rot
- *                                 „jede Fehlerart hat einen eigenen Text“
+ *                                 „every error kind has its own text“
  *   fehlerklasse-401-unbekannt    Abgewiesen in fehlerklasse() auf UNBEKANNT → rot
- *                                 „jede Fehlerart hat eine passende Klasse“
+ *                                 „every error kind has a matching class“
  */
 class ErrorTextsTest {
 
@@ -48,7 +48,7 @@ class ErrorTextsTest {
     }
 
     @Test
-    fun `jede Fehlerart hat einen eigenen Text`() {
+    fun `every error kind has its own text`() {
         assert(examples.map { name(it) }.toSet().size == 9) { "Nicht jede Art hat ein Beispiel" }
         val zuordnung = examples.associate { name(it) to fehlerTextId(it) }
 
@@ -70,14 +70,14 @@ class ErrorTextsTest {
     }
 
     @Test
-    fun `ein Abriss im Strom zeigt den Netz-Text`() {
+    fun `a break in the stream shows the network text`() {
         assert(fehlerTextId(Ergebnis.Fehler.Abgebrochen) == fehlerTextId(Ergebnis.Fehler.Netz())) {
             "Abgebrochen hiess bisher „kein Netz“ — ein neuer Satz wäre eine Änderung, kein Umbau"
         }
     }
 
     @Test
-    fun `nur der Serverfehler braucht den HTTP-Code`() {
+    fun `only the server error needs the HTTP code`() {
         // getString() mit einem überzähligen Argument wirft nicht, sondern
         // liefert stillschweigend denselben Text — ein falsches Argument hier
         // fiele also nirgends auf. Umgekehrt zeigte ein fehlendes beim
@@ -94,7 +94,7 @@ class ErrorTextsTest {
      * (fehlerklasse-401-unbekannt).
      */
     @Test
-    fun `jede Fehlerart hat eine passende Klasse`() {
+    fun `every error kind has a matching class`() {
         val erwartet = mapOf(
             "Netz" to Fehlerklasse.OFFLINE, "Zeitueberschreitung" to Fehlerklasse.OFFLINE,
             "Abgebrochen" to Fehlerklasse.OFFLINE, "Server" to Fehlerklasse.SERVER,

@@ -1,7 +1,7 @@
 Gegenprobe: Die Protokollzeile zeigt die Uhrzeit nicht
 Modul: feature-management
 Test: ch.brickinventoryapp.management.MonitoringLogDisplayTest
-Rot: jede Zeile nennt
+Rot: every line names its time
 
 diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringProtokoll.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringProtokoll.kt
 --- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringProtokoll.kt

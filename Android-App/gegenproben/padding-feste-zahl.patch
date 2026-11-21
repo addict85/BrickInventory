@@ -1,7 +1,7 @@
 Gegenprobe: Eine Detailzeile bekommt wieder einen festen Abstand padding(vertical = 5.dp)
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: feste Zahlen in padding werden nicht mehr
+Rot: fixed numbers in padding do not increase
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt

@@ -16,7 +16,7 @@ import java.io.File
 /**
  * Nach einer Änderung in der Überwachung steht da, was der Server daraus gemacht hat:
  * Ein gesetzter Zeitplan wird neu geholt (der Server normalisiert „7:5“ zu „07:05“),
- * und nach dem Leeren des Caches kommen die Zahlen neu. Gegen einen Testserver.
+ * und after clearing the cache the numbers come anew. Gegen einen Testserver.
  *
  * Gegenproben (Patches unter gegenproben/, lokal nicht übersetzbar, misst die CI):
  *   zeitplan-ohne-nachladen   loadJobs() nach setJobSchedule entfernt → rot „nach dem Setzen …“
@@ -40,14 +40,14 @@ class MonitoringReloadTest {
     }
 
     @Test
-    fun `nach dem Setzen eines Zeitplans gilt, was der Server daraus macht`() = runTest {
+    fun `after setting a schedule what the server makes of it applies`() = runTest {
         assertTrue(vm.setzeJobZeitplan("prices", "7:5", null))
         assertEquals(listOf("POST /api/v1/admin/job-schedule", "GET /api/v1/admin/jobs"), paths.requests.toList())
         assertEquals("07:05", vm.state.value.jobSchedules["prices"]?.time)
     }
 
     @Test
-    fun `nach dem Leeren des Caches kommen die Zahlen neu`() = runTest {
+    fun `after clearing the cache the numbers come anew`() = runTest {
         assertTrue(vm.emptyCache(alles = true))
         val danach = paths.requests.toList().drop(1)
         assertEquals("POST /api/v1/admin/cache-clear", paths.requests.first())

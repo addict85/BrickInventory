@@ -1,7 +1,7 @@
 Gegenprobe: der Fehlercode drängt sich vor den Satz des Servers
 Modul: app
 Test: ch.brickinventoryapp.app.AppTextsTest
-Rot: der Satz des Servers
+Rot: the server's sentence takes precedence over any own one
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt

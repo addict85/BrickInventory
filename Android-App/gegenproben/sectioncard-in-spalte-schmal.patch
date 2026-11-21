@@ -1,7 +1,7 @@
 Gegenprobe: Die Abschnittskarte bleibt auch in einer Tablet-Spalte auf Lesebreite, mittig mit leerem Rand
 Modul: core-ui-inventory
 Test: ch.brickinventoryapp.shared.SectionCardWidthTest
-Rot: in einer Spalte nimmt die Karte die volle Breite
+Rot: in a column the card takes the full width
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt

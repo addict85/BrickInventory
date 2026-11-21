@@ -16,7 +16,7 @@ import org.junit.Test
 class OtpauthAddressTest {
 
     @Test
-    fun `an die Authenticator-App geht nur otpauth`() {
+    fun `only otpauth goes to the authenticator app`() {
         val echt = "otpauth://totp/BrickInventory%3Amarco?secret=JBSWY3DPEHPK3PXP&issuer=BrickInventory"
         assertEquals(echt, otpauthAddress(" $echt "))
         assertEquals("OTPAUTH://hotp/x?secret=A", otpauthAddress("OTPAUTH://hotp/x?secret=A"))

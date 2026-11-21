@@ -1,7 +1,7 @@
 Gegenprobe: Die nachgeholte Entwertung behandelt den alten Server als fremden Host, nur System-CAs (Stand vor sec8 N2)
 Modul: core-data
 Test: ch.brickinventoryapp.data.AlterServerPinTest
-Rot: eigener CA
+Rot: the old server with its own CA is reached with its pin
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

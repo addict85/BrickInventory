@@ -23,7 +23,7 @@ import ch.brickinventoryapp.testing.Quellen
 class ClientRendersOnlyTest {
 
     @Test
-    fun `die Oberflaeche summiert keine Geldbetraege selbst`() {
+    fun `the UI sums no money amounts itself`() {
         val dateien = Quellen.unter("ui")
         val money = Regex("""sumOf\s*\{[^}]{0,120}?\.(price|Price|value|Value|total|Total|purchase|Purchase)\w*""")
         val treffer = mutableListOf<String>()
@@ -52,7 +52,7 @@ class ClientRendersOnlyTest {
      * grand_total übergangen → rot (0.20 statt 4894.77).
      */
     @Test
-    fun `der Gesamtwert kommt vom Server`() {
+    fun `the total value comes from the server`() {
         val sums = finanzSummen(ValuationResponse(success = true).alsAnsicht(),
             PartsValuationResponse(success = true, totalValue = "0.20").alsAnsicht(),
             null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")).alsAnsicht())

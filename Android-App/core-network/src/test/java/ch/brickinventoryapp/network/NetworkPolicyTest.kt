@@ -25,7 +25,7 @@ class NetworkPolicyTest {
 
     // ── isSameOrigin ────────────────────────────────────────────────────────
     @Test
-    fun `gleiche Origin wird erkannt`() {
+    fun `same origin is recognized`() {
         val base = "https://brick.example.com"
         assertTrue(NetworkPolicy.isSameOrigin("https://brick.example.com/api/v1/sets".toHttpUrl(), base))
         assertTrue(NetworkPolicy.isSameOrigin("https://BRICK.example.com/api/v1/sets".toHttpUrl(), base))
@@ -34,7 +34,7 @@ class NetworkPolicyTest {
     }
 
     @Test
-    fun `Suffix-Angriff wird abgewiesen`() {
+    fun `suffix attack is rejected`() {
         val base = "https://brick.example.com"
         assertFalse(
             "Präfixvergleich-Lücke: Angreifer-Domain mit der Server-URL als Präfix",
@@ -44,7 +44,7 @@ class NetworkPolicyTest {
     }
 
     @Test
-    fun `Scheme und Port zaehlen mit`() {
+    fun `scheme and port count too`() {
         assertFalse(NetworkPolicy.isSameOrigin("http://brick.example.com/x".toHttpUrl(), "https://brick.example.com"))
         assertFalse(NetworkPolicy.isSameOrigin("https://brick.example.com:8443/x".toHttpUrl(), "https://brick.example.com"))
         assertTrue(NetworkPolicy.isSameOrigin("https://192.168.1.50:8443/x".toHttpUrl(), "https://192.168.1.50:8443"))
@@ -52,7 +52,7 @@ class NetworkPolicyTest {
 
     // ── Plain text ───────────────────────────────────────────────────────────
     @Test
-    fun `https geht immer, http im Release-Build nie`() {
+    fun `https always works, http never in the release build`() {
         for (url in listOf("https://brick.example.com/x", "https://192.168.1.50/x", "https://localhost:8443/x"))
             for (entwicklung in listOf(false, true))
                 assertTrue(url, NetworkPolicy.connectionAllowed(url.toHttpUrl(), entwicklung))
@@ -62,7 +62,7 @@ class NetworkPolicyTest {
     }
 
     @Test
-    fun `der Debug-Build darf http nur zum Geraet und zum Emulator-Host`() {
+    fun `the debug build may use http only to the device and the emulator host`() {
         for (url in listOf("http://localhost:3000/x", "http://LOCALHOST/x", "http://127.0.0.1:3000/x", "http://10.0.2.2:3000/x"))
             assertTrue(url, NetworkPolicy.connectionAllowed(url.toHttpUrl(), entwicklung = true))
         for (url in listOf("http://192.168.1.50:3000/x", "http://nas:3000/x", "http://10.0.2.3/x",
@@ -71,7 +71,7 @@ class NetworkPolicyTest {
     }
 
     @Test
-    fun `die Einrichtung nimmt nur https an und ergaenzt es ohne Schema`() {
+    fun `the setup accepts only https and adds it without a scheme`() {
         assertEquals("https://brick.fritz.box", NetworkPolicy.normalize("  brick.fritz.box/ "))
         assertEquals("http://nas:3000", NetworkPolicy.normalize("http://nas:3000/"))
         assertNull(NetworkPolicy.addressError("brick.fritz.box", entwicklung = false))
@@ -84,7 +84,7 @@ class NetworkPolicyTest {
     }
 
     @Test
-    fun `eine gespeicherte http-Adresse ist Altbestand, eine leere nicht`() {
+    fun `a saved http address is legacy, an empty one is not`() {
         assertTrue(NetworkPolicy.plaintextLegacyStock("http://192.168.1.50:3000", entwicklung = false))
         assertTrue(NetworkPolicy.plaintextLegacyStock("http://localhost:3000", entwicklung = false))
         assertFalse(NetworkPolicy.plaintextLegacyStock("http://localhost:3000", entwicklung = true))
@@ -95,7 +95,7 @@ class NetworkPolicyTest {
     }
 
     @Test
-    fun `die Herkunft eines Tokens ist Schema, Host und Port`() {
+    fun `the origin of a token is scheme, host and port`() {
         assertEquals("https://brick.example.com:443", NetworkPolicy.herkunft("https://Brick.example.com/brick/"))
         assertTrue(NetworkPolicy.sameOrigin("http://nas:3000", "http://NAS:3000/"))
         assertFalse(NetworkPolicy.sameOrigin("http://nas:3000", "http://nas:3001"))

@@ -1,7 +1,7 @@
 Gegenprobe: Spur der Jahresleiste wieder 28 dp
 Modul: app
 Test: ch.brickinventoryapp.app.UiUniformTest
-Rot: Jahresleiste ist 48 dp breit
+Rot: year bar is 48 dp wide
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt

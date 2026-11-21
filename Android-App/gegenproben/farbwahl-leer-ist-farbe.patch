@@ -1,7 +1,7 @@
 Gegenprobe: Farbwahl.aus nimmt einen leeren Text als Farbe
 Modul: core-model
 Test: ch.brickinventoryapp.model.FachtypenTest
-Rot: leer heisst alle Farben
+Rot: empty means all colors and categories, otherwise the choice carries the value
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Teilefilter.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Teilefilter.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Teilefilter.kt

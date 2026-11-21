@@ -1,7 +1,7 @@
 Gegenprobe: Der Sichtfensterlader sammelt mit collect statt collectLatest; jedes Fenster eines Zuges wird geladen
 Modul: feature-catalog
 Test: ch.brickinventoryapp.catalog.KatalogSprungEntprelltTest
-Rot: der Sichtfenster-Lader wartet
+Rot: the viewport loader waits until the list stands still
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/Sichtfensterlader.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/Sichtfensterlader.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/Sichtfensterlader.kt

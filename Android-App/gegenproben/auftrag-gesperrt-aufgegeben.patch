@@ -1,7 +1,7 @@
 Gegenprobe: Ein Abmeldeauftrag gilt bei gesperrtem Gerät als unlesbar und wird aufgegeben
 Modul: core-data
 Test: ch.brickinventoryapp.data.AuftragsablageTest
-Rot: gesperrt wartet der Auftrag
+Rot: locked the job waits, a foreign or broken one yields nothing
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertungsauftrag.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertungsauftrag.kt
 index 1bc1ead..215330e 100644

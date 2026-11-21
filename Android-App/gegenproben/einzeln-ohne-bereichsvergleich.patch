@@ -1,7 +1,7 @@
 Gegenprobe: abgeglichenEinzeln() legt ab, auch wenn das Konto während des Abrufs wechselte
 Modul: core-data
 Test: ch.brickinventoryapp.data.CacheAreaTest
-Rot: wechselt das Konto waehrend des Abrufs
+Rot: if the account changes during the fetch, nothing is stored
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt

@@ -84,7 +84,7 @@ class TokenSpeicherwertTest {
     }
 
     @Test
-    fun `Token und Adresse gelten schon waehrend der Plattenschreibung`() {
+    fun `token and address apply already while writing to disk`() {
         val store = Hesitant(echt)
         val ablage = TokenAblage(store, Klartresor, geraet, bereich).also { it.waitOnStart() }
         val adresse = "https://brick.example"
@@ -95,7 +95,7 @@ class TokenSpeicherwertTest {
     }
 
     @Test
-    fun `ein neuer Prozess bekommt Token und Adresse aus dem DataStore`() = runBlocking {
+    fun `a new process gets token and address from the DataStore`() = runBlocking {
         val erste = TokenAblage(echt, Klartresor, geraet, bereich).also { it.waitOnStart() }
         erste.saveServerUrl("https://brick.example")
         erste.saveAuthToken("token-marco")

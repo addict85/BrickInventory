@@ -1,7 +1,7 @@
 Gegenprobe: der Abgriff springt ohne Server nicht mehr mit der Ablage ein
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewTapTest
-Rot: ohne Server kommt
+Rot: without a server the preview comes from the store
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt

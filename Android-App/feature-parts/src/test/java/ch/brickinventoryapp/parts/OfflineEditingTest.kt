@@ -42,7 +42,7 @@ import ch.brickinventoryapp.testing.TestApi
  *   A  in Offlineablage.schreibe (Abruf.kt) den Zweig für transiente Fehler entfernt → rot
  *      „ohne Verbindung geht die Menge in den Ausgang“ (Ergebnis.Fehler statt gepuffert)
  *   B  in Offlineablage.schreibe (Abruf.kt) die Prüfung `ablage.wartet()` entfernt → rot
- *      „wartet etwas, geht Neues dahinter“ (die zweite Änderung ging direkt raus)
+ *      „if something waits, new things go behind it“ (die zweite Änderung ging direkt raus)
  *   C  in ServerSender für SetMenge `quantity = schritt` statt `quantityDelta` →
  *      rot „gesendet wird der Schritt“
  *   D  in Offlineablage.refreshPaged (Abruf.kt) auch bei einem Fehler die leere
@@ -125,7 +125,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `ohne Verbindung geht die Menge in den Ausgang und gesendet wird der Schritt`() = runBlocking {
+    fun `without a connection the quantity goes into the outbox and the step is sent`() = runBlocking {
         assertTrue(repo.aktualisiereSets() is Ergebnis.Erfolg)
         s.offline = true
         val r = repo.changeQuantityUm("10001-1", 1)
@@ -141,7 +141,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `ohne Verbindung bleibt die Liste in der Ablage, samt Stand`() = runBlocking {
+    fun `without a connection the list stays in the store, including its state`() = runBlocking {
         repo.aktualisiereSets()
         s.offline = true
         repo.changeQuantityUm("10001-1", 1)
@@ -153,7 +153,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `wartet etwas, geht Neues dahinter`() = runBlocking {
+    fun `if something waits, new things go behind it`() = runBlocking {
         repo.aktualisiereSets()
         s.offline = true
         repo.changeQuantityUm("10001-1", 1)
@@ -168,7 +168,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `online geht eine Änderung direkt und steht auch lokal`() = runBlocking {
+    fun `online a change goes directly and is also local`() = runBlocking {
         repo.aktualisiereSets()
         val r = repo.changeQuantityUm("10001-1", 2)
         assertTrue(r is Ergebnis.Erfolg && !r.gepuffert)
@@ -177,7 +177,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `lehnt der Server ab, wird verworfen und gemeldet`() = runBlocking {
+    fun `if the server rejects, it is discarded and reported`() = runBlocking {
         s.offline = true
         repo.addSet("99999-1")
         s.codes["POST /api/v1/sets"] = 404 to """{"success":false,"error":"Set unbekannt"}"""
@@ -190,7 +190,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `ein direkter Versuch, dessen Antwort verloren geht, und seine Wiederholung tragen denselben Schlüssel`() = runBlocking {
+    fun `a direct attempt whose response is lost and its retry carry the same key`() = runBlocking {
         repo.aktualisiereSets()
         s.responseLose = true
         val r = repo.changeQuantityUm("10001-1", 1)
@@ -203,7 +203,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `offline gelöschte Teile, Figuren und Merkposten verschwinden sofort und gehen später mit Schlüssel raus`() = runBlocking {
+    fun `parts, figures and wishlist items deleted offline disappear immediately and go out later with a key`() = runBlocking {
         teile.refreshParts(); figuren.refreshMinifigs(); merkliste.refreshWanted()
         s.offline = true
         for (r in listOf(teile.deletePart("3001", 5, owner = 7), figuren.deleteMinifig("sw0001", owner = 7),
@@ -225,7 +225,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `ein schon gelöschtes Teil gilt beim Senden als gelöscht und wird nicht als verworfen gemeldet`() = runBlocking {
+    fun `an already deleted part counts as deleted when sending and is not reported as discarded`() = runBlocking {
         teile.refreshParts()
         s.offline = true
         teile.deletePart("3001", 5)
@@ -237,7 +237,7 @@ class OfflineEditingTest {
     }
 
     @Test
-    fun `eine Mengenänderung an Teil und Figur reist als Menge und Schritt`() = runBlocking {
+    fun `a quantity change on part and figure travels as quantity and step`() = runBlocking {
         teile.refreshParts(); figuren.refreshMinifigs()
         assertTrue(teile.updatePart("3001", 5, quantity = 7, unitPrice = null) is Ergebnis.Erfolg)
         assertTrue(figuren.updateMinifig("sw0001", quantity = 1, unitPrice = null) is Ergebnis.Erfolg)

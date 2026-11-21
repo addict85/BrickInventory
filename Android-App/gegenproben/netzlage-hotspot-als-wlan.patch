@@ -1,7 +1,7 @@
 Gegenprobe: ein gemessenes WLAN gilt als WLAN
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewDeviceTest
-Rot: ein gemessenes WLAN
+Rot: a metered Wi-Fi counts as mobile
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt

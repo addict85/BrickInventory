@@ -1,7 +1,7 @@
 Gegenprobe: Die Kontosicht fragt den Server ohne Suchtext
 Modul: core-data
 Test: ch.brickinventoryapp.data.KontosichtTest
-Rot: jeder Filter der Kontosicht steht in der Anfrage
+Rot: every filter of the account view is in the request
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt

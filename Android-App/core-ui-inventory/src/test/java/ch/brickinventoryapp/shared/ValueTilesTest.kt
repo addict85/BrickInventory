@@ -116,13 +116,13 @@ class ValueTilesTest {
     }
 
     @Test
-    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent ganz`() = valueTilesWhole(1f)
+    fun `value tiles show four-digit amounts fully on a narrow phone at 100 percent`() = valueTilesWhole(1f)
 
     @Test
-    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 200 Prozent ganz`() = valueTilesWhole(2f)
+    fun `value tiles show four-digit amounts fully on a narrow phone at 200 percent`() = valueTilesWhole(2f)
 
     @Test
-    fun `Kaufpreis bei 200 Prozent steht unter der Bezeichnung in einer Zeile`() {
+    fun `purchase price at 200 percent stands below the label in one line`() {
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
                 AcquisitionSummarySection(listOf(KaufAnsicht(id = 1, quantity = 1, purchasePrice = Geld.aus(700.0))), Waehrung.CHF) {}

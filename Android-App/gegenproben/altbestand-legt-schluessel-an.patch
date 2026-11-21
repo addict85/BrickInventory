@@ -1,7 +1,7 @@
 Gegenprobe: auch der Altbestand legt einen fehlenden Schlüssel neu an (Stand vor and-sec-r3 N2)
 Modul: core-security
 Test: ch.brickinventoryapp.security.KeystoreLegacyStockTest
-Rot: der Altbestand legt keinen Schluessel an und meldet weg
+Rot: the legacy stock creates no key and reports gone
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt

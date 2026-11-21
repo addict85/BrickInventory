@@ -34,7 +34,7 @@ class CatalogScrubberTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die Leiste rollt, statt zu filtern`() {
+    fun `the bar scrolls instead of filtering`() {
         val s = code(read("catalog/ui/screens/CatalogScreen.kt"))
         val i = s.indexOf("YearScrubber(")
         assert(i > 0) { "die Leiste fehlt ganz" }
@@ -74,7 +74,7 @@ class CatalogScrubberTest {
     }
 
     @Test
-    fun `die Liste fuehrt alle Plaetze und laedt in beide Richtungen`() {
+    fun `the list holds all places and loads in both directions`() {
         val s = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
         assert(s.contains("items(count = state.total")) {
             "Die Liste zählt über die geladene Teilmenge statt über das ganze Ergebnis — " +
@@ -93,7 +93,7 @@ class CatalogScrubberTest {
     }
 
     @Test
-    fun `die Rollposition ueberlebt den Wechsel zur Detailseite`() {
+    fun `the scroll position survives the switch to the detail page`() {
         // Die Liste verlässt beim Wechsel ins Detail die Komposition, und ihre Länge kommt
         // erst nachträglich. Die Stelle hält der ScrollMemory wie bei jedem Reiter; bereit
         // ist die Liste, sobald `total` da ist, denn die Plätze zählen über die Gesamtzahl.

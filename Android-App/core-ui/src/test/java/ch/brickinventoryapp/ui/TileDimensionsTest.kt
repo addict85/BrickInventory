@@ -35,7 +35,7 @@ import ch.brickinventoryapp.testing.Quellen
 class TileDimensionsTest {
 
     @Test
-    fun `die Kachelmasse stehen nur in Formen`() {
+    fun `the tile dimensions live only in Formen`() {
         val zahlen = listOf("width(112.dp)", "height(178.dp)", "topStart = 14.dp")
         val violations = mutableListOf<String>()
         for (datei in Quellen.unter("ui")) {
@@ -59,7 +59,7 @@ class TileDimensionsTest {
     /**
      */
     @Test
-    fun `die gemeinsame Kachel holt ihre Masse dort`() {
+    fun `the common tile gets its dimensions there`() {
         val nutzer = Quellen.unter("ui").filter { datei ->
             val src = Quellen.withoutComments(datei.readText())
             src.contains("Formen.kachelBreite") && src.contains("Formen.kachelHoehe")
@@ -83,7 +83,7 @@ class TileDimensionsTest {
      * `Modifier.height(272.dp)` → rot mit „GalerieKarte.kt …“.
      */
     @Test
-    fun `Karten haben keine feste Hoehe`() {
+    fun `cards have no fixed height`() {
         val karte = Regex("""\b(Card|AppKarte|OutlinedCard|ElevatedCard)\(""")
         val fixedHeight = Regex("""modifier\s*=\s*Modifier[^\n]*?\.height\(""")
         val violations = mutableListOf<String>()
@@ -114,7 +114,7 @@ class TileDimensionsTest {
      * „PortfolioChart.kt …“.
      */
     @Test
-    fun `Knoepfe und Chips haben keine feste Hoehe`() {
+    fun `buttons and chips have no fixed height`() {
         val button = Regex("""\b(Button|OutlinedButton|TextButton|FilledTonalButton|FilterChip|AuswahlChip|AssistChip|InputChip|Surface)\(""")
         val fixedHeight = Regex("""modifier\s*=\s*Modifier\.height\(""")
         val violations = mutableListOf<String>()
@@ -138,7 +138,7 @@ class TileDimensionsTest {
      * der Leiste, unten keinen. Gegenprobe kachelbild-eigener-radius (12.dp; kotlinc) → rot hier.
      */
     @Test
-    fun `Bildecke und Kartenform teilen sich den Radius`() {
+    fun `image corner and card shape share the radius`() {
         val groesse = Size(112f, 208f)
         val dichte = Density(2.75f)
         fun px(corner: CornerSize) = corner.toPx(groesse, dichte)

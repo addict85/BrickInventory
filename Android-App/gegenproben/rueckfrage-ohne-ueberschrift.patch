@@ -1,7 +1,7 @@
 Gegenprobe: Titel der Rückfrage ohne heading
 Modul: app
 Test: ch.brickinventoryapp.app.AccessibilityTest
-Rot: die Rueckfrage nennt ihren Titel als Ueberschrift und Fenstername
+Rot: the confirmation names its title as heading and window name
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt

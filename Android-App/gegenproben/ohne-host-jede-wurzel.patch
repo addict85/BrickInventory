@@ -1,7 +1,7 @@
 Gegenprobe: Ohne Host genügt für einen Pin auf eine System-Wurzel wieder jede öffentlich gültige Kette
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: ohne Host gilt ein oeffentlicher Pin nur fuer seine Wurzel
+Rot: without a host a public pin applies only to its root and its family
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

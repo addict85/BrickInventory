@@ -1,7 +1,7 @@
 Gegenprobe: Ein 401 landet in fehlerklasse() bei UNBEKANNT statt ANMELDUNG
 Modul: core-state
 Test: ch.brickinventoryapp.state.ErrorTextsTest
-Rot: jede Fehlerart hat eine passende Klasse
+Rot: every error kind has a matching class
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt
 index 3300543..039ca8a 100644

@@ -28,7 +28,7 @@ import ch.brickinventoryapp.testing.TestDienste
 class GalleryLoadsFilteredTest {
 
     @Test
-    fun `jede Seite der Kontosicht traegt Blickfeld und Filter`() {
+    fun `every page of the account view carries view and filter`() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val paths = PfadServer("/api/v1/sets" to """{"success":true,"total":2,"sets":[
             {"set_number":"75192-1","name":"Falke"},{"set_number":"10294-1","name":"Titanic"}]}""",

@@ -1,7 +1,7 @@
 Gegenprobe: Die Einrichtung bietet die App-Sperre nicht mehr an
 Modul: feature-login
 Test: ch.brickinventoryapp.login.SetupAppLockTest
-Rot: die Einrichtung bietet die App-Sperre an
+Rot: the setup offers the app lock, with an explanation
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
 index 2d7b7a7..774ade8 100644

@@ -1,7 +1,7 @@
 Gegenprobe: `%` und `_` aus der Suche werden nicht maskiert und wirken als Platzhalter
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.WithoutNetworkFilterTest
-Rot: ein Prozentzeichen oder Unterstrich
+Rot: a percent sign or underscore in the search counts literally
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
 index 460fbe7..e1c11bc 100644

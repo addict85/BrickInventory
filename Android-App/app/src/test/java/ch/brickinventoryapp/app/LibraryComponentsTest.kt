@@ -43,15 +43,15 @@ class LibraryComponentsTest {
     }
 
     @Test
-    fun `der Widerrufsdienst von Google-Sign-in ist nicht im Manifest`() =
+    fun `the revocation service of Google sign-in is not in the manifest`() =
         fehlt("com.google.android.gms.auth.api.signin.RevocationBoundService") { ctx.packageManager.getServiceInfo(it, 0) }
 
     @Test
-    fun `der Profileinstaller ist nicht im Manifest`() =
+    fun `the profile installer is not in the manifest`() =
         fehlt("androidx.profileinstaller.ProfileInstallReceiver") { ctx.packageManager.getReceiverInfo(it, 0) }
 
     @Test
-    fun `die Pruefung sieht das Manifest ueberhaupt`() {
+    fun `the check sees the manifest at all`() {
         // Sonst wären beide Tests oben grün, weil der PackageManager gar nichts kennt.
         val info = ctx.packageManager.getReceiverInfo(
             ComponentName(ctx.packageName, "ch.brickinventoryapp.app.widget.SammlungsWidgetEmpfaenger"), 0)
@@ -59,7 +59,7 @@ class LibraryComponentsTest {
     }
 
     @Test
-    fun `der PDF-Renderer laeuft isoliert und ist von aussen nicht erreichbar`() {
+    fun `the PDF renderer runs isolated and is not reachable from outside`() {
         val info = ctx.packageManager.getServiceInfo(ComponentName(ctx, PDF_SERVICE), 0)
         assertTrue("Ohne isolatedProcess rendert pdfium im Prozess mit Token und Schlüsseln",
             info.flags and ServiceInfo.FLAG_ISOLATED_PROCESS != 0)

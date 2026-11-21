@@ -1,7 +1,7 @@
 Gegenprobe: Farbfeld ohne Namen zeigt wieder die Farbnummer
 Modul: feature-parts
 Test: ch.brickinventoryapp.parts.FarbChoiceFieldTest
-Rot: ohne Namen steht Unbekannte Farbe
+Rot: without a name Unknown color stands in the font of the other values
 
 diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/FarbWahlFeld.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/FarbWahlFeld.kt
 index 470e638..6eabb38 100644

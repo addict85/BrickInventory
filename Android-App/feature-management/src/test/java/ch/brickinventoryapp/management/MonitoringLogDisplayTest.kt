@@ -88,7 +88,7 @@ class MonitoringLogDisplayTest {
     private fun anzahl(text: String) = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes().size
 
     @Test
-    fun `jede Zeile nennt ihre Uhrzeit`() {
+    fun `every line names its time`() {
         openShow()
         for (zeile in listOf(info, fehler)) {
             // Wie die Zeile sie zeigt: nach der 12/24-Stunden-Einstellung des Geräts.
@@ -98,7 +98,7 @@ class MonitoringLogDisplayTest {
     }
 
     @Test
-    fun `eine abgewaehlte Stufe blendet ihre Zeilen aus`() {
+    fun `a deselected level hides its lines`() {
         openShow()
         assertEquals(1, anzahl(info.message!!))
         compose.onNode(hasText("INFO") and hasClickAction()).performClick()
@@ -108,7 +108,7 @@ class MonitoringLogDisplayTest {
     }
 
     @Test
-    fun `die Suche blendet Zeilen ohne den Text aus`() {
+    fun `the search hides lines without the text`() {
         openShow()
         compose.onNodeWithContentDescription(text(R.string.admin_log_search)).performTextInput("BrickLink")
         compose.waitForIdle()

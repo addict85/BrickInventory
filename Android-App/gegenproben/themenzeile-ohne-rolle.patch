@@ -1,7 +1,7 @@
 Gegenprobe: ThemeRow ohne Optionsfeld-Rolle
 Modul: app
 Test: ch.brickinventoryapp.app.AccessibilityTest
-Rot: Themen- und Jahreswahl melden Rolle und Wahl
+Rot: theme and year choice announce role and selection
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt

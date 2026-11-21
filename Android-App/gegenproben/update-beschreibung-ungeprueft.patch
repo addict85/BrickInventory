@@ -1,7 +1,7 @@
 Gegenprobe: Der Selbst-Updater liest die Fassungsbeschreibung, ohne ihre Signatur zu prüfen (Stand vor sec8 N4)
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateSignatureTest
-Rot: fremder Schluessel
+Rot: a foreign key does not apply
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt
 index 067c9c0..57af70e 100644

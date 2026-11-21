@@ -53,7 +53,7 @@ import ch.brickinventoryapp.testing.TestDienste
 class ListenfilterInStateTest {
 
     @Test
-    fun `kein Lader nimmt einen Listenfilter als Parameter`() {
+    fun `no loader takes a list filter as a parameter`() {
         val filter = listOf("search", "theme", "sort")
         val violations = mutableListOf<String>()
         var lader = 0
@@ -98,7 +98,7 @@ class ListenfilterInStateTest {
      * `teileSicht` → `null` → rot „… ohne accounts=own“.
      */
     @Test
-    fun `erste Seite, Nachladen und manuelle Teile tragen Blickfeld und Suchtext`() {
+    fun `first page, loading more and manual parts carry view and search text`() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val paths = PfadServer(
             "/api/v1/parts" to """{"success":true,"total":900,"parts":[{"part_number":"3001"}]}""",
@@ -128,7 +128,7 @@ class ListenfilterInStateTest {
      * (core-data, Kontosicht.teileliste); ihr Aufruf nennt beides.
      */
     @Test
-    fun `jeder Abruf der Teileliste fuehrt Blickfeld und Suchtext mit`() {
+    fun `every fetch of the parts list carries view and search text`() {
         val calls = listOf("teile.getParts(")
         // theme und sort kennt die Teile-API nicht (utils/handlers/parts.ts,
         // getParts liest color, category, search, spare, set_number, page).
@@ -190,7 +190,7 @@ class ListenfilterInStateTest {
      * Serverbesuch nur langsamer. Diese Stellen stehen unten mit Grund.
      */
     @Test
-    fun `keine Suche im Bildschirm ueber eine geladene Liste`() {
+    fun `no search in the screen over a loaded list`() {
         // Vollstaendig geladene, kurze Listen ohne Blaettern und ohne
         // Gesamtzahl daneben — hier ist oertliches Filtern richtig.
         val erlaubt = mapOf(

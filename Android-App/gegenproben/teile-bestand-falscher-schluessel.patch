@@ -1,7 +1,7 @@
 Gegenprobe: der Bestand der Teileliste wird unter einem anderen Schlüssel gesucht
 Modul: core-data
 Test: ch.brickinventoryapp.data.PartsSlotValuesTest
-Rot: der Bestand steht je gefragtem Teil
+Rot: the stock is listed per requested part, what is missing has no entry
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt

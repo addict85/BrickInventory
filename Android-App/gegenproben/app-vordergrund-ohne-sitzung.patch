@@ -1,7 +1,7 @@
 Gegenprobe: Der Vordergrund lädt auch abgemeldet Einstellungen und Filterlisten nach
 Modul: core-state
 Test: ch.brickinventoryapp.state.AppViewModelTest
-Rot: abgemeldet laedt der Vordergrund nichts nach
+Rot: signed out the foreground reloads nothing, signed in settings and filter lists
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt

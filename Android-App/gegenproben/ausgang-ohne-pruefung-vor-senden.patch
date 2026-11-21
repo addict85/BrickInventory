@@ -1,7 +1,7 @@
 Gegenprobe: Der Ausgang prüft den Bereich erst nach dem Senden
 Modul: core-state
 Test: ch.brickinventoryapp.state.ExitSyncTest
-Rot: ein Konto-Wechsel vor dem Senden
+Rot: an account switch before sending sends no item with the new account
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt

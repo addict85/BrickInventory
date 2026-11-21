@@ -25,15 +25,15 @@ import org.junit.Test
  * Gegenproben:
  *   A  heute aus dem ERSTEN statt dem vorletzten Punkt → rot „heute ist die
  *      Differenz der letzten zwei Tage“
- *   B  gesamt = wert statt wert - kauf → rot „gesamt ist Wert minus Kaufpreis“
+ *   B  gesamt = wert statt wert - kauf → rot „total is value minus purchase price“
  *   C  in gvText() das Pluszeichen entfernt → rot „ein Gewinn trägt ein Plus“
  *   D  widgetDisplay() gibt immer `abgelegt` zurück → rot
- *      „abgemeldet zeigt das Widget keine Zahlen“
+ *      „signed out the widget shows no numbers“
  *   E  widgetValues() ohne die Abfrage von
- *      `zeigen` → rot „ohne Erlaubnis sind die Betraege verdeckt“;
+ *      `zeigen` → rot „without permission the amounts are hidden“;
  *      gegenproben/widget-zeigt-betraege.patch
  *   F  gegenproben/widget-guv-aus-allen.patch: Basis
- *      übergangen → rot „mit Basis stehen Wert und G&V wie in der Finanzkarte“
+ *      übergangen → rot „with a basis value and P&L stand as in the finance card“
  *      (32.40 statt 212.40)
  *   G  ohneToken() immer LEEREN → rot „ohne Token leert der Arbeiter nur abgemeldet …“;
  *      gegenproben/widget-leert-bei-sperre.patch
@@ -46,20 +46,20 @@ class WidgetNumbersTest {
         """{"success":true,"currency":"CHF","period":"week","points":[{"value":1200.0},{"value":1240.0},{"value":1250.5}]}""").alsAnsicht()
 
     @Test
-    fun `abgemeldet zeigt das Widget keine Zahlen`() {
+    fun `signed out the widget shows no numbers`() {
         val z = widgetNumbers(pnl, verlauf, jetzt = 7)!!
         assertNull("Die Ablage hält noch Zahlen, gezeigt werden sie nicht", widgetDisplay(z, angemeldet = false))
         assertEquals(z, widgetDisplay(z, angemeldet = true))
     }
 
     @Test
-    fun `ohne Token leert der Arbeiter nur abgemeldet, bei gesperrtem Geraet wartet er`() {
+    fun `without a token the worker clears only when signed out, with a locked device it waits`() {
         assertEquals(WithoutToken.LEEREN, ohneToken(deviceLocked = false))
         assertEquals(WithoutToken.LATER, ohneToken(deviceLocked = true))
     }
 
     @Test
-    fun `gesamt ist Wert minus Kaufpreis`() {
+    fun `total is value minus purchase price`() {
         val z = widgetNumbers(pnl, verlauf, jetzt = 7)!!
         assertEquals(1250.5, z.wert!!, 1e-9)
         assertEquals(250.5, z.gesamt!!, 1e-9)
@@ -69,14 +69,14 @@ class WidgetNumbersTest {
     }
 
     @Test
-    fun `heute ist die Differenz der letzten zwei Tage`() {
+    fun `today is the difference of the last two days`() {
         val z = widgetNumbers(pnl, verlauf, jetzt = 0)!!
         assertEquals(10.5, z.heute!!, 1e-9)
         assertEquals(10.5 / 1240.0 * 100, z.heuteProzent!!, 1e-9)
     }
 
     @Test
-    fun `ohne Antworten gibt es nichts zu zeigen, ohne Verlauf kein heute`() {
+    fun `without responses there is nothing to show, without history no today`() {
         assertNull(widgetNumbers(null, null, 0))
         val z = widgetNumbers(pnl, null, 0)!!
         assertNull(z.heute)
@@ -84,7 +84,7 @@ class WidgetNumbersTest {
     }
 
     @Test
-    fun `ein Gewinn traegt ein Plus, ein Verlust sein Minus`() {
+    fun `a profit carries a plus, a loss its minus`() {
         assertTrue(gvText(250.5, 25.05, Waehrung("CHF")).startsWith("+"))
         assertTrue(gvText(250.5, 25.05, Waehrung("CHF")).contains("%"))
         assertTrue(gvText(-3.0, null, Waehrung("CHF")).contains("3.00") || gvText(-3.0, null, Waehrung("CHF")).contains("3,00"))
@@ -92,7 +92,7 @@ class WidgetNumbersTest {
     }
 
     @Test
-    fun `ohne Erlaubnis sind die Betraege verdeckt`() {
+    fun `without permission the amounts are hidden`() {
         val z = widgetNumbers(pnl, verlauf, jetzt = 7)!!
         val verdeckt = widgetValues(z, zeigen = false)
         assertEquals(Triple(WIDGET_HIDDEN, WIDGET_HIDDEN, WIDGET_HIDDEN), verdeckt)
@@ -103,7 +103,7 @@ class WidgetNumbersTest {
 
     /** Die Prozentzahl rechnet der Server auf der Basis; der Betrag daneben muss es auch. */
     @Test
-    fun `mit Basis stehen Wert und G&V wie in der Finanzkarte`() {
+    fun `with a basis value and P&L stand as in the finance card`() {
         val basis = BrickJson.decodeFromString(PnlResponse.serializer(), """{"success":true,"currency":"CHF","totals":{
             "purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,"positionen":3,"positionen_bewertet":2,
             "positionen_ohne_marktpreis":1,"positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00",
@@ -116,7 +116,7 @@ class WidgetNumbersTest {
     }
 
     @Test
-    fun `die Ablage liest zurueck, was sie schrieb`() {
+    fun `the store reads back what it wrote`() {
         val z = widgetNumbers(pnl, verlauf, 42)!!
         val text = BrickJson.encodeToString(WidgetZahlen.serializer(), z)
         assertEquals(z, BrickJson.decodeFromString(WidgetZahlen.serializer(), text))

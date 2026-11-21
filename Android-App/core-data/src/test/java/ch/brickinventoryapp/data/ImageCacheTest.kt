@@ -62,7 +62,7 @@ class ImageCacheTest {
         EncryptedFileSystem.Jitter(folder.toOkioPath()) { ByteArray(32) { 8 } })
 
     @Test
-    fun `die Namen im Zwischenspeicher verraten die Adressen nicht`() {
+    fun `the names in the cache do not reveal the addresses`() {
         val bild = "SAMMLUNG-10179".toByteArray()
         server.enqueue(MockResponse().setBody(Buffer().write(bild)).setHeader("Cache-Control", "max-age=0"))
         server.start()
@@ -87,7 +87,7 @@ class ImageCacheTest {
     }
 
     @Test
-    fun `der Zwischenspeicher liegt verschluesselt und liefert offline trotzdem`() {
+    fun `the cache lies encrypted and still delivers offline`() {
         // Grösser als ein Abschnitt (64 KiB), damit auch das Zusammensetzen geprüft ist.
         val bild = ("SAMMLUNG-75192-" + "x".repeat(200_000)).toByteArray()
         server.enqueue(MockResponse().setBody(Buffer().write(bild)).setHeader("Cache-Control", "max-age=0").setHeader("ETag", "\"1\""))
@@ -115,7 +115,7 @@ class ImageCacheTest {
     }
 
     @Test
-    fun `ein Klartext-Zwischenspeicher aelterer Fassungen verschwindet, der verschluesselte bleibt`() {
+    fun `a plain-text cache of older versions disappears, the encrypted one stays`() {
         val cacheDir = File(folder, "cache")
         val http = File(cacheDir, "image_http_cache")
         val coil = File(cacheDir, "image_cache").apply { mkdirs() }
@@ -139,7 +139,7 @@ class ImageCacheTest {
 
     /** Ohne Endmarker gälte ein um ganze Abschnitte gekürztes Bild als vollständig. */
     @Test
-    fun `eine hinten gekuerzte Datei gilt nicht, eine fortgeschriebene schon`() {
+    fun `a file truncated at the end does not count, a continued one does`() {
         folder.mkdirs()
         val f = File(folder, "bild.1")
         val inhalt = ByteArray(200_000) { (it % 251).toByte() }
@@ -167,7 +167,7 @@ class ImageCacheTest {
     }
 
     @Test
-    fun `eine Datei unter fremdem Namen gilt nicht, eine umbenannte Zwischenstufe schon`() {
+    fun `a file under a foreign name does not count, a renamed intermediate stage does`() {
         folder.mkdirs()
         val a = File(folder, "a.0").toOkioPath()
         fs.sink(File(folder, "a.0.tmp").toOkioPath()).buffer().use { it.writeUtf8("Inhalt von a") }

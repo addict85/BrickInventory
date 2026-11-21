@@ -1,7 +1,7 @@
 Gegenprobe: Die Merkliste lädt nicht mehr, wenn jemand sie zeigt
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.WantedViewModelTest
-Rot: Liste und Detail laden, sobald jemand sie zeigt
+Rot: list and detail load as soon as someone shows them
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
 index b7b747b..6ac5dd8 100644

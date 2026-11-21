@@ -1,7 +1,7 @@
 Gegenprobe: minSdk in build-logic (Sdk.kt) auf 31 gehoben
 Modul: app
 Test: ch.brickinventoryapp.app.TargetSdkConfigTest
-Rot: minSdk ist Android 11
+Rot: minSdk is Android 11
 
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt

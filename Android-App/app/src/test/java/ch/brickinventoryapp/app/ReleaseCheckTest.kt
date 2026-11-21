@@ -23,7 +23,7 @@ import java.util.Base64
  *   E  in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
  *      signierte Beschreibung muss genau dieses APK nennen“ (ein anderes APK ging durch)
  *   F  in beschreibung() die Zeile `falsch += deadline(…)` gestrichen → rot
- *      „eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht“;
+ *      „a description without a valid deadline is not published“;
  *      gegenproben/beschreibung-ohne-frist.patch
  *   G  in schluessel() die Zeile `if geliefert[0] not in app`
  *      samt Rückgabe gestrichen → rot „ein Beschreibungsschluessel, den die App nicht
@@ -61,14 +61,14 @@ class ReleaseCheckTest {
     }
 
     @Test
-    fun `das hinterlegte Zertifikat wird angenommen`() {
+    fun `the stored certificate is accepted`() {
         assertEquals(0, pruefe("zertifikat", apksigner(release).path, datei("# Kommentar\n$release\n").path))
         val howKeytool = release.uppercase().chunked(2).joinToString(":")
         assertEquals("Mit Doppelpunkten wie keytool", 0, pruefe("zertifikat", apksigner(release).path, datei(howKeytool).path))
     }
 
     @Test
-    fun `ein fremdes Zertifikat wird abgelehnt, auch neben dem echten`() {
+    fun `a foreign certificate is rejected, even next to the real one`() {
         assertEquals(1, pruefe("zertifikat", apksigner(fremd).path, datei(release).path))
         assertEquals(1, pruefe("zertifikat", apksigner(release, fremd).path, datei(release).path))
         assertEquals("Ohne Zertifikat in der Ausgabe", 2, pruefe("zertifikat", datei("DOES NOT VERIFY").path, datei(release).path))
@@ -76,12 +76,12 @@ class ReleaseCheckTest {
     }
 
     @Test
-    fun `die hinterlegte Datei nennt das Release-Zertifikat`() {
+    fun `the stored file names the release certificate`() {
         assertEquals(0, pruefe("zertifikat", apksigner(release).path, "../tools/release-certificate.sha256"))
     }
 
     @Test
-    fun `ein Beschreibungsschluessel, den die App nicht kennt, wird abgelehnt`() {
+    fun `a description key the app does not know is rejected`() {
         val alt = pem()
         val neu = pem()
         val app = datei("# Kommentar\n$alt$neu").path
@@ -94,7 +94,7 @@ class ReleaseCheckTest {
     }
 
     @Test
-    fun `die Schluesseldatei der App ist fuer den Workflow lesbar`() {
+    fun `the app's key file is readable for the workflow`() {
         val returnValue = pruefe("schluessel", "/gibt/es/nicht.pem", "../core-resources/src/main/res/raw/beschreibungs_schluessel.pem")
         assertEquals("Der Workflow kann res/raw/beschreibungs_schluessel.pem nicht lesen", false, returnValue == 2)
     }
@@ -102,14 +102,14 @@ class ReleaseCheckTest {
     private fun version(code: Long, commit: String) = datei("""{"versionCode":$code,"versionName":"x","commit":"$commit"}""").path
 
     @Test
-    fun `nur ein neuerer Stand wird das neuste APK`() {
+    fun `only a newer state becomes the newest APK`() {
         assertEquals(0, pruefe("fassung", version(200001444, "aaa"), "200001445", "bbb"))
         assertEquals("Noch nichts veröffentlicht", 0, pruefe("fassung", "-", "200001445", "bbb"))
         assertEquals("Derselbe Commit noch einmal", 0, pruefe("fassung", version(200001444, "aaa"), "200001444", "aaa"))
     }
 
     @Test
-    fun `ein aelterer oder gleich alter Stand eines anderen Commits wird abgelehnt`() {
+    fun `an older or equally old state of another commit is rejected`() {
         assertEquals(1, pruefe("fassung", version(200001444, "aaa"), "200001443", "bbb"))
         assertEquals(1, pruefe("fassung", version(200001444, "aaa"), "200001444", "bbb"))
         assertEquals(2, pruefe("fassung", datei("kaputt").path, "200001445", "bbb"))
@@ -117,7 +117,7 @@ class ReleaseCheckTest {
     }
 
     @Test
-    fun `die signierte Beschreibung muss genau dieses APK nennen`() {
+    fun `the signed description must name exactly this APK`() {
         val apk = datei("apk-inhalt")
         val anderes = datei("anderes-apk")
         val meta = datei("""{"elements":[{"versionCode":200001445,"versionName":"1.2.3"}]}""").path
@@ -143,7 +143,7 @@ class ReleaseCheckTest {
     private val jetzt = System.currentTimeMillis() / 1000
 
     @Test
-    fun `eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht`() {
+    fun `a description without a valid deadline is not published`() {
         val apk = datei("apk-inhalt")
         val meta = datei("""{"elements":[{"versionCode":200001445,"versionName":"1.2.3"}]}""").path
         val ablage = "https://github.com/addict85/BrickInventory/releases/download/android-v1.2.3"

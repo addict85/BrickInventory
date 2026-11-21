@@ -34,7 +34,7 @@ class DesignStoreTest {
         testVertrauenschiffre())
 
     @Test
-    fun `das gemerkte Design ist beim naechsten Start sofort da`() = runBlocking {
+    fun `the remembered design is there immediately on the next start`() = runBlocking {
         val jetzt = ablage()
         assertEquals("Ohne Eintrag gilt der Standard", Design.CLASSIC, jetzt.rememberedDesign())
         jetzt.saveAppTheme(Design.BRICK)

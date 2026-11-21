@@ -1,7 +1,7 @@
 Gegenprobe: zu_viele_verbindungen hat keinen eigenen Satz mehr
 Modul: core-data
 Test: ch.brickinventoryapp.data.ErrorCodeTest
-Rot: Upload-Sperre, Verbindungsgrenze
+Rot: upload lock, connection limit and page limit each have their own sentence
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt

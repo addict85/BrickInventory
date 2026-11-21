@@ -1,7 +1,7 @@
 Gegenprobe: Ein Neustart des Geräts sperrt nur noch, wenn die neue Uhr unter dem gemerkten Zeitpunkt steht
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.AppLockTest
-Rot: nach einem Neustart gesperrt, auch wenn die Uhr schon weiter ist
+Rot: locked after a reboot, even if the clock is already further
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt

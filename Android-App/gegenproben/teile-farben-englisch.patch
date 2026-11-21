@@ -1,7 +1,7 @@
 Gegenprobe: Farbnamen unübersetzt und Teilenamen ohne Sprachauszeichnung
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Teile nennen Farben auf Deutsch
+Rot: parts name colors in German and names as English
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt

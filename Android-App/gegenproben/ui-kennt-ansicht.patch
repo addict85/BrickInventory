@@ -1,7 +1,7 @@
 Gegenprobe: ein Baustein in core-ui holt sich eine Ansicht der Bereiche
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: Schichtung der Kernmodule
+Rot: layering of the core modules
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt

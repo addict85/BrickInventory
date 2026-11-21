@@ -1,7 +1,7 @@
 Gegenprobe: Kennzahl fragt den Plural immer mit 2 („1 Exemplare“)
 Modul: core-ui-inventory
 Test: ch.brickinventoryapp.shared.MetricsPluralTest
-Rot: bei 1 steht auf Deutsch die Einzahl
+Rot: at 1 German shows the singular
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt

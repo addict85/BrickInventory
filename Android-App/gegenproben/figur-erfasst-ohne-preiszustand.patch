@@ -1,7 +1,7 @@
 Gegenprobe: das Erfassen einer Figur verliert, woher der Kaufpreis stammt
 Modul: core-data
 Test: ch.brickinventoryapp.data.PartsSlotValuesTest
-Rot: das Erfassen einer Figur meldet
+Rot: adding a figure reports new and the state of the purchase price
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FigurenRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FigurenRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FigurenRepositoryImpl.kt

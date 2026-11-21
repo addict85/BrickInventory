@@ -1,7 +1,7 @@
 Gegenprobe: Das Kaufdatum ist wieder ein kleiner Knopf ohne Tippgrösse und ohne Ansage, was er tut
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.PurchaseDateTest
-Rot: das Kaufdatum ist ein beschrifteter Knopf in voller Groesse
+Rot: the purchase date is a labelled full-size button in the language's date form
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt

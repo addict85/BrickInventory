@@ -1,7 +1,7 @@
 Gegenprobe: Der Tausch läuft auch bei gesperrtem Gerät; den neuen Token nimmt dann kein Schlüssel auf
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenSwapTest
-Rot: bei gesperrtem Geraet wird nicht getauscht
+Rot: with a locked device there is no swap, after unlocking there is
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
 index b4dff53..08c2ec4 100644

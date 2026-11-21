@@ -71,7 +71,7 @@ class AlterServerPinTest {
     private fun alterServer() = server.url("/brick").toString().trimEnd('/')
 
     @Test
-    fun `der alte Server mit eigener CA wird mit seinem Pin erreicht`() {
+    fun `the old server with its own CA is reached with its pin`() {
         starte(ROOT_SHEET_KEY, listOf(ROOT_SHEET, WURZEL))
         val pin = spkiFingerprint(zert(WURZEL))
         assertEquals(Entwertungsergebnis.ENTWERTET, redeemer.redeem(alterServer(), "altes-token", pin))
@@ -81,7 +81,7 @@ class AlterServerPinTest {
     }
 
     @Test
-    fun `ein anderer Schluessel unter dem Pin bekommt kein Token, und Warten hilft nicht`() {
+    fun `a different key under the pin gets no token, and waiting does not help`() {
         // Ein öffentlich gültiges Zertifikat (System kennt ROOT) genügt nicht, wo der Pin die eigene CA verlangt.
         starte(LEAF_KEY, listOf(LEAF, INTER))
         val pin = spkiFingerprint(zert(WURZEL))
@@ -90,7 +90,7 @@ class AlterServerPinTest {
     }
 
     @Test
-    fun `ohne Pin geht das Token nirgends hin`() {
+    fun `without a pin the token goes nowhere`() {
         starte(LEAF_KEY, listOf(LEAF, INTER))
         assertEquals(Entwertungsergebnis.GIVE_UP, redeemer.redeem(alterServer(), "altes-token", null))
         assertEquals(0, server.requestCount)

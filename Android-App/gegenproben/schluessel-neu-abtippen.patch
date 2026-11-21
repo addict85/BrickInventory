@@ -1,7 +1,7 @@
 Gegenprobe: Ein neuer Serverschlüssel wird auch mit CT-Pflicht abgetippt
 Modul: app
 Test: ch.brickinventoryapp.app.CertificateDialogTest
-Rot: mit CT-Pflicht steht ein neuer Serverschluessel ganz da
+Rot: with CT requirement a new server key is shown in full and applies without typing
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt

@@ -35,7 +35,7 @@ class AddExistingSetTest {
      * ein Set eines Unterkontos gilt als vorhanden.
      */
     @Test
-    fun `die Existenzpruefung schickt keinen Kontofilter mit`() {
+    fun `the existence check sends no account filter`() {
         val paths = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
         try {
             val sets = testSetCatalogRepository(TestApi.fuer(paths.server))
@@ -47,7 +47,7 @@ class AddExistingSetTest {
     }
 
     @Test
-    fun `der Auslöser wird auch ausgewertet und wieder zurückgesetzt`() {
+    fun `the trigger is also evaluated and reset again`() {
         // Ein gesetzter Auslöser ohne Empfänger wäre wirkungslos — und ohne
         // Zurücksetzen liesse sich dasselbe Set kein zweites Mal öffnen.
         // Der Erfassungsrahmen wertet aus, der Graph navigiert.

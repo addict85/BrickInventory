@@ -1,7 +1,7 @@
 Gegenprobe: Erfassen-Dialog wieder „Set-Nummer“ neben „Setnummer“
 Modul: app
 Test: ch.brickinventoryapp.app.StringResourceParityTest
-Rot: ein Begriff je Sache in beiden Sprachen
+Rot: one term per thing in both languages
 
 diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 --- a/Android-App/core-resources/src/main/res/values-de/strings.xml

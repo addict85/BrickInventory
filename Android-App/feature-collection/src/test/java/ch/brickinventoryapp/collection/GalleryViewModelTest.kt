@@ -100,7 +100,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `die Kennzahlen bringen Preis und G&V fuer die Kacheln mit`() {
+    fun `the key figures bring price and P&L for the tiles along`() {
         val vm = vm()
         vm.loadStats()
         assertTrue("Preise da", vm.preise.value.containsKey("75192-1"))
@@ -109,7 +109,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `Suche, Thema und Sortierung ueberstehen einen Prozess-Tod und reisen mit`() {
+    fun `search, theme and sorting survive a process death and travel along`() {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
         erstes.setGalleryTheme("Technic")
@@ -128,7 +128,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `Konto- und Lagerfilter der Galerie reisen mit und laden Liste und Kennzahlen`() {
+    fun `account and storage filters of the gallery travel along and load list and key figures`() {
         val vm = vm()
         vm.setScope(ScopeFilter.View.GALLERY, "own")
         assertTrue("Liste und Kennzahlen", vm.galleryState.value.sets.isNotEmpty() && vm.galleryState.value.stats != null)
@@ -141,7 +141,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `ein geloeschtes Set verschwindet aus der Ablage, und die Kennzahlen kommen neu`() {
+    fun `a deleted set disappears from the store, and the key figures come anew`() {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
@@ -155,7 +155,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `vorgemerktes Loeschen nimmt die Kachel sofort weg und fragt den Server erst danach`() {
+    fun `pending deletion removes the tile immediately and asks the server only afterwards`() {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
@@ -169,7 +169,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `die Kennzahlen zaehlen das vorgemerkte Set nicht und nach Rueckgaengig wieder`() {
+    fun `the key figures do not count the pending set and count it again after undo`() {
         paths.antworten["/api/v1/sets"] = """{"success":true,"total":2,"sets":[
             {"set_number":"75192-1","name":"Falke","pieces":7541,"minifigs":7,"quantity":1},
             {"set_number":"10294-1","name":"Titanic","pieces":9090,"minifigs":0,"quantity":2}]}"""
@@ -190,7 +190,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `Rueckgaengig holt das Set zurueck, ohne es je zu loeschen`() {
+    fun `undo brings the set back without ever deleting it`() {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
@@ -203,7 +203,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `die Snackbar eines abgeloesten Loeschens fuehrt das naechste nicht aus`() {
+    fun `the snackbar of a superseded deletion does not execute the next one`() {
         val vm = vm()
         vm.loadSets()
         vm.loeschenVormerken("10294-1", "Titanic")
@@ -223,7 +223,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `wer die Galerie zeigt, stoesst das Laden an, je Server einmal`() {
+    fun `whoever shows the gallery triggers loading, once per server`() {
         val vm = vm()
         t.sitzung.anmeldungGeaendert(paths.server.url("/").toString(), angemeldet = true)
         assertTrue("ohne Beobachter kein Abruf", fetches().isEmpty())
@@ -235,7 +235,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `beim Zeigen laedt die Galerie nur, wenn sie leer ist`() {
+    fun `when shown the gallery loads only if it is empty`() {
         val vm = vm()
         vm.loadIfEmpty()
         assertTrue("ohne Server kein Abruf", fetches().isEmpty())
@@ -248,7 +248,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `ein geaenderter Kauf aendert die Kachel, ohne die Liste neu zu holen`() {
+    fun `a changed purchase changes the tile without fetching the list again`() {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
@@ -265,7 +265,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `ein erfasstes Teil laedt die Kennzahlen, nicht die Set-Liste`() {
+    fun `an added part loads the key figures, not the set list`() {
         // Die Galerie zeigt Teile- und Figurenzahl aus den Kennzahlen; ohne
         // Nachladen bliebe sie nach dem Erfassen eines Teils stehen.
         val vm = vm()
@@ -281,7 +281,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `ein Filterwechsel vergisst die Rollposition der Galerie und nur sie`() {
+    fun `a filter change forgets the scroll position of the gallery and only that`() {
         // Die gemerkte Stelle zeigte sonst auf Sets, die in der neuen Liste
         // woanders oder gar nicht stehen.
         t.scrollMemory.merke("gallery", 40, 3)
@@ -293,7 +293,7 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `nach dem Abmelden ist die Galerie leer und ohne Filter`() {
+    fun `after sign-out the gallery is empty and without filters`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
         vm.loadSets()

@@ -1,7 +1,7 @@
 Gegenprobe: Titel des Teil-Dialogs wieder „Teil erfassen“
 Modul: app
 Test: ch.brickinventoryapp.app.UiUniformTest
-Rot: Texte sagen hinzufuegen und Preisvergleich
+Rot: texts say add and price comparison
 
 diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 --- a/Android-App/core-resources/src/main/res/values-de/strings.xml

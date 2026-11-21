@@ -20,7 +20,7 @@ import javax.crypto.BadPaddingException
  *
  * Gegenproben:
  *   A  vaultErrorPermanent() immer true (der alte Stand: jeder Fehler = weg) →
- *      rot „nur ein dauerhafter Fehler heisst Token weg“ und „ein vorübergehender
+ *      rot „only a permanent error means token gone“ und „ein vorübergehender
  *      Fehler wird einmal wiederholt“
  *   B  openWithRetry() mit `repeat(1)` → rot „… wird einmal wiederholt“
  *   C  readToken() meldet bei Gesperrt sofort „“ (`melde(alt ?: ""); return`) →
@@ -37,7 +37,7 @@ import javax.crypto.BadPaddingException
 class VaultLockTest {
 
     @Test
-    fun `nur ein dauerhafter Fehler heisst Token weg`() {
+    fun `only a permanent error means token gone`() {
         for (e in listOf(AEADBadTagException("tag"), BadPaddingException("x"),
                          KeyPermanentlyInvalidatedException("neu eingerichtet"),
                          UnrecoverableKeyException("x"), IllegalArgumentException("base64"))) {
@@ -51,7 +51,7 @@ class VaultLockTest {
     }
 
     @Test
-    fun `ein voruebergehender Fehler wird einmal wiederholt, ein dauerhafter nicht`() {
+    fun `a temporary error is retried once, a permanent one is not`() {
         var n = 0
         assertEquals(Tresorbefund.Readable("t"), openWithRetry {
             if (n++ == 0) throw KeyStoreException("kurz") else "t"
@@ -89,7 +89,7 @@ class VaultLockTest {
      * und lesbar; das Token muss zurückkommen, sonst stünde morgens die Anmeldemaske da.
      */
     @Test
-    fun `bei gesperrtem Geraet wartet das Lesen ohne Frist und meldet das Token nach dem Entsperren`() {
+    fun `with a locked device reading waits without a deadline and reports the token after unlocking`() {
         val night = VAULT_ATTEMPT_MS.size + VAULT_FOLLOW_UP_ATTEMPTS + 50
         var gelesen = 0
         val tresor = object : TokenEncryption {
@@ -113,7 +113,7 @@ class VaultLockTest {
     }
 
     @Test
-    fun `der Entsperr-Tresor legt unter dem strengen Schluessel ab und erkennt den Altbestand`() {
+    fun `the unlock vault stores under the strict key and recognizes the legacy stock`() {
         val tresor = EntsperrVault(Attrappe("streng"), Attrappe("immer"))
         val geheim = tresor.verschluessle("token")
         assertTrue(geheim, geheim.contains("streng("))
@@ -122,14 +122,14 @@ class VaultLockTest {
     }
 
     @Test
-    fun `ein Geheimtext ohne Praefix bleibt ueber den alten Schluessel lesbar`() {
+    fun `a ciphertext without prefix stays readable via the old key`() {
         val tresor = EntsperrVault(Attrappe("streng"), Attrappe("immer"))
         assertEquals(Tresorbefund.Readable("alt"), tresor.oeffne("immer(tla)"))
         assertTrue(tresor.veraltet("immer(tla)"))
     }
 
     @Test
-    fun `ein gesperrter Keystore beim Start wird abgewartet, ohne abzumelden`() {
+    fun `a locked keystore at start is waited for, without signing out`() {
         val (gemeldet, pausen) = lies(Sequence(Tresorbefund.Gesperrt, Tresorbefund.Gesperrt, Tresorbefund.Readable("token")))
         assertEquals("Kein leeres Token vor dem echten", listOf("token"), gemeldet)
         assertEquals(VAULT_ATTEMPT_MS.take(2), pausen)
@@ -137,7 +137,7 @@ class VaultLockTest {
     }
 
     @Test
-    fun `ein laenger gesperrter Keystore meldet das Token nach`() {
+    fun `a keystore locked for longer reports the token afterwards`() {
         val sperren = Array<Tresorbefund>(VAULT_ATTEMPT_MS.size + 3) { Tresorbefund.Gesperrt }
         val (gemeldet, pausen) = lies(Sequence(*sperren, Tresorbefund.Readable("token")))
         assertEquals("Erst die Anmeldemaske, dann wieder angemeldet", listOf("", "token"), gemeldet)
@@ -145,7 +145,7 @@ class VaultLockTest {
     }
 
     @Test
-    fun `ein dauerhaft gesperrter Keystore gibt irgendwann auf, ein fehlender Schluessel sofort`() {
+    fun `a permanently locked keystore gives up eventually, a missing key immediately`() {
         val (gemeldet, pausen) = lies(Sequence(Tresorbefund.Gesperrt))
         assertEquals(listOf(""), gemeldet)
         assertTrue("Höchstens zehn Minuten: ${pausen.sum()}", pausen.sum() <= 10 * 60_000L + VAULT_ATTEMPT_MS.sum())

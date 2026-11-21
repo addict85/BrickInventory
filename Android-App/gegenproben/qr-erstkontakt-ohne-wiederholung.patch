@@ -1,7 +1,7 @@
 Gegenprobe: Nach dem Ja zum Erstkontakt wird die QR-Anmeldung nicht wiederholt
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginViewModelTest
-Rot: nach dem Ja zum Erstkontakt meldet sich der QR-Code ohne neuen Scan an
+Rot: after the yes to the first contact the QR code signs in without a new scan
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt

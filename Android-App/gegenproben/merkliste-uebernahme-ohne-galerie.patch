@@ -1,7 +1,7 @@
 Gegenprobe: Ein übernommener Merkposten erscheint nicht in der Galerie
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.WantedViewModelTest
-Rot: eine Uebernahme nimmt den Merkposten aus der Ablage
+Rot: a takeover removes the wishlist item from the store and creates the set there
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt

@@ -24,7 +24,7 @@ import java.io.IOException
  *
  * Gegenproben:
  *   B  Ablageschluessel.hole() legt bei Gesperrt einen neuen Schlüssel an (wie bei
- *      Weg) → rot „ein gesperrter Keystore ersetzt den Schluessel nicht“
+ *      Weg) → rot „a locked keystore does not replace the key“
  *   C  Ablageschluessel.fuer() gibt den gemeinsamen Schlüssel statt eines
  *      abgeleiteten zurück → rot „der Schluessel entsteht einmal …“ und „Klartext
  *      und fremde Daten gelten nicht“ (Widget und Cache teilten einen Schlüssel)
@@ -54,7 +54,7 @@ class StoreEncryptionTest {
     private val datei = File(folder, "ablage.schluessel")
 
     @Test
-    fun `der Schluessel entsteht einmal und liegt nur umhuellt`() {
+    fun `the key is created once and lies only wrapped`() {
         val erster = Ablageschluessel(datei, tresor)
         val k = erster.fetch()
         assertEquals(32, k.size)
@@ -67,7 +67,7 @@ class StoreEncryptionTest {
     }
 
     @Test
-    fun `nach dem Erneuern ist alles Alte unlesbar, auch nach einem Neustart`() {
+    fun `after renewal everything old is unreadable, even after a restart`() {
         val k = Ablageschluessel(datei, tresor)
         var closed = 0
         k.beforeRenewal { closed++ }
@@ -83,7 +83,7 @@ class StoreEncryptionTest {
     }
 
     @Test
-    fun `ein gesperrter Keystore ersetzt den Schluessel nicht`() {
+    fun `a locked keystore does not replace the key`() {
         Ablageschluessel(datei, tresor).fetch()
         val vorher = datei.readText()
         tresor.situation = Tresorbefund.Gesperrt
@@ -101,7 +101,7 @@ class StoreEncryptionTest {
     }
 
     @Test
-    fun `Klartext und fremde Daten gelten nicht`() {
+    fun `plaintext and foreign data do not count`() {
         val k = Ablageschluessel(datei, tresor)
         val cipher = StoreCipher { k.fuer("antworten") }
         val geheim = cipher.verschluessle("Kaufpreis 499.99".toByteArray(), "antworten/a/sets.json")
@@ -113,7 +113,7 @@ class StoreEncryptionTest {
     }
 
     @Test
-    fun `eine Datei unter fremdem Namen gilt nicht`() {
+    fun `a file under a foreign name does not count`() {
         val k = Ablageschluessel(datei, tresor)
         val cipher = StoreCipher { k.fuer("antworten") }
         val geheim = cipher.verschluessle("Kaufpreis 499.99".toByteArray(), "antworten/a/sets.json")

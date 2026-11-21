@@ -1,7 +1,7 @@
 Gegenprobe: Eine Anmeldung bricht die Abrufe der vorigen nicht ab
 Modul: core-state
 Test: ch.brickinventoryapp.state.SessionServiceTest
-Rot: eine spaete Antwort des alten Kontos
+Rot: a late response of the old account does not write into the new session
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
 --- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt

@@ -1,7 +1,7 @@
 Gegenprobe: Ladefehler der Gutscheine wieder ohne Fehlerklasse
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.VoucherEmptyAndErrorTest
-Rot: ein Serverfehler nennt den Rat seiner Klasse
+Rot: a server error names the advice of its class and reloads on request
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 index c3f8e48..e30ae24 100644

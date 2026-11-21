@@ -1,7 +1,7 @@
 Gegenprobe: Das ViewModel reicht eine eigene Seitenquelle statt der eingespritzten
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.PdfViewerViewModelTest
-Rot: eine Seite rendert die Seitenquelle
+Rot: a page renders the page source in its own process, not the ViewModel
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt

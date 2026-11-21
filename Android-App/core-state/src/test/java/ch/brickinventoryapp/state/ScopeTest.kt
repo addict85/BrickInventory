@@ -63,7 +63,7 @@ class ScopeTest {
     }
 
     @Test(timeout = 5000)
-    fun `die gemerkten Filter kommen aus der Ablage`() = runTest {
+    fun `the remembered filters come from the store`() = runTest {
         ablage.konten["gallery"] = "own"
         ablage.lager["parts"] = "Kiste 3"
         blick.loadFilter()
@@ -73,14 +73,14 @@ class ScopeTest {
     }
 
     @Test
-    fun `ein gesetzter Filter wird gemerkt und gilt sofort`() = runTest {
+    fun `a set filter is remembered and applies immediately`() = runTest {
         blick.setAccount(ScopeFilter.View.FINANCE, "7")
         assertEquals("7", ablage.konten["finance"])
         assertEquals(Kontoauswahl.Konto(7), blick.accountFor(ScopeFilter.View.FINANCE))
     }
 
     @Test
-    fun `ein Filter auf ein Konto, das nicht mehr dazugehoert, faellt auf alle zurueck`() = runTest {
+    fun `a filter on an account that no longer belongs falls back to all`() = runTest {
         blick.setAccount(ScopeFilter.View.GALLERY, "9")
         blick.setAccount(ScopeFilter.View.PARTS, "7")
         server.enqueue(TestApi.antwort("""{"success":true,"members":[
@@ -92,7 +92,7 @@ class ScopeTest {
     }
 
     @Test
-    fun `eine Anmeldung beginnt mit allen Konten`() = runTest {
+    fun `a sign-in starts with all accounts`() = runTest {
         blick.setAccount(ScopeFilter.View.GALLERY, "own")
         blick.setzeLager(ScopeFilter.View.GALLERY, "Regal")
         blick.loginBegins()

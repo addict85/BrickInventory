@@ -1,7 +1,7 @@
 Gegenprobe: Sekundärtext im Design brick wieder #6B7785 (3,91:1 auf background)
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.TextContrastTest
-Rot: jede Schriftrolle erreicht
+Rot: every text role reaches 4,5 to 1 on its surface
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt

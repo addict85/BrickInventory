@@ -42,7 +42,7 @@ class ChecksumsComparisonTest {
     private val neu = metadata(Triple("a.bleibt", "1.0", "aaaa"), Triple("d.kommt", "3.0", "dddd"), Triple("c.kippt", "2.0", "2222"))
 
     @Test
-    fun `eine geaenderte Pruefsumme bei gleicher Fassung faellt auf`() {
+    fun `a changed checksum with the same version stands out`() {
         val text = compare(alt, neu)
         assertTrue(text, text.contains("| 1 | 1 | 1 |"))
         assertTrue(text, text.contains("| `c.kippt:x:2.0` | `x-2.0.jar` | Prüfsumme |"))
@@ -57,7 +57,7 @@ ${eintraege.joinToString("\n")}
     }
 
     @Test
-    fun `ein neu vertrauter Schluessel mit Gruppen-Regex steht hervorgehoben vorn`() {
+    fun `a newly trusted key with a group regex is highlighted at the front`() {
         val bisher = """<trusted-key id="AAAA" group="org.alt"/>"""
         val text = compare(schluessel(bisher), schluessel(bisher,
             """<trusted-key id="BBBB" group="org.einzeln" name="x" version="1.0"/>""",
@@ -70,7 +70,7 @@ ${eintraege.joinToString("\n")}
     }
 
     @Test
-    fun `eine neue Gruppe steht offen da, eine bekannte nicht`() {
+    fun `a new group stands open, a known one does not`() {
         val text = compare(alt, metadata(Triple("a.bleibt", "1.0", "aaaa"), Triple("a.bleibt", "2.0", "eeee"),
             Triple("d.kommt", "3.0", "dddd"), Triple("c.kippt", "2.0", "1111")))
         val section = text.substringAfter("### Neue Gruppen (1) — bitte ansehen", "").substringBefore("<details>")
@@ -78,7 +78,7 @@ ${eintraege.joinToString("\n")}
     }
 
     @Test
-    fun `neue und entfernte Komponenten stehen getrennt`() {
+    fun `new and removed components are listed separately`() {
         val text = compare(alt, neu)
         assertTrue(text, Regex("Neu \\(1\\)[^<]*</summary>\\s*- `d.kommt:x:3.0`").containsMatchIn(text))
         assertTrue(text, Regex("Entfernt \\(1\\)[^<]*</summary>\\s*- `b.geht:x:1.0`").containsMatchIn(text))

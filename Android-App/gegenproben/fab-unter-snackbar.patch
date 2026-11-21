@@ -1,7 +1,7 @@
 Gegenprobe: Der Erfassen-Knopf weicht der Snackbar nicht aus
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: Erfassen-Knopf steigt ueber die Snackbar
+Rot: add button rises above the snackbar
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt

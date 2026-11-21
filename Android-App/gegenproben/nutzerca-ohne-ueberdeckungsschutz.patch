@@ -1,7 +1,7 @@
 Gegenprobe: Die Rückfrage für Nutzer-CAs ohne Schutz vor Überlagerung
 Modul: app
 Test: ch.brickinventoryapp.app.ForeignEntryTest
-Rot: die Rueckfrage ist vor Ueberlagerung geschuetzt
+Rot: the confirmation is protected against overlays and passes the yes on
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/UserCaDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/UserCaDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/UserCaDialog.kt

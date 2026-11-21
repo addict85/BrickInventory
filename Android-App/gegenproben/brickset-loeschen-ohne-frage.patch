@@ -1,7 +1,7 @@
 Gegenprobe: Das Löschsymbol der Brickset-Warteschlange löscht wieder sofort
 Modul: feature-management
 Test: ch.brickinventoryapp.management.BackgroundButtonsTest
-Rot: Loeschen eines Brickset-Eintrags fragt erst nach
+Rot: deleting a Brickset entry asks first
 
 diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringSections.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringSections.kt
 index 2014dcf..a0f9cf7 100644

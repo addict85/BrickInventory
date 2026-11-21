@@ -26,7 +26,7 @@ class CatalogSerializationTest {
     private val json = BrickJson
 
     @Test
-    fun `meta-Antwort wird geparst`() {
+    fun `meta response is parsed`() {
         val payload = """{
             "success": true,
             "themes": [
@@ -47,7 +47,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `sets-Antwort wird geparst - inkl owned-Flags`() {
+    fun `sets response is parsed - incl owned flags`() {
         val payload = """{
             "success": true, "total": 2, "page": 1, "pages": 1,
             "sets": [
@@ -69,7 +69,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `detail-Antwort wird geparst`() {
+    fun `detail response is parsed`() {
         val payload = """{
             "success": true,
             "set": {"set_number": "6346-1", "name": "Shuttle Launching Crew", "year": 1992,
@@ -82,7 +82,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `unbekannte Zusatzfelder brechen das Parsen nicht`() {
+    fun `unknown extra fields do not break parsing`() {
         // Server-Erweiterungen (neue Felder) dürfen alte App-Versionen nicht brechen
         val payload = """{
             "success": true, "total": 0, "page": 1, "pages": 1, "sets": [],
@@ -93,7 +93,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `fehlende optionale Felder fallen auf Defaults zurueck`() {
+    fun `missing optional fields fall back to defaults`() {
         val payload = """{"success": true, "sets": [{"set_number": "42100-1"}], "total": 1}"""
         val r = json.decodeFromString<CatalogSetsResponse>(payload)
         val s = r.sets.single()
@@ -105,7 +105,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `fehler-Antwort wird geparst`() {
+    fun `error response is parsed`() {
         val r = json.decodeFromString<CatalogSetDetailResponse>(
             """{"success": false, "error": "Set nicht im Katalog gefunden"}"""
         )
@@ -117,7 +117,7 @@ class CatalogSerializationTest {
 class BrickLinkUrlsTest {
 
     @Test
-    fun `kauf-URL entspricht dem Webapp-Format`() {
+    fun `purchase URL matches the web app format`() {
         assertEquals(
             "https://www.bricklink.com/v2/catalog/catalogitem.page?S=6346-1#T=S&O={%22iconly%22:0}",
             BrickLinkUrls.setForSale("6346-1")
@@ -125,7 +125,7 @@ class BrickLinkUrlsTest {
     }
 
     @Test
-    fun `setnummer wird URL-encodiert`() {
+    fun `set number is URL-encoded`() {
         // Hypothetische Sonderzeichen dürfen die URL nicht zerbrechen
         val url = BrickLinkUrls.setForSale("10 30-1")
         assertTrue(url.contains("S=10+30-1") || url.contains("S=10%2030-1"))
@@ -143,7 +143,7 @@ class BrickLinkRefTest {
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
-    fun `bricklink-Feld wird uebernommen`() {
+    fun `bricklink field is taken over`() {
         val raw = """{"set_number":"5005358-1","bricklink":{"type":"GEAR","number":"5005358","url":"https://x/","resolved":true}}"""
         val d = json.decodeFromString<CatalogSetDetail>(raw)
         assertEquals("GEAR", d.bricklink?.type)
@@ -153,13 +153,13 @@ class BrickLinkRefTest {
     }
 
     @Test
-    fun `fehlendes bricklink-Feld bleibt null (Altserver)`() {
+    fun `missing bricklink field stays null (old server)`() {
         val d = json.decodeFromString<CatalogSetDetail>("""{"set_number":"75192-1"}""")
         assertEquals(null, d.bricklink)
     }
 
     @Test
-    fun `nicht gelisteter Artikel liefert url null`() {
+    fun `unlisted item delivers url null`() {
         val raw = """{"set_number":"x-1","bricklink":{"type":"NONE","number":"x-1","url":null,"resolved":true}}"""
         val d = json.decodeFromString<CatalogSetDetail>(raw)
         assertEquals("NONE", d.bricklink?.type)
@@ -167,7 +167,7 @@ class BrickLinkRefTest {
     }
 
     @Test
-    fun `Fallback-URL nutzt je Typ den richtigen Parameter`() {
+    fun `fallback URL uses the right parameter per type`() {
         // Set: S= und Nummer MIT Variantensuffix
         assertTrue(BrickLinkUrls.forSale("75192-1", "SET").contains("?S=75192-1"))
         assertTrue(BrickLinkUrls.forSale("75192-1", "SET").contains("#T=S"))

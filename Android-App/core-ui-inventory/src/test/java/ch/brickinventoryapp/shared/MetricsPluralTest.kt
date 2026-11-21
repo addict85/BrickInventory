@@ -70,21 +70,21 @@ class MetricsPluralTest {
         "|sets|copies|parts|minifigures|manuals|minifigure types|part types|colors)\\b")
 
     @Test
-    fun `bei 1 steht auf Deutsch die Einzahl`() {
+    fun `at 1 German shows the singular`() {
         val text = leiste("de-rCH", 1)
         assertEquals("Mehrzahl bei 1: $text", null, plural.find(text)?.value)
         assertTrue(text, "1 Exemplar" in text && "1 Anleitung" in text && "1 Teilesorte" in text)
     }
 
     @Test
-    fun `bei 1 steht auf Englisch die Einzahl`() {
+    fun `at 1 English shows the singular`() {
         val text = leiste("en-rGB", 1)
         assertEquals("Mehrzahl bei 1: $text", null, plural.find(text)?.value)
         assertTrue(text, "1 copy" in text && "1 minifigure" in text && "1 color" in text)
     }
 
     @Test
-    fun `bei 2 steht die Mehrzahl`() {
+    fun `at 2 the plural is shown`() {
         val text = leiste("de-rCH", 2)
         assertTrue(text, "2 Exemplare" in text && "2 Anleitungen" in text && "2 Minifigurensorten" in text)
     }

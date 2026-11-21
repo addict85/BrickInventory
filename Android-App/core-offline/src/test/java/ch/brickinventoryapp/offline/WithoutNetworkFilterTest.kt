@@ -114,7 +114,7 @@ class WithoutNetworkFilterTest {
     private fun loadSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Erfolg) }
 
     @Test
-    fun `Suche, Thema, Lagerort und Sortierung der Galerie wirken ohne Netz auf die ganze lokale Liste`() {
+    fun `search, theme, storage location and sorting of the gallery work offline on the whole local list`() {
         loadSetsOnline()
         offline = true
         assertEquals("Suche ohne Gross und Klein, über Seite 2 hinweg", listOf("10001-1", "10003-1"), setsOffline(search = "SEE"))
@@ -127,7 +127,7 @@ class WithoutNetworkFilterTest {
     }
 
     @Test
-    fun `ein Prozentzeichen oder Unterstrich in der Suche gilt wörtlich`() {
+    fun `a percent sign or underscore in the search counts literally`() {
         loadSetsOnline()
         offline = true
         assertEquals(listOf("30000-1"), setsOffline(search = "50_%"))
@@ -135,7 +135,7 @@ class WithoutNetworkFilterTest {
     }
 
     @Test
-    fun `Farbe, Kategorie, Ersatzteile und Suche der Teileliste wirken ohne Netz`() {
+    fun `color, category, spare parts and search of the parts list work offline`() {
         runBlocking { assertTrue(partsRepo.refreshParts() is Ergebnis.Erfolg) }
         offline = true
         assertEquals(listOf("3001/Red", "3023/Red"), partsOffline(color = "Red"))
@@ -148,7 +148,7 @@ class WithoutNetworkFilterTest {
     }
 
     @Test
-    fun `die Galerie filtert in Room, der Abruf fuellt nur die Ablage`() = runBlocking {
+    fun `the gallery filters in Room, the fetch only fills the store`() = runBlocking {
         assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Erfolg)
         assertEquals("alle Sets in der Ablage", sets.size, setsRepo.observeSets().first().liste.size)
         val city = setsRepo.observeSets(thema = "City", sort = Setsortierung.NUMMER).first().liste.map { it.setNumber }
@@ -159,7 +159,7 @@ class WithoutNetworkFilterTest {
     }
 
     @Test
-    fun `die Teile kommen ganz in die Ablage und filtern dort`() = runBlocking {
+    fun `the parts go into the store whole and filter there`() = runBlocking {
         assertTrue(partsRepo.refreshParts() is Ergebnis.Erfolg)
         assertEquals("alle Seiten der Teile in der Ablage", teile.size, partsRepo.observeParts().first().liste.size)
         assertEquals("die manuellen Teile ebenso", listOf("m1"), partsRepo.observeManualParts().first().liste.map { it.partNumber })

@@ -1,7 +1,7 @@
 Gegenprobe: Das Gutschein-PDF über der Seitengrenze gilt wieder als halb gelesen
 Modul: core-data
 Test: ch.brickinventoryapp.data.ErrorCodeTest
-Rot: Seitengrenze ist ein Fehler
+Rot: a PDF above the page limit is an error with sentence and code, not a half-read one
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Fehlercode.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Fehlercode.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Fehlercode.kt

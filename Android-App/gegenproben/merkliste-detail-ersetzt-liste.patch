@@ -1,7 +1,7 @@
 Gegenprobe: Merkposten-Detail steht nie neben der Liste
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Tablet zeigt Merkliste und Detail nebeneinander
+Rot: tablet shows wishlist and detail side by side
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt

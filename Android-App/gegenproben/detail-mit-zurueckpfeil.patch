@@ -1,7 +1,7 @@
 Gegenprobe: Detail neben der Liste mit Zurück-Pfeil statt Schliessen
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Tablet zeigt Merkliste und Detail nebeneinander
+Rot: tablet shows wishlist and detail side by side
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt

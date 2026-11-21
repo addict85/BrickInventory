@@ -1,7 +1,7 @@
 Gegenprobe: Ohne bekannte CA genügt ein Tipp, der Fingerabdruck muss nicht abgetippt werden
 Modul: core-state
 Test: ch.brickinventoryapp.state.RenderingAndTrustTest
-Rot: ohne bekannte CA zaehlt nur der abgetippte Fingerabdruck
+Rot: without a known CA only the typed fingerprint counts, discarding remembers nothing
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 index 6ec1f8a..ad57a2e 100644

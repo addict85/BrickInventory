@@ -24,21 +24,21 @@ import org.junit.Test
  * Im Gegenprobe-Commit gab `csvSequence()` im Fall „fertig" immer NACHLADEN
  * zurück, also ohne `warBeforeActive`.
  * Ergebnis: `351 tests completed, 1 failed`, und zwar
- * `ein seit Stunden fertiger Import laedt nicht nach` (Zeile 74).
+ * `an import finished hours ago does not reload` (Zeile 74).
  *
  * Zwei Dinge stehen damit fest. Erstens greift die Prüfung. Zweitens — und
  * darum ging der ganze Umbau — hätte die frühere Textsuche geschwiegen: Sie
  * sah in MainViewModel.kt nach, und dort steht der Aufruf von `csvSequence()`
  * unverändert richtig da. Der Fehler lag eine Datei weiter.
  *
- * Nur EIN Test wurde rot, nicht mehrere: `nur der Uebergang laedt nach` ist
+ * Nur EIN Test wurde rot, nicht mehrere: `only the transition reloads` ist
  * grün geblieben, weil der Bruch genau dessen Erwartung erfüllt. Ein Test, der
  * bei jedem Bruch anschlägt, prüft zu grob — hier trennt die Tabelle sauber.
  */
 class CsvStatusReloadTest {
 
     @Test
-    fun `nur der Uebergang laedt nach`() {
+    fun `only the transition reloads`() {
         assert(csvSequence(warBeforeActive = true, status = Laufstatus.FERTIG) == CsvSequence.NACHLADEN) {
             "Ein Import, der gerade fertig geworden ist, muss die Daten neu laden — " +
                 "sonst bleibt nach dem Import die alte Liste stehen."
@@ -46,7 +46,7 @@ class CsvStatusReloadTest {
     }
 
     @Test
-    fun `ein seit Stunden fertiger Import laedt nicht nach`() {
+    fun `an import finished hours ago does not reload`() {
         // Der Rücksprung: Der Strom meldet „done" weiter, ohne dass
         // vorher noch etwas lief.
         for (status in listOf("done", "cancelled", "finished")) {
@@ -59,7 +59,7 @@ class CsvStatusReloadTest {
     }
 
     @Test
-    fun `ein laufender Import startet den Dienst genau einmal`() {
+    fun `a running import starts the service exactly once`() {
         for (status in listOf("running", "pending")) {
             assert(csvSequence(warBeforeActive = false, status = Laufstatus.aus(status)) == CsvSequence.DIENST_STARTEN) {
                 "Beim Anlaufen (\"$status\") muss der Vordergrunddienst starten"
@@ -72,7 +72,7 @@ class CsvStatusReloadTest {
     }
 
     @Test
-    fun `pending zaehlt als laufend`() {
+    fun `pending counts as running`() {
         // Sonst wirkt die App zwischen Auftragsannahme und erster Zeile
         // eingefroren: kein Banner, kein Dienst.
         assert(importRunning(Laufstatus.WARTET)) { "pending gilt nicht mehr als laufend" }
@@ -82,7 +82,7 @@ class CsvStatusReloadTest {
     }
 
     @Test
-    fun `ein Fehler laedt nicht nach`() {
+    fun `an error does not reload`() {
         // Ein gescheiterter Import hat nichts geliefert, was sich nachzuladen
         // lohnte — und würde die Liste trotzdem zurücksetzen.
         assert(csvSequence(warBeforeActive = true, status = Laufstatus.FEHLER) == CsvSequence.FEHLER_AUFRAEUMEN)
@@ -90,7 +90,7 @@ class CsvStatusReloadTest {
     }
 
     @Test
-    fun `eine Meldung ohne Zustand loest nichts aus`() {
+    fun `a message without state triggers nothing`() {
         // status == null heisst nicht „fertig", sondern „unvollständige Meldung".
         assert(csvSequence(warBeforeActive = true, status = null) == CsvSequence.NICHTS)
         assert(csvSequence(warBeforeActive = false, status = null) == CsvSequence.NICHTS)

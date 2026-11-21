@@ -99,7 +99,7 @@ object Modulkanten {
             k.von.startsWith("feature-") && k.nach in depthCores && k.von !in depthCores.getValue(k.nach) ->
                 "${k.von} hängt an ${k.nach}, das unter dem Zustand liegt"
             k.von.startsWith("core-") && k.nach !in kerne[k.von].orEmpty() ->
-                "Schichtung der Kernmodule: ${k.von} hängt an ${k.nach}" +
+                "layering of the core modules: ${k.von} hängt an ${k.nach}" +
                     if (k.von in kerne) "" else " (${k.von} hat keine Regel in Modulkanten.kerne)"
             else -> null
         }

@@ -1,7 +1,7 @@
 Gegenprobe: die Teile werden ohne den Kontofilter des Blickfelds vorgewärmt
 Modul: core-state
 Test: ch.brickinventoryapp.state.CollectionWarmUpTest
-Rot: vorgewaermt wird jeder Reiter
+Rot: every tab of the collection in view is warmed, not the catalog
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt

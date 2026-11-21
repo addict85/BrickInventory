@@ -144,7 +144,7 @@ class LargeFontAndTabletTest {
     }
 
     @Test
-    fun `Reiterleiste bricht bei 200 Prozent kein Wort um`() {
+    fun `tab bar breaks no word at 200 percent`() {
         val targets = fiveTargets
         zeige(schrift = 2f) {
             val nav = rememberNavController()
@@ -169,7 +169,7 @@ class LargeFontAndTabletTest {
 
     /** Bei 200 % stehen die Beschriftungen mindestens anderthalbmal so gross da wie bei 100 %. */
     @Test
-    fun `Reiterbeschriftung waechst bei 200 Prozent mindestens aufs Anderthalbfache`() {
+    fun `tab label grows at 200 percent at least to one and a half times`() {
         val targets = fiveTargets
         var normal = 0f
         zeige(schrift = 2f) {
@@ -204,7 +204,7 @@ class LargeFontAndTabletTest {
      * sein, sonst fiele auch eine tiefere Untergrenze nie ins Gewicht.
      */
     @Test
-    fun `Reiterleiste schrumpft nie unter die normale Schriftgroesse`() {
+    fun `tab bar never shrinks below the normal font size`() {
         val targets = listOf(SammlungZiel.Gallery to R.string.nav_collection, FinanzZiel.Finance to R.string.nav_settings,
             SammlungZiel.Wanted to R.string.nav_wanted, KatalogZiel.Catalog to R.string.nav_catalog, AppTarget.Mehr to R.string.nav_more)
             .map { (ziel, text) -> ziel to ctx.getString(text) }
@@ -234,18 +234,18 @@ class LargeFontAndTabletTest {
     // Gegenprobe zustand-feste-spalte: Beschriftung bei jeder Schrift in der festen
     // 90-dp-Spalte → rot „Zustandszeile: „Zustand“ steht in 2 Zeilen“.
     @Test
-    fun `Zustandszeile bricht bei 200 Prozent kein Wort um`() {
+    fun `state row breaks no word at 200 percent`() {
         zeige(schrift = 2f) { Zustandszeile(zustand = Zustand.NEU, onZustand = {}) }
         wholeOneRow(ctx.getString(R.string.common_condition), "Zustandszeile")
     }
 
     @Test
-    fun `Such-Platzhalter der Galerie steht auf dem Telefon ganz da`() = suchPlaceholderWhole(1f)
+    fun `search placeholder of the gallery is shown in full on the phone`() = suchPlaceholderWhole(1f)
 
     // Gegenprobe suche-gross-neben-knoepfen: Knöpfe auch bei grosser Schrift neben
     // dem Feld → rot „Such-Platzhalter 200 %: … sichtbar bis 5/7“.
     @Test
-    fun `Such-Platzhalter der Galerie steht auch bei 200 Prozent ganz da`() = suchPlaceholderWhole(2f)
+    fun `search placeholder of the gallery is shown in full at 200 percent too`() = suchPlaceholderWhole(2f)
 
     private fun suchPlaceholderWhole(schrift: Float) {
         val world = Examples.Welt(ContextTexts())
@@ -277,7 +277,7 @@ class LargeFontAndTabletTest {
 
     /** Zwei Punkte ohne Achse lasen sich wie ein Trend; erst ab drei steht eine Linie da. */
     @Test
-    fun `Preisverlauf zeigt unter drei Punkten keine Linie und nennt Tief und Hoch`() {
+    fun `price history shows no line below three points and names low and high`() {
         val punkte = androidx.compose.runtime.mutableIntStateOf(2)
         zeige {
             Column {
@@ -305,7 +305,7 @@ class LargeFontAndTabletTest {
 
     /** Listen-Detail wie in der Merkliste: Das Teil steht rechts, die Liste bleibt links stehen. */
     @Test
-    fun `Tablet zeigt Teil und Liste nebeneinander`() {
+    fun `tablet shows part and list side by side`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val world = Examples.Welt(ContextTexts())
         try {

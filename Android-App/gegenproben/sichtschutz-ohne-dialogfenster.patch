@@ -1,7 +1,7 @@
 Gegenprobe: Sichtschutz setzt FLAG_SECURE nur auf das Fenster der Activity, nicht auf das Dialogfenster
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.components.DialogPrivacyScreenTest
-Rot: ein aufgedecktes Passwort im Dialog
+Rot: a revealed password in the dialog is protected immediately and free again afterwards
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt

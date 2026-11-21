@@ -56,7 +56,7 @@ class SchluesselbindungTest {
         runBlocking { Schluesselbindung(server, keystore, Dispatchers.Unconfined).bind() }
 
     @Test
-    fun `die Nonce des Servers wird zur Challenge, die ganze Kette geht zum Server`() {
+    fun `the server's nonce becomes the challenge, the whole chain goes to the server`() {
         val server = Server(Schluesselnonce.Nonce(nonce))
         val keystore = Keystore { listOf(blatt, zwischen) }
         assertEquals(Schluesselbindung.Ausgang.Gebunden, bind(server, keystore))
@@ -68,7 +68,7 @@ class SchluesselbindungTest {
     }
 
     @Test
-    fun `ein Geraet ohne Attestation bekommt eine Meldung und schickt nichts`() {
+    fun `a device without attestation gets a message and sends nothing`() {
         for (keystore in listOf(Keystore { error("Attestation nicht unterstützt") }, Keystore { listOf(blatt) })) {
             val server = Server(Schluesselnonce.Nonce(nonce))
             assertEquals(Schluesselbindung.Ausgang.WithoutAttestation, bind(server, keystore))
@@ -77,13 +77,13 @@ class SchluesselbindungTest {
     }
 
     @Test
-    fun `eine Absage des Servers kommt mit ihrem Satz an`() {
+    fun `a refusal of the server arrives with its sentence`() {
         val server = Server(Schluesselnonce.Nonce(nonce), Schrittantwort.Rejected("nicht bestätigt"))
         assertEquals(Schluesselbindung.Ausgang.Rejected("nicht bestätigt"), bind(server, Keystore { listOf(blatt, zwischen) }))
     }
 
     @Test
-    fun `ohne Nonce entsteht kein Schluessel`() {
+    fun `without a nonce no key is created`() {
         val keystore = Keystore { listOf(blatt, zwischen) }
         for (rejection in listOf(Schluesselnonce.Rejected("Bitte neu anmelden."), Schluesselnonce.Rejected(null))) {
             val server = Server(rejection)

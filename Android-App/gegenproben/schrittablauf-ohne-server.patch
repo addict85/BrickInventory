@@ -1,7 +1,7 @@
 Gegenprobe: Nach der Gerätesperre geht es weiter, ohne dass der Server die Signatur geprüft hat
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.SchrittfreigabeTest
-Rot: lehnt der Server die Signatur ab
+Rot: if the server rejects the signature, it does not continue
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt

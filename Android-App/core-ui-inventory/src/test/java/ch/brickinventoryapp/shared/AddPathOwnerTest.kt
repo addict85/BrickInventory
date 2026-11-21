@@ -29,7 +29,7 @@ class AddPathOwnerTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `der Barcode-Dialog zeigt die Auswahl an`() {
+    fun `the barcode dialog shows the selection`() {
         // Der Dialog steht in BarcodeResultDialog.kt; der Erfassungsrahmen zeigt ihn. Beide
         // Dateien, damit die Regel gefunden wird, wo sie steht.
         val nav = code(read("collection/ui/Erfassungsrahmen.kt") + "\n" + read("collection/ui/dialogs/BarcodeResultDialog.kt"))
@@ -48,7 +48,7 @@ class AddPathOwnerTest {
     }
 
     @Test
-    fun `alle Erfassungswege fragen den Eigentuemer ab`() {
+    fun `all adding paths ask for the owner`() {
         // Wächter gegen den nächsten vergessenen Weg.
         val routes = listOf(
             "collection/ui/screens/GalerieErfassen.kt" to "Set über die Galerie",
@@ -65,10 +65,10 @@ class AddPathOwnerTest {
     /**
      * Die Umrechnung der Eingaben steht an einer Stelle (erfassungsWerte): Die Dialoge benutzen sie (Struktur), und sie wird hier ausgeführt.
      * Gegenprobe: in erfassungsWerte `haushalt.size > 1` →
-     * `haushalt.size > 0` → rot „ohne Haushalt geht kein Eigentuemer mit“.
+     * `haushalt.size > 0` → rot „without a household no owner goes along“.
      */
     @Test
-    fun `ohne Haushalt geht kein Eigentuemer mit`() {
+    fun `without a household no owner goes along`() {
         for (datei in listOf("parts/ui/screens/PartsDialogs.kt", "parts/ui/screens/FigurenErfassen.kt")) {
             assert(code(read(datei)).contains("erfassungsWerte(")) {
                 "$datei rechnet die Eingaben wieder selbst um statt über erfassungsWerte()"

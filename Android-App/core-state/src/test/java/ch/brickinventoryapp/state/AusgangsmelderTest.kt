@@ -58,7 +58,7 @@ class AusgangsmelderTest {
     }
 
     @Test
-    fun `offline Gespeichertes wird gemeldet, gesendet lädt nach, abgelehnt sagt warum`() = runTest {
+    fun `things saved offline are reported, sent reloads, rejected says why`() = runTest {
         val situation = Lage()
         val fake = FakeApi()
         val kanal = MeldungsKanal()
@@ -86,7 +86,7 @@ class AusgangsmelderTest {
     }
 
     @Test
-    fun `ein Verworfenes bleibt, bis sein Hinweis weggeraeumt ist, dann kommt das naechste`() = runTest {
+    fun `a discarded item stays until its hint is cleared, then the next one comes`() = runTest {
         val situation = Lage()
         val kanal = MeldungsKanal()
         val erstes = DiscardedChange("k1", "10001-1", "gibt es nicht", 404)
@@ -103,26 +103,26 @@ class AusgangsmelderTest {
     }
 
     @Test
-    fun `ein nach dem Update unlesbarer Posten wird als solcher gemeldet`() = runTest {
+    fun `an item unreadable after the update is reported as such`() = runTest {
         val situation = Lage()
         val kanal = MeldungsKanal()
         situation.verworfen.value = listOf(DiscardedChange("k1", "10001-1", "", null, unlesbar = true))
         Ausgangsmelder(situation, testBestandsabgleich(FakeApi().api, Testablage()), kanal).starte(backgroundScope)
         runCurrent()
-        assertEquals("ein nach dem Update unlesbarer Posten wird als solcher gemeldet",
+        assertEquals("an item unreadable after the update is reported as such",
             Meldung.Resource(R.string.offline_verworfen, listOf("10001-1", Meldung.Resource(R.string.offline_verworfen_unlesbar))),
             kanal.meldung.value)
     }
 
     @Test
-    fun `ein zweiter Start folgt dem Ausgang nicht doppelt`() = runTest {
+    fun `a second start does not follow the outbox twice`() = runTest {
         val situation = Lage()
         val kanal = MeldungsKanal()
         val melder = Ausgangsmelder(situation, testBestandsabgleich(FakeApi().api, Testablage()), kanal)
         melder.starte(backgroundScope)
         melder.starte(backgroundScope)
         runCurrent()
-        assertEquals("ein zweiter Start folgt dem Ausgang nicht doppelt", 1, situation.geplant)
+        assertEquals("a second start does not follow the outbox twice", 1, situation.geplant)
         assertEquals(1, situation.zahl.subscriptionCount.value)
     }
 }

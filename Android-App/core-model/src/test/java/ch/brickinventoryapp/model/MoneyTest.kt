@@ -19,13 +19,13 @@ import java.util.Locale
  *
  * Gegenproben (Patches unter gegenproben/):
  *   geld-schneidet-ab        Geld.aus schneidet statt zu runden → rot „ein Betrag wird auf vier Stellen gerundet …“
- *   geld-rappen-halb-gerade  onRappen mit HALF_EVEN → rot „auf Rappen gerundet wird halb von der Null weg“
+ *   geld-rappen-halb-gerade  onRappen mit HALF_EVEN → rot „rounding to centimes goes half away from zero“
  *   tag-mit-versatz          Instant.kalendertag mit +02:00 statt UTC → rot „der Kalendertag ist der des Servers …“
  */
 class MoneyTest {
 
     @Test
-    fun `ein Betrag wird auf vier Stellen gerundet wie inZehntel4 des Servers`() {
+    fun `an amount is rounded to four places like the server's inZehntel4`() {
         assertEquals(Geld(10_050), Geld.aus(1.005))
         assertEquals(Geld(1_203_333), Geld.aus(120.3333))
         assertEquals(Geld(-1_000), Geld.aus(-0.1))
@@ -37,7 +37,7 @@ class MoneyTest {
     }
 
     @Test
-    fun `Summen und Mengen bleiben exakt, wo Double abwiche`() {
+    fun `sums and quantities stay exact where Double would deviate`() {
         val sum = Geld.aus(0.1)!! + Geld.aus(0.2)!!
         assertEquals(Geld.aus(0.3), sum)
         assertEquals("120,3333 × 2 bleibt 240,67", BigDecimal("240.67"), (Geld.aus(120.3333)!! * 2).onRappen())
@@ -45,14 +45,14 @@ class MoneyTest {
     }
 
     @Test
-    fun `auf Rappen gerundet wird halb von der Null weg`() {
+    fun `rounding to centimes goes half away from zero`() {
         assertEquals(BigDecimal("1.01"), Geld(10_050).onRappen())
         assertEquals(BigDecimal("0.03"), Geld(250).onRappen())
         assertEquals(BigDecimal("-0.03"), Geld(-250).onRappen())
     }
 
     @Test
-    fun `ein Zeitpunkt liest Zeitstempel mit Zone, ohne Zone und einen blossen Tag`() {
+    fun `a point in time reads timestamps with zone, without zone and a bare day`() {
         assertEquals(Instant.parse("2026-09-03T15:00:32.194Z"), zeitpunkt("2026-09-03T15:00:32.194Z"))
         assertEquals(Instant.parse("2026-09-03T13:00:00Z"), zeitpunkt("2026-09-03T15:00:00+02:00"))
         assertEquals(Instant.parse("2026-09-03T15:00:00Z"), zeitpunkt("2026-09-03 15:00:00"))
@@ -62,7 +62,7 @@ class MoneyTest {
     }
 
     @Test
-    fun `der Kalendertag ist der des Servers, nicht der der Geraetezone`() {
+    fun `the calendar day is the server's, not that of the device zone`() {
         // Kurz vor Mitternacht UTC: In einer Zone östlich von UTC wäre es schon der nächste Tag.
         assertEquals("03.09.2026", fmtDatum(Instant.parse("2026-09-03T23:30:00Z"), Locale.GERMANY))
         assertEquals("03.09.26", fmtDatum(zeitpunkt("2026-09-03"), Locale.GERMANY, DateYear.SHORT))
@@ -70,7 +70,7 @@ class MoneyTest {
     }
 
     @Test
-    fun `die Herkunft einer Figur kennt Set und manuell, Unbekanntes zaehlt als Set`() {
+    fun `the origin of a figure knows set and manual, unknown counts as set`() {
         assertEquals(Herkunft.MANUELL, Herkunft.aus("manual"))
         assertEquals(Herkunft.SET, Herkunft.aus("set"))
         assertEquals(Herkunft.SET, Herkunft.aus(null))

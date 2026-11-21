@@ -37,7 +37,7 @@ class QuantityBadgeTest {
     // Gegenproben: mengeAusSet() zurück auf "$menge×" → rot;
     // mengeManuell() auf "$menge×" → rot.
     @Test
-    fun `die Menge steht ueberall als Zeichen vor der Zahl`() {
+    fun `the quantity stands everywhere as a symbol before the number`() {
         assertEquals("×3", mengeManuell(3))
         assertEquals("×3", mengeAusSet(3))
     }
@@ -47,7 +47,7 @@ class QuantityBadgeTest {
      * Kacheln sie benutzen. Ohne das könnte eine wieder eine eigene bauen.
      */
     @Test
-    fun `alle Kacheln holen die Plakette von derselben Stelle`() {
+    fun `all tiles get the badge from the same place`() {
         assert(code(read("shared/ui/ManualItemComposables.kt")).contains("mengeManuell(menge)")) {
             "ManuelleKachel schreibt die Menge wieder selbst"
         }
@@ -65,7 +65,7 @@ class QuantityBadgeTest {
     }
 
     @Test
-    fun `die Textressource fuer die Plakette ist weg und wird nicht wieder benutzt`() {
+    fun `the text resource for the badge is gone and is not used again`() {
         // Eine Ressource, die in beiden Sprachen dasselbe Zeichen enthaelt, sagt
         // nur, dass hier jemand uebersetzen koennte — und genau das hat den
         // Unterschied ueberhaupt erst verdeckt.

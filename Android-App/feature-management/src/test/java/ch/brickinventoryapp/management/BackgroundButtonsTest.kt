@@ -78,7 +78,7 @@ class BackgroundButtonsTest {
         compose.onNode(hasContentDescription(name) and hasClickAction()).also { it.fetchSemanticsNode("Kein Knopf „$name“") }
 
     @Test
-    fun `Leeren fragt erst nach und leert dann die eine Auftragsart`() {
+    fun `clearing asks first and then clears the one job kind`() {
         zeige()
         val bilder = text(R.string.art_bilder)
         button(text(R.string.hintergrund_leeren_cd, bilder)).performScrollTo().performClick()
@@ -96,7 +96,7 @@ class BackgroundButtonsTest {
     }
 
     @Test
-    fun `jeder Knopf nennt TalkBack die Auftragsart und das Set`() {
+    fun `every button names the job kind and the set to TalkBack`() {
         zeige()
         val bilder = text(R.string.art_bilder)
         val preise = text(R.string.art_preise)
@@ -112,7 +112,7 @@ class BackgroundButtonsTest {
     }
 
     @Test
-    fun `Loeschen eines Brickset-Eintrags fragt erst nach`() {
+    fun `deleting a Brickset entry asks first`() {
         val geloescht = mutableListOf<String>()
         compose.setContent {
             BrickInventoryManagerTheme {

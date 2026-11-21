@@ -1,7 +1,7 @@
 Gegenprobe: core-network bindet Room ein und hängt damit wieder an der Ablage
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: Schichtung der Kernmodule
+Rot: layering of the core modules
 
 diff --git a/Android-App/core-network/build.gradle.kts b/Android-App/core-network/build.gradle.kts
 --- a/Android-App/core-network/build.gradle.kts

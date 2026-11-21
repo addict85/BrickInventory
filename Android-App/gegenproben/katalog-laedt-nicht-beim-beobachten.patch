@@ -1,7 +1,7 @@
 Gegenprobe: der Katalog lädt nicht mehr, wenn ihn jemand beobachtet
 Modul: feature-catalog
 Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
-Rot: wer den Katalog sieht
+Rot: whoever sees the catalog loads it, returning does not load again
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt

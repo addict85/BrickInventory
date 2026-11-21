@@ -230,7 +230,7 @@ class FormsAndMarginsTest {
     // ── Kaufpreise ──
 
     @Test
-    fun `die Kaufpreise tragen Feldbeschriftungen statt Spaltenkoepfen`() {
+    fun `the purchase prices carry field labels instead of column headers`() {
         val vm = world.t.merke(KaeufeViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, world.t.changes,
             testHouseholdRepository(world.t.api), world.t.sets(), testFinancesRepository(world.t.api), testPartsRepository(world.t.api),
             testMinifigsRepository(world.t.api)))
@@ -256,13 +256,13 @@ class FormsAndMarginsTest {
     }
 
     @Test
-    fun `Set-Erfassen nennt Anzahl, Preis und Lagerort mit Hilfezeile`() {
+    fun `adding a set names quantity, price and storage location with a help line`() {
         val root = openDialog { AddSetDialog(onDismiss = {}, onAdd = {}, lagerorte = listOf("Keller"), immediatelyFocus = false) }
         checkHints("Set", texts(root).map { it.first }, R.string.gallery_quantity_hint)
     }
 
     @Test
-    fun `Teile-Erfassen nennt Anzahl, Preis je Stueck und Lagerort mit Hilfezeile`() {
+    fun `adding parts names quantity, price per piece and storage location with a help line`() {
         zeige {
             Column {
                 ErfassungsFelder(anzahl = "1", onCount = {}, countHint = text(R.string.parts_quantity_hint),
@@ -275,7 +275,7 @@ class FormsAndMarginsTest {
     }
 
     @Test
-    fun `Barcode nennt die Nummer beim Namen und hat dieselben Hilfezeilen`() {
+    fun `barcode names the number by its name and has the same help lines`() {
         val zustand = BarcodeDialogZustand(AppUiState(), ScopeUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", ownershipQuantity = 1), LagerUiState())
         val root = openDialog { BarcodeResultDialog(zustand, erfassung(), SampleImages.loader(ctx)) }
@@ -291,7 +291,7 @@ class FormsAndMarginsTest {
     // ── Hintergrundarbeiten ──
 
     @Test
-    fun `Hintergrundarbeiten mit einem Titel, buendigen Karten, eigener Darstellung und Schaltern`() {
+    fun `background work with a title, flush cards, own display and switches`() {
         world.paths.antworten["/api/v1/admin/auftraege"] = """{"success":true,
             "auftraege":[{"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,
                "due_at":"2026-10-30T10:00:00Z","deadline_at":null,"started_at":null,"created_at":"2026-10-30T09:59:00Z",
@@ -323,7 +323,7 @@ class FormsAndMarginsTest {
     // ── Gutscheine ──
 
     @Test
-    fun `Gutscheine anlegen schwebt, Guthaben und PDF stehen im Menue der Leiste`() {
+    fun `creating vouchers floats, balance and PDF are in the bar's menu`() {
         zeige { Gutscheine() }
         for (id in listOf(R.string.vouchers_balance_all, R.string.vouchers_export))
             assertEquals("„${text(id)}“ steht ohne Menü da", 0, compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().size)
@@ -356,7 +356,7 @@ class FormsAndMarginsTest {
     }
 
     @Test
-    fun `auf dem Tablet stehen Galerie und Set-Detail gleichzeitig nebeneinander`() {
+    fun `on the tablet gallery and set detail stand side by side at the same time`() {
         galleryAndDetail(Examples.SET)
         val breite = ctx.resources.displayMetrics.widthPixels
         val kachel = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
@@ -366,7 +366,7 @@ class FormsAndMarginsTest {
     }
 
     @Test
-    fun `auf dem Tablet steht ohne gewaehltes Set rechts ein Hinweis neben der Galerie`() {
+    fun `on the tablet without a selected set a hint stands next to the gallery on the right`() {
         galleryAndDetail(null)
         val kachel = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val hinweis = compose.onNode(hasText(text(R.string.gallery_detail_leer))).fetchSemanticsNode().boundsInRoot
@@ -376,7 +376,7 @@ class FormsAndMarginsTest {
     // ── Bauliste bei 200 % ──
 
     @Test
-    fun `Bauliste erstellen bleibt bei 200 Prozent einzeilig und nennt die Zahl der Sets`() {
+    fun `creating a build list stays on one line at 200 percent and names the number of sets`() {
         val sets = listOf(PlSet("75192-1", "Millennium Falcon"), PlSet("21318-1", "Baumhaus"))
         zeige(schrift = 2f) { PartsListScreen(TeilelisteUiState(sets = sets), serverUrl = "", imageLoader = SampleImages.loader(ctx), onScanBarcode = {}) }
         val button = compose.onNode(hasText(text(R.string.partslist_generate)) and hasClickAction()).fetchSemanticsNode()
@@ -397,7 +397,7 @@ class FormsAndMarginsTest {
     // ── Preisalarme ──
 
     @Test
-    fun `Preisalarme nennen die Richtung einmal und enden am Rand der Karte`() {
+    fun `price alerts name the direction once and end at the edge of the card`() {
         world.paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}]}"""
         val vm = world.t.merke(SettingsViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, world.t.sync,
@@ -429,7 +429,7 @@ class FormsAndMarginsTest {
     // ── dunkle Designs ──
 
     @Test
-    fun `im Dunkeln liegt das Bild auf einer dunklen Flaeche`() {
+    fun `in the dark the image lies on a dark surface`() {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC, dunkel = true) {
                 ProduktBild(model = "/beispiel/set1.png", imageLoader = SampleImages.loader(ctx), contentDescription = "Bild",
@@ -447,7 +447,7 @@ class FormsAndMarginsTest {
     // ── Leiste bei 200 %, Scanner ──
 
     @Test
-    fun `die Leiste haelt bei 200 Prozent Abstand zum Bildschirmrand`() {
+    fun `the bar keeps distance to the screen edge at 200 percent`() {
         zeige(schrift = 2f) {
             val nav = rememberNavController()
             val tab = remember {
@@ -471,7 +471,7 @@ class FormsAndMarginsTest {
     }
 
     @Test
-    fun `der Scanner schliesst oben links und schaltet das Licht ueber einen Knopf`() {
+    fun `the scanner closes top left and switches the light via a button`() {
         zeige { BarcodeScannerScreen(onResult = {}, onDismiss = {}, ohneKamera = true) }
         val breite = ctx.resources.displayMetrics.widthPixels
         val zu = compose.onNodeWithContentDescription(text(R.string.scanner_close)).fetchSemanticsNode().boundsInRoot
@@ -495,7 +495,7 @@ class FormsAndMarginsTest {
     }
 
     @Test
-    fun `Rueckfrage und Erfassen halten Abstand zum Fensterrand`() {
+    fun `confirmation and adding keep distance to the window edge`() {
         val root = openDialog {
             Prompt(titel = "Set löschen?", text = "Millennium Falcon wird entfernt.", bestaetigen = "Löschen",
                 onBestaetigen = {}, onAbbrechen = {})
@@ -504,7 +504,7 @@ class FormsAndMarginsTest {
     }
 
     @Test
-    fun `Set-Erfassen haelt Abstand zum Fensterrand`() {
+    fun `adding a set keeps distance to the window edge`() {
         val root = openDialog { AddSetDialog(onDismiss = {}, onAdd = {}, immediatelyFocus = false) }
         checkEdge("Set erfassen", root, text(R.string.gallery_add_set_title))
     }
@@ -513,7 +513,7 @@ class FormsAndMarginsTest {
 
     /** Wer die falsche Sprache eingestellt hat, findet seine an ihrem eigenen Namen. */
     @Test
-    fun `die Sprachen heissen in beiden Sprachen so, wie sie sich selbst nennen`() {
+    fun `the languages are called in both languages what they call themselves`() {
         for (sprache in listOf("de-rCH", "en-rGB")) {
             RuntimeEnvironment.setQualifiers(sprache)
             assertEquals("($sprache)", listOf("English", "Deutsch"),
@@ -524,7 +524,7 @@ class FormsAndMarginsTest {
     // ── Sammlung statt Portfolio ──
 
     @Test
-    fun `die Wertentwicklung heisst nach der Sammlung`() {
+    fun `the value development is named after the collection`() {
         for (id in listOf(R.string.chart_portfolio_value, R.string.chart_summary, R.string.chart_summary_no_change))
             assertTrue("„${text(id)}“", "Sammlung" in text(id) && "Portfolio" !in text(id))
     }

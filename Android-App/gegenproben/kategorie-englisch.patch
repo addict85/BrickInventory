@@ -1,7 +1,7 @@
 Gegenprobe: Teilekategorien unübersetzt
 Modul: core-model
 Test: ch.brickinventoryapp.model.CategoryGermanTest
-Rot: bekannte Kategorien lesen sich deutsch
+Rot: known categories read in German
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt

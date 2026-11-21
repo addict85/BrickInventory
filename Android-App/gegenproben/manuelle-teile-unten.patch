@@ -1,7 +1,7 @@
 Gegenprobe: Der Abschnitt der manuell erfassten Teile steht hinter den Teilen aus Sets
 Modul: app
 Test: ch.brickinventoryapp.app.ManualItemsFirstTest
-Rot: Teile - die manuell erfassten
+Rot: parts - the manually added ones come before those from sets
 
 diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt
 index 290113c..a5b17fb 100644

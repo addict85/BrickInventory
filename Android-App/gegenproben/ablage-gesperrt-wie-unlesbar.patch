@@ -1,7 +1,7 @@
 Gegenprobe: Ein gesperrter Keystore gilt in einer Ablage wieder als unlesbarer Geheimtext
 Modul: core-security
 Test: ch.brickinventoryapp.security.StoreUnlockedTest
-Rot: gesperrt entsteht kein neuer Schluessel
+Rot: locked no new key is created, the store reports locked instead of unreadable
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt

@@ -88,7 +88,7 @@ class VoucherViewModelTest {
     }
 
     @Test
-    fun `die Liste wird geladen und ein Gutschein ins Formular geholt`() {
+    fun `the list is loaded and a voucher is fetched into the form`() {
         server.enqueue(antwort(twoCards))
         vm.loadVouchers()
         bis("Liste") { vm.state.value.gutscheine.size == 2 && !vm.state.value.abruf.laedt }
@@ -105,7 +105,7 @@ class VoucherViewModelTest {
     }
 
     @Test
-    fun `aus dem PDF Gelesenes landet im Formular`() {
+    fun `what was read from the PDF lands in the form`() {
         server.enqueue(antwort("""{"success":false,"error":"Betrag fehlt",
             "gelesen":{"number":"6000999988887777","pin":"4321","currency":"EUR"}}""", 422))
         vm.speichere { "application/pdf" to byteArrayOf(37, 80, 68, 70) }
@@ -121,7 +121,7 @@ class VoucherViewModelTest {
     }
 
     @Test
-    fun `eine Nicht-PDF-Datei geht nicht zum Server`() {
+    fun `a non-PDF file does not go to the server`() {
         vm.speichere { "image/png" to byteArrayOf(1, 2, 3) }
         bis("Meldung") { kanal.text != null && !vm.state.value.speichern.laeuft }
         assertEquals("t${R.string.vouchers_only_pdf}", kanal.text)
@@ -129,7 +129,7 @@ class VoucherViewModelTest {
     }
 
     @Test
-    fun `abgebrochener Lauf raeumt auf und laedt neu`() {
+    fun `an aborted run cleans up and reloads`() {
         server.enqueue(antwort(twoCards))
         vm.loadVouchers()
         bis("Liste") { vm.state.value.gutscheine.size == 2 }
@@ -151,7 +151,7 @@ class VoucherViewModelTest {
     // Gegenprobe (02.11.2026 gemessen): `|| d.grund == "konto"` im ViewModel
     // gestrichen → rot, auch /vouchers/2/guthaben wurde abgefragt (2 statt 1).
     @Test
-    fun `Kontogrenze bricht den Durchgang ab`() {
+    fun `the account limit aborts the pass`() {
         server.enqueue(antwort(twoCards))
         vm.loadVouchers()
         bis("Liste") { vm.state.value.gutscheine.size == 2 }

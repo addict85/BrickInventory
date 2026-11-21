@@ -1,7 +1,7 @@
 Gegenprobe: Passwortfeld ohne Autofill-Art
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: Startpasswort-Maske fuellt Passwoerter automatisch
+Rot: start password form fills passwords automatically and shows them on request
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt

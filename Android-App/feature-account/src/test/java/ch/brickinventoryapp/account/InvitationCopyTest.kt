@@ -65,7 +65,7 @@ class InvitationCopyTest {
     }
 
     @Test
-    fun `unter Android 13 laesst sich der Code nur teilen, ab 13 auch geheim kopieren`() {
+    fun `below Android 13 the code can only be shared, from 13 also copied secretly`() {
         stufe.value = 32
         zeige()
         assertEquals("Teilen bleibt", 1, buttons(R.string.household_invite_teilen))

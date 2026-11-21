@@ -1,7 +1,7 @@
 Gegenprobe: Die Passwort-Rückfrage zeigt das Codefeld nie
 Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
-Rot: die Rueckfrage zeigt das Codefeld erst auf Verlangen
+Rot: the confirmation shows the code field only on demand
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt

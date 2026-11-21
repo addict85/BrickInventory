@@ -1,7 +1,7 @@
 Gegenprobe: Ein Helfer, der Quelltext liest, zählt für die Funktionen nicht mehr
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: ein lesender Helfer zaehlt
+Rot: a reading helper counts for every function that uses it
 
 diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
 --- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt

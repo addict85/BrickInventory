@@ -1,7 +1,7 @@
 Gegenprobe: Ein gescheiterter Abbruch des CSV-Imports bleibt still
 Modul: app
 Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
-Rot: der Abbruch meldet Erfolg und Fehler
+Rot: the cancellation reports success and error
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt

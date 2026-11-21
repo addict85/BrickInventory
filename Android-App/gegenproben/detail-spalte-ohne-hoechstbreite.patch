@@ -1,7 +1,7 @@
 Gegenprobe: Set-Detail einspaltig wieder ohne gemeinsame Höchstbreite
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Set-Detail auf dem Tablet hochkant
+Rot: set detail on the tablet in portrait has a width for tiles and price history
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt

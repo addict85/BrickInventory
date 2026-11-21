@@ -1,7 +1,7 @@
 Gegenprobe: Die Preisalarm-Meldung schreibt Beträge wieder fest mit Locale.US
 Modul: core-services
 Test: ch.brickinventoryapp.services.AlarmabholungTest
-Rot: die Betraege stehen in der Zahlenform der App-Sprache
+Rot: the amounts are in the number format of the app language
 
 diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt
 --- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt

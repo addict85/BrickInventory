@@ -64,7 +64,7 @@ class AppOverviewProtectionTest {
     }
 
     @Test
-    fun `ab Android 13 verbirgt die Sperre nur das Vorschaubild, aus gibt sie es frei`() {
+    fun `from Android 13 the lock hides only the thumbnail, off releases it`() {
         zeige()
         assertEquals("Ohne Sperre kein Eingriff", emptyList<Boolean>(), probe.vorschau)
 
@@ -79,7 +79,7 @@ class AppOverviewProtectionTest {
     }
 
     @Test
-    fun `unter Android 13 schuetzt die Sperre das Fenster mit FLAG_SECURE`() {
+    fun `below Android 13 the lock protects the window with FLAG_SECURE`() {
         stufe.intValue = 32
         zeige()
         assertFalse("Ohne Sperre kein Schutz", sicher())

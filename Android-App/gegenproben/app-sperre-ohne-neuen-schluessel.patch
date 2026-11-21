@@ -1,7 +1,7 @@
 Gegenprobe: Nach gescheiterter Signatur fragt die App-Sperre mit dem alten Schlüssel nach
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.AppUnlockingTest
-Rot: ungueltiger Schluessel wird ersetzt
+Rot: an invalid key is replaced and asked once more
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt

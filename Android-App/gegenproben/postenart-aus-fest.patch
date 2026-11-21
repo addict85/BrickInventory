@@ -1,7 +1,7 @@
 Gegenprobe: Postenart.aus() liest die Kennung nicht, jede Route meint ein Set
 Modul: app
 Test: ch.brickinventoryapp.app.RoutesRoundTripTest
-Rot: jede Postenart kommt als dieselbe an
+Rot: every item kind arrives as the same one
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Postenart.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Postenart.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Postenart.kt

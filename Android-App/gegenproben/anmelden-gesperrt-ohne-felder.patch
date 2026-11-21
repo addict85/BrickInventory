@@ -1,7 +1,7 @@
 Gegenprobe: Der Knopf Anmelden ist bei leeren Feldern wieder gesperrt, ohne Hinweis am Feld
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginEdgeTest
-Rot: Anmelden bleibt tippbar
+Rot: sign-in stays tappable and names at the field what is missing for empty fields
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginAnmelden.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginAnmelden.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginAnmelden.kt

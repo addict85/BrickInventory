@@ -1,7 +1,7 @@
 Gegenprobe: Gesperrte Knöpfe wieder mit Materials fester Deckkraft (12 % Fläche, 38 % Schrift)
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.LockedContrastTest
-Rot: gesperrte Knoepfe halten
+Rot: disabled buttons keep 4,5 to 1 for text and 3 to 1 for surface and border
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt

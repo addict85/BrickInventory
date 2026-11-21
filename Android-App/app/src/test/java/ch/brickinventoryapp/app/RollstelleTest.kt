@@ -43,7 +43,7 @@ class RollstelleTest {
     val compose = createComposeRule()
 
     @Test
-    fun `die Liste steht nach dem Ausflug wieder an ihrer Stelle, ohne hochgezogenen Zustand`() {
+    fun `the list is back at its position after the excursion, without hoisted state`() {
         val speicher = ScrollMemory()
         lateinit var nav: NavHostController
         val states = mutableListOf<LazyListState>()

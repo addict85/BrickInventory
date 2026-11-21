@@ -1,7 +1,7 @@
 Gegenprobe: Gutschein-Formular immer offen statt auf Wunsch
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Gutschein hinzufuegen oeffnet das Formular
+Rot: adding a voucher opens the form only on request
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 index e29fd93..b78d5db 100644

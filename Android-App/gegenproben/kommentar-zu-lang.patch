@@ -1,7 +1,7 @@
 Gegenprobe: ein Kommentar mit sechs Zeilen Prosa
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: kein Kommentar hat mehr als fuenf Zeilen Prosa
+Rot: no comment has more than five lines of prose
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
 index d2ef040..fb81c34 100644

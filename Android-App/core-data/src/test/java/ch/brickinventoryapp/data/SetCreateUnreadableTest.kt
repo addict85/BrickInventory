@@ -28,7 +28,7 @@ class SetCreateUnreadableTest {
     fun zu() { server.shutdown() }
 
     @Test
-    fun `ein unlesbares Ereignis endet als Fehler`() {
+    fun `an unreadable event ends as an error`() {
         server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
             .setBody("data: {\"step\":\"meta\",\"set\":\"Falke\"}\n\ndata: {kaputt\n\n"))
         val schritte = runBlocking {

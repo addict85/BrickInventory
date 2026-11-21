@@ -1,7 +1,7 @@
 Gegenprobe: Die Sitzung spiegelt die Währung zurück in die Ablage
 Modul: core-state
 Test: ch.brickinventoryapp.state.SessionServiceTest
-Rot: Waehrung und Design kommen aus der Ablage
+Rot: currency and design come from the store, the session writes nothing back
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
 --- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt

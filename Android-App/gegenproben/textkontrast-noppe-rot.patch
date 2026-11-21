@@ -1,7 +1,7 @@
 Gegenprobe: Hauptfarbe im Design noppe wieder das Rot, kaum von der Fehlerfarbe zu unterscheiden
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.TextContrastTest
-Rot: Fehlerfarbe weicht deutlich
+Rot: error color deviates clearly from the primary color
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt

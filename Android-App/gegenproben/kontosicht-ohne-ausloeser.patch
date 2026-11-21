@@ -1,7 +1,7 @@
 Gegenprobe: Die Kontosicht fragt nach einem Schreibvorgang nicht neu
 Modul: core-data
 Test: ch.brickinventoryapp.data.KontosichtTest
-Rot: ein Schreibvorgang zeigt sich auch in der Kontosicht
+Rot: a write shows up in the account view too
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt

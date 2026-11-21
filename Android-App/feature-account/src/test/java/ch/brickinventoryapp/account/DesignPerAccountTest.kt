@@ -62,7 +62,7 @@ class DesignPerAccountTest {
     private fun vm() = t.merke(AccountViewModel(testAccountRepository(t.api), t.meldungen, t.sitzung, SessionFake()))
 
     @Test
-    fun `das Konto zeigt Vorgabe und eigenes Design`() {
+    fun `the account shows default and own design`() {
         val vm = vm()
         vm.loadDesign()
         assertTrue("Design", vm.kontoState.value.design != null)
@@ -71,7 +71,7 @@ class DesignPerAccountTest {
     }
 
     @Test
-    fun `die Wahl geht an den Server und gilt sofort in der ganzen App`() {
+    fun `the choice goes to the server and applies immediately in the whole app`() {
         val vm = vm()
         vm.chooseDesign(Design.NOPPE)
         assertTrue("gewählt", vm.kontoState.value.design != null)
@@ -89,7 +89,7 @@ class DesignPerAccountTest {
     }
 
     @Test
-    fun `ein aelterer Server ohne Vorgabe zeigt keine Auswahl`() {
+    fun `an older server without a default shows no selection`() {
         paths.antworten["/api/v1/settings/theme"] = """{"success":true,"theme":"brick"}"""
         val vm = vm()
         vm.loadDesign()
@@ -99,7 +99,7 @@ class DesignPerAccountTest {
 
     /** /settings nennt in app_theme die Vorgabe des Verwalters (routes/api_v1/settings.ts), nicht das Konto. */
     @Test
-    fun `die Einstellungen ueberschreiben das Design des Kontos nicht`() {
+    fun `the settings do not overwrite the account's design`() {
         paths.antworten["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
         t.sitzung.setzeDesign(Design.NOPPE)
         runBlocking { t.sitzung.ladeEinstellungen(testAccountRepository(t.api)) }
@@ -108,7 +108,7 @@ class DesignPerAccountTest {
     }
 
     @Test
-    fun `Abmelden laesst das Design stehen, bis die Vorgabe da ist`() {
+    fun `sign-out leaves the design until the default is there`() {
         t.sitzung.setzeDesign(Design.NOPPE)
         t.sitzung.angemeldet(admin = false)
         t.sitzung.abgemeldet()

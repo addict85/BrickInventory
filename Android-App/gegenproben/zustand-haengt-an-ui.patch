@@ -1,7 +1,7 @@
 Gegenprobe: core-state bindet core-ui ein; der Zustand liegt unter der Oberfläche
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: Schichtung der Kernmodule
+Rot: layering of the core modules
 
 diff --git a/Android-App/core-state/build.gradle.kts b/Android-App/core-state/build.gradle.kts
 index d6dab1f..409e707 100644

@@ -1,7 +1,7 @@
 Gegenprobe: Die Angaben liegen wieder unter dem Schlüssel der Pins, der auch gesperrt arbeitet
 Modul: core-security
 Test: ch.brickinventoryapp.security.VertrauenschiffreTest
-Rot: gesperrt ist eine Angabe spaeter lesbar
+Rot: locked an entry is readable later, not gone
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
 index 25f2ada..cad01ca 100644

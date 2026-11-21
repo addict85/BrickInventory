@@ -1,7 +1,7 @@
 Gegenprobe: Der Preisalarm zeigt Set und Preis auf dem Sperrbildschirm
 Modul: app
 Test: ch.brickinventoryapp.app.PriceAlertMessageTest
-Rot: auf dem Sperrbildschirm
+Rot: on the lock screen neither set nor price is shown
 
 diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt
 --- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt

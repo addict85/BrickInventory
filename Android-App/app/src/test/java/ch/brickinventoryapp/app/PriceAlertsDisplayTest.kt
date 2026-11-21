@@ -110,7 +110,7 @@ class PriceAlertsDisplayTest {
     private fun requests(methode: String) = world.paths.requests.toList().filter { it.startsWith("$methode ") }
 
     @Test
-    fun `die Uebersicht holt ihre Alarme, aendert und loescht ueber das Set, loescht erst nach Rueckfrage`() {
+    fun `the overview fetches its alerts, changes and deletes via the set, deletes only after confirmation`() {
         zeige()
         assertEquals(listOf("GET /api/v1/alerts"), requests("GET").filter { "alerts" in it })
 
@@ -128,7 +128,7 @@ class PriceAlertsDisplayTest {
     }
 
     @Test
-    fun `eine Zeile oeffnet ihr Set nur, wenn es in der Sammlung liegt, und nennt ihren Zustand in Worten`() {
+    fun `a row opens its set only if it is in the collection, and names its state in words`() {
         val geoeffnet = mutableListOf<String>()
         zeige(geoeffnet)
         compose.onNodeWithContentDescription("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode()
@@ -143,7 +143,7 @@ class PriceAlertsDisplayTest {
     }
 
     @Test
-    fun `die beiden Zustaende sagen in beiden Sprachen ohne Farbe und Zeichen, was gilt`() {
+    fun `the two states say in both languages without color and symbol what applies`() {
         for (sprache in listOf("de", "en")) {
             val c = ctx.createConfigurationContext(Configuration(ctx.resources.configuration).apply { setLocale(Locale.forLanguageTag(sprache)) })
             val aktiv = c.getString(R.string.alerts_armed)

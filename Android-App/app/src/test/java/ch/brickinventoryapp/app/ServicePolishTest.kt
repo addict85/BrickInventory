@@ -38,7 +38,7 @@ class ServicePolishTest {
     // ── Lokalisierte Foreground-Services ─────────────────────────────────────
 
     @Test
-    fun `Service-Benachrichtigungen kommen aus Ressourcen, nicht hartkodiert`() {
+    fun `service notifications come from resources, not hard-coded`() {
         for (rel in listOf(
             "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
             "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
@@ -59,7 +59,7 @@ class ServicePolishTest {
     }
 
     @Test
-    fun `Services benutzen den lokalisierten Context`() {
+    fun `services use the localized context`() {
         // setApplicationLocales() lokalisiert nur Activities. Ein Service, der
         // getString() auf seinem eigenen Context aufruft, bekommt unterhalb
         // von Android 13 die SYSTEM-Sprache — der Wrapper aus LanguageManager
@@ -79,7 +79,7 @@ class ServicePolishTest {
     }
 
     @Test
-    fun `neue Strings existieren in beiden Sprachen`() {
+    fun `new strings exist in both languages`() {
         val en = read("res/values/strings.xml")
         val de = read("res/values-de/strings.xml")
         for (key in listOf(
@@ -95,7 +95,7 @@ class ServicePolishTest {
     // ── Status-Icon ──────────────────────────────────────────────────────────
 
     @Test
-    fun `Benachrichtigungen benutzen das monochrome Status-Icon`() {
+    fun `notifications use the monochrome status icon`() {
         assert(File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
             "drawable/ic_stat_brick.xml fehlt"
         }
@@ -118,7 +118,7 @@ class ServicePolishTest {
     // ── Teileliste ohne Klartext-Freigabe ────────────────────────────────────
 
     @Test
-    fun `die Teileliste geht nur ueber den eigenen Provider, kein FileProvider`() {
+    fun `the parts list goes out only via the own provider, no FileProvider`() {
         val manifest = code(read("AndroidManifest.xml"))
         assert(!manifest.contains("FileProvider")) {
             "Das Manifest trägt wieder einen FileProvider — er gibt nur Klartext-Dateien weiter, " +
@@ -136,7 +136,7 @@ class ServicePolishTest {
     // ── ProGuard ─────────────────────────────────────────────────────────────
 
     @Test
-    fun `keine tote Gson-Regel in ProGuard`() {
+    fun `no dead Gson rule in ProGuard`() {
         // proguard-rules.pro liegt im Modulwurzelverzeichnis, nicht unter src/
         val f = File("proguard-rules.pro")
         assert(f.exists()) { "proguard-rules.pro nicht gefunden" }

@@ -48,7 +48,7 @@ class WidgetPreviewTest {
     }
 
     @Test
-    fun `das Widget traegt Beschreibung und eine Vorschau mit Titel und Wert`() {
+    fun `the widget carries a description and a preview with title and value`() {
         val info = provider()
         val beschreibung = info.getAttributeResourceValue(android, "description", 0)
         val vorschau = info.getAttributeResourceValue(android, "previewLayout", 0)

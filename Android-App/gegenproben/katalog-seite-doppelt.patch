@@ -1,7 +1,7 @@
 Gegenprobe: Eine Katalogseite, die gerade lädt, wird noch einmal angefordert
 Modul: feature-catalog
 Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
-Rot: eine Seite wird nur einmal geholt
+Rot: a page is fetched only once, even if it becomes visible several times
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt

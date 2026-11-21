@@ -1,7 +1,7 @@
 Gegenprobe: ein vorgewärmtes Bild bekommt einen frischen Zeitstempel
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewStorageTest
-Rot: vorgewaermtes Bild fliegt
+Rot: a warmed image goes before a viewed one
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt

@@ -54,7 +54,7 @@ import ch.brickinventoryapp.testing.TestDienste
  *      mehrerer Sets werden zusammengezaehlt“
  *   B  in aendere() das Merken im SavedStateHandle entfernt → rot „die Setnummern
  *      ueberleben das Prozessende …“
- *   C  zuruecksetzen() nicht überschrieben → rot „eine Abmeldung leert die Bauliste“
+ *   C  zuruecksetzen() nicht überschrieben → rot „a sign-out empties the build list“
  *   D  in exportiere() die Datei nicht in den Zustand übernommen → rot „ein fertiges
  *      PDF wird einmal angeboten …“
  *   E  gegenproben/pdf-fehler-leer.patch: errorText() gibt für einen gescheiterten
@@ -115,7 +115,7 @@ class PartListViewModelTest {
         PlPart(partNumber = nr, partName = nr, colorName = farbe, colorHex = null, quantity = menge, imageUrl = null)
 
     @Test
-    fun `der Abruf laeuft im ViewModel und liefert die Liste`() = runTest(takt) {
+    fun `the fetch runs in the ViewModel and delivers the list`() = runTest(takt) {
         val quelle = Quelle(mapOf("21318-1" to listOf(teil("3001", 4)))).apply { brake = CompletableDeferred() }
         val vm = vm(quelle)
         vm.erstelle("21318")
@@ -133,7 +133,7 @@ class PartListViewModelTest {
     }
 
     @Test
-    fun `gleiche Teile mehrerer Sets werden zusammengezaehlt`() = runTest(takt) {
+    fun `equal parts of several sets are added up`() = runTest(takt) {
         val quelle = Quelle(mapOf(
             "10294-1" to listOf(teil("3001", 2), teil("3002", 1)),
             "21318-1" to listOf(teil("3001", 3), teil("3001", 1, farbe = "Blau")),
@@ -147,7 +147,7 @@ class PartListViewModelTest {
     }
 
     @Test
-    fun `eine Nummer steht nur einmal in der Liste`() = runTest(takt) {
+    fun `a number appears only once in the list`() = runTest(takt) {
         val vm = vm()
         vm.addAdd("10294")
         vm.addAdd("10294-1")
@@ -156,7 +156,7 @@ class PartListViewModelTest {
     }
 
     @Test
-    fun `die Setnummern ueberleben das Prozessende, die Teile nicht`() = runTest(takt) {
+    fun `the set numbers survive the process end, the parts do not`() = runTest(takt) {
         val gemerkt = SavedStateHandle()
         val vorher = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))), gemerkt = gemerkt)
         vorher.erstelle("10294")
@@ -168,7 +168,7 @@ class PartListViewModelTest {
     }
 
     @Test
-    fun `der Bestand nennt, was fehlt`() = runTest(takt) {
+    fun `the stock names what is missing`() = runTest(takt) {
         val quelle = Quelle(mapOf("10294-1" to listOf(teil("3001", 4), teil("3002", 1))))
         val vm = vm(quelle)
         vm.erstelle("10294")
@@ -187,7 +187,7 @@ class PartListViewModelTest {
     }
 
     @Test
-    fun `ein fertiges PDF wird einmal angeboten, ein Fehler gemeldet`() = runTest(takt) {
+    fun `a finished PDF is offered once, an error reported`() = runTest(takt) {
         val datei = File("teileliste.pdf")
         val export = Export(ExportResult.Datei(datei))
         val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))), export)
@@ -214,7 +214,7 @@ class PartListViewModelTest {
     }
 
     @Test
-    fun `ein Fehler hat immer einen Satz, auch ohne Satz des Servers`() = runTest(takt) {
+    fun `an error always has a sentence, even without the server's sentence`() = runTest(takt) {
         for ((grund, erwartet) in listOf(
             PdfFailure.Auftrag(null) to "t${R.string.pdfexp_server_error}",
             PdfFailure.Auftrag("") to "t${R.string.pdfexp_server_error}",
@@ -231,7 +231,7 @@ class PartListViewModelTest {
     }
 
     @Test
-    fun `der Stand des Exports wird ein Satz, die Restzeit nur solange sie bleibt`() = runTest(takt) {
+    fun `the state of the export becomes a sentence, the remaining time only while it lasts`() = runTest(takt) {
         val stand = MutableStateFlow<PdfProgress?>(PdfProgress(PdfStep.CREATED, 12))
         val vm = vm(export = Export(ExportResult.Datei(File("x.pdf")), stand))
         backgroundScope.launch { vm.pdfExportStatus.collect {} }
@@ -246,7 +246,7 @@ class PartListViewModelTest {
     }
 
     @Test
-    fun `eine Abmeldung leert die Bauliste`() = runTest(takt) {
+    fun `a sign-out empties the build list`() = runTest(takt) {
         val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))))
         vm.erstelle("10294")
         advanceUntilIdle()

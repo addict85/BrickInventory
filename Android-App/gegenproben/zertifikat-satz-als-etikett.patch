@@ -1,7 +1,7 @@
 Gegenprobe: Das Eingabefeld des Zertifikatsdialogs trägt wieder den ganzen Satz als Etikett, ohne Erklärung darunter
 Modul: app
 Test: ch.brickinventoryapp.app.CertificateDialogTest
-Rot: das Feld traegt ein kurzes Etikett, die Anleitung steht darunter
+Rot: the field carries a short label, the instructions are below it
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt

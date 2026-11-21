@@ -1,7 +1,7 @@
 Gegenprobe: Die App-Sperre fragt nach jeder gescheiterten Signatur erneut
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.AppUnlockingTest
-Rot: fremd signiert entsperrt nicht
+Rot: foreign-signed does not unlock and asks only once more
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt

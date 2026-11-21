@@ -43,7 +43,7 @@ class PartListsStoreTest {
     fun zu() { root.deleteRecursively() }
 
     @Test
-    fun `die Teileliste liegt intern, eine alte externe Kopie verschwindet`() {
+    fun `the parts list lies internally, an old external copy disappears`() {
         val alt = File(extern, "pdf/teileliste.pdf").apply { parentFile!!.mkdirs(); writeText("Inventar") }
         val klartext = File(intern, "pdf/teileliste.pdf").apply { parentFile!!.mkdirs(); writeText("Inventar") }
         val ziel = partListsStore(intern, extern)
@@ -54,7 +54,7 @@ class PartListsStoreTest {
     }
 
     @Test
-    fun `Abmelden raeumt Teileliste, geteilte PDFs und Update weg, anderes bleibt`() {
+    fun `sign-out clears parts list, shared PDFs and update, other things stay`() {
         val liste = partListsStore(intern, extern).apply { writeText("Inventar") }
         val apk = File(intern, "update/BrickInventory.apk").apply { parentFile!!.mkdirs(); writeText("apk") }
         val geteilt = File(extern, "pdf/anleitung.pdf").apply { parentFile!!.mkdirs(); writeText("pdf") }
@@ -69,7 +69,7 @@ class PartListsStoreTest {
 
     /** Das Inventar nur, solange jemand die Liste öffnen will. */
     @Test
-    fun `nach der Frist verschwindet die Teileliste, eine frische bleibt`() {
+    fun `after the deadline the parts list disappears, a fresh one stays`() {
         val liste = partListsStore(intern, null).apply { writeText("Inventar") }
         val alt = File(intern, "pdf/teileliste.pdf").apply { writeText("Inventar") }
         val geschrieben = liste.lastModified()
@@ -83,12 +83,12 @@ class PartListsStoreTest {
     }
 
     @Test
-    fun `ohne externen Speicher dasselbe Ziel`() {
+    fun `without external storage the same target`() {
         assertEquals(File(intern, "pdf/$PART_LIST_FILE"), partListsStore(intern, null))
     }
 
     @Test
-    fun `die Teileliste liegt nur verschluesselt, lesen gibt den Klartext`() {
+    fun `the parts list lies only encrypted, reading returns the plaintext`() {
         val schluessel = ByteArray(32) { it.toByte() }
         val tresor = Teilelistentresor(StoreCipher { schluessel })
         val pdf = "%PDF-1.7 Inventar 10294-1 Titanic".toByteArray()
@@ -108,7 +108,7 @@ class PartListsStoreTest {
     }
 
     @Test
-    fun `der Speicherleser liefert jeden Bereich und am Ende nichts`() {
+    fun `the storage reader delivers every range and nothing at the end`() {
         val inhalt = ByteArray(10) { it.toByte() }
         val ziel = ByteArray(4)
         assertEquals(4, readFromStorage(inhalt, 0, 4, ziel))

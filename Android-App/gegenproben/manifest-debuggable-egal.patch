@@ -1,7 +1,7 @@
 Gegenprobe: Ein debuggable APK geht durch die Manifestprüfung
 Modul: app
 Test: ch.brickinventoryapp.app.ManifestCheckTest
-Rot: ein debuggable APK
+Rot: a debuggable APK, backup or cleartext stand out
 
 diff --git a/Android-App/tools/manifest-check.py b/Android-App/tools/manifest-check.py
 --- a/Android-App/tools/manifest-check.py

@@ -26,7 +26,7 @@ class PriceAlertMessageTest {
     private val ctx = ApplicationProvider.getApplicationContext<Context>()
 
     @Test
-    fun `auf dem Sperrbildschirm stehen weder Set noch Preis`() {
+    fun `on the lock screen neither set nor price is shown`() {
         val n = PreisalarmWorker.meldung(ctx, "75192-1: CHF 612.00 (unter CHF 650.00)", null)
         assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
         val oeffentlich = n.publicVersion

@@ -33,7 +33,7 @@ class AlarmOverviewTest {
      * SetsApi `@GET("api/v1/alerts")` auf "api/v1/alarme" → rot.
      */
     @Test
-    fun `die App holt alle Alarme ueber die gemeinsame Route`() {
+    fun `the app fetches all alerts via the common route`() {
         val paths = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
@@ -46,7 +46,7 @@ class AlarmOverviewTest {
     }
 
     @Test
-    fun `geschrieben wird ueber die bestehende Route zum Set`() {
+    fun `writing goes via the existing route to the set`() {
         // Zwei Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
         // auseinanderlaufen; die Übersicht LIEST nur eigenständig. Dass Ändern und
         // Löschen die Set-Route rufen, prüft SettingsViewModelTest an den
@@ -67,7 +67,7 @@ class AlarmOverviewTest {
      * PriceAlertsDisplayTest gezeichnet.
      */
     @Test
-    fun `die Zeile zeigt das Bild wie die Finanzen`() {
+    fun `the row shows the image like the finances`() {
         val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
         assert(s.contains("FinanzBild(")) {
             "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
@@ -84,7 +84,7 @@ class AlarmOverviewTest {
      * der in einer Fehlermeldung endet, ist besser als eine Liste, in der nichts geht.
      */
     @Test
-    fun `ein fehlendes besitzt-Feld macht die Zeile nicht tot`() {
+    fun `a missing besitzt field does not kill the row`() {
         val alarm = BrickJson.decodeFromString(Preisalarm.serializer(),
             """{"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}""")
         assertTrue("Ohne das Feld gilt das Set als nicht vorhanden — die ganze Rubrik waere tot", alarm.besitzt)
@@ -102,7 +102,7 @@ class AlarmOverviewTest {
      * ScrollMemory liegen und beim Zurueckkommen ausdruecklich gesetzt werden.
      */
     @Test
-    fun `die Einstellungen merken sich ihre Rollposition`() {
+    fun `the settings remember their scroll position`() {
         val graph = quelle("account/ui/KontoGraph.kt")
         assert(graph.contains("settingsScrollState")) {
             "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
@@ -135,7 +135,7 @@ class AlarmOverviewTest {
      * zu stehen.
      */
     @Test
-    fun `der Alarmzustand steht als Plakette da`() {
+    fun `the alert state stands as a badge`() {
         // Dass sie „Aktiv“ und „Ausgelöst“ in Worten zeigt, prüft PriceAlertsDisplayTest.
         val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
         // Der Speichern-Knopf erscheint nur bei einer Aenderung. Ohne diese

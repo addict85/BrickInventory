@@ -1,7 +1,7 @@
 Gegenprobe: Scheitert das Katalog-Detail, bleibt der Fehler aus dem Zustand (nur eine Snackbar)
 Modul: feature-catalog
 Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
-Rot: scheitert das Detail, steht der Grund im Zustand und ein zweiter Versuch laedt es
+Rot: if the detail fails, the reason is in the state and a second attempt loads it
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt

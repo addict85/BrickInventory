@@ -39,7 +39,7 @@ import ch.brickinventoryapp.testing.text
  *      meldet Erfolg und lädt neu“ (nur eine GET-Anfrage)
  *   C  bei Ergebnis.Fehler den Erfolgssatz statt errorMessage → rot „ein 409
  *      zeigt den Satz des Servers“
- *   D  `jobProcessRunning = true` fest → rot „ohne Job-Prozess steht die Warnung an“
+ *   D  `jobProcessRunning = true` fest → rot „without a job process the warning is shown“
  * Gegenprobe: melde()
  *   startet die Aktion, legt den Satz aber nicht in den Kanal → rot „eine Aktion
  *   laeuft im ViewModel …“
@@ -73,7 +73,7 @@ class BackgroundWorkTest {
     }
 
     @Test
-    fun `was man mit einem Auftrag tun darf, steht schon fest`() = runBlocking {
+    fun `what one may do with a job is already settled`() = runBlocking {
         vm.loadBackground()
         val a = vm.hintergrund.value.ansicht!!
         val (laeuft, fehler) = a.auftraege
@@ -87,7 +87,7 @@ class BackgroundWorkTest {
     }
 
     @Test
-    fun `ohne Job-Prozess steht die Warnung an`() = runBlocking {
+    fun `without a job process the warning is shown`() = runBlocking {
         vm.loadBackground()
         assertFalse(vm.hintergrund.value.ansicht!!.jobProcessRunning)
     }
@@ -95,7 +95,7 @@ class BackgroundWorkTest {
     /** Die Aktion läuft im viewModelScope; der Satz kommt über den Meldungskanal, nicht über den Bildschirm. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `eine Aktion laeuft im ViewModel und meldet ueber den Zustand`() = runBlocking {
+    fun `an action runs in the ViewModel and reports via the state`() = runBlocking {
         paths.antworten["/api/v1/admin/auftraege/17/abbrechen"] = """{"success":true,"id":"17","status":"abgebrochen"}"""
         Dispatchers.setMain(UnconfinedTestDispatcher())
         try {
@@ -109,7 +109,7 @@ class BackgroundWorkTest {
     }
 
     @Test
-    fun `Abbrechen meldet Erfolg und lädt neu`() = runBlocking {
+    fun `cancelling reports success and reloads`() = runBlocking {
         paths.antworten["/api/v1/admin/auftraege/17/abbrechen"] = """{"success":true,"id":"17","status":"abgebrochen"}"""
         vm.loadBackground()
         val satz = vm.abortJobAb("17")
@@ -119,7 +119,7 @@ class BackgroundWorkTest {
     }
 
     @Test
-    fun `ein 409 zeigt den Satz des Servers`() = runBlocking {
+    fun `a 409 shows the server's sentence`() = runBlocking {
         paths.antworten["/api/v1/admin/auftraege/17/wiederholen"] =
             """{"success":false,"code":"auftrag_nicht_aenderbar","error":"Der Auftrag lässt sich nicht mehr ändern."}"""
         paths.codes["/api/v1/admin/auftraege/17/wiederholen"] = 409
@@ -130,7 +130,7 @@ class BackgroundWorkTest {
     }
 
     @Test
-    fun `Leeren meldet die Zahl, Starten den Namen`() = runBlocking {
+    fun `clearing reports the number, starting the name`() = runBlocking {
         paths.antworten["/api/v1/admin/auftraege/art/bilder"] = """{"success":true,"art":"bilder","entfernt":4}"""
         paths.antworten["/api/v1/admin/auftraege/art/preise/jetzt"] = """{"success":true,"art":"preise","gestartet":false}"""
         assertEquals(Meldung.Menge(R.plurals.hintergrund_geleert, 4), vm.emptyJobKind("bilder"))

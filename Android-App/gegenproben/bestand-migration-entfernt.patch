@@ -1,7 +1,7 @@
 Gegenprobe: MIGRATION_1_2 fehlt in BestandDatenbank.MIGRATIONEN
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.BestandMigrationTest
-Rot: jede frühere Fassung
+Rot: every earlier version becomes the newest without loss, every item has its own key, every row its filters
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt
 index ab6057e..cdabdc9 100644

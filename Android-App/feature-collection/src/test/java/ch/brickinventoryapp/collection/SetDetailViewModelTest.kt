@@ -50,9 +50,9 @@ import ch.brickinventoryapp.testing.TestDienste
  *   E  in changeQuantityUm() wieder UpdateQuantityRequest(quantity = schritt)
  *      → rot „der Regler schickt einen Schritt …“
  *   F  `init { refresh() }` gestrichen (der Bildschirm lud früher selbst)
- *      → rot „das Set kommt aus dem SavedStateHandle und alles wird beim Erzeugen geladen“
+ *      → rot „the set comes from the SavedStateHandle and everything is loaded on creation“
  *   G  in starte() das Abbrechen des laufenden Abrufs gestrichen
- *      → rot „ein neuer Abruf bricht den laufenden desselben Abschnitts ab“ (2 statt 1)
+ *      → rot „a new fetch cancels the running one of the same section“ (2 statt 1)
  *   H  in loadPrice() und loadHistory() den Fehler wieder verworfen
  *      → rot „scheitern Preis und Verlauf, steht der Fehler im Zustand …“
  */
@@ -102,7 +102,7 @@ class SetDetailViewModelTest {
     private fun geladen(vm: SetDetailViewModel) = assertTrue("Detail geladen", vm.setDetailState.value.setDetail != null && vm.setDetailState.value.acquisitions.isNotEmpty())
 
     @Test
-    fun `das Set kommt aus dem SavedStateHandle und alles wird beim Erzeugen geladen`() {
+    fun `the set comes from the SavedStateHandle and everything is loaded on creation`() {
         val vm = vm()
         assertEquals("75192-1", vm.setNumber)
         geladen(vm)
@@ -112,7 +112,7 @@ class SetDetailViewModelTest {
     }
 
     @Test
-    fun `eine geaenderte Menge steht sofort da und in der Ablage`() {
+    fun `a changed quantity is shown immediately and in the store`() {
         runBlocking { t.ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "75192-1", quantity = 1)).map { it.alsAnsicht() }) }
         val vm = vm()
         geladen(vm)
@@ -127,7 +127,7 @@ class SetDetailViewModelTest {
     }
 
     @Test
-    fun `der Regler schickt einen Schritt, keine Zielzahl`() {
+    fun `the control sends a step, not a target number`() {
         val vm = vm()
         geladen(vm)
         serverHatAfterwardsThree()
@@ -141,7 +141,7 @@ class SetDetailViewModelTest {
     }
 
     @Test
-    fun `ein geaenderter Kauf eines anderen Sets laedt hier nichts, einer dieses Sets schon`() {
+    fun `a changed purchase of another set loads nothing here, one of this set does`() {
         runBlocking { t.ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "75192-1"), SetItem(setNumber = "10294-1")).map { it.alsAnsicht() }) }
         val vm = vm()
         geladen(vm)
@@ -158,7 +158,7 @@ class SetDetailViewModelTest {
     }
 
     @Test
-    fun `ein gespeicherter Preisalarm wird neu geladen`() {
+    fun `a saved price alert is reloaded`() {
         val vm = vm()
         geladen(vm)
         assertTrue(vm.setDetailState.value.preisalarme.isEmpty())
@@ -175,7 +175,7 @@ class SetDetailViewModelTest {
     private fun priceFetches() = paths.requests.count { Regex("""^GET /api/v1/sets/75192-1/price(\?|$)""").containsMatchIn(it) }
 
     @Test
-    fun `ein neuer Abruf bricht den laufenden desselben Abschnitts ab`() {
+    fun `a new fetch cancels the running one of the same section`() {
         paths.ausbleibend += "/api/v1/sets/75192-1/price"
         val vm = vm()
         vm.refresh()
@@ -187,7 +187,7 @@ class SetDetailViewModelTest {
     }
 
     @Test
-    fun `scheitern Preis und Verlauf, steht der Fehler im Zustand, bis ein neuer Abruf gelingt`() {
+    fun `if price and history fail, the error is in the state until a new fetch succeeds`() {
         paths.codes["/api/v1/sets/75192-1/price"] = 500
         paths.codes["/api/v1/sets/75192-1/price-history"] = 500
         val vm = vm()

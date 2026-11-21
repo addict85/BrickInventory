@@ -92,7 +92,7 @@ class ServerClientsTest {
         client.newCall(Request.Builder().url(adresse).build()).execute().use { it.code to it.body.string() }
 
     @Test
-    fun `kein Server-Client folgt einer Umleitung selbst`() {
+    fun `no server client follows a redirect itself`() {
         for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {
             assertFalse("$name: OkHttp folgte Umleitungen am Wächter vorbei", c.followRedirects)
             assertFalse("$name: OkHttp folgte einer Umleitung von https auf http", c.followSslRedirects)
@@ -101,14 +101,14 @@ class ServerClientsTest {
 
     /** Der ServerWaechter hängt den Token an (ServerGuardTest); ohne ihn lüde jedes Bild mit 401. */
     @Test
-    fun `beide Clients haengen den Server-Waechter ein`() {
+    fun `both clients hook in the server guard`() {
         for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {
             assertTrue("$name: ohne ServerWaechter ginge kein Token mit", c.interceptors.any { it is ServerWaechter })
         }
     }
 
     @Test
-    fun `der Bild-Client spricht nur ueber den Host-Waechter und drosselt mit Mass`() {
+    fun `the image client talks only via the host guard and throttles moderately`() {
         val bild = imageClient()
         assertTrue("Der Bild-Client lädt ohne Host-Wächter", bild.interceptors.any { it is ImageHostGuard })
         val perHost = bild.dispatcher.maxRequestsPerHost
@@ -121,7 +121,7 @@ class ServerClientsTest {
     }
 
     @Test
-    fun `ist der Server nicht erreichbar, kommt das Bild aus dem Zwischenspeicher`() {
+    fun `if the server is unreachable, the image comes from the cache`() {
         server.enqueue(MockResponse().setHeader("Cache-Control", "max-age=0").setBody("bild-10179"))
         val bild = imageClient()
         val adresse = server.url("/api/v1/images/set/10179-1").toString()
@@ -131,7 +131,7 @@ class ServerClientsTest {
     }
 
     @Test
-    fun `Coil laedt ueber den Bild-Client und legt keinen eigenen Plattencache an`() {
+    fun `Coil loads via the image client and creates no own disk cache`() {
         server.enqueue(MockResponse().setBody("kein Bild"))
         val loader = NetzModule.provideImageLoader(ctx, imageClient())
         assertNull("Coil hielte dieselben Bytes noch einmal, im Klartext", loader.diskCache)

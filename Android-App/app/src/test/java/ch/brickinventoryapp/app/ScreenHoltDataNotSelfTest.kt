@@ -25,7 +25,7 @@ class ScreenHoltDataNotSelfTest {
     }
 
     @Test
-    fun `kein Composable ruft das Repository direkt auf`() {
+    fun `no composable calls the repository directly`() {
         val alle = dateien()
         // Untergrenze: Ein leerer Dateilauf liesse jede Sammelpruefung
         // stillschweigend bestehen.
@@ -54,7 +54,7 @@ class ScreenHoltDataNotSelfTest {
      * `import ch.brickinventoryapp.contract.Gutschein` → rot, nennt die Datei.
      */
     @Test
-    fun `kein Bildschirm kennt die Server-Modelle`() {
+    fun `no screen knows the server models`() {
         val screens = listOf("screens", "components", "dialogs", "shared/ui").flatMap { Quellen.unter(it) }
         assert(screens.size >= 50) { "Bildschirme nicht gefunden — Muster veraltet?" }
         val withModel = screens.filter { "brickinventoryapp.contract" in Quellen.withoutComments(it.readText()) }.map { it.name }

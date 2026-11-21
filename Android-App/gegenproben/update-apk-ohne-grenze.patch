@@ -1,7 +1,7 @@
 Gegenprobe: der APK-Download kennt keine Obergrenze mehr
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateLoaderTest
-Rot: ein APK, das mehr bringt
+Rot: an APK that brings more than announced aborts and leaves nothing
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt

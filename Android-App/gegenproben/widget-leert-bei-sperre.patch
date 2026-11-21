@@ -1,7 +1,7 @@
 Gegenprobe: Das Widget leert sich bei gesperrtem Gerät, als wäre abgemeldet
 Modul: app
 Test: ch.brickinventoryapp.app.WidgetNumbersTest
-Rot: ohne Token leert der Arbeiter nur abgemeldet
+Rot: without a token the worker clears only when signed out, with a locked device it waits
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt

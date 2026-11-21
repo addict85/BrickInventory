@@ -1,7 +1,7 @@
 Gegenprobe: die Vorschau-Ablage liegt unter cacheDir, wo Android aufräumen darf
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewDeviceTest
-Rot: die Ablage liegt unter filesDir
+Rot: the store lies under filesDir, where Android does not clean up
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt

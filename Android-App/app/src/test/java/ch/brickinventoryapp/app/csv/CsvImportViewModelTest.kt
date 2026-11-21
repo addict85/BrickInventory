@@ -113,7 +113,7 @@ class CsvImportViewModelTest {
     }
 
     @Test
-    fun `ein laufender Import startet den Dienst einmal, fertig laedt nach und raeumt nach fuenf Sekunden ab`() {
+    fun `a running import starts the service once, finished reloads and clears after five seconds`() {
         val dienst = Dienst()
         val strom = Strom(listOf(status("running", 1), status("running", 2), status("done", 3)))
         withVm(strom, dienst) { vm ->
@@ -138,7 +138,7 @@ class CsvImportViewModelTest {
     }
 
     @Test
-    fun `ein abgerissener Strom fragt einmal nach und verbindet mit wachsendem Abstand neu`() {
+    fun `a broken stream asks once and reconnects with growing delay`() {
         val dienst = Dienst()
         val fehler = listOf(CsvImportSseClient.Event.Failed("weg"))
         val strom = Strom(fehler, fehler, fehler)
@@ -156,7 +156,7 @@ class CsvImportViewModelTest {
     }
 
     @Test
-    fun `nach dem Abmelden ist der Balken leer, die Verbindung zu und der Dienst angehalten`() {
+    fun `after sign-out the bar is empty, the connection closed and the service stopped`() {
         val strom = Strom(listOf(status("running", 1)))
         val dienst = Dienst()
         withVm(strom, dienst) { vm ->
@@ -175,7 +175,7 @@ class CsvImportViewModelTest {
     }
 
     @Test
-    fun `ohne Anmeldung verbindet niemand, die Anmeldung startet den Strom`() = runTest(takt) {
+    fun `without sign-in nobody connects, the sign-in starts the stream`() = runTest(takt) {
         val strom = Strom(listOf(status("running", 1)))
         strom.clock = { testScheduler.currentTime }
         val observer = CsvImportObserver(strom, testSetFilesRepository(fake.api))
@@ -194,7 +194,7 @@ class CsvImportViewModelTest {
     }
 
     @Test
-    fun `der Abbruch meldet Erfolg und Fehler`() {
+    fun `the cancellation reports success and error`() {
         withVm(Strom(), Dienst()) { vm ->
             vm.cancelCsvImport()
             advanceUntilIdle()

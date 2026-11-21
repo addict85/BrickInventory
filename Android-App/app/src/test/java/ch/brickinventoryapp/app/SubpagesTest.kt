@@ -147,7 +147,7 @@ class SubpagesTest {
         }))
 
     @Test
-    fun `Abmelden fragt erst nach`() {
+    fun `sign-out asks first`() {
         var abgemeldet = 0
         zeige { MehrBildschirm({}, isAdmin = false, updateVerfuegbar = false, onAbmelden = { abgemeldet++ }) }
         val abmelden = ctx.getString(R.string.main_menu_logout)
@@ -162,7 +162,7 @@ class SubpagesTest {
 
     /** Zwischen „Einstellungen“ und der Servergruppe lag Abmelden dort, wo man weitertippt. */
     @Test
-    fun `Abmelden steht abgesetzt als letzter Eintrag, nach der Servergruppe`() {
+    fun `sign-out stands apart as the last entry, after the server group`() {
         zeige { MehrBildschirm({}, isAdmin = true, updateVerfuegbar = false, onAbmelden = {}) }
         fun situation(id: Int) = compose.onNodeWithText(ctx.getString(id)).fetchSemanticsNode().boundsInRoot
         val abmelden = situation(R.string.main_menu_logout)
@@ -173,13 +173,13 @@ class SubpagesTest {
 
     /** Der Punkt an den Einstellungen sagt in Worten, wofür er steht. */
     @Test
-    fun `Update-Punkt ist beschriftet`() {
+    fun `update dot is labelled`() {
         zeige { MehrBildschirm({}, isAdmin = false, updateVerfuegbar = true, onAbmelden = {}) }
         compose.onNodeWithText(ctx.getString(R.string.update_badge)).fetchSemanticsNode()
     }
 
     @Test
-    fun `Lagerorte stehen als Zeilen mit Menue und loeschen erst nach Rueckfrage`() {
+    fun `storage locations stand as rows with a menu and delete only after confirmation`() {
         world.paths.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
         val vm = einstellungen().also { it.loadOwnLocations() }
@@ -217,7 +217,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `Haushalt gliedert Einladen und Annehmen und entfernt erst nach Rueckfrage`() {
+    fun `household structures inviting and accepting and removes only after confirmation`() {
         world.paths.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.merke(HouseholdViewModel(world.t.sitzung, world.t.filter(), world.t.sync,
@@ -242,7 +242,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `CSV-Import zeigt je Art eine Aktion mit ihren Spalten und den Titel einmal`() {
+    fun `CSV import shows one action per kind with its columns and the title once`() {
         val vm = einstellungen()
         zeige { CsvImportRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         compose.onAllNodesWithText(ctx.getString(R.string.csv_upload_title), ignoreCase = true).assertCountEquals(1)
@@ -252,7 +252,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `leere Bauliste steht mittig und bietet kein Zuruecksetzen an`() {
+    fun `empty build list stands centered and offers no reset`() {
         zeige {
             PartsListScreen(TeilelisteUiState(),
                 serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {})
@@ -269,7 +269,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `Der Vorgabe-Stern ist ein Schalter mit dem Namen des Orts`() {
+    fun `the default star is a switch with the name of the location`() {
         world.paths.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
         val vm = einstellungen().also { it.loadOwnLocations() }
         zeige { LocationsRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
@@ -279,7 +279,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `Entfernen nennt das Konto im Haushalt`() {
+    fun `removing names the account in the household`() {
         world.paths.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.merke(HouseholdViewModel(world.t.sitzung, world.t.filter(), world.t.sync,
@@ -294,7 +294,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `Preisalarme nennen den Namen zuerst und in der Rueckfrage`() {
+    fun `price alerts name the name first and in the confirmation`() {
         world.paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
         val vm = einstellungen()
@@ -313,7 +313,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `Konto wechselt das Passwort erst mit passender Wiederholung und markiert sie sonst`() {
+    fun `account changes the password only with a matching repetition and marks it otherwise`() {
         world.paths.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = world.t.merke(AccountViewModel(
@@ -344,7 +344,7 @@ class SubpagesTest {
 
     /** Eine neue Adresse gilt erst nach dem Link: Das Feld zeigt die geltende, darunter die beantragte. */
     @Test
-    fun `Konto nennt die beantragte E-Mail unter dem Feld`() {
+    fun `account names the requested e-mail below the field`() {
         world.paths.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
             "new_email":"neu@example.org"}}"""
@@ -363,7 +363,7 @@ class SubpagesTest {
 
     /** Geändert wird über die Textaktion, nicht durch Tippen: kein fokussiertes Feld. */
     @Test
-    fun `Konto fragt beim Speichern des Profils nach dem Passwort`() {
+    fun `account asks for the password when saving the profile`() {
         world.paths.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = world.t.merke(AccountViewModel(
@@ -397,7 +397,7 @@ class SubpagesTest {
 
     /** Zurücksetzen wirft Sets und Liste weg und fragt darum erst nach. */
     @Test
-    fun `Bauliste nimmt Sets ueber das Plus im Feld und setzt bei ihnen erst nach Rueckfrage zurueck`() {
+    fun `build list takes sets via the plus in the field and resets them only after confirmation`() {
         val vm = world.bauliste()
         zeige { bauliste(vm) }
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number)))
@@ -419,7 +419,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `Bauliste entsteht in einem Schritt aus der getippten Nummer`() {
+    fun `build list is created in one step from the typed number`() {
         val aufgeloest = mutableListOf<String>()
         val vm = world.bauliste { nr -> aufgeloest += nr; "Baumhaus" to emptyList() }
         zeige { bauliste(vm) }

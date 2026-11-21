@@ -22,7 +22,7 @@ class ScopeFilterTest {
         MemberView(id, name, self)
 
     @Test
-    fun `ohne Unterkonten gibt es nichts zu waehlen`() {
+    fun `without sub-accounts there is nothing to choose`() {
         // Eine Auswahl mit genau einer möglichen Antwort ist keine Wahl,
         // sondern eine Frage, die sich nicht stellt — sie bleibt verborgen.
         assertTrue(accountOptions(listOf(m(1, "ich", true)), "A", "E").isEmpty())
@@ -30,7 +30,7 @@ class ScopeFilterTest {
     }
 
     @Test
-    fun `ein Eintrag je Unterkonto, namentlich`() {
+    fun `one entry per sub-account, by name`() {
         val opts = accountOptions(
             listOf(m(1, "eltern", true), m(2, "lea"), m(3, "nino")), "Alle", "Eigene")
         assertEquals(
@@ -39,7 +39,7 @@ class ScopeFilterTest {
     }
 
     @Test
-    fun `kein Sammelposten Unterkonten mehr`() {
+    fun `no collective sub-accounts entry any more`() {
         // Entfallen: Der Eintrag beantwortete nur „nicht
         // mir" und stand zwischen zwei Einträgen, die dieselbe Frage genauer
         // beantworten. Auch bei mehreren Kindern darf er nicht wieder
@@ -53,7 +53,7 @@ class ScopeFilterTest {
     // Gegenprobe (am 28.10. gemessen): die frühere Einrückung nach `tiefe`
     // wieder eingebaut → rot mit "   enkel" statt "enkel".
     @Test
-    fun `jedes Unterkonto steht flach drin, auch wenn ein aelterer Server Stufen schickt`() {
+    fun `every sub-account is in it flat, even if an older server sends levels`() {
         // Rechte gelten nur entlang direkter Verknüpfungen; jedes Konto in der
         // Liste ist ein direktes Unterkonto. Ein älterer Server schickt noch
         // tiefe = 2 — eingerückt sähe das nach einer Rangordnung aus, die es
@@ -69,7 +69,7 @@ class ScopeFilterTest {
     }
 
     @Test
-    fun `eine fehlende Stufe rueckt nicht ins Nichts`() {
+    fun `a missing level does not move into nothing`() {
         // Auch ein unerwarteter Wert (0 bei einem Unterkonto) ändert nichts am Namen.
         val opts = accountOptions(
             listOf(m(1, "ich", self = true), m(2, "lea")),
@@ -78,7 +78,7 @@ class ScopeFilterTest {
     }
 
     @Test
-    fun `all wird nicht mitgeschickt`() {
+    fun `all is not sent`() {
         // Weglassen hält die Adressen kurz — und trifft im Repository den
         // Zweig, der die Antwort zwischenspeichert: Eine gefilterte Sicht darf
         // dort nicht unter demselben Schlüssel landen wie die volle.
@@ -90,7 +90,7 @@ class ScopeFilterTest {
     }
 
     @Test
-    fun `eine Wahl auf ein entkoppeltes Konto faellt auf Alle zurueck`() {
+    fun `a choice of an unlinked account falls back to All`() {
         // Sonst stünde in der Auswahl eine leere Beschriftung über einer
         // unerklärlich gefilterten Liste.
         val opts = accountOptions(listOf(m(1, "eltern", true), m(2, "lea")), "Alle", "Eigene")
@@ -100,7 +100,7 @@ class ScopeFilterTest {
     }
 
     @Test
-    fun `jede Ansicht hat ihren eigenen Schluessel`() {
+    fun `every view has its own key`() {
         // Wer in der Galerie den ganzen Haushalt sieht, will in den Finanzen
         // womöglich nur die eigenen Zahlen.
         //

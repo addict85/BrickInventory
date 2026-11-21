@@ -1,7 +1,7 @@
 Gegenprobe: Ein unbekanntes Design des Servers liest sich als Vorgabe statt als „keine Information“
 Modul: core-model
 Test: ch.brickinventoryapp.model.FachtypenTest
-Rot: ein leeres oder unbekanntes Design
+Rot: an empty or unknown design of the server means no information
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/theme/Design.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/theme/Design.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/theme/Design.kt

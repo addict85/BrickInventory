@@ -1,7 +1,7 @@
 Gegenprobe: Die Kontosicht zeigt die Antwort eines anderen Kontos
 Modul: core-data
 Test: ch.brickinventoryapp.data.KontosichtTest
-Rot: eine Antwort fuer ein anderes Konto zeigt die Kontosicht nicht
+Rot: the account view does not show a response for a different account
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt

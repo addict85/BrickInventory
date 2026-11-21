@@ -33,7 +33,7 @@ class CsvCancelButtonTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun `ein laufender Import laesst sich zugeklappt abbrechen, ein fertiger nicht`() {
+    fun `a running import can be cancelled while collapsed, a finished one cannot`() {
         var abgebrochen = 0
         val laeuft = mutableStateOf(true)
         compose.setContent {

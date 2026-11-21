@@ -1,7 +1,7 @@
 Gegenprobe: Ein Tipp neben den Zertifikatsdialog schliesst ihn wieder und verwirft die Abschrift
 Modul: app
 Test: ch.brickinventoryapp.app.CertificateDialogTest
-Rot: daneben tippen schliesst den Dialog nie
+Rot: tapping outside never closes the dialog, back only without input
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt

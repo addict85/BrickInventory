@@ -1,7 +1,7 @@
 Gegenprobe: Die Ersatzfassung für den Sperrbildschirm übernimmt den ganzen Text
 Modul: core-data
 Test: ch.brickinventoryapp.data.LockScreenMessageTest
-Rot: die Ersatzfassung traegt nur den Titel
+Rot: the public version carries only the title
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Sperrbildschirm.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Sperrbildschirm.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Sperrbildschirm.kt

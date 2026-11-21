@@ -1,7 +1,7 @@
 Gegenprobe: Überschrift der Maske in schmaler Spalte (grosser Einzug rechts)
 Modul: feature-account
 Test: ch.brickinventoryapp.account.SecondFactorMaskTest
-Rot: bei 200 Prozent
+Rot: at 200 percent font no text wraps in the middle of a word
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt

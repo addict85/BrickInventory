@@ -1,7 +1,7 @@
 Gegenprobe: das Protokoll schreibt auch ohne Android ins Logcat (android.util.Log ist im JVM-Test eine werfende Attrappe)
 Modul: core-network
 Test: ch.brickinventoryapp.network.LogWithoutAndroidTest
-Rot: ohne Android landet eine Warnung auf stderr
+Rot: without Android a warning ends up on stderr, not in logcat
 
 diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt
 --- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt

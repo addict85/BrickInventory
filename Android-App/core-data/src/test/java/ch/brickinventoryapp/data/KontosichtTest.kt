@@ -36,9 +36,9 @@ import org.junit.Test
  *   B  in Serversicht.aktualisiere zusätzlich in die Ablage übernommen → rot „die
  *      Kontosicht landet nicht in der Ablage“
  *   C  in allPages die Zeilen nicht nach Schlüssel zusammengefasst (Liste statt Map)
- *      → rot „die Kontosicht holt alle Seiten und keine Zeile doppelt“
+ *      → rot „the account view fetches all pages and no row twice“
  *   D  in Serversicht.beobachte das Sammeln von `ablage.altered` entfernt → rot
- *      „ein Schreibvorgang zeigt sich auch in der Kontosicht“
+ *      „a write shows up in the account view too“
  *   E  in Serversicht.beobachte den Vergleich des Bereichs entfernt → rot „eine
  *      Antwort für ein anderes Konto zeigt die Kontosicht nicht“
  *   F  in refreshPaged auch bei einem Fehler übernommen → rot „die volle
@@ -62,7 +62,7 @@ class KontosichtTest {
         Kontosicht.SetsQuery(konten, "falcon", "Star Wars", Setsortierung.PREIS_ABSTEIGEND, "Regal 2")
 
     @Test
-    fun `jeder Filter der Kontosicht steht in der Anfrage`() = runBlocking {
+    fun `every filter of the account view is in the request`() = runBlocking {
         view.galerie.refresh(abfrage())
         val pfad = paths.requestsAn("GET /api/v1/sets?").single()
         for (teil in listOf("accounts=7", "search=falcon", "theme=Star%20Wars", "sort=price_desc", "storage=Regal%202")) {
@@ -72,7 +72,7 @@ class KontosichtTest {
     }
 
     @Test
-    fun `die Kontosicht landet nicht in der Ablage`() = runBlocking {
+    fun `the account view does not end up in the store`() = runBlocking {
         view.galerie.refresh(abfrage())
         val abgelegt = sets.observeSets().first()
         assertNull("nie geladen", abgelegt.stand)
@@ -80,7 +80,7 @@ class KontosichtTest {
     }
 
     @Test
-    fun `die Kontosicht holt alle Seiten und keine Zeile doppelt`() = runBlocking {
+    fun `the account view fetches all pages and no row twice`() = runBlocking {
         paths.priority = { _, pfad ->
             if ("page=2" in pfad) 200 to """{"success":true,"total":3,"sets":[{"set_number":"11-1"},{"set_number":"12-1"}]}"""
             else 200 to """{"success":true,"total":3,"sets":[{"set_number":"10-1"},{"set_number":"11-1"}]}"""
@@ -91,7 +91,7 @@ class KontosichtTest {
     }
 
     @Test
-    fun `ein Schreibvorgang zeigt sich auch in der Kontosicht`() = runBlocking {
+    fun `a write shows up in the account view too`() = runBlocking {
         view.galerie.refresh(abfrage())
         val vorher = paths.requestsAn("GET /api/v1/sets?").size
         val gesehen = CompletableDeferred<Unit>()
@@ -108,7 +108,7 @@ class KontosichtTest {
     }
 
     @Test
-    fun `eine Antwort fuer ein anderes Konto zeigt die Kontosicht nicht`() = runBlocking {
+    fun `the account view does not show a response for a different account`() = runBlocking {
         view.galerie.refresh(abfrage())
         bereich = "b"
         val l = view.galerie.observe(abfrage()).first()
@@ -117,7 +117,7 @@ class KontosichtTest {
     }
 
     @Test
-    fun `die volle Sicht steht in der Ablage und traegt bei Netzausfall`() = runBlocking {
+    fun `the full view is in the store and carries through a network outage`() = runBlocking {
         assertTrue(sets.aktualisiereSets() is Ergebnis.Erfolg)
         val abruf = paths.requestsAn("GET /api/v1/sets?").single()
         assertTrue("ungefiltert: $abruf", "search=" !in abruf && "accounts=" !in abruf)

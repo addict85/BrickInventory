@@ -1,7 +1,7 @@
 Gegenprobe: Die Schrittsperre zeigt den Inhalt ohne Bestätigung
 Modul: app
 Test: ch.brickinventoryapp.app.DevicesProtectionTest
-Rot: die Verwaltung zeigt sich erst nach der Geraetesperre
+Rot: the management shows itself only after the device lock
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt

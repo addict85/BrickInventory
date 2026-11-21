@@ -1,7 +1,7 @@
 Gegenprobe: Ein Feature-Modul holt sich Retrofit, ein Bildschirm importiert es
 Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
-Rot: Praesentation holt nichts selbst am Netz
+Rot: presentation fetches nothing from the network itself
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt

@@ -42,7 +42,7 @@ class PartsOrderTest {
     private val withoutName = teil("9999", null, "Black", 1, 0)
 
     @Test
-    fun `jede Reihenfolge sortiert wie der Server`() {
+    fun `every order sorts like the server`() {
         val alle = listOf(weiss, platte, withoutName, tan)
         assertEquals("Farbe, dann Name", listOf(withoutName, platte, tan, weiss),
             sortiert(alle, Teilefilter.Order.FARBE))
@@ -86,7 +86,7 @@ class PartsOrderTest {
     private fun PartsViewModel.series() = teileState.value.parts.map { "${it.partNumber}/${it.colorName}" }
 
     @Test
-    fun `die Reihenfolge sortiert die geladene Liste um und uebersteht einen Prozess-Tod`() {
+    fun `the order re-sorts the loaded list and survives a process death`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
         vm.loadParts()

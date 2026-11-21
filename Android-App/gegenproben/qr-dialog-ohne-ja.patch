@@ -1,7 +1,7 @@
 Gegenprobe: Der QR-Dialog übernimmt ohne den Haken zum Ziel
 Modul: feature-login
 Test: ch.brickinventoryapp.login.QrSuggestionDialogTest
-Rot: uebernommen wird erst nach dem Ja
+Rot: it is taken over only after the yes to the named server
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt

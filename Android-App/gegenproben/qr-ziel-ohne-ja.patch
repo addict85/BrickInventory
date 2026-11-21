@@ -1,7 +1,7 @@
 Gegenprobe: Eine QR-Anmeldung geht ohne Ja zum gezeigten Ziel hinaus
 Modul: feature-login
 Test: ch.brickinventoryapp.login.QrTargetTest
-Rot: ohne Ja zum Ziel
+Rot: without a yes to the target nothing goes out, even without typing
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrAnmeldung.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrAnmeldung.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrAnmeldung.kt

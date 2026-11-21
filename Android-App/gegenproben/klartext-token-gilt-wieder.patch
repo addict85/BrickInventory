@@ -1,7 +1,7 @@
 Gegenprobe: Der Speicherspiegel nimmt ein Klartext-Token älterer Fassungen wieder als Anmeldung
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenVaultTest
-Rot: ein Klartext-Token aelterer Fassungen gilt nie und wird beim Start entfernt
+Rot: a plaintext token of older versions never counts and is removed at start
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 index 0287f52..9407f5c 100644

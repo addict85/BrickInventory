@@ -1,7 +1,7 @@
 Gegenprobe: core-state fehlt in Modulkanten.ohneOberflaeche und dürfte Compose einschalten
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: die Kantenregel verbietet
+Rot: the edge rule forbids area to area, wrong layering, api and core-testing in main code
 
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt

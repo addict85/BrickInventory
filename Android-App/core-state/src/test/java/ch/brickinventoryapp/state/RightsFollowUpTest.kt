@@ -34,7 +34,7 @@ class RightsFollowUpTest {
     fun zu() { t.aufraeumen(); paths.server.shutdown() }
 
     @Test
-    fun `ein entzogenes Recht wird einmal nachgezogen, dann nicht mehr gefragt`() = runBlocking {
+    fun `a revoked right is followed up once, then no longer asked`() = runBlocking {
         paths.antworten["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":false}}"""
         t.sitzung.angemeldet(admin = true)
         assertTrue("Beim Übergang gibt es eine Meldung", t.sitzung.followUpRights(konto))
@@ -45,7 +45,7 @@ class RightsFollowUpTest {
     }
 
     @Test
-    fun `ohne Antwort von auth me gilt das 403`() = runBlocking {
+    fun `without a response from auth me the 403 applies`() = runBlocking {
         paths.codes["/api/v1/auth/me"] = 500
         t.sitzung.angemeldet(admin = true)
         assertTrue(t.sitzung.followUpRights(konto))
@@ -53,7 +53,7 @@ class RightsFollowUpTest {
     }
 
     @Test
-    fun `meldet auth me das Recht noch, bleibt es`() = runBlocking {
+    fun `if auth me still reports the right, it stays`() = runBlocking {
         paths.antworten["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":true}}"""
         t.sitzung.angemeldet(admin = true)
         assertFalse(t.sitzung.followUpRights(konto))

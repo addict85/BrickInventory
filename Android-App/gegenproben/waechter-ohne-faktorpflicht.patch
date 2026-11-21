@@ -1,7 +1,7 @@
 Gegenprobe: Der Wächter übersieht 403 zweiter_faktor_pflicht
 Modul: core-state
 Test: ch.brickinventoryapp.state.ServerGuardTest
-Rot: ein 403 zweiter_faktor_pflicht verlangt
+Rot: a 403 zweiter_faktor_pflicht requires the setup without signing out
 
 diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt
 --- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt

@@ -15,7 +15,7 @@ import org.junit.Test
  * setzt, damit ein Schritt nicht still einen zweiten Weg zu einem fremden Feld öffnet.
  *
  * Gegenprobe: in waehrungUebernommen() `priceCondition` mitgeschrieben
- * (gegenproben/zustand-schritt-zu-breit.patch) → rot „jeder Schritt der Sitzung setzt nur seine Felder“.
+ * (gegenproben/zustand-schritt-zu-breit.patch) → rot „every step of the session sets only its fields“.
  */
 class StateDomainBoundaryTest {
 
@@ -54,7 +54,7 @@ class StateDomainBoundaryTest {
     )
 
     @Test
-    fun `jeder Schritt der Sitzung setzt nur seine Felder`() {
+    fun `every step of the session sets only its fields`() {
         assertEquals(erlaubt.keys, schritte.keys)
         val fehler = mutableListOf<String>()
         for ((name, schritt) in schritte) {

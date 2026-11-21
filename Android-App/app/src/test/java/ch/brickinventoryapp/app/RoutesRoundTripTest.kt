@@ -27,9 +27,9 @@ import org.robolectric.RobolectricTestRunner
  * und die Vorgabe „keine Farbe“. PDF-Adressen reisen nicht in der Route (PdfSelection).
  *
  * Gegenprobe (gegenproben/route-feld-transient.patch, nur in der CI messbar):
- *   ManualItemDetail.title als @Transient → rot „Titel mit Sonderzeichen kommen unverändert an“
+ *   ManualItemDetail.title als @Transient → rot „titles with special characters arrive unchanged“
  * Gegenprobe (gegenproben/postenart-aus-fest.patch, nur in der CI messbar):
- *   Postenart.aus() liefert immer SET → rot „jede Postenart kommt als dieselbe an“
+ *   Postenart.aus() liefert immer SET → rot „every item kind arrives as the same one“
  * Gegenprobe (nur in der CI messbar, nicht durchgeführt): StateSerializer mit
  *   PrimitiveKind.STRING statt SerialKind.ENUM → rot „Setnummern und Merkposten
  *   kommen unverändert an“ (Navigation findet keinen NavType für das Feld)
@@ -83,7 +83,7 @@ class RoutesRoundTripTest {
     )
 
     @Test
-    fun `Titel mit Sonderzeichen kommen unverändert an`() {
+    fun `titles with special characters arrive unchanged`() {
         aufbauen()
         for (t in titel) {
             val teil = TeileZiel.ManualItemDetail(Postenart.PART, "3001 b", 4, t)
@@ -94,7 +94,7 @@ class RoutesRoundTripTest {
     }
 
     @Test
-    fun `jede Postenart kommt als dieselbe an`() {
+    fun `every item kind arrives as the same one`() {
         aufbauen()
         for (art in Postenart.entries) {
             val kauf = SammlungZiel.AcquisitionManagement(art, "3001", 4, "Stein")
@@ -104,7 +104,7 @@ class RoutesRoundTripTest {
     }
 
     @Test
-    fun `der Scanner weiss, von wo er geoeffnet wurde`() {
+    fun `the scanner knows where it was opened from`() {
         aufbauen()
         for (herkunft in Scannerherkunft.entries) {
             assertEquals(SammlungZiel.BarcodeScanner(herkunft), hin(SammlungZiel.BarcodeScanner(herkunft)))
@@ -112,13 +112,13 @@ class RoutesRoundTripTest {
     }
 
     @Test
-    fun `ohne Farbe kommt keine Farbe an, nicht Schwarz`() {
+    fun `without a color no color arrives, not black`() {
         aufbauen()
         assertEquals(KEINE_FARBE, (hin(TeileZiel.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke")) as TeileZiel.ManualItemDetail).colorId)
     }
 
     @Test
-    fun `der PDF-Betrachter bekommt nur seinen Schluessel`() {
+    fun `the PDF viewer gets only its key`() {
         // Adresse (samt Ticket) und Titel bleiben in der PdfSelection (PdfSelectionTest).
         aufbauen()
         val pdf = FinanzZiel.PdfViewer("0f8e2c1a-7d3b-4c55-9a0e-1b2c3d4e5f60")
@@ -126,7 +126,7 @@ class RoutesRoundTripTest {
     }
 
     @Test
-    fun `Setnummern und Merkposten kommen unverändert an`() {
+    fun `set numbers and wishlist items arrive unchanged`() {
         aufbauen()
         for (sn in listOf("75192-1", "col23-1", "a b/c%", "10 % +1")) {
             assertEquals(SammlungZiel.SetDetail(sn), hin(SammlungZiel.SetDetail(sn)))

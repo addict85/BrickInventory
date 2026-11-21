@@ -20,7 +20,7 @@ class PartsListScannerTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `Eigentuemer, Kaufpreis und Zustand haengen an der Herkunft`() {
+    fun `owner, purchase price and condition depend on the origin`() {
         val c = code(src)
         val bedingung = c.indexOf("""if (barcodeState.source != Scannerherkunft.TEILELISTE)""")
         assert(bedingung > 0) {
@@ -39,7 +39,7 @@ class PartsListScannerTest {
     }
 
     @Test
-    fun `das Bild bleibt in beiden Faellen sichtbar`() {
+    fun `the image stays visible in both cases`() {
         val c = code(src)
         val bild = c.indexOf("ProduktBild(")
         val bedingung = c.indexOf("""if (barcodeState.source != Scannerherkunft.TEILELISTE)""")
@@ -50,7 +50,7 @@ class PartsListScannerTest {
     }
 
     @Test
-    fun `aus der Teileliste wird nur die Setnummer uebergeben`() {
+    fun `from the parts list only the set number is passed`() {
         val c = code(src)
         assert(c.contains("""aktionen.confirmAddBarcode(Erfassungswunsch(barcodeState.result))""")) {
             "Der Teilelisten-Weg soll nur die Nummer übergeben — Werte mitzuschicken, die " +

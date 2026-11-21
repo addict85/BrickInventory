@@ -1,7 +1,7 @@
 Gegenprobe: primaryContainer von Noppe wieder das helle Rot (NoppeRotHell)
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.RedOnlyForWarningTest
-Rot: Wert- und Zustandsflaechen sind nie rot
+Rot: value and state surfaces are never red
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt

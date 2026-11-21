@@ -1,7 +1,7 @@
 Gegenprobe: im Mobilfunk wird ohne Erlaubnis vorgewärmt
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewWarmerTest
-Rot: gestartet wird nur
+Rot: it starts only on an allowed network and with space
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt

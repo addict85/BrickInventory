@@ -128,14 +128,14 @@ class LoginEdgeTest {
     }
 
     @Test
-    fun `Anmelden beginnt unter der Statusleiste und endet ueber der Gestenleiste`() {
+    fun `sign-in starts below the status bar and ends above the gesture bar`() {
         zeige { Anmeldung(AnmeldeFormular.ANMELDEN) }
         bars()
         checkBetweenBars("Anmelden")
     }
 
     @Test
-    fun `Registrieren liegt zwischen den Leisten bis zum letzten Knopf`() {
+    fun `register lies between the bars up to the last button`() {
         zeige { Anmeldung(AnmeldeFormular.REGISTER) }
         bars()
         checkBetweenBars("Registrieren")
@@ -147,7 +147,7 @@ class LoginEdgeTest {
     }
 
     @Test
-    fun `Einrichten liegt zwischen den Leisten`() {
+    fun `setup lies between the bars`() {
         zeige { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
         bars()
         checkBetweenBars("Einrichten")
@@ -155,7 +155,7 @@ class LoginEdgeTest {
 
     /** Gesperrt und blass liess der Knopf raten, warum nichts geschieht; jetzt sagt es das Feld. */
     @Test
-    fun `Anmelden bleibt tippbar und nennt bei leeren Feldern am Feld, was fehlt`() {
+    fun `sign-in stays tappable and names at the field what is missing for empty fields`() {
         var logins = 0
         zeige {
             LoginScreen(
@@ -180,7 +180,7 @@ class LoginEdgeTest {
 
     /** Ein Satz als Etikett brach schon bei 100 % Schrift um und stand beim Tippen über dem Feld. */
     @Test
-    fun `das Adressfeld traegt ein kurzes Etikett in einer Zeile, die Erklaerung steht darunter`() {
+    fun `the address field carries a short label in one line, the explanation is below`() {
         zeige { SetupScreen(currentUrl = "", onSave = {}, entwicklung = false) }
         val zeilen = compose.onAllNodes(hasText(text(R.string.setup_url_label)), useUnmergedTree = true)
             .fetchSemanticsNodes().mapNotNull { node ->
@@ -196,7 +196,7 @@ class LoginEdgeTest {
     }
 
     @Test
-    fun `Registrieren bleibt ueber der Tastatur erreichbar`() {
+    fun `register stays reachable above the keyboard`() {
         zeige { Anmeldung(AnmeldeFormular.REGISTER) }
         bars(keyboard = 300)
         val button = compose.onNode(hasText(text(R.string.register_button)) and hasClickAction())
@@ -208,7 +208,7 @@ class LoginEdgeTest {
     }
 
     @Test
-    fun `Erweitert meldet ob der Bereich offen ist`() {
+    fun `Advanced reports whether the area is open`() {
         zeige { Anmeldung(AnmeldeFormular.ANMELDEN) }
         val button = compose.onNode(hasText(text(R.string.login_erweitert)) and hasClickAction())
         button.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, text(R.string.zustand_eingeklappt)))
@@ -220,7 +220,7 @@ class LoginEdgeTest {
     }
 
     @Test
-    fun `Registrieren steht auf dem Tablet ohne Rollen im Bild`() {
+    fun `register stands in view on the tablet without scrolling`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige { Anmeldung(AnmeldeFormular.REGISTER) }
         val button = compose.onNode(hasText(text(R.string.register_button)) and hasClickAction())
@@ -243,7 +243,7 @@ class LoginEdgeTest {
     }
 
     @Test
-    fun `Weiter hebt sich in jedem Design von der Karte und vom gesperrten Zustand ab`() {
+    fun `Next stands out in every design from the card and from the disabled state`() {
         // Ein setContent je Test: Design und Adresse wechseln über den Zustand.
         var fall by mutableStateOf(Triple("classic", false, "https://brick.fritz.box"))
         var karte = Color.Unspecified

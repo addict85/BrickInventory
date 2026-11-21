@@ -49,7 +49,7 @@ class InstructionStoreTest {
     private fun lies(f: File) = ablage.lies(f).use { it.readBytes() }
 
     @Test
-    fun `eine Anleitung liegt verschluesselt und laesst sich wieder lesen`() {
+    fun `an instruction lies encrypted and can be read again`() {
         val f = datei()
         ablegen(f, pdf)
         val roh = String(f.readBytes(), Charsets.ISO_8859_1)
@@ -59,7 +59,7 @@ class InstructionStoreTest {
     }
 
     @Test
-    fun `ein abgebrochener Download wird am Klartext-Byte fortgesetzt und gilt nach dem Umbenennen`() {
+    fun `an aborted download is resumed at the plaintext byte and counts after renaming`() {
         val f = datei()
         val teil = File(f.path + ".part")
         ablegen(teil, pdf.copyOfRange(0, 100_000))
@@ -71,7 +71,7 @@ class InstructionStoreTest {
     }
 
     @Test
-    fun `eine gekuerzte, fremde oder unlesbare Datei gilt nicht`() {
+    fun `a truncated, foreign or unreadable file does not count`() {
         val f = datei()
         ablegen(f, pdf)
         val gekuerzt = File(cache, "gekuerzt").apply { writeBytes(f.readBytes().copyOf(f.length().toInt() - 36)) }
@@ -89,7 +89,7 @@ class InstructionStoreTest {
     }
 
     @Test
-    fun `Abmelden raeumt alle Anleitungen weg, der Start nur den Klartext`() {
+    fun `sign-out clears all instructions, the start only the plaintext`() {
         val encrypted = datei().also { ablegen(it, pdf) }
         val teil = File(encrypted.path + ".part").also { ablegen(it, pdf.copyOf(10)) }
         val alt = File(cache, "pdfview_abc.pdf").apply { writeBytes(pdf) }

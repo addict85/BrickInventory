@@ -1,7 +1,7 @@
 Gegenprobe: Das ViewModel folgt dem CSV-Strom auch ohne Anmeldung
 Modul: app
 Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
-Rot: ohne Anmeldung verbindet niemand
+Rot: without sign-in nobody connects, the sign-in starts the stream
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt

@@ -37,7 +37,7 @@ import ch.brickinventoryapp.network.di.Rotationsanlass
  *      `.takeIf { sameSession() }` entfernt → rot „ein Tausch nach dem
  *      Wechsel schickt den Token des neuen Servers nicht an den alten“
  *   C  im Wächter `sameSession()` aus der Meldung von 401/403 entfernt →
- *      rot „ein 401 oder 403 des alten Servers beendet die neue Sitzung nicht“
+ *      rot „a 401 or 403 of the old server does not end the new session“
  *   D  in tokenFor() die Generation nicht neu gelesen (immer die vom Senden) →
  *      rot „nach der Anmeldung beim selben Server fasst eine Anfrage ohne Token
  *      weiterhin nach“ (die Meldung des echten 401 bliebe aus)
@@ -120,7 +120,7 @@ class ServerwechselTest {
     }
 
     @Test
-    fun `eine Anfrage ohne Token fasst nach dem Wechsel nicht mit dem Token des neuen Servers nach`() {
+    fun `a request without a token does not reach for the new server's token after the switch`() {
         val status = duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/settings/theme")).build()) {
             switchAndReportAn(b, "TOKEN-VON-B")
         }
@@ -130,7 +130,7 @@ class ServerwechselTest {
     }
 
     @Test
-    fun `ein Tausch nach dem Wechsel schickt den Token des neuen Servers nicht an den alten`() {
+    fun `a swap after the switch does not send the new server's token to the old one`() {
         token = "TOKEN-VON-A"; herkunft = NetworkPolicy.herkunft(adresse(a))
         lateResponse = { MockResponse().setResponseCode(401).setBody("""{"code":"token_rotation_noetig"}""") }
         val tausch = TokenSwap(
@@ -150,7 +150,7 @@ class ServerwechselTest {
     }
 
     @Test
-    fun `ein 401 oder 403 des alten Servers beendet die neue Sitzung nicht`() {
+    fun `a 401 or 403 of the old server does not end the new session`() {
         token = "TOKEN-VON-A"; herkunft = NetworkPolicy.herkunft(adresse(a))
         lateResponse = { MockResponse().setResponseCode(401).setBody("""{"code":"token_ungueltig"}""") }
         duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/sets")).build()) {
@@ -172,7 +172,7 @@ class ServerwechselTest {
     }
 
     @Test
-    fun `ein 403 nur_admins des alten Servers nimmt der neuen Sitzung keine Rechte`() {
+    fun `a 403 nur_admins of the old server takes no rights from the new session`() {
         token = "TOKEN-VON-A"; herkunft = NetworkPolicy.herkunft(adresse(a))
         lateResponse = { MockResponse().setResponseCode(403).setBody("""{"code":"nur_admins"}""") }
         duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/admin/x")).build()) {
@@ -182,7 +182,7 @@ class ServerwechselTest {
     }
 
     @Test
-    fun `nach der Anmeldung beim selben Server fasst eine Anfrage ohne Token weiterhin nach`() {
+    fun `after signing in to the same server a request without a token still reaches for it`() {
         // Der Wettlauf, für den es das Nachfassen gibt: dieselbe Herkunft, neue Generation.
         val status = duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/settings/theme")).build()) {
             runBlocking { limit.schreibe { herkunft = NetworkPolicy.herkunft(adresse(a)); token = "TOKEN-VON-A" } }

@@ -26,7 +26,7 @@ class CsvStreamAbortTest {
         try { block(); false } catch (_: CancellationException) { true }
 
     @Test
-    fun `folgeStrom reicht das Abbrechen weiter, ein Netzfehler heisst Rueckfallebene`() = runTest {
+    fun `folgeStrom passes the cancellation on, a network error means fallback level`() = runTest {
         assertTrue("folgeStrom hat das Abbrechen verschluckt",
             brichtAb { folgeStrom(flow { throw CancellationException("weg") }) { true } })
         assertFalse(folgeStrom(flow { throw IOException("weg") }) { true })

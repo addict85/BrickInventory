@@ -145,7 +145,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `ein 401 meldet die angemeldete Sitzung ab, ein zweiter bleibt still`() = withVm {
+    fun `a 401 signs out the signed-in session, a second one stays silent`() = withVm {
         angemeldet()
         advanceUntilIdle()
         assertTrue(sitzung.state.value.isLoggedIn)
@@ -165,7 +165,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `eine zu alte Anmeldung meldet ab, ohne das Konto zu laden`() = withVm {
+    fun `a too old sign-in signs out without loading the account`() = withVm {
         ablage.abgelaufen = true
         angemeldet()
         advanceUntilIdle()
@@ -176,7 +176,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `entzogene Verwalterrechte gelten sofort und werden einmal gemeldet`() = withVm {
+    fun `revoked admin rights apply immediately and are reported once`() = withVm {
         fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = true))
         angemeldet()
         advanceUntilIdle()
@@ -197,7 +197,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `das Design des Servers gilt und wird gemerkt, ohne Antwort bleibt das gemerkte`() = withVm {
+    fun `the server's design applies and is remembered, without a response the remembered one stays`() = withVm {
         ablage.design.value = Design.BRICK
         ablage.server.value = "https://brick.example"
         fake.codes["getAppTheme"] = 500
@@ -214,7 +214,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `eine spaete Antwort des alten Kontos schreibt nicht in die neue Sitzung`() = withVm {
+    fun `a late response of the old account does not write into the new session`() = withVm {
         einstellungen.addLast(1_000L to Waehrung.CHF)
         einstellungen.addLast(10L to Waehrung("USD"))
         angemeldet()
@@ -228,7 +228,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `Waehrung und Design kommen aus der Ablage, die Sitzung schreibt nichts zurueck`() = withVm {
+    fun `currency and design come from the store, the session writes nothing back`() = withVm {
         advanceUntilIdle()
         ablage.waehrung.value = Waehrung.CHF
         ablage.design.value = Design.NOPPE
@@ -239,7 +239,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `der Serverstart wird im Takt verfolgt, bis der Server bereit ist`() = withVm {
+    fun `the server start is followed at intervals until the server is ready`() = withVm {
         ablage.server.value = "https://brick.example"
         fake.antworten["getStartupStatus"] = StartupStatus(ready = false, step = "Katalog", progress = 2.0, total = 8)
         runCurrent()
@@ -258,7 +258,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `ohne Antwort startet kein Server, die Abfrage hoert auf`() = withVm {
+    fun `without a response no server starts, the polling stops`() = withVm {
         ablage.server.value = "https://falsch-getippt.example"
         fake.codes["getStartupStatus"] = 503
         advanceTimeBy(10_000)
@@ -267,7 +267,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `eine endgueltig gescheiterte Abmeldung am Server wird einmal gemeldet`() {
+    fun `a finally failed sign-out at the server is reported once`() {
         ablage.gescheitert += "https://alt.example"
         withVm {
             val m = t.meldungen.meldung.value as Meldung.Resource
@@ -278,7 +278,7 @@ class SessionServiceTest {
     }
 
     @Test
-    fun `ein 401 vor dem Start geht nicht verloren`() {
+    fun `a 401 before the start is not lost`() {
         angemeldet()
         expiredSignal.notifyExpired()
         withVm {

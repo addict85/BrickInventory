@@ -1,7 +1,7 @@
 Gegenprobe: Der Zertifikatsdialog lässt den Erstkontakt ohne CT-Pflicht mit einem Tipp zu
 Modul: app
 Test: ch.brickinventoryapp.app.CertificateDialogTest
-Rot: ohne CT-Pflicht wird beim Erstkontakt abgetippt
+Rot: without CT requirement it is typed on first contact, a tap is not enough
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt

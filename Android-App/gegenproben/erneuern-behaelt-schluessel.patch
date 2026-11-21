@@ -1,7 +1,7 @@
 Gegenprobe: Ablageschluessel.erneuere() vergisst den Schlüssel im Speicher nicht
 Modul: core-data
 Test: ch.brickinventoryapp.data.StoreEncryptionTest
-Rot: nach dem Erneuern ist alles Alte unlesbar
+Rot: after renewal everything old is unreadable, even after a restart
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 index 2f06ee6..0130351 100644

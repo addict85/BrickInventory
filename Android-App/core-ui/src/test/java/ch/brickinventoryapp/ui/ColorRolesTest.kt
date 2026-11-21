@@ -62,7 +62,7 @@ class ColorRolesTest {
      * und noppe; mit #15803D rot für noppe (4,43:1 auf background).
      */
     @Test
-    fun `Gewinnfarbe ist als Text auf jeder Flaeche lesbar`() {
+    fun `profit color is readable as text on every surface`() {
         val fehler = mutableListOf<String>()
         for (f in versions) {
             val d = f.name
@@ -78,7 +78,7 @@ class ColorRolesTest {
     }
 
     @Test
-    fun `kein Design erbt Rollen aus der Grundpalette`() {
+    fun `no design inherits roles from the base palette`() {
         val fehler = mutableListOf<String>()
         for (f in versions) {
             val d = f.name
@@ -92,7 +92,7 @@ class ColorRolesTest {
     }
 
     @Test
-    fun `outline hebt sich mit mindestens 3 zu 1 von jeder Flaeche ab`() {
+    fun `outline stands out with at least 3 to 1 from every surface`() {
         val fehler = mutableListOf<String>()
         for (f in versions) {
             val d = f.name
@@ -118,7 +118,7 @@ class ColorRolesTest {
      * rot „Ladekacheln heben sich …“ (classic 1,05, brick 1,03, farbfaecher 1,05, noppe 1,07).
      */
     @Test
-    fun `Ladekacheln heben sich vom Hintergrund ab`() {
+    fun `loading tiles stand out from the background`() {
         val fehler = mutableListOf<String>()
         for (f in versions) {
             val k = Contrast.verhaeltnis(skeletonTone(f.schema).toArgb(), f.schema.background.toArgb())
@@ -133,7 +133,7 @@ class ColorRolesTest {
     }
 
     @Test
-    fun `Flaechenstufen entfernen sich schrittweise von surface`() {
+    fun `surface levels move away from surface step by step`() {
         for (f in versions) {
             val d = f.name
             val s = f.schema
@@ -153,7 +153,7 @@ class ColorRolesTest {
      * Hellblau als Zweitfarbe → rot.
      */
     @Test
-    fun `Werkbank und Klassisch dunkel unterscheiden sich in Flaeche und Akzent`() {
+    fun `Workbench and Classic dark differ in surface and accent`() {
         val werkbank = farbschema(Design.WERKBANK)
         val classic = farbschema(Design.CLASSIC, dunkel = true)
         assertTrue("Werkbank-Fläche nicht warm: ${werkbank.surface}", werkbank.surface.red > werkbank.surface.blue)

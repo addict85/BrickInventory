@@ -1,7 +1,7 @@
 Gegenprobe: das Kachelbild bekommt einen eigenen Eckenradius statt des Radius der Leiste
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.TileDimensionsTest
-Rot: Bildecke und Kartenform teilen sich den Radius
+Rot: image corner and card shape share the radius
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Formen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Formen.kt
 index 1f3be72..ffe6265 100644

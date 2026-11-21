@@ -133,7 +133,7 @@ class SecondFactorMaskTest {
     private val codes = ZweiterFaktorUiState(aktiv = true, codes = listOf("aaaa-bbbb", "cccc-dddd"))
 
     @Test
-    fun `ohne Passwort richtet die Maske nichts ein, mit Passwort schon`() {
+    fun `without a password the form sets up nothing, with a password it does`() {
         zustand.value = ZweiterFaktorUiState(aktiv = false)
         zeige()
         button(R.string.setup_continue).assertIsNotEnabled()
@@ -144,7 +144,7 @@ class SecondFactorMaskTest {
     }
 
     @Test
-    fun `waehrend der Einrichtung steht der Schluessel in Gruppen da und nur Ziffern gehen hinaus`() {
+    fun `during the setup the key stands in groups and only digits go out`() {
         zustand.value = setup
         zeige()
         compose.onNodeWithText("JBSW Y3DP EHPK 3PXP").assertExists()
@@ -157,7 +157,7 @@ class SecondFactorMaskTest {
     }
 
     @Test
-    fun `nach der Bestaetigung stehen die Notfallcodes da, weiter erst mit dem Haken gesichert`() {
+    fun `after confirmation the emergency codes are shown, continuing only with the saved check`() {
         zustand.value = codes
         zeige()
         // Der Codetext liest sich Zeichen für Zeichen (readAloudAs); sein Text steht nicht im Baum.
@@ -176,7 +176,7 @@ class SecondFactorMaskTest {
      * des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
      */
     @Test
-    fun `die Notfallcodes lassen sich teilen, ohne die Zwischenablage zu fuellen`() {
+    fun `the emergency codes can be shared without filling the clipboard`() {
         zustand.value = codes
         zeige()
         assertEquals("Vor dem Tipp wird nichts geteilt", null,
@@ -195,7 +195,7 @@ class SecondFactorMaskTest {
 
     /** Bevorzugt eine Datei am Ort der Wahl: Beim Teilen läse die Ziel-App mit. */
     @Test
-    fun `die Notfallcodes lassen sich als Datei speichern, das hakt gesichert an`() {
+    fun `the emergency codes can be saved as a file, that checks saved`() {
         zustand.value = codes
         zeige()
         button(R.string.zf_pflicht_weiter).assertIsNotEnabled()
@@ -219,7 +219,7 @@ class SecondFactorMaskTest {
 
     /** Jeder Knopf des Codeschritts getippt (ausser Abmelden): Die Ablage bleibt leer. */
     @Test
-    fun `kein Knopf der Codes legt sie in die Zwischenablage`() {
+    fun `no button of the codes puts them into the clipboard`() {
         zustand.value = codes
         zeige()
         val buttons = compose.onAllNodes(hasClickAction()).fetchSemanticsNodes()
@@ -235,7 +235,7 @@ class SecondFactorMaskTest {
     }
 
     @Test
-    fun `der Schluessel ist erst ab API 33 kopierbar, und dann als vertraulich markiert`() {
+    fun `the key is copyable only from API 33, and then marked as confidential`() {
         assertTrue("Unter API 33 zeigt das System kopierte Geheimnisse an", !secretCopyable(32))
         assertTrue(secretCopyable(33))
         zustand.value = setup
@@ -253,7 +253,7 @@ class SecondFactorMaskTest {
     }
 
     @Test
-    fun `die Schrittanzeige nennt Schritt und Namen`() {
+    fun `the step indicator names step and name`() {
         val je = listOf(ZweiterFaktorUiState(aktiv = false) to (1 to R.string.zf_schritt_passwort),
             setup to (2 to R.string.zf_schritt_app), codes to (3 to R.string.zf_schritt_codes))
         zeige()
@@ -267,7 +267,7 @@ class SecondFactorMaskTest {
     }
 
     @Test
-    fun `ohne Authenticator-App wird der Hinweis angesagt`() {
+    fun `without an authenticator app the hint is announced`() {
         zustand.value = setup
         zeige()
         button(R.string.zf_open_app).performScrollTo().performClick()
@@ -277,7 +277,7 @@ class SecondFactorMaskTest {
     }
 
     @Test
-    fun `Abmelden bleibt in jedem Schritt moeglich`() {
+    fun `sign-out stays possible in every step`() {
         val schritte = listOf(ZweiterFaktorUiState(aktiv = false), setup, codes, ZweiterFaktorUiState(aktiv = true))
         zeige()
         schritte.forEachIndexed { i, schritt ->
@@ -290,7 +290,7 @@ class SecondFactorMaskTest {
     }
 
     @Test
-    fun `bei 200 Prozent Schrift bricht kein Text mitten im Wort um`() {
+    fun `at 200 percent font no text wraps in the middle of a word`() {
         val je = listOf(
             ZweiterFaktorUiState(aktiv = false) to listOf(R.string.zf_pflicht_titel, R.string.zf_pflicht_kurz,
                 R.string.common_learn_more, R.string.zf_pflicht_passwort, R.string.setup_continue, R.string.settings_logout),

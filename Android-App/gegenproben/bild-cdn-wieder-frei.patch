@@ -1,7 +1,7 @@
 Gegenprobe: Der Bild-Client lässt wieder direkte Anfragen an Bild-CDNs durch
 Modul: core-network
 Test: ch.brickinventoryapp.network.ImageHostGuardTest
-Rot: auch ein Bild-CDN wird nicht direkt angefragt
+Rot: an image CDN is not requested directly either
 
 diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/BildHosts.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/BildHosts.kt
 --- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/BildHosts.kt

@@ -1,7 +1,7 @@
 Gegenprobe: Der Hinweis nennt wieder „Leer =“ statt der Wahl
 Modul: app
 Test: ch.brickinventoryapp.app.DefaultStateTermsTest
-Rot: der Hinweis nennt die Wahl
+Rot: the hint names the choice next to New and Used
 
 diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 index c0b6003..642ddbd 100644

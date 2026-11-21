@@ -28,7 +28,7 @@ class ResourceAndCacheTest {
     // ── Kamera-Ressourcen ────────────────────────────────────────────────────
 
     @Test
-    fun `beide Kamera-Screens geben Executor und ML-Kit-Client frei`() {
+    fun `both camera screens release executor and ML Kit client`() {
         for ((rel, close) in listOf(
             "collection/ui/screens/BarcodeScannerScreen.kt" to "barcodeScanner.close()",
             "login/ui/screens/SetupScreen.kt" to "scanner.close()",
@@ -51,7 +51,7 @@ class ResourceAndCacheTest {
     // ── PDF-Cache ────────────────────────────────────────────────────────────
 
     @Test
-    fun `der PDF-Ansichts-Cache hat eine Obergrenze`() {
+    fun `the PDF view cache has an upper limit`() {
         val src = code(read("data/AnleitungsRepository.kt"))
         assert(src.contains("private fun prunePdfCache")) {
             "Kein Aufräumen des PDF-Caches. Angesehene Anleitungen bleiben absichtlich " +
@@ -71,7 +71,7 @@ class ResourceAndCacheTest {
     // ── Debug-Version ────────────────────────────────────────────────────────
 
     @Test
-    fun `Debug-Builds haben eine feste Version`() {
+    fun `debug builds have a fixed version`() {
         val bg = File("build.gradle.kts")
         assert(bg.exists()) { "app/build.gradle.kts nicht gefunden" }
         val src = code(bg.readText())
@@ -92,7 +92,7 @@ class ResourceAndCacheTest {
      * android.yml entfernt → rot; `LocalDateTime.now()` zurück → rot.
      */
     @Test
-    fun `die Version kommt aus Git, nicht aus der Uhr`() {
+    fun `the version comes from Git, not from the clock`() {
         val src = code(File("build.gradle.kts").readText())
         assert(src.contains("git(\"rev-list\", \"--count\", \"HEAD\")") && src.contains("\"describe\", \"--tags\"")) {
             "versionCode/-Name kommen nicht aus Git"
@@ -107,7 +107,7 @@ class ResourceAndCacheTest {
     // ── CSV-Status: ein Pfad ─────────────────────────────────────────────────
 
     @Test
-    fun `der CSV-Service teilt sich den SSE-Client mit dem ViewModel`() {
+    fun `the CSV service shares the SSE client with the ViewModel`() {
         val src = code(read("services/service/CsvImportService.kt"))
         assert(src.contains("sseClient")) {
             "CsvImportService pollt wieder eigenständig, statt den CsvImportSseClient " +
@@ -123,7 +123,7 @@ class ResourceAndCacheTest {
     }
 
     @Test
-    fun `eine erste idle-Antwort beendet den Service nicht sofort`() {
+    fun `a first idle response does not end the service immediately`() {
         val src = code(read("services/service/CsvImportService.kt"))
         assert(src.contains("sawRunning") && src.contains("GRACE_MS")) {
             "Kein Anlaufschutz in applyStatus(). Der Service startet im selben Moment " +

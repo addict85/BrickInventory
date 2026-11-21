@@ -59,7 +59,7 @@ import ch.brickinventoryapp.testing.Quellen
 class KatalogSprungEntprelltTest {
 
     @Test
-    fun `ein Zug ueber die Leiste beruehrt sehr viele Seiten`() {
+    fun `a drag over the bar touches very many pages`() {
         // Ein gewoehnliches Telefon: Leiste ueber die volle Hoehe, Griff 36dp
         // bei dreifacher Dichte. Der Katalog hat rund 25'000 Sets.
         val hoehe = 1800
@@ -98,7 +98,7 @@ class KatalogSprungEntprelltTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `der Sichtfenster-Lader wartet, bis die Liste ruhig steht`() = runTest {
+    fun `the viewport loader waits until the list stands still`() = runTest {
         val geladen = mutableListOf<Int>()
         val bereich = CoroutineScope(StandardTestDispatcher(testScheduler))
         val lader = Sichtfensterlader(bereich, VIEWPORT_REST_MS) { geladen += it }
@@ -120,7 +120,7 @@ class KatalogSprungEntprelltTest {
     }
 
     @Test
-    fun `die Leiste rollt nur und laedt nicht selbst`() {
+    fun `the bar only scrolls and does not load itself`() {
         val src = Quellen.withoutComments(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
 
         val ab = src.indexOf("onScrollTo = ")

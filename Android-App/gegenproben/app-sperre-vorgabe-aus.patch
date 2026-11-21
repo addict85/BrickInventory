@@ -1,7 +1,7 @@
 Gegenprobe: Auch eine neue Installation mit Displaysperre beginnt ohne App-Sperre
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.AppLockTest
-Rot: neu installiert mit Displaysperre ist die Sperre an
+Rot: newly installed with a screen lock the lock is on, otherwise it stays off
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
 index c291082..a5c5ca5 100644

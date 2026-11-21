@@ -29,7 +29,7 @@ import org.robolectric.annotation.Config
  *
  * Gegenprobe (gemessen nur in der CI — Robolectric):
  *   sectioncard-in-spalte-schmal  SectionCard liest LocalSpaltenkarte nicht (immer centeredUntil)
- *                                 → rot „in einer Spalte nimmt die Karte die volle Breite“
+ *                                 → rot „in a column the card takes the full width“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
@@ -54,12 +54,12 @@ class SectionCardWidthTest {
     }
 
     @Test
-    fun `einspaltig bleibt die Karte auf Lesebreite`() {
+    fun `single-column the card stays at reading width`() {
         assertTrue("Breiter als die Lesebreite", inhaltsbreite(column = false) <= 560f)
     }
 
     @Test
-    fun `in einer Spalte nimmt die Karte die volle Breite`() {
+    fun `in a column the card takes the full width`() {
         val erwartet = 800f - 4 * Abstaende.gross.value
         assertEquals(erwartet, inhaltsbreite(column = true), 1f)
     }

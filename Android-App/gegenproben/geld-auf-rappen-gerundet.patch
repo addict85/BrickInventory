@@ -1,7 +1,7 @@
 Gegenprobe: Geld.aus rundet schon beim Lesen auf Rappen
 Modul: core-contract
 Test: ch.brickinventoryapp.contract.UiModelFigureTest
-Rot: Betraege kommen als Geld
+Rot: amounts come as Money to four places, points in time as Instant, the origin as enumeration
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt

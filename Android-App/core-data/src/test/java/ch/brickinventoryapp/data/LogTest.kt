@@ -48,7 +48,7 @@ class LogTest {
     }
 
     @Test
-    fun `im Release-Build schreibt die Huelle nichts`() {
+    fun `in the release build the wrapper writes nothing`() {
         Protokoll.aktiv = false
         Protokoll.warnung("Preisalarm", "Abruf fehlgeschlagen", RuntimeException("https://nas/api?token=geheim"))
         Protokoll.notiz("OkHttp", "--> GET https://nas/api/v1/sets")
@@ -74,14 +74,14 @@ class LogTest {
     }
 
     @Test
-    fun `der Netzmitschnitt nennt weder Token noch Rumpf`() {
+    fun `the network log names neither token nor body`() {
         val zeilen = recording(null)
         assertTrue(zeilen.toString(), zeilen.any { it.startsWith("--> POST") } && zeilen.any { it.startsWith("<-- 200") })
         assertTrue(zeilen.toString(), zeilen.none { "geheim" in it })
     }
 
     @Test
-    fun `der Netzmitschnitt schwaerzt Token und Sitzung auch mit hochgedrehter Stufe`() {
+    fun `the network log redacts token and session even with a raised level`() {
         val zeilen = recording(HttpLoggingInterceptor.Level.HEADERS)
         assertTrue("Die Köpfe stehen da, nur geschwärzt: $zeilen", zeilen.any { it.startsWith("Authorization:") })
         assertTrue(zeilen.toString(), zeilen.none { "geheim" in it })
@@ -89,7 +89,7 @@ class LogTest {
 
     /** Struktur: rohes Logcat, println und printStackTrace gibt es nur in der Hülle. */
     @Test
-    fun `ausser der Huelle schreibt kein Code ins Logcat`() {
+    fun `apart from the wrapper no code writes to logcat`() {
         val roh = Regex("""\bandroid\.util\.Log\b|(?<![\w.])Log\.(v|d|i|w|e|wtf|println)\(|\bprintln\(|printStackTrace\(|System\.(out|err)\b""")
         val dateien = Quellen.alle()
         val treffer = dateien.filter { it.name != "Protokoll.kt" }.flatMap { f ->

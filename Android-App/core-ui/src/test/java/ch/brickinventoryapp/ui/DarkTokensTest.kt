@@ -29,7 +29,7 @@ import java.awt.Color
  *      seine dunkle Fassung“
  *   C  in darkToken() `erbt` nicht aufgelöst → rot „hochglanz erbt die Farben
  *      von noppe“ und die drei Prüfungen der Rollen (b600 fehlt, es greift classic)
- *   D  outline auf s400 statt s500 → rot „Rahmen heben sich mit 3 zu 1 ab“
+ *   D  outline auf s400 statt s500 → rot „borders stand out with 3 to 1“
  *   E  onPrimary auf "txt" statt "auf-primaer" → rot „Text auf Flächen ist lesbar“
  * Gegenproben:
  *   F  darkBrickDecor() mit den hellen Noppen (#6d94b8) → rot „die
@@ -41,7 +41,7 @@ class DarkTokensTest {
     private val quelle = JSONObject(File("../../shared/design-tokens.json").readText()).getJSONObject("dunkel")
 
     @Test
-    fun `jedes Design der Quelle hat seine dunkle Fassung`() {
+    fun `every design of the source has its dark version`() {
         val namen = quelle.getJSONObject("designs").keys().asSequence().toSet()
         assertEquals(namen, DunkelTokens.designs.keys)
         for (n in namen) assertTrue(n, hatDarkVersion(checkNotNull(Design.aus(n)) { "$n ist kein Design der App" }))
@@ -49,7 +49,7 @@ class DarkTokensTest {
     }
 
     @Test
-    fun `hochglanz erbt die Farben von noppe`() {
+    fun `hochglanz inherits the colors of noppe`() {
         for (t in listOf("b600", "b700", "chart-new", "ink")) {
             assertEquals(t, darkToken(Design.NOPPE, t), darkToken(Design.HOCHGLANZ, t))
         }
@@ -59,7 +59,7 @@ class DarkTokensTest {
     private fun k(a: Long, b: Long) = Contrast.verhaeltnis(a.toInt(), b.toInt())
 
     @Test
-    fun `Text auf Flaechen ist lesbar`() {
+    fun `text on surfaces is readable`() {
         val fehler = mutableListOf<String>()
         for (d in DunkelTokens.designs.keys) {
             val r = darkRoles(checkNotNull(Design.aus(d)))
@@ -78,7 +78,7 @@ class DarkTokensTest {
     }
 
     @Test
-    fun `Rahmen heben sich mit 3 zu 1 ab`() {
+    fun `borders stand out with 3 to 1`() {
         val fehler = mutableListOf<String>()
         for (d in DunkelTokens.designs.keys) {
             val r = darkRoles(checkNotNull(Design.aus(d)))
@@ -93,7 +93,7 @@ class DarkTokensTest {
     }
 
     @Test
-    fun `die Flaechen sind dunkel und die Schrift hell`() {
+    fun `the surfaces are dark and the text light`() {
         for (d in DunkelTokens.designs.keys) {
             val r = darkRoles(checkNotNull(Design.aus(d)))
             assertTrue(d, Contrast.luminance(r.background.toInt()) < 0.05)
@@ -106,7 +106,7 @@ class DarkTokensTest {
      * Fest eingesetzt blieben die hellen Töne von „brick“ auch im Dunkeln stehen.
      */
     @Test
-    fun `die Stein-Dekoration wird im Dunkeln dunkel`() {
+    fun `the stone decoration becomes dark in the dark`() {
         val d = darkBrickDecor()
         assertEquals(argb(darkToken(Design.BRICK, "b400")!!), d.studs)
         assertTrue("Die Noppen sind im Dunkeln dunkler als hell (SlateBlueNoppe, --b400 von brick)",
@@ -123,7 +123,7 @@ class DarkTokensTest {
      * Gegenprobe: classic wieder auf a100/a-schrift → rot.
      */
     @Test
-    fun `im Dunkeln traegt jedes Design einen Akzent`() {
+    fun `in the dark every design carries an accent`() {
         fun hsb(argb: Long): FloatArray {
             val c = argb.toInt()
             return Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)

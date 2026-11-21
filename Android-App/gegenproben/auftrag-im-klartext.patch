@@ -1,7 +1,7 @@
 Gegenprobe: Der Abmeldeauftrag liegt wieder lesbar in der Warteschlange von WorkManager
 Modul: core-data
 Test: ch.brickinventoryapp.data.AuftragsablageTest
-Rot: der Auftrag liegt nur verschluesselt in der Warteschlange
+Rot: the job lies in the queue only encrypted and comes back whole
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertungsauftrag.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertungsauftrag.kt
 index 1bc1ead..c0f6e15 100644

@@ -1,7 +1,7 @@
 Gegenprobe: Bitmap-Zustand einer PDF-Seite hängt auch an der Renderbreite
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.PdfZoomTest
-Rot: beim Stufenwechsel bleibt die alte Seite stehen
+Rot: on a level change the old page stays
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfSeiten.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfSeiten.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfSeiten.kt

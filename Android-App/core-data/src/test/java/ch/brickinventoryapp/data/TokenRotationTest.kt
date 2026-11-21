@@ -41,12 +41,12 @@ import ch.brickinventoryapp.testing.TestApi
  *
  * Gegenproben:
  *   A  in ServerWaechter den Zweig für 401 `token_rotation_noetig` entfernt →
- *      rot „ein abgewiesener alter Token wird getauscht und die Anfrage wiederholt“
+ *      rot „a rejected old token is swapped and the request retried“
  *      (401 statt 200, Sitzung abgelaufen gemeldet)
  *   B  den Zweig für die Kopfzeile entfernt → rot „die Kopfzeile tauscht im
  *      Hintergrund, einmal“ (Zeitüberschreitung, kein Tausch)
  *   C  AccountApi.rotateToken wieder als `suspend` (über den Dispatcher) →
- *      rot „gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht“
+ *      rot „simultaneously rejected requests do not block the swap“
  *      (Zeitüberschreitung: beide Plätze warten auf den Tausch, der Tausch auf
  *      einen Platz)
  * Gegenproben:
@@ -136,7 +136,7 @@ class TokenRotationTest {
     private fun fetch(pfad: String) = client.newCall(Request.Builder().url(server.url(pfad)).build()).execute().use { it.code }
 
     @Test
-    fun `ein abgewiesener alter Token wird getauscht und die Anfrage wiederholt`() {
+    fun `a rejected old token is swapped and the request retried`() {
         assertEquals(200, fetch("/api/v1/sets"))
         assertEquals(listOf("/api/v1/sets alt", "/api/v1/auth/token-rotieren alt", "speichere neu", "/api/v1/sets neu"),
             events.toList())
@@ -148,7 +148,7 @@ class TokenRotationTest {
      * ihre Plätze im Dispatcher. Braucht der Tausch selbst einen, wartet er ewig.
      */
     @Test
-    fun `gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht`() {
+    fun `simultaneously rejected requests do not block the swap`() {
         val places = okhttp3.Dispatcher().apply { maxRequestsPerHost = 2 }
         lateinit var k: AccountRepository
         val t = swapFor({ k }) { gespeichert = it }
@@ -171,7 +171,7 @@ class TokenRotationTest {
     }
 
     @Test
-    fun `die Kopfzeile tauscht im Hintergrund, einmal`() {
+    fun `the header swaps in the background, once`() {
         assertEquals(200, fetch("/api/v1/parts"))
         assertEquals(200, fetch("/api/v1/parts"))
         TestApi.warteBis("Tausch") { gespeichert == "neu" }
@@ -186,7 +186,7 @@ class TokenRotationTest {
      * Server nie erreichen — weder über eine Wiederholung noch im selbst gesetzten Kopf.
      */
     @Test
-    fun `ein Serverwechsel waehrend der Wiederholung schickt den alten Token nicht zum neuen Server`() {
+    fun `a server switch during the retry does not send the old token to the new server`() {
         val neuer = MockWebServer()
         val dort: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         neuer.dispatcher = object : Dispatcher() {
@@ -215,7 +215,7 @@ class TokenRotationTest {
 
     /** Dasselbe ohne die Prüfung im Tausch: Dann hält der Wächter den Kopf zurück. */
     @Test
-    fun `ein selbst gesetzter alter Token geht nach dem Serverwechsel ohne Kopf hinaus`() {
+    fun `a self-set old token goes out without header after the server switch`() {
         val neuer = MockWebServer()
         val dort: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         neuer.dispatcher = object : Dispatcher() {

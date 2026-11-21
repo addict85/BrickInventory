@@ -1,7 +1,7 @@
 Gegenprobe: Ein Nein zum gezeigten Konto lässt die Kopplung am Server bestätigt stehen
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginViewModelTest
-Rot: ein Nein zum gezeigten Konto verwirft die Kopplung und laesst nichts zurueck
+Rot: a no to the shown account discards the pairing and leaves nothing behind
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt

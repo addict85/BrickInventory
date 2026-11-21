@@ -1,7 +1,7 @@
 Gegenprobe: Der Mengenregler behält seine Annahme statt der Menge des Servers
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.SetDetailDisplayTest
-Rot: der Mengenregler folgt der Menge
+Rot: the quantity control follows the quantity the server returns
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt

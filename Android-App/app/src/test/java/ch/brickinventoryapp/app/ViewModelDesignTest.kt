@@ -39,7 +39,7 @@ class ViewModelDesignTest {
         .map { it.name to Quellen.withoutComments(it.readText()) }
 
     @Test
-    fun `kein ViewModel erbt seinen Context`() {
+    fun `no ViewModel inherits its context`() {
         val dateien = viewModelFiles()
         assert(dateien.size >= 3) {
             "Nur ${'$'}{dateien.size} ViewModel-Dateien gefunden — Muster veraltet? " +
@@ -55,7 +55,7 @@ class ViewModelDesignTest {
     }
 
     @Test
-    fun `wer einen Context braucht, bekommt ihn eingespritzt`() {
+    fun `whoever needs a context gets it injected`() {
         // Die Gegenrichtung: Ein ViewModel, das ctx benutzt, muss ihn auch
         // deklariert haben. Sonst wäre die Regel oben durch einen stillen
         // Rückgriff auf irgendeine andere Quelle zu umgehen.

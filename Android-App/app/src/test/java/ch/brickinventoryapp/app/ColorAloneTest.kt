@@ -47,9 +47,9 @@ import ch.brickinventoryapp.testing.Quellen
  *
  *   a) MerklisteScreen faerbt neuerdings mit LocalStatusFarben — eine
  *      SIEBTE Datei, ohne dass jemand gefragt haette, was die Stelle sagt
- *        → „wer Statusfarben benutzt, steht auf der geprueften Liste" rot
+ *        → „whoever uses status colors is on the checked list" rot
  *   b) das Warnsymbol aus RateLimitRow entfernt, `val eng` aber stehen gelassen
- *        → „die Kontingent-Zeile warnt nicht nur mit Farbe" rot
+ *        → „the quota row does not warn with color alone" rot
  *
  * Ergebnis: 503 Tests, GENAU 2 rot. Der Basislauf 295 auf demselben Stand
  * war gruen.
@@ -77,7 +77,7 @@ class ColorAloneTest {
     )
 
     @Test
-    fun `wer Statusfarben benutzt, steht auf der geprueften Liste`() {
+    fun `whoever uses status colors is on the checked list`() {
         val nutzer = Quellen.alle()
             .filter { Quellen.withoutComments(it.readText()).contains("LocalStatusFarben.current") }
             .map { it.name }
@@ -112,7 +112,7 @@ class ColorAloneTest {
      * hingesehen". Was dabei herauskam, muss auch halten.
      */
     @Test
-    fun `die Kontingent-Zeile warnt nicht nur mit Farbe`() {
+    fun `the quota row does not warn with color alone`() {
         val s = Quellen.withoutComments(Quellen.lies("management/ui/screens/MonitoringKontingente.kt"))
         val i = s.indexOf("private fun RateLimitRow(")
         assert(i > 0) { "RateLimitRow fehlt — Muster veraltet?" }

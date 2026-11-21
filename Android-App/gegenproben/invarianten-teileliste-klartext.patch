@@ -1,7 +1,7 @@
 Gegenprobe: die Teileliste liegt wieder im Klartext auf der Platte
 Modul: app
 Test: ch.brickinventoryapp.app.InvariantsReferencesTest
-Rot: die Teileliste liegt nur verschluesselt auf der Platte
+Rot: the parts list lies on disk only encrypted
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt

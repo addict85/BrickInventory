@@ -1,7 +1,7 @@
 Gegenprobe: Die Kaufpreis-Kachel zeigt den höchsten Kauf statt des Schnitts
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.SetDetailDisplayTest
-Rot: die Kaufpreis-Kachel zeigt den mengengewichteten Schnitt
+Rot: the purchase price tile shows the quantity-weighted average, not the last purchase
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt

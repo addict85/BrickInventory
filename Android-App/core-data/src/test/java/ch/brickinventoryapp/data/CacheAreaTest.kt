@@ -32,7 +32,7 @@ import java.io.File
  *                                entfernt → rot „wechselt das Konto während des Abrufs …“
  *   altablage-bleibt             cleanOldResponseStore() räumt nichts → rot „der alte Ablageort …“
  *   fach-uneingeordnet           ein weiteres Fach `PROBE` in Bestandsart → rot
- *                                „die Offline-Ablage kennt genau die eingeordneten Faecher“
+ *                                „the offline store knows exactly the classified compartments“
  */
 class CacheAreaTest {
 
@@ -42,7 +42,7 @@ class CacheAreaTest {
      * dieser Test wieder grün ist.
      */
     @Test
-    fun `die Offline-Ablage kennt genau die eingeordneten Faecher`() {
+    fun `the offline store knows exactly the classified compartments`() {
         assertEquals(setOf("SETS", "MERKLISTE", "TEILE", "FIGUREN", "MANUELLE_TEILE", "MANUELLE_FIGUREN", "GUTSCHEINE",
             "PREISALARME", "LAGERORTE", "KENNZAHLEN", "KATALOG_META"),
             StockKind.entries.map { it.name }.toSet())
@@ -93,14 +93,14 @@ class CacheAreaTest {
         candidates.filter { bestand.lies(it, StockKind.KATALOG_META).liste.isNotEmpty() }
 
     @Test
-    fun `das eigene Konto sieht offline seine Daten`() = runTest {
+    fun `the own account sees its data offline`() = runTest {
         val r = repo()
         fill(r, 1999)
         assertEquals(1999, offlineYear(r))
     }
 
     @Test
-    fun `ein anderes Konto sieht offline nichts vom vorigen`() = runTest {
+    fun `a different account sees nothing of the previous one offline`() = runTest {
         val r = repo()
         fill(r, 1999)
         bereich = "http://heim:3000\ntoken-b"
@@ -108,7 +108,7 @@ class CacheAreaTest {
     }
 
     @Test
-    fun `ein anderer Server sieht offline nichts`() = runTest {
+    fun `a different server sees nothing offline`() = runTest {
         val r = repo()
         fill(r, 1999)
         bereich = "https://anders.example\ntoken-a"
@@ -116,7 +116,7 @@ class CacheAreaTest {
     }
 
     @Test
-    fun `wer schreibt, raeumt die Faecher frueherer Konten`() = runTest {
+    fun `whoever writes clears the compartments of earlier accounts`() = runTest {
         val r = repo()
         val a = "http://heim:3000\ntoken-a"
         val b = "http://heim:3000\ntoken-b"
@@ -129,7 +129,7 @@ class CacheAreaTest {
     }
 
     @Test
-    fun `wechselt das Konto waehrend des Abrufs, wird nichts abgelegt`() = runTest {
+    fun `if the account changes during the fetch, nothing is stored`() = runTest {
         val r = repo()
         val a = "http://heim:3000\ntoken-a"
         val b = "http://heim:3000\ntoken-b"
@@ -139,7 +139,7 @@ class CacheAreaTest {
     }
 
     @Test
-    fun `ohne Anmeldung wird nichts abgelegt`() = runTest {
+    fun `without sign-in nothing is stored`() = runTest {
         bereich = null
         fill(repo(), 1999)
         bereich = "http://heim:3000\ntoken-a"
@@ -147,7 +147,7 @@ class CacheAreaTest {
     }
 
     @Test
-    fun `der alte Ablageort wird geraeumt, anderes bleibt`() {
+    fun `the old storage location is cleared, other things stay`() {
         val noBackup = File(root, "nobackup")
         val cache = File(root, "cache")
         val alt = listOf(File(noBackup, "api-4/abc"), File(noBackup, "api-3"), File(cache, "api-1"))
@@ -159,7 +159,7 @@ class CacheAreaTest {
     }
 
     @Test
-    fun `der Bereichsname verraet weder Adresse noch Token`() {
+    fun `the area name reveals neither address nor token`() {
         val name = areaName("http://heim:3000\ntoken-a")
         assertEquals(32, name.length)
         assertFalse(name.contains("heim") || name.contains("token"))

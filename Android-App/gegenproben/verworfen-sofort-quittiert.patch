@@ -1,7 +1,7 @@
 Gegenprobe: Der Hinweis auf Verworfenes wird quittiert, bevor ihn jemand gesehen hat
 Modul: core-state
 Test: ch.brickinventoryapp.state.AusgangsmelderTest
-Rot: ein Verworfenes bleibt, bis sein Hinweis weggeraeumt ist
+Rot: a discarded item stays until its hint is cleared, then the next one comes
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
 index d0af378..97acbd6 100644

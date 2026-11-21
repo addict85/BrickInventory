@@ -1,7 +1,7 @@
 Gegenprobe: Ein Pin auf eine System-Wurzel nimmt wieder jede öffentlich gültige Kette an
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: ein oeffentlicher Pin haelt eine Kette unter fremder Wurzel an, auch wenn das System sie annimmt
+Rot: a public pin stops a chain under a foreign root, even if the system accepts it
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

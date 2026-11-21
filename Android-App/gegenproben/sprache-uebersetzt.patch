@@ -1,7 +1,7 @@
 Gegenprobe: die Sprachauswahl nennt Englisch auf Deutsch wieder „Englisch“
 Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
-Rot: die Sprachen heissen in beiden Sprachen so, wie sie sich selbst nennen
+Rot: the languages are called in both languages what they call themselves
 
 diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/StringResourceParityTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/StringResourceParityTest.kt
 index 28ded58..946d9d8 100644

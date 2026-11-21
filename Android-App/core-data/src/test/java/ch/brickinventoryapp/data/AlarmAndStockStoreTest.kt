@@ -50,7 +50,7 @@ class AlarmAndStockStoreTest {
     fun zu() = paths.server.shutdown()
 
     @Test
-    fun `ein gesetzter und ein geloeschter Alarm stehen sofort in der Ablage`() = runBlocking {
+    fun `a set and a deleted alert are in the store immediately`() = runBlocking {
         assertTrue(alerts.refreshAlerts() is Ergebnis.Erfolg)
         assertEquals(listOf("75192-1", "10294-1"), alerts.observeAlerts().first().liste.map { it.setNumber })
         assertEquals(listOf(Alarmrichtung.UNTER), alerts.observeAlerts("75192-1").first().liste.map { it.richtung })
@@ -65,7 +65,7 @@ class AlarmAndStockStoreTest {
     }
 
     @Test
-    fun `ohne Netz bleibt die zuletzt geholte Liste der Alarme`() = runBlocking {
+    fun `without network the most recently fetched list of alerts stays`() = runBlocking {
         alerts.refreshAlerts()
         // Im Takt antwortet PfadServer ohne Netz; abschalten hiesse hier nichts.
         paths.priority = { _, _ -> 503 to """{"success":false}""" }
@@ -74,7 +74,7 @@ class AlarmAndStockStoreTest {
     }
 
     @Test
-    fun `Anlegen, Umbenennen und der Stern aendern den Vorrat in der Ablage`() = runBlocking {
+    fun `creating, renaming and the star change the supply in the store`() = runBlocking {
         assertTrue(teile.refreshLocationStock() is Ergebnis.Erfolg)
         fun stock() = runBlocking { teile.observeLocationStock().first().liste.map { it.ort.name to it.vorgabe } }
         assertEquals(listOf("Keller" to false, "Regal" to true), stock())

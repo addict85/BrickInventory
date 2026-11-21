@@ -49,7 +49,7 @@ class PriceChartDescriptionTest {
     fun zu() = Locale.setDefault(vorher)
 
     @Test
-    fun `das Preisdiagramm beschreibt seine Linie in Worten`() {
+    fun `the price chart describes its line in words`() {
         val verlauf = PreisDiagrammAnsicht(values = listOf(PriceSeriesView("N",
             listOf(PricePointView("2026-01-01", Geld.aus(710.0)!!), PricePointView("2026-02-01", Geld.aus(690.0)!!), PricePointView("2026-03-01", Geld.aus(730.0)!!)))))
         compose.setContent {

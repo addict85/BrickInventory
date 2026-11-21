@@ -1,7 +1,7 @@
 Gegenprobe: die Anleitungen landen wieder im Klartext im Zwischenspeicher (Stand vor sec12 N1)
 Modul: core-data
 Test: ch.brickinventoryapp.data.InstructionStoreTest
-Rot: eine Anleitung liegt verschluesselt
+Rot: an instruction lies encrypted and can be read again
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt

@@ -19,12 +19,12 @@ import org.junit.Test
  *   B  in ownAddress(), removed the same-host check → red "ein
  *      local_path bleibt auf dem eigenen Server"
  *   D  pdfInViewer() without the origin
- *      check (`ziel.isHttps || serverUrl.isNotBlank()`) → red "der PDF-Betrachter laedt nur vom eigenen Server"
+ *      check (`ziel.isHttps || serverUrl.isNotBlank()`) → red "the PDF viewer loads only from the own server"
  */
 class ExterneAddressTest {
 
     @Test
-    fun `nur https geht an den Browser`() {
+    fun `only https goes to the browser`() {
         assertEquals("https://www.bricklink.com/v2/catalog/catalogitem.page?S=75192-1",
             externeAddress(" https://www.bricklink.com/v2/catalog/catalogitem.page?S=75192-1 ").toString())
         for (fremd in listOf("http://www.bricklink.com/x", "intent://scan/#Intent;scheme=zxing;end", "file:///data/data/x",
@@ -34,7 +34,7 @@ class ExterneAddressTest {
     }
 
     @Test
-    fun `der PDF-Betrachter laedt nur vom eigenen Server`() {
+    fun `the PDF viewer loads only from the own server`() {
         assertTrue(pdfInViewer("https://nas:8443/brick/api/v1/vouchers/7/pdf", "https://nas:8443/brick"))
         assertTrue(pdfInViewer("https://NAS:8443/uploads/a.pdf", "https://nas:8443/"))
         for (fremd in listOf("https://www.lego.com/cdn/a.pdf", "http://nas:8443/a.pdf", "https://nas:9443/a.pdf",
@@ -45,7 +45,7 @@ class ExterneAddressTest {
     }
 
     @Test
-    fun `ein local_path bleibt auf dem eigenen Server`() {
+    fun `a local_path stays on the own server`() {
         assertEquals("https://nas:8443/brick/uploads/a.pdf", ownAddress("https://nas:8443/brick/", "uploads/a.pdf"))
         assertEquals("Unterpfad bleibt wie bei der Verkettung",
             "https://nas:8443/brick/uploads/a.pdf", ownAddress("https://nas:8443/brick", "/uploads/a.pdf"))

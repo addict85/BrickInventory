@@ -30,7 +30,7 @@ import java.io.IOException
  *
  * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; gegenproben/update-abbruch-behaelt-teildatei.patch):
  *   im Abbruch-Zweig von UpdateLoader.loadApk `ziel.delete()` entfernt → rot
- *   „ein abgebrochener Download hinterlässt keine Teildatei“.
+ *   „an aborted download leaves no partial file“.
  * Gegenproben (Patches unter gegenproben/, lokal mit kotlinc gemessen):
  *   update-apk-ohne-grenze      die Prüfung `geladen > obergrenze` entfernt → rot
  *                               „ein APK, das mehr bringt als angekündigt …“
@@ -60,7 +60,7 @@ class UpdateLoaderTest {
     @After fun ab() { folder.deleteRecursively() }
 
     @Test
-    fun `der Fortschritt steigt bis 100, und die Datei ist vollstaendig`() = runTest {
+    fun `the progress rises to 100, and the file is complete`() = runTest {
         val lader = UpdateLoader(client, AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
         val schritte = lader.loadApk(beschreibung(), ziel).toList()
         assertEquals(100, schritte.last())
@@ -69,7 +69,7 @@ class UpdateLoaderTest {
     }
 
     @Test
-    fun `ein abgebrochener Download hinterlässt keine Teildatei`() = runTest {
+    fun `an aborted download leaves no partial file`() = runTest {
         val lader = UpdateLoader(client, AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
         // take(1) bricht nach der ersten Meldung ab, mitten in der Leseschleife.
         assertEquals(1, lader.loadApk(beschreibung(), ziel).take(1).toList().size)
@@ -77,7 +77,7 @@ class UpdateLoaderTest {
     }
 
     @Test
-    fun `ein APK, das mehr bringt als angekuendigt, bricht ab und hinterlaesst nichts`() = runTest {
+    fun `an APK that brings more than announced aborts and leaves nothing`() = runTest {
         // Angekündigt 100 kB; erlaubt sind die Ankündigung und ein MB, nicht mehr.
         val toMuch = ByteArray(2 * 1024 * 1024) { 7 }
         val lader = UpdateLoader(liefert(toMuch), AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
@@ -87,7 +87,7 @@ class UpdateLoaderTest {
     }
 
     @Test
-    fun `die Beschreibung wird hoechstens bis zur Obergrenze gelesen`() = runTest {
+    fun `the description is read at most up to the upper limit`() = runTest {
         val huge = ByteArray(UPDATE_JSON_MAX_BYTES.toInt() * 4) { 'x'.code.toByte() }
         val lader = UpdateLoader(liefert(huge), AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
         assertEquals(UPDATE_JSON_MAX_BYTES, lader.fetchDescription().length.toLong())

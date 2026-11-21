@@ -1,7 +1,7 @@
 Gegenprobe: Eine angetippte Meldung öffnet jede Zeichenkette als Set
 Modul: core-state
 Test: ch.brickinventoryapp.state.AppViewModelTest
-Rot: eine angetippte Meldung oeffnet nur eine gueltige Setnummer
+Rot: a tapped notification opens only a valid set number until it is acknowledged
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt

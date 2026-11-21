@@ -77,7 +77,7 @@ class InstructionRowTest {
     }
 
     @Test
-    fun `die ganze Zeile oeffnet die Anleitung`() {
+    fun `the whole row opens the instructions`() {
         // In ZEILEN gemessen und nicht in Zeichen (siehe Quellen): Ein
         // wachsender Erklaerabsatz hat in dieser Reihe schon viermal eine
         // Pruefung gebrochen, die ein festes Zeichenfenster schnitt.
@@ -88,7 +88,7 @@ class InstructionRowTest {
     }
 
     @Test
-    fun `das Oeffnen haengt an keinem Knopf`() {
+    fun `opening does not depend on a button`() {
         // Kein IconButton dieser Datei darf das Oeffnen tragen — weder
         // unmittelbar (onOpenPdf) noch ueber die benannte Handlung. Ein Knopf
         // daneben waere ein zweites Ziel fuer dasselbe, und die Sprachausgabe
@@ -107,7 +107,7 @@ class InstructionRowTest {
     }
 
     @Test
-    fun `das Symbol bleibt als Hinweis stehen`() {
+    fun `the icon stays as a hint`() {
         // Ohne es sieht die Zeile aus wie Text. Es ist der einzige Hinweis
         // darauf, dass sich hier etwas oeffnet — Antippflaechen sind
         // unsichtbar.
@@ -118,7 +118,7 @@ class InstructionRowTest {
     }
 
     @Test
-    fun `der Papierkorb bleibt ein eigener Knopf`() {
+    fun `the trash stays a separate button`() {
         // Loeschen darf NICHT an der Zeile haengen: Es liegt ausserhalb des
         // antippbaren Bereichs, als Geschwister und nicht als Kind. Damit haengt
         // nichts daran, welcher von zwei verschachtelten Antippbereichen ein

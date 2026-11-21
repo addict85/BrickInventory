@@ -17,19 +17,19 @@ import org.junit.Test
  *
  * Gegenprobe (gegenproben/abbruch-verschluckt.patch): der Zweig
  * `catch (abort: CancellationException) { throw abort }` entfernt → rot
- * „ein abgebrochener Auftrag läuft nicht weiter“ und „das Abbrechen geht durch“.
+ * „ein abgebrochener Auftrag läuft nicht weiter“ und „the cancellation goes through“.
  */
 class AbortTest {
 
     @Test
-    fun `ein gewoehnlicher Fehler wird zum Ergebnis`() {
+    fun `an ordinary error becomes the result`() {
         val r = fangeAusserAbbruch { error("kaputt") }
         assertEquals("kaputt", r.exceptionOrNull()?.message)
         assertEquals(3, fangeAusserAbbruch { 3 }.getOrNull())
     }
 
     @Test
-    fun `das Abbrechen geht durch`() {
+    fun `the cancellation goes through`() {
         var durch = false
         try {
             fangeAusserAbbruch { throw CancellationException("weg") }
@@ -40,7 +40,7 @@ class AbortTest {
     }
 
     @Test
-    fun `ein Error wird nicht gefangen`() {
+    fun `an Error is not caught`() {
         var durch = false
         try {
             fangeAusserAbbruch { throw AssertionError("hart") }
@@ -51,7 +51,7 @@ class AbortTest {
     }
 
     @Test
-    fun `ein abgebrochener Auftrag laeuft nicht weiter`() = runTest {
+    fun `a cancelled job does not keep running`() = runTest {
         val schritte = mutableListOf<String>()
         val job = launch(start = CoroutineStart.UNDISPATCHED) {
             fangeAusserAbbruch { delay(10_000) }.onFailure { schritte += "Fehlerzweig" }

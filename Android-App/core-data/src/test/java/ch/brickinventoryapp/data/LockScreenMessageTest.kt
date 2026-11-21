@@ -32,7 +32,7 @@ class LockScreenMessageTest {
         .joinToString(" ") { n?.extras?.getCharSequence(it)?.toString().orEmpty() }
 
     @Test
-    fun `die gescheiterte Abmeldung nennt den Server nur entsperrt`() {
+    fun `the failed sign-out names the server only when unlocked`() {
         val n = EntwertungsWorker.meldung(ctx, "brick.example:8443")
         assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
         assertNotNull("Ohne Ersatzfassung zeigt Android je nach Einstellung alles", n.publicVersion)
@@ -43,7 +43,7 @@ class LockScreenMessageTest {
     }
 
     @Test
-    fun `die Ersatzfassung traegt nur den Titel`() {
+    fun `the public version carries only the title`() {
         val n = NotificationCompat.Builder(ctx, "probe").setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Import").setContentText("Set 75192-1 von brick.example")
             .onlyUnlocked(ctx, "probe", "Import", android.R.drawable.ic_dialog_info).build()

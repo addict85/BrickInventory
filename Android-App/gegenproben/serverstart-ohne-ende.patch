@@ -1,7 +1,7 @@
 Gegenprobe: Die Abfrage des Serverstarts hört nicht auf, wenn der Server bereit ist
 Modul: core-state
 Test: ch.brickinventoryapp.state.SessionServiceTest
-Rot: der Serverstart wird im Takt verfolgt
+Rot: the server start is followed at intervals until the server is ready
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
 --- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt

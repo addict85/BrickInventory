@@ -37,7 +37,7 @@ class ThumbFallbackTest {
     }
 
     @Test
-    fun `rememberTileImageWithFallback existiert`() {
+    fun `rememberTileImageWithFallback exists`() {
         val src = read("ui/util/BildRueckfall.kt")
         assert(src.contains("fun rememberTileImageWithFallback(")) {
             "Der Rückfall-Helfer fehlt"
@@ -47,7 +47,7 @@ class ThumbFallbackTest {
     }
 
     @Test
-    fun `imageLocal wird unverändert übernommen — kein eigener _thumb-Rateversuch mehr`() {
+    fun `imageLocal is taken over unchanged — no own _thumb guess any more`() {
         // Der Server prüft, ob die Vorschau existiert, und liefert den passenden
         // Pfad; ein clientseitig geratenes "_thumb.jpg" scheiterte genau dann.
         assertEquals("http://nas:3000/images/sets/10283-1.jpg",
@@ -57,7 +57,7 @@ class ThumbFallbackTest {
     }
 
     @Test
-    fun `GalleryScreen benutzt den Rückfall statt eines wirkungslosen Wiederholversuchs`() {
+    fun `GalleryScreen uses the fallback instead of an ineffective retry`() {
         val src = read("collection/ui/screens/GalerieKarte.kt")
         assert(src.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
             "GalleryScreen muss den neuen Rückfall-Helfer benutzen"
@@ -79,7 +79,7 @@ class ThumbFallbackTest {
     }
 
     @Test
-    fun `CatalogSetCard faellt bei einem Fehler auf die volle Aufloesung zurueck`() {
+    fun `CatalogSetCard falls back to the full resolution on an error`() {
         // Das Ersatzbild steht seit ProduktBild (ui/components) an EINER Stelle; die
         // Katalogkachel reicht nur noch den Fehler an den Rückfall weiter.
         val src = read("catalog/ui/screens/KatalogKarte.kt")
@@ -104,7 +104,7 @@ class ThumbFallbackTest {
 class ImageClientLoggingTest {
 
     @Test
-    fun `HttpLoggingInterceptor haengt nicht mehr nur am API-Client`() {
+    fun `HttpLoggingInterceptor no longer hangs only on the API client`() {
         // Kommentare ausblenden, BEVOR das Fenster geschnitten wird: Ein
         // wachsender Erklärtext schob die geprüfte Zeile sonst aus den 800
         // Zeichen — die Regel galt weiter, nur der Ausschnitt war zu kurz.
@@ -144,7 +144,7 @@ class ImageClientLoggingTest {
 class FullResolutionBypassesProxyTest {
 
     @Test
-    fun `resolveFullUrl leitet die volle Aufloesung ueber den Server-Proxy`() {
+    fun `resolveFullUrl routes the full resolution via the server proxy`() {
         // Kein Gerät spricht direkt mit dem CDN (Cloudflares Bot-Erkennung);
         // die volle Auflösung trägt kein &thumb=1.
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fsets%2F1+2.jpg",
@@ -155,7 +155,7 @@ class FullResolutionBypassesProxyTest {
     }
 
     @Test
-    fun `Vorschaubild laeuft weiterhin ueber den Proxy mit thumb=1`() {
+    fun `thumbnail still runs via the proxy with thumb=1`() {
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fx.jpg&thumb=1",
             resolveThumbUrl(SERVER, null, "https://cdn.rebrickable.com/x.jpg"))
     }
@@ -175,13 +175,13 @@ class PartsMinifigsFullResBypassProxyTest {
     }
 
     @Test
-    fun `resolveFullUrlViaProxy existiert und wickelt CDN-Adressen in den Proxy`() {
+    fun `resolveFullUrlViaProxy exists and wraps CDN addresses into the proxy`() {
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fp.png",
             resolveFullUrlViaProxy(SERVER, null, "https://cdn.rebrickable.com/p.png"))
     }
 
     @Test
-    fun `Teile und Minifiguren uebergeben fullViaProxy = true, Sets und Katalog nicht`() {
+    fun `parts and minifigures pass fullViaProxy = true, sets and catalog do not`() {
         // ── JEDER Aufruf, nicht eine Anzahl ─────────────────────────────────
         //
         // Hier stand `partsCount == 2`. Die Zahl war so lange richtig, wie es
@@ -244,7 +244,7 @@ class SetDetailUsesFullResolutionTest {
     }
 
     @Test
-    fun `SetDetailScreen zeigt fuer Vorschau und Zoom dieselbe volle Aufloesung`() {
+    fun `SetDetailScreen shows the same full resolution for preview and zoom`() {
         val src = read("collection/ui/screens/SetDetailScreen.kt")
         assert(src.contains("val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)")) {
             "Das Hauptbild im Detail-Dialog muss resolveFullUrl() benutzen, nicht resolveThumbUrl()"
@@ -281,7 +281,7 @@ class SetDetailUsesFullResolutionTest {
 class FullResolutionStripsThumbSuffixTest {
 
     @Test
-    fun `resolveFullUrl entfernt ein vorhandenes _thumb-Suffix`() {
+    fun `resolveFullUrl removes an existing _thumb suffix`() {
         assertEquals("http://nas:3000/images/sets/10283-1.jpg", resolveFullUrl(SERVER, "/images/sets/10283-1_thumb.jpg", null))
         assertEquals("die Abfrage bleibt", "http://nas:3000/images/p/3001.png?v=2",
             resolveFullUrl(SERVER, "/images/p/3001_thumb.png?v=2", null))
@@ -290,13 +290,13 @@ class FullResolutionStripsThumbSuffixTest {
     }
 
     @Test
-    fun `resolveFullUrlViaProxy entfernt ebenfalls ein vorhandenes _thumb-Suffix`() {
+    fun `resolveFullUrlViaProxy also removes an existing _thumb suffix`() {
         assertEquals("http://nas:3000/images/minifigs/sw0001.jpg",
             resolveFullUrlViaProxy(SERVER, "/images/minifigs/sw0001_thumb.jpg", null))
     }
 
     @Test
-    fun `Vorschau und volle Aufloesung liefern unterschiedliche Adressen bei einem Vorschau-Pfad`() {
+    fun `preview and full resolution deliver different addresses for a preview path`() {
         val pfad = "/images/sets/10283-1_thumb.jpg"
         assertNotEquals(resolveThumbUrl(SERVER, pfad, null), resolveFullUrl(SERVER, pfad, null))
     }

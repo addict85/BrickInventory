@@ -1,7 +1,7 @@
 Gegenprobe: TokenTausch.faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Anwendungsbereich
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenSwapTest
-Rot: faellig tauscht im Anwendungsbereich und kehrt sofort zurueck
+Rot: due swaps in the application scope and returns immediately
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt

@@ -1,7 +1,7 @@
 Gegenprobe: Der Update-Client folgt Umleitungen zu jedem Host
 Modul: core-data
 Test: ch.brickinventoryapp.data.UpdateRedirectTest
-Rot: eine Umleitung auf einen fremden Host
+Rot: a redirect to a foreign host is not even connected
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt

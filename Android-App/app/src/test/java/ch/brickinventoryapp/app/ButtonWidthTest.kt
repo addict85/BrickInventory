@@ -120,7 +120,7 @@ class ButtonWidthTest {
             brackets.contains(".width(") || brackets.contains(".size(")
 
     @Test
-    fun `kein Knopf versteckt seine Beschriftung hinter dem Kreisel`() {
+    fun `no button hides its label behind the spinner`() {
         val dateien = Quellen.root
             .walkTopDown().filter { it.extension == "kt" }.toList()
         // Untergrenze: ein leerer Dateilauf liesse die Pruefung stillschweigend

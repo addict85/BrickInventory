@@ -1,7 +1,7 @@
 Gegenprobe: Katalogbild auf dem Tablet wieder ohne Höchstbreite
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: Katalog-Detail steht auf dem Tablet in zwei Spalten
+Rot: catalog detail stands in two columns on the tablet, add before BrickLink
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt

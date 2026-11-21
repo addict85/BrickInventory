@@ -27,13 +27,13 @@ class PinPurposeTest {
     private val pin = spkiFingerprint(root)
 
     @Test
-    fun `ein Serverzertifikat unter der gepinnten Wurzel passt`() {
+    fun `a server certificate under the pinned root matches`() {
         assertTrue("EKU serverAuth", fitsToPin(arrayOf(zert(SERVER), root), pin))
         assertTrue("Ohne EKU ist jeder Zweck erlaubt", fitsToPin(arrayOf(zert(OHNE), root), pin))
     }
 
     @Test
-    fun `ein Zertifikat fuer einen anderen Zweck passt nicht zum Pin`() {
+    fun `a certificate for a different purpose does not match the pin`() {
         val code = zert(CODE)
         assertFalse("Code-Signatur unter der Wurzel", fitsToPin(arrayOf(code, root), pin))
         assertFalse("Auch als selbst gepinntes Blatt", fitsToPin(arrayOf(code), spkiFingerprint(code)))

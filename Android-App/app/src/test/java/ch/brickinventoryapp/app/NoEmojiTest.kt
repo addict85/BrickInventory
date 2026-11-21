@@ -22,7 +22,7 @@ class NoEmojiTest {
     private val emoji = Regex("[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{26FF}\\x{23E9}-\\x{23FA}\\x{2705}\\x{274C}\\x{2728}\\x{2B50}\\x{FE0F}]")
 
     @Test
-    fun `kein Emoji im Kotlin-Quelltext`() {
+    fun `no emoji in the Kotlin source`() {
         val fehler = Quellen.alle().flatMap { datei ->
             Quellen.withoutComments(datei.readText()).lines().mapIndexedNotNull { i, zeile ->
                 if (emoji.containsMatchIn(zeile)) "${datei.name}:${i + 1}  ${zeile.trim()}" else null
@@ -32,7 +32,7 @@ class NoEmojiTest {
     }
 
     @Test
-    fun `kein Emoji in den Texten`() {
+    fun `no emoji in the texts`() {
         val fehler = listOf("values", "values-de").flatMap { folder ->
             File(Quellen.res, "$folder/strings.xml").readLines().mapIndexedNotNull { i, zeile ->
                 if (!zeile.trim().startsWith("<!--") && emoji.containsMatchIn(zeile))
@@ -43,7 +43,7 @@ class NoEmojiTest {
     }
 
     @Test
-    fun `das Muster erkennt Emoji und laesst Schriftzeichen stehen`() {
+    fun `the pattern recognizes emoji and leaves script characters alone`() {
         listOf("📅", "⚠️", "⏳", "✅", "❌", "👷", "🔍").forEach {
             assertTrue("nicht erkannt: $it", emoji.containsMatchIn(it))
         }

@@ -99,7 +99,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `die Suche wartet, bis das Tippen ruht, und laedt dann einmal`() = withVm { vm ->
+    fun `the search waits until typing rests and then loads once`() = withVm { vm ->
         fake.antworten["getCatalogSets"] = seite("10294-1")
         vm.setCatalogQuery("t")
         advanceTimeBy(200)
@@ -115,7 +115,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `eine Seite wird nur einmal geholt, auch wenn sie mehrfach sichtbar wird`() = withVm { vm ->
+    fun `a page is fetched only once, even if it becomes visible several times`() = withVm { vm ->
         fake.antworten["getCatalogSets"] = seite("1-1")
         vm.ensureCatalogPage(2)
         vm.ensureCatalogPage(2)
@@ -128,7 +128,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `ein Filterwechsel beginnt oben und vergisst die geladenen Seiten`() = withVm { vm ->
+    fun `a filter change starts at the top and forgets the loaded pages`() = withVm { vm ->
         fake.antworten["getCatalogSets"] = seite("1-1")
         vm.loadCatalogSets()
         advanceUntilIdle()
@@ -147,7 +147,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `ein Fehler steht im Zustand, ein fehlendes Detail auch`() = withVm { vm ->
+    fun `an error is in the state, a missing detail too`() = withVm { vm ->
         fake.codes["getCatalogSets"] = 500
         vm.loadCatalogSets()
         advanceUntilIdle()
@@ -162,7 +162,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `scheitert das Detail, steht der Grund im Zustand und ein zweiter Versuch laedt es`() = withVm { vm ->
+    fun `if the detail fails, the reason is in the state and a second attempt loads it`() = withVm { vm ->
         fake.codes["getCatalogSetDetail"] = 503
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
@@ -178,7 +178,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `wer den Katalog sieht, laedt ihn, ein Zurueckkehren laedt nicht noch einmal`() = withVm { vm ->
+    fun `whoever sees the catalog loads it, returning does not load again`() = withVm { vm ->
         fake.antworten["getCatalogSets"] = seite("10294-1")
         val erster = backgroundScope.launch { vm.state.collect {} }
         advanceUntilIdle()
@@ -192,7 +192,7 @@ class CatalogViewModelTest {
 
     /** Die Jahre liegen nur auf dem Server; geholt mit denselben Filtern wie die Liste. */
     @Test
-    fun `die Jahresverteilung kommt vom Server, mit den Filtern der Liste`() = withVm { vm ->
+    fun `the year distribution comes from the server, with the list's filters`() = withVm { vm ->
         fake.antworten["getCatalogSets"] = seite("10294-1")
         fake.antworten["getCatalogYearVerteilung"] = CatalogYearVerteilungResponse(
             success = true, years = listOf(JahrAnzahl(year = 1999, n = 4), JahrAnzahl(year = null, n = 2), JahrAnzahl(year = 2024, n = 7)))
@@ -206,7 +206,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `merken legt den Posten an, setzt den Alarm in der gewaehlten Richtung und meldet`() = withVm { vm ->
+    fun `remembering creates the item, sets the alert in the chosen direction and reports`() = withVm { vm ->
         fake.antworten["legeMerkpostenAn"] = MerkpostenAntwort(success = true, warNeu = true,
             merkposten = Merkposten(setNumber = "10305-1", condition = Zustand.GEBRAUCHT))
         fake.antworten["setPreisalarm"] = PreisalarmResponse(success = true)
@@ -219,7 +219,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `merken ohne Schwelle setzt keinen Alarm`() = withVm { vm ->
+    fun `remembering without a threshold sets no alert`() = withVm { vm ->
         fake.antworten["legeMerkpostenAn"] = MerkpostenAntwort(success = true, warNeu = false)
         vm.merke(Merkwunsch("10305-1", Zustand.NEU, Alarmrichtung.UNTER, "", konto = null))
         advanceUntilIdle()
@@ -228,7 +228,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `das Detail kennt den Merkposten aus der Ablage, ein anderes Set nicht`() = withVm { vm ->
+    fun `the detail knows the wishlist item from the store, another set does not`() = withVm { vm ->
         fake.antworten["getMerkliste"] = MerklisteResponse(success = true,
             merkposten = listOf(Merkposten(setNumber = "10305-1", condition = Zustand.NEU)))
         fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true, set = CatalogSetDetail(setNumber = "10305-1"))

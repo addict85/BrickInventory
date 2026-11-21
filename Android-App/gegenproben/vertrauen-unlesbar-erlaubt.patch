@@ -1,7 +1,7 @@
 Gegenprobe: nutzerCaErlaubt() nimmt einen nicht entschlüsselbaren Wert als „an“
 Modul: core-data
 Test: ch.brickinventoryapp.data.TrustEncryptedTest
-Rot: ein veraenderter Wert gilt nicht
+Rot: a changed value does not count, not even with a foreign key
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
 index a2bb27d..34769d9 100644

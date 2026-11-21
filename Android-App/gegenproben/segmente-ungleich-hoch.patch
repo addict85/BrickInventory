@@ -1,7 +1,7 @@
 Gegenprobe: Segmentzeile wieder ohne gleiche Höhe
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.components.SegmentChoiceTest
-Rot: alle Segmente sind gleich hoch
+Rot: all segments are equally high and not higher than needed, even if one has two lines
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
 index ce8b44b..260e722 100644

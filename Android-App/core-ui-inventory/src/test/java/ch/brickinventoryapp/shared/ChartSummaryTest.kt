@@ -15,21 +15,21 @@ import ch.brickinventoryapp.shared.ui.chartSummary
  *   A  die Zahl des Servers übergangen (immer selbst gerechnet) → rot „die
  *      Veraenderung des Servers geht vor"
  *   B  `von` aus dem ersten Punkt statt aus der ersten Beschriftung → rot
- *      „der Zeitraum kommt aus den aeussersten Beschriftungen"
- *   C  Grenze `< 2` → `< 1` → rot „ein einzelner Punkt ist kein Verlauf"
+ *      „the period comes from the outermost labels"
+ *   C  Grenze `< 2` → `< 1` → rot „a single point is not a history"
  */
 class ChartSummaryTest {
 
     private fun p(label: String, wert: Double) = ChartPoint(xLabel = label, value = wert).alsAnsicht()
 
     @Test
-    fun `ein einzelner Punkt ist kein Verlauf`() {
+    fun `a single point is not a history`() {
         assertNull(chartSummary(listOf(p("1. Okt", 100.0)), null))
         assertNull(chartSummary(emptyList(), 5.0))
     }
 
     @Test
-    fun `Anfang, Ende und Veraenderung aus den Punkten`() {
+    fun `start, end and change from the points`() {
         val z = chartSummary(listOf(p("1. Okt", 200.0), p("8. Okt", 250.0)), null)!!
         assertEquals(200.0, z.anfang, 1e-9)
         assertEquals(250.0, z.ende, 1e-9)
@@ -37,13 +37,13 @@ class ChartSummaryTest {
     }
 
     @Test
-    fun `die Veraenderung des Servers geht vor`() {
+    fun `the server's change takes precedence`() {
         val z = chartSummary(listOf(p("a", 200.0), p("b", 250.0)), 12.5)!!
         assertEquals(12.5, z.changePercent!!, 1e-9)
     }
 
     @Test
-    fun `der Zeitraum kommt aus den aeussersten Beschriftungen`() {
+    fun `the period comes from the outermost labels`() {
         val z = chartSummary(
             listOf(p("", 1.0), p("2. Okt", 2.0), p("", 3.0), p("5. Okt", 4.0), p("", 5.0)), null)!!
         assertEquals("2. Okt", z.von)
@@ -51,7 +51,7 @@ class ChartSummaryTest {
     }
 
     @Test
-    fun `ohne Anfangswert gibt es keine Prozentzahl`() {
+    fun `without a start value there is no percentage`() {
         assertNull(chartSummary(listOf(p("a", 0.0), p("b", 10.0)), null)!!.changePercent)
     }
 }

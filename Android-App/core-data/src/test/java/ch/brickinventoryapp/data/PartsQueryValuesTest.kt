@@ -11,13 +11,13 @@ import org.junit.Test
  * werden sie zu den Werten, die der Server liest (parts-spare, with_sets).
  *
  * Gegenprobe: gegenproben/ersatzteile-vertauscht.patch, OHNE und NUR in
- * asQuery() vertauscht → rot „jede Ersatzteilwahl hat den Wert der Webapp“
+ * asQuery() vertauscht → rot „every spare part choice has the web app's value“
  * (lokal am ausgeschnittenen PartsApi.kt gemessen).
  */
 class PartsQueryValuesTest {
 
     @Test
-    fun `jede Ersatzteilwahl hat den Wert der Webapp`() {
+    fun `every spare part choice has the web app's value`() {
         assertEquals(
             listOf(null, "0", "1"),
             listOf(Ersatzteilwahl.ALLE, Ersatzteilwahl.OHNE, Ersatzteilwahl.NUR).map { it.asQuery() },
@@ -25,7 +25,7 @@ class PartsQueryValuesTest {
     }
 
     @Test
-    fun `with_sets steht nur fuer die Tabelle da`() {
+    fun `with_sets is there only for the table`() {
         assertEquals(listOf("1", null), listOf(true, false).map { withSetsAsQuery(it) })
     }
 }

@@ -1,7 +1,7 @@
 Gegenprobe: kaeufeVon lädt beim ersten Beobachter nichts
 Modul: core-state
 Test: ch.brickinventoryapp.state.PurchasesViewModelTest
-Rot: die Kaeufe eines Eintrags laden, sobald
+Rot: the purchases of an entry load as soon as its page shows them
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt
 index 81d48be..488e53c 100644

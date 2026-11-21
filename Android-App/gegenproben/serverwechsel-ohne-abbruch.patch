@@ -1,7 +1,7 @@
 Gegenprobe: Ein Serverwechsel ruft die Hörer der Server-Clients nicht
 Modul: app
 Test: ch.brickinventoryapp.app.DevicesProtectionTest
-Rot: ein anderer Server bricht laufende Aufrufe ab
+Rot: a different server cancels running calls, the same one does not
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt

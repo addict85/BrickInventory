@@ -1,7 +1,7 @@
 Gegenprobe: Wertachse auch bei grosser Schrift ausgeschrieben
 Modul: core-ui-inventory
 Test: ch.brickinventoryapp.shared.AxesRoundTest
-Rot: grosse Schrift beschriftet die Wertachse kurz
+Rot: large font labels the value axis briefly
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/DiagrammAchsen.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/DiagrammAchsen.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/DiagrammAchsen.kt

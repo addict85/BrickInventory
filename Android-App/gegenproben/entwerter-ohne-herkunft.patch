@@ -1,7 +1,7 @@
 Gegenprobe: Der Entwerter sendet auch, wenn die Herkunft des Tokens nicht zum Server passt
 Modul: core-data
 Test: ch.brickinventoryapp.data.RedemptionTest
-Rot: ein Auftrag fuer einen anderen Server schickt nichts
+Rot: a job for a different server sends nothing
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt

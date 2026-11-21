@@ -1,7 +1,7 @@
 Gegenprobe: istKlartextDatenbank prüft den Dateikopf nicht mehr; jede Datei gälte als Klartext
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.InventoryKeyTest
-Rot: die Datenbank bekommt einen fertigen Schluessel
+Rot: the database gets a ready key and recognizes plaintext
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Bestandsverschluesselung.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Bestandsverschluesselung.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Bestandsverschluesselung.kt

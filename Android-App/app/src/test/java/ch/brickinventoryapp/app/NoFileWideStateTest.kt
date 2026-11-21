@@ -55,7 +55,7 @@ class NoFileWideStateTest {
     private val openStill = emptySet<String>()
 
     @Test
-    fun `keine Feature-Datei haelt veraenderlichen Zustand auf Dateiebene`() {
+    fun `no feature file holds mutable state at file level`() {
         val dateien = Quellen.unter("ui")
         val findings = mutableListOf<String>()
         for (f in dateien) {
@@ -81,7 +81,7 @@ class NoFileWideStateTest {
     }
 
     @Test
-    fun `die Ausnahmenliste enthaelt nichts Totes`() {
+    fun `the exception list contains nothing dead`() {
         // Dieselbe Regel wie in StateDomainBoundaryTest: Eine Ausnahme, die
         // niemand mehr braucht, ist eine Erlaubnis, die niemand mehr prueft.
         val tot = openStill.filter { name ->

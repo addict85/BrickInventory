@@ -1,7 +1,7 @@
 Gegenprobe: Der Empfänger der Installer-Sitzung öffnet den Bestätigungsdialog nicht
 Modul: core-update
 Test: ch.brickinventoryapp.update.InstallationsSessionTest
-Rot: verlangt das System eine Bestaetigung
+Rot: if the system requires a confirmation, the receiver opens its dialog
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt

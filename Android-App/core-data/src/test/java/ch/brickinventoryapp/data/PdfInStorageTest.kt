@@ -30,7 +30,7 @@ class PdfInStorageTest {
     fun zu() = server.shutdown()
 
     @Test
-    fun `das PDF kommt vollstaendig in den Speicher, mit Fortschritt`() {
+    fun `the PDF comes completely into memory, with progress`() {
         val pdf = ("%PDF-1.7 Gutschein 1234-5678 PIN 9999 " + "x".repeat(150_000)).toByteArray()
         server.enqueue(MockResponse().setBody(Buffer().write(pdf)))
         server.start()
@@ -41,7 +41,7 @@ class PdfInStorageTest {
     }
 
     @Test
-    fun `eine Antwort ueber der Grenze wird abgelehnt, auch ohne Laengenangabe`() {
+    fun `a response above the limit is rejected, even without a length`() {
         server.enqueue(MockResponse().setBody(Buffer().write(ByteArray(2000))))
         server.enqueue(MockResponse().setChunkedBody(Buffer().write(ByteArray(2000)), 100))
         server.start()
@@ -53,7 +53,7 @@ class PdfInStorageTest {
     }
 
     @Test
-    fun `ein Fehlerstatus ist kein PDF`() {
+    fun `an error status is not a PDF`() {
         server.enqueue(MockResponse().setResponseCode(403).setBody("verboten"))
         server.start()
         val r = runCatching { runBlocking { ladePdfInDenSpeicher(client, server.url("/api/v1/vouchers/7/pdf").toString()) } }

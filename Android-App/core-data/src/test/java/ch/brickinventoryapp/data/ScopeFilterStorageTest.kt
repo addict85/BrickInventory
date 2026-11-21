@@ -15,7 +15,7 @@ import org.junit.Test
 class ScopeFilterStorageTest {
 
     @Test
-    fun `die Anmeldung setzt auch den Lagerortfilter zurueck`() = runBlocking {
+    fun `the sign-in also resets the storage location filter`() = runBlocking {
         val speicher = ScopeFilterStorage()
         speicher.set(ScopeFilter.View.GALLERY, "7")
         speicher.setLager(ScopeFilter.View.GALLERY, "Kiste 3")
@@ -28,7 +28,7 @@ class ScopeFilterStorageTest {
     }
 
     @Test
-    fun `ein leerer Lagerort hebt den Filter auf, je Ansicht getrennt`() = runBlocking {
+    fun `an empty storage location removes the filter, separately per view`() = runBlocking {
         val speicher = ScopeFilterStorage()
         speicher.setLager(ScopeFilter.View.PARTS, "Regal B")
         speicher.setLager(ScopeFilter.View.GALLERY, "Kiste 3")

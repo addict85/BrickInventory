@@ -1,7 +1,7 @@
 Gegenprobe: der Bild-Client lädt ohne Host-Wächter
 Modul: core-data
 Test: ch.brickinventoryapp.data.ServerClientsTest
-Rot: der Bild-Client spricht
+Rot: the image client talks only via the host guard and throttles moderately
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt

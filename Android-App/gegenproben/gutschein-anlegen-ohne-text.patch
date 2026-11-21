@@ -1,7 +1,7 @@
 Gegenprobe: Gutschein hinzufügen wieder mit text/icon, die den Text aus der Semantik nehmen
 Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
-Rot: Gutscheine anlegen schwebt, Guthaben und PDF stehen im Menue der Leiste
+Rot: creating vouchers floats, balance and PDF are in the bar's menu
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt

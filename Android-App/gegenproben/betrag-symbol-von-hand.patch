@@ -1,7 +1,7 @@
 Gegenprobe: fmtMoney setzt Währungssymbol und Betrag von Hand zusammen, das Symbol steht immer vorn
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.NumberFormatTest
-Rot: die Gegenrichtung bleibt Sache der Plattform
+Rot: the opposite direction stays the platform's business
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumberFormatUtils.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumberFormatUtils.kt
 index f20fea6..9aa014c 100644

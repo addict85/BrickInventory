@@ -1,7 +1,7 @@
 Gegenprobe: Die Kaufverwaltung formatiert ein Datum mit String.format ohne Locale
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: kein String-format ohne Locale
+Rot: no String-format without Locale
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt

@@ -1,7 +1,7 @@
 Gegenprobe: die Bildfläche bleibt auch im Dunkeln weiss
 Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
-Rot: im Dunkeln liegt das Bild auf einer dunklen Flaeche
+Rot: in the dark the image lies on a dark surface
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
 index f464318..a02e065 100644

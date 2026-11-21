@@ -25,7 +25,7 @@ import org.junit.Test
 class UpdateClientTest {
 
     @Test
-    fun `der Update-Client traegt nichts von unserem Server und folgt keiner Umleitung selbst`() {
+    fun `the update client carries nothing from our server and follows no redirect itself`() {
         val client = NetzModule.provideUpdateOkHttpClient()
         assertFalse("OkHttp folgt Umleitungen am Wächter vorbei", client.followRedirects)
         assertFalse("OkHttp folgt einer Umleitung von https auf http", client.followSslRedirects)

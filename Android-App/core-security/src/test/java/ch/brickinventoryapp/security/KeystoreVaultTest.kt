@@ -21,14 +21,14 @@ import org.robolectric.annotation.Config
 class KeystoreVaultTest {
 
     @Test
-    fun `der Schluessel des Tokens arbeitet nur entsperrt, die der Ablagen immer`() {
+    fun `the token's key works only unlocked, those of the stores always`() {
         assertTrue(vaultSpec("token", onlyUnlocked = true).build().isUnlockedDeviceRequired)
         assertFalse("Ausgang und Pins brauchen ihre Schlüssel im Hintergrund",
             vaultSpec("ablage", onlyUnlocked = false).build().isUnlockedDeviceRequired)
     }
 
     @Test
-    fun `der Keystore-Tresor gibt Unlesbares nie als Klartext zurueck`() {
+    fun `the keystore vault never returns unreadable data as plaintext`() {
         // Robolectric hat keinen AndroidKeyStore: Jeder Versuch scheitert, und das darf
         // nur „nicht lesbar“ heissen, nie der Eingabewert.
         assertNull(KeystoreTokenVault("test_alias").entschluessle("klartext-statt-geheimtext"))

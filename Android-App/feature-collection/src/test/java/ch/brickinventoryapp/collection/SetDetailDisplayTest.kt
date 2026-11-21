@@ -82,7 +82,7 @@ class SetDetailDisplayTest {
     private fun anzahl(text: String) = compose.onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().size
 
     @Test
-    fun `die Kaufpreis-Kachel zeigt den mengengewichteten Schnitt, nicht den letzten Kauf`() {
+    fun `the purchase price tile shows the quantity-weighted average, not the last purchase`() {
         val bilder = ImageLoader.Builder(ctx).build()
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
@@ -96,7 +96,7 @@ class SetDetailDisplayTest {
     }
 
     @Test
-    fun `der Marktpreis steht einmal in den Wert-Kacheln, nicht noch einmal in der Preiskarte`() {
+    fun `the market price appears once in the value tiles, not again in the price card`() {
         val bilder = ImageLoader.Builder(ctx).build()
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
@@ -111,7 +111,7 @@ class SetDetailDisplayTest {
     }
 
     @Test
-    fun `der Mengenregler folgt der Menge, die der Server zurueckgibt`() {
+    fun `the quantity control follows the quantity the server returns`() {
         val bilder = ImageLoader.Builder(ctx).build()
         val aktionen = Aktionen()
         var set by mutableStateOf(falcon)
@@ -134,7 +134,7 @@ class SetDetailDisplayTest {
     }
 
     @Test
-    fun `scheitert der Preisverlauf, steht der Rat seiner Fehlerklasse`() {
+    fun `if the price history fails, the advice of its error class is shown`() {
         val bilder = ImageLoader.Builder(ctx).build()
         val withoutNetwork = SetDetailZustand(AppUiState(currency = Waehrung.CHF),
             SetDetailUiState(setDetail = falcon, setPrice = preis,

@@ -25,10 +25,10 @@ import java.util.Base64
  *
  * Gegenproben (nur in der CI messbar, lokal fehlt das Android-SDK):
  *   A  in challenge() jede Absage und jeden Netzfehler als NotBound → erwartet
- *      rot „eine Absage des Servers haelt an“ und „ohne Netz kein Rueckfall …“;
+ *      rot „a refusal of the server stops“ und „ohne Netz kein Rueckfall …“;
  *      gegenproben/schrittbindung-absage-als-ungebunden.patch
  *   C  in challenge() ein 404 wieder als NotBound (der frühere Rückfall) →
- *      erwartet rot „ein 404 auf die Challenge haelt an“;
+ *      erwartet rot „a 404 on the challenge stops“;
  *      gegenproben/schrittbindung-404-als-ungebunden.patch
  *   B  in depositChain() die Zertifikate mit dem URL-Alphabet kodiert →
  *      erwartet rot „die Kette geht als Base64 je Zertifikat …“;
@@ -48,7 +48,7 @@ class SchrittbindungTest {
     }
 
     @Test
-    fun `die Challenge des Servers kommt mit ihrer Nachricht an`() = runBlocking {
+    fun `the server's challenge arrives with its message`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":true,"challenge":"c1","nachricht":"BrickInventory-Schritt/1\ngutschein\nc1","gueltig_bis":"2026-11-09T12:00:00Z"}"""))
         val c = bindung.challenge(Schrittaktion.GUTSCHEIN)
         assertEquals(Schrittantwort.Challenge("c1", "BrickInventory-Schritt/1\ngutschein\nc1"), c)
@@ -58,13 +58,13 @@ class SchrittbindungTest {
     }
 
     @Test
-    fun `eine Absage des Servers haelt an`() = runBlocking {
+    fun `a refusal of the server stops`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":false,"code":"geraeteschluessel_fehlt","error":"Bitte neu anmelden."}""", 403))
         assertEquals(Schrittantwort.Rejected("Bitte neu anmelden."), bindung.challenge(Schrittaktion.VERWALTUNG))
     }
 
     @Test
-    fun `ein 404 auf die Challenge haelt an`() = runBlocking {
+    fun `a 404 on the challenge stops`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":false,"code":"api_pfad_unbekannt","error":"x"}""", 404))
         assertEquals(Schrittantwort.Rejected("x"), bindung.challenge(Schrittaktion.GUTSCHEIN))
         assertEquals(Schrittantwort.NotBound, bindung.challenge(Schrittaktion.LOKAL))
@@ -72,13 +72,13 @@ class SchrittbindungTest {
     }
 
     @Test
-    fun `ohne Netz kein Rueckfall auf die Pruefung im Geraet`() = runBlocking {
+    fun `without network no fallback to the check on the device`() = runBlocking {
         server.shutdown()
         assertTrue(bindung.challenge(Schrittaktion.GUTSCHEIN) is Schrittantwort.Rejected)
     }
 
     @Test
-    fun `die Signatur geht als Base64 zum Server`() = runBlocking {
+    fun `the signature goes to the server as Base64`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":true,"aktion":"gutschein","gueltig_bis":"2026-11-09T12:05:00Z"}"""))
         assertEquals(Schrittantwort.Free, bindung.freigeben("c1", byteArrayOf(1, 2, 3)))
         val rumpf = server.takeRequest().body.readUtf8()
@@ -88,7 +88,7 @@ class SchrittbindungTest {
     }
 
     @Test
-    fun `die Nonce kommt an, ein 404 und eine Absage bringen ihren Satz`() = runBlocking {
+    fun `the nonce arrives, a 404 and a refusal bring their sentence`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":true,"nonce":"ab_-"}"""))
         assertEquals(Schluesselnonce.Nonce("ab_-"), bindung.schluesselNonce())
         assertEquals("/api/v1/geraet/schluessel/nonce", server.takeRequest().path)
@@ -99,7 +99,7 @@ class SchrittbindungTest {
     }
 
     @Test
-    fun `die Kette geht als Base64 je Zertifikat zum Server`() = runBlocking {
+    fun `the chain goes to the server as Base64 per certificate`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":true}"""))
         val kette = listOf(byteArrayOf(-5, -1), byteArrayOf(3))
         assertEquals(Schrittantwort.Free, bindung.depositChain(kette))

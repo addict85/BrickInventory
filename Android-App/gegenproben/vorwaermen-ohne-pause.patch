@@ -1,7 +1,7 @@
 Gegenprobe: zwischen den Schüben des Vorwärmens keine Pause
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewWarmerTest
-Rot: zwischen den Schueben
+Rot: between batches there is a pause
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt

@@ -1,7 +1,7 @@
 Gegenprobe: Die Tabelle liest die Ablage, obwohl nur der Server „In Sets“ zählt
 Modul: feature-parts
 Test: ch.brickinventoryapp.parts.PartsViewModelTest
-Rot: Filter und Ansicht ueberstehen einen Prozess-Tod und reisen mit
+Rot: filter and view survive a process death and travel along, the account filter does not
 
 diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
 --- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt

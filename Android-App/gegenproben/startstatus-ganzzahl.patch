@@ -1,7 +1,7 @@
 Gegenprobe: Der Startzustand liest progress wieder als ganze Zahl
 Modul: core-data
 Test: ch.brickinventoryapp.data.ServerStartTest
-Rot: ein Fortschritt mit Anteil wird gelesen
+Rot: a progress with share is read
 
 diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
 --- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt

@@ -41,7 +41,7 @@ class PathServerInTickTest {
     fun zu() = paths.server.shutdown()
 
     @Test
-    fun `eine unvollständige Antwort scheitert im aufrufenden Faden`() {
+    fun `an incomplete response fails in the calling thread`() {
         val thread = Thread.currentThread()
         try {
             runBlocking { api.getPartsValuation() }
@@ -54,14 +54,14 @@ class PathServerInTickTest {
     }
 
     @Test
-    fun `eine vollständige Antwort kommt an, und das Aufräumen bleibt still`() {
+    fun `a complete response arrives, and the cleanup stays silent`() {
         val antwort = runBlocking { api.getMinifigsValuation() }
         assertEquals("0.00", antwort.body()?.totalValue)
         paths.pruefeEinlesen()
     }
 
     @Test
-    fun `das Aufräumen nennt die unpassende Antwort`() {
+    fun `the cleanup names the unsuitable response`() {
         assertSame("TestDienste findet den Server über den Dienst", paths, PfadServer.von(api))
         runCatching { runBlocking { api.getPartsValuation() } }
         try {
@@ -73,7 +73,7 @@ class PathServerInTickTest {
     }
 
     @Test
-    fun `eine zurückgehaltene Antwort kommt erst mit freigeben, ohne Wanduhr`() = runTest {
+    fun `a held-back response comes only with release, without a wall clock`() = runTest {
         paths.ausbleibend += "/api/v1/finance/minifigs-valuation"
         val abruf = launch { api.getMinifigsValuation() }
         runCurrent()
@@ -86,7 +86,7 @@ class PathServerInTickTest {
     }
 
     @Test
-    fun `ein abgebrochener Abruf bekommt nach dem Freigeben keine Antwort`() = runTest {
+    fun `an aborted fetch gets no response after the release`() = runTest {
         paths.ausbleibend += "/api/v1/finance/minifigs-valuation"
         val abruf = launch { api.getMinifigsValuation() }
         runCurrent()
@@ -97,7 +97,7 @@ class PathServerInTickTest {
     }
 
     @Test
-    fun `der ReihenServer antwortet in Reihenfolge und zeichnet die Anfragen auf`() {
+    fun `the ReihenServer responds in order and records the requests`() {
         val series = RowsServer()
         try {
             series.enqueue(TestApi.antwort("""{"success":true,"total_value":"1.00","figs":[]}"""))

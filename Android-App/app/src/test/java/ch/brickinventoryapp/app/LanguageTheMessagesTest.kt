@@ -63,7 +63,7 @@ class LanguageTheMessagesTest {
             .map { it.name to Quellen.withoutComments(it.readText()) }
 
     @Test
-    fun `Ressourcentexte kommen aus dem lokalisierten Context`() {
+    fun `resource texts come from the localized context`() {
         val dateien = affectedFiles()
         assert(dateien.size >= 15) {
             "Nur ${dateien.size} Dateien gefunden — der Pfadfilter stimmt nicht mehr, " +
@@ -105,7 +105,7 @@ class LanguageTheMessagesTest {
     }
 
     @Test
-    fun `die Textquelle hat den Helfer und benutzt ihn`() {
+    fun `the text source has the helper and uses it`() {
         // Ohne den Helfer schreibt der naechste Aufrufer wieder ctx.getString().
         for (datei in listOf("data/util/Textquelle.kt")) {
             val s = Quellen.withoutComments(Quellen.lies(datei))
@@ -119,7 +119,7 @@ class LanguageTheMessagesTest {
     }
 
     @Test
-    fun `ein Text ohne Argumente laeuft nicht durch String-format`() {
+    fun `a text without arguments does not run through String-format`() {
         // getString(id, *leer) formatiert trotzdem. Ein Text mit einem
         // einzelnen Prozentzeichen — etwa eine Prozentangabe — wuerde dort eine
         // Ausnahme werfen statt angezeigt zu werden, und zwar erst zur Laufzeit

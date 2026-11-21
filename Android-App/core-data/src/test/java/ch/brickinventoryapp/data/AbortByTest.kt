@@ -23,7 +23,7 @@ class AbortByTest {
         try { block(); false } catch (_: CancellationException) { true }
 
     @Test
-    fun `fangeAusserAbbruch reicht das Abbrechen weiter und fängt nur Exceptions`() = runTest {
+    fun `fangeAusserAbbruch passes the cancellation on and catches only exceptions`() = runTest {
         assertTrue("fangeAusserAbbruch hat das Abbrechen verschluckt",
             brichtAb { fangeAusserAbbruch { throw CancellationException("weg") } })
         assertTrue(fangeAusserAbbruch { throw IOException("weg") }.isFailure)

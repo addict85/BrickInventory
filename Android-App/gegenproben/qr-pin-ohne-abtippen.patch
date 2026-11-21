@@ -1,7 +1,7 @@
 Gegenprobe: Ein Pin aus dem QR-Code gilt beim ersten Einrichten ohne Abtippen, auch ohne System-Wurzel (Stand vor sec10 N2)
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginViewModelTest
-Rot: ein eigener Schluessel aus dem QR-Code gilt beim ersten Einrichten nur abgetippt
+Rot: an own key from the QR code applies on the first setup only when typed
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt
 index 9056830..9ee18a0 100644

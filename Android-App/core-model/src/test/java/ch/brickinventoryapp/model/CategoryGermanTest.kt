@@ -14,7 +14,7 @@ import org.junit.Test
 class CategoryGermanTest {
 
     @Test
-    fun `bekannte Kategorien lesen sich deutsch`() {
+    fun `known categories read in German`() {
         assertEquals("Steine", CategoryGerman.translate("Bricks"))
         assertEquals("Steine schräg", CategoryGerman.translate("Bricks Sloped"))
         assertEquals("Stangen, Leitern und Zäune", CategoryGerman.translate("Bars, Ladders and Fences"))
@@ -23,7 +23,7 @@ class CategoryGermanTest {
     }
 
     @Test
-    fun `unbekannte Woerter bleiben stehen`() {
+    fun `unknown words stay`() {
         assertEquals("Bionicle", CategoryGerman.translate("Bionicle"))
         assertEquals("Zahnräder Zubehör", CategoryGerman.translate("Gears Accessories"))
     }

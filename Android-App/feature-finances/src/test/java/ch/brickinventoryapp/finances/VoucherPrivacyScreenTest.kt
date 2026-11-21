@@ -18,26 +18,26 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * Gegenproben:
  *   A  showsVouchers() prüft "/vouchers/export" statt "/api/v1/vouchers/" → rot
- *      „ein einzelner Gutschein und der Export brauchen Sichtschutz“
+ *      „a single voucher and the export need a privacy screen“
  *   C  Sichtschutz() aus dem Zweig `zfZustand.geheimnis != null` in
  *      EinstellungenZweiterFaktor entfernt → rot „Schlüssel und Codes des zweiten Faktors …“
  */
 class VoucherPrivacyScreenTest {
 
     @Test
-    fun `ein einzelner Gutschein und der Export brauchen Sichtschutz`() {
+    fun `a single voucher and the export need a privacy screen`() {
         assertTrue(showsVouchers(voucherPdfAddress("https://brick.example/", 7)))
         assertTrue(showsVouchers(voucherExportAddress("https://brick.example")))
     }
 
     @Test
-    fun `eine Bauanleitung braucht keinen`() {
+    fun `a building instruction needs none`() {
         assertFalse(showsVouchers("https://brick.example/api/v1/instructions/42/file"))
     }
 
     /** Dieselbe Regel für den TOTP-Schlüssel und die Wiederherstellungscodes. */
     @Test
-    fun `Schluessel und Codes des zweiten Faktors fordern den Sichtschutz an`() {
+    fun `key and codes of the second factor request the privacy screen`() {
         val konto = Quellen.withoutComments(Quellen.lies("account/ui/screens/EinstellungenZweiterFaktor.kt"))
         for (branch in listOf("zfZustand.codes.isNotEmpty() ->", "zfZustand.geheimnis != null ->")) {
             assertTrue("Ohne Sichtschutz: $branch", Regex(Regex.escape(branch) +

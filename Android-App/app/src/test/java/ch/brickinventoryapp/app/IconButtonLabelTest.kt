@@ -31,7 +31,7 @@ class IconButtonLabelTest {
             }
 
     @Test
-    fun `jeder IconButton hat eine Beschriftung`() {
+    fun `every IconButton has a label`() {
         val withoutLabel = mutableListOf<String>()
 
         for (datei in screens()) {
@@ -70,7 +70,7 @@ class IconButtonLabelTest {
      * Unterseite ohne MitTooltip → rot mit Unterseite.kt.
      */
     @Test
-    fun `jeder Symbolknopf zeigt seinen Namen als Tooltip`() {
+    fun `every icon button shows its name as a tooltip`() {
         val ohne = mutableListOf<String>()
         for (datei in screens()) {
             if (datei.name == "MitTooltip.kt") continue
@@ -85,7 +85,7 @@ class IconButtonLabelTest {
     }
 
     @Test
-    fun `die Beschriftungen liegen in beiden Sprachen vor`() {
+    fun `the labels exist in both languages`() {
         // Ein fehlender Eintrag in values-de führt nicht zum Fehler, sondern
         // still zum englischen Text — genau die Sorte Lücke, die niemand meldet.
         val en = File(Quellen.res, "values/strings.xml").readText()
@@ -103,7 +103,7 @@ class IconButtonLabelTest {
     // Gegenprobe (am 27.10. gemessen): in MerklisteZeile.kt das
     // `role = Role.Button` wieder entfernt → rot mit genau dieser Stelle.
     @Test
-    fun `jedes clickable nennt seine Rolle`() {
+    fun `every clickable names its role`() {
         // Ohne Rolle sagt TalkBack bei einer anklickbaren Karte nichts darüber,
         // dass man sie antippen kann.
         val withoutRole = mutableListOf<String>()

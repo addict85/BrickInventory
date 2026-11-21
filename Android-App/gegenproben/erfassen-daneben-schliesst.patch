@@ -1,7 +1,7 @@
 Gegenprobe: Danebentippen schliesst auch einen ausgefüllten Erfassen-Dialog
 Modul: feature-parts
 Test: ch.brickinventoryapp.parts.AddDialogTest
-Rot: daneben tippen
+Rot: tapping outside closes only an empty dialog
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 index 148a98a..f66848a 100644

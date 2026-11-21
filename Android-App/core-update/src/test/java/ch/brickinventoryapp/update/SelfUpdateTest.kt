@@ -42,7 +42,7 @@ class SelfUpdateTest {
      * diese Luecke soll hier auffallen, bevor sie wieder jemand meldet.
      */
     @Test
-    fun `das Ergebnis der stillen Pruefung wird auch ausserhalb der Einstellungen gezeigt`() {
+    fun `the result of the silent check is shown outside the settings too`() {
         // Gesucht wird das ABONNIEREN, nicht das blosse Vorkommen des Namens: Wer den
         // Zustand setzt oder haelt, nennt ihn auch und zeichnet nichts.
         //
@@ -61,7 +61,7 @@ class SelfUpdateTest {
     }
 
     @Test
-    fun `nur eine echt hoehere Fassung gilt als neuer`() {
+    fun `only a truly higher version counts as newer`() {
         assert(isNew(100, 101)) { "Eine hoehere Fassung wird nicht erkannt" }
         assert(!isNew(100, 100)) { "Dieselbe Fassung gilt als Update" }
         // Der Punkt: Mit `!=` boete die App nach einem zurueckgenommenen Build
@@ -72,7 +72,7 @@ class SelfUpdateTest {
     }
 
     @Test
-    fun `nur Adressen aus unserer Release-Ablage`() {
+    fun `only addresses from our release store`() {
         assert(isAllowedApkAddress("$UPDATE_RELEASE_BASE/BrickInventory.apk")) {
             "Die eigene Adresse wird abgelehnt"
         }
@@ -98,7 +98,7 @@ class SelfUpdateTest {
     private fun quelle(rel: String) = Quellen.withoutComments(Quellen.lies(rel))
 
     @Test
-    fun `bei Unklarheit wird nicht installiert`() {
+    fun `when unclear nothing is installed`() {
         val help = quelle("update/util/AppUpdate.kt")
         // Jedes `return null` in der Signaturermittlung fuehrt ueber die
         // `?: return false` in signatureFits zu „nicht installieren".
@@ -112,7 +112,7 @@ class SelfUpdateTest {
     }
 
     @Test
-    fun `die Pruefung beim Start ist still`() {
+    fun `the check at start is silent`() {
         // Beim Start pruefen, nie von allein laden: Laden ist eine Entscheidung des Nutzers.
         val nav = quelle("app/AppNavigation.kt")
         // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft; dass
@@ -129,7 +129,7 @@ class SelfUpdateTest {
     }
 
     @Test
-    fun `die Aktualisierung vertraut nur System-Zertifikaten`() {
+    fun `the update trusts only system certificates`() {
         // Von GitHub kommt ein APK: nur System-CAs, kein Klartext.
         val cfg = File(Quellen.res, "xml/network_security_config.xml").readText()
         val ab = cfg.indexOf("<domain-config")
@@ -159,7 +159,7 @@ class SelfUpdateTest {
     }
 
     @Test
-    fun `das Manifest erlaubt das Installieren, das Update-Verzeichnis gibt kein Provider frei`() {
+    fun `the manifest allows installing, no provider exposes the update directory`() {
         val manifest = Quellen.manifest.readText()
         assert(manifest.contains("android.permission.REQUEST_INSTALL_PACKAGES")) {
             "Ohne die Berechtigung kann die App den Installer nicht oeffnen"
@@ -170,7 +170,7 @@ class SelfUpdateTest {
     }
 
     @Test
-    fun `der Workflow legt die Beschreibung neben das APK`() {
+    fun `the workflow puts the description next to the APK`() {
         // Ueber Quellen.workflow(), nicht mit eigener Pfadangabe: Gradle-Tests laufen
         // aus dem Modulordner, und ein eigener relativer Pfad verzählt sich leicht.
         // Releases sind unveränderlich: Die Beschreibung kommt im selben `gh release create`
@@ -197,7 +197,7 @@ class SelfUpdateTest {
     }
 
     @Test
-    fun `kein Feld verspricht eine Pruefung, die es nicht gibt`() {
+    fun `no field promises a check that does not exist`() {
         // Das Feld traegt den Git-Commit, aus dem gebaut wurde. Hiesse es `sha`, laese es
         // sich neben `apkUrl` und `apkSize` als PRUEFSUMME DES APK.
         //
@@ -228,7 +228,7 @@ class SelfUpdateTest {
     // Was der Startdialog tut und nicht tut, prüft UpdateDialogTest gezeichnet; hier nur,
     // dass er über der ganzen App hängt.
     @Test
-    fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
+    fun `the dialog hangs over the whole app, not on one screen`() {
         val nav = Quellen.withoutComments(Quellen.lies("app/AppNavigation.kt"))
         assert(nav.contains("UpdateRoute(selbstUpdate)")) {
             "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +

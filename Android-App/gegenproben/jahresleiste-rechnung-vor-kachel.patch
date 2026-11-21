@@ -1,7 +1,7 @@
 Gegenprobe: Die Jahresleiste rechnet, auch wo die Kachel schon geladen ist
 Modul: feature-catalog
 Test: ch.brickinventoryapp.catalog.CatalogYearMathTest
-Rot: eine geladene Kachel schlaegt die Rechnung
+Rot: a loaded tile beats the calculation
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/CatalogYearMath.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/CatalogYearMath.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/CatalogYearMath.kt

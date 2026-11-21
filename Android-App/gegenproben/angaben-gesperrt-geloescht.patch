@@ -1,7 +1,7 @@
 Gegenprobe: Der Start entfernt Adresse und Name früherer Form, auch wenn die neue gesperrt nicht entstand
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenVaultTest
-Rot: gesperrt bleibt die fruehere Form liegen
+Rot: locked the earlier form stays and the new one applies after unlocking
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 index 0287f52..b7f201e 100644

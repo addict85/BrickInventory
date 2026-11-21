@@ -1,7 +1,7 @@
 Gegenprobe: raeumeAlteAntwortablage() räumt nichts
 Modul: core-data
 Test: ch.brickinventoryapp.data.CacheAreaTest
-Rot: der alte Ablageort wird geraeumt
+Rot: the old storage location is cleared, other things stay
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheOwner.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheOwner.kt
 index fe8b162..65c7d83 100644

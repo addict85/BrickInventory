@@ -62,7 +62,7 @@ class AppViewModelTest {
     @After fun zu() { t.aufraeumen() }
 
     @Test
-    fun `abgemeldet laedt der Vordergrund nichts nach, angemeldet Einstellungen und Filterlisten`() {
+    fun `signed out the foreground reloads nothing, signed in settings and filter lists`() {
         vm.inForeground()
         assertEquals(emptyList<String>(), schritte.called)
         sitzung.angemeldet(admin = false)
@@ -71,7 +71,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `eine angetippte Meldung oeffnet nur eine gueltige Setnummer, bis sie quittiert ist`() {
+    fun `a tapped notification opens only a valid set number until it is acknowledged`() {
         vm.setFromMessageRequest("75192-1")
         assertEquals("75192-1", vm.messageTarget.value.setNummer)
         vm.setFromMessageAcknowledge()
@@ -84,7 +84,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `die Snackbar zeigt den Kanal, quittiert rueckt die naechste nach`() {
+    fun `the snackbar shows the channel, acknowledged the next one moves up`() {
         kanal.zeige(Meldung.Resource(1))
         kanal.zeige(Meldung.Resource(2))
         assertEquals(Meldung.Resource(1), vm.snackbar.value)
@@ -93,7 +93,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `Abmelden, zweiter Faktor und Pflichten gehen an Sitzung und Ablage durch`() {
+    fun `sign-out, second factor and obligations go through to session and store`() {
         vm.logout()
         vm.secondFactorConfigured()
         assertEquals(listOf("abmelden", "faktor"), schritte.called)

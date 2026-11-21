@@ -1,7 +1,7 @@
 Gegenprobe: „Installiert:“ wieder ohne Rückfall, wenn keine Version bekannt ist
 Modul: feature-account
 Test: ch.brickinventoryapp.account.UpdateDialogTest
-Rot: ohne bekannte Version steht unbekannt
+Rot: without a known version unknown is shown, otherwise the version
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppFassungLokal.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppFassungLokal.kt
 index 6a30969..8c0245a 100644

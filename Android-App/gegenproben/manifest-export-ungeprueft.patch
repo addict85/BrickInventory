@@ -1,7 +1,7 @@
 Gegenprobe: Eine exportierte Komponente ausserhalb der Positivliste geht durch
 Modul: app
 Test: ch.brickinventoryapp.app.ManifestCheckTest
-Rot: eine fremde exportierte Komponente
+Rot: a foreign exported component stands out, even with a wrong permission
 
 diff --git a/Android-App/tools/manifest-check.py b/Android-App/tools/manifest-check.py
 --- a/Android-App/tools/manifest-check.py

@@ -1,7 +1,7 @@
 Gegenprobe: dieselbe Meldung hintereinander wird mehrfach eingereiht
 Modul: core-data
 Test: ch.brickinventoryapp.data.MessageQueueTest
-Rot: dieselbe Meldung hintereinander kommt einmal
+Rot: the same message in a row comes once, null shows nothing
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt

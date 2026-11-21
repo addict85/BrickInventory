@@ -1,7 +1,7 @@
 Gegenprobe: Plakette und „zuletzt …“ wieder in einer Row, die Plakette mit dem langen Text
 Modul: app
 Test: ch.brickinventoryapp.app.WrapGuardTest
-Rot: Preisalarme bei 100 Prozent
+Rot: price alerts at 100 percent without character wrapping and truncation
 
 diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 --- a/Android-App/core-resources/src/main/res/values-de/strings.xml

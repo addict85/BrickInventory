@@ -25,7 +25,7 @@ class OcrSetNumberTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `Texterkennung laeuft NUR beim Erfassen, nicht im Preisvergleich`() {
+    fun `text recognition runs ONLY when adding, not in the price comparison`() {
         // Der Schalter steht auf AUS: So erbt kein künftiger Aufrufer die Texterkennung.
         val screen = code(File(Quellen.root,
             "collection/ui/screens/BarcodeScannerScreen.kt").readText())

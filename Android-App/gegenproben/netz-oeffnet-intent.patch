@@ -1,7 +1,7 @@
 Gegenprobe: core-network kennt wieder einen Android-Intent (Oberfläche statt Netzregel)
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: Schichtung der Kernmodule
+Rot: layering of the core modules
 
 diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/ExterneAdresse.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/ExterneAdresse.kt
 --- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/ExterneAdresse.kt

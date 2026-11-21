@@ -47,7 +47,7 @@ class BuildListLegendTest {
         quantity = 1, imageUrl = null, isFig = true, vorhanden = 0)
 
     @Test
-    fun `ueber der Liste steht die Legende, die Zeilen schreiben ihre Mengen aus`() {
+    fun `above the list stands the legend, the rows write out their quantities`() {
         compose.setContent {
             BrickInventoryManagerTheme {
                 PartsListScreen(TeilelisteUiState(parts = listOf(stein, platte, luke), generated = true),
@@ -67,7 +67,7 @@ class BuildListLegendTest {
     }
 
     @Test
-    fun `die Minifiguren bilden eine eigene Gruppe am Ende`() {
+    fun `the minifigures form their own group at the end`() {
         val groups = buildListsGroups(listOf(luke, stein, sticker, platte))
         assertEquals(listOf("", "Light Bluish Gray", "Red", null), groups.map { it.first })
         assertEquals(listOf(sticker), groups.first().second)

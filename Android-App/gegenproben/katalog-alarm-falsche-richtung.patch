@@ -1,7 +1,7 @@
 Gegenprobe: Der Preisalarm aus dem Katalog geht immer als „unter“ hinaus
 Modul: feature-catalog
 Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
-Rot: merken legt den Posten an
+Rot: remembering creates the item, sets the alert in the chosen direction and reports
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt

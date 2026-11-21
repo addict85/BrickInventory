@@ -12,7 +12,7 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Die Modulgrenzen, gelesen aus settings.gradle.kts und den build.gradle.kts:
  * app → feature-* → core-*, kein Bereich kennt einen anderen (ohne Ausnahme),
- * feste Schichtung der Kernmodule, core-model ohne Android, core-ui ohne Fachwissen.
+ * feste layering of the core modules, core-model ohne Android, core-ui ohne Fachwissen.
  * Die Kantenregel ist build-logic/…/kanten/Modulkanten.kt; dieselbe führt die Aufgabe
  * modulkantenPruefen in Gradle aus, hier läuft sie gegen die Modulskripte.
  *
@@ -26,9 +26,9 @@ import ch.brickinventoryapp.testing.Quellen
  *   D  include(":feature-management") aus settings.gradle.kts gestrichen → rot
  *      „jeder Modulordner ist eingebunden“
  *   E  in dependencyResolutionManagement wieder `google()` → rot
- *      „google() liefert nur Googles Gruppen“ (Ohne Inhaltsfilter)
+ *      „google() only supplies Google's groups“ (Ohne Inhaltsfilter)
  *   F  gegenproben/konvention-mit-modulkante.patch: die Bereichs-Konvention
- *      trägt core-ui ein → rot „Konventionen tragen keine Modulkanten ein“
+ *      trägt core-ui ein → rot „conventions add no module edges“
  *   G  in build-logic/settings.gradle.kts `google()` ohne Filter →
  *      rot „Ohne Inhaltsfilter in build-logic/settings.gradle.kts“
  *   I in settings.gradle.kts ein exclusiveContent
@@ -38,29 +38,29 @@ import ch.brickinventoryapp.testing.Quellen
  *   K in build-tool-vulnerabilities.txt die Fassung auf 3.15.0
  *      → rot „jede Lücke im Bauwerkzeug …“ (steht nicht in verification-metadata.xml)
  *   H ein `PdfRenderer(` in PdfSeite.kt →
- *      rot „PdfRenderer steht nur im isolierten Render-Dienst“; ebenso
+ *      rot „PdfRenderer lives only in the isolated render service“; ebenso
  *      gegenproben/pdf-bitmap-aus-dem-renderer.patch (wieder `Bitmap.CREATOR.createFromParcel`)
  *   L  gegenproben/netz-haengt-an-ablage.patch: core-network bindet Room ein →
- *      rot „core-network hängt an Ablage oder DI“ (Schichtung der Kernmodule);
+ *      rot „core-network hängt an Ablage oder DI“ (layering of the core modules);
  *      erst die CI misst es, lokal gibt es kein Gradle
  *   M  gegenproben/merge-rest-im-baum.patch: eine Datei `Rest.kt.orig` im Baum →
  *      rot „kein Merge-Rest liegt im Baum“ (jeder Modulordner ist eingebunden …)
  *   N  gegenproben/dienste-haengt-an-update.patch: core-services bindet core-update ein →
- *      rot „Schichtung der Kernmodule: core-services hängt an [core-update]“ (core-data →
+ *      rot „layering of the core modules: core-services hängt an [core-update]“ (core-data →
  *      core-update fängt schon Gradle als Zyklus)
  *   P  gegenproben/zustand-haengt-an-ui.patch: core-state bindet core-ui ein →
- *      rot „Schichtung der Kernmodule: core-state hängt an [core-ui]“
+ *      rot „layering of the core modules: core-state hängt an [core-ui]“
  *   Q  gegenproben/gemeinsam-haengt-an-daten.patch: core-ui-inventory bindet core-data ein →
- *      rot „Schichtung der Kernmodule: core-ui-inventory hängt an [core-data]“
+ *      rot „layering of the core modules: core-ui-inventory hängt an [core-data]“
  *   U  gegenproben/offline-haengt-an-daten.patch: core-offline bindet core-ui ein →
- *      rot „Schichtung der Kernmodule: core-offline hängt an [core-ui]“ (core-data
+ *      rot „layering of the core modules: core-offline hängt an [core-ui]“ (core-data
  *      ginge nicht: Den Zyklus bricht schon Gradle ab, ohne Testbericht)
  *   W  gegenproben/ablage-kennt-wireformat.patch: core-offline bindet core-contract wieder ein →
- *      rot „core-offline kennt das Wire-Format“ (Schichtung der Kernmodule)
+ *      rot „core-offline kennt das Wire-Format“ (layering of the core modules)
  *   T  gegenproben/bereich-kennt-bereich.patch: feature-parts bindet feature-catalog ein →
  *      rot „feature-parts hängt an feature-catalog“
  *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus
- *      model.fach → rot „core-ui kennt Fachmodelle“ (Schichtung der Kernmodule)
+ *      model.fach → rot „core-ui kennt Fachmodelle“ (layering of the core modules)
  *   S  gegenproben/ui-neuer-bildschirm.patch: eine neue Datei in core-ui/ui/screens →
  *      rot „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (Schichtung …)
  *   O  gegenproben/fremder-paketstamm.patch: feature-parts bekommt eine Datei im Paket
@@ -70,7 +70,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   X  gegenproben/netz-oeffnet-intent.patch: ExterneAdresse.kt importiert android.content.Intent →
  *      rot „core-network importiert Ablage, Repositories, DI oder Android-Oberfläche“ (Schichtung …)
  *   Y  gegenproben/sitzung-haengt-an-ui.patch: core-session bindet core-ui ein →
- *      rot „Schichtung der Kernmodule: core-session hängt an core-ui“
+ *      rot „layering of the core modules: core-session hängt an core-ui“
  *   Z  gegenproben/konto-haengt-an-tresor.patch: feature-account bindet core-security wieder ein →
  *      rot „feature-account hängt an core-security, das unter dem Zustand liegt“ (kein Bereich hängt …)
  *   AA core-state schaltet wieder brickinventory.android.compose ein → rot „core-state liegt unter
@@ -103,7 +103,7 @@ class ModulgrenzenTest {
         dependencies(bau).filter { !it.configuration.startsWith("test") }.map { it.ziel }.toSet()
 
     @Test
-    fun `jeder Modulordner ist eingebunden, jedes eingebundene Modul gibt es, kein Merge-Rest liegt im Baum, und jede Kotlin-Datei liegt im Paketstamm ihres Moduls`() {
+    fun `every module folder is included, every included module exists, no merge remnant lies in the tree, and every Kotlin file lies in its module's package root`() {
         // Eine .orig/.rej wird nie kompiliert, zählt aber für jede Suche über den Baum mit.
         val root: File = checkNotNull(project.parentFile)
         val remainder = root.walkTopDown()
@@ -150,7 +150,7 @@ class ModulgrenzenTest {
     }
 
     @Test
-    fun `kein Bereich hängt an einem anderen Bereich oder an der App, keiner nennt fremde Routentypen`() {
+    fun `no area depends on another area or on the app, none names foreign route types`() {
         val areas = module().filterKeys { it.startsWith("feature-") }
         assertTrue("Nur ${areas.size} Bereichsmodule", areas.size >= 5)
         for ((name, bau) in areas) {
@@ -174,7 +174,7 @@ class ModulgrenzenTest {
     }
 
     @Test
-    fun `Schichtung der Kernmodule`() {
+    fun `layering of the core modules`() {
         val kerne = module().filterKeys { it.startsWith("core-") }
         assertEquals("jedes Kernmodul hat eine Regel", Modulkanten.kerne.keys, kerne.keys)
         val alle = module().flatMap { (name, bau) -> kanten(name, bau) }
@@ -236,11 +236,11 @@ class ModulgrenzenTest {
      *   gegenproben/zustand-darf-oberflaeche.patch: core-state fehlt in withoutUi → rot hier
      */
     @Test
-    fun `die Kantenregel verbietet Bereich an Bereich, falsche Schichtung, api und core-testing im Hauptcode`() {
+    fun `the edge rule forbids area to area, wrong layering, api and core-testing in main code`() {
         fun pruefe(von: String, configuration: String, nach: String) = Modulkanten.violations(listOf(Modulkante(von, configuration, nach)))
         assertEquals(listOf("feature-parts hängt an feature-catalog"), pruefe("feature-parts", "implementation", "feature-catalog"))
         assertEquals(listOf("feature-parts hängt an app"), pruefe("feature-parts", "implementation", "app"))
-        assertEquals(listOf("Schichtung der Kernmodule: core-state hängt an core-ui"), pruefe("core-state", "implementation", "core-ui"))
+        assertEquals(listOf("layering of the core modules: core-state hängt an core-ui"), pruefe("core-state", "implementation", "core-ui"))
         assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-network"), pruefe("core-data", "api", "core-network"))
         assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-contract"), pruefe("core-data", "api", "core-contract"))
         assertEquals(listOf("feature-parts kennt das Wire-Format: Nur core-data bildet es ab"),
@@ -270,7 +270,7 @@ class ModulgrenzenTest {
     }
 
     @Test
-    fun `core-model bleibt ohne Android`() {
+    fun `core-model stays without Android`() {
         val bau = module().getValue("core-model")
         val plugins = Regex("""alias\(libs\.plugins\.([\w.]+)\)""").findAll(bau).map { it.groupValues[1] }.toSet()
         assertTrue("core-model ist kein reines Kotlin-Modul: $plugins", "brickinventory.jvm.library" in plugins)
@@ -280,15 +280,15 @@ class ModulgrenzenTest {
         assertTrue("die JVM-Konvention wendet kotlin.jvm an", "pluginAusKatalog(\"kotlin.jvm\")" in convention)
         assertTrue("die JVM-Konvention bleibt ohne Android", "android" !in convention.lowercase())
         val android = plugins.filter { it in setOf("android.application", "android.library", "kotlin.compose", "hilt", "ksp") }
-        assertTrue("core-model bleibt ohne Android: $android", android.isEmpty())
+        assertTrue("core-model stays without Android: $android", android.isEmpty())
         val libraries = Regex("""\(libs\.([\w.]+)\)""").findAll(bau).map { it.groupValues[1] }.toList()
-        assertTrue("core-model bleibt ohne Android: $libraries",
+        assertTrue("core-model stays without Android: $libraries",
             libraries.none { it.startsWith("androidx") || it.startsWith("hilt") || it.startsWith("robolectric") })
         assertTrue("core-model hängt an anderen Modulen: ${mainDependencies(bau)}", mainDependencies(bau).isEmpty())
     }
 
     @Test
-    fun `die App bindet jeden Bereich ein`() {
+    fun `the app includes every area`() {
         val app = mainDependencies(module().getValue("app"))
         val areas = module().keys.filter { it.startsWith("feature-") }.toSet()
         assertEquals("ein Bereich ohne die App wäre toter Code", areas, app.filter { it.startsWith("feature-") }.toSet())
@@ -296,7 +296,7 @@ class ModulgrenzenTest {
 
     /** Plugins wie Abhängigkeiten: google() nur für Googles Gruppen, sonst mavenCentral. */
     @Test
-    fun `google() liefert nur Googles Gruppen`() {
+    fun `google() only supplies Google's groups`() {
         // build-logic löst AGP und Kotlin für die Konventionen selbst auf.
         for (datei in listOf("settings.gradle.kts", "build-logic/settings.gradle.kts")) {
             val settings = File(project, datei).readText().lines()
@@ -320,13 +320,13 @@ class ModulgrenzenTest {
      * hier nirgends.
      */
     @Test
-    fun `Konventionen tragen keine Modulkanten ein`() {
+    fun `conventions add no module edges`() {
         val quellen = File(project, "build-logic").walkTopDown()
             .filter { it.isFile && (it.extension == "kt" || it.name.endsWith(".gradle.kts")) }.toList()
         assertTrue("Nur ${quellen.size} Dateien unter build-logic — Suche veraltet?", quellen.size >= 4)
         val edge = Regex("""\bproject\s*\(""")
         val withEdge = quellen.filter { edge.containsMatchIn(Quellen.withoutComments(it.readText())) }.map { it.name }
-        assertTrue("Konventionen tragen keine Modulkanten ein: $withEdge", withEdge.isEmpty())
+        assertTrue("conventions add no module edges: $withEdge", withEdge.isEmpty())
     }
 
     /**
@@ -334,7 +334,7 @@ class ModulgrenzenTest {
      * kommen nur Pixel in einen Speicher fester Grösse, nie ein Bitmap-Parcel zum Auspacken.
      */
     @Test
-    fun `PdfRenderer steht nur im isolierten Render-Dienst`() {
+    fun `PdfRenderer lives only in the isolated render service`() {
         val call = Regex("""\bPdfRenderer\s*\(""")
         val unpack = Regex("""\bBitmap\.CREATOR\b""")
         val quellen = Quellen.module.flatMap { m ->
@@ -352,7 +352,7 @@ class ModulgrenzenTest {
      * Dann hier rot, und im Pull-Request werden sie durch die Gruppen ersetzt.
      */
     @Test
-    fun `kein Schluessel gilt fuer eine ganze Gruppe per Regex`() {
+    fun `no key applies to a whole group via regex`() {
         val meta = File(project, "gradle/verification-metadata.xml").readText()
         assertTrue("verification-metadata.xml ohne Schlüssel — Pfad veraltet?", meta.contains("<trusted-key "))
         val regex = meta.lines().filter { "regex=\"true\"" in it }.map { it.trim() }
@@ -361,7 +361,7 @@ class ModulgrenzenTest {
 
     /** Lücken im Bauwerkzeug sind begründet, befristet und betreffen eine Fassung, die es gibt. */
     @Test
-    fun `jede Luecke im Bauwerkzeug ist begruendet, befristet und aktuell`() {
+    fun `every vulnerability in the build tooling is justified, time-limited and current`() {
         val meta = File(project, "gradle/verification-metadata.xml").readText()
         val zeilen = File(project, "tools/build-tool-vulnerabilities.txt").readLines()
         val entry = Regex("""^([\w.-]+):([\w.-]+):([\w.-]+) (CVE-\d{4}-\d+) bis:(\d{4}-\d{2}-\d{2})$""")

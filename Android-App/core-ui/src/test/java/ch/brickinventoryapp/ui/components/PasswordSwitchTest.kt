@@ -17,19 +17,19 @@ import org.junit.Test
 class PasswordSwitchTest {
 
     @Test
-    fun `leer ist das aktuelle und das neue Feld markiert, eine fehlende Wiederholung auch`() {
+    fun `empty the current and the new field are marked, a missing repetition too`() {
         assertEquals(listOf(AKTUELL, NEU), passwordSwitchError("", "", ""))
         assertEquals(listOf(AKTUELL, WIEDERHOLUNG), passwordSwitchError("", "zwoelf-zeichen", ""))
     }
 
     @Test
-    fun `zu kurzes neues Passwort ist ein Fehler, ein langes nicht`() {
+    fun `a too short new password is an error, a long one is not`() {
         assertEquals(listOf(NEU), passwordSwitchError("alt", "kurz", "kurz"))
         assertEquals(emptyList<PasswordFieldError>(), passwordSwitchError("alt", "zwoelf-zeichen", "zwoelf-zeichen"))
     }
 
     @Test
-    fun `verschiedene Wiederholung ist ein Fehler`() {
+    fun `a different repetition is an error`() {
         assertEquals(listOf(WIEDERHOLUNG), passwordSwitchError("alt", "zwoelf-zeichen", "zwoelf-zeicheN"))
     }
 }

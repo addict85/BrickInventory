@@ -33,7 +33,7 @@ class WithoutLockTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun `ohne Displaysperre warnt der Schrittschutz, statt still durchzulassen`() {
+    fun `without a screen lock the step guard warns instead of silently letting through`() {
         val aktivitaet = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
         val protection = DevicesStepProtection(aktivitaet) { "" }
         var weiter = 0

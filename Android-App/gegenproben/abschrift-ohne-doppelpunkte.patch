@@ -1,7 +1,7 @@
 Gegenprobe: Die Abschrift bekommt keine Doppelpunkte mehr wie in der Webapp
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.AbschriftformTest
-Rot: die Abschrift bekommt Doppelpunkte
+Rot: the transcript gets colons, the cursor stays behind the same character
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt

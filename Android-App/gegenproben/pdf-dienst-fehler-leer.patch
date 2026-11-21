@@ -1,7 +1,7 @@
 Gegenprobe: Die Benachrichtigung nimmt bei einem gescheiterten Abruf nur den Satz des Servers, auch keinen
 Modul: core-services
 Test: ch.brickinventoryapp.services.PdfServiceTextsTest
-Rot: jeder Fehler hat einen Satz
+Rot: every error has a sentence, without the server's sentence from code or kind
 
 diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportService.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportService.kt
 --- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportService.kt

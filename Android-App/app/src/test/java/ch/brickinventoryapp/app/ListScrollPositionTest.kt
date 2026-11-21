@@ -27,7 +27,7 @@ import ch.brickinventoryapp.testing.Quellen
  * und wieder lokal angelegt → erster Teilschritt rot; die Übergabe in
  * CollectionGraph gestrichen → zweiter Teilschritt rot;
  * gegenproben/rolle-zweite-quelle.patch (die Galerie wieder mit
- * rememberLazyGridState()) → rot „die Rollstelle haelt allein der ScrollMemory“.
+ * rememberLazyGridState()) → rot „only the ScrollMemory holds the scroll position“.
  */
 class ListScrollPositionTest {
 
@@ -59,7 +59,7 @@ class ListScrollPositionTest {
     )
 
     @Test
-    fun `keine Liste legt ihren Scroll-Zustand selbst an`() {
+    fun `no list creates its scroll state itself`() {
         for (datei in raster) {
             val src = code(read(datei))
             assert(!src.contains("val gridState = rememberLazyGridState()")) {
@@ -74,7 +74,7 @@ class ListScrollPositionTest {
     }
 
     @Test
-    fun `das Raster benutzt den uebergebenen Zustand auch`() {
+    fun `the grid uses the passed state too`() {
         // Ein Parameter, der nirgends ankommt, ist schlimmer als keiner: Die
         // Signatur verspricht dann etwas, das nicht passiert. Bei den
         // Minifiguren war genau das der Ausgangszustand — dort stand am
@@ -88,7 +88,7 @@ class ListScrollPositionTest {
     }
 
     @Test
-    fun `auch die Listen-Reiter bekommen ihren Zustand von aussen`() {
+    fun `the list tabs also get their state from outside`() {
         // Finanzen hatte es seit jeher, die Teileliste nicht — dort führt der
         // Weg zum Barcode-Scanner aus dem Bildschirm HERAUS; dabei verlässt er
         // die Komposition.
@@ -107,7 +107,7 @@ class ListScrollPositionTest {
     }
 
     @Test
-    fun `jeder Reiter mit Rollbereich ist abgedeckt`() {
+    fun `every tab with a scroll area is covered`() {
         // ── Warum diese Prüfung existiert ─────────────────────
         //
         // Gezählt werden alle Reiter, nicht die bekannten: Ein neuer soll hier auffallen.
@@ -135,7 +135,7 @@ class ListScrollPositionTest {
     }
 
     @Test
-    fun `die Rollstelle haelt allein der ScrollMemory`() {
+    fun `only the ScrollMemory holds the scroll position`() {
         // Früher drei Quellen: Zustände oberhalb des NavHost, der ScrollMemory und im
         // Katalog das ViewModel. Jetzt legt jedes Ziel seinen Zustand je Besuch an
         // (`remember`, nicht `rememberSaveable`), und nur der ScrollMemory trägt die Stelle
@@ -166,7 +166,7 @@ class ListScrollPositionTest {
     }
 
     @Test
-    fun `jeder Reiter stellt seine Position ausdruecklich wieder her`() {
+    fun `every tab restores its position explicitly`() {
         // ── Warum das hochgezogene Objekt nicht reichte ───────
         //
         // Ein Zustand oberhalb des NavHost überlebt den Ausflug, aber das Raster misst
@@ -230,7 +230,7 @@ class ListScrollPositionTest {
     }
 
     @Test
-    fun `der Griff der Jahresleiste folgt der Liste`() {
+    fun `the handle of the year bar follows the list`() {
         // Steht die Liste an der richtigen Zeile, muss auch der Griff der Leiste
         // dort stehen und nicht zuoberst.
         //

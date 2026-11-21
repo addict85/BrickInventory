@@ -1,7 +1,7 @@
 Gegenprobe: Der TOTP-Schlüssel lässt sich schon ab API 30 kopieren, wo das System ihn anzeigt
 Modul: feature-account
 Test: ch.brickinventoryapp.account.SecondFactorMaskTest
-Rot: der Schluessel ist erst ab API 33 kopierbar, und dann als vertraulich markiert
+Rot: the key is copyable only from API 33, and then marked as confidential
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt

@@ -1,7 +1,7 @@
 Gegenprobe: Das Adressfeld der Einrichtung trägt wieder einen ganzen Satz als Etikett
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginEdgeTest
-Rot: das Adressfeld traegt ein kurzes Etikett
+Rot: the address field carries a short label in one line, the explanation is below
 
 diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 --- a/Android-App/core-resources/src/main/res/values-de/strings.xml

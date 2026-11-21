@@ -1,7 +1,7 @@
 Gegenprobe: AddSetDialog übergibt die Anzahl fest als 1
 Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
-Rot: ein Set erfassen nimmt Nummer und Anzahl
+Rot: adding a set takes number and quantity
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieErfassen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieErfassen.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieErfassen.kt

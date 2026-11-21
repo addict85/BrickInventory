@@ -1,7 +1,7 @@
 Gegenprobe: fremdeAngabenEntfernen() lässt die Extras stehen
 Modul: app
 Test: ch.brickinventoryapp.app.ForeignEntryTest
-Rot: ohne Extras navigiert ein fremder Deep-Link nicht
+Rot: without extras a foreign deep link does not navigate
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt

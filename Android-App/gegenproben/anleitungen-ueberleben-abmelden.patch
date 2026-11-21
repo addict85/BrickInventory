@@ -1,7 +1,7 @@
 Gegenprobe: Abmelden lässt die verschlüsselten Anleitungen liegen (sec12 N1)
 Modul: core-data
 Test: ch.brickinventoryapp.data.InstructionStoreTest
-Rot: Abmelden raeumt alle Anleitungen weg
+Rot: sign-out clears all instructions, the start only the plaintext
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt

@@ -77,7 +77,7 @@ class MonitoringJobsDisplayTest {
     }
 
     @Test
-    fun `der Zeitplan des Servers steht an seiner Job-Karte`() {
+    fun `the server's schedule stands at its job card`() {
         zeige()
         roleTo(hasText("07:05"))
         val node: SemanticsNode = compose.onNode(hasText("07:05"), useUnmergedTree = true).fetchSemanticsNode()
@@ -85,7 +85,7 @@ class MonitoringJobsDisplayTest {
     }
 
     @Test
-    fun `die zwei Bilderknoepfe loesen Verschiedenes aus`() {
+    fun `the two image buttons trigger different things`() {
         zeige()
         for (id in listOf(R.string.monitoring_redownload_missing, R.string.monitoring_catalog_images)) {
             val button = hasText(text(id)) and hasClickAction()

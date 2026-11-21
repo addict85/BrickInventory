@@ -59,7 +59,7 @@ class ActionReportsErrorTest {
     }
 
     @Test
-    fun `jede aendernde Funktion meldet ihren Fehler`() {
+    fun `every changing function reports its error`() {
         // Ändernd = sie ruft einen schreibenden Weg des Repositories.
         val changing = Regex(
             """\b(?:repo|sets|teile|finanzen|haushalt|admin|konto|gutscheine)\.(?:\w+\.)?(add|delete|update|unlink|invite|redeem|create|remove|save|move|change)\w*\(""",

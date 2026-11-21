@@ -16,7 +16,7 @@ import org.junit.Test
  *   A  in liesBelow() den Vergleich des Hosts entfernt → rot „nur Adressen in
  *      der Release-Ablage“ (fremder Host mit gleichem Pfad)
  *   B  in liesBelow() `ziel.pathSegments.size == folder.size + 1` entfernt →
- *      rot „nur Adressen in der Release-Ablage“ (Unterordner)
+ *      rot „only addresses in the release store“ (Unterordner)
  *   C  signatureFollows() als `alt.aktuell == neu.aktuell` → rot „ein rotierter
  *      Schluessel mit dem laufenden in der Ahnenreihe passt“
  *   D  im Zweig mit einem Signierer die Ahnenreihe des ALTEN geprüft
@@ -27,7 +27,7 @@ class UpdateCheckTest {
     private val basis = "https://github.com/addict85/BrickInventory/releases/latest/download"
 
     @Test
-    fun `nur Adressen in der Release-Ablage`() {
+    fun `only addresses in the release store`() {
         assertTrue(liesBelow("$basis/BrickInventory.apk", basis))
         for (fremd in listOf(
             "$basis.angreifer.tld/x.apk",
@@ -46,25 +46,25 @@ class UpdateCheckTest {
     }
 
     @Test
-    fun `derselbe Schluessel passt, ein fremder nicht`() {
+    fun `the same key matches, a foreign one does not`() {
         assertTrue(signatureFollows(Signatur(setOf("k1"), listOf("k1")), Signatur(setOf("k1"), listOf("k1"))))
         assertFalse(signatureFollows(Signatur(setOf("k1"), listOf("k1")), Signatur(setOf("x"), listOf("x"))))
         assertFalse("Unbekannt ist nie passend", signatureFollows(Signatur(emptySet(), emptyList()), Signatur(emptySet(), emptyList())))
     }
 
     @Test
-    fun `ein rotierter Schluessel mit dem laufenden in der Ahnenreihe passt`() {
+    fun `a rotated key with the running one in the lineage matches`() {
         assertTrue(signatureFollows(Signatur(setOf("k1"), listOf("k1")), Signatur(setOf("k2"), listOf("k1", "k2"))))
         assertFalse("Fremde Ahnenreihe", signatureFollows(Signatur(setOf("k1"), listOf("k1")), Signatur(setOf("k2"), listOf("x", "k2"))))
     }
 
     @Test
-    fun `ein Rueckschritt auf den alten Schluessel passt nicht`() {
+    fun `a step back to the old key does not match`() {
         assertFalse(signatureFollows(Signatur(setOf("k2"), listOf("k1", "k2")), Signatur(setOf("k1"), listOf("k1"))))
     }
 
     @Test
-    fun `mehrere Signierer muessen genau stimmen`() {
+    fun `several signers must match exactly`() {
         assertTrue(signatureFollows(Signatur(setOf("a", "b"), listOf("a", "b")), Signatur(setOf("b", "a"), listOf("b", "a"))))
         assertFalse(signatureFollows(Signatur(setOf("a", "b"), listOf("a", "b")), Signatur(setOf("a"), listOf("a", "b"))))
     }

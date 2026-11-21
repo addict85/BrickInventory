@@ -17,7 +17,7 @@ import org.junit.Test
 class ErfassungswerteTest {
 
     @Test
-    fun `die Erfassung liest den Preis wie das Feld und meldet Unlesbares`() {
+    fun `adding reads the price like the field and reports unreadable input`() {
         val haushalt = emptyList<MemberView>()
         // Locale-unabhängig: zwei Trenner sind nie ein Einzelfall.
         assertEquals(Geld.aus(1299.0), erfassungsWerte("2", "1.299,00", Zustand.NEU, null, haushalt).preis)

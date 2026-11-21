@@ -1,7 +1,7 @@
 Gegenprobe: Der Satz der Datenschicht steht in jeder Fehlerklasse unter der Überschrift
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Fehlerhinweis nennt die Klasse
+Rot: error hint names the class and the sentence only where it says more
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt

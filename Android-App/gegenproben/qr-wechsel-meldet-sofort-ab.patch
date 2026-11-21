@@ -1,7 +1,7 @@
 Gegenprobe: Ein QR-Code für einen anderen Server meldet wieder sofort ab, vor Browser-Bestätigung und Konto-Ja
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginViewModelTest
-Rot: ein Nein zum Konto eines anderen Servers laesst die bisherige Anmeldung stehen
+Rot: a no to the account of another server leaves the previous sign-in
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt

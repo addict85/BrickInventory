@@ -1,7 +1,7 @@
 Gegenprobe: Der Schutz vor Überlagerung bleibt nach dem Bildschirm an
 Modul: app
 Test: ch.brickinventoryapp.app.ForeignEntryTest
-Rot: ein geschuetzter Bildschirm schuetzt die Activity nur
+Rot: a protected screen protects the activity only while it is shown
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt

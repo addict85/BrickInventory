@@ -1,7 +1,7 @@
 Gegenprobe: Name der Katalogkachel wieder unter der Setnummer
 Modul: app
 Test: ch.brickinventoryapp.app.AccessibilityTest
-Rot: Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel
+Rot: set and catalog tile read the name first and are buttons with a target
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt

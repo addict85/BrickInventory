@@ -62,7 +62,7 @@ class UpdateDialogTest {
     }
 
     @Test
-    fun `der Hinweis fragt, geladen wird erst auf den Klick`() {
+    fun `the hint asks, loading starts only on the click`() {
         val aktionen = Aktionen()
         compose.setContent { BrickInventoryManagerTheme { UpdateDialog(UpdateUiState(newerVersion = neu), aktionen) } }
         compose.waitForIdle()
@@ -75,7 +75,7 @@ class UpdateDialogTest {
     }
 
     @Test
-    fun `nach Spaeter fragt der Hinweis in diesem Lauf nicht wieder`() {
+    fun `after Later the hint does not ask again in this run`() {
         var zustand by mutableStateOf(UpdateUiState(newerVersion = neu))
         val aktionen = Aktionen { zustand = zustand.copy(dialogRejected = true) }
         compose.setContent { BrickInventoryManagerTheme { UpdateDialog(zustand, aktionen) } }
@@ -90,7 +90,7 @@ class UpdateDialogTest {
     }
 
     @Test
-    fun `ohne bekannte Version steht unbekannt, sonst die Version`() {
+    fun `without a known version unknown is shown, otherwise the version`() {
         var fassung by mutableStateOf(AppVersion("", 0))
         compose.setContent {
             BrickInventoryManagerTheme {

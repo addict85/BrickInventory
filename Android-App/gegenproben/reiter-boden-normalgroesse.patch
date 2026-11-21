@@ -1,7 +1,7 @@
 Gegenprobe: Reiterbeschriftung schrumpft bei grosser Schrift wieder bis zur Normalgrösse
 Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
-Rot: Reiterbeschriftung waechst bei 200 Prozent mindestens aufs Anderthalbfache
+Rot: tab label grows at 200 percent at least to one and a half times
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt

@@ -16,9 +16,9 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
  *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
  *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.AccountApi` in AppTexte → dasselbe rot
- *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → rot „core-state und core-session kennen keinen Context“
+ *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → rot „core-state and core-session know no Context“
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-session) → rot
- *                               „core-state und core-session kennen keinen Context“
+ *                               „core-state and core-session know no Context“
  *   bereich-mehr-wireformat     ein Import eines Antworttyps in CatalogViewModel → rot
  *                               „ein Bereich kennt … das Wire-Format nur core-data“
  *   bereich-kennt-umsetzung     `import …KatalogRepositoryImpl` in CatalogViewModel → rot, derselbe Test
@@ -47,7 +47,7 @@ class SchichtregelnTest {
     private fun presentation(d: Datei) = d.modul in setOf("core-state", "core-session") || d.modul.startsWith("feature-")
 
     @Test
-    fun `ein ViewModel kennt weder Android noch Netz noch Bildschirmcode`() {
+    fun `a ViewModel knows neither Android nor network nor screen code`() {
         val f = violations({ it.name.endsWith("ViewModel.kt") }) {
             it.startsWith("android.") || it.startsWith("okhttp3.") || it.startsWith("retrofit2.") ||
                 Regex("""\.ui\.(screens|components)\.""").containsMatchIn(it)
@@ -56,7 +56,7 @@ class SchichtregelnTest {
     }
 
     @Test
-    fun `Praesentation holt nichts selbst am Netz`() {
+    fun `presentation fetches nothing from the network itself`() {
         val f = violations(::presentation) { it.startsWith("okhttp3.") || it.startsWith("retrofit2.") }
         assert(f.isEmpty()) { "Präsentation mit OkHttp oder Retrofit:\n  " + f.joinToString("\n  ") }
     }
@@ -68,7 +68,7 @@ class SchichtregelnTest {
      * der Repositories sind öffentlich, weil core-testing sie baut; benutzen darf sie sonst niemand.
      */
     @Test
-    fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data`() {
+    fun `an area does not know the Retrofit interfaces, only core-data knows the wire format`() {
         val f = violations(::presentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api:\n  " + f.joinToString("\n  ") }
         val wire = violations({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.contract.") }
@@ -81,7 +81,7 @@ class SchichtregelnTest {
 
     /** Texte und Dateien kommen über Textquelle und FileReader aus core-data, ohne Ausnahme. */
     @Test
-    fun `core-state und core-session kennen keinen Context`() {
+    fun `core-state and core-session know no Context`() {
         val f = violations({ it.modul in setOf("core-state", "core-session") }) {
             it == "android.content.Context" || it.endsWith(".ApplicationContext")
         }

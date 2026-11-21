@@ -56,7 +56,7 @@ class PreviewDeviceTest {
     }
 
     @Test
-    fun `die Ablage liegt unter filesDir, wo Android nicht aufraeumt`() {
+    fun `the store lies under filesDir, where Android does not clean up`() {
         val schluessel = Ablageschluessel(File(ctx.noBackupFilesDir, "vorschau-test.schluessel"), Klartresor)
         VorschauSpeicher(ctx, schluessel).schreibe("https://brick.example/api/v1/images/set/1-1?thumb=1", "bild".toByteArray())
         assertTrue("Unter filesDir liegt nichts", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
@@ -64,7 +64,7 @@ class PreviewDeviceTest {
     }
 
     @Test
-    fun `ein gemessenes WLAN zaehlt als Mobilfunk`() {
+    fun `a metered Wi-Fi counts as mobile`() {
         val internet = NetworkCapabilities.NET_CAPABILITY_INTERNET
         assertEquals(Netzlage.Art.WLAN,
             situation(NetworkCapabilities.TRANSPORT_WIFI, internet, NetworkCapabilities.NET_CAPABILITY_NOT_METERED))
@@ -74,7 +74,7 @@ class PreviewDeviceTest {
     }
 
     @Test
-    fun `im Ausland ist Mobilfunk Roaming`() {
+    fun `abroad mobile is roaming`() {
         val internet = NetworkCapabilities.NET_CAPABILITY_INTERNET
         assertEquals(Netzlage.Art.MOBILE,
             situation(NetworkCapabilities.TRANSPORT_CELLULAR, internet, NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING))
@@ -82,7 +82,7 @@ class PreviewDeviceTest {
     }
 
     @Test
-    fun `ab Werk wird nur im WLAN vorgewaermt`() = runBlocking {
+    fun `by default warming happens only on Wi-Fi`() = runBlocking {
         val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "vorwaermen-${System.nanoTime()}.preferences_pb") }
         val geraet = DevicesStore(ctx, store, testVertrauenschiffre())
         val vorgabe = VorwaermNetwork.entries.associateWith { geraet.warmUpAllowed(it).first() }

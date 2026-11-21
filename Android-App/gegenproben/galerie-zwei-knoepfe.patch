@@ -1,7 +1,7 @@
 Gegenprobe: Scannen wieder als zweiter schwebender Knopf über dem Erfassen-Knopf
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Galerie hat einen schwebenden Knopf
+Rot: gallery has a floating button and scanning next to the search
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt

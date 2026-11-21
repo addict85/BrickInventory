@@ -33,7 +33,7 @@ import java.util.Base64
  *   vertrauen-unlesbar-erlaubt       userCaAllowed() nimmt einen unlesbaren Wert als
  *                                    „an“ → rot „ein veraenderter Wert gilt nicht“
  *   vertrauen-ohne-bindung           Vertrauenschiffre bindet den Namen nicht → rot
- *                                    „ein Geheimtext unter fremdem Namen gilt nicht“
+ *                                    „a ciphertext under a foreign name does not count“
  *   vertrauen-klartext-bleibt        die Übernahme löscht den Klartext nicht → rot
  *                                    „Klartext wird einmal uebernommen“
  *   vertrauen-marke-uebergangen      die Marke wird nicht geprüft → rot „spaeter
@@ -71,7 +71,7 @@ class TrustEncryptedTest {
             .map { (k, v) -> "$k=$v" }
 
     @Test
-    fun `Pin und Schalter liegen nicht im Klartext und ueberstehen den Neustart`() {
+    fun `pin and switch do not lie in plaintext and survive the restart`() {
         val g = start()
         g.rememberPin(host, fp)
         g.setUserCa(true)
@@ -84,7 +84,7 @@ class TrustEncryptedTest {
     }
 
     @Test
-    fun `ein veraenderter Wert gilt nicht, auch nicht mit fremdem Schluessel`() {
+    fun `a changed value does not count, not even with a foreign key`() {
         start().apply { rememberPin(host, fp); setUserCa(true) }
         assertNull("Fremder Schlüssel: kein Pin", start(testVertrauenschiffre(8)).pin(host))
         assertFalse("Fremder Schlüssel: Schalter aus", start(testVertrauenschiffre(8)).userCaAllowed())
@@ -99,7 +99,7 @@ class TrustEncryptedTest {
     }
 
     @Test
-    fun `ein Geheimtext unter fremdem Namen gilt nicht`() {
+    fun `a ciphertext under a foreign name does not count`() {
         val anderer = "anderer.example.org:443"
         val g0 = start().apply { rememberPin(anderer, fp) }
         val geheim = spiegel.getString(g0.pinEntry(anderer)!!, null)!!
@@ -114,7 +114,7 @@ class TrustEncryptedTest {
     }
 
     @Test
-    fun `Klartext wird einmal uebernommen und danach geloescht`() {
+    fun `plaintext is taken over once and deleted afterwards`() {
         spiegel.edit(commit = true) {
             putBoolean(DevicesStore.USER_CA_FROM_APPLIED, true)
             putBoolean(DevicesStore.NUTZER_CA, true)
@@ -123,12 +123,12 @@ class TrustEncryptedTest {
         val g = start()
         assertEquals("Der alte Pin gilt weiter", fp, g.pin(host))
         assertTrue("Der alte Schalter gilt weiter", g.userCaAllowed())
-        assertEquals("Klartext wird einmal uebernommen und danach geloescht", emptyList<String>(), plaintextOnDisk())
+        assertEquals("plaintext is taken over once and deleted afterwards", emptyList<String>(), plaintextOnDisk())
         assertEquals(fp, start().pin(host))
     }
 
     @Test
-    fun `spaeter hingelegter Klartext gilt nicht und wird geloescht`() {
+    fun `plaintext placed later does not count and is deleted`() {
         start().rememberPin(host, fp)
         spiegel.edit(commit = true) {
             putBoolean(DevicesStore.NUTZER_CA, true)
@@ -142,7 +142,7 @@ class TrustEncryptedTest {
     }
 
     @Test
-    fun `ohne Schluessel bleibt nichts im Klartext und nichts gilt als erlaubt`() {
+    fun `without a key nothing stays in plaintext and nothing counts as allowed`() {
         val kaputt = Vertrauenschiffre { throw IOException("Keystore gerade nicht bereit") }
         spiegel.edit(commit = true) {
             putBoolean(DevicesStore.USER_CA_FROM_APPLIED, true)
@@ -161,7 +161,7 @@ class TrustEncryptedTest {
     }
 
     @Test
-    fun `kein Eintrag nennt den Server`() {
+    fun `no entry names the server`() {
         start().apply { rememberPin(host, fp); rememberPin("$host#blatt", fp) }
         val namen = spiegel.all.keys
         assertTrue("Pins sind abgelegt: $namen", namen.count { it.startsWith(DevicesStore.PIN_NAME_PREFIX) } == 2)
@@ -169,7 +169,7 @@ class TrustEncryptedTest {
     }
 
     @Test
-    fun `ein Pin frueherer Fassung kommt unter einen Namen ohne Server und gilt weiter`() {
+    fun `a pin of an earlier version goes under a name without server and keeps applying`() {
         val g0 = start()
         g0.rememberPin(host, fp)
         val entry = g0.pinEntry(host)!!
@@ -195,7 +195,7 @@ class TrustEncryptedTest {
      * offene Verbindung, und der Fingerabdruck aus dem Code würde nie geprüft.
      */
     @Test
-    fun `ein Pin aus dem Code gilt nur ueber eine neue Verbindung`() {
+    fun `a pin from the code applies only via a new connection`() {
         val g = start()
         var neu = 0
         g.onUserCaSwitch { neu++ }

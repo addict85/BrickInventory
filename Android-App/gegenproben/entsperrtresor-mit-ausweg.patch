@@ -1,7 +1,7 @@
 Gegenprobe: Der Entsperr-Tresor weicht bei gesperrtem Gerät wieder auf den Schlüssel ohne Bedingung aus
 Modul: core-security
 Test: ch.brickinventoryapp.security.StoreUnlockedTest
-Rot: gesperrt legt der Entsperr-Tresor nichts unter dem schwaecheren Schluessel ab
+Rot: locked the unlock vault stores nothing under the weaker key
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
 index eb4b676..f852081 100644

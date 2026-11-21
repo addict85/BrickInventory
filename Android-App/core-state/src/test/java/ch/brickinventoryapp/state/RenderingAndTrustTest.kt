@@ -75,7 +75,7 @@ class RenderingAndTrustTest {
     }
 
     @Test
-    fun `der Zustand wird mit dem gemerkten Design geboren`() = runTest(takt) {
+    fun `the state is born with the remembered design`() = runTest(takt) {
         val ablage = StorageRendering().apply { design = Design.NOPPE }
         val konto = StorageSessionStore().apply { design.value = Design.NOPPE }
         // Wie im Gerät: Währung und Design aus der Ablage, das erste aus dem synchronen Spiegel.
@@ -88,7 +88,7 @@ class RenderingAndTrustTest {
     }
 
     @Test
-    fun `eine Wahl wird gemerkt und gilt sofort, das Widget erfaehrt von seinen Werten`() = runTest(takt) {
+    fun `a choice is remembered and applies immediately, the widget learns of its values`() = runTest(takt) {
         val ablage = StorageRendering()
         var widgetKicks = 0
         val vm = DarstellungViewModel(ablage, Sitzung()) { widgetKicks++ }
@@ -111,7 +111,7 @@ class RenderingAndTrustTest {
     }
 
     @Test
-    fun `ein bestaetigter Erstkontakt merkt den Pin und verwirft die offenen Verbindungen`() {
+    fun `a confirmed first contact remembers the pin and discards the open connections`() {
         val frage = CertificateQuestion()
         val ablage = StorageTrust()
         var drops = 0
@@ -128,7 +128,7 @@ class RenderingAndTrustTest {
     }
 
     @Test
-    fun `ohne bekannte CA zaehlt nur der abgetippte Fingerabdruck, Verwerfen merkt nichts`() {
+    fun `without a known CA only the typed fingerprint counts, discarding remembers nothing`() {
         val frage = CertificateQuestion()
         val ablage = StorageTrust()
         var drops = 0
@@ -151,7 +151,7 @@ class RenderingAndTrustTest {
     }
 
     @Test
-    fun `Nutzer-CAs nur nach Rueckfrage, jede Aenderung verwirft die Verbindungen`() {
+    fun `user CAs only after confirmation, every change discards the connections`() {
         val ablage = StorageTrust()
         var drops = 0
         val vm = VertrauenViewModel(ablage, { drops++ }, CertificateQuestion())

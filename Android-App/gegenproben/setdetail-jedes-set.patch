@@ -1,7 +1,7 @@
 Gegenprobe: Das Set-Detail lädt bei jeder Änderung irgendeines Sets neu
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.SetDetailViewModelTest
-Rot: ein geaenderter Kauf eines anderen Sets laedt hier nichts
+Rot: a changed purchase of another set loads nothing here, one of this set does
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt

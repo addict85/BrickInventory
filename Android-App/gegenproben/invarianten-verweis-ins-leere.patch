@@ -1,18 +1,17 @@
 Gegenprobe: INVARIANTEN.md nennt eine Quelldatei, die es nicht gibt
 Modul: app
 Test: ch.brickinventoryapp.app.InvariantsReferencesTest
-Rot: jede in INVARIANTEN genannte Quelldatei und Testklasse gibt es
+Rot: every source file and test class named in INVARIANTEN exists
 
 diff --git a/Android-App/INVARIANTEN.md b/Android-App/INVARIANTEN.md
-index e89f171..92abee4 100644
 --- a/Android-App/INVARIANTEN.md
 +++ b/Android-App/INVARIANTEN.md
-@@ -127,7 +127,7 @@ Tests: `ListScrollPositionTest`, `TabOpensAtTopTest`
+@@ -154,7 +154,7 @@ Tests: `ListScrollPositionTest`, `TabOpensAtTopTest`
  
  **Endlos-Scroll.** Die Ladesperre wird synchron vor dem `launch` gesetzt und in jedem
  Ausgang gelöst; beim Anhängen werden bekannte Schlüssel ausgesiebt.
--Datei: `sammlung/ui/Galerie.kt` · Test: `GalerieTest`
-+Datei: `sammlung/ui/GalleryFeature.kt` · Test: `GalerieTest`
+-Datei: `collection/ui/Galerie.kt` · Test: `GalleryTest`
++Datei: `collection/ui/GalleryFeature.kt` · Test: `GalleryTest`
  
  **Schlüssel.** Stehen `items(…, key = …)` und ein `item { }` in derselben Liste, trägt auch
  dieser einen Schlüssel. Test: `LazyGridItemKeyTest`

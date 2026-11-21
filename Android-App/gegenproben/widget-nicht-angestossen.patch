@@ -1,7 +1,7 @@
 Gegenprobe: Die Wahl der Widget-Werte stösst das Widget nicht mehr an
 Modul: core-state
 Test: ch.brickinventoryapp.state.RenderingAndTrustTest
-Rot: eine Wahl wird gemerkt und gilt sofort
+Rot: a choice is remembered and applies immediately, the widget learns of its values
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DarstellungViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DarstellungViewModel.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DarstellungViewModel.kt

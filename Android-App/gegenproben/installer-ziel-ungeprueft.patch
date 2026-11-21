@@ -1,7 +1,7 @@
 Gegenprobe: Der Empfänger der Installer-Sitzung startet EXTRA_INTENT ungeprüft, wie vor sec13 H4
 Modul: core-update
 Test: ch.brickinventoryapp.update.InstallationsSessionTest
-Rot: die nicht zum System-Installer fuehrt
+Rot: a confirmation that does not lead to the system installer starts nothing
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt

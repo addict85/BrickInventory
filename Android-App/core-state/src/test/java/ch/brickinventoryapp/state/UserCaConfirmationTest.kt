@@ -12,12 +12,12 @@ import org.junit.Test
  *
  * Gegenproben:
  *   A  anfragen() schaltet direkt ein (`setze(true)`) → rot „anfragen schaltet
- *      nichts ein“ und „abbrechen laesst alles aus“
+ *      nichts ein“ und „cancelling leaves everything off“
  *   B  in bestaetigen() die Abfrage `if (!_question.value) return` entfernt → rot
- *      „ohne offene Frage bestaetigt nichts“
- *   C  abbrechen() ruft `setze(true)` → rot „abbrechen laesst alles aus“
+ *      „without an open question nothing confirms“
+ *   C  abbrechen() ruft `setze(true)` → rot „cancelling leaves everything off“
  *   D  setze() ohne afterChange() → rot „bestaetigen schaltet ein …“ und
- *      „ausschalten geht ohne Frage“
+ *      „turning off works without a question“
  */
 class UserCaConfirmationTest {
 
@@ -35,12 +35,12 @@ class UserCaConfirmationTest {
     }
 
     @Test
-    fun `die Vorgabe ist aus`() {
+    fun `the default is off`() {
         assertFalse(toggle().an.value)
     }
 
     @Test
-    fun `anfragen schaltet nichts ein`() {
+    fun `requesting turns nothing on`() {
         val s = toggle()
         s.requests()
         assertTrue("Der Dialog wartet", s.frage.value)
@@ -49,7 +49,7 @@ class UserCaConfirmationTest {
     }
 
     @Test
-    fun `bestaetigen schaltet ein und verwirft offene Verbindungen`() {
+    fun `confirming turns on and discards open connections`() {
         val s = toggle()
         s.requests()
         s.bestaetigen()
@@ -60,7 +60,7 @@ class UserCaConfirmationTest {
     }
 
     @Test
-    fun `abbrechen laesst alles aus`() {
+    fun `cancelling leaves everything off`() {
         val s = toggle()
         s.requests()
         s.abbrechen()
@@ -71,7 +71,7 @@ class UserCaConfirmationTest {
     }
 
     @Test
-    fun `ohne offene Frage bestaetigt nichts`() {
+    fun `without an open question nothing confirms`() {
         val s = toggle()
         s.bestaetigen()
         assertFalse(s.an.value)
@@ -79,7 +79,7 @@ class UserCaConfirmationTest {
     }
 
     @Test
-    fun `ausschalten geht ohne Frage`() {
+    fun `turning off works without a question`() {
         val s = toggle(start = true)
         assertTrue(s.an.value)
         s.requests()

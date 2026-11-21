@@ -79,7 +79,7 @@ class PreviewWarmerTest {
     }
 
     @Test
-    fun `es holt nur fehlende Vorschaubilder, jedes einmal, lesend und markiert`() = runTest {
+    fun `it fetches only missing thumbnails, each once, reading and marked`() = runTest {
         speicher.schreibe(vorschau(2), "liegt schon".toByteArray())
         vorwaermer.vorwaermen(listOf(vorschau(3), vorschau(3), vorschau(2),
             "https://brick.example/api/v1/images/set/4-1"))
@@ -91,21 +91,21 @@ class PreviewWarmerTest {
     }
 
     @Test
-    fun `ist die Grenze erreicht, hoert es nach dem laufenden Schub auf`() = runTest {
+    fun `when the limit is reached it stops after the running batch`() = runTest {
         afterRequest = { if (gestellt.size == 1) fillUntilToLimit() }
         vorwaermer.vorwaermen((10..15).map(::vorschau))
         assertEquals("Ein Schub von zwei, dann ist Schluss", 2, gestellt.size)
     }
 
     @Test
-    fun `verlaesst das Geraet das WLAN, hoert es nach dem laufenden Schub auf`() = runTest {
+    fun `when the device leaves the Wi-Fi it stops after the running batch`() = runTest {
         afterRequest = { situation = Netzlage.Art.MOBILE }
         vorwaermer.vorwaermen((10..15).map(::vorschau))
         assertEquals(2, gestellt.size)
     }
 
     @Test
-    fun `gestartet wird nur in einem erlaubten Netz und mit Platz`() = runTest {
+    fun `it starts only on an allowed network and with space`() = runTest {
         val antworten = Netzlage.Art.entries.associateWith { situation = it; vorwaermer.darfStarten() }
         assertEquals("Vorgabe hier: nur WLAN", mapOf(Netzlage.Art.KEIN_NETZ to false, Netzlage.Art.WLAN to true,
             Netzlage.Art.MOBILE to false, Netzlage.Art.ROAMING to false), antworten)
@@ -124,7 +124,7 @@ class PreviewWarmerTest {
      * Gegenprobe (Patch vorwaermen-roaming-wie-mobil): ROAMING fragt die Erlaubnis von MOBILE → rot hier.
      */
     @Test
-    fun `jede Netzlage folgt ihrer eigenen Erlaubnis`() = runTest {
+    fun `every network state follows its own permission`() = runTest {
         val zuordnung = mapOf(VorwaermNetwork.WLAN to Netzlage.Art.WLAN, VorwaermNetwork.MOBILE to Netzlage.Art.MOBILE,
             VorwaermNetwork.ROAMING to Netzlage.Art.ROAMING)
         assertEquals("jede Erlaubnis hat ihre Lage", VorwaermNetwork.entries.toSet(), zuordnung.keys)
@@ -136,7 +136,7 @@ class PreviewWarmerTest {
     }
 
     @Test
-    fun `zwischen den Schueben wird pausiert`() = runTest {
+    fun `between batches there is a pause`() = runTest {
         vorwaermer.vorwaermen((20..23).map(::vorschau))
         assertEquals(4, gestellt.size)
         assertTrue("Zwei Schübe ohne Pause ($currentTime ms)", currentTime >= 2 * 250)

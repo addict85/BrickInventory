@@ -23,7 +23,7 @@ class ScannerPerformanceTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die Texterkennung ist gedrosselt, der Barcode-Leser nicht`() {
+    fun `text recognition is throttled, the barcode reader is not`() {
         val c = code(src)
         assert(c.contains("OCR_INTERVALL_MS")) {
             "Ohne Drosselung läuft die Texterkennung auf jedem Bild und blockiert den " +
@@ -43,7 +43,7 @@ class ScannerPerformanceTest {
     }
 
     @Test
-    fun `Tippen stellt scharf`() {
+    fun `tapping focuses`() {
         val c = code(src)
         assert(c.contains("tippZumFokus(")) {
             "Ohne Tippen zum Scharfstellen bleibt nur der kontinuierliche Autofokus, " +

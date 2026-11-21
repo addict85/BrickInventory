@@ -1,7 +1,7 @@
 Gegenprobe: Der Token steht wieder als Feld im gemeinsamen UI-Zustand
 Modul: core-session
 Test: ch.brickinventoryapp.session.NoTokenInStateTest
-Rot: kein Feld von AppUiState traegt einen Token
+Rot: no field of AppUiState carries a token
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AppUiState.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AppUiState.kt
 --- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AppUiState.kt

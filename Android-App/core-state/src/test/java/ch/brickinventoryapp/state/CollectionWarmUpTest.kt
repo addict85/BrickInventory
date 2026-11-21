@@ -38,7 +38,7 @@ class CollectionWarmUpTest {
     )
 
     @Test
-    fun `vorgewaermt wird jeder Reiter der Sammlung im Blickfeld, nicht der Katalog`() {
+    fun `every tab of the collection in view is warmed, not the catalog`() {
         val paths = PfadServer(*antworten)
         val folder = File(System.getProperty("java.io.tmpdir"), "bim-sammlung-${System.nanoTime()}").apply { mkdirs() }
         try {

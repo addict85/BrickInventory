@@ -1,7 +1,7 @@
 Gegenprobe: Sets | Teile | Minifiguren bei grosser Schrift als Chipreihe statt Segmente
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: der Sammlungs-Umschalter zeigt bei 200 Prozent
+Rot: the collection switcher shows all three views as segments at 200 percent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt

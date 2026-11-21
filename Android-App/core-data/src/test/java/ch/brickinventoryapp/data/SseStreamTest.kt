@@ -49,7 +49,7 @@ class SseStreamTest {
         runBlocking { withTimeout(5_000) { fluss.toList() } }
 
     @Test
-    fun `lesbare Ereignisse kommen der Reihe nach, der geschlossene Strom endet als Beendet`() {
+    fun `readable events come in order, the closed stream ends as Beendet`() {
         server.enqueue(antwort("data: {\"status\":\"running\"}\n\ndata: {\"status\":\"done\"}\n\n"))
 
         val events = collect(sseStream(client, anfrage()) { status(it) })
@@ -61,7 +61,7 @@ class SseStreamTest {
     }
 
     @Test
-    fun `ein unlesbares Ereignis beendet den Strom sichtbar`() {
+    fun `an unreadable event ends the stream visibly`() {
         // Das zweite Ereignis ist kein JSON; das dritte darf nicht mehr ankommen.
         server.enqueue(antwort(
             "data: {\"status\":\"running\"}\n\ndata: das ist kein json\n\ndata: {\"status\":\"done\"}\n\n"))
@@ -74,7 +74,7 @@ class SseStreamTest {
     }
 
     @Test
-    fun `eine Fehlerantwort liefert Code und Rumpf, bevor die Antwort zu ist`() {
+    fun `an error response delivers code and body before the response is closed`() {
         server.enqueue(antwort("{\"error\":\"zu viele\",\"code\":\"zu_viele_verbindungen\"}", code = 429))
 
         val events = collect(sseStream(client, anfrage()) { status(it) })
@@ -85,7 +85,7 @@ class SseStreamTest {
     }
 
     @Test
-    fun `der CSV-Client meldet ein unlesbares Ereignis als Failed`() {
+    fun `the CSV client reports an unreadable event as Failed`() {
         server.enqueue(antwort(
             "data: {\"success\":true,\"status\":\"running\",\"total\":3,\"done\":1}\n\ndata: [kaputt\n\n"))
         val events = collect(CsvImportSseClient(TestApi.umgeleitet(server), json).stream())

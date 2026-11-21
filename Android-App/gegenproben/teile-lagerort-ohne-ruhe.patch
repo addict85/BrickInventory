@@ -1,7 +1,7 @@
 Gegenprobe: der Lagerort eines Teils geht bei jedem Tastendruck hinaus (ohne Ruhezeit)
 Modul: feature-parts
 Test: ch.brickinventoryapp.parts.PartsViewModelTest
-Rot: der Lagerort wird entprellt gespeichert und im offenen Dialog gezeigt
+Rot: the storage location is saved debounced and shown in the open dialog
 
 diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
 index 8f1f892..6947686 100644

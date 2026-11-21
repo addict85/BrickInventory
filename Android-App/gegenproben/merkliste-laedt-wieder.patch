@@ -1,7 +1,7 @@
 Gegenprobe: der Merklistenzustand bekommt wieder ein eigenes Ladefeld
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: Zustaende tragen Laden und Meldung
+Rot: screens do not trigger loading via LaunchedEffect, states carry loading and message
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandMerkliste.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandMerkliste.kt
 index b8f9d3e..3f0de7b 100644

@@ -1,7 +1,7 @@
 Gegenprobe: Ein unlesbarer Posten wird wie eine Ablehnung ohne Grund gemeldet
 Modul: core-state
 Test: ch.brickinventoryapp.state.AusgangsmelderTest
-Rot: ein nach dem Update unlesbarer Posten
+Rot: an item unreadable after the update is reported as such
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
 index d0af378..7019986 100644

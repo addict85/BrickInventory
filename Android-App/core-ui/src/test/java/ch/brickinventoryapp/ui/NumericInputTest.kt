@@ -30,7 +30,7 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * Betrag und Menge: readAmount folgt readAmount der Web-App (format.js).
  * Gegenprobe (gegenproben/betrag-tausenderpunkt.patch): price() schneidet wieder am
- * zweiten Trenner ab → rot „eine eingefuegte Zahl mit Tausendertrennung bleibt ihr Wert".
+ * zweiten Trenner ab → rot „a pasted number with thousands separator keeps its value".
  */
 class NumericInputTest {
 
@@ -40,7 +40,7 @@ class NumericInputTest {
     // ── Die Filterung ────────────────────────────────────────────────────────
 
     @Test
-    fun `die Setnummer laesst Buchstaben und Ziffern durch, sonst nichts`() {
+    fun `the set number lets letters and digits through, nothing else`() {
         assertEquals("42200", NumericInput.setNumber("42200"))
         // Wie normalisiereSetNummer der Web-App: Buchstaben und Ziffern, Rest fällt weg.
         assertEquals("llca30", NumericInput.setNumber("llca30"))
@@ -53,7 +53,7 @@ class NumericInputTest {
     }
 
     @Test
-    fun `die Setnummer-Tastatur ist eine Texttastatur ohne Grossschreibung`() {
+    fun `the set number keyboard is a text keyboard without capitalization`() {
         val t = NumericInput.setNumberKeyboard()
         assertEquals(KeyboardType.Ascii, t.keyboardType)
         assertEquals(KeyboardCapitalization.None, t.capitalization)
@@ -61,7 +61,7 @@ class NumericInputTest {
     }
 
     @Test
-    fun `der Varianten-Bindestrich bleibt erlaubt`() {
+    fun `the variant hyphen stays allowed`() {
         // LEGO-Setnummern tragen die Variante hinter dem Strich (10179-2). Verböte das
         // Feld ihn, liesse sich jede Variante ausser der ersten nicht mehr erfassen.
         assertEquals("10179-2", NumericInput.setNumber("10179-2"))
@@ -71,7 +71,7 @@ class NumericInputTest {
      * Gegenprobe: setNumberPattern auf `\d+` verkürzt → "10294-1" rot; auf `.*` geweitet → "--" rot.
      */
     @Test
-    fun `eine Setnummer hat Ziffern und hoechstens eine Variante`() {
+    fun `a set number has digits and at most one variant`() {
         for (gut in listOf("10294", "10294-1", "75192-12", " 75192 ")) assertEquals(gut, true, NumericInput.isSetNumber(gut))
         for (bad in listOf("", "-", "--", "10294-", "-1", "1-2-3", "10294-1234", "abc!!")) {
             assertEquals(bad, false, NumericInput.isSetNumber(bad))
@@ -79,14 +79,14 @@ class NumericInputTest {
     }
 
     @Test
-    fun `die Menge nimmt nur Ziffern`() {
+    fun `the quantity takes only digits`() {
         assertEquals("12", NumericInput.quantity("1x2"))
         assertEquals("12", NumericInput.quantity("-12"))
         assertEquals("", NumericInput.quantity("zwei"))
     }
 
     @Test
-    fun `der Preis nimmt genau ein Trennzeichen`() {
+    fun `the price takes exactly one separator`() {
         assertEquals("12.50", NumericInput.price("12.50"))
         assertEquals("12,50", NumericInput.price("12,50"))   // deutsche Tastatur
         // Ohne diese Begrenzung wäre „12.3.4" tippbar und fiele erst beim
@@ -96,7 +96,7 @@ class NumericInputTest {
     }
 
     @Test
-    fun `ein Betrag wird gelesen wie in der Web-App`() {
+    fun `an amount is read as in the web app`() {
         val de = '.'
         val en = ','
         // Beide Schreibweisen mit Tausendertrennung, in jeder Sprache gleich.
@@ -120,7 +120,7 @@ class NumericInputTest {
     }
 
     @Test
-    fun `ein unlesbarer Betrag ist null, ein leerer auch, aber nur der unlesbare ist ungueltig`() {
+    fun `an unreadable amount is null, an empty one too, but only the unreadable one is invalid`() {
         for (roh in listOf("", " ", ".", ",", "12.3.4", "1.29.900", "12,50.1", "abc", "1,2,3")) {
             assertEquals("'$roh'", null, NumericInput.readAmount(roh, '.'))
         }
@@ -131,7 +131,7 @@ class NumericInputTest {
     }
 
     @Test
-    fun `eine eingefuegte Zahl mit Tausendertrennung bleibt ihr Wert`() {
+    fun `a pasted number with thousands separator keeps its value`() {
         // Das Abschneiden am zweiten Trenner machte aus „1.299,00" den Preis 1,299.
         assertEquals("1299,00", NumericInput.price("1.299,00", '.'))
         assertEquals("1299.50", NumericInput.price("1,299.50", ','))
@@ -145,7 +145,7 @@ class NumericInputTest {
     }
 
     @Test
-    fun `eine Menge ist leer oder eine Zahl ab 1`() {
+    fun `a quantity is empty or a number from 1`() {
         assertEquals(false, NumericInput.quantityInvalid(""))
         assertEquals(false, NumericInput.quantityInvalid("1"))
         assertEquals(false, NumericInput.quantityInvalid("250"))
@@ -213,7 +213,7 @@ class NumericInputTest {
     // beide sieht, pflegt am Ende nur noch die, die zuerst rot wird.
 
     @Test
-    fun `jedes Setnummernfeld nimmt Filter und Zahlenpad`() {
+    fun `every set number field takes filter and number pad`() {
         // Auch ein Feld, das nicht als Zahlenfeld gebaut ist; erkannt an der Beschriftung,
         // die eine Umbenennung der Zustandsvariablen übersteht.
         val felder = textFields().filter { (_, _, block) ->
@@ -238,7 +238,7 @@ class NumericInputTest {
     }
 
     @Test
-    fun `keine Ansicht filtert Zahlen mehr selbst`() {
+    fun `no view filters numbers itself any more`() {
         // Sonst gäbe es wieder mehrere Fassungen derselben Regel — und die
         // Preis-Fassung mit nur EINEM Trennzeichen fehlte den anderen.
         val dateien = Quellen.root

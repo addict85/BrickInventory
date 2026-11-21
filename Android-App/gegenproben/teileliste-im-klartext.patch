@@ -1,7 +1,7 @@
 Gegenprobe: Die Teileliste (ganzes Inventar) liegt wieder im Klartext in filesDir/pdf
 Modul: core-data
 Test: ch.brickinventoryapp.data.PartListsStoreTest
-Rot: die Teileliste liegt nur verschluesselt
+Rot: the parts list lies only encrypted, reading returns the plaintext
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt

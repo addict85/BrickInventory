@@ -1,7 +1,7 @@
 Gegenprobe: Vergleich steht nicht unter „Mehr“ (kein gewählter Reiter, kein Zurück)
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Vergleich und Bauliste markieren Mehr
+Rot: comparison and build list mark More and lead back there with Back
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt

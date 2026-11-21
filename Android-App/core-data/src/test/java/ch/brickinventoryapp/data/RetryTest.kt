@@ -13,7 +13,7 @@ import org.junit.Test
  * Gegenproben (kotlinc und JUnit gegen Netzlage.Wiederholung):
  *   A  die Pause nicht verdoppelt → rot „ein vorübergehender Fehler wird mit
  *      wachsender Pause wiederholt“ ([1000, 1000, 1000, 1000])
- *   B  die Prüfung auf KEIN_NETZ entfernt → rot „ohne Netz wird nicht gewartet“
+ *   B  die Prüfung auf KEIN_NETZ entfernt → rot „without network there is no waiting“
  *   C  die Prüfung `transient` entfernt → rot „eine Auskunft des Servers wird nicht
  *      wiederholt“
  */
@@ -31,7 +31,7 @@ class RetryTest {
     }
 
     @Test
-    fun `ein voruebergehender Fehler wird mit wachsender Pause wiederholt`() = runBlocking {
+    fun `a temporary error is retried with growing pause`() = runBlocking {
         val netz = Ergebnis.Fehler.Netz()
         val (called, abruf) = fetches(netz, netz, netz, netz, Ergebnis.Erfolg("da"))
         assertEquals(Ergebnis.Erfolg("da"), rule().wiederhole(abruf))
@@ -40,7 +40,7 @@ class RetryTest {
     }
 
     @Test
-    fun `nach dem letzten Versuch kommt der Fehler zurueck`() = runBlocking {
+    fun `after the last attempt the error comes back`() = runBlocking {
         val netz = Ergebnis.Fehler.Zeitueberschreitung
         val (called, abruf) = fetches(netz, netz, netz)
         assertEquals(netz, rule(versuche = 3).wiederhole(abruf))
@@ -48,7 +48,7 @@ class RetryTest {
     }
 
     @Test
-    fun `ohne Netz wird nicht gewartet`() = runBlocking {
+    fun `without network there is no waiting`() = runBlocking {
         situation = Netzlage.Art.KEIN_NETZ
         val (called, abruf) = fetches(Ergebnis.Fehler.Netz(), Ergebnis.Erfolg("nie"))
         assertEquals(Ergebnis.Fehler.Netz(), rule().wiederhole(abruf))
@@ -57,14 +57,14 @@ class RetryTest {
     }
 
     @Test
-    fun `eine Auskunft des Servers wird nicht wiederholt`() = runBlocking {
+    fun `an answer of the server is not retried`() = runBlocking {
         val (called, abruf) = fetches(Ergebnis.Fehler.Server(404), Ergebnis.Erfolg("nie"))
         assertEquals(Ergebnis.Fehler.Server(404), rule().wiederhole(abruf))
         assertEquals(1, called.size)
     }
 
     @Test
-    fun `hoechstens begrenzt die Versuche, nie unter einen`() = runBlocking {
+    fun `at most limits the attempts, never below one`() = runBlocking {
         val netz = Ergebnis.Fehler.Netz()
         val (called, abruf) = fetches(netz, netz, netz)
         rule().atMost(2).wiederhole(abruf)

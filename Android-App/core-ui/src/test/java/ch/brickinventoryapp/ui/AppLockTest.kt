@@ -17,7 +17,7 @@ import org.junit.Test
  *   B  der Zustand nur im Speicher (`MutableStateFlow(false)`) → rot „eine neue Activity
  *      entsperrt nicht“; gegenproben/app-sperre-vergisst-beim-drehen.patch
  *   C  in inForeground() der Vergleich des Gerätestarts gestrichen (`restarted = false`)
- *      → rot „nach einem Neustart gesperrt, auch wenn die Uhr schon weiter ist“;
+ *      → rot „locked after a reboot, even if the clock is already further“;
  *      gegenproben/app-sperre-ohne-geraetestart.patch
  *   D  (kotlinc) hiddenWidget() nur `ablage.gesperrt()` → rot „das Widget
  *      verdeckt seine Betraege, sobald die Sperre greifen kann“; gegenproben/widget-trotz-sperre.patch
@@ -53,14 +53,14 @@ class AppLockTest {
     }
 
     @Test
-    fun `standardmaessig aus`() {
+    fun `off by default`() {
         val s = lock()
         s.weg(24 * 60 * AppLock.MINUTE_MS)
         assertFalse(s.gesperrt.value)
     }
 
     @Test
-    fun `vor Ablauf der Frist fragt die App nicht`() {
+    fun `before the deadline expires the app does not ask`() {
         val s = lock().apply { setMinutes(5) }
         s.weg(5 * AppLock.MINUTE_MS - 1)
         assertFalse(s.gesperrt.value)
@@ -69,7 +69,7 @@ class AppLockTest {
     }
 
     @Test
-    fun `nach Ablauf gesperrt, bis entsperrt`() {
+    fun `after expiry locked until unlocked`() {
         val s = lock().apply { setMinutes(1) }
         s.weg(AppLock.MINUTE_MS)
         assertTrue(s.gesperrt.value)
@@ -80,7 +80,7 @@ class AppLockTest {
     }
 
     @Test
-    fun `eine neue Activity entsperrt nicht`() {
+    fun `a new activity does not unlock`() {
         lock().apply { setMinutes(15) }.weg(16 * AppLock.MINUTE_MS)
         val neu = lock()
         neu.inForeground()
@@ -88,7 +88,7 @@ class AppLockTest {
     }
 
     @Test
-    fun `nach einem Neustart des Geraets gesperrt`() {
+    fun `locked after a reboot of the device`() {
         val s = lock().apply { setMinutes(30) }
         s.inBackground()
         jetzt = 5_000L
@@ -97,7 +97,7 @@ class AppLockTest {
     }
 
     @Test
-    fun `nach einem Neustart gesperrt, auch wenn die Uhr schon weiter ist`() {
+    fun `locked after a reboot, even if the clock is already further`() {
         val s = lock().apply { setMinutes(30) }
         s.inBackground()
         starts = 8
@@ -107,7 +107,7 @@ class AppLockTest {
     }
 
     @Test
-    fun `ein unlesbarer Startzaehler sperrt, ein gleicher nicht`() {
+    fun `an unreadable boot counter locks, an equal one does not`() {
         val s = lock().apply { setMinutes(30) }
         s.weg(AppLock.MINUTE_MS)
         assertFalse("Derselbe Start und kurz weg: keine Rückfrage", s.gesperrt.value)
@@ -119,7 +119,7 @@ class AppLockTest {
     }
 
     @Test
-    fun `das Widget verdeckt seine Betraege, sobald die Sperre greifen kann`() {
+    fun `the widget hides its amounts as soon as the lock can apply`() {
         val s = lock()
         s.inBackground()
         assertFalse("Ohne Sperre zeigt es sie", AppLock.hiddenWidget(ablage))
@@ -137,7 +137,7 @@ class AppLockTest {
     }
 
     @Test
-    fun `neu installiert mit Displaysperre ist die Sperre an, sonst bleibt sie aus`() {
+    fun `newly installed with a screen lock the lock is on, otherwise it stays off`() {
         assertTrue(AppLock.DEFAULT_MINUTES in AppLock.CHOICE && AppLock.DEFAULT_MINUTES > 0)
         assertEquals(AppLock.DEFAULT_MINUTES, AppLock.vorgabe(newInstalled = true, deviceSecured = true))
         assertEquals("Ohne Displaysperre liesse sich nicht entsperren", 0, AppLock.vorgabe(newInstalled = true, deviceSecured = false))

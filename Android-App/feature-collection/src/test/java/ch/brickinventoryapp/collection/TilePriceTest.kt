@@ -39,7 +39,7 @@ import ch.brickinventoryapp.collection.ui.kachelQuelle
 class TilePriceTest {
 
     @Test
-    fun `die Kachel nimmt Betrag und G&V des Servers`() {
+    fun `the tile takes the server's amount and P&L`() {
         // Die alten Felder ergäben 800,0 und 14,3; der Server hat im Haushalt gewichtet.
         val p = tilePrices(listOf(
             PnlSetZeile(setNumber = "75192-1", quantity = 1, currentPrice = 800.0, baselinePrice = 700.0, pnlPct = null, baselinePnlPct = "14.3",
@@ -51,13 +51,13 @@ class TilePriceTest {
     }
 
     @Test
-    fun `Uebergang - eine Zeile ohne Kaufpreis nimmt den Basiswert des Servers`() {
+    fun `transition - a row without purchase price takes the server's base value`() {
         val p = tilePrices(listOf(PnlSetZeile(setNumber = "75192-1", quantity = 1, currentPrice = 800.0, baselinePrice = 700.0, pnlPct = null, baselinePnlPct = "14.3")))
         assertEquals(TilePrice(Geld.aus(800.0), 14.3), p["75192-1"])
     }
 
     @Test
-    fun `Uebergang - zwei Zustaende werden nach Menge gewichtet, nicht die erste Zeile genommen`() {
+    fun `transition - two conditions are weighted by quantity, not the first row taken`() {
         val p = tilePrices(listOf(
             PnlSetZeile(setNumber = "10294-1", quantity = 1, currentPrice = 350.0, baselinePrice = 160.0, pnlPct = "118.8"),
             PnlSetZeile(setNumber = "10294-1", quantity = 2, currentPrice = 350.0, baselinePrice = 100.0, pnlPct = "250.0"),
@@ -69,7 +69,7 @@ class TilePriceTest {
     }
 
     @Test
-    fun `der Marktpreis geht vor, sonst der gewichtete Kaufpreis`() {
+    fun `the market price goes first, otherwise the weighted purchase price`() {
         val set = SetAnsicht(setNumber = "1-1", avgPurchasePrice = Geld.aus(40.0), maxPurchasePrice = Geld.aus(60.0))
         assertEquals(Geld.aus(55.0), tileAmount(set, TilePrice(Geld.aus(55.0), 37.5)))
         assertEquals(Geld.aus(40.0), tileAmount(set, TilePrice(Geld.aus(0.0), null)))
@@ -78,7 +78,7 @@ class TilePriceTest {
     }
 
     @Test
-    fun `die Quelle des Servers bestimmt die Beschriftung der Kachel`() {
+    fun `the server's source determines the tile's label`() {
         val p = tilePrices(listOf(PnlSetZeile(setNumber = "21318-1", quantity = 1, currentPrice = null, baselinePrice = 180.0, kachelPreis = 180.0, kachelQuelle = "kauf")))
         assertEquals(TilePrice(Geld.aus(180.0), null, "kauf"), p["21318-1"])
         val set = SetAnsicht(setNumber = "21318-1")

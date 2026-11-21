@@ -1,7 +1,7 @@
 Gegenprobe: Die Seite entsteht aus einem Speicher beliebiger Grösse
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.PdfPagesBufferTest
-Rot: ein Speicher anderer Groesse ergibt keine Seite
+Rot: a buffer of a different size gives no page
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt

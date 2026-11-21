@@ -26,12 +26,12 @@ import org.junit.Test
  *
  * Gegenproben:
  *   A  in TokenSwap `speichere(neu)` hinter das `return` verlegt (nicht
- *      gespeichert) → rot „der neue Token ist gespeichert, bevor der Tausch endet“
+ *      gespeichert) → rot „the new token is saved before the swap ends“
  *   B  die Sperre entfernt (`lock.withLock` → direkt) → rot „zwei Anfragen mit
  *      der Kopfzeile tauschen einmal“ (beide GETAUSCHT, also zweimal rotiert)
  *   C  bei einem transienten Fehler sofort LATER statt erneut → rot „eine
  *      verlorene Antwort wird mit dem alten Token wiederholt“
- *   D  den 401-Zweig entfernt → rot „gilt der alte nicht mehr, muss neu gekoppelt werden“
+ *   D  den 401-Zweig entfernt → rot „if the old one is no longer valid, pairing must be redone“
  * Gegenproben:
  *   E  in swapLocked() die Prüfung `stand() != vorher` vor der Wiederholung
  *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (der alte
@@ -49,7 +49,7 @@ import org.junit.Test
  *      rot „schon getauscht heisst nicht: den Token einer anderen Sitzung nehmen“
  * Gegenprobe:
  *   K  faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Bereich →
- *      rot „faellig tauscht im Anwendungsbereich und kehrt sofort zurueck“
+ *      rot „due swaps in the application scope and returns immediately“
  * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; tausch-noetig-ohne-frist.patch):
  *   L  neededWaiting() wartet ohne withTimeoutOrNull auf den Tausch → rot „noetig
  *      wartet hoechstens die Frist, der Tausch laeuft weiter“ (keine Rückkehr nach der Frist)
@@ -105,7 +105,7 @@ class TokenSwapTest {
     private val verloren: Ergebnis.Fehler = Ergebnis.Fehler.Netz()
 
     @Test
-    fun `bei gesperrtem Geraet wird nicht getauscht, nach dem Entsperren schon`() = runTest {
+    fun `with a locked device there is no swap, after unlocking there is`() = runTest {
         var gesperrt = true
         val w = Welt(bereit = { !gesperrt })
         assertEquals(Tauschergebnis.LATER, w.tausch.tausche("alt"))
@@ -117,7 +117,7 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `der neue Token ist gespeichert, bevor der Tausch endet`() = runTest {
+    fun `the new token is saved before the swap ends`() = runTest {
         val w = Welt()
         assertEquals(Tauschergebnis.GETAUSCHT, w.tausch.tausche("alt"))
         assertEquals(listOf("rotiere alt", "speichere neu"), w.protokoll)
@@ -126,7 +126,7 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `zwei Anfragen mit der Kopfzeile tauschen einmal`() = runTest {
+    fun `two requests with the header swap once`() = runTest {
         val w = Welt().apply { brake = CompletableDeferred() }
         val a = async { w.tausch.tausche("alt") }
         val b = async { w.tausch.tausche("alt") }
@@ -137,21 +137,21 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `eine verlorene Antwort wird mit dem alten Token wiederholt`() = runTest {
+    fun `a lost response is retried with the old token`() = runTest {
         val w = Welt().apply { antworten = mutableListOf(verloren, verloren) }
         assertEquals(Tauschergebnis.GETAUSCHT, w.tausch.tausche("alt"))
         assertEquals(listOf("rotiere alt", "rotiere alt", "rotiere alt", "speichere neu"), w.protokoll)
     }
 
     @Test
-    fun `gilt der alte nicht mehr, muss neu gekoppelt werden`() = runTest {
+    fun `if the old one is no longer valid, pairing must be redone`() = runTest {
         val w = Welt().apply { antworten = mutableListOf(verloren, Ergebnis.Fehler.Abgewiesen(code = Fehlercode.TOKEN_UNGUELTIG)) }
         assertEquals(Tauschergebnis.NEW_PAIR, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
     }
 
     @Test
-    fun `bleibt der Server stumm, bleibt der alte Token stehen`() = runTest {
+    fun `if the server stays silent, the old token stays`() = runTest {
         val w = Welt().apply { antworten = MutableList(10) { verloren } }
         assertEquals(Tauschergebnis.LATER, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
@@ -159,7 +159,7 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `ein Serverwechsel waehrend der Wiederholung bricht den Tausch ab`() = runTest {
+    fun `a server switch during the retry aborts the swap`() = runTest {
         val w = Welt().apply { antworten = MutableList(10) { verloren } }
         w.rotateOn = { if (w.herkunft == HERE) w.abmelden() }
         assertEquals(Tauschergebnis.DISCARDED, w.tausch.tausche("alt"))
@@ -168,7 +168,7 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `Abmelden waehrend des Tauschs verwirft den neuen Token`() = runTest {
+    fun `sign-out during the swap discards the new token`() = runTest {
         val w = Welt().apply { brake = CompletableDeferred() }
         val tausch = async { w.tausch.tausche("alt") }
         repeat(5) { yield() }
@@ -181,7 +181,7 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `ein Tausch, der eine Abmeldung ueberdauert, speichert nicht, auch wenn derselbe Token zurueckkommt`() = runTest {
+    fun `a swap that outlasts a sign-out does not save, even if the same token comes back`() = runTest {
         val w = Welt()
         w.rotateOn = { w.abmelden(); w.anmelden("alt", HERE) }
         assertEquals(Tauschergebnis.DISCARDED, w.tausch.tausche("alt"))
@@ -189,7 +189,7 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `ein Token von einer anderen Herkunft wird nicht gespeichert`() = runTest {
+    fun `a token from a different origin is not saved`() = runTest {
         val w = Welt().apply { responseOrigin = "https://anders.example:443" }
         assertEquals(Tauschergebnis.DISCARDED, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
@@ -200,7 +200,7 @@ class TokenSwapTest {
 
     /** Pruef6 M1: „Schon getauscht“ war auch „inzwischen beim neuen Server angemeldet“. */
     @Test
-    fun `schon getauscht heisst nicht, den Token einer anderen Sitzung nehmen`() = runTest {
+    fun `already swapped does not mean taking the token of another session`() = runTest {
         val w = Welt()
         val g = w.limit.generation
         w.abmelden(); w.anmelden("vom-neuen", "https://neu.example:443")
@@ -215,7 +215,7 @@ class TokenSwapTest {
     /** Ein stummer Server hält den Netz-Thread nicht länger als die Frist; gespeichert wird trotzdem. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `noetig wartet hoechstens die Frist, der Tausch laeuft weiter`() = runTest {
+    fun `needed waits at most the deadline, the swap keeps running`() = runTest {
         val w = Welt(CoroutineScope(StandardTestDispatcher(testScheduler)), warten = 1_000).apply { brake = CompletableDeferred() }
         val waiting = async { w.tausch.neededWaiting("alt", HERE, w.limit.generation) }
         advanceTimeBy(999)
@@ -231,7 +231,7 @@ class TokenSwapTest {
     /** Mit dem Testtakt statt Warten: Der Tausch läuft erst, wenn der Bereich ihn abarbeitet. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `faellig tauscht im Anwendungsbereich und kehrt sofort zurueck`() = runTest {
+    fun `due swaps in the application scope and returns immediately`() = runTest {
         val w = Welt(CoroutineScope(StandardTestDispatcher(testScheduler))).apply { antworten = mutableListOf(verloren) }
         w.tausch.faellig("alt")
         assertEquals("faellig() hat im Aufrufer getauscht", emptyList<String>(), w.protokoll)
@@ -241,7 +241,7 @@ class TokenSwapTest {
     }
 
     @Test
-    fun `nach 180 Tagen ist die Anmeldung ueberfaellig, vorher nicht`() {
+    fun `after 180 days the sign-in is overdue, not before`() {
         val tag = 24L * 60 * 60 * 1000
         val am = 1_700_000_000_000L
         assertFalse(loginOverdue(am, am + 179 * tag))

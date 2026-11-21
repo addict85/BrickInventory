@@ -1,7 +1,7 @@
 Gegenprobe: ein Zeitpunkt in einem Fachtyp wieder als String
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: Fachtypen tragen Betraege
+Rot: domain types carry amounts as Money and points in time as Instant, not as Double and String
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt

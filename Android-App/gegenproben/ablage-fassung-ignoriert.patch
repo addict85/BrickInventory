@@ -1,7 +1,7 @@
 Gegenprobe: dekodiere() liest jede Fassung mit dem heutigen Leser
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.StoreVersionTest
-Rot: eine unbekannte Fassung ist unlesbar
+Rot: an unknown version is unreadable instead of misread
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablageform.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablageform.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablageform.kt

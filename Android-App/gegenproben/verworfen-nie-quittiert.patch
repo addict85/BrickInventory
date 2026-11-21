@@ -1,17 +1,16 @@
 Gegenprobe: Ein quittierter verworfener Posten bleibt in der Datenbank
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.InventoryDatabaseTest
-Rot: ein verworfener Posten bleibt in der Datenbank
+Rot: a discarded item stays in the database until it is acknowledged, and sign-out clears it
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-index 81d8c96..005af5a 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
 @@ -124,7 +124,7 @@ internal class RoomExit @Inject constructor(
              }
          }
  
--    override suspend fun acknowledgeDiscarded(bereich: String, id: String) = bestand.delete(bereich, DISCARDED, listOf(id))
+-    override suspend fun acknowledgeDiscarded(bereich: String, id: String) = bestand.deleteKeys(bereich, DISCARDED, listOf(id))
 +    override suspend fun acknowledgeDiscarded(bereich: String, id: String) = Unit
  
      private fun lies(z: ExitRow): Ausgangsposten? =

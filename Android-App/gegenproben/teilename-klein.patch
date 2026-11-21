@@ -1,7 +1,7 @@
 Gegenprobe: Teilename wieder in labelSmall (11 sp)
 Modul: app
 Test: ch.brickinventoryapp.app.TileReadAloudTest
-Rot: Name Farbe und zweite Zeile stehen in mindestens 12 sp
+Rot: name, color and second line are at least 12 sp
 
 diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt
 --- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt
@@ -13,5 +13,5 @@ diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/
 -                style = MaterialTheme.typography.bodySmall,
 +                style = MaterialTheme.typography.labelSmall,
                  color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                 // Im Raster immer zwei Zeilen Platz: Kacheln einer Reihe sind gleich hoch,
+                 // Im Raster immer zwei Zeilen Platz: tiles of a row are equally high,
                  // auch wenn ein Name kurz ist. Die Zeile muss niemandem gleichen.

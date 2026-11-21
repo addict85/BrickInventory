@@ -53,7 +53,7 @@ import ch.brickinventoryapp.model.ui.laedt
  *    den Code nicht an changePassword() gereicht: dieselbe Prüfung rot (kein
  *    "code" im Rumpf).
  *  - In setUpSecondFactorOne() `d.otpauth` ungeprüft übernommen:
- *    „eine fremde Adresse statt otpauth wird nicht geöffnet“ rot.
+ *    „a foreign address instead of otpauth is not opened“ rot.
  *  - Patch gegenproben/profil-ohne-passwort.patch (die Prüfung
  *    `passwort.isNullOrBlank()` in saveProfile() entfernt): „ohne Passwort
  *    fragt das Profil den Server nicht“ rot.
@@ -106,7 +106,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `Geraete und zweiter Faktor laden, sobald jemand ihren Zustand beobachtet`() {
+    fun `devices and second factor load as soon as someone observes their state`() {
         clock.runCurrent()
         assertEquals("ohne Beobachter kein Abruf", 0, server.requestCount)
         server.enqueue(antwort(geraete(currentAlong = true)))
@@ -121,7 +121,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `Profil und Design laden mit der Kontoseite, nicht mit der Startpasswort-Maske`() {
+    fun `profile and design load with the account page, not with the start password form`() {
         val mask = CoroutineScope(takt).launch { vm.kontoState.collect {} }
         clock.runCurrent()
         assertEquals("die Maske lädt nichts", 0, server.requestCount)
@@ -139,7 +139,7 @@ class AccountViewModelTest {
         {"token_id":"c3","label":"Alt"}]}"""
 
     @Test
-    fun `andere Geraete gehen in einer bestaetigten Anfrage, das eigene bleibt`() {
+    fun `other devices go in one confirmed request, the own one stays`() {
         server.enqueue(antwort(geraete(currentAlong = true)))
         vm.loadDevices()
         bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
@@ -161,7 +161,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `ein fremdes Geraet verlangt Passwort und bei Bedarf den Code`() {
+    fun `a foreign device requires password and, if needed, the code`() {
         server.enqueue(antwort(geraete(currentAlong = true)))
         vm.loadDevices()
         bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
@@ -185,7 +185,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `die Geräteliste zeigt Vollzugriff und die frühere Frist`() {
+    fun `the device list shows full access and the earlier deadline`() {
         server.enqueue(antwort("""{"success":true,"tokens":[
             {"token_prefix":"abcd1234","token_id":"abcd1234abcd1234","label":"Rechner","created_at":"2026-01-01T00:00:00Z",
              "last_used":null,"expires_at":"2027-03-01T00:00:00Z","hard_expires_at":"2026-12-01T00:00:00Z",
@@ -205,7 +205,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `ein schon entwertetes Gerät zählt nicht`() {
+    fun `an already invalidated device does not count`() {
         server.enqueue(antwort(geraete(currentAlong = true)))
         vm.loadDevices()
         bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
@@ -218,7 +218,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `ohne erkanntes eigenes Geraet wird nichts entwertet`() {
+    fun `without a recognized own device nothing is invalidated`() {
         server.enqueue(antwort(geraete(currentAlong = false)))
         vm.loadDevices()
         bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
@@ -231,7 +231,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `nach dem Passwortwechsel wird abgemeldet`() {
+    fun `after the password change it signs out`() {
         server.enqueue(antwort("""{"success":true}"""))
         vm.aenderePasswort("alt", "neuNeuNeu123!")
         bis("Meldung") { kanal.text != null }
@@ -242,7 +242,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `ein abgelehnter Passwortwechsel meldet abzumelden nicht`() {
+    fun `a rejected password change does not report to sign out`() {
         server.enqueue(antwort("""{"success":false,"error":"Aktuelles Passwort falsch","code":"passwort_falsch"}""", 400))
         vm.aenderePasswort("falsch", "neuNeuNeu123!")
         bis("Fehler") { vm.kontoState.value.speichern.errorMessage != null }
@@ -254,7 +254,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `der bestaetigte zweite Faktor zeigt die Codes`() {
+    fun `the confirmed second factor shows the codes`() {
         server.enqueue(antwort("""{"success":true,"codes":["aaaa-1111","bbbb-2222"]}"""))
         vm.bestaetigeZweitenFaktor(" 123456 ")
         bis("Codes") { vm.secondFactorState.value.codes.isNotEmpty() }
@@ -270,7 +270,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `eine fremde Adresse statt otpauth wird nicht geöffnet`() {
+    fun `a foreign address instead of otpauth is not opened`() {
         server.enqueue(antwort("""{"success":true,"geheimnis":"JBSWY3DPEHPK3PXP",
             "otpauth":"intent://totp/#Intent;scheme=otpauth;end"}"""))
         vm.setUpSecondFactorOne("geheim")
@@ -286,7 +286,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `ohne Code verlangt der zweite Faktor das Codefeld, mit Code geht der Wechsel durch`() {
+    fun `without a code the second factor requires the code field, with a code the change goes through`() {
         server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.aenderePasswort("alt", "neuNeuNeu123!")
         bis("Absage") { vm.kontoState.value.speichern.errorMessage != null }
@@ -301,7 +301,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `ohne Passwort fragt das Profil den Server nicht`() {
+    fun `without a password the profile does not ask the server`() {
         vm.saveProfile("marco2", "marco@example.org", "", "", null)
         assertEquals("t${R.string.konto_profil_password_needed}", vm.kontoState.value.speichern.errorMessage.text)
         vm.saveProfile("marco2", "marco@example.org", "", "", "  ")
@@ -310,7 +310,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `ein neuer Name traegt das Passwort mit`() {
+    fun `a new name carries the password along`() {
         server.enqueue(antwort("""{"success":true}"""))
         server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco2"}}"""))
         vm.saveProfile("marco2", "marco@example.org", "", "", "Mein-Passwort-1")
@@ -320,7 +320,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `eine neue E-Mail traegt den Code mit`() {
+    fun `a new e-mail carries the code along`() {
         server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.saveProfile("marco", "neu@example.org", "", "", "pw")
         bis("Absage") { vm.kontoState.value.codeNoetig }
@@ -335,7 +335,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `eine neue E-Mail meldet den Link und zeigt sie als ausstehend`() {
+    fun `a new e-mail reports the link and shows it as pending`() {
         server.enqueue(antwort("""{"success":true,"emailChanged":true,"emailSent":true}"""))
         server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco","email":"alt@example.org",
             "email_verified":true,"new_email":"neu@example.org"}}"""))
@@ -348,7 +348,7 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `eine neue E-Mail ohne gesendete Mail meldet einen Fehler statt gespeichert`() {
+    fun `a new e-mail without a sent mail reports an error instead of saved`() {
         server.enqueue(antwort("""{"success":true,"emailChanged":true,"emailSent":false}"""))
         server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco","email":"alt@example.org",
             "email_verified":true,"new_email":"neu@example.org"}}"""))

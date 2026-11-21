@@ -1,7 +1,7 @@
 Gegenprobe: Gewinn/Verlust steht immer in einer Zeile, auch wenn die Breite nicht reicht
 Modul: app
 Test: ch.brickinventoryapp.app.WrapGuardTest
-Rot: Set-Detail schmal bei 200 Prozent
+Rot: narrow set detail at 200 percent without character wrapping and truncation
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 index 5b45eb7..4687087 100644

@@ -22,7 +22,7 @@ class ManualEntryAfterScanTest {
     private fun code(src: String) = Quellen.withoutComments(src)
 
     @Test
-    fun `jeder Scanner-Einstieg reagiert darauf`() {
+    fun `every scanner entry reacts to it`() {
         // Die Galerie öffnet ihren Dialog, die Teileliste setzt den Cursor.
         // Beide quittieren.
         val g = code(lies("collection/ui/screens/GalleryScreen.kt"))
@@ -44,7 +44,7 @@ class ManualEntryAfterScanTest {
     }
 
     @Test
-    fun `das Erfassen-Formular setzt den Cursor ins Set-Feld`() {
+    fun `the add form puts the cursor into the set field`() {
         // „Dies soll immer so sein, wenn das Formular angezeigt wird" — deshalb
         // LaunchedEffect(Unit): Der Dialog wird bei jedem Öffnen neu
         // zusammengesetzt, also läuft es bei jeder Anzeige genau einmal.

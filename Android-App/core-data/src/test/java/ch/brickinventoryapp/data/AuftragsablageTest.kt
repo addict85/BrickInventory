@@ -32,7 +32,7 @@ class AuftragsablageTest {
     )
 
     @Test
-    fun `der Auftrag liegt nur verschluesselt in der Warteschlange und kommt ganz zurueck`() {
+    fun `the job lies in the queue only encrypted and comes back whole`() {
         val geheim = ablage.ablegen(job)!!
         for (teil in listOf("brick", "example", "8443", "inventar", "R0VIRUlNVEVYVA", "AAAABBBBCCCC"))
             assertFalse("„$teil“ steht lesbar im Auftrag: $geheim", teil in geheim)
@@ -43,7 +43,7 @@ class AuftragsablageTest {
     }
 
     @Test
-    fun `gesperrt wartet der Auftrag, ein fremder oder kaputter gibt nichts heraus`() {
+    fun `locked the job waits, a foreign or broken one yields nothing`() {
         val geheim = ablage.ablegen(job)!!
         gesperrt = true
         assertEquals(JobState.Gesperrt, ablage.lies(geheim))

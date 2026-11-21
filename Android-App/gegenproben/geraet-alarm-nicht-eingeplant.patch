@@ -1,7 +1,7 @@
 Gegenprobe: Der Alarmschalter speichert nur und plant nicht ein
 Modul: core-state
 Test: ch.brickinventoryapp.state.DevicesSettingsViewModelTest
-Rot: der Schalter speichert und plant ein
+Rot: the switch saves and schedules
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/GeraeteEinstellungenViewModel.kt

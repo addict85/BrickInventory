@@ -1,7 +1,7 @@
 Gegenprobe: Die Schranke der Quelltext-Funktionen steht eins über dem Messwert
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: Testfunktionen, die Quelltext lesen
+Rot: test functions that read source become fewer, never more
 
 diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
 --- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
@@ -9,7 +9,7 @@ diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRat
 @@ -92,7 +92,7 @@
  
      @Test
-     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
+     fun `test functions that read source become fewer, never more`() {
 -        val FUNCTIONS = 211
 +        val FUNCTIONS = 212
          val ONLY_SOURCE_TEXT = 33

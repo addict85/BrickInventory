@@ -33,7 +33,7 @@ class DefaultStateTermsTest {
     }
 
     @Test
-    fun `die eigene Vorgabe und die fuer alle Konten heissen verschieden`() {
+    fun `the own default and the one for all accounts have different names`() {
         for (sprache in languages) {
             val c = inLanguage(sprache)
             assertNotEquals("$sprache: zweimal derselbe Name", c.getString(R.string.settings_default_condition),
@@ -42,7 +42,7 @@ class DefaultStateTermsTest {
     }
 
     @Test
-    fun `der Hinweis nennt die Wahl, die neben Neu und Gebraucht steht`() {
+    fun `the hint names the choice next to New and Used`() {
         for (sprache in languages) {
             val c = inLanguage(sprache)
             val wahl = c.getString(R.string.settings_default_condition_global)

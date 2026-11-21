@@ -1,7 +1,7 @@
 Gegenprobe: Das gemerkte Design kommt nicht mehr vor dem ersten Bild in die Sitzung
 Modul: core-state
 Test: ch.brickinventoryapp.state.RenderingAndTrustTest
-Rot: der Zustand wird mit dem gemerkten Design geboren
+Rot: the state is born with the remembered design
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Kontowerte.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Kontowerte.kt
 --- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Kontowerte.kt

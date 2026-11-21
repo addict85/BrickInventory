@@ -1,7 +1,7 @@
 Gegenprobe: der Update-Client setzt einen Authorization-Kopf
 Modul: core-data
 Test: ch.brickinventoryapp.data.UpdateClientTest
-Rot: der Update-Client traegt nichts
+Rot: the update client carries nothing from our server and follows no redirect itself
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt

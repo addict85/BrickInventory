@@ -1,7 +1,7 @@
 Gegenprobe: fangeAusserAbbruch fängt das Abbrechen wieder mit
 Modul: core-data
 Test: ch.brickinventoryapp.data.AbortByTest
-Rot: fangeAusserAbbruch reicht das Abbrechen weiter
+Rot: fangeAusserAbbruch passes the cancellation on and catches only exceptions
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Abbruch.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Abbruch.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Abbruch.kt

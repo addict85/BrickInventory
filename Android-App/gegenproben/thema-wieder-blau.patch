@@ -1,7 +1,7 @@
 Gegenprobe: Thema der Galeriekachel wieder in der Hauptfarbe
 Modul: app
 Test: ch.brickinventoryapp.app.UiUniformTest
-Rot: Thema und Nummern stehen nicht in Primaerblau
+Rot: theme and numbers are not in primary blue
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt

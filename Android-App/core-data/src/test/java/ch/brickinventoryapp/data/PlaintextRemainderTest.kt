@@ -18,7 +18,7 @@ import org.junit.Test
 class PlaintextRemainderTest {
 
     @Test
-    fun `die Klartext-Freigaben gehen, die Adresse bleibt`() {
+    fun `the cleartext permissions go, the address stays`() {
         val prefs = mutablePreferencesOf(
             stringSetPreferencesKey("klartext_hosts") to setOf("brick.example.org"),
             stringSetPreferencesKey("klartext_netze") to setOf("http://nas:3000|a1b2"),
@@ -30,7 +30,7 @@ class PlaintextRemainderTest {
     }
 
     @Test
-    fun `die Filter frueherer Fassungen gehen, ein aehnlicher Name bleibt`() {
+    fun `the filters of earlier versions go, a similar name stays`() {
         val prefs = mutablePreferencesOf(
             stringPreferencesKey("scope_sets") to "anna",
             stringPreferencesKey("lager_parts") to "Keller",

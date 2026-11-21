@@ -16,13 +16,13 @@ import org.junit.Test
  * Wörter des Servers.
  *
  * Gegenproben (gegenproben/kontoauswahl-konto-falsch.patch, alarmrichtung-ueber-falsch.patch):
- *   Konto.anfrage mit Vorsatz „konto“ → rot „jede gespeicherte Wahl wird wieder derselbe Wert“
+ *   Konto.anfrage mit Vorsatz „konto“ → rot „every saved choice becomes the same value again“
  *   UEBER mit der Kennung „über“ → rot „die Richtung liest und schreibt die Wörter des Servers“
  */
 class KontoauswahlTest {
 
     @Test
-    fun `jede gespeicherte Wahl wird wieder derselbe Wert`() {
+    fun `every saved choice becomes the same value again`() {
         assertEquals(Kontoauswahl.Eigene, Kontoauswahl.aus("own"))
         assertEquals(Kontoauswahl.Unterkonten, Kontoauswahl.aus("subs"))
         assertEquals(Kontoauswahl.Konto(7), Kontoauswahl.aus(" 7 "))
@@ -30,7 +30,7 @@ class KontoauswahlTest {
     }
 
     @Test
-    fun `alle, leer und Unlesbares filtern nicht`() {
+    fun `all, empty and unreadable do not filter`() {
         assertNull(Kontoauswahl.aus("all"))
         assertNull(Kontoauswahl.aus(""))
         assertNull(Kontoauswahl.aus(null))
@@ -38,7 +38,7 @@ class KontoauswahlTest {
     }
 
     @Test
-    fun `die Richtung liest und schreibt die Woerter des Servers`() {
+    fun `the direction reads and writes the server's words`() {
         val json = Json { ignoreUnknownKeys = true }
         val alarm = json.decodeFromString(Preisalarm.serializer(), """{"set_number":"1-1","direction":"ueber","threshold":5.0}""")
         assertEquals(Alarmrichtung.UEBER, alarm.direction)

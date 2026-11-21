@@ -1,7 +1,7 @@
 Gegenprobe: Über eine Nutzer-CA genügt im Dialog ein Tipp
 Modul: app
 Test: ch.brickinventoryapp.app.CertificateDialogTest
-Rot: ueber eine Nutzer-CA
+Rot: via a user CA a tap is not enough, the input is blind
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt

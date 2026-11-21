@@ -57,7 +57,7 @@ class AlarmThresholdDebouncedTest {
     }
 
     @Test
-    fun `getippte Schwelle speichert nach der Ruhezeit einmal, die letzte`() {
+    fun `a typed threshold saves once after the quiet period, the last one`() {
         val vm = t.merke(SettingsViewModel(t.sitzung, t.filter(), t.hinweise, t.sync, testAccountRepository(t.api),
             testManagementRepository(t.api), t.alerts(),
             testPartsRepository(t.api), noReader))

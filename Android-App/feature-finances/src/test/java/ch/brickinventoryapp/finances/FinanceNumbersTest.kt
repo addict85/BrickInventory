@@ -45,7 +45,7 @@ import ch.brickinventoryapp.finances.ui.financeHeader
  *      stehen auf der Grundlage des Marktwerts“ (400.0 statt 800.0); nur CI
  *   F  financeHeader nimmt purchase und grand_total statt der Basis (wie Patch
  *      finanzen-kopf-ohne-basis, dort gegen UisRulesTest gemessen) → rot
- *      „die Kopfkarte rechnet auf der Basis des Servers“ (Einstand 1680 statt 1500);
+ *      „the header card computes on the server's basis“ (Einstand 1680 statt 1500);
  *      von Hand durchgespielt, kein Android-SDK in der Sitzung
  *   G  in financeHeader() die Rückkehr für ältere Server entfernt → rot „ohne
  *      Basisfelder bleibt die Kopfkarte wie bisher“ (baseKnown true); von Hand
@@ -69,7 +69,7 @@ class FinanceNumbersTest {
         ]}""").alsAnsicht()
 
     @Test
-    fun `jede Erfassung zeigt ihren eigenen Wert und ihre G&V als Zahl`() {
+    fun `every acquisition shows its own value and its P&L as a number`() {
         assertEquals(12, bewertung.ttlStunden)
         val zeilen = setRows(bewertung.sets).map { it.second }
         assertEquals(listOf("10294-1#7", "10294-1#8", "75192-1#0"), zeilen.map { it.schluessel })
@@ -80,7 +80,7 @@ class FinanceNumbersTest {
     }
 
     @Test
-    fun `Teile und Figuren lesen dieselben Zahlenfelder`() {
+    fun `parts and figures read the same number fields`() {
         val teile = BrickJson.decodeFromString(PartsValuationResponse.serializer(), """{
             "success": true, "total_value": "0.20", "kaufpreise_fremde_waehrung": 2,
             "parts": [{"id": 3, "part_number": "3001", "quantity": 4, "display_value": "999.99",
@@ -103,7 +103,7 @@ class FinanceNumbersTest {
     }
 
     @Test
-    fun `ohne grand_total addiert die App exakt`() {
+    fun `without grand_total the app adds exactly`() {
         val teile = PartsValuationResponse(success = true, totalValue = "0.20").alsAnsicht()
         val ohne = finanzSummen(bewertung, teile, null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00")).alsAnsicht())
         assertEquals(0, BigDecimal("0.30").compareTo(ohne.gesamt))
@@ -114,7 +114,7 @@ class FinanceNumbersTest {
     }
 
     @Test
-    fun `fremde Kaufpreise zaehlt pnl ueber alle drei Arten`() {
+    fun `foreign purchase prices count pnl over all three kinds`() {
         val pnl = BrickJson.decodeFromString(PnlResponse.serializer(), """{"success": true,
             "totals": {"purchase": "100.00", "current": "112.50", "pnl_pct": "-50.0", "pnl_prozent": 12.5, "kaufpreise_fremde_waehrung": 4},
             "sets": [{"set_number": "1-1", "pnl_abs": "9.00", "pnl_betrag": 9.0, "pnl_prozent": 3.4,
@@ -126,14 +126,14 @@ class FinanceNumbersTest {
     }
 
     @Test
-    fun `der Preisverlauf liefert die G&V als Zahl`() {
+    fun `the price history delivers the P&L as a number`() {
         val h = BrickJson.decodeFromString(PriceHistoryResponse.serializer(),
             """{"success": true, "pnl_pct": "-50.0", "pnl_prozent": 16.1}""")
         assertEquals(16.1, h.pnlProzent!!, 0.0)
     }
 
     @Test
-    fun `Gutscheine in zwei Waehrungen ergeben keine Summe`() {
+    fun `vouchers in two currencies give no sum`() {
         val chf = listOf(Gutschein(id = 1, amount = 0.1), Gutschein(id = 2, amount = 0.2)).map { it.alsAnsicht() }
         assertEquals(BigDecimal("0.30") to Waehrung.CHF, voucherSum(chf))
         assertNull(voucherSum(chf + Gutschein(id = 3, amount = 5.0, currency = Waehrung("EUR")).alsAnsicht()))
@@ -146,7 +146,7 @@ class FinanceNumbersTest {
      * der Marktwert — sonst las sich Titanic ×2 (CHF 899.90, Kauf 400) wie +125 %.
      */
     @Test
-    fun `Kauf und Gewinn stehen auf der Grundlage des Marktwerts`() {
+    fun `purchase and profit stand on the basis of the market value`() {
         val zwei = FinanceRow("t", menge = 2, wert = Geld.aus(899.9), kaufpreis = Geld.aus(400.0),
             zustand = Zustand.NEU, pnlProzent = 12.5)
         assertEquals(Geld.aus(800.0), zwei.kaufGesamt)
@@ -167,7 +167,7 @@ class FinanceNumbersTest {
      * Positionen gerechnet stünde Einstand 1680 neben Marktwert 1712.40 und +14.2 %.
      */
     @Test
-    fun `die Kopfkarte rechnet auf der Basis des Servers`() {
+    fun `the header card computes on the server's basis`() {
         val k = financeHeader(bewertung, null, null, pnl("""{"purchase": "1680.00",
             "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 14.2, "positionen": 3,
             "positionen_bewertet": 2, "positionen_ohne_marktpreis": 1, "positionen_ohne_kaufpreis": 0,
@@ -184,7 +184,7 @@ class FinanceNumbersTest {
     }
 
     @Test
-    fun `ohne Basisfelder bleibt die Kopfkarte wie bisher`() {
+    fun `without basis fields the header card stays as before`() {
         val k = financeHeader(bewertung, null, null,
             pnl("""{"purchase": "1680.00", "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 1.9}"""))
         assertEquals(false, k.baseKnown)
@@ -197,7 +197,7 @@ class FinanceNumbersTest {
 
     /** Keine Position mit beiden Preisen: Summen aller Positionen, keine G/V gegen nichts. */
     @Test
-    fun `ohne bewertete Position gibt es keine G und V`() {
+    fun `without a valued position there is no P and L`() {
         val k = financeHeader(bewertung, null, null, pnl("""{"purchase": "180.00",
             "current": "0.00", "grand_total": "0.00", "pnl_prozent": null, "positionen": 1,
             "positionen_bewertet": 0, "positionen_ohne_marktpreis": 1, "positionen_ohne_kaufpreis": 0,

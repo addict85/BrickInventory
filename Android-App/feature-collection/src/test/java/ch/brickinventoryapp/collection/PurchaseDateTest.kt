@@ -50,7 +50,7 @@ class PurchaseDateTest {
     fun zu() = Locale.setDefault(vorher)
 
     @Test
-    fun `das Kaufdatum ist ein beschrifteter Knopf in voller Groesse, in der Datumsform der Sprache`() {
+    fun `the purchase date is a labelled full-size button in the language's date form`() {
         var geoeffnet = 0
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {

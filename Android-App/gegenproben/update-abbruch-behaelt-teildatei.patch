@@ -1,7 +1,7 @@
 Gegenprobe: ein abgebrochener APK-Download löscht seine Teildatei nicht
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateLoaderTest
-Rot: ein abgebrochener Download hinterlässt keine Teildatei
+Rot: an aborted download leaves no partial file
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt

@@ -47,7 +47,7 @@ class MediaAuthTest {
     // ── Bilder ───────────────────────────────────────────────────────────────
 
     @Test
-    fun `Bilder werden nicht am ImageLoader vorbei geladen`() {
+    fun `images are not loaded bypassing the ImageLoader`() {
         // Ein eigener HttpURLConnection- oder OkHttp-Aufruf für Bilder hätte den
         // Interceptor nicht und liefe damit ohne Token.
         for (rel in Quellen.root.walkTopDown()
@@ -64,7 +64,7 @@ class MediaAuthTest {
     // ── PDFs ─────────────────────────────────────────────────────────────────
 
     @Test
-    fun `der PDF-Download kopiert die geladene Datei, statt neu zu laden`() {
+    fun `the PDF download copies the loaded file instead of loading again`() {
         val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
         assert(!viewer.contains("DownloadManager")) {
             "DownloadManager kennt den Bearer-Token nicht — der Abruf endet in einer 401, " +
@@ -77,7 +77,7 @@ class MediaAuthTest {
     }
 
     @Test
-    fun `der Herunterladen-Knopf erscheint erst, wenn die Datei geladen ist`() {
+    fun `the download button appears only once the file is loaded`() {
         val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
         val actions = viewer.substringAfter("actions = {").substringBefore("            )")
         // Beide Knöpfe arbeiten auf der geladenen Quelle des Ready-Zustands und dürfen
@@ -95,7 +95,7 @@ class MediaAuthTest {
     }
 
     @Test
-    fun `die Anzeige selbst laeuft ueber den authentifizierten Client`() {
+    fun `the display itself runs via the authenticated client`() {
         // Geladen wird in der Datenschicht (AnleitungsRepository), nicht im Bildschirm.
         val viewer = code(read("data/AnleitungsRepository.kt"))
         // Geprüft wird die Aussage, nicht der Wortlaut des Aufrufs: Der Download läuft
@@ -116,7 +116,7 @@ class MediaAuthTest {
     // ── Pfade ────────────────────────────────────────────────────────────────
 
     @Test
-    fun `die App baut keine Bildpfade selbst zusammen`() {
+    fun `the app does not assemble image paths itself`() {
         // Seit Server-Fassung 68 liegen Teile- und Figurenbilder getrennt
         // (/images/parts/, /images/minifigs/) statt gemeinsam in
         // /data/part_images/. Die Adresse kommt fertig aus der API — wer sie
@@ -133,7 +133,7 @@ class MediaAuthTest {
     // ── Erschöpfende when-Ausdrücke ──────────────────────────────────────────
 
     @Test
-    fun `kein when ueber Result benutzt einen else-Zweig`() {
+    fun `no when over Result uses an else branch`() {
         // BrickRepository.kt hält ausdrücklich fest: Result ist versiegelt, und
         // jedes when darüber soll erschöpfend bleiben — damit ein künftiger
         // dritter Zustand überall als Compilerfehler auffällt statt still in
@@ -171,7 +171,7 @@ class MediaAuthTest {
     }
 
     @Test
-    fun `jedes AsyncImage benutzt den injizierten ImageLoader`() {
+    fun `every AsyncImage uses the injected ImageLoader`() {
         // Ein AsyncImage ohne den injizierten Loader fällt auf Coils Standard-Loader
         // zurück, der den Bearer-Token nicht anhängt; der Server antwortet dann mit 401,
         // und die Fläche bleibt ohne Fehlermeldung leer.
@@ -196,7 +196,7 @@ class MediaAuthTest {
     }
 
     @Test
-    fun `kein UNUSED_PARAMETER-Suppress auf einem ImageLoader`() {
+    fun `no UNUSED_PARAMETER suppress on an ImageLoader`() {
         // Der Suppress war das Symptom: Er hat die Warnung beseitigt, die auf
         // genau diesen Fehler hingewiesen hätte.
         for (f in Quellen.root.walkTopDown()

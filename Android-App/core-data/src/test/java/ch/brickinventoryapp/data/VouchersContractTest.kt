@@ -44,9 +44,9 @@ import ch.brickinventoryapp.testing.TestApi
  *  - Löschen wieder als @DELETE ohne Rumpf (Bestätigung nicht mitgeschickt) → rot
  *    „Löschen, Klartext und PDF-Freigabe tragen Passwort und Code“.
  *  - pdfRelease() ruft für id=null die Route des einzelnen PDFs (mit id 0) → rot
- *    „die App ruft dieselben Adressen wie die Webapp“.
+ *    „the app calls the same addresses as the web app“.
  *  - Klartext in liste() mit cached("gutscheine-klartext", …) abgelegt → rot
- *    „der Klartext wird nicht zwischengespeichert“.
+ *    „the plaintext is not cached“.
  */
 class VouchersContractTest {
 
@@ -85,7 +85,7 @@ class VouchersContractTest {
      * Andere Adressen hiessen zwei Umsetzungen.
      */
     @Test
-    fun `die App ruft dieselben Adressen wie die Webapp`() = withServer { paths, repo, _ ->
+    fun `the app calls the same addresses as the web app`() = withServer { paths, repo, _ ->
         val g = Gutscheinangabe(nummer = "1234-5678", pin = "9876", betrag = Geld.aus(50.0)!!, waehrung = Waehrung.CHF)
         val b = Confirmation(passwort = "geheim")
         runBlocking {
@@ -105,7 +105,7 @@ class VouchersContractTest {
 
     /** Ohne Rumpf antwortet der Server mit 400: Löschen und Klartext verlangen die Bestätigung. */
     @Test
-    fun `Loeschen, Klartext und PDF-Freigabe tragen Passwort und Code`() = withServer { paths, repo, _ ->
+    fun `deleting, plaintext and PDF release carry password and code`() = withServer { paths, repo, _ ->
         val b = Confirmation(passwort = "geheim", code = "123456")
         runBlocking {
             repo.loeschen(5, b)
@@ -122,7 +122,7 @@ class VouchersContractTest {
     }
 
     @Test
-    fun `der Klartext wird nicht zwischengespeichert`() = withServer { paths, repo, folder ->
+    fun `the plaintext is not cached`() = withServer { paths, repo, folder ->
         paths.antworten["/api/v1/vouchers/5/klartext"] =
             """{"success":true,"id":5,"number":"6000111122223333","pin":"9876"}"""
         val r = runBlocking { repo.liste(); repo.klartext(5, Confirmation(passwort = "geheim")) }
@@ -133,7 +133,7 @@ class VouchersContractTest {
     }
 
     @Test
-    fun `das PDF wird zum SERVER geschickt und nicht in der App gelesen`() {
+    fun `the PDF is sent to the SERVER and not read in the app`() {
         // Der Auszug steht in Web-App/utils/gutscheinPdf.ts — EINMAL, fuer
         // beide Apps. Eine zweite Leselogik in Kotlin muesste mit ihr Schritt
         // halten, und die Webapp braeuchte eine dritte.
@@ -149,7 +149,7 @@ class VouchersContractTest {
     }
 
     @Test
-    fun `die drei Werte werden nicht in der App geprueft`() {
+    fun `the three values are not checked in the app`() {
         // `pruefeWerte` in routes/api_v1/vouchers.ts entscheidet, welche
         // Nummer, welcher Betrag und welche Waehrung gueltig sind — einmal,
         // fuer beide Apps. Eine zweite Pruefung hier liefe irgendwann
@@ -166,7 +166,7 @@ class VouchersContractTest {
     }
 
     @Test
-    fun `fehlende Werte aus dem PDF werden ins Formular uebernommen`() {
+    fun `missing values from the PDF are taken over into the form`() {
         // Der Server antwortet mit 422 und dem, was er LESEN KONNTE. Ohne
         // diese Uebernahme stuende der Nutzer vor leeren Feldern, obwohl die
         // Nummer sehr wohl im PDF stand — und muesste neunzehn Ziffern
@@ -181,7 +181,7 @@ class VouchersContractTest {
     }
 
     @Test
-    fun `der PIN ist standardmaessig verdeckt`() {
+    fun `the PIN is hidden by default`() {
         // Nicht aus Sicherheitsglauben — wer den Bildschirm sieht, ist
         // angemeldet —, sondern gegen die Schulter daneben. Die Umkehrung
         // steht gleich mit: Es muss sich auch aufdecken lassen, sonst ist der
@@ -191,7 +191,7 @@ class VouchersContractTest {
     }
 
     @Test
-    fun `das PDF wird nicht auf dem Geraet abgelegt`() {
+    fun `the PDF is not stored on the device`() {
         // Nummer und PIN sind alles, was zum Einloesen noetig ist. Der
         // vorhandene PdfViewerScreen laedt die Adresse mit dem angemeldeten
         // Client; eine eigene Kopie im Cache waere ein zweiter Ort fuer
@@ -204,7 +204,7 @@ class VouchersContractTest {
     }
 
     @Test
-    fun `Nummer und PIN lassen sich durch Antippen kopieren`() {
+    fun `number and PIN can be copied by tapping`() {
         // Antippen kopiert, weil Nummer und PIN meist in ein Bezahlfeld wandern.
         // Beide Zeilen sind KopierZeilen: ganze Zeile antippbar (clickable), 48 dp hoch, mit
         // Kopiersymbol. Die Höhe und die Beschreibung prüft UisRulesTest am Bildschirm.
@@ -225,7 +225,7 @@ class VouchersContractTest {
     }
 
     @Test
-    fun `der Gutschein hat keine Notiz mehr`() {
+    fun `the voucher no longer has a note`() {
         // Der Server kennt keine Notiz mehr; ein Rest in der App waere eine Zeile,
         // die er nicht beantwortet.
         for (datei in listOf(karte, feature)) {
@@ -241,7 +241,7 @@ class VouchersContractTest {
      * das Vorkommen: Wer etwas Neues einbaut, setzt es gern oben hin.
      */
     @Test
-    fun `die Gutscheine stehen ganz oben auf der Seite Mehr`() {
+    fun `the vouchers are at the very top of the More page`() {
         // Die Seite zeichnet die Gruppen ab 0; der erste Eintrag ist der erste der Gruppe 0.
         val quelle = code(lies("app/MehrBildschirm.kt"))
         val seite = quelle.substringAfter("fun MehrBildschirm(").substringBefore("fun MehrGruppeInhalt(")
@@ -264,7 +264,7 @@ class VouchersContractTest {
      * keinen Emulator, in dem das auffiele.
      */
     @Test
-    fun `die Einstellungen fuehren nicht mehr selbst zu den Rubriken`() {
+    fun `the settings no longer lead to the sections themselves`() {
         val once = code(lies("account/ui/screens/SettingsScreen.kt"))
         for (route in listOf("FinanzZiel.Gutscheine", "KontoZiel.Preisalarme", "KontoZiel.Lagerorte",
                              "KontoZiel.Haushalt", "KontoZiel.CsvImport", "KontoZiel.Konto")) {
@@ -284,7 +284,7 @@ class VouchersContractTest {
      * Nummern und PINs gehört dort nicht hin, auch nicht für fünf Minuten.
      */
     @Test
-    fun `die Liste wird nicht zwischengespeichert`() = withServer { _, repo, folder ->
+    fun `the list is not cached`() = withServer { _, repo, folder ->
         runBlocking { repo.liste() }
         val abgelegt = folder.walkTopDown().filter { it.isFile }.filter { it.readText().contains("9876") }.toList()
         assertTrue("Nummer und PIN liegen auf der Platte: $abgelegt", abgelegt.isEmpty())

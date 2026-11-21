@@ -1,7 +1,7 @@
 Gegenprobe: Der Entzug der Verwalterrechte wird still übernommen
 Modul: core-state
 Test: ch.brickinventoryapp.state.SessionServiceTest
-Rot: entzogene Verwalterrechte gelten sofort
+Rot: revoked admin rights apply immediately and are reported once
 
 diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
 --- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt

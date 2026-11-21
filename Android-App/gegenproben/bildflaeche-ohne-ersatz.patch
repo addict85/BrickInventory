@@ -1,7 +1,7 @@
 Gegenprobe: ProduktBild zeichnet kein Ersatzbild mehr
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Galerie zeigt ohne Bild das Ersatzbild
+Rot: gallery without image shows the placeholder image on every tile
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
 index f464318..8d44520 100644

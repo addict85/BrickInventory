@@ -17,10 +17,10 @@ import ch.brickinventoryapp.shared.ui.localValues
  *
  * Gegenproben:
  *   A  localAxis gibt `punkte` unverändert zurück → rot: die beiden Tagesfälle
- *      und „Monatsaufloesung zeigt Monat und Jahr“
+ *      und „month resolution shows month and year“
  *   C  maximumFractionDigits = 2 in localValues → rot: „y-Achse ganze Beträge …“
  * Gegenproben: Tagesbeschriftung wieder "MMM d" → rot
- * „englisch Tag vor Monat wie jedes Datum“; withCurrencyGap in localValues
+ * „English day before month like every date“; withCurrencyGap in localValues
  * entfernt → rot „y-Achse ganze Beträge …“ („CHF1,234“).
  */
 class ChartAxesTest {
@@ -33,31 +33,31 @@ class ChartAxesTest {
     private val days = listOf("2026-10-03", "2026-10-04", "2026-10-05")
 
     @Test
-    fun `englisch Tag vor Monat wie jedes Datum`() {
+    fun `English day before month like every date`() {
         val l = localAxis(punkte, days, Locale.forLanguageTag("en-GB")).map { it.xLabel }
         assertEquals(listOf("3 Oct", "", "5 Oct"), l)
     }
 
     @Test
-    fun `deutsch mit Punkten wie jedes Datum`() {
+    fun `German with dots like every date`() {
         val l = localAxis(punkte, days, Locale.forLanguageTag("de-CH")).map { it.xLabel }
         assertEquals(listOf("03.10.", "", "05.10."), l)
     }
 
     @Test
-    fun `Monatsaufloesung zeigt Monat und Jahr`() {
+    fun `month resolution shows month and year`() {
         val month = listOf(DiagrammPunkt("10/25", Geld.aus(1.0)!!, 0.0), DiagrammPunkt("11/25", Geld.aus(2.0)!!, 1.0))
         val l = localAxis(month, listOf("2025-10-01", "2025-11-01"), Locale.forLanguageTag("en-GB"))
         assertEquals(listOf("Oct 25", "Nov 25"), l.map { it.xLabel })
     }
 
     @Test
-    fun `ohne passende Tage bleibt der Text des Servers`() {
+    fun `without matching days the server's text stays`() {
         assertEquals(punkte, localAxis(punkte, days.take(2), Locale.forLanguageTag("en-GB")))
     }
 
     @Test
-    fun `y-Achse ganze Betraege mit Tausendern der Sprache`() {
+    fun `y axis whole amounts with the language's thousands separators`() {
         val axis = listOf(ChartAxis("CHF 1'234", Geld.aus(1234.0)!!, 0.0), ChartAxis("CHF 2'000", Geld.aus(2000.4)!!, 1.0))
         val en = localValues(axis, Waehrung("CHF"), Locale.forLanguageTag("en-GB")).map { it.label }
         assertTrue(en.toString(), en[0].contains("1,234") && en[1].contains("2,000") && en.none { "." in it })

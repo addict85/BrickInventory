@@ -1,7 +1,7 @@
 Gegenprobe: sseStrom verschluckt eine unlesbare Nutzlast wieder still
 Modul: core-data
 Test: ch.brickinventoryapp.data.SseStreamTest
-Rot: ein unlesbares Ereignis beendet den Strom sichtbar
+Rot: an unreadable event ends the stream visibly
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt

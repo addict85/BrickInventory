@@ -50,7 +50,7 @@ import ch.brickinventoryapp.security.CertificateQuestion
  *      Mal fragt der zweite Faktor nur nach dem Code“
  *   C  in qrFailed() den Satz immer gesetzt → rot „ein zweiter QR-Anlauf
  *      nach gelungener Anmeldung meldet keinen Fehler“
- *   D  zuruecksetzen() leer → rot „nach dem Abmelden ist das Formular leer“
+ *   D  zuruecksetzen() leer → rot „after sign-out the form is empty“
  *   E  in setUpOne() den Aufruf sessionService.abmelden() entfernt → rot „ein anderer Server
  *      meldet vor der neuen Adresse ab“ (der QR-Weg meldet seit S2 erst nach dem Ja ab, siehe AC)
  *   F  sameOrigin() durch `!=` der rohen Texte ersetzt → rot „derselbe
@@ -63,18 +63,18 @@ import ch.brickinventoryapp.security.CertificateQuestion
  *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“ (Test seit O–Q
  *      umgeschrieben: vorgehalten statt gemerkt)
  *   O  in loginWithQrToken() wieder rememberPin() statt holdBefore() vor qrLogin() →
- *      rot „ein gescheiterter QR-Code hinterlaesst keinen Pin“ und „… haelt den
+ *      rot „a failed QR code leaves no pin“ und „… haelt den
  *      Pin … vor“
  *   P  die Prüfung bisherigerPin() vor dem Start entfernt → rot „ein QR-Code
  *      mit anderem Schluessel ersetzt den Pin nie still“
  *   R  die Prüfung bestaetigtFingerabdruck() in loginWithQrToken()
  *      durch `pinSwitchInput == null` ersetzt (jede Eingabe genügt) → rot
- *      „ein QR-Code mit anderem Schluessel ersetzt den Pin nie still“ (falsch
+ *      „a QR code with a different key never silently replaces the pin“ (falsch
  *      abgeschriebener Wert angenommen)
  *   Q  das finally mit forgetRetained() entfernt → rot „ein gescheiterter
  *      QR-Code hinterlaesst keinen Pin“ (Zeitüberschreitung, nichts vergessen)
  *   J  LoginRequest wieder mit festem neverExpires = true → rot
- *      „ein Token ohne Ablauf nur ueber https“ (http-Teil)
+ *      „a token without expiry only via https“ (http-Teil)
  *   K  PasskeyAnmeldung mit mitToken = false → rot „mit Passkey
  *      anmelden legt den Token ab …“
  *   L  Abgebrochen wie NoPasskey mit Satz → rot „ein
@@ -165,7 +165,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `eine Anmeldung leert die Filter, legt den Token ab und meldet die Sitzung`() {
+    fun `a sign-in empties the filters, stores the token and reports the session`() {
         paths.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
             "token_info":{"scope":"voll","never_expires":false}}"""
         val vm = vm()
@@ -185,7 +185,7 @@ class LoginViewModelTest {
      * → `r.data.user?.isAdmin == true` → rot „Verwalterkonto ohne Häkchen …“.
      */
     @Test
-    fun `Verwalterkonto ohne Häkchen meldet sich ohne Verwalterrechte an`() {
+    fun `admin account without the check mark signs in without admin rights`() {
         paths.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
             "token_info":{"scope":"app","never_expires":false}}"""
         val vm = vm()
@@ -196,7 +196,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `beim ersten Mal fragt der zweite Faktor nur nach dem Code`() {
+    fun `the first time the second factor asks only for the code`() {
         paths.antworten["/api/v1/auth/login"] = """{"success":false,"zweiter_faktor":true,"error":"Code fehlt"}"""
         paths.codes["/api/v1/auth/login"] = 401
         val vm = vm()
@@ -212,7 +212,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein zweiter QR-Anlauf nach gelungener Anmeldung meldet keinen Fehler`() {
+    fun `a second QR attempt after a successful sign-in reports no error`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
@@ -226,7 +226,7 @@ class LoginViewModelTest {
     private val fpAlt = Base64.getEncoder().encodeToString(ByteArray(32) { 9 })
 
     @Test
-    fun `ein QR-Code mit Fingerabdruck haelt den Pin fuer die erste Anfrage vor und merkt ihn erst danach`() {
+    fun `a QR code with fingerprint holds the pin for the first request and remembers it only afterwards`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm(roots = setOf(fp))
@@ -261,7 +261,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `nach dem Ja zum Erstkontakt meldet sich der QR-Code ohne neuen Scan an`() {
+    fun `after the yes to the first contact the QR code signs in without a new scan`() {
         firstContactOnFirstQrLogin()
         val vm = vm()
         vm.loginWithQrToken("https://brick.example.org/", "bim:x")
@@ -276,7 +276,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `nach dem Nein zum Erstkontakt bleibt es bei einem Versuch`() {
+    fun `after the no to the first contact it stays at one attempt`() {
         firstContactOnFirstQrLogin()
         val vm = vm()
         vm.loginWithQrToken("https://brick.example.org/", "bim:x")
@@ -288,7 +288,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein gescheiterter QR-Code hinterlaesst keinen Pin`() {
+    fun `a failed QR code leaves no pin`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
         val vm = vm(roots = setOf(fp))
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
@@ -300,7 +300,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein QR-Code mit anderem Schluessel ersetzt den Pin nie still`() {
+    fun `a QR code with a different key never silently replaces the pin`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         ablage.pins["brick.example.org:443"] = fpAlt
@@ -334,7 +334,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein eigener Schluessel aus dem QR-Code gilt beim ersten Einrichten nur abgetippt`() {
+    fun `an own key from the QR code applies on the first setup only when typed`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm(roots = setOf(fpAlt))
@@ -360,7 +360,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein Token ohne Ablauf nur ueber https`() {
+    fun `a token without expiry only via https`() {
         paths.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
         ablage.url = "http://localhost:3000"
         vm().login("marco", "geheim")
@@ -374,7 +374,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `nach dem Abmelden ist das Formular leer`() {
+    fun `after sign-out the form is empty`() {
         paths.antworten["/api/v1/auth/login"] = """{"success":false,"error":"Falsches Passwort"}"""
         val vm = vm()
         vm.login("marco", "falsch")
@@ -384,7 +384,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `eine http-Adresse wird nicht gespeichert, eine ohne Schema als https`() {
+    fun `an http address is not saved, one without a scheme as https`() {
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
         assertFalse(vm.saveServerUrl("http://nas:3000"))
@@ -395,7 +395,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein QR-Code mit http-Adresse wird nicht uebernommen und sagt warum`() {
+    fun `a QR code with an http address is not taken over and says why`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm()
@@ -407,7 +407,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein anderer Server meldet vor der neuen Adresse ab`() {
+    fun `a different server signs out before the new address`() {
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.saveServerUrl("https://anderer.example:8443")
@@ -416,7 +416,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `derselbe Server mit Schraegstrich meldet nicht ab`() {
+    fun `the same server with a slash does not sign out`() {
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.saveServerUrl("https://SERVER/")
@@ -430,7 +430,7 @@ class LoginViewModelTest {
      * nebenher und verlässt den bisherigen Server erst nach dem Ja zum Konto.
      */
     @Test
-    fun `ein QR-Code fuer einen anderen Server meldet erst nach dem Ja zum Konto ab`() {
+    fun `a QR code for a different server signs out only after the yes to the account`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"neu","user":{"id":2,"username":"anna"}}"""
         t.sitzung.angemeldet(admin = false)
@@ -448,7 +448,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein Nein zum Konto eines anderen Servers laesst die bisherige Anmeldung stehen`() {
+    fun `a no to the account of another server leaves the previous sign-in`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = previewResponse
         paths.antworten["/api/v1/auth/qr-login/verwerfen"] = """{"success":true}"""
@@ -464,7 +464,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `scheitert die Kopplung mit einem anderen Server, steht der Fehler da und die Anmeldung bleibt`() {
+    fun `if pairing with another server fails, the error is shown and the sign-in stays`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Code abgelaufen","code":"qr_abgelaufen"}"""
         paths.codes["/api/v1/auth/qr-login"] = 410
         t.sitzung.angemeldet(admin = false)
@@ -478,7 +478,7 @@ class LoginViewModelTest {
     private val previewResponse = """{"success":true,"wartet":false,"vorschau":true,"username":"marco"}"""
 
     @Test
-    fun `eine QR-Anmeldung zeigt Konto und Server und uebernimmt den Token erst nach dem Ja`() {
+    fun `a QR sign-in shows account and server and takes over the token only after the yes`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = previewResponse
         val vm = vm()
@@ -499,7 +499,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein Nein zum gezeigten Konto verwirft die Kopplung und laesst nichts zurueck`() {
+    fun `a no to the shown account discards the pairing and leaves nothing behind`() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = previewResponse
         paths.antworten["/api/v1/auth/qr-login/verwerfen"] = """{"success":true}"""
@@ -528,7 +528,7 @@ class LoginViewModelTest {
     private val optionsBody = """{"success":true,"optionen":{"challenge":"ch-123","rpId":"brick.example.org"}}"""
 
     @Test
-    fun `mit Passkey anmelden legt den Token ab wie das Passwort`() {
+    fun `signing in with a passkey stores the token like the password`() {
         paths.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionsBody
         paths.antworten["/api/v1/auth/passkey/anmelden"] = """{"success":true,"token":"pk-token","user":{"id":1,"username":"marco","is_admin":true},
             "token_info":{"scope":"voll","never_expires":true}}"""
@@ -548,7 +548,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ein abgebrochener Passkey-Dialog sendet nichts und meldet keinen Fehler`() {
+    fun `an aborted passkey dialog sends nothing and reports no error`() {
         paths.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionsBody
         ablage.url = "https://brick.example.org"
         val vm = vm()
@@ -560,7 +560,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `ohne Passkey auf dem Geraet oder ohne Domain sagt die Anmeldung warum`() {
+    fun `without a passkey on the device or without a domain the sign-in says why`() {
         paths.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionsBody
         ablage.url = "https://brick.example.org"
         val vm = vm()
@@ -578,7 +578,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `der zweite Faktor nimmt den Passkey, wenn der Server ihn anbietet, mit Name und Passwort`() {
+    fun `the second factor takes the passkey if the server offers it, with name and password`() {
         paths.antworten["/api/v1/auth/login"] = """{"success":false,"zweiter_faktor":true,"passkey":true,"error":"Code fehlt"}"""
         paths.codes["/api/v1/auth/login"] = 401
         paths.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionsBody
@@ -608,7 +608,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Optionen fuer eine fremde Domain gehen nie an den Credential Manager`() {
+    fun `options for a foreign domain never go to the Credential Manager`() {
         for (fremd in listOf("opfer.example", "example.org", "evil.brick.example.org", "BRICK.EXAMPLE.ORG")) {
             val fake = foreignOptions(fremd)
             val vm = vm()
@@ -623,7 +623,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Optionen ohne rpId gehen nie an den Credential Manager, auch nicht beim zweiten Faktor`() {
+    fun `options without rpId never go to the Credential Manager, not even for the second factor`() {
         val fake = foreignOptions(null)
         val vm = vm()
         vm.signInPasskey(fake)
@@ -638,7 +638,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `wechselt die Adresse waehrend des Passkey-Dialogs, geht die Antwort nirgends hin`() {
+    fun `if the address changes during the passkey dialog, the response goes nowhere`() {
         foreignOptions("brick.example.org")
         val switch = PasskeyQuery { ablage.url = "https://anders.example"; passkeyResponse }
         val vm = vm()

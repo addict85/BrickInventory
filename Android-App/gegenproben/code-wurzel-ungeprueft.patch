@@ -1,7 +1,7 @@
 Gegenprobe: Ein Pin aus dem Code auf eine System-Wurzel deckt jede öffentlich gültige Kette
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
+Rot: a code with a system root must hit exactly this root, a deviation aborts
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

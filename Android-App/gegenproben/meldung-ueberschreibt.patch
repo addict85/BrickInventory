@@ -1,7 +1,7 @@
 Gegenprobe: zeige() überschreibt die angezeigte Meldung wieder, statt einzureihen
 Modul: core-data
 Test: ch.brickinventoryapp.data.MessageQueueTest
-Rot: die zweite Meldung wartet auf die Quittung der ersten
+Rot: the second message waits for the acknowledgement of the first
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt

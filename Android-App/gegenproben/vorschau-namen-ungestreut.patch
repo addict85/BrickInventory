@@ -1,7 +1,7 @@
 Gegenprobe: Die Vorschau-Ablage benennt Dateien wieder nach dem SHA-256 der Adresse
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewEncryptedTest
-Rot: der Dateiname verraet die Adresse nicht, und die Ablage mit SHA-256-Namen verschwindet
+Rot: the file name does not reveal the address, and the store with SHA-256 names disappears
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt

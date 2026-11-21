@@ -17,13 +17,13 @@ import org.junit.Test
 class ExitLockTest {
 
     @Test
-    fun `ohne Token bei gesperrtem Geraet versucht der Ausgang es spaeter noch einmal`() {
+    fun `without a token on a locked device the exit tries again later`() {
         assertTrue(Abgleichsergebnis.NOT_SIGNED_IN.again(deviceLocked = true))
         assertFalse("Abgemeldet bleibt der Lauf erledigt", Abgleichsergebnis.NOT_SIGNED_IN.again(deviceLocked = false))
     }
 
     @Test
-    fun `fertig und spaeter haengen nicht von der Sperre ab`() {
+    fun `done and later do not depend on the lock`() {
         for (gesperrt in listOf(true, false)) {
             assertTrue(Abgleichsergebnis.LATER.again(gesperrt))
             assertFalse(Abgleichsergebnis.FERTIG.again(gesperrt))

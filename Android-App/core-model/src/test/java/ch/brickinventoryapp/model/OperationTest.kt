@@ -25,7 +25,7 @@ class OperationTest {
     private val fehler = Vorgang.Fehlgeschlagen(Meldung.Resource(7))
 
     @Test
-    fun `nur ein laufender Vorgang laeuft, nur ein gescheiterter nennt einen Grund`() {
+    fun `only a running operation runs, only a failed one names a reason`() {
         assertTrue(Vorgang.Laeuft.laeuft)
         assertFalse(Vorgang.Fertig.laeuft)
         assertFalse(fehler.laeuft)
@@ -35,14 +35,14 @@ class OperationTest {
     }
 
     @Test
-    fun `das Wegraeumen eines Fehlers haelt keinen laufenden Vorgang an`() {
+    fun `clearing an error does not stop a running operation`() {
         assertEquals(Vorgang.Fertig, fehler.withoutError())
         assertEquals(Vorgang.Laeuft, Vorgang.Laeuft.withoutError())
         assertEquals(Vorgang.Fertig, Vorgang.Fertig.withoutError())
     }
 
     @Test
-    fun `beendet ohne Grund ist fertig, mit Grund gescheitert`() {
+    fun `ended without a reason is finished, with a reason failed`() {
         assertEquals(Vorgang.Fertig, beendet(null))
         assertEquals(fehler, beendet(Meldung.Resource(7)))
     }

@@ -17,7 +17,7 @@ import org.junit.Test
 class PdfCacheTest {
 
     @Test
-    fun `eine fertige Anleitung wird nicht noch einmal angefragt`() {
+    fun `a finished instruction is not requested again`() {
         // DER Fall aus der Meldung: 12 MB liegen fertig da.
         val s = pdfStep(finishedSize = 12_000_000L, partSize = 0L)
         assert(s is PdfStep.Fertig) {
@@ -27,7 +27,7 @@ class PdfCacheTest {
     }
 
     @Test
-    fun `eine Teildatei wird an ihrem Ende fortgesetzt`() {
+    fun `a partial file is resumed at its end`() {
         // Der Fall, fuer den das Fortsetzen ueberhaupt da ist: Die Verbindung
         // brach bei 3 MB ab. Faellt dieser Schritt, laedt jede abgebrochene
         // 300-MB-Anleitung wieder von vorn.
@@ -36,13 +36,13 @@ class PdfCacheTest {
     }
 
     @Test
-    fun `ohne alles wird von vorn geladen`() {
+    fun `without anything it loads from the start`() {
         val s = pdfStep(finishedSize = 0L, partSize = 0L)
         assert(s == PdfStep.Holen(0L)) { "Leerer Cache ergab $s statt Holen(0)" }
     }
 
     @Test
-    fun `eine Teildatei neben der fertigen aendert nichts`() {
+    fun `a partial file next to the finished one changes nothing`() {
         // Kann vorkommen, wenn ein zweiter Download angefangen wurde, waehrend
         // der erste schon fertig war. Die fertige Datei gewinnt; die Teildatei
         // raeumt prunePdfCache weg.

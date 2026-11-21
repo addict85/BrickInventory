@@ -1,7 +1,7 @@
 Gegenprobe: Eine Angabe gilt bei gesperrtem Gerät als weg statt als „später“
 Modul: core-security
 Test: ch.brickinventoryapp.security.VertrauenschiffreTest
-Rot: gesperrt ist eine Angabe spaeter lesbar
+Rot: locked an entry is readable later, not gone
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
 index 25f2ada..f750307 100644

@@ -1,7 +1,7 @@
 Gegenprobe: Die App-Sperre setzt auch ab Android 13 FLAG_SECURE statt nur das Vorschaubild zu verbergen
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.components.AppOverviewProtectionTest
-Rot: ab Android 13 verbirgt die Sperre nur das Vorschaubild
+Rot: from Android 13 the lock hides only the thumbnail, off releases it
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt

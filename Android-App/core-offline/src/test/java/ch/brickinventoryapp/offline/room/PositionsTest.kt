@@ -19,12 +19,12 @@ class PositionsTest {
     private fun rising(p: List<Int>) = p.zipWithNext().all { (a, b) -> a < b }
 
     @Test
-    fun `ein Loeschen in der Mitte verschiebt nichts`() {
+    fun `a deletion in the middle shifts nothing`() {
         assertEquals(listOf(0, 2), positionen(mapOf("a" to 0, "b" to 1, "c" to 2), listOf("a", "c")))
     }
 
     @Test
-    fun `neue Zeilen nehmen freie Positionen davor, dazwischen und dahinter`() {
+    fun `new rows take free positions before, between and after`() {
         val alt = mapOf("a" to 0, "c" to 2)
         val p = positionen(alt, listOf("x", "y", "a", "b", "c", "z"))
         assertEquals(listOf(-2, -1, 0, 1, 2, 3), p)
@@ -32,7 +32,7 @@ class PositionsTest {
     }
 
     @Test
-    fun `ohne Platz oder bei gekippter Reihenfolge wird durchgezaehlt`() {
+    fun `without space or with a flipped order it renumbers`() {
         assertEquals(listOf(0, 1, 2), positionen(mapOf("a" to 0, "c" to 1), listOf("a", "b", "c")))
         assertEquals(listOf(0, 1), positionen(mapOf("a" to 0, "b" to 1), listOf("b", "a")))
         assertEquals(listOf(0, 1), positionen(emptyMap(), listOf("a", "b")))

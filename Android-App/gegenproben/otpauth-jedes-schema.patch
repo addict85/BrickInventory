@@ -1,7 +1,7 @@
 Gegenprobe: otpauthAdresse lässt jedes Schema durch
 Modul: core-model
 Test: ch.brickinventoryapp.model.OtpauthAddressTest
-Rot: an die Authenticator-App geht nur otpauth
+Rot: only otpauth goes to the authenticator app
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Otpauth.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Otpauth.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Otpauth.kt

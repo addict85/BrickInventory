@@ -16,12 +16,12 @@ import org.junit.Test
 class UpdateVersionTest {
 
     @Test
-    fun `die angekuendigte, neuere Fassung passt`() {
+    fun `the announced, newer version matches`() {
         assertTrue(versionFits(200_000_120L, gemeldet = 200_000_120, laufend = 200_000_100))
     }
 
     @Test
-    fun `ein APK mit anderer Fassung als angekuendigt passt nicht`() {
+    fun `an APK with a different version than announced does not match`() {
         assertFalse("Älter als angekündigt", versionFits(200_000_110L, gemeldet = 200_000_120, laufend = 200_000_100))
         assertFalse("Gleich der laufenden", versionFits(200_000_100L, gemeldet = 200_000_100, laufend = 200_000_100))
         assertFalse("Unlesbar", versionFits(null, gemeldet = 200_000_120, laufend = 200_000_100))

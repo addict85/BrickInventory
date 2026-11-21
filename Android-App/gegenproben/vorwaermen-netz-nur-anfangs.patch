@@ -1,7 +1,7 @@
 Gegenprobe: die Netzlage wird während des Durchlaufs nicht mehr gefragt
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewWarmerTest
-Rot: verlaesst das Geraet das WLAN
+Rot: when the device leaves the Wi-Fi it stops after the running batch
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt

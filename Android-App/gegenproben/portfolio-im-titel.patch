@@ -1,7 +1,7 @@
 Gegenprobe: die Wertentwicklung heisst wieder „Portfolio“
 Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
-Rot: die Wertentwicklung heisst nach der Sammlung
+Rot: the value development is named after the collection
 
 diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 index 4d47196..194041a 100644

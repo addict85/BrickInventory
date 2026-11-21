@@ -58,7 +58,7 @@ class PdfZoomAnchorTest {
     }
 
     @Test
-    fun `der Punkt zwischen den Fingern bleibt stehen`() {
+    fun `the point between the fingers stays put`() {
         val vorher = Liste(1f, 3, 200)
         for (y in listOf(300f, 1000f, 1700f)) {
             val after = vorher.zoom(1.25f, y)
@@ -67,7 +67,7 @@ class PdfZoomAnchorTest {
     }
 
     @Test
-    fun `eine Geste aus vielen kleinen Schritten driftet nicht ab`() {
+    fun `a gesture of many small steps does not drift`() {
         // So kommt eine Zwei-Finger-Geste an: ein Faktor je Bild. Jeder
         // Rundungsfehler bliebe stehen und summierte sich.
         val y = 1400f
@@ -79,7 +79,7 @@ class PdfZoomAnchorTest {
     }
 
     @Test
-    fun `beim Herauszoomen beginnt die Liste mit einer frueheren Seite`() {
+    fun `when zooming out the list starts with an earlier page`() {
         // Anker knapp unter der Oberkante: Die Seite darunter rueckt nach unten,
         // und die vorige Seite muss oben ins Bild.
         val vorher = Liste(3f, 5, 100)
@@ -91,14 +91,14 @@ class PdfZoomAnchorTest {
     }
 
     @Test
-    fun `am Anfang des Dokuments bleibt die Liste oben`() {
+    fun `at the start of the document the list stays at the top`() {
         val (i, v) = zoomZielY(Liste(2f, 0, 0).sichtbar(), 1000f, 0.5f, edge, abstand)!!
         assert(i == 0 && v == 0) { "Erwartet Seite 0 ohne Versatz, war $i/$v" }
         assert(zoomZielY(emptyList(), 500f, 2f, edge, abstand) == null) { "Ohne Seiten gibt es kein Ziel" }
     }
 
     @Test
-    fun `waagerecht bleibt der Punkt stehen, auch aus 1x heraus`() {
+    fun `horizontally the point stays put, even from 1x`() {
         val breite = 1048f                  // Seitenbreite bei 1x, ohne Rand
         var z = 1f
         var scroll = 0

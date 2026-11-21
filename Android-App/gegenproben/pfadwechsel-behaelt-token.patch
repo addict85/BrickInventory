@@ -1,7 +1,7 @@
 Gegenprobe: saveServerUrl() vergleicht beim Token nur die Herkunft (Stand vor sec7 N2)
 Modul: app
 Test: ch.brickinventoryapp.app.DevicesProtectionTest
-Rot: ein anderer Pfad auf demselben Host verwirft den Token
+Rot: a different path on the same host discards the token
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 index 0287f52..a8395b7 100644

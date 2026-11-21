@@ -1,7 +1,7 @@
 Gegenprobe: die JSON-Form (Set schon da) gilt wieder als Abbruch
 Modul: core-data
 Test: ch.brickinventoryapp.data.SetCreateStreamTest
-Rot: die JSON-Form ist ein fertiges Anlegen
+Rot: the JSON form is a finished creation, the existing set comes as a domain value
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt

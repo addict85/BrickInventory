@@ -32,10 +32,10 @@ import ch.brickinventoryapp.network.util.VersionsHint
  *   B  `tokenBelongsHere` immer true → rot „der Token geht nur an den Server,
  *      der ihn ausgab“ und „ein selbst gesetzter Kopf …“
  *   C  `ourServer` ohne isSameOrigin (nur serverUrl.isNotBlank()) → rot
- *      „ein fremder Host bekommt weder Token noch Sprache“
- *   D  das Nachfassen entfernt → rot „eine Anfrage ohne Token fasst mit dem neuen nach“
+ *      „a foreign host gets neither token nor language“
+ *   D  das Nachfassen entfernt → rot „a request without a token reaches for the new one“
  *   E  die 401-Meldung ohne `tokenSentAlong` → rot „ein 401 ohne Token meldet
- *      nicht ab“ und „der Token geht nur an den Server, der ihn ausgab“
+ *      nicht ab“ und „the token goes only to the server that issued it“
  *   F  den Pfad des Servers beim Umschreiben weggelassen → rot „der Platzhalter
  *      wird auf den Server samt Pfad umgeschrieben“
  *   G  ownHeaders() nicht aufgerufen → rot „der eigene Server bekommt Sprache
@@ -46,7 +46,7 @@ import ch.brickinventoryapp.network.util.VersionsHint
  *   K  im Wächter `entwicklung` fest auf true → rot „im
  *      Release-Build erreicht keine http-Anfrage den Server …“
  *   H  /settings/theme vom Token ausgenommen (`mitToken` falsch für
- *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
+ *      Pfade auf "/settings/theme") → rot „the account's design is fetched with the token“
  *   J  im Wächter die Meldung über versionsHint() entfernt → rot „ein
  *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (leere Liste statt APP_ZU_ALT)
  *   L  rightsRevoked() bei jedem 403 → rot „ein 403 nur_admins …“
@@ -59,7 +59,7 @@ import ch.brickinventoryapp.network.util.VersionsHint
  *      Token …“ und „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
  *   P  nur `!tokenBelongsHere` statt `!mitToken` → rot „nach dem Abmelden …“
  *   R  wieder `herkunft == null ||` in tokenBelongsHere →
- *      rot „ein Token ohne Bindung geht an keinen Server“ (gegenproben/token-ohne-bindung-gesendet.patch)
+ *      rot „a token without binding goes to no server“ (gegenproben/token-ohne-bindung-gesendet.patch)
  *   Q  gegenproben/waechter-ohne-faktorpflicht.patch nimmt
  *      die Zeile für ZWEITER_FAKTOR_PFLICHT heraus → rot „ein 403 zweiter_faktor_pflicht …“
  */
@@ -118,7 +118,7 @@ class ServerGuardTest {
     private fun requestsAn(teil: String) = synchronized(requests) { requests.filter { teil in it.first } }
 
     @Test
-    fun `ein Token ohne Bindung geht an keinen Server`() {
+    fun `a token without binding goes to no server`() {
         codes["/api/v1/sets"] = 401
         val c = client(Lage(basis(), gebunden = false))
         assertEquals(401, fetch(c, "http://localhost:3000/api/v1/sets"))
@@ -130,7 +130,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `ein 401 auf den Token meldet die abgelaufene Sitzung`() {
+    fun `a 401 on the token reports the expired session`() {
         codes["/api/v1/sets"] = 401
         val c = client(Lage(basis()))
         assertEquals(401, fetch(c, "http://localhost:3000/api/v1/sets"))
@@ -139,7 +139,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `auch der Bild-Client haengt den Token an und meldet einen 401`() {
+    fun `the image client also attaches the token and reports a 401`() {
         codes["/images/sets/1.jpg"] = 401
         fetch(client(Lage(basis()), api = false), basis() + "/images/sets/1.jpg")
         assertEquals("Bearer $TOKEN", requestsAn("/images/").single().second)
@@ -148,19 +148,19 @@ class ServerGuardTest {
 
     /** Ohne Token lieferte der Server die Vorgabe statt des Designs dieses Kontos. */
     @Test
-    fun `das Design des Kontos wird mit Token geholt`() {
+    fun `the account's design is fetched with the token`() {
         fetch(client(Lage(basis())), "http://localhost:3000/api/v1/settings/theme")
         assertEquals("Bearer $TOKEN", requestsAn("/api/v1/settings/theme").single().second)
     }
 
     @Test
-    fun `der Platzhalter wird auf den Server samt Pfad umgeschrieben`() {
+    fun `the placeholder is rewritten to the server including path`() {
         fetch(client(Lage(basis() + "/brick")), "http://localhost:3000/api/v1/sets?seite=2")
         assertEquals("/brick/api/v1/sets?seite=2", requestsAn("/api/v1/sets").single().first)
     }
 
     @Test
-    fun `der Token geht nur an den Server, der ihn ausgab`() {
+    fun `the token goes only to the server that issued it`() {
         codes["/api/v1/sets"] = 401
         val situation = Lage(basis(), herkunft = "http://anderer.example:3000")
         assertEquals(401, fetch(client(situation), "http://localhost:3000/api/v1/sets"))
@@ -169,7 +169,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `ein selbst gesetzter Kopf mit dem Token faellt bei fremder Herkunft weg`() {
+    fun `a self-set header with the token is dropped for a foreign origin`() {
         val situation = Lage(basis(), herkunft = "http://anderer.example:3000")
         client(situation).newCall(Request.Builder().url(basis() + "/api/v1/csv")
             .header("Authorization", "Bearer $TOKEN").build()).execute().close()
@@ -178,7 +178,7 @@ class ServerGuardTest {
 
     /** Ein Tausch, der den Serverwechsel überdauert, trägt den Token des alten Servers. */
     @Test
-    fun `ein selbst gesetzter Kopf mit einem aelteren Token faellt bei fremder Herkunft weg`() {
+    fun `a self-set header with an older token is dropped for a foreign origin`() {
         val situation = Lage(basis(), herkunft = "http://anderer.example:3000")
         client(situation).newCall(Request.Builder().url("http://localhost:3000/api/v1/auth/token-rotieren")
             .header("Authorization", "Bearer vom-alten-server").build()).execute().close()
@@ -186,7 +186,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `nach dem Abmelden geht kein selbst gesetzter Kopf hinaus, an die eigene Herkunft gebunden schon`() {
+    fun `after sign-out no self-set header goes out, one bound to the own origin does`() {
         client(Lage(basis(), tokens = ArrayDeque(listOf("")))).newCall(Request.Builder().url(basis() + "/api/v1/csv")
             .header("Authorization", "Bearer alt").build()).execute().close()
         assertNull("Abgemeldet: kein Token", requestsAn("/api/v1/csv").single().second)
@@ -198,7 +198,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `der eigene Server bekommt Sprache und Fassung`() {
+    fun `the own server gets language and version`() {
         fetch(client(Lage(basis(), tokens = ArrayDeque(listOf(""))), api = false), basis() + "/api/v1/stats")
         val r = server.takeRequest()
         assertEquals("de", r.getHeader("Accept-Language"))
@@ -206,7 +206,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `ein Server mit hoeherer Mindestfassung meldet App zu alt statt eines Lesefehlers`() {
+    fun `a server with a higher minimum version reports app too old instead of a read error`() {
         // So antwortet der Server einer alten App: 426 samt beiden Fassungen im Kopf.
         val neuer = (APP_API_VERSION + 1).toString()
         server.dispatcher = object : Dispatcher() {
@@ -226,7 +226,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `ein fremder Host bekommt weder Token noch Sprache`() {
+    fun `a foreign host gets neither token nor language`() {
         // Derselbe Testserver unter seiner IP ist für den Wächter ein anderer Host.
         val fremd = server.url("/bild.jpg").newBuilder().host("127.0.0.1").build().toString()
         fetch(client(Lage(server.url("/").newBuilder().host("localhost").build().toString()), api = false), fremd)
@@ -237,7 +237,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `eine Anfrage ohne Token fasst mit dem neuen nach`() {
+    fun `a request without a token reaches for the new one`() {
         // Die erste Lesung liefert noch keinen Token, die zweite den frisch abgelegten.
         codes["/api/v1/sets"] = 401
         val situation = Lage(basis(), tokens = ArrayDeque(listOf("", TOKEN)))
@@ -248,7 +248,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `ein 401 ohne Token meldet nicht ab`() {
+    fun `a 401 without a token does not sign out`() {
         codes["/api/v1/auth/login"] = 401
         val situation = Lage(basis(), tokens = ArrayDeque(listOf("")))
         assertEquals(401, fetch(client(situation), "http://localhost:3000/api/v1/auth/login"))
@@ -257,7 +257,7 @@ class ServerGuardTest {
 
     /** Die Regel des Release-Builds: kein http, auch nicht zum Gerät selbst. */
     @Test
-    fun `im Release-Build erreicht keine http-Anfrage den Server, auch nicht localhost`() {
+    fun `in the release build no http request reaches the server, not even localhost`() {
         val c = client(Lage(basis()), entwicklung = false)
         for (url in listOf("http://localhost:3000/api/v1/sets", basis() + "/images/sets/1.jpg")) {
             try {
@@ -273,7 +273,7 @@ class ServerGuardTest {
 
     /** Der Debug-Build darf http nur zu den drei Hosts seiner Network-Security-Config. */
     @Test
-    fun `auch der Debug-Build schickt http nur zum Geraet und zum Emulator-Host`() {
+    fun `the debug build also sends http only to the device and the emulator host`() {
         for (adresse in listOf("http://nas:3000", "http://192.168.1.50:3000", "http://brick.example.org")) {
             try {
                 fetch(client(Lage(adresse)), "http://localhost:3000/api/v1/sets")
@@ -284,7 +284,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `ein 403 nur_admins auf einen Token meldet den Rechteentzug, ein anderes 403 nicht`() {
+    fun `a 403 nur_admins on a token reports the revocation of rights, another 403 does not`() {
         codes["/api/v1/admin/jobs"] = 403
         bodies["/api/v1/admin/jobs"] = """{"success":false,"code":"nur_admins","error":"Nur für Admins"}"""
         codes["/api/v1/auth/passkey/registrieren/optionen"] = 403
@@ -300,7 +300,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `ein 403 passwort_wechsel_noetig verlangt das neue Passwort, ohne abzumelden`() {
+    fun `a 403 passwort_wechsel_noetig requires the new password without signing out`() {
         codes["/api/v1/sets"] = 403
         bodies["/api/v1/sets"] = """{"success":false,"code":"passwort_wechsel_noetig","error":"Bitte zuerst das Startpasswort ändern."}"""
         codes["/api/v1/admin/jobs"] = 403
@@ -314,7 +314,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `ein 403 zweiter_faktor_pflicht verlangt die Einrichtung, ohne abzumelden`() {
+    fun `a 403 zweiter_faktor_pflicht requires the setup without signing out`() {
         codes["/api/v1/sets"] = 403
         bodies["/api/v1/sets"] = """{"success":false,"code":"zweiter_faktor_pflicht","error":"Bitte zuerst einen Code-Generator einrichten."}"""
         codes["/api/v1/admin/jobs"] = 403
@@ -332,7 +332,7 @@ class ServerGuardTest {
     }
 
     @Test
-    fun `eine falsche Passwortbestaetigung meldet nicht ab, ein ungueltiger Token schon`() {
+    fun `a wrong password confirmation does not sign out, an invalid token does`() {
         codes["/api/v1/auth/zweiter-faktor/abschalten"] = 401
         bodies["/api/v1/auth/zweiter-faktor/abschalten"] = """{"success":false,"code":"aktuelles_passwort_falsch"}"""
         codes["/api/v1/sets"] = 401

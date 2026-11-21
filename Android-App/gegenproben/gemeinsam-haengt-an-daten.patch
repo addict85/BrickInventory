@@ -1,7 +1,7 @@
 Gegenprobe: core-ui-inventory bindet core-data ein und wird so zum Umweg zwischen den Bereichen
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: Schichtung der Kernmodule
+Rot: layering of the core modules
 
 diff --git a/Android-App/core-ui-inventory/build.gradle.kts b/Android-App/core-ui-inventory/build.gradle.kts
 --- a/Android-App/core-ui-inventory/build.gradle.kts

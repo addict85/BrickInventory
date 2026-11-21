@@ -73,7 +73,7 @@ class PartColorChangeTest {
      * Server die eigene Zeile statt der angezeigten.
      */
     @Test
-    fun `die App ruft denselben Dienst wie die Webapp`() {
+    fun `the app calls the same service as the web app`() {
         var geoeffnet: Int? = null
         vm().setzeTeilFarbe("3001", 5, 11, owner = 7) { geoeffnet = it }
         assertTrue("neu geöffnet", geoeffnet != null)
@@ -87,7 +87,7 @@ class PartColorChangeTest {
     }
 
     @Test
-    fun `nach der Aenderung oeffnet der Bildschirm mit der neuen Farbe`() {
+    fun `after the change the screen opens with the new color`() {
         assertTrue(
             "Der Bildschirm wird nach der Aenderung nicht neu geoeffnet: In " +
                 "TeileGraph.kt fehlt onFarbeGeaendert. Die Farbe ist Teil der " +
@@ -121,7 +121,7 @@ class PartColorChangeTest {
     }
 
     @Test
-    fun `die Farbzeile haengt nicht an einem vorhandenen Farbnamen`() {
+    fun `the color row does not depend on an existing color name`() {
         // Der Aufruf von FarbWahlFeld darf nicht unter einer Bedingung stehen,
         // die den Farbnamen verlangt. Geprueft wird der Block VOR dem Aufruf:
         // Die naechste Bedingung darueber ist `if (!isFig) {` — und sonst
@@ -157,7 +157,7 @@ class PartColorChangeTest {
     }
 
     @Test
-    fun `dieselbe Farbe nochmal loest keine Anfrage aus`() {
+    fun `the same color again triggers no request`() {
         // Zwei Stellen, und beide mit Grund: Das Feld schickt den Rueckruf
         // nicht los (spart die Anfrage UND das Neuoeffnen), das ViewModel
         // bricht ebenfalls ab (es ist der Weg, den jeder Aufrufer nimmt).

@@ -183,7 +183,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Kaestchen der Bauliste tragen Namen und schalten ueber die Zeile`() {
+    fun `checkboxes of the build list carry names and toggle via the row`() {
         var lose: Boolean? = null
         var unter: Boolean? = null
         val teil = PlPart(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", colorHex = "C91A09",
@@ -205,7 +205,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Schalter fuer Preisalarm-Meldungen und Nutzer-Zertifikate tragen Namen`() {
+    fun `switches for price alert notifications and user certificates carry names`() {
         var ca: Boolean? = null
         val update = object : UpdateAktionen {
             override fun pruefeAufUpdate(still: Boolean) = Unit
@@ -255,7 +255,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Suchfeld behaelt seinen Namen nach der Eingabe und bricht bei 200 Prozent um`() {
+    fun `search field keeps its name after input and wraps at 200 percent`() {
         val platzhalter = "Nummer oder Name eines Sets im Katalog"
         zeige(schrift = 2f) {
             var wert by remember { mutableStateOf("") }
@@ -272,7 +272,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Filterwahl ist eine Einfachwahl mit Ueberschrift und bricht um`() {
+    fun `filter choice is a single choice with heading and wraps`() {
         val lang = "Regal Wohnzimmer hinten links · 1 Set"
         zeige(schrift = 2f) {
             Column(Modifier.width(360.dp)) {
@@ -296,7 +296,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Statusmeldungen sind Live-Regionen und Fortschritt wird gedrosselt angesagt`() {
+    fun `status messages are live regions and progress is announced throttled`() {
         var fortschritt by mutableStateOf("Noch 30 s")
         zeige {
             Column {
@@ -321,7 +321,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Bildzoom geht mit Knoepfen und Doppeltipp`() {
+    fun `image zoom works with buttons and double tap`() {
         zeige { ZoomableImageDialog(imageUrl = "", contentDescription = "Millennium Falcon", imageLoader = bilder, onDismiss = {}) }
         val gross = ctx.getString(R.string.pdfview_zoom_in)
         val button = compose.onNodeWithContentDescription(gross).fetchSemanticsNode()
@@ -340,7 +340,7 @@ class AccessibilityTest {
 
     @OptIn(ExperimentalComposeUiApi::class)
     @Test
-    fun `Tastaturfokus zeigt einen Rahmen in der Hauptfarbe`() {
+    fun `keyboard focus shows a frame in the primary color`() {
         var mainColor = 0
         val ablage = FocusRequester()
         compose.setContent {
@@ -376,7 +376,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `CSV-Balken nennt Zustand, Aufklappen und Fortschritt`() {
+    fun `CSV bar names state, expanding and progress`() {
         zeige {
             CsvImportBanner(done = 3, total = 10, current = "10294-1", ok = 2, warn = 1, err = 0, running = true, onAbbrechen = {})
         }
@@ -391,7 +391,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Themen- und Jahreswahl melden Rolle und Wahl`() {
+    fun `theme and year choice announce role and selection`() {
         zeige {
             Column(Modifier.then(Modifier)) {
                 ThemeRow("Alle Themen", false) {}
@@ -406,7 +406,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel`() {
+    fun `set and catalog tile read the name first and are buttons with a target`() {
         val set = SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars", quantity = 2,
             conditions = listOf(Zustand.NEU))
         val katalog = KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022,
@@ -431,7 +431,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `lange Titel brechen bei 200 Prozent um und sind Ueberschriften`() {
+    fun `long titles wrap at 200 percent and are headings`() {
         val titel = "Slope 45 2 x 2 with Bottom Pin"
         zeige(schrift = 2f) {
             Column(Modifier.width(360.dp)) {
@@ -444,7 +444,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `die Rueckfrage nennt ihren Titel als Ueberschrift und Fenstername`() {
+    fun `the confirmation names its title as heading and window name`() {
         zeige { Prompt("Abmelden?", "Auf diesem Gerät abmelden.", "Abmelden", {}, {}) }
         compose.onNode(hasText("Abmelden?") and isHeading()).fetchSemanticsNode("Titel ist keine Überschrift")
         compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Abmelden?"))
@@ -452,7 +452,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Mehr erfahren hat je Thema einen eigenen Namen und sagt den Text an`() {
+    fun `Learn more has its own name per topic and announces the text`() {
         zeige {
             Column {
                 ErklaerText("Kurz eins.", "Mehr eins.", thema = "Preisalarme")
@@ -468,7 +468,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Katalognamen sind als Englisch ausgezeichnet`() {
+    fun `catalog names are marked as English`() {
         var name: AnnotatedString? = null
         zeige { name = catalogName("Brick 2 x 4") }
         val languages = name?.spanStyles?.mapNotNull { it.item.localeList?.firstOrNull()?.language }.orEmpty()
@@ -476,7 +476,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `Notfallcodes werden Zeichen fuer Zeichen vorgelesen`() {
+    fun `emergency codes are read out character by character`() {
         zeige {
             ZweiterFaktorPflichtMaske(ZweiterFaktorUiState(aktiv = true, codes = listOf("i9j0-k1l2")), {}, {}, {}, {})
         }

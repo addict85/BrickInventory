@@ -1,7 +1,7 @@
 Gegenprobe: Kaufpreis auch bei grosser Schrift neben seiner Bezeichnung
 Modul: core-ui-inventory
 Test: ch.brickinventoryapp.shared.ValueTilesTest
-Rot: Kaufpreis bei 200 Prozent
+Rot: purchase price at 200 percent stands below the label in one line
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt

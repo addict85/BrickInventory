@@ -1,7 +1,7 @@
 Gegenprobe: Vertrauenschiffre bindet den Namen des Eintrags nicht als AAD
 Modul: core-data
 Test: ch.brickinventoryapp.data.TrustEncryptedTest
-Rot: ein Geheimtext unter fremdem Namen gilt nicht
+Rot: a ciphertext under a foreign name does not count
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
 index 25f2ada..977fd1e 100644

@@ -22,11 +22,11 @@ import ch.brickinventoryapp.testing.Quellen
  * MainActivity.kt):
  *   A  in darstellung() das `&& systemDark` entfernt → rot „mit Wahl dunkel
  *      nur bei dunklem System, im selben Design“
- *   B  `?: true` → `?: false` → rot „ohne gespeicherte Wahl folgt die App dem System"
+ *   B  `?: true` → `?: false` → rot „without a saved choice the app follows the system"
  *   C  MainActivity ohne `dunkel = view.dunkel` → rot „MainActivity
  *      zeichnet das wirksame Design“
- *   D  installSplashScreen() hinter super.onCreate() → rot „der Start blitzt nicht weiss auf"
- *   E  `&& hatDarkVersion(design)` entfernt → rot „Werkbank bleibt, wie es ist“
+ *   D  installSplashScreen() hinter super.onCreate() → rot „the start does not flash white"
+ *   E  `&& hatDarkVersion(design)` entfernt → rot „Workbench stays as it is“
  *   F  in darstellung() der Zweig `Helligkeit.DARK -> true` entfernt →
  *      rot „Dunkel gilt auch bei hellem System …“
  *   G  in brightnessApplies() die Prüfung auf bekannte Werte entfernt →
@@ -35,25 +35,25 @@ import ch.brickinventoryapp.testing.Quellen
 class EffectiveDesignTest {
 
     @Test
-    fun `ohne Wahl gilt das Design des Servers, auch bei dunklem System`() {
+    fun `without a choice the server's design applies, also with a dark system`() {
         assertEquals(Darstellung(Design.BRICK, false), darstellung(Design.BRICK, helligkeit = Helligkeit.LIGHT, systemDark = true))
     }
 
     @Test
-    fun `mit Wahl dunkel nur bei dunklem System, im selben Design`() {
+    fun `with a choice dark only with a dark system, in the same design`() {
         assertEquals(Darstellung(Design.CLASSIC, true), darstellung(Design.CLASSIC, helligkeit = Helligkeit.SYSTEM, systemDark = true))
         assertEquals(Darstellung(Design.NOPPE, true), darstellung(Design.NOPPE, helligkeit = Helligkeit.SYSTEM, systemDark = true))
         assertEquals(Darstellung(Design.CLASSIC, false), darstellung(Design.CLASSIC, helligkeit = Helligkeit.SYSTEM, systemDark = false))
     }
 
     @Test
-    fun `Dunkel gilt auch bei hellem System, Hell auch bei dunklem`() {
+    fun `Dark applies also with a light system, Light also with a dark one`() {
         assertEquals(Darstellung(Design.BRICK, true), darstellung(Design.BRICK, helligkeit = Helligkeit.DARK, systemDark = false))
         assertEquals(Darstellung(Design.NOPPE, false), darstellung(Design.NOPPE, helligkeit = Helligkeit.LIGHT, systemDark = true))
     }
 
     @Test
-    fun `die fruehere Ja-Nein-Wahl wird zu System oder Hell`() {
+    fun `the former yes-no choice becomes System or Light`() {
         assertEquals(Helligkeit.SYSTEM, brightnessApplies(null, null))
         assertEquals(Helligkeit.SYSTEM, brightnessApplies(null, true))
         assertEquals(Helligkeit.LIGHT, brightnessApplies(null, false))
@@ -62,14 +62,14 @@ class EffectiveDesignTest {
     }
 
     @Test
-    fun `Werkbank bleibt, wie es ist`() {
+    fun `Workbench stays as it is`() {
         assertEquals(Darstellung(Design.WERKBANK, false), darstellung(Design.WERKBANK, helligkeit = Helligkeit.SYSTEM, systemDark = true))
     }
 
     // Die Einstellungen schalten Hell/Dunkel bei Werkbank ab. Gegenprobe (02.11.2026,
     // kotlinc): brightnessSelectable gibt immer true zurück → rot.
     @Test
-    fun `bei Werkbank ist Hell und Dunkel nicht waehlbar`() {
+    fun `with Workbench Light and Dark cannot be chosen`() {
         assertTrue(!brightnessSelectable(Design.WERKBANK))
         assertTrue(brightnessSelectable(Design.CLASSIC))
         assertTrue(brightnessSelectable(Design.WERKBANK, systemfarben = true, sdk = 31))
@@ -78,7 +78,7 @@ class EffectiveDesignTest {
     // Gegenprobe: in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
     // entfernt → rot (Android 11); `dynamisch ||` entfernt → rot (Werkbank dunkel).
     @Test
-    fun `Systemfarben gelten erst ab Android 12 und haben immer eine dunkle Fassung`() {
+    fun `system colors apply only from Android 12 and always have a dark version`() {
         assertEquals(Darstellung(Design.CLASSIC, false, systemfarben = false),
             darstellung(Design.CLASSIC, helligkeit = Helligkeit.SYSTEM, systemDark = false, systemfarben = true, sdk = 30))
         assertEquals(Darstellung(Design.CLASSIC, false, systemfarben = true),
@@ -90,18 +90,18 @@ class EffectiveDesignTest {
     }
 
     @Test
-    fun `ohne gespeicherte Wahl folgt die App dem System`() {
+    fun `without a saved choice the app follows the system`() {
         assertTrue(darkAfterSystemApplies(null))
     }
 
     @Test
-    fun `eine ausdrueckliche Wahl bleibt bestehen`() {
+    fun `an explicit choice persists`() {
         assertEquals(false, darkAfterSystemApplies(false))
         assertEquals(true, darkAfterSystemApplies(true))
     }
 
     @Test
-    fun `MainActivity zeichnet das wirksame Design`() {
+    fun `MainActivity draws the effective design`() {
         val src = Quellen.withoutComments(Quellen.lies("app/MainActivity.kt"))
         assertTrue("MainActivity nutzt darstellung() nicht — die Wahl bliebe ohne Wirkung",
             Regex("""darstellung\(theme,\s*helligkeit,\s*isSystemInDarkTheme\(\),\s*systemfarben,\s*android\.os\.Build\.VERSION\.SDK_INT\)""").containsMatchIn(src))
@@ -114,7 +114,7 @@ class EffectiveDesignTest {
      * hell, blitzte im Dunkelmodus Weiss auf.
      */
     @Test
-    fun `der Start blitzt nicht weiss auf`() {
+    fun `the start does not flash white`() {
         val res = Quellen.res
         val night = File(res, "values-night/themes.xml")
         assertTrue("values-night/themes.xml fehlt", night.isFile)

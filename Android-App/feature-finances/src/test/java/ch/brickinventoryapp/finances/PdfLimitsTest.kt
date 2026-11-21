@@ -26,20 +26,20 @@ import org.junit.Test
 class PdfLimitsTest {
 
     @Test
-    fun `eine Seitenzahl ausserhalb von 1 bis zur Obergrenze gilt als unlesbar`() {
+    fun `a page count outside 1 to the upper limit counts as unreadable`() {
         for (n in listOf(0, -1, Int.MIN_VALUE, PDF_MAX_PAGES + 1, Int.MAX_VALUE)) assertNull("$n Seiten", checkPageCount(n))
         assertEquals(1, checkPageCount(1))
         assertEquals(PDF_MAX_PAGES, checkPageCount(PDF_MAX_PAGES))
     }
 
     @Test
-    fun `Seitenkanten ausserhalb des Formats ergeben keine Masse`() {
+    fun `page edges outside the format give no dimensions`() {
         for ((w, h) in listOf(0 to 842, 595 to 0, -1 to 842, 595 to PDF_PAGE_MAX_PT + 1, Int.MAX_VALUE to 1))
             assertNull("$w x $h pt", pagesDimensions(1080, w, h))
     }
 
     @Test
-    fun `die Masse folgen der Breite und bleiben unter der Flaechengrenze`() {
+    fun `the dimensions follow the width and stay below the area limit`() {
         val a4 = pagesDimensions(1080, 595, 842)!!
         assertEquals(bitmapDimensions(1080, 842f / 595), a4.breite to a4.hoehe)
         assertEquals(a4.breite * a4.hoehe * 4, a4.bytes)

@@ -19,7 +19,7 @@ import org.junit.Test
 class MirrorFollowUpTest {
 
     @Test
-    fun `ein ueberholter Plattenwert dreht den Speicher nicht zurueck`() = runTest {
+    fun `an outdated disk value does not turn the memory back`() = runTest {
         val limit = TokenLimit()
         val strom = Channel<String>(Channel.UNLIMITED)
         var platte = "token-alt"

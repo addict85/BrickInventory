@@ -56,7 +56,7 @@ class SignOutAtServerTest {
     }
 
     @Test
-    fun `Abmelden schickt den Token zum Entwerten an den Server`() {
+    fun `sign-out sends the token to the server for invalidation`() {
         server.enqueue(MockResponse().setBody("""{"success":true}"""))
         assertTrue(runBlocking { konto.signOutAtServer() })
         val anfrage = server.takeRequest(1, TimeUnit.SECONDS)!!
@@ -66,7 +66,7 @@ class SignOutAtServerTest {
     }
 
     @Test
-    fun `ein schweigender Server haelt das Abmelden nicht auf`() {
+    fun `a silent server does not hold up the sign-out`() {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
         val beginn = System.nanoTime()
         assertFalse(runBlocking { konto.signOutAtServer(limitMs = 300) })
@@ -75,7 +75,7 @@ class SignOutAtServerTest {
     }
 
     @Test
-    fun `ein fehlender oder fehlerhafter Server haelt das Abmelden nicht auf`() {
+    fun `a missing or faulty server does not hold up the sign-out`() {
         server.enqueue(MockResponse().setResponseCode(500))
         assertFalse(runBlocking { konto.signOutAtServer() })
         server.shutdown()

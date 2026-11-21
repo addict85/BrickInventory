@@ -1,7 +1,7 @@
 Gegenprobe: Eine unbekannte Sortierung fällt nicht auf die Vorgabe des Servers zurück
 Modul: core-model
 Test: ch.brickinventoryapp.model.FachtypenTest
-Rot: eine unbekannte Sortierung
+Rot: an unknown sorting counts as the default as on the server
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt

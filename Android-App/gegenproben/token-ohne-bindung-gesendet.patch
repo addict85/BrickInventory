@@ -1,7 +1,7 @@
 Gegenprobe: Ein Token ohne Herkunft gilt wieder für den eingetragenen Server
 Modul: core-state
 Test: ch.brickinventoryapp.state.ServerGuardTest
-Rot: ein Token ohne Bindung geht an keinen Server
+Rot: a token without binding goes to no server
 
 diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt
 --- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt

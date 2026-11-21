@@ -1,7 +1,7 @@
 Gegenprobe: Ein Token unter dem alten Schlüssel bleibt dort, der Start schlüsselt nicht um
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenVaultTest
-Rot: ein Token unter dem alten Schluessel kommt beim Start
+Rot: a token under the old key goes under the strict one at start
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt

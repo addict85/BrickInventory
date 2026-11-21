@@ -36,7 +36,7 @@ class SecondFactorTakeoverTest {
     fun zu() { t.aufraeumen(); paths.server.shutdown() }
 
     @Test
-    fun `auth me mit Pflicht zeigt die Einrichtung und behaelt das Verwalterrecht`() = runBlocking {
+    fun `auth me with obligation shows the setup and keeps the admin right`() = runBlocking {
         paths.antworten["/api/v1/auth/me"] =
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}"""
         val pflicht = SecondFactorRequired()
@@ -46,7 +46,7 @@ class SecondFactorTakeoverTest {
     }
 
     @Test
-    fun `auth me ohne Pflicht laesst die App offen`() = runBlocking {
+    fun `auth me without obligation leaves the app open`() = runBlocking {
         paths.antworten["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":true}}"""
         val pflicht = SecondFactorRequired()
         t.sitzung.adoptAccount(konto, pflicht)
@@ -61,7 +61,7 @@ class SecondFactorTakeoverTest {
     }
 
     @Test
-    fun `Anmeldung und auth me lesen das Feld zweiterFaktorPflicht`() = runBlocking {
+    fun `sign-in and auth me read the field zweiterFaktorPflicht`() = runBlocking {
         val anmeldung = BrickJson.decodeFromString(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}""")
         assertTrue("aus der Anmeldung", anmeldung.user?.zweiterFaktorPflicht == true)

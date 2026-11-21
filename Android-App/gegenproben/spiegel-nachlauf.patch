@@ -1,7 +1,7 @@
 Gegenprobe: der Plattenspiegel übernimmt jeden Wert, auch einen überholten
 Modul: core-data
 Test: ch.brickinventoryapp.data.MirrorFollowUpTest
-Rot: ein ueberholter Plattenwert dreht den Speicher nicht zurueck
+Rot: an outdated disk value does not turn the memory back
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt

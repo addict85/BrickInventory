@@ -30,7 +30,7 @@ class SearchWithFilterWidthTest {
     val compose = createComposeRule()
 
     @Test
-    fun `auf dem Tablet geht die Suchzeile ueber die ganze Breite`() {
+    fun `on the tablet the search row spans the whole width`() {
         compose.setContent {
             BrickInventoryManagerTheme {
                 Box(Modifier.width(1200.dp)) {

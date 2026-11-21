@@ -1,7 +1,7 @@
 Gegenprobe: Zeilen der Detailkarten wieder über die ganze Spalte
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: Detailkarten stehen auf dem Tablet in Lesebreite
+Rot: detail cards stand in reading width on the tablet
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt

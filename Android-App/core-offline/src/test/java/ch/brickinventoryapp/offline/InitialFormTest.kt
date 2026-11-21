@@ -27,7 +27,7 @@ import org.junit.Test
  *      Eine Änderung am Netzmodell erreicht die Platte nicht mehr
  *   C  in Ausgangsform.targetFrom das Nachsehen in `anfrage` gestrichen → rot „auch ein unlesbarer
  *      Posten nennt seine Nummer“
- *   D  ein Beispiel aus VERSION_1 gestrichen → rot „jede Art der Fassung 1 hat ein Beispiel“
+ *   D  ein Beispiel aus VERSION_1 gestrichen → rot „every kind of version 1 has an example“
  */
 class InitialFormTest {
 
@@ -56,7 +56,7 @@ class InitialFormTest {
     )
 
     @Test
-    fun `liest und schreibt jede eingefrorene Zeile der Fassung 1 unverändert`() {
+    fun `reads and writes every frozen row of version 1 unchanged`() {
         for ((zeile, bearbeitung) in VERSION_1) {
             assertEquals(zeile, bearbeitung, InitialForm.decode(json, zeile))
             assertEquals(zeile, InitialForm.encode(json, bearbeitung))
@@ -64,14 +64,14 @@ class InitialFormTest {
     }
 
     @Test
-    fun `jede Art der Fassung 1 hat ein Beispiel`() {
+    fun `every kind of version 1 has an example`() {
         val kinds = ItemF1.serializer().descriptor.getElementDescriptor(1).elementNames.toSet()
         val belegt = VERSION_1.map { json.parseToJsonElement(it.first).jsonObject["type"]!!.jsonPrimitive.content }.toSet()
         assertEquals(kinds, belegt)
     }
 
     @Test
-    fun `ein Posten einer älteren App ohne später dazugekommene Felder bleibt lesbar`() {
+    fun `an item of an older app without fields added later stays readable`() {
         assertEquals(Editing.SetErfassen(Erfassungswunsch(setNumber = "10001-1")),
             InitialForm.decode(json, """{"type":"set_erfassen","anfrage":{"set_number":"10001-1"}}"""))
         assertEquals(Editing.TeilErfassen(Teilerfassung(nummer = "3001", menge = 2)),
@@ -81,7 +81,7 @@ class InitialFormTest {
     }
 
     @Test
-    fun `auch ein unlesbarer Posten nennt seine Nummer, wo sie noch steht`() {
+    fun `even an unreadable item names its number where it is still present`() {
         assertEquals("10001-1", InitialForm.targetFrom(json, """{"type":"gibt_es_nicht","setNumber":"10001-1"}"""))
         assertEquals("3001", InitialForm.targetFrom(json, """{"type":"neu","anfrage":{"part_number":"3001"}}"""))
         assertNull(InitialForm.targetFrom(json, """{"type":"neu"}"""))

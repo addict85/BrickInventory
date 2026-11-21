@@ -1,7 +1,7 @@
 Gegenprobe: Die Animator-Dauer wird nur einmal gelesen, nicht beobachtet
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: reduzierte Bewegung folgt einer Aenderung zur Laufzeit
+Rot: reduced motion follows a change at runtime
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt

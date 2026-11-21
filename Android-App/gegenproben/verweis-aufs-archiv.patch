@@ -1,7 +1,7 @@
 Gegenprobe: Ein Kommentar verweist wieder auf das Begründungsarchiv
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: kein Verweis auf das Begruendungsarchiv
+Rot: no reference to the reasoning archive, and no KDoc hangs on nothing
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt

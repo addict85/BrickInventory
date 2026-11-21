@@ -28,7 +28,7 @@ class CameraFocusConfigTest {
     private fun setup(): String = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
 
     @Test
-    fun `genau EIN Tap-to-Focus-Listener`() {
+    fun `exactly ONE tap-to-focus listener`() {
         // Seit der Tipper in KameraAufbau.kt steht (tippZumFokus), setzt ihn jeder
         // Scanner genau einmal und keiner einen eigenen daneben.
         val anzahl = Regex("""\.setOnTouchListener""").findAll(setup()).count() +
@@ -80,7 +80,7 @@ class CameraFocusConfigTest {
     }
 
     @Test
-    fun `der Tap-to-Focus haelt den Fokus`() {
+    fun `tap-to-focus keeps the focus`() {
         for (datei in withTapToFocus()) {
             // Der Tipper selbst steht in KameraAufbau.kt; geprüft wird er dort für jeden Nutzer.
             val c = code(datei.readText()) + "\n" + setup()
@@ -115,7 +115,7 @@ class CameraFocusConfigTest {
      * hat; die Regel ist der neuen Struktur nachgezogen.
      */
     @Test
-    fun `der Kamera-Aufbau steht nur in KameraAufbau`() {
+    fun `the camera setup lives only in KameraAufbau`() {
         val dateien = Quellen.unter("ui/screens")
         assert(dateien.size >= 5) {
             "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, und ein " +
@@ -138,7 +138,7 @@ class CameraFocusConfigTest {
     }
 
     @Test
-    fun `KameraAufbau setzt den AF-Modus an BEIDEN Use Cases`() {
+    fun `KameraAufbau sets the AF mode on BOTH use cases`() {
         // CameraX führt die Konfigurationen aller gebundenen Use Cases zu EINEM
         // Repeating-Request zusammen. Steht der Modus nur an einem, entscheidet
         // je nach Gerät der andere mit — und das Bild bleibt unscharf, obwohl
@@ -152,7 +152,7 @@ class CameraFocusConfigTest {
     }
 
     @Test
-    fun `beide Scanner holen ihre Kamera dort`() {
+    fun `both scanners get their camera there`() {
         // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
         // umgeht autofocusPermanent() — und sieht dabei richtig aus.
         val nutzer = Quellen.unter("ui/screens")
@@ -166,7 +166,7 @@ class CameraFocusConfigTest {
     }
 
     @Test
-    fun `der Tipper steht nur in KameraAufbau`() {
+    fun `the tapper lives only in KameraAufbau`() {
         // Wie Vorschau und Bindung: Eine Kopie im Bildschirm verfehlte die nächste Behebung.
         val eigene = withTapToFocus().filter { it.name != "KameraAufbau.kt" && code(it.readText()).contains("startFocusAndMetering(") }
         assert(eigene.isEmpty()) { "Eigener Tap-to-Focus statt tippZumFokus(): ${eigene.joinToString { it.name }}" }
@@ -174,7 +174,7 @@ class CameraFocusConfigTest {
     }
 
     @Test
-    fun `kein periodisches Nachfokussieren`() {
+    fun `no periodic refocusing`() {
         // Ein im Takt laufendes startFocusAndMetering unterbricht den
         // kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
         // Antippen.

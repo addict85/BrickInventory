@@ -11,7 +11,7 @@ class DesignTokensTest {
     private val themeFolder = "ui/theme"
 
     @Test
-    fun `keine festen Eckenradien ausserhalb des Designs`() {
+    fun `no fixed corner radii outside the design`() {
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
             if (datei.invariantSeparatorsPath.contains("/$themeFolder/")) continue
@@ -31,7 +31,7 @@ class DesignTokensTest {
     }
 
     @Test
-    fun `keine festen Farben ausserhalb des Designs`() {
+    fun `no fixed colors outside the design`() {
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
             if (datei.invariantSeparatorsPath.contains("/$themeFolder/")) continue
@@ -51,7 +51,7 @@ class DesignTokensTest {
     }
 
     @Test
-    fun `keine festen Erhebungen ausserhalb des Designs`() {
+    fun `no fixed elevations outside the design`() {
         // Es gibt zwei: flach (Listen, Abschnitte) und hoch (Anmeldung,
         // Dialoge, Kennzahlen). Eine dritte Zahl im Bildschirm heisst, dass
         // jemand eine dritte Bedeutung erfunden hat, ohne sie zu benennen.
@@ -70,7 +70,7 @@ class DesignTokensTest {
     }
 
     @Test
-    fun `beide Designs liefern Status- und Diagrammfarben`() {
+    fun `both designs supply status and chart colors`() {
         // Ein Design, das eine der beiden Gruppen nicht setzt, fällt auf die
         // Vorgabe des CompositionLocal zurück — und die ist die klassische.
         // Im Stein-Design stünde dann wieder ein Preussischblau neben
@@ -95,7 +95,7 @@ class DesignTokensTest {
      * Lagerortfeld entfernt → rot mit „LocationField.kt“.
      */
     @Test
-    fun `kein Eingabefeld steht in der eckigen Vorgabe`() {
+    fun `no input field uses the angular default`() {
         val call = Regex("""\b(OutlinedTextField|TextField)\(""")
         val fehler = mutableListOf<String>()
         var gesehen = 0
@@ -133,7 +133,7 @@ class DesignTokensTest {
      * Notfallcodes ohne beides) → rot mit „ZweiterFaktorPflichtMaske.kt“.
      */
     @Test
-    fun `Knoepfe tragen alle dieselbe Form, Nebenknoepfe dieselben Farben`() {
+    fun `buttons all carry the same shape, secondary buttons the same colors`() {
         val call = Regex("""\b(Button|OutlinedButton|FilledTonalButton|ElevatedButton|TextButton)\(""")
         val fehler = mutableListOf<String>()
         val nebenknoepfe = mutableListOf<String>()

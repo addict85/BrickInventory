@@ -32,19 +32,19 @@ class FilterzahlTest {
     private val orte = listOf(LocationView("Keller", sets = 3), LocationView("Estrich", teile = 2))
 
     @Test
-    fun `ohne Abweichung steht keine Zahl`() {
+    fun `without deviation no number is shown`() {
         assertEquals(0, Filterzahl.galerie(haushalt, ScopeFilter.ALL, orte, "", ""))
         assertEquals(0, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.ALLE, ColorPicker.Alle, Kategoriewahl.Alle))
     }
 
     @Test
-    fun `jede Abweichung zaehlt einmal`() {
+    fun `every deviation counts once`() {
         assertEquals(3, Filterzahl.galerie(haushalt, "2", orte, "Keller", "Technic"))
         assertEquals(1, Filterzahl.galerie(haushalt, "own", orte, "", ""))
     }
 
     @Test
-    fun `ein Konto, das nicht mehr zum Haushalt gehoert, zaehlt nicht`() {
+    fun `an account that no longer belongs to the household does not count`() {
         assertEquals(0, Filterzahl.konto(haushalt, "99"))
         // Ohne Haushalt gibt es keinen Kontofilter — ein gemerkter Wert wirkt nicht.
         assertEquals(0, Filterzahl.konto(haushalt.take(1), "own"))
@@ -52,13 +52,13 @@ class FilterzahlTest {
     }
 
     @Test
-    fun `ein leerer LagerortAnsicht zaehlt nicht`() {
+    fun `an empty LagerortAnsicht does not count`() {
         assertEquals(0, Filterzahl.lager(orte, "Garage"))
         assertEquals(1, Filterzahl.lager(orte, "Estrich"))
     }
 
     @Test
-    fun `bei den Teilen zaehlen Ersatzteile, Farbe und Kategorie`() {
+    fun `for the parts spare parts, color and category count`() {
         assertEquals(3, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.OHNE, ColorPicker.Farbe("Red"), Kategoriewahl.Kategorie("Bricks")))
         assertEquals(5, Filterzahl.teile(haushalt, "own", orte, "Keller", Ersatzteilwahl.NUR, ColorPicker.Farbe("Red"), Kategoriewahl.Kategorie("Bricks")))
     }

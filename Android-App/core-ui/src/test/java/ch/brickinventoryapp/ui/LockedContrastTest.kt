@@ -32,7 +32,7 @@ class LockedContrastTest {
     private fun k(a: Color, b: Color) = Contrast.verhaeltnis(a.toArgb(), b.toArgb())
 
     @Test
-    fun `gesperrte Knoepfe halten 4,5 zu 1 fuer Schrift und 3 zu 1 fuer Flaeche und Rand`() {
+    fun `disabled buttons keep 4,5 to 1 for text and 3 to 1 for surface and border`() {
         val fehler = mutableListOf<String>()
         for ((name, s) in versions) {
             val g = lockedColors(s)
@@ -47,7 +47,7 @@ class LockedContrastTest {
     }
 
     @Test
-    fun `Dialogschrift haelt 4,5 zu 1 und der Dialog hebt sich mit 3 zu 1 vom Grund ab`() {
+    fun `dialog text keeps 4,5 to 1 and the dialog stands out with 3 to 1 from the background`() {
         val fehler = mutableListOf<String>()
         for ((name, s) in versions) {
             val flaeche = fensterFlaeche(s)

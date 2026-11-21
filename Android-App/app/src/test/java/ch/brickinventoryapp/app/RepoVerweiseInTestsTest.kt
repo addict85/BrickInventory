@@ -38,7 +38,7 @@ class RepoVerweiseInTestsTest {
     }
 
     @Test
-    fun `kein Test sucht nach einem Repository-Aufruf den es nicht mehr gibt`() {
+    fun `no test searches for a repository call that no longer exists`() {
         val appCode = dateien(Quellen.root)
             .joinToString("\n") { it.readText() }
         assert(appCode.contains("sets.aktualisiereSets(")) {

@@ -1,7 +1,7 @@
 Gegenprobe: bei den Netzen des Vorwärmens fehlt der Hinweis zum gemessenen WLAN
 Modul: feature-management
 Test: ch.brickinventoryapp.management.CacheClearAsksTest
-Rot: bei den Netzen steht der Hinweis
+Rot: the networks show the hint about metered Wi-Fi
 
 diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
 --- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt

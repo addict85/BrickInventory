@@ -16,7 +16,7 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * Gegenproben:
  *   A  in src/main die base-config wieder auf cleartextTrafficPermitted="true" →
- *      rot „der Release-Build erlaubt nirgends Klartext“
+ *      rot „the release build allows cleartext nowhere“
  *   B  in src/debug einen weiteren Host (192.168.1.50) mit Klartext → rot „der
  *      Debug-Build erlaubt Klartext nur …“
  *   C  in src/main ein <certificates src="user" /> → rot „beide Fassungen
@@ -29,7 +29,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   J  gegenproben/debug-ohne-ct.patch: in
  *      src/debug <certificateTransparency> der base-config entfernt → rot „der Debug-Build …“
  *   I  in data_extraction_rules.xml unter device-transfer `database` entfernt → rot
- *      „Kontodaten verlassen das Geraet nicht“; gegenproben/workdb-wird-uebertragen.patch
+ *      „account data does not leave the device“; gegenproben/workdb-wird-uebertragen.patch
  *   K  in backup_rules.xml `root` entfernt → rot, derselbe Test
  */
 class NetzsicherheitTest {
@@ -47,7 +47,7 @@ class NetzsicherheitTest {
         getElementsByTagName(name).let { l -> (0 until l.length).map { l.item(it) as Element } }
 
     @Test
-    fun `der Release-Build erlaubt nirgends Klartext`() {
+    fun `the release build allows cleartext nowhere`() {
         val cfg = lies("main")
         val basis = cfg.children("base-config").single()
         assertEquals("false", basis.getAttribute("cleartextTrafficPermitted"))
@@ -57,7 +57,7 @@ class NetzsicherheitTest {
     }
 
     @Test
-    fun `der Debug-Build erlaubt Klartext nur zum Geraet und zum Emulator-Host`() {
+    fun `the debug build allows cleartext only to the device and the emulator host`() {
         val cfg = lies("debug")
         assertEquals("false", cfg.children("base-config").single().getAttribute("cleartextTrafficPermitted"))
         val klartext = cfg.children("domain-config").filter { it.getAttribute("cleartextTrafficPermitted") == "true" }
@@ -67,7 +67,7 @@ class NetzsicherheitTest {
     }
 
     @Test
-    fun `der Release-Build verlangt Certificate Transparency`() {
+    fun `the release build requires Certificate Transparency`() {
         val cfg = lies("main")
         val areas = cfg.children("domain-config") + cfg.children("base-config")
         val ohne = areas.filter { b -> b.children("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
@@ -76,7 +76,7 @@ class NetzsicherheitTest {
 
     /** Wie Release, ausser für die Entwicklungshosts im Klartext; sonst prüfte der Debug-Bau eine andere Kette. */
     @Test
-    fun `der Debug-Build verlangt Certificate Transparency wie Release`() {
+    fun `the debug build requires Certificate Transparency like release`() {
         val cfg = lies("debug")
         val areas = (cfg.children("domain-config") + cfg.children("base-config"))
             .filter { it.getAttribute("cleartextTrafficPermitted") != "true" }
@@ -85,7 +85,7 @@ class NetzsicherheitTest {
     }
 
     @Test
-    fun `beide Fassungen vertrauen nur System-CAs`() {
+    fun `both versions trust only system CAs`() {
         for (variant in listOf("main", "debug")) {
             val quellen = lies(variant).alle("certificates").map { it.getAttribute("src") }
             assertTrue("$variant: $quellen", quellen.isNotEmpty() && quellen.all { it == "system" })
@@ -103,7 +103,7 @@ class NetzsicherheitTest {
 
     /** Die dritte Linie: Was zum Konto gehört, wandert weder per Transfer noch per Sicherung mit. */
     @Test
-    fun `Kontodaten verlassen das Geraet nicht`() {
+    fun `account data does not leave the device`() {
         // Ganze Domänen: Eine neue Ablage geht nicht mit, nur weil sie hier fehlt.
         val noetig = setOf("root:.", "file:.", "database:.", "external:.", "device_root:.")
         val r = rules("data_extraction_rules.xml")

@@ -37,7 +37,7 @@ class PdfZoomTest {
     private val A4 = 1.4142f      // Hoehe / Breite einer A4-Seite
 
     @Test
-    fun `ohne Zoom wird in einfacher Breite gerendert, mit Zoom hoeher`() {
+    fun `without zoom it renders at single width, with zoom higher`() {
         // Stufe 1 gilt NUR bei genau 1x. Das ist gewollt: Solange nicht gezoomt
         // ist, soll der Betrachter so viel Speicher brauchen wie bisher; sobald
         // gezoomt ist, zaehlt Schaerfe mehr.
@@ -49,7 +49,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `die Stufe bleibt bei drei, egal wie weit gezoomt wird`() {
+    fun `the level stays at three no matter how far it is zoomed`() {
         // Der obere Anschlag des Zooms ist 5x; eine spaetere Erhoehung darf die
         // Renderaufloesung nicht mitreissen. Darum bis 100 geprueft.
         var z = 1f
@@ -65,7 +65,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `unterhalb der Grenze bleibt die gewuenschte Breite unangetastet`() {
+    fun `below the limit the desired width stays untouched`() {
         val (w, h) = bitmapDimensions(1080, A4)
         assert(w == 1080) { "1080 px liegen weit unter der Grenze, geliefert wurde $w" }
         assert(h == (1080 * A4).toInt()) { "Hoehe $h passt nicht zu 1080 x $A4" }
@@ -78,7 +78,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `oberhalb der Grenze wird gekappt, und zwar in beiden Richtungen`() {
+    fun `above the limit it is capped, in both directions`() {
         // 3240 px ist die Stufe 3 eines 1080-px-Geraets — der Fall, der in
         // Wirklichkeit auftritt.
         val gewuenscht = 3240
@@ -103,7 +103,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `der Riegel haelt fuer hoch und quer und fuer unsinnige Eingaben`() {
+    fun `the bolt holds for portrait and landscape and for nonsensical input`() {
         for (ratio in listOf(0.5f, 0.707f, 1f, 1.4142f, 2f, 3f)) {
             for (breite in listOf(1, 320, 1080, 2160, 3240, 8000, 40000)) {
                 val (w, h) = bitmapDimensions(breite, ratio)
@@ -130,7 +130,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `die Geste beansprucht keine Einfinger-Zuege`() {
+    fun `the gesture claims no one-finger drags`() {
         assert(Regex("""transformable\(\s*state\s*=\s*\w+\s*,\s*canPan\s*=\s*\{\s*false\s*\}""")
             .containsMatchIn(quelle)) {
             "Der transformable-Aufruf steht nicht mehr mit `canPan = { false }` da. " +
@@ -143,7 +143,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `transformable steht hinter horizontalScroll`() {
+    fun `transformable stands behind horizontalScroll`() {
         val h = quelle.indexOf(".horizontalScroll(")
         val t = quelle.indexOf(".transformable(")
         assert(h >= 0) { "Kein horizontalScroll mehr — womit wird dann waagerecht verschoben?" }
@@ -157,7 +157,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `beim Stufenwechsel bleibt die alte Seite stehen`() {
+    fun `on a level change the old page stays`() {
         // remember OHNE die Renderbreite, LaunchedEffect MIT ihr: nur so wird neu
         // gerendert, ohne dass die Anzeige vorher leer wird. Verglichen werden die
         // Schluessel mit den Parametern von PdfPage, nicht feste Namen.
@@ -188,7 +188,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `der Doppeltipp liest den aktuellen Zoom, nicht den von damals`() {
+    fun `the double tap reads the current zoom, not the one from back then`() {
         // pointerInput(Unit) wird absichtlich nicht neu aufgesetzt — sonst riss
         // jede Neuberechnung eine laufende Geste ab. Dafuer haelt der Block die
         // Huelle der ERSTEN Komposition fest. Liest der Doppeltipp `zoom`
@@ -214,7 +214,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `waehrend einer Zwei-Finger-Geste rollt die Liste nicht`() {
+    fun `during a two-finger gesture the list does not scroll`() {
         // Die eine Schwaeche, die beim Bauen schon benannt war: Die LazyColumn
         // ist das TIEFERE Glied und sieht die Bewegung vor dem transformable.
         // Geht eine Geste auch nur ein wenig senkrecht auseinander, beansprucht
@@ -239,7 +239,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `der Zoom rechnet beim Messen mit dem Fingerpunkt`() {
+    fun `the zoom computes with the finger point when measuring`() {
         // Die Rechnung selbst prueft PdfZoomAnchorTest. Hier nur, dass sie dort
         // aufgerufen wird, wo altes Layout und neuer Zoom zugleich vorliegen.
         val measure = Regex("""\.layout \{ messbar, grenzen ->(.*?)\n {16}\}""", RegexOption.DOT_MATCHES_ALL)
@@ -254,7 +254,7 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `der Zoom laeuft nicht ueber einen graphicsLayer`() {
+    fun `the zoom does not run via a graphicsLayer`() {
         assert(!quelle.contains("graphicsLayer")) {
             "Im PDF-Betrachter steht ein graphicsLayer. Der streckt die gerenderte " +
                 "Bitmap statt sie neu zu rendern — bei 4x ist eine Teilenummer " +

@@ -20,27 +20,27 @@ import org.junit.Test
  * Gegenproben (14.11.2026 gemessen, :core-model:test):
  *   A  `offline` liefert `stand == null` → rot „Daten aus der Ablage sind offline …“
  *   B  dataOrNull() gibt auch beim Fehler einen Wert (`as? Laden.Daten<T>` durch
- *      Vorgabe ersetzt) → rot „nur Daten tragen einen Wert“
+ *      Vorgabe ersetzt) → rot „only data carries a value“
  */
 class LoadTest {
 
     private val fehler = Laden.Fehler(Fehlerklasse.OFFLINE, Meldung.Resource(7))
 
     @Test
-    fun `Daten aus der Ablage sind offline, frische nicht`() {
+    fun `data from the store is offline, fresh data is not`() {
         assertTrue(Laden.Daten(listOf(1), stand = 1000L).offline)
         assertFalse(Laden.Daten(listOf(1)).offline)
     }
 
     @Test
-    fun `nur Daten tragen einen Wert`() {
+    fun `only data carries a value`() {
         assertEquals(listOf(1), Laden.Daten(listOf(1)).dataOrNull())
         assertNull((Laden.Loads as Laden<List<Int>>).dataOrNull())
         assertNull((fehler as Laden<List<Int>>).dataOrNull())
     }
 
     @Test
-    fun `Laden und Fehler sagen, was sie sind`() {
+    fun `loading and error say what they are`() {
         assertTrue(Laden.Loads.laedt)
         assertFalse(fehler.laedt)
         assertEquals(Meldung.Resource(7), fehler.errorMessage)

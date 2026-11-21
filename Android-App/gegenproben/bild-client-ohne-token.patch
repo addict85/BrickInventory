@@ -1,7 +1,7 @@
 Gegenprobe: Der Bild-Client verliert den ServerWaechter und damit den Token
 Modul: core-data
 Test: ch.brickinventoryapp.data.ServerClientsTest
-Rot: beide Clients haengen den Server-Waechter ein
+Rot: both clients hook in the server guard
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt

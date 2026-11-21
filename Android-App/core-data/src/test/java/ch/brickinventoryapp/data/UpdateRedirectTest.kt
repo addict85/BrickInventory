@@ -46,7 +46,7 @@ class UpdateRedirectTest {
     private fun fetch(url: String) = client.newCall(Request.Builder().url(url).build()).execute().use { it.code to it.body.string() }
 
     @Test
-    fun `eine Umleitung innerhalb von GitHub wird verfolgt`() {
+    fun `a redirect within GitHub is followed`() {
         start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", ziel.url("/objekt.apk")))
         ziel.enqueue(MockResponse().setBody("apk"))
         assertEquals(200 to "apk", fetch(start.url("/release").toString()))
@@ -55,7 +55,7 @@ class UpdateRedirectTest {
 
     /** Wie GitHub für `/releases/latest/download/…`: erst auf das Etikett, dann ins CDN. */
     @Test
-    fun `der feste Link ueber releases-latest folgt zwei Umleitungen`() {
+    fun `the fixed link via releases-latest follows two redirects`() {
         val fassung = "/addict85/BrickInventory/releases/download/android-v1/version-signiert.json"
         start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", fassung))
         start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", ziel.url("/objekt")))
@@ -67,7 +67,7 @@ class UpdateRedirectTest {
     }
 
     @Test
-    fun `eine Umleitung auf einen fremden Host wird nicht einmal verbunden`() {
+    fun `a redirect to a foreign host is not even connected`() {
         start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", fremd.url("/spiegel.apk")))
         try {
             fetch(start.url("/release").toString())
@@ -79,7 +79,7 @@ class UpdateRedirectTest {
     }
 
     @Test
-    fun `nur GitHub und sein CDN, nur ueber https auf 443`() {
+    fun `only GitHub and its CDN, only via https on 443`() {
         for (gut in listOf("https://github.com/a/b/releases/download/x/y.apk", "https://github.com/a/b/releases/latest/download/y.json",
                            "https://objects.githubusercontent.com/z",
                            "https://release-assets.githubusercontent.com/z")) {

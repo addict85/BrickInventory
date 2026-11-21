@@ -1,7 +1,7 @@
 Gegenprobe: Ein Gerät ohne Attestation schickt sein selbstsigniertes Zertifikat doch an den Server
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.SchluesselbindungTest
-Rot: ein Geraet ohne Attestation bekommt eine Meldung und schickt nichts
+Rot: a device without attestation gets a message and sends nothing
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt

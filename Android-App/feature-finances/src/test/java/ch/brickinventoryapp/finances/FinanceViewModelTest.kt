@@ -70,7 +70,7 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun `Zeilenarten und Zeitraum ueberstehen einen Prozess-Tod`() {
+    fun `row kinds and period survive a process death`() {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
         erstes.toggleFinanceCategory("parts")
@@ -83,7 +83,7 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun `wer die Finanzen sieht, laedt Bewertung und Verlauf, die Bewertung einmal`() {
+    fun `whoever sees the finances loads valuation and history, the valuation once`() {
         val vm = vm()
         assertTrue("Ohne Beobachter wird nichts geholt", paths.requestsAn("/finance/").isEmpty())
         val view = CoroutineScope(Dispatchers.Main).launch { vm.financeState.collect {} }
@@ -94,7 +94,7 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun `eine Aenderung am Bestand in der Ablage laedt die Bewertung nach`() {
+    fun `a change of the stock in the store reloads the valuation`() {
         paths.antworten["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke"}]}"""
         val vm = vm()
         // Ein anderer Bereich holt die Sets in die Ablage; die Bewertung folgt ihr.
@@ -105,7 +105,7 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun `der Kontofilter des Reiters reist mit und laedt Bewertung und Verlauf neu`() {
+    fun `the tab's account filter travels along and reloads valuation and history`() {
         val vm = vm()
         vm.setScope(ScopeFilter.View.FINANCE, "own")
         assertTrue("beide Abrufe", paths.requestsAn("/finance/valuation").isNotEmpty() && paths.requestsAn("/portfolio-history").isNotEmpty())
@@ -120,7 +120,7 @@ class FinanceViewModelTest {
     }
 
     @Test
-    fun `nach dem Abmelden ist nichts mehr da`() {
+    fun `after sign-out nothing is left`() {
         val vm = vm()
         vm.loadValuation()
         vm.toggleFinanceCategory("sets")

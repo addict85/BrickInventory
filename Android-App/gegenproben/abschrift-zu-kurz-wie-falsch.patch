@@ -1,7 +1,7 @@
 Gegenprobe: Der Zertifikatsdialog sagt bei einer zu kurzen Abschrift wieder nur „passt nicht“
 Modul: app
 Test: ch.brickinventoryapp.app.CertificateDialogTest
-Rot: zu kurz und falsch abgeschrieben sind verschiedene Fehler
+Rot: too short and wrongly transcribed are different errors
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt

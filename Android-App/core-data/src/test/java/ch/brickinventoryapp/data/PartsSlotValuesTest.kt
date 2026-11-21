@@ -43,18 +43,18 @@ class PartsSlotValuesTest {
     fun zu() = paths.server.shutdown()
 
     @Test
-    fun `ein success false ist eine Absage`() = runBlocking {
+    fun `a success false is a refusal`() = runBlocking {
         assertEquals(Ergebnis.Fehler.Absage(), teile.putLocationAn("Keller"))
     }
 
     @Test
-    fun `der Bestand steht je gefragtem Teil, was fehlt, hat keinen Eintrag`() = runBlocking {
+    fun `the stock is listed per requested part, what is missing has no entry`() = runBlocking {
         val r = teile.getOwnedParts(listOf(PartialKey("3001", 5), PartialKey("3002", 1)))
         assertEquals(Ergebnis.Erfolg(mapOf(PartialKey("3001", 5) to PartInventory(gesamt = 7, lose = 2))), r)
     }
 
     @Test
-    fun `das Erfassen einer Figur meldet neu und den Zustand des Kaufpreises`() = runBlocking {
+    fun `adding a figure reports new and the state of the purchase price`() = runBlocking {
         val r = figuren.addMinifig("sw0001")
         assertEquals(Ergebnis.Erfolg(Erfasst(angelegt = true, nummer = "sw0001", priceFromState = Zustand.GEBRAUCHT)), r)
     }

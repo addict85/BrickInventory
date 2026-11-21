@@ -1,7 +1,7 @@
 Gegenprobe: PfadServer.imTakt liest Antworten nicht mehr gegen das DTO
 Modul: core-data
 Test: ch.brickinventoryapp.data.PathServerInTickTest
-Rot: eine unvollständige Antwort scheitert
+Rot: an incomplete response fails in the calling thread
 
 diff --git a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
 --- a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt

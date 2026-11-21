@@ -1,7 +1,7 @@
 Gegenprobe: NurLauncherStart entfernt beim Start nichts mehr
 Modul: app
 Test: ch.brickinventoryapp.app.ForeignEntryTest
-Rot: ein fremder Start erreicht die Activity ohne Extras
+Rot: a foreign start reaches the activity without extras and data
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt

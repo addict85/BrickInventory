@@ -22,7 +22,7 @@ class ResponseCacheContractTest {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     @Test
-    fun `SetsResponse ueberlebt die Runde`() {
+    fun `SetsResponse survives the round trip`() {
         val raw = """{"success":true,"total":2,"sets":[
             {"set_number":"75192-1","name":"Falcon","year":2017,"quantity":2,"condition":"N",
              "instructions":[{"url":"https://x/y.pdf","description":"Heft 1"}]},
@@ -40,7 +40,7 @@ class ResponseCacheContractTest {
     }
 
     @Test
-    fun `MinifigsResponse ueberlebt die Runde`() {
+    fun `MinifigsResponse survives the round trip`() {
         val raw = """{"success":true,"total":1,"figs":[
             {"fig_number":"sw0001","fig_name":"Luke","quantity":3,"source":"set"}]}"""
         val decoded = json.decodeFromString(MinifigsResponse.serializer(), raw)
@@ -52,7 +52,7 @@ class ResponseCacheContractTest {
     }
 
     @Test
-    fun `StatsResponse ueberlebt die Runde`() {
+    fun `StatsResponse survives the round trip`() {
         val raw = """{"success":true,"stats":{"total_sets":380,"total_quantity":400,"total_pieces":243700,"total_instructions":12,"total_parts":0,"total_minifigs":9}}"""
         val decoded = json.decodeFromString(StatsResponse.serializer(), raw)
         val round = json.decodeFromString(StatsResponse.serializer(),
@@ -61,7 +61,7 @@ class ResponseCacheContractTest {
     }
 
     @Test
-    fun `unbekannte Felder brechen den Cache nicht`() {
+    fun `unknown fields do not break the cache`() {
         // Der Server darf seine Antwort erweitern, ohne dass ein alter
         // Cache-Eintrag unlesbar wird.
         val raw = """{"success":true,"sets":[{"set_number":"1-1","neues_feld":42}],"noch_eins":"x"}"""
@@ -83,7 +83,7 @@ class ValuationPriceFieldsTest {
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
-    fun `total_avg und purchase_price werden gelesen`() {
+    fun `total_avg and purchase_price are read`() {
         val raw = """{"set_number":"10290-1","quantity":2,
             "avg_price":148.72,"qty_avg_price":141.60,
             "total_avg":"297.44","total_qty_avg":"283.20","purchase_price":120.0}"""
@@ -94,7 +94,7 @@ class ValuationPriceFieldsTest {
     }
 
     @Test
-    fun `fehlende Felder brechen nichts`() {
+    fun `missing fields break nothing`() {
         // Ältere Server liefern total_avg und purchase_price nicht.
         val s = json.decodeFromString(ValuationSet.serializer(),
             """{"set_number":"1-1","qty_avg_price":10.0,"total_qty_avg":"10.00"}""")
@@ -117,7 +117,7 @@ class MinifigImageFieldTest {
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
-    fun `image_local wird gelesen und hat Vorrang`() {
+    fun `image_local is read and takes precedence`() {
         val fig = json.decodeFromString(
             Minifig.serializer(),
             """{"fig_number":"fig-000140","image_url":"https://cdn.rebrickable.com/x.jpg",
@@ -137,7 +137,7 @@ class MinifigImageFieldTest {
     }
 
     @Test
-    fun `ohne image_local bleibt die CDN-Adresse`() {
+    fun `without image_local the CDN address stays`() {
         // Solange der Hintergrundlauf das Bild noch nicht geholt hat.
         val fig = json.decodeFromString(
             Minifig.serializer(),
@@ -148,7 +148,7 @@ class MinifigImageFieldTest {
     }
 
     @Test
-    fun `auch die Finanz-Minifiguren kennen image_local`() {
+    fun `the finance minifigures also know image_local`() {
         val item = json.decodeFromString(
             FigValuationItem.serializer(),
             """{"fig_number":"fig-2","image_local":"/images/sets/fig-2.jpg"}"""
@@ -174,7 +174,7 @@ class GalleryImageRetryTest {
     }
 
     @Test
-    fun `SetCard versucht ein fehlgeschlagenes Bild genau einmal erneut`() {
+    fun `SetCard retries a failed image exactly once`() {
         val src = read("collection/ui/screens/GalerieKarte.kt")
 
         assert(src.contains("var retryNonce by remember(set.setNumber, imageUrl)")) {

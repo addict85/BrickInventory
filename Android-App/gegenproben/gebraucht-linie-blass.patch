@@ -1,7 +1,7 @@
 Gegenprobe: Gebraucht-Linie von Noppe und Hochglanz wieder #FF7A00 wie die Web-App
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.TextContrastTest
-Rot: Diagrammschrift und Linien sind lesbar
+Rot: chart text and lines are readable
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt

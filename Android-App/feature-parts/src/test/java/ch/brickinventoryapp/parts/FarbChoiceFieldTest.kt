@@ -53,7 +53,7 @@ class FarbChoiceFieldTest {
     private fun fieldText() = feld().config[SemanticsProperties.EditableText].text
 
     @Test
-    fun `ohne Namen steht Unbekannte Farbe in der Schrift der uebrigen Werte`() {
+    fun `without a name Unknown color stands in the font of the other values`() {
         zeige(emptyList(), null)
         assertEquals(compose.activity.getString(R.string.parts_color_unknown), fieldText())
         assertFalse("Die Farbnummer steht im Feld: ${fieldText()}", fieldText().contains("5"))
@@ -63,13 +63,13 @@ class FarbChoiceFieldTest {
     }
 
     @Test
-    fun `mit Namen aus dem Bestand steht dieser`() {
+    fun `with a name from the stock that one stands`() {
         zeige(emptyList(), "Red")
         assertEquals("Red", fieldText())
     }
 
     @Test
-    fun `die Farbliste gewinnt gegen den Namen aus dem Bestand`() {
+    fun `the color list wins over the name from the stock`() {
         zeige(listOf(ColorView(5, "Yellow", "F2CD37")), "Gelb (alt)")
         assertEquals("Yellow", fieldText())
     }

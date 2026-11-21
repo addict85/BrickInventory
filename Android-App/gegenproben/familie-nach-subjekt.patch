@@ -1,7 +1,7 @@
 Gegenprobe: Die Familie einer Wurzel wieder aus dem O= im Subjekt statt aus der festen Liste
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: dasselbe O= im Subjekt macht noch keine Familie
+Rot: the same O= in the subject does not make a family, only the fixed list does
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

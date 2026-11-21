@@ -24,7 +24,7 @@ class PdfServiceTextsTest {
     private val satz: (Int, List<Any>) -> String = { id, args -> "t$id" + args.joinToString("") { ":$it" } }
 
     @Test
-    fun `jeder Fehler hat einen Satz, ohne Satz des Servers aus Code oder Art`() {
+    fun `every error has a sentence, without the server's sentence from code or kind`() {
         val withoutSet = listOf(
             Ergebnis.Fehler.Netz(), Ergebnis.Fehler.Zeitueberschreitung, Ergebnis.Fehler.Abgebrochen,
             Ergebnis.Fehler.LeereAntwort(), Ergebnis.Fehler.Abgewiesen(), Ergebnis.Fehler.Server(503),
@@ -39,7 +39,7 @@ class PdfServiceTextsTest {
     }
 
     @Test
-    fun `die Restzeit steht nur da, solange sie bleibt`() {
+    fun `the remaining time is shown only while it lasts`() {
         assertEquals("t${R.string.pdfexp_creating_eta}:12", progressText(PdfProgress(PdfStep.CREATED, 12), satz))
         assertEquals("t${R.string.pdfexp_almost_done}", progressText(PdfProgress(PdfStep.CREATED, 0), satz))
         assertEquals("t${R.string.pdfexp_downloading}", progressText(PdfProgress(PdfStep.DOWNLOAD), satz))

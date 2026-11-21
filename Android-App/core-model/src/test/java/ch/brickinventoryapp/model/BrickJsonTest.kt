@@ -14,26 +14,26 @@ import org.junit.Test
  * Gegenproben (mit kotlinc gegen core-model gemessen):
  *   A  in BrickJson `coerceInputValues = true` ergänzt → rot „null in einem Feld mit
  *      Standardwert ist ein Fehler“ (success wird still false)
- *   B  `ignoreUnknownKeys = true` gestrichen → rot „unbekannte Felder bleiben erlaubt“
- *   C  `encodeDefaults = true` gestrichen → rot „Vorgaben werden mitgeschrieben“
+ *   B  `ignoreUnknownKeys = true` gestrichen → rot „unknown fields stay allowed“
+ *   C  `encodeDefaults = true` gestrichen → rot „defaults are written along“
  */
 class BrickJsonTest {
 
     @Test
-    fun `null in einem Feld mit Standardwert ist ein Fehler`() {
+    fun `null in a field with a default value is an error`() {
         assertThrows(SerializationException::class.java) {
             BrickJson.decodeFromString<LagerortVorgabeResponse>("""{"success":null}""")
         }
     }
 
     @Test
-    fun `unbekannte Felder bleiben erlaubt`() {
+    fun `unknown fields stay allowed`() {
         val r = BrickJson.decodeFromString<LagerortVorgabeResponse>("""{"success":true,"neu_vom_server":1}""")
         assertEquals(true, r.success)
     }
 
     @Test
-    fun `Vorgaben werden mitgeschrieben`() {
+    fun `defaults are written along`() {
         assertEquals("""{"success":false,"vorgabe":null}""", BrickJson.encodeToString(LagerortVorgabeResponse()))
     }
 }

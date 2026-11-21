@@ -39,21 +39,21 @@ class SetCreateStreamTest {
     private fun strom(rumpf: String) = MockResponse().setHeader("Content-Type", "text/event-stream").setBody(rumpf)
 
     @Test
-    fun `die JSON-Form ist ein fertiges Anlegen, das vorhandene Set kommt als Fachwert`() {
+    fun `the JSON form is a finished creation, the existing set comes as a domain value`() {
         server.enqueue(MockResponse().setHeader("Content-Type", "application/json")
             .setBody("""{"success":true,"action":"exists","set_number":"10305-1"}"""))
         assertEquals(listOf(SetCreateStep.Fertig(SetRecorded(nummer = "10305-1", vorhanden = true))), schritte())
     }
 
     @Test
-    fun `eine Absage traegt den Satz des Servers`() {
+    fun `a refusal carries the server's sentence`() {
         server.enqueue(MockResponse().setResponseCode(409).setHeader("Content-Type", "application/json")
             .setBody("""{"success":false,"error":"Set unbekannt"}"""))
         assertEquals(listOf(SetCreateStep.Fehler("Set unbekannt")), schritte())
     }
 
     @Test
-    fun `ein done mit success false ist ein Fehler mit Satz, ein done mit Erfolg der Abschluss`() {
+    fun `a done with success false is an error with sentence, a done with success the completion`() {
         server.enqueue(strom("data: {\"step\":\"meta\",\"set\":\"Falke\"}\n\n" +
             "data: {\"step\":\"done\",\"success\":true,\"action\":\"added\",\"set_number\":\"10305-1\",\"ergaenzung\":\"ausstehend\"}\n\n"))
         server.enqueue(strom("data: {\"step\":\"done\",\"success\":false,\"error\":\"voll\"}\n\n"))
@@ -63,14 +63,14 @@ class SetCreateStreamTest {
     }
 
     @Test
-    fun `ein Ende ohne done ist ein Abbruch, kein stilles Ende`() {
+    fun `an end without done is an abort, not a silent end`() {
         server.enqueue(strom("data: {\"step\":\"meta\",\"set\":\"Falke\"}\n\ndata: {\"step\":\"image\"}\n\n"))
         assertEquals(listOf(SetCreateStep.Stammdaten("Falke"), SetCreateStep.Bild, SetCreateStep.Fehler("")),
             schritte())
     }
 
     @Test
-    fun `ohne Server ist es KeineVerbindung, damit der Ausgang einspringen darf`() {
+    fun `without a server it is KeineVerbindung, so that the outbox may step in`() {
         val umgeleitet = TestApi.umgeleitet(server)
         server.shutdown()
         val s = runBlocking {

@@ -1,7 +1,7 @@
 Gegenprobe: die Teile reichen den Kaufpreis nicht an die Zeile
 Modul: app
 Test: ch.brickinventoryapp.app.FinancePurchasePriceRowsTest
-Rot: Teile und Figuren zeigen
+Rot: parts and figures show their purchase price like the sets
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceSections.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceSections.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceSections.kt

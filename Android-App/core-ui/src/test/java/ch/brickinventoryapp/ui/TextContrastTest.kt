@@ -64,7 +64,7 @@ class TextContrastTest {
      * auch die Gebraucht-Linie.
      */
     @Test
-    fun `Diagrammschrift und Linien sind lesbar`() {
+    fun `chart text and lines are readable`() {
         val fehler = versions.flatMap { f ->
             val s = f.s; val d = f.chart
             val surfaces = listOf("surface" to s.surface, "background" to s.background,
@@ -117,7 +117,7 @@ class TextContrastTest {
 
     /** App-Leisten und Wert-Kacheln: Schrift auf ihrer Fläche wie jede andere Rolle. */
     @Test
-    fun `Leisten und Wert-Kacheln tragen lesbare Schrift`() {
+    fun `bars and value tiles carry readable text`() {
         val fehler = versions.flatMap { f ->
             val a = accent(f)
             listOf("leiste" to (a.onBar to a.leiste), "detailLeiste" to (a.onDetailBar to a.detailLeiste),
@@ -133,7 +133,7 @@ class TextContrastTest {
      * vom Inhalt weg. Gemessen als relative Luminanz; onSurface liegt bei rund 0,8.
      */
     @Test
-    fun `im Dunkeln leuchtet keine Leiste und keine Kachel`() {
+    fun `in the dark no bar and no tile glows`() {
         val fehler = versions.filter { it.name.endsWith("/dunkel") || it.name == "werkbank" }.flatMap { f ->
             val a = accent(f)
             listOf("leiste" to a.leiste, "detailLeiste" to a.detailLeiste, "markt" to a.markt, "kauf" to a.kauf)
@@ -144,7 +144,7 @@ class TextContrastTest {
 
     /** Der Marktwert ist der wichtigste Wert der Detailseite; seine Kachel hebt sich stärker ab als der Kaufpreis. */
     @Test
-    fun `die Marktwert-Kachel ist auffaelliger als die Kaufpreis-Kachel`() {
+    fun `the market value tile is more prominent than the purchase price tile`() {
         val fehler = versions.mapNotNull { f ->
             val a = accent(f)
             val markt = k(a.markt, f.s.surface); val kauf = k(a.kauf, f.s.surface)
@@ -154,7 +154,7 @@ class TextContrastTest {
     }
 
     @Test
-    fun `jede Schriftrolle erreicht 4,5 zu 1 auf ihrer Flaeche`() {
+    fun `every text role reaches 4,5 to 1 on its surface`() {
         val fehler = versions.flatMap { f ->
             textPairs(f).mapNotNull { (n, p) -> k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) } }
         }
@@ -163,7 +163,7 @@ class TextContrastTest {
 
     /** Das gewählte Ziel der Navigation ist an der Fläche seiner Anzeige erkennbar, nicht nur am Farbton. */
     @Test
-    fun `die Anzeige des gewaehlten Reiters hebt sich von Leiste und Seitenleiste ab`() {
+    fun `the indicator of the selected tab stands out from bar and side bar`() {
         val fehler = versions.flatMap { f ->
             val r = tabColors(f.s)
             listOf("leiste" to r.leiste, "seitenleiste" to f.s.surface).mapNotNull { (n, fl) ->
@@ -178,7 +178,7 @@ class TextContrastTest {
 
     /** Warnfarbe zeichnet Balken und Symbole (Monitoring, CSV-Bericht): Grafik braucht 3:1. */
     @Test
-    fun `Warnfarbe ist als Grafik auf jeder Flaeche sichtbar`() {
+    fun `warning color is visible as a graphic on every surface`() {
         val fehler = versions.flatMap { f ->
             listOf("surface" to f.s.surface, "background" to f.s.background, "surfaceContainer" to f.s.surfaceContainer)
                 .mapNotNull { (n, fl) -> k(f.status.warnung, fl).takeIf { it < Contrast.FRAME }?.let { "${f.name}.warnung/$n %.2f".format(it) } }
@@ -187,7 +187,7 @@ class TextContrastTest {
     }
 
     @Test
-    fun `Rahmen von Bedienelementen erreichen 3 zu 1`() {
+    fun `borders of controls reach 3 to 1`() {
         val fehler = versions.flatMap { f ->
             val s = f.s
             listOf("surface" to s.surface, "background" to s.background, "surfaceVariant" to s.surfaceVariant,
@@ -203,7 +203,7 @@ class TextContrastTest {
      * Noppe-Rot #D91F26 neben #B91C1C bei 0,13.
      */
     @Test
-    fun `Fehlerfarbe weicht deutlich von der Hauptfarbe ab`() {
+    fun `error color deviates clearly from the primary color`() {
         val fehler = versions.mapNotNull { f ->
             val a = f.s.primary; val b = f.s.error
             val d = kotlin.math.sqrt(((a.red - b.red) * (a.red - b.red) + (a.green - b.green) * (a.green - b.green) +

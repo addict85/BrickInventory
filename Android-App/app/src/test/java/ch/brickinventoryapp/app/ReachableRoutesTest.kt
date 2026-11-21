@@ -35,15 +35,15 @@ import org.robolectric.RobolectricTestRunner
 import android.content.Context
 
 /**
- * Jedes Ziel steht im Graphen der App, und zu jedem Ziel ohne Werte führt ein Weg.
+ * Jedes Ziel steht im Graphen der App, und a path leads to every destination without values.
  * Die Liste der Ziele kommt aus der Serialisierung der Routen jedes Bereichs, nicht
  * von Hand; der Graph ist derselbe, den der NavHost baut ([allTargets]).
  *
  * Gegenproben (nur in der CI messbar, Robolectric):
  *   ziel-nicht-registriert   composable<KontoZiel.Konto> fehlt im Graphen
- *                            → rot „jedes Ziel steht im Graphen der App“
+ *                            → rot „every destination is in the app's graph“
  *   ziel-ohne-weg            der Eintrag „CSV-Import“ fehlt auf „Mehr“
- *                            → rot „zu jedem Ziel ohne Werte führt ein Weg“
+ *                            → rot „a path leads to every destination without values“
  */
 @RunWith(RobolectricTestRunner::class)
 class ReachableRoutesTest {
@@ -71,7 +71,7 @@ class ReachableRoutesTest {
     }
 
     @Test
-    fun `jedes Ziel steht im Graphen der App`() {
+    fun `every destination is in the app's graph`() {
         lateinit var nav: NavHostController
         compose.setContent { nav = rememberNavController() }
         val graph = compose.runOnIdle {
@@ -87,7 +87,7 @@ class ReachableRoutesTest {
     }
 
     @Test
-    fun `zu jedem Ziel ohne Werte führt ein Weg`() {
+    fun `a path leads to every destination without values`() {
         val ofMore = mutableListOf<Any>()
         lateinit var leiste: List<Reiter>
         compose.setContent {

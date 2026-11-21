@@ -1,7 +1,7 @@
 Gegenprobe: „Leeren“ einer Auftragsart leert wieder sofort
 Modul: feature-management
 Test: ch.brickinventoryapp.management.BackgroundButtonsTest
-Rot: Leeren fragt erst nach
+Rot: clearing asks first and then clears the one job kind
 
 diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringHintergrund.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringHintergrund.kt
 index fea7864..b735cd3 100644

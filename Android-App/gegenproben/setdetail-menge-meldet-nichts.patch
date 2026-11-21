@@ -1,7 +1,7 @@
 Gegenprobe: Die Ablage nimmt die gewünschte Menge statt der des Servers
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.SetDetailViewModelTest
-Rot: eine geaenderte Menge steht sofort da und in der Ablage
+Rot: a changed quantity is shown immediately and in the store
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt

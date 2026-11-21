@@ -33,7 +33,7 @@ import org.robolectric.RobolectricTestRunner
  *      gemeldet …“ (kein Hinweis); in RoomExit.alle wieder entfernen → ebenda (Lesen schreibt)
  *   D  in RoomExit.lies `z.schluessel` → `""` → „ein unlesbarer Posten …“ (Schlüssel kommt nicht zurück)
  *   gegenproben/ablage-aendert-ganze-liste.patch (Offlineablage.aendere ersetzt wieder die
- *      ganze Liste) → rot „eine lokale Bearbeitung schreibt nur die betroffene Zeile“
+ *      ganze Liste) → rot „a local edit writes only the affected row“
  *   gegenproben/verworfen-nie-quittiert.patch (RoomExit.acknowledgeDiscarded löscht nichts)
  *      → rot „ein verworfener Posten bleibt in der Datenbank, bis …“
  */
@@ -49,7 +49,7 @@ class InventoryDatabaseTest {
     fun zu() = db.close()
 
     @Test
-    fun `hält die Reihenfolge und den Stand je Bereich`() = runBlocking {
+    fun `keeps the order and the state per area`() = runBlocking {
         bestand.ersetze("a", StockKind.SETS, listOf(LocalRow("2", "{}"), LocalRow("1", "{}")), 42L)
         bestand.ersetze("b", StockKind.SETS, listOf(LocalRow("9", "{}")), 7L)
         val a = bestand.observe("a", StockKind.SETS).first()
@@ -61,14 +61,14 @@ class InventoryDatabaseTest {
     }
 
     @Test
-    fun `eine lokale Änderung behält den Serverstand`() = runBlocking {
+    fun `a local change keeps the server state`() = runBlocking {
         bestand.ersetze("a", StockKind.SETS, listOf(LocalRow("1", "{}")), 42L)
         bestand.ersetze("a", StockKind.SETS, listOf(LocalRow("1", "{}"), LocalRow("2", "{}")), null)
         assertEquals(42L, bestand.lies("a", StockKind.SETS).stand)
     }
 
     @Test
-    fun `sendet der Reihe nach und zählt Versuche`() = runBlocking {
+    fun `sends in order and counts attempts`() = runBlocking {
         val ablage = Offlineablage(bestand, ausgang, { "a" })
         ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1)).map { it.alsAnsicht() })
         for (n in 1..3) ablage.buffer(Editing.SetMenge("1-1", n))
@@ -107,7 +107,7 @@ class InventoryDatabaseTest {
     }
 
     @Test
-    fun `eine lokale Bearbeitung schreibt nur die betroffene Zeile`() = runBlocking {
+    fun `a local edit writes only the affected row`() = runBlocking {
         val ablage = Offlineablage(bestand, ausgang, { "a" })
         ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1), SetItem(setNumber = "2-1", quantity = 1), SetItem(setNumber = "3-1", quantity = 1)).map { it.alsAnsicht() })
         val geschrieben = writeLog()
@@ -118,7 +118,7 @@ class InventoryDatabaseTest {
     }
 
     @Test
-    fun `ein verworfener Posten bleibt in der Datenbank, bis er quittiert ist, und Abmelden raeumt ihn`() = runBlocking {
+    fun `a discarded item stays in the database until it is acknowledged, and sign-out clears it`() = runBlocking {
         val posten = DiscardedItem("k1", "10001-1", "gibt es nicht", 404)
         ausgang.rememberDiscarded("a", posten)
         // Ein zweiter Zugang zur selben Datenbank, wie nach einem Neustart der App.
@@ -133,7 +133,7 @@ class InventoryDatabaseTest {
     }
 
     @Test
-    fun `ein unlesbarer Posten wird gemeldet, nie still gelöscht, und blockiert nicht`() = runBlocking {
+    fun `an unreadable item is reported, never silently deleted, and does not block`() = runBlocking {
         db.ausgang().addOne(ExitRow(bereich = "a", bearbeitung = "{\"type\":\"gibt_es_nicht\",\"setNumber\":\"10001-1\"}",
             erstellt = 1, schluessel = "k0"))
         ausgang.einreihen("a", Editing.SetMenge("1-1", 1), 2, "k1")

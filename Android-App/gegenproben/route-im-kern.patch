@@ -1,7 +1,7 @@
 Gegenprobe: Eine Route liegt wieder in einem Kernmodul, und ein Bereich öffnet sie direkt
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: keiner nennt fremde Routentypen
+Rot: no area depends on another area or on the app, none names foreign route types
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt
 new file mode 100644

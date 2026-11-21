@@ -1,7 +1,7 @@
 Gegenprobe: Ein geändertes Teil ändert die Ablage nicht
 Modul: feature-parts
 Test: ch.brickinventoryapp.parts.PartsViewModelTest
-Rot: ein geaendertes Teil steht in der Ablage
+Rot: a changed part is in the store without fetching the list again
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt

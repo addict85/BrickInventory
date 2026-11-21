@@ -93,7 +93,7 @@ class BrickRepositoryErrorMappingTest {
     }
 
     @Test
-    fun `Fehlerrumpf des Servers gewinnt gegen die eigene Einordnung`() = runTest {
+    fun `error body of the server wins over the own classification`() = runTest {
         // Der Server kennt seine Fälle genauer als jede Aufzählung in der App —
         // und antwortet in der Sprache des Kontos.
         server.enqueue(
@@ -110,7 +110,7 @@ class BrickRepositoryErrorMappingTest {
     }
 
     @Test
-    fun `Fehlercode ohne Rumpf wird als Serverfehler eingeordnet`() = runTest {
+    fun `error code without body is classified as server error`() = runTest {
         server.enqueue(MockResponse().setResponseCode(500).setBody(""))
         val e = fehler(repo.getMe())
         assert(e is Ergebnis.Fehler.Server && e.status == 500) { "Art war $e" }
@@ -120,7 +120,7 @@ class BrickRepositoryErrorMappingTest {
     }
 
     @Test
-    fun `401 wird als abgelaufene Sitzung gemeldet und nicht als transient`() = runTest {
+    fun `401 is reported as expired session and not as transient`() = runTest {
         // Die Unterscheidung ist der Grund für eine eigene Art: Ein
         // Wiederholen behebt einen 401 nie, und cached() darf ihn nicht mit
         // einer alten Antwort von der Platte überdecken.
@@ -131,7 +131,7 @@ class BrickRepositoryErrorMappingTest {
     }
 
     @Test
-    fun `Zeitueberschreitung ist voruebergehend`() = runTest {
+    fun `timeout is temporary`() = runTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
         val e = fehler(buildRepo(readDeadlineMs = 300).getMe())
         assert(e.transient) { "Zeitüberschreitung muss als vorübergehend gelten" }
@@ -139,7 +139,7 @@ class BrickRepositoryErrorMappingTest {
     }
 
     @Test
-    fun `abgerissene Verbindung ist ein Netzfehler und voruebergehend`() = runTest {
+    fun `dropped connection is a network error and temporary`() = runTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
         val e = fehler(repo.getMe())
         assert(e is Ergebnis.Fehler.Netz && e.transient) { "Abriss muss als vorübergehend gelten, war: $e" }
@@ -153,7 +153,7 @@ class BrickRepositoryErrorMappingTest {
      * sicherAufrufen() entfernt → rot (Netz, vorübergehend).
      */
     @Test
-    fun `eine abgelehnte http-Anfrage ist kein Netzfehler und nicht voruebergehend`() = runTest {
+    fun `a rejected http request is not a network error and not temporary`() = runTest {
         val situation = object : Zugangslage {
             override fun serverUrl() = server.url("/").toString()
             override fun token() = "geheim"
@@ -168,7 +168,7 @@ class BrickRepositoryErrorMappingTest {
     }
 
     @Test
-    fun `eine gueltige Antwort ist ein Erfolg`() = runTest {
+    fun `a valid response is a success`() = runTest {
         // Gegenprobe zu allen Fehlerfällen: Ohne sie könnte die Abbildung auch
         // dann grün sein, wenn schlicht ALLES als Fehler endet.
         server.enqueue(

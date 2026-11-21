@@ -79,7 +79,7 @@ class GalleryTest {
     )
 
     @Test
-    fun `die Galerie folgt der Quelle, auch wenn sie sich ohne Abruf aendert`() = runTest {
+    fun `the gallery follows the source, even if it changes without a fetch`() = runTest {
         val q = Quelle()
         val g = galerie(q)
         g.laden(); advanceUntilIdle()
@@ -92,7 +92,7 @@ class GalleryTest {
     }
 
     @Test
-    fun `nach einem Filterwechsel zeigt die Galerie nur die neue Quelle`() = runTest {
+    fun `after a filter change the gallery shows only the new source`() = runTest {
         val alt = MutableStateFlow(Local(listOf(set(1)), 1L))
         val neu = MutableStateFlow(Local(listOf(set(2, thema = "Star Wars")), 1L))
         val g = Galerie(scope = foreground(), quelle = { st -> if (st.galleryTheme.isBlank()) alt else neu },
@@ -107,7 +107,7 @@ class GalleryTest {
     }
 
     @Test
-    fun `die Suche wartet die Pause ab und fragt einmal mit dem letzten Text`() = runTest {
+    fun `the search waits for the pause and asks once with the last text`() = runTest {
         val q = Quelle()
         val g = galerie(q)
         g.setzeSuche("ti"); g.setzeSuche("tit")
@@ -119,7 +119,7 @@ class GalleryTest {
     }
 
     @Test
-    fun `Abmelden raeumt auf, und eine spaete Antwort kommt nicht zurueck`() = runTest {
+    fun `sign-out cleans up, and a late response does not come back`() = runTest {
         val g = galerie(Quelle())
         g.laden(); runCurrent()
         g.reset()
@@ -128,7 +128,7 @@ class GalleryTest {
     }
 
     @Test
-    fun `ein Ladefehler wird zur Fehleranzeige mit Grund`() = runTest {
+    fun `a loading error becomes the error display with a reason`() = runTest {
         val g = galerie(Quelle(Local(emptyList(), null))) { Ergebnis.Fehler.Server(504, "Zeitüberschreitung") }
         g.laden(); advanceUntilIdle()
         val st = g.state.value
@@ -137,7 +137,7 @@ class GalleryTest {
     }
 
     @Test
-    fun `ein erfolgreicher neuer Versuch raeumt den Fehler weg`() = runTest {
+    fun `a successful new attempt clears the error`() = runTest {
         var kaputt = true
         val g = galerie(Quelle()) { if (kaputt) Ergebnis.Fehler.Server(503, "Netz") else Ergebnis.Erfolg(Unit) }
         g.laden(); advanceUntilIdle()
@@ -148,7 +148,7 @@ class GalleryTest {
     }
 
     @Test
-    fun `ohne Netz bleibt die Quelle stehen, mit ihrem Stand`() = runTest {
+    fun `without network the source stays, with its state`() = runTest {
         val g = galerie(Quelle(Local(listOf(set(7)), 5L))) { Ergebnis.Fehler.Netz() }
         g.laden(); advanceUntilIdle()
         assertEquals(listOf("7-1x1"), kurz(g.state.value.sets))
@@ -157,7 +157,7 @@ class GalleryTest {
     }
 
     @Test
-    fun `eine nie geladene Quelle leert die Galerie nicht`() = runTest {
+    fun `a never loaded source does not empty the gallery`() = runTest {
         val q = Quelle(Local(listOf(set(7)), null))
         val g = galerie(q)
         g.laden(); advanceUntilIdle()
@@ -168,14 +168,14 @@ class GalleryTest {
     }
 
     @Test
-    fun `eine leere Sammlung ist kein Fehler`() {
+    fun `an empty collection is not an error`() {
         assertEquals(GalleryDisplay.LEER, galleryDisplay(GalleryUiState(), gefiltert = false))
         assertEquals(GalleryDisplay.NO_HITS, galleryDisplay(GalleryUiState(), gefiltert = true))
         assertEquals(GalleryDisplay.LOADS, galleryDisplay(GalleryUiState(abruf = Laden.Loads), gefiltert = false))
     }
 
     @Test
-    fun `geladene Sets bleiben stehen, auch wenn das Neuladen scheitert`() {
+    fun `loaded sets stay even if reloading fails`() {
         val st = GalleryUiState(sets = listOf(set(1)), abruf = Laden.Fehler(Fehlerklasse.OFFLINE, Meldung.Text("Netz")))
         assertEquals(GalleryDisplay.LISTE, galleryDisplay(st, gefiltert = false))
     }

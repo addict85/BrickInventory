@@ -1,7 +1,7 @@
 Gegenprobe: Der Filter für teilweise verdeckte Fenster wird nicht angelegt
 Modul: app
 Test: ch.brickinventoryapp.app.DevicesProtectionTest
-Rot: ein teilweise verdecktes Fenster
+Rot: a partially obscured window triggers no click in the protected area
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt

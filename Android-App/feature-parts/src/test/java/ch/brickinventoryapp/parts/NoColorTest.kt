@@ -38,7 +38,7 @@ import ch.brickinventoryapp.testing.TestDienste
  *   A  in Teilerfassung die Vorgabe `farbId = 0` → rot „ein Teil
  *      ohne Farbe geht als 9999 hinaus“ ("color_id":0)
  *   B  in PartsRepository.setPartColor den Namen auch bei KEINE_FARBE
- *      mitgeschickt → rot „keine Farbe als neue Farbe schickt keinen Namen mit“
+ *      mitgeschickt → rot „no color as a new color sends no name“
  *   C  in farbName() die Prüfung auf KEINE_FARBE entfernt → rot „9999 heisst
  *      keine Farbe, 0 bleibt Schwarz“ ([No Color/Any Color] statt keine)
  *   D  in withoutNoColor() `!= KEINE_FARBE` durch `!= 0` ersetzt → rot ebenda
@@ -73,7 +73,7 @@ class NoColorTest {
     }
 
     @Test
-    fun `ein Teil ohne Farbe geht als 9999 hinaus`() {
+    fun `a part without a color goes out as 9999`() {
         vm().addPart(Teilerfassung("3001"))
         assertTrue("Teil erfasst", paths.requestsAn("POST /api/v1/parts").isNotEmpty())
         val k = bodyTo("POST /api/v1/parts")
@@ -86,7 +86,7 @@ class NoColorTest {
     }
 
     @Test
-    fun `keine Farbe als neue Farbe schickt keinen Namen mit`() {
+    fun `no color as a new color sends no name`() {
         var neu: Int? = null
         vm().setzeTeilFarbe("3001", 5, KEINE_FARBE, "Keine Farbe", null) { neu = it }
         assertTrue("geändert", neu != null)
@@ -97,7 +97,7 @@ class NoColorTest {
     }
 
     @Test
-    fun `9999 heisst keine Farbe, 0 bleibt Schwarz`() {
+    fun `9999 means no color, 0 stays black`() {
         val liste = listOf(BrickColor(id = KEINE_FARBE, name = "[No Color/Any Color]"), BrickColor(id = 0, name = "Black", hex = "05131D"),
                            BrickColor(id = 4, name = "Red", hex = "C91A09")).map { it.alsAnsicht() }
         assertEquals(listOf(0, 4), withoutNoColor(liste).map { it.id })
@@ -108,7 +108,7 @@ class NoColorTest {
     }
 
     @Test
-    fun `ein fehlendes color_id ist keine Farbe, nicht Schwarz`() {
+    fun `a missing color_id is no color, not black`() {
         assertEquals(KEINE_FARBE, BrickJson.decodeFromString(Part.serializer(), """{"part_number":"3001"}""").colorId)
         assertEquals(KEINE_FARBE, BrickJson.decodeFromString(PartValuationItem.serializer(), """{"part_number":"3001"}""").colorId)
         assertEquals(0, BrickJson.decodeFromString(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)

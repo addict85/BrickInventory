@@ -26,7 +26,7 @@ class DeadCodeTest {
     private fun withoutXmlComments(s: String) = s.replace(Regex("<!--[\\s\\S]*?-->"), "")
 
     @Test
-    fun `jede Textressource wird benutzt`() {
+    fun `every text resource is used`() {
         val en = File(Quellen.res, "values/strings.xml").readText()
         val schluessel = Regex("""<string name="([^"]+)"""").findAll(en)
             .map { it.groupValues[1] }.toSet()
@@ -65,7 +65,7 @@ class DeadCodeTest {
     }
 
     @Test
-    fun `jede Funktion hat einen Aufrufer`() {
+    fun `every function has a caller`() {
         val dateien = Quellen.alle().associateWith { Quellen.withoutComments(it.readText()) }
         val alles = dateien.values.joinToString("\n")
         // Die Hilfen aus core-testing sind für Tests da; ihre Aufrufer stehen dort, nicht im Hauptbaum.

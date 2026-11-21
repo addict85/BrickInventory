@@ -1,7 +1,7 @@
 Gegenprobe: Pins älterer Fassungen behalten Host und Port im Namen
 Modul: core-data
 Test: ch.brickinventoryapp.data.TrustEncryptedTest
-Rot: ein Pin frueherer Fassung kommt unter einen Namen
+Rot: a pin of an earlier version goes under a name without server and keeps applying
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
 index c5ab2dd..a24cd25 100644

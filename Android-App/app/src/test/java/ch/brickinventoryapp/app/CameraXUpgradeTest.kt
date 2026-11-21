@@ -29,7 +29,7 @@ class CameraXUpgradeTest {
     private fun withAnalyse(rel: String): String = Quellen.cameraSource(rel)
 
     @Test
-    fun `CameraX steht auf einer 16-KB-tauglichen Fassung`() {
+    fun `CameraX is on a 16 KB capable version`() {
         val toml = File("../gradle/libs.versions.toml")
         assert(toml.exists()) { "gradle/libs.versions.toml nicht gefunden" }
         val m = Regex("""camerax\s*=\s*"(\d+)\.(\d+)\.(\d+)"""").find(toml.readText())
@@ -47,7 +47,7 @@ class CameraXUpgradeTest {
      * stürzt die App ab, statt nur kein Bild zu zeigen.
      */
     @Test
-    fun `der Kamera-Provider wird abgesichert geholt`() {
+    fun `the camera provider is fetched safely`() {
         for (rel in screens) {
             val src = code(withAnalyse(rel))
             val idx = src.indexOf("val provider = future.get()")
@@ -78,7 +78,7 @@ class CameraXUpgradeTest {
      * um die es beim 16-KB-Thema geht.
      */
     @Test
-    fun `die Bildanalyse bleibt auf YUV`() {
+    fun `image analysis stays on YUV`() {
         val src = code(withAnalyse("collection/ui/screens/BarcodeScannerScreen.kt"))
         assert(src.contains("OUTPUT_IMAGE_FORMAT_YUV_420_888")) {
             "Die ImageAnalysis läuft nicht mehr auf YUV_420_888. ML Kit bekommt das " +

@@ -1,7 +1,7 @@
 Gegenprobe: Jeder Fehler beim Erzeugen im StrongBox führt still zum TEE
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.StrongBoxFirstTest
-Rot: ein anderer Fehler des Keystores faellt nicht auf das TEE zurueck
+Rot: another error of the keystore does not fall back to the TEE
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StrongBoxZuerst.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StrongBoxZuerst.kt
 index d3a4df1..cb83b7b 100644

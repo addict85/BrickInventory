@@ -40,7 +40,7 @@ class AppTextsTest {
     })
 
     @Test
-    fun `der Satz des Servers hat Vorrang vor jedem eigenen`() {
+    fun `the server's sentence takes precedence over any own one`() {
         val satz = "Für dieses Datum gibt es schon einen Kaufpreis"
         assertEquals(satz, texts.meldung(Ergebnis.Fehler.Server(409, satz)))
         assertEquals("Auch bei 401", "Benutzername oder Passwort falsch",

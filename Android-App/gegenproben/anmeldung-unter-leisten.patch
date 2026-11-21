@@ -1,7 +1,7 @@
 Gegenprobe: Anmeldebildschirme ohne systemBarsPadding: Inhalt unter Status- und Gestenleiste
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginEdgeTest
-Rot: Anmelden beginnt unter der Statusleiste
+Rot: sign-in starts below the status bar and ends above the gesture bar
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt

@@ -22,7 +22,7 @@ class ManualTileTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `der mengengewichtete Kaufpreis kommt vom Server`() {
+    fun `the quantity-weighted purchase price comes from the server`() {
         // `unit_price` in der Stammzeile ist nur der ZULETZT geschriebene
         // Einzelpreis. Wer einmal fuer 2.- und einmal fuer 8.- gekauft hat,
         // saehe dort 8.- statt 5.-. Der Server rechnet es richtig
@@ -38,7 +38,7 @@ class ManualTileTest {
     // Die Wert-Kacheln wie im Set-Detail; eine grosse Preiszeile in der Marktpreis-Karte
     // wiederholte sie (lag bis hierher in PurchasePriceDisplayTest, core-data).
     @Test
-    fun `die Detailansicht zeigt Wert-Kacheln, Marktpreis und Preisverlauf, ohne grosse Preiszeile`() {
+    fun `the detail view shows value tiles, market price and price history, without a large price row`() {
         val s = code(read("parts/ui/screens/ManualItemDetailScreen.kt"))
         for (teil in listOf("WertKacheln(", "MarketPriceByCondition(", "PriceChart(")) {
             assert(s.contains(teil)) { "$teil fehlt in der Detailansicht" }

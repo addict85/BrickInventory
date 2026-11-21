@@ -53,21 +53,21 @@ import ch.brickinventoryapp.testing.TestDienste
  * leeren Liste zeigte nichts.
  *
  * Gegenprobe: in [Examples.RESPONSES] den Pfad
- * "/api/v1/wanted" vertippt → rot „jeder Hauptbildschirm bekommt Inhalt“.
+ * "/api/v1/wanted" vertippt → rot „every main screen gets content“.
  * Gegenproben: im Detailpreis avg_price 799 statt 812.5 →
- * rot „die Beispiele sind stimmig“; „chart“ aus der Wertentwicklung entfernt →
+ * rot „the samples are consistent“; „chart“ aus der Wertentwicklung entfernt →
  * ebenso rot (es blieben die Schweizer Achsentexte des Servers stehen).
  * Gegenproben: bei den Figuren wieder "name" statt
- * "fig_name" → rot „Teile und Figuren tragen echte Namen“; den Pfad
+ * "fig_name" → rot „parts and figures carry real names“; den Pfad
  * /api/v1/minifigs/stats entfernt → ebenso rot (keine Kennzahlen).
  * Gegenproben: beim Falcon jedes "wert_gesamt" entfernt → rot
  * „jede Finanzzeile trägt …“ (wert=null); im FinanceViewModel die Punkte wieder beim
  * Laden mit Locale.getDefault() übersetzt → rot „die Finanzachse wird erst beim
- * Zeichnen formatiert“ ([10/27, , 10/29]) und „die Beispiele sind stimmig“.
+ * Zeichnen formatiert“ ([10/27, , 10/29]) und „the samples are consistent“.
  * Gegenprobe: bei den Teilen wieder "quantity" statt
- * "total_quantity" → rot „die Teilekacheln ergeben die Gesamtzahl“ (82 gegen 0).
+ * "total_quantity" → rot „the parts tiles add up to the total“ (82 gegen 0).
  * Gegenprobe: beim Teil 3039 "image_local" entfernt → rot
- * „jede Kachel hat ein Beispielbild“ ([(3039, null)]).
+ * „every tile has a sample image“ ([(3039, null)]).
  * Gegenprobe: das Baumhaus aus
  * /finance/valuation entfernt → rot „jede Finanzzeile trägt …“ (2 statt 3 Zeilen).
  */
@@ -92,7 +92,7 @@ class SampleDataTest {
     private fun da(was: String, bedingung: () -> Boolean) = assertTrue(was, bedingung())
 
     @Test
-    fun `jeder Hauptbildschirm bekommt Inhalt`() {
+    fun `every main screen gets content`() {
         val galerie = world.galerie().also { it.loadSets() }
         val teile = world.teile().also { it.loadParts() }
         val figuren = world.figuren().also { it.loadMinifigs() }
@@ -111,7 +111,7 @@ class SampleDataTest {
 
     /** Die Fotos von Teilen und Figuren zeigen Namen und Kennzahlen, nicht „Name unbekannt“. */
     @Test
-    fun `Teile und Figuren tragen echte Namen`() {
+    fun `parts and figures carry real names`() {
         val teile = world.teile().also { it.loadParts() }
         val figuren = world.figuren().also { it.loadMinifigs() }
         da("Teile und Figuren") { teile.teileState.value.parts.isNotEmpty() && figuren.minifigsState.value.let {
@@ -128,7 +128,7 @@ class SampleDataTest {
      * Galerie anders kostet als im Detail, sähe aus wie ein Fehler der App.
      */
     @Test
-    fun `die Beispiele sind stimmig`() {
+    fun `the samples are consistent`() {
         val finanzen = world.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         val detail = world.setDetail()
         da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
@@ -151,7 +151,7 @@ class SampleDataTest {
      * Text in der Sprache des Ladens, zeigte ein Sprachwechsel die alte Form weiter.
      */
     @Test
-    fun `die Finanzachse wird erst beim Zeichnen formatiert`() {
+    fun `the finance axis is formatted only when drawing`() {
         val vorher = Locale.getDefault()
         Locale.setDefault(Locale.US)
         try {
@@ -173,7 +173,7 @@ class SampleDataTest {
      * Beispielbilder ohne Netz liefert. Sonst stünde überall der Platzhalter.
      */
     @Test
-    fun `jede Kachel hat ein Beispielbild`() {
+    fun `every tile has a sample image`() {
         val galerie = world.galerie().also { it.loadSets() }
         val teile = world.teile().also { it.loadParts() }
         val figuren = world.figuren().also { it.loadMinifigs() }
@@ -198,7 +198,7 @@ class SampleDataTest {
      * „82“ oben und „×1“ an jeder Kachel sah aus wie ein Rechenfehler.
      */
     @Test
-    fun `die Teilekacheln ergeben die Gesamtzahl`() {
+    fun `the parts tiles add up to the total`() {
         val teile = world.teile().also { it.loadParts() }
         da("Teile") { teile.teileState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
         val z = teile.teileState.value
@@ -210,7 +210,7 @@ class SampleDataTest {
      * Zustand und G&V, und die Zeilen ergeben zusammen die Kopfkachel.
      */
     @Test
-    fun `jede Finanzzeile trägt Preis, Kaufpreis, Zustand und G&V`() {
+    fun `every finance row carries price, purchase price, condition and P&L`() {
         val finanzen = world.finanzen().also { it.loadValuation() }
         da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
         val z = finanzen.financeState.value

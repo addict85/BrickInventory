@@ -1,7 +1,7 @@
 Gegenprobe: Ein Feature-Modul holt sich OkHttp, ein ViewModel importiert es
 Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
-Rot: Praesentation holt nichts selbst am Netz
+Rot: presentation fetches nothing from the network itself
 
 diff --git a/Android-App/feature-account/build.gradle.kts b/Android-App/feature-account/build.gradle.kts
 index cfc22fd..bcd3465 100644

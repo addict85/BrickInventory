@@ -1,7 +1,7 @@
 Gegenprobe: Serverantwort und Puffern ohne Sperre: Ein Schritt zwischen Lesen und Schreiben geht verloren
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.OfflineablageLockTest
-Rot: ein puffere waehrend einer Serverantwort geht nicht verloren
+Rot: a puffere during a server response is not lost
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 index a6f47c3..3dbaadc 100644

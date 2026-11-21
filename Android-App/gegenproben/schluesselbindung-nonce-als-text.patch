@@ -1,7 +1,7 @@
 Gegenprobe: Die Nonce des Servers geht als Text statt als ihre Bytes in die Attestation-Challenge
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.SchluesselbindungTest
-Rot: die Nonce des Servers wird zur Challenge, die ganze Kette geht zum Server
+Rot: the server's nonce becomes the challenge, the whole chain goes to the server
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt
 index 41b3d3a..198280c 100644

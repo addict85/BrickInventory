@@ -42,10 +42,10 @@ import ch.brickinventoryapp.testing.Quellen
  *      → rot „ein Gutschein-PDF bekommt keine Datei …“;
  *      gegenproben/gutschein-pdf-auf-platte.patch
  *   I  im Lader (damals PdfViewerScreen) `if (ablage == null)` durch `if (false)` ersetzt → rot
- *      „Betrachter, Abmelden und Start raeumen auf“ (Speicherweg nicht gewählt)
+ *      „viewer, sign-out and start clean up“ (Speicherweg nicht gewählt)
  * Gegenproben:
  *   J  im PdfViewerScreen den Drucken-Knopf vor `if (speicherbar)` gezogen → rot
- *      „Betrachter, Abmelden und Start raeumen auf“ (Drucken ungeschützt);
+ *      „viewer, sign-out and start clean up“ (Drucken ungeschützt);
  *      gegenproben/gutschein-drucken.patch
  *   K  in logout() die Zeile `raeumeAnleitungenAuf(` gestrichen → rot „Betrachter,
  *      Abmelden und Start raeumen auf“ (Anleitungen überleben das Abmelden)
@@ -62,7 +62,7 @@ class VoucherPdfStoreTest {
     private fun anlegen(f: File) = f.apply { parentFile!!.mkdirs(); writeText("PIN 1234") }
 
     @Test
-    fun `ein Gutschein-PDF bekommt keine Datei, eine Anleitung liegt im Zwischenspeicher`() {
+    fun `a voucher PDF gets no file, an instruction lies in the cache`() {
         assertNull(pdfAblage(cache, gutschein, showsVouchers(gutschein)))
         assertNull(pdfAblage(cache, voucherExportAddress("https://brick.example/"), true))
         assertEquals(cache, pdfAblage(cache, anleitung, showsVouchers(anleitung))?.parentFile)
@@ -70,7 +70,7 @@ class VoucherPdfStoreTest {
 
     /** Zwei Adressen mit gleichem hashCode() teilten sich sonst eine Datei. */
     @Test
-    fun `der Dateiname haengt an der ganzen Adresse, nicht an 32 Bit`() {
+    fun `the file name depends on the whole address, not on 32 bits`() {
         val x = "https://brick.example/api/v1/vouchers/Aa/pdf"
         val y = "https://brick.example/api/v1/vouchers/BB/pdf"
         assertEquals("Die Probe braucht zwei Adressen mit gleichem hashCode()", x.hashCode(), y.hashCode())
@@ -79,7 +79,7 @@ class VoucherPdfStoreTest {
     }
 
     @Test
-    fun `Gutscheine erkennt der Pfad, auch in anderer Schreibweise`() {
+    fun `the path recognizes vouchers, also in a different spelling`() {
         assertTrue(showsVouchers("https://brick.example/API/v1/Vouchers/7/pdf"))
         assertTrue(showsVouchers("https://brick.example/api/v1/%76ouchers/7/pdf"))
         assertTrue(showsVouchers("https://brick.example/brick/api//v1/vouchers/export/pdf"))
@@ -90,7 +90,7 @@ class VoucherPdfStoreTest {
 
     /** Gutschein-PDFs, die ältere Fassungen im eigenen Ordner ablegten. */
     @Test
-    fun `Abmelden und Start leeren den Ordner, Anleitungen bleiben`() {
+    fun `sign-out and start empty the folder, instructions stay`() {
         val g = anlegen(File(File(cache, PDF_CONFIDENTIAL_FOLDER), "pdfview_alt.pdf"))
         val a = anlegen(pdfAblage(cache, anleitung, false)!!)
         raeumeVertraulichePdfsAuf(cache)
@@ -100,14 +100,14 @@ class VoucherPdfStoreTest {
     }
 
     @Test
-    fun `ein Gutschein-PDF laesst sich nicht herunterladen, eine Anleitung schon`() {
+    fun `a voucher PDF cannot be downloaded, an instruction can`() {
         assertFalse(pdfMaySavedBecome(gutschein))
         assertFalse(pdfMaySavedBecome(voucherExportAddress("https://brick.example/")))
         assertTrue(pdfMaySavedBecome(anleitung))
     }
 
     @Test
-    fun `Betrachter, Abmelden und Start raeumen auf`() {
+    fun `viewer, sign-out and start clean up`() {
         val viewer = Quellen.withoutComments(Quellen.lies("finances/ui/screens/PdfViewerScreen.kt"))
         // Laden und Halten liegen seit M1 im Lader und im ViewModel.
         val lader = Quellen.withoutComments(Quellen.lies("finances/ui/pdf/AnleitungsLader.kt") + Quellen.lies("finances/ui/pdf/PdfQuelle.kt") +

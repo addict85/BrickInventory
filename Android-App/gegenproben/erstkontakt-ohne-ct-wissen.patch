@@ -1,7 +1,7 @@
 Gegenprobe: Die Frage beim Erstkontakt erfährt nie, dass das System CT prüft
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: beim Erstkontakt mit CT-Pflicht genuegt der Vergleich
+Rot: on first contact with CT requirement the comparison suffices
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

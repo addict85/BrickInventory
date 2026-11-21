@@ -31,7 +31,7 @@ class LocationOnAddTest {
     }
 
     @Test
-    fun `jeder Erfassungsweg hat ein Lagerortfeld`() {
+    fun `every adding path has a storage location field`() {
         // Fuenf Wege, fuenf Dateien. Weniger als fuenf heisst: Die Suche greift
         // nicht mehr, und die Regel waere still zufrieden.
         val routes = listOf(
@@ -75,7 +75,7 @@ class LocationOnAddTest {
      * (ErfassungsFelder), halten den Zustand aber je selbst.
      */
     @Test
-    fun `jeder Erfassungsweg startet beim vorgegebenen Lagerort`() {
+    fun `every adding path starts at the default storage location`() {
         val holder = listOf(
             Triple("collection/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("catalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
@@ -108,7 +108,7 @@ class LocationOnAddTest {
     }
 
     @Test
-    fun `der Merkposten-Dialog fragt nach dem Konto`() {
+    fun `the wishlist item dialog asks for the account`() {
         // Der Server nahm owner_user_id seit jeher an (routes/api_v1/wanted.ts),
         // und die Webapp fragte es ab (cat-m-owner) — nur dieser Dialog nicht.
         val quelle = Quellen.withoutComments(Quellen.lies("catalog/ui/screens/CatalogDetailScreen.kt"))

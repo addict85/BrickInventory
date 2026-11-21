@@ -38,7 +38,7 @@ class PriceChartMathTest {
         )
 
     @Test
-    fun `aufgefuellte Nullen vor firstRealIndex werden nicht gezeichnet`() {
+    fun `padded zeros before firstRealIndex are not drawn`() {
         // Gebraucht setzt erst am dritten Messpunkt ein.
         val chart = PreisDiagrammAnsicht(
             values = listOf(
@@ -55,7 +55,7 @@ class PriceChartMathTest {
     }
 
     @Test
-    fun `eine 0 nach firstRealIndex zaehlt ebenfalls als kein Wert`() {
+    fun `a 0 after firstRealIndex also counts as no value`() {
         // Der Server füllt nur vorne auf — eine 0 mittendrin wäre ein Preis von
         // null Franken, den es nicht gibt. Sicherheitshalber trotzdem raus.
         val chart = PreisDiagrammAnsicht(
@@ -66,7 +66,7 @@ class PriceChartMathTest {
     }
 
     @Test
-    fun `eine Reihe ganz ohne echte Werte faellt weg`() {
+    fun `a series entirely without real values is dropped`() {
         val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-01-01" to 100.0),
@@ -80,7 +80,7 @@ class PriceChartMathTest {
     }
 
     @Test
-    fun `die x-Position kommt vom Datum, nicht vom Index`() {
+    fun `the x position comes from the date, not from the index`() {
         // Zwei Reihen unterschiedlicher Länge: Der gemeinsame letzte Tag muss
         // bei beiden an derselben Stelle landen, der spätere Beginn der
         // zweiten Reihe weiter rechts.
@@ -106,7 +106,7 @@ class PriceChartMathTest {
     }
 
     @Test
-    fun `beide Reihen teilen sich eine Skala`() {
+    fun `both series share one scale`() {
         // Der interessante Vergleich ist der ABSTAND zwischen Neu und
         // Gebraucht; getrennte Skalen machen genau den unsichtbar.
         val chart = PreisDiagrammAnsicht(
@@ -124,7 +124,7 @@ class PriceChartMathTest {
     }
 
     @Test
-    fun `alle Werte gleich ergibt trotzdem eine brauchbare Spanne`() {
+    fun `all values equal still give a usable span`() {
         // Sonst wäre die Spanne 0 und die Division im Zeichencode undefiniert.
         val chart = PreisDiagrammAnsicht(
             values = listOf(series("N", 0, "2026-01-01" to 50.0, "2026-02-01" to 50.0)),
@@ -136,14 +136,14 @@ class PriceChartMathTest {
     }
 
     @Test
-    fun `leere Daten ergeben nichts zu zeichnen`() {
+    fun `empty data give nothing to draw`() {
         assertTrue(PriceChartMath.buildLines(PreisDiagrammAnsicht()).isEmpty())
         assertNull(PriceChartMath.bounds(emptyList()))
         assertNull(PriceChartMath.axisRange(PreisDiagrammAnsicht()))
     }
 
     @Test
-    fun `Datumsformat und Achsenraender`() {
+    fun `date format and axis margins`() {
         val de = Locale.forLanguageTag("de-CH")
         assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31", de))
         assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31T10:00:00Z", de))
@@ -155,7 +155,7 @@ class PriceChartMathTest {
     }
 
     @Test
-    fun `die Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch`() {
+    fun `the description names period, start, end, low and high per line`() {
         // Ungeordnet geliefert: Anfang und Ende richten sich nach dem Tag.
         val chart = PreisDiagrammAnsicht(
             values = listOf(

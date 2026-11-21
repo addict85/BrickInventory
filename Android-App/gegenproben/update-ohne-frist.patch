@@ -1,7 +1,7 @@
 Gegenprobe: Die App beachtet gueltigBis nicht (eine abgelaufene Beschreibung gilt als aktuell)
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateFreshTest
-Rot: eine abgelaufene oder fristlose Beschreibung ist nie aktuell
+Rot: an expired or deadline-less description is never current
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt

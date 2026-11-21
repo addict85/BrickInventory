@@ -12,19 +12,19 @@ import org.junit.Test
  * ein 2xx mit `success: true` als Ansicht: Kein Aufrufer prüft das Feld des Wire-Formats.
  *
  * Gegenprobe (gegenproben/absage-als-erfolg.patch): `promised` gibt immer Erfolg zurück
- * → rot „eine Absage des Servers ist ein Fehler“.
+ * → rot „a refusal of the server is an error“.
  */
 class RejectionTest {
 
     @Test
-    fun `eine Absage des Servers ist ein Fehler`() = withRepo(::testManagementRepository) { paths, admin ->
+    fun `a refusal of the server is an error`() = withRepo(::testManagementRepository) { paths, admin ->
         paths.antworten["/api/v1/admin/logs"] = """{"success":false}"""
         val r = runBlocking { admin.getLog(15) }
         assertEquals(Ergebnis.Fehler.Absage(), r)
     }
 
     @Test
-    fun `eine Zusage kommt als Ansicht`() = withRepo(::testManagementRepository) { paths, admin ->
+    fun `an acceptance comes as a view`() = withRepo(::testManagementRepository) { paths, admin ->
         paths.antworten["/api/v1/admin/logs"] =
             """{"success":true,"logs":[{"id":7,"level":"warn","message":"voll","logged_at":"2026-11-14"}]}"""
         val r = runBlocking { admin.getLog(15) }

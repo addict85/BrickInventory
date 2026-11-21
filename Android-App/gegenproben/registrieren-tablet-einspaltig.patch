@@ -1,7 +1,7 @@
 Gegenprobe: Anmeldung auch auf dem Tablet einspaltig
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginEdgeTest
-Rot: Registrieren steht auf dem Tablet ohne Rollen im Bild
+Rot: register stands in view on the tablet without scrolling
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt

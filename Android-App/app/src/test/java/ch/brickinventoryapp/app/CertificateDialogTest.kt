@@ -35,7 +35,7 @@ import java.util.Base64
  *
  * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
  *   (a) im Dialog wieder `fingerprintReadable(frage.fingerabdruck)` statt des
- *       Anfangs → rot „wer abtippt, sieht den abzutippenden Teil nicht“
+ *       Anfangs → rot „whoever types it sees no part that is to be typed“
  *       (gegenproben/zertifikat-zeigt-alles.patch)
  *   (b) `writeOff` nur für GEAENDERT → rot „ueber eine Nutzer-CA …“
  *       (gegenproben/nutzerca-ein-tipp.patch)
@@ -93,7 +93,7 @@ class CertificateDialogTest {
      * Hex. Das Feld setzt die Doppelpunkte selbst und zählt nur, was zählt.
      */
     @Test
-    fun `die Abschrift bekommt beim Tippen Doppelpunkte und einen Zaehler der Zeichen`() {
+    fun `the transcript gets colons and a character counter while typing`() {
         zeige(CertificateUnresolved.Art.UNBEKANNTE_CA)
         assertEquals("Der Zähler steht vor dem Tippen da", 1, gezeigt("0/24"))
         feld().performTextInput("3fa2b")
@@ -105,7 +105,7 @@ class CertificateDialogTest {
     }
 
     @Test
-    fun `zu kurz und falsch abgeschrieben sind verschiedene Fehler`() {
+    fun `too short and wrongly transcribed are different errors`() {
         val withoutPoints = hex.replace(":", "")
         zeige(CertificateUnresolved.Art.UNBEKANNTE_CA) { Transcript.confirmed(it, fp) }
         val button = compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen))
@@ -129,7 +129,7 @@ class CertificateDialogTest {
 
     /** Ein Tipp daneben verwarf das halb Abgetippte; Zurück gilt nur, solange nichts getippt ist. */
     @Test
-    fun `daneben tippen schliesst den Dialog nie, zurueck nur ohne Eingabe`() {
+    fun `tapping outside never closes the dialog, back only without input`() {
         assertFalse(closable("").dismissOnClickOutside)
         assertTrue(closable("").dismissOnBackPress)
         assertFalse(closable("3F:A2").dismissOnClickOutside)
@@ -139,28 +139,28 @@ class CertificateDialogTest {
     private fun gezeigt(text: String) = compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().size
 
     @Test
-    fun `wer abtippt, sieht den abzutippenden Teil nicht`() {
+    fun `whoever types it sees no part that is to be typed`() {
         zeige(CertificateUnresolved.Art.GEAENDERT, erwartet = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
         assertEquals("Die letzten 24 Zeichen stehen da", 0, gezeigt(hex.takeLast(35)))
         assertEquals("Der Anfang fehlt", 1, gezeigt(hex.take(11)))
     }
 
     @Test
-    fun `ohne bekannte CA steht nur der Anfang da`() {
+    fun `without a known CA only the beginning is shown`() {
         zeige(CertificateUnresolved.Art.UNBEKANNTE_CA)
         assertEquals(0, gezeigt(hex.takeLast(35)))
         assertEquals(1, gezeigt(hex.take(11)))
     }
 
     @Test
-    fun `beim Erstkontakt ueber eine oeffentliche CA steht der ganze Fingerabdruck da`() {
+    fun `on first contact via a public CA the whole fingerprint is shown`() {
         zeige(CertificateUnresolved.Art.ERSTKONTAKT, ct = true)
         assertEquals(1, gezeigt(hex))
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled()
     }
 
     @Test
-    fun `weicht der Server vom Code ab, gibt es nichts zu bestaetigen`() {
+    fun `if the server deviates from the code there is nothing to confirm`() {
         val laut = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         zeige(CertificateUnresolved.Art.CODE_ABWEICHUNG, erwartet = laut)
         compose.onNodeWithText(ctx.getString(R.string.zert_titel_code_abweichung)).assertExists()
@@ -172,7 +172,7 @@ class CertificateDialogTest {
     }
 
     @Test
-    fun `das Feld traegt ein kurzes Etikett, die Anleitung steht darunter`() {
+    fun `the field carries a short label, the instructions are below it`() {
         zeige(CertificateUnresolved.Art.GEAENDERT, erwartet = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
         val feld = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
         val texts = feld.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
@@ -181,7 +181,7 @@ class CertificateDialogTest {
     }
 
     @Test
-    fun `ueber eine Nutzer-CA genuegt kein Tipp, die Eingabe ist blind`() {
+    fun `via a user CA a tap is not enough, the input is blind`() {
         zeige(CertificateUnresolved.Art.NUTZER_CA)
         assertEquals(0, gezeigt(hex.takeLast(35)))
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
@@ -190,7 +190,7 @@ class CertificateDialogTest {
     }
 
     @Test
-    fun `mit CT-Pflicht steht ein neuer Serverschluessel ganz da und gilt ohne Abtippen`() {
+    fun `with CT requirement a new server key is shown in full and applies without typing`() {
         val bisher = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         var angenommen: String? = "nie"
         zeige(CertificateUnresolved.Art.SCHLUESSEL_NEU, erwartet = bisher, ct = true) { angenommen = it; true }
@@ -203,7 +203,7 @@ class CertificateDialogTest {
     }
 
     @Test
-    fun `ohne CT-Pflicht wird ein neuer Serverschluessel abgetippt, nur der Anfang steht da`() {
+    fun `without CT requirement a new server key is typed, only the beginning is shown`() {
         var angenommen: String? = null
         zeige(CertificateUnresolved.Art.SCHLUESSEL_NEU, erwartet = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") { angenommen = it; true }
         assertEquals("Das Abzutippende steht nicht da", 0, gezeigt(hex.takeLast(35)))
@@ -215,7 +215,7 @@ class CertificateDialogTest {
     }
 
     @Test
-    fun `beim Erstkontakt laesst sich stattdessen abtippen, dann steht nur der Anfang da`() {
+    fun `on first contact it can be typed instead, then only the beginning is shown`() {
         var angenommen: String? = null
         zeige(CertificateUnresolved.Art.ERSTKONTAKT, ct = true) { angenommen = it; true }
         compose.onNodeWithText(ctx.getString(R.string.zert_erstkontakt_abtippen)).performClick()
@@ -229,7 +229,7 @@ class CertificateDialogTest {
 
     /** Android 11–15: Ohne CT ginge eine fehlausgestellte Kette mit einem Tipp durch. */
     @Test
-    fun `ohne CT-Pflicht wird beim Erstkontakt abgetippt, ein Tipp genuegt nicht`() {
+    fun `without CT requirement it is typed on first contact, a tap is not enough`() {
         var angenommen: String? = null
         zeige(CertificateUnresolved.Art.ERSTKONTAKT) { angenommen = it; true }
         compose.onNodeWithText(ctx.getString(R.string.zert_text_erstkontakt_abtippen, "nas")).assertExists()

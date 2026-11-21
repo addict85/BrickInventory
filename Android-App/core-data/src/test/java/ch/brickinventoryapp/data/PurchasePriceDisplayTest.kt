@@ -20,7 +20,7 @@ class PurchasePriceDisplayTest {
     // Gegenproben: displayPurchasePrice auf maxPurchasePrice gestellt → rot „die Anzeigeregel …“;
     // gegenproben/setitem-liest-purchase-price.patch (das Feld zurück in SetItem) → rot, derselbe Test.
     @Test
-    fun `die Anzeigeregel steht im Modell und bevorzugt den Durchschnitt`() {
+    fun `the display rule is in the model and prefers the average`() {
         val set = BrickJson.decodeFromString(SetItem.serializer(),
             """{"set_number":"75192-1","avg_purchase_price":712.5,"max_purchase_price":800,"purchase_price":99}""")
         assertEquals("Der mengengewichtete Wert, nie der alte gespiegelte", 712.5, set.displayPurchasePrice!!, 1e-9)

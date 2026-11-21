@@ -1,7 +1,7 @@
 Gegenprobe: Das Kopieren für den Druck prüft den Abbruch nicht und schreibt die ganze Datei
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.CopyAbbrechbarTest
-Rot: ein Abbruch beendet das Kopieren
+Rot: an abort ends the copying after the running piece
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/KopiereAbbrechbar.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/KopiereAbbrechbar.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/KopiereAbbrechbar.kt

@@ -18,7 +18,7 @@ class DesignBeforeLoginTest {
      * auf "…/design" → rot.
      */
     @Test
-    fun `Stufe zwei - die oeffentliche Adresse wird gerufen`() {
+    fun `stage two - the public address is called`() {
         withRepo(::testAccountRepository) { paths, admin ->
             runBlocking { admin.getAppTheme() }
             assertEquals(listOf("GET /api/v1/settings/theme"), paths.requests.toList())
@@ -36,7 +36,7 @@ class CacheClearTest {
      * ManagementRepository.clearCache immer `emptyMap()` → rot.
      */
     @Test
-    fun `die App kennt die Adresse und beide Umfaenge`() = withRepo(::testManagementRepository) { paths, admin ->
+    fun `the app knows the address and both scopes`() = withRepo(::testManagementRepository) { paths, admin ->
         runBlocking {
             admin.clearCache(alles = false)
             admin.clearCache(alles = true)

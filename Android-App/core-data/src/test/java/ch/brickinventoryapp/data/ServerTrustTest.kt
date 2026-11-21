@@ -16,8 +16,8 @@ import javax.net.ssl.X509ExtendedTrustManager
  * dann wird der CA-Speicher überhaupt gelesen.
  *
  * Gegenproben:
- *   A  wahl() immer `withUser.value` → rot „ohne Einstellung gilt nur das System“
- *      und „mit Einstellung gelten die Nutzer-CAs, sofort“
+ *   A  wahl() immer `withUser.value` → rot „without the setting only the system applies“
+ *      und „with the setting the user CAs apply, immediately“
  *   B  checkClientTrusted an wahl() statt an system → rot „Client-Prüfungen
  *      bleiben beim System“
  */
@@ -51,14 +51,14 @@ class ServerTrustTest {
         runCatching { vertrauen.checkServerTrusted(emptyArray(), "RSA", null as Socket?) }.isSuccess
 
     @Test
-    fun `ohne Einstellung gilt nur das System`() {
+    fun `without the setting only the system applies`() {
         assertFalse("Ein selbst ausgestelltes Zertifikat ginge ohne Einstellung durch", serverChecked())
         assertEquals(listOf("system:server"), log)
         assertFalse("Der CA-Speicher wird ohne Bedarf nicht gelesen", gelesen)
     }
 
     @Test
-    fun `mit Einstellung gelten die Nutzer-CAs, sofort`() {
+    fun `with the setting the user CAs apply, immediately`() {
         assertFalse(serverChecked())
         erlaubt = true
         assertTrue(serverChecked())
@@ -67,7 +67,7 @@ class ServerTrustTest {
     }
 
     @Test
-    fun `Client-Pruefungen bleiben beim System`() {
+    fun `client checks stay with the system`() {
         erlaubt = true
         runCatching { vertrauen.checkClientTrusted(emptyArray(), "RSA", null as Socket?) }
         assertEquals(listOf("system:client"), log)

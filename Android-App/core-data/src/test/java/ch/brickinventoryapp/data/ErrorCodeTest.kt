@@ -26,7 +26,7 @@ import ch.brickinventoryapp.testing.TestApi
  *   A  in sicherAufrufen() `code = rumpf.code` weggelassen → rot „der Code des
  *      Servers kommt im Fehler an“
  *   B  in guthaben() wieder nach Status 429 statt nach Code verzweigt → rot
- *      „eine andere 429 bleibt ein Fehler mit Satz und Code“
+ *      „another 429 stays an error with sentence and code“
  *   C  in guthaben() den gelesenen Rumpf nicht neu übergeben → rot „eine
  *      andere 429 …“ (Code fehlt)
  * Gegenproben:
@@ -64,7 +64,7 @@ class ErrorCodeTest {
     }
 
     @Test
-    fun `der Code des Servers kommt im Fehler an`() = runTest {
+    fun `the server's code arrives in the error`() = runTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"error":"Aktuelles Passwort falsch","code":"aktuelles_passwort_falsch"}""", 400))
         val e = fehler(admin().getMe())
@@ -74,7 +74,7 @@ class ErrorCodeTest {
     }
 
     @Test
-    fun `ein Rumpf ohne verwertbaren Code ergibt keinen`() = runTest {
+    fun `a body without a usable code yields none`() = runTest {
         server.enqueue(MockResponse().setResponseCode(502).setBody("<html>Bad Gateway</html>"))
         val e = fehler(admin().getMe())
         assertNull(e.code)
@@ -86,7 +86,7 @@ class ErrorCodeTest {
     }
 
     @Test
-    fun `eine zurueckgestellte Guthabenabfrage ist eine Antwort mit Wartezeit`() = runTest {
+    fun `a deferred balance query is a response with a wait time`() = runTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"guthaben_abstand","error":"Bitte warten","grund":"abstand","wartenSek":30}""", 429))
         when (val r = gutscheine().guthaben(1)) {
@@ -99,7 +99,7 @@ class ErrorCodeTest {
     }
 
     @Test
-    fun `eine andere 429 bleibt ein Fehler mit Satz und Code`() = runTest {
+    fun `another 429 stays an error with sentence and code`() = runTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"zu_viele_anfragen","error":"Zu viele Anfragen"}""", 429))
         val e = fehler(gutscheine().guthaben(1))
@@ -108,7 +108,7 @@ class ErrorCodeTest {
     }
 
     @Test
-    fun `Upload-Sperre, Verbindungsgrenze und Seitengrenze haben je einen eigenen Satz`() {
+    fun `upload lock, connection limit and page limit each have their own sentence`() {
         val texts = listOf(Fehlercode.UPLOAD_LAEUFT, Fehlercode.ZU_VIELE_VERBINDUNGEN, Fehlercode.PDF_ZU_VIELE_SEITEN).map { errorTextToCode(it) }
         assertTrue("jeder dieser Codes hat einen Satz der App: $texts", texts.all { it != null })
         assertEquals("keine zwei teilen sich einen Satz", 3, texts.toSet().size)
@@ -117,7 +117,7 @@ class ErrorCodeTest {
     }
 
     @Test
-    fun `ein PDF über der Seitengrenze ist ein Fehler mit Satz und Code, kein halb gelesenes`() = runTest {
+    fun `a PDF above the page limit is an error with sentence and code, not a half-read one`() = runTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"pdf_zu_viele_seiten","error":"Das PDF hat 40 Seiten, höchstens 20 sind möglich."}""", 422))
         val e = fehler(gutscheine().fromPdf("karten.pdf", "application/pdf", byteArrayOf(37, 80, 68, 70)))

@@ -62,13 +62,13 @@ class ManifestCheckTest {
     }
 
     @Test
-    fun `das erwartete Manifest geht durch`() {
+    fun `the expected manifest passes`() {
         val (code, text) = pruefe(manifest(*gut))
         assertEquals(text, 0, code)
     }
 
     @Test
-    fun `eine fremde exportierte Komponente faellt auf, auch mit falscher Berechtigung`() {
+    fun `a foreign exported component stands out, even with a wrong permission`() {
         val (code, text) = pruefe(manifest(*gut, komponente("provider", "com.beispiel.Offen", true)))
         assertEquals(1, code)
         assertTrue(text, "com.beispiel.Offen" in text)
@@ -80,7 +80,7 @@ class ManifestCheckTest {
 
     /** Beide kommen aus Bibliotheken; das Manifest nimmt sie heraus. */
     @Test
-    fun `herausgenommene Bibliothekskomponenten stehen nicht in der Positivliste`() {
+    fun `removed library components are not in the allow list`() {
         for ((art, name, right) in listOf(
             Triple("receiver", "androidx.profileinstaller.ProfileInstallReceiver", "android.permission.DUMP"),
             Triple("service", "com.google.android.gms.auth.api.signin.RevocationBoundService",
@@ -92,7 +92,7 @@ class ManifestCheckTest {
     }
 
     @Test
-    fun `ein debuggable APK, Sicherung oder Klartext fallen auf`() {
+    fun `a debuggable APK, backup or cleartext stand out`() {
         val debuggable = "      A: http://schemas.android.com/apk/res/android:debuggable(0x0101000f)=true\n"
         assertEquals(1, pruefe(manifest(*gut, application = debuggable)).first)
         val klartext = "      A: http://schemas.android.com/apk/res/android:usesCleartextTraffic(0x010104ec)=true\n"
@@ -102,13 +102,13 @@ class ManifestCheckTest {
     }
 
     @Test
-    fun `ohne erkennbare Komponenten ist das Format falsch, nicht das Manifest gut`() {
+    fun `without recognizable components the format is wrong, not the manifest good`() {
         assertEquals(1, pruefe(manifest()).first)
         assertEquals(1, pruefe("irgendwas\n").first)
     }
 
     @Test
-    fun `eine Berechtigung ausserhalb der Liste oder testOnly faellt auf`() {
+    fun `a permission outside the list or testOnly stands out`() {
         val (code, text) = pruefe(manifest(*gut, rights = listOf("android.permission.INTERNET", "android.permission.READ_PHONE_STATE")))
         assertEquals(text, 1, code)
         assertTrue(text, "READ_PHONE_STATE" in text)
@@ -118,7 +118,7 @@ class ManifestCheckTest {
 
     /** ML Kit meldet über Googles datatransport Nutzungsdaten; die App nimmt dessen Backend heraus. */
     @Test
-    fun `ein Telemetrie-Backend von ML Kit faellt auf, der Dienst ohne Backend nicht`() {
+    fun `a telemetry backend of ML Kit stands out, the service without backend does not`() {
         val dienst = komponente("service", "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery", false)
         val backend = "        E: meta-data (line=6)\n" +
             "          A: http://schemas.android.com/apk/res/android:name(0x01010003)=" +

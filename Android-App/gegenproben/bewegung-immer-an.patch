@@ -1,7 +1,7 @@
 Gegenprobe: „Animationen entfernen“ wird überhört
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: reduzierte Bewegung folgt der Animator-Dauer
+Rot: reduced motion follows the system's animator duration
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt

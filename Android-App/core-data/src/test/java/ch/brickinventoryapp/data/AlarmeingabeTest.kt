@@ -20,14 +20,14 @@ import org.junit.Test
 class AlarmeingabeTest {
 
     @Test
-    fun `eine gueltige Schwelle kommt als Betrag durch`() {
+    fun `a valid threshold comes through as an amount`() {
         assert(Alarmeingabe.zahl("200") == Geld(2_000_000))
         assert(Alarmeingabe.zahl("249.90") == Geld(2_499_000))
         assert(Alarmeingabe.zahl(" 249.90 ") == Geld(2_499_000)) { "Leerzeichen sollten egal sein" }
     }
 
     @Test
-    fun `das Komma der deutschen Tastatur zaehlt als Punkt`() {
+    fun `the comma of the German keyboard counts as a point`() {
         // Ohne diese Zeile waere „249,90" keine Zahl, also ein Loeschen — der
         // Alarm verschwaende beim Eintippen.
         assert(Alarmeingabe.zahl("249,90") == Geld(2_499_000)) {
@@ -36,7 +36,7 @@ class AlarmeingabeTest {
     }
 
     @Test
-    fun `leer und halb getippt heissen loeschen`() {
+    fun `empty and half typed mean delete`() {
         // Leer ist die natuerliche Geste, einen Alarm loszuwerden. Ein halber
         // Anfang ist keine Zahl und damit dasselbe.
         for (roh in listOf("", "   ", "-", "abc", ",")) {
@@ -47,7 +47,7 @@ class AlarmeingabeTest {
     }
 
     @Test
-    fun `ein Punkt am Ende ist eine Zahl, kein Loeschen`() {
+    fun `a point at the end is a number, not a delete`() {
         // ── Was ich zuerst falsch behauptet habe ─────────────────────────
         //
         // „249." ist kein Loeschen:
@@ -63,7 +63,7 @@ class AlarmeingabeTest {
     }
 
     @Test
-    fun `null und negativ sind kein Alarm`() {
+    fun `zero and negative are no alert`() {
         // Eine Schwelle von 0 ist keine Schwelle, sondern ein Alarm, der nie
         // oder immer meldet. Der Server lehnt sie ebenfalls ab
         // (pruefeEingabe in utils/preisalarm.ts).
@@ -75,7 +75,7 @@ class AlarmeingabeTest {
     }
 
     @Test
-    fun `die Ruhezeit ist lang genug fuer einen Zwischenstand`() {
+    fun `the quiet period is long enough for an intermediate state`() {
         // Der Zwischenstand, auf den es ankommt, ist nicht „249." (das ist
         // eine gueltige Zahl, siehe oben), sondern „2" und „24": Wer „249"
         // tippen will, laeuft dort vorbei. Ohne Ruhezeit bliebe am Ende eine

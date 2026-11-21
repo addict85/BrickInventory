@@ -16,18 +16,18 @@ import org.junit.Test
  * an echten Modellen: was hinausgeht, und dass Unbekanntes die Antwort nicht verwirft.
  *
  * Gegenproben (durchgeführt, kotlinc + JUnit):
- *   A  serialize schreibt `value.name` statt `kennung` → rot „hinaus geht N und U“
+ *   A  serialize schreibt `value.name` statt `kennung` → rot „N and U go out“
  *      ("condition":"GEBRAUCHT")
  *   B  deserialize wirft bei Unbekanntem (`?: error(...)`) → rot „ein unbekannter
  *      Zustand verwirft die Antwort nicht“
- *   C  Zustand.aus ohne ignoreCase → rot „klein geschrieben gilt auch“
+ *   C  Zustand.aus ohne ignoreCase → rot „lowercase counts too“
  */
 class StateTest {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     @Test
-    fun `hinaus geht N und U`() {
+    fun `N and U go out`() {
         val text = json.encodeToString(AddSetRequest.serializer(), AddSetRequest(setNumber = "75192-1", condition = Zustand.GEBRAUCHT))
         assertTrue(text, text.contains("\"condition\":\"U\""))
         val ohne = json.encodeToString(AddSetRequest.serializer(), AddSetRequest(setNumber = "75192-1"))
@@ -37,7 +37,7 @@ class StateTest {
     }
 
     @Test
-    fun `herein kommt der Typ`() {
+    fun `the type comes in`() {
         val set = json.decodeFromString(SetItem.serializer(),
             """{"set_number":"75192-1","condition":"U","conditions":["N","U"]}""")
         assertEquals(Zustand.GEBRAUCHT, set.condition)
@@ -46,7 +46,7 @@ class StateTest {
     }
 
     @Test
-    fun `ein unbekannter Zustand verwirft die Antwort nicht`() {
+    fun `an unknown condition does not discard the response`() {
         // Wie der Server (`=== 'U' ? 'U' : 'N'`): Unbekanntes gilt als neu.
         val set = json.decodeFromString(SetItem.serializer(),
             """{"set_number":"75192-1","condition":"X","conditions":["U","?"]}""")
@@ -55,7 +55,7 @@ class StateTest {
     }
 
     @Test
-    fun `klein geschrieben gilt auch`() {
+    fun `lowercase counts too`() {
         assertEquals(Zustand.GEBRAUCHT, Zustand.aus("u"))
         assertEquals(Zustand.NEU, Zustand.aus(" n "))
         assertNull(Zustand.aus(""))
@@ -63,7 +63,7 @@ class StateTest {
     }
 
     @Test
-    fun `der Deskriptor ist ein Aufzaehlungstyp unter dem Klassennamen`() {
+    fun `the descriptor is an enumeration type under the class name`() {
         // Navigation erkennt ein Routenfeld daran als Enum und lädt die Klasse über diesen Namen.
         assertEquals(Zustand::class.java.name, StateSerializer.descriptor.serialName)
         assertEquals("ENUM", StateSerializer.descriptor.kind.toString())

@@ -1,7 +1,7 @@
 Gegenprobe: Reiterbeschriftung schrumpft wieder bis fest 7 sp
 Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
-Rot: Reiterleiste schrumpft nie unter die normale Schriftgroesse
+Rot: tab bar never shrinks below the normal font size
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt

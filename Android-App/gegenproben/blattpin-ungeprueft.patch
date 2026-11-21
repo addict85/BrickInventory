@@ -1,7 +1,7 @@
 Gegenprobe: Unter einer öffentlichen Wurzel gilt wieder jeder Serverschlüssel (zweiter Pin ungeprüft)
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: ein neuer Serverschluessel unter derselben oeffentlichen Wurzel fragt bewusst nach
+Rot: a new server key under the same public root deliberately asks
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

@@ -59,7 +59,7 @@ import ch.brickinventoryapp.model.ui.errorMessage
  *   K  im Fehlerzweig `factorNeeded` nicht gesetzt → rot „verlangt
  *      der Server den Code …“
  *   L  in saveUserDefaultCondition() die Erfolgsmeldung entfernt →
- *      rot „der Standard-Zustand meldet das Speichern“ (Zeitüberschreitung Meldung)
+ *      rot „the default condition reports the saving“ (Zeitüberschreitung Meldung)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -97,7 +97,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `eine Schwelle von null geht nicht hinaus`() {
+    fun `a threshold of zero does not go out`() {
         val vm = vm()
         vm.changeAlarmThreshold("75192-1", Zustand.NEU, Alarmrichtung.UNTER, Geld.NULL)
         assertEquals("t${R.string.alerts_bad_value}", t.meldungen.text)
@@ -105,7 +105,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `ein geaenderter Alarm laedt die Uebersicht nach`() {
+    fun `a changed alert reloads the overview`() {
         val vm = vm()
         vm.loadAlarmOverview()
         assertTrue("Übersicht", vm.alarmOverview.value.geladen)
@@ -115,7 +115,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `ein umbenannter Lagerort heisst auch an den Sets in der Ablage neu`() {
+    fun `a renamed storage location also gets the new name on the sets in the store`() {
         paths.antworten["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","storage":"Kiste"}]}"""
         paths.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Kiste"}]}"""
         runBlocking { t.sets().aktualisiereSets() }
@@ -131,7 +131,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `ein Lagerort-Fehler ohne Satz bleibt still`() {
+    fun `a storage location error without a sentence stays silent`() {
         paths.codes["/api/v1/storage/locations/3"] = 401
         val vm = vm()
         vm.deleteLocation(3)
@@ -140,7 +140,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `eine andere Waehrung gilt sofort und die Ablage holt den Bestand neu`() {
+    fun `a different currency applies immediately and the store fetches the stock again`() {
         val vm = vm()
         vm.saveSettings(Waehrung.CHF, Zustand.GEBRAUCHT)
         // Jeder Preis ändert sich: Die Ablage holt Sets, Teile und Figuren neu.
@@ -152,7 +152,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `der Standard-Zustand meldet das Speichern`() {
+    fun `the default condition reports the saving`() {
         paths.antworten["/api/v1/settings/user/default-condition"] = """{"success":true}"""
         val vm = vm()
         vm.saveUserDefaultCondition(Zustand.GEBRAUCHT)
@@ -162,7 +162,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `eine eingeloeste Einladung laedt Status und Haushaltskonten`() {
+    fun `a redeemed invitation loads status and household accounts`() {
         val vm = t.merke(HouseholdViewModel(t.sitzung, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
         assertTrue("Konten da", t.blickfeld.konten.value.householdMembers.size == 2)
@@ -174,7 +174,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `ein falsches Passwort beim Einloesen markiert das Feld`() {
+    fun `a wrong password when redeeming marks the field`() {
         paths.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"aktuelles_passwort_falsch","error":"Aktuelles Passwort falsch"}"""
         paths.codes["/api/v1/settings/household/redeem"] = 400
@@ -187,7 +187,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `bei aktivem zweitem Faktor geht dessen Code beim Einloesen mit`() {
+    fun `with an active second factor its code goes along when redeeming`() {
         paths.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
         val vm = t.merke(HouseholdViewModel(t.sitzung, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
         vm.loadHousehold()
@@ -199,7 +199,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `verlangt der Server den Code des zweiten Faktors, erscheint das Feld`() {
+    fun `if the server requires the second factor's code, the field appears`() {
         paths.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"zweiter_faktor_falsch","error":"Code falsch"}"""
         paths.codes["/api/v1/settings/household/redeem"] = 400
@@ -214,7 +214,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `nach zu vielen Fehlversuchen kommt der Satz des Servers, ohne ihn ein eigener`() {
+    fun `after too many failed attempts the server's sentence comes, without it an own one`() {
         paths.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"zu_viele_fehlversuche","error":"Bitte in 5 Min. erneut"}"""
         paths.codes["/api/v1/settings/household/redeem"] = 429

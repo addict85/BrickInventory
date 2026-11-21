@@ -1,7 +1,7 @@
 Gegenprobe: Scheitert die Kopplung mit einem anderen Server, verschluckt die App den Fehler wie einen doppelten Scan
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginViewModelTest
-Rot: scheitert die Kopplung mit einem anderen Server
+Rot: if pairing with another server fails, the error is shown and the sign-in stays
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt

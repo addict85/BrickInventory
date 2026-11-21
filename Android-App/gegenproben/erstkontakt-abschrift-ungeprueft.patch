@@ -1,7 +1,7 @@
 Gegenprobe: Beim Erstkontakt gilt auch eine falsche Abschrift
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: beim Erstkontakt darf man abtippen
+Rot: on first contact one may type, wrongly typed input does not apply
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 index 6ec1f8a..abe2ce4 100644

@@ -47,7 +47,7 @@ class PdfAndCsvFetchTest {
     }
 
     @Test
-    fun `ein Netzfehler ist vorübergehend, für jeden Abruf von Auftrag und Status`() = runBlocking {
+    fun `a network error is temporary, for every fetch of job and status`() = runBlocking {
         repeat(4) { server.enqueue(teardown()) }
         val alle = listOf(sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
         for (r in alle) {
@@ -57,7 +57,7 @@ class PdfAndCsvFetchTest {
     }
 
     @Test
-    fun `ein 401 ist eine Abweisung mit dem Satz des Servers`() = runBlocking {
+    fun `a 401 is a rejection with the server's sentence`() = runBlocking {
         repeat(4) { server.enqueue(abgewiesen()) }
         val alle = listOf(sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
         for (r in alle) {
@@ -68,7 +68,7 @@ class PdfAndCsvFetchTest {
     }
 
     @Test
-    fun `der Stand eines Auftrags kommt als Fachwert, die Nummer aus dem Modell`() = runBlocking {
+    fun `the state of a job comes as a domain value, the number from the model`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":true,"jobId":"j7"}"""))
         server.enqueue(TestApi.antwort("""{"success":true,"status":"running","etaSeconds":12,"missingImages":3}"""))
         server.enqueue(TestApi.antwort("""{"success":true,"jobId":""}"""))

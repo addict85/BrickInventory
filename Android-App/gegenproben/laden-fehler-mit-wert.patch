@@ -1,7 +1,7 @@
 Gegenprobe: datenOderNull() liefert auch ohne Daten einen Wert
 Modul: core-model
 Test: ch.brickinventoryapp.model.LoadTest
-Rot: nur Daten tragen einen Wert
+Rot: only data carries a value
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt
 index 6242ab7..5906aa2 100644

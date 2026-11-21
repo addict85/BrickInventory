@@ -36,13 +36,13 @@ class AlarmScheduleTest {
     }
 
     @Test
-    fun `einplanen meldet einen Fehler des WorkManagers, statt zu werfen`() {
+    fun `scheduling reports an error of the WorkManager instead of throwing`() {
         assertNotNull("WorkManager ohne Konfiguration und trotzdem kein Fehler?", PreisalarmWorker.einplanen(withoutApp, an = true))
         assertNotNull(PreisalarmWorker.einplanen(withoutApp, an = false))
     }
 
     @Test
-    fun `der Planer wechselt fuer WorkManager auf seinen Dispatcher`() = runBlocking {
+    fun `the scheduler switches to its dispatcher for WorkManager`() = runBlocking {
         val io = CountingDispatcher()
         val fehler = WorkManagerAlarmPlanner(withoutApp, io).einplanen(true)
         assertNotNull(fehler)

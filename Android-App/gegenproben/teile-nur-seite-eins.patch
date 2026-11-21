@@ -1,7 +1,7 @@
 Gegenprobe: Das Füllen der Ablage hört nach der ersten Seite auf
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.WithoutNetworkFilterTest
-Rot: die Teile kommen ganz in die Ablage
+Rot: the parts go into the store whole and filter there
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt

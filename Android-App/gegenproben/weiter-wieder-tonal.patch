@@ -1,7 +1,7 @@
 Gegenprobe: „Weiter“ im Einrichten wieder tonal
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginEdgeTest
-Rot: Weiter hebt sich in jedem Design
+Rot: Next stands out in every design from the card and from the disabled state
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt

@@ -1,7 +1,7 @@
 Gegenprobe: Wert-Kacheln immer zu dritt nebeneinander, wie vor H1
 Modul: core-ui-inventory
 Test: ch.brickinventoryapp.shared.ValueTilesTest
-Rot: Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent
+Rot: value tiles show four-digit amounts fully on a narrow phone at 100 percent
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 index 5b45eb7..bdb1cca 100644

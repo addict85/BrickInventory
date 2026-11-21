@@ -35,7 +35,7 @@ import java.net.UnknownHostException
  *
  * Gegenproben:
  *   A  in oeffne() die Abfrage `pdfUrl == adresse` entfernt
- *      (gegenproben/pdf-drehung-laedt-neu.patch) → rot „eine Drehung laedt nicht neu“
+ *      (gegenproben/pdf-drehung-laedt-neu.patch) → rot „a rotation does not reload“
  *   B  den Fortschritt nicht weitergereicht (`{ }` statt `{ _state.value = it }`) →
  *      rot „der Fortschritt kommt im Zustand an …“
  *   C  die Prüfung pdfInViewer() entfernt → rot „eine fremde Adresse wird nicht geladen …“
@@ -91,7 +91,7 @@ class PdfViewerViewModelTest {
     private fun vm(lader: Lader) = PdfBetrachterViewModel(lader, seitenquelle, takt)
 
     @Test
-    fun `eine Seite rendert die Seitenquelle im eigenen Prozess, nicht das ViewModel`() = runTest(takt) {
+    fun `a page renders the page source in its own process, not the ViewModel`() = runTest(takt) {
         val lader = Lader()
         val vm = vm(lader)
         vm.oeffne(INSTRUCTION, SERVER)
@@ -101,7 +101,7 @@ class PdfViewerViewModelTest {
     }
 
     @Test
-    fun `eine Drehung laedt nicht neu`() = runTest(takt) {
+    fun `a rotation does not reload`() = runTest(takt) {
         val lader = Lader()
         val vm = vm(lader)
         vm.oeffne(INSTRUCTION, SERVER)
@@ -115,7 +115,7 @@ class PdfViewerViewModelTest {
     }
 
     @Test
-    fun `der Fortschritt kommt im Zustand an, bis das PDF bereit ist`() = runTest(takt) {
+    fun `the progress arrives in the state until the PDF is ready`() = runTest(takt) {
         val brake = CompletableDeferred<Unit>()
         val lader = Lader(fortschritt = PdfLoadState.Downloading(40, 400, 1000), brake = brake)
         val vm = vm(lader)
@@ -128,7 +128,7 @@ class PdfViewerViewModelTest {
     }
 
     @Test
-    fun `eine fremde Adresse wird nicht geladen, mit der Adresse des Servers schon`() = runTest(takt) {
+    fun `a foreign address is not loaded, the server's address is`() = runTest(takt) {
         val lader = Lader()
         val vm = vm(lader)
         vm.oeffne("https://fremd.example/anleitung.pdf", SERVER)
@@ -145,7 +145,7 @@ class PdfViewerViewModelTest {
     }
 
     @Test
-    fun `ein Fehler traegt seine Klasse und die Ursache als Zusatz, ohne Ursache heisst er Download gescheitert`() =
+    fun `an error carries its class and the cause as addition, without a cause it is called download failed`() =
         runTest(takt) {
             val server = vm(Lader(fehler = DownloadFailed(503)))
             server.oeffne(INSTRUCTION, SERVER)
@@ -166,7 +166,7 @@ class PdfViewerViewModelTest {
         }
 
     @Test
-    fun `nach einem Fehler laedt Erneut versuchen dieselbe Adresse noch einmal`() = runTest(takt) {
+    fun `after an error Retry loads the same address once more`() = runTest(takt) {
         val lader = Lader(fehler = DownloadFailed(503))
         val vm = vm(lader)
         vm.oeffne(INSTRUCTION, SERVER)
@@ -188,7 +188,7 @@ class PdfViewerViewModelTest {
     }
 
     @Test
-    fun `eine Quelle, die nach dem Verlassen ankommt, wird sofort geschlossen`() {
+    fun `a source that arrives after leaving is closed immediately`() {
         val holder = PdfHolder()
         val erste = Quelle()
         assertTrue(holder.hold(erste))

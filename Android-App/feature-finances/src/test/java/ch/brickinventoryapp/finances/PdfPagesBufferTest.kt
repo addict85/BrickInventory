@@ -27,7 +27,7 @@ class PdfPagesBufferTest {
     private val dimensions = PagesDimensions(3, 2)
 
     @Test
-    fun `die Pixel des Renderers kommen unveraendert in die Seite`() {
+    fun `the renderer's pixels come into the page unchanged`() {
         val template = createBitmap(3, 2).apply { eraseColor(Color.WHITE); setPixel(1, 1, Color.RED) }
         val puffer = ByteBuffer.allocate(dimensions.bytes).also { template.copyPixelsToBuffer(it); it.rewind() }
         val seite = bitmapFromBuffer(puffer, dimensions)!!
@@ -37,7 +37,7 @@ class PdfPagesBufferTest {
     }
 
     @Test
-    fun `ein Speicher anderer Groesse ergibt keine Seite`() {
+    fun `a buffer of a different size gives no page`() {
         assertNull(bitmapFromBuffer(ByteBuffer.allocate(dimensions.bytes + 4), dimensions))
         assertNull(bitmapFromBuffer(ByteBuffer.allocate(dimensions.bytes - 4), dimensions))
     }

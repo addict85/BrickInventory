@@ -1,7 +1,7 @@
 Gegenprobe: Segmentbeschriftung wieder mit der vollen Innenbreite
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.components.SegmentChoiceTest
-Rot: das Haekchen neben der langen Beschriftung bleibt im Segment
+Rot: the check mark next to the long label stays in the segment
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
 index ce8b44b..2240e26 100644

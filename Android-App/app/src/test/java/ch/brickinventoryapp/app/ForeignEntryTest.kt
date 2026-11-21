@@ -64,14 +64,14 @@ class ForeignEntryTest {
     private val ctx get() = compose.activity
 
     @Test
-    fun `der Einstieg der Meldungen ist nicht exportiert`() {
+    fun `the entry point of the notifications is not exported`() {
         val pm = ctx.packageManager
         assertFalse(pm.getActivityInfo(ComponentName(ctx, MeldungsEinstieg::class.java), 0).exported)
         assertTrue("Der Launcher braucht MainActivity", pm.getActivityInfo(ComponentName(ctx, MainActivity::class.java), 0).exported)
     }
 
     @Test
-    fun `die eigene Meldung oeffnet ihr Set, die App bekommt keine Extras`() {
+    fun `the own notification opens its set, the app gets no extras`() {
         val inbox = Meldungseingang()
         val weiter = forwardMessage(ctx, Intent().putExtra(PreisalarmWorker.EXTRA_SET, "75192-1"), inbox)
         assertEquals(MainActivity::class.java.name, weiter.component?.className)
@@ -80,7 +80,7 @@ class ForeignEntryTest {
     }
 
     @Test
-    fun `ein ungueltiges oder fehlendes Ziel oeffnet nichts, die App startet trotzdem`() {
+    fun `an invalid or missing target opens nothing, the app starts anyway`() {
         val inbox = Meldungseingang()
         for (arrival in listOf(null, Intent(), Intent().putExtra(PreisalarmWorker.EXTRA_SET, "1/../konto"))) {
             val weiter = forwardMessage(ctx, arrival, inbox)
@@ -90,7 +90,7 @@ class ForeignEntryTest {
     }
 
     @Test
-    fun `die Rueckfrage ist vor Ueberlagerung geschuetzt und reicht das Ja weiter`() {
+    fun `the confirmation is protected against overlays and passes the yes on`() {
         var ja = 0
         var nein = 0
         compose.setContent { BrickInventoryManagerTheme { UserCaDialog(onJa = { ja++ }, onAbbrechen = { nein++ }) } }
@@ -103,7 +103,7 @@ class ForeignEntryTest {
     }
 
     @Test
-    fun `ein geschuetzter Bildschirm schuetzt die Activity nur, solange er steht`() {
+    fun `a protected screen protects the activity only while it is shown`() {
         val zeigen = androidx.compose.runtime.mutableStateOf(true)
         compose.setContent { if (zeigen.value) Ueberdeckungsschutz() }
         compose.waitForIdle()
@@ -129,7 +129,7 @@ class ForeignEntryTest {
     }
 
     @Test
-    fun `ohne Extras navigiert ein fremder Deep-Link nicht`() {
+    fun `without extras a foreign deep link does not navigate`() {
         val offen = navigation()
         assertTrue("Ohne Entfernen springt der fremde Start ins Ziel", offen.handleDeepLink(attack(offen)))
         assertEquals("konto", offen.currentDestination?.route)
@@ -141,7 +141,7 @@ class ForeignEntryTest {
     }
 
     @Test
-    fun `ein fremder Start erreicht die Activity ohne Extras und Daten`() {
+    fun `a foreign start reaches the activity without extras and data`() {
         val nav = navigation()
         val start = attack(nav).setClass(ctx, ProbeStart::class.java)
         val probe = Robolectric.buildActivity(ProbeStart::class.java, start).create()
@@ -155,7 +155,7 @@ class ForeignEntryTest {
     }
 
     @Test
-    fun `die Teileliste geht nur ueber die Auswahl des Systems hinaus`() {
+    fun `the parts list goes out only via the system's chooser`() {
         val selection = partListsSelection(ctx, "Teileliste")
         assertEquals("Ohne Auswahl bekäme die Standard-App das Inventar", Intent.ACTION_CHOOSER, selection.action)
         val ziel = IntentCompat.getParcelableExtra(selection, Intent.EXTRA_INTENT, Intent::class.java)!!

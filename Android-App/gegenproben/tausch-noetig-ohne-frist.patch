@@ -1,7 +1,7 @@
 Gegenprobe: noetigWartend() wartet ohne Frist auf den Tausch
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenSwapTest
-Rot: noetig wartet hoechstens die Frist, der Tausch laeuft weiter
+Rot: needed waits at most the deadline, the swap keeps running
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt

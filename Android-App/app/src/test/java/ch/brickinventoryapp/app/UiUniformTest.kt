@@ -95,12 +95,12 @@ import org.robolectric.Shadows.shadowOf
  *   kaufpreise-volle-breite       Kaufpreise ohne centeredUntil → rot „Kaufpreise stehen auf dem Tablet …“
  *   hintergrund-volle-breite      Hintergrundarbeiten ohne centeredUntil → rot „Hintergrundarbeiten stehen …“
  *   galerie-kachel-bei-130        Listenzeile wieder nur über largeFont() → rot „Galerie zeigt bei 130 …“
- *   jahresleiste-28dp             Spur wieder 28 dp → rot „Jahresleiste ist 48 dp breit …“
+ *   jahresleiste-28dp             Spur wieder 28 dp → rot „year bar is 48 dp wide …“
  *   jahresleiste-ohne-sprung      TalkBack-Tipp öffnet kein Menü → rot „Jahresleiste springt …“
  *   thema-wieder-blau             Thema der Kachel wieder in primary → rot „Thema und Nummern …“
  *   teil-erfassen-titel           parts_add_title wieder „Teil erfassen“ → rot „Texte sagen hinzufuegen …“
  *   galerie-ohne-filterchips      Galerie reicht keine aktiven Filter → rot „aktiver Filter steht als Chip …“
- *   figuren-nummer-unsortiert     NUMMER sortiert nicht → rot „Minifiguren lassen sich sortieren“
+ *   figuren-nummer-unsortiert     NUMMER sortiert nicht → rot „minifigures can be sorted“
  *   teil-loescht-sofort           Vormerken löscht gleich → rot „Teil loeschen bietet Rueckgaengig …“
  *   lagerort-gleich-geloescht     Vormerken löscht gleich → rot „Lagerort loeschen bietet Rueckgaengig …“
  *   kauf-loescht-sofort           Vormerken löscht gleich → rot „Kauf loeschen bietet Rueckgaengig …“
@@ -194,7 +194,7 @@ class UiUniformTest {
 
     @Test
     @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
-    fun `Kaufpreise stehen auf dem Tablet in Formularbreite`() {
+    fun `purchase prices stand in form width on the tablet`() {
         val vm = kaeufe()
         zeige { AcquisitionManagementRoute(vm, type = Postenart.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {}) }
         drive("Käufe") { compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isNotEmpty() }
@@ -204,7 +204,7 @@ class UiUniformTest {
 
     @Test
     @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
-    fun `Hintergrundarbeiten stehen auf dem Tablet in Formularbreite`() {
+    fun `background work stands in form width on the tablet`() {
         world.paths.antworten["/api/v1/admin/auftraege"] = """{"success":true,"auftraege":[],"zusammenfassung":[],"pausen":[],
             "bildbedarf":0,"job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
         val api = world.t.api
@@ -221,7 +221,7 @@ class UiUniformTest {
     // ── Grosse Schrift: Listenzeilen statt einer Kachel über die ganze Breite ──
 
     @Test
-    fun `Galerie zeigt bei 130 Prozent Listenzeilen`() {
+    fun `gallery shows list rows at 130 percent`() {
         val vm = world.galerie().also { it.loadSets(); it.loadStats() }
         drive("Galerie") { vm.galleryState.value.sets.isNotEmpty() }
         zeige(schrift = 1.3f) {
@@ -260,7 +260,7 @@ class UiUniformTest {
     }
 
     @Test
-    fun `Jahresleiste ist 48 dp breit`() {
+    fun `year bar is 48 dp wide`() {
         showCatalog()
         val track = compose.onNodeWithContentDescription(ctx.getString(R.string.catalog_jahr_springen)).fetchSemanticsNode()
         val breite = track.boundsInRoot.width / dichte
@@ -268,7 +268,7 @@ class UiUniformTest {
     }
 
     @Test
-    fun `Jahresleiste springt ueber ein Menue der Jahrgaenge`() {
+    fun `year bar jumps via a menu of the years`() {
         showCatalog()
         compose.onNodeWithContentDescription(ctx.getString(R.string.catalog_jahr_springen))
             .performSemanticsAction(SemanticsActions.OnClick)
@@ -282,7 +282,7 @@ class UiUniformTest {
     // ── Texte: „hinzufügen“ wie im Web, ein Name für den Preisvergleich ──
 
     @Test
-    fun `Texte sagen hinzufuegen und Preisvergleich`() {
+    fun `texts say add and price comparison`() {
         for (sprache in listOf("de-rCH", "en-rGB")) {
             RuntimeEnvironment.setQualifiers(sprache)
             val r = ApplicationProvider.getApplicationContext<Context>()
@@ -307,7 +307,7 @@ class UiUniformTest {
     }
 
     @Test
-    fun `Thema und Nummern stehen nicht in Primaerblau`() {
+    fun `theme and numbers are not in primary blue`() {
         zeige {
             SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars", pieces = 7541),
                 serverUrl = "", imageLoader = bilder, onClick = {})
@@ -320,7 +320,7 @@ class UiUniformTest {
     // ── Aktive Filter als Chips, Sortierung der Minifiguren ──
 
     @Test
-    fun `aktiver Filter steht als Chip unter der Suche und laesst sich entfernen`() {
+    fun `active filter stands as a chip below the search and can be removed`() {
         val vm = world.galerie().also { it.setGalleryTheme("Star Wars"); it.loadSets(); it.loadStats() }
         drive("Galerie") { vm.galleryState.value.sets.isNotEmpty() }
         zeige { GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {}) }
@@ -330,7 +330,7 @@ class UiUniformTest {
     }
 
     @Test
-    fun `Minifiguren lassen sich sortieren`() {
+    fun `minifigures can be sorted`() {
         world.paths.antworten["/api/v1/minifigs"] = """{"success":true,"figs":[
             {"fig_number":"sw0003","fig_name":"Anakin","quantity":1},
             {"fig_number":"sw0001","fig_name":"Luke","quantity":1},
@@ -352,7 +352,7 @@ class UiUniformTest {
     // ── Rückgängig nach dem Löschen ──
 
     @Test
-    fun `Teil loeschen bietet Rueckgaengig und loescht erst danach`() {
+    fun `deleting a part offers undo and deletes only afterwards`() {
         world.paths.antworten["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12}]}"""
         val vm = world.teile().also { it.loadParts() }
@@ -369,7 +369,7 @@ class UiUniformTest {
     }
 
     @Test
-    fun `Lagerort loeschen bietet Rueckgaengig und loescht erst danach`() {
+    fun `deleting a storage location offers undo and deletes only afterwards`() {
         world.paths.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"}]}"""
         val vm = einstellungen().also { it.loadOwnLocations() }
@@ -389,7 +389,7 @@ class UiUniformTest {
     }
 
     @Test
-    fun `Kauf loeschen bietet Rueckgaengig und loescht erst danach`() {
+    fun `deleting a purchase offers undo and deletes only afterwards`() {
         val vm = kaeufe()
         zeige { AcquisitionManagementRoute(vm, type = Postenart.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {}) }
         drive("Käufe") { compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isNotEmpty() }
@@ -413,7 +413,7 @@ class UiUniformTest {
         .fetchSemanticsNodes().maxOf { it.boundsInRoot.height } / dichte
 
     @Test
-    fun `Teil ohne Marktpreis sagt noch kein Preis`() {
+    fun `part without market price says no price yet`() {
         world.paths.antworten["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12,"image_local":"/beispiel/teil1.png"}]}"""
         val teile = world.teile().also { it.loadParts() }
@@ -429,7 +429,7 @@ class UiUniformTest {
 
     @Test
     @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
-    fun `Teil aus Sets hat denselben Kopf wie ein selbst erfasstes`() {
+    fun `part from sets has the same header as a self-added one`() {
         world.paths.antworten["/api/v1/parts/3001/5/sets"] = """{"success":true,
             "item":{"nummer":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","category_name":"Bricks",
                     "image_local":"/beispiel/teil1.png","total_quantity":12},

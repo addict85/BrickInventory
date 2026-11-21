@@ -1,7 +1,7 @@
 Gegenprobe: Ein Ablageschlüssel unter dem Schlüssel ohne Entsperr-Bedingung wird nicht umgeschlüsselt
 Modul: core-security
 Test: ch.brickinventoryapp.security.StoreUnlockedTest
-Rot: ein Altbestand ohne Bedingung kommt beim ersten Lesen
+Rot: a legacy stock without condition goes under the unlocked one on first read, the stores stay readable
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt

@@ -40,8 +40,8 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * GEMESSEN (506 tests completed, 3 failed):
  *
- *   NumberPadTest > wer Zahlen filtert, zeigt auch die Zahlentastatur
- *   NumberPadTest > der Preisvergleich nimmt Ziffern und Bindestrich
+ *   NumberPadTest > whoever filters numbers also shows the number pad
+ *   NumberPadTest > the price comparison takes digits and hyphen
  *   NumericInputTest   > kein Zahlenfeld steht ohne Tastaturwahl da
  *
  * Erwartet hatte ich ZWEI. Die dritte war kein Zufallstreffer, sondern der
@@ -60,11 +60,11 @@ import ch.brickinventoryapp.testing.Quellen
  * nicht bloss zu behaupten. GEMESSEN (506 tests completed, 3 failed):
  *
  *   Tastatur weg im Katalog-Detail, Filter bleibt
- *     → wer Zahlen filtert, zeigt auch die Zahlentastatur
+ *     → whoever filters numbers also shows the number pad
  *   Filter weg bei der Alarmschwelle, Tastatur bleibt
- *     → wer die Zahlentastatur zeigt, filtert auch
+ *     → whoever shows the number pad also filters
  *   ImeAction.Search → Done im Preisvergleich
- *     → der Preisvergleich nimmt Ziffern und Bindestrich
+ *     → the price comparison takes digits and hyphen
  *
  * Drei Eingriffe, drei rote Tests, jeder genau einer — und NumericInputTest
  * schweigt jetzt dazu. Damit ist die Dopplung nicht nur weggeraeumt, sondern
@@ -119,7 +119,7 @@ class NumberPadTest {
         """KeyboardType\.(Number|Decimal)\b|NumericInput\.(ganzzahl|preis)Tastatur|NumericInput\.(integer|price)Keyboard""")
 
     @Test
-    fun `wer Zahlen filtert, zeigt auch die Zahlentastatur`() {
+    fun `whoever filters numbers also shows the number pad`() {
         val fehler = mutableListOf<String>()
         var gesehen = 0
         for (datei in Quellen.alle()) {
@@ -165,7 +165,7 @@ class NumberPadTest {
      * wurde daraus ueber `?: 0.0` eine Schwelle von 0.
      */
     @Test
-    fun `wer die Zahlentastatur zeigt, filtert auch`() {
+    fun `whoever shows the number pad also filters`() {
         val fehler = mutableListOf<String>()
         var gesehen = 0
         for (datei in Quellen.alle()) {
@@ -202,13 +202,13 @@ class NumberPadTest {
      * Diese Regel sagt UNBEDINGT etwas: Dieses eine Feld IST ein Zahlenfeld,
      * weil das so entschieden ist. Das kann keine Regel
      * wissen, die Felder nur an ihrer Bauart erkennt — dieselbe Luecke, die in
-     * NumericInputTest schon „jedes Setnummernfeld nimmt Filter und Zahlenpad"
+     * NumericInputTest schon „every set number field takes filter and number pad"
      * schliesst.
      *
      * Dazu die Suchtaste, von der sonst niemand etwas sagt.
      */
     @Test
-    fun `der Preisvergleich nimmt Ziffern und Bindestrich`() {
+    fun `the price comparison takes digits and hyphen`() {
         val s = Quellen.withoutComments(Quellen.lies("collection/ui/screens/ComparisonScreen.kt"))
         assert(s.contains("NumericInput.setNumber(")) {
             "Das Suchfeld filtert nicht mehr auf Ziffern und Bindestrich."

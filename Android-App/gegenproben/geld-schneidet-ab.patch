@@ -1,7 +1,7 @@
 Gegenprobe: Geld.aus schneidet Nachkommastellen ab statt zu runden
 Modul: core-model
 Test: ch.brickinventoryapp.model.MoneyTest
-Rot: ein Betrag wird auf vier Stellen gerundet
+Rot: an amount is rounded to four places like the server's inZehntel4
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt

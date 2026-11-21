@@ -184,7 +184,7 @@ class ScreenStateTest {
             gemessen.containsMatchIn(name) || notSpeicherbar.containsMatchIn(zeile)
 
     @Test
-    fun `vom Menschen eingegebener Zustand uebersteht eine Drehung`() {
+    fun `state entered by a human survives a rotation`() {
         val missed = mutableListOf<String>()
         val exceptionUsed = mutableSetOf<String>()
         for (f in kotlinFiles()) {
@@ -216,7 +216,7 @@ class ScreenStateTest {
     }
 
     @Test
-    fun `laufender Vorgang und Rollmerker werden NICHT wiederhergestellt`() {
+    fun `running operation and scroll memory are NOT restored`() {
         val falsch = mutableListOf<String>()
         for (f in kotlinFiles()) {
             for ((zn, z) in stateRows(f)) {
@@ -239,7 +239,7 @@ class ScreenStateTest {
     }
 
     @Test
-    fun `Passwoerter und Codes werden nicht im Bundle gesichert`() {
+    fun `passwords and codes are not saved in the bundle`() {
         val gefunden = mutableListOf<String>()
         val secured = mutableListOf<String>()
         for (f in kotlinFiles()) {
@@ -255,7 +255,7 @@ class ScreenStateTest {
     }
 
     @Test
-    fun `ScrollMemory benutzt bewusst remember und bleibt dabei`() {
+    fun `ScrollMemory deliberately uses remember and sticks to it`() {
         // Nicht der Vollständigkeit halber: Diese Datei hat den Fehler schon
         // einmal gehabt. Eine spätere Sammel-Umstellung soll sie
         // nicht versehentlich mitnehmen.

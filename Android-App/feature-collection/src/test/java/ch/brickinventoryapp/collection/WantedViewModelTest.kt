@@ -53,7 +53,7 @@ import ch.brickinventoryapp.testing.TestDienste
  *      (gegenproben/merkposten-name-ohne-ablage.patch) → rot „ein geloeschter Merkposten …“
  *      (Titanic erwartet, 10294-1 bekommen; nur in der CI messbar)
  *   merkliste-laedt-nicht-beim-zeigen  (gegenproben/) observeLoadOn der Liste gestrichen
- *      → rot „Liste und Detail laden, sobald jemand sie zeigt“
+ *      → rot „list and detail load as soon as someone shows them“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WantedViewModelTest {
@@ -85,7 +85,7 @@ class WantedViewModelTest {
     }
 
     @Test
-    fun `ein geloeschter Merkposten laesst sich zurueckholen, geloescht wird erst danach`() {
+    fun `a deleted wishlist item can be restored, deleting happens only afterwards`() {
         paths.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[
             {"set_number":"10294-1","condition":"N","user_id":1,"name":"Titanic"},
             {"set_number":"10305-1","condition":"N","user_id":1,"name":"Lion Knights' Castle"}]}"""
@@ -107,7 +107,7 @@ class WantedViewModelTest {
     }
 
     @Test
-    fun `Suche, Zustand und Sortierung ueberstehen einen Prozess-Tod und reisen mit`() {
+    fun `search, condition and sorting survive a process death and travel along`() {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
         erstes.setWantedSearch("Titanic")
@@ -130,7 +130,7 @@ class WantedViewModelTest {
     }
 
     @Test
-    fun `die Suche wartet die Pause ab und filtert die Ablage mit dem letzten Text`() {
+    fun `the search waits for the pause and filters the store with the last text`() {
         paths.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[
             {"set_number":"10294-1","condition":"N","user_id":1,"name":"Titanic"},
             {"set_number":"21330-1","condition":"N","user_id":1,"name":"Tilt"}]}"""
@@ -145,7 +145,7 @@ class WantedViewModelTest {
     }
 
     @Test
-    fun `eine Uebernahme nimmt den Merkposten aus der Ablage und legt das Set dort an`() {
+    fun `a takeover removes the wishlist item from the store and creates the set there`() {
         val vm = vm()
         vm.loadWanted()
         assertTrue("Liste geladen", vm.wantedState.value.merkposten.isNotEmpty())
@@ -158,7 +158,7 @@ class WantedViewModelTest {
     }
 
     @Test
-    fun `Liste und Detail laden, sobald jemand sie zeigt`() {
+    fun `list and detail load as soon as someone shows them`() {
         val vm = vm()
         assertTrue("ohne Beobachter kein Abruf", paths.requestsAn("GET /api/v1/wanted").isEmpty())
         val liste = CoroutineScope(Dispatchers.Main).launch { vm.wantedState.collect {} }
@@ -172,7 +172,7 @@ class WantedViewModelTest {
     }
 
     @Test
-    fun `ein Preisalarm im Merkposten wird entprellt gespeichert und neu geladen`() {
+    fun `a price alert in the wishlist item is saved debounced and reloaded`() {
         val vm = vm()
         vm.loadWantedItemDetail("10294-1")
         assertTrue("Detail geladen", !vm.wantedItemDetailState.value.abruf.laedt)
@@ -193,7 +193,7 @@ class WantedViewModelTest {
     }
 
     @Test
-    fun `die Liste folgt der Ablage, auch gefiltert`() {
+    fun `the list follows the store, also filtered`() {
         val ablage = t.ablage
         val vm = vm()
         vm.loadWanted()

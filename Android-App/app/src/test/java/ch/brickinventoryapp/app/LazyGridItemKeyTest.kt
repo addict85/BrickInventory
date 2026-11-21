@@ -9,7 +9,7 @@ import ch.brickinventoryapp.testing.Quellen
 class LazyGridItemKeyTest {
 
     @Test
-    fun `kein schluessselloser Eintrag in einer verschluesselten Liste`() {
+    fun `no keyless item in a keyed list`() {
         // Untergrenze über Quellen.alle(): Fände der Dateilauf
         // nichts, bliebe die Verstossliste leer und der Test grün, ohne etwas
         // geprüft zu haben.

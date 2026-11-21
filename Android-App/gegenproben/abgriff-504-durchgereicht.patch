@@ -1,7 +1,7 @@
 Gegenprobe: ein 504 des Zwischenspeichers geht durch, statt aus der Ablage ersetzt zu werden
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewTapTest
-Rot: ein 504
+Rot: a 504 of the cache is replaced from the store
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt

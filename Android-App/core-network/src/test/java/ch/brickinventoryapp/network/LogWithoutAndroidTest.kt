@@ -21,7 +21,7 @@ import java.io.PrintStream
 class LogWithoutAndroidTest {
 
     @Test
-    fun `ohne Android landet eine Warnung auf stderr, nicht im Logcat`() {
+    fun `without Android a warning ends up on stderr, not in logcat`() {
         val vorher = System.err
         val puffer = ByteArrayOutputStream()
         System.setErr(PrintStream(puffer, true, "UTF-8"))
@@ -38,7 +38,7 @@ class LogWithoutAndroidTest {
     }
 
     @Test
-    fun `eine Android-Methode wirft im JVM-Test, statt still einen Vorgabewert zu liefern`() {
+    fun `an Android method throws in the JVM test instead of silently returning a default value`() {
         assertThrows(Throwable::class.java) { Log.i("Probe", "ohne Robolectric") }
     }
 }

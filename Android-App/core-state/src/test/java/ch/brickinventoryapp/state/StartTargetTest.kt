@@ -16,7 +16,7 @@ import org.junit.Test
 class StartTargetTest {
 
     @Test
-    fun `eine alte http-Adresse fuehrt in die Einrichtung, auch angemeldet`() {
+    fun `an old http address leads into the setup, even signed in`() {
         assertEquals(StartTarget.EINRICHTUNG, startTarget("http://nas:3000", angemeldet = true, entwicklung = false))
         assertEquals(StartTarget.EINRICHTUNG, startTarget("http://192.168.1.50:3000", angemeldet = false, entwicklung = false))
         assertEquals("Auch der Debug-Build nur zum Gerät und Emulator",
@@ -24,7 +24,7 @@ class StartTargetTest {
     }
 
     @Test
-    fun `mit https geht es wie bisher weiter`() {
+    fun `with https it continues as before`() {
         assertEquals(StartTarget.EINRICHTUNG, startTarget("", angemeldet = false, entwicklung = false))
         assertEquals(StartTarget.LOGIN, startTarget("https://brick.fritz.box", angemeldet = false, entwicklung = false))
         assertEquals(StartTarget.SAMMLUNG, startTarget("https://brick.fritz.box", angemeldet = true, entwicklung = false))

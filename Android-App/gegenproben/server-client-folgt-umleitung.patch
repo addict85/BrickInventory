@@ -1,7 +1,7 @@
 Gegenprobe: die Server-Clients folgen Umleitungen selbst, am Wächter vorbei
 Modul: core-data
 Test: ch.brickinventoryapp.data.ServerClientsTest
-Rot: kein Server-Client folgt
+Rot: no server client follows a redirect itself
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt

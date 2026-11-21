@@ -1,7 +1,7 @@
 Gegenprobe: Ein gelöschtes Set bleibt in der Ablage stehen
 Modul: feature-collection
 Test: ch.brickinventoryapp.collection.GalleryViewModelTest
-Rot: ein geloeschtes Set verschwindet aus der Ablage
+Rot: a deleted set disappears from the store, and the key figures come anew
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt

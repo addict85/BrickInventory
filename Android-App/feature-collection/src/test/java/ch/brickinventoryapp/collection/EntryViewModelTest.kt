@@ -128,7 +128,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein gescanntes Set, das schon da ist, wird geoeffnet statt erfasst`() {
+    fun `a scanned set that already exists is opened instead of added`() {
         val vm = vm()
         vm.resolveBarcode("5702016616316", Scannerherkunft.GALERIE_SUCHE)
         bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
@@ -137,7 +137,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein erfolgloser Scan oeffnet die manuelle Erfassung und raeumt die Pruefanzeige`() {
+    fun `an unsuccessful scan opens manual adding and clears the check display`() {
         paths.antworten["/api/v1/sets/barcode/0000"] = """{"success":false,"code":"barcode_kein_set","error":"Kein Set"}"""
         paths.codes["/api/v1/sets/barcode/0000"] = 404
         val vm = vm()
@@ -148,7 +148,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein Serverfehler beim Scan heisst nicht, das Set gebe es nicht`() {
+    fun `a server error during the scan does not mean the set does not exist`() {
         paths.antworten["/api/v1/sets/barcode/0001"] = """{"success":false,"code":"interner_fehler"}"""
         paths.codes["/api/v1/sets/barcode/0001"] = 500
         val vm = vm()
@@ -158,7 +158,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `das Anlegen zeigt die Schritte des Servers und meldet das neue Set`() {
+    fun `the creation shows the server's steps and reports the new set`() {
         val creator = Creator(listOf(
             SetCreateStep.Stammdaten("Falke"), SetCreateStep.Bild, SetCreateStep.FastDone,
             SetCreateStep.Fertig(SetRecorded(nummer = "75192-1", angelegt = true)),
@@ -178,7 +178,7 @@ class EntryViewModelTest {
      * entfernt → rot, gemeldet wird „hinzugefügt“ (vm_added).
      */
     @Test
-    fun `ohne Katalog meldet das Anlegen gespeichert, nicht hinzugefuegt`() {
+    fun `without a catalog the creation reports saved, not added`() {
         val vm = vm(Creator(listOf(SetCreateStep.Fertig(
             SetRecorded(nummer = "99999-1", angelegt = true, katalogOffen = true)))))
         vm.addSet(Erfassungswunsch("99999"))
@@ -187,7 +187,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein vorhandenes Set beim Anlegen oeffnet die Detailansicht und meldet nichts`() {
+    fun `an existing set during creation opens the detail view and reports nothing`() {
         val vm = vm(Creator(listOf(SetCreateStep.Fertig(SetRecorded(nummer = "75192-1", vorhanden = true)))))
         vm.addSet(Erfassungswunsch("75192-1"))
         bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
@@ -195,7 +195,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein abgebrochener Ereignisstrom ist ein Netzfehler, kein Satz des Servers`() {
+    fun `an aborted event stream is a network error, not a sentence of the server`() {
         val vm = vm(Creator(listOf(SetCreateStep.Fehler(""))))
         vm.addSet(Erfassungswunsch("75192-1"))
         bis("gemeldet") { t.meldungen.text != null }
@@ -205,7 +205,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein Scan aus der Merkliste legt einen Merkposten an und schliesst den Dialog`() {
+    fun `a scan from the wishlist creates a wishlist item and closes the dialog`() {
         val vm = vm()
         vm.resolveBarcode("5702016616316", Scannerherkunft.MERKLISTE)
         bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
@@ -227,7 +227,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein zweiter Klick auf Bestaetigen legt das Set nicht zweimal an`() {
+    fun `a second click on confirm does not create the set twice`() {
         paths.antworten["/api/v1/sets"] = """{"success":true,"action":"added","set_number":"75192-1"}"""
         paths.ausbleibend += "/api/v1/sets"
         val vm = untilToDialog()
@@ -245,7 +245,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein Fehlschlag beim Bestaetigen nennt die Setnummer und gibt den Knopf frei`() {
+    fun `a failure on confirm names the set number and releases the button`() {
         paths.codes["/api/v1/sets"] = 500
         val vm = untilToDialog()
         vm.confirmAddBarcode(Erfassungswunsch("75192-1"))
@@ -255,7 +255,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `aus der Teileliste wird nichts angelegt, nur die Nummer weitergereicht`() {
+    fun `nothing is created from the parts list, only the number is passed on`() {
         val vm = vm()
         vm.resolveBarcode("5702016616316", Scannerherkunft.TEILELISTE)
         bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
@@ -267,7 +267,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `die Texterkennung fragt den Server, zeigt das an und oeffnet ein vorhandenes Set`() {
+    fun `text recognition asks the server, shows that and opens an existing set`() {
         paths.ausbleibend += "/api/v1/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")
@@ -279,7 +279,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `ein Fehler der Vorabfrage bricht ab, statt zu raten`() {
+    fun `an error of the pre-query aborts instead of guessing`() {
         paths.codes["/api/v1/sets/exists/10294-1"] = 500
         val vm = vm()
         vm.useScannedSetNumber("10294")
@@ -290,7 +290,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `jeder erfolglose Weg fordert die manuelle Erfassung an`() {
+    fun `every unsuccessful path requests manual adding`() {
         paths.antworten["/api/v1/sets/barcode/111"] = """{"success":true,"set_number":""}"""
         paths.antworten["/api/v1/sets/exists/10294-1"] = """{"success":true,"exists":false,"set_number":"10294-1"}"""
         paths.antworten["/api/v1/catalog/sets/10294-1"] = """{"success":true}"""
@@ -312,7 +312,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `der Abbruch beendet den Abruf und nicht nur die Anzeige`() {
+    fun `the abort ends the fetch and not only the display`() {
         paths.ausbleibend += "/api/v1/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")
@@ -326,7 +326,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `das Abmelden raeumt die Pruefanzeige mit`() {
+    fun `sign-out also clears the check display`() {
         paths.ausbleibend += "/api/v1/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")

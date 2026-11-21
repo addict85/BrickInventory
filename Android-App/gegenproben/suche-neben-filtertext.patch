@@ -1,7 +1,7 @@
 Gegenprobe: Filterknopf wieder mit Text neben dem Suchfeld (wie vorher auf dem Tablet)
 Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
-Rot: Such-Platzhalter
+Rot: search placeholder of the gallery is shown in full
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt

@@ -1,7 +1,7 @@
 Gegenprobe: Suchfeld ohne contentDescription: Nach der Eingabe hat es keinen Namen mehr
 Modul: app
 Test: ch.brickinventoryapp.app.AccessibilityTest
-Rot: Suchfeld behaelt seinen Namen nach der Eingabe und bricht bei 200 Prozent um
+Rot: search field keeps its name after input and wraps at 200 percent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Suchfeld.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Suchfeld.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Suchfeld.kt

@@ -35,11 +35,11 @@ import ch.brickinventoryapp.testing.text
  *
  * Gegenproben (gegenproben/, lokal mit Attrappen gemessen):
  *   geraet-alarm-nicht-eingeplant  alarmMessages() plant nicht ein
- *                                  → rot „der Schalter speichert und plant ein“
+ *                                  → rot „the switch saves and schedules“
  *   geraet-fehler-verschluckt      der Fehler des Einplanens geht nicht in den Kanal
- *                                  → rot „ein Fehlschlag beim Einplanen wird gemeldet“
+ *                                  → rot „a failure when scheduling is reported“
  *   geraet-ablage-nicht-geleert    clearStore() leert die Vorschau-Ablage nicht
- *                                  → rot „die Vorschau-Ablage laesst sich sehen und leeren“
+ *                                  → rot „the preview store can be viewed and cleared“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DevicesSettingsViewModelTest {
@@ -86,7 +86,7 @@ class DevicesSettingsViewModelTest {
     }
 
     @Test
-    fun `der Schalter speichert und plant ein`() {
+    fun `the switch saves and schedules`() {
         vm.alarmMessages(true)
         assertEquals(true, vm.alarmMessagesAn.value)
         vm.alarmMessages(false)
@@ -96,7 +96,7 @@ class DevicesSettingsViewModelTest {
     }
 
     @Test
-    fun `ein Fehlschlag beim Einplanen wird gemeldet`() {
+    fun `a failure when scheduling is reported`() {
         planner.fehler = IllegalStateException("WorkManager fehlt")
         vm.alarmMessages(true)
         assertEquals("Der Wunsch gilt trotzdem", true, vm.alarmMessagesAn.value)
@@ -105,7 +105,7 @@ class DevicesSettingsViewModelTest {
     }
 
     @Test
-    fun `die Netze lassen sich einzeln einstellen`() {
+    fun `the networks can be set individually`() {
         assertEquals(GeraeteEinstellungenViewModel.WARM_UP_DEFAULT, vm.vorwaermen.value)
         vm.vorwaermen(VorwaermNetwork.ROAMING, true)
         vm.vorwaermen(VorwaermNetwork.WLAN, false)
@@ -114,7 +114,7 @@ class DevicesSettingsViewModelTest {
     }
 
     @Test
-    fun `die Vorschau-Ablage laesst sich sehen und leeren`() {
+    fun `the preview store can be viewed and cleared`() {
         assertTrue("Die belegte Ablage zeigt keine Bytes", vm.storeBytes.value > 0)
         vm.clearStore()
         assertEquals(0L, vm.storeBytes.value)

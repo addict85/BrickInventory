@@ -1,7 +1,7 @@
 Gegenprobe: Ein verschobener Merkposten bleibt in der Ablage beim alten Besitzer
 Modul: core-data
 Test: ch.brickinventoryapp.data.FollowUpTest
-Rot: ein verschobener und ein uebernommener Merkposten
+Rot: a moved and a taken-over wishlist item are in the store after the response
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
 index fc1caf6..69cbefe 100644

@@ -1,7 +1,7 @@
 Gegenprobe: die Vorschau-Ablage schreibt und liest wieder Klartext (Stand vor sec11 N1)
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewEncryptedTest
-Rot: ein Vorschaubild liegt nicht im Klartext
+Rot: a thumbnail does not lie in plaintext and comes back unchanged
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt

@@ -22,7 +22,7 @@ import ch.brickinventoryapp.testing.Quellen
  * `image_local`, wenn die Datei existiert.
  *
  * Gegenprobe: in CatalogSetItem.alsAnsicht `imageLocal =
- * null` → rot „Katalog-Modelle kennen image_local“.
+ * null` → rot „catalog models know image_local“.
  * Gegenprobe (lokal, liest nur Quelltext; als Patch nicht übersetzbar): in TeileKarte.kt
  * `serverUrl: String` aus der Signatur von PartTableRow bzw. ManualPartTile genommen →
  * rot „Funktion 'PartTableRow' …“ bzw. „Funktion 'ManualPartTile' …“.
@@ -40,7 +40,7 @@ class CatalogUsesLocalImagesTest {
     }
 
     @Test
-    fun `Katalog-Modelle kennen image_local`() {
+    fun `catalog models know image_local`() {
         // Gelesen wird, was der Server schickt, und es kommt in der Ansicht an.
         val item = BrickJson.decodeFromString(CatalogSetItem.serializer(),
             """{"set_number": "75192-1", "image_local": "/images/sets/75192-1.jpg"}""").alsAnsicht()
@@ -51,7 +51,7 @@ class CatalogUsesLocalImagesTest {
     }
 
     @Test
-    fun `Katalog-Bildschirme reichen das Feld durch, statt null zu erzwingen`() {
+    fun `catalog screens pass the field through instead of forcing null`() {
         val list = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
         // rememberTileImageWithFallback(...) zählt ebenfalls:
         assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
@@ -72,7 +72,7 @@ class CatalogUsesLocalImagesTest {
     }
 
     @Test
-    fun `CatalogDetailScreen deklariert und bekommt serverUrl`() {
+    fun `CatalogDetailScreen declares and receives serverUrl`() {
         // Regression: resolveFullUrl() wurde eingebaut, ohne dass die
         // Funktion serverUrl überhaupt als Parameter kannte — Compile-Fehler
         // "Unresolved reference 'serverUrl'". Jetzt in der Signatur UND am
@@ -88,7 +88,7 @@ class CatalogUsesLocalImagesTest {
     }
 
     @Test
-    fun `CatalogSetCard wird mit serverUrl aufgerufen`() {
+    fun `CatalogSetCard is called with serverUrl`() {
         // Die generische Prüfung oben deckt die SIGNATUR ab; hier zusätzlich
         // der konkrete Aufruf, der beim gemeldeten Fehler tatsächlich fehlte.
         //
@@ -114,7 +114,7 @@ class CatalogUsesLocalImagesTest {
     }
 
     @Test
-    fun `jede Funktion mit resolveThumbUrl-fullUrl-Aufruf deklariert serverUrl selbst`() {
+    fun `every function with a resolveThumbUrl-fullUrl call declares serverUrl itself`() {
         // Generische Absicherung gegen genau diese Fehlerklasse: zweimal in
         // Folge wurde resolveThumbUrl()/resolveFullUrl() in eine Funktion
         // eingebaut, ohne zu prüfen, ob SIE SELBST (nicht nur eine
@@ -160,7 +160,7 @@ class CatalogUsesLocalImagesTest {
     }
 
     @Test
-    fun `Teile, Minifiguren und Katalog benutzen denselben Rückfall wie die Galerie`() {
+    fun `parts, minifigures and catalog use the same fallback as the gallery`() {
         // Auf Nutzerwunsch auf dasselbe Muster umgestellt wie GalleryScreen.kt:
         // resolveThumbUrl() allein reicht nicht, wenn die Vorschau (noch)
         // fehlt — rememberTileImageWithFallback() wechselt bei einem

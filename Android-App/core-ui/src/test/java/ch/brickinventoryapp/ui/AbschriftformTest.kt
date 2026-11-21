@@ -18,7 +18,7 @@ import org.junit.Test
 class AbschriftformTest {
 
     @Test
-    fun `die Abschrift bekommt Doppelpunkte, der Cursor bleibt hinter demselben Zeichen`() {
+    fun `the transcript gets colons, the cursor stays behind the same character`() {
         assertEquals("3F:A2:B" to 7, pairTranscriptIn("3fa2b", 5))
         assertEquals("3F:A" to 2, pairTranscriptIn("3fa", 2))
         assertEquals("3F:A2:B" to 4, pairTranscriptIn("3F:A2B", 4))
@@ -28,7 +28,7 @@ class AbschriftformTest {
     }
 
     @Test
-    fun `gezaehlt wird ohne Doppelpunkte und Leerzeichen`() {
+    fun `counting ignores colons and spaces`() {
         assertEquals(16, transcriptChars("AB:CD:EF:01:23:45:67:89"))
         assertEquals(4, transcriptChars(" 3f a2 "))
     }

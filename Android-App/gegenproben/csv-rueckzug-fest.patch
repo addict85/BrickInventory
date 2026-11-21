@@ -1,7 +1,7 @@
 Gegenprobe: Nach einem Abriss verbindet der CSV-Strom im festen Takt neu statt mit wachsendem Abstand
 Modul: app
 Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
-Rot: ein abgerissener Strom fragt einmal nach
+Rot: a broken stream asks once and reconnects with growing delay
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt

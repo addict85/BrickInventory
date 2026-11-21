@@ -8,12 +8,12 @@ import org.junit.Test
  * Token braucht nur der Interceptor. Geprüft an der übersetzten Klasse.
  *
  * Gegenprobe: Feld `authToken`
- * wieder in AppUiState → rot „kein Feld von AppUiState traegt einen Token“.
+ * wieder in AppUiState → rot „no field of AppUiState carries a token“.
  */
 class NoTokenInStateTest {
 
     @Test
-    fun `kein Feld von AppUiState traegt einen Token`() {
+    fun `no field of AppUiState carries a token`() {
         val felder = AppUiState::class.java.declaredFields.map { it.name }
         assertEquals(emptyList<String>(), felder.filter { it.contains("token", ignoreCase = true) })
     }

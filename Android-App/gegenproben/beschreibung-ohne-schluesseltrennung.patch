@@ -1,7 +1,7 @@
 Gegenprobe: Die App nimmt die Signatur aus dem Feld des APK-Schlüssels wieder als Beschreibungssignatur
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateSignatureTest
-Rot: die Signatur des APK-Schluessels gilt nicht mehr
+Rot: the signature of the APK key no longer applies
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt

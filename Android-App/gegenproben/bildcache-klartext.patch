@@ -1,7 +1,7 @@
 Gegenprobe: der Bild-Zwischenspeicher schreibt wieder im Klartext (VerschluesseltesDateisystem reicht durch, Stand vor sec11 N1)
 Modul: core-data
 Test: ch.brickinventoryapp.data.ImageCacheTest
-Rot: der Zwischenspeicher liegt verschluesselt
+Rot: the cache lies encrypted and still delivers offline
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt

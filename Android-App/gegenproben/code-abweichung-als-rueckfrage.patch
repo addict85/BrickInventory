@@ -1,7 +1,7 @@
 Gegenprobe: Weicht der Server vom Code ab, fragt die App wie bei einem geänderten Schlüssel nach
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: ein Code mit eigener CA bricht bei einer fremden oeffentlichen Kette ab
+Rot: a code with its own CA aborts on a foreign public chain instead of asking
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

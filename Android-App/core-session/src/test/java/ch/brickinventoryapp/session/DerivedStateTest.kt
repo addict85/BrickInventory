@@ -18,13 +18,13 @@ import org.junit.Test
  * die ganze Oberfläche.
  *
  * Gegenprobe: abgeleitet() ohne distinctUntilChanged (gegenproben/abgeleitet-meldet-alles.patch)
- * → rot „ein abgeleiteter Zustand meldet nur echte Aenderungen“ ([classic, classic, classic, noppe]).
+ * → rot „a derived state reports only real changes“ ([classic, classic, classic, noppe]).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DerivedStateTest {
 
     @Test
-    fun `ein abgeleiteter Zustand meldet nur echte Aenderungen`() = runTest(UnconfinedTestDispatcher()) {
+    fun `a derived state reports only real changes`() = runTest(UnconfinedTestDispatcher()) {
         val zustand = MutableStateFlow(AppUiState())
         val design = zustand.abgeleitet { it.appTheme }
         val gesehen = mutableListOf<Design>()

@@ -28,7 +28,7 @@ class AxesRoundTest {
         x = werte.indices.map { "2026-0${it + 1}-01" })
 
     @Test
-    fun `Wertachse des Preisverlaufs steht auf runden Werten`() {
+    fun `value axis of the price history is on round values`() {
         for (series in listOf(doubleArrayOf(787.0, 801.0, 816.0), doubleArrayOf(41.9, 44.5, 39.0), doubleArrayOf(1712.4, 1650.0, 1801.0))) {
             val b = PriceChartMath.bounds(PriceChartMath.buildLines(verlauf(*series)))!!
             val ticks = PriceChartMath.yTicks(b)
@@ -44,7 +44,7 @@ class AxesRoundTest {
     }
 
     @Test
-    fun `grosse Schrift beschriftet die Wertachse kurz`() {
+    fun `large font labels the value axis briefly`() {
         val axis = listOf(ChartAxis("CHF 1'712", Geld.aus(1712.4)!!, 1.0), ChartAxis("CHF 850", Geld.aus(850.0)!!, 0.0),
             ChartAxis("CHF 12'400", Geld.aus(12_400.0)!!, 0.5))
         val de = Locale.forLanguageTag("de-CH")

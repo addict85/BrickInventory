@@ -95,7 +95,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `Filter und Ansicht ueberstehen einen Prozess-Tod und reisen mit, der Kontofilter nicht`() {
+    fun `filter and view survive a process death and travel along, the account filter does not`() {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
         erstes.setScope(ScopeFilter.View.PARTS, "own")
@@ -121,7 +121,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `Suche und Ansicht der Figuren ueberstehen einen Prozess-Tod, der Kontofilter nicht`() {
+    fun `search and view of the figures survive a process death, the account filter does not`() {
         val gemerkt = SavedStateHandle()
         val erstes = minifigsVm(gemerkt)
         erstes.setScope(ScopeFilter.View.MINIFIGS, "own")
@@ -136,7 +136,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `wer den Reiter zeigt, bekommt Liste, Farben und Filterwerte, die Figuren nur einmal`() {
+    fun `whoever shows the tab gets list, colors and filter values, the figures only once`() {
         val vm = vm()
         val fig = minifigsVm()
         val vorher = CoroutineScope(takt).launch { vm.teileState.collect {} }
@@ -157,7 +157,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `Suchtext und Lagerort erreichen auch die manuell erfassten Stuecke`() {
+    fun `search text and storage location also reach the manually added pieces`() {
         // Sonst filtert der Text die Set-Teile, und die manuellen Kacheln
         // darüber bleiben stehen.
         val vm = vm()
@@ -177,7 +177,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `der Kontofilter der Figuren reist mit Liste, Kennzahlen und manuellen Figuren`() {
+    fun `the account filter of the figures travels with list, key figures and manual figures`() {
         val vm = minifigsVm()
         vm.setScope(ScopeFilter.View.MINIFIGS, "own")
         for (pfad in listOf("GET /api/v1/minifigs?", "GET /api/v1/minifigs/stats?", "GET /api/v1/minifigs/manual?")) {
@@ -186,7 +186,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `der Kontofilter der Teile reist mit, der einer anderen Ansicht nicht`() {
+    fun `the account filter of the parts travels along, that of another view does not`() {
         val vm = vm()
         vm.setScope(ScopeFilter.View.PARTS, "own")
         assertTrue("Liste geladen", vm.teileState.value.parts.isNotEmpty())
@@ -197,7 +197,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `ein geaendertes Teil steht in der Ablage, ohne die Liste neu zu holen`() {
+    fun `a changed part is in the store without fetching the list again`() {
         paths.antworten["/api/v1/parts/manual"] = """{"success":true,"parts":[{"part_number":"3001","color_id":5,"quantity":1}]}"""
         val vm = vm()
         vm.loadParts()
@@ -211,7 +211,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `ein Fehler, den die Sitzungsschicht schon meldet, bleibt still`() {
+    fun `an error the session layer already reports stays silent`() {
         paths.codes["/api/v1/parts/3001/5"] = 401
         val vm = vm()
         vm.deletePart("3001", 5)
@@ -220,7 +220,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `der Lagerort wird entprellt gespeichert und im offenen Dialog gezeigt`() {
+    fun `the storage location is saved debounced and shown in the open dialog`() {
         val vm = vm()
         vm.openSetItem("3001", 5)
         assertTrue("Dialog geladen", !vm.setItemState.value.abruf.laedt)
@@ -236,7 +236,7 @@ class PartsViewModelTest {
     }
 
     @Test
-    fun `nach dem Abmelden ist nichts mehr da`() {
+    fun `after sign-out nothing is left`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
         vm.setPartsColorFilter(ColorPicker.Farbe("Red"))

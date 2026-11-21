@@ -342,19 +342,19 @@ class WrapGuardTest {
         }
     }
 
-    @Test fun `Preisalarme bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = preisalarme(1f)
-    @Test fun `Preisalarme bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = preisalarme(2f)
-    @Test fun `Sammlung bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = galerie(1f)
-    @Test fun `Sammlung bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = galerie(2f)
-    @Test fun `Set-Detail bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = setDetail(1f)
-    @Test fun `Set-Detail bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = setDetail(2f)
-    @Test fun `Katalog-Detail bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = catalogDetail(1f)
-    @Test fun `Katalog-Detail bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = catalogDetail(2f)
-    @Test fun `Anmeldung bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = anmeldung(1f)
-    @Test fun `Anmeldung bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = anmeldung(2f)
-    @Test fun `Set-Detail schmal bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = setDetailNarrow(1f)
-    @Test fun `Set-Detail schmal bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = setDetailNarrow(2f)
-    @Test fun `Hintergrundarbeiten bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = hintergrundarbeiten(1f)
+    @Test fun `price alerts at 100 percent without character wrapping and truncation`() = preisalarme(1f)
+    @Test fun `price alerts at 200 percent without character wrapping and truncation`() = preisalarme(2f)
+    @Test fun `collection at 100 percent without character wrapping and truncation`() = galerie(1f)
+    @Test fun `collection at 200 percent without character wrapping and truncation`() = galerie(2f)
+    @Test fun `set detail at 100 percent without character wrapping and truncation`() = setDetail(1f)
+    @Test fun `set detail at 200 percent without character wrapping and truncation`() = setDetail(2f)
+    @Test fun `catalog detail at 100 percent without character wrapping and truncation`() = catalogDetail(1f)
+    @Test fun `catalog detail at 200 percent without character wrapping and truncation`() = catalogDetail(2f)
+    @Test fun `sign-in at 100 percent without character wrapping and truncation`() = anmeldung(1f)
+    @Test fun `sign-in at 200 percent without character wrapping and truncation`() = anmeldung(2f)
+    @Test fun `narrow set detail at 100 percent without character wrapping and truncation`() = setDetailNarrow(1f)
+    @Test fun `narrow set detail at 200 percent without character wrapping and truncation`() = setDetailNarrow(2f)
+    @Test fun `background work at 100 percent without character wrapping and truncation`() = hintergrundarbeiten(1f)
 
     private companion object {
         /** Etwa drei schmale Zeichen: Ein Zeichen pro Zeile ist schmaler, „Neu“ breiter. */

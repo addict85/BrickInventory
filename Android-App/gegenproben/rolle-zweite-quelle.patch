@@ -1,7 +1,7 @@
 Gegenprobe: Die Galerie hält ihre Rollstelle wieder selbst (rememberLazyGridState)
 Modul: app
 Test: ch.brickinventoryapp.app.ListScrollPositionTest
-Rot: die Rollstelle haelt allein der ScrollMemory
+Rot: only the ScrollMemory holds the scroll position
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/SammlungGraph.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/SammlungGraph.kt
 index 1f46383..44c9b16 100644

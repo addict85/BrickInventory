@@ -1,7 +1,7 @@
 Gegenprobe: die Leiste unten wieder ohne Rand
 Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
-Rot: die Leiste haelt bei 200 Prozent Abstand zum Bildschirmrand
+Rot: the bar keeps distance to the screen edge at 200 percent
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 index 1f2b49e..2b7bdf8 100644

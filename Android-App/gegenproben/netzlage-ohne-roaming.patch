@@ -1,7 +1,7 @@
 Gegenprobe: Roaming wird nie erkannt
 Modul: core-data
 Test: ch.brickinventoryapp.data.PreviewDeviceTest
-Rot: im Ausland
+Rot: abroad mobile is roaming
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt

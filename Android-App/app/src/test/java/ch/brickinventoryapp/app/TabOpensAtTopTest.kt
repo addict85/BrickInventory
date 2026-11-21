@@ -86,7 +86,7 @@ class TabOpensAtTopTest {
     }
 
     @Test
-    fun `die untere Leiste meldet den Reiter, bevor sie navigiert`() {
+    fun `the bottom bar reports the tab before it navigates`() {
         zeige()
         compose.onNodeWithText("Finanzen").performClick()
         compose.waitForIdle()
@@ -95,7 +95,7 @@ class TabOpensAtTopTest {
     }
 
     @Test
-    fun `der Sammlungs-Umschalter meldet den Reiter, bevor er navigiert`() {
+    fun `the collection switcher reports the tab before it navigates`() {
         zeige()
         compose.onNodeWithText(ctx.getString(R.string.nav_parts)).performClick()
         compose.waitForIdle()
@@ -104,7 +104,7 @@ class TabOpensAtTopTest {
     }
 
     @Test
-    fun `kein Reiter-Ziel baut das Geruest selbst`() {
+    fun `no tab destination builds the scaffold itself`() {
         // Struktur: ReiterGeruest setzt den Rückruf einmal; ein Ziel, das MainScaffold
         // selbst baut, müsste ihn wieder von Hand durchreichen.
         val targets = Quellen.unter("nav")

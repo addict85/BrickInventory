@@ -39,7 +39,7 @@ private fun <T> withServer(block: (PfadServer) -> T): T {
 class PartsFilterTest {
 
     @Test
-    fun `die App ruft beide Filterlisten mit dem Blickfeld`() = withServer { paths ->
+    fun `the app calls both filter lists with the view`() = withServer { paths ->
         // Beide mit `accounts`: Sonst zaehlten sie im Haushalt anders als die
         // Liste darunter — genau der Fehler, den der Server dabei hatte.
         val teile = testPartsRepository(TestApi.fuer(paths.server))
@@ -58,7 +58,7 @@ class PartsFilterTest {
 class CsvAbortTest {
 
     @Test
-    fun `die App ruft die Abbruch-Adresse`() = withServer { paths ->
+    fun `the app calls the abort address`() = withServer { paths ->
         runBlocking { testSetFilesRepository(TestApi.fuer(paths.server)).cancelCsvImport() }
         assertEquals(listOf("POST /api/v1/sets/import/csv/cancel"), paths.requests.toList())
     }

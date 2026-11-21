@@ -1,7 +1,7 @@
 Gegenprobe: Das Lesen des Tokens zählt auch bei gesperrtem Gerät jeden Versuch und gibt nach zehn Minuten auf
 Modul: core-security
 Test: ch.brickinventoryapp.security.VaultLockTest
-Rot: bei gesperrtem Geraet wartet das Lesen
+Rot: with a locked device reading waits without a deadline and reports the token after unlocking
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt

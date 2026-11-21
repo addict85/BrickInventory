@@ -38,7 +38,7 @@ class InstallationsSessionTest {
     private val app = ApplicationProvider.getApplicationContext<Application>()
 
     @Test
-    fun `das APK geht in eine Sitzung fuer das eigene Paket, kein Intent nach aussen`() {
+    fun `the APK goes into a session for the own package, no intent to the outside`() {
         val apk = File(app.cacheDir, "probe.apk").apply { writeBytes(ByteArray(64) { it.toByte() }) }
         install(app, apk)
         val sitzung = app.packageManager.packageInstaller.allSessions.single()
@@ -68,7 +68,7 @@ class InstallationsSessionTest {
         .putExtra(Intent.EXTRA_INTENT, dialog))
 
     @Test
-    fun `verlangt das System eine Bestaetigung, oeffnet der Empfaenger seinen Dialog`() {
+    fun `if the system requires a confirmation, the receiver opens its dialog`() {
         val system = installer("com.android.packageinstaller", system = true)
         reportConfirmation(Intent(INSTALLATION_CONFIRM).setPackage(system.packageName))
         val gestartet = shadowOf(app).nextStartedActivity
@@ -78,7 +78,7 @@ class InstallationsSessionTest {
     }
 
     @Test
-    fun `eine Bestaetigung, die nicht zum System-Installer fuehrt, startet nichts`() {
+    fun `a confirmation that does not lead to the system installer starts nothing`() {
         installer("com.android.packageinstaller", system = true)
         val fremd = installer("com.example.falscherinstaller", system = false)
         Installationsmeldung.fehler.value = null
@@ -89,7 +89,7 @@ class InstallationsSessionTest {
     }
 
     @Test
-    fun `eine Bestaetigung mit Uri-Rechten startet auch den System-Installer nicht`() {
+    fun `a confirmation with Uri rights does not start the system installer either`() {
         val system = installer("com.android.packageinstaller", system = true)
         reportConfirmation(Intent(INSTALLATION_CONFIRM).setPackage(system.packageName)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
@@ -97,7 +97,7 @@ class InstallationsSessionTest {
     }
 
     @Test
-    fun `ein Fehlschlag wird gemeldet`() {
+    fun `a failure is reported`() {
         Installationsmeldung.fehler.value = null
         InstallationsEmpfaenger().onReceive(app, Intent()
             .putExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE_CONFLICT)

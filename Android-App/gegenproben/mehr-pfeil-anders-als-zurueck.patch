@@ -1,7 +1,7 @@
 Gegenprobe: Der Zurück-Pfeil einer Mehr-Unterseite führt immer auf „Mehr“, die Zurück-Geste an den vorigen Eintrag
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: der Pfeil einer Mehr-Unterseite geht denselben Weg wie die Zurueck-Geste
+Rot: the arrow of a More subpage goes the same way as the back gesture
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt

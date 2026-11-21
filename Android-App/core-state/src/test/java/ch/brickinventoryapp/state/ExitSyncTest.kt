@@ -33,9 +33,9 @@ import java.util.Collections
  *   A  in StorageExit.erster `minByOrNull` → `maxByOrNull` → rot u. a. „eine
  *      Ablehnung verwirft …“ (gesendet [3, 2, 1] statt [1, 2, 3])
  *   B  in Abgleich bei Spaeter `return` weggelassen (weiter mit dem nächsten) →
- *      rot „was später geht, hält alles dahinter auf“ (FERTIG statt LATER)
+ *      rot „what goes later holds up everything behind it“ (FERTIG statt LATER)
  *   C  in Abgleich die Sperre entfernt (`lock.withLock` → `run`) → rot
- *      „zwei Läufe zugleich senden nichts doppelt“ (gesendet [1, 1, 2])
+ *      „two runs at once send nothing twice“ (gesendet [1, 1, 2])
  *   D  in einordnen 401 aus der Ausnahmeliste genommen → rot „eine abgelaufene
  *      Sitzung verwirft nichts“
  *   E  in Abgleich.verwirf das Festhalten weggelassen (gegenproben/verworfen-nicht-
@@ -73,7 +73,7 @@ class ExitSyncTest {
     private fun numbers(s: Sender) = s.gesendet.map { (it as Editing.SetMenge).setNumber.removePrefix("100").removeSuffix("-1").toInt() }
 
     @Test
-    fun `sendet der Reihe nach und leert den Ausgang`() = runBlocking {
+    fun `sends in order and empties the outbox`() = runBlocking {
         val w = Welt()
         val a = w.ablage
         for (n in 1..3) a.buffer(menge(n))
@@ -84,7 +84,7 @@ class ExitSyncTest {
     }
 
     @Test
-    fun `was später geht, hält alles dahinter auf`() = runBlocking {
+    fun `what goes later holds up everything behind it`() = runBlocking {
         val w = Welt()
         val a = w.ablage
         for (n in 1..3) a.buffer(menge(n))
@@ -102,7 +102,7 @@ class ExitSyncTest {
     }
 
     @Test
-    fun `eine Ablehnung verwirft und hält sie fest, auch ohne Beobachter, der Rest geht weiter`() = runBlocking {
+    fun `a rejection discards and records it, even without an observer, the rest continues`() = runBlocking {
         val w = Welt()
         val a = w.ablage
         for (n in 1..3) a.buffer(menge(n))
@@ -125,7 +125,7 @@ class ExitSyncTest {
     }
 
     @Test
-    fun `zwei Läufe zugleich senden nichts doppelt`() = runBlocking {
+    fun `two runs at once send nothing twice`() = runBlocking {
         val w = Welt()
         val a = w.ablage
         for (n in 1..2) a.buffer(menge(n))
@@ -141,7 +141,7 @@ class ExitSyncTest {
     }
 
     @Test
-    fun `eine abgelaufene Sitzung verwirft nichts`() {
+    fun `an expired session discards nothing`() {
         assertEquals(Sendeergebnis.Later, classify(Ergebnis.Fehler.Abgewiesen()))
         assertEquals(Sendeergebnis.Later, classify(Ergebnis.Fehler.Server(429)))
         assertEquals(Sendeergebnis.Later, classify(Ergebnis.Fehler.Server(503)))
@@ -152,7 +152,7 @@ class ExitSyncTest {
     }
 
     @Test
-    fun `beim Löschen ist „gibt es nicht mehr“ angekommen, anderes nicht`() {
+    fun `on deleting “no longer exists” counts as arrived, anything else not`() {
         assertEquals(Sendeergebnis.Angenommen, deleteClassify(Ergebnis.Fehler.Server(404, "weg")))
         assertEquals(Sendeergebnis.Rejected("nein", 403), deleteClassify(Ergebnis.Fehler.Server(403, "nein")))
         assertEquals(Sendeergebnis.Later, deleteClassify(Ergebnis.Fehler.Netz()))
@@ -161,7 +161,7 @@ class ExitSyncTest {
     }
 
     @Test
-    fun `nach zu vielen Versuchen wird verworfen statt ewig zu warten`() = runBlocking {
+    fun `after too many attempts it discards instead of waiting forever`() = runBlocking {
         val w = Welt()
         val a = w.ablage
         a.buffer(menge(1))
@@ -172,7 +172,7 @@ class ExitSyncTest {
     }
 
     @Test
-    fun `ein Konto-Wechsel vor dem Senden schickt keinen Posten mit dem neuen Konto`() = runBlocking {
+    fun `an account switch before sending sends no item with the new account`() = runBlocking {
         var konto = "konto-a"
         var switchAfterQuery = false
         val w = Welt {
@@ -190,7 +190,7 @@ class ExitSyncTest {
     }
 
     @Test
-    fun `ohne Anmeldung wird nichts gesendet`() = runBlocking {
+    fun `without sign-in nothing is sent`() = runBlocking {
         val w = Welt { null }
         val a = w.ablage
         val s = Sender()

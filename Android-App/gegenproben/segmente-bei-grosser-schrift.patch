@@ -1,7 +1,7 @@
 Gegenprobe: Einfachwahl auch bei 200 Prozent als Segmente in einer Zeile
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Einfachwahl bricht
+Rot: single choice breaks no word at 200 percent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt

@@ -71,7 +71,7 @@ class PartListTest {
     }
 
     @Test
-    fun `ein Set wird nach Rebrickable-Nummer zusammengefasst und traegt den Katalognamen`() = runBlocking {
+    fun `a set is grouped by Rebrickable number and carries the catalog name`() = runBlocking {
         val (name, zeilen) = liste.resolveSetOn("75192-1", "http://srv/")
         assertEquals("Millennium Falcon", name)
         assertEquals(listOf("3001", "970c00", "970c11", "sw0001"), zeilen.map { it.partNumber })
@@ -83,7 +83,7 @@ class PartListTest {
     }
 
     @Test
-    fun `ein Bild vom CDN laeuft ueber den Server und ein lokales Bild geht vor`() = runBlocking {
+    fun `an image from the CDN runs via the server and a local image goes first`() = runBlocking {
         val zeilen = liste.resolveSetOn("75192-1", "http://srv/").second
         assertEquals("http://srv/images/parts/3001.jpg", zeilen.single { it.partNumber == "3001" }.imageUrl)
         assertEquals("http://srv/api/v1/img-proxy?url=" + URLEncoder.encode(cdn, "UTF-8"),
@@ -92,7 +92,7 @@ class PartListTest {
     }
 
     @Test
-    fun `der Bestand fragt ohne Unterkonten nur das eigene Konto und zaehlt wahlweise nur lose Teile`() = runBlocking {
+    fun `the stock asks only the own account without sub-accounts and optionally counts only loose parts`() = runBlocking {
         val zeilen = liste.resolveSetOn("75192-1", "http://srv").second.filter { !it.isFig }
 
         val lose = liste.withInventory(zeilen, onlyLose = true, withSubAccounts = false)!!
@@ -107,7 +107,7 @@ class PartListTest {
     }
 
     @Test
-    fun `ein Fehler beim Bestand ergibt null statt einer Liste voller Nullen`() = runBlocking {
+    fun `an error in the stock gives null instead of a list full of zeros`() = runBlocking {
         paths.codes["/api/v1/parts/owned"] = 500
         val zeilen = liste.resolveSetOn("75192-1", "http://srv").second
         assertNull(liste.withInventory(zeilen, onlyLose = false, withSubAccounts = false))

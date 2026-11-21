@@ -1,7 +1,7 @@
 Gegenprobe: Die Teileliste übernimmt beim gescheiterten PDF-Auftrag nur den Satz des Servers, auch keinen
 Modul: feature-parts
 Test: ch.brickinventoryapp.parts.PartListViewModelTest
-Rot: ein Fehler hat immer einen Satz
+Rot: an error always has a sentence, even without the server's sentence
 
 diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartListViewModel.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartListViewModel.kt
 --- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartListViewModel.kt

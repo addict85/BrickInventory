@@ -17,7 +17,7 @@ import org.junit.Test
 class ColorFromHexTest {
 
     @Test
-    fun `rrggbb mit und ohne Raute, voll deckend`() {
+    fun `rrggbb with and without hash, fully opaque`() {
         assertEquals(0xFFC91A09L, argbFromHex("C91A09"))
         assertEquals(0xFFC91A09L, argbFromHex("#c91a09"))
         assertEquals(0xFF05131DL, argbFromHex(" 05131D "))
@@ -25,7 +25,7 @@ class ColorFromHexTest {
     }
 
     @Test
-    fun `ein unlesbarer Wert ergibt keine Farbe`() {
+    fun `an unreadable value gives no color`() {
         for (roh in listOf(null, "", "#", "zz1234", "12345", "1234567", "C91A09FF00")) {
             assertNull("„$roh“", argbFromHex(roh))
         }

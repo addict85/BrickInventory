@@ -199,7 +199,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Erfassen-Knopf steigt ueber die Snackbar`() {
+    fun `add button rises above the snackbar`() {
         val meldung = SnackbarHostState()
         val erfassen = ctx.getString(R.string.gallery_add_set)
         zeige {
@@ -220,7 +220,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Offline-Hinweis nennt die wartenden Aenderungen in einem Banner`() {
+    fun `offline hint names the pending changes in a banner`() {
         zeige {
             Scaffold(remember { SnackbarHostState() }, offen = 3) {
                 Column { OfflineHint(1_793_000_000_000L) }
@@ -238,7 +238,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Offline-Hinweis bietet an, die Liste erneut zu holen`() {
+    fun `offline hint offers to fetch the list again`() {
         var geholt = 0
         zeige { Column { OfflineHint(1_793_000_000_000L, onErneut = { geholt++ }) } }
         compose.onNode(hasText(ctx.getString(R.string.common_retry)) and hasClickAction()).performClick()
@@ -247,7 +247,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Preisalarme zeigen die Schwelle als Betrag und die Richtung in der Wahl`() {
+    fun `price alerts show the threshold as an amount and the direction in the choice`() {
         val world = Examples.Welt(ContextTexts())
         try {
             world.paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
@@ -280,7 +280,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Fehler der Anmeldung und der Pflicht-Masken werden angesagt`() {
+    fun `errors of the sign-in and of the mandatory forms are announced`() {
         val fall = mutableIntStateOf(0)
         val fehler = listOf("Benutzername oder Passwort falsch", "Das aktuelle Passwort stimmt nicht", "Der Code stimmt nicht")
         zeige {
@@ -310,7 +310,7 @@ class ScaffoldAndFormTest {
         node.config.firstOrNull { it.value is ContentType }?.value
 
     @Test
-    fun `Startpasswort-Maske fuellt Passwoerter automatisch und zeigt sie auf Wunsch`() {
+    fun `start password form fills passwords automatically and shows them on request`() {
         zeige { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
         val felder = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
         assertEquals("Aktuelles, neues und wiederholtes Passwort",
@@ -321,7 +321,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Startpasswort-Maske steht auf dem Tablet in Lesebreite`() {
+    fun `start password form stands in reading width on the tablet`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
         val dichte = ctx.resources.displayMetrics.density
@@ -331,7 +331,7 @@ class ScaffoldAndFormTest {
 
     /** Konto und Preisalarme sind Formulare: Lesebreite, und das Betragsfeld bleibt schmal. */
     @Test
-    fun `Konto und Preisalarme stehen auf dem Tablet in Formularbreite`() {
+    fun `account and price alerts stand in form width on the tablet`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val world = Examples.Welt(ContextTexts())
         try {
@@ -362,7 +362,7 @@ class ScaffoldAndFormTest {
 
     /** Im Querformat stehen Hinweis und Handlung nebeneinander: „Weiter“ ohne Rollen sichtbar. */
     @Test
-    fun `Einrichtung im Querformat zeigt Weiter ohne Rollen`() {
+    fun `setup in landscape shows Next without scrolling`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
         val hoehe = compose.onRoot().fetchSemanticsNode().boundsInRoot.height
@@ -374,7 +374,7 @@ class ScaffoldAndFormTest {
 
     /** Bei 200 % steht der Markenkopf klein in einer Zeile; das erste Feld bleibt oben. */
     @Test
-    fun `Markenkopf bei 200 Prozent nimmt hoechstens ein Achtel der Hoehe`() {
+    fun `brand header at 200 percent takes at most an eighth of the height`() {
         zeige(schrift = 2f) { BrandsHeader() }
         val dichte = ctx.resources.displayMetrics.density
         val kopf = compose.onNodeWithText(ctx.getString(R.string.app_name)).fetchSemanticsNode().boundsInRoot
@@ -383,7 +383,7 @@ class ScaffoldAndFormTest {
 
     /** „Animationen entfernen“ (Animator-Dauer 0) wird gelesen; sonst gilt Bewegung. */
     @Test
-    fun `reduzierte Bewegung folgt der Animator-Dauer des Systems`() {
+    fun `reduced motion follows the system's animator duration`() {
         val resolution = ctx.contentResolver
         Settings.Global.putFloat(resolution, Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         var ruhig: Boolean? = null
@@ -394,7 +394,7 @@ class ScaffoldAndFormTest {
 
     /** Umgestellt wird bei offener App in den Systemeinstellungen; die Bewegung folgt sofort. */
     @Test
-    fun `reduzierte Bewegung folgt einer Aenderung zur Laufzeit`() {
+    fun `reduced motion follows a change at runtime`() {
         val resolution = ctx.contentResolver
         val dauer = Settings.Global.ANIMATOR_DURATION_SCALE
         Settings.Global.putFloat(resolution, dauer, 1f)
@@ -414,7 +414,7 @@ class ScaffoldAndFormTest {
 
     /** Der Hauptknopf bleibt antippbar; leer markiert er das erste Feld und setzt den Cursor hinein. */
     @Test
-    fun `Startpasswort-Maske markiert beim Absenden, was fehlt, und fokussiert das erste Feld`() {
+    fun `start password form marks on submit what is missing and focuses the first field`() {
         var ersetzt = 0
         zeige { StartPasswordMask(AccountUiState(), { _, _, _ -> ersetzt++ }, {}) }
         val button = compose.onNode(hasText(ctx.getString(R.string.konto_password_button)) and hasClickAction())
@@ -434,7 +434,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Verwalterrechte stehen eingeklappt unter Erweitert`() {
+    fun `admin rights stand collapsed under Advanced`() {
         zeige {
             LoginScreen(
                 serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
@@ -454,7 +454,7 @@ class ScaffoldAndFormTest {
         9090 to R.plurals.gallery_stat_parts, 22 to R.plurals.gallery_stat_minifigs, 4 to R.plurals.gallery_stat_instructions)
 
     @Test
-    fun `Kennzahlen der Sammlung brechen bei 200 Prozent um und bleiben ganz sichtbar`() {
+    fun `collection key figures wrap at 200 percent and stay fully visible`() {
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
                 MetricsSeries {
@@ -472,7 +472,7 @@ class ScaffoldAndFormTest {
 
     /** „82 Teile (42 aus Sets · 40 einzeln)“: Bei 200 % steht die Klammer auf eigener Zeile und bricht nie zwischen Zahl und Wort. */
     @Test
-    fun `Teile-Aufschluesselung bricht bei 200 Prozent nicht zwischen Zahl und Wort`() {
+    fun `parts breakdown does not break between number and word at 200 percent`() {
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
                 MetricsSeries { GalleryStatChip(82, R.plurals.gallery_stat_parts, partsBreakdown(42, 40)) }
@@ -494,7 +494,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Kennzahlen im Detail brechen bei 200 Prozent um und bleiben ganz sichtbar`() {
+    fun `key figures in the detail wrap at 200 percent and stay fully visible`() {
         val werte = listOf(ctx.getString(R.string.detail_year) to "2017", ctx.getString(R.string.detail_minifigs) to "7",
             ctx.getString(R.string.detail_theme) to "Star Wars")
         zeige(schrift = 2f) {
@@ -516,7 +516,7 @@ class ScaffoldAndFormTest {
      * ist nicht rot. Gemessen am Bild, einen Fleck innen am rechten Rand.
      */
     @Test
-    fun `Offline-Hinweis meldet keinen Fehler mit roter Flaeche`() {
+    fun `offline hint reports no error with a red surface`() {
         zeige {
             Scaffold(remember { SnackbarHostState() }, offen = 3) {
                 Column { OfflineHint(1_793_000_000_000L) }
@@ -531,7 +531,7 @@ class ScaffoldAndFormTest {
 
     /** Der Chip über der Anmeldung wechselt den Server: Das hört TalkBack als Schaltfläche. */
     @Test
-    fun `Server-Chip nennt seine Aufgabe als Schaltflaeche`() {
+    fun `server chip names its task as a button`() {
         var geaendert = 0
         zeige(schrift = 2f) {
             LoginScreen(
@@ -559,7 +559,7 @@ class ScaffoldAndFormTest {
      * Bedienbreite; die Teilezahl trägt den Tausendertrenner wie überall.
      */
     @Test
-    fun `Detailkarten stehen auf dem Tablet in Lesebreite`() {
+    fun `detail cards stand in reading width on the tablet`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
             CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(catalogDetail),
@@ -580,7 +580,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Katalog-Detail steht auf dem Tablet in zwei Spalten, Aufnehmen vor BrickLink`() {
+    fun `catalog detail stands in two columns on the tablet, add before BrickLink`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
             CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(catalogDetail),
@@ -604,7 +604,7 @@ class ScaffoldAndFormTest {
     }
 
     @Test
-    fun `Finanzen nennen den Marktwert vor dem Verlauf`() {
+    fun `finances name the market value before the history`() {
         val world = Examples.Welt(ContextTexts())
         try {
             val vm = world.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }

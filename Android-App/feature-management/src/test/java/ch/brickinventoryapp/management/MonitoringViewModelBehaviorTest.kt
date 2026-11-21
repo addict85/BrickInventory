@@ -73,7 +73,7 @@ class MonitoringViewModelBehaviorTest {
     }
 
     @Test
-    fun `ein 403 nur_admins beendet die Abfrage, ein anderer Fehler nicht`() = runTest {
+    fun `a 403 nur_admins ends the polling, another error does not`() = runTest {
         server.enqueue(antwort("""{"success":false,"error":"Serverfehler"}""", 500))
         vm.loadJobs()
         assert(!vm.state.value.accessRevoked) { "Ein 500 ist kein Rechteentzug" }
@@ -86,7 +86,7 @@ class MonitoringViewModelBehaviorTest {
     }
 
     @Test
-    fun `der Takt fragt Auftraege und Hintergrund ab, bis der Zugriff entzogen ist`() = runTest {
+    fun `the tick polls jobs and background until access is revoked`() = runTest {
         server.enqueue(antwort("""{"success":true,"jobs":{}}"""))
         server.enqueue(antwort("""{"success":false,"error":"weg"}""", 404))
         server.enqueue(antwort("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
@@ -99,7 +99,7 @@ class MonitoringViewModelBehaviorTest {
     // ── Die Warteschlange ────────────────────────────────────────────────────
 
     @Test
-    fun `geloeschter Eintrag verschwindet sofort und bleibt weg, wenn der Server zustimmt`() = runTest {
+    fun `a deleted entry disappears immediately and stays gone if the server agrees`() = runTest {
         server.enqueue(antwort("""{"success":true,"count":2,"entries":[
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
         vm.loadQueue()
@@ -122,7 +122,7 @@ class MonitoringViewModelBehaviorTest {
     }
 
     @Test
-    fun `scheitert das Loeschen, wird die Liste WIEDERHERGESTELLT`() = runTest {
+    fun `if deleting fails, the list is RESTORED`() = runTest {
         server.enqueue(antwort("""{"success":true,"count":2,"entries":[
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
         vm.loadQueue()
@@ -143,7 +143,7 @@ class MonitoringViewModelBehaviorTest {
     }
 
     @Test
-    fun `nach dem Fehlschlag wird NEU GELADEN, nicht die alte Kopie zurueckgeschrieben`() = runTest {
+    fun `after the failure it RELOADS, it does not write back the old copy`() = runTest {
         server.enqueue(antwort("""{"success":true,"count":1,"entries":[{"set_number":"75192","attempts":1}]}"""))
         vm.loadQueue()
 
@@ -170,7 +170,7 @@ class MonitoringViewModelBehaviorTest {
     //      ist sofort die Vorgabe …“
 
     @Test
-    fun `die Auswahl zeigt die Vorgabe, nicht das eigene Design`() = runTest {
+    fun `the selection shows the default, not the own design`() = runTest {
         server.enqueue(antwort("""{"success":true,"theme":"werkbank","vorgabe":"noppe","eigenes":"werkbank"}"""))
         vm.loadDesignDefault()
         assert(vm.state.value.defaultDesign == Design.NOPPE) { "Steht: ${vm.state.value.defaultDesign}" }
@@ -178,7 +178,7 @@ class MonitoringViewModelBehaviorTest {
     }
 
     @Test
-    fun `ein gesetztes Design ist sofort die Vorgabe, ein abgelehntes nicht`() = runTest {
+    fun `a set design is immediately the default, a rejected one is not`() = runTest {
         server.enqueue(antwort("""{"success":true,"theme":"noppe","vorgabe":"noppe"}"""))
         vm.loadDesignDefault()
         server.enqueue(antwort("""{"success":true}"""))
@@ -192,7 +192,7 @@ class MonitoringViewModelBehaviorTest {
     // ── Der Vorgabe-Zustand ──────────────────────────────────────────────────
 
     @Test
-    fun `der Vorgabe-Zustand springt sofort um und bleibt, wenn der Server zustimmt`() = runTest {
+    fun `the default state switches immediately and stays if the server agrees`() = runTest {
         server.enqueue(antwort("""{"success":true}"""))
         val ok = vm.setDefaultState(Zustand.GEBRAUCHT)
         assert(ok)
@@ -200,7 +200,7 @@ class MonitoringViewModelBehaviorTest {
     }
 
     @Test
-    fun `scheitert das Setzen, faellt der Vorgabe-Zustand ZURUECK`() = runTest {
+    fun `if setting fails, the default state falls BACK`() = runTest {
         val vorher = vm.state.value.defaultState
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
         val ok = vm.setDefaultState(Zustand.GEBRAUCHT)
@@ -215,7 +215,7 @@ class MonitoringViewModelBehaviorTest {
     // ── Laden ────────────────────────────────────────────────────────────────
 
     @Test
-    fun `ein Fehler beim Job-Abruf loescht die bereits gezeigten Jobs NICHT`() = runTest {
+    fun `an error when fetching jobs does NOT delete the jobs already shown`() = runTest {
         server.enqueue(antwort("""{"success":true,"jobs":{"priceJob":{"status":"idle","label":"Preise"}}}"""))
         vm.loadJobs()
         assert(vm.state.value.jobs.keys == setOf("priceJob")) { "Vorbedingung: ein Job erwartet" }
@@ -233,7 +233,7 @@ class MonitoringViewModelBehaviorTest {
     }
 
     @Test
-    fun `ladeCacheUndGrenzen fuellt alle vier Felder aus vier Abrufen`() = runTest {
+    fun `ladeCacheUndGrenzen fills all four fields from four fetches`() = runTest {
         server.enqueue(antwort("""{"success":true,"prices":7,"price_stale":1,"subsets":2,"catalog":3}"""))
         server.enqueue(antwort("""{"success":true,"limits":{"rebrickable":100,"bricklink":200,"brickset":300}}"""))
         server.enqueue(antwort("""{"success":true,"ttl":"48"}"""))
@@ -254,10 +254,10 @@ class MonitoringViewModelBehaviorTest {
     // ── Das Server-Protokoll (aus MainViewModel hierher gezogen) ────────────
     //
     // Gegenprobe: in loadLog() den Fehlerzweig ohne `abruf =
-    // ladefehler(r)` → „ein Fehler beim Protokoll beendet das Laden" rot.
+    // ladefehler(r)` → „an error in the log ends the loading" rot.
 
     @Test
-    fun `das Protokoll kommt mit dem gewaehlten Zeitraum`() = runTest {
+    fun `the log comes with the chosen period`() = runTest {
         server.enqueue(antwort("""{"success":true,"logs":[{"id":1,"level":"warn","message":"Probe","logged_at":"2026-10-27T10:00:00Z"}]}"""))
         vm.loadLog(30)
         val v = vm.managementState.value
@@ -267,7 +267,7 @@ class MonitoringViewModelBehaviorTest {
     }
 
     @Test
-    fun `ein Fehler beim Protokoll beendet das Laden`() = runTest {
+    fun `an error in the log ends the loading`() = runTest {
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
         vm.loadLog(15)
         val v = vm.managementState.value

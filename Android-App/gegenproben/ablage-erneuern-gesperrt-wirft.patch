@@ -1,7 +1,7 @@
 Gegenprobe: Abmelden bei gesperrtem Gerät scheitert, weil der neue Ablageschlüssel nicht entstehen kann
 Modul: core-security
 Test: ch.brickinventoryapp.security.StoreUnlockedTest
-Rot: Abmelden bei gesperrtem Geraet
+Rot: sign-out with a locked device deletes the old key, the new one exists only when unlocked
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 index 2f06ee6..64fbfdc 100644

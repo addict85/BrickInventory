@@ -37,7 +37,7 @@ class RejectedTest {
     // ── Die Regel selbst ────────────────────────────────────────────────────
 
     @Test
-    fun `der beobachtete Fall - ein GET ohne Token an unseren Server`() {
+    fun `the observed case - a GET without a token to our server`() {
         assert(followUpMay(401, ourServer = true, hadAuthHeader = false, methode = "GET")) {
             "Genau dieser Fall ist Marcos Meldung: Die Galerie lädt beim Anmelden " +
                 "per GET, und die Anfrage ging im Anmeldefenster ohne Token hinaus."
@@ -45,7 +45,7 @@ class RejectedTest {
     }
 
     @Test
-    fun `ein wirklich ungueltiger Token wird nicht wiederholt`() {
+    fun `a really invalid token is not retried`() {
         // Trug die Anfrage bereits einen Token und wurde trotzdem abgewiesen,
         // ist er ungültig. Diese Bedingung schliesst zugleich jede Schleife
         // aus: Der zweite Anlauf TRÄGT den Kopf.
@@ -56,7 +56,7 @@ class RejectedTest {
     }
 
     @Test
-    fun `ein fehlgeschlagener Login wird nicht wiederholt`() {
+    fun `a failed login is not retried`() {
         // POST /auth/login antwortet mit 401 auf ein falsches Passwort. Ein
         // zweiter Anlauf zählte denselben Versuch doppelt — gegen die Drossel
         // des Servers und gegen die Kontosperre.
@@ -73,14 +73,14 @@ class RejectedTest {
     }
 
     @Test
-    fun `ein fremder Host geht uns nichts an`() {
+    fun `a foreign host is none of our business`() {
         assert(!followUpMay(401, ourServer = false, hadAuthHeader = false, methode = "GET")) {
             "Ein 401 von einem Bild-CDN löst einen zweiten Abruf MIT unserem Token aus."
         }
     }
 
     @Test
-    fun `alles ausser 401 bleibt unberuehrt`() {
+    fun `everything except 401 stays untouched`() {
         for (code in listOf(200, 204, 304, 400, 403, 404, 500, 503)) {
             assert(!followUpMay(code, ourServer = true, hadAuthHeader = false, methode = "GET")) {
                 "Status $code wird als Anmeldeproblem behandelt."
@@ -91,7 +91,7 @@ class RejectedTest {
     // ── Eine abgelaufene Sitzung ist EINE Meldung, nicht zwei ──────────────
 
     @Test
-    fun `ein 401 im angemeldeten Zustand gehoert der Sitzungsschicht`() {
+    fun `a 401 in the signed-in state belongs to the session layer`() {
         // Zwei Faelle, EINE Antwort: Bei einem echten Ablauf meldet der
         // Interceptor „Sitzung abgelaufen" und meldet ab; bei einem Wettlauf
         // beim Anmelden ist ueberhaupt nichts zu melden. In beiden Faellen hat
@@ -104,7 +104,7 @@ class RejectedTest {
     }
 
     @Test
-    fun `ein falsches Passwort bleibt ein falsches Passwort`() {
+    fun `a wrong password stays a wrong password`() {
         // Der Server antwortet auf ein falsches Passwort mit demselben 401 und
         // demselben Satz. Wer nicht angemeldet ist, hat aber keine Sitzung, die
         // ablaufen koennte — „Sitzung abgelaufen" waere dort schlicht gelogen.
@@ -115,7 +115,7 @@ class RejectedTest {
     }
 
     @Test
-    fun `ohne 401 aendert sich nichts`() {
+    fun `without 401 nothing changes`() {
         for (angemeldet in listOf(true, false)) {
             assert(!reportsTheSessionLayer(unauthorized = false, angemeldet = angemeldet)) {
                 "Ein Fehler ohne 401 wird als abgelaufene Sitzung gemeldet."
@@ -124,7 +124,7 @@ class RejectedTest {
     }
 
     @Test
-    fun `die Snackbar schweigt, statt einen anderen Satz zu zeigen`() {
+    fun `the snackbar stays silent instead of showing a different sentence`() {
         // Ausgeführt an Texte, der einen Stelle für alle ViewModels: Ein 401
         // bei vorliegendem Token gibt null (der Kanal zeigt nichts), ohne Token
         // bleibt der Satz — dann heisst 401 „falsches Passwort".
@@ -147,7 +147,7 @@ class RejectedTest {
     }
 
     @Test
-    fun `keine Snackbar bekommt den Satz an der Regel vorbei`() {
+    fun `no snackbar gets the sentence past the rule`() {
         // Wer in die Snackbar schreibt, geht ueber meldungFuerSnackbar(); eine neue
         // Stelle mit meldung() faellt hier auf.
         val treffer = mutableListOf<String>()
@@ -174,7 +174,7 @@ class RejectedTest {
     // ── Und niemand liest den Token wieder nachlaufend ──────────────────
 
     @Test
-    fun `keine Datei liest authToken oder serverUrl am DataStore vorbei`() {
+    fun `no file reads authToken or serverUrl bypassing the DataStore`() {
         // `authToken`/`serverUrl` sind die DataStore-Flüsse und LAUFEN NACH:
         // Zwischen saveAuthToken() und der fertigen Plattenschreibung tragen
         // sie noch den alten Wert. Genau in diesem Fenster feuert jede

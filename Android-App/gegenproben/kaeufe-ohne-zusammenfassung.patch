@@ -1,7 +1,7 @@
 Gegenprobe: Ein geänderter Kauf holt den ganzen Bestand statt die Zusammenfassung zu übernehmen
 Modul: core-state
 Test: ch.brickinventoryapp.state.PurchasesViewModelTest
-Rot: ein geaenderter Kauf eines Sets schreibt seine Zusammenfassung
+Rot: a changed purchase of a set writes its summary into the store and reloads the list
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/HaushaltRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/HaushaltRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/HaushaltRepositoryImpl.kt

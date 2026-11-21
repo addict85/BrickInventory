@@ -1,7 +1,7 @@
 Gegenprobe: Ein umbenannter Lagerort steht an Sets und Teilen weiter unter altem Namen
 Modul: core-data
 Test: ch.brickinventoryapp.data.FollowUpTest
-Rot: ein umbenannter Ort heisst ueberall neu
+Rot: a renamed location has the new name everywhere
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt

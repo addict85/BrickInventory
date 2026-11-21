@@ -1,7 +1,7 @@
 Gegenprobe: Eine neue Wurzel desselben Betreibers (ISRG X1 → X2) gilt nicht mehr still, die App fragt nach dem Fingerabdruck
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: eine neue Wurzel desselben Betreibers gilt ohne neue Frage
+Rot: a new root of the same operator applies without a new question
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

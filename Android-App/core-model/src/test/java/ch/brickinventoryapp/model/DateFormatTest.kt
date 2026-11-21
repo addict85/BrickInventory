@@ -19,9 +19,9 @@ import java.util.Locale
  * kein Datum da. Genau das prueft der erste Fall unten mit.
  *
  * Gegenproben: in fmtDatum den Zweig `locale.language !=
- * "en"` immer genommen → rot „je Sprache eine Form wie im Web“; im en-Zweig `DateYear.OHNE`
+ * "en"` immer genommen → rot „one form per language as in the web“; im en-Zweig `DateYear.OHNE`
  * wie VOLL behandelt → ebenso rot; in fmtStatus das Datum wieder fest als
- * dd.MM.yyyy → rot „der Stand folgt derselben Form“. Englisch wieder „$t/$m/$jj“
+ * dd.MM.yyyy → rot „the state follows the same form“. Englisch wieder „$t/$m/$jj“
  * → rot „je Sprache eine Form …“. timeOfDayFormat() wieder fest „HH:mm“ → rot „die Uhrzeit
  * folgt der 12- oder 24-Stunden-Einstellung …“ (gegenproben/uhrzeit-fest-24-stunden.patch,
  * mit kotlinc gemessen).
@@ -32,7 +32,7 @@ class DateFormatTest {
 
     /** Wie Intl.DateTimeFormat mit 2-stelligem Tag und Monat in der Webapp (fmtDatum). */
     @Test
-    fun `je Sprache eine Form wie im Web`() {
+    fun `one form per language as in the web`() {
         val tag = "2026-08-01T10:00:00Z"
         assert(fmtDatum(tag, DE) == "01.08.2026") { fmtDatum(tag, DE).toString() }
         assert(fmtDatum(tag, Locale.forLanguageTag("en-GB")) == "1 Aug 2026")
@@ -50,7 +50,7 @@ class DateFormatTest {
     }
 
     @Test
-    fun `der Stand folgt derselben Form`() {
+    fun `the state follows the same form`() {
         val utc = ZoneOffset.UTC
         val millis = Instant.parse("2026-08-01T09:05:00Z").toEpochMilli()
         assert(fmtStatus(millis, Locale.forLanguageTag("en-GB"), utc) == "1 Aug 2026 09:05") {
@@ -64,7 +64,7 @@ class DateFormatTest {
      * Die Einstellung des Geräts entscheidet, die Sprache nur die Tageszeit-Wörter.
      */
     @Test
-    fun `die Uhrzeit folgt der 12- oder 24-Stunden-Einstellung des Geraets`() {
+    fun `the time follows the device's 12 or 24 hour setting`() {
         val utc = ZoneOffset.UTC
         val millis = Instant.parse("2026-08-01T21:05:00Z").toEpochMilli()
         val us = Locale.forLanguageTag("en-US")
@@ -82,7 +82,7 @@ class DateFormatTest {
     }
 
     @Test
-    fun `Zeitstempel mit und ohne Millisekunden ergeben dasselbe Datum`() {
+    fun `timestamps with and without milliseconds give the same date`() {
         val erwartet = "03.09.2026"
         for (eingabe in listOf(
             "2026-09-03T15:00:32.194Z",   // mit Millisekunden
@@ -97,7 +97,7 @@ class DateFormatTest {
     }
 
     @Test
-    fun `zweistelliges Jahr auf Wunsch`() {
+    fun `two-digit year on request`() {
         assert(fmtDatum("2026-09-03", DE, DateYear.SHORT) == "03.09.26")
     }
 
@@ -119,7 +119,7 @@ class DateFormatTest {
      * Stunde Unterschied in der Ausgabe ergibt.
      */
     @Test
-    fun `Uhrzeit hat die richtige Form und rechnet konsistent`() {
+    fun `time has the right form and computes consistently`() {
         for (eingabe in listOf(
             "2026-09-03T15:00:32.194Z",   // mit Millisekunden
             "2026-09-03T15:00:32Z",       // ohne
@@ -148,7 +148,7 @@ class DateFormatTest {
     }
 
     @Test
-    fun `unbrauchbare Uhrzeiten ergeben null, nicht Unsinn`() {
+    fun `unusable times give null, not nonsense`() {
         for (eingabe in listOf(null, "", "gleich", "2026-09-03")) {
             assert(fmtUhrzeit(eingabe) == null) {
                 "fmtUhrzeit(\"$eingabe\") ergab ${fmtUhrzeit(eingabe)}, erwartet null"
@@ -157,7 +157,7 @@ class DateFormatTest {
     }
 
     @Test
-    fun `unbrauchbare Eingaben ergeben null, nicht Unsinn`() {
+    fun `unusable inputs give null, not nonsense`() {
         for (eingabe in listOf(null, "", "morgen", "2026-9-3", "03.09.2026")) {
             assert(fmtDatum(eingabe, DE) == null) {
                 "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe, DE)}, erwartet null"

@@ -1,7 +1,7 @@
 Gegenprobe: Server-Fläche ohne Rolle Schaltfläche (TalkBack hört nur die Adresse)
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: Server-Chip nennt
+Rot: server chip names its task as a button
 
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt

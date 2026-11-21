@@ -29,7 +29,7 @@ import ch.brickinventoryapp.update.util.checkedDescription
  *                                  INVARIANTEN genannte …“
  *   invarianten-fileprovider-zurueck  „FileProvider nur `pdf/`“ wieder in INVARIANTEN → rot, derselbe Test
  *   invarianten-unsigniert-gilt    checkedDescription() nimmt eine Hülle ohne Signatur → rot
- *                                  „keine unsignierte oder fremd signierte Beschreibung gilt“
+ *                                  „no unsigned or foreign-signed description applies“
  *   invarianten-teileliste-klartext  Teilelistentresor.lege() schreibt den Klartext → rot „die
  *                                  Teileliste liegt nur verschluesselt auf der Platte“
  */
@@ -42,7 +42,7 @@ class InvariantsReferencesTest {
         .map { it.relativeTo(root).invariantSeparatorsPath }.toList()
 
     @Test
-    fun `jede in INVARIANTEN genannte Quelldatei und Testklasse gibt es`() {
+    fun `every source file and test class named in INVARIANTEN exists`() {
         val docs = File(Quellen.project, "INVARIANTEN.md").readText()
         val quellen = dateien(Quellen.root)
         val tests = dateien(Quellen.tests).map { it.substringAfterLast('/') }.toSet()
@@ -74,7 +74,7 @@ class InvariantsReferencesTest {
     }
 
     @Test
-    fun `keine unsignierte oder fremd signierte Beschreibung gilt`() {
+    fun `no unsigned or foreign-signed description applies`() {
         val own = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
         val fremd = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
         val daten = """{"versionCode":200,"versionName":"2.0","apkUrl":"https://x/a.apk","ausgestellt":1,"gueltigBis":2}"""
@@ -90,7 +90,7 @@ class InvariantsReferencesTest {
     }
 
     @Test
-    fun `die Teileliste liegt nur verschluesselt auf der Platte`() {
+    fun `the parts list lies on disk only encrypted`() {
         val intern = File(System.getProperty("java.io.tmpdir"), "bim-teileliste-${System.nanoTime()}")
         try {
             val schluessel = ByteArray(32) { it.toByte() }

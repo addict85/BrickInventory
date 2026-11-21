@@ -19,7 +19,7 @@ import java.io.InputStream
  *
  * Gegenprobe (lokal mit kotlinc gemessen):
  *   datei-ganz-gelesen  readLimited() liest mit readBytes() alles und prüft danach →
- *                       rot „ein endloser Strom wird nach der Grenze nicht weiter gelesen“
+ *                       rot „an endless stream is not read beyond the limit“
  */
 class FileLimitTest {
 
@@ -34,7 +34,7 @@ class FileLimitTest {
     }
 
     @Test
-    fun `bis zur Grenze kommt der ganze Inhalt, ein Byte mehr nicht`() {
+    fun `up to the limit the whole content comes, one byte more does not`() {
         val genau = ByteArray(1000) { it.toByte() }
         assertArrayEquals(genau, readLimited(ByteArrayInputStream(genau), 1000))
         assertNull(readLimited(ByteArrayInputStream(ByteArray(1001)), 1000))
@@ -42,7 +42,7 @@ class FileLimitTest {
     }
 
     @Test
-    fun `ein endloser Strom wird nach der Grenze nicht weiter gelesen`() {
+    fun `an endless stream is not read beyond the limit`() {
         val grenze = 200_000L
         val strom = Endless(grenze + 64 * 1024)
         assertNull(readLimited(strom, grenze))
@@ -50,7 +50,7 @@ class FileLimitTest {
     }
 
     @Test
-    fun `ein Leser ohne eigene Grenze meldet eine zu grosse Datei als zu gross`() {
+    fun `a reader without its own limit reports a too large file as too large`() {
         val reader = object : FileReader {
             override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = "text/csv" to ByteArray(11)
         }

@@ -51,7 +51,7 @@ import ch.brickinventoryapp.testing.text
  *  E  withTicket() hängt das Ticket nicht an → rot „PDF und Export …“.
  *  F  editVoucher() nimmt `g.pin` nicht mehr, sondern "" → rot
  *     „Bearbeiten schickt die Maske …“ (PIN würde gelöscht bzw. fehlt).
- *  G  inputViaMask() gibt immer `neu` zurück → rot „die Maske ist ein Ganzes“.
+ *  G  inputViaMask() gibt immer `neu` zurück → rot „the mask is a whole“.
  *  H  pdfWithOnceTicket() immer false → rot „PDF und Export …“ (der Betrachter
  *     versuchte ein verbrauchtes Ticket erneut).
  */
@@ -98,7 +98,7 @@ class VoucherPlaintextTest {
     }
 
     @Test
-    fun `PIN aufdecken fragt nach Passwort, dann Code, und der Klartext lebt nur auf der Seite`() {
+    fun `revealing the PIN asks for password, then code, and the plaintext lives only on the page`() {
         vm.switchVoucherPin(1)
         assertEquals(VoucherStep.PIN_ZEIGEN, vm.state.value.confirmation?.schritt)
         assertEquals("Vor dem Passwort keine Anfrage", 1, server.requestCount)
@@ -134,7 +134,7 @@ class VoucherPlaintextTest {
     }
 
     @Test
-    fun `Loeschen schickt Passwort und Code im Rumpf`() {
+    fun `deleting sends password and code in the body`() {
         vm.deleteVoucher(1)
         assertEquals(VoucherStep.DELETE, vm.state.value.confirmation?.schritt)
         server.enqueue(antwort("""{"success":true}"""))
@@ -151,7 +151,7 @@ class VoucherPlaintextTest {
     }
 
     @Test
-    fun `offline wird nicht geloescht und nichts gepuffert`() {
+    fun `offline nothing is deleted and nothing buffered`() {
         vm.deleteVoucher(1)
         server.shutdown()
         vm.confirm("geheim", null)
@@ -161,7 +161,7 @@ class VoucherPlaintextTest {
     }
 
     @Test
-    fun `PDF und Export erst mit Ticket`() {
+    fun `PDF and export only with a ticket`() {
         vm.openVoucherPdf(1)
         assertNull("Ohne Passwort kein Ziel", vm.state.value.pdfTarget)
         server.enqueue(antwort("""{"success":true,"ticket":"t/1+","gueltig_sek":60}"""))
@@ -185,7 +185,7 @@ class VoucherPlaintextTest {
     }
 
     @Test
-    fun `Bearbeiten schickt die Maske als unveraendert zurueck`() {
+    fun `editing sends the mask back as unchanged`() {
         vm.editVoucher(1)
         assertEquals("…3333", vm.state.value.nummer)
         assertEquals("•••", vm.state.value.pin)
@@ -203,7 +203,7 @@ class VoucherPlaintextTest {
     }
 
     @Test
-    fun `die Maske ist ein Ganzes`() {
+    fun `the mask is a whole`() {
         assertEquals("5", inputViaMask("…3333", "…33335", true))
         assertEquals("5", inputViaMask("…3333", "5…3333", true))
         assertEquals("Eine Ziffer weg heisst: alles weg", "", inputViaMask("…3333", "…333", true))

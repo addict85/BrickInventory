@@ -36,9 +36,9 @@ import java.io.IOException
  *
  * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
  *   klartext-bleibt-nach-speichern  saveAuthToken() ohne remove(AUTH_TOKEN) → rot
- *                                   „Speichern legt nur noch verschluesselt ab“
+ *                                   „saving stores only encrypted now“
  *   abmelden-laesst-geheimtext      clearSession() ohne remove(AUTH_TOKEN_ENC) → rot
- *                                   „Abmelden entfernt beide Eintraege“
+ *                                   „sign-out removes both entries“
  *   altbestand-nicht-umgeschluesselt  adoptOldToken() ohne umschluesseln(prefs) → rot
  *                                   „ein Token unter dem alten Schluessel kommt beim Start …“
  *   klartext-token-gilt-wieder      der Spiegel liest AUTH_TOKEN wieder als Token → rot
@@ -96,7 +96,7 @@ class TokenVaultTest {
     fun zu() = areas.forEach { it.cancel() }
 
     @Test
-    fun `ein Klartext-Token aelterer Fassungen gilt nie und wird beim Start entfernt`() {
+    fun `a plaintext token of older versions never counts and is removed at start`() {
         put(klartext = "altes-token-123")
         val prefs = start()
         assertEquals("Ein Klartext-Token gilt nicht als Anmeldung", "", runBlocking { prefs.tokenJetzt() })
@@ -108,7 +108,7 @@ class TokenVaultTest {
     }
 
     @Test
-    fun `Adresse und Name liegen nur verschluesselt, alte Klartexte werden beim Start uebernommen`() {
+    fun `address and name lie only encrypted, old plaintexts are taken over at start`() {
         put()
         runBlocking { store.edit { it[TokenAblage.USERNAME] = "marco" } }
         val prefs = start()
@@ -137,7 +137,7 @@ class TokenVaultTest {
     }) { ByteArray(32) { 7 } }
 
     @Test
-    fun `Adresse und Name frueherer Fassungen kommen unter den Entsperr-Schluessel`() {
+    fun `address and name of earlier versions go under the unlock key`() {
         runBlocking {
             store.edit {
                 it[TokenAblage.SERVER_URL_ENC] = testVertrauenschiffre().verschluessle("https://brick.example", "angabe:server_url_enc")!!
@@ -156,7 +156,7 @@ class TokenVaultTest {
     }
 
     @Test
-    fun `gesperrt bleibt die fruehere Form liegen und die neue gilt nach dem Entsperren`() {
+    fun `locked the earlier form stays and the new one applies after unlocking`() {
         put()
         gesperrt = true
         val vorher = start(cipher = twoKey)
@@ -174,7 +174,7 @@ class TokenVaultTest {
     }
 
     @Test
-    fun `ein leerer Alteintrag wird entfernt, gilt aber nicht als Uebernahme`() {
+    fun `an empty old entry is removed but does not count as a takeover`() {
         put(klartext = "")
         val prefs = start()
         assertFalse(runBlocking { prefs.adoptOldToken() })
@@ -183,7 +183,7 @@ class TokenVaultTest {
     }
 
     @Test
-    fun `Speichern legt nur noch verschluesselt ab`() {
+    fun `saving stores only encrypted now`() {
         put(klartext = "alt")
         val prefs = start()
         runBlocking { prefs.saveAuthToken("neu") }
@@ -193,13 +193,13 @@ class TokenVaultTest {
     }
 
     @Test
-    fun `der Lesepfad versucht zuerst den verschluesselten Wert`() {
+    fun `the read path tries the encrypted value first`() {
         put(klartext = "alt", geheim = "ENC(uen)")
         assertEquals("neu", runBlocking { start().tokenJetzt() })
     }
 
     @Test
-    fun `Abmelden entfernt beide Eintraege`() {
+    fun `sign-out removes both entries`() {
         put(klartext = "alt", geheim = "ENC(uen)")
         val prefs = start()
         runBlocking { prefs.clearSession() }
@@ -209,7 +209,7 @@ class TokenVaultTest {
     }
 
     @Test
-    fun `ein nicht entschluesselbarer Eintrag gilt als kein Token`() {
+    fun `an entry that cannot be decrypted counts as no token`() {
         put(geheim = "ENC(sinnlos)")
         assertEquals("", runBlocking { start(Attrappe(kaputt = true)).tokenJetzt() })
     }
@@ -225,7 +225,7 @@ class TokenVaultTest {
     }
 
     @Test
-    fun `ein Token unter dem alten Schluessel kommt beim Start unter den strengen`() {
+    fun `a token under the old key goes under the strict one at start`() {
         put(geheim = "ENC(tla)")
         var gesperrt = true
         val tresor = EntsperrVault(Strict { gesperrt }, Attrappe())
@@ -242,7 +242,7 @@ class TokenVaultTest {
 
     /** Nicht erst beim nächsten Start: Das Entsperren (ACTION_USER_PRESENT) stuft gleich hoch. */
     @Test
-    fun `nach dem Entsperren kommt ein Token unter dem alten Schluessel sofort unter den strengen`() {
+    fun `after unlocking a token under the old key goes under the strict one immediately`() {
         put(geheim = "ENC(tla)")
         var gesperrt = true
         val alt = Attrappe()

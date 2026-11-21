@@ -1,7 +1,7 @@
 Gegenprobe: Die Wiederholung wartet immer gleich lang
 Modul: core-data
 Test: ch.brickinventoryapp.data.RetryTest
-Rot: ein voruebergehender Fehler wird mit wachsender Pause wiederholt
+Rot: a temporary error is retried with growing pause
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt

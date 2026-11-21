@@ -61,7 +61,7 @@ class ApiAreasTest {
         PartsQueryApi::class, MinifigsQueryApi::class)
 
     @Test
-    fun `jedes Repository sieht nur seinen Bereich`() {
+    fun `every repository sees only its area`() {
         val erwartet = mapOf(
             KontoRepositoryImpl::class to AccountApi::class.java, VerwaltungRepositoryImpl::class to ManagementApi::class.java,
             KatalogRepositoryImpl::class to CatalogApi::class.java, FigurenRepositoryImpl::class to MinifigsApi::class.java,
@@ -79,7 +79,7 @@ class ApiAreasTest {
     }
 
     @Test
-    fun `jede Adresse steht in genau einem Bereich`() {
+    fun `every address is in exactly one area`() {
         // Ohne die Hilfsmethoden, die Kotlin für Vorgabewerte erzeugt (…$default).
         fun adressen(m: Array<Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
         val namen = areas.flatMap { b -> adressen(b.java.declaredMethods) }
@@ -91,7 +91,7 @@ class ApiAreasTest {
     }
 
     @Test
-    fun `Retrofit baut einen Bereich samt geerbter Adressen`() {
+    fun `Retrofit builds an area including inherited addresses`() {
         val server = MockWebServer()
         server.enqueue(TestApi.antwort("""{"success":true,"parts":[],"total":0}"""))
         server.start()

@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
  *   C  in inBasePath(), `startsWith(basis)` instead of `"$basis/"` → red "ausserhalb …"
  *      (/brickfremd got the token)
  *   D  ownAddress() without inBasePath() → red "ownAddress bleibt unter dem Pfad"
- *   E  sameServer() going only by origin → red "ein anderer Pfad ist ein anderer Server"
+ *   E  sameServer() going only by origin → red "a different path is a different server"
  */
 class BasePathTest {
 
@@ -58,7 +58,7 @@ class BasePathTest {
         .apply { if (withHeader) header("Authorization", "Bearer selbst-gesetzt") }.build()).execute().use { it.code }
 
     @Test
-    fun `eine API-Anfrage geht unter den Pfad und mit Token`() {
+    fun `an API request goes under the path and with a token`() {
         server.enqueue(MockResponse().setBody("{}"))
         assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v1/sets"))
         val a = server.takeRequest(1, TimeUnit.SECONDS)!!
@@ -67,7 +67,7 @@ class BasePathTest {
     }
 
     @Test
-    fun `eine Anfrage ausserhalb des Pfads geht ohne Token`() {
+    fun `a request outside the path goes without a token`() {
         for (pfad in listOf("/andere-app/x", "/brickfremd/x", "/")) {
             server.enqueue(MockResponse().setBody("{}"))
             assertEquals(200, fetch(server.url(pfad).toString(), withHeader = true))
@@ -80,7 +80,7 @@ class BasePathTest {
     }
 
     @Test
-    fun `eine Umleitung aus dem Pfad hinaus wird nicht verfolgt`() {
+    fun `a redirect out of the path is not followed`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/andere-app/x"))
         server.enqueue(MockResponse().setBody("{}"))
         assertEquals(302, fetch(PLACEHOLDER_BASE + "api/v1/h"))
@@ -89,7 +89,7 @@ class BasePathTest {
     }
 
     @Test
-    fun `eine Umleitung unter dem Pfad wird mit Token verfolgt`() {
+    fun `a redirect under the path is followed with the token`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/api/v1/h2"))
         server.enqueue(MockResponse().setBody("{}"))
         assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v1/h"))
@@ -100,7 +100,7 @@ class BasePathTest {
     }
 
     @Test
-    fun `eigeneAdresse bleibt unter dem Pfad`() {
+    fun `eigeneAdresse stays under the path`() {
         val s = "https://s.example/brick"
         assertEquals("https://s.example/brick/uploads/a.pdf", ownAddress(s, "/uploads/a.pdf"))
         assertNull(ownAddress(s, "//fremd.example/x"))
@@ -111,7 +111,7 @@ class BasePathTest {
     }
 
     @Test
-    fun `ein anderer Pfad ist ein anderer Server`() {
+    fun `a different path is a different server`() {
         assertTrue(NetworkPolicy.sameServer("https://s.example/brick", "https://S.example:443/brick/"))
         assertFalse(NetworkPolicy.sameServer("https://s.example/brick", "https://s.example/andere-app"))
         assertFalse(NetworkPolicy.sameServer("https://s.example/brick", "https://s.example"))

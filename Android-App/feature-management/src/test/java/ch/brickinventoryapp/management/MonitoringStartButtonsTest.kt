@@ -55,7 +55,7 @@ class MonitoringStartButtonsTest {
     }
 
     @Test
-    fun `ein Startknopf zeigt startet, dann gestartet, nach vier Sekunden wieder seine Beschriftung`() = runTest {
+    fun `a start button shows starting, then started, after four seconds its label again`() = runTest {
         val vm = vm()
         vm.starte(Jobstart.PREISLAUF)
         assertEquals(Meldung.Resource(R.string.monitoring_starting), vm.state.value.buttons[Jobstart.PREISLAUF])
@@ -69,7 +69,7 @@ class MonitoringStartButtonsTest {
     }
 
     @Test
-    fun `die Anleitungen nennen die Zahl der eingereihten Sets`() = runTest {
+    fun `the instructions name the number of queued sets`() = runTest {
         val vm = vm()
         vm.starte(Jobstart.INSTRUCTIONS)
         runCurrent()
@@ -77,7 +77,7 @@ class MonitoringStartButtonsTest {
     }
 
     @Test
-    fun `ein gescheiterter Start meldet und gibt den Knopf frei`() = runTest {
+    fun `a failed start reports and releases the button`() = runTest {
         paths.codes["/api/v1/admin/catalog-images"] = 500
         val vm = vm()
         vm.starte(Jobstart.KATALOGBILDER)
@@ -87,7 +87,7 @@ class MonitoringStartButtonsTest {
     }
 
     @Test
-    fun `eine gescheiterte Warteschlange zeigt den Fehler statt einer leeren Liste`() = runTest {
+    fun `a failed queue shows the error instead of an empty list`() = runTest {
         paths.codes["/api/v1/admin/brickset-queue"] = 500
         val vm = vm()
         vm.showQueue()
@@ -96,7 +96,7 @@ class MonitoringStartButtonsTest {
     }
 
     @Test
-    fun `Wiederholen meldet die Setnummer`() = runTest {
+    fun `retrying reports the set number`() = runTest {
         paths.antworten["/api/v1/admin/brickset-queue/75192/retry"] = """{"success":true}"""
         paths.antworten["/api/v1/admin/brickset-queue"] = """{"success":true,"count":0,"entries":[]}"""
         val vm = vm()

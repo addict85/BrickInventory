@@ -1,7 +1,7 @@
 Gegenprobe: eine Beschreibung ohne Signatur gilt wieder (Übergangsweg vor sec11)
 Modul: app
 Test: ch.brickinventoryapp.app.InvariantsReferencesTest
-Rot: keine unsignierte oder fremd signierte Beschreibung gilt
+Rot: no unsigned or foreign-signed description applies
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt

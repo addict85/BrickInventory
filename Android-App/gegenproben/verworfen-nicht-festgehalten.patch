@@ -1,7 +1,7 @@
 Gegenprobe: Eine abgelehnte Bearbeitung wird entfernt, ohne sie festzuhalten
 Modul: core-state
 Test: ch.brickinventoryapp.state.ExitSyncTest
-Rot: eine Ablehnung verwirft und hält sie fest
+Rot: a rejection discards and records it, even without an observer, the rest continues
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt

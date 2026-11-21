@@ -41,7 +41,7 @@ import ch.brickinventoryapp.testing.testAccountRepository
  *   E in entwerte() die Prüfung der Herkunft entfernt → rot
  *      „ein Auftrag für einen anderen Server schickt nichts“ (gegenproben/entwerter-ohne-herkunft.patch)
  *   F  redemptionStep(): Gesperrt gibt auch bei gesperrtem Gerät nach den Höchstversuchen
- *      auf (`!deviceLocked &&` entfernt) → rot „bei gesperrtem Geraet gibt der Auftrag nicht auf“
+ *      auf (`!deviceLocked &&` entfernt) → rot „with a locked device the job does not give up“
  *      (gegenproben/entwertung-gibt-bei-sperre-auf.patch; nur CI)
  */
 class RedemptionTest {
@@ -79,13 +79,13 @@ class RedemptionTest {
     }
 
     @Test
-    fun `gelingt der Versuch, bleibt die Warteschlange leer`() {
+    fun `if the attempt succeeds, the queue stays empty`() {
         server.enqueue(MockResponse().setBody("""{"success":true}"""))
         assertEquals(Abmeldeweg.SOFORT to emptyList<Entwertungsauftrag>(), abmelden())
     }
 
     @Test
-    fun `scheitert der Versuch, geht ein Auftrag in die Warteschlange`() {
+    fun `if the attempt fails, a job goes into the queue`() {
         server.enqueue(MockResponse().setResponseCode(503))
         assertEquals(Abmeldeweg.CAUGHT_UP to listOf(job), abmelden())
         server.shutdown()
@@ -93,7 +93,7 @@ class RedemptionTest {
     }
 
     @Test
-    fun `ein Token, das schon nicht mehr gilt, braucht keinen Auftrag`() {
+    fun `a token that is already no longer valid needs no job`() {
         server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"x"}"""))
         assertEquals(Abmeldeweg.SOFORT to emptyList<Entwertungsauftrag>(), abmelden())
         server.enqueue(MockResponse().setResponseCode(404))
@@ -102,7 +102,7 @@ class RedemptionTest {
     }
 
     @Test
-    fun `der Entwerter schickt genau dieses Token an genau diesen Server`() {
+    fun `the canceller sends exactly this token to exactly this server`() {
         val redeemer = Redeemer(OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).build(), entwicklung = true)
         val basis = server.url("/brick").toString().trimEnd('/')
         server.enqueue(MockResponse().setBody("""{"success":true}"""))
@@ -128,7 +128,7 @@ class RedemptionTest {
     }
 
     @Test
-    fun `ein Auftrag fuer einen anderen Server schickt nichts`() {
+    fun `a job for a different server sends nothing`() {
         val redeemer = Redeemer(OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).build(), entwicklung = true)
         val b = server.url("/").toString().trimEnd('/')
         server.enqueue(MockResponse().setResponseCode(503))
@@ -140,7 +140,7 @@ class RedemptionTest {
     }
 
     @Test
-    fun `ein gesperrter Keystore wartet, ein verlorener Schluessel beendet den Auftrag`() {
+    fun `a locked keystore waits, a lost key ends the job`() {
         var called = 0
         val redeem = { _: String -> called++; Entwertungsergebnis.LATER }
         assertEquals(Entwertungsschritt.AGAIN, redemptionStep(Tresorbefund.Gesperrt, 0, redeem = redeem))
@@ -156,7 +156,7 @@ class RedemptionTest {
 
     /** Der Schlüssel des Tokens arbeitet nur entsperrt: Tagelang gesperrt ist kein Fehlschlag. */
     @Test
-    fun `bei gesperrtem Geraet gibt der Auftrag nicht auf`() {
+    fun `with a locked device the job does not give up`() {
         val letzter = REDEMPTION_MAX_ATTEMPTS - 1
         val redeem = { _: String -> Entwertungsergebnis.LATER }
         assertEquals(Entwertungsschritt.AGAIN,

@@ -1,7 +1,7 @@
 Gegenprobe: Der Einstieg reicht die Setnummer als Extra an MainActivity durch
 Modul: app
 Test: ch.brickinventoryapp.app.ForeignEntryTest
-Rot: die eigene Meldung oeffnet ihr Set
+Rot: the own notification opens its set, the app gets no extras
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MeldungsEinstieg.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MeldungsEinstieg.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MeldungsEinstieg.kt

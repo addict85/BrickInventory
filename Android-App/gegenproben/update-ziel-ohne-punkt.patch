@@ -1,7 +1,7 @@
 Gegenprobe: Die Update-Hosts werden mit endsWith ohne Punkt geprüft
 Modul: core-data
 Test: ch.brickinventoryapp.data.UpdateRedirectTest
-Rot: nur GitHub und sein CDN
+Rot: only GitHub and its CDN, only via https on 443
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt

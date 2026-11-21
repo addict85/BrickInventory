@@ -1,7 +1,7 @@
 Gegenprobe: Verlauf wieder vor der Kopfkachel der Finanzen
 Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
-Rot: Finanzen nennen den Marktwert vor dem Verlauf
+Rot: finances name the market value before the history
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt

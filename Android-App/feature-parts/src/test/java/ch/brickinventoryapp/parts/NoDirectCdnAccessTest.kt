@@ -41,7 +41,7 @@ class NoDirectCdnAccessTest {
     }
 
     @Test
-    fun `Screens mit Bildern benutzen resolveThumbUrl oder resolveFullUrl`() {
+    fun `screens with images use resolveThumbUrl or resolveFullUrl`() {
         val screensWithOwnResolution = listOf(
             "collection/ui/screens/GalerieKarte.kt",
             "collection/ui/screens/SetDetailScreen.kt",
@@ -66,7 +66,7 @@ class NoDirectCdnAccessTest {
     }
 
     @Test
-    fun `resolveImageUrl-Helfer existiert und deckt beide Fälle ab`() {
+    fun `resolveImageUrl helper exists and covers both cases`() {
         // Externe Adressen laufen über den Server-Proxy, lokal abgelegte Bilder
         // kommen direkt vom eigenen Server und gehen vor.
         val cdn = "https://cdn.rebrickable.com/media/sets/75192-1.jpg"
@@ -78,7 +78,7 @@ class NoDirectCdnAccessTest {
     }
 
     @Test
-    fun `PartsListScreen wickelt eine bereits aufgelöste Adresse nicht doppelt ein`() {
+    fun `PartsListScreen does not wrap an already resolved address twice`() {
         // parts/ui/Teileliste.kt löst part.imageUrl bereits auf (das prüft
         // PartListTest am Ergebnis); ein zweites resolveThumbUrl() hier
         // wickelte die Proxy-Adresse doppelt ein.

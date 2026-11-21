@@ -1,7 +1,7 @@
 Gegenprobe: Die Erfassung hängt wieder an der Activity statt am scannenden Ziel
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: die Activity haelt nicht mehr ViewModels
+Rot: the activity no longer holds ViewModels
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt

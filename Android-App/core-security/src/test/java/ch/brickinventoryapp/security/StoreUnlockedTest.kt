@@ -24,7 +24,7 @@ import java.util.Base64
  *   C  in StoreCipher.oeffne() den Schlüssel wieder in runCatching → rot „gesperrt entsteht kein
  *      neuer Schluessel …“ (null statt IOException); gegenproben/ablage-gesperrt-wie-unlesbar.patch
  *   D  EntsperrVault.verschluessle() weicht wieder auf den Altbestand-Schlüssel aus → rot
- *      „gesperrt legt der Entsperr-Tresor nichts unter dem schwaecheren Schluessel ab“;
+ *      „locked the unlock vault stores nothing under the weaker key“;
  *      gegenproben/entsperrtresor-mit-ausweg.patch
  *   E  erneuere() ruft hole() ohne fangeAusserAbbruch → rot „Abmelden bei gesperrtem Geraet …“;
  *      gegenproben/ablage-erneuern-gesperrt-wirft.patch
@@ -74,7 +74,7 @@ class StoreUnlockedTest {
     }
 
     @Test
-    fun `ein Altbestand ohne Bedingung kommt beim ersten Lesen unter den entsperrten, die Ablagen bleiben lesbar`() {
+    fun `a legacy stock without condition goes under the unlocked one on first read, the stores stay readable`() {
         val (schluessel, geheim) = altbestand()
         val k = neu()
         assertArrayEquals("Derselbe Schlüssel, nur anders umhüllt", schluessel, k.fetch())
@@ -84,7 +84,7 @@ class StoreUnlockedTest {
     }
 
     @Test
-    fun `gesperrt entsteht kein neuer Schluessel, die Ablage meldet gesperrt statt unlesbar`() {
+    fun `locked no new key is created, the store reports locked instead of unreadable`() {
         val (_, geheim) = altbestand()
         neu().fetch()
         val vorher = abgelegt()
@@ -107,7 +107,7 @@ class StoreUnlockedTest {
     }
 
     @Test
-    fun `kann der entsperrte Tresor nicht verschluesseln, bleibt der alte und gilt weiter`() {
+    fun `if the unlocked vault cannot encrypt, the old one stays and keeps applying`() {
         val (schluessel, _) = altbestand()
         val vorher = abgelegt()
         entsperrt.kaputt = true
@@ -119,7 +119,7 @@ class StoreUnlockedTest {
     }
 
     @Test
-    fun `gesperrt legt der Entsperr-Tresor nichts unter dem schwaecheren Schluessel ab`() {
+    fun `locked the unlock vault stores nothing under the weaker key`() {
         val tresor = EntsperrVault(entsperrt, immer)
         entsperrt.gesperrt = true
         try {
@@ -133,7 +133,7 @@ class StoreUnlockedTest {
     }
 
     @Test
-    fun `Abmelden bei gesperrtem Geraet loescht den alten Schluessel, den neuen gibt es erst entsperrt`() {
+    fun `sign-out with a locked device deletes the old key, the new one exists only when unlocked`() {
         val k = neu()
         val alt = k.fetch()
         entsperrt.gesperrt = true

@@ -20,7 +20,7 @@ import ch.brickinventoryapp.session.qrError
 class CauseVisibleTest {
 
     @Test
-    fun `bei unbekannter Ursache steht die technische Meldung dabei`() {
+    fun `with an unknown cause the technical message is included`() {
         val satz = withTechnicalCause("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt("unexpected end of stream"))
         assertTrue(
             "Die technische Ursache fehlt — dann sagt die Meldung wieder nichts: $satz",
@@ -31,7 +31,7 @@ class CauseVisibleTest {
     }
 
     @Test
-    fun `ohne Ursache bleibt der Satz unveraendert`() {
+    fun `without a cause the sentence stays unchanged`() {
         // Kein technischer Text vorhanden: Es darf keine leere Klammer entstehen.
         assertEquals("Etwas ist schiefgelaufen",
             withTechnicalCause("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt(null)))
@@ -40,7 +40,7 @@ class CauseVisibleTest {
     }
 
     @Test
-    fun `bei benannten Ursachen bleibt der Bibliothekstext draussen`() {
+    fun `with named causes the library text stays out`() {
         // Die Gegenrichtung, und sie ist die wichtigere: Ein Test, der nur
         // Punkt 1 prüft, wäre auch dann grün, wenn die Ursache ÜBERALL
         // angehängt würde — also genau die Regel bräche, um die es geht.
@@ -66,12 +66,12 @@ class CauseVisibleTest {
 class QrSecondAttemptTest {
 
     @Test
-    fun `angemeldet - kein Fehler`() {
+    fun `signed in - no error`() {
         assertEquals(null, qrError(true, "Ungültiges oder abgelaufenes Token"))
     }
 
     @Test
-    fun `nicht angemeldet - der Fehler bleibt`() {
+    fun `not signed in - the error stays`() {
         // Die Gegenrichtung, und sie ist die wichtigere: Würde die Meldung
         // IMMER unterdrückt, bliebe ein echter Fehlschlag (falscher Server,
         // abgelaufener Code beim ERSTEN Versuch) für den Nutzer unsichtbar —

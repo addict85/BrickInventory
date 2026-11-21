@@ -1,7 +1,7 @@
 Gegenprobe: Jede Rückkehr aus dem Hintergrund sperrt die App, auch vor Ablauf der Frist
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.AppLockTest
-Rot: vor Ablauf der Frist fragt die App nicht
+Rot: before the deadline expires the app does not ask
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt

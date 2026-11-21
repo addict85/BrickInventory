@@ -70,7 +70,7 @@ class CacheClearAsksTest {
     }
 
     @Test
-    fun `das Leeren fragt erst nach und leert dann im gewaehlten Umfang`() {
+    fun `clearing asks first and then clears in the chosen scope`() {
         zeige()
         tap(R.string.monitoring_cache_clear_all)
         assertEquals("Ein Tipp allein leert schon", emptyList<Boolean>(), geleert)
@@ -89,7 +89,7 @@ class CacheClearAsksTest {
     }
 
     @Test
-    fun `bei den Netzen steht der Hinweis zum gemessenen WLAN`() {
+    fun `the networks show the hint about metered Wi-Fi`() {
         zeige()
         compose.onNodeWithText(text(R.string.monitoring_vorwaermen_hinweis)).performScrollTo()
     }

@@ -60,7 +60,7 @@ class AbstandsskalaTest {
         quellen().sumOf { (_, s) -> pattern.sumOf { it.findAll(s).count() } }
 
     @Test
-    fun `die Skala wird ueberhaupt benutzt`() {
+    fun `the scale is used at all`() {
         // ── Selbstnachweis: findet die Suche ueberhaupt etwas? ───────────
         //
         // Das ist die eigentliche Aufgabe dieser Pruefung. Wird der Ordner
@@ -105,7 +105,7 @@ class AbstandsskalaTest {
      *   durch `fontSize = 12.sp` → rot in „die Zahl der Schriftgroessen …"
      */
     @Test
-    fun `es gibt nur die Schriftskala von Material`() {
+    fun `there is only Material's type scale`() {
         val zweite = quellen().filter { (_, s) -> Regex("""\bSchrift\.\w+""").containsMatchIn(s) }.map { it.first }
         assert(zweite.isEmpty()) { "Zweite Schriftskala benutzt in: $zweite — nimm MaterialTheme.typography." }
         assert(!File(Quellen.root, "ui/theme/Schrift.kt").exists()) {
@@ -114,7 +114,7 @@ class AbstandsskalaTest {
     }
 
     @Test
-    fun `die Zahl der Abstaende, die noch als Zahl dastehen, sinkt nur`() {
+    fun `the number of spacings still written as numbers only sinks`() {
         // GEMESSEN beim Anlegen: 181, dann 180 (die Design-Auswahl in
         // MonitoringSections ist auf die Skala gewandert), jetzt 178. Ganz
         // oben stehen 6 (59-mal), 10 (41) und
@@ -146,7 +146,7 @@ class AbstandsskalaTest {
     }
 
     @Test
-    fun `die Zahl der Schriftgroessen, die noch als Zahl dastehen, sinkt nur`() {
+    fun `the number of font sizes still written as numbers only sinks`() {
         // GEMESSEN beim Anlegen: 55. Groesster Posten ist 13.sp (22-mal) —
         // direkt neben 12.sp (24-mal). Zwei Groessen, die sich um einen Punkt
         // unterscheiden, sind nebeneinander nicht als Unterschied lesbar; das

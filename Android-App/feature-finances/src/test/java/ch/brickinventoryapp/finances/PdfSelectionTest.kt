@@ -16,7 +16,7 @@ import org.junit.Test
 class PdfSelectionTest {
 
     @Test
-    fun `Adresse und Titel kommen unveraendert zurueck, ein fremder Schluessel nichts`() {
+    fun `address and title come back unchanged, a foreign key gives nothing`() {
         val adressen = listOf(
             "https://srv/api/v1/anleitungen/Mein%20Plan%2B1.pdf",
             "https://cdn.example/6/1/123456.pdf?ticket=a%2Fb+c&x=%25",
@@ -32,7 +32,7 @@ class PdfSelectionTest {
     }
 
     @Test
-    fun `nur die letzten acht bleiben, aeltere fallen heraus`() {
+    fun `only the last eight stay, older ones drop out`() {
         val erster = PdfSelection.put("https://srv/alt.pdf", "alt")
         repeat(8) { PdfSelection.put("https://srv/$it.pdf", "neu $it") }
         assertNull("Die Auswahl wächst nicht ohne Ende", PdfSelection.fetch(erster))

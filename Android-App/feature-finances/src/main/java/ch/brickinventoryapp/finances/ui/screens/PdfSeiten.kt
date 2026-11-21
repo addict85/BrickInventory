@@ -177,7 +177,7 @@ internal fun PdfPages(
                         space.place(0, 0)
                     }
                 }
-                // Reihenfolge: transformable steht hinter horizontalScroll und sieht die Bewegung
+                // Reihenfolge: transformable stands behind horizontalScroll und sieht die Bewegung
                 // zuerst. Andersherum könnte das waagerechte Rollen eine Zwei-Finger-Geste für
                 // sich beanspruchen, und der Zoom käme nie zum Zug.
                 .horizontalScroll(waagrecht)

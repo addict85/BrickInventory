@@ -1,7 +1,7 @@
 Gegenprobe: Drucken steht wieder auch für Gutschein-PDFs da (Stand vor sec12 H5)
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.VoucherPdfStoreTest
-Rot: Betrachter, Abmelden und Start raeumen auf
+Rot: viewer, sign-out and start clean up
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt

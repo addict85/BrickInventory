@@ -43,7 +43,7 @@ class SetupAppLockTest {
     }
 
     @Test
-    fun `die Einrichtung bietet die App-Sperre an, mit Erklaerung`() {
+    fun `the setup offers the app lock, with an explanation`() {
         val lock = AppLock({ 0L }, Speicher())
         compose.setContent {
             BrickInventoryManagerTheme {

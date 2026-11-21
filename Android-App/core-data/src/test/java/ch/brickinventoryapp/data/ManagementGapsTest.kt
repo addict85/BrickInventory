@@ -31,7 +31,7 @@ class ManagementGapsTest {
      *      hinaus. Gefunden beim Umstellen dieses Tests auf einen Testserver.
      */
     @Test
-    fun `die App ruft alle drei Adressen`() {
+    fun `the app calls all three addresses`() {
         val paths = PfadServer()
         try {
             val admin = testManagementRepository(TestApi.fuer(paths.server))
@@ -51,7 +51,7 @@ class ManagementGapsTest {
 
     /** Der Server schickt den Zeitplan seit jeher mit; die App liest ihn ein. */
     @Test
-    fun `der Zeitplan wird eingelesen und angezeigt`() {
+    fun `the schedule is read in and shown`() {
         val r = BrickJson.decodeFromString(JobsResponse.serializer(),
             """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""")
         assertEquals("07:05", r.schedules["prices"]?.time)

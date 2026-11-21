@@ -1,7 +1,7 @@
 Gegenprobe: Knöpfe auch bei grosser Schrift neben dem Suchfeld
 Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
-Rot: Such-Platzhalter der Galerie steht auch bei 200 Prozent
+Rot: search placeholder of the gallery is shown in full at 200 percent too
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt

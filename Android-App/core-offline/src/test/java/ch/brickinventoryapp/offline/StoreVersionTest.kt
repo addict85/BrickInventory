@@ -25,7 +25,7 @@ import org.junit.Test
 /**
  * Jedes Fach liegt in eigener Zeilenform mit Fassung, nicht als Servermodell: Jedes Feld des
  * Fachtyps übersteht die Ablage, eine Zeile, wie sie vor der eigenen Form auf der Platte lag, bleibt
- * lesbar, und eine unbekannte Fassung ist unlesbar statt falsch gelesen.
+ * lesbar, und an unknown version is unreadable instead of misread.
  *
  * Gegenproben (Patches unter gegenproben/):
  *   ablage-figur-feld-umbenannt     in MinifigRow `fig_number` ohne SerialName → rot „eine alte Zeile …“
@@ -65,7 +65,7 @@ class StoreVersionTest {
     private val metaView = CatalogMetaView(listOf(CatalogThemeView(id = 1, name = "Castle", setCount = 9)), 1980, 2026)
 
     @Test
-    fun `jedes Feld jedes Fachs uebersteht die Ablage`() {
+    fun `every field of every compartment survives the store`() {
         // Die Füllwerte sind lesbare Zeitpunkte: Ein null überstünde jede Ablage.
         listOf(figur.alsAnsicht().setAddedAt, kauf.alsAnsicht().createdAt, gutschein.alsAnsicht().guthabenGeprueftAm, alarm.alsAnsicht().lastlyAt)
             .forEach { assertNotNull(it) }
@@ -79,14 +79,14 @@ class StoreVersionTest {
     }
 
     @Test
-    fun `die PIN eines Gutscheins kommt nicht auf die Platte`() {
+    fun `the PIN of a voucher does not get onto the disk`() {
         val text = Slots.GUTSCHEINE.form.encode(BrickJson, gutschein.copy(pin = "4711").alsAnsicht())
         assertEquals(false, "4711" in text)
     }
 
     /** So lagen die Zeilen, als die Ablage noch das Servermodell schrieb: eingefroren, nicht neu erzeugt. */
     @Test
-    fun `eine alte Zeile jedes Fachs bleibt lesbar`() {
+    fun `an old row of every compartment stays readable`() {
         assertEquals(Minifig(figNumber = "sw0001", figName = "Luke", quantity = 2, owners = listOf(konto)).alsAnsicht(),
             Slots.FIGUREN.form.decode(BrickJson,
                 """{"fig_number":"sw0001","fig_name":"Luke","quantity":2,"owners":[{"id":3,"username":"lea"}],"source":"set"}"""))
@@ -111,7 +111,7 @@ class StoreVersionTest {
     }
 
     @Test
-    fun `eine unbekannte Fassung ist unlesbar statt falsch gelesen`() {
+    fun `an unknown version is unreadable instead of misread`() {
         val neu = """{"fassung":2,"fig_number":"sw0001"}"""
         assertThrows(SerializationException::class.java) { Slots.FIGUREN.form.decode(BrickJson, neu) }
         assertEquals("Fassung 1 trägt kein Feld", "sw0001", Slots.FIGUREN.form.decode(BrickJson, """{"fassung":1,"fig_number":"sw0001"}""").figNumber)

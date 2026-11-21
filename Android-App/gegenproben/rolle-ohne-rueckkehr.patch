@@ -1,7 +1,7 @@
 Gegenprobe: Der Keeper einer LazyColumn springt nach dem Ausflug nicht zurück
 Modul: app
 Test: ch.brickinventoryapp.app.RollstelleTest
-Rot: die Liste steht nach dem Ausflug wieder an ihrer Stelle
+Rot: the list is back at its position after the excursion, without hoisted state
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt

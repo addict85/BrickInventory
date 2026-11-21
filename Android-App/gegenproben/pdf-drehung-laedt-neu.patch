@@ -1,7 +1,7 @@
 Gegenprobe: PdfBetrachterViewModel lädt bei jedem oeffne() neu, wie früher der LaunchedEffect nach einer Drehung
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.PdfViewerViewModelTest
-Rot: eine Drehung laedt nicht neu
+Rot: a rotation does not reload
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt

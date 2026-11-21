@@ -1,7 +1,7 @@
 Gegenprobe: „Abmelden“ unter Mehr meldet sofort ab, ohne Rückfrage
 Modul: app
 Test: ch.brickinventoryapp.app.SubpagesTest
-Rot: Abmelden fragt erst nach
+Rot: sign-out asks first
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt

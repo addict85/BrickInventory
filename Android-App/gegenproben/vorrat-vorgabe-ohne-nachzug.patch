@@ -1,7 +1,7 @@
 Gegenprobe: Der Stern eines Lagerorts erreicht den Vorrat in der Ablage nicht
 Modul: core-data
 Test: ch.brickinventoryapp.data.AlarmAndStockStoreTest
-Rot: Anlegen, Umbenennen und der Stern aendern den Vorrat in der Ablage
+Rot: creating, renaming and the star change the supply in the store
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt

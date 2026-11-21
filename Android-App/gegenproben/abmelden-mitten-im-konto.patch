@@ -1,7 +1,7 @@
 Gegenprobe: Abmelden steht nicht mehr abgesetzt am Ende der Seite Mehr
 Modul: app
 Test: ch.brickinventoryapp.app.SubpagesTest
-Rot: Abmelden steht abgesetzt als letzter Eintrag
+Rot: sign-out stands apart as the last entry, after the server group
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt

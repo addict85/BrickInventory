@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
  *      Umleitung zu einem anderen Host erreicht ihn nicht" (200 from B instead of 307)
  *   B  senden() follows no redirect (just `chain.proceed`) → red "eine
  *      Umleitung auf demselben Server behält Methode, Rumpf und Token" and
- *      "nach 303 geht es mit GET ohne Rumpf weiter" (307 resp. 303 reaches the caller)
+ *      "after 303 it continues with GET without a body" (307 resp. 303 reaches the caller)
  *   C  307/308 treated like 303 (always GET) → red "eine Umleitung auf demselben
  *      Server behält …" (GET instead of POST)
  */
@@ -55,7 +55,7 @@ class RedirectTest {
         .post("""{"password":"streng-geheim"}""".toRequestBody()).build()).execute().use { it.code }
 
     @Test
-    fun `eine Umleitung zu einem anderen Host erreicht ihn nicht`() {
+    fun `a redirect to a different host does not reach it`() {
         a.enqueue(MockResponse().setResponseCode(307).setHeader("Location", b.url("/fang").toString()))
         b.enqueue(MockResponse().setBody("{}"))
         assertEquals(307, anmelden())
@@ -63,7 +63,7 @@ class RedirectTest {
     }
 
     @Test
-    fun `eine Umleitung auf demselben Server behaelt Methode, Rumpf und Token`() {
+    fun `a redirect on the same server keeps method, body and token`() {
         a.enqueue(MockResponse().setResponseCode(307).setHeader("Location", "/api/v1/auth/login2"))
         a.enqueue(MockResponse().setBody("{}"))
         assertEquals(200, anmelden())
@@ -76,7 +76,7 @@ class RedirectTest {
     }
 
     @Test
-    fun `nach 303 geht es mit GET ohne Rumpf weiter`() {
+    fun `after 303 it continues with GET without a body`() {
         a.enqueue(MockResponse().setResponseCode(303).setHeader("Location", "/api/v1/ergebnis"))
         a.enqueue(MockResponse().setBody("{}"))
         assertEquals(200, anmelden())

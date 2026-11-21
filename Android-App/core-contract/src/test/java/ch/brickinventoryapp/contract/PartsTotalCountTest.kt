@@ -13,7 +13,7 @@ import org.junit.Test
  *
  * Gegenproben:
  *   A  in PartsStats.alsAnsicht() `+ (manualParts ?: 0)` entfernt → rot
- *      „Teile-Reiter und Sammlung zeigen dieselbe Zahl“ (144 statt 394)
+ *      „parts tab and collection show the same number“ (144 statt 394)
  *   B  in DashboardStats.alsAnsicht() den Rückfall `?: manualParts?.let …`
  *      entfernt → rot „ohne set_parts kommt die Aufschlüsselung aus der Differenz“
  */
@@ -28,7 +28,7 @@ class PartsTotalCountTest {
         "total_minifigs":0,"total_parts":394"""
 
     @Test
-    fun `Teile-Reiter und Sammlung zeigen dieselbe Zahl`() {
+    fun `parts tab and collection show the same number`() {
         val tab = teile("""{"success":true,"stats":{"unique_parts":40,"unique_colors":9,"total_parts":144,"manual_parts":250}}""")
         val sammlung = stats("""{"success":true,"stats":$stand,"set_parts":144,"manual_parts":250}}""")
         assertEquals(394, tab.teileGesamt)
@@ -38,13 +38,13 @@ class PartsTotalCountTest {
     }
 
     @Test
-    fun `ohne set_parts kommt die Aufschluesselung aus der Differenz`() {
+    fun `without set_parts the breakdown comes from the difference`() {
         val sammlung = stats("""{"success":true,"stats":$stand,"manual_parts":250}}""")
         assertEquals(144, sammlung.partsFromSets)
     }
 
     @Test
-    fun `ein aelterer Server ohne die Felder zeigt die Zahl ohne Aufschluesselung`() {
+    fun `an older server without the fields shows the number without breakdown`() {
         val tab = teile("""{"success":true,"stats":{"unique_parts":40,"unique_colors":9,"total_parts":144}}""")
         val sammlung = stats("""{"success":true,"stats":$stand}}""")
         assertEquals(144, tab.teileGesamt)

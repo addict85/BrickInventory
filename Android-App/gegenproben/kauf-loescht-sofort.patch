@@ -1,7 +1,7 @@
 Gegenprobe: Vormerken loescht den Kauf gleich
 Modul: app
 Test: ch.brickinventoryapp.app.UiUniformTest
-Rot: Kauf loeschen bietet Rueckgaengig
+Rot: deleting a purchase offers undo and deletes only afterwards
 
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt

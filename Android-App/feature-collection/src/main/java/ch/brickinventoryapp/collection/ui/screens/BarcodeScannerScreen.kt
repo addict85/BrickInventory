@@ -2,7 +2,7 @@ package ch.brickinventoryapp.collection.ui.screens
 
 /*
  * Autofokus: CONTINUOUS_PICTURE an Vorschau UND Bildanalyse, weil CameraX beide zu einem Request
- * zusammenführt; kein periodisches Nachfokussieren, das die Kamera dauernd neu messen liesse.
+ * zusammenführt; no periodic refocusing, das die Kamera dauernd neu messen liesse.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen

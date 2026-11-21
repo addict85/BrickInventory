@@ -14,7 +14,7 @@ import java.security.MessageDigest
 /**
  * Die Vorschau-Ablage liegt verschlüsselt: Die Bilder der eigenen
  * Sammlung zeigen, welche Sets jemand besitzt. Klartext älterer Fassungen wird
- * verworfen, eine Datei unter fremdem Namen gilt nicht. Ausgeführt gegen ein
+ * verworfen, a file under a foreign name does not count. Ausgeführt gegen ein
  * echtes Verzeichnis.
  *
  * Gegenproben:
@@ -41,7 +41,7 @@ class PreviewEncryptedTest {
         .any { String(it.readBytes(), Charsets.ISO_8859_1).contains("75192-Millennium") }
 
     @Test
-    fun `ein Vorschaubild liegt nicht im Klartext und kommt unveraendert zurueck`() {
+    fun `a thumbnail does not lie in plaintext and comes back unchanged`() {
         val s = speicher()
         s.schreibe(adresse, bild)
         assertTrue(s.hat(adresse))
@@ -51,7 +51,7 @@ class PreviewEncryptedTest {
     }
 
     @Test
-    fun `Klartext aelterer Fassungen verschwindet beim ersten Zugriff`() {
+    fun `plaintext of older versions disappears on first access`() {
         val alt = File(root, "a".repeat(64)).apply { parentFile!!.mkdirs(); writeBytes(bild) }
         val s = speicher()
         assertNull(s.lies(adresse))
@@ -60,7 +60,7 @@ class PreviewEncryptedTest {
     }
 
     @Test
-    fun `der Dateiname verraet die Adresse nicht, und die Ablage mit SHA-256-Namen verschwindet`() {
+    fun `the file name does not reveal the address, and the store with SHA-256 names disappears`() {
         val alt = File(root, "v2/" + "b".repeat(64)).apply { parentFile!!.mkdirs(); writeBytes(byteArrayOf(1)) }
         speicher().schreibe(adresse, bild)
         assertFalse("Die v2-Ablage bleibt liegen", alt.exists())
@@ -77,7 +77,7 @@ class PreviewEncryptedTest {
     }
 
     @Test
-    fun `eine Datei unter fremdem Namen gilt nicht und wird verworfen`() {
+    fun `a file under a foreign name does not count and is discarded`() {
         val s = speicher()
         s.schreibe(adresse, bild)
         val andere = "https://brick.example/api/v1/images/set/10179-1?thumb=1"

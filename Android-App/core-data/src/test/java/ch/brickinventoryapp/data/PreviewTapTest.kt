@@ -52,7 +52,7 @@ class PreviewTapTest {
     }
 
     @Test
-    fun `eine geholte Vorschau wird abgelegt, und der Aufrufer bekommt sie ganz`() {
+    fun `a fetched preview is stored, and the caller gets it whole`() {
         server.enqueue(MockResponse().setBody(Buffer().write(bild)))
         server.enqueue(MockResponse().setBody("voll"))
         val vorschau = adresse("/images/set/75192-1?thumb=1")
@@ -69,7 +69,7 @@ class PreviewTapTest {
     }
 
     @Test
-    fun `ohne Server kommt die Vorschau aus der Ablage`() {
+    fun `without a server the preview comes from the store`() {
         val vorschau = adresse("/images/set/10179-1?thumb=1")
         speicher.schreibe(vorschau, bild)
         server.shutdown()
@@ -81,7 +81,7 @@ class PreviewTapTest {
     }
 
     @Test
-    fun `ein 504 des Zwischenspeichers wird aus der Ablage ersetzt`() {
+    fun `a 504 of the cache is replaced from the store`() {
         val vorschau = adresse("/images/set/10294-1?thumb=1")
         speicher.schreibe(vorschau, bild)
         server.enqueue(MockResponse().setResponseCode(504))
@@ -93,7 +93,7 @@ class PreviewTapTest {
     }
 
     @Test
-    fun `eine Anfrage des Vorwaermers wird spekulativ abgelegt, ein Aufruf gebraucht`() {
+    fun `a request of the warmer is stored speculatively, a call as used`() {
         server.enqueue(MockResponse().setBody(Buffer().write(bild)))
         server.enqueue(MockResponse().setBody(Buffer().write(bild)))
         val vorschau = adresse("/images/set/42115-1?thumb=1")

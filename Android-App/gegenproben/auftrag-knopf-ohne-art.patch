@@ -1,7 +1,7 @@
 Gegenprobe: Knöpfe an einem Auftrag wieder ohne Namen mit Art und Set
 Modul: feature-management
 Test: ch.brickinventoryapp.management.BackgroundButtonsTest
-Rot: jeder Knopf nennt TalkBack
+Rot: every button names the job kind and the set to TalkBack
 
 diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringHintergrund.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringHintergrund.kt
 index fea7864..d7146b4 100644

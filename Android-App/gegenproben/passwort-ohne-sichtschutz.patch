@@ -1,7 +1,7 @@
 Gegenprobe: Ein sichtbares Passwort ohne Sichtschutz
 Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginProtectionTest
-Rot: ein sichtbares Passwort
+Rot: a visible password gets into no screenshot
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt

@@ -1,7 +1,7 @@
 Gegenprobe: Kopierzeilen der Gutscheine ohne Mindesthöhe
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: Gutschein-Knoepfe
+Rot: voucher buttons name the number and the PIN has 48 dp
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheinKarte.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheinKarte.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheinKarte.kt

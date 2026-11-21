@@ -47,7 +47,7 @@ class AndroidWorkflowTest {
         Regex("^$feld: (.+)$", RegexOption.MULTILINE).find(patch.readText().substringBefore("\ndiff --git "))?.groupValues?.get(1)
 
     @Test
-    fun `der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklasse`() {
+    fun `the counter-checks job measures every patch counter-check against a real test class`() {
         val j = job("gegenproben")
         assertTrue("der Job ruft das Werkzeug nicht", "python3 tools/gegenproben.py gegenproben" in j)
         assertFalse("eine grüne Gegenprobe muss den Lauf rot machen", "continue-on-error" in j)
@@ -69,7 +69,7 @@ class AndroidWorkflowTest {
     }
 
     @Test
-    fun `der Release-Weg hat festes Werkzeug, ein genanntes Zertifikat und kein Probe-APK zum Installieren`() {
+    fun `the release path has fixed tooling, a named certificate and no probe APK to install`() {
         val jobs = listOf("build" to workflow, "uebergabe" to workflow, "signatur" to signierweg, "beschreibung" to signierweg,
             "apk-pruefen" to signierweg, "etikett" to freigabe, "release" to freigabe)
         for ((j, text) in jobs) assertTrue("$j läuft auf einem wechselnden Image", "runs-on: ubuntu-24.04" in job(j, text))

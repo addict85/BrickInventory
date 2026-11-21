@@ -1,7 +1,7 @@
 Gegenprobe: Der Zertifikatsdialog bietet bei einer Abweichung vom Code Abtippen und Vertrauen an
 Modul: app
 Test: ch.brickinventoryapp.app.CertificateDialogTest
-Rot: weicht der Server vom Code ab
+Rot: if the server deviates from the code there is nothing to confirm
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt

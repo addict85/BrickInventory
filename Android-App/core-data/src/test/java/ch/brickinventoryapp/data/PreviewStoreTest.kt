@@ -16,7 +16,7 @@ class PreviewStoreTest {
         Quellen.withoutComments(Quellen.lies(rel))
 
     @Test
-    fun `geschrieben wird ueber eine Nebendatei`() {
+    fun `writing goes via a side file`() {
         // Halbe Dateien sehen aus wie Bilder; ein Abbruch mitten im Schreiben ist im Test
         // nicht herbeizuführen.
         val s = quelle("data/cache/VorschauSpeicher.kt")
@@ -27,7 +27,7 @@ class PreviewStoreTest {
     }
 
     @Test
-    fun `der Abgriff sitzt aussen vor dem Offline-Rueckfall`() {
+    fun `the tap sits outside before the offline fallback`() {
         val s = Quellen.withoutComments(Quellen.di())
         // Anwendungs-Interceptoren laufen in der gesetzten Reihenfolge: Die Ablage sitzt
         // AUSSEN, damit sie auch den 504 des Offline-Rückfalls sieht.
@@ -41,7 +41,7 @@ class PreviewStoreTest {
     }
 
     @Test
-    fun `der App-Start wartet den Anlauf ab und fragt vor dem Sammeln`() {
+    fun `the app start waits for the startup and asks before collecting`() {
         val fe = quelle("state/ui/Vorwaermen.kt")
         assert(fe.contains("delay(VorschauVorwaermer.ANLAUF_MS)")) {
             "Der Anlauf fehlt — das Vorwaermen startet dann mitten in Anmeldung und erster Kachelwand"
@@ -52,7 +52,7 @@ class PreviewStoreTest {
     }
 
     @Test
-    fun `das Manifest erlaubt das Lesen der Netzlage`() {
+    fun `the manifest allows reading the network state`() {
         // Den Hinweis zum gemessenen WLAN bei den Netzen prüft CacheClearAsksTest (app).
         assert(Quellen.manifest.readText().contains("android.permission.ACCESS_NETWORK_STATE")) {
             "ACCESS_NETWORK_STATE fehlt im Manifest — dann kann die App die Netzlage gar nicht erkennen"

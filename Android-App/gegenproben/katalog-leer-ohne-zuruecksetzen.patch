@@ -1,7 +1,7 @@
 Gegenprobe: Leerer Katalog mit Filter ohne Knopf zum Zurücksetzen
 Modul: app
 Test: ch.brickinventoryapp.app.BereichsablaeufeTest
-Rot: ein leerer Katalog mit Filter bietet Zuruecksetzen, danach stehen Kacheln da
+Rot: an empty catalog with a filter offers reset, afterwards tiles are shown
 
 diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
 --- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt

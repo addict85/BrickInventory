@@ -1,7 +1,7 @@
 Gegenprobe: Der Geräteschlüssel entsteht gleich im TEE, StrongBox wird nie versucht
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.StrongBoxFirstTest
-Rot: zuerst StrongBox, ohne Chip das TEE
+Rot: first StrongBox, without the chip the TEE
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StrongBoxZuerst.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StrongBoxZuerst.kt
 index d3a4df1..f0da7a2 100644

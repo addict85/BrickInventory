@@ -34,7 +34,7 @@ class QrSuggestionDialogTest {
     private val ctx get() = compose.activity
 
     @Test
-    fun `uebernommen wird erst nach dem Ja zum genannten Server`() {
+    fun `it is taken over only after the yes to the named server`() {
         var uebernommen = 0
         compose.setContent {
             BrickInventoryManagerTheme {

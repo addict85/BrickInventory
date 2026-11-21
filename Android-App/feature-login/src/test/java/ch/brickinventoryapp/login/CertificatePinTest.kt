@@ -197,7 +197,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `ohne Pin geht beim ersten Kontakt nichts hinaus, gefragt wird nach dem Fingerabdruck`() {
+    fun `without a pin nothing goes out on first contact, it asks for the fingerprint`() {
         starte()
         assertFalse(fetch(system(ROOT)))
         assertEquals("Keine Anfrage darf den Server erreichen", 0, server.requestCount)
@@ -215,7 +215,7 @@ class CertificatePinTest {
     private fun abgeschrieben() = fingerprintReadable(frage.offen.value!!.fingerabdruck).takeLast(35)
 
     @Test
-    fun `nach der Bestaetigung gilt der Pin auch ohne bekannte CA`() {
+    fun `after confirmation the pin applies even without a known CA`() {
         starte()
         assertFalse(fetch(system(FOREIGN)))
         assertEquals(CertificateUnresolved.Art.UNBEKANNTE_CA, frage.offen.value?.art)
@@ -225,7 +225,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `ein anderer Schluessel unter dem gemerkten Pin wird nicht still angenommen`() {
+    fun `a different key under the remembered pin is not silently accepted`() {
         starte()
         pins.rememberPin(eigener(), spkiFingerprint(zert(FOREIGN)))
         assertFalse(fetch(system(ROOT)))
@@ -236,7 +236,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `der Pin einer Zwischenstelle aus dem QR-Code deckt das Blatt ohne bekannte CA`() {
+    fun `the pin of an intermediate from the QR code covers the leaf without a known CA`() {
         starte()
         pins.rememberPin(eigener(), spkiFingerprint(zert(INTER)))
         assertTrue(fetch(system(FOREIGN)))
@@ -250,7 +250,7 @@ class CertificatePinTest {
      * (`indexOfFirst { … }` → `if (spkiFingerprint(chain[0]) == pin) 0 else -1`) → rot.
      */
     @Test
-    fun `die Wurzel aus dem QR-Code genuegt als Pin, wenn die Kette Blatt und Wurzel ist`() {
+    fun `the root from the QR code suffices as pin if the chain is leaf and root`() {
         starte(ROOT_SHEET_KEY, listOf(ROOT_SHEET, WURZEL))
         pins.rememberPin(eigener(), spkiFingerprint(zert(WURZEL)))
         assertTrue(fetch(system(FOREIGN)))
@@ -264,7 +264,7 @@ class CertificatePinTest {
      * „Zertifikat geändert“ sehen, solange die Wurzel dieselbe ist.
      */
     @Test
-    fun `ein erneuertes Blatt unter der bestaetigten Wurzel gilt ohne neue Frage`() {
+    fun `a renewed leaf under the confirmed root applies without a new question`() {
         starte(RENEWED_BLATT1_KEY, listOf(RENEWED_BLATT1, RENEWED_ROOT))
         assertFalse(fetch(system(FOREIGN)))
         val f = frage.offen.value!!
@@ -290,7 +290,7 @@ class CertificatePinTest {
      * nicht neu — sonst lernte man, „Zertifikat geändert“ wegzutippen.
      */
     @Test
-    fun `eine oeffentliche CA bietet ihre Wurzel an, eine neue Zwischenstelle fragt nicht neu`() {
+    fun `a public CA offers its root, a new intermediate does not ask again`() {
         starte(OEFF_SHEET_A_KEY, listOf(OEFF_SHEET_A, OEFF_ZW_A))
         assertFalse(fetch(system(OEFF_ROOT)))
         val f = frage.offen.value!!
@@ -310,7 +310,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `ein geaenderter Schluessel gilt erst mit abgeschriebenem Fingerabdruck`() {
+    fun `a changed key applies only with a transcribed fingerprint`() {
         starte()
         pins.rememberPin(eigener(), spkiFingerprint(zert(FOREIGN)))
         assertFalse(fetch(system(ROOT)))
@@ -332,7 +332,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `ohne bekannte CA genuegt ein Tipp nicht, der Fingerabdruck wird abgeschrieben`() {
+    fun `without a known CA a tap is not enough, the fingerprint is transcribed`() {
         starte()
         assertFalse(fetch(system(FOREIGN)))
         val f = frage.offen.value!!
@@ -349,7 +349,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `beim Erstkontakt mit CT-Pflicht genuegt der Vergleich`() {
+    fun `on first contact with CT requirement the comparison suffices`() {
         starte()
         assertFalse(fetch(system(ROOT), ct = true))
         assertEquals(CertificateUnresolved.Art.ERSTKONTAKT, frage.offen.value?.art)
@@ -359,7 +359,7 @@ class CertificatePinTest {
 
     /** Android 11–15: Ohne CT ginge eine fehlausgestellte Kette irgendeiner öffentlichen CA mit einem Tipp durch. */
     @Test
-    fun `ohne CT-Pflicht genuegt beim Erstkontakt kein Tipp, der Fingerabdruck wird abgeschrieben`() {
+    fun `without CT requirement a tap is not enough on first contact, the fingerprint is transcribed`() {
         starte()
         assertFalse(fetch(system(ROOT)))
         val f = frage.offen.value!!
@@ -376,12 +376,12 @@ class CertificatePinTest {
 
     /** Den Vergleichswert hat openssl gerechnet, unabhängig von der App. */
     @Test
-    fun `der Fingerabdruck steht da wie in der Webapp`() {
+    fun `the fingerprint is shown as in the web app`() {
         assertEquals(RENEWED_ROOT_HEX, fingerprintReadable(spkiFingerprint(zert(RENEWED_ROOT))))
     }
 
     @Test
-    fun `ein fremdes Blatt mit angehaengter echter Zwischenstelle passt nicht`() {
+    fun `a foreign leaf with an appended genuine intermediate does not match`() {
         val pin = spkiFingerprint(zert(INTER))
         assertTrue(fitsToPin(arrayOf(zert(LEAF), zert(INTER)), pin))
         assertFalse(fitsToPin(arrayOf(zert(FOREIGN), zert(INTER)), pin))
@@ -389,7 +389,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `fremde Hosts prueft nur die Kette`() {
+    fun `foreign hosts are checked only by the chain`() {
         starte()
         assertTrue(fetch(system(ROOT), own = "brick.example.org:443"))
         assertNull(frage.offen.value)
@@ -399,7 +399,7 @@ class CertificatePinTest {
 
     /** Nutzer-CA ist hier ROOT, das System kennt nur FOREIGN. */
     @Test
-    fun `Nutzer-CAs gelten nur fuer den eigenen Server, nie fuer fremde Hosts`() {
+    fun `user CAs apply only to the own server, never to foreign hosts`() {
         starte()
         val withUserCa = ChoiceTrust(system = system(FOREIGN), withUser = lazy { system(ROOT) }, userAllowed = { true })
         assertFalse("Ein fremder Host nimmt eine Nutzer-CA an",
@@ -413,7 +413,7 @@ class CertificatePinTest {
 
     /** Nutzer-CA ist ROOT: Wer sie einschleust, soll nicht mit einem Tipp durchkommen. */
     @Test
-    fun `ueber eine Nutzer-CA genuegt beim ersten Kontakt kein Tipp`() {
+    fun `via a user CA a tap is not enough on first contact`() {
         starte()
         val withUserCa = ChoiceTrust(system = system(FOREIGN), withUser = lazy { system(ROOT) }, userAllowed = { true })
         assertFalse(fetch(withUserCa, fremd = system(FOREIGN)))
@@ -431,7 +431,7 @@ class CertificatePinTest {
      * mit Abtippen. Ein Pin auf eine eigene CA deckt ohnehin keine öffentliche Kette.
      */
     @Test
-    fun `ein oeffentlicher Pin haelt eine Kette unter fremder Wurzel an, auch wenn das System sie annimmt`() {
+    fun `a public pin stops a chain under a foreign root, even if the system accepts it`() {
         starte(OEFF_SHEET_A_KEY, listOf(OEFF_SHEET_A, OEFF_ZW_A))
         assertFalse(fetch(system(OEFF_ROOT, OEFF2_ROOT)))
         assertEquals(CertificateUnresolved.Art.ERSTKONTAKT, frage.offen.value?.art)
@@ -467,7 +467,7 @@ class CertificatePinTest {
      * Liste (CA_FAMILIES, hier PROBE_FAMILY); ohne CT gilt sie nur, wenn das System beide kennt.
      */
     @Test
-    fun `eine neue Wurzel desselben Betreibers gilt ohne neue Frage`() {
+    fun `a new root of the same operator applies without a new question`() {
         starte(FAM_BLATT1_KEY, listOf(FAM_BLATT1, FAM_ZW1))
         val beide = system(FAM_X1, FAM_X2, OEFF_ROOT)
         assertFalse(fetch(beide))
@@ -496,7 +496,7 @@ class CertificatePinTest {
      * aber jede Kette ab, wie es eine nicht protokollierte Ausstellung täte.
      */
     @Test
-    fun `ein Pin auf eine System-Wurzel gilt nur mit der System-Pruefung, auch wenn der Server sie mitschickt`() {
+    fun `a pin on a system root applies only with the system check, even if the server sends it along`() {
         starte(ROOT_SHEET_KEY, listOf(ROOT_SHEET, WURZEL))
         val basis = system(WURZEL)
         val withoutCt = object : X509ExtendedTrustManager() {
@@ -524,7 +524,7 @@ class CertificatePinTest {
      * ebenfalls öffentlichen. Gemerkt gälte das (Wurzelwechsel); aus dem Code nicht.
      */
     @Test
-    fun `ein Code mit System-Wurzel muss genau diese Wurzel treffen, eine Abweichung bricht ab`() {
+    fun `a code with a system root must hit exactly this root, a deviation aborts`() {
         starte(OEFF_SHEET_A_KEY, listOf(OEFF_SHEET_A, OEFF_ZW_A))
         val beide = system(OEFF_ROOT, OEFF2_ROOT)
         pins.holdBefore(eigener(), spkiFingerprint(zert(OEFF2_ROOT)))
@@ -546,7 +546,7 @@ class CertificatePinTest {
 
     /** Der Code nennt die eigene CA, der Server zeigt eine öffentlich gültige Kette. */
     @Test
-    fun `ein Code mit eigener CA bricht bei einer fremden oeffentlichen Kette ab statt nachzufragen`() {
+    fun `a code with its own CA aborts on a foreign public chain instead of asking`() {
         starte()
         pins.holdBefore(eigener(), spkiFingerprint(zert(FOREIGN)))
         assertFalse(fetch(system(ROOT)))
@@ -562,7 +562,7 @@ class CertificatePinTest {
 
     /** Die Fassung ohne Socket kennt den Host nicht; ein Pin des eigenen Servers gilt trotzdem. */
     @Test
-    fun `ohne Host faellt ein gepinnter Server nicht auf die System-CAs zurueck`() {
+    fun `without a host a pinned server does not fall back to the system CAs`() {
         val tm = PinTrust(system(FOREIGN), pins, ownServer = { "nas:8443" }, frage = frage, foreignHosts = system(FOREIGN))
         tm.checkServerTrusted(arrayOf(zert(FOREIGN)), "ECDHE_ECDSA")
         pins.rememberPin("nas:8443", spkiFingerprint(zert(INTER)))
@@ -573,7 +573,7 @@ class CertificatePinTest {
 
     /** Ohne Host dieselbe Regel für einen öffentlichen Pin: seine Wurzel oder eine desselben Betreibers. */
     @Test
-    fun `ohne Host gilt ein oeffentlicher Pin nur fuer seine Wurzel und deren Familie`() {
+    fun `without a host a public pin applies only to its root and its family`() {
         val sys = system(OEFF_ROOT, OEFF2_ROOT, FAM_X1, FAM_X2)
         val tm = PinTrust(sys, pins, ownServer = { "nas:8443" }, frage = frage, foreignHosts = sys, families = PROBE_FAMILY)
         pins.rememberPin("nas:8443", spkiFingerprint(zert(OEFF_ROOT)))
@@ -587,7 +587,7 @@ class CertificatePinTest {
 
     /** Die Fassung mit Socket, aber ohne Handshake-Sitzung: dieselbe Regel wie ohne Socket. */
     @Test
-    fun `ohne Handshake-Sitzung gilt der Pin des eigenen Servers`() {
+    fun `without a handshake session the own server's pin applies`() {
         val tm = PinTrust(system(FOREIGN), pins, ownServer = { "nas:8443" }, frage = frage, foreignHosts = system(FOREIGN))
         tm.checkServerTrusted(arrayOf(zert(FOREIGN)), "ECDHE_ECDSA", null as Socket?)
         pins.rememberPin("nas:8443", spkiFingerprint(zert(INTER)))
@@ -604,7 +604,7 @@ class CertificatePinTest {
      * Verbindung wieder geprüft werden.
      */
     @Test
-    fun `nach dem Erneuern prueft eine neue Verbindung die Kette wieder`() {
+    fun `after renewal a new connection checks the chain again`() {
         starte(); server.enqueue(MockResponse().setBody("ok"))
         val basis = system(ROOT)
         var erlaubt = true
@@ -639,7 +639,7 @@ class CertificatePinTest {
 
     /** Der Dialog zeigt vor dem Abtippen nur den Anfang; das Abzutippende steht nicht da. */
     @Test
-    fun `der gezeigte Anfang verraet nichts vom abzutippenden Teil`() {
+    fun `the shown beginning reveals nothing of the part to be typed`() {
         val fp = spkiFingerprint(zert(RENEWED_ROOT))
         val anfang = fingerprintStart(fp)
         assertTrue(anfang, anfang.startsWith("8E:04:B3:9F"))
@@ -654,7 +654,7 @@ class CertificatePinTest {
      * hatte nur 16 Hex und bekam „passt nicht“. Jetzt heisst das „zu kurz“.
      */
     @Test
-    fun `eine Abschrift mit Doppelpunkten ist zu kurz, nicht falsch`() {
+    fun `a transcript with colons is too short, not wrong`() {
         val fp = spkiFingerprint(zert(RENEWED_ROOT))
         val sichtbar24 = RENEWED_ROOT_HEX.takeLast(24)
         assertEquals(Transcript.TO_SHORT, Transcript.von(sichtbar24, fp))
@@ -667,14 +667,14 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `der Pin gilt je Host und Port, nur fuer https`() {
+    fun `the pin applies per host and port, only for https`() {
         assertEquals("brick.example.org:443", pinKey("https://Brick.Example.org/"))
         assertEquals("nas:8443", pinKey("https://nas:8443/brick"))
         assertNull(pinKey("http://nas:3000"))
     }
 
     @Test
-    fun `ein QR-Code traegt den Fingerabdruck mit`() {
+    fun `a QR code carries the fingerprint along`() {
         val fp = spkiFingerprint(zert(LEAF))
         val p = parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc","fp":"$fp"}""")!!
         assertEquals(fp, p.fingerabdruck)
@@ -682,7 +682,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `ein QR-Code mit unlesbarem Fingerabdruck gilt nicht`() {
+    fun `a QR code with an unreadable fingerprint does not apply`() {
         assertNull(parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc","fp":"kurz"}"""))
         val fp = spkiFingerprint(zert(LEAF))
         assertNull("Ein Pin über http ergibt nichts", parseQrPayload("""{"url":"http://nas:3000","token":"bim:abc","fp":"$fp"}"""))
@@ -702,7 +702,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `ein neuer Serverschluessel unter derselben oeffentlichen Wurzel fragt bewusst nach`() {
+    fun `a new server key under the same public root deliberately asks`() {
         starte(OEFF_SHEET_A_KEY, listOf(OEFF_SHEET_A, OEFF_ZW_A))
         assertFalse(fetch(system(OEFF_ROOT)))
         assertTrue(frage.confirm(pins, abgeschrieben()))
@@ -728,7 +728,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `mit CT-Pflicht genuegt fuer einen neuen Serverschluessel ein Tipp`() {
+    fun `with CT requirement a tap suffices for a new server key`() {
         starte(OEFF_SHEET_B_KEY, listOf(OEFF_SHEET_B, OEFF_ZW_B))
         pins.rememberPin(eigener(), spkiFingerprint(zert(OEFF_ROOT)))
         pins.rememberPin(sheetPinKey(eigener()), spkiFingerprint(zert(OEFF_SHEET_A)))
@@ -741,7 +741,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `ohne gemerkten Serverschluessel wird er beim ersten Durchlauf festgehalten`() {
+    fun `without a remembered server key it is recorded on the first pass`() {
         starte(OEFF_SHEET_A_KEY, listOf(OEFF_SHEET_A, OEFF_ZW_A))
         pins.rememberPin(eigener(), spkiFingerprint(zert(OEFF_ROOT)))
         assertTrue("Ältere Fassung ohne zweiten Pin: keine Frage", fetch(system(OEFF_ROOT)))
@@ -750,7 +750,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `ein Code vom angemeldeten Bildschirm tauscht den Serverschluessel ohne Frage`() {
+    fun `a code from the signed-in screen swaps the server key without a question`() {
         starte(OEFF_SHEET_B_KEY, listOf(OEFF_SHEET_B, OEFF_ZW_B))
         pins.rememberPin(sheetPinKey(eigener()), spkiFingerprint(zert(OEFF_SHEET_A)))
         pins.holdBefore(eigener(), spkiFingerprint(zert(OEFF_ROOT)))
@@ -760,7 +760,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `der Serverschluessel bindet nur unter einer oeffentlichen Wurzel, eine eigene CA erneuert still`() {
+    fun `the server key binds only under a public root, an own CA renews silently`() {
         starte(RENEWED_BLATT1_KEY, listOf(RENEWED_BLATT1, RENEWED_ROOT))
         pins.rememberPin(eigener(), spkiFingerprint(zert(RENEWED_ROOT)))
         pins.rememberPin(sheetPinKey(eigener()), spkiFingerprint(zert(RENEWED_BLATT2)))
@@ -769,7 +769,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `dasselbe O= im Subjekt macht noch keine Familie, nur die feste Liste`() {
+    fun `the same O= in the subject does not make a family, only the fixed list does`() {
         starte(FAM_BLATT1_KEY, listOf(FAM_BLATT1, FAM_ZW1))
         val beide = system(FAM_X1, FAM_X2, OEFF_ROOT)
         pins.rememberPin(eigener(), spkiFingerprint(zert(FAM_X2)))
@@ -785,7 +785,7 @@ class CertificatePinTest {
     }
 
     @Test
-    fun `beim Erstkontakt darf man abtippen, falsch Abgetipptes gilt nicht`() {
+    fun `on first contact one may type, wrongly typed input does not apply`() {
         starte()
         assertFalse(fetch(system(ROOT), ct = true))
         assertEquals(CertificateUnresolved.Art.ERSTKONTAKT, frage.offen.value?.art)

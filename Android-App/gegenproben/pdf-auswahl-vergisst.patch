@@ -1,7 +1,7 @@
 Gegenprobe: Die PdfAuswahl gibt abgelegte PDFs nicht zurück
 Modul: feature-finances
 Test: ch.brickinventoryapp.finances.PdfSelectionTest
-Rot: Adresse und Titel kommen unveraendert zurueck
+Rot: address and title come back unchanged, a foreign key gives nothing
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/PdfSelection.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/PdfSelection.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/PdfSelection.kt

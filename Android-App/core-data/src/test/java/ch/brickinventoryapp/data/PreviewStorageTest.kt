@@ -43,7 +43,7 @@ class PreviewStorageTest {
         }
 
     @Test
-    fun `nur Vorschaubilder gehoeren in die Ablage`() {
+    fun `only thumbnails belong in the store`() {
         assertTrue(speicher.isPreview("$basis/set/75192-1?thumb=1"))
         assertTrue(speicher.isPreview("$basis/set/75192-1?x=2&thumb=1"))
         assertTrue("Die vom Server _thumb benannte Datei", speicher.isPreview("https://brick.example/uploads/75192-1_thumb.jpg"))
@@ -52,7 +52,7 @@ class PreviewStorageTest {
     }
 
     @Test
-    fun `ueber der Obergrenze fliegt das Aelteste, bis vier Fuenftel frei sind`() {
+    fun `above the upper limit the oldest goes until four fifths are free`() {
         val jetzt = System.currentTimeMillis()
         speicher.schreibe("$basis/set/1-1?thumb=1", "erstes".toByteArray())
         val alt = receipts("alt", 60L * 1024 * 1024, jetzt - 3_600_000)
@@ -69,7 +69,7 @@ class PreviewStorageTest {
     }
 
     @Test
-    fun `ein vorgewaermtes Bild fliegt vor einem angesehenen`() {
+    fun `a warmed image goes before a viewed one`() {
         val angesehen = "$basis/set/75192-1?thumb=1"
         val vorgewaermt = "$basis/set/10294-1?thumb=1"
         speicher.schreibe(angesehen, "angesehen".toByteArray())

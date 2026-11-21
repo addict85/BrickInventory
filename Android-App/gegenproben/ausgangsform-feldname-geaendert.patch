@@ -1,7 +1,7 @@
 Gegenprobe: Die Ausgangsform folgt einer Umbenennung (set_number → setNumber); abgelegte Posten werden unlesbar
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.InitialFormTest
-Rot: liest und schreibt jede eingefrorene Zeile
+Rot: reads and writes every frozen row of version 1 unchanged
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/InitialForm.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/InitialForm.kt
 index 41e1940..b91dc8f 100644

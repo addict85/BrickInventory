@@ -80,7 +80,7 @@ class TileReadAloudTest {
     }
 
     @Test
-    fun `Teilekachel liest Name einmal und Menge mit Einheit`() {
+    fun `parts tile reads name once and quantity with unit`() {
         // Mit Bild: Nur dann trägt die Kachel eine Bildbeschreibung, die den Namen doppeln könnte.
         val teil = TeilAnsicht(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", totalQuantity = 12,
             imageUrl = "https://cdn.rebrickable.com/media/parts/3001.png")
@@ -89,14 +89,14 @@ class TileReadAloudTest {
     }
 
     @Test
-    fun `Figurenkachel liest Name einmal und Menge mit Einheit`() {
+    fun `figure tile reads name once and quantity with unit`() {
         val figur = FigurAnsicht(figNumber = "sw0001a", figName = "Battle Droid", quantity = 3, totalQuantity = 3)
         val gelesen = vorgelesen { MinifigCard(figur, serverUrl = "", imageLoader = bilder, onClick = {}) }
         pruefe("Figurenkachel", gelesen, "Battle Droid", listOf("3 Stück", "Figur sw0001a"))
     }
 
     @Test
-    fun `Katalogkachel nennt Jahr Teile und Besitz in Worten`() {
+    fun `catalog tile names year, parts and ownership in words`() {
         val set = KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022,
             numParts = 4514, owned = true, ownedQuantity = 2)
         val gelesen = vorgelesen { CatalogSetCard(set, imageLoader = bilder, serverUrl = "", onClick = {}) }
@@ -106,7 +106,7 @@ class TileReadAloudTest {
 
     /** Sichtbar, nicht nur vorgelesen: „500“ neben dem Steinsymbol las sich wie ein Preis. */
     @Test
-    fun `Katalogkachel zeigt die Teilezahl mit Wort`() {
+    fun `catalog tile shows the parts count with a word`() {
         val einer = KatalogSetAnsicht(setNumber = "3001-1", name = "Ein Stein", year = 2022, numParts = 1)
         val viele = KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, numParts = 4514)
         compose.setContent {
@@ -132,7 +132,7 @@ class TileReadAloudTest {
     }
 
     @Test
-    fun `Name Farbe und zweite Zeile stehen in mindestens 12 sp`() {
+    fun `name, color and second line are at least 12 sp`() {
         val teil = TeilAnsicht(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", totalQuantity = 12)
         vorgelesen {
             Column {
@@ -146,7 +146,7 @@ class TileReadAloudTest {
     }
 
     @Test
-    fun `Tabellenzeile liest Name einmal und Menge mit Einheit`() {
+    fun `table row reads name once and quantity with unit`() {
         val gelesen = vorgelesen {
             TabellenZeile(bildUrl = null, nummer = "3001", name = "Brick 2 x 4", menge = 1250, imageLoader = bilder,
                 onClick = {})

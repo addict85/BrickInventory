@@ -77,7 +77,7 @@ class BestandMigrationTest {
     }
 
     @Test
-    fun `das eingecheckte Schema der neuesten Fassung ist das der Datenbank`() {
+    fun `the checked-in schema of the newest version is the database's`() {
         val room = Room.inMemoryDatabaseBuilder(context, InventoryDatabase::class.java).allowMainThreadQueries().build()
         try {
             val echt = room.openHelper.writableDatabase
@@ -99,7 +99,7 @@ class BestandMigrationTest {
     }
 
     @Test
-    fun `jede frühere Fassung wird ohne Verlust zur neuesten, jeder Posten hat einen eigenen Schlüssel, jede Zeile ihre Filter`() {
+    fun `every earlier version becomes the newest without loss, every item has its own key, every row its filters`() {
         val frueher = versions().dropLast(1)
         assertTrue("Mindestens Fassung 1 muss eingecheckt sein", 1 in frueher)
         for (v in frueher) {

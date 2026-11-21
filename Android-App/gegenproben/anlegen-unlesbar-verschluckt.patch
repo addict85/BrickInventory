@@ -1,7 +1,7 @@
 Gegenprobe: ein unlesbares Ereignis endet wieder still statt als Fehler
 Modul: core-data
 Test: ch.brickinventoryapp.data.SetCreateUnreadableTest
-Rot: ein unlesbares Ereignis endet als Fehler
+Rot: an unreadable event ends as an error
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt

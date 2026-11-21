@@ -1,7 +1,7 @@
 Gegenprobe: passtZumPin prüft die EKU des Blatts nicht (Stand vor sec10 H8)
 Modul: core-data
 Test: ch.brickinventoryapp.data.PinPurposeTest
-Rot: ein Zertifikat fuer einen anderen Zweck passt nicht zum Pin
+Rot: a certificate for a different purpose does not match the pin
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt

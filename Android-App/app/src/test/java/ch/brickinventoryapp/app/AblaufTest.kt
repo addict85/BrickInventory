@@ -59,12 +59,12 @@ import android.os.Build
  * Gegenproben (a) und (c) misst der CI-Job `gegenproben` (Android-App/
  * gegenproben/ablauf-*.patch, er verlangt Rot); (b) und (d) sind noch ungemessen:
  *   (a) im Anmeldeknopf `onLogin(password, username, …)` vertauscht → rot
- *       „anmelden reicht Name und Passwort weiter“
+ *       „sign-in passes on name and password“
  *   (b) der Plus-Knopf ohne Beschreibung → ATF rot in „die Menge aendern …“
  *   (c) AddSetDialog übergibt die Anzahl fest als 1 → rot „ein Set erfassen …“
  *   (d) Gutschein-PIN immer sichtbar → rot „ein Gutschein zeigt den PIN …“
  *   (e) in GutscheineCard das Aufdecken ohne Schrittschutz (`switchOnPin(g.id)`
- *       direkt) → rot „ohne Bestaetigung der Geraetesperre bleibt der PIN verdeckt“
+ *       direkt) → rot „without confirming the device lock the PIN stays hidden“
  *       (gegenproben/gutschein-pin-ohne-geraetesperre.patch)
  *   (f) die Nummer ohne Schrittschutz kopiert → rot „ohne Geraetesperre wird auch die
  *       Nummer nicht kopiert“ (gegenproben/gutschein-nummer-ohne-geraetesperre.patch)
@@ -103,7 +103,7 @@ class AblaufTest {
         compose.setContent { BrickInventoryManagerTheme { Surface { inhalt() } } }
 
     @Test
-    fun `anmelden reicht Name und Passwort weiter`() {
+    fun `sign-in passes on name and password`() {
         var gesendet: Triple<String, String, String?>? = null
         zeige {
             LoginScreen(
@@ -123,7 +123,7 @@ class AblaufTest {
     }
 
     @Test
-    fun `ein Set erfassen nimmt Nummer und Anzahl`() {
+    fun `adding a set takes number and quantity`() {
         var erfasst: Pair<String, Int>? = null
         zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst = it.setNumber to it.menge }) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("75192")
@@ -134,7 +134,7 @@ class AblaufTest {
 
     /** Hinzufügen ohne Nummer erfasst nichts, sagt aber am Feld, was fehlt (statt grau ohne Grund). */
     @Test
-    fun `ein Set ohne Nummer sagt beim Tippen auf Hinzufuegen, was fehlt`() {
+    fun `a set without a number says what is missing when tapping Add`() {
         var erfasst = 0
         zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst++ }, immediatelyFocus = false) }
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
@@ -150,7 +150,7 @@ class AblaufTest {
      * (gegenproben/erfassen-menge-ohne-hilfezeile.patch).
      */
     @Test
-    fun `jedes Feld beim Set erfassen hat eine Hilfezeile, auch beim Tippen`() {
+    fun `every field when adding a set has a help line, also while typing`() {
         zeige { AddSetDialog(onDismiss = {}, onAdd = {}, immediatelyFocus = false) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_purchase_price)).performTextInput("12")
         compose.waitForIdle()
@@ -166,7 +166,7 @@ class AblaufTest {
      * → erfasst steht auf 1 und der Hinweis fehlt, beide Prüfungen rot.
      */
     @Test
-    fun `ein Set mit unsinniger Nummer sagt beim Hinzufuegen, was erwartet wird`() {
+    fun `a set with a nonsensical number says what is expected when adding`() {
         var erfasst = 0
         zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst++ }, immediatelyFocus = false) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("--")
@@ -177,7 +177,7 @@ class AblaufTest {
     }
 
     @Test
-    fun `die Menge aendern schickt einen Schritt an den Server`() {
+    fun `changing the quantity sends a step to the server`() {
         val w = Examples.Welt().also { world = it }
         val vm = w.setDetail()
         w.paths.antworten["/api/v1/sets/75192-1"] =
@@ -200,7 +200,7 @@ class AblaufTest {
 
     /** Eine Sicherung genügt: mit „Rückgängig“ darunter keine Rückfrage, ohne sie schon. */
     @Test
-    fun `ein Set loescht mit Rueckgaengig sofort, ohne Rueckgaengig erst nach Rueckfrage`() {
+    fun `a set deletes immediately with undo, without undo only after confirmation`() {
         val w = Examples.Welt().also { world = it }
         val vm = w.setDetail()
         var rueckgaengig by mutableStateOf(true)
@@ -250,7 +250,7 @@ class AblaufTest {
 
     /** Kopieren bleibt (Nummer und PIN wandern in ein Bezahlfeld), aber unter Android 13 mit Warnung. */
     @Test
-    fun `unter Android 13 warnt die Gutscheinseite vor dem Kopieren, ab 13 nicht`() {
+    fun `below Android 13 the voucher page warns before copying, from 13 on not`() {
         stufe = 32
         showVoucher(protection = { _, weiter -> weiter() })
         compose.onNodeWithText(ctx.getString(R.string.geheim_kopieren_warnung)).assertExists()
@@ -261,7 +261,7 @@ class AblaufTest {
     }
 
     @Test
-    fun `ein Gutschein zeigt den PIN erst auf Wunsch`() {
+    fun `a voucher shows the PIN only on request`() {
         showVoucher(protection = { _, weiter -> weiter() })
         compose.onNodeWithText("4711", substring = true).assertDoesNotExist()
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_pin_show)).performClick()
@@ -270,7 +270,7 @@ class AblaufTest {
 
     /** pruef6 N2: Wer das entsperrte Telefon kurz hat, sieht und kopiert keine PIN. */
     @Test
-    fun `ohne Bestaetigung der Geraetesperre bleibt der PIN verdeckt`() {
+    fun `without confirming the device lock the PIN stays hidden`() {
         val gefragt = mutableListOf<String>()
         val kopiert = mutableListOf<String>()
         showVoucher({ grund, _ -> gefragt += grund }, kopiert)
@@ -284,7 +284,7 @@ class AblaufTest {
 
     /** Die Nummer allein ist kein Geld, aber Klartext — auch sie erst nach der Sperre. */
     @Test
-    fun `ohne Geraetesperre wird auch die Nummer nicht kopiert`() {
+    fun `without device lock the number is not copied either`() {
         val gefragt = mutableListOf<String>()
         val kopiert = mutableListOf<String>()
         showVoucher({ grund, _ -> gefragt += grund }, kopiert)
@@ -300,7 +300,7 @@ class AblaufTest {
      * Ein fokussiertes Feld blinkt, und Robolectric käme nie zur Ruhe.
      */
     @Test
-    fun `die Rueckfrage zeigt das Codefeld erst auf Verlangen`() {
+    fun `the confirmation shows the code field only on demand`() {
         zustand = zustand.copy(confirmation = VoucherConfirmation(VoucherStep.PIN_ZEIGEN, 7))
         showVoucher(protection = { _, weiter -> weiter() })
         compose.onNodeWithText(ctx.getString(R.string.konto_password_current)).assertIsDisplayed()

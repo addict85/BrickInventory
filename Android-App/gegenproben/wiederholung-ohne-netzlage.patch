@@ -1,7 +1,7 @@
 Gegenprobe: Ohne Netz wartet die Wiederholung trotzdem
 Modul: core-data
 Test: ch.brickinventoryapp.data.RetryTest
-Rot: ohne Netz wird nicht gewartet
+Rot: without network there is no waiting
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt

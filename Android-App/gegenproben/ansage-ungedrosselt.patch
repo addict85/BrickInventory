@@ -1,7 +1,7 @@
 Gegenprobe: GedrosselteAnsage gibt jeden Wortlaut sofort weiter
 Modul: app
 Test: ch.brickinventoryapp.app.AccessibilityTest
-Rot: Statusmeldungen sind Live-Regionen und Fortschritt wird gedrosselt angesagt
+Rot: status messages are live regions and progress is announced throttled
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Announcement.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Announcement.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Announcement.kt

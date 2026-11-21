@@ -147,7 +147,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                // Im Raster immer zwei Zeilen Platz: Kacheln einer Reihe sind gleich hoch,
+                // Im Raster immer zwei Zeilen Platz: tiles of a row are equally high,
                 // auch wenn ein Name kurz ist. Die Zeile muss niemandem gleichen.
                 minLines = if (zeile) 1 else 2,
                 maxLines = if (zeile) 4 else 2, overflow = TextOverflow.Ellipsis)

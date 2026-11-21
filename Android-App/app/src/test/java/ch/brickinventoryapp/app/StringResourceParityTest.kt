@@ -24,7 +24,7 @@ class StringResourceParityTest {
             .map { it.groupValues[1] }.toSet()
 
     @Test
-    fun `jeder Text steht in beiden Sprachdateien`() {
+    fun `every text is in both language files`() {
         val en = schluessel("values/strings.xml")
         val de = schluessel("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
@@ -76,7 +76,7 @@ class StringResourceParityTest {
      *   englische Mengenform ohne one   -> ROT
      */
     @Test
-    fun `jede Mengenform steht in beiden Sprachdateien mit denselben Klassen`() {
+    fun `every plural form is in both language files with the same classes`() {
         val en = mengenformen("values/strings.xml")
         val de = mengenformen("values-de/strings.xml")
 
@@ -119,7 +119,7 @@ class StringResourceParityTest {
      *
      * ── Warum der Test oben das nicht faengt ─────────────────
      *
-     * `jeder Text steht in beiden Sprachdateien` vergleicht NAMEN. Die zehn
+     * `every text is in both language files` vergleicht NAMEN. Die zehn
      * Texte der Preisalarm-Rubrik standen brav in beiden Dateien — nur trug
      * die deutsche denselben englischen Satz; die deutsche App zeigte „rises above".
      *
@@ -146,7 +146,7 @@ class StringResourceParityTest {
      * alte Entscheidung stehenzubleiben, die niemand mehr nachsieht.
      */
     @Test
-    fun `kein Text steht in beiden Sprachen unuebersetzt`() {
+    fun `no text stays untranslated in both languages`() {
         // Begriffe, Eigennamen und Formatvorlagen, die in beiden Sprachen
         // gleich lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
         val gewolltGleich = setOf(
@@ -254,7 +254,7 @@ class StringResourceParityTest {
      * Gegenprobe: nav_monitoring auf Englisch wieder „Monitoring“ → rot.
      */
     @Test
-    fun `der Bereich heisst ueberall Hintergrundarbeiten`() {
+    fun `the area is called Hintergrundarbeiten everywhere`() {
         val en = texts("values/strings.xml")
         val de = texts("values-de/strings.xml")
         for (k in listOf("nav_monitoring", "main_menu_monitoring")) {
@@ -272,7 +272,7 @@ class StringResourceParityTest {
      * Gegenprobe: scanner_close wieder „Schließen“ → rot.
      */
     @Test
-    fun `deutsche Texte in Schweizer Schreibung und eindeutig`() {
+    fun `German texts in Swiss spelling and unambiguous`() {
         val de = texts("values-de/strings.xml")
         val falsch = de.filterValues { "ß" in it || "ggü." in it || Regex("""\bFassung\b""").containsMatchIn(it) }
         assert(falsch.isEmpty()) { "Nicht in Schweizer Schreibung oder mit altem Begriff: ${falsch.keys}" }
@@ -289,7 +289,7 @@ class StringResourceParityTest {
      * vorgabe-mit-strichen („— Global default —“).
      */
     @Test
-    fun `ein Begriff je Sache in beiden Sprachen`() {
+    fun `one term per thing in both languages`() {
         val verboten = mapOf(
             // Sorten wie in der Web-App, nicht „Teileart“; „Stück gesamt“ hiess in der Galerie „Teile“.
             "values-de/strings.xml" to listOf(Regex("Set-Nummer"), Regex("""\bSumme\b"""), Regex("Kauf gesamt"),
@@ -322,7 +322,7 @@ class StringResourceParityTest {
     }
 
     @Test
-    fun `kein zweiter Name fuer einen common-Text`() {
+    fun `no second name for a common text`() {
         val en = texts("values/strings.xml")
         val de = texts("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
@@ -346,7 +346,7 @@ class StringResourceParityTest {
     }
 
     @Test
-    fun `kein Klartext in Text, contentDescription oder Toast`() {
+    fun `no plain text in Text, contentDescription or Toast`() {
         // Was gesucht wird, ist ein LITERAL an einer Stelle, die der Nutzer
         // liest. Bewusst NICHT beanstandet:
         //  - Emoji und Symbole ("👷", "📅") — die sind in jeder Sprache gleich

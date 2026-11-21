@@ -1,7 +1,7 @@
 Gegenprobe: die Spalte thema der Sets bekommt den Lagerort statt des Themas
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.WithoutNetworkFilterTest
-Rot: Suche, Thema, Lagerort und Sortierung
+Rot: search, theme, storage location and sorting of the gallery work offline on the whole local list
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 index a6f47c3..5182d8d 100644

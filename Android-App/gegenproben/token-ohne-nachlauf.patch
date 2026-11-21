@@ -1,7 +1,7 @@
 Gegenprobe: der Token wird beim Start nicht aus dem DataStore nachgefüllt
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenSpeicherwertTest
-Rot: ein neuer Prozess
+Rot: a new process gets token and address from the DataStore
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 index 0287f52..700d405 100644

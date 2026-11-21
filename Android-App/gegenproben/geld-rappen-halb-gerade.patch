@@ -1,7 +1,7 @@
 Gegenprobe: auf Rappen halb zur geraden Zahl statt von der Null weg
 Modul: core-model
 Test: ch.brickinventoryapp.model.MoneyTest
-Rot: auf Rappen gerundet wird halb
+Rot: rounding to centimes goes half away from zero
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt

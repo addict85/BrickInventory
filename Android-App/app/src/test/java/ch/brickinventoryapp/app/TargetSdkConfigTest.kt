@@ -14,7 +14,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Die SDK-Stände stehen in build-logic (Sdk.kt); ein Modulskript darf sie nicht
  * überschreiben, sonst prüfte diese Klasse eine Zahl, die nicht gilt.
  * Gegenproben (Patches unter gegenproben/, am 04.11.2026 rot wie angegeben):
- *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt auf 31 → rot „minSdk ist Android 11“
+ *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt auf 31 → rot „minSdk is Android 11“
  */
 class TargetSdkConfigTest {
 
@@ -46,7 +46,7 @@ class TargetSdkConfigTest {
     }
 
     @Test
-    fun `kein Modulskript setzt die SDK-Stände selbst`() {
+    fun `no module script sets the SDK levels itself`() {
         val scripts = Quellen.module.map { File(it, "build.gradle.kts") }
         assert(scripts.size >= 12) { "Nur ${scripts.size} Modulskripte gefunden — Suche veraltet?" }
         val setzen = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=""")
@@ -62,7 +62,7 @@ class TargetSdkConfigTest {
     }
 
     @Test
-    fun `compileSdk und targetSdk sind 36 und identisch`() {
+    fun `compileSdk and targetSdk are 36 and identical`() {
         val compile = intAfter("compileSdk")
         val target = intAfter("targetSdk")
         assert(target >= 36) { "targetSdk ist $target, erwartet mindestens 36" }
@@ -77,7 +77,7 @@ class TargetSdkConfigTest {
     // erst ab 30 bindet die Gerätesperre einen Keystore-Schlüssel samt PIN/Muster
     // (Schrittschutz). Wer sie senkt, holt die Sonderwege für 8 bis 10 zurück.
     @Test
-    fun `minSdk ist Android 11`() {
+    fun `minSdk is Android 11`() {
         assert(intAfter("minSdk") == 30) {
             "minSdk ist nicht mehr 30. Gesenkt fehlt die schlüsselgebundene Gerätesperre " +
                 "für PIN und Muster; gehoben fallen Geräte weg, ohne dass es jemand entschieden hat."
@@ -85,7 +85,7 @@ class TargetSdkConfigTest {
     }
 
     @Test
-    fun `das Manifest erzwingt keine Ausrichtung und keine feste Groesse`() {
+    fun `the manifest forces no orientation and no fixed size`() {
         val m = xmlCode(manifest)
         for (attr in listOf("android:screenOrientation", "android:resizeableActivity")) {
             assert(!m.contains(attr)) {
@@ -97,7 +97,7 @@ class TargetSdkConfigTest {
     }
 
     @Test
-    fun `vorhersagendes Zurueck ist ausgeschrieben`() {
+    fun `predictive back is opted in`() {
         val m = xmlCode(manifest)
         assert(m.contains("android:enableOnBackInvokedCallback")) {
             "enableOnBackInvokedCallback fehlt im Manifest. Unter targetSdk 36 ist es " +
@@ -112,7 +112,7 @@ class TargetSdkConfigTest {
      * komplett der Navigation-Compose-Voreinstellung.
      */
     @Test
-    fun `es gibt weiterhin keinen eigenen BackHandler`() {
+    fun `there is still no own BackHandler`() {
         // Untergrenze: Diese Prüfung behauptet eine ABWESENHEIT.
         // Fände der Dateilauf nichts, wäre sie grün — und zwar genau dann,
         // wenn sie am wenigsten wert ist.

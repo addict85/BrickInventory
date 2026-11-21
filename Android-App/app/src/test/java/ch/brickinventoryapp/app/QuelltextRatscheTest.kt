@@ -39,11 +39,11 @@ import ch.brickinventoryapp.testing.Quellen
  *   core-data-oeffentlich      liesBelow ohne internal → rot „die oeffentliche Flaeche der Datenmodule …“
  *   bereich-oeffentlich        qrSwitchesServer ohne internal → rot „die oeffentliche Flaeche der Bereiche …“
  *   erfassung-an-der-activity  EntryViewModel wieder per `by viewModels()` in MainActivity
- *                              → rot „die Activity haelt nicht mehr ViewModels …“
+ *                              → rot „the activity no longer holds ViewModels …“
  *   padding-feste-zahl         DetailRow2 wieder `padding(vertical = 5.dp)` → rot „feste Zahlen in padding …“
  *   abstand-zwischen-feste-zahl  Lagerorte wieder `Spacer(Modifier.width(8.dp))` → rot, derselbe Test
  *   dialog-ohne-fenstername    UpdateDialog ohne paneTitle → rot „kein AlertDialog ohne Fenstername …“
- *   dialog-graue-flaeche       UpdateDialog ohne fensterFlaeche() → rot „jeder AlertDialog liegt auf der Fensterflaeche“
+ *   dialog-graue-flaeche       UpdateDialog ohne fensterFlaeche() → rot „every AlertDialog lies on the window surface“
  *   gutschein-eigene-knopfreihe  Gutschein-Formular wieder mit eigener Reihe Speichern | Abbrechen
  *                              → rot „Abbrechen und Hauptknopf stehen nur in der Knopfzeile …“
  *   string-format-ohne-locale  MonitoringScreen wieder `String.format(fmt, sn)` → rot „kein String-format …“
@@ -88,13 +88,14 @@ class QuelltextRatscheTest {
             val stueck = c.substring(m.range.first, minOf(c.length, m.range.first + 400)).substringBefore("\n\n")
             readsSource.containsMatchIn(m.value) || (m.value.startsWith("fun") && readsSource.containsMatchIn(stueck))
         }.map { it.groupValues[1] }.toSet()
-        val tests = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n") }
+        // The name in backticks is prose, not code: "the workflow …" does not call a helper `workflow`.
+        val tests = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n").replace(Regex("`[^`\n]*`"), "``") }
         val lesend = tests.count { t -> readsSource.containsMatchIn(t) || helper.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(t) } }
         return tests.size to lesend
     }
 
     @Test
-    fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
+    fun `test functions that read source become fewer, never more`() {
         val FUNCTIONS = 211
         val ONLY_SOURCE_TEXT = 33
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
@@ -109,7 +110,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `ein lesender Helfer zaehlt fuer jede Funktion, die ihn benutzt`() {
+    fun `a reading helper counts for every function that uses it`() {
         val datei = "private val src = Quellen.lies(\"x.kt\")\n" +
             "@Test\nfun a() {\n    assert(\"y\" in src)\n    }\n" +
             "@Test\nfun b() {\n    assert(1 + 1 == 2)\n    }\n"
@@ -117,7 +118,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `die Ausgabe eines Werkzeugs ist kein Quelltext`() {
+    fun `the output of a tool is not source`() {
         val datei = "private fun lauf() = ProcessBuilder(\"python3\").start().inputStream.bufferedReader().readText()\n" +
             "@Test\nfun a() {\n    assert(\"ok\" in lauf())\n    }\n\n" +
             "@Test\nfun b() {\n    assert(\"x\" in File(\"y\").readText())\n    }\n"
@@ -168,7 +169,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `der Kommentaranteil sinkt, nie steigt`() {
+    fun `the comment share sinks, never rises`() {
         // Ein Anteil, keine Zahl: Er darf sinken, ohne dass jemand nachziehen muss.
         val SCHRANKE = 22.7
         var zeilen = 0
@@ -185,7 +186,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `kein Kommentar hat mehr als fuenf Zeilen Prosa`() {
+    fun `no comment has more than five lines of prose`() {
         var gezaehlt = 0
         val lang = productionFiles().flatMap { f ->
             blocks(f.readLines()).also { gezaehlt += it.size }
@@ -220,7 +221,7 @@ class QuelltextRatscheTest {
                 .filter { it.isFile && (it.extension == "kt" || it.name.endsWith(".gradle.kts")) && "/build/" !in it.invariantSeparatorsPath }
 
     @Test
-    fun `kein Kommentar in Build-Dateien hat mehr als fuenf Zeilen Prosa`() {
+    fun `no comment in build files has more than five lines of prose`() {
         var gezaehlt = 0
         val lang = baudateien().flatMap { f ->
             val z = f.readLines()
@@ -233,7 +234,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `lange Kommentare im Workflow und in Tests werden weniger`() {
+    fun `long comments in the workflow and in tests become fewer`() {
         val WORKFLOW = 1
         val TESTS = 50
         val DATE_AND_ID = 0
@@ -297,7 +298,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `kein Verweis auf das Begruendungsarchiv, und keine KDoc haengt an nichts`() {
+    fun `no reference to the reasoning archive, and no KDoc hangs on nothing`() {
         // Das Archiv docs/begruendungen ist nicht mehr im Baum; das Warum steht im Kommentar,
         // die Geschichte im Commit. Ein zweiter KDoc-Block direkt davor hängt an nichts.
         var kdocs = 0
@@ -389,7 +390,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `kein runCatching verschluckt das Abbrechen eines suspendierenden Aufrufs`() {
+    fun `no runCatching swallows the cancellation of a suspending call`() {
         // runCatching fängt auch die CancellationException wie ein breiter catch; der
         // abgebrochene Aufrufer liefe weiter. Dafür gibt es fangeAusserAbbruch.
         val texts = suspendCalls.first
@@ -412,7 +413,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `kein breiter Fang verschluckt das Abbrechen eines suspendierenden Aufrufs`() {
+    fun `no broad catch swallows the cancellation of a suspending call`() {
         // Ein `catch (_: Exception)` um einen suspendierenden Aufruf fängt auch die
         // CancellationException; der abgebrochene Aufrufer liefe weiter. Dafür gibt
         // es fangeAusserAbbruch oder einen vorangestellten Abbruch-Zweig.
@@ -435,7 +436,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `die detekt-Baseline haelt nur Laenge und Verzweigung und schrumpft`() {
+    fun `the detekt baseline holds only length and branching and shrinks`() {
         val baseline = File(Quellen.project, "config/detekt/baseline.xml").readText()
         val ids = Regex("""<ID>(\w+):""").findAll(baseline).map { it.groupValues[1] }.toList()
         val grenze = File(Quellen.project, "tools/detekt-limit.txt").readLines()
@@ -448,7 +449,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `Echtzeit-Warten in Tests wird weniger, nie mehr`() {
+    fun `real-time waiting in tests becomes less, never more`() {
         // Ein Test, der schläft, ist langsam und auf einem vollen Runner brüchig. ViewModel-Tests
         // laufen im Takt (PfadServer.imTakt, Test-Dispatcher); gezählt wird, was noch wartet.
         val SLEEP = 2
@@ -478,7 +479,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `die oeffentliche Flaeche der Datenmodule waechst nicht`() {
+    fun `the public surface of the data modules does not grow`() {
         // Was nur das eigene Modul braucht, ist internal: Jede öffentliche Deklaration ist
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
@@ -493,7 +494,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
+    fun `the public surface of the areas does not grow`() {
         // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
         // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
         val GRENZE = 142
@@ -509,7 +510,7 @@ class QuelltextRatscheTest {
         .map { it to code(it.readText()) }
 
     @Test
-    fun `feste Zahlen in padding werden nicht mehr`() {
+    fun `fixed numbers in padding do not increase`() {
         // Abstände haben Namen (ui/theme/Abstaende); ein blankes `padding(… 14.dp)` hält sich
         // an keine Skala, und zwei Karten nebeneinander stehen verschieden weit ein.
         val GRENZE = 46
@@ -525,7 +526,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `kein String-format ohne Locale`() {
+    fun `no String-format without Locale`() {
         // Ohne Locale formatiert String.format nach dem Gerät, nicht nach der Sprache der App;
         // stringResource(id, …) oder appNumberLocale() nennen sie ausdrücklich.
         val ohne = Regex("""\bString\.format\(\s*(?!Locale|appNumberLocale|locale\b|java\.util\.Locale)""")
@@ -545,7 +546,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `kein AlertDialog ohne Fenstername und Ueberschrift`() {
+    fun `no AlertDialog without window name and heading`() {
         // Ohne paneTitle sagt TalkBack beim Öffnen nur „Dialog“, ohne heading() findet die
         // Überschriften-Navigation den Titel nicht. Rueckfrage und AddDialog setzen beides.
         val call = Regex("""\bAlertDialog\(""")
@@ -564,7 +565,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `jeder AlertDialog liegt auf der Fensterflaeche`() {
+    fun `every AlertDialog lies on the window surface`() {
         // Materials surfaceContainerHigh stand im Hellen grau auf dem abgedunkelten Grund;
         // fensterFlaeche() nimmt dort surface (Kontrast belegt LockedContrastTest).
         val call = Regex("""\bAlertDialog\(""")
@@ -596,7 +597,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `Abbrechen und Hauptknopf stehen nur in der Knopfzeile beisammen`() {
+    fun `Cancel and main button stand together only in the button row`() {
         // Im Gutschein-Formular stand Speichern links und Abbrechen rechts, überall sonst
         // umgekehrt. AlertDialog ordnet selbst; jede andere Knopfreihe nimmt Knopfzeile. Ein
         // Schliessen-Kreuz neben „OK“ beim Bearbeiten in der Zeile ist kein Abbrechen-Knopf.
@@ -617,7 +618,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `die Activity haelt nicht mehr ViewModels`() {
+    fun `the activity no longer holds ViewModels`() {
         // Activity-weit nur, was über jedem Ziel liegt (ActivityState) und die Pflichtmasken;
         // alles andere holt sein Ziel mit hiltViewModel() an seinem Eintrag.
         val GRENZE = 6
@@ -629,7 +630,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `kein voll qualifizierter Projektname im Code`() {
+    fun `no fully qualified project name in the code`() {
         // Ein Import zeigt die Abhängigkeit im Kopf der Datei; inline bleibt sie
         // unsichtbar und die Zeile lang. Kommentare und Zeichenketten zählen nicht.
         val voll = Regex("""(?<![\w.])ch\.brickinventoryapp(?:\.[a-z]\w*)+\.[A-Za-z_]\w*""")
@@ -662,7 +663,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `Bildschirme stossen das Laden nicht per LaunchedEffect an, Zustaende tragen Laden und Meldung`() {
+    fun `screens do not trigger loading via LaunchedEffect, states carry loading and message`() {
         // Ziel 0: Das ViewModel lädt selbst (init, observeLoadOn); der Bildschirm ruft
         // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
         val LOADING = 0
@@ -708,7 +709,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `Fachtypen tragen Betraege als Geld und Zeitpunkte als Instant, nicht als Double und String`() {
+    fun `domain types carry amounts as Money and points in time as Instant, not as Double and String`() {
         // Ziel 0, beide erreicht: Gezählt werden Eigenschaften in core-model, deren Name einen Betrag
         // oder ein Datum nennt. Prozente sind keine Beträge.
         val AMOUNTS = 0

@@ -1,7 +1,7 @@
 Gegenprobe: Der beobachtete Bereich kommt aus der Punktabfrage statt aus dem Fluss der Sitzung
 Modul: core-offline
 Test: ch.brickinventoryapp.offline.OfflineablageLockTest
-Rot: der beobachtete Bereich folgt der Sitzung
+Rot: the observed area follows the session without anyone writing
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
