@@ -66,7 +66,7 @@ class OfflineablageLockTest {
     }
 
     @Test
-    fun `two simultaneous wendeAn both count`() = runBlocking {
+    fun `two simultaneous applyAn both count`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() })
         val gate = bestand.hold()
         val erste = launch { ablage.applyAn(Editing.SetMenge("10001-1", 1)) }

@@ -100,7 +100,7 @@ class BasePathTest {
     }
 
     @Test
-    fun `eigeneAdresse stays under the path`() {
+    fun `ownAddress stays under the path`() {
         val s = "https://s.example/brick"
         assertEquals("https://s.example/brick/uploads/a.pdf", ownAddress(s, "/uploads/a.pdf"))
         assertNull(ownAddress(s, "//fremd.example/x"))

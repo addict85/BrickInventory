@@ -97,7 +97,7 @@ class PathServerInTickTest {
     }
 
     @Test
-    fun `the ReihenServer responds in order and records the requests`() {
+    fun `the RowsServer responds in order and records the requests`() {
         val series = RowsServer()
         try {
             series.enqueue(TestApi.antwort("""{"success":true,"total_value":"1.00","figs":[]}"""))
