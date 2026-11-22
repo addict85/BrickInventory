@@ -5,12 +5,12 @@ import android.content.Intent
 import android.net.Uri
 
 /**
- * Öffnet eine von `externeAdresse` (core-netz) geprüfte Adresse im Browser; false,
- * wenn keine da ist oder keine App sie nimmt (der Aufrufer sagt es dann). Der Intent
- * gehört zur Oberfläche, die Regel zum Netz. BROWSABLE, damit nur Apps antworten,
- * die sich als Ziel für Weblinks ausweisen; nicht-https bleibt auch hier zu.
+ * Opens an address checked by `externeAddress` (core-network) in the browser; false
+ * if there is none or no app takes it (the caller then says so). The intent
+ * belongs to the UI, the rule to the network. BROWSABLE, so that only apps answer
+ * that identify themselves as targets for web links; non-https also stays closed here.
  */
-fun oeffneExtern(ctx: Context, geprueft: String?): Boolean {
+fun openExtern(ctx: Context, geprueft: String?): Boolean {
     val ziel = geprueft?.let(Uri::parse)?.takeIf { it.scheme == "https" } ?: return false
     return runCatching {
         ctx.startActivity(Intent(Intent.ACTION_VIEW, ziel).addCategory(Intent.CATEGORY_BROWSABLE))

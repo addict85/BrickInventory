@@ -1,7 +1,7 @@
 Gegenprobe: Ein geänderter Kauf holt den ganzen Bestand statt die Zusammenfassung zu übernehmen
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.KaeufeViewModelTest
-Rot: ein geaenderter Kauf eines Sets schreibt seine Zusammenfassung
+Modul: core-state
+Test: ch.brickinventoryapp.state.PurchasesViewModelTest
+Rot: a changed purchase of a set writes its summary into the store and reloads the list
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/HaushaltRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/HaushaltRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/HaushaltRepositoryImpl.kt
@@ -12,6 +12,6 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
                  is Ergebnis.Erfolg -> {
 -                    val agg = r.data.set?.takeIf { it.setNumber.isNotBlank() }
 +                    val agg = r.data.set?.takeIf { false }
-                     agg?.let { ablage.wendeAn(Nachzug.SetZusammenfassung(it.alsZusammenfassung())) }
+                     agg?.let { ablage.applyAn(FollowUp.SetSummary(it.asSummary())) }
                      Ergebnis.Erfolg(Kaufaenderung(agg != null, r.data.parts, r.data.minifigs))
                  }

@@ -23,20 +23,20 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
 
-/** Testkennung des Ersatzbilds — Oberflächentests zählen damit leere Bildflächen. */
-const val BILD_ERSATZ = "bild-ersatz"
+/** Test tag of the placeholder image — UI tests use it to count empty image areas. */
+const val IMAGE_FALLBACK = "bild-ersatz"
 
 /**
- * Jede Bildfläche eines Sets, Teils oder einer Figur. Solange das Bild lädt, fehlt
- * oder nicht kommt, steht darunter dasselbe Ersatzbild (Stein-Silhouette auf
- * surfaceContainer): Eine leere weisse Fläche sah in Galerie und Detail aus wie ein
- * Fehler der App, und jede Stelle hatte ihren eigenen Platzhalter.
+ * Every image area of a set, part or figure. As long as the image is loading, missing
+ * or never arrives, the same placeholder sits below it (brick silhouette on
+ * surfaceContainer): an empty white area in the gallery and detail looked like an
+ * error in the app, and every spot had its own placeholder.
  */
 @Composable
 fun ProduktBild(
@@ -45,41 +45,41 @@ fun ProduktBild(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit,
-    ersatzGroesse: Dp = 40.dp,
+    fallbackSize: Dp = 40.dp,
     onState: ((AsyncImagePainter.State) -> Unit)? = null,
     /**
-     * Die ganze Fläche als Bildgrund (Kacheln): Produktbilder stehen auf Weiss, und mit
-     * weissem Grund geht ihr Rand in der Fläche auf, statt als Kasten in der Karte
-     * zu stehen. Im Dunkeln trägt die Fläche den dunklen Ton des Designs.
+     * The whole area as the image background (tiles): product images sit on white, and with a
+     * white background their edge blends into the surface instead of standing as a box in the
+     * card. In the dark theme the area carries the theme's dark tone.
      */
     bildgrund: Boolean = false,
-    /** Abstand des Bilds zum Rand seiner Fläche; der Grund reicht bis an den Rand. */
-    innenAbstand: Dp = 0.dp,
+    /** Padding of the image to the edge of its area; the background reaches to the edge. */
+    innerGap: Dp = 0.dp,
 ) {
-    // Am Ziel festgemacht, nicht an der Anfrage: Eine neu gebaute ImageRequest je
-    // Zusammensetzung setzte den Zustand sonst ständig zurück.
+    // Keyed on the target, not the request: a freshly built ImageRequest per
+    // composition would otherwise reset the state constantly.
     val ziel = (model as? ImageRequest)?.data ?: model
     var geladen by remember(ziel) { mutableStateOf(false) }
     val dunkel = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    // Im Dunkeln eine dunkle Fläche aus dem Design statt gedämpftem Weiss: Eine hellgraue
-    // Fläche über die ganze Kachel blendete und sah in jedem dunklen Design gleich aus.
+    // In the dark theme a dark surface from the theme instead of muted white: a light-gray
+    // area across the whole tile glared and looked the same in every dark theme.
     val grund = when {
         !bildgrund || !geladen -> Modifier
         dunkel -> Modifier.background(MaterialTheme.colorScheme.surfaceContainerHighest)
         else -> Modifier.background(BILDGRUND)
     }
     Box(modifier.then(grund), contentAlignment = Alignment.Center) {
-        if (!geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
+        if (!geladen) ImageFallback(Modifier.matchParentSize(), fallbackSize)
         if (model != null) {
             AsyncImage(
                 model = model,
                 imageLoader = imageLoader,
                 contentDescription = contentDescription,
-                modifier = Modifier.matchParentSize().padding(innenAbstand),
+                modifier = Modifier.matchParentSize().padding(innerGap),
                 contentScale = contentScale,
-                // Im Dunkeln dämpft der Schleier nur die Bildpunkte selbst; ein Rechteck darüber
-                // dunkelte auch die Fläche um ein freigestelltes Bild.
-                colorFilter = if (dunkel) DAEMPFUNG_DUNKEL else null,
+                // In the dark theme, the overlay only dims the pixels themselves; a rectangle on top
+                // also darkened the area around a cut-out image.
+                colorFilter = if (dunkel) DAMPING_DARK else null,
                 onState = { st ->
                     geladen = st is AsyncImagePainter.State.Success
                     onState?.invoke(st)
@@ -89,23 +89,23 @@ fun ProduktBild(
     }
 }
 
-/** Der Grund der Setbilder: Weiss wie ihr eigener Hintergrund. */
+/** The background of set images: white like their own background. */
 private val BILDGRUND = Color.White
 
 /**
- * Deckkraft des Schleiers im Dunkeln: Ein Fünftel nimmt Weiss das Blenden. Mit einem
- * Drittel wirkten die Produktbilder grau und matt.
+ * Opacity of the overlay in the dark theme: at a fifth, white takes the glare out. At a
+ * third, the product images looked gray and matte.
  */
-private const val SCHLEIER_DUNKEL = 0.2f
+private const val VEIL_DARK = 0.2f
 
-/** Derselbe Schleier als Filter auf den Bildpunkten, für Bilder ohne eigenen Grund. */
-private val DAEMPFUNG_DUNKEL = ColorFilter.tint(Color.Black.copy(alpha = SCHLEIER_DUNKEL), BlendMode.SrcAtop)
+/** The same overlay as a filter on the pixels, for images without a background of their own. */
+private val DAMPING_DARK = ColorFilter.tint(Color.Black.copy(alpha = VEIL_DARK), BlendMode.SrcAtop)
 
-/** Das Ersatzbild allein — auch für Flächen, die gar keine Adresse haben. */
+/** The placeholder image alone — also for areas that have no address at all. */
 @Composable
-fun BildErsatz(modifier: Modifier = Modifier, groesse: Dp = 40.dp) {
+fun ImageFallback(modifier: Modifier = Modifier, groesse: Dp = 40.dp) {
     Box(
-        modifier.background(MaterialTheme.colorScheme.surfaceContainer).testTag(BILD_ERSATZ),
+        modifier.background(MaterialTheme.colorScheme.surfaceContainer).testTag(IMAGE_FALLBACK),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

@@ -1,17 +1,17 @@
 /**
- * Kein doppelter Neuaufbau des Inhalts beim Neuladen / nach dem Login.
+ * No double rebuild of the content when reloading / after login.
  *
- * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
- *   A  navigation.js: bei Sprachwechsel loadGallery() statt renderGallery()
- *      → „ein echter Sprachwechsel …“ rot
- *   B  navigation.js ohne `if (!echterWechsel) return;` → „der Start lädt …“ rot
- *   C  loadGallery zeigt die Ladeanzeige immer (`if (true)`) → „Auffrischen …“ rot
+ * Counter-checks (05.11.2026, each on its own, bundle rebuilt):
+ *   A  navigation.js: on language change loadGallery() instead of renderGallery()
+ *      → “a real language change …” red
+ *   B  navigation.js without `if (!realSwitch) return;` → “the startup loads …” red
+ *   C  loadGallery always shows the loading indicator (`if (true)`) → “refreshing …” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 /**
- * import-/export-Syntax aus einer Moduldatei entfernen.
+ * Remove import/export syntax from a module file.
  * @param {string} src
  * @returns {string}
  */
@@ -19,41 +19,41 @@ function stripModuleSyntax(src) {
   const body = src
     .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
     .replace(/^export\s+/gm, ''); // export function/const/let/class
-  // registerActions() kommt sonst aus js/registry.js und ist nach dem
-  // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
-  // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext. …
+  // registerActions() otherwise comes from js/registry.js and is not defined after
+  // removing the imports. In the sandbox the registration does not
+  // matter — that it IS called is checked by test/csp-actions.test.js
+  // and test/bundle-smoke.test.js against the real source text. …
   return (
     'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
   );
 }
 
-const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/ui');
 
 const SETS = { success: true, sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1 }], count: 1, total: 1 };
-const setsAufrufe = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;
+const setsCalls = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;
 const kachel = d => d.querySelector('#gallery [data-price-for="10294-1"]')?.closest('[data-click="openModal"], .sc');
 
-test('der Start lädt die Galerie einmal, und gleiche Sprache baut nichts neu', async () => {
-  const { w, d, warte, ruhig, aufrufe } = await oeffneOberflaeche({ '/v1/sets': SETS });
+test('the startup loads the gallery once, and the same language rebuilds nothing', async () => {
+  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
   try {
     assert.ok(await warte(() => kachel(d)));
     await ruhig();
-    assert.equal(setsAufrufe(aufrufe), 1, 'die Galerie wurde beim Start mehrfach geladen');
+    assert.equal(setsCalls(aufrufe), 1, 'die Galerie wurde beim Start mehrfach geladen');
     const vorher = kachel(d);
     const wahl = d.getElementById('lang-select');
     wahl.value = 'de';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
     await ruhig();
     assert.equal(kachel(d), vorher, 'gleiche Sprache hat die Kacheln neu gezeichnet');
-    assert.equal(setsAufrufe(aufrufe), 1);
+    assert.equal(setsCalls(aufrufe), 1);
   } finally {
     w.close();
   }
 });
 
-test('ein echter Sprachwechsel zeichnet die Galerie neu, ohne sie neu zu laden', async () => {
-  const { w, d, warte, ruhig, aufrufe } = await oeffneOberflaeche({ '/v1/sets': SETS });
+test('a real language change redraws the gallery without reloading it', async () => {
+  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
   try {
     assert.ok(await warte(() => kachel(d)));
     await ruhig();
@@ -63,19 +63,19 @@ test('ein echter Sprachwechsel zeichnet die Galerie neu, ohne sie neu zu laden',
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => kachel(d) && kachel(d) !== vorher), 'Kacheln nicht neu gezeichnet');
     await ruhig();
-    assert.equal(setsAufrufe(aufrufe), 1, 'ein Sprachwechsel hat die Galerie neu geladen');
+    assert.equal(setsCalls(aufrufe), 1, 'ein Sprachwechsel hat die Galerie neu geladen');
   } finally {
     w.close();
   }
 });
 
-test('Auffrischen lässt die Kacheln stehen, bis die neue Antwort da ist', async () => {
+test('refreshing leaves the tiles standing until the new response is there', async () => {
   let n = 0;
   let los;
   const spaeter = new Promise(r => {
     los = r;
   });
-  const { w, d, warte } = await oeffneOberflaeche({ '/v1/sets': () => (++n === 1 ? SETS : spaeter.then(() => SETS)) });
+  const { w, d, warte } = await openUi({ '/v1/sets': () => (++n === 1 ? SETS : spaeter.then(() => SETS)) });
   try {
     assert.ok(await warte(() => kachel(d)));
     d.getElementById('gsort').value = 'name_asc';
@@ -90,16 +90,16 @@ test('Auffrischen lässt die Kacheln stehen, bis die neue Antwort da ist', async
   }
 });
 
-test('die Import-Abfrage läuft nicht ungebremst und nicht vor dem Login', () => {
-  // Sie pollte alle 3 Sekunden — auch auf dem Login-Screen und auch dann, wenn
-  // die Antwort gar kein JSON war. Steht ein Reverse-Proxy davor, liefert der
-  // bei einem Neustart eine HTML-Fehlerseite; r.json() warf dann bei jedem
-  // Versuch "Unexpected token '<'".
-  const core = stripModuleSyntax(require('./helpers/sources').coreQuelle());
+test('the import query does not run unthrottled and not before login', () => {
+  // It polled every 3 seconds — also on the login screen and also when
+  // the response was not JSON at all. If a reverse proxy stands in front, it delivers
+  // an HTML error page during a restart; r.json() then threw on every
+  // attempt "Unexpected token '<'".
+  const core = stripModuleSyntax(require('./helpers/sources').coreSource());
   const fn = core.slice(core.indexOf('async function gibCheckOnLoad'), core.indexOf('let _gibCheckTimer = null;'));
   assert.match(
     fn,
-    /if \(!angemeldetesKonto( \|\| document\.hidden)?\) return;/,
+    /if \(!loggedInAccount( \|\| document\.hidden)?\) return;/,
     'Ohne Anmeldung gibt es nichts zu prüfen',
   );
   assert.match(fn, /ct\.includes\('application\/json'\)/, 'Die Antwort muss vor dem Parsen geprüft werden');

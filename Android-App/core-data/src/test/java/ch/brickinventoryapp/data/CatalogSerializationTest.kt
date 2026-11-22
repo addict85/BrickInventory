@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.vertrag.CatalogMetaResponse
-import ch.brickinventoryapp.vertrag.CatalogSetDetail
-import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
-import ch.brickinventoryapp.vertrag.CatalogSetsResponse
+import ch.brickinventoryapp.contract.CatalogMetaResponse
+import ch.brickinventoryapp.contract.CatalogSetDetail
+import ch.brickinventoryapp.contract.CatalogSetDetailResponse
+import ch.brickinventoryapp.contract.CatalogSetsResponse
 import ch.brickinventoryapp.data.util.BrickLinkUrls
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -13,20 +13,20 @@ import org.junit.Test
 import ch.brickinventoryapp.model.json.BrickJson
 
 /**
- * Client-seitiger API-Vertrag: Die Katalog-Modelle müssen echte
- * Server-Antworten der /api/v1/catalog-Endpunkte parsen — inklusive unbekannter
- * Zusatzfelder (Server darf erweitern, ohne die App zu brechen) und
- * fehlender optionaler Felder. Die JSON-Payloads entsprechen dem Format,
- * das der Integrationstest des Servers (test/catalog-api.test.js im
- * Manager-Repo) verifiziert.
+ * Client-side API contract: the catalog models must parse real
+ * server responses of the /api/v1/catalog endpoints — including unknown
+ * extra fields (the server may extend without breaking the app) and
+ * missing optional fields. The JSON payloads match the format
+ * that the server's integration test (test/catalog-api.test.js in the
+ * manager repo) verifies.
  */
 class CatalogSerializationTest {
 
-    // Gleiche Konfiguration wie AppModule.provideJson()
+    // Same configuration as AppModule.provideJson()
     private val json = BrickJson
 
     @Test
-    fun `meta-Antwort wird geparst`() {
+    fun `meta response is parsed`() {
         val payload = """{
             "success": true,
             "themes": [
@@ -47,7 +47,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `sets-Antwort wird geparst - inkl owned-Flags`() {
+    fun `sets response is parsed - incl owned flags`() {
         val payload = """{
             "success": true, "total": 2, "page": 1, "pages": 1,
             "sets": [
@@ -69,7 +69,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `detail-Antwort wird geparst`() {
+    fun `detail response is parsed`() {
         val payload = """{
             "success": true,
             "set": {"set_number": "6346-1", "name": "Shuttle Launching Crew", "year": 1992,
@@ -82,8 +82,8 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `unbekannte Zusatzfelder brechen das Parsen nicht`() {
-        // Server-Erweiterungen (neue Felder) dürfen alte App-Versionen nicht brechen
+    fun `unknown extra fields do not break parsing`() {
+        // Server extensions (new fields) must not break old app versions
         val payload = """{
             "success": true, "total": 0, "page": 1, "pages": 1, "sets": [],
             "brandneues_feld": {"x": 1}, "noch_eins": [1, 2, 3]
@@ -93,7 +93,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `fehlende optionale Felder fallen auf Defaults zurueck`() {
+    fun `missing optional fields fall back to defaults`() {
         val payload = """{"success": true, "sets": [{"set_number": "42100-1"}], "total": 1}"""
         val r = json.decodeFromString<CatalogSetsResponse>(payload)
         val s = r.sets.single()
@@ -105,7 +105,7 @@ class CatalogSerializationTest {
     }
 
     @Test
-    fun `fehler-Antwort wird geparst`() {
+    fun `error response is parsed`() {
         val r = json.decodeFromString<CatalogSetDetailResponse>(
             """{"success": false, "error": "Set nicht im Katalog gefunden"}"""
         )
@@ -117,7 +117,7 @@ class CatalogSerializationTest {
 class BrickLinkUrlsTest {
 
     @Test
-    fun `kauf-URL entspricht dem Webapp-Format`() {
+    fun `purchase URL matches the web app format`() {
         assertEquals(
             "https://www.bricklink.com/v2/catalog/catalogitem.page?S=6346-1#T=S&O={%22iconly%22:0}",
             BrickLinkUrls.setForSale("6346-1")
@@ -125,25 +125,25 @@ class BrickLinkUrlsTest {
     }
 
     @Test
-    fun `setnummer wird URL-encodiert`() {
-        // Hypothetische Sonderzeichen dürfen die URL nicht zerbrechen
+    fun `set number is URL-encoded`() {
+        // Hypothetical special characters must not break the URL
         val url = BrickLinkUrls.setForSale("10 30-1")
         assertTrue(url.contains("S=10+30-1") || url.contains("S=10%2030-1"))
     }
 }
 
 /**
- * Der Katalog-Detail-Link kommt jetzt fertig vom Server. Diese Tests sichern
- * zweierlei: dass das neue Feld korrekt deserialisiert (auch wenn es fehlt —
- * ältere Server liefern es nicht), und dass der lokale Fallback die
- * BrickLink-Item-Typen richtig abbildet.
+ * The catalog detail link now comes ready from the server. These tests secure
+ * two things: that the new field deserializes correctly (even if it is missing —
+ * older servers do not deliver it), and that the local fallback maps the
+ * BrickLink item types correctly.
  */
 class BrickLinkRefTest {
 
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
-    fun `bricklink-Feld wird uebernommen`() {
+    fun `bricklink field is taken over`() {
         val raw = """{"set_number":"5005358-1","bricklink":{"type":"GEAR","number":"5005358","url":"https://x/","resolved":true}}"""
         val d = json.decodeFromString<CatalogSetDetail>(raw)
         assertEquals("GEAR", d.bricklink?.type)
@@ -153,13 +153,13 @@ class BrickLinkRefTest {
     }
 
     @Test
-    fun `fehlendes bricklink-Feld bleibt null (Altserver)`() {
+    fun `missing bricklink field stays null (old server)`() {
         val d = json.decodeFromString<CatalogSetDetail>("""{"set_number":"75192-1"}""")
         assertEquals(null, d.bricklink)
     }
 
     @Test
-    fun `nicht gelisteter Artikel liefert url null`() {
+    fun `unlisted item delivers url null`() {
         val raw = """{"set_number":"x-1","bricklink":{"type":"NONE","number":"x-1","url":null,"resolved":true}}"""
         val d = json.decodeFromString<CatalogSetDetail>(raw)
         assertEquals("NONE", d.bricklink?.type)
@@ -167,15 +167,15 @@ class BrickLinkRefTest {
     }
 
     @Test
-    fun `Fallback-URL nutzt je Typ den richtigen Parameter`() {
-        // Set: S= und Nummer MIT Variantensuffix
+    fun `fallback URL uses the right parameter per type`() {
+        // Set: S= and number WITH variant suffix
         assertTrue(BrickLinkUrls.forSale("75192-1", "SET").contains("?S=75192-1"))
         assertTrue(BrickLinkUrls.forSale("75192-1", "SET").contains("#T=S"))
-        // Gear/Book: G= bzw. B=, BrickLink führt sie ohne Suffix
+        // Gear/Book: G= or B=, BrickLink lists them without suffix
         assertTrue(BrickLinkUrls.forSale("5005358", "GEAR").contains("?G=5005358"))
         assertTrue(BrickLinkUrls.forSale("5005358", "GEAR").contains("#T=G"))
         assertTrue(BrickLinkUrls.forSale("ISBN123", "BOOK").contains("?B=ISBN123"))
-        // Unbekannter Typ fällt auf Set zurück
+        // Unknown type falls back to set
         assertTrue(BrickLinkUrls.forSale("123-1", "WAS_AUCH_IMMER").contains("?S="))
     }
 }

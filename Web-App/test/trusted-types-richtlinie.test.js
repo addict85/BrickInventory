@@ -1,12 +1,12 @@
 /**
- * Die Richtlinie `app` (public/js/escapen.js) prägt TrustedHTML nur für den Text, den alsHtml()
- * gerade aus html`` gebaut hat: Direkt aufgerufen scheitert sie, eine Zeichenkette und ein nachgebautes
- * SicheresHtml kommen maskiert an. Ausgeführt wird das echte Modul mit einer Attrappe von trustedTypes.
+ * The policy `app` (public/js/escaping.js) mints TrustedHTML only for the text that asHtml()
+ * has just built from html``: called directly it fails, a string and a replicated
+ * SafeHtml arrive escaped. The real module is executed with a dummy of trustedTypes.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  createHTML der Richtlinie wieder `s => s` → rot: „direkt aufgerufen …“
- *   B  einsetzen() wieder mit `instanceof SicheresHtml` → rot: „ein nachgebautes …“
- *   C  alsHtml() reicht eine Zeichenkette unverändert durch → rot: „eine Zeichenkette …“
+ * Counter-checks (measured 09.11.2026, each on its own):
+ *   A  createHTML of the policy again `s => s` → red: “called directly …”
+ *   B  toText() again with `instanceof SafeHtml` → red: “a replicated …”
+ *   C  asHtml() passes a string through unchanged → red: “a string …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,47 +14,47 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 /** @type {Record<string, { createHTML(s: string): unknown }>} */
-const richtlinien = {};
+const policies = {};
 globalThis.trustedTypes = {
   createPolicy(name, regeln) {
     const r = { createHTML: s => ({ geprueft: regeln.createHTML(s) }) };
-    richtlinien[name] = r;
+    policies[name] = r;
     return r;
   },
 };
 
-const laden = () => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', 'escapen.js')).href);
+const laden = () => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', 'escaping.js')).href);
 
-test('Markup aus html`` wird TrustedHTML, der Wert darin maskiert', async () => {
-  const { alsHtml, html } = await laden();
-  assert.deepEqual(alsHtml(html`<b>${'<img src=x onerror=alert(1)>'}</b>`), {
+test('markup from html`` becomes TrustedHTML, the value inside escaped', async () => {
+  const { asHtml, html } = await laden();
+  assert.deepEqual(asHtml(html`<b>${'<img src=x onerror=alert(1)>'}</b>`), {
     geprueft: '<b>&lt;img src=x onerror=alert(1)&gt;</b>',
   });
-  assert.deepEqual(alsHtml([html`<i>a</i>`, html`<i>b</i>`]), { geprueft: '<i>a</i><i>b</i>' });
+  assert.deepEqual(asHtml([html`<i>a</i>`, html`<i>b</i>`]), { geprueft: '<i>a</i><i>b</i>' });
 });
 
-test('direkt aufgerufen nimmt die Richtlinie nichts an', async () => {
-  const { alsHtml, html } = await laden();
-  assert.throws(() => richtlinien.app.createHTML('<img src=x onerror=alert(1)>'), TypeError);
-  // Auch nicht den Text, der eben durchging: Die Freigabe gilt einmal.
-  alsHtml(html`<b>x</b>`);
-  assert.throws(() => richtlinien.app.createHTML('<b>x</b>'), TypeError);
+test('called directly the policy accepts nothing', async () => {
+  const { asHtml, html } = await laden();
+  assert.throws(() => policies.app.createHTML('<img src=x onerror=alert(1)>'), TypeError);
+  // Not even the text that just went through: the release applies once.
+  asHtml(html`<b>x</b>`);
+  assert.throws(() => policies.app.createHTML('<b>x</b>'), TypeError);
 });
 
-test('eine Zeichenkette kommt maskiert als Text an', async () => {
-  const { alsHtml } = await laden();
-  assert.deepEqual(alsHtml('<b>x</b>'), { geprueft: '&lt;b&gt;x&lt;/b&gt;' });
+test('a string arrives escaped as text', async () => {
+  const { asHtml } = await laden();
+  assert.deepEqual(asHtml('<b>x</b>'), { geprueft: '&lt;b&gt;x&lt;/b&gt;' });
 });
 
-test('ein nachgebautes SicheresHtml ohne Marke wird maskiert', async () => {
-  const { alsHtml, SicheresHtml } = await laden();
-  const falsch = Object.assign(Object.create(SicheresHtml.prototype), { text: '<script>x</script>' });
-  assert.ok(falsch instanceof SicheresHtml, 'Vorbedingung: instanceof liesse es durch');
-  assert.deepEqual(alsHtml(falsch), { geprueft: '&lt;script&gt;x&lt;/script&gt;' });
+test('a replicated SafeHtml without a brand is escaped', async () => {
+  const { asHtml, SafeHtml } = await laden();
+  const falsch = Object.assign(Object.create(SafeHtml.prototype), { text: '<script>x</script>' });
+  assert.ok(falsch instanceof SafeHtml, 'Vorbedingung: instanceof liesse es durch');
+  assert.deepEqual(asHtml(falsch), { geprueft: '&lt;script&gt;x&lt;/script&gt;' });
 });
 
-test('die Richtlinie default nimmt nur das Leeren an', async () => {
+test('the default policy only accepts clearing', async () => {
   await laden();
-  assert.deepEqual(richtlinien.default.createHTML(''), { geprueft: '' });
-  assert.throws(() => richtlinien.default.createHTML('<b>'), TypeError);
+  assert.deepEqual(policies.default.createHTML(''), { geprueft: '' });
+  assert.throws(() => policies.default.createHTML('<b>'), TypeError);
 });

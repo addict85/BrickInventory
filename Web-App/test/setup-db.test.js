@@ -1,0 +1,131 @@
+/**
+ * Setup wizard: when it appears, when no longer, and that the
+ * test button only touches known sources.
+ *
+ * Counter-checks (25.10., measured):
+ *   A  `!erledigt &&` removed from the condition    → red: „erscheint nach Fertig weiter"
+ *   B  Object.hasOwn removed in /quelle-testen     → red: „__proto__ gilt als Quelle"
+ *   C  istVerwalter check in /einrichtung gone     → red: „Nicht-Verwalter sieht den Stand"
+ *   D  (04.11.) in quellenAbsage the line for missing keys removed
+ *      → red: „fehlender Schlüssel in Klartext" (quelle_test_fehlgeschlagen)
+ *   E  (13.11.) the check switchMust() removed in inboundLock() → red:
+ *      “with the initial password the entry only leads to the change” (200 instead of 403)
+ *
+ * Via the real chain (testServer): with the initial password the entry only allows
+ * the change; the UI only opens the wizard afterwards (sitzung.js:
+ * openApp → mandatory change → reload → showApp → pruefeEinrichtung).
+ *
+ * Prerequisite: test DB via TEST_DATABASE_URL.
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+const { buildAndRequire, testData } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { dataOrSkip } = require('./helpers/db');
+const { testServer } = require('./helpers/server');
+const { adminWithFactor } = require('./helpers/admin');
+const db = testData();
+
+const SCHLUESSEL = [
+  'rebrickable_api_key',
+  'brickset_api_key',
+  'bricklink_consumer_key',
+  'bricklink_consumer_secret',
+  'bricklink_token',
+  'bricklink_token_secret',
+  'einrichtung_erledigt',
+];
+
+test('setup wizard', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+
+  const name = `ew_${process.pid}`;
+  const uid = (
+    await db.get(
+      "INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1,'x',true,true) RETURNING id",
+      [name],
+    )
+  ).id;
+  await adminWithFactor(_req, uid);
+  const verwalter = { userId: uid, isAdmin: true };
+  const V = testServer(_req, { sitzung: verwalter, t });
+  const N = testServer(_req, { sitzung: { userId: uid, isAdmin: false }, t });
+  const ruf = async (srv, weg, body) => {
+    const r = await fetch(srv.base + '/api/v1/settings' + weg, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'content-type': 'application/json' },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    return { status: r.status, body: await r.json() };
+  };
+  const setze = (k, v) =>
+    db.run(
+      `INSERT INTO global_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [k, v],
+    );
+
+  try {
+    await t.test('with the initial password the entry only leads to the change', async () => {
+      const r = await ruf(V, '/einrichtung');
+      assert.equal(r.status, 403, JSON.stringify(r.body));
+      assert.equal(r.body.code, 'passwort_wechsel_noetig');
+    });
+
+    await t.test('fresh installation after the mandatory change: open, without password step', async () => {
+      // Like POST /auth/change-password: account and session forget the obligation.
+      await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
+      delete verwalter.mussPasswortAendern;
+      const r = await ruf(V, '/einrichtung');
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.equal(r.body.offen, true);
+      assert.equal(r.body.passwort_aendern, false);
+      assert.deepEqual(r.body.quellen, { rebrickable: false, brickset: false, bricklink: false });
+      const n = await ruf(N, '/einrichtung');
+      assert.equal(n.status, 403, 'Nicht-Verwalter sieht den Stand');
+      assert.equal(n.body.code, 'nur_admins');
+    });
+
+    await t.test('set up: key present, password set → no longer open', async () => {
+      await setze('rebrickable_api_key', 'abc');
+      await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
+      const r = await ruf(V, '/einrichtung');
+      assert.equal(r.body.offen, false);
+      assert.equal(r.body.quellen.rebrickable, true);
+      assert.ok(!JSON.stringify(r.body).includes('abc'), 'Der Stand gibt den Schlüssel heraus');
+    });
+
+    await t.test('“Fertig” closes it even if something is still missing', async () => {
+      await db.run('DELETE FROM global_settings WHERE key = $1', ['rebrickable_api_key']);
+      assert.equal((await ruf(V, '/einrichtung')).body.offen, true);
+      assert.equal((await ruf(V, '/einrichtung/fertig', {})).status, 200);
+      assert.equal((await ruf(V, '/einrichtung')).body.offen, false, 'erscheint nach Fertig weiter');
+    });
+
+    await t.test('test button: only known sources, without a key an understandable refusal', async () => {
+      for (const q of ['gibtsnicht', '__proto__', 'constructor']) {
+        const r = await ruf(V, '/quelle-testen', { quelle: q });
+        assert.equal(r.status, 400, q);
+        assert.equal(r.body.code, 'quelle_unbekannt', `${q} gilt als Quelle`);
+      }
+      const bs = await ruf(V, '/quelle-testen', { quelle: 'brickset' });
+      assert.equal(bs.status, 400);
+      assert.equal(bs.body.code, 'quelle_ohne_schluessel', 'fehlender Schlüssel in Klartext');
+      assert.match(bs.body.error, /Für Brickset ist noch kein Zugang gespeichert/);
+      assert.match(bs.body.details, /nicht konfiguriert/, 'der rohe Grund steht unter „Details“');
+      const bl = await ruf(V, '/quelle-testen', { quelle: 'bricklink' });
+      assert.equal(bl.body.code, 'quelle_ohne_schluessel');
+      assert.match(bl.body.details, /nicht vollständig/);
+      assert.equal((await ruf(N, '/quelle-testen', { quelle: 'brickset' })).status, 403);
+    });
+  } finally {
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]).catch(() => {});
+    for (const z of vorher) await setze(z.key, z.value).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+    await db.pool.end().catch(() => {});
+  }
+});

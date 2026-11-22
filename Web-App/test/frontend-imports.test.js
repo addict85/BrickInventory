@@ -1,6 +1,6 @@
 /**
- * Frontend-Module: Ruft eine Datei einen Namen auf, den ein ANDERES Modul
- * deklariert, ohne ihn zu importieren?
+ * Frontend modules: does a file call a name that ANOTHER module
+ * declares without importing it?
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,14 +11,14 @@ const { ROOT, ohneKommentare } = require('./helpers/sources');
 const JS_DIR = path.join(ROOT, 'public', 'js');
 
 /**
- * Namen, die eine Datei auf OBERSTER Ebene deklariert (Spalte 0).
+ * Names a file declares at the TOPMOST level (column 0).
  *
- * Bewusst nur ohne Einrückung: Sonst landeten Funktionsparameter wie das
- * `resolve` aus `new Promise(resolve => …)` in der Liste der projektbekannten
- * Namen, und jede andere Datei mit einem eigenen Promise wäre fälschlich
- * angeschlagen.
+ * Deliberately only without indentation: otherwise function parameters like the
+ * `resolve` from `new Promise(resolve => …)` would land in the list of project-known
+ * names, and every other file with its own promise would be falsely
+ * flagged.
  */
-function deklarierteOben(src) {
+function declaredTop(src) {
   const namen = new Set();
   for (const m of src.matchAll(/^(?:export\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm)) namen.add(m[1]);
   for (const m of src.matchAll(/^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)/gm)) namen.add(m[1]);
@@ -26,8 +26,8 @@ function deklarierteOben(src) {
   return namen;
 }
 
-/** Alle Deklarationen einer Datei, auch verschachtelte — für „ist lokal da?". */
-function deklarierte(src) {
+/** All declarations of a file, also nested ones — for “is it there locally?". */
+function declared(src) {
   const namen = new Set();
   for (const m of src.matchAll(/(?:^|[;{}\s])(?:export\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/g))
     namen.add(m[1]);
@@ -36,8 +36,8 @@ function deklarierte(src) {
   return namen;
 }
 
-/** Namen, die eine Datei importiert (inklusive Umbenennung via `as`). */
-function importierte(src) {
+/** Names a file imports (including renaming via `as`). */
+function imported(src) {
   const namen = new Set();
   for (const m of src.matchAll(/import\s*\{([^}]+)\}\s*from/g)) {
     for (const roh of m[1].split(',')) {
@@ -49,36 +49,45 @@ function importierte(src) {
   return namen;
 }
 
-test('jedes Frontend-Modul importiert, was es aufruft', () => {
+/**
+ * `datei:Name` -> reason why the hit there is not a real call
+ * (ohneKommentare() only cuts off comments from the start of the line, not
+ * `code(); // … bar (…)`).
+ */
+const KNOWN_WRONG_HITS = new Map([
+  ['set-csv-import.js:bar', 'Kommentar „show the global bar (…)“ nennt das Wort, kein Aufruf von monitor.js'],
+]);
+
+test('every frontend module imports what it calls', () => {
   const dateien = fs
     .readdirSync(JS_DIR)
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
-    // logviewer.js läuft im eigenen Popup-Fenster ohne Modulsystem und bringt
-    // seine Helfer selbst mit — es teilt sich keinen Namensraum mit dem Rest.
+    // logviewer.js runs in its own popup window without a module system and brings
+    // its helpers along itself — it shares no namespace with the rest.
     .filter(f => f !== 'logviewer.js');
   assert.ok(dateien.length > 8, `nur ${dateien.length} Frontend-Module gefunden`);
 
   const quellen = new Map();
   for (const f of dateien) quellen.set(f, ohneKommentare(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
 
-  // i18n.js gehört dazu
+  // i18n.js belongs to it
   quellen.set('../i18n.js', ohneKommentare(fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')));
 
-  // Alle Namen, die IRGENDWO im Frontend deklariert werden. Nur diese werden
-  // geprüft — dadurch schlägt der Test nicht bei Browser-Globalen an.
+  // All names declared ANYWHERE in the frontend. Only these are
+  // checked — thereby the test does not trigger on browser globals.
   const bekannt = new Map();
-  for (const [f, src] of quellen) for (const n of deklarierteOben(src)) bekannt.set(n, f);
+  for (const [f, src] of quellen) for (const n of declaredTop(src)) bekannt.set(n, f);
 
   const fehlend = [];
   for (const [f, src] of quellen) {
-    const lokal = deklarierte(src);
-    const imp = importierte(src);
+    const lokal = declared(src);
+    const imp = imported(src);
     for (const [name, herkunft] of bekannt) {
-      if (herkunft === f || lokal.has(name) || imp.has(name)) continue;
-      // Aufruf des Namens, nicht als Eigenschaft (obj.name) und nicht als
-      // Zeichenkette in einer Aktionsliste.
-      const aufruf = new RegExp(`(?<![.\\w$'"\`])${name}\\s*\\(`);
-      if (aufruf.test(src)) fehlend.push(`public/js/${f}: ruft ${name}() aus ${herkunft} ohne Import`);
+      if (herkunft === f || lokal.has(name) || imp.has(name) || KNOWN_WRONG_HITS.has(`${f}:${name}`)) continue;
+      // Call of the name, not as a property (obj.name) and not as a
+      // string in an action list.
+      const call = new RegExp(`(?<![.\\w$'"\`])${name}\\s*\\(`);
+      if (call.test(src)) fehlend.push(`public/js/${f}: ruft ${name}() aus ${herkunft} ohne Import`);
     }
   }
 

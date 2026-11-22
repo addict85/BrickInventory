@@ -55,7 +55,7 @@ jobs:
       - name: Gradle-Prüfsumme gegen die amtliche
         if: matrix.bau == 'manual'
         working-directory: Android-App
-        run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+        run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
 
       # Nur lesen: Den Gradle-Cache schreibt allein der Baujob von android.yml (sec17 M1).
       - name: Gradle einrichten
@@ -256,7 +256,7 @@ jobs:
       # Wie im Betrieb: NODE_ENV=production (Startverbote, Cookies, CSP).
       # Das Protokoll geht in eine Datei, damit ein Fehlstart lesbar ist.
       # Der Dienstcontainer kennt nur den Superuser; ZAP prüft die HTTP-Seite,
-      # die Datenbankrolle prüft db-rolle-db.test.js.
+      # die Datenbankrolle prüft db-role-db.test.js.
       - name: Server starten
         env:
           NODE_ENV: production
@@ -319,14 +319,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           cache-read-only: true
       - name: Lockfiles schreiben
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --no-configuration-cache --init-script tools/abhaengigkeiten-sperren.init.gradle \
+          ./gradlew --no-daemon --no-configuration-cache --init-script tools/dependency-locking.init.gradle \
             abhaengigkeitenSperren --write-locks
           ls */gradle.lockfile
 

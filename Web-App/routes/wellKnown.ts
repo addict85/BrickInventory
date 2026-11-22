@@ -1,9 +1,9 @@
-/** Öffentlich: Google holt es, bevor Android der App die Passkeys der Domain gibt. */
+/** Public: Google fetches it before Android gives the app the domain's passkeys. */
 import express from 'express';
-import { assetlinks } from '../src/faktoren';
-import type { Konfig } from '../src/infra/konfig';
+import { assetlinks } from '../src/factors';
+import type { Konfig } from '../src/infra/config';
 
-export function baueWellKnownRouter(konfig: Pick<Konfig, 'androidZertifikate' | 'androidPaket'>) {
+export function buildWellKnownRouter(konfig: Pick<Konfig, 'androidZertifikate' | 'androidPaket'>) {
   const router = express.Router();
 
   router.get('/.well-known/assetlinks.json', (_req, res) => {

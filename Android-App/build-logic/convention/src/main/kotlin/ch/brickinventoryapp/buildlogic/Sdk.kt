@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.buildlogic
 
 /**
- * Die SDK-Stände aller Android-Module an einer Stelle. compileSdk und targetSdk
- * laufen gleich, damit sichtbar bleibt, welche Verhaltensänderungen aktiv sind;
- * unter 37 bricht checkDebugAarMetadata (okhttp 5.5, coil 3.6). Warum minSdk 30
- * gilt, steht in TargetSdkConfigTest, der diese Datei liest.
+ * The SDK levels of all Android modules in one place. compileSdk and targetSdk
+ * run the same so that it stays visible which behavior changes are active;
+ * below 37 checkDebugAarMetadata breaks (okhttp 5.5, coil 3.6). Why minSdk 30
+ * applies stands in TargetSdkConfigTest, which reads this file.
  */
 internal object Sdk {
     const val compileSdk = 37

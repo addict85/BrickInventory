@@ -1,17 +1,17 @@
 Gegenprobe: Jede Rückkehr aus dem Hintergrund sperrt die App, auch vor Ablauf der Frist
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.AppSperreTest
-Rot: vor Ablauf der Frist fragt die App nicht
+Test: ch.brickinventoryapp.ui.AppLockTest
+Rot: before the deadline expires the app does not ask
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
 @@ -54,7 +54,7 @@
          // Nach einem Neustart des Geräts beginnt die Uhr bei null: Ob die Frist ablief, ist offen.
          // Ein unlesbarer Zähler gilt als anderer Start; ohne gemerkten (ältere Ablage) zählt nur die Uhr.
-         val neugestartet = start != null && geraeteStart() != start
--        if (frist > 0 && (neugestartet || jetzt < seit || jetzt - seit >= frist)) setze(true)
-+        if (frist > 0 && (neugestartet || jetzt < seit || jetzt - seit >= 0)) setze(true)
+         val restarted = start != null && devicesStart() != start
+-        if (deadline > 0 && (restarted || jetzt < seit || jetzt - seit >= deadline)) setze(true)
++        if (deadline > 0 && (restarted || jetzt < seit || jetzt - seit >= 0)) setze(true)
      }
  
      fun entsperrt() = setze(false)

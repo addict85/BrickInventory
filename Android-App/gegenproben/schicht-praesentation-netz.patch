@@ -1,22 +1,22 @@
 Gegenprobe: Ein Feature-Modul holt sich Retrofit, ein Bildschirm importiert es
 Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
-Rot: Praesentation holt nichts selbst am Netz
+Rot: presentation fetches nothing from the network itself
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
 @@ -6,6 +6,7 @@
- import ch.brickinventoryapp.model.fach.Merksortierung
- import ch.brickinventoryapp.model.fach.Erfassungswunsch
+ import ch.brickinventoryapp.model.domain.Merksortierung
+ import ch.brickinventoryapp.model.domain.Erfassungswunsch
  import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 +import retrofit2.Response
  import ch.brickinventoryapp.ui.components.nebenKnopfRand
- import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+ import ch.brickinventoryapp.model.domain.MetricsView
  import androidx.compose.foundation.Image
-diff --git a/Android-App/feature-sammlung/build.gradle.kts b/Android-App/feature-sammlung/build.gradle.kts
---- a/Android-App/feature-sammlung/build.gradle.kts
-+++ b/Android-App/feature-sammlung/build.gradle.kts
+diff --git a/Android-App/feature-collection/build.gradle.kts b/Android-App/feature-collection/build.gradle.kts
+--- a/Android-App/feature-collection/build.gradle.kts
++++ b/Android-App/feature-collection/build.gradle.kts
 @@ -21,6 +21,7 @@
      implementation(libs.bundles.camera)
      implementation(libs.mlkit.barcode)

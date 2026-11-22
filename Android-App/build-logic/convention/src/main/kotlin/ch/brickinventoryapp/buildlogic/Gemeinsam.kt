@@ -15,18 +15,18 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 internal val Project.libs: VersionCatalog
     get() = extensions.getByType(VersionCatalogsExtension::class.java).named("libs")
 
-/** Plugin-IDs kommen aus dem Katalog, damit sie nicht an zwei Stellen stehen. */
+/** Plugin IDs come from the catalog so that they do not stand in two places. */
 internal fun Project.pluginAusKatalog(alias: String) {
     pluginManager.apply(libs.findPlugin(alias).get().get().pluginId)
 }
 
-internal fun Project.bibliothek(konfiguration: String, alias: String) {
-    dependencies.add(konfiguration, libs.findLibrary(alias).get())
+internal fun Project.library(configuration: String, alias: String) {
+    dependencies.add(configuration, libs.findLibrary(alias).get())
 }
 
 /**
- * Guava kommt nur mittelbar in die App. Eine Einschränkung statt force: Sie hebt
- * eine ältere Fassung an, fügt Guava aber keinem Modul hinzu, das es nicht braucht.
+ * Guava comes into the app only indirectly. A constraint instead of force: it raises
+ * an older version but adds Guava to no module that does not need it.
  */
 internal fun Project.guavaMindestens() {
     val fassung = libs.findVersion("guavaMindestens").get().requiredVersion
@@ -34,11 +34,11 @@ internal fun Project.guavaMindestens() {
 }
 
 /**
- * Ein Modul mit wenigen Abhängigkeiten griffe allein auf arch-core 2.0.0, tracing 1.1.0,
- * emoji2 1.2.0 oder (über navigation-runtime) activity-ktx 1.7.1 zurück, die nicht im
- * Prüfsummenverzeichnis stehen und unsigniert sind. Einschränkungen wie bei Guava heben
- * sie auf die Fassungen, die die App ohnehin nimmt. Nicht activity selbst: Das höbe
- * Module mit activity 1.5.1 an und zöge lifecycle 2.6.1 nach.
+ * A module with few dependencies would on its own fall back to arch-core 2.0.0, tracing 1.1.0,
+ * emoji2 1.2.0 or (via navigation-runtime) activity-ktx 1.7.1, which are not in the
+ * checksum list and are unsigned. Constraints as for Guava raise
+ * them to the versions the app takes anyway. Not activity itself: that would raise
+ * modules with activity 1.5.1 and pull lifecycle 2.6.1 along.
  */
 internal fun Project.androidxMindestens() {
     for (alias in listOf("androidx.arch.core.common", "androidx.arch.core.runtime", "androidx.tracing",
@@ -48,34 +48,34 @@ internal fun Project.androidxMindestens() {
     }
 }
 
-internal fun Project.gruppe(konfiguration: String, alias: String) {
-    dependencies.add(konfiguration, libs.findBundle(alias).get())
+internal fun Project.gruppe(configuration: String, alias: String) {
+    dependencies.add(configuration, libs.findBundle(alias).get())
 }
 
-/** Was App und Bibliothek gleich einstellen, unabhängig von ihrer Erweiterung. */
-internal class AndroidTeile(
+/** What app and library configure the same, independent of their extension. */
+internal class AndroidParts(
     val compileOptions: CompileOptions,
     val testOptions: TestOptions,
     val buildFeatures: BuildFeatures,
 )
 
 /**
- * Läuft, sobald das Android-Plugin des Moduls angewendet ist. So hängen die
- * Konventionen nicht von der Reihenfolge im plugins-Block ab, und
- * `implementation` oder `ksp` gibt es, wenn sie Abhängigkeiten eintragen.
+ * Runs as soon as the module's Android plugin is applied. That way the
+ * conventions do not depend on the order in the plugins block, and
+ * `implementation` or `ksp` exist when they add dependencies.
  */
-internal fun Project.beiAndroid(aktion: (AndroidTeile) -> Unit) {
+internal fun Project.atAndroid(aktion: (AndroidParts) -> Unit) {
     pluginManager.withPlugin("com.android.application") {
         val android = extensions.getByType(ApplicationExtension::class.java)
-        aktion(AndroidTeile(android.compileOptions, android.testOptions, android.buildFeatures))
+        aktion(AndroidParts(android.compileOptions, android.testOptions, android.buildFeatures))
     }
     pluginManager.withPlugin("com.android.library") {
         val android = extensions.getByType(LibraryExtension::class.java)
-        aktion(AndroidTeile(android.compileOptions, android.testOptions, android.buildFeatures))
+        aktion(AndroidParts(android.compileOptions, android.testOptions, android.buildFeatures))
     }
 }
 
-/** Java und Kotlin auf 17, passend zum JDK der CI (android.yml). */
+/** Java and Kotlin at 17, matching CI's JDK (android.yml). */
 internal fun Project.java17(compileOptions: CompileOptions) {
     compileOptions.sourceCompatibility = JavaVersion.VERSION_17
     compileOptions.targetCompatibility = JavaVersion.VERSION_17

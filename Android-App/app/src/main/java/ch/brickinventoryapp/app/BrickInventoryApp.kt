@@ -10,19 +10,19 @@ import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.dienste.alarm.PreisalarmWorker
+import ch.brickinventoryapp.services.alarm.PreisalarmWorker
 import androidx.hilt.work.HiltWorkerFactory
 import ch.brickinventoryapp.data.Alarmablage
 import ch.brickinventoryapp.data.Sprachablage
 import ch.brickinventoryapp.data.Tokenuebernahme
-import ch.brickinventoryapp.data.di.Anwendungsbereiche
-import ch.brickinventoryapp.zustand.ui.Ausgangsmelder
-import ch.brickinventoryapp.sitzung.SitzungsRepository
+import ch.brickinventoryapp.data.di.Scopes
+import ch.brickinventoryapp.state.ui.Ausgangsmelder
+import ch.brickinventoryapp.session.SitzungsRepository
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.netz.util.Protokoll
-import ch.brickinventoryapp.data.util.raeumeAlteTeilelisteAuf
+import ch.brickinventoryapp.network.util.Protokoll
+import ch.brickinventoryapp.data.util.cleanOldPartListOn
 import ch.brickinventoryapp.data.util.raeumeKlartextAnleitungenAuf
-import ch.brickinventoryapp.sicherheit.raeumeKlartextBildcachesAuf
+import ch.brickinventoryapp.security.cleanPlaintextImageCachesOn
 import ch.brickinventoryapp.data.util.raeumeVertraulichePdfsAuf
 import android.os.Build
 import android.content.BroadcastReceiver
@@ -35,79 +35,79 @@ import androidx.core.content.ContextCompat
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
-    // Lazy: Der isolierte PDF-Prozess erzeugt auch eine Application, darf aber keine Dateien öffnen.
+    // Lazy: the isolated PDF process also creates an Application but must not open any files.
     @Inject lateinit var tokenuebernahmeLazy: dagger.Lazy<Tokenuebernahme>
-    @Inject lateinit var alarmeLazy: dagger.Lazy<Alarmablage>
-    @Inject lateinit var spracheLazy: dagger.Lazy<Sprachablage>
+    @Inject lateinit var alertsLazy: dagger.Lazy<Alarmablage>
+    @Inject lateinit var languageLazy: dagger.Lazy<Sprachablage>
     private val tokenuebernahme get() = tokenuebernahmeLazy.get()
-    private val alarme get() = alarmeLazy.get()
-    private val sprache get() = spracheLazy.get()
-    @Inject lateinit var bereiche: Anwendungsbereiche
-    @Inject lateinit var workerFabrik: HiltWorkerFactory
-    @Inject lateinit var sitzungLazy: dagger.Lazy<SitzungsRepository>
+    private val alerts get() = alertsLazy.get()
+    private val sprache get() = languageLazy.get()
+    @Inject lateinit var areas: Scopes
+    @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var sessionLazy: dagger.Lazy<SitzungsRepository>
     @Inject lateinit var ausgangsmelderLazy: dagger.Lazy<Ausgangsmelder>
 
     /**
-     * WorkManager auf Abruf statt beim Start, das Gegenstück zum tools:node="remove"
-     * im Manifest: Ohne diese Schnittstelle wirft der erste Zugriff „WorkManager is
-     * not initialized properly“. Die Fabrik von Hilt baut die @HiltWorker.
+     * WorkManager on demand instead of at start, the counterpart to tools:node="remove"
+     * in the manifest: without this interface the first access throws „WorkManager is
+     * not initialized properly“. Hilt's factory builds the @HiltWorker.
      */
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder().setWorkerFactory(workerFabrik).build()
+        get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
     override fun onCreate() {
         super.onCreate()
-        // Im Render-Prozess (ui/pdf/PdfRenderDienst) gibt es weder Dateien noch Konto.
+        // In the render process (ui/pdf/PdfRenderDienst) there are neither files nor an account.
         if (Process.isIsolated()) return
-        // Sitzung und Ausgang starten mit der ersten MainActivity und leben dann so lange
-        // wie der Prozess, nicht wie ein ViewModel; ein Worker allein (Preisalarm) weckt sie nicht.
-        registerActivityLifecycleCallbacks(BeiErsterOberflaeche {
-            sitzungLazy.get().starte()
-            ausgangsmelderLazy.get().starte(bereiche.anwendung)
+        // Session and outbox start with the first MainActivity and then live as long
+        // as the process, not like a ViewModel; a worker alone (price alert) does not wake them.
+        registerActivityLifecycleCallbacks(AtFirstUi {
+            sessionLazy.get().starte()
+            ausgangsmelderLazy.get().starte(areas.application)
         })
 
-        // Ein Token früherer Fassungen unter dem schwächeren Schlüssel kommt gleich nach dem
-        // Entsperren unter den strengen, nicht erst beim nächsten Start. Das Widget zeichnet neu:
-        // Gesperrt konnte es seine Zahlen nicht lesen (GeraeteAblage.widgetStand).
+        // A token of earlier versions under the weaker key moves under the strict one right after
+        // unlocking, not only on the next start. The widget redraws:
+        // locked it could not read its numbers (DevicesStore.widgetStatus).
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                bereiche.anwendung.launch { fangeAusserAbbruch { tokenuebernahme.stufeTokenHoch() } }
-                bereiche.anwendung.launch { fangeAusserAbbruch { SammlungsWidget().updateAll(context) } }
+                areas.application.launch { fangeAusserAbbruch { tokenuebernahme.levelTokenHigh() } }
+                areas.application.launch { fangeAusserAbbruch { SammlungsWidget().updateAll(context) } }
             }
         }, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
 
-        // Aufräumen im Hintergrund; ein Klartext-Token älterer Fassungen gilt nie, es geht nur weg.
-        bereiche.anwendung.launch {
-            // Gutschein-PDFs eines abgebrochenen Laufs: Das Verlassen des Betrachters kam nie.
+        // Cleanup in the background; a plaintext token of older versions never counts, it just goes away.
+        areas.application.launch {
+            // Voucher PDFs of an aborted run: the viewer was never left.
             fangeAusserAbbruch { raeumeVertraulichePdfsAuf(cacheDir) }
-            // Anleitungen älterer Fassungen lagen im Klartext; neu liegen sie verschlüsselt.
+            // Instructions of older versions lay in plaintext; new ones lie encrypted.
             fangeAusserAbbruch { raeumeKlartextAnleitungenAuf(cacheDir) }
-            // Bild-Zwischenspeicher älterer Fassungen (Klartext) und eine abgelaufene Teileliste.
-            fangeAusserAbbruch { raeumeKlartextBildcachesAuf(cacheDir) }
-            fangeAusserAbbruch { raeumeAlteTeilelisteAuf(filesDir, System.currentTimeMillis()) }
-            fangeAusserAbbruch { tokenuebernahme.uebernehmeAltesToken() }
-            // Den Preisalarm-Abruf wieder einplanen: Zurückgesetzte App-Daten oder ein
-            // „Force Stop“ verwerfen die Aufträge, der Schalter stünde sonst auf „an“
-            // ohne Wirkung. KEEP lässt einen eingeplanten Auftrag unverändert.
+            // Image cache of older versions (plaintext) and an expired parts list.
+            fangeAusserAbbruch { cleanPlaintextImageCachesOn(cacheDir) }
+            fangeAusserAbbruch { cleanOldPartListOn(filesDir, System.currentTimeMillis()) }
+            fangeAusserAbbruch { tokenuebernahme.adoptOldToken() }
+            // Reschedule the price alert fetch: reset app data or a
+            // „Force Stop“ discard the jobs, the switch would otherwise stand on “on”
+            // without effect. KEEP leaves a scheduled job unchanged.
             fangeAusserAbbruch {
-                if (alarme.alarmMeldungenAn.first()) {
+                if (alerts.alarmMessagesAn.first()) {
                     PreisalarmWorker
                         .einplanen(this@BrickInventoryApp, true)
                         ?.let { Protokoll.warnung("Preisalarm", "Abruf nicht eingeplant", it) }
                 }
             }
         }
-        // Unter Android 13 setzt die App ihre Sprache selbst, vor der ersten Activity.
-        // Aus dem synchronen Spiegel statt per runBlocking aus dem DataStore; fehlt er
-        // (gespeichert vor dem Spiegel), einmal nachziehen — AppCompat erneuert dann die
-        // Activity. Ab 13 merkt sich das System die Sprache selbst.
+        // Below Android 13 the app sets its language itself, before the first activity.
+        // From the synchronous mirror instead of via runBlocking from the DataStore; if it is missing
+        // (saved before the mirror), catch up once — AppCompat then recreates the
+        // activity. From 13 on the system remembers the language itself.
         if (Build.VERSION.SDK_INT < 33) {
-            val gemerkt = sprache.gemerkteSprache()
+            val gemerkt = sprache.rememberedLanguage()
             if (gemerkt != null) {
                 LanguageManager.applyLanguage(gemerkt)
             } else {
-                bereiche.anwendung.launch(bereiche.haupt) {
-                    val lang = fangeAusserAbbruch { sprache.spracheNachziehen() }.getOrNull() ?: return@launch
+                areas.application.launch(areas.haupt) {
+                    val lang = fangeAusserAbbruch { sprache.followUpLanguage() }.getOrNull() ?: return@launch
                     LanguageManager.applyLanguage(lang)
                 }
             }
@@ -115,8 +115,8 @@ class BrickInventoryApp : Application(), Configuration.Provider {
     }
 }
 
-/** Ruft [los] einmal, wenn die erste MainActivity entsteht; andere Activities zählen nicht. */
-private class BeiErsterOberflaeche(private val los: () -> Unit) : Application.ActivityLifecycleCallbacks {
+/** Calls [los] once when the first MainActivity is created; other activities do not count. */
+private class AtFirstUi(private val los: () -> Unit) : Application.ActivityLifecycleCallbacks {
     private var gelaufen = false
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {

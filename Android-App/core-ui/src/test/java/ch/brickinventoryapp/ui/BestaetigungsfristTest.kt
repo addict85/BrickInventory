@@ -6,39 +6,39 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Wie lange eine Bestätigung per Gerätesperre trägt (ui/components/Schrittschutz).
- * Die Abfrage selbst (BiometricPrompt) braucht ein Gerät; die Gutscheinseite prüft
- * AblaufTest mit einem Schrittschutz, der nie bestätigt.
+ * How long a device-lock confirmation lasts (ui/components/Schrittschutz).
+ * The prompt itself (BiometricPrompt) needs a device; the voucher page checks
+ * expiry with a step guard that never confirms.
  *
- * Gegenproben:
- *   A  gilt() mit `<=` statt `<` → rot „nach einer Minute wird wieder gefragt“
- *   B  vergiss() ohne Wirkung → rot „wer die App verlaesst, wird wieder gefragt“
- *   C  gilt() ohne Bestätigung `true` (`bis?.let { … } != false`) → rot „ohne
+ * Counter-checks:
+ *   A  gilt() with `<=` instead of `<` → red „after one minute it asks again“
+ *   B  vergiss() without effect → red „whoever leaves the app is asked again“
+ *   C  gilt() without confirmation `true` (`bis?.let { … } != false`) → red „ohne
  *      Bestaetigung gilt nichts“ und „wer die App verlaesst …“
  */
 class BestaetigungsfristTest {
 
     private var jetzt = 1_000L
-    private val frist = Bestaetigungsfrist(dauerMs = 60_000, uhr = { jetzt })
+    private val deadline = Bestaetigungsfrist(durationMs = 60_000, clock = { jetzt })
 
     @Test
-    fun `ohne Bestaetigung gilt nichts`() {
-        assertFalse(frist.gilt())
+    fun `without confirmation nothing applies`() {
+        assertFalse(deadline.gilt())
     }
 
     @Test
-    fun `nach einer Minute wird wieder gefragt`() {
-        frist.bestaetigt()
+    fun `after one minute it asks again`() {
+        deadline.confirmed()
         jetzt += 59_999
-        assertTrue(frist.gilt())
+        assertTrue(deadline.gilt())
         jetzt += 1
-        assertFalse(frist.gilt())
+        assertFalse(deadline.gilt())
     }
 
     @Test
-    fun `wer die App verlaesst, wird wieder gefragt`() {
-        frist.bestaetigt()
-        frist.vergiss()
-        assertFalse(frist.gilt())
+    fun `whoever leaves the app is asked again`() {
+        deadline.confirmed()
+        deadline.vergiss()
+        assertFalse(deadline.gilt())
     }
 }

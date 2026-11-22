@@ -1,15 +1,15 @@
-// Reiter, Benutzermenü, Sichten und die Filter, die mehrere Listen neu laden. Steht über allen Ansichten und
-// darf jede laden; der Router erreicht die Sichten über ziele.js, nicht über einen Import.
-import { stelleZielBereit } from './ziele.js';
+// Tabs, user menu, views and the filters that reload several lists. Stands above all views and
+// may load each; the router reaches the views via targets.js, not via an import.
+import { registerTarget } from './targets.js';
 import { registerActions } from './registry.js';
-import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './dom.js';
-import { angemeldetesKonto, letzterImport } from './zustand.js';
-import { ladeZeitplaene, loadMonitor, stoppeMonitor } from './monitor.js';
-import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './minifigs.js';
-import { initCatalog, katalogZuruecksetzen } from './katalog.js';
-import { pollJobStatus, stoppeJobAbfrage } from './admin.js';
-import { ladeAlarmUebersicht } from './alarme.js';
-import { ladeLagerortVerwaltung } from './lagerorte.js';
+import { G, emptyState, alle, eins, setzeHtml, rollArt } from './dom.js';
+import { loggedInAccount, lastImportAt } from './state.js';
+import { loadSchedules, loadMonitor, stopMonitor } from './monitor.js';
+import { resetMinifigsFilter, loadManualFigsTable, loadMinifigs } from './minifigs.js';
+import { initCatalog, resetCatalog } from './catalog.js';
+import { pollJobStatus, stopJobPolling } from './admin.js';
+import { ladeAlarmUebersicht } from './alerts.js';
+import { ladeLagerortVerwaltung } from './storage-locations.js';
 import {
   loadApiLimits,
   loadCacheStats,
@@ -17,26 +17,26 @@ import {
   loadProfile,
   loadRateLimitStats,
   loadSettings,
-} from './einstellungen.js';
-import { ladeTls, loadTokens } from './zugaenge.js';
-import { loadHousehold } from './haushalt.js';
-import { ladeGutscheine } from './gutscheine.js';
-import { ladeMerkliste, merklisteZuruecksetzen } from './merkliste.js';
-import { ladePapierkorb } from './papierkorb.js';
+} from './settings.js';
+import { loadTls, loadTokens } from './accesses.js';
+import { loadHousehold } from './household.js';
+import { ladeGutscheine } from './vouchers.js';
+import { ladeMerkliste, resetWantedFilter } from './wanted.js';
+import { loadTrash } from './trash.js';
 import { ladePasskeys } from './passkeys.js';
-import { ladeZweitenFaktor } from './zweiter-faktor.js';
-import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './teile.js';
-import { loadBrickColors } from './teil-erfassen.js';
-import { meldeAnsicht, meldeFilter } from './router.js';
-import { setLagerModus, setScopeMode } from './kontofilter.js';
-import { sammlungUntertitel } from './konten-orte.js';
-import { setScrollLabel } from './rollbalken.js';
+import { ladeZweitenFaktor } from './second-factor.js';
+import { loadParts, resetPartsFilter, loadManualParts } from './parts.js';
+import { loadBrickColors } from './part-add.js';
+import { reportView, reportFilter } from './router.js';
+import { setLagerModus, setScopeMode } from './account-filter.js';
+import { collectionSubtitle } from './account-locations.js';
+import { setScrollLabel } from './scrollbar.js';
 import { tRaw } from '../i18n.js';
-import { abonniere, melde } from './ereignisse.js';
-import { esc } from './escapen.js';
+import { subscribe, emit } from './events.js';
+import { esc } from './escaping.js';
 
-// Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit oben derselbe Icon wie im Nav-Tab
-// erscheint. Quelle ist der Nav-Tab selbst — Emoji ODER Inline-SVG —, so bleibt beides automatisch synchron.
+// Mirror the tab's icon into the page title (left of the text), so that the same icon as in the nav tab appears
+// at the top. The source is the nav tab itself — emoji OR inline SVG —, that way both stay in sync automatically.
 /**
  * @param {string | undefined} tab
  */
@@ -44,10 +44,10 @@ function syncTabTitleIcon(tab) {
   const nav = document.querySelector(`.ntab[data-tab="${tab}"]`);
   const slot = document.querySelector(`.ptitle[data-tab-title="${esc(tab)}"] .ptitle-icon`);
   if (!nav || !slot) return;
-  // Alles vor dem .tab-label ist das Icon (Emoji-Textknoten oder <svg>).
+  // Everything before the .tab-label is the icon (emoji text node or <svg>).
   const label = nav.querySelector('.tab-label');
-  // Kopien statt outerHTML: Als Text neu eingelesen, stünde der Stil des Symbols wieder als style-Attribut
-  // da, und das verbietet die CSP.
+  // Copies instead of outerHTML: re-read as text, the icon's style would stand there as a style attribute again,
+  // and the CSP forbids that.
   const kopien = [];
   for (const node of nav.childNodes) {
     if (node === label) break;
@@ -57,36 +57,36 @@ function syncTabTitleIcon(tab) {
 }
 
 /**
- * Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel („Sammlung"); umgeschaltet wird oben auf der
- * Seite. Teile und Minifiguren behalten ihren unsichtbaren Reiter — Code und Wiederherstellung sprechen sie
- * darüber an.
+ * Sets, parts and minifigures share ONE target in the bar ("collection"); switching happens at the top of the
+ * page. Parts and minifigures keep their invisible tab — code and restoration address them
+ * through it.
  */
 const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
 
 /**
  * @param {string | null | undefined} tab
  */
-function markiereGruppe(tab) {
-  // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
+function markGroup(tab) {
+  // An own class instead of .active: `.ntab.active` everywhere names the open tab.
   const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
   sammlung?.classList.toggle('gruppe-aktiv', !!tab && SAMMLUNG.includes(tab));
-  // Die drei Knöpfe wechseln die Ansicht; die offene ist die aktuelle Seite.
+  // The three buttons switch the view; the open one is the current page.
   alle('.sammlung-wahl [data-arg]').forEach(b => {
     if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page');
     else b.removeAttribute('aria-current');
   });
-  // Vorleseprogramme erfahren so, welcher Reiter offen ist. „Sammlung“ gilt nur dann als aktuelle Seite, wenn
-  // der eigene Reiter der Ansicht nicht zu sehen ist (am Telefon).
+  // That way screen readers learn which tab is open. "Collection" only counts as the current page if
+  // the view's own tab is not visible (on the phone).
   const offen = document.querySelector('.ntab.active');
-  const offenSichtbar = !!offen?.getClientRects().length;
+  const openVisible = !!offen?.getClientRects().length;
   document.querySelectorAll('.ntab').forEach(x => {
-    if (x.classList.contains('active') || (x.classList.contains('gruppe-aktiv') && !offenSichtbar && x !== offen))
+    if (x.classList.contains('active') || (x.classList.contains('gruppe-aktiv') && !openVisible && x !== offen))
       x.setAttribute('aria-current', 'page');
     else x.removeAttribute('aria-current');
   });
 }
 
-/** Am Handy: die Filter hinter einem Knopf, damit die Liste oben beginnt. @this {HTMLElement} */
+/** On the phone: the filters behind a button, so that the list starts at the top. @this {HTMLElement} */
 export function filterUmschalten() {
   const leiste = this?.closest?.('.filterleiste');
   if (!leiste) return;
@@ -94,36 +94,36 @@ export function filterUmschalten() {
   this.setAttribute('aria-expanded', String(offen));
 }
 
-/** Wer kein Verwalter ist, sieht im Reiter Einstellungen einen Satz statt einer leeren Seite. */
-function zeigeEinstellungsZugriff() {
+/** Whoever is not an admin sees a sentence in the settings tab instead of an empty page. */
+function showSettingAccess() {
   const f = G('einst-kein-zugriff');
   if (!f) return;
-  f.hidden = !!angemeldetesKonto?.isAdmin;
+  f.hidden = !!loggedInAccount?.isAdmin;
   setzeHtml(
     f,
-    angemeldetesKonto?.isAdmin
+    loggedInAccount?.isAdmin
       ? ''
-      : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') }),
+      : emptyState({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') }),
   );
 }
 
 /**
- * Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü.
+ * Open a tab — from the collection's switch or the menu.
  * @param {string} name
  */
 export function oeffneReiter(name) {
-  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
-  menueSchliessen();
+  const fromMenu = !!G('umenu-pop')?.contains(document.activeElement);
+  closeMenu();
   eins(`.ntab[data-tab="${name}"]`)?.click();
-  if (ausMenue) fokusAufTitel(G('tab-' + name));
+  if (fromMenu) focusOnTitle(G('tab-' + name));
 }
 
 /**
- * Nach einer Wahl im Menü steht der Fokus auf einem nun verborgenen Eintrag und fiele an den Seitenanfang;
- * die Überschrift der neuen Seite ist der Ort, an dem Tastatur und Bildschirmleser weitermachen.
+ * After a choice in the menu the focus is on a now hidden entry and would fall to the page start;
+ * the heading of the new page is the place where keyboard and screen reader continue.
  */
 /** @param {HTMLElement | null} flaeche */
-function fokusAufTitel(flaeche) {
+function focusOnTitle(flaeche) {
   const titel = /** @type {HTMLElement|null} */ (flaeche?.querySelector('.ptitle') ?? null);
   if (!titel) {
     G('btn-umenu')?.focus();
@@ -145,8 +145,8 @@ export function bindTabs() {
       document.querySelectorAll('.tab').forEach(x => {
         x.classList.remove('active');
       });
-      // Unsichtbare Reiter (Einstellungen, Monitoring) öffnet das Kontomenü — dann markiert der Menüknopf, wo
-      // man ist.
+      // Invisible tabs (settings, monitoring) are opened by the account menu — then the menu button marks where
+      // one is.
       const unter = t.classList.contains('ntab-unter');
       G('btn-umenu')?.classList.toggle('aktiv', unter);
       if (unter) G('btn-umenu')?.setAttribute('aria-current', 'page');
@@ -154,15 +154,15 @@ export function bindTabs() {
       t.classList.add('active');
       G('tab-' + t.dataset.tab).classList.add('active');
       const tab = t.dataset.tab ?? '';
-      meldeAnsicht(tab);
-      markiereGruppe(tab);
-      zeigeSeitenname(G('tab-' + tab), unter);
+      reportView(tab);
+      markGroup(tab);
+      showPageName(G('tab-' + tab), unter);
       syncTabTitleIcon(tab);
-      // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne dieses Abmelden lieferte die dort
-      // angemeldete Funktion weiterhin ein Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
+      // The year label at the scroll bar belongs ONLY in the catalog. Without this unregistering the function registered there
+      // kept delivering a year — even in the gallery, where the number means nothing.
       if (tab !== 'catalog') setScrollLabel(null);
-      // loadGallery() lädt die Kennzahlen selbst; ein zweiter Aufruf kostete doppelt am Budget (apiDrossel.ts).
-      if (tab === 'gallery') melde('sammlungLaden');
+      // loadGallery() loads the metrics itself; a second call cost double on the budget (apiThrottle.ts).
+      if (tab === 'gallery') emit('sammlungLaden');
       if (tab === 'catalog') {
         initCatalog();
       }
@@ -173,8 +173,8 @@ export function bindTabs() {
         loadParts();
         loadManualParts();
         loadBrickColors();
-        // War der Import eben erst, nach dem Hintergrundauftrag noch einmal laden
-        if (Date.now() - letzterImport < 30000)
+        // If the import was only just now, load once more after the background job
+        if (Date.now() - lastImportAt < 30000)
           setTimeout(() => {
             loadParts();
             loadManualParts();
@@ -182,52 +182,52 @@ export function bindTabs() {
       }
       if (tab === 'minifigs') {
         loadMinifigs();
-        if (Date.now() - letzterImport < 30000) setTimeout(loadMinifigs, 5000);
+        if (Date.now() - lastImportAt < 30000) setTimeout(loadMinifigs, 5000);
       }
       if (tab === 'finance') {
-        melde('finanzenLaden');
+        emit('finanzenLaden');
       } // loadFinance already fetches parts+minifigs valuation in parallel
       if (tab === 'partslist') {
         /* session-only, no server load needed */
       }
-      // Der Reiter traegt seit dem 16.10. nur noch die Verwalter-Rubriken; was frueher hier alles mitgeladen
-      // wurde, holt jetzt die jeweilige Sicht beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
-      // nachsieht, braucht keine Gutscheinliste.
+      // Since 16.10. the tab only carries the admin sections; whatever used to be loaded along here
+      // is now fetched by the respective view when opening (see oeffneSicht below). Whoever looks up the API keys
+      // needs no voucher list.
       if (tab === 'settings') {
-        zeigeEinstellungsZugriff();
+        showSettingAccess();
         loadSettings();
-        if (angemeldetesKonto?.isAdmin) {
+        if (loggedInAccount?.isAdmin) {
           loadApiLimits();
           loadCacheTtl();
-          ladeZeitplaene();
+          loadSchedules();
         }
       }
       if (tab === 'monitor') {
         loadMonitor();
         loadCacheStats();
         loadRateLimitStats();
-        stoppeJobAbfrage();
+        stopJobPolling();
         pollJobStatus();
       }
-      if (tab !== 'monitor' && stoppeMonitor()) stoppeJobAbfrage();
+      if (tab !== 'monitor' && stopMonitor()) stopJobPolling();
     });
   });
-  // Alle Seitentitel-Icons füllen — läuft bei jedem bindTabs()-Aufruf, also auch nach dem Login (showApp ruft
-  // bindTabs erneut), wenn der Inhalt sichtbar wird. So erscheint das Icon links vom Titel auf allen Tabs,
-  // nicht nur nach einem Klick.
+  // Fill all page title icons — runs on every bindTabs() call, i.e. also after login (showApp calls
+  // bindTabs again), when the content becomes visible. That way the icon appears left of the title on all tabs,
+  // not only after a click.
   alle('.ptitle[data-tab-title]').forEach(h => {
     syncTabTitleIcon(h.dataset.tabTitle);
   });
 }
 
-// Aufruf verschoben nach startApp() (js/init.js), das js/main.js NACH der Auswertung aller Module aufruft.
-// Im Modulrumpf lief er zu früh: Bei gegenseitigen Importen ist das Übersetzungsobjekt aus i18n.js dann noch
-// nicht initialisiert, und t() wirft.
+// Call moved to startApp() (js/init.js), which js/main.js calls AFTER all modules have been evaluated.
+// In the module body it ran too early: with mutual imports the translation object from i18n.js is then not
+// initialized yet, and t() throws.
 
-// Die Sichten hinter dem Benutzermenü, wie in der Android-App. Jede Sicht lädt nur, was sie zeigt: Vorher
-// holte der Einstellungs-Reiter bei jedem Öffnen fünf Bereiche, von denen man meist einen sehen wollte.
+// The views behind the user menu, as in the Android app. Every view only loads what it shows: before,
+// the settings tab fetched five areas on every opening, of which one usually wanted to see one.
 /** @type {Record<string, () => unknown>} */
-const SICHTEN = {
+const VIEWS = {
   profil: () => {
     loadSettings();
     loadProfile();
@@ -238,22 +238,22 @@ const SICHTEN = {
   alarme: () => ladeAlarmUebersicht(),
   lagerorte: () => ladeLagerortVerwaltung(),
   haushalt: () => loadHousehold(),
-  daten: () => ladePapierkorb(),
+  daten: () => loadTrash(),
   app: () => {
     loadTokens();
-    ladeTls();
+    loadTls();
   },
 };
 
 /**
- * Eine Sicht aus dem Menü öffnen.
+ * Open a view from the menu.
  * @param {string} name
  */
 export function oeffneSicht(name) {
-  if (!SICHTEN[name]) return;
+  if (!VIEWS[name]) return;
   const flaeche = G('tab-' + name);
   if (!flaeche) return;
-  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
+  const fromMenu = !!G('umenu-pop')?.contains(document.activeElement);
   document.querySelectorAll('.ntab').forEach(x => {
     x.classList.remove('active');
   });
@@ -261,145 +261,145 @@ export function oeffneSicht(name) {
     x.classList.remove('active');
   });
   flaeche.classList.add('active');
-  markiereGruppe(null);
-  zeigeSeitenname(flaeche, true);
-  menueSchliessen();
-  meldeAnsicht(name);
-  // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der Menüknopf, wo man ist — sonst wäre
-  // kein Reiter als aktiv markiert.
+  markGroup(null);
+  showPageName(flaeche, true);
+  closeMenu();
+  reportView(name);
+  // The views live in the account menu, not in the bar: then the menu button shows where one is — otherwise
+  // no tab would be marked as active.
   G('btn-umenu')?.classList.add('aktiv');
   G('btn-umenu')?.setAttribute('aria-current', 'page');
-  // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige gerollt war, und man sieht die
-  // Mitte einer fremden Seite.
+  // To the top: otherwise the view opens at the spot where the previous one was scrolled, and one sees the
+  // middle of a foreign page.
   window.scrollTo({ top: 0, behavior: rollArt() });
-  if (ausMenue) fokusAufTitel(flaeche);
-  SICHTEN[name]();
+  if (fromMenu) focusOnTitle(flaeche);
+  VIEWS[name]();
 }
 
 /**
- * Seitenname im Fenstertitel und, für Seiten hinter dem Menü, im Kopf: Dort markiert kein Reiter die offene
- * Seite, sonst wüsste man nur am Inhalt, wo man ist.
+ * Page name in the window title and, for pages behind the menu, in the header: there no tab marks the open
+ * page, otherwise one would only know from the content where one is.
  * @param {Element | null} flaeche
- * @param {boolean} imKopf
+ * @param {boolean} inHeader
  */
-function zeigeSeitenname(flaeche, imKopf) {
-  // Ohne weiche Trennstriche: Im Seitentitel und in der Tab-Leiste werden sie sichtbar oder stören die Suche.
+function showPageName(flaeche, inHeader) {
+  // Without soft hyphens: in the page title and in the tab bar they become visible or disturb the search.
   const titel = (flaeche?.querySelector('.ptitle')?.textContent || '').replace(/\u00AD/g, '').trim();
   const kopf = G('kopf-sicht');
   if (kopf) {
-    kopf.textContent = imKopf ? titel : '';
-    kopf.hidden = !(imKopf && titel);
+    kopf.textContent = inHeader ? titel : '';
+    kopf.hidden = !(inHeader && titel);
   }
   document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
-  beobachteTitel(flaeche);
+  observeTitle(flaeche);
 }
 
 /** @type {MutationObserver | null} */
-let _setDetailBeobachter = null;
+let _setDetailObserver = null;
 /**
- * Offenes Set-Detail: Der Fenstertitel nennt das Set, nach dem Schliessen wieder die Seite. Beobachtet
- * statt an jedem Schliessweg gesetzt: Knopf, Esc, Hintergrund und der Kaufpreis-Dialog schliessen ihn.
+ * Open set detail: the window title names the set, after closing the page again. Observed
+ * instead of set at every closing path: button, Esc, background and the purchase price dialog close it.
  */
-function beobachteSetDetail() {
+function observeSetDetail() {
   const dialog = G('set-modal'),
     titel = G('m-tit');
-  if (_setDetailBeobachter || !dialog || !titel || typeof MutationObserver !== 'function') return;
+  if (_setDetailObserver || !dialog || !titel || typeof MutationObserver !== 'function') return;
   let offen = false;
-  const richte = () => {
+  const setUp = () => {
     const name = (titel.textContent || '').trim();
     if (dialog.classList.contains('open') && name) {
       offen = true;
       document.title = `${name} – BrickInventory`;
     } else if (offen) {
       offen = false;
-      seitennameAktualisieren();
+      refreshPageName();
     }
   };
-  _setDetailBeobachter = new MutationObserver(richte);
-  _setDetailBeobachter.observe(dialog, { attributes: true, attributeFilter: ['class'] });
-  _setDetailBeobachter.observe(titel, { childList: true, characterData: true, subtree: true });
+  _setDetailObserver = new MutationObserver(setUp);
+  _setDetailObserver.observe(dialog, { attributes: true, attributeFilter: ['class'] });
+  _setDetailObserver.observe(titel, { childList: true, characterData: true, subtree: true });
 }
 
-/** Beim Start ist die Sammlung schon offen, ohne dass ein Reiter geklickt wurde: Titel trotzdem setzen. */
-export function seitennameAktualisieren() {
-  beobachteSetDetail();
+/** At startup the collection is already open without a tab having been clicked: set the title anyway. */
+export function refreshPageName() {
+  observeSetDetail();
   const flaeche = document.querySelector('.tab.active');
   const reiter = flaeche && document.querySelector(`.ntab[data-tab="${flaeche.id.replace(/^tab-/, '')}"]`);
-  zeigeSeitenname(flaeche, !reiter || reiter.classList.contains('ntab-unter'));
+  showPageName(flaeche, !reiter || reiter.classList.contains('ntab-unter'));
 }
 
 /**
- * Am Telefon steht der Seitenname nur dann im Kopf, wenn die Überschrift hinausgerollt ist; sonst stünde er
- * zweimal untereinander.
+ * On the phone the page name only stands in the header once the heading has scrolled out; otherwise it would stand
+ * twice below each other.
  * @type {IntersectionObserver | null}
  */
-let _titelBeobachter = null;
+let _titleObserver = null;
 /**
  * @param {Element | null} flaeche
  */
-function beobachteTitel(flaeche) {
+function observeTitle(flaeche) {
   const kopf = G('kopf-sicht'),
     h1 = flaeche?.querySelector('.ptitle');
-  _titelBeobachter?.disconnect();
+  _titleObserver?.disconnect();
   if (!kopf || !h1 || typeof IntersectionObserver !== 'function') return;
-  // Gemessen an der echten Kopfleiste (bei 200 % Schrift höher als 64 px) und sofort, nicht erst im ersten
-  // Rückruf: Bis dahin galt der Stand der vorigen Seite, und der Titel stand kurz zweimal untereinander.
+  // Measured on the real header bar (taller than 64 px at 200 % font) and immediately, not only in the first
+  // callback: until then the previous page's state applied, and the title briefly stood twice below each other.
   const leiste = document.querySelector('header')?.getBoundingClientRect().bottom ?? 64;
   kopf.classList.toggle('titel-sichtbar', h1.getBoundingClientRect().bottom > leiste);
-  _titelBeobachter = new IntersectionObserver(([e]) => kopf.classList.toggle('titel-sichtbar', e.isIntersecting), {
+  _titleObserver = new IntersectionObserver(([e]) => kopf.classList.toggle('titel-sichtbar', e.isIntersecting), {
     rootMargin: `-${Math.round(leiste)}px 0px 0px 0px`,
   });
-  _titelBeobachter.observe(h1);
+  _titleObserver.observe(h1);
 }
 
-function menueSchliessen(fokusZurueck = false) {
+function closeMenu(focusBack = false) {
   const pop = G('umenu-pop');
   const drin = !!pop && pop.contains(document.activeElement);
   if (pop) pop.style.display = 'none';
   const knopf = G('btn-umenu');
   if (knopf) knopf.setAttribute('aria-expanded', 'false');
-  if (knopf && fokusZurueck && drin) knopf.focus();
+  if (knopf && focusBack && drin) knopf.focus();
 }
 
-/** Die sichtbaren Einträge; `admin-only` ist für andere Konten ausgeblendet. */
-function menueEintraege() {
+/** The visible entries; `admin-only` is hidden for other accounts. */
+function menuEntries() {
   return /** @type {HTMLElement[]} */ ([...(G('umenu-pop')?.querySelectorAll('[role="menuitem"]') ?? [])]).filter(
     e => e.style.display !== 'none',
   );
 }
 
-/** Öffnet das Menü und setzt den Fokus auf den ersten (oder letzten) Eintrag. */
-function menueOeffnen(letzter = false) {
+/** Opens the menu and sets the focus on the first (or last) entry. */
+function openMenu(letzter = false) {
   const pop = G('umenu-pop');
   if (!pop) return;
   pop.style.display = 'block';
   G('btn-umenu')?.setAttribute('aria-expanded', 'true');
-  const e = menueEintraege();
+  const e = menuEntries();
   (letzter ? e[e.length - 1] : e[0])?.focus();
 }
 
-/** Das Menü auf- und zuklappen. */
+/** Open and close the menu. */
 export function benutzerMenue() {
   const pop = G('umenu-pop');
   if (!pop) return;
   if (pop.style.display !== 'none') {
-    menueSchliessen();
+    closeMenu();
     return;
   }
-  menueOeffnen();
+  openMenu();
 }
 
-// Tastatur nach dem APG-Muster „Menu Button": Ein Bildschirmleser kündigt role=menu an, und Nutzer erwarten
-// dann Pfeiltasten statt Tab.
+// Keyboard according to the APG pattern "Menu Button": a screen reader announces role=menu, and users then expect
+// arrow keys instead of Tab.
 document.addEventListener('keydown', ev => {
   const ziel = ev.target instanceof Element ? ev.target : null;
   if (ziel?.id === 'btn-umenu' && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')) {
     ev.preventDefault();
-    menueOeffnen(ev.key === 'ArrowUp');
+    openMenu(ev.key === 'ArrowUp');
     return;
   }
   if (!ziel?.closest('#umenu-pop')) return;
-  const e = menueEintraege(),
+  const e = menuEntries(),
     i = e.indexOf(/** @type {HTMLElement} */ (ziel));
   const nach = { ArrowDown: (i + 1) % e.length, ArrowUp: (i - 1 + e.length) % e.length, Home: 0, End: e.length - 1 }[
     ev.key
@@ -409,26 +409,26 @@ document.addEventListener('keydown', ev => {
     e[nach]?.focus();
     return;
   }
-  if (ev.key === 'Tab') menueSchliessen();
+  if (ev.key === 'Tab') closeMenu();
 });
 
-// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Escape bringt den Fokus zurück auf den Menüknopf,
-// sonst fiele er auf den Seitenanfang.
+// Close when someone taps next to it or presses Escape. Escape brings the focus back to the menu button,
+// otherwise it would fall to the page start.
 document.addEventListener('click', ev => {
   const pop = G('umenu-pop');
   if (!pop || pop.style.display === 'none') return;
   if (ev.target instanceof Element && ev.target.closest('.umenu-wrap')) return;
-  menueSchliessen();
+  closeMenu();
 });
 
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape') {
-    menueSchliessen(true);
-    importMenuesSchliessen(null, true);
+    closeMenu(true);
+    closeImportMenus(null, true);
   }
 });
 
-// Abgemeldet ist #inhalt verborgen; der Sprunglink führt dann ins Anmeldeformular statt ins Leere.
+// Logged out, #inhalt is hidden; the skip link then leads into the login form instead of nowhere.
 document.querySelector('.sprunglink')?.addEventListener('click', ev => {
   if (G('inhalt')?.checkVisibility?.() !== false) return;
   const felder = /** @type {HTMLElement[]} */ ([
@@ -441,21 +441,21 @@ document.querySelector('.sprunglink')?.addEventListener('click', ev => {
 });
 
 /**
- * Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt.
+ * Close open import menus, except the one in which `ausser` lies.
  * @param {Node | null} ausser
  */
-function importMenuesSchliessen(ausser, fokusZurueck = false) {
+function closeImportMenus(ausser, focusBack = false) {
   /** @type {NodeListOf<HTMLDetailsElement>} */ (document.querySelectorAll('details.import-menue[open]')).forEach(d => {
     if (ausser && d.contains(ausser)) return;
     d.open = false;
-    if (fokusZurueck && d.contains(document.activeElement)) d.querySelector('summary')?.focus();
+    if (focusBack && d.contains(document.activeElement)) d.querySelector('summary')?.focus();
   });
 }
 
-// Ein Klick daneben schliesst das Menü; eine Wahl darin (Datei, Vorlage) ebenso.
+// A click next to it closes the menu; a choice within it (file, template) as well.
 document.addEventListener('click', ev => {
   const ziel = ev.target instanceof Element ? ev.target : null;
-  importMenuesSchliessen(ziel);
+  closeImportMenus(ziel);
   const d = /** @type {HTMLDetailsElement|null} */ (ziel?.closest('.import-klappe a')?.closest('details') ?? null);
   if (d) d.open = false;
 });
@@ -469,7 +469,7 @@ document.addEventListener('change', ev => {
 });
 
 /**
- * Alle Filter einer Ansicht leeren (Knopf im Leerzustand ohne Treffer).
+ * Clear all filters of a view (button in the empty state without hits).
  * @param {string} ansicht
  */
 function filterZuruecksetzen(ansicht) {
@@ -478,27 +478,27 @@ function filterZuruecksetzen(ansicht) {
     G('gtheme').value = '';
     setLagerModus('gallery', '');
     if (G('storage-gallery')) G('storage-gallery').value = '';
-    melde('sammlungLaden');
-  } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
-  else if (ansicht === 'catalog') katalogZuruecksetzen();
-  else if (ansicht === 'parts') teileFilterZuruecksetzen();
-  else if (ansicht === 'minifigs') figurenFilterZuruecksetzen();
-  meldeFilter();
+    emit('sammlungLaden');
+  } else if (ansicht === 'merkliste') resetWantedFilter();
+  else if (ansicht === 'catalog') resetCatalog();
+  else if (ansicht === 'parts') resetPartsFilter();
+  else if (ansicht === 'minifigs') resetMinifigsFilter();
+  reportFilter();
 }
 
 /**
- * Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter.
+ * Switch — reloads ONLY the affected view, as with the account filter.
  *
- * Im Reiter Teile BEIDE Listen: Seit der Lagerortfilter auch die manuell erfassten Teile trifft
- * (getManualParts), waere ein Umschalten ohne loadManualParts() ein halb angewandter Filter — oben
- * ungefiltert, unten gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
+ * In the parts tab BOTH lists: since the storage location filter also hits the manually captured parts
+ * (getManualParts), switching without loadManualParts() would be a half-applied filter — at the top
+ * unfiltered, at the bottom filtered. The same reasoning as for onScopeChange() below.
  * @param {string} view
  */
 export function onStorageChange(view) {
   const el = G('storage-' + view);
   if (!el) return;
   setLagerModus(view, el.value);
-  if (view === 'gallery') melde('sammlungLaden');
+  if (view === 'gallery') emit('sammlungLaden');
   if (view === 'parts') {
     loadParts();
     loadManualParts();
@@ -506,50 +506,50 @@ export function onStorageChange(view) {
 }
 
 /**
- * Umschalten — lädt NUR die betroffene Ansicht neu.
+ * Switch — reloads ONLY the affected view.
  *
- * Die Wahl gilt pro Ansicht; alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die niemand
- * gerade ansieht, und dabei Preisabrufe auslösen.
+ * The choice applies per view; reloading all four at the same time would touch three views nobody
+ * is looking at right now, and trigger price fetches along the way.
  * @param {string} view
  */
 export function onScopeChange(view) {
   const el = G('scope-' + view);
   if (!el) return;
   setScopeMode(view, el.value);
-  sammlungUntertitel(view);
-  if (view === 'gallery') melde('sammlungLaden');
-  // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und die manuell erfassten. Nur
-  // loadParts() neu zu laden liess den manuellen Bereich ungefiltert stehen — er lädt über einen eigenen
-  // Endpunkt.
+  collectionSubtitle(view);
+  if (view === 'gallery') emit('sammlungLaden');
+  // The parts and minifigures tabs each have TWO lists: the one from sets and the manually captured one. Only
+  // reloading loadParts() left the manual area unfiltered — it loads via an endpoint of its
+  // own.
   if (view === 'parts') {
     loadParts();
     loadManualParts();
   }
-  // Der Reiter Minifiguren hat dieselben zwei Listen — hier stand trotzdem nur loadMinifigs(). Die manuellen
-  // Karten hingen damit am Kontofilter des LETZTEN Ladens: loadManualFigsTable() schickt den Filter mit,
-  // wurde beim Umschalten aber nie gerufen. Genau die Luecke, die der Satz darueber fuer beide Reiter
-  // beschreibt.
+  // The minifigures tab has the same two lists — yet only loadMinifigs() stood here. The manual
+  // cards thus depended on the account filter of the LAST load: loadManualFigsTable() sends the filter along,
+  // but was never called when switching. Exactly the gap the sentence above describes for both
+  // tabs.
   if (view === 'minifigs') {
     loadMinifigs();
     loadManualFigsTable();
   }
-  if (view === 'finance') melde('finanzenLaden');
-  // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders als die Galerie, wo loadStats()
+  if (view === 'finance') emit('finanzenLaden');
+  // The wishlist loads ONE list and has no metrics above it — unlike the gallery, where loadStats()
   // mitmuss.
   if (view === 'merkliste') ladeMerkliste();
 }
 
-// Ein echter Sprachwechsel baut den offenen Reiter neu auf. Die Galerie wird nur neu gezeichnet: Ein Neuladen
-// leerte das Raster zwischendurch.
-abonniere('spracheGewechselt', ({ echterWechsel }) => {
-  if (!echterWechsel) return;
+// A real language change rebuilds the open tab. The gallery is only redrawn: a reload
+// emptied the grid in between.
+subscribe('spracheGewechselt', ({ realSwitch }) => {
+  if (!realSwitch) return;
   const aktiv = /** @type {HTMLElement|null} */ (document.querySelector('.ntab.active'))?.dataset?.tab;
   if (aktiv === 'parts') {
     loadParts();
     loadManualParts();
   }
   if (aktiv === 'minifigs') loadMinifigs();
-  if (aktiv === 'finance') melde('finanzenLaden');
+  if (aktiv === 'finance') emit('finanzenLaden');
   if (aktiv === 'settings') {
     loadSettings();
     loadProfile();
@@ -558,12 +558,12 @@ abonniere('spracheGewechselt', ({ echterWechsel }) => {
     loadMonitor();
     loadCacheStats();
   }
-  if (aktiv === 'gallery') melde('sammlungZeichnen');
+  if (aktiv === 'gallery') emit('sammlungZeichnen');
 });
 
 /**
- * Aus einem Dialog zu einer Menüseite (Set-Detail → Preisalarme). Erst schliesst der Dialog über seinen eigenen
- * Schliessknopf, damit er aufräumt wie sonst auch; dann erst die Seite.
+ * From a dialog to a menu page (set detail → price alerts). First the dialog closes via its own
+ * close button, so that it cleans up as usual; only then the page.
  * @this {HTMLElement} @param {string} name
  */
 function sichtAusDialog(name) {
@@ -572,7 +572,7 @@ function sichtAusDialog(name) {
   oeffneSicht(name);
 }
 
-stelleZielBereit({ sicht: oeffneSicht });
+registerTarget({ view: oeffneSicht });
 
 registerActions({
   filterUmschalten,

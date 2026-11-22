@@ -1,16 +1,16 @@
 Gegenprobe: Merken aus dem Katalog setzt den Preisalarm nicht
-Modul: feature-katalog
-Test: ch.brickinventoryapp.katalog.CatalogViewModelTest
-Rot: merken legt den Posten an
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
+Rot: remembering creates the item, sets the alert in the chosen direction and reports
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 @@ -231,7 +231,6 @@
                  is Ergebnis.Fehler ->
-                     meldungen.zeige(texte.meldungFuerSnackbar(r)?.let { Meldung.Ressource(R.string.vm_error, listOf(it)) })
+                     meldungen.zeige(texts.meldungFuerSnackbar(r)?.let { Meldung.Resource(R.string.vm_error, listOf(it)) })
                  is Ergebnis.Erfolg -> {
--                    Alarmeingabe.zahl(w.schwelleRoh)?.let { alarme.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
-                     meldungen.zeige(Meldung.Ressource(if (r.data) R.string.wanted_added else R.string.wanted_already))
+-                    Alarmeingabe.zahl(w.thresholdRaw)?.let { alerts.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
+                     meldungen.zeige(Meldung.Resource(if (r.data) R.string.wanted_added else R.string.wanted_already))
                  }
              }

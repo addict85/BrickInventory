@@ -1,17 +1,17 @@
 /**
- * Seitenweise Listen am Server, an den Routen gegen die Datenbank:
- * Sortier-Whitelist mit Rückfall, gebundener Suchbegriff, Themenliste über
- * den ganzen Bestand nur auf Seite 1, Zähler über Gruppen, ohne page_size
- * alles. Das Verhalten der Oberfläche prüft test/listen-paging-oberflaeche.test.js.
+ * Paged lists on the server, on the routes against the database:
+ * sort whitelist with fallback, bound search term, theme list over
+ * the whole stock only on page 1, counter over groups, without page_size
+ * everything. The UI behavior is checked by test/listen-paging-ui.test.js.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  in SET_SORTS qty_asc auf `s.quantity DESC, …` → rot: „nach Anzahl …“
- *   B  ausTabelle(SET_SORTS, …) durch `SET_SORTS[sort] ?? …` ersetzt → rot:
- *      „unbekannte Sortierung …“ (constructor liefert eine Funktion → 500)
- *   C  in setsLesen `themen: !!page_size && …` durch `themen: !!page_size` →
- *      rot: „die Themenliste …“ (Seite 2 trägt Themen)
- *   D  im Figurenzähler GROUP BY ohne m.source/LOWER(TRIM) durch
- *      `GROUP BY m.set_number, m.fig_number` → rot: „Minifiguren zählen …“
+ * Counter-checks (measured 10.11.2026, each alone, reverted):
+ *   A  in SET_SORTS qty_asc to `s.quantity DESC, …` → red: “by quantity …”
+ *   B  fromTable(SET_SORTS, …) replaced by `SET_SORTS[sort] ?? …` → red:
+ *      “unknown sorting …” (constructor delivers a function → 500)
+ *   C  in setsLesen `themen: !!page_size && …` replaced by `themen: !!page_size` →
+ *      red: “the theme list …” (page 2 carries themes)
+ *   D  in the minifigure counter GROUP BY without m.source/LOWER(TRIM) replaced by
+ *      `GROUP BY m.set_number, m.fig_number` → red: “minifigures count …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,11 +20,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet, haeltFigur, haeltTeil, katalogSet } = require('./helpers/bestand');
+const { holdsSet, holdsMinifig, holdsPart, catalogSet } = require('./helpers/inventory');
 
-// Fünf Sets: Menge, Thema und Aufnahmezeit so, dass jede Sortierung eine andere Folge ergibt.
+// Five sets: quantity, theme and time added such that every sorting yields a different order.
 const SETS = [
   { nr: '77101-1', name: 'Alpha', theme: 'Burg', menge: 3, vor: 5 },
   { nr: '77102-1', name: "O'Brien 100%", theme: 'Stadt', menge: 1, vor: 4 },
@@ -33,31 +33,31 @@ const SETS = [
   { nr: '77105-1', name: 'Epsilon', theme: 'Stadt', menge: 3, vor: 1 },
 ];
 
-test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+test('page-by-page lists on the server', { concurrency: 1 }, async t => {
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `paging_${process.pid}`;
   const nummern = SETS.map(s => s.nr);
   const aufraeumen = async () => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-    await db.run('DELETE FROM set_figuren WHERE set_number = ANY($1)', [nummern]);
+    await db.run('DELETE FROM set_minifigs WHERE set_number = ANY($1)', [nummern]);
     await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [nummern]);
   };
   await aufraeumen();
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   for (const s of SETS) {
-    await katalogSet(db, s.nr, { name: s.name, theme: s.theme });
-    await haeltSet(db, uid, s.nr, s.menge);
+    await catalogSet(db, s.nr, { name: s.name, theme: s.theme });
+    await holdsSet(db, uid, s.nr, s.menge);
     await db.run(
       `UPDATE sets SET added_at = NOW() - make_interval(days => $3) WHERE user_id = $1 AND set_number = $2`,
       [uid, s.nr, s.vor],
     );
   }
-  // Dieselbe Figur in zwei Sets und eine zweite: zwei Gruppen.
-  await haeltFigur(db, uid, 'fig-0001', { setNumber: '77101-1' });
-  await haeltFigur(db, uid, 'FIG-0001 ', { setNumber: '77103-1' });
-  await haeltFigur(db, uid, 'fig-0002', { setNumber: '77104-1' });
-  for (const nr of ['91001', '91002', '91003']) await haeltTeil(db, uid, nr);
+  // The same minifigure in two sets and a second one: two groups.
+  await holdsMinifig(db, uid, 'fig-0001', { setNumber: '77101-1' });
+  await holdsMinifig(db, uid, 'FIG-0001 ', { setNumber: '77103-1' });
+  await holdsMinifig(db, uid, 'fig-0002', { setNumber: '77104-1' });
+  for (const nr of ['91001', '91002', '91003']) await holdsPart(db, uid, nr);
   t.after(async () => {
     await aufraeumen().catch(() => {});
     await db.pool.end().catch(() => {});
@@ -70,26 +70,26 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, `${pfad}: ${JSON.stringify(b)}`);
     return b;
   };
-  const folge = async abfrage => (await hole(`/sets?${abfrage}`)).sets.map(s => s.name[0]);
+  const sequence = async abfrage => (await hole(`/sets?${abfrage}`)).sets.map(s => s.name[0]);
 
-  await t.test('nach Anzahl lässt sich in beide Richtungen sortieren, Gleichstand nach Aufnahme', async () => {
-    assert.deepEqual(await folge('sort=qty_desc'), ['E', 'A', 'G', 'D', 'O']);
-    assert.deepEqual(await folge('sort=qty_asc'), ['D', 'O', 'G', 'E', 'A']);
+  await t.test('sorting by quantity works in both directions, ties by addition', async () => {
+    assert.deepEqual(await sequence('sort=qty_desc'), ['E', 'A', 'G', 'D', 'O']);
+    assert.deepEqual(await sequence('sort=qty_asc'), ['D', 'O', 'G', 'E', 'A']);
   });
 
-  await t.test('unbekannte Sortierung fällt auf „zuletzt aufgenommen“', async () => {
+  await t.test('an unknown sorting falls back to "most recently added"', async () => {
     const vorgabe = ['E', 'D', 'G', 'O', 'A'];
-    assert.deepEqual(await folge('sort=added_desc'), vorgabe);
+    assert.deepEqual(await sequence('sort=added_desc'), vorgabe);
     for (const s of ['constructor', '__proto__', 'toString', 'name_asc;DROP TABLE sets', 'x'])
-      assert.deepEqual(await folge(`sort=${encodeURIComponent(s)}`), vorgabe, s);
+      assert.deepEqual(await sequence(`sort=${encodeURIComponent(s)}`), vorgabe, s);
   });
 
-  await t.test('der Suchbegriff ist gebunden, nicht eingesetzt', async () => {
-    assert.deepEqual(await folge(`search=${encodeURIComponent("o'brien")}`), ['O']);
-    assert.deepEqual(await folge(`search=${encodeURIComponent("' OR 1=1 --")}`), []);
+  await t.test('the search term is bound, not inserted', async () => {
+    assert.deepEqual(await sequence(`search=${encodeURIComponent("o'brien")}`), ['O']);
+    assert.deepEqual(await sequence(`search=${encodeURIComponent("' OR 1=1 --")}`), []);
   });
 
-  await t.test('ohne page_size alles, mit page_size Seiten und Gesamtzahl', async () => {
+  await t.test('without page_size everything, with page_size pages and total', async () => {
     const alle = await hole('/sets');
     assert.equal(alle.sets.length, 5);
     assert.equal(alle.themes, undefined, 'ohne page_size keine Themenliste');
@@ -99,14 +99,14 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
     assert.deepEqual([s3.sets.map(s => s.set_number), s3.total], [['77105-1'], 5]);
   });
 
-  await t.test('die Themenliste kommt über den ganzen Bestand und nur auf Seite 1', async () => {
+  await t.test('the theme list comes over the whole inventory and only on page 1', async () => {
     const s1 = await hole('/sets?page=1&page_size=1&sort=num_asc');
     assert.deepEqual([...s1.themes].sort(), ['Burg', 'Stadt', 'Weltraum'], 'Themen der übrigen Seiten fehlen');
     const s2 = await hole('/sets?page=2&page_size=1&sort=num_asc');
     assert.ok(!s2.themes?.length, `Folgeseite trägt Themen: ${s2.themes}`);
   });
 
-  await t.test('Minifiguren zählen je Figur, nicht je Set, und laden seitenweise', async () => {
+  await t.test('minifigures count per figure, not per set, and load page by page', async () => {
     const alle = await hole('/minifigs');
     assert.equal(alle.figs.length, 2, JSON.stringify(alle.figs.map(f => f.fig_number)));
     const s1 = await hole('/minifigs?page=1&page_size=1');
@@ -115,7 +115,7 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
     assert.notEqual(s1.figs[0].fig_number.toLowerCase().trim(), s2.figs[0].fig_number.toLowerCase().trim());
   });
 
-  await t.test('auch die manuellen Teile laden seitenweise', async () => {
+  await t.test('the manual parts load page by page too', async () => {
     const s1 = await hole('/parts/manual?page=1&page_size=2');
     const s2 = await hole('/parts/manual?page=2&page_size=2');
     assert.equal(s1.parts.length, 2);

@@ -1,7 +1,7 @@
 Gegenprobe: der Token gilt erst nach der Plattenschreibung
 Modul: core-data
 Test: ch.brickinventoryapp.data.TokenSpeicherwertTest
-Rot: Token und Adresse gelten
+Rot: token and address apply already while writing to disk
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 index 0287f52..cfff768 100644
@@ -9,14 +9,14 @@ index 0287f52..cfff768 100644
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 @@ -338,13 +338,13 @@ class TokenAblage @Inject constructor(
          val geheim = tresor.verschluessle(token)
-         val herkunftGeheim = herkunft?.let { verschluessle(HERKUNFT, it) }
-         _tokenHerkunftState.value = herkunft
+         val originSecret = herkunft?.let { verschluessle(ORIGIN, it) }
+         _tokenOriginState.value = herkunft
 -        _authTokenState.value = token
          dataStore.edit {
              it[AUTH_TOKEN_ENC] = geheim
              it.remove(AUTH_TOKEN)
-             if (herkunftGeheim != null) it.setze(HERKUNFT, herkunftGeheim) else it.entferne(HERKUNFT)
-             if (angemeldetAm != null) it[ANGEMELDET_AM] = angemeldetAm
+             if (originSecret != null) it.setze(ORIGIN, originSecret) else it.entferne(ORIGIN)
+             if (signedInAt != null) it[SIGNED_IN_AT] = signedInAt
          }
 +        _authTokenState.value = token
      }

@@ -1,21 +1,21 @@
-// Ein API-Client, kein Router: Schlüssel, Kontingent und Wiedervorlage kommen über ./zugang.
+// An API client, not a router: key, quota and resubmission come in through ./access.
 
 import type { z } from 'zod';
-import { BsAntwort, BsAnleitungen, BsSets, pruefeAntwort } from './antworten';
-import { holeHttps, auszug } from '../src/infra/abruf';
-import type { KlientenZugang } from './zugang';
-import { fehlertext, meldeFehler } from '../src/infra/fehler';
-import { alsAbrufFehler } from './abrufFehler';
-import { mitVersion } from '../src/infra/setNummer';
-import { versuche } from '../src/infra/ergebnis';
+import { BsResponse, BsInstructions, BsSets, checkResponse } from './responses';
+import { holeHttps, excerpt } from '../src/infra/fetch';
+import type { ClientsAccess } from './access';
+import { fehlertext, reportError } from '../src/infra/error';
+import { asFetchError } from './fetchError';
+import { withVersion } from '../src/infra/setNumber';
+import { versuche } from '../src/infra/result';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
-async function getApiKey(kl: KlientenZugang) {
+async function getApiKey(kl: ClientsAccess) {
   return (await kl.schluessel('brickset_api_key')) || '';
 }
 
-/** Netz- und Zeitfehler des Helfers tragen isTransient; der Aufrufer reiht dann neu ein. */
+/** Network and timeout errors of the helper carry isTransient; the caller then re-queues. */
 async function httpsGetOnce(url: string): Promise<{ status: number; body: string }> {
   const r = await holeHttps(url, {
     hosts: ['brickset.com'],
@@ -26,8 +26,8 @@ async function httpsGetOnce(url: string): Promise<{ status: number; body: string
   return { status: r.status, body: r.koerper.toString('utf8') };
 }
 
-// Leichter Sofort-Retry für kurzzeitige Aussetzer, bevor auf die (tägliche)
-// Retry-Queue zurückgefallen wird. Nur transiente Fehler werden wiederholt.
+// A light immediate retry for brief outages before falling back to the (daily)
+// retry queue. Only transient errors are repeated.
 async function httpsGet(url: string): Promise<{ status: number; body: string }> {
   const MAX_ATTEMPTS = 2;
   for (let i = 1; ; i++) {
@@ -57,16 +57,16 @@ function parseResponse<T extends z.ZodType>(body: string, schema: T): z.output<T
   try {
     roh = JSON.parse(body);
   } catch (_) {
-    throw new Error(`Brickset: invalid JSON response: ${auszug(body)}`);
+    throw new Error(`Brickset: invalid JSON response: ${excerpt(body)}`);
   }
-  // Erst die Hülle: Eine Fehlerantwort trägt nur status und message.
-  const data = pruefeAntwort('Brickset', BsAntwort, roh);
+  // The envelope first: an error response only carries status and message.
+  const data = checkResponse('Brickset', BsResponse, roh);
   if (data.status === 'error') {
     if (data.message?.toLowerCase().includes('daily api key usage limit')) throw new BricksetQuotaError();
     const err = Object.assign(new Error(`Brickset API error: ${data.message}`), { detail: data });
     throw err;
   }
-  return pruefeAntwort('Brickset', schema, roh);
+  return checkResponse('Brickset', schema, roh);
 }
 
 // Check HTTP status — throws BricksetQuotaError on 429 daily limit,
@@ -86,16 +86,16 @@ function checkStatus(status: number, body: string, label: string) {
     console.log(`  Brickset 429 (rate limit) for ${label}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     throw new BricksetQuotaError();
   }
-  // Jeder andere Status ins Log: Sonst sähe eine 502 aus, als täte die Warteschlange nichts.
+  // Every other status goes to the log: otherwise a 502 would look as if the queue did nothing.
   if (status !== 200)
     console.log(`  Brickset HTTP ${status} for ${label}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
   return status === 200;
 }
 
-/** Zur Wiedervorlage vormerken; false, wenn das Set schon zu oft vorgemerkt war (dann gilt
- * die Ausweichquelle). `soon` für 5xx der Gegenseite: Sie hängen nicht am Tageskontingent. */
-async function enqueueRetry(kl: KlientenZugang, setNumber: string, errorMsg: string | null = null, soon = false) {
-  const r = await versuche('brickset:vormerken', kl.bricksetVormerken(setNumber, errorMsg || 'Quota exceeded', soon));
+/** Queue for resubmission; false if the set was already queued too often (then the
+ * fallback source applies). `soon` for 5xx of the remote side: they do not depend on the daily quota. */
+async function enqueueRetry(kl: ClientsAccess, setNumber: string, errorMsg: string | null = null, soon = false) {
+  const r = await versuche('brickset:vormerken', kl.bricksetReserve(setNumber, errorMsg || 'Quota exceeded', soon));
   if (!r.ok) return false;
   const { versuch, vorgemerkt, hoechstens } = r.wert;
   if (!vorgemerkt) {
@@ -114,7 +114,7 @@ async function enqueueRetry(kl: KlientenZugang, setNumber: string, errorMsg: str
   return true;
 }
 
-async function checkRateLimit(kl: KlientenZugang, setNumber: string) {
+async function checkRateLimit(kl: ClientsAccess, setNumber: string) {
   try {
     const rl = await kl.zaehle('brickset');
     if (!rl.allowed) {
@@ -123,20 +123,20 @@ async function checkRateLimit(kl: KlientenZugang, setNumber: string) {
     }
     return true;
   } catch (e) {
-    // Lässt sich das Kontingent nicht lesen, wird gefragt: lieber ein Abruf zu viel als ein falsches „voll“.
-    meldeFehler('brickset:kontingent', e);
+    // If the quota cannot be read, ask anyway: one call too many is better than a wrong "full".
+    reportError('brickset:kontingent', e);
     return true;
   }
 }
 
-/** Dieses Set aus der Brickset-Wiederholungsliste nehmen. */
-async function ausRetryWarteschlange(kl: KlientenZugang, setNumber: string) {
-  return kl.bricksetVergessen(setNumber);
+/** Remove this set from the Brickset retry list. */
+async function fromRetryQueue(kl: ClientsAccess, setNumber: string) {
+  return kl.bricksetForgotten(setNumber);
 }
 
 // Remove from queue when a non-quota error occurs — no point retrying
-async function removeFromQueue(kl: KlientenZugang, setNumber: string) {
-  await versuche('brickset:wiedervorlage', ausRetryWarteschlange(kl, setNumber));
+async function removeFromQueue(kl: ClientsAccess, setNumber: string) {
+  await versuche('brickset:wiedervorlage', fromRetryQueue(kl, setNumber));
   console.log(
     `[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`
       .replace(/\r?\n/g, ' ⏎ ')
@@ -144,10 +144,10 @@ async function removeFromQueue(kl: KlientenZugang, setNumber: string) {
   );
 }
 
-async function setAngaben(kl: KlientenZugang, setNumber: string) {
+async function setAngaben(kl: ClientsAccess, setNumber: string) {
   const key = await getApiKey(kl);
   if (!key) return null;
-  const n = mitVersion(setNumber);
+  const n = withVersion(setNumber);
   if (!(await checkRateLimit(kl, n))) return null; // limit reached — enqueued for retry
   try {
     const params = encodeURIComponent(JSON.stringify({ setNumber: n, pageSize: 1 }));
@@ -157,7 +157,7 @@ async function setAngaben(kl: KlientenZugang, setNumber: string) {
     if (!checkStatus(status, body, n)) return null;
     const s = parseResponse(body, BsSets).sets?.[0];
     if (!s) return null;
-    await versuche('brickset:wiedervorlage', ausRetryWarteschlange(kl, n));
+    await versuche('brickset:wiedervorlage', fromRetryQueue(kl, n));
     return {
       name: s.name || null,
       year: s.year || null,
@@ -167,17 +167,17 @@ async function setAngaben(kl: KlientenZugang, setNumber: string) {
       image_url: s.image?.imageURL || s.image?.thumbnailURL || null,
     };
   } catch (e) {
-    const f = alsAbrufFehler(e);
+    const f = asFetchError(e);
     if (f.isQuota) {
       const errMsg = f.detail
-        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${auszug(JSON.stringify(f.detail), 300)}`
+        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${excerpt(JSON.stringify(f.detail), 300)}`
         : fehlertext(e);
       await enqueueRetry(kl, n, errMsg);
       return null;
     }
     if (f.isTransient) {
-      // Timeout / Netzwerkfehler ist transient (Brickset gerade langsam/nicht
-      // erreichbar) → in der Retry-Queue BEHALTEN statt dauerhaft aufzugeben.
+      // Timeout / network error is transient (Brickset currently slow/not
+      // reachable) → KEEP it in the retry queue instead of giving up for good.
       await enqueueRetry(kl, n, fehlertext(e), true);
       console.log(
         `  Brickset setAngaben transient error for ${n}: ${fehlertext(e)} — für Retry heute eingereiht`
@@ -194,20 +194,20 @@ async function setAngaben(kl: KlientenZugang, setNumber: string) {
   }
 }
 
-async function getInstructions(kl: KlientenZugang, setNumber: string) {
+async function getInstructions(kl: ClientsAccess, setNumber: string) {
   const key = await getApiKey(kl);
   if (!key) return { instructions: [], usesFallback: true };
-  const n = mitVersion(setNumber);
+  const n = withVersion(setNumber);
   if (!(await checkRateLimit(kl, n))) return { instructions: [], usesFallback: false }; // limit reached — enqueued, wait for retry
   try {
     const { status, body } = await httpsGet(
       `${BASE}/getInstructions2?apiKey=${encodeURIComponent(key)}&setNumber=${encodeURIComponent(n)}`,
     );
     if (status !== 200) {
-      // 5xx ist ein Fehler der Gegenseite, kein Kontingentproblem.
-      const errMsg = `HTTP ${status}: ${auszug(body, 300)}`;
+      // 5xx is an error of the remote side, not a quota problem.
+      const errMsg = `HTTP ${status}: ${excerpt(body, 300)}`;
       console.log(
-        `  Brickset getInstructions HTTP ${status} for ${n}: ${auszug(body)}`
+        `  Brickset getInstructions HTTP ${status} for ${n}: ${excerpt(body)}`
           .replace(/\r?\n/g, ' ⏎ ')
           .replace(/\n|\r/g, ''),
       );
@@ -218,26 +218,26 @@ async function getInstructions(kl: KlientenZugang, setNumber: string) {
       await removeFromQueue(kl, n);
       return { instructions: [], usesFallback: true };
     }
-    const data = parseResponse(body, BsAnleitungen);
+    const data = parseResponse(body, BsInstructions);
     const instructions = (data.instructions || []).map(i => ({ url: i.URL, description: i.description }));
     return { instructions, usesFallback: instructions.length === 0 };
   } catch (e) {
-    const f = alsAbrufFehler(e);
+    const f = asFetchError(e);
     if (f.isCloudflare) {
       // Cloudflare temporary block — rethrow so instructionQueue can retry in 5 min
       throw e;
     }
     if (f.isQuota) {
       const errMsg = f.detail
-        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${auszug(JSON.stringify(f.detail), 300)}`
+        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${excerpt(JSON.stringify(f.detail), 300)}`
         : `Quota exceeded: ${fehlertext(e)}`;
       const requeued = await enqueueRetry(kl, n, errMsg);
       return { instructions: [], usesFallback: !requeued };
     }
     if (f.isTransient) {
-      // Timeout / Netzwerkfehler ist transient → in der Retry-Queue behalten und
-      // NICHT sofort auf die Fallback-Quellen ausweichen (usesFallback=false),
-      // solange ein Retry ansteht.
+      // Timeout / network error is transient → keep it in the retry queue and
+      // do NOT switch to the fallback sources right away (usesFallback=false)
+      // while a retry is pending.
       const requeued = await enqueueRetry(kl, n, fehlertext(e));
       console.log(
         `  Brickset getInstructions transient error for ${n}: ${fehlertext(e)} — für Retry eingereiht`
@@ -247,7 +247,7 @@ async function getInstructions(kl: KlientenZugang, setNumber: string) {
       return { instructions: [], usesFallback: !requeued };
     }
     await removeFromQueue(kl, n);
-    const detail = f.detail ? ` | response: ${auszug(JSON.stringify(f.detail), 300)}` : '';
+    const detail = f.detail ? ` | response: ${excerpt(JSON.stringify(f.detail), 300)}` : '';
     console.log(
       `  Brickset getInstructions failed for ${n}: ${fehlertext(e)}${detail}`
         .replace(/\r?\n/g, ' ⏎ ')
@@ -258,9 +258,9 @@ async function getInstructions(kl: KlientenZugang, setNumber: string) {
 }
 
 /**
- * Set über eine freie Suchanfrage finden — EAN, Barcode oder Bestellnummer.
+ * Find a set through a free search query — EAN, barcode or order number.
  */
-async function findSetByQuery(kl: KlientenZugang, query: string, herkunft: string) {
+async function findSetByQuery(kl: ClientsAccess, query: string, herkunft: string) {
   const key = await getApiKey(kl);
   if (!key) return null;
   try {
@@ -280,7 +280,7 @@ async function findSetByQuery(kl: KlientenZugang, query: string, herkunft: strin
       image_url: s.image?.imageURL || null,
     };
   } catch (e) {
-    const f = alsAbrufFehler(e);
+    const f = asFetchError(e);
     if (f.isQuota) {
       console.log(`[brickset] Quota exceeded for ${herkunft} ${query}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       return null;
@@ -294,25 +294,25 @@ async function findSetByQuery(kl: KlientenZugang, query: string, herkunft: strin
   }
 }
 
-/** Den gespeicherten Schlüssel bei Brickset prüfen (checkKey zählt nicht gegen das Kontingent). */
-async function pruefeBricksetZugang(kl: KlientenZugang): Promise<void> {
+/** Check the stored key with Brickset (checkKey does not count against the quota). */
+async function checkBricksetAccess(kl: ClientsAccess): Promise<void> {
   const key = await getApiKey(kl);
   if (!key) throw new Error('Brickset API Key nicht konfiguriert.');
   const { status, body } = await httpsGet(`${BASE}/checkKey?apiKey=${encodeURIComponent(key)}`);
   if (status !== 200) throw new Error(`Brickset HTTP ${status}`);
-  parseResponse(body, BsAntwort);
+  parseResponse(body, BsResponse);
 }
 
-/** Ein Klient je Zugang: Schlüssel, Kontingent und Wiedervorlage kommen von dort. */
-export function erzeugeBrickset(kl: KlientenZugang) {
+/** One client per access: key, quota and resubmission come from there. */
+export function createBrickset(kl: ClientsAccess) {
   return {
-    pruefeBricksetZugang: () => pruefeBricksetZugang(kl),
+    checkBricksetAccess: () => checkBricksetAccess(kl),
     setAngaben: (setNumber: string) => setAngaben(kl, setNumber),
     getInstructions: (setNumber: string) => getInstructions(kl, setNumber),
     getSetByEan: (ean: string) => findSetByQuery(kl, ean, 'EAN'),
     getSetByBarcode: (barcode: string) => findSetByQuery(kl, barcode, 'barcode'),
-    ausRetryWarteschlange: (setNumber: string) => ausRetryWarteschlange(kl, setNumber),
+    fromRetryQueue: (setNumber: string) => fromRetryQueue(kl, setNumber),
   };
 }
 
-export type Brickset = ReturnType<typeof erzeugeBrickset>;
+export type Brickset = ReturnType<typeof createBrickset>;

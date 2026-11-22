@@ -1,17 +1,17 @@
 Gegenprobe: Der Preisverlauf manueller Posten fragt auch für Figuren den Teile-Pfad
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.KaeufeViewModelTest
-Rot: der Preisverlauf kommt fuer Teile und Figuren vom passenden Pfad
+Modul: core-state
+Test: ch.brickinventoryapp.state.PurchasesViewModelTest
+Rot: the price history for parts and figures comes from the matching path
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt
 @@ -97,7 +97,7 @@
      fun loadManualPriceHistory(type: Postenart, id: String, colorId: Int = KEINE_FARBE) {
          viewModelScope.launch {
-             _manDetailState.update { it.copy(verlaufAbruf = Laden.Laedt) }
+             _manDetailState.update { it.copy(historyFetch = Laden.Loads) }
 -            val r = if (type == Postenart.FIG) finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
 +            val r = finanzen.getPartPriceHistory(id, colorId)
              when (r) {
-                 is Ergebnis.Erfolg -> _manDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
-                 is Ergebnis.Fehler -> _manDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
+                 is Ergebnis.Erfolg -> _manDetailState.update { it.copy(priceHistory = r.data, historyFetch = Laden.Daten(Unit)) }
+                 is Ergebnis.Fehler -> _manDetailState.update { it.copy(historyFetch = loadError(r)) }

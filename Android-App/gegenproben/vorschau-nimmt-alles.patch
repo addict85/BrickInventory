@@ -1,7 +1,7 @@
 Gegenprobe: die Vorschau-Ablage nimmt auch die volle Auflösung
 Modul: core-data
-Test: ch.brickinventoryapp.data.VorschauSpeicherTest
-Rot: nur Vorschaubilder
+Test: ch.brickinventoryapp.data.PreviewStorageTest
+Rot: only thumbnails belong in the store
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
@@ -10,9 +10,9 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache
       * Die volle Auflösung bleibt draussen: Sie wird einzeln im Detail angesehen, nicht
       * in Tabellen.
       */
--    fun istVorschau(adresse: String): Boolean =
--        adresse.contains("${VORSCHAU_MERKMAL}=1") || adresse.contains("_$VORSCHAU_MERKMAL.")
-+    fun istVorschau(adresse: String): Boolean = adresse.isNotEmpty()
+-    fun isPreview(adresse: String): Boolean =
+-        adresse.contains("${PREVIEW_FEATURE}=1") || adresse.contains("_$PREVIEW_FEATURE.")
++    fun isPreview(adresse: String): Boolean = adresse.isNotEmpty()
  
      /**
       * Der Dateiname zu einer Adresse: HMAC-SHA256 mit [namen], nicht der blosse Hash —

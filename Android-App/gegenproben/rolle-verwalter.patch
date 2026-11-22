@@ -1,11 +1,11 @@
 Gegenprobe: Hinweis zum zweiten Faktor wieder mit der alten Rolle „Verwalterrechte“
 Modul: app
 Test: ch.brickinventoryapp.app.StringResourceParityTest
-Rot: ein Begriff je Sache in beiden Sprachen
+Rot: one term per thing in both languages
 
-diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
---- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
 @@ -1157,7 +1157,7 @@
          <item quantity="other">Schritt %1$d von %2$d: %3$s</item>
      </plurals>

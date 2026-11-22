@@ -1,16 +1,16 @@
 Gegenprobe: Die Animator-Dauer wird nur einmal gelesen, nicht beobachtet
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
-Rot: reduzierte Bewegung folgt einer Aenderung zur Laufzeit
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: reduced motion follows a change at runtime
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
-@@ -28,7 +28,6 @@ fun bewegungReduziert(): Boolean {
-         val beobachter = object : ContentObserver(Handler(Looper.getMainLooper())) {
-             override fun onChange(selfChange: Boolean) { reduziert = lies() }
+@@ -28,7 +28,6 @@ fun movementReduced(): Boolean {
+         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+             override fun onChange(selfChange: Boolean) { reduced = lies() }
          }
--        aufloesung.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, beobachter)
-         onDispose { aufloesung.unregisterContentObserver(beobachter) }
+-        resolution.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
+         onDispose { resolution.unregisterContentObserver(observer) }
      }
-     return reduziert
+     return reduced

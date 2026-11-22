@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.domain.Geld
 import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Alarmrichtung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.fach.Katalogsortierung
-import ch.brickinventoryapp.model.fach.Erfassungswunsch
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Katalogsortierung
+import ch.brickinventoryapp.model.domain.Erfassungswunsch
+import ch.brickinventoryapp.model.domain.Zustand
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -44,31 +44,31 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextClearance
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.testing.testHaushaltRepository
-import ch.brickinventoryapp.testing.testKontoRepository
-import ch.brickinventoryapp.sitzung.AppUiState
-import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
-import ch.brickinventoryapp.katalog.ui.CatalogUiState
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.testing.testHouseholdRepository
+import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.collection.ui.BarcodeUiState
+import ch.brickinventoryapp.state.ui.ScopeUiState
+import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.model.ui.Fehlerklasse
-import ch.brickinventoryapp.zustand.ui.LagerUiState
-import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeDialogZustand
-import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeResultDialog
-import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
-import ch.brickinventoryapp.model.fach.MerkpostenAlarmAnsicht
-import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
-import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
-import ch.brickinventoryapp.katalog.ui.screens.CatalogScreen
-import ch.brickinventoryapp.konto.ui.screens.HaushaltRoute
-import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
-import ch.brickinventoryapp.sammlung.ui.screens.MerkpostenRueckgaengigRoute
-import ch.brickinventoryapp.teile.ui.screens.PartsRoute
+import ch.brickinventoryapp.state.ui.LagerUiState
+import ch.brickinventoryapp.collection.ui.dialogs.BarcodeDialogZustand
+import ch.brickinventoryapp.collection.ui.dialogs.BarcodeResultDialog
+import ch.brickinventoryapp.model.domain.CatalogDetailView
+import ch.brickinventoryapp.model.domain.KatalogSetAnsicht
+import ch.brickinventoryapp.model.domain.WantedItemAlarmView
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
+import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
+import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
+import ch.brickinventoryapp.collection.ui.screens.WantedRoute
+import ch.brickinventoryapp.collection.ui.screens.WantedItemUndoRoute
+import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungAktionen
-import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
-import ch.brickinventoryapp.katalog.ui.viewmodel.KatalogAktionen
+import ch.brickinventoryapp.collection.ui.viewmodel.ErfassungAktionen
+import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
+import ch.brickinventoryapp.catalog.ui.viewmodel.KatalogAktionen
 import ch.brickinventoryapp.ui.util.fmtMoney
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -83,17 +83,17 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Abläufe über einen Bildschirm hinaus: Löschen mit Rückgängig, Fehler- und Leerzustände
- * des Katalogs, Erfassen nach dem Scan, Merkliste im Katalog, Haushalt.
+ * Flows beyond one screen: deleting with undo, error and empty states
+ * of the catalog, adding after the scan, wishlist in the catalog, household.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   merkposten-loeschen-sofort         Löschen wieder sofort am Server → rot „ein Merkposten laesst sich …“
- *   katalog-fehler-eigen               eigener Fehlerzustand mit Trefferzahl → rot „der Katalog zeigt im …“
- *   katalog-leer-ohne-zuruecksetzen    leerer Katalog ohne Knopf → rot „ein leerer Katalog mit …“
- *   scanner-ohne-anzahl                Anzahl nicht weitergereicht → rot „die Erfassung nach dem …“
- *   katalog-ohne-merkliste             Detail kennt den Merkposten nicht → rot „das Katalog-Detail zeigt den …“
- *   haushalt-ohne-teilen               Einladung nur zum Kopieren → rot „die Einladung laesst sich …“
- *   teile-fehler-mit-plus              „+“ auch im Fehlerzustand → rot „im Fehlerzustand steht kein …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   merkposten-loeschen-sofort         deleting again immediately at the server → red “a wishlist item can be …”
+ *   katalog-fehler-eigen               own error state with hit count → red “the catalog shows the same …”
+ *   katalog-leer-ohne-zuruecksetzen    empty catalog without button → red “an empty catalog with …”
+ *   scanner-ohne-anzahl                quantity not passed on → red “adding after the scan …”
+ *   katalog-ohne-merkliste             detail does not know the wishlist item → red “the catalog detail shows the …”
+ *   haushalt-ohne-teilen               invitation only for copying → red “the invitation can be …”
+ *   teile-fehler-mit-plus              „+“ also in the error state → red “in the error state there is no …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -105,15 +105,15 @@ class BereichsablaeufeTest {
 
     private val vorher = Locale.getDefault()
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val bilder = Beispielbilder.loader(ctx)
-    private val welt = Beispiele.Welt(KontextTexte())
+    private val bilder = SampleImages.loader(ctx)
+    private val world = Examples.Welt(ContextTexts())
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
     fun zu() {
         Locale.setDefault(vorher)
-        welt.close()
+        world.close()
     }
 
     private fun zeige(inhalt: @Composable () -> Unit) {
@@ -125,8 +125,8 @@ class BereichsablaeufeTest {
         compose.waitForIdle()
     }
 
-    /** Den Hauptlooper treiben, bis [bereit] gilt — der Server antwortet in einem eigenen Faden. */
-    private fun warte(was: String, bereit: () -> Boolean) {
+    /** Drive the main looper until [bereit] holds — the server responds in its own thread. */
+    private fun wait(was: String, bereit: () -> Boolean) {
         try {
             compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); bereit() }
         } catch (e: ComposeTimeoutException) {
@@ -136,44 +136,44 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `ein Merkposten laesst sich nach dem Loeschen zurueckholen, samt Alarm`() {
-        val vm = welt.merkliste().also { it.ladeMerkliste() }
-        warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
+    fun `a wishlist item can be restored after deleting, including its alert`() {
+        val vm = world.merkliste().also { it.loadWanted() }
+        wait("Merkliste") { vm.wantedState.value.merkposten.isNotEmpty() }
         zeige {
             val meldung = remember { SnackbarHostState() }
             Scaffold(snackbarHost = { SnackbarHost(meldung) }) { innen ->
-                MerkpostenRueckgaengigRoute(vm, meldung)
+                WantedItemUndoRoute(vm, meldung)
                 Box(Modifier.padding(innen)) {
-                    MerklisteRoute(vm = vm, imageLoader = bilder, nebeneinander = true, onScan = {}, onOeffnenEinzeln = { _, _ -> })
+                    WantedRoute(vm = vm, imageLoader = bilder, sideBySide = true, onScan = {}, onOpenSingle = { _, _ -> })
                 }
             }
         }
-        // fmtMoney setzt ein festes Leerzeichen zwischen Code und Betrag.
+        // fmtMoney puts a non-breaking space between code and amount.
         val alarm = ctx.getString(R.string.wanted_alert_below, fmtMoney(349.0, Waehrung("CHF")))
         compose.onAllNodesWithText(alarm, substring = true).fetchSemanticsNodes()
             .let { assertTrue("Alarm vor dem Löschen", it.isNotEmpty()) }
         compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).performClick()
-        warte("Detail") { !vm.merkpostenDetailState.value.abruf.laedt }
-        // Ab hier die Uhr von Hand: Sonst liefe die Snackbar im Takt der Testuhr sofort ab.
+        wait("Detail") { !vm.wantedItemDetailState.value.abruf.laedt }
+        // From here the clock by hand: otherwise the snackbar would expire immediately at the test clock's pace.
         compose.mainClock.autoAdvance = false
         fun schritt() = repeat(5) { compose.mainClock.advanceTimeBy(100); shadowOf(Looper.getMainLooper()).idle() }
         compose.onNodeWithContentDescription(ctx.getString(R.string.common_delete)).performClick()
         schritt()
         compose.onNodeWithText(ctx.getString(R.string.wanted_deleted, "Lion Knights' Castle")).fetchSemanticsNode("Keine Snackbar")
-        assertTrue("Schon gelöscht, bevor die Snackbar endet", welt.pfade.anfragenAn("DELETE").isEmpty())
+        assertTrue("Schon gelöscht, bevor die Snackbar endet", world.paths.requestsAn("DELETE").isEmpty())
         compose.onNodeWithText(ctx.getString(R.string.common_undo)).performClick()
         schritt()
-        warte("zurück") { vm.merklisteState.value.merkposten.any { it.setNumber == "10305-1" } }
+        wait("zurück") { vm.wantedState.value.merkposten.any { it.setNumber == "10305-1" } }
         schritt()
         compose.onAllNodesWithText(alarm, substring = true)
             .fetchSemanticsNodes().let { assertTrue("Alarm wieder sichtbar", it.isNotEmpty()) }
-        assertTrue("Nach Rückgängig nie gelöscht", welt.pfade.anfragenAn("DELETE").isEmpty())
+        assertTrue("Nach Rückgängig nie gelöscht", world.paths.requestsAn("DELETE").isEmpty())
     }
 
-    private object KeineKatalogAktionen : KatalogAktionen {
+    private object NoCatalogActions : KatalogAktionen {
         override fun loadCatalogMeta() = Unit
         override fun loadCatalogSets() = Unit
-        override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = Unit
+        override fun catalogVisible(firstPage: Int, lastPage: Int) = Unit
         override fun scrollCatalogTo(nummer: Int) = Unit
         override fun catalogScrollConsumed() = Unit
         override fun setCatalogQuery(q: String) = Unit
@@ -183,10 +183,10 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `der Katalog zeigt im Fehler denselben Zustand wie die Galerie, ohne Trefferzahl`() {
+    fun `the catalog shows the same error state as the gallery, without a hit count`() {
         zeige {
             CatalogScreen(CatalogUiState(abruf = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text("Serverfehler (500)"))),
-                serverUrl = "", katalog = KeineKatalogAktionen, imageLoader = bilder, onSetClick = {})
+                serverUrl = "", katalog = NoCatalogActions, imageLoader = bilder, onSetClick = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.fehler_server_titel)).fetchSemanticsNode("Fehler ohne Klasse")
         compose.onNodeWithText(ctx.getString(R.string.common_retry)).fetchSemanticsNode("Kein „Erneut versuchen“")
@@ -194,10 +194,10 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `ein leerer Katalog mit Filter bietet Zuruecksetzen, danach stehen Kacheln da`() {
+    fun `an empty catalog with a filter offers reset, afterwards tiles are shown`() {
         val sets = listOf(KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, numParts = 4514))
         var zustand by mutableStateOf(CatalogUiState(themeId = 721))
-        val aktionen = object : KatalogAktionen by KeineKatalogAktionen {
+        val aktionen = object : KatalogAktionen by NoCatalogActions {
             override fun setCatalogTheme(themeId: Int?) {
                 zustand = CatalogUiState(themeId = themeId, loadedPages = mapOf(1 to sets), total = sets.size)
             }
@@ -209,24 +209,24 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `die Erfassung nach dem Scan hat eine Anzahl und behaelt Eingaben ueber eine Drehung`() {
+    fun `adding after the scan has a quantity and keeps inputs across a rotation`() {
         var menge = 0
         var preis: Geld? = null
         val aktionen = object : ErfassungAktionen {
-            override fun confirmAddBarcode(wunsch: Erfassungswunsch) { menge = wunsch.menge; preis = wunsch.kaufpreis }
+            override fun confirmAddBarcode(wish: Erfassungswunsch) { menge = wish.menge; preis = wish.kaufpreis }
             override fun cancelBarcode() = Unit
-            override fun brichPruefungAb() = Unit
+            override fun abortCheckAb() = Unit
         }
-        val zustand = BarcodeDialogZustand(AppUiState(), BlickfeldUiState(),
-            BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", besitzMenge = 2), LagerUiState())
-        val drehen = StateRestorationTester(compose)
-        drehen.setContent { BrickInventoryManagerTheme { BarcodeResultDialog(zustand, aktionen, bilder) } }
+        val zustand = BarcodeDialogZustand(AppUiState(), ScopeUiState(),
+            BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", ownershipQuantity = 2), LagerUiState())
+        val rotate = StateRestorationTester(compose)
+        rotate.setContent { BrickInventoryManagerTheme { BarcodeResultDialog(zustand, aktionen, bilder) } }
         compose.onNodeWithText(ctx.getString(R.string.barcode_schon_besessen, 2)).fetchSemanticsNode("Besitz nicht genannt")
         val anzahl = hasSetTextAction() and hasText(ctx.getString(R.string.common_quantity))
         compose.onNode(anzahl).performTextClearance()
         compose.onNode(anzahl).performTextInput("2")
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.barcode_purchase_price))).performTextInput("650")
-        drehen.emulateSavedInstanceStateRestore()
+        rotate.emulateSavedInstanceStateRestore()
         compose.onNode(anzahl).fetchSemanticsNode().let { n ->
             val text = n.config.getOrNull(SemanticsProperties.EditableText)?.text
             assertEquals("Anzahl nach der Drehung", "2", text)
@@ -237,16 +237,16 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
+    fun `the catalog detail shows the wishlist item and opens it`() {
         var geoeffnet: Pair<String, Zustand>? = null
-        val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = Waehrung("CHF"),
-            alarm = MerkpostenAlarmAnsicht(richtung = Alarmrichtung.UNTER, schwelle = Geld.aus(349.0)!!))
+        val gemerkt = WantedItemView(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = Waehrung("CHF"),
+            alarm = WantedItemAlarmView(richtung = Alarmrichtung.UNTER, schwelle = Geld.aus(349.0)!!))
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",
-                geladen = Laden.Daten(KatalogDetailAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022)),
+                geladen = Laden.Daten(CatalogDetailView(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022)),
                 imageLoader = bilder, serverUrl = "", onLoad = {},
                 onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {},
-                gemerkt = gemerkt, onOeffneMerkposten = { sn, z -> geoeffnet = sn to z })
+                gemerkt = gemerkt, onOpenWantedItem = { sn, z -> geoeffnet = sn to z })
         }
         compose.onNodeWithText(ctx.getString(R.string.catalog_auf_merkliste)).fetchSemanticsNode("Merkliste nicht genannt")
         compose.onAllNodesWithText(ctx.getString(R.string.wanted_add_submit)).assertCountEquals(0)
@@ -255,16 +255,16 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `die Einladung laesst sich teilen und kopieren, mit Gueltigkeit und Sperrgrund`() {
-        welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
-        welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
-            testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api)))
-        zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
-        warte("Haushalt") { vm.householdState.value.status != null }
+    fun `the invitation can be shared and copied, with validity and lock reason`() {
+        world.paths.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
+        world.paths.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
+        val vm = world.t.merke(HouseholdViewModel(world.t.sitzung, world.t.filter(), world.t.sync,
+            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api)))
+        zeige { HouseholdRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        wait("Haushalt") { vm.householdState.value.status != null }
         compose.onNodeWithText(ctx.getString(R.string.household_redeem_sperrgrund)).performScrollTo()
         compose.onNodeWithText(ctx.getString(R.string.household_invite_create)).performScrollTo().performClick()
-        warte("Code") { vm.householdState.value.inviteCode != null }
+        wait("Code") { vm.householdState.value.inviteCode != null }
         compose.onNodeWithText(ctx.getString(R.string.household_invite_teilen)).performScrollTo()
         compose.onNodeWithText(ctx.getString(R.string.household_invite_copy)).fetchSemanticsNode()
         compose.onAllNodesWithText("Gültig bis", substring = true).fetchSemanticsNodes()
@@ -272,10 +272,10 @@ class BereichsablaeufeTest {
     }
 
     @Test
-    fun `im Fehlerzustand steht kein Erfassen-Knopf, wie in Galerie und Merkliste`() {
-        welt.pfade.codes["/api/v1/parts"] = 500
-        val vm = welt.teile().also { it.loadParts() }
-        warte("Fehler") { vm.teileState.value.let { it.teileAbruf is Laden.Fehler } }
+    fun `in the error state there is no add button, as in gallery and wishlist`() {
+        world.paths.codes["/api/v1/parts"] = 500
+        val vm = world.teile().also { it.loadParts() }
+        wait("Fehler") { vm.teileState.value.let { it.partsFetch is Laden.Fehler } }
         zeige { PartsRoute(vm = vm, imageLoader = bilder) }
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.parts_add)).assertCountEquals(0)
     }

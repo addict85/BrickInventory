@@ -1,88 +1,88 @@
 /**
- * BrickLink-Link-Auflösung für Katalog-Sets (src/katalog/bricklinkLink.ts).
+ * BrickLink link resolution for catalog sets (src/catalog/bricklinkLink.ts).
  *
- * Gegenproben (08.11.2026 gemessen, am Bündel in jsdom):
- *   A  in openCatModal wieder `blBtn.style.display = bl ? '' : 'none'` → rot:
- *      „der Kauf-Knopf nimmt die Adresse des Servers …“ (Fall ohne Auflösung)
- *   B  `blBtn.href` wieder aus der Setnummer gebaut
- *      (`…catalogitem.page?S=${s.set_number}`) → rot: dieselbe Prüfung
+ * Counter-checks (measured 08.11.2026, on the bundle in jsdom):
+ *   A  in openCatModal back to `blBtn.style.display = bl ? '' : 'none'` → red:
+ *      “the buy button takes the server's address …” (case without resolution)
+ *   B  `blBtn.href` built from the set number again
+ *      (`…catalogitem.page?S=${s.set_number}`) → red: the same check
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
-// Nach dist/ bauen statt in-place — siehe helpers/sources.js.
+// Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { mitVariante, bareNumber, blAdresse, blSuchadresse } = _req('src/katalog/bricklinkLink.js');
+const { withVariant, bareNumber, blAddress, blSuchadresse } = _req('src/catalog/bricklinkLink.js');
 
-test('mitVariante ergänzt den Rebrickable-Suffix', () => {
-  assert.equal(mitVariante('75192'), '75192-1');
-  assert.equal(mitVariante('75192-1'), '75192-1');
-  assert.equal(mitVariante('10179-2'), '10179-2');
-  assert.equal(mitVariante('  75192  '), '75192-1');
+test('withVariant adds the Rebrickable suffix', () => {
+  assert.equal(withVariant('75192'), '75192-1');
+  assert.equal(withVariant('75192-1'), '75192-1');
+  assert.equal(withVariant('10179-2'), '10179-2');
+  assert.equal(withVariant('  75192  '), '75192-1');
 });
 
-test('bareNumber entfernt ihn wieder — BrickLink führt Gear/Book ohne Suffix', () => {
+test('bareNumber removes it again — BrickLink lists gear/book without suffix', () => {
   assert.equal(bareNumber('5005358-1'), '5005358');
   assert.equal(bareNumber('5005358'), '5005358');
   assert.equal(bareNumber('10179-2'), '10179');
 });
 
-test('blAdresse verwendet je Item-Typ den richtigen Parameter', () => {
-  const set = blAdresse('SET', '75192-1');
+test('blAddress uses the right parameter per item type', () => {
+  const set = blAddress('SET', '75192-1');
   assert.match(set, /\?S=75192-1/);
   assert.match(set, /#T=S/);
 
-  const gear = blAdresse('GEAR', '5005358');
+  const gear = blAddress('GEAR', '5005358');
   assert.match(gear, /\?G=5005358/);
   assert.match(gear, /#T=G/, 'Der For-Sale-Tab muss zum Item-Typ passen, sonst öffnet BrickLink den falschen Reiter');
 
-  const book = blAdresse('BOOK', 'b12ab');
+  const book = blAddress('BOOK', 'b12ab');
   assert.match(book, /\?B=b12ab/);
   assert.match(book, /#T=B/);
 });
 
-test('blAdresse kennt auch MINIFIG', () => {
-  const m = blAdresse('MINIFIG', 'col325');
+test('blAddress also knows MINIFIG', () => {
+  const m = blAddress('MINIFIG', 'col325');
   assert.match(m, /\?M=col325/);
   assert.match(m, /#T=M/);
 });
 
-test('blAdresse liefert null für NONE — der Aufrufer weicht auf die Suche aus', () => {
-  assert.equal(blAdresse('NONE', 'x-1'), null);
+test('blAddress returns null for NONE — the caller falls back to the search', () => {
+  assert.equal(blAddress('NONE', 'x-1'), null);
 });
 
-test('blSuchadresse greift, wo kein Deep-Link konstruierbar ist', () => {
-  // Sammelminifiguren: Rebrickable führt sie als Set (71021-1), BrickLink als
-  // MINIFIG mit anderer Nummer (col325). Die Zuordnung existiert in keiner der
-  // beiden Datenquellen — ein Deep-Link ist grundsätzlich nicht herleitbar.
+test('blSuchadresse applies where no deep link can be constructed', () => {
+  // Collectible minifigures: Rebrickable lists them as a set (71021-1), BrickLink as
+  // MINIFIG with another number (col325). The mapping exists in neither of the
+  // two data sources — a deep link cannot be derived in principle.
   const u = blSuchadresse('71021-1');
   assert.match(u, /search\.page\?q=71021/);
   assert.ok(!u.includes('-1'), 'Der Variantensuffix engt die Suche unnötig ein');
 });
 
-test('blAdresse kodiert Sonderzeichen in der Nummer', () => {
-  const url = blAdresse('SET', '10 30-1');
+test('blAddress encodes special characters in the number', () => {
+  const url = blAddress('SET', '10 30-1');
   assert.ok(!/\?S=10 30/.test(url), 'Leerzeichen muss kodiert werden');
   assert.match(url, /\?S=10%2030-1/);
 });
 
-test('Set-Links behalten den Suffix, Gear-Links nicht', () => {
-  // Das ist der eigentliche Fehler, der behoben wurde: dieselbe
-  // Rebrickable-Nummer ergibt je nach BrickLink-Typ zwei verschiedene URLs.
-  assert.match(blAdresse('SET', mitVariante('5005358')), /\?S=5005358-1/);
-  assert.match(blAdresse('GEAR', bareNumber('5005358-1')), /\?G=5005358(?!-)/);
+test('set links keep the suffix, gear links do not', () => {
+  // That is the actual bug that was fixed: the same
+  // Rebrickable number yields two different URLs depending on the BrickLink type.
+  assert.match(blAddress('SET', withVariant('5005358')), /\?S=5005358-1/);
+  assert.match(blAddress('GEAR', bareNumber('5005358-1')), /\?G=5005358(?!-)/);
 });
 
-test('der Kauf-Knopf nimmt die Adresse des Servers und wird nie ausgeblendet', async () => {
-  const SUCHE = 'https://www.bricklink.com/v2/search.page?q=col001';
+test("the buy button takes the server's address and is never hidden", async () => {
+  const SEARCH = 'https://www.bricklink.com/v2/search.page?q=col001';
   const GEAR = 'https://www.bricklink.com/v2/catalog/catalogitem.page?G=5005358';
   const set = (nr, bricklink) => ({ set_number: nr, name: `Artikel ${nr}`, year: 2020, num_parts: 1, bricklink });
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/catalog/sets': { success: true, total: 3, sets: [set('col001-1'), set('5005358-1'), set('99999-1')] },
     '/v1/catalog/sets/col001-1': {
       success: true,
-      set: set('col001-1', { url: SUCHE, exact: false, type: 'MINIFIG', number: 'col001' }),
+      set: set('col001-1', { url: SEARCH, exact: false, type: 'MINIFIG', number: 'col001' }),
     },
     '/v1/catalog/sets/5005358-1': {
       success: true,
@@ -94,9 +94,9 @@ test('der Kauf-Knopf nimmt die Adresse des Servers und wird nie ausgeblendet', a
     await reiter(w, 'catalog');
     const knopf = () => d.getElementById('cat-m-bricklink');
     for (const [nr, href, text] of [
-      ['col001-1', SUCHE, 'Auf BrickLink suchen'],
+      ['col001-1', SEARCH, 'Auf BrickLink suchen'],
       ['5005358-1', GEAR, 'Auf BrickLink kaufen'],
-      // Ohne Auflösung die Suche nach der Nummer — nicht ein ausgeblendeter Knopf.
+      // Without resolution the search for the number — not a hidden button.
       ['99999-1', 'https://www.bricklink.com/v2/search.page?q=99999-1', 'Auf BrickLink kaufen'],
     ]) {
       assert.ok(await warte(() => d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`)), `Kachel ${nr}`);

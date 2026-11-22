@@ -1,17 +1,17 @@
 Gegenprobe: Die QR-Anmeldung übernimmt den Zugang, ohne Konto und Server zu zeigen
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.AnmeldungViewModelTest
-Rot: eine QR-Anmeldung zeigt Konto und Server und uebernimmt den Token erst nach dem Ja
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginViewModelTest
+Rot: a QR sign-in shows account and server and takes over the token only after the yes
 
-diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
---- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
-+++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/AnmeldungViewModel.kt
 @@ -277,7 +277,7 @@
-             qrGescheitert(Meldung.Ressource(R.string.err_qr_login_failed))
+             qrFailed(Meldung.Resource(R.string.err_qr_login_failed))
              return
          }
--        if (!frageNachKonto(QrKonto(benutzer, ziel.adresse))) {
-+        if (benutzer.isEmpty() && !frageNachKonto(QrKonto(benutzer, ziel.adresse))) {
-             konto.qrVerwerfen(abholung)
-             _anmeldeState.update { it.copy(anmeldung = Vorgang.Fertig) }
+-        if (!questionAfterAccount(QrAccount(benutzer, ziel.adresse))) {
++        if (benutzer.isEmpty() && !questionAfterAccount(QrAccount(benutzer, ziel.adresse))) {
+             konto.discardQr(abholung)
+             _loginState.update { it.copy(anmeldung = Vorgang.Fertig) }
              return

@@ -1,15 +1,15 @@
 /**
- * Prozessübergreifende Job-Sperren gegen eine ECHTE Datenbank.
+ * Cross-process job locks against a REAL database.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 async function dbReachable() {
   try {
@@ -20,8 +20,8 @@ async function dbReachable() {
   }
 }
 
-/** Sperre auf einer eigenen Verbindung halten — spielt den zweiten Worker. */
-async function haltenAls(fremder, ns) {
+/** Hold a lock on its own connection — plays the second worker. */
+async function holdAs(fremder, ns) {
   const client = await db.pool.connect();
   const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [ns]);
   assert.equal(rows[0].ok, true, `${fremder}: Sperre ${ns} war schon belegt`);
@@ -33,7 +33,7 @@ async function haltenAls(fremder, ns) {
 
 const REDL_LOCK = 57;
 
-test('Job-Sperren wirken über Prozessgrenzen', async t => {
+test('job locks work across process boundaries', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -43,7 +43,7 @@ test('Job-Sperren wirken über Prozessgrenzen', async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -53,13 +53,13 @@ test('Job-Sperren wirken über Prozessgrenzen', async t => {
     }
   }
 
-  await t.test('der Bilder-Nachlauf startet nicht zweimal', async () => {
-    const enrich = _req('src/katalog/teileAnreicherung.js');
-    // Gegenprobe: ohne fremde Sperre läuft er durch (leerer Katalog → 0 fehlende).
+  await t.test('the image follow-up run does not start twice', async () => {
+    const enrich = _req('src/catalog/partsEnrichment.js');
+    // Counter-check: without a foreign lock it runs through (empty catalog → 0 missing).
     const frei = await enrich.redownloadMissingImages();
     assert.equal(frei.alreadyRunning, undefined, 'Lauf wurde ohne fremde Sperre abgewiesen');
 
-    const freigeben = await haltenAls('zweiter Worker', REDL_LOCK);
+    const freigeben = await holdAs('zweiter Worker', REDL_LOCK);
     try {
       const gesperrt = await enrich.redownloadMissingImages();
       assert.equal(

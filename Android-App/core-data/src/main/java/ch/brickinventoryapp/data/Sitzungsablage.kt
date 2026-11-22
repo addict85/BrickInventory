@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Was das AppViewModel von der Ablage braucht: Adresse, Token und die Werte des
- * Kontos, die es spiegelt. Im Gerät die KontoAblage; die Schnittstelle
- * lässt das AppViewModel ohne DataStore und Context laufen.
+ * What the AppViewModel needs from the store: address, token and the values of the
+ * account that it mirrors. On the device the AccountStore; the interface
+ * lets the AppViewModel run without DataStore and Context.
  */
 interface Sitzungsablage {
     val serverUrl: Flow<String>
@@ -18,12 +18,12 @@ interface Sitzungsablage {
     suspend fun serverUrlJetzt(): String
     suspend fun tokenJetzt(): String
 
-    /** Älter, als der Server eine Anmeldung gelten lässt: dann abmelden statt laden. */
-    suspend fun anmeldungAbgelaufen(jetzt: Long = System.currentTimeMillis()): Boolean
+    /** Older than the server lets a sign-in apply: then sign out instead of loading. */
+    suspend fun loginExpired(jetzt: Long = System.currentTimeMillis()): Boolean
     suspend fun saveAppTheme(theme: Design)
     suspend fun saveCurrency(cur: Waehrung)
 
-    /** Server, an denen eine nachgeholte Abmeldung endgültig scheiterte. */
-    fun gescheiterteEntwertungen(): Set<String>
-    fun quittiereGescheiterteEntwertungen()
+    /** Servers at which a deferred sign-out finally failed. */
+    fun failedRedemptions(): Set<String>
+    fun acknowledgeFailedRedemptions()
 }

@@ -20,44 +20,44 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 
 /**
- * Platz unter der letzten Zeile einer Liste mit Erfassen-Knopf: Knopfhöhe (56) und
- * sein Abstand zum Rand oben wie unten. Ohne ihn verdeckt der Knopf den letzten Eintrag.
+ * Space below the last row of a list with a capture button: button height (56) plus
+ * its margin to the edge, top and bottom alike. Without it, the button covers the last entry.
  */
-val FabPlatz = 56.dp + 16.dp * 2
+val FabSpace = 56.dp + 16.dp * 2
 
 /**
- * Wie hoch die Snackbar des Gerüsts gerade über dem Inhalt steht. Der Erfassen-Knopf
- * liegt im Inhalt, nicht im Fab-Platz des Gerüsts, und stiege sonst nicht über sie —
- * ausgerechnet während „Rückgängig“ wäre die Haupthandlung verdeckt.
+ * How high the scaffold's snackbar currently stands above the content. The capture button
+ * lives in the content, not the scaffold's FAB slot, and would otherwise not rise above it —
+ * of all times during „undo“, when it would cover the main action.
  */
-val LocalSnackbarPlatz = compositionLocalOf { 0.dp }
+val LocalSnackbarSpace = compositionLocalOf { 0.dp }
 
 /**
- * Der eine schwebende Knopf eines Bildschirms: Erfassen. Scannen sitzt als Symbol neben
- * der Suche (ScanKnopf) — zwei gestapelte Knöpfe verdeckten das Listenende, und welcher
- * der wichtigere ist, sagte nur ihre Grösse.
+ * The one floating button of a screen: capture. Scanning sits as an icon next to
+ * the search field (ScanButton) — two stacked buttons covered the end of the list, and which
+ * one was more important was only said by their size.
  */
 @Composable
-fun ErfassenFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun AddFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val brick = LocalIsBrickTheme.current
-    val ueberSnackbar by animateDpAsState(LocalSnackbarPlatz.current, label = "fab-ueber-snackbar")
+    val viaSnackbar by animateDpAsState(LocalSnackbarSpace.current, label = "fab-ueber-snackbar")
     FloatingActionButton(
         onClick = onClick,
-        modifier = modifier.padding(bottom = ueberSnackbar),
+        modifier = modifier.padding(bottom = viaSnackbar),
         containerColor = if (brick) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
         contentColor = if (brick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
         shape = Formen.fab,
     ) { Icon(Icons.Default.Add, beschreibung) }
 }
 
-/** Scannen als Symbolknopf neben einem Eingabefeld — mit Rand in `outline` (≥ 3:1). */
+/** Scanning as an icon button next to an input field — with a border in `outline` (≥ 3:1). */
 @Composable
-fun ScanKnopf(onClick: () -> Unit, modifier: Modifier = Modifier, beschreibung: String = stringResource(R.string.gallery_scan_barcode)) {
+fun ScanButton(onClick: () -> Unit, modifier: Modifier = Modifier, beschreibung: String = stringResource(R.string.gallery_scan_barcode)) {
     MitTooltip(beschreibung, modifier) {
         OutlinedIconButton(
             onClick = onClick,
@@ -68,8 +68,8 @@ fun ScanKnopf(onClick: () -> Unit, modifier: Modifier = Modifier, beschreibung: 
 }
 
 /**
- * Strichcode im Scanrahmen. Material bietet nur einen QR-Scanner; gescannt werden hier
- * Strichcodes (EAN) der Schachteln, und das Symbol soll sagen, was die Kamera sucht.
+ * Barcode in the scan frame. Material only offers a QR scanner; what's scanned here are
+ * barcodes (EAN) on boxes, and the icon should say what the camera is looking for.
  */
 val BarcodeSymbol: ImageVector by lazy {
     ImageVector.Builder("Barcode", 24.dp, 24.dp, 24f, 24f).addPath(

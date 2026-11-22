@@ -17,64 +17,64 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.model.ui.ListView
 
 /**
- * Umschalter Karten/Tabelle als zwei Chips: Bei zwei Möglichkeiten wäre ein
- * Aufklappmenü ein Klick zu viel, und die Wahl ist ohne Öffnen sichtbar.
+ * Cards/table switch as two chips: with two possibilities, a
+ * dropdown menu would be one click too many, and the choice is visible without opening it.
  */
 @Composable
-fun AnsichtUmschalter(
-    aktuell: Listenansicht,
-    onWechsel: (Listenansicht) -> Unit,
+fun ViewToggle(
+    aktuell: ListView,
+    onSwitch: (ListView) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SegmentWahl(
+    SegmentChoice(
         optionen = listOf(
-            Listenansicht.KARTEN to stringResource(R.string.view_cards),
-            Listenansicht.TABELLE to stringResource(R.string.view_table),
+            ListView.KARTEN to stringResource(R.string.view_cards),
+            ListView.TABLE to stringResource(R.string.view_table),
         ),
         gewaehlt = aktuell,
-        onWahl = onWechsel,
+        onWahl = onSwitch,
         modifier = modifier,
     )
 }
 
 /**
- * Das Suchfeld für Galerie, Teile, Minifiguren und Katalog. Eine Fassung, damit
- * auch der Leeren-Knopf überall gleich heisst: `cd_search_clear` beschreibt die
- * Wirkung — „Löschen“ hätte TalkBack-Nutzern das Wort für „Bestand vernichten“
- * vorgelesen.
+ * The search field for gallery, parts, minifigs and catalog. One implementation, so
+ * the clear button is also named the same everywhere: `cd_search_clear` describes the
+ * effect — „Löschen“ would have read TalkBack users the word for „destroy the
+ * inventory“.
  */
 @Composable
 fun Suchfeld(
     wert: String,
-    onWert: (String) -> Unit,
+    onValue: (String) -> Unit,
     platzhalter: String,
     modifier: Modifier = Modifier,
 ) {
-    // Bei normaler Schrift eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt
-    // so hoch wie den Filterknopf daneben. Bei grosser Schrift bricht er um, statt bei
-    // „Nummer oder…“ abzureissen.
-    val zeilen = if (grosseSchrift()) PLATZHALTER_ZEILEN_GROSS else 1
+    // With normal text size, one line: a wrapping placeholder made the field twice
+    // as tall as the filter button next to it. With large text it wraps instead of
+    // cutting off at „Nummer oder…“.
+    val zeilen = if (largeFont()) PLACEHOLDER_ROWS_LARGE else 1
     OutlinedTextField(
         value = wert,
-        onValueChange = onWert,
+        onValueChange = onValue,
         placeholder = { Text(platzhalter, maxLines = zeilen, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(mitSchrift(20.dp))) },
+        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(withFont(20.dp))) },
         trailingIcon = {
             if (wert.isNotEmpty()) {
                 MitTooltip(stringResource(R.string.cd_search_clear)) {
-                    IconButton(onClick = { onWert("") }) {
+                    IconButton(onClick = { onValue("") }) {
                         Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear))
                     }
                 }
             }
         },
-        // Der Platzhalter verschwindet mit der ersten Eingabe; der Name des Felds bleibt.
+        // The placeholder disappears on the first keystroke; the field's name stays.
         modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein)
             .semantics { contentDescription = platzhalter },
         singleLine = true,
@@ -82,4 +82,4 @@ fun Suchfeld(
     )
 }
 
-private const val PLATZHALTER_ZEILEN_GROSS = 3
+private const val PLACEHOLDER_ROWS_LARGE = 3

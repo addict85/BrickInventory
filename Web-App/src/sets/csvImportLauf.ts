@@ -1,35 +1,35 @@
 import { z } from 'zod';
-import { type ImportErgebnis, AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
-import { setErfassen } from './erfassen';
-import { fehlertext } from '../infra/fehler';
-import { Fachfehler, fehlerText, type FehlerCode } from '../infra/fehlerTexte';
-import type { SetsKontext } from './kontext';
+import { type ImportResult, JobInterrupted, type JobContext } from '../jobQueue';
+import { setErfassen } from './addSet';
+import { fehlertext } from '../infra/error';
+import { Fachfehler, errorText, type ErrorCode } from '../infra/errorTexts';
+import type { SetsContext } from './context';
 
-/** Nach jedem Set steht der Stand in import_stand; ein Neustart setzt dort
- * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set
- * gebucht wurde — es wird nicht noch einmal gebucht, sondern gemeldet. */
-const CsvZeileSchema = z.object({
+/** After every set the state is in import_status; a restart continues
+ * there. If `current` is still set after a crash, it is uncertain whether the set
+ * was booked — it is not booked again but reported. */
+const CsvRowSchema = z.object({
   sn: z.string(),
   qty: z.number().int(),
   purchasePrice: z.number().nullable(),
   condition: z.string().nullable(),
   acquiredAt: z.string().nullable(),
-  // Zeile der Datei und, wenn sie schon beim Lesen scheiterte, warum: Das Ergebnis nennt sie dann an ihrem Platz.
+  // Line of the file and, if it already failed while reading, why: the result then names it in its place.
   zeile: z.number().int().optional(),
   fehler: z
     .object({ code: z.enum(['csv_menge_ungueltig', 'csv_keine_setnummer']), wert: z.string().optional() })
     .optional(),
 });
-/** Teil der Art 'csv_import', die die Sammlung anmeldet (src/sammlung/auftragsarten.ts). */
-export const SetCsvNutzlast = z.object({
+/** Part of the kind 'csv_import', which the collection registers (src/collection/jobKinds.ts). */
+export const SetCsvPayload = z.object({
   user_id: z.number().int().positive(),
   lauf: z.string().min(1),
-  rows: z.array(CsvZeileSchema),
+  rows: z.array(CsvRowSchema),
 });
-export type CsvNutzlast = z.output<typeof SetCsvNutzlast>;
-export type CsvZeile = CsvNutzlast['rows'][number];
+export type CsvPayload = z.output<typeof SetCsvPayload>;
+export type CsvRow = CsvPayload['rows'][number];
 
-async function importiereZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise<ImportErgebnis> {
+async function importRow(sk: SetsContext, z: CsvRow, userId: number): Promise<ImportResult> {
   const wo = z.zeile ? { zeile: z.zeile } : {};
   if (z.fehler) {
     const vars = z.fehler.wert !== undefined ? { wert: z.fehler.wert } : undefined;
@@ -39,32 +39,32 @@ async function importiereZeile(sk: SetsKontext, z: CsvZeile, userId: number): Pr
       success: false,
       code: z.fehler.code,
       ...(vars ? { vars } : {}),
-      error: fehlerText(z.fehler.code, 'de', vars),
+      error: errorText(z.fehler.code, 'de', vars),
     };
   }
-  return { ...(await bucheZeile(sk, z, userId)), ...wo };
+  return { ...(await bookRow(sk, z, userId)), ...wo };
 }
 
-/** Ohne Netz (setErfassen); die Frist fängt nur eine klemmende Datenbank. Nach einer
- * Zeitüberschreitung bucht der Versuch womöglich noch, deshalb keine Wiederholung. */
-async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise<ImportErgebnis> {
-  let wecker: NodeJS.Timeout | undefined;
+/** Without network (setErfassen); the deadline only catches a stuck database. After a
+ * timeout the attempt may still book, hence no retry. */
+async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<ImportResult> {
+  let alarm: NodeJS.Timeout | undefined;
   try {
     const r = await Promise.race([
       setErfassen(sk, {
-        anfragender: userId,
+        requester: userId,
         setNumber: z.sn,
         menge: z.qty,
         kaufpreis: z.purchasePrice,
         zustand: z.condition,
-        erfasstAm: z.acquiredAt,
-        wennVorhanden: 'aufstocken',
+        recordedAt: z.acquiredAt,
+        ifPresent: 'aufstocken',
         nacharbeit: 'csv',
       }),
       new Promise<never>((_, rej) => {
-        wecker = setTimeout(() => rej(new Error('Timeout')), sk.konfig.csvZeileFristMs);
+        alarm = setTimeout(() => rej(new Error('Timeout')), sk.konfig.csvRowDeadlineMs);
       }),
-    ]).finally(() => clearTimeout(wecker));
+    ]).finally(() => clearTimeout(alarm));
     return {
       set_number: z.sn,
       success: true,
@@ -76,7 +76,7 @@ async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise
     const msg = fehlertext(e) || 'Unbekannter Fehler';
     const isWarning = msg.includes('Timeout');
     console[isWarning ? 'warn' : 'error'](`CSV: ${z.sn} ${isWarning ? 'WARNING' : 'FAILED'}: ${msg}`);
-    const code: FehlerCode | undefined =
+    const code: ErrorCode | undefined =
       e instanceof Fachfehler ? e.code : isWarning ? 'import_zeitueberschreitung' : undefined;
     return {
       set_number: z.sn,
@@ -88,15 +88,15 @@ async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise
   }
 }
 
-async function fuehreCsvImportAus(sk: SetsKontext, n: CsvNutzlast, k: AuftragsKontext): Promise<void> {
+async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): Promise<void> {
   const userId = Number(n.user_id),
     lauf = String(n.lauf),
     rows = n.rows ?? [];
-  const stand = await sk.auftraege.setzeImportFort(userId, lauf);
+  const stand = await sk.jobQueue.setImportFort(userId, lauf);
   if (!stand) return;
   const results = stand.results;
   const schreibe = () =>
-    sk.auftraege.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
+    sk.jobQueue.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
 
   if (stand.current && results.length < rows.length) {
     results.push({
@@ -104,32 +104,32 @@ async function fuehreCsvImportAus(sk: SetsKontext, n: CsvNutzlast, k: AuftragsKo
       success: false,
       isWarning: true,
       code: 'import_zeile_unterbrochen',
-      error: fehlerText('import_zeile_unterbrochen', 'de'),
+      error: errorText('import_zeile_unterbrochen', 'de'),
     });
     if (!(await schreibe())) return;
   }
   for (let i = results.length; i < rows.length; i++) {
-    if (k.beendet) throw new AuftragUnterbrochen();
+    if (k.beendet) throw new JobInterrupted();
     const z = rows[i]!;
-    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
-    if (!(await k.lebenszeichen()) || !(await sk.auftraege.jobUpdate(userId, { current: z.sn }, lauf))) return;
-    await sk.auftraege.meldeJobStand(userId);
-    results.push(await importiereZeile(sk, z, userId));
+    // Aborted, superseded or assigned elsewhere: stop without writing into foreign rows.
+    if (!(await k.lebenszeichen()) || !(await sk.jobQueue.jobUpdate(userId, { current: z.sn }, lauf))) return;
+    await sk.jobQueue.reportJobStatus(userId);
+    results.push(await importRow(sk, z, userId));
     if (!(await schreibe())) return;
-    await sk.auftraege.meldeJobStand(userId);
+    await sk.jobQueue.reportJobStatus(userId);
   }
-  await sk.auftraege.jobUpdate(userId, { status: 'done', current: null }, lauf);
-  await sk.auftraege.meldeJobStand(userId);
+  await sk.jobQueue.jobUpdate(userId, { status: 'done', current: null }, lauf);
+  await sk.jobQueue.reportJobStatus(userId);
   console.log(
     `CSV import done: ${results.filter(r => r.success).length} ok, ${results.filter(r => !r.success).length} errors`,
   );
 }
 
-/** Die Statuszeile zeigt den Fehler, statt ewig zu laufen. */
-async function csvImportAufgegeben(k: SetsKontext, n: CsvNutzlast, fehler: string): Promise<void> {
+/** The status line shows the error instead of running forever. */
+async function csvImportGivenUp(k: SetsContext, n: CsvPayload, fehler: string): Promise<void> {
   console.error(`CSV import fatal error: ${fehler}`);
-  await k.auftraege.jobUpdate(Number(n.user_id), { status: 'error', error: fehler, current: null }, String(n.lauf));
-  await k.auftraege.meldeJobStand(Number(n.user_id));
+  await k.jobQueue.jobUpdate(Number(n.user_id), { status: 'error', error: fehler, current: null }, String(n.lauf));
+  await k.jobQueue.reportJobStatus(Number(n.user_id));
 }
 
-export { fuehreCsvImportAus, csvImportAufgegeben };
+export { runCsvImportFrom, csvImportGivenUp };

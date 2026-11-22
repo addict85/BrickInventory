@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 
-/** Der Name eines Designs; vollständig, damit ein neues Design hier auffällt. */
+/** The name of a theme; exhaustive, so a new theme stands out here. */
 fun Design.titel(): Int = when (this) {
     Design.CLASSIC -> R.string.monitoring_theme_classic
     Design.BRICK -> R.string.monitoring_theme_brick
@@ -13,7 +13,7 @@ fun Design.titel(): Int = when (this) {
     Design.HOCHGLANZ -> R.string.monitoring_theme_hochglanz
 }
 
-/** Ein Satz je Design für den Wähler: Werkbank und das dunkle Classic sehen sich ähnlich. */
+/** One sentence per theme for the chooser: Werkbank and the dark Classic look alike. */
 fun Design.beschreibung(): Int = when (this) {
     Design.CLASSIC -> R.string.design_text_classic
     Design.BRICK -> R.string.design_text_brick

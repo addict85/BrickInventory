@@ -1,17 +1,17 @@
 Gegenprobe: Anmeldung auch auf dem Tablet einspaltig
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.AnmeldeRandTest
-Rot: Registrieren steht auf dem Tablet ohne Rollen im Bild
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginEdgeTest
+Rot: register stands in view on the tablet without scrolling
 
-diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
---- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
-+++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
 @@ -191,7 +191,7 @@ fun LoginScreen(
  }
  
  /** Ab dieser Breite im Querformat stehen Marke und Formular nebeneinander (wie SetupScreen). */
--private val QUER_ZWEISPALTIG = 840.dp
-+private val QUER_ZWEISPALTIG = 4000.dp
+-private val ACROSS_TWO_COLUMN = 840.dp
++private val ACROSS_TWO_COLUMN = 4000.dp
  
  /**
   * Eine stehende Meldung im Formular — Fehler rot, Bestätigung ruhig. Eine Fassung

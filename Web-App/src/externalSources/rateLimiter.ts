@@ -1,0 +1,178 @@
+import { systemClock, type Uhr } from '../infra/clock';
+
+/** Rebrickable allows one call per second on average; a 429 names the
+ * waiting time, and exactly that long is held back. */
+export class RateLimiter {
+  maxRequests: number;
+  windowMs: number;
+  lastCall: number;
+  queue: Array<() => void>;
+  _scheduled: boolean;
+  takt: Takt | null;
+  uhr: Uhr;
+
+  /** @param takt Cross-process tick (table api_takt); without it
+   *             the instance only throttles itself. */
+  constructor(maxRequests: number, windowMs: number, takt: Takt | null = null, uhr: Uhr = systemClock) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
+    this.lastCall = 0; // timestamp of last allowed call
+    this.queue = []; // pending {resolve} entries
+    this._scheduled = false;
+    this.takt = takt;
+    this.uhr = uhr;
+  }
+
+  async waitForSlot() {
+    await new Promise<void>(resolve => {
+      this.queue.push(resolve);
+      this._schedule();
+    });
+    if (this.takt) await waitOnTick(this.takt);
+  }
+
+  _schedule() {
+    if (this._scheduled || !this.queue.length) return;
+    this._scheduled = true;
+    const now = this.uhr.jetzt();
+    const next = this.lastCall + this.windowMs;
+    const wait = Math.max(0, next - now);
+    setTimeout(() => {
+      this._scheduled = false;
+      if (!this.queue.length) return;
+      this.lastCall = this.uhr.jetzt();
+      const resolve = this.queue.shift();
+      // this.queue.length is checked two lines before; shift() does not know that.
+      if (resolve) resolve();
+      if (this.queue.length) this._schedule();
+    }, wait);
+  }
+
+  throttle(waitMs: number) {
+    this.lastCall = this.uhr.jetzt() + waitMs - this.windowMs;
+    if (this.takt) taktAussetzen(this.takt, waitMs);
+    if (!this._scheduled && this.queue.length) this._schedule();
+  }
+
+  get status() {
+    return { limit: this.maxRequests, window: this.windowMs, queued: this.queue.length };
+  }
+}
+
+import { reportError } from '../infra/error';
+import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiQuota';
+import { versuche } from '../infra/result';
+import type { ForeignSourcesContext } from './context';
+
+/** A single UPDATE moves the point in time forward — two processes never get
+ * the same slot, without one holding a lock while it waits. */
+export async function waitOnTick(takt: Takt): Promise<void> {
+  const { api, gapMs, apiTakt, uhr = systemClock } = takt;
+  if (uhr.jetzt() < takt.disruptedUntil) return;
+  try {
+    const r = await apiTakt.receiptsTick(api, gapMs);
+    const warte = Math.ceil(Number(r?.warte_ms) || 0);
+    if (warte > 0) await new Promise(res => setTimeout(res, warte));
+  } catch (e) {
+    takt.disruptedUntil = uhr.jetzt() + 60_000;
+    reportError('drossel:gemeinsamer-takt', e);
+  }
+}
+
+/** A 429 applies to all processes. */
+function taktAussetzen({ api, apiTakt, disruptedUntil, uhr = systemClock }: Takt, waitMs: number) {
+  if (uhr.jetzt() < disruptedUntil) return;
+  apiTakt.pushTick(api, waitMs).catch(e => reportError('drossel:takt-aussetzen', e));
+}
+
+/** One call per second for all processes together: the throttles only order within the process, the spacing
+ * is kept by the shared tick (table api_takt). */
+export interface Takt {
+  api: string;
+  gapMs: number;
+  apiTakt: ForeignSourcesContext['apiTakt'];
+  /** After a database error one minute without a shared tick: otherwise every call would
+   * first run into the connection timeout. The own throttle stays. */
+  disruptedUntil: number;
+  uhr?: Uhr;
+}
+
+/** Once per set of services (createForeignSources): foreground and background share the tick. */
+export function throttleRebrickable(apiTakt: Takt['apiTakt'], uhr: Uhr) {
+  const takt: Takt = { api: 'rebrickable', gapMs: 1000, apiTakt, disruptedUntil: 0, uhr };
+  return { foreground: new RateLimiter(1, 1500, takt, uhr), hintergrund: new RateLimiter(1, 1500, takt, uhr) };
+}
+
+// Counted in the database: counted per process, the limit would multiply.
+export async function consumeRebrickableDaily(k: ForeignSourcesContext): Promise<boolean> {
+  const rl = await versuche('takt:kontingentPruefenUndZaehlen', kontingentPruefenUndZaehlen(k, 'rebrickable'));
+  // When in doubt let it through: an exceeded daily quota merely costs
+  // calls — the opposite of the login counter, where the fallback locks.
+  return rl.ok ? rl.wert.allowed : true;
+}
+
+/** Two concurrent downloads, but at most one new one per second: the CDN
+ * tolerates some parallelism, not a rush. */
+export class ConcurrentRateLimiter {
+  maxConcurrent: number;
+  intervalMs: number;
+  active: number;
+  queue: Array<() => void>;
+  lastStart: number;
+  _timer: NodeJS.Timeout | null;
+  uhr: Uhr;
+
+  constructor(maxConcurrent: number, intervalMs: number, uhr: Uhr = systemClock) {
+    this.maxConcurrent = maxConcurrent; // max parallel requests in flight
+    this.intervalMs = intervalMs; // min ms between starting new requests
+    this.active = 0; // currently in-flight
+    this.queue = []; // waiting resolvers
+    this.lastStart = 0; // timestamp last request was started
+    this._timer = null;
+    this.uhr = uhr;
+  }
+
+  acquire() {
+    return new Promise<void>(resolve => {
+      this.queue.push(resolve);
+      this._drain();
+    });
+  }
+
+  release() {
+    this.active--;
+    this._drain();
+  }
+
+  _drain() {
+    if (this._timer || !this.queue.length) return;
+    const now = this.uhr.jetzt();
+    const wait = Math.max(0, this.lastStart + this.intervalMs - now);
+    const canStart = this.active < this.maxConcurrent;
+    if (canStart && wait === 0) {
+      this._start();
+    } else if (canStart) {
+      this._timer = setTimeout(() => {
+        this._timer = null;
+        this._drain();
+      }, wait);
+    }
+  }
+
+  _start() {
+    if (!this.queue.length || this.active >= this.maxConcurrent) return;
+    this.active++;
+    this.lastStart = this.uhr.jetzt();
+    const resolve = this.queue.shift();
+    // The length is checked in the guard at the start of the method.
+    if (resolve) resolve();
+    if (this.queue.length && this.active < this.maxConcurrent) {
+      this._timer = setTimeout(() => {
+        this._timer = null;
+        this._drain();
+      }, this.intervalMs);
+    }
+  }
+}
+
+export { REBRICKABLE_DEFAULT_DAILY };

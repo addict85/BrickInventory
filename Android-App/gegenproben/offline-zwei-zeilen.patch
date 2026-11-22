@@ -1,7 +1,7 @@
 Gegenprobe: Ausgangsleiste auch neben dem Offline-Hinweis
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
-Rot: Offline-Hinweis nennt die wartenden Aenderungen
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: offline hint names the pending changes in a banner
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold
                              })
                      }
                      // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
--                    if (offlineHinweise.intValue == 0) AusgangLeiste(offeneAenderungen)
-+                    AusgangLeiste(offeneAenderungen)
+-                    if (offlineHints.intValue == 0) ExitBar(offeneAenderungen)
++                    ExitBar(offeneAenderungen)
                      if (csvImport.lauf.laeuft) {
                          CsvImportBanner(
                              done = csvImport.done, total = csvImport.total, current = csvImport.current,

@@ -1,11 +1,11 @@
 Gegenprobe: Ein debuggable APK geht durch die Manifestprüfung
 Modul: app
-Test: ch.brickinventoryapp.app.ManifestPruefenTest
-Rot: ein debuggable APK
+Test: ch.brickinventoryapp.app.ManifestCheckTest
+Rot: a debuggable APK, backup or cleartext stand out
 
-diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py
---- a/Android-App/tools/manifest-pruefen.py
-+++ b/Android-App/tools/manifest-pruefen.py
+diff --git a/Android-App/tools/manifest-check.py b/Android-App/tools/manifest-check.py
+--- a/Android-App/tools/manifest-check.py
++++ b/Android-App/tools/manifest-check.py
 @@ -72,8 +72,6 @@ def pruefe(xmltree, erlaubt, rechte=frozenset()):
          return ['kein <application> im Manifest gefunden — Format von aapt2 geaendert?']
      app = apps[0][1]

@@ -3,15 +3,15 @@ package ch.brickinventoryapp.data
 import android.content.Context
 import android.net.wifi.WifiManager
 import ch.brickinventoryapp.data.di.ApiClient
-import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
-import ch.brickinventoryapp.model.koroutinen.Dispatcher
-import ch.brickinventoryapp.data.util.ANLEITUNG_ENDUNG
-import ch.brickinventoryapp.data.util.ANLEITUNG_PRAEFIX
-import ch.brickinventoryapp.data.util.AnleitungsAblage
-import ch.brickinventoryapp.data.util.PdfSchritt
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.data.util.INSTRUCTION_EXTENSION
+import ch.brickinventoryapp.data.util.INSTRUCTION_PREFIX
+import ch.brickinventoryapp.data.util.InstructionStore
+import ch.brickinventoryapp.data.util.PdfStep
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.util.ladePdfInDenSpeicher
-import ch.brickinventoryapp.data.util.pdfSchritt
+import ch.brickinventoryapp.data.util.pdfStep
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.currentCoroutineContext
@@ -26,36 +26,36 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 /**
- * Der Download scheiterte. [status]: Der Server antwortete, aber nicht mit dem PDF; die
- * Anzeige wählt danach die Art des Fehlers. Null heisst: Es blieb keine Ursache übrig.
+ * The download failed. [status]: the server answered, but not with the PDF; the
+ * display then chooses the kind of error. Null means: no cause was left.
  */
-class DownloadGescheitert(val status: Int? = null) : IOException(status?.let { "HTTP $it" })
+class DownloadFailed(val status: Int? = null) : IOException(status?.let { "HTTP $it" })
 
-/** Das Netz der Anleitungen und Gutschein-PDFs; aufbereitet und gezeigt wird in der Oberfläche. */
+/** The network of instructions and voucher PDFs; preparing and showing happens in the UI. */
 interface AnleitungsRepository {
     /**
-     * Lädt [url] nach [ziel], über eine Teildatei und mit Fortsetzen. [einmalig]: Die
-     * Adresse trägt ein Ticket für genau einen Abruf, also kein zweiter Versuch.
+     * Loads [url] into [ziel], via a partial file and with resuming. [einmalig]: the
+     * address carries a ticket for exactly one fetch, so no second attempt.
      */
     suspend fun lade(url: String, ziel: File, einmalig: Boolean, fortschritt: (geladen: Long, gesamt: Long) -> Unit)
 
-    /** Ein vertrauliches PDF nur in den Speicher, ohne Teildatei. */
-    suspend fun ladeInDenSpeicher(url: String, fortschritt: (geladen: Long, gesamt: Long) -> Unit): ByteArray
+    /** A confidential PDF only into memory, without a partial file. */
+    suspend fun loadInTheStorage(url: String, fortschritt: (geladen: Long, gesamt: Long) -> Unit): ByteArray
 }
 
 /**
- * Über den api-Client (Token, Klartext-Verbot, 401-Meldung), mit WLAN-Sperre:
- * Wird der Bildschirm schwarz, legte Android das WLAN sonst schlafen.
+ * Via the api client (token, cleartext ban, 401 message), with a Wi-Fi lock:
+ * if the screen goes black, Android would otherwise put Wi-Fi to sleep.
  */
 internal class AnleitungsDownload @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     @param:ApiClient private val httpClient: OkHttpClient,
-    private val anleitungen: AnleitungsAblage,
+    private val anleitungen: InstructionStore,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : AnleitungsRepository {
 
     override suspend fun lade(url: String, ziel: File, einmalig: Boolean, fortschritt: (Long, Long) -> Unit) =
-        mitWlan {
+        withWifi {
             withContext(io) {
                 ziel.parentFile?.mkdirs()
                 prunePdfCache(ctx.cacheDir, keep = ziel)
@@ -63,10 +63,10 @@ internal class AnleitungsDownload @Inject constructor(
             }
         }
 
-    override suspend fun ladeInDenSpeicher(url: String, fortschritt: (Long, Long) -> Unit): ByteArray =
-        mitWlan { withContext(io) { ladePdfInDenSpeicher(ladeClient(httpClient), url, fortschritt = fortschritt) } }
+    override suspend fun loadInTheStorage(url: String, fortschritt: (Long, Long) -> Unit): ByteArray =
+        withWifi { withContext(io) { ladePdfInDenSpeicher(ladeClient(httpClient), url, fortschritt = fortschritt) } }
 
-    private suspend fun <T> mitWlan(block: suspend () -> T): T {
+    private suspend fun <T> withWifi(block: suspend () -> T): T {
         @Suppress("DEPRECATION")
         val wifiLock = (ctx.getSystemService(Context.WIFI_SERVICE) as? WifiManager)
             ?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "brickinv:pdf")
@@ -79,9 +79,9 @@ internal class AnleitungsDownload @Inject constructor(
     }
 
     /**
-     * Robuster Download grosser PDFs: Ein abgebrochener Download wird per Range an der
-     * Abbruchstelle fortgesetzt, bis zu acht Versuche. Der laufende Download schreibt in
-     * `<name>.part`; erst der Abschluss benennt um (util/PdfCache.kt).
+     * Robust download of large PDFs: an aborted download is resumed via Range at the
+     * abort position, up to eight attempts. The running download writes to
+     * `<name>.part`; only completion renames (util/PdfCache.kt).
      */
     private suspend fun downloadPdfWithResume(
         url: String,
@@ -92,27 +92,27 @@ internal class AnleitungsDownload @Inject constructor(
     ) {
         val teil = File(dest.path + ".part")
 
-        // Ein Ticket gilt für genau einen Abruf: kein zweiter Versuch, kein Range-Fortsetzen.
+        // A ticket applies to exactly one fetch: no second attempt, no Range resume.
         val maxAttempts = if (einmalig) 1 else 8
         var lastError: Throwable? = null
         for (attempt in 1..maxAttempts) {
-            when (val schritt = pdfSchritt(
-                fertigeGroesse = if (dest.exists()) dest.length() else 0L,
-                // Klartextbytes, nicht Dateigrösse: Darauf bezieht sich der Range des Servers.
-                teilGroesse    = anleitungen.klartextLaenge(teil),
+            when (val schritt = pdfStep(
+                finishedSize = if (dest.exists()) dest.length() else 0L,
+                // Plaintext bytes, not file size: the server's Range refers to that.
+                partSize    = anleitungen.plaintextLength(teil),
             )) {
-                is PdfSchritt.Fertig -> {
-                    // Schon vollstaendig da: kein Netz. Der Fortschritt wird trotzdem
-                    // gemeldet, damit die Anzeige nicht bei 0 % stehen bleibt.
+                is PdfStep.Fertig -> {
+                    // Already complete: no network. The progress is reported anyway
+                    // so that the display does not stay at 0 %.
                     val len = dest.length()
                     onProgress(len, len)
                     return
                 }
-                is PdfSchritt.Holen -> {
+                is PdfStep.Holen -> {
                     fangeAusserAbbruch {
-                        holeAb(client, url, schritt.ab, teil, onProgress)
-                        // Erst JETZT heisst die Datei wie die fertige. Schlägt das Umbenennen
-                        // fehl, wird kopiert — sonst lädt der nächste Aufruf alles noch einmal.
+                        fetchAb(client, url, schritt.ab, teil, onProgress)
+                        // Only NOW does the file get the finished one's name. If renaming fails,
+                        // it is copied — otherwise the next call loads everything again.
                         if (!teil.renameTo(dest)) {
                             teil.copyTo(dest, overwrite = true)
                             teil.delete()
@@ -125,17 +125,17 @@ internal class AnleitungsDownload @Inject constructor(
                 }
             }
         }
-        throw lastError ?: DownloadGescheitert()
+        throw lastError ?: DownloadFailed()
     }
 
-    /** Ein Abruf ab Byte [ab] in die Teildatei; der Server antwortet mit 206 (fortsetzen) oder 200 (neu). */
-    private suspend fun holeAb(client: OkHttpClient, url: String, ab: Long, teil: File, onProgress: (Long, Long) -> Unit) {
+    /** A fetch from byte [ab] into the partial file; the server answers with 206 (resume) or 200 (new). */
+    private suspend fun fetchAb(client: OkHttpClient, url: String, ab: Long, teil: File, onProgress: (Long, Long) -> Unit) {
         val reqBuilder = Request.Builder().url(url)
         if (ab > 0) reqBuilder.header("Range", "bytes=$ab-")
         client.newCall(reqBuilder.build()).execute().use { resp ->
-            if (!resp.isSuccessful) throw DownloadGescheitert(resp.code)
+            if (!resp.isSuccessful) throw DownloadFailed(resp.code)
             val resuming = resp.code == 206 && ab > 0
-            // Kein `?:`: `resp.body` ist seit OkHttp 5 nicht nullbar.
+            // No `?:`: `resp.body` is not nullable since OkHttp 5.
             val body = resp.body
             val total: Long = if (resuming) {
                 resp.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
@@ -144,14 +144,14 @@ internal class AnleitungsDownload @Inject constructor(
                 body.contentLength()
             }
             var downloaded = if (resuming) ab else 0L
-            anleitungen.schreibe(teil, fortsetzen = resuming).use { aus ->
+            anleitungen.schreibe(teil, resume = resuming).use { aus ->
                 body.byteStream().use { input ->
                     val buf = ByteArray(64 * 1024)
                     var lastPct = -1
                     var lastEmit = 0L
                     var read = input.read(buf)
                     while (read != -1) {
-                        // Verlassen bricht ab, statt im Hintergrund weiterzuladen.
+                        // Leaving cancels instead of continuing to load in the background.
                         currentCoroutineContext().ensureActive()
                         aus.write(buf, 0, read)
                         downloaded += read
@@ -171,8 +171,8 @@ internal class AnleitungsDownload @Inject constructor(
 }
 
 /**
- * Vom geteilten api-Client abgeleitet: newBuilder() übernimmt die Interceptors
- * (Bearer-Token, Klartext-Verbot, 401-Meldung) und die Pools; nur die Zeitgrenzen weichen ab.
+ * Derived from the shared api client: newBuilder() takes over the interceptors
+ * (bearer token, cleartext ban, 401 message) and the pools; only the timeouts differ.
  */
 private fun ladeClient(baseClient: OkHttpClient): OkHttpClient = baseClient.newBuilder()
     .connectTimeout(30, TimeUnit.SECONDS)
@@ -182,25 +182,25 @@ private fun ladeClient(baseClient: OkHttpClient): OkHttpClient = baseClient.newB
     .build()
 
 /**
- * Hält den PDF-Ansichts-Cache unter [PDF_CACHE_BUDGET_BYTES]. Angesehene Anleitungen
- * bleiben liegen (erneutes Öffnen, Fortsetzen), brauchen aber eine Obergrenze. Älteste
- * zuerst; [keep] — die gerade angeforderte Datei samt Teildatei — wird nie gelöscht.
+ * Keeps the PDF view cache under [PDF_CACHE_BUDGET_BYTES]. Viewed instructions
+ * stay (reopening, resuming), but need an upper limit. Oldest
+ * first; [keep] — the file just requested including partial file — is never deleted.
  */
 private fun prunePdfCache(cacheDir: File, keep: File) {
     try {
-        // `.part` mit gezählt: Ein abgebrochener 300-MB-Download belegt denselben Platz.
+        // `.part` counted too: an aborted 300 MB download occupies the same space.
         val files = cacheDir.listFiles { f ->
-            f.isFile && f.name.startsWith(ANLEITUNG_PRAEFIX) &&
-                (f.name.endsWith(ANLEITUNG_ENDUNG) || f.name.endsWith("$ANLEITUNG_ENDUNG.part"))
+            f.isFile && f.name.startsWith(INSTRUCTION_PREFIX) &&
+                (f.name.endsWith(INSTRUCTION_EXTENSION) || f.name.endsWith("$INSTRUCTION_EXTENSION.part"))
         }?.sortedByDescending { it.lastModified() } ?: return
 
-        val geschont = setOf(keep.absolutePath, keep.absolutePath + ".part")
+        val spared = setOf(keep.absolutePath, keep.absolutePath + ".part")
         var used = 0L
         for (f in files) {
             used += f.length()
-            if (f.absolutePath !in geschont && used > PDF_CACHE_BUDGET_BYTES) f.delete()
+            if (f.absolutePath !in spared && used > PDF_CACHE_BUDGET_BYTES) f.delete()
         }
-    } catch (_: Exception) { /* Best effort — Aufräumen darf den Download nie verhindern */ }
+    } catch (_: Exception) { /* Best effort — cleaning up must never prevent the download */ }
 }
 
 private const val PDF_CACHE_BUDGET_BYTES = 500L * 1024 * 1024

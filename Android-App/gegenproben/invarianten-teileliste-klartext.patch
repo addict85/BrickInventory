@@ -1,16 +1,16 @@
 Gegenprobe: die Teileliste liegt wieder im Klartext auf der Platte
 Modul: app
-Test: ch.brickinventoryapp.app.InvariantenVerweiseTest
-Rot: die Teileliste liegt nur verschluesselt auf der Platte
+Test: ch.brickinventoryapp.app.InvariantsReferencesTest
+Rot: the parts list lies on disk only encrypted
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Teilelistentresor.kt
 @@ -22,7 +22,7 @@
-     fun lege(intern: File, extern: File?, pdf: ByteArray): File {
-         val ziel = teilelistenAblage(intern, extern)
+     fun put(intern: File, extern: File?, pdf: ByteArray): File {
+         val ziel = partListsStore(intern, extern)
          val tmp = File(ziel.parentFile, ziel.name + ".tmp")
--        tmp.writeBytes(chiffre.verschluessle(pdf, ZWECK))
+-        tmp.writeBytes(cipher.verschluessle(pdf, PURPOSE))
 +        tmp.writeBytes(pdf)
          if (!tmp.renameTo(ziel)) {
              tmp.delete()

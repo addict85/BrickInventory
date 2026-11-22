@@ -1,16 +1,16 @@
 Gegenprobe: Nach gescheiterter Signatur fragt die App-Sperre mit dem alten Schlüssel nach
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.AppEntsperrungTest
-Rot: ungueltiger Schluessel wird ersetzt
+Test: ch.brickinventoryapp.ui.AppUnlockingTest
+Rot: an invalid key is replaced and asked once more
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
-@@ -30,7 +30,6 @@ private fun versuche(weiter: () -> Unit, nochmal: Boolean) {
-         frage(signatur) { freigegeben ->
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
+@@ -30,7 +30,6 @@ private fun versuche(weiter: () -> Unit, again: Boolean) {
+         frage(signatur) { released ->
              when {
-                 freigabe.gilt(freigegeben) -> weiter()
-                 freigegeben != null && nochmal -> {
--                    runCatching { schluessel.verwerfe() }
-                     versuche(weiter, nochmal = false)
+                 freigabe.gilt(released) -> weiter()
+                 released != null && again -> {
+-                    runCatching { schluessel.discard() }
+                     versuche(weiter, again = false)
                  }

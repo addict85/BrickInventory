@@ -1,17 +1,17 @@
 Gegenprobe: Der Satz der Datenschicht steht in jeder Fehlerklasse unter der Überschrift
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
-Rot: Fehlerhinweis nennt die Klasse
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: error hint names the class and the sentence only where it says more
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ladezustand.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ladezustand.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ladezustand.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ladezustand.kt
-@@ -109,7 +109,7 @@ fun FehlerHinweis(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse? =
-         Fehlerklasse.ANMELDUNG -> Triple(Icons.Default.Lock, R.string.fehler_anmeldung_titel, R.string.fehler_anmeldung_text)
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt
+@@ -109,7 +109,7 @@ fun ErrorHint(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse? =
+         Fehlerklasse.LOGIN -> Triple(Icons.Default.Lock, R.string.fehler_anmeldung_titel, R.string.fehler_anmeldung_text)
          Fehlerklasse.UNBEKANNT, null -> Triple(Icons.Default.ErrorOutline, R.string.common_load_failed, null)
      }
--    val zeigeSatz = klasse == null || klasse == Fehlerklasse.SERVER || klasse == Fehlerklasse.UNBEKANNT
-+    val zeigeSatz = true
+-    val showSet = klasse == null || klasse == Fehlerklasse.SERVER || klasse == Fehlerklasse.UNBEKANNT
++    val showSet = true
      Column(
          Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
          horizontalAlignment = Alignment.CenterHorizontally,

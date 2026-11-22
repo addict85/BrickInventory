@@ -11,36 +11,36 @@ import androidx.compose.ui.text.font.FontWeight
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Lesebreite
 
-/** Eine Zeile der Detailkarten (Katalog, Merkposten), auf dem Tablet höchstens in Lesebreite. */
+/** A row of the detail cards (catalog, wishlist), limited to reading width on the tablet at most. */
 @Composable
 fun CatalogDetailRow(label: String, value: String) {
-    BezeichnungUndWert(label, value, Modifier.widthIn(max = Lesebreite.wertzeile))
+    LabelAndValue(label, value, Modifier.widthIn(max = Lesebreite.wertzeile))
 }
 
 /**
- * Bezeichnung links, Wert rechts — und bei grosser Schrift untereinander. Der Wert
- * bricht nie um: „CHF 1,712.40“ Ziffer für Ziffer über drei Zeilen las niemand;
- * die Bezeichnung darf mehrzeilig werden, sie nimmt sich den übrigen Platz.
+ * Label on the left, value on the right — and stacked with large text. The value
+ * never wraps: nobody read „CHF 1,712.40“ digit by digit across three lines;
+ * the label may span several lines, it takes whatever space is left.
  */
 @Composable
-fun BezeichnungUndWert(
+fun LabelAndValue(
     bezeichnung: String,
     wert: String,
     modifier: Modifier = Modifier,
     stil: TextStyle = MaterialTheme.typography.bodyMedium,
-    wertStil: TextStyle = stil,
-    bezeichnungFarbe: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    wertGewicht: FontWeight = FontWeight.SemiBold,
+    valueStyle: TextStyle = stil,
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    valueWeight: FontWeight = FontWeight.SemiBold,
 ) {
-    if (grosseSchrift()) {
+    if (largeFont()) {
         Column(modifier.fillMaxWidth()) {
-            Text(bezeichnung, color = bezeichnungFarbe, style = stil)
-            Text(wert, fontWeight = wertGewicht, style = wertStil, color = MaterialTheme.colorScheme.onSurface)
+            Text(bezeichnung, color = labelColor, style = stil)
+            Text(wert, fontWeight = valueWeight, style = valueStyle, color = MaterialTheme.colorScheme.onSurface)
         }
     } else {
         Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(bezeichnung, color = bezeichnungFarbe, style = stil, modifier = Modifier.weight(1f))
-            Text(wert, fontWeight = wertGewicht, style = wertStil, color = MaterialTheme.colorScheme.onSurface,
+            Text(bezeichnung, color = labelColor, style = stil, modifier = Modifier.weight(1f))
+            Text(wert, fontWeight = valueWeight, style = valueStyle, color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1, softWrap = false, modifier = Modifier.padding(start = Abstaende.gross))
         }
     }

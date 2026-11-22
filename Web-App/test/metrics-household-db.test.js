@@ -1,0 +1,91 @@
+/**
+ * The number above the gallery must match what stands below it.
+ */
+require('./helpers/system-frame');
+const test = require('node:test');
+const { after } = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+const { buildAndRequire, testData } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { keineDb } = require('./helpers/db');
+const { holdsSet } = require('./helpers/inventory');
+const db = testData();
+
+async function erreichbar() {
+  try {
+    await db.get('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+after(() => db.pool.end());
+
+test('header and gallery count the same sets', async t => {
+  if (!(await erreichbar())) {
+    keineDb(t);
+    return;
+  }
+  await db.run('DROP SCHEMA public CASCADE');
+  await db.run('CREATE SCHEMA public');
+  await db.initSchemaOnce();
+  // And the MIGRATIONS, not only the schema
+  {
+    const mc = await db.pool.connect();
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
+  }
+
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
+  const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
+  const haupt = await id('haupt'),
+    kind = await id('kind');
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
+
+  // BOTH own 75192-1 — without this overlap row count and
+  // tile count match by chance, and the test checked nothing.
+  await holdsSet(db, haupt, '75192-1', 1);
+  await holdsSet(db, kind, '75192-1', 1);
+  await holdsSet(db, kind, '21318-1', 1);
+
+  const { scopeIds } = {
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
+  };
+  const { getStats } = _req('src/inventory/metrics.js');
+  const { setsLesen } = require('./helpers/sources').areaPage('sets');
+
+  for (const modus of ['all', 'own']) {
+    const uids = await scopeIds(haupt, modus);
+    const kopf = await getStats(uids);
+    const liste = await setsLesen(uids, { page_size: 60 });
+    assert.equal(
+      kopf.total_sets,
+      liste.total,
+      `Blickfeld ${modus}: Die Kopfzeile nennt ${kopf.total_sets} Sets, die Galerie ` +
+        `zeigt ${liste.total}. Beide Zahlen stehen übereinander auf demselben ` +
+        `Bildschirm — zählt eine die Tabellenzeilen und die andere die Kacheln, ` +
+        `widersprechen sie sich im Haushalt.`,
+    );
+    assert.equal(
+      kopf.total_sets,
+      (liste.sets || []).length,
+      `Blickfeld ${modus}: total passt, die Anzahl der Kacheln aber nicht`,
+    );
+  }
+
+  // The other reading is preserved and stands in the app as its own tile
+  // next to it („Einheiten"). Without this assertion the obvious
+  // „correction" — both on DISTINCT — would have gone unnoticed.
+  const alle = await getStats(await scopeIds(haupt, 'all'));
+  assert.equal(alle.total_quantity, 3, 'Exemplare zählen weiterhin einzeln: zwei Konten mit demselben Set plus eines');
+  assert.equal(alle.total_sets, 2, 'verschiedene Sets im Haushalt');
+});

@@ -1,24 +1,24 @@
 package ch.brickinventoryapp.model.ui.theme
 
 /**
- * Gilt „dunkel nach System"? Ohne gespeicherte Wahl ja — eine App, die nachts
- * hell bleibt, obwohl das Telefon dunkel ist, wirkt kaputt. Wer früher
- * ausdrücklich „Design des Servers" gewählt hat, behält das.
+ * Does „dark by system" apply? Without a saved choice yes — an app that stays light
+ * at night although the phone is dark looks broken. Whoever explicitly
+ * chose „server design" earlier keeps that.
  */
 
-fun dunkelNachSystemGilt(gespeichert: Boolean?): Boolean = gespeichert ?: true
+fun darkAfterSystemApplies(gespeichert: Boolean?): Boolean = gespeichert ?: true
 
-/** Hell, dunkel oder wie das System — je Gerät, in den Einstellungen unter „Darstellung“. */
+/** Light, dark or like the system — per device, in the settings under „Darstellung“. */
 object Helligkeit {
     const val SYSTEM = "system"
-    const val HELL = "hell"
-    const val DUNKEL = "dunkel"
+    const val LIGHT = "hell"
+    const val DARK = "dunkel"
 }
 
 /**
- * Die wirksame Wahl: die gespeicherte, sonst die frühere Ja/Nein-Wahl „dunkel
- * nach System“ (ja → System, nein → Hell), damit niemand nach dem Update anders sieht.
+ * The effective choice: the saved one, otherwise the earlier yes/no choice „dark
+ * by system“ (yes → system, no → light), so that nobody sees differently after the update.
  */
-fun helligkeitGilt(gespeichert: String?, frueherNachSystem: Boolean?): String =
-    gespeichert?.takeIf { it == Helligkeit.SYSTEM || it == Helligkeit.HELL || it == Helligkeit.DUNKEL }
-        ?: if (dunkelNachSystemGilt(frueherNachSystem)) Helligkeit.SYSTEM else Helligkeit.HELL
+fun brightnessApplies(gespeichert: String?, earlierAfterSystem: Boolean?): String =
+    gespeichert?.takeIf { it == Helligkeit.SYSTEM || it == Helligkeit.LIGHT || it == Helligkeit.DARK }
+        ?: if (darkAfterSystemApplies(earlierAfterSystem)) Helligkeit.SYSTEM else Helligkeit.LIGHT

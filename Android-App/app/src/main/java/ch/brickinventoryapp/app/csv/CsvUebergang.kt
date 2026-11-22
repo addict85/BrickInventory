@@ -1,50 +1,50 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.domain.Laufstatus
 /**
- * Was folgt aus einer CSV-Statusmeldung? Getrennt von CsvImportKoordinator, der
- * handelt: Die Entscheidung braucht weder Dienst noch Zeit und lässt sich so als
- * Tabelle prüfen (CsvStatusReloadTest).
+ * What follows from a CSV status message? Separate from CsvImportCoordinator, which
+ * acts: the decision needs neither service nor time and can thus be checked as a
+ * table (CsvStatusReloadTest).
  */
-internal enum class CsvFolge {
-    /** Ein Import hat gerade begonnen — der Vordergrunddienst muss anlaufen. */
+internal enum class CsvSequence {
+    /** An import has just begun — the foreground service must start. */
     DIENST_STARTEN,
 
-    /** Ein laufender Import ist fertig geworden — Daten einmal neu laden. */
+    /** A running import has finished — reload data once. */
     NACHLADEN,
 
-    /** Der Import ist gescheitert — Banner kurz zeigen, dann aufräumen. */
+    /** The import has failed — show the banner briefly, then clean up. */
     FEHLER_AUFRAEUMEN,
 
-    /** Nichts zu tun: kein Übergang, nur eine Wiederholung des Zustands. */
+    /** Nothing to do: no transition, only a repetition of the state. */
     NICHTS
 }
 
 /**
- * Läuft laut dieser Meldung gerade ein Import?
+ * Is an import running according to this message?
  *
- * `pending` zählt dazu: Der Auftrag ist angenommen, der Nutzer soll das Banner
- * schon sehen und der Dienst schon laufen — sonst wirkt die App zwischen
- * Annahme und erster Zeile eingefroren.
+ * `pending` counts too: the job is accepted, the user should already see the banner
+ * and the service should already run — otherwise the app seems frozen between
+ * acceptance and the first line.
  */
-internal fun importLaeuft(status: Laufstatus?): Boolean = status?.laeuft == true
+internal fun importRunning(status: Laufstatus?): Boolean = status?.laeuft == true
 
 /**
- * Die eigentliche Regel: Nachgeladen wird beim Übergang von „läuft“ zu „fertig“, nicht in
- * jedem Zustand „fertig“.
+ * The actual rule: reloading happens on the transition from “running” to “finished”, not in
+ * every “finished” state.
  */
-internal fun csvFolge(warVorherAktiv: Boolean, status: Laufstatus?): CsvFolge = when {
-    // Läuft: Dienst nur beim Anlaufen starten, nicht bei jeder Fortschrittszeile.
-    importLaeuft(status) -> if (warVorherAktiv) CsvFolge.NICHTS else CsvFolge.DIENST_STARTEN
+internal fun csvSequence(warBeforeActive: Boolean, status: Laufstatus?): CsvSequence = when {
+    // Running: start the service only on startup, not on every progress line.
+    importRunning(status) -> if (warBeforeActive) CsvSequence.NICHTS else CsvSequence.DIENST_STARTEN
 
-    // Ein Fehler wird gemeldet, solange er ansteht — hier ist das Aufräumen
-    // gewollt idempotent und nicht an den Übergang gebunden.
-    status == Laufstatus.FEHLER -> CsvFolge.FEHLER_AUFRAEUMEN
+    // An error is reported as long as it is pending — here the cleanup is
+    // intentionally idempotent and not bound to the transition.
+    status == Laufstatus.FEHLER -> CsvSequence.FEHLER_AUFRAEUMEN
 
-    status == null -> CsvFolge.NICHTS
+    status == null -> CsvSequence.NICHTS
 
-    // Fertig — aber nur nachladen, wenn vorher wirklich etwas lief.
-    warVorherAktiv -> CsvFolge.NACHLADEN
+    // Finished — but only reload if something really ran before.
+    warBeforeActive -> CsvSequence.NACHLADEN
 
-    else -> CsvFolge.NICHTS
+    else -> CsvSequence.NICHTS
 }

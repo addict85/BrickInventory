@@ -1,17 +1,17 @@
 Gegenprobe: Segmentbeschriftung wieder mit der vollen Innenbreite
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.components.SegmentWahlTest
-Rot: das Haekchen neben der langen Beschriftung bleibt im Segment
+Test: ch.brickinventoryapp.ui.components.SegmentChoiceTest
+Rot: the check mark next to the long label stays in the segment
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
 index ce8b44b..2240e26 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
-@@ -110,7 +110,7 @@ private fun SegmentBeschriftung(text: String) {
+@@ -110,7 +110,7 @@ private fun SegmentLabel(text: String) {
          Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis,
              textAlign = androidx.compose.ui.text.style.TextAlign.Center)
      }) { teile, c ->
--        val breite = if (c.hasBoundedWidth) (c.maxWidth - abzug).coerceAtLeast(0) else c.maxWidth
+-        val breite = if (c.hasBoundedWidth) (c.maxWidth - deduction).coerceAtLeast(0) else c.maxWidth
 +        val breite = c.maxWidth
          val zeilen = teile.single().measure(c.copy(minWidth = 0, maxWidth = breite))
          layout(zeilen.width, zeilen.height) { zeilen.place(0, 0) }

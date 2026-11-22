@@ -1,17 +1,17 @@
 Gegenprobe: Ein Helfer, der Quelltext liest, zählt für die Funktionen nicht mehr
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: ein lesender Helfer zaehlt
+Rot: a reading helper counts for every function that uses it
 
 diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
 --- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
 +++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
 @@ -54,7 +54,7 @@ class QuelltextRatscheTest {
-         val c = Quellen.ohneKommentare(roh)
-         val helfer = Regex("""(?:val|fun)\s+(\w+)[^\n]*""").findAll(c).filter { m ->
+         val c = Quellen.withoutComments(roh)
+         val helper = Regex("""(?:val|fun)\s+(\w+)[^\n]*""").findAll(c).filter { m ->
              val stueck = c.substring(m.range.first, minOf(c.length, m.range.first + 400)).substringBefore("\n\n")
--            liestQuelle.containsMatchIn(m.value) || (m.value.startsWith("fun") && liestQuelle.containsMatchIn(stueck))
+-            readsSource.containsMatchIn(m.value) || (m.value.startsWith("fun") && readsSource.containsMatchIn(stueck))
 +            false
          }.map { it.groupValues[1] }.toSet()
          val tests = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n") }
-         val lesend = tests.count { t -> liestQuelle.containsMatchIn(t) || helfer.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(t) } }
+         val lesend = tests.count { t -> readsSource.containsMatchIn(t) || helper.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(t) } }

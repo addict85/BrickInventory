@@ -1,18 +1,18 @@
 Gegenprobe: Ein gesperrter Keystore gilt in einer Ablage wieder als unlesbarer Geheimtext
-Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.AblageEntsperrtTest
-Rot: gesperrt entsteht kein neuer Schluessel
+Modul: core-security
+Test: ch.brickinventoryapp.security.StoreUnlockedTest
+Rot: locked no new key is created, the store reports locked instead of unreadable
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 @@ -131,8 +131,8 @@
      // unlesbarer Geheimtext; als null gelesen, löschten Aufrufer die Datei.
      private fun oeffne(daten: ByteArray, kennung: ByteArray, bindung: String?): ByteArray? {
-         if (daten.size <= kennung.size + IV_LAENGE || !daten.copyOfRange(0, kennung.size).contentEquals(kennung)) return null
+         if (daten.size <= kennung.size + IV_LENGTH || !daten.copyOfRange(0, kennung.size).contentEquals(kennung)) return null
 -        val k = SecretKeySpec(schluessel(), "AES")
          return runCatching {
 +            val k = SecretKeySpec(schluessel(), "AES")
-             val c = Cipher.getInstance(VERFAHREN)
+             val c = Cipher.getInstance(PROCEDURE)
              c.init(Cipher.DECRYPT_MODE, k,
-                 GCMParameterSpec(TAG_BITS, daten, kennung.size, IV_LAENGE))
+                 GCMParameterSpec(TAG_BITS, daten, kennung.size, IV_LENGTH))

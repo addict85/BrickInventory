@@ -2,9 +2,9 @@ import com.android.build.api.artifact.SingleArtifact
 import java.io.File
 
 plugins {
-    // Built-in Kotlin: Seit AGP 9 kompiliert com.android.application Kotlin
-    // selbst — org.jetbrains.kotlin.android darf nicht mehr angewendet werden
-    // (führt sonst zu "extension 'kotlin' already registered").
+    // Built-in Kotlin: since AGP 9 com.android.application compiles Kotlin
+    // itself — org.jetbrains.kotlin.android must no longer be applied
+    // (otherwise leads to "extension 'kotlin' already registered").
     alias(libs.plugins.brickinventory.android.application)
     alias(libs.plugins.brickinventory.android.unittests)
     alias(libs.plugins.brickinventory.android.compose)
@@ -13,17 +13,17 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
-// Bildschirmfotos neben die Tests, damit sie als Referenz eingecheckt werden
-// können. Die CI vergleicht gegen sie, sobald welche eingecheckt sind, und
-// nimmt sonst auf (android.yml, Schritt „Bildschirmfotos vergleichen oder aufnehmen?“).
+// Screenshots next to the tests so that they can be checked in as reference.
+// CI compares against them as soon as some are checked in, and
+// records otherwise (android.yml, step „Bildschirmfotos vergleichen oder aufnehmen?“).
 roborazzi {
     outputDir.set(file("src/test/bildschirmfotos"))
 }
 
-// Version aus Git, damit derselbe Stand dieselbe Version ergibt: versionName aus
-// `git describe` (Tag v*), versionCode = Basis + Anzahl Commits. Die Basis liegt über
-// den früheren, aus der Uhrzeit gebildeten Codes, sonst wäre ein Update ein Downgrade.
-// Die CI klont dafür die volle Historie (android.yml: fetch-depth: 0).
+// Version from Git so that the same state yields the same version: versionName from
+// `git describe` (tag v*), versionCode = base + number of commits. The base lies above
+// the earlier codes formed from the clock, otherwise an update would be a downgrade.
+// CI clones the full history for that (android.yml: fetch-depth: 0).
 val VERSION_CODE_BASE = 200_000_000
 fun git(vararg args: String): String? = runCatching {
     val lauf = providers.exec {
@@ -32,15 +32,15 @@ fun git(vararg args: String): String? = runCatching {
     }
     if (lauf.result.get().exitValue == 0) lauf.standardOutput.asText.get().trim().ifEmpty { null } else null
 }.getOrNull()
-val commitAnzahl: Int? = git("rev-list", "--count", "HEAD")?.toIntOrNull()
+val commitCount: Int? = git("rev-list", "--count", "HEAD")?.toIntOrNull()
 val generatedVersionName: String =
     (project.findProperty("buildVersionName") as String?)
         ?: git("describe", "--tags", "--match", "v[0-9]*")?.removePrefix("v")
-        ?: commitAnzahl?.let { n -> "$n-g${git("rev-parse", "--short", "HEAD") ?: "0"}" }
+        ?: commitCount?.let { n -> "$n-g${git("rev-parse", "--short", "HEAD") ?: "0"}" }
         ?: "0.0.0-ohne-git"
 val generatedVersionCode: Int =
     (project.findProperty("buildVersionCode") as String?)?.toIntOrNull()
-        ?: (VERSION_CODE_BASE + (commitAnzahl ?: 0))
+        ?: (VERSION_CODE_BASE + (commitCount ?: 0))
 
 ksp {
     arg("dagger.fastInit", "enabled")
@@ -48,14 +48,14 @@ ksp {
 }
 
 android {
-    // Robolectric liest Ressourcen, Schriften und Manifest der App.
+    // Robolectric reads the app's resources, fonts and manifest.
     testOptions.unitTests.isIncludeAndroidResources = true
-    // ModulgrenzenTest führt dieselbe Kantenregel aus wie die Aufgabe modulkantenPruefen.
+    // ModulgrenzenTest runs the same edge rule as the task modulkantenPruefen.
     sourceSets.getByName("test").kotlin.directories.add("../build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten")
 
     namespace  = "ch.brickinventoryapp"
 
-    // compileSdk, minSdk und targetSdk setzt brickinventory.android.application.
+    // compileSdk, minSdk and targetSdk are set by brickinventory.android.application.
     defaultConfig {
         applicationId = "ch.brickinventoryapp"
         versionCode   = generatedVersionCode
@@ -63,35 +63,35 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // Gerätetests auf einem Emulator, den Gradle selbst anlegt (android.yml, Job
-    // geraetetests): ATD-Abbild ohne Play, nur die Debug-Fassung, nichts signiert.
+    // Device tests on an emulator that Gradle creates itself (android.yml, job
+    // geraetetests): ATD image without Play, only the debug variant, nothing signed.
     testOptions.managedDevices.allDevices.create("pixel6Api34", com.android.build.api.dsl.ManagedVirtualDevice::class.java) {
         device = "Pixel 6"
         apiLevel = 34
         systemImageSource = "aosp-atd"
     }
 
-    // Signatur aus Umgebungsvariablen oder ~/.gradle/gradle.properties, nie aus einer
-    // Datei im Projekt: Die läge beim nächsten `git add -A` im Repository. Ohne Werte
-    // entsteht ein unsigniertes APK, damit ein lokaler Bau nicht daran scheitert. Eine
-    // Vorgabe gibt es nicht; ein fest eingetragenes Passwort sähe nur geschützt aus.
-    fun signaturWert(umgebung: String, property: String): String? =
-        System.getenv(umgebung) ?: providers.gradleProperty(property).orNull
+    // Signature from environment variables or ~/.gradle/gradle.properties, never from a
+    // file in the project: it would end up in the repository on the next `git add -A`. Without values
+    // an unsigned APK is built so that a local build does not fail on it. There is
+    // no default; a hard-coded password would only look protected.
+    fun signatureValue(environment: String, property: String): String? =
+        System.getenv(environment) ?: providers.gradleProperty(property).orNull
 
-    val schluesselDatei = signaturWert("BRICK_KEYSTORE_PFAD", "brickKeystorePfad")
+    val keyFile = signatureValue("BRICK_KEYSTORE_PFAD", "brickKeystorePfad")
         ?.let { file(it) }
         ?.takeIf { it.exists() }
 
     signingConfigs {
-        if (schluesselDatei != null) {
+        if (keyFile != null) {
             create("release") {
-                storeFile     = schluesselDatei
-                storePassword = signaturWert("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
-                keyAlias      = signaturWert("BRICK_KEY_ALIAS", "brickKeyAlias")
-                keyPassword   = signaturWert("BRICK_KEY_PASSWORT", "brickKeyPasswort")
-                // Wie die CI (apksigner im Job signieren): kein v1 — ab minSdk 30
-                // prüft kein Gerät mehr die JAR-Signatur —, v3 für eine spätere
-                // Schlüsselrotation.
+                storeFile     = keyFile
+                storePassword = signatureValue("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
+                keyAlias      = signatureValue("BRICK_KEY_ALIAS", "brickKeyAlias")
+                keyPassword   = signatureValue("BRICK_KEY_PASSWORT", "brickKeyPasswort")
+                // Like CI (apksigner in job signieren): no v1 — from minSdk 30
+                // no device checks the JAR signature any more —, v3 for a later
+                // key rotation.
                 enableV1Signing = false
                 enableV2Signing = true
                 enableV3Signing = true
@@ -101,12 +101,12 @@ android {
 
     buildTypes {
         release {
-            // findByName statt getByName: Ohne Schlüsselspeicher gibt es die
-            // Konfiguration nicht, und `signingConfig = null` heisst
-            // "unsigniert" — kein Buildfehler.
+            // findByName instead of getByName: without a keystore the configuration
+            // does not exist, and `signingConfig = null` means
+            // "unsigned" — no build error.
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
-            // Entfernt ungenutzte Ressourcen (Icons, Layouts) aus dem APK
+            // Removes unused resources (icons, layouts) from the APK
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -116,33 +116,33 @@ android {
     }
 
     lint {
-        // Lint läuft auf Release-Builds und bricht bei einem Fehler ab: Ein
-        // Befund der Stufe Error ist kein Bericht, sondern ein Mangel. Warnungen
-        // zählt tools/lint-zaehlen.py gegen eine Obergrenze. Keine Baseline —
-        // was gemeldet wird, wird behoben.
+        // Lint runs on release builds and aborts on an error: a
+        // finding of level Error is not a report but a defect. Warnings
+        // are counted by tools/lint-count.py against an upper limit. No baseline —
+        // what is reported gets fixed.
         checkReleaseBuilds = true
         abortOnError = true
         warningsAsErrors = false
-        // Ein Lauf hier prüft alle Module mit, als wären sie eins: Ressourcen aus
-        // core-ressourcen gelten als benutzt, wenn ein Bereich sie liest, und der
-        // Bericht bleibt die eine Datei, die tools/lint-zaehlen.py zählt.
+        // A run here checks all modules as if they were one: resources from
+        // core-resources count as used when an area reads them, and the
+        // report stays the one file that tools/lint-count.py counts.
         checkDependencies = true
     }
 
     packaging {
         jniLibs {
-            // Unkomprimiert richtet AGP die .so im Archiv auf 16 KB aus; Legacy Packaging
-            // verschöbe das Problem nur ins Dateisystem des Geräts.
+            // Uncompressed, AGP aligns the .so in the archive to 16 KB; legacy packaging
+            // would only move the problem into the device's file system.
             useLegacyPackaging = false
         }
-        // Nur libandroidx.graphics.path.so (über Compose) lässt sich nicht strippen. Weitere
-        // aufnehmen, falls der Bau „Unable to strip the following libraries…“ meldet.
+        // Only libandroidx.graphics.path.so (via Compose) cannot be stripped. Add more
+        // if the build reports „Unable to strip the following libraries…“.
         jniLibs.keepDebugSymbols += setOf(
             "**/libandroidx.graphics.path.so"
         )
     }
-    // Die Sprache wechselt in der App (LanguageManager); im App-Bundle müssen darum
-    // alle Sprachen im Basis-APK liegen, sonst fehlten die Texte der anderen.
+    // The language switches inside the app (LanguageManager); in the app bundle all
+    // languages must therefore be in the base APK, otherwise the others' texts would be missing.
     bundle {
         language {
             enableSplit = false
@@ -150,14 +150,14 @@ android {
     }
 
     buildFeatures {
-        // BuildConfig wird fuer BuildConfig.DEBUG benoetigt (Logging nur im Debug-Build)
+        // BuildConfig is needed for BuildConfig.DEBUG (logging only in the debug build)
         buildConfig = true
     }
 }
 
-// DataStore auf die Fassung des Katalogs festnageln: Eine transitive Anhebung ergäbe
-// ein anderes APK als das geprüfte. Die 16-KB-Ausrichtung misst tools/apk-ausrichtung.py
-// am gebauten APK.
+// Pin DataStore to the catalog's version: a transitive bump would yield
+// an APK different from the checked one. The 16 KB alignment is measured by tools/apk-alignment.py
+// on the built APK.
 val datastore = libs.versions.datastore.get()
 configurations.configureEach {
     resolutionStrategy {
@@ -168,9 +168,9 @@ configurations.configureEach {
     }
 }
 
-// Debug-Builds mit fester Version: Aus Git wären die Manifest-Aufgaben nach jedem Commit
-// veraltet. versionCode 1 liegt unter jeder Release-Fassung, damit ein Debug-Build nie
-// als Update über eine installierte Release-Fassung geht.
+// Debug builds with a fixed version: from Git the manifest tasks would be stale after every
+// commit. versionCode 1 lies below every release version so that a debug build never
+// goes as an update over an installed release version.
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         variant.outputs.forEach { output ->
@@ -180,20 +180,20 @@ androidComponents {
     }
 }
 
-// Das Release-APK zusätzlich als BrickInventory.apk daneben; das Original bleibt, weil
-// output-metadata.json darauf zeigt. Nur Gradle vergibt den Namen, der Workflow prüft ihn.
+// The release APK additionally as BrickInventory.apk next to it; the original stays because
+// output-metadata.json points to it. Only Gradle assigns the name, the workflow checks it.
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
         val apkDir = variant.artifacts.get(SingleArtifact.APK)
         val renameTask = tasks.register("copyReleaseApkAsBrickInventory") {
-            // Ein- und Ausgabe benannt: Ohne Änderung bleibt die Aufgabe UP-TO-DATE.
+            // Input and output named: without a change the task stays UP-TO-DATE.
             inputs.files(apkDir.map { it.asFileTree.matching { exclude("BrickInventory.apk") } })
             outputs.file(apkDir.map { it.file("BrickInventory.apk") })
             doLast {
                 val dir = apkDir.get().asFile
                 val target = File(dir, "BrickInventory.apk")
-                // Signiert vor unsigniert: Liegen nach einem Schlüsselwechsel beide da,
-                // gewinnt die installierbare, nicht die neueste.
+                // Signed before unsigned: if both lie there after a key change,
+                // the installable one wins, not the newest.
                 val built = File(dir, "app-release.apk").takeIf { it.isFile }
                     ?: File(dir, "app-release-unsigned.apk").takeIf { it.isFile }
                     ?: dir.listFiles { f -> f.name.endsWith(".apk") && f.name != target.name }
@@ -201,58 +201,58 @@ androidComponents {
                 if (built != null) built.copyTo(target, overwrite = true)
             }
         }
-        // Nach dem Packen der Release-APK ausführen; matching statt afterEvaluate,
-        // damit die Aufgabe erst angelegt wird, wenn sie gebraucht wird.
-        val packen = "package${variant.name.replaceFirstChar { it.uppercase() }}"
-        tasks.matching { it.name == packen }.configureEach { finalizedBy(renameTask) }
+        // Run after packaging the release APK; matching instead of afterEvaluate
+        // so that the task is only created when it is needed.
+        val pack = "package${variant.name.replaceFirstChar { it.uppercase() }}"
+        tasks.matching { it.name == pack }.configureEach { finalizedBy(renameTask) }
     }
 }
 
 dependencies {
-    // Die App setzt zusammen: Navigation, Hilt-Einstieg, Widget. Alles andere
-    // liegt in den Modulen darunter.
+    // The app assembles: navigation, Hilt entry point, widget. Everything else
+    // lives in the modules below.
     implementation(project(":core-model"))
-    implementation(project(":core-ressourcen"))
+    implementation(project(":core-resources"))
     implementation(project(":core-data"))
-    // Protokoll und NetworkPolicy.
-    implementation(project(":core-netz"))
-    implementation(project(":core-sicherheit"))
+    // Logging and NetworkPolicy.
+    implementation(project(":core-network"))
+    implementation(project(":core-security"))
     implementation(project(":core-update"))
-    implementation(project(":core-dienste"))
+    implementation(project(":core-services"))
     implementation(project(":core-ui"))
-    implementation(project(":core-ui-bestand"))
-    implementation(project(":core-zustand"))
+    implementation(project(":core-ui-inventory"))
+    implementation(project(":core-state"))
     implementation(project(":core-navigation"))
-    implementation(project(":core-sitzung"))
-    implementation(project(":feature-anmeldung"))
-    implementation(project(":feature-katalog"))
-    implementation(project(":feature-sammlung"))
-    implementation(project(":feature-teile"))
-    implementation(project(":feature-finanzen"))
-    implementation(project(":feature-konto"))
-    implementation(project(":feature-verwaltung"))
+    implementation(project(":core-session"))
+    implementation(project(":feature-login"))
+    implementation(project(":feature-catalog"))
+    implementation(project(":feature-collection"))
+    implementation(project(":feature-parts"))
+    implementation(project(":feature-finances"))
+    implementation(project(":feature-account"))
+    implementation(project(":feature-management"))
     testImplementation(project(":core-testing"))
-    // Die Testserver antworten im Wire-Format.
-    testImplementation(project(":core-vertrag"))
+    // The test servers respond in wire format.
+    testImplementation(project(":core-contract"))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
-    // GeraeteSchutzTest baut die TokenAblage auf einem eigenen DataStore.
+    // DevicesProtectionTest builds the TokenAblage on its own DataStore.
     testImplementation(libs.androidx.datastore)
     implementation(libs.androidx.core.ktx)
-    // Startbild statt weissem Fenster beim Kaltstart (MainActivity.installSplashScreen).
+    // Splash screen instead of a white window on cold start (MainActivity.installSplashScreen).
     implementation(libs.androidx.core.splashscreen)
-    // junit, org.json, coroutines-test und mockwebserver: brickinventory.android.unittests;
-    // Retrofit samt Konverter kommt mit core-testing.
-    // Compose-BOM und die Gruppe compose (ui, material3, hilt-navigation-compose,
+    // junit, org.json, coroutines-test and mockwebserver: brickinventory.android.unittests;
+    // Retrofit including converters comes with core-testing.
+    // Compose BOM and the compose group (ui, material3, hilt-navigation-compose,
     // coil-compose …): brickinventory.android.compose; Hilt: …android.hilt.
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
 
-    // Netz, DataStore, Kamera und ML Kit bringen core-data und die Features mit;
-    // hier steht nur, was app/src/main selbst importiert.
+    // Network, DataStore, camera and ML Kit come with core-data and the features;
+    // only what app/src/main imports itself is listed here.
     implementation(libs.kotlinx.serialization.json)
-    // WorkManager: der stuendliche Abruf der ausgeloesten Preisalarme.
-    // Keine native Bibliothek — die 16-KB-Ausrichtung bleibt unberuehrt.
+    // WorkManager: the hourly fetch of the triggered price alerts.
+    // No native library — the 16 KB alignment stays untouched.
     implementation(libs.androidx.work)
     // HiltWorkerFactory in BrickInventoryApp, @HiltWorker beim Widget-Arbeiter.
     implementation(libs.androidx.hilt.work)
@@ -261,14 +261,14 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.kotlinx.coroutines.android)
 
-    // kostet er nur Grösse und eine Initialisierung beim Start.
+    // it only costs size and an initialization at start.
 
-    // graphics-path käme über Compose in einer 1.0.x-Fassung mit 4-KB-ausgerichteter .so.
-    // Direkt gehoben statt über die BOM, die die ganze Oberfläche verschöbe.
+    // graphics-path would come via Compose in a 1.0.x version with a 4 KB aligned .so.
+    // Raised directly instead of via the BOM, which would shift the whole UI.
     implementation(libs.androidx.graphics.path)
 
-    // Coil 3 lädt ohne dieses Artefakt nicht aus dem Netz, und zwar ohne Fehlermeldung:
-    // Die Bildflächen blieben leer.
+    // Without this artifact Coil 3 does not load from the network, and without an error message:
+    // the image areas would stay empty.
     implementation(libs.coil.network.okhttp)
 
     debugImplementation(libs.androidx.ui.tooling)
@@ -277,8 +277,8 @@ dependencies {
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
 
-    // Oberflächentests auf der JVM: Robolectric, Compose-Testregel samt
-    // Barrierefreiheitsprüfung (ATF) und Roborazzi für die Bildschirmfotos.
+    // UI tests on the JVM: Robolectric, Compose test rule including
+    // accessibility checks (ATF) and Roborazzi for the screenshots.
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

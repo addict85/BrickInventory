@@ -1,5 +1,5 @@
 /**
- * Frontend-Tests für public/js/mobile.js in jsdom.
+ * Frontend tests for public/js/mobile.js in jsdom.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,14 +9,14 @@ const { JSDOM } = require('jsdom');
 
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'mobile.js'), 'utf8');
 
-/** Frisches Dokument mit geladenem mobile.js. */
+/** Fresh document with mobile.js loaded. */
 function boot(bodyHtml) {
   const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml || ''}</body></html>`, { runScripts: 'outside-only' });
   dom.window.eval(SRC);
   return dom;
 }
 
-test('data-label kommt aus der Kopfzeile', () => {
+test('data-label comes from the header row', () => {
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>Nr.</th><th>Name</th><th>Preis</th></tr></thead>
@@ -29,9 +29,9 @@ test('data-label kommt aus der Kopfzeile', () => {
   );
 });
 
-test('bei mehrzeiligem Kopf zählt die unterste Zeile', () => {
-  // Kommt in den Finanztabellen vor: eine Gruppenüberschrift über den
-  // eigentlichen Spaltennamen.
+test('with a multi-row header the bottom row counts', () => {
+  // Occurs in the finance tables: a group heading above the
+  // actual column names.
   const dom = boot(`
     <table class="dt">
       <thead>
@@ -47,7 +47,7 @@ test('bei mehrzeiligem Kopf zählt die unterste Zeile', () => {
   );
 });
 
-test('colspan verschiebt die Zuordnung nicht', () => {
+test('colspan does not shift the assignment', () => {
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>A</th><th>B</th><th>C</th></tr></thead>
@@ -62,9 +62,9 @@ test('colspan verschiebt die Zuordnung nicht', () => {
   );
 });
 
-test('leere Spaltenköpfe ergeben ein leeres Label', () => {
-  // Aktionsspalten (Löschen-Button) haben kein <th>-Text; mobile.css blendet
-  // die Beschriftung dann per content:none aus.
+test('empty column headers yield an empty label', () => {
+  // Action columns (delete button) have no <th> text; mobile.css then hides
+  // the label via content:none.
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>Name</th><th></th></tr></thead>
@@ -74,16 +74,16 @@ test('leere Spaltenköpfe ergeben ein leeres Label', () => {
   assert.equal(tds[1].getAttribute('data-label'), '');
 });
 
-test('nachträglich eingefügte Tabellen werden ebenfalls beschriftet', async () => {
-  // Der eigentliche Zweck des Observers: Die Listen werden per innerHTML
-  // gebaut, lange nach dem Laden des Skripts.
+test('tables inserted later are labeled as well', async () => {
+  // The actual purpose of the observer: the lists are built via innerHTML,
+  // long after the script was loaded.
   const dom = boot('<div id="host"></div>');
   dom.window.document.getElementById('host').innerHTML = `
     <table class="dt">
       <thead><tr><th>Teil</th><th>Menge</th></tr></thead>
       <tbody><tr><td>3001</td><td>4</td></tr></tbody>
     </table>`;
-  await new Promise(r => setTimeout(r, 20)); // MutationObserver ist asynchron
+  await new Promise(r => setTimeout(r, 20)); // MutationObserver is asynchronous
   const tds = [...dom.window.document.querySelectorAll('tbody td')];
   assert.deepEqual(
     tds.map(td => td.getAttribute('data-label')),
@@ -91,7 +91,7 @@ test('nachträglich eingefügte Tabellen werden ebenfalls beschriftet', async ()
   );
 });
 
-test('vorhandene data-label werden nicht überschrieben', () => {
+test('existing data-label are not overwritten', () => {
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>Kopf</th></tr></thead>
@@ -100,7 +100,7 @@ test('vorhandene data-label werden nicht überschrieben', () => {
   assert.equal(dom.window.document.querySelector('td').getAttribute('data-label'), 'eigen');
 });
 
-test('Tabellen ohne .dt bleiben unangetastet', () => {
+test('tables without .dt stay untouched', () => {
   const dom = boot(`
     <table>
       <thead><tr><th>Kopf</th></tr></thead>
@@ -109,7 +109,7 @@ test('Tabellen ohne .dt bleiben unangetastet', () => {
   assert.equal(dom.window.document.querySelector('td').hasAttribute('data-label'), false);
 });
 
-test('eine Tabelle wird nur einmal verarbeitet', () => {
+test('a table is processed only once', () => {
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>Kopf</th></tr></thead>
@@ -123,26 +123,26 @@ test('eine Tabelle wird nur einmal verarbeitet', () => {
   );
 });
 
-test('mobile.css deckt beide Designs ab und steht ganz in Media Queries', () => {
+test('mobile.css covers both themes and lives entirely in media queries', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8');
-  // Alles ausserhalb einer @media-Regel würde den Desktop verändern.
+  // Everything outside of an @media rule would change the desktop.
   const outside = css
-    .replace(/\/\*[\s\S]*?\*\//g, '') // Kommentare weg
-    .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '') // Media-Blöcke weg
-    // Container-Abfragen greifen nur, wo ein Container besteht — und den
-    // legt mobile.css nur innerhalb von @media an (geprüft darunter).
+    .replace(/\/\*[\s\S]*?\*\//g, '') // comments gone
+    .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '') // media blocks gone
+    // Container queries only apply where a container exists — and
+    // mobile.css only creates that inside of @media (checked below).
     .replace(/@container[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')
     .trim();
   assert.equal(outside, '', `Regeln ausserhalb von @media würden den Desktop treffen:\n${outside.slice(0, 300)}`);
 
-  const ohneMedia = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
-  assert.doesNotMatch(ohneMedia, /container\s*:/, 'Ein Container ausserhalb von @media verändert auch den Desktop');
+  const withoutMedia = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+  assert.doesNotMatch(withoutMedia, /container\s*:/, 'Ein Container ausserhalb von @media verändert auch den Desktop');
   assert.match(css, /\[data-theme="brick"\]/, 'Das Stein-Design braucht eigene Regeln für Noppen und Innenabstände');
   assert.match(css, /#login-screen/, 'Die Login-Seite muss mit abgedeckt sein');
   assert.match(css, /font-size:\s*16px/, 'Unter 16px zoomt iOS beim Fokussieren in Eingabefelder hinein');
 });
 
-test('index.html lädt mobile.css nach beiden Designs', () => {
+test('index.html loads mobile.css after both themes', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const iTheme = html.indexOf('themes/brick.css');
   const iMobile = html.indexOf('mobile.css');
@@ -152,11 +152,11 @@ test('index.html lädt mobile.css nach beiden Designs', () => {
     iMobile > iTheme && iMobile > iBase,
     'mobile.css muss NACH styles.css und dem Theme kommen, sonst gewinnt das Theme',
   );
-  // mobile.js steht seit der Bündelung nicht mehr als eigenes <script>-Tag
-  // in index.html, sondern in js/app.bundle.js. Geprüft wird deshalb, dass es
-  // Teil des Bündels ist — inhaltlich dieselbe Zusicherung.
-  // Seit der Umstellung auf ES-Module gibt es keine Dateiliste mehr, sondern
-  // einen Modulgraphen: js/main.js importiert die Teile, esbuild bündelt sie.
+  // Since the bundling, mobile.js no longer stands as its own <script> tag
+  // in index.html but in js/app.bundle.js. Hence what is checked is that it
+  // is part of the bundle — in substance the same assertion.
+  // Since the switch to ES modules there is no file list any more but
+  // a module graph: js/main.js imports the parts, esbuild bundles them.
   const entry = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'main.js'), 'utf8');
   assert.match(
     entry,

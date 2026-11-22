@@ -3,10 +3,10 @@ package ch.brickinventoryapp.data.util
 import java.net.URLEncoder
 
 /**
- * URL-Bau für externe BrickLink-Links — pure JVM-Logik (kein android.net.Uri),
- * damit sie in JUnit-Unit-Tests prüfbar ist.
- * Den Katalog-Link löst inzwischen der Server auf (`bricklink.url`), weil nur er weiss, ob eine
- * Nummer ein Set, Gear oder Buch ist; setForSale() ist der Rückfall für ältere Server.
+ * URL building for external BrickLink links — pure JVM logic (no android.net.Uri),
+ * so that it is checkable in JUnit unit tests.
+ * The catalog link is meanwhile resolved by the server (`bricklink.url`), because only it knows whether a
+ * number is a set, gear or book; setForSale() is the fallback for older servers.
  */
 object BrickLinkUrls {
 
@@ -18,7 +18,7 @@ object BrickLinkUrls {
         else      -> "S"
     }
 
-    /** Katalogseite eines Artikels mit geöffnetem "For Sale"-Tab (Kaufen). */
+    /** Catalog page of an item with the "For Sale" tab opened (buy). */
     fun forSale(number: String, type: String = "SET"): String {
         val p = paramFor(type)
         val encoded = URLEncoder.encode(number, "UTF-8")
@@ -26,18 +26,18 @@ object BrickLinkUrls {
     }
 
     /**
-     * Fallback für Server ohne aufgelöstes bricklink-Feld: nimmt an, dass die
-     * Rebrickable-Nummer auch auf BrickLink ein Set mit gleicher Nummer ist.
-     * Das stimmt für die grosse Mehrheit, aber eben nicht für Gear und Bücher.
+     * Fallback for servers without a resolved bricklink field: assumes that the
+     * Rebrickable number is also a set with the same number on BrickLink.
+     * That is true for the great majority, but not for gear and books.
      */
     fun setForSale(setNumber: String): String = forSale(setNumber, "SET")
 
     /**
-     * Rückfallebene, wenn der Artikel nicht eindeutig bestimmbar ist —
-     * insbesondere bei Sammelminifiguren, die BrickLink unter einer völlig
-     * anderen Nummer führt (Rebrickable 71021-1 → BrickLink col325). Diese
-     * Zuordnung existiert in keiner der beiden Datenquellen; die Suche ist
-     * das Beste, was sich anbieten lässt.
+     * Fallback level when the item cannot be determined unambiguously —
+     * especially for collectible minifigures, which BrickLink lists under a completely
+     * different number (Rebrickable 71021-1 → BrickLink col325). This
+     * mapping exists in neither of the two data sources; the search is
+     * the best that can be offered.
      */
     fun searchFor(number: String): String {
         val bare = number.replace(Regex("-\\d+$"), "")

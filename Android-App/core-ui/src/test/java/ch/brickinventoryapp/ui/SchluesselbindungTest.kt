@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.schritt.Schluesselnonce
-import ch.brickinventoryapp.model.schritt.Schrittaktion
-import ch.brickinventoryapp.model.schritt.Schrittantwort
-import ch.brickinventoryapp.model.schritt.Schrittbindung
-import ch.brickinventoryapp.ui.components.AttestierbarerSchluessel
+import ch.brickinventoryapp.model.step.Schluesselnonce
+import ch.brickinventoryapp.model.step.Schrittaktion
+import ch.brickinventoryapp.model.step.Schrittantwort
+import ch.brickinventoryapp.model.step.Schrittbindung
+import ch.brickinventoryapp.ui.components.AttestierbarerKey
 import ch.brickinventoryapp.ui.components.Schluesselbindung
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -15,15 +15,15 @@ import org.junit.Test
 import java.util.Base64
 
 /**
- * Die Bindung des Geräteschlüssels nach der Anmeldung, ohne Keystore: Der
- * Schlüssel entsteht mit der Nonce des Servers als Attestation-Challenge, die
- * ganze Kette geht zum Server. Ein Gerät ohne Attestation bekommt eine eigene
- * Meldung und schickt nichts; ohne Nonce (auch bei 404) entsteht kein Schlüssel.
+ * The device key's binding after sign-in, without a keystore: the
+ * key is created with the server's nonce as an attestation challenge, the
+ * whole chain goes to the server. A device without attestation gets its own
+ * notice and sends nothing; without a nonce (even on a 404) no key is created.
  *
- * Gegenproben (11.11.2026; lokal mit kotlinc gegen Attrappen, Robolectric entscheidet die CI):
- *   A  die Nonce nicht dekodiert, sondern als UTF-8-Bytes eingesetzt → rot „die Nonce
+ * Counter-checks (Nov 11, 2026; locally with kotlinc against stubs, Robolectric decides CI):
+ *   A  the nonce not decoded but inserted as UTF-8 bytes → red „die Nonce
  *      des Servers wird zur Challenge …“; gegenproben/schluesselbindung-nonce-als-text.patch
- *   B  eine Kette aus nur dem selbstsignierten Zertifikat doch gesendet → rot „ein Geraet
+ *   B  a chain of only the self-signed certificate sent anyway → red „ein Geraet
  *      ohne Attestation …“; gegenproben/schluesselbindung-ohne-attestation-gesendet.patch
  */
 class SchluesselbindungTest {
@@ -33,62 +33,62 @@ class SchluesselbindungTest {
     private val blatt = byteArrayOf(1, 1)
     private val zwischen = byteArrayOf(2, 2)
 
-    private class Server(var nonce: Schluesselnonce, var antwort: Schrittantwort = Schrittantwort.Frei) : Schrittbindung {
-        val ketten = mutableListOf<List<ByteArray>>()
-        override suspend fun challenge(aktion: Schrittaktion) = Schrittantwort.NichtGebunden
-        override suspend fun freigeben(challenge: String, signatur: ByteArray) = Schrittantwort.Frei
+    private class Server(var nonce: Schluesselnonce, var antwort: Schrittantwort = Schrittantwort.Free) : Schrittbindung {
+        val chains = mutableListOf<List<ByteArray>>()
+        override suspend fun challenge(aktion: Schrittaktion) = Schrittantwort.NotBound
+        override suspend fun freigeben(challenge: String, signatur: ByteArray) = Schrittantwort.Free
         override suspend fun schluesselNonce() = nonce
-        override suspend fun hinterlegeKette(kette: List<ByteArray>): Schrittantwort {
-            ketten += kette
+        override suspend fun depositChain(kette: List<ByteArray>): Schrittantwort {
+            chains += kette
             return antwort
         }
     }
 
-    private class Keystore(val kette: (ByteArray) -> List<ByteArray>) : AttestierbarerSchluessel {
+    private class Keystore(val kette: (ByteArray) -> List<ByteArray>) : AttestierbarerKey {
         val challenges = mutableListOf<ByteArray>()
-        override fun erzeugeMitAttestation(challenge: ByteArray): List<ByteArray> {
+        override fun createWithAttestation(challenge: ByteArray): List<ByteArray> {
             challenges += challenge
             return kette(challenge)
         }
     }
 
-    private fun binde(server: Server, keystore: Keystore) =
-        runBlocking { Schluesselbindung(server, keystore, Dispatchers.Unconfined).binde() }
+    private fun bind(server: Server, keystore: Keystore) =
+        runBlocking { Schluesselbindung(server, keystore, Dispatchers.Unconfined).bind() }
 
     @Test
-    fun `die Nonce des Servers wird zur Challenge, die ganze Kette geht zum Server`() {
+    fun `the server's nonce becomes the challenge, the whole chain goes to the server`() {
         val server = Server(Schluesselnonce.Nonce(nonce))
         val keystore = Keystore { listOf(blatt, zwischen) }
-        assertEquals(Schluesselbindung.Ausgang.Gebunden, binde(server, keystore))
+        assertEquals(Schluesselbindung.Ausgang.Gebunden, bind(server, keystore))
         assertArrayEquals(nonceBytes, keystore.challenges.single())
-        val gesendet = server.ketten.single()
+        val gesendet = server.chains.single()
         assertEquals(2, gesendet.size)
         assertArrayEquals(blatt, gesendet[0])
         assertArrayEquals(zwischen, gesendet[1])
     }
 
     @Test
-    fun `ein Geraet ohne Attestation bekommt eine Meldung und schickt nichts`() {
+    fun `a device without attestation gets a message and sends nothing`() {
         for (keystore in listOf(Keystore { error("Attestation nicht unterstützt") }, Keystore { listOf(blatt) })) {
             val server = Server(Schluesselnonce.Nonce(nonce))
-            assertEquals(Schluesselbindung.Ausgang.OhneAttestation, binde(server, keystore))
-            assertTrue(server.ketten.isEmpty())
+            assertEquals(Schluesselbindung.Ausgang.WithoutAttestation, bind(server, keystore))
+            assertTrue(server.chains.isEmpty())
         }
     }
 
     @Test
-    fun `eine Absage des Servers kommt mit ihrem Satz an`() {
-        val server = Server(Schluesselnonce.Nonce(nonce), Schrittantwort.Abgelehnt("nicht bestätigt"))
-        assertEquals(Schluesselbindung.Ausgang.Abgelehnt("nicht bestätigt"), binde(server, Keystore { listOf(blatt, zwischen) }))
+    fun `a refusal of the server arrives with its sentence`() {
+        val server = Server(Schluesselnonce.Nonce(nonce), Schrittantwort.Rejected("nicht bestätigt"))
+        assertEquals(Schluesselbindung.Ausgang.Rejected("nicht bestätigt"), bind(server, Keystore { listOf(blatt, zwischen) }))
     }
 
     @Test
-    fun `ohne Nonce entsteht kein Schluessel`() {
+    fun `without a nonce no key is created`() {
         val keystore = Keystore { listOf(blatt, zwischen) }
-        for (absage in listOf(Schluesselnonce.Abgelehnt("Bitte neu anmelden."), Schluesselnonce.Abgelehnt(null))) {
-            val server = Server(absage)
-            assertEquals(Schluesselbindung.Ausgang.Abgelehnt(absage.meldung), binde(server, keystore))
-            assertTrue(server.ketten.isEmpty())
+        for (rejection in listOf(Schluesselnonce.Rejected("Bitte neu anmelden."), Schluesselnonce.Rejected(null))) {
+            val server = Server(rejection)
+            assertEquals(Schluesselbindung.Ausgang.Rejected(rejection.meldung), bind(server, keystore))
+            assertTrue(server.chains.isEmpty())
         }
         assertTrue(keystore.challenges.isEmpty())
     }

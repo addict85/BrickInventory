@@ -1,28 +1,28 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.vertrag.Preisalarm
-import ch.brickinventoryapp.vertrag.PreisalarmRequest
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.contract.Preisalarm
+import ch.brickinventoryapp.contract.PreisalarmRequest
+import ch.brickinventoryapp.model.domain.Alarmrichtung
+import ch.brickinventoryapp.model.domain.Kontoauswahl
+import ch.brickinventoryapp.model.domain.Zustand
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Kontowahl und Alarmrichtung als Fachtypen: Was der Filter gespeichert hat, wird
- * zur Wahl und wieder zum Wert für `accounts=`; die Richtung liest und schreibt die
- * Wörter des Servers.
+ * Account choice and alarm direction as domain types: what the filter saved becomes
+ * the choice and again the value for `accounts=`; the direction reads and writes the
+ * server's words.
  *
- * Gegenproben (gegenproben/kontoauswahl-konto-falsch.patch, alarmrichtung-ueber-falsch.patch):
- *   Konto.anfrage mit Vorsatz „konto“ → rot „jede gespeicherte Wahl wird wieder derselbe Wert“
- *   UEBER mit der Kennung „über“ → rot „die Richtung liest und schreibt die Wörter des Servers“
+ * Counter-checks (gegenproben/kontoauswahl-konto-falsch.patch, alarmrichtung-ueber-falsch.patch):
+ *   Konto.anfrage with prefix „konto“ → red “every saved choice becomes the same value again”
+ *   UEBER with the identifier „über“ → red “the direction reads and writes the server's words”
  */
 class KontoauswahlTest {
 
     @Test
-    fun `jede gespeicherte Wahl wird wieder derselbe Wert`() {
+    fun `every saved choice becomes the same value again`() {
         assertEquals(Kontoauswahl.Eigene, Kontoauswahl.aus("own"))
         assertEquals(Kontoauswahl.Unterkonten, Kontoauswahl.aus("subs"))
         assertEquals(Kontoauswahl.Konto(7), Kontoauswahl.aus(" 7 "))
@@ -30,7 +30,7 @@ class KontoauswahlTest {
     }
 
     @Test
-    fun `alle, leer und Unlesbares filtern nicht`() {
+    fun `all, empty and unreadable do not filter`() {
         assertNull(Kontoauswahl.aus("all"))
         assertNull(Kontoauswahl.aus(""))
         assertNull(Kontoauswahl.aus(null))
@@ -38,13 +38,13 @@ class KontoauswahlTest {
     }
 
     @Test
-    fun `die Richtung liest und schreibt die Woerter des Servers`() {
+    fun `the direction reads and writes the server's words`() {
         val json = Json { ignoreUnknownKeys = true }
-        val alarm = json.decodeFromString(Preisalarm.serializer(), """{"set_number":"1-1","richtung":"ueber","schwelle":5.0}""")
-        assertEquals(Alarmrichtung.UEBER, alarm.richtung)
-        assertEquals("""{"richtung":"ueber","schwelle":5.0,"condition":"U"}""",
-            Json.encodeToString(PreisalarmRequest.serializer(), PreisalarmRequest(richtung = Alarmrichtung.UEBER, schwelle = 5.0, condition = Zustand.GEBRAUCHT)))
-        // Unbekanntes wie beim Server: „unter“, statt die Liste zu verwerfen.
-        assertEquals(Alarmrichtung.UNTER, json.decodeFromString(Preisalarm.serializer(), """{"richtung":"seitwaerts"}""").richtung)
+        val alarm = json.decodeFromString(Preisalarm.serializer(), """{"set_number":"1-1","direction":"ueber","threshold":5.0}""")
+        assertEquals(Alarmrichtung.UEBER, alarm.direction)
+        assertEquals("""{"direction":"ueber","threshold":5.0,"condition":"U"}""",
+            Json.encodeToString(PreisalarmRequest.serializer(), PreisalarmRequest(direction = Alarmrichtung.UEBER, threshold = 5.0, condition = Zustand.GEBRAUCHT)))
+        // Unknown as at the server: „unter“, instead of discarding the list.
+        assertEquals(Alarmrichtung.UNTER, json.decodeFromString(Preisalarm.serializer(), """{"direction":"seitwaerts"}""").direction)
     }
 }

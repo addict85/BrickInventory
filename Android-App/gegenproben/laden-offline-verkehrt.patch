@@ -1,7 +1,7 @@
 Gegenprobe: Laden.Daten.offline gilt für frische Daten
 Modul: core-model
-Test: ch.brickinventoryapp.model.LadenTest
-Rot: Daten aus der Ablage sind offline
+Test: ch.brickinventoryapp.model.LoadTest
+Rot: data from the store is offline, fresh data is not
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt
 index 6242ab7..25df037 100644

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.api.KontoApi
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.netz.di.ServerWaechter
-import ch.brickinventoryapp.netz.di.Zugangslage
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.data.api.AccountApi
+import ch.brickinventoryapp.data.repository.AccountRepository
+import ch.brickinventoryapp.network.di.ServerWaechter
+import ch.brickinventoryapp.network.di.Zugangslage
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -27,67 +27,67 @@ import java.util.Collections
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
+import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
 import java.io.IOException
 import okhttp3.mockwebserver.SocketPolicy
-import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Der Tausch des Tokens im echten Netzweg: Wächter, Konto-Repository und
- * TokenTausch über einen Client, gegen einen Testserver, der den alten Token
- * abweist oder den Tausch per Kopfzeile verlangt. Der Testserver spricht http
- * auf localhost; der Wächter läuft darum wie im Debug-Build (entwicklung = true).
+ * The swap of the token in the real network path: guard, account repository and
+ * TokenSwap via one client, against a test server that rejects the old token
+ * or requests the swap via header. The test server speaks http
+ * on localhost; the guard therefore runs as in the debug build (entwicklung = true).
  *
- * Gegenproben:
- *   A  in ServerWaechter den Zweig für 401 `token_rotation_noetig` entfernt →
- *      rot „ein abgewiesener alter Token wird getauscht und die Anfrage wiederholt“
- *      (401 statt 200, Sitzung abgelaufen gemeldet)
- *   B  den Zweig für die Kopfzeile entfernt → rot „die Kopfzeile tauscht im
- *      Hintergrund, einmal“ (Zeitüberschreitung, kein Tausch)
- *   C  KontoApi.tokenRotieren wieder als `suspend` (über den Dispatcher) →
- *      rot „gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht“
- *      (Zeitüberschreitung: beide Plätze warten auf den Tausch, der Tausch auf
- *      einen Platz)
- * Gegenproben:
- *   D  in TokenTausch die Prüfung `stand() != vorher` vor der Wiederholung
- *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (SPAETER)
- *   E  im Wächter wieder die alte Regel (Kopf nur weg, wenn er der jetzige Token
- *      ist) → rot „ein selbst gesetzter alter Token geht nach dem Serverwechsel …“
- *   F  in KontoRepository.tokenRotieren() eine feste fremde Herkunft statt der
- *      Anfrage-URL → rot „ein abgewiesener alter Token wird getauscht …“,
- *      „gleichzeitig abgewiesene …“, „die Kopfzeile tauscht …“ (nichts gespeichert)
+ * Counter-checks:
+ *   A  in ServerWaechter the branch for 401 `token_rotation_noetig` removed →
+ *      red “a rejected old token is swapped and the request retried”
+ *      (401 instead of 200, session expired reported)
+ *   B  the branch for the header removed → red “the header swaps in the
+ *      background, once” (timeout, no swap)
+ *   C  AccountApi.rotateToken again as `suspend` (via the dispatcher) →
+ *      red “simultaneously rejected requests do not block the swap”
+ *      (timeout: both slots wait for the swap, the swap for
+ *      a slot)
+ * Counter-checks:
+ *   D  in TokenSwap the check `stand() != vorher` before the retry
+ *      removed → red “a server switch during the retry …” (LATER)
+ *   E  in the guard again the old rule (header only dropped if it is the current
+ *      token) → red “a self-set old token goes out … after the server switch”
+ *   F  in AccountRepository.rotateToken() a fixed foreign origin instead of the
+ *      request URL → red “a rejected old token is swapped …”,
+ *      “simultaneously rejected …”, “the header swaps …” (nothing saved)
  */
 class TokenRotationTest {
 
     private val server = MockWebServer()
-    private val ereignisse: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    private val events: MutableList<String> = Collections.synchronizedList(mutableListOf())
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-rot-${System.nanoTime()}")
     @Volatile private var gespeichert = "alt"
     @Volatile private var abgelaufen = 0
-    /** Gesetzt: Der Tausch antwortet so (etwa 503), statt zu tauschen. */
-    @Volatile private var rotationStumm: (() -> MockResponse)? = null
+    /** Set: the swap answers like this (e.g. 503) instead of swapping. */
+    @Volatile private var rotationMute: (() -> MockResponse)? = null
 
-    /** Gesetzt nach einem Serverwechsel im Test; sonst der Testserver. */
-    @Volatile private var umgezogen: String? = null
-    private fun adresse() = umgezogen ?: server.url("/").toString().trimEnd('/')
-    private val lage = object : Zugangslage {
+    /** Set after a server switch in the test; otherwise the test server. */
+    @Volatile private var moved: String? = null
+    private fun adresse() = moved ?: server.url("/").toString().trimEnd('/')
+    private val situation = object : Zugangslage {
         override fun serverUrl() = adresse()
         override fun token() = gespeichert
-        override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
-        override fun generation() = schranke.generation
+        override fun tokenOrigin(): String? = NetworkPolicy.herkunft(serverUrl())
+        override fun generation() = limit.generation
     }
-    private val schranke = TokenSchranke()
-    /** Echte Fäden: Der Tausch läuft hier gegen einen echten Testserver. */
+    private val limit = TokenLimit()
+    /** Real threads: the swap runs here against a real test server. */
     private val hintergrund = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Wie PreferencesManager.tokenStand(): ohne Bindung gilt die eingetragene Adresse. */
-    private fun stand() = TokenStand(gespeichert, NetworkPolicy.herkunft(adresse()), schranke.generation)
+    /** Like PreferencesManager.tokenStatus(): without binding the registered address counts. */
+    private fun stand() = TokenStatus(gespeichert, NetworkPolicy.herkunft(adresse()), limit.generation)
 
-    private fun tauschFuer(k: () -> KontoRepository, speichern: (String) -> Unit) = TokenTausch(
+    private fun swapFor(k: () -> AccountRepository, speichern: (String) -> Unit) = TokenSwap(
         stand = { stand() },
-        ersetze = { vorher, neu, h -> schranke.ersetzeFalls(vorher, h, { stand() }) { speichern(neu) } },
-        rotiere = { k().tokenRotieren(it) },
+        ersetze = { vorher, neu, h -> limit.replaceIf(vorher, h, { stand() }) { speichern(neu) } },
+        rotiere = { k().rotateToken(it) },
         pausen = listOf(50, 50, 50),
         hintergrund = hintergrund,
     )
@@ -97,9 +97,9 @@ class TokenRotationTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val pfad = request.path.orEmpty().substringBefore('?')
                 val bearer = request.getHeader("Authorization")?.removePrefix("Bearer ")
-                ereignisse += "$pfad $bearer"
+                events += "$pfad $bearer"
                 return when {
-                    pfad == "/api/v1/auth/token-rotieren" && rotationStumm != null -> rotationStumm!!.invoke()
+                    pfad == "/api/v1/auth/token-rotieren" && rotationMute != null -> rotationMute!!.invoke()
                     pfad == "/api/v1/auth/token-rotieren" -> MockResponse().setBody(
                         """{"success":true,"token":"neu","token_info":{"scope":"app","never_expires":true,
                            "rotation_faellig":false},"alt_gueltig_bis":"2026-10-30T12:05:00Z","ueberlappung_sek":300}""")
@@ -114,16 +114,16 @@ class TokenRotationTest {
         server.start()
     }
 
-    private val konto: KontoRepository
-    private val tausch = tauschFuer({ konto }) { ereignisse += "speichere $it"; gespeichert = it }
+    private val konto: AccountRepository
+    private val tausch = swapFor({ konto }) { events += "speichere $it"; gespeichert = it }
     private val client = OkHttpClient.Builder()
-        .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = tausch))
+        .addInterceptor(ServerWaechter(situation, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = tausch))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     init {
-        konto = testKontoRepository(Retrofit.Builder().baseUrl(PLATZHALTER_BASIS).client(client)
+        konto = testAccountRepository(Retrofit.Builder().baseUrl(PLACEHOLDER_BASE).client(client)
             .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
-            .build().create(KontoApi::class.java))
+            .build().create(AccountApi::class.java))
     }
 
     @After
@@ -133,31 +133,31 @@ class TokenRotationTest {
         dir.deleteRecursively()
     }
 
-    private fun hole(pfad: String) = client.newCall(Request.Builder().url(server.url(pfad)).build()).execute().use { it.code }
+    private fun fetch(pfad: String) = client.newCall(Request.Builder().url(server.url(pfad)).build()).execute().use { it.code }
 
     @Test
-    fun `ein abgewiesener alter Token wird getauscht und die Anfrage wiederholt`() {
-        assertEquals(200, hole("/api/v1/sets"))
+    fun `a rejected old token is swapped and the request retried`() {
+        assertEquals(200, fetch("/api/v1/sets"))
         assertEquals(listOf("/api/v1/sets alt", "/api/v1/auth/token-rotieren alt", "speichere neu", "/api/v1/sets neu"),
-            ereignisse.toList())
+            events.toList())
         assertEquals("Ein Tausch ist keine abgelaufene Sitzung", 0, abgelaufen)
     }
 
     /**
-     * Abgewiesene Anfragen warten im Interceptor auf den Tausch und belegen dabei
-     * ihre Plätze im Dispatcher. Braucht der Tausch selbst einen, wartet er ewig.
+     * Rejected requests wait in the interceptor for the swap and occupy
+     * their slots in the dispatcher meanwhile. If the swap itself needs one, it waits forever.
      */
     @Test
-    fun `gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht`() {
-        val plaetze = okhttp3.Dispatcher().apply { maxRequestsPerHost = 2 }
-        lateinit var k: KontoRepository
-        val t = tauschFuer({ k }) { gespeichert = it }
-        val c = OkHttpClient.Builder().dispatcher(plaetze)
-            .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
+    fun `simultaneously rejected requests do not block the swap`() {
+        val places = okhttp3.Dispatcher().apply { maxRequestsPerHost = 2 }
+        lateinit var k: AccountRepository
+        val t = swapFor({ k }) { gespeichert = it }
+        val c = OkHttpClient.Builder().dispatcher(places)
+            .addInterceptor(ServerWaechter(situation, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
             .readTimeout(2, TimeUnit.SECONDS).build()
-        k = testKontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
+        k = testAccountRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
             .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
-            .build().create(KontoApi::class.java))
+            .build().create(AccountApi::class.java))
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {
             c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).enqueue(object : okhttp3.Callback {
@@ -167,26 +167,26 @@ class TokenRotationTest {
         }
         TestApi.warteBis("beide Antworten") { codes.size == 2 }
         assertEquals(listOf(200, 200), codes.toList())
-        assertEquals(1, ereignisse.count { it.startsWith("/api/v1/auth/token-rotieren") })
+        assertEquals(1, events.count { it.startsWith("/api/v1/auth/token-rotieren") })
     }
 
     @Test
-    fun `die Kopfzeile tauscht im Hintergrund, einmal`() {
-        assertEquals(200, hole("/api/v1/parts"))
-        assertEquals(200, hole("/api/v1/parts"))
+    fun `the header swaps in the background, once`() {
+        assertEquals(200, fetch("/api/v1/parts"))
+        assertEquals(200, fetch("/api/v1/parts"))
         TestApi.warteBis("Tausch") { gespeichert == "neu" }
         Thread.sleep(100)
-        assertEquals(1, ereignisse.count { it.startsWith("/api/v1/auth/token-rotieren") })
-        assertEquals("speichere neu", ereignisse.last { it.startsWith("speichere") })
+        assertEquals(1, events.count { it.startsWith("/api/v1/auth/token-rotieren") })
+        assertEquals("speichere neu", events.last { it.startsWith("speichere") })
     }
 
     /**
-     * Die Antwort auf den Tausch geht verloren, und währenddessen wechselt die App den Server
-     * (saveServerUrl: Token weg, neue Adresse). Der alte Token darf den neuen
-     * Server nie erreichen — weder über eine Wiederholung noch im selbst gesetzten Kopf.
+     * The response to the swap gets lost, and meanwhile the app switches the server
+     * (saveServerUrl: token gone, new address). The old token must never reach the new
+     * server — neither via a retry nor in the self-set header.
      */
     @Test
-    fun `ein Serverwechsel waehrend der Wiederholung schickt den alten Token nicht zum neuen Server`() {
+    fun `a server switch during the retry does not send the old token to the new server`() {
         val neuer = MockWebServer()
         val dort: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         neuer.dispatcher = object : Dispatcher() {
@@ -197,15 +197,15 @@ class TokenRotationTest {
         }
         neuer.start()
         try {
-            rotationStumm = {
+            rotationMute = {
                 kotlinx.coroutines.runBlocking {
-                    schranke.schreibe { gespeichert = ""; umgezogen = neuer.url("/").toString().trimEnd('/') }
+                    limit.schreibe { gespeichert = ""; moved = neuer.url("/").toString().trimEnd('/') }
                 }
                 MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
             }
             val ergebnis = kotlinx.coroutines.runBlocking { tausch.tausche("alt") }
-            assertEquals(Tauschergebnis.VERWORFEN, ergebnis)
-            assertTrue(ereignisse.any { it.startsWith("/api/v1/auth/token-rotieren alt") })
+            assertEquals(Tauschergebnis.DISCARDED, ergebnis)
+            assertTrue(events.any { it.startsWith("/api/v1/auth/token-rotieren alt") })
             assertEquals("Der neue Server sah: $dort", 0, dort.size)
             assertEquals("", gespeichert)
         } finally {
@@ -213,9 +213,9 @@ class TokenRotationTest {
         }
     }
 
-    /** Dasselbe ohne die Prüfung im Tausch: Dann hält der Wächter den Kopf zurück. */
+    /** The same without the check in the swap: then the guard holds back the header. */
     @Test
-    fun `ein selbst gesetzter alter Token geht nach dem Serverwechsel ohne Kopf hinaus`() {
+    fun `a self-set old token goes out without header after the server switch`() {
         val neuer = MockWebServer()
         val dort: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         neuer.dispatcher = object : Dispatcher() {
@@ -227,8 +227,8 @@ class TokenRotationTest {
         neuer.start()
         try {
             gespeichert = ""
-            umgezogen = neuer.url("/").toString().trimEnd('/')
-            val r = kotlinx.coroutines.runBlocking { konto.tokenRotieren("alt") }
+            moved = neuer.url("/").toString().trimEnd('/')
+            val r = kotlinx.coroutines.runBlocking { konto.rotateToken("alt") }
             assertTrue(r is Ergebnis.Fehler)
             assertEquals(listOf<String?>(null), dort.toList())
         } finally {

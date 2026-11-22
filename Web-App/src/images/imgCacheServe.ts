@@ -1,0 +1,169 @@
+import fs from 'node:fs';
+import { queueThumb } from './proxyThumbs';
+import { previewType } from './thumbs';
+import { beforeThe, withoutMissingFile, reportError } from '../infra/error';
+import { prozessweit } from '../infra/prozessweit';
+import path from 'node:path';
+import { APP_ROOT, SET_IMAGES_DIR } from '../infra/appPaths';
+import type { ImagesContext } from './context';
+
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']);
+
+/** Only a type from the list, never the CDN's raw header: "image/png, text/html"
+ * would be read as HTML by a browser. Everything else becomes JPEG, harmless with nosniff. */
+export function imageType(roh: string): string {
+  const typ = beforeThe(roh, ';').trim().toLowerCase();
+  return IMAGE_TYPES.has(typ) ? typ : 'image/jpeg';
+}
+
+/** What can be delivered from the disk cache; sending happens in
+ * src/images/http/imageCacheDelivery.ts. */
+export interface CacheHits {
+  datei: string;
+  typ: string;
+  groesse: number | null;
+  etag: string | null;
+}
+
+/** null means: not in the cache, the caller fetches from the CDN. */
+export async function cacheTreffer(
+  k: ImagesContext,
+  opts: {
+    cacheFile: string;
+    thumbFile: string;
+    wantThumb: boolean;
+    createMay: boolean;
+    note: () => void;
+  },
+): Promise<CacheHits | null> {
+  const { cacheFile, thumbFile, wantThumb, createMay, note } = opts;
+
+  if (wantThumb) {
+    try {
+      await fs.promises.access(thumbFile);
+      const tst = await fs.promises.stat(thumbFile).catch(withoutMissingFile('bild-cache:stat', null));
+      // An empty or too small preview is not an image (legacy data, aborted
+      // run): fall back to the original and resize again.
+      if (!tst || tst.size < 200) {
+        await fs.promises.unlink(thumbFile).catch(withoutMissingFile('bild-cache:unlink'));
+        throw new Error('unbrauchbare Vorschau verworfen');
+      }
+      return {
+        datei: thumbFile,
+        typ: await previewType(thumbFile),
+        groesse: tst.size,
+        etag: `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"`,
+      };
+    } catch (_) {
+      /* not created yet */
+    }
+  }
+
+  try {
+    // Async: the cache hit is the hottest path and should not block the
+    // event loop.
+    await fs.promises.access(cacheFile);
+
+    if (wantThumb) {
+      // Do NOT wait for the resize: the original goes out immediately, otherwise
+      // seconds of Jimp would line up for a tile wall.
+      if (createMay) queueThumb(k, cacheFile, thumbFile);
+      else note();
+    }
+
+    // Only images from the cache too; when in doubt JPEG — with nosniff the harmless
+    // interpretation.
+    const ctRaw = await fs.promises
+      .readFile(cacheFile + '.ct', 'utf8')
+      .catch(withoutMissingFile('bild-cache:typ', 'image/jpeg'));
+    const cst = await fs.promises.stat(cacheFile).catch(withoutMissingFile('bild-cache:stat', null));
+    // The cap deletes by last use; under noatime nobody else remembers
+    // that. mtime stays, it is part of the ETag.
+    if (cst && k.uhr.jetzt() - cst.atimeMs > 86_400_000)
+      fs.promises.utimes(cacheFile, k.uhr.datum(), cst.mtime).catch(withoutMissingFile('bild-cache:utimes'));
+    return {
+      datei: cacheFile,
+      typ: imageType(ctRaw),
+      groesse: cst?.size ?? null,
+      etag: cst ? `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"` : null,
+    };
+  } catch (_) {
+    /* Cache miss or error — continue loading normally */
+  }
+
+  return null;
+}
+
+const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
+
+/** Untouched for 30 days → gone; afterwards, if the cache is still above the
+ * limit, the images unused the longest including .ct and preview. */
+export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promise<number> {
+  const cacheDir = CACHE_DIR();
+  const files = await fs.promises.readdir(cacheDir).catch(withoutMissingFile('bildcache:lesen', [] as string[]));
+  const cutoff = jetzt - 30 * 24 * 60 * 60 * 1000;
+  const gruppen = new Map<string, { dateien: string[]; bytes: number; zuletzt: number }>();
+  let weg = 0,
+    summe = 0;
+  for (const f of files) {
+    const p = path.join(cacheDir, f);
+    const st = await fs.promises.stat(p).catch(withoutMissingFile('img-cache:stat', null));
+    if (!st?.isFile()) continue;
+    // atime AND mtime: under noatime atime stays at the creation time.
+    if (
+      st.atimeMs < cutoff &&
+      st.mtimeMs < cutoff &&
+      (await fs.promises.unlink(p).then(
+        () => true,
+        () => false,
+      ))
+    ) {
+      weg++;
+      continue;
+    }
+    const g = gruppen.get(f.slice(0, 40)) ?? { dateien: [], bytes: 0, zuletzt: 0 };
+    g.dateien.push(p);
+    g.bytes += st.size;
+    g.zuletzt = Math.max(g.zuletzt, st.atimeMs, st.mtimeMs);
+    gruppen.set(f.slice(0, 40), g);
+    summe += st.size;
+  }
+  // images/sets counts but is not cleared: the set images apply permanently, the cap
+  // applies to everything the proxy puts on disk.
+  for (const f of await fs.promises
+    .readdir(SET_IMAGES_DIR)
+    .catch(withoutMissingFile('bildcache:sets', [] as string[]))) {
+    const st = await fs.promises.stat(path.join(SET_IMAGES_DIR, f)).catch(withoutMissingFile('img-cache:stat', null));
+    if (st?.isFile()) summe += st.size;
+  }
+  if (summe <= maxBytes) return weg;
+  // Down to 90 % instead of just below the limit: otherwise it would start again right away.
+  for (const g of [...gruppen.values()].sort((a, b) => a.zuletzt - b.zuletzt)) {
+    if (summe <= maxBytes * 0.9) break;
+    for (const d of g.dateien)
+      if (
+        await fs.promises.unlink(d).then(
+          () => true,
+          () => false,
+        )
+      )
+        weg++;
+    summe -= g.bytes;
+  }
+  return weg;
+}
+
+/** Between two daily runs the cache can grow quickly; after every tenth of the limit
+ * in new bytes it is therefore capped immediately. */
+export function rememberCacheGrowth(bytes: number, max: number): void {
+  const z = prozessweit('bildCacheZuwachs', () => ({ bytes: 0, laeuft: false }));
+  z.bytes += bytes;
+  if (z.laeuft || z.bytes < max / 10) return;
+  z.bytes = 0;
+  z.laeuft = true;
+  cleanImageCacheOn(max, Date.now())
+    .catch(e => reportError('bild-cache:deckel', e))
+    .finally(() => {
+      z.laeuft = false;
+    });
+}

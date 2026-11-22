@@ -1,108 +1,108 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.GutscheineApi
-import ch.brickinventoryapp.model.fach.Bestaetigung
-import ch.brickinventoryapp.model.fach.Guthabenauskunft
-import ch.brickinventoryapp.model.fach.Gutscheinangabe
-import ch.brickinventoryapp.model.fach.Gutscheinspeicherung
-import ch.brickinventoryapp.model.fach.GutscheinAnsicht
-import ch.brickinventoryapp.model.fach.KlartextAnsicht
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.data.api.VouchersApi
+import ch.brickinventoryapp.model.domain.Confirmation
+import ch.brickinventoryapp.model.domain.Guthabenauskunft
+import ch.brickinventoryapp.model.domain.Gutscheinangabe
+import ch.brickinventoryapp.model.domain.Gutscheinspeicherung
+import ch.brickinventoryapp.model.domain.VoucherView
+import ch.brickinventoryapp.model.domain.PlaintextView
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.model.fach.Fehlercode
-import ch.brickinventoryapp.vertrag.GuthabenAntwort
-import ch.brickinventoryapp.vertrag.GutscheinAntwort
-import ch.brickinventoryapp.vertrag.GutscheinRequest
-import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
-import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
+import ch.brickinventoryapp.model.domain.Fehlercode
+import ch.brickinventoryapp.contract.GuthabenAntwort
+import ch.brickinventoryapp.contract.GutscheinAntwort
+import ch.brickinventoryapp.contract.GutscheinRequest
+import ch.brickinventoryapp.contract.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.network.data.api.Fehlerrumpf
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.json.Json
-import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.domain.asMoney
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil. Lokal abgelegt wird die
- * Liste ohne PIN und nur mit den letzten vier Ziffern der Nummer: Offline reicht
- * „welcher Gutschein, wie viel“; Nummer plus PIN wären Geld auf der Platte.
+ * Vouchers — LEGO gift cards in the own profile. Stored locally is the
+ * list without PIN and only with the last four digits of the number: offline
+ * „which voucher, how much“ suffices; number plus PIN would be money on disk.
  */
 @Singleton
 class GutscheineRepositoryImpl @Inject constructor(
-    private val api: GutscheineApi,
+    private val api: VouchersApi,
     private val ablage: Offlineablage,
     private val json: Json = BrickJson,
-) : GutscheineRepository {
+) : VouchersRepository {
 
-    override suspend fun liste(): Ergebnis<List<GutscheinAnsicht>> =
-        ablage.abgeglichen(Faecher.GUTSCHEINE, { l -> l.map { ohneGeheimnis(it) } }, { it }) {
-            sicherAufrufen { api.getGutscheine() }.abgebildet { l -> l.vouchers.map { it.alsAnsicht() } }
+    override suspend fun liste(): Ergebnis<List<VoucherView>> =
+        ablage.reconciled(Slots.GUTSCHEINE, { l -> l.map { withoutSecret(it) } }, { it }) {
+            sicherAufrufen { api.getVouchers() }.shown { l -> l.vouchers.map { it.alsAnsicht() } }
         }
 
     override suspend fun anlegen(angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung> =
-        sicherAufrufen { api.legeGutscheinAn(angabe.alsAnfrage()) }.gespeichert()
+        sicherAufrufen { api.putVoucherAn(angabe.asRequest()) }.gespeichert()
 
     override suspend fun aendern(id: Int, angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung> =
-        sicherAufrufen { api.aendereGutschein(id, angabe.alsAnfrage()) }.gespeichert()
+        sicherAufrufen { api.changeVoucher(id, angabe.asRequest()) }.gespeichert()
 
     /**
-     * Löschen mit Passwort und Code. Bewusst ohne Ausgang: Ein gepuffertes Löschen
-     * müsste das Passwort bis zum nächsten Netz aufbewahren.
+     * Delete with password and code. Deliberately without outbox: a buffered delete
+     * would have to keep the password until the next network.
      */
-    override suspend fun loeschen(id: Int, bestaetigung: Bestaetigung): Ergebnis<Unit> =
-        sicherAufrufen { api.loescheGutschein(id, bestaetigung.alsAnfrage()) }.erledigt()
+    override suspend fun loeschen(id: Int, confirmation: Confirmation): Ergebnis<Unit> =
+        sicherAufrufen { api.deleteVoucher(id, confirmation.asRequest()) }.erledigt()
 
-    /** Nummer und PIN im Klartext; nie in Cache oder Ablage. */
-    override suspend fun klartext(id: Int, bestaetigung: Bestaetigung): Ergebnis<KlartextAnsicht> =
-        sicherAufrufen { api.gutscheinKlartext(id, bestaetigung.alsAnfrage()) }.abgebildet { it.alsAnsicht() }
+    /** Number and PIN in plaintext; never in cache or store. */
+    override suspend fun klartext(id: Int, confirmation: Confirmation): Ergebnis<PlaintextView> =
+        sicherAufrufen { api.voucherPlaintext(id, confirmation.asRequest()) }.shown { it.alsAnsicht() }
 
     /**
-     * Ein einmaliges Ticket für das PDF eines Gutscheins, ohne [id] für das PDF
-     * aller. Die eine Stelle für den Freigabe-Vertrag; die Adresse dazu baut
-     * gutscheinPdfAdresse() in GutscheinAdressen.kt.
+     * A one-time ticket for the PDF of a voucher, without [id] for the PDF
+     * of all. The one place for the release contract; the address for it is built by
+     * voucherPdfAddress() in GutscheinAdressen.kt.
      */
-    override suspend fun pdfFreigabe(id: Int?, bestaetigung: Bestaetigung): Ergebnis<String> {
-        val anfrage = bestaetigung.alsAnfrage()
-        return sicherAufrufen { if (id == null) api.gutscheinExportFreigabe(anfrage) else api.gutscheinPdfFreigabe(id, anfrage) }
-            .abgebildet { it.ticket }
+    override suspend fun pdfRelease(id: Int?, confirmation: Confirmation): Ergebnis<String> {
+        val anfrage = confirmation.asRequest()
+        return sicherAufrufen { if (id == null) api.voucherExportRelease(anfrage) else api.voucherPdfRelease(id, anfrage) }
+            .shown { it.ticket }
     }
 
     /**
-     * Das Guthaben bei LEGO abfragen. Eine gesperrte Abfrage wird zu success=false,
-     * weil der Durchgang über alle Karten `grund` und `wartenSek` aus dem Rumpf
-     * braucht; andere Fehler bleiben Fehler.
+     * Query the balance at LEGO. A blocked query becomes success=false
+     * because the pass over all cards needs `grund` and `wartenSek` from the body;
+     * other errors stay errors.
      */
     override suspend fun guthaben(id: Int): Ergebnis<Guthabenauskunft> = sicherAufrufen {
-        val antwort = api.frageGuthabenAb(id)
+        val antwort = api.questionBalanceAb(id)
         if (antwort.isSuccessful) return@sicherAufrufen antwort
         val roh = antwort.errorBody()?.string()
-        if (Fehlerrumpf.lies(roh).fehlercode !in GUTHABEN_GESPERRT && !istKontogrenze(roh)) {
-            // Der Rumpf ist gelesen; sicherAufrufen bekommt ihn neu, sonst fehlte ihm der Satz.
+        if (Fehlerrumpf.lies(roh).errorCode !in BALANCE_LOCKED && !isAccountLimit(roh)) {
+            // The body is read; sicherAufrufen gets it anew, otherwise it would lack the sentence.
             return@sicherAufrufen retrofit2.Response.error(antwort.code(),
                 (roh ?: "").toResponseBody("application/json".toMediaType()))
         }
-        val geparst = roh?.let {
+        val parsed = roh?.let {
             runCatching { json.decodeFromString<GuthabenAntwort>(it) }.getOrNull()
         }
-        if (geparst != null) retrofit2.Response.success(geparst)
+        if (parsed != null) retrofit2.Response.success(parsed)
         else retrofit2.Response.error(antwort.code(), (roh ?: "").toResponseBody("application/json".toMediaType()))
-    }.abgebildet {
+    }.shown {
         Guthabenauskunft(erfolg = it.success && it.voucher != null, gutschein = it.voucher?.alsAnsicht(), angezeigt = it.angezeigt,
             waehrungGeaendert = it.waehrungGeaendert, grund = it.grund, wartenSek = it.wartenSek, fehler = it.error)
     }
 
     /**
-     * Aus dem PDF anlegen — mit Werten, die man von Hand beisteuert. Leere Felder
-     * werden nicht mitgeschickt (`alsTeil` gibt null zurück): Auf dem Server gilt „was
-     * mitkommt, gewinnt“, ein leerer Teil überschriebe das Gelesene mit nichts. Der
-     * Medientyp kommt aus der Dateiauswahl, nicht geraten; der Server nimmt nur
-     * `application/pdf` an.
+     * Create from the PDF — with values contributed by hand. Empty fields
+     * are not sent (`asPart` returns null): on the server „what comes along
+     * wins“ applies, an empty part would overwrite what was read with nothing. The
+     * media type comes from the file picker, not guessed; the server accepts only
+     * `application/pdf`.
      */
-    override suspend fun ausPdf(
-        dateiname: String,
+    override suspend fun fromPdf(
+        fileName: String,
         typ: String,
         inhalt: ByteArray,
         nummer: String?,
@@ -111,64 +111,64 @@ class GutscheineRepositoryImpl @Inject constructor(
         waehrung: String?,
     ): Ergebnis<Gutscheinspeicherung> {
         val koerper = inhalt.toRequestBody(typ.toMediaType())
-        val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
+        val teil = okhttp3.MultipartBody.Part.createFormData("file", fileName, koerper)
         return sicherAufrufen {
-            val antwort = api.ladeGutscheinPdfHoch(
+            val antwort = api.loadVoucherPdfHigh(
                 teil,
-                alsTeil(nummer), alsTeil(pin), alsTeil(betrag), alsTeil(waehrung),
+                asPart(nummer), asPart(pin), asPart(betrag), asPart(waehrung),
             )
-            // Bei 422 hat der Server das PDF gelesen, aber nicht genug gefunden; was er
-            // lesen konnte, braucht die Oberfläche zum Vorbelegen. sicherAufrufen behielte nur
-            // Satz und Code, deshalb wird die Antwort hier zu success=false.
+            // With 422 the server has read the PDF but found too little; what it
+            // could read the UI needs for prefilling. sicherAufrufen would keep only
+            // sentence and code, hence the response becomes success=false here.
             if (antwort.code() == 422) {
                 val roh = antwort.errorBody()?.string()
-                // Zu viele Seiten: Gelesen wurde nichts, das Formular hat nichts vorzubelegen.
-                // Ein Fehler mit Satz und Code, sonst hiesse es „unvollständig gelesen“.
-                val zuLang = Fehlerrumpf.lies(roh).fehlercode == Fehlercode.PDF_ZU_VIELE_SEITEN
-                val geparst = roh?.takeIf { !zuLang }?.let {
+                // Too many pages: nothing was read, the form has nothing to prefill.
+                // An error with sentence and code, otherwise it would say „read incompletely“.
+                val toLang = Fehlerrumpf.lies(roh).errorCode == Fehlercode.PDF_ZU_VIELE_SEITEN
+                val parsed = roh?.takeIf { !toLang }?.let {
                     runCatching { json.decodeFromString<GutscheinAntwort>(it) }.getOrNull()
                 }
                 when {
-                    geparst != null -> retrofit2.Response.success(geparst)
-                    zuLang -> retrofit2.Response.error<GutscheinAntwort>(antwort.code(), (roh ?: "").toResponseBody("application/json".toMediaType()))
+                    parsed != null -> retrofit2.Response.success(parsed)
+                    toLang -> retrofit2.Response.error<GutscheinAntwort>(antwort.code(), (roh ?: "").toResponseBody("application/json".toMediaType()))
                     else -> antwort
                 }
             } else antwort
-        }.abgebildet { a ->
+        }.shown { a ->
             if (a.success) Gutscheinspeicherung.Gespeichert(a.mehrere?.added, a.mehrere?.updated)
-            else a.gelesen.let { g -> Gutscheinspeicherung.Unvollstaendig(g?.number, g?.pin, g?.amount.alsGeld(), g?.currency) }
+            else a.gelesen.let { g -> Gutscheinspeicherung.Incomplete(g?.number, g?.pin, g?.amount.asMoney(), g?.currency) }
         }
     }
 
-    // Kein eigener PDF-Download: Der PDF-Betrachter bekommt eine Adresse und lädt sie mit
-    // dem angemeldeten Client (AnleitungsLader — Token, Klartext-Verbot und
-    // 401-Meldung hängen daran). Ein eigener Weg wäre eine zweite Fassung und legte
-    // Nummer und PIN in den Cache des Geräts.
+    // No own PDF download: the PDF viewer gets an address and loads it with
+    // the signed-in client (AnleitungsLader — token, cleartext ban and
+    // 401 message hang on it). An own path would be a second version and would put
+    // number and PIN into the device's cache.
 
     companion object {
-        /** Was offline von einem Gutschein bleibt: keine PIN, von der Nummer die letzten vier Ziffern. */
-        fun ohneGeheimnis(g: GutscheinAnsicht): GutscheinAnsicht =
+        /** What stays of a voucher offline: no PIN, of the number the last four digits. */
+        fun withoutSecret(g: VoucherView): VoucherView =
             g.copy(number = if (g.number.length > 4) "…" + g.number.takeLast(4) else g.number, pin = null)
 
-        /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
-        private val GUTHABEN_GESPERRT = setOf(Fehlercode.GUTHABEN_ABSTAND, Fehlercode.GUTHABEN_BOTSCHUTZ)
+        /** The codes under which the server defers a balance query. */
+        private val BALANCE_LOCKED = setOf(Fehlercode.GUTHABEN_ABSTAND, Fehlercode.GUTHABEN_BOTSCHUTZ)
 
-        /** Die Grenze je Konto teilt den Code mit der allgemeinen Drossel; nur `grund` unterscheidet. */
-        private fun istKontogrenze(roh: String?): Boolean = runCatching {
+        /** The limit per account shares the code with the general throttle; only `grund` distinguishes. */
+        private fun isAccountLimit(roh: String?): Boolean = runCatching {
             val o = org.json.JSONObject(roh ?: return false)
             Fehlercode.aus(o.optString("code")) == Fehlercode.ZU_VIELE_ANFRAGEN && o.optString("grund") == "konto"
         }.getOrDefault(false)
     }
 
-    /** Leer heisst „nicht mitschicken" — siehe die Begruendung bei ausPdf(). */
-    private fun alsTeil(wert: String?): okhttp3.RequestBody? =
+    /** Empty means „do not send" — see the reasoning at fromPdf(). */
+    private fun asPart(wert: String?): okhttp3.RequestBody? =
         wert?.trim()?.takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaType())
 }
 
-/** Eine Absage beim Anlegen oder Ändern ist ein Fehler mit dem Satz des Servers. */
+/** A refusal when creating or changing is an error with the server's sentence. */
 private fun Ergebnis<GutscheinAntwort>.gespeichert(): Ergebnis<Gutscheinspeicherung> =
-    zugesagt({ it.success }, { it.error }) { Gutscheinspeicherung.Gespeichert(it.mehrere?.added, it.mehrere?.updated) }
+    promised({ it.success }, { it.error }) { Gutscheinspeicherung.Gespeichert(it.mehrere?.added, it.mehrere?.updated) }
 
-private fun Gutscheinangabe.alsAnfrage() = GutscheinRequest(number = nummer, pin = pin, amount = betrag.alsDouble(), currency = waehrung)
+private fun Gutscheinangabe.asRequest() = GutscheinRequest(number = nummer, pin = pin, amount = betrag.asDouble(), currency = waehrung)
 
-private fun Bestaetigung.alsAnfrage() = ZweiterFaktorAnfrage(password = passwort, code = code)
+private fun Confirmation.asRequest() = ZweiterFaktorAnfrage(password = passwort, code = code)

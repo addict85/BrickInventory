@@ -1,13 +1,13 @@
 Gegenprobe: Erstellen wieder erst, wenn ein Set mit „+“ übernommen ist
 Modul: app
-Test: ch.brickinventoryapp.app.UnterseitenTest
-Rot: Bauliste entsteht
+Test: ch.brickinventoryapp.app.SubpagesTest
+Rot: build list is created in one step from the typed number
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
 @@ -268,7 +268,7 @@ fun PartsListScreen(
-                 val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalisiert(setInput) }) 1 else 0)
+                 val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalized(setInput) }) 1 else 0)
                  Button(
                      onClick = { erstellen() },
 -                    enabled = anzahl > 0 && !isLoading,

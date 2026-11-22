@@ -2,25 +2,25 @@ package ch.brickinventoryapp.data.di
 
 import javax.inject.Qualifier
 
-// Typisierte Qualifier statt benannter Zeichenketten: Ein Tippfehler im Namen übersetzt sonst und
-// fällt erst zur Laufzeit auf, und die IDE findet die Nutzer eines Clients nicht.
+// Typed qualifiers instead of named strings: a typo in the name otherwise compiles and
+// only stands out at runtime, and the IDE does not find the users of a client.
 
-/** Der Client für die Abrufe des eigenen Servers (Retrofit, Downloads mit Token). */
+/** The client for the own server's fetches (Retrofit, downloads with token). */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 internal annotation class ApiClient
 
-/** Der Client für Bilder: eigener Dispatcher, HTTP-Zwischenspeicher, Bild-Hosts. */
+/** The client for images: own dispatcher, HTTP cache, image hosts. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-internal annotation class BildClient
+internal annotation class ImageClient
 
-/** Der Client für Server-Sent-Events: ohne Lesezeitlimit. */
+/** The client for server-sent events: without read timeout. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 internal annotation class SseClient
 
-/** Der blanke Client der Selbstaktualisierung: ohne Token, Server und Sprache. */
+/** The bare client of the self-update: without token, server and language. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class UpdateClient

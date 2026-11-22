@@ -1,6 +1,6 @@
 # Architektur der Web-App
 
-Kurzüberblick. Die Regeln selbst prüft `test/schichten.test.js`; dieses
+Kurzüberblick. Die Regeln selbst prüft `test/layers.test.js`; dieses
 Dokument sagt, wo was hingehört. Ändert sich die Rangfolge dort, ändert sie
 sich hier (der Test vergleicht beide).
 
@@ -9,7 +9,7 @@ sich hier (der Test vergleicht beide).
 | Rolle (`ROLLE`) | Aufgabe |
 |---|---|
 | `web` | HTTP: Oberfläche (`public/`), API unter `/api/v1`, Bild-Proxy |
-| `jobs` | Hintergrundarbeit aus der Auftragstabelle (`auftraege`), Zeitpläne |
+| `jobs` | Hintergrundarbeit aus der Auftragstabelle (`jobs`), Zeitpläne |
 | `beides` | beides in einem Prozess (Entwicklung, kleine Installationen) |
 
 Beide Rollen migrieren beim Start; `initSchemaOnce` lässt genau einen
@@ -26,7 +26,7 @@ jobs/                   Auftrags-Worker, Bearbeitertabelle, Verdrahtung (keine F
 src/<bereich>/          Dienste (Fachlogik) und repository (SQL)
 db/, clients/           Datenbank und Aussenwelt (nur HTTP)
 src/http/               HTTP-Helfer für Routen und HTTP-Seiten (Fehlerantwort, Upload, Drossel)
-src/vertrag/            der API-Vertrag (zod-Schemas, Prüfung, OpenAPI), von allen Bereichen geteilt
+src/contract/            der API-Vertrag (zod-Schemas, Prüfung, OpenAPI), von allen Bereichen geteilt
 src/infra/              fachfreie Helfer
 ```
 
@@ -43,18 +43,18 @@ Absicht, solange es nur von unten gebraucht wird:
 - Die Texte der Fehler (`fehlerTexte`) und die Regel, welchen Proxys man traut
   (`proxyVertrauen`). Express importiert `src/infra` nicht; die HTTP-Hülle
   (`sendeFehler` in `httpAntwort`, Datei-Ein- und -Ausgang, Schranken je Konto,
-  Sitzungskeks) liegt eine Stufe höher in `src/http`, der Vertrag in `src/vertrag`
+  Sitzungskeks) liegt eine Stufe höher in `src/http`, der Vertrag in `src/contract`
   (Stufe 2). Dienste kennen Express nicht; was sie von der Anfrage brauchen,
   trägt der Aufrufrahmen (`kontoKontext`, siehe unten).
 - Den Zugang kennt `src/infra` nur als Schnittstelle (`Zugang` in
-  `src/infra/zugang.ts`); `db/database.ts` erfüllt sie.
+  `src/infra/access.ts`); `db/database.ts` erfüllt sie.
 
 - Jeder Fachbereich hat eine `index.ts`; andere Bereiche, Routen, Jobs und
   `startup/` importieren nur darüber (ausser den HTTP-Seiten unter
   `src/<bereich>/http/`). So bleibt der Schnitt der Dateien Sache des Bereichs.
   Sie gibt nur Typen, die Fabrik (`erzeugeX`) und reine Funktionen her; was
   Datenbank, Netz oder Dateien braucht, ruft ein anderer Bereich über den Kontext
-  (`k.katalog.…`, in einer Transaktion `t.katalog.…`). Das prüft `test/schichten.test.js`.
+  (`k.katalog.…`, in einer Transaktion `t.katalog.…`). Das prüft `test/layers.test.js`.
 
 - SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel
   (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur Typen
@@ -62,16 +62,16 @@ Absicht, solange es nur von unten gebraucht wird:
 - `jobs/` führt Aufträge aus: Pacht, Wiederholung und Abbruch im Worker, je Art
   ein Aufruf in der Bearbeitertabelle. Was ein Auftrag tut, steht in
   `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `bilder` …); die
-  Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/auftraege`.
+  Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/jobQueue`.
 - Jeder Bereich hat eine Fabrik (`erzeugeX` in `bereich.ts`) und einen Kontext
   (`kontext.ts`): gebundene Repositories, die Dienste tieferer Bereiche, die
   Konfiguration (`k.konfig`) und die Arbeitseinheit. Ein Dienst nimmt den Kontext
   als ersten Parameter (`k`) und holt alles daraus, nichts vom Prozess. Die Fabrik
-  ist eine Closure über `k` (`baueBereich`, `src/infra/bereich.ts`): Jeder Dienst
+  ist eine Closure über `k` (`baueBereich`, `src/infra/area.ts`): Jeder Dienst
   steht ausgeschrieben da (`setsLesen: mit(k)(lesen.setsLesen)`), typgeprüft, ohne
-  Namenslisten und ohne Proxy. `startup/verdrahtung.ts` baut alle Bereiche in
+  Namenslisten und ohne Proxy. `startup/wiring.ts` baut alle Bereiche in
   `baueDienste(db, bauteile)`; Server und Testhilfe rufen dieselbe Funktion.
-- Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/dienste.ts`) und
+- Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/services.ts`) und
   rufen Dienste nur über `d`; von `startup/` importieren sie nichts. Einen Speicher
   der Dienste im Prozess gibt es nicht: HTTP-Seiten, Jobs und Tests bekommen ihre
   Dienste ebenso gereicht (`baueDienste`, `testDienste()`); `test/ratschen.test.js`
@@ -86,12 +86,12 @@ Absicht, solange es nur von unten gebraucht wird:
   der laufenden Transaktion. Zustand im Speicher bleibt geteilt. So
   steht am Aufrufort, was zusammen gilt, und nichts leitet eine Abfrage still um.
   Das ist die einzige Form: Repositories öffnen keine Transaktion, sie nehmen den
-  `tx` des Aufrufers; `.transaction(` steht nur in `src/infra/bereich.ts` und `db/`.
+  `tx` des Aufrufers; `.transaction(` steht nur in `src/infra/area.ts` und `db/`.
 - Den Rahmen (Konto oder Systemrahmen, `imSystemkontext`) wählt man vor der
   Transaktion. Ein Wechsel mitten in ihr liefe über den Pool der anderen Rolle,
   also neben ihr; `db/database.ts` wirft dann `NebenDerTransaktion`.
 - Zustand im Speicher gehört einem Zugang: Ein Bereich hält ihn in seinen Fächern
-  (`k.faecher`, `src/infra/zwischenspeicher.ts`). Bewusst prozessweiter Zustand
+  (`k.faecher`, `src/infra/cache.ts`). Bewusst prozessweiter Zustand
   (Drosseln, Schranken) steht mit Grund in `src/infra/prozessweit.ts`; modulweite
   `let` und leer angelegte `Map`/`Set` zählt `test/ratschen.test.js`.
 - Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
@@ -103,10 +103,10 @@ Absicht, solange es nur von unten gebraucht wird:
   `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Startseite in `profil`, Bild-Proxy in
   `bilder`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
   eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
-  den HTTP-Status wählt `src/http/fehlerArt.ts`.
-- Clients erreicht man nur über `src/fremdquellen/quellen.ts`. Jeder Klient
+  den HTTP-Status wählt `src/http/errorKind.ts`.
+- Clients erreicht man nur über `src/externalSources/sources.ts`. Jeder Klient
   entsteht dort je Satz Dienste (`erzeugeRebrickable(z)` …) mit Schlüssel,
-  Kontingent und Drossel seines Zugangs (`clients/zugang.ts`); einen Zugang des
+  Kontingent und Drossel seines Zugangs (`clients/access.ts`); einen Zugang des
   Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
 - Den Rumpf `k.transaktion(async t => …)` prüft vorher die Lint-Regel
   `biome/transaktionsrumpf.grit`: kein `k`, `sk`, `kx` oder Empfänger darin.
@@ -114,7 +114,7 @@ Absicht, solange es nur von unten gebraucht wird:
   `t`), wirft die Datenbankschicht `UngebundeneAbfrage`: Sie liefe sonst über eine
   zweite Verbindung neben der Transaktion. Erkannt wird das am Aufrufrahmen; ein Weg
   in die Transaktion ist er nicht.
-- Die Zeit kommt über `k.uhr` (`src/infra/uhr.ts`, `baueDienste(db, { uhr })`), nicht über
+- Die Zeit kommt über `k.uhr` (`src/infra/clock.ts`, `baueDienste(db, { uhr })`), nicht über
   `Date.now()`: Tests stellen sie (`testUhr().vor(ms)`), statt eine Frist abzuwarten. Drosseln
   mit echten Zeitgebern bleiben bei der Systemzeit; den Rest zählt `test/ratschen.test.js`.
 - `konfig()` liest nur der Start (`startup/`, `server.ts`); Fachbereiche, Routen und
@@ -124,7 +124,7 @@ Absicht, solange es nur von unten gebraucht wird:
 
 ## Aufrufrahmen: wer fragt
 
-„Wer fragt“ steht an einer Stelle: im Aufrufrahmen (`src/infra/kontoKontext.ts`),
+„Wer fragt“ steht an einer Stelle: im Aufrufrahmen (`src/infra/accountContext.ts`),
 dem einzigen Kanal über `AsyncLocalStorage` (`test/ratschen.test.js` verbietet
 weitere). Die Anfrage setzt ihn einmal (`merkeAnfrage`, aus Sitzung oder Token), ein
 Auftrag ebenso (`imNamenDesAuftrags`), Arbeit über Konten betritt ausdrücklich den
@@ -153,14 +153,14 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 
 - **Ein Fehlerweg.** Eine Absage ist ein `Fachfehler` mit `FehlerArt`
   (`fachfehler()`, für einen Lesepfad ohne Treffer `nichtGefunden()`); den Status
-  wählt nur `src/http/fehlerArt.ts`, die Antwort schreibt nur `fehlerAntwort`.
+  wählt nur `src/http/errorKind.ts`, die Antwort schreibt nur `fehlerAntwort`.
   Felder neben `code` und `error` (etwa `wartenSek`) trägt der Fehler als `zusatz`.
   Dienste geben keine Absage als Ergebnis zurück (`{ fehler }`, `{ ok: false }`),
-  Routen rufen kein `sendeFehler` (`test/schichten.test.js`; die eine Ausnahme ist die
+  Routen rufen kein `sendeFehler` (`test/layers.test.js`; die eine Ausnahme ist die
   Uhr in `rumpfFrist`, die nach `next()` läuft). Alles andere fliegt weiter bis zum
   Fehlerweg der App oder des Auftrags.
 - **Lesepfade** mit Teilen, die ausfallen dürfen, nehmen `versuche()` oder
-  `Abstriche` (`src/infra/ergebnis.ts`): Die Antwort nennt sie in `degradiert`.
+  `Abstriche` (`src/infra/result.ts`): Die Antwort nennt sie in `degradiert`.
 - **`logAndContinue`** nur für Nebenwirkungen ohne Folgen für das Ergebnis: Mail
   und Signal nebenher, Fortschritt und Stand, Aufräumen nach dem eigentlichen
   Fehler, Herunterfahren. Einen Ersatzwert liefert `meldeUndLiefere` und nennt
@@ -172,14 +172,14 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 - Ein Signal ist eine **Fehlerklasse** (`StromGeschlossen`, `AuftragVerloren` …),
   keine Zeichenkette, die der Fänger vergleicht.
 - Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) ist die
-  Transaktion selbst: Ihr Stand (`neuerTxStand`, `db/transaktion.ts`) reist im
+  Transaktion selbst: Ihr Stand (`neuerTxStand`, `db/transaction.ts`) reist im
   Aufrufrahmen, kein Zustand des Prozesses.
 
 ## Zeilenschutz: was er leistet und was nicht
 
 Der Zeilenschutz (Migrationen 0111, 0112) fängt einen **vergessenen Filter** auf
 `user_id`: In 34 Tabellen mit Kontodaten (Bestand, Käufe, Merkliste, Einstellungen
-je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `zweiter_faktor`, Aufträge)
+je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `second_factor`, Aufträge)
 sieht und ändert die Laufzeitrolle nur Zeilen von `app.konto` und dessen direkten
 Unterkonten, ohne Konto keine. Zugangsdaten (Passkeys, zweiter Faktor, Tokens,
 Geräteschlüssel, Schrittfreigaben) sieht nur das Konto selbst, kein Hauptkonto
@@ -196,7 +196,7 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
 - Der Haushalt (Migration 0115): `account_links` liest jedes Konto, anlegen darf
   nur der Systemrahmen, lösen nur ein beteiligtes Konto; `account_link_invites`
   und `household_former_links` sieht nur ein beteiligtes Konto.
-- Ohne Zeilenschutz sind `users`, `verwaltungsprotokoll`, `rate_limit_attempts`,
+- Ohne Zeilenschutz sind `users`, `admin_log`, `rate_limit_attempts`,
   `global_settings`, Kataloge, Preis- und Bildzwischenspeicher, Laufzustände.
   Hier schützt der Filter im Repository, bei den ersten dreien zusätzlich das
   Recht der Rolle (unten).
@@ -208,7 +208,7 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
   `last_name`, `global_settings` liest sie nur (Migration 0117). Anmeldung,
   Sitzungsspeicher, Passwort, Rechte, Adresse, Sitzungsversion und globale
   Einstellungen laufen über die Systemrolle (`imSystem(…)` im Kontext des
-  Bereichs). `verwaltungsprotokoll` ist für beide Rollen nur anfügbar; aufgeräumt
+  Bereichs). `admin_log` ist für beide Rollen nur anfügbar; aufgeräumt
   wird über `verwaltungsprotokoll_aufraeumen()` (feste Frist, Eigentümerin).
 - Gutscheine und Idempotenzeinträge sieht wie die Zugangsdaten nur das eigene
   Konto (Migration 0118). Kopien vor Migrationen (`vor_migration_*`) haben RLS ohne Policy und
@@ -223,24 +223,24 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | Stufe | Bereiche |
 |---|---|
 | 1 | `src/infra` |
-| 2 | `src/vertrag` |
+| 2 | `src/contract` |
 | 3 | `src/http` |
 | 4 | `db`, `clients` |
-| 5 | `src/drossel` |
-| 6 | `src/einstellungen` |
+| 5 | `src/throttle` |
+| 6 | `src/settings` |
 | 7 | `src/mail` |
-| 8 | `src/auftraege` |
-| 9 | `src/fremdquellen` |
-| 10 | `src/haushalt`, `src/geraete`, `src/faktoren` |
-| 11 | `src/konto` |
-| 12 | `src/bilder`, `src/profil` |
-| 13 | `src/idempotenz`, `src/katalog` |
-| 14 | `src/finanzen` |
-| 15 | `src/bestand` |
+| 8 | `src/jobQueue` |
+| 9 | `src/externalSources` |
+| 10 | `src/household`, `src/devices`, `src/factors` |
+| 11 | `src/account` |
+| 12 | `src/images`, `src/profile` |
+| 13 | `src/idempotency`, `src/catalog` |
+| 14 | `src/finances` |
+| 15 | `src/inventory` |
 | 16 | `src/sets` |
-| 17 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 18 | `src/sammlung`, `src/verwaltung` |
-| 19 | `src/dienste.ts` |
+| 17 | `src/parts`, `src/minifigs`, `src/wanted`, `src/vouchers` |
+| 18 | `src/collection`, `src/management` |
+| 19 | `src/services.ts` |
 | 20 | `jobs`, `routes` |
 | 21 | `startup` |
 | 22 | `server.ts` |
@@ -252,9 +252,9 @@ Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugen
 
 | Datei | Wozu | Prüfung |
 |---|---|---|
-| `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-basis-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
-| `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-frisch-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
-| `db/zeilen.ts` | Zeilentypen je Tabelle (`npm run schema:zeilen`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/zeilentypen-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
+| `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-base-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
+| `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-fresh-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
+| `db/rows.ts` | Zeilentypen je Tabelle (`npm run schema:zeilen`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/rows-types-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
 
 Von Hand geändert wird keine davon; eine Schemaänderung ist immer eine
 neue Migration.
@@ -272,13 +272,13 @@ einbindet. Die Stufen gelten deshalb auch für Daten:
 - Liegt er darunter (Einstellungen, Aufträge, Haushalt, Geräte, Bilder, Katalog, Finanzen,
   Bestand), nennt er in `src/<bereich>/lesevertrag.ts` die Form, die er braucht (Unterabfragen
   mit festen Spalten), und bekommt sie als `lesevertrag` im Kontext. Gefüllt wird der Vertrag
-  aus `LESEVERTRAG` in `src/dienste.ts` (Stufe 19, über jedem Besitzer); die Repositories nehmen
+  aus `LESEVERTRAG` in `src/services.ts` (Stufe 19, über jedem Besitzer); die Repositories nehmen
   ihn nach dem Zugang (`mitVertrag`). Wer eine Tabelle umbaut, passt den Baustein an, der
   Vertrag des Lesers bleibt.
-- Die Kontobedingung eines Bausteins ist nur ein Platzhalter (`Konten` in `db/konten.ts`:
+- Die Kontobedingung eines Bausteins ist nur ein Platzhalter (`Konten` in `db/accounts.ts`:
   `= $n` oder `= ANY($n)`).
 
-`test/gemeinsame-tabellen-db.test.js` teilt die Lesestellen ein: Aufwärts gibt es keine, weder
+`test/shared-tables-db.test.js` teilt die Lesestellen ein: Aufwärts gibt es keine, weder
 direkt noch über `db/` (was ein Baustein liest, zeigt sein Ergebnis); Lesen des Katalogs und
 direkt abwärts zählen je eine Ratsche, die nur sinken darf. Ein Trigger schreibt nur in Tabellen
 seines Besitzers; die Ausnahmen (Teilezähler, Vormerkung für die Teile-Zusammenfassung) stehen
@@ -287,7 +287,7 @@ Ausnahme: Der Schemastart (`db/schemaStart.ts`) setzt die Zeitzone in `global_se
 bevor es Dienste gibt. Die Tabelle hier ist die Quelle für den Test.
 
 Die Bestandszeilen eines Kontos (Sets, Teile, Figuren, ihre Käufe, Orte, Papierkorb) gehören
-`src/bestand`: Papierkorb, Lagerorte und Tageserfassung arbeiten über alle drei Arten, und nur der
+`src/inventory`: Papierkorb, Lagerorte und Tageserfassung arbeiten über alle drei Arten, und nur der
 tiefste Bereich, der sie schreibt, kann von den anderen gerufen werden. Sets, Teile und Figuren
 schreiben über `t.bestand`. Wählt eine Datei den Tabellennamen zur Laufzeit, misst der Test, was sie
 liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
@@ -296,41 +296,41 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 |---|---|
 | `db` | `schema_migrations` |
 | `src/infra` | `app_logs` |
-| `src/drossel` | `rate_limit_attempts` |
-| `src/einstellungen` | `global_settings`, `user_settings` |
-| `src/auftraege` | `auftraege`, `auftrag_exklusiv`, `auftrag_pausen`, `auftrags_arten`, `import_stand`, `laufzustand` |
-| `src/fremdquellen` | `api_aufrufe`, `api_takt` |
-| `src/haushalt` | `account_link_invites`, `account_links`, `household_former_links` |
-| `src/geraete` | `geraete_nonces`, `geraete_schluessel`, `schritt_challenges`, `schritt_freigaben` |
-| `src/faktoren` | `passkeys`, `webauthn_challenges`, `zweiter_faktor`, `zweiter_faktor_codes` |
-| `src/konto` | `api_tokens`, `api_tokens_verbraucht`, `qr_login_tokens`, `user_sessions`, `users`, `verwalter_uebernahmen`, `verwaltungsprotokoll` |
-| `src/bilder` | `image_misses`, `image_wanted` |
-| `src/idempotenz` | `idempotenz` |
-| `src/katalog` | `bl_zuordnung`, `bl_zuordnung_eigen`, `catalog_cache`, `figur_eigen`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_figuren`, `set_teile`, `shared_instructions`, `subsets_cache`, `teil_eigen`, `teil_farbe_eigen` |
-| `src/finanzen` | `minifig_price_cache`, `minifig_price_history`, `part_price_cache`, `part_price_history`, `price_alerts`, `price_cache`, `price_history`, `wechselkurse` |
-| `src/bestand` | `minifig_acquisitions`, `minifigs`, `papierkorb`, `part_acquisitions`, `parts`, `set_acquisitions`, `sets`, `storage_locations` |
+| `src/throttle` | `rate_limit_attempts` |
+| `src/settings` | `global_settings`, `user_settings` |
+| `src/jobQueue` | `jobs`, `job_exclusive_locks`, `job_pauses`, `job_types`, `import_status`, `run_state` |
+| `src/externalSources` | `api_calls`, `api_cadence` |
+| `src/household` | `account_link_invites`, `account_links`, `household_former_links` |
+| `src/devices` | `device_nonces`, `device_keys`, `step_up_challenges`, `step_up_approvals` |
+| `src/factors` | `passkeys`, `webauthn_challenges`, `second_factor`, `second_factor_codes` |
+| `src/account` | `api_tokens`, `api_tokens_consumed`, `qr_login_tokens`, `user_sessions`, `users`, `admin_takeovers`, `admin_log` |
+| `src/images` | `image_misses`, `image_wanted` |
+| `src/idempotency` | `idempotency` |
+| `src/catalog` | `bl_mapping`, `bl_mapping_custom`, `catalog_cache`, `minifig_custom`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_minifigs`, `set_parts`, `shared_instructions`, `subsets_cache`, `part_custom`, `part_color_custom` |
+| `src/finances` | `minifig_price_cache`, `minifig_price_history`, `part_price_cache`, `part_price_history`, `price_alerts`, `price_cache`, `price_history`, `exchange_rates` |
+| `src/inventory` | `minifig_acquisitions`, `minifigs`, `trash`, `part_acquisitions`, `parts`, `set_acquisitions`, `sets`, `storage_locations` |
 | `src/sets` | `instructions` |
-| `src/teile` | `parts_katalog_offen`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
-| `src/merkliste` | `wanted` |
-| `src/gutscheine` | `gutschein_guthaben_schranke`, `vouchers` |
+| `src/parts` | `parts_catalog_pending`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
+| `src/wanted` | `wanted` |
+| `src/vouchers` | `voucher_balance_throttle`, `vouchers` |
 
 ## API-Vertrag
 
-`src/vertrag/` beschreibt jede Route mit zod: Antwort und, für jede
+`src/contract/` beschreibt jede Route mit zod: Antwort und, für jede
 schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 `docs/openapi.json` (`npm run vertrag:openapi`), die Typen der Oberfläche und die
 Kotlin-Antworttypen der App (`vertrag.erzeugt`). Der Vertrag ist die einzige
 Eingabeprüfung und liefert das Fachformat: Was eine Route liest, hat der Vertrag schon
 umgeformt (`z.transform`, z. B. `ZUSTAND` 'n' → 'N', `KENNUNG` → Zahl); eine Route wandelt
-`req.eingabe`, `req.abfrage` und `req.pfad` nicht nach (`test/schichten.test.js`).
+`req.eingabe`, `req.abfrage` und `req.pfad` nicht nach (`test/layers.test.js`).
 Ein Ereignisstrom (`art: 'strom'`) nennt sein Ereignis (`ereignis`); die Oberfläche öffnet ihn nur
-über `strom()` in `public/js/api.js` und bekommt den Typ aus `Strom` (`frontend-typen/vertrag.d.ts`).
+über `strom()` in `public/js/api.js` und bekommt den Typ aus `Strom` (`frontend-types/contract.d.ts`).
 
 Was die App vom Server braucht (Routen, Abfrage, Rumpffelder, die Felder ihrer
 Modelle), steht in `shared/app-schnittstelle.json`. Der Android-Lauf erzeugt und prüft
-die Datei aus dem Kotlin-Quelltext (`Android-App/tools/vertrag/`), die Web-Suite prüft den
-Server gegen sie (`test/app-schnittstelle.test.js`, `vertrag-lesen-db`,
-`vertrag-schreiben-db`). Kotlin-Quelltext liest die Web-Suite nicht (`test/ratschen.test.js`).
+die Datei aus dem Kotlin-Quelltext (`Android-App/tools/contract/`), die Web-Suite prüft den
+Server gegen sie (`test/app-interface.test.js`, `contract-read-db`,
+`contract-write-db`). Kotlin-Quelltext liest die Web-Suite nicht (`test/ratschen.test.js`).
 
 Eine Route registriert sich über ihren Schlüssel:
 `router.endpunkt('GET /api/v1/sets/:setNumber', requireToken, async req => …)`.
@@ -339,7 +339,7 @@ Präfix (`vertragsRouter('/api/v1')`), ein Schlüssel ausserhalb kompiliert nich
 unter fremdem Präfix eingehängt antwortet er 500. Die Route gibt ihr Ergebnis zurück,
 der Router setzt `{ success: true, … }` davor (die App liest `success`); eine Route,
 deren Vertrag kein `success` nennt, antwortet selbst. Die Typprobe steht in
-`test/typen/vertragsRouter.typprobe.ts`.
+`test/types/contractRouter.typprobe.ts`.
 
 ### Namen
 
@@ -360,11 +360,10 @@ Bestand der Abweichungen (Stand 11.11.2026):
 Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
 `haushaltVon`, `schreibbereich`, `blickfeldIds`, `darfSchreibenFuer`,
 `preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen vor allem in
-Finanzen, Katalog, Teile und Mail (`holePreis`, `setZustand`, `aktuellerMarktpreis`)
-sowie `getSetting`/`getGlobalSetting`/`setGlobalSetting` der Einstellungen;
+Finanzen, Katalog und Mail (`holePreis`, `setZustand`, `aktuellerMarktpreis`);
 `test/ratschen.test.js` zählt die exportierten Funktionen in `src/` mit englischem Verb.
 Eine Regel hat einen Namen: Setnummern normalisiert nur `normalisiereSetNummer`
-(`src/infra/setNummer`), Sets verschiebt `setVerschieben` (Einstieg) über
+(`src/infra/setNumber`), Sets verschiebt `setVerschieben` (Einstieg) über
 `setErfassungenUmhaengen`; Bild- und Quellenhelfer importiert man aus `bilder` bzw.
 `fremdquellen`, nicht über `katalog`.
 
@@ -389,7 +388,7 @@ explizit in `public/js/main.js` (Importliste), die Schichten in
 
 | Schicht | Dateien | Regel |
 |---|---|---|
-| Kern | `KERN` (`zustand.js`, `ereignisse.js`, `escapen.js` …), `public/i18n.js` | kennt keine Ansicht |
+| Kern | `KERN` (`state.js`, `events.js`, `escaping.js` …), `public/i18n.js` | kennt keine Ansicht |
 | Bausteine | `BAUSTEINE` (`api.js`, `dom.js`, `format.js` …) | kennt keine Ansicht; `api.js` ist der einzige Weg zum Server |
 | Ansichten | alle übrigen Module unter `public/js/` | dürfen Kern und Bausteine importieren |
 
@@ -397,18 +396,18 @@ explizit in `public/js/main.js` (Importliste), die Schichten in
   `public/js/registry.js` ordnet sie den registrierten Funktionen zu (die CSP
   verbietet Inline-Handler).
 - **Rückwege ohne Importkreis:** Ansichten melden Ereignisse
-  (`public/js/ereignisse.js`, `melde`/`abonniere`) statt einander zu importieren.
-- **Geteilter Zustand** steht nur in `public/js/zustand.js` (mit Settern).
-- **Markup** entsteht mit dem Tag `html` (`public/js/escapen.js`, maskiert jeden
+  (`public/js/events.js`, `emit`/`subscribe`) statt einander zu importieren.
+- **Geteilter Zustand** steht nur in `public/js/state.js` (mit Settern).
+- **Markup** entsteht mit dem Tag `html` (`public/js/escaping.js`, maskiert jeden
   Wert) und kommt nur über `setzeHtml()`/`fuegeHtmlEin()` (`public/js/dom.js`)
   in die Seite. Inline-Stile heissen `data-stil` und werden von
-  `public/js/stile.js` gegen eine beim Bauen erzeugte Freigabeliste gesetzt.
+  `public/js/styles.js` gegen eine beim Bauen erzeugte Freigabeliste gesetzt.
 - **Texte:** `t()` maskiert eingesetzte Werte für Markup, `tRaw()` nicht (für
   `textContent`); beide aus `public/i18n.js`.
 - **Typen:** `tsconfig.frontend.json` prüft die Module streng (JSDoc, `strict`),
-  die Routentypen kommen aus `frontend-typen/vertrag.d.ts` (aus dem API-Vertrag erzeugt).
+  die Routentypen kommen aus `frontend-types/contract.d.ts` (aus dem API-Vertrag erzeugt).
 
 Die Schichten prüft `test/frontend-architektur.test.js`, das Verhalten prüfen
-die jsdom-Tests über `test/helpers/oberflaeche.js` (echtes `index.html`,
+die jsdom-Tests über `test/helpers/ui.js` (echtes `index.html`,
 echtes Bündel, Antworten gegen den Vertrag) und die Chrome-Tests über
 `test/helpers/app-browser.js`.

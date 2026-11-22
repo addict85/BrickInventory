@@ -1,26 +1,26 @@
 /**
- * Marktpreis der Detailansicht: Die Währung bestimmt der SERVER, nicht der
- * Client — gegen echte Route und Tabelle.
+ * Market price of the detail view: the SERVER determines the currency, not the
+ * client — against the real route and table.
  *
- * Gegenprobe (durchgeführt): `req.query.currency ||` wieder vorangestellt →
- * der erste Teilschritt hier wird rot (no_price statt 629.90).
+ * Counter-check (carried out): `req.query.currency ||` prepended again →
+ * the first substep here turns red (no_price instead of 629.90).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/inventory');
+const db = testData();
 
-test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+test("the app's currency parameter does NOT override the user setting", { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'currency-param-test';
   const SET = '10307-1';
@@ -33,9 +33,9 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT', 
     [uid],
   );
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
-  await haeltSet(db, uid, SET, 1);
-  // Preis liegt NUR in der eingestellten Währung vor — wie im Betrieb, wo der
-  // Preis-Job genau diese füllt.
+  await holdsSet(db, uid, SET, 1);
+  // The price exists ONLY in the configured currency — as in operation, where the
+  // price job fills exactly that one.
   await db.run(
     `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
                 VALUES ($1,'N','CHF',500,629.90,800,631,7,NOW())
@@ -53,14 +53,14 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT', 
   };
 
   try {
-    // Der Fehlerfall von früher: App schickt ihren Startwert EUR mit. Die
-    // Antwort muss trotzdem der CHF-Preis der Nutzereinstellung sein.
+    // The error case from before: the app sends its start value EUR along. The
+    // response must nevertheless be the CHF price of the user setting.
     let j = await hole('?currency=EUR');
     assert.equal(j.currency, 'CHF', 'die Antwortwährung ist die Nutzereinstellung, nicht der Parameter');
     assert.equal(parseFloat(j.avg_price), 629.9, 'der Preis kommt aus dem Cache der Nutzereinstellung');
     assert.ok(!j.no_price, 'kein no_price — genau das war die leere Kachel');
 
-    // Ohne Parameter (Webapp, künftige App-Fassungen): identisches Ergebnis.
+    // Without a parameter (web app, future app versions): identical result.
     j = await hole('');
     assert.equal(j.currency, 'CHF');
     assert.equal(parseFloat(j.avg_price), 629.9);

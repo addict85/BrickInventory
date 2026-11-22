@@ -1,15 +1,15 @@
 import { tRaw } from '../i18n.js';
-import { alsHtml, esc, html, ungeprueft } from './escapen.js';
+import { asHtml, esc, html, rawHtml } from './escaping.js';
 
-// Kleine DOM-Helfer, die jede Ansicht braucht: Elemente holen, Symbole, Leerzustand, besetzte Knöpfe. Ohne
-// Abhängigkeit über Escaping und Sprache hinaus, damit jedes Modul sie laden kann.
+// Small DOM helpers every view needs: get elements, icons, empty state, busy buttons. Without
+// dependencies beyond escaping and language, so that every module can load them.
 
-// function statt const: Andere Module rufen G() & Co. schon beim eigenen Laden. Eine const-Pfeilfunktion läge
-// dann noch in der Todeszone und würfe „G is not a function“.
+// function instead of const: other modules call G() & co. already while loading themselves. A const arrow function would
+// then still be in the temporal dead zone and throw "G is not a function".
 /**
- * Als Formularelement typisiert: Die meisten Aufrufe lesen .value, .checked oder .disabled. Für ein anderes
- * Element sind diese Felder schlicht leer — die Typprüfung soll an den echten Fehlern hängen, nicht an jedem
- * Feldzugriff.
+ * Typed as a form element: most calls read .value, .checked or .disabled. For another
+ * element these fields are simply empty — type checking should catch the real errors, not every
+ * field access.
  * @param {string} id
  * @returns {Feld}
  */
@@ -18,8 +18,8 @@ export function G(id) {
 }
 
 /**
- * querySelectorAll als HTMLElement[]: Die Oberfläche fragt nur HTML-Elemente ab, und dataset, style und
- * hidden gehören zu HTMLElement, nicht zu Element.
+ * querySelectorAll as HTMLElement[]: the UI only queries HTML elements, and dataset, style and
+ * hidden belong to HTMLElement, not to Element.
  * @param {string} sel @param {ParentNode} [wurzel]
  * @returns {HTMLElement[]}
  */
@@ -27,31 +27,31 @@ export function alle(sel, wurzel = document) {
   return /** @type {HTMLElement[]} */ ([...wurzel.querySelectorAll(sel)]);
 }
 
-/** querySelector als HTMLElement, siehe alle(). @param {string} sel @param {ParentNode} [wurzel] */
+/** querySelector as HTMLElement, see alle(). @param {string} sel @param {ParentNode} [wurzel] */
 export function eins(sel, wurzel = document) {
   return /** @type {HTMLElement | null} */ (wurzel.querySelector(sel));
 }
 
-/** Der offene Reiter (data-tab des aktiven Knopfs in der Leiste). */
-/** Weich rollen nur ohne Wunsch nach weniger Bewegung: Ein ausdrückliches 'smooth' übergeht die CSS-Regel. */
+/** The open tab (data-tab of the active button in the bar). */
+/** Smooth scrolling only without a wish for reduced motion: an explicit 'smooth' overrides the CSS rule. */
 export function rollArt() {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 }
 
-export function aktiverReiter() {
+export function activeTab() {
   return eins('.ntab.active')?.dataset.tab;
 }
 
-const TELEFON = '(max-width: 640px)';
-/** Telefonbreite wie in mobile.css: Dort gibt es keine Tabellenansicht, die Zeilen wären eine Bildschirmhöhe hoch. */
-export const telefonBreite = () => !!globalThis.matchMedia?.(TELEFON).matches;
-/** @param {() => void} fn läuft, wenn das Fenster die Telefonbreite erreicht oder verlässt */
-export function beiTelefonWechsel(fn) {
-  globalThis.matchMedia?.(TELEFON).addEventListener?.('change', fn);
+const PHONE = '(max-width: 640px)';
+/** Phone width as in mobile.css: there is no table view there, the rows would be one screen height tall. */
+export const telefonBreite = () => !!globalThis.matchMedia?.(PHONE).matches;
+/** @param {() => void} fn runs when the window reaches or leaves the phone width */
+export function atPhoneSwitch(fn) {
+  globalThis.matchMedia?.(PHONE).addEventListener?.('change', fn);
 }
 
 /**
- * Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML.
+ * An icon from the icon family (sprite in index.html) as HTML.
  * @param {string} name
  */
 export function ico(name) {
@@ -59,11 +59,11 @@ export function ico(name) {
 }
 
 /**
- * Abfragen im Takt ruhen in verborgenen Tabs: Jede zählt gegen das Budget des Kontos (src/http/apiDrossel.ts),
- * auch wenn niemand hinsieht. `fn` läuft sofort oder beim nächsten Sichtbarwerden.
+ * Periodic queries rest in hidden tabs: each counts against the account's budget (src/http/apiThrottle.ts),
+ * even if nobody is looking. `fn` runs immediately or the next time the tab becomes visible.
  * @param {() => unknown} fn
  */
-export function wennSichtbar(fn) {
+export function ifVisible(fn) {
   if (!document.hidden) {
     fn();
     return;
@@ -76,43 +76,43 @@ export function wennSichtbar(fn) {
 }
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
-let _trefferUhr;
+let _hitsClock;
 
 /**
- * Das Ergebnis einer Suche oder eines Filters für Vorleser (WCAG 4.1.3). Entprellt, damit nicht jeder
- * Tastendruck spricht; ein Zeichen wechselt, damit derselbe Text erneut angesagt wird.
+ * The result of a search or a filter for screen readers (WCAG 4.1.3). Debounced, so that not every
+ * key press speaks; a character alternates, so that the same text is announced again.
  * @param {string} text
  */
-export function meldeTreffer(text) {
-  clearTimeout(_trefferUhr);
-  _trefferUhr = setTimeout(() => {
+export function reportHits(text) {
+  clearTimeout(_hitsClock);
+  _hitsClock = setTimeout(() => {
     const el = G('treffer-live');
     if (el) el.textContent = el.textContent === text ? text + '\u00a0' : text;
   }, 700);
 }
 
 /**
- * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste Schritt als Knopf. Texte kommen
- * fertig übersetzt oder als Schlüssel; maskiert wird hier.
- * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
+ * An empty state: icon, one sentence and, if there is one, the next step as a button. Texts come
+ * already translated or as keys; escaping happens here.
+ * @param {{ ico: string, titel?: string, text?: string, titleKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
-export function leerZustand(o) {
-  const knopfText = o.knopf?.textKey
+export function emptyState(o) {
+  const buttonText = o.knopf?.textKey
     ? html`<span data-i18n="${o.knopf.textKey}">${tRaw(o.knopf.textKey)}</span>`
     : html`<span>${o.knopf?.text}</span>`;
   const knopf = o.knopf
-    ? html`<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${o.knopf.click}"${o.knopf.arg ? html` data-arg="${o.knopf.arg}"` : ''}>${ico(o.knopf.ico || 'plus')}${knopfText}</button>`
+    ? html`<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${o.knopf.click}"${o.knopf.arg ? html` data-arg="${o.knopf.arg}"` : ''}>${ico(o.knopf.ico || 'plus')}${buttonText}</button>`
     : '';
-  // Mit Schlüssel übersetzt applyLang den Text nach, wenn die Kontosprache erst später feststeht.
+  // With a key, applyLang retranslates the text if the account language is only determined later.
   const k = (/** @type {string | undefined} */ key) => (key ? ` data-i18n="${esc(key)}"` : '');
-  return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${ungeprueft(k(o.titelKey))}>${o.titelKey ? tRaw(o.titelKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${ungeprueft(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
+  return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${rawHtml(k(o.titleKey))}>${o.titleKey ? tRaw(o.titleKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${rawHtml(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
 }
 
 /**
- * Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer.
+ * The button "reset filter" for an empty state without hits.
  * @param {string} ansicht
  */
-export function zuruecksetzenKnopf(ansicht) {
+export function resetButton(ansicht) {
   return {
     text: tRaw('common.reset_filter'),
     click: 'filterZuruecksetzen',
@@ -123,24 +123,24 @@ export function zuruecksetzenKnopf(ansicht) {
 }
 
 /**
- * Sperrt einen Knopf für die Dauer eines Aufrufs und merkt sich seine Beschriftung, statt sie danach neu zu
- * setzen: Fest eingetragene Texte waren falsch übersetzt, und ein kurz leerer Knopf sah wie ein Fehler aus.
+ * Locks a button for the duration of a call and remembers its label instead of setting it anew
+ * afterwards: hard-coded texts were translated wrongly, and a briefly empty button looked like an error.
  * @param {HTMLButtonElement | HTMLInputElement} btn
- * @param {string} [laeuft] Andere Beschriftung waehrend der Arbeit. NUR
- *   angeben, wenn der Knopf wirklich etwas anderes sagen soll: Die
- *   PDF-Erzeugung tut das, weil sie den Fortschritt hineinschreibt
- *   (erstellen → Bilder → Restzeit). Ohne dieses Argument bleibt die
- *   Beschriftung unangetastet.
- * @returns {(text?: string) => void} Freigabe. Ohne Argument kommt die
- *   urspruengliche Beschriftung zurueck; mit Argument eine andere — die
- *   QR-Erzeugung heisst danach absichtlich „Neu generieren".
+ * @param {string} [laeuft] A different label during the work. ONLY
+ *   pass it if the button really should say something else: the
+ *   PDF generation does that because it writes the progress into it
+ *   (create → images → remaining time). Without this argument the
+ *   label stays untouched.
+ * @returns {(text?: string) => void} Release. Without an argument the
+ *   original label comes back; with an argument a different one — the
+ *   QR generation is then deliberately called "regenerate".
  */
 export function knopfBesetzt(btn, laeuft) {
   const vorher = btn.textContent;
-  // Die Breite einfrieren, bevor sich etwas ändert: Ein kürzerer Wartetext liesse sonst die ganze flex-Zeile
-  // daneben nachrutschen.
+  // Freeze the width before anything changes: a shorter waiting text would otherwise make the whole flex row
+  // next to it slide along.
   const breite = btn.offsetWidth;
-  const minVorher = btn.style.minWidth;
+  const minBefore = btn.style.minWidth;
   if (breite) btn.style.minWidth = breite + 'px';
   btn.disabled = true;
   btn.classList.add('besetzt');
@@ -148,50 +148,50 @@ export function knopfBesetzt(btn, laeuft) {
   return text => {
     btn.disabled = false;
     btn.classList.remove('besetzt');
-    // Nur zuruecksetzen, was ueberhaupt gesetzt wurde — sonst schriebe die Freigabe eine Beschriftung neu,
-    // die nie weg war.
+    // Only reset what was set at all — otherwise the release would rewrite a label
+    // that was never gone.
     if (text !== undefined) btn.textContent = text;
     else if (laeuft !== undefined) btn.textContent = vorher;
-    // Die eigene Vorgabe zurueckgeben, nicht blind leeren: Ein Knopf, der von sich aus eine min-width traegt,
-    // behaelt sie.
-    btn.style.minWidth = minVorher;
+    // Give back the own default, do not blindly clear: a button that carries a min-width by itself
+    // keeps it.
+    btn.style.minWidth = minBefore;
   };
 }
 
 /**
- * Symbol für die BrickLink-XML-Knöpfe: eine Datei mit spitzen Klammern zeigt, was der Knopf tut. Der
- * Ziegelstein stand schon für Teile und Sets, und das fremde BrickLink-Logo nachzuzeichnen wäre eine
- * Anmassung.
+ * Icon for the BrickLink XML buttons: a file with angle brackets shows what the button does. The
+ * brick already stood for parts and sets, and redrawing the foreign BrickLink logo would be
+ * presumptuous.
  */
 export const XML_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10 12.5 8 14.5l2 2"/><path d="M14 12.5l2 2-2 2"/></svg>`;
 
 /**
- * Papierkorb-Symbol für Löschknöpfe auf Kacheln und in Listenzeilen.
+ * Trash icon for delete buttons on tiles and in list rows.
  *
- * `currentColor` statt fester Farbe: Der Knopf bestimmt die Farbe über sein
- * CSS (weiss auf rotem Grund bei .delbtn, rot auf hellem Grund bei .bd), das Symbol übernimmt sie. So passt
- * es in beide Umgebungen ohne zweite Fassung.
+ * `currentColor` instead of a fixed color: the button determines the color via its
+ * CSS (white on red background for .delbtn, red on light background for .bd), the icon adopts it. That way it fits
+ * into both environments without a second version.
  */
 export const TRASH_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;display:block" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
 
 /**
- * Die eine Stelle, die Markup in die Seite schreibt. Sie nimmt nur fertiges Markup (html``, ungeprueft() oder
- * Listen davon), damit die Typprüfung eine Zeichenkette mit Daten zurückweist, statt sie einzusetzen.
+ * The one place that writes markup into the page. It only accepts finished markup (html``, rawHtml() or
+ * lists of it), so that type checking rejects a string with data instead of inserting it.
  * @param {Element | null | undefined} el
- * @param {import('./escapen.js').Markup} inhalt
+ * @param {import('./escaping.js').Markup} inhalt
  */
 export function setzeHtml(el, inhalt) {
-  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder ungeprueft()');
-  if (el) el.innerHTML = alsHtml(inhalt);
+  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder rawHtml()');
+  if (el) el.innerHTML = asHtml(inhalt);
 }
 
 /**
- * insertAdjacentHTML mit derselben Regel wie setzeHtml().
+ * insertAdjacentHTML with the same rule as setzeHtml().
  * @param {Element | null | undefined} el
  * @param {InsertPosition} wo
- * @param {import('./escapen.js').Markup} inhalt
+ * @param {import('./escaping.js').Markup} inhalt
  */
 export function fuegeHtmlEin(el, wo, inhalt) {
-  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder ungeprueft()');
-  el?.insertAdjacentHTML(wo, alsHtml(inhalt));
+  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder rawHtml()');
+  el?.insertAdjacentHTML(wo, asHtml(inhalt));
 }

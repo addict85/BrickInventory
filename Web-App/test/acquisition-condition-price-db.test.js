@@ -1,30 +1,30 @@
 /**
- * Der nachgefüllte Marktpreis gilt dem Zustand DIESER Erfassung.
+ * The refilled market price applies to the condition of THIS entry.
  *
- * Wird das Kaufpreisfeld geleert, füllt der Erfassungsdienst den Marktpreis
- * nach. Teile und Minifiguren liessen den Zustand der Zeile früher fallen und
- * leiteten einen aus ALLEN Erfassungen ab; eine Gebraucht-Zeile bekam so den
- * Preis des Sammelzustands.
+ * If the purchase price field is cleared, the entry service refills the market
+ * price. Parts and minifigures used to drop the row's condition and
+ * derived one from ALL entries; a used row thus got the
+ * price of the aggregate condition.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in src/sammlung/erfassungen.ts den Zustand an resolvePrice durch null
- *      ersetzt → rot bei „set“ (100 statt 60)
- *   B  in ARTEN.part.resolvePrice cond nicht weitergegeben → rot bei „part“
- *      (100 statt 60); „set“ bleibt grün
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in src/collection/acquisitions.ts the condition passed to resolvePrice replaced by null
+ *      → red for “set” (100 instead of 60)
+ *   B  in ARTEN.part.resolvePrice cond not passed on → red for “part”
+ *      (100 instead of 60); “set” stays green
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
-test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurrency: 1 }, async t => {
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
-  const { erfassungAendern } = _req('src/sammlung/erfassungen.js');
+test('a cleared purchase price is refilled in the condition of the row', { concurrency: 1 }, async t => {
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
+  const { changeAcquisition } = _req('src/collection/acquisitions.js');
   const P = process.pid;
   const NAME = `zustandpreis-${P}`,
     SN = `${P}9-1`,
@@ -44,7 +44,7 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
 
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','CHF')`, [uid]);
-  // Neu 100, Gebraucht 60 — in allen drei Zwischenspeichern.
+  // New 100, used 60 — in all three caches.
   for (const [z, preis] of [
     ['N', 100],
     ['U', 60],
@@ -103,7 +103,7 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
     ],
   ];
   for (const [art, tabelle, spalte, keys, id] of faelle) {
-    await erfassungAendern(art, uid, id, keys, { [spalte]: '', condition: 'U' });
+    await changeAcquisition(art, uid, id, keys, { [spalte]: '', condition: 'U' });
     const z = await db.get(
       `SELECT ${spalte}::float AS preis, price_estimated, condition FROM ${tabelle} WHERE id = $1`,
       [id],
@@ -112,26 +112,26 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
   }
 });
 
-test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
-  // Zweimal dieselbe Lücke
+test('every market price fetch gets a condition', () => {
+  // The same gap twice
   const fs = require('node:fs');
   const path = require('node:path');
   const { ohneKommentare } = require('./helpers/sources');
   const ROOT = path.join(__dirname, '..');
 
   const dateien = [];
-  (function sammle(dir) {
+  (function collect(dir) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
-      if (e.isDirectory()) sammle(p);
+      if (e.isDirectory()) collect(p);
       else if (e.name.endsWith('.ts')) dateien.push(p);
     }
   })(path.join(ROOT, 'routes'));
   for (const d of ['src']) {
-    (function sammle(dir) {
+    (function collect(dir) {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, e.name);
-        if (e.isDirectory()) sammle(p);
+        if (e.isDirectory()) collect(p);
         else if (e.name.endsWith('.ts')) dateien.push(p);
       }
     })(path.join(ROOT, d));
@@ -140,7 +140,7 @@ test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
   const treffer = [];
   for (const datei of dateien) {
     const code = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const fn of ['aktuellerFigurMarktpreis', 'aktuellerTeilMarktpreis']) {
+    for (const fn of ['currentMinifigMarketPrice', 'currentPartMarketPrice']) {
       const re = new RegExp(String.raw`(?<!function )${fn}\(((?:[^()]|\([^()]*\))*)\)`, 'g');
       for (const m of code.matchAll(re)) {
         const args = m[1]

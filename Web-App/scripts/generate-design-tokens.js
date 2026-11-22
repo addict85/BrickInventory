@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * Erzeugt aus shared/design-tokens.json die Design-Dateien BEIDER Oberflaechen.
+ * Generates the theme files of BOTH UIs from shared/design-tokens.json.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const WURZEL = path.join(__dirname, '..', '..');
 const QUELLE = path.join(WURZEL, 'shared', 'design-tokens.json');
-const ZIEL_CSS = path.join(WURZEL, 'Web-App', 'public', 'tokens.css');
-const ZIEL_KT = path.join(
+const TARGET_CSS = path.join(WURZEL, 'Web-App', 'public', 'tokens.css');
+const TARGET_KT = path.join(
   __dirname,
   '..',
   '..',
@@ -23,17 +23,17 @@ const ZIEL_KT = path.join(
   'theme',
   'DesignTokens.kt',
 );
-const ZIEL_DUNKEL_KT = path.join(path.dirname(ZIEL_KT), 'DunkelTokens.kt');
+const TARGET_DARK_KT = path.join(path.dirname(TARGET_KT), 'DunkelTokens.kt');
 
-const HINWEIS = 'ERZEUGT aus shared/design-tokens.json — NICHT von Hand aendern.';
+const HINT = 'GENERATED from shared/design-tokens.json — do NOT edit by hand.';
 
 /**
- * Text auf Zeilen umbrechen.
+ * Wrap text into lines.
  *
- * Wortweise, nicht per Regex: Die erste Fassung benutzte
- * `/(.{1,68})(\s|$)/g` und verschluckte dabei Woerter — im KDoc stand
- * "Der Grund ist nicht" und danach gleich "die Legende nicht lesen".
- * Ein Umbruch, der Text verliert, ist schlimmer als keiner.
+ * Word by word, not via regex: the first version used
+ * `/(.{1,68})(\s|$)/g` and swallowed words in the process — the KDoc said
+ * "Der Grund ist nicht" and right after that "die Legende nicht lesen".
+ * A wrap that loses text is worse than none.
  */
 /** @param {string} text @param {number} [breite] @returns {string[]} */
 function umbruch(text, breite = 72) {
@@ -50,24 +50,24 @@ function umbruch(text, breite = 72) {
 }
 
 /**
- * Aus den Token-Tabellen die CSS-Datei bauen.
- * @param {any} daten Inhalt von shared/design-tokens.json
+ * Build the CSS file from the token tables.
+ * @param {any} daten content of shared/design-tokens.json
  * @returns {string}
  */
-function baueCss(daten) {
-  // Die Begruendung reist MIT dem Wert. Sie stand vorher als Kommentar neben
-  // der Zeile in styles.css bzw. themes/brick.css; zoege sie beim Umzug nicht
-  // mit, waere nach zwei Jahren nicht mehr nachvollziehbar, warum die
-  // Gebraucht-Linie Sand ist und nicht blau.
-  /** @param {string} wahl @param {Record<string,string>} tokens @param {boolean} [mitNotiz] */
-  const block = (wahl, tokens, mitNotiz = true) => {
+function buildCss(daten) {
+  // The reasoning travels WITH the value. It used to stand as a comment next to
+  // the line in styles.css or themes/brick.css; if it did not move along,
+  // after two years nobody could understand why the
+  // used line is sand and not blue.
+  /** @param {string} wahl @param {Record<string,string>} tokens @param {boolean} [withNote] */
+  const block = (wahl, tokens, withNote = true) => {
     const zeilen = Object.entries(tokens)
       .flatMap(([name, wert]) => {
-        const notiz = mitNotiz ? daten._notizen?.[name] : undefined;
-        // Nur die ERSTE Zeile oeffnet den Kommentar, nur die letzte schliesst
-        // ihn. CSS-Kommentare schachteln nicht: Ein `/*` auf jeder Zeile waere
-        // zwar zufaellig gueltig (alles bis zum ersten `*/` gehoert dazu), laese
-        // sich aber falsch und zerbraeche, sobald jemand eine Zeile umstellt.
+        const notiz = withNote ? daten._notizen?.[name] : undefined;
+        // Only the FIRST line opens the comment, only the last one closes
+        // it. CSS comments do not nest: a `/*` on every line would
+        // happen to be valid (everything up to the first `*/` belongs to it), but would read
+        // wrongly and break as soon as someone rearranges a line.
         const vor = notiz
           ? [
               '',
@@ -82,17 +82,17 @@ function baueCss(daten) {
   const teile = [];
   for (const [design, roh] of Object.entries(daten.designs)) {
     const tokens = aufgeloest(daten, design, roh);
-    // Das Grunddesign gilt immer, ein benanntes Design nur bei gesetztem
-    // data-theme. Dessen hoehere Spezifitaet gewinnt gegen :root — die
-    // Reihenfolge in der Datei spielt daher keine Rolle.
+    // The base theme always applies, a named theme only with data-theme
+    // set. Its higher specificity wins against :root — the
+    // order in the file therefore does not matter.
     teile.push(block(design === 'classic' ? ':root' : `[data-theme="${design}"]`, tokens));
   }
-  // Dunkle Variante je Design (siehe _dunkel_warum). Die Selektoren tragen
-  // ZWEI Attribute, damit sie die themes/*.css (ein Attribut) schlagen, die
-  // nach tokens.css geladen werden.
+  // Dark variant per theme (see _dunkel_warum). The selectors carry
+  // TWO attributes, so that they beat the themes/*.css (one attribute), which
+  // are loaded after tokens.css.
   if (daten.dunkel) {
     teile.push(
-      `/* Dunkle Variante — siehe _dunkel_warum in shared/design-tokens.json. */\n` +
+      `/* Dark variant — see _dunkel_warum in shared/design-tokens.json. */\n` +
         block('[data-dunkel]:is([data-theme], :not([data-theme]))', daten.dunkel.basis, false),
     );
     for (const [design, roh] of Object.entries(daten.dunkel.designs || {})) {
@@ -108,59 +108,61 @@ function baueCss(daten) {
       );
     }
   }
-  // Durchgezaehlte Farbreihen. Frueher stand hier EIN fest verdrahteter
-  // Block fuer den Themenfaecher; mit den Steinfarben des Designs "noppe"
-  // waere daneben eine zweite Kopie derselben acht Zeilen entstanden. Jetzt
-  // zaehlt die Schleife auf, was in `listen` steht.
+  // Enumerated color series. ONE hard-wired block for the theme fan
+  // used to stand here; with the brick colors of the theme "noppe"
+  // a second copy of the same eight lines would have arisen next to it. Now
+  // the loop enumerates what stands in `listen`.
   for (const [name, liste] of Object.entries(daten.listen || {})) {
     const zeilen = liste.werte
       .map((/** @type {string} */ wert, /** @type {number} */ i) => `  --${liste.praefix}-${i}: ${wert};`)
       .join('\n');
     teile.push(
-      [`/* ${name} — siehe listen.${name}.warum in shared/design-tokens.json. */`, ':root {', zeilen, '}'].join('\n'),
+      [`/* ${name} — see listen.${name}.warum in shared/design-tokens.json. */`, ':root {', zeilen, '}'].join('\n'),
     );
   }
-  return `/* ${HINWEIS}\n\n   ${daten._warum} */\n\n${teile.join('\n\n')}\n`;
+  return `/* ${HINT}\n\n   ${daten._warum} */\n\n${teile.join('\n\n')}\n`;
 }
 
 /**
- * Die Tokens eines Designs — mit `erbt` aufgeloest.
- * @param {any} daten Inhalt von shared/design-tokens.json
- * @param {string} name Name des Designs
- * @param {Record<string,string>} roh Der Eintrag, wie er in der Datei steht
+ * The tokens of a theme — with `erbt` resolved.
+ * @param {any} daten content of shared/design-tokens.json
+ * @param {string} name name of the theme
+ * @param {Record<string,string>} roh the entry as it stands in the file
  * @returns {Record<string,string>}
  */
 function aufgeloest(daten, name, roh) {
   const quelle = roh.erbt;
   if (!quelle) return roh;
   const geerbt = daten.designs[quelle];
-  if (!geerbt) throw new Error(`design-tokens.json: "${name}" erbt von "${quelle}", das es nicht gibt`);
+  if (!geerbt) throw new Error(`design-tokens.json: "${name}" inherits from "${quelle}", which does not exist`);
   if (geerbt.erbt)
-    throw new Error(`design-tokens.json: "${name}" erbt von "${quelle}", das selbst erbt — eine Stufe, keine Kette`);
+    throw new Error(
+      `design-tokens.json: "${name}" inherits from "${quelle}", which itself inherits — one level, no chain`,
+    );
   const { erbt, ...eigene } = roh;
   return { ...geerbt, ...eigene };
 }
 
 /**
- * Aus der App-Zuordnung die Kotlin-Datei bauen.
- * @param {any} daten Inhalt von shared/design-tokens.json
+ * Build the Kotlin file from the app mapping.
+ * @param {any} daten content of shared/design-tokens.json
  * @returns {string}
  */
-function baueKotlin(daten) {
+function buildKotlin(daten) {
   const zeilen = Object.entries(daten.app).map(([name, { design, token }]) => {
     const wert = aufgeloest(daten, design, daten.designs[design])[token];
-    if (!wert) throw new Error(`design-tokens.json: --${token} gibt es im Design "${design}" nicht`);
+    if (!wert) throw new Error(`design-tokens.json: --${token} does not exist in the theme "${design}"`);
     const hex = wert.replace('#', '').toUpperCase();
     const notiz = daten._notizen?.[token];
     const kdoc = notiz
-      ? ['/**', ` * --${token} im Design "${design}".`, ' *', ...umbruch(notiz, 68).map(z => ` * ${z}`), ' */'].join(
+      ? ['/**', ` * --${token} in the theme "${design}".`, ' *', ...umbruch(notiz, 68).map(z => ` * ${z}`), ' */'].join(
           '\n',
         )
-      : `/** --${token} im Design "${design}". */`;
+      : `/** --${token} in the theme "${design}". */`;
     return `${kdoc}\nval ${name} = Color(0xFF${hex})`;
   });
-  // Dieselbe Verallgemeinerung wie im CSS darueber.
-  const faecherBlock = Object.values(daten.listen || {})
+  // The same generalization as in the CSS above.
+  const slotsBlock = Object.values(daten.listen || {})
     .map((/** @type {any} */ liste) => {
       const farben = liste.werte
         .map((/** @type {string} */ w) => `    Color(0xFF${w.replace('#', '').toUpperCase()}),`)
@@ -184,51 +186,51 @@ ${farben}
 import androidx.compose.ui.graphics.Color
 
 /**
- * ${HINWEIS}
+ * ${HINT}
  *
  * ${daten._app_warum}
  *
- * Erzeugt von Web-App/scripts/generate-design-tokens.js. Wer hier einen Wert
- * aendert, aendert ihn nur in der App — und genau das soll diese Datei
- * verhindern. Der Wert gehoert nach shared/design-tokens.json.
+ * Generated by Web-App/scripts/generate-design-tokens.js. Whoever changes a
+ * value here changes it only in the app — and that is exactly what this file
+ * is meant to prevent. The value belongs in shared/design-tokens.json.
  */
 
 ${zeilen.join('\n\n')}
-${faecherBlock}`;
+${slotsBlock}`;
 }
 
 /**
- * Aus dem Abschnitt `dunkel` die Kotlin-Tabelle der dunklen Fassung bauen.
- * Nur die Werte: `erbt` auflösen und die Material-Rollen zuordnen sind Regeln
- * und stehen von Hand in DunkleRollen.kt.
- * @param {any} daten Inhalt von shared/design-tokens.json
+ * Build the Kotlin table of the dark version from the section `dunkel`.
+ * Only the values: resolving `erbt` and assigning the Material roles are rules
+ * and stand by hand in DunkleRollen.kt.
+ * @param {any} daten content of shared/design-tokens.json
  * @returns {string}
  */
-function baueKotlinDunkel(daten) {
-  if (!daten.dunkel) throw new Error('design-tokens.json: Abschnitt "dunkel" fehlt');
-  /** @param {Record<string,string>} t @param {string} einzug */
-  const paare = (t, einzug) =>
+function buildKotlinDark(daten) {
+  if (!daten.dunkel) throw new Error('design-tokens.json: section "dunkel" is missing');
+  /** @param {Record<string,string>} t @param {string} indent */
+  const pairs = (t, indent) =>
     Object.entries(t)
-      .map(([k, v]) => `${einzug}${JSON.stringify(k)} to ${JSON.stringify(v)},`)
+      .map(([k, v]) => `${indent}${JSON.stringify(k)} to ${JSON.stringify(v)},`)
       .join('\n');
   const designs = Object.entries(daten.dunkel.designs || {})
-    .map(([name, t]) => `        ${JSON.stringify(name)} to mapOf(\n${paare(t, '            ')}\n        ),`)
+    .map(([name, t]) => `        ${JSON.stringify(name)} to mapOf(\n${pairs(t, '            ')}\n        ),`)
     .join('\n');
   return `package ch.brickinventoryapp.ui.theme
 
 /**
- * ${HINWEIS}
+ * ${HINT}
  *
 ${umbruch(daten._dunkel_warum, 72)
   .map((/** @type {string} */ z) => ` * ${z}`)
   .join('\n')}
  *
- * Erzeugt von Web-App/scripts/generate-design-tokens.js. Die Regeln dazu
- * (erbt, Material-Rollen) stehen in DunkleRollen.kt.
+ * Generated by Web-App/scripts/generate-design-tokens.js. The rules for it
+ * (erbt, Material roles) are in DunkleRollen.kt.
  */
 object DunkelTokens {
     val basis: Map<String, String> = mapOf(
-${paare(daten.dunkel.basis, '        ')}
+${pairs(daten.dunkel.basis, '        ')}
     )
 
     val designs: Map<String, Map<String, String>> = mapOf(
@@ -238,28 +240,28 @@ ${designs}
 `;
 }
 
-// Erst beim Aufruf rechnen, nicht beim Laden: Die Pruefung importiert dieses
-// Modul nur, um baueCss()/baueKotlin() selbst anzuwenden — sie braucht das
-// Ergebnis nicht schon beim require.
+// Compute only when called, not when loading: the check imports this
+// module only to apply buildCss()/buildKotlin() itself — it does not need the
+// result already at require time.
 if (require.main === module) {
   const daten = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
   /** @type {{datei: string, inhalt: string}[]} */
-  const ausgaben = [
-    { datei: ZIEL_CSS, inhalt: baueCss(daten) },
-    { datei: ZIEL_KT, inhalt: baueKotlin(daten) },
-    { datei: ZIEL_DUNKEL_KT, inhalt: baueKotlinDunkel(daten) },
+  const outputs = [
+    { datei: TARGET_CSS, inhalt: buildCss(daten) },
+    { datei: TARGET_KT, inhalt: buildKotlin(daten) },
+    { datei: TARGET_DARK_KT, inhalt: buildKotlinDark(daten) },
   ];
-  for (const { datei, inhalt } of ausgaben) {
-    // Ein Checkout nur der Web-App (Docker-Bau, Teil-Klon) hat keine
-    // Android-App; deren Tokens pflegt dann der vollständige Checkout.
+  for (const { datei, inhalt } of outputs) {
+    // A checkout of only the web app (Docker build, partial clone) has no
+    // Android app; its tokens are then maintained by the complete checkout.
     if (!fs.existsSync(path.dirname(datei))) {
-      console.log(`[design-tokens] übersprungen, Ordner fehlt: ${path.relative(WURZEL, path.dirname(datei))}`);
+      console.log(`[design-tokens] skipped, folder missing: ${path.relative(WURZEL, path.dirname(datei))}`);
       continue;
     }
-    // --pruefen: nur vergleichen; der Android-Lauf prüft so die Kotlin-Dateien (android.yml).
+    // --pruefen: only compare; the Android run checks the Kotlin files this way (android.yml).
     if (process.argv.includes('--pruefen')) {
       if (fs.readFileSync(datei, 'utf8') === inhalt) continue;
-      console.error(`[design-tokens] veraltet: ${path.relative(WURZEL, datei)} (npm run design:tokens)`);
+      console.error(`[design-tokens] outdated: ${path.relative(WURZEL, datei)} (npm run design:tokens)`);
       process.exitCode = 1;
       continue;
     }
@@ -268,5 +270,5 @@ if (require.main === module) {
   }
 }
 
-// Fuer die Pruefung: dieselbe Rechnung, ohne zu schreiben.
-module.exports = { baueCss, baueKotlin, baueKotlinDunkel, QUELLE, ZIEL_CSS, ZIEL_KT, ZIEL_DUNKEL_KT };
+// For the check: the same calculation, without writing.
+module.exports = { buildCss, buildKotlin, buildKotlinDark, QUELLE, TARGET_CSS, TARGET_KT, TARGET_DARK_KT };

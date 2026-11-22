@@ -1,17 +1,17 @@
 Gegenprobe: die Galerie filtert die Liste des Servers selbst nach dem Suchtext
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.GalerieMeldetNachObenTest
-Rot: Suchtext geht nach oben
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryReportsAfterTopTest
+Rot: search text goes up, the list stays the server's
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
 @@ -277,7 +277,8 @@
-             LeerSymbol(Icons.Default.SearchOff)
+             EmptySymbol(Icons.Default.SearchOff)
              Text(stringResource(R.string.gallery_no_results, suchtext), fontWeight = FontWeight.SemiBold)
          }
--        GalerieAnzeige.LISTE -> GalerieRaster(zustand, imageLoader, gridState, onSetClick)
-+        GalerieAnzeige.LISTE -> GalerieRaster(zustand.copy(galerie = zustand.galerie.copy(sets = zustand.galerie.sets
+-        GalleryDisplay.LISTE -> GalleryRaster(zustand, imageLoader, gridState, onSetClick)
++        GalleryDisplay.LISTE -> GalleryRaster(zustand.copy(galerie = zustand.galerie.copy(sets = zustand.galerie.sets
 +            .filter { it.name.orEmpty().contains(suchtext, ignoreCase = true) })), imageLoader, gridState, onSetClick)
      }
  }

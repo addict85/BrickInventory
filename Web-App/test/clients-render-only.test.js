@@ -1,10 +1,10 @@
 /**
- * Beide Oberflächen rechnen keine Geldbeträge nach.
+ * Neither UI recomputes money amounts.
  *
- * Gegenproben (08.11.2026 gemessen): in finanzen.js den Gesamtwert wieder
- * selbst addieren (`const grandTotal = setsQtyAvg + extra`) → rot: „die
- * Webapp zeigt den Gesamtwert des Servers“. Dass der Server ihn liefert,
- * prüft geschenk-guv-db.test.js („der Gesamtwert kommt fertig …“, C).
+ * Counter-checks (measured 08.11.2026): in finanzen.js add up the total value
+ * itself again (`const grandTotal = setsQtyAvg + extra`) → red: “the
+ * web app shows the server's total value”. That the server delivers it
+ * is checked by gift-guv-db.test.js (“the total value comes finished …”, C).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,23 +13,23 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
-/** Feldnamen, deren Summe eine Geschäftsregel wäre. */
+/** Field names whose sum would be a business rule. */
 const GELDFELDER =
   'display_value|total_value|purchase_price|unit_price|current_price|avg_price|qty_avg_price|market_price|price';
 
 /**
- * Stellen, die eine Summe bilden DÜRFEN — mit Begründung.
+ * Places that MAY form a sum — with rationale.
  *
- * Kurz halten: Jede Zeile hier ist eine Ausnahme von der Regel und sollte
- * erklären, warum der Server sie nicht liefern kann.
+ * Keep it short: every line here is an exception to the rule and should
+ * explain why the server cannot deliver it.
  */
-const ERLAUBT = [
-  // Fortschrittsbalken rechnen Prozent aus done/total — kein Geld.
+const ALLOWED = [
+  // Progress bars compute percent from done/total — not money.
 ];
 
-test('die Webapp summiert keine Geldbeträge selbst', () => {
+test('the web app sums no money amounts itself', () => {
   const dir = path.join(ROOT, 'public', 'js');
   const treffer = [];
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.js') && x !== 'app.bundle.js')) {
@@ -38,7 +38,7 @@ test('die Webapp summiert keine Geldbeträge selbst', () => {
     for (const m of src.matchAll(re)) {
       const zeile = src.slice(0, m.index).split('\n').length;
       const eintrag = `${f}:${zeile} summiert .${m[1]}`;
-      if (!ERLAUBT.includes(eintrag)) treffer.push(eintrag);
+      if (!ALLOWED.includes(eintrag)) treffer.push(eintrag);
     }
   }
   assert.deepEqual(
@@ -51,10 +51,10 @@ test('die Webapp summiert keine Geldbeträge selbst', () => {
   );
 });
 
-test('die Webapp zeigt den Gesamtwert des Servers', async () => {
-  // Ohne Marktpreis bei den Posten trägt die Kopfzahl den Gesamtwert; der Server sagt 777,
-  // die eigene Summe der Tabellen wäre 0.
-  const { w, d } = await oeffneOberflaeche({
+test("the web app shows the server's total value", async () => {
+  // Without a market price on the items the header number carries the total value; the server says 777,
+  // the tables' own sum would be 0.
+  const { w, d } = await openUi({
     '/v1/finance/pnl': {
       success: true,
       currency: 'EUR',

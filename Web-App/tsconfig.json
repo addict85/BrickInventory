@@ -28,19 +28,19 @@
     "exactOptionalPropertyTypes": true,
     "noImplicitAny": true,
     // In JavaScript darf alles geworfen werden; gelesen wird über
-    // fehlertext()/fehlerCode() (src/infra/fehler.ts), nicht über e.message.
+    // fehlertext()/fehlerCode() (src/infra/error.ts), nicht über e.message.
     "useUnknownInCatchVariables": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     // Ein Handler mit AuthedRequest passt nur hinter einen Wächter, der es
-    // zusichert (Waechter/VertragsRouter in src/vertrag/pruefen.ts).
+    // zusichert (Waechter/VertragsRouter in src/contract/pruefen.ts).
     "strictFunctionTypes": true
   },
   "include": [
     "server.ts",
     "db/**/*", "src/**/*", "routes/**/*", "jobs/**/*", "scripts/**/*",
-    "types/**/*", "test/typen/**/*"
+    "types/**/*", "test/types/**/*"
   ],
   "exclude": ["node_modules", "public", "data", "dist"]
 }

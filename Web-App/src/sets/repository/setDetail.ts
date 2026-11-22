@@ -1,13 +1,13 @@
-import type { DbSchnittstelle, Treffer } from '../../../db/database';
-import { mengeSkalar } from '../../../db/bestandsmenge';
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { KatalogTeil, ListenTeil, SetStamm } from '../zeilen';
-import { setStammJoin, SET } from '../../../db/katalogSicht';
+import type { DbInterface, Treffer } from '../../../db/database';
+import { mengeSkalar } from '../../../db/stockQuantity';
+import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import type { CatalogPart, ListenTeil, SetMaster } from '../rows';
+import { setStammJoin, SET } from '../../../db/catalogView';
 
-/** Angaben aus rb_sets, Bild und Figuren aus set_catalog (0108). Ein Platzhalter
- * „Set …“ sagt nur, dass irgendein Konto die Nummer erfasst hat. */
-export function setStamm(db: DbSchnittstelle, setNumber: string) {
-  return db.get<SetStamm>(
+/** Details from rb_sets, image and figures from set_catalog (0108). A placeholder
+ * "Set …" only says that some account captured the number. */
+export function setStamm(db: DbInterface, setNumber: string) {
+  return db.get<SetMaster>(
     `SELECT ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme,
            ${SET.teile} AS pieces, c.minifigs, c.image_url, c.image_local,
            ${SET.name} = 'Set ' || rs.set_num AND ${SET.jahr} IS NULL AND ${SET.thema} IS NULL
@@ -20,8 +20,8 @@ export function setStamm(db: DbSchnittstelle, setNumber: string) {
   );
 }
 
-export function setKatalog(db: DbSchnittstelle, setNumber: string) {
-  return db.get<SetStamm>(
+export function setCatalog(db: DbInterface, setNumber: string) {
+  return db.get<SetMaster>(
     `SELECT ${SET.name} AS name, c.image_local, c.image_url, ${SET.jahr} AS year,
            ${SET.teile} AS pieces, ${SET.thema} AS theme, c.minifigs
       FROM rb_sets rs LEFT JOIN rb_themes rt ON rt.id = rs.theme_id
@@ -31,8 +31,8 @@ export function setKatalog(db: DbSchnittstelle, setNumber: string) {
   );
 }
 
-/** Nummern, nach denen schon gefragt wurde (catalog_cache); der Name steht in rb_sets. */
-export function ersterKatalogTreffer(db: DbSchnittstelle, nummern: string[]) {
+/** Numbers that were already asked for (catalog_cache); the name is in rb_sets. */
+export function firstCatalogHits(db: DbInterface, nummern: string[]) {
   return db.get<{ set_number: string; name: string | null }>(
     `SELECT cc.set_number, rs.name FROM catalog_cache cc
       LEFT JOIN rb_sets rs ON rs.set_num = cc.set_number WHERE cc.set_number = ANY($1) LIMIT 1`,
@@ -40,12 +40,12 @@ export function ersterKatalogTreffer(db: DbSchnittstelle, nummern: string[]) {
   );
 }
 
-export function katalogCacheNachNummer(db: DbSchnittstelle, setNumber: string) {
-  return ersterKatalogTreffer(db, [setNumber]);
+export function catalogCacheAfterNumber(db: DbInterface, setNumber: string) {
+  return firstCatalogHits(db, [setNumber]);
 }
 
-export function katalogTeileDesSets(db: DbSchnittstelle, setNumber: string) {
-  return db.all<KatalogTeil>(
+export function catalogPartsOfSets(db: DbInterface, setNumber: string) {
+  return db.all<CatalogPart>(
     `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
             c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
        FROM set_parts_catalog c
@@ -55,7 +55,7 @@ export function katalogTeileDesSets(db: DbSchnittstelle, setNumber: string) {
   );
 }
 
-export function inventarTeileDesSets(db: DbSchnittstelle, invId: number) {
+export function inventoryPartsOfSets(db: DbInterface, invId: number) {
   return db.all<ListenTeil>(
     `SELECT ip.part_num AS part_number, ip.color_id, ip.quantity AS total_quantity, ip.is_spare,
               COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
@@ -64,14 +64,14 @@ export function inventarTeileDesSets(db: DbSchnittstelle, invId: number) {
          FROM rb_inventory_parts ip
          LEFT JOIN rb_parts      p ON p.part_num = ip.part_num
          LEFT JOIN rb_colors     c ON c.id       = ip.color_id
-         LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
+         LEFT JOIN bl_mapping  m ON m.type = 'part' AND m.rb_id = ip.part_num
         WHERE ip.inventory_id = $1
           AND NOT ip.is_spare`,
     [invId],
   );
 }
 
-export function inventarFigurenDesSets(db: DbSchnittstelle, invId: number) {
+export function inventoryMinifigsOfSets(db: DbInterface, invId: number) {
   return db.all<{ fig_number: string; fig_name: string | null; quantity: number; image_url: string | null }>(
     `SELECT ip.part_num AS fig_number, ip.quantity, COALESCE(mc.fig_name, ip.part_num) AS fig_name, mc.image_url
          FROM rb_inventory_parts ip
@@ -81,49 +81,49 @@ export function inventarFigurenDesSets(db: DbSchnittstelle, invId: number) {
   );
 }
 
-export function setImFeld(db: DbSchnittstelle, setNumber: string, blickfeld: number[]) {
+export function setInField(db: DbInterface, setNumber: string, blickfeld: number[]) {
   return db.get<Treffer>('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [
     setNumber,
     blickfeld,
   ]);
 }
 
-export function setsMitMenge(db: DbSchnittstelle, uid: number) {
+export function setsWithQuantity(db: DbInterface, uid: number) {
   return db.all<{ set_number: string; quantity: number }>(
     `SELECT s.set_number, ${mengeSkalar('s')} AS quantity FROM sets s WHERE s.user_id=$1 ORDER BY s.set_number ASC`,
     [uid],
   );
 }
 
-export function setDesKontos(db: DbSchnittstelle, uid: number, setNumber: string) {
+export function setOfAccount(db: DbInterface, uid: number, setNumber: string) {
   return db.get<Treffer>('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, setNumber]);
 }
 
-export function fuegeAnleitungEin(
-  db: DbSchnittstelle,
+export function addInstructionOne(
+  db: DbInterface,
   uid: number,
   setNumber: string,
   pfad: string,
   beschreibung: string | null,
-  lokalerPfad: string,
+  localPath: string,
 ) {
   return db.run(
     'INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
-    [uid, setNumber, pfad, beschreibung, lokalerPfad],
+    [uid, setNumber, pfad, beschreibung, localPath],
   );
 }
 
-export function anleitungsPfad(db: DbSchnittstelle, id: number, uid: number) {
+export function instructionPath(db: DbInterface, id: number, uid: number) {
   return db.get<{ local_path: string | null }>('SELECT local_path FROM instructions WHERE id = $1 AND user_id = $2', [
     id,
     uid,
   ]);
 }
 
-export function loescheAnleitung(db: DbSchnittstelle, id: number, uid: number) {
+export function loescheAnleitung(db: DbInterface, id: number, uid: number) {
   return db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [id, uid]);
 }
 
-export function anleitungsdateiBenutzt(db: DbSchnittstelle, pfad: string) {
+export function instructionFileUsed(db: DbInterface, pfad: string) {
   return db.get<Treffer>('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [pfad]);
 }

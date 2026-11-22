@@ -1,7 +1,7 @@
 Gegenprobe: Die Absage in der Passwort-Rückfrage rollt nicht ins Bild
 Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
-Rot: die Rueckfrage zeigt das Codefeld erst auf Verlangen
+Rot: the confirmation shows the code field only on demand
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
@@ -10,7 +10,7 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/component
      LaunchedEffect(fehler) {
          if (fehler == null) return@LaunchedEffect
          withFrameNanos { }  // erst wenn die Zeile gesetzt ist
--        meldungSichtbar.bringIntoView()
+-        messageVisible.bringIntoView()
      }
-     ErfassenDialog(
+     AddDialog(
          titel = titel,

@@ -8,20 +8,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 
 /**
- * „gelöscht“ mit „Rückgängig“ zu einem vorgemerkten Löschen. Gelöscht wird, wenn die
- * Snackbar ohne „Rückgängig“ endet, auch wenn sie verschwindet, weil man die Seite
- * verlässt. Jede Snackbar antwortet nur für ihren Eintrag.
+ * „deleted“ with „undo“ for a pending deletion. It is deleted when the
+ * snackbar ends without „undo“, even if it disappears because the page is
+ * left. Every snackbar answers only for its own entry.
  */
 @Composable
-fun <T : Any> RueckgaengigMeldung(
+fun <T : Any> UndoMessage(
     vorgemerkt: T?,
     text: String,
     host: SnackbarHostState,
-    onRueckgaengig: (T) -> Unit,
-    onAusfuehren: (T) -> Unit,
+    onUndo: (T) -> Unit,
+    executeOn: (T) -> Unit,
 ) {
     val rueckgaengig = stringResource(R.string.common_undo)
     val satz by rememberUpdatedState(text)
@@ -32,7 +32,7 @@ fun <T : Any> RueckgaengigMeldung(
             zurueck = host.showSnackbar(satz, rueckgaengig, duration = SnackbarDuration.Long) ==
                 SnackbarResult.ActionPerformed
         } finally {
-            if (zurueck) onRueckgaengig(v) else onAusfuehren(v)
+            if (zurueck) onUndo(v) else executeOn(v)
         }
     }
 }

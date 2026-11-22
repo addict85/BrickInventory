@@ -10,45 +10,45 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 
 /**
- * Gemeinsame Elementübergänge: Das Bild der Kachel fliegt beim Öffnen in das
- * Bild des Set-Details und beim Zurück (auch beim vorhersagbaren Wischen)
- * wieder hinein. Über CompositionLocals, damit Galerie und Detail keine
- * Übergangs-Parameter durch jede Ebene reichen müssen; ohne Rahmen (Vorschau,
- * Tests) bleibt alles ohne Animation.
+ * Shared element transitions: the tile's image flies into the
+ * image of the set detail when opening, and back in on returning (also with the
+ * predictive back swipe). Via CompositionLocals, so gallery and detail don't have to
+ * pass transition parameters through every layer; without a frame (preview,
+ * tests) everything stays without animation.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
-val LocalUebergang = compositionLocalOf<SharedTransitionScope?> { null }
-val LocalZielSichtbarkeit = compositionLocalOf<AnimatedVisibilityScope?> { null }
+val LocalTransition = compositionLocalOf<SharedTransitionScope?> { null }
+val LocalTargetVisibility = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
-/** Um den NavHost: der gemeinsame Raum, in dem Elemente zwischen Zielen wandern. */
+/** Around the NavHost: the shared space in which elements travel between destinations. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun UebergangsRahmen(inhalt: @Composable () -> Unit) {
+fun TransitionFrame(inhalt: @Composable () -> Unit) {
     SharedTransitionLayout {
-        CompositionLocalProvider(LocalUebergang provides this) { inhalt() }
+        CompositionLocalProvider(LocalTransition provides this) { inhalt() }
     }
 }
 
-/** In einem Navigationsziel: dessen Ein- und Ausblenden steuert den Übergang. */
+/** In a navigation destination: its appearing and disappearing drives the transition. */
 @Composable
-fun MitZiel(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalZielSichtbarkeit provides ziel) { inhalt() }
+fun WithTarget(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalTargetVisibility provides ziel) { inhalt() }
 }
 
 /**
- * Das Bild eines Sets, in Galerie und Detail unter demselben Schlüssel. Als
- * Hülle, die den Modifier hineinreicht: Ein @Composable, der einen Modifier
- * zurückgibt, wäre eine Modifier-Fabrik ausserhalb von Modifier.
+ * The image of a set, under the same key in gallery and detail. As a
+ * wrapper that passes the modifier in: a @Composable that returns a
+ * modifier would be a modifier factory outside of Modifier.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun GemeinsamesBild(setNumber: String, inhalt: @Composable (Modifier) -> Unit) {
-    val uebergang = LocalUebergang.current
-    val ziel = LocalZielSichtbarkeit.current
-    // Ohne Bewegung bleibt nur das Überblenden des Navigationsziels.
-    val ruhig = bewegungReduziert()
-    if (uebergang == null || ziel == null || ruhig) return inhalt(Modifier)
-    with(uebergang) {
+fun SharedImage(setNumber: String, inhalt: @Composable (Modifier) -> Unit) {
+    val transition = LocalTransition.current
+    val ziel = LocalTargetVisibility.current
+    // Without motion, only the crossfade of the navigation destination remains.
+    val ruhig = movementReduced()
+    if (transition == null || ziel == null || ruhig) return inhalt(Modifier)
+    with(transition) {
         inhalt(Modifier.sharedElement(rememberSharedContentState("set-bild-$setNumber"), ziel))
     }
 }

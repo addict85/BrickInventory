@@ -1,11 +1,11 @@
 Gegenprobe: bei den Netzen des Vorwärmens fehlt der Hinweis zum gemessenen WLAN
-Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.CacheLeerenFragtTest
-Rot: bei den Netzen steht der Hinweis
+Modul: feature-management
+Test: ch.brickinventoryapp.management.CacheClearAsksTest
+Rot: the networks show the hint about metered Wi-Fi
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
 @@ -241,9 +241,6 @@
      // Ein gemessenes WLAN — der Hotspot eines anderen Telefons —
      // zaehlt als Mobilfunk. Das steht hier, weil es sonst wie ein

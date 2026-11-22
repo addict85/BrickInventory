@@ -1,70 +1,70 @@
-/** Die Reihenfolge der Router hier ist unkritisch: Kein Pfad-Muster und keine
- * Middleware eines Routers trifft einen Pfad eines anderen (test/api-router-reihenfolge).
- * Innerhalb eines Routers zählt sie (feste Pfade vor `:setNumber` in sets.ts). */
-import { baueSetsRouter } from './sets';
-import { baueSetsLagerRouter } from './setsLager';
-import { baueSetsImportRouter } from './setsImport';
-import { baueSetsAnleitungenRouter } from './setsAnleitungen';
-import { bauePdfRouter } from './pdf';
-import { baueAcquisitionsRouter } from './acquisitions';
-import { bauePartsRouter } from './parts';
-import { baueMinifigsRouter } from './minifigs';
-import { baueFinanceRouter } from './finance';
-import { baueSettingsRouter } from './settings';
-import { baueAdminRouter } from './admin';
-import { baueMiscRouter } from './misc';
-import { baueCatalogRouter } from './catalog';
-import { baueWantedRouter } from './wanted';
-import { baueVouchersRouter } from './vouchers';
-import { bauePapierkorbRouter } from './papierkorb';
-import { baueGeraetRouter } from './geraet';
-import { baueEinrichtungRouter } from './einrichtung';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+/** The order of the routers here is not critical: no path pattern and no
+ * middleware of one router hits a path of another (test/api-router-reihenfolge).
+ * Within a router it matters (fixed paths before `:setNumber` in sets.ts). */
+import { buildSetsRouter } from './sets';
+import { buildSetsStorageRouter } from './setsLager';
+import { buildSetsImportRouter } from './setsImport';
+import { buildSetsInstructionsRouter } from './setsInstructions';
+import { buildPdfRouter } from './pdf';
+import { buildAcquisitionsRouter } from './acquisitions';
+import { buildPartsRouter } from './parts';
+import { buildMinifigsRouter } from './minifigs';
+import { buildFinanceRouter } from './finance';
+import { buildSettingsRouter } from './settings';
+import { buildAdminRouter } from './admin';
+import { buildMiscRouter } from './misc';
+import { buildCatalogRouter } from './catalog';
+import { buildWantedRouter } from './wanted';
+import { buildVouchersRouter } from './vouchers';
+import { buildTrashRouter } from './trash';
+import { buildDeviceRouter } from './device';
+import { buildSetupRouter } from './setup';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
-export function baueApiRouter(
+export function buildApiRouter(
   d: Pick<
     Dienste,
-    | 'einstellungen'
+    | 'settings'
     | 'mail'
-    | 'auftraege'
-    | 'haushalt'
-    | 'geraete'
-    | 'konto'
-    | 'profil'
-    | 'katalog'
-    | 'fremdquellen'
-    | 'bilder'
-    | 'finanzen'
-    | 'bestand'
+    | 'jobQueue'
+    | 'household'
+    | 'devices'
+    | 'account'
+    | 'profile'
+    | 'catalog'
+    | 'externalSources'
+    | 'images'
+    | 'finances'
+    | 'inventory'
     | 'sets'
-    | 'teile'
-    | 'figuren'
-    | 'merkliste'
-    | 'gutscheine'
-    | 'sammlung'
-    | 'verwaltung'
+    | 'parts'
+    | 'minifigs'
+    | 'wanted'
+    | 'vouchers'
+    | 'collection'
+    | 'management'
   >,
 ) {
   const router = vertragsRouter('/api/v1');
 
-  router.haengeEin(baueEinrichtungRouter(d)); // /einrichtung/stand (öffentlich, siehe anmeldungAmEingang)
-  router.haengeEin(bauePdfRouter(d)); // /sets/partslist-pdf/*
-  router.haengeEin(baueSetsRouter(d)); // /sets, /sets/barcode, /sets/:setNumber/*
-  router.haengeEin(baueSetsLagerRouter(d)); // /storage, /alerts, /sets/:setNumber/{storage,alert}
-  router.haengeEin(baueSetsImportRouter(d)); // /sets/import/csv/*, /sets/add-stream, /sets/:setNumber/parts
-  router.haengeEin(baueSetsAnleitungenRouter(d)); // /sets/:setNumber/instructions/*
-  router.haengeEin(baueAcquisitionsRouter(d)); // Kaufpreis-Erfassungen für Sets/Teile/Figuren
-  router.haengeEin(bauePartsRouter(d));
-  router.haengeEin(baueMinifigsRouter(d));
-  router.haengeEin(baueFinanceRouter(d));
-  router.haengeEin(baueSettingsRouter(d)); // /settings — Einstellungen, Zugänge, Haushalt
-  router.haengeEin(baueAdminRouter(d));
-  router.haengeEin(baueCatalogRouter(d)); // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
-  router.haengeEin(baueWantedRouter(d)); // /wanted — Merkliste (eigene Tabelle, siehe 0021)
-  router.haengeEin(baueVouchersRouter(d)); // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
-  router.haengeEin(bauePapierkorbRouter(d)); // /papierkorb — gelöschte Elemente (siehe 0041)
-  router.haengeEin(baueGeraetRouter(d)); // /geraet — Geräteschlüssel und Schrittfreigabe der App (siehe 0103)
-  router.haengeEin(baueMiscRouter(d)); // /stats + Endpoint-Übersicht unter /
+  router.attachOne(buildSetupRouter(d)); // /einrichtung/stand (public, see loginAtInbox)
+  router.attachOne(buildPdfRouter(d)); // /sets/partslist-pdf/*
+  router.attachOne(buildSetsRouter(d)); // /sets, /sets/barcode, /sets/:setNumber/*
+  router.attachOne(buildSetsStorageRouter(d)); // /storage, /alerts, /sets/:setNumber/{storage,alert}
+  router.attachOne(buildSetsImportRouter(d)); // /sets/import/csv/*, /sets/add-stream, /sets/:setNumber/parts
+  router.attachOne(buildSetsInstructionsRouter(d)); // /sets/:setNumber/instructions/*
+  router.attachOne(buildAcquisitionsRouter(d)); // purchase price acquisitions for sets/parts/minifigs
+  router.attachOne(buildPartsRouter(d));
+  router.attachOne(buildMinifigsRouter(d));
+  router.attachOne(buildFinanceRouter(d));
+  router.attachOne(buildSettingsRouter(d)); // /settings — settings, accesses, household
+  router.attachOne(buildAdminRouter(d));
+  router.attachOne(buildCatalogRouter(d)); // /catalog/* — Rebrickable catalog (browse/search)
+  router.attachOne(buildWantedRouter(d)); // /wanted — wanted list (own table, see 0021)
+  router.attachOne(buildVouchersRouter(d)); // /vouchers — vouchers (own table, see 0026)
+  router.attachOne(buildTrashRouter(d)); // /papierkorb — deleted items (see 0041)
+  router.attachOne(buildDeviceRouter(d)); // /geraet — the app's device key and step release (see 0103)
+  router.attachOne(buildMiscRouter(d)); // /stats + endpoint overview under /
   return router;
 }

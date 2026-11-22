@@ -1,4 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
-export type { Geloest, KontoHinweis } from './mailer';
-export { erzeugeMail } from './bereich';
-export type { MailAbhaengigkeiten, MailDienste, MailKontext } from './bereich';
+/** The public face of the area: others import only from here, the cut below stays free. */
+export type { ResetSideEffects, AccountNotice } from './mailer';
+export { createMail } from './area';
+export type { MailDependencies, MailServices, MailContext } from './area';

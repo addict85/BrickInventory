@@ -1,7 +1,7 @@
 Gegenprobe: app/build.gradle.kts setzt minSdk selbst, an build-logic vorbei
 Modul: app
 Test: ch.brickinventoryapp.app.TargetSdkConfigTest
-Rot: kein Modulskript setzt die SDK-Stände selbst
+Rot: no module script sets the SDK levels itself
 
 diff --git a/Android-App/app/build.gradle.kts b/Android-App/app/build.gradle.kts
 index 4bd1160..ad084f5 100644

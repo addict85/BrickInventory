@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.netz.di.ServerWaechter
-import ch.brickinventoryapp.netz.di.Zugangslage
-import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.network.di.ServerWaechter
+import ch.brickinventoryapp.network.di.Zugangslage
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
@@ -24,23 +24,23 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import ch.brickinventoryapp.netz.di.Rotationsanlass
+import ch.brickinventoryapp.network.di.Rotationsanlass
 
 /**
- * Ein Serverwechsel, während eine Anfrage beim alten Server hängt: Der alte (A)
+ * A server switch while a request hangs at the old server: the old one (A)
  *
- * Gegenproben:
- *   A  in ServerWaechter.tokenFuer() die Bindung weggelassen (`passt` nur
- *      `token.isNotBlank()`) → rot „eine Anfrage ohne Token fasst nach dem
- *      Wechsel nicht mit dem Token des neuen Servers nach“ (A erhielt Bearer B)
- *   B  TokenTausch.noetig() wieder ohne Herkunft und Generation UND im Wächter
- *      `.takeIf { dieselbeSitzung() }` entfernt → rot „ein Tausch nach dem
- *      Wechsel schickt den Token des neuen Servers nicht an den alten“
- *   C  im Wächter `dieselbeSitzung()` aus der Meldung von 401/403 entfernt →
- *      rot „ein 401 oder 403 des alten Servers beendet die neue Sitzung nicht“
- *   D  in tokenFuer() die Generation nicht neu gelesen (immer die vom Senden) →
- *      rot „nach der Anmeldung beim selben Server fasst eine Anfrage ohne Token
- *      weiterhin nach“ (die Meldung des echten 401 bliebe aus)
+ * Counter-checks:
+ *   A  in ServerWaechter.tokenFor() the binding left out (`passt` only
+ *      `token.isNotBlank()`) → red “a request without a token does not reach for the
+ *      new server's token after the switch” (A received Bearer B)
+ *   B  TokenSwap.noetig() again without origin and generation AND in the guard
+ *      `.takeIf { sameSession() }` removed → red “a swap after the
+ *      switch does not send the new server's token to the old one”
+ *   C  in the guard `sameSession()` removed from the report of 401/403 →
+ *      red “a 401 or 403 of the old server does not end the new session”
+ *   D  in tokenFor() the generation not read anew (always the one from sending) →
+ *      red “after signing in to the same server a request without a token
+ *      still reaches for it” (the report of the real 401 would not happen)
  */
 class ServerwechselTest {
 
@@ -52,19 +52,19 @@ class ServerwechselTest {
     private val abgelaufen = AtomicInteger()
     private val entzogen = AtomicInteger()
 
-    /** Wie A auf die zurückgehaltene Anfrage antwortet. */
-    @Volatile private var spaeteAntwort: () -> MockResponse = { MockResponse().setResponseCode(401).setBody("{}") }
+    /** How A answers the held-back request. */
+    @Volatile private var lateResponse: () -> MockResponse = { MockResponse().setResponseCode(401).setBody("{}") }
 
-    private val schranke = TokenSchranke()
+    private val limit = TokenLimit()
     @Volatile private var url = ""
     @Volatile private var token = ""
     @Volatile private var herkunft: String? = null
 
-    private val lage = object : Zugangslage {
+    private val situation = object : Zugangslage {
         override fun serverUrl() = url
         override fun token() = token
-        override fun tokenHerkunft() = herkunft
-        override fun generation() = schranke.generation
+        override fun tokenOrigin() = herkunft
+        override fun generation() = limit.generation
     }
 
     private fun adresse(s: MockWebServer) = s.url("/").toString().trimEnd('/')
@@ -73,11 +73,11 @@ class ServerwechselTest {
         a.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 anA += request.getHeader("Authorization")
-                // Nur die erste Anfrage wird zurückgehalten; alles danach antwortet sofort.
+                // Only the first request is held back; everything after that answers immediately.
                 if (anA.size == 1) {
                     angekommen.countDown()
                     freigabe.await(10, TimeUnit.SECONDS)
-                    return spaeteAntwort()
+                    return lateResponse()
                 }
                 return MockResponse().setResponseCode(401).setBody("{}")
             }
@@ -94,24 +94,24 @@ class ServerwechselTest {
         a.shutdown(); b.shutdown()
     }
 
-    /** Wie saveServerUrl() mit anderer Herkunft und danach saveAuthToken(). */
-    private fun wechsleUndMeldeAn(ziel: MockWebServer, neuerToken: String) = runBlocking {
-        schranke.schreibe { url = adresse(ziel); token = ""; herkunft = null }
-        schranke.schreibe { herkunft = NetworkPolicy.herkunft(adresse(ziel)); token = neuerToken }
+    /** Like saveServerUrl() with a different origin and then saveAuthToken(). */
+    private fun switchAndReportAn(ziel: MockWebServer, newToken: String) = runBlocking {
+        limit.schreibe { url = adresse(ziel); token = ""; herkunft = null }
+        limit.schreibe { herkunft = NetworkPolicy.herkunft(adresse(ziel)); token = newToken }
     }
 
     private fun client(rotation: Rotationsanlass? = null) = OkHttpClient.Builder()
-        .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
-            rotation = rotation, rechteEntzogen = { entzogen.incrementAndGet() }))
+        .addInterceptor(ServerWaechter(situation, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
+            rotation = rotation, rightsRevoked = { entzogen.incrementAndGet() }))
         .readTimeout(10, TimeUnit.SECONDS).build()
 
-    /** Schickt [anfrage] an A, wechselt währenddessen und gibt den Status zurück. */
-    private fun waehrendDesWechsels(c: OkHttpClient, anfrage: Request, wechsel: () -> Unit): Int {
+    /** Sends [anfrage] to A, switches meanwhile and returns the status. */
+    private fun duringOfSwitch(c: OkHttpClient, anfrage: Request, switch: () -> Unit): Int {
         val pool = Executors.newSingleThreadExecutor()
         try {
             val f = pool.submit<Int> { c.newCall(anfrage).execute().use { it.code } }
             assertTrue("A hat die Anfrage nicht erhalten", angekommen.await(5, TimeUnit.SECONDS))
-            wechsel()
+            switch()
             freigabe.countDown()
             return f.get(10, TimeUnit.SECONDS)
         } finally {
@@ -120,9 +120,9 @@ class ServerwechselTest {
     }
 
     @Test
-    fun `eine Anfrage ohne Token fasst nach dem Wechsel nicht mit dem Token des neuen Servers nach`() {
-        val status = waehrendDesWechsels(client(), Request.Builder().url(a.url("/api/v1/settings/theme")).build()) {
-            wechsleUndMeldeAn(b, "TOKEN-VON-B")
+    fun `a request without a token does not reach for the new server's token after the switch`() {
+        val status = duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/settings/theme")).build()) {
+            switchAndReportAn(b, "TOKEN-VON-B")
         }
         assertEquals(401, status)
         assertFalse("A erhielt den Token von B: $anA", anA.any { it?.contains("TOKEN-VON-B") == true })
@@ -130,35 +130,35 @@ class ServerwechselTest {
     }
 
     @Test
-    fun `ein Tausch nach dem Wechsel schickt den Token des neuen Servers nicht an den alten`() {
+    fun `a swap after the switch does not send the new server's token to the old one`() {
         token = "TOKEN-VON-A"; herkunft = NetworkPolicy.herkunft(adresse(a))
-        spaeteAntwort = { MockResponse().setResponseCode(401).setBody("""{"code":"token_rotation_noetig"}""") }
-        val tausch = TokenTausch(
-            stand = { TokenStand(token, herkunft, schranke.generation) },
+        lateResponse = { MockResponse().setResponseCode(401).setBody("""{"code":"token_rotation_noetig"}""") }
+        val tausch = TokenSwap(
+            stand = { TokenStatus(token, herkunft, limit.generation) },
             ersetze = { _, _, _ -> false },
             rotiere = { Ergebnis.Fehler.Server(500) },
             pausen = emptyList(),
-            // Der Test wartet auf noetig(); faellig() bräuchte einen eigenen Bereich nicht.
+            // The test waits for noetig(); faellig() would not need an own scope.
             hintergrund = CoroutineScope(Job()),
         )
-        val status = waehrendDesWechsels(client(tausch), Request.Builder().url(a.url("/api/v1/sets"))
+        val status = duringOfSwitch(client(tausch), Request.Builder().url(a.url("/api/v1/sets"))
             .post("geheim".toRequestBody()).build()) {
-            wechsleUndMeldeAn(b, "TOKEN-VON-B")
+            switchAndReportAn(b, "TOKEN-VON-B")
         }
         assertEquals(401, status)
         assertEquals("A erhielt: $anA", listOf("Bearer TOKEN-VON-A"), anA.toList())
     }
 
     @Test
-    fun `ein 401 oder 403 des alten Servers beendet die neue Sitzung nicht`() {
+    fun `a 401 or 403 of the old server does not end the new session`() {
         token = "TOKEN-VON-A"; herkunft = NetworkPolicy.herkunft(adresse(a))
-        spaeteAntwort = { MockResponse().setResponseCode(401).setBody("""{"code":"token_ungueltig"}""") }
-        waehrendDesWechsels(client(), Request.Builder().url(a.url("/api/v1/sets")).build()) {
-            wechsleUndMeldeAn(b, "TOKEN-VON-B")
+        lateResponse = { MockResponse().setResponseCode(401).setBody("""{"code":"token_ungueltig"}""") }
+        duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/sets")).build()) {
+            switchAndReportAn(b, "TOKEN-VON-B")
         }
         assertEquals("A hat die Sitzung bei B beendet", 0, abgelaufen.get())
 
-        // Gegenstück ohne Wechsel: Derselbe 401 meldet ab, ein 403 nur_admins zieht Rechte nach.
+        // Counterpart without switch: the same 401 signs out, a 403 nur_admins pulls rights along.
         token = "TOKEN-VON-B"
         b.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest) = if (request.path.orEmpty().startsWith("/api/v1/admin"))
@@ -172,20 +172,20 @@ class ServerwechselTest {
     }
 
     @Test
-    fun `ein 403 nur_admins des alten Servers nimmt der neuen Sitzung keine Rechte`() {
+    fun `a 403 nur_admins of the old server takes no rights from the new session`() {
         token = "TOKEN-VON-A"; herkunft = NetworkPolicy.herkunft(adresse(a))
-        spaeteAntwort = { MockResponse().setResponseCode(403).setBody("""{"code":"nur_admins"}""") }
-        waehrendDesWechsels(client(), Request.Builder().url(a.url("/api/v1/admin/x")).build()) {
-            wechsleUndMeldeAn(b, "TOKEN-VON-B")
+        lateResponse = { MockResponse().setResponseCode(403).setBody("""{"code":"nur_admins"}""") }
+        duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/admin/x")).build()) {
+            switchAndReportAn(b, "TOKEN-VON-B")
         }
         assertEquals(0, entzogen.get())
     }
 
     @Test
-    fun `nach der Anmeldung beim selben Server fasst eine Anfrage ohne Token weiterhin nach`() {
-        // Der Wettlauf, für den es das Nachfassen gibt: dieselbe Herkunft, neue Generation.
-        val status = waehrendDesWechsels(client(), Request.Builder().url(a.url("/api/v1/settings/theme")).build()) {
-            runBlocking { schranke.schreibe { herkunft = NetworkPolicy.herkunft(adresse(a)); token = "TOKEN-VON-A" } }
+    fun `after signing in to the same server a request without a token still reaches for it`() {
+        // The race the reaching-for exists for: the same origin, new generation.
+        val status = duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/settings/theme")).build()) {
+            runBlocking { limit.schreibe { herkunft = NetworkPolicy.herkunft(adresse(a)); token = "TOKEN-VON-A" } }
         }
         assertEquals(listOf(null, "Bearer TOKEN-VON-A"), anA.toList())
         assertEquals(401, status)

@@ -1,14 +1,14 @@
 /**
- * Die echten Markup-Helfer (escapen.js, setzeHtml/fuegeHtmlEin aus dom.js)
- * für Tests, die ein Modul ohne Bündel in einer Sandbox laufen lassen. Nachbauen
- * hiesse: Die Sandbox prüfte eine andere Maskierung als die Seite.
+ * The real markup helpers (escaping.js, setzeHtml/fuegeHtmlEin from dom.js)
+ * for tests that run a module without the bundle in a sandbox. Rebuilding them
+ * would mean: the sandbox checks a different escaping than the page.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const JS = path.join(__dirname, '..', '..', 'public', 'js');
 
-/** Quelltext einer exportierten Funktion, ohne `export`. */
+/** Source text of an exported function, without `export`. */
 function funktion(src, name) {
   const a = src.indexOf(`export function ${name}(`);
   if (a < 0) throw new Error(`${name}() nicht gefunden`);
@@ -16,29 +16,29 @@ function funktion(src, name) {
   return src.slice(a, e + 2).replace(/^export /, '');
 }
 
-function markupHelfer() {
-  const escapen = fs.readFileSync(path.join(JS, 'escapen.js'), 'utf8').replace(/^export /gm, '');
+function markupHelper() {
+  const escaping = fs.readFileSync(path.join(JS, 'escaping.js'), 'utf8').replace(/^export /gm, '');
   const dom = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
   const namen = [
     'esc',
     'escJs',
     'escUrl',
-    'sichereUrl',
+    'safeUrl',
     'escHex',
-    'hexZiffern',
+    'rawHex',
     'escHtmlAttr',
-    'SicheresHtml',
-    'einsetzen',
+    'SafeHtml',
+    'toText',
     'html',
-    'ungeprueft',
-    'verbinde',
+    'rawHtml',
+    'joinHtml',
     'setzeHtml',
     'fuegeHtmlEin',
   ];
   // eslint-disable-next-line no-new-func
   return new Function(
-    `${escapen}\n${funktion(dom, 'setzeHtml')}\n${funktion(dom, 'fuegeHtmlEin')}\nreturn { ${namen.join(', ')} };`,
+    `${escaping}\n${funktion(dom, 'setzeHtml')}\n${funktion(dom, 'fuegeHtmlEin')}\nreturn { ${namen.join(', ')} };`,
   )();
 }
 
-module.exports = { markupHelfer };
+module.exports = { markupHelper };

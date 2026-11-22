@@ -3,36 +3,36 @@ package ch.brickinventoryapp.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * Die Abstandsskala der App — damit Abstände einen Namen haben statt als blanke
- * Zahlen in den Bildschirmen zu stehen, wie die CSS-Klassen der Webapp.
+ * The app's spacing scale — so spacing values have a name instead of standing as bare
+ * numbers in the screens, like the web app's CSS classes.
  */
 object Abstaende {
     /** Haarfein — Trennlinien, dicht gesetzte Plaketten. */
-    val haar = 2.dp
+    val hairline = 2.dp
 
-    /** Der kleinste Abstand, der als Abstand gelesen wird. */
-    val winzig = 4.dp
+    /** The smallest spacing that still reads as spacing. */
+    val tiny = 4.dp
 
-    /** Der haeufigste Abstand der App: zwischen Geschwistern in einer Reihe. */
+    /** The app's most common spacing: between siblings in a row. */
     val klein = 8.dp
 
     /** Zwischen Gruppen innerhalb einer Karte. */
     val mittel = 12.dp
 
-    /** Der Innenabstand einer Karte, der Rand einer Liste. */
+    /** The inner padding of a card, the margin of a list. */
     val gross = 16.dp
 
     /** Zwischen Abschnitten eines Bildschirms. */
-    val sehrGross = 24.dp
+    val veryLarge = 24.dp
 
-    /** Vor und nach dem, was allein stehen soll. */
-    val riesig = 32.dp
+    /** Before and after whatever should stand alone. */
+    val huge = 32.dp
 
     /**
-     * Der Seitenrand der Bildschirme — 14 dp. Kein Abstand zwischen Dingen, sondern der Rand,
-     * an dem eine Seite beginnt; er steht vielfach im Baum (ScopeFilterZeile, Suchfeld,
-     * Chip-Zeilen), und ihn auf 16 zu ziehen wäre eine Gestaltungsänderung an all diesen
-     * Stellen.
+     * The screens' side margin — 14 dp. Not a spacing between things, but the edge
+     * where a page begins; it appears many times across the tree (ScopeFilterRow, search field,
+     * chip rows), and pulling it to 16 would be a design change at all of these
+     * spots.
      */
-    val rand = 14.dp
+    val edge = 14.dp
 }

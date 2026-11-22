@@ -4,22 +4,22 @@ import android.os.Looper
 import org.robolectric.Shadows.shadowOf
 
 /**
- * Treibt den Hauptlooper, bis [bereit] gilt und drei weitere Runden weder Anfragen
- * noch Zustand ändern. Die Beispielwelt antwortet im Takt (PfadServer.imTakt), die
- * Beispielbilder laden auf dem Hauptlooper: Alles läuft in diesen Runden, ohne Wanduhr.
+ * Drives the main looper until [bereit] holds and three further rounds change neither requests
+ * nor state. The sample world responds in ticks (PfadServer.imTakt), the
+ * sample images load on the main looper: everything runs in these rounds, without a wall clock.
  */
-fun treibeBis(name: String, anfragen: () -> Int = { 0 }, zustand: () -> Any? = { null }, bereit: () -> Boolean) {
+fun driveUntil(name: String, requests: () -> Int = { 0 }, zustand: () -> Any? = { null }, bereit: () -> Boolean) {
     var ruhig = 0
-    var zuletzt = anfragen()
-    repeat(HOECHSTENS_RUNDEN) {
+    var zuletzt = requests()
+    repeat(AT_MOST_ROUNDS) {
         shadowOf(Looper.getMainLooper()).idle()
-        val jetzt = anfragen()
+        val jetzt = requests()
         ruhig = if (jetzt == zuletzt && bereit()) ruhig + 1 else 0
         zuletzt = jetzt
-        if (ruhig >= RUHIGE_RUNDEN) return
+        if (ruhig >= CALM_ROUNDS) return
     }
-    throw AssertionError("$name: nach $HOECHSTENS_RUNDEN Runden des Hauptloopers nicht bereit: ${zustand()}")
+    throw AssertionError("$name: nach $AT_MOST_ROUNDS Runden des Hauptloopers nicht bereit: ${zustand()}")
 }
 
-private const val HOECHSTENS_RUNDEN = 200
-private const val RUHIGE_RUNDEN = 3
+private const val AT_MOST_ROUNDS = 200
+private const val CALM_ROUNDS = 3

@@ -1,18 +1,18 @@
 Gegenprobe: Der Speicherspiegel nimmt ein Klartext-Token älterer Fassungen wieder als Anmeldung
 Modul: core-data
-Test: ch.brickinventoryapp.data.TokenTresorTest
-Rot: ein Klartext-Token aelterer Fassungen gilt nie und wird beim Start entfernt
+Test: ch.brickinventoryapp.data.TokenVaultTest
+Rot: a plaintext token of older versions never counts and is removed at start
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 index 0287f52..9407f5c 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 @@ -235,7 +235,7 @@ class TokenAblage @Inject constructor(
-         spiegle<List<String?>, String>({ roh(it, ADRESSE) }, _serverUrlState) { r, melde ->
-             liesGeduldig({ oeffne(r, ADRESSE) }, null, melde = { melde(schemaKlein(it)) }, sperre = sperre)
+         mirror<List<String?>, String>({ roh(it, ADDRESS) }, _serverUrlState) { r, melde ->
+             readPatient({ oeffne(r, ADDRESS) }, null, melde = { melde(schemaSmall(it)) }, lock = lock)
          }
--        spiegle<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { geheim, melde ->
-+        spiegle<String?, String>({ it[AUTH_TOKEN_ENC] ?: it[AUTH_TOKEN]?.let(tresor::verschluessle) }, _authTokenState) { geheim, melde ->
-             liesToken(tresor, geheim, null, melde, sperre = sperre)
+-        mirror<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { geheim, melde ->
++        mirror<String?, String>({ it[AUTH_TOKEN_ENC] ?: it[AUTH_TOKEN]?.let(tresor::verschluessle) }, _authTokenState) { geheim, melde ->
+             readToken(tresor, geheim, null, melde, lock = lock)
          }
-         spiegle<List<String?>, String?>({ roh(it, HERKUNFT) }, _tokenHerkunftState) { r, melde ->
+         mirror<List<String?>, String?>({ roh(it, ORIGIN) }, _tokenOriginState) { r, melde ->

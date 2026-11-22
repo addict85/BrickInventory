@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.ui
 
 /**
- * Ein Ziel der unteren Leiste mit gemerkter Rollposition. Ziel und Liste benutzen
- * denselben Schlüssel, damit „Reiter angetippt, oben anfangen“ genau die Position
- * verwirft, die das Ziel gemerkt hat. Die Routen liegen in den Bereichen; die App
- * kennt den Schlüssel nur über diese Schnittstelle.
+ * A destination of the bottom bar with a remembered scroll position. Destination and list use
+ * the same key, so „tab tapped, start at the top“ discards exactly the position
+ * the destination remembered. The routes live in the scopes; the app
+ * only knows the key via this interface.
  */
 interface Reiterziel {
     val rollSchluessel: String

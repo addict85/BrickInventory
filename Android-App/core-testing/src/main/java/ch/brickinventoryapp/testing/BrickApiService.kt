@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.testing
 
-import ch.brickinventoryapp.data.api.FigurenApi
-import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.data.api.GutscheineApi
-import ch.brickinventoryapp.data.api.HaushaltApi
-import ch.brickinventoryapp.data.api.KatalogApi
-import ch.brickinventoryapp.data.api.KontoApi
+import ch.brickinventoryapp.data.api.MinifigsApi
+import ch.brickinventoryapp.data.api.FinancesApi
+import ch.brickinventoryapp.data.api.VouchersApi
+import ch.brickinventoryapp.data.api.HouseholdApi
+import ch.brickinventoryapp.data.api.CatalogApi
+import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.data.api.VerwaltungApi
+import ch.brickinventoryapp.data.api.PartsApi
+import ch.brickinventoryapp.data.api.ManagementApi
 
 /**
- * Alle Bereiche zusammen, nur für Tests: Ein Testserver baut damit jedes
- * Repository. Die App injiziert je Bereich eine Schnittstelle (NetzModule), damit
- * kein Repository mehr sieht als seinen Bereich.
+ * All scopes together, for tests only: a test server builds every
+ * repository with it. The app injects an interface per scope (NetzModule), so
+ * no repository sees more than its own scope.
  */
-interface BrickApiService : KontoApi, VerwaltungApi, KatalogApi, SetsApi, TeileApi, FigurenApi,
-    HaushaltApi, FinanzenApi, GutscheineApi
+interface BrickApiService : AccountApi, ManagementApi, CatalogApi, SetsApi, PartsApi, MinifigsApi,
+    HouseholdApi, FinancesApi, VouchersApi

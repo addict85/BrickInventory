@@ -18,35 +18,35 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 
 /**
- * Jeder reine Symbolknopf zeigt beim langen Drücken seinen Namen: TalkBack liest die
- * Beschreibung vor, wer sieht, hatte nur das Symbol — Filter und Sortieren sind
- * beide Linien. [text] ist dieselbe Beschreibung wie am Symbol. Der äussere Rahmen
- * nimmt [modifier] (etwa `align`), weil TooltipBox ihn nicht an ihre Eltern weitergibt.
+ * Every plain icon button shows its name on a long press: TalkBack reads out the
+ * description, whoever can see only had the icon — filter and sort are
+ * both lines. [text] is the same description as on the icon. The outer frame
+ * takes [modifier] (e.g. `align`), because TooltipBox doesn't pass it on to its parent.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MitTooltip(text: String, modifier: Modifier = Modifier, knopf: @Composable () -> Unit) {
-    val abstand = with(LocalDensity.current) { TOOLTIP_ABSTAND.roundToPx() }
-    val lage = remember(abstand) { UeberDemKnopf(abstand) }
+fun MitTooltip(text: String, modifier: Modifier = Modifier, button: @Composable () -> Unit) {
+    val abstand = with(LocalDensity.current) { TOOLTIP_GAP.roundToPx() }
+    val situation = remember(abstand) { ViaTheButton(abstand) }
     Box(modifier) {
         TooltipBox(
-            positionProvider = lage,
+            positionProvider = situation,
             tooltip = { PlainTooltip { Text(text) } },
             state = rememberTooltipState(),
-            content = knopf,
+            content = button,
         )
     }
 }
 
-/** Abstand zwischen Knopf und Tooltip, wie Material ihn vorsieht. */
-private val TOOLTIP_ABSTAND = 4.dp
+/** Gap between button and tooltip, as Material intends it. */
+private val TOOLTIP_GAP = 4.dp
 
 /**
- * Mittig über dem Knopf, unter ihm, wenn oben kein Platz ist, und nie über den Fensterrand.
- * Eigene Fassung statt TooltipDefaults: Deren Lage-Funktionen wechseln zwischen den
- * Material-Fassungen ihren Namen, und eine Veraltet-Warnung bräche die Warnungsgrenze.
+ * Centered above the button, below it if there's no room above, and never past the window edge.
+ * A custom implementation instead of TooltipDefaults: its positioning functions change
+ * their names between Material versions, and a deprecation warning would break the warning threshold.
  */
-private class UeberDemKnopf(private val abstand: Int) : PopupPositionProvider {
+private class ViaTheButton(private val abstand: Int) : PopupPositionProvider {
     override fun calculatePosition(
         anchorBounds: IntRect,
         windowSize: IntSize,

@@ -1,0 +1,167 @@
+package ch.brickinventoryapp.collection.ui.screens
+
+import ch.brickinventoryapp.model.domain.Erfassungswunsch
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.titel
+import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.ui.util.NumericInput
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.AddDialog
+import ch.brickinventoryapp.shared.ui.CountField
+import ch.brickinventoryapp.shared.ui.PurchasePriceField
+import ch.brickinventoryapp.shared.ui.LagerortErfassung
+import ch.brickinventoryapp.shared.ui.OwnerPicker
+import ch.brickinventoryapp.shared.ui.Zustandszeile
+import ch.brickinventoryapp.shared.ui.entryInvalid
+
+/**
+ * Enter a set. The STOCK of storage locations is on offer, not the occupied ones:
+ * the filter list only contains places where something already sits; entering should
+ * also offer an empty shelf as an option.
+ */
+@Composable
+internal fun GalerieErfassen(zustand: GalleryState, events: GalleryEvents, onSchliessen: () -> Unit) {
+    AddSetDialog(
+        onDismiss = onSchliessen,
+        onAdd = { wish -> onSchliessen(); events.setErfassen(wish) },
+        householdMembers = zustand.blick.householdMembers,
+        defaultCondition = zustand.app.userDefaultCondition ?: Zustand.NEU,
+        lagerorte = zustand.lager.eigene.map { it.name },
+        vorgabe = zustand.lager.vorgabe?.name ?: "",
+    )
+}
+
+/** Without a household, send nothing at all — the server then stays on one's own account. */
+private fun ownerForEntry(mitglieder: List<MemberView>, gewaehlt: Int?): Int? =
+    if (mitglieder.size > 1) gewaehlt else null
+
+/** If the dialog is already closed, requestFocus throws; then there's nothing left to focus. */
+private fun FocusRequester.openFocusIf() {
+    try { requestFocus() } catch (_: Exception) { /* dialog already closed */ }
+}
+
+@Composable
+private fun FocusAfterPause(ziel: FocusRequester) = LaunchedEffect(Unit) {
+    kotlinx.coroutines.delay(120)
+    ziel.openFocusIf()
+}
+
+/**
+ * The hint on the set-number field (null: nothing to flag). Before the first attempt to
+ * save, the field stays quiet, so "75192-" doesn't already count as an error while typing.
+ */
+private fun numberError(nummer: String, geprueft: Boolean): Int? = when {
+    !geprueft -> null
+    nummer.isBlank() -> R.string.erfassen_nummer_fehlt
+    !NumericInput.isSetNumber(nummer) -> R.string.erfassen_nummer_ungueltig
+    else -> null
+}
+
+@Composable
+fun AddSetDialog(
+    onDismiss: () -> Unit,
+    onAdd: (Erfassungswunsch) -> Unit,
+    defaultCondition: Zustand = Zustand.NEU,
+    /** Household accounts — without sub-accounts, the picker stays hidden. */
+    householdMembers: List<MemberView> = emptyList(),
+    /** Stock of storage locations — empty means: there are none yet, then it's typed in. */
+    lagerorte: List<String> = emptyList(),
+    /**
+     * The location that should already show (the star from settings); empty means
+     * no default.
+     */
+    vorgabe: String = "",
+    /** Tests only: a blinking cursor never lets Robolectric settle. */
+    immediatelyFocus: Boolean = true,
+) {
+    var setNumber by rememberSaveable { mutableStateOf("") }
+    var quantity  by rememberSaveable { mutableStateOf("1") }
+    // Key is the default: if it only arrives after the dialog opens, the field
+    // takes it over; whatever someone has typed in the meantime stays, because the default
+    // only changes once.
+    var lagerort  by rememberSaveable(vorgabe) { mutableStateOf(vorgabe) }
+
+    // ── The cursor lands in the set field right away ──
+    //
+    // LaunchedEffect(Unit) runs once per display; the short pause before it is needed
+    // because the field isn't laid out yet on the first pass and requestFocus()
+    // would otherwise hit nothing.
+    val setFeldFokus = remember { FocusRequester() }
+    if (immediatelyFocus) FocusAfterPause(setFeldFokus)
+    var purchasePrice by rememberSaveable { mutableStateOf("") }
+    var condition by rememberSaveable { mutableStateOf(defaultCondition) }
+    // Pre-filled with one's own account: whoever chooses nothing enters for themself —
+    // the same behavior as before the household view.
+    var owner by remember(householdMembers) {
+        mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
+    }
+    val keyboard  = LocalSoftwareKeyboardController.current
+    // Add stays tappable and then marks the empty field: gray with no reason left
+    // you guessing why nothing happened.
+    var numberMissing by rememberSaveable { mutableStateOf(false) }
+
+    fun submit() {
+        if (numberError(setNumber, geprueft = true) != null) {
+            numberMissing = true
+            if (immediatelyFocus) setFeldFokus.openFocusIf()
+        } else if (!entryInvalid(quantity, purchasePrice)) {
+            // On an unreadable quantity or price the dialog stays open; the fields show the error.
+            onAdd(Erfassungswunsch(
+                setNumber = setNumber,
+                menge = quantity.toIntOrNull() ?: 1,
+                kaufpreis = NumericInput.readMoney(purchasePrice),
+                zustand = condition,
+                besitzer = ownerForEntry(householdMembers, owner),
+                lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
+            ))
+        }
+    }
+
+    // The same frame as every entry (AddDialog): title on the left, without an icon.
+    AddDialog(
+        titel = stringResource(R.string.gallery_add_set_title),
+        bestaetigen = stringResource(R.string.gallery_add),
+        onBestaetigen = { submit() },
+        onAbbrechen = onDismiss,
+        geaendert = setNumber.isNotBlank() || quantity != "1" || purchasePrice.isNotEmpty() ||
+            condition != defaultCondition || lagerort != vorgabe,
+        // Without its own "please enter set number" line: the same hint three times
+        // at 200% pushed the buttons out of frame; what's missing is said by the field once typing starts.
+    ) {
+        OwnerPicker(householdMembers, owner, { owner = it })
+        // The example as help text as in the watchlist-item dialog: a placeholder would disappear
+        // with focus, and the dialog focuses the field right away.
+        OutlinedTextField(
+            value = setNumber,
+            onValueChange = { setNumber = NumericInput.setNumber(it) },
+            label = { Text(stringResource(R.string.gallery_set_number)) },
+            isError = numberError(setNumber, numberMissing) != null,
+            supportingText = {
+                numberError(setNumber, numberMissing)?.let { Text(stringResource(it), Modifier.announce()) }
+                    ?: Text(stringResource(R.string.gallery_set_number_placeholder))
+            },
+            modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
+            shape = Formen.feld,
+            keyboardOptions = NumericInput.setNumberKeyboard()
+        )
+        CountField(quantity, { quantity = it }, stringResource(R.string.gallery_quantity_hint))
+        PurchasePriceField(purchasePrice, { purchasePrice = it }, stringResource(R.string.gallery_purchase_price)) {
+            keyboard?.hide(); submit()
+        }
+        Zustandszeile(zustand = condition, onZustand = { condition = it })
+        LagerortErfassung(lagerort, lagerorte, { lagerort = it })
+    }
+}

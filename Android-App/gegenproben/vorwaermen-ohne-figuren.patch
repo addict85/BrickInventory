@@ -1,17 +1,17 @@
 Gegenprobe: die Figuren werden nicht mehr vorgewärmt
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SammlungVorwaermenTest
-Rot: vorgewaermt wird jeder Reiter
+Modul: core-state
+Test: ch.brickinventoryapp.state.CollectionWarmUpTest
+Rot: every tab of the collection in view is warmed, not the catalog
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
 @@ -44,8 +44,6 @@
          .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
  
-     val figurenAbfrage = blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS)?.let { Kontosicht.FigurenAbfrage(it, null) }
--    liste(figurenAbfrage, kontosicht.figurenliste, figuren::aktualisiereFiguren, figuren.beobachteFiguren())
+     val minifigsQuery = blickfeld.accountFor(ScopeFilter.View.MINIFIGS)?.let { Kontosicht.MinifigsQuery(it, null) }
+-    liste(minifigsQuery, kontosicht.figurenliste, figuren::refreshMinifigs, figuren.observeMinifigs())
 -        .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-     // Die manuellen Listen hat aktualisiereTeile bzw. aktualisiereFiguren schon mitgeholt.
-     liste(teileKonto?.let { Kontosicht.ManuelleAbfrage(it, null, null) }, kontosicht.manuelleTeile,
-         { Ergebnis.Erfolg(Unit) }, teile.beobachteManuelleTeile())
+     // Die manuellen Listen hat refreshParts bzw. refreshMinifigs schon mitgeholt.
+     liste(partsAccount?.let { Kontosicht.ManualQuery(it, null, null) }, kontosicht.manuelleTeile,
+         { Ergebnis.Erfolg(Unit) }, teile.observeManualParts())

@@ -1,19 +1,19 @@
-import { waechterFuer } from './middleware';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
-import { nichtGefunden } from '../../src/infra/fehlerTexte';
+import { guardFor } from './middleware';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
+import { notFound } from '../../src/infra/errorTexts';
 
-export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
-  const { requireToken } = waechterFuer(d.konto);
+export function buildCatalogRouter(d: Pick<Dienste, 'account' | 'catalog'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/catalog/meta', requireToken, async _req => {
-    return { ...(await d.katalog.katalogMeta()) };
+    return { ...(await d.catalog.catalogMeta()) };
   });
 
   router.endpunkt('GET /api/v1/catalog/year-verteilung', requireToken, async req => {
     const q = req.abfrage;
-    const years = await d.katalog.jahrVerteilung(
+    const years = await d.catalog.yearDistribution(
       { q: (q.q ?? '').trim(), themeId: q.theme_id || null },
       q.sort !== 'year_asc',
     );
@@ -24,7 +24,7 @@ export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
     const q = req.abfrage;
     const page = Math.max(1, q.page ?? 1);
     const limit = Math.min(200, Math.max(1, q.page_size ?? q.limit ?? 60));
-    const seite = await d.katalog.katalogSeite(
+    const seite = await d.catalog.catalogPage(
       req.apiUser.user_id,
       {
         q: (q.q ?? '').trim(),
@@ -40,18 +40,18 @@ export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
   });
 
   router.endpunkt('GET /api/v1/catalog/sets/:setNumber', requireToken, async req => {
-    const set = await d.katalog.katalogSet(req.apiUser.user_id, req.pfad.setNumber);
-    if (!set) nichtGefunden((await d.katalog.katalogGeladen()) ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen');
+    const set = await d.catalog.catalogSet(req.apiUser.user_id, req.pfad.setNumber);
+    if (!set) notFound((await d.catalog.catalogLoaded()) ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen');
     return { set };
   });
 
-  // Links für eine ganze Katalogseite aus einer Abfrage, ohne BrickLink-Aufruf.
+  // Links for a whole catalog page from one query, without a BrickLink call.
   router.endpunkt('GET /api/v1/catalog/bricklink', requireToken, async req => {
     const raw = (req.abfrage.sets ?? '').trim();
     if (!raw) {
       return { links: {} };
     }
-    const map = await d.katalog.blLinksAufloesen(
+    const map = await d.catalog.resolveBlLinks(
       raw
         .split(',')
         .map(s => s.trim())

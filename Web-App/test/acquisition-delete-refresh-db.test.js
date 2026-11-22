@@ -1,21 +1,21 @@
 /**
- * Eine Erfassung löschen → Preis und Zustand der ANTWORT werden NEU bestimmt.
+ * Delete an entry → price and condition of the RESPONSE are determined ANEW.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet, quantityOf, haltRow } = require('./helpers/inventory');
+const db = testData();
 
-test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+test('deleting an acquisition redetermines price and condition of the parent row', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
 
   const USER = `delp-${process.pid}`;
   const SN = `41439-${process.pid}`;
@@ -25,15 +25,15 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
-  // Zwei Erfassungen; die Elternzeile trägt den Wert der NEUESTEN.
+  // Two entries; the parent row carries the value of the NEWEST.
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    // Nur die Bestandszeile, ohne Zahlen: Menge, Preis und Zustand stehen in
-    // den beiden Erfassungen darunter (Migration 0032 fuer Preis und Zustand,
-    // 0036 fuer die Menge). Menge 0 heisst hier „die Erfassungen tragen sie" —
-    // 1 + 1 = 2, wie vorher in der Spalte.
-    await haeltSet(db, uid, SN, 0);
+    // Only the stock row, without numbers: quantity, price and condition are in
+    // the two entries below (migration 0032 for price and condition,
+    // 0036 for the quantity). Quantity 0 here means “the entries carry it" —
+    // 1 + 1 = 2, as before in the column.
+    await holdsSet(db, uid, SN, 0);
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,7.41,'U',1, NOW() - INTERVAL '2 days')`,
@@ -53,26 +53,30 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
         [uid, SN],
       )
     ).id;
-  // Was die Kachel sieht: das Aggregat aus den Erfassungen plus die Menge der
-  // sets-Zeile (die der Lösch-Weg weiterhin nachrechnet).
+  // What the tile sees: the aggregate from the entries plus the quantity of the
+  // sets row (which the delete path still recomputes).
   const eltern = async () => {
-    // „Gibt es die Zeile?" und „wie viele Exemplare?" sind seit Migration 0036
-    // zwei Fragen an zwei Tabellen — vorher beantwortete die Spalte beide
-    // zugleich. Die Reihenfolge bleibt: ohne Bestandszeile gibt es keine
-    // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
-    if (!(await haltZeile(db, uid, SN))) return undefined;
-    const agg = await _req('src/sets/lesen.js').zustandsAggregat(
-      require('./helpers/sources').testKontext('sets'),
+    // “Does the row exist?" and “how many copies?" are, since migration 0036,
+    // two questions to two tables — before, the column answered both
+    // at once. The order stays: without a stock row there is no
+    // parent information, even if entries should still be lying around.
+    if (!(await haltRow(db, uid, SN))) return undefined;
+    const agg = await _req('src/sets/read.js').zustandsAggregat(
+      require('./helpers/sources').testContext('sets'),
       [uid],
       SN,
     );
-    return { purchase_price: agg.avg_purchase_price, condition: agg.condition, quantity: await mengeVon(db, uid, SN) };
+    return {
+      purchase_price: agg.avg_purchase_price,
+      condition: agg.condition,
+      quantity: await quantityOf(db, uid, SN),
+    };
   };
 
   try {
-    // 0. Vor dem Löschen: zwei Erfassungen, 7.41 und 9.48, je ein Exemplar.
-    //    Die alte Spalte hätte 9.48 geführt (Preis der neuesten Erfassung).
-    //    Die Antwort muss den mengengewichteten Mittelwert zeigen.
+    // 0. Before deleting: two entries, 7.41 and 9.48, one copy each.
+    //    The old column would have carried 9.48 (price of the newest entry).
+    //    The response must show the quantity-weighted mean.
     await aufbauen();
     const vorher = await eltern();
     assert.equal(
@@ -83,7 +87,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
     );
     assert.equal(vorher.condition, 'U', 'Eine gebrauchte Erfassung macht das Set gebraucht');
 
-    // 1. Marcos Fall: die neueste Erfassung löschen.
+    // 1. Marco's case: delete the newest entry.
     await aufbauen();
     let r = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${await neueste()}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
@@ -93,13 +97,13 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
       7.41,
       'Die Kachel zeigt den Preis der GELÖSCHTEN Zeile — sie muss der verbliebenen folgen',
     );
-    // 7.41 ist hier gleichzeitig der Mittelwert, weil nur eine Erfassung übrig
-    // ist. Teilschritt 2 unten trennt die beiden Lesarten.
+    // 7.41 is also the mean here, because only one entry is
+    // left. Substep 2 below separates the two readings.
     assert.equal(e.condition, 'U', 'Auch der Zustand muss der verbliebenen Erfassung folgen, nicht der gelöschten');
     assert.equal(Number(e.quantity), 1, 'Die Menge muss weiterhin stimmen');
 
-    // 2. Gegenrichtung: Löscht man eine ÄLTERE Erfassung, darf sich am Preis
-    //    nichts ändern — die neueste bleibt ja bestehen.
+    // 2. Opposite direction: deleting an OLDER entry must not change
+    //    anything in the price — the newest one stays after all.
     await aufbauen();
     const alte = (
       await db.all(
@@ -117,8 +121,8 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
       'Beim Löschen einer älteren Erfassung darf der Preis der neuesten stehen bleiben',
     );
 
-    // 3. Letzte Erfassung löschen: Es bleibt keine übrig — und seit
-    //  auch keine Elternzeile mehr.
+    // 3. Delete the last entry: none is left — and since then
+    //  no parent row either.
     await aufbauen();
     for (const row of await db.all(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {
       await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${row.id}`, { method: 'DELETE' });

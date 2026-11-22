@@ -1,0 +1,102 @@
+/**
+ * The figure estimate and the set price, executed instead of read from the source text:
+ * the estimate stores its own entry per condition in cache and history,
+ * and an explicitly requested condition takes precedence for the set price.
+ * The parts of the figure and their prices lie in the cache — no fetch over the network.
+ *
+ * Counter-checks (31.10.2026, measured):
+ *   a) in src/finances/repository/marketPrices.ts when writing the estimate
+ *      `condition` replaced by 'N' → part 1 red (the entry „U" is missing).
+ *   b) in estimateMinifigsPrice() fetchPartPrice with DEFAULT_PRICE_CONDITION instead of
+ *      `cond` → part 1 red (both conditions 2 × 3 = 6, not 4 and 6).
+ *   c) rememberEstimatedMinifigsHistory() not called → part 1 red (history empty).
+ *   d) in setPriceFromCache() `ORDER BY (condition = $2) DESC` → `ASC` → part 2 red.
+ *   e) in aktuellerMarktpreis() the guard `if (!condition)` removed → part 2 red
+ *      (the acquisition „Neu“ overrules the requested condition: 10 instead of 20).
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+const { buildAndRequire, testData } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { keineDb } = require('./helpers/db');
+
+test('figure estimate and set price per condition', async t => {
+  const db = testData();
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
+  }
+  const mf = _req('src/finances/marketPrice.js');
+  const fc = _req('src/finances/financeCalc.js');
+  const u = await db.get(
+    `INSERT INTO users (username, password_hash) VALUES ('schaetz_'||floor(random()*1e9),'x') RETURNING id`,
+  );
+  const FIG = 'fig-ablage-01';
+  try {
+    await t.test('one entry per condition in cache and history', async () => {
+      await db.run('INSERT INTO minifig_parts_cache (fig_number, data) VALUES ($1, $2)', [
+        FIG,
+        JSON.stringify([{ part_num: 'abl-1', bl_part_num: 'abl-1', color_id: 5, quantity: 2 }]),
+      ]);
+      const farbe = Number(await fc.resolveBlColorId(5)) || 0;
+      for (const [zustand, preis] of [
+        ['N', 2],
+        ['U', 3],
+      ])
+        await db.run(
+          `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
+                      VALUES ('abl-1', $1, $2, 'EUR', $3, $3)`,
+          [farbe, zustand, preis],
+        );
+
+      assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'N'), { preis: 4, abdeckung: 1 });
+      assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'U'), { preis: 6, abdeckung: 1 });
+      const cache = await db.all(
+        `SELECT condition, avg_price::float AS preis, estimated AS geschaetzt FROM minifig_price_cache
+                                   WHERE fig_number = $1 ORDER BY condition`,
+        [FIG],
+      );
+      assert.deepEqual(cache, [
+        { condition: 'N', preis: 4, geschaetzt: true },
+        { condition: 'U', preis: 6, geschaetzt: true },
+      ]);
+      const verlauf = await db.all(
+        `SELECT condition, avg_price::float AS preis FROM minifig_price_history
+                                     WHERE fig_number = $1 AND estimated ORDER BY condition`,
+        [FIG],
+      );
+      assert.deepEqual(verlauf, [
+        { condition: 'N', preis: 4 },
+        { condition: 'U', preis: 6 },
+      ]);
+    });
+
+    await t.test('a requested condition beats the other one', async () => {
+      const SN = 'abl-77-1';
+      await db.run(
+        `INSERT INTO price_cache (set_number, condition, currency_code, avg_price) VALUES
+                    ($1, 'N', 'EUR', 10), ($1, 'U', 'EUR', 20)`,
+        [SN],
+      );
+      // A new-condition acquisition: without a wish the acquisition values with the new price.
+      await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [u.id, SN]);
+      await db.run(
+        `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition, currency)
+                    VALUES ($1, $2, 1, 'N', 'EUR')`,
+        [u.id, SN],
+      );
+      assert.equal(await mf.aktuellerMarktpreis(SN, u.id), 10);
+      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'U'), 20);
+      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'N'), 10);
+      await db.run(`DELETE FROM price_cache WHERE set_number = $1 AND condition = 'U'`, [SN]);
+      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'U'), 10, 'ohne Preis im Wunschzustand der andere');
+    });
+  } finally {
+    await db.run('DELETE FROM users WHERE id = $1', [u.id]);
+    await db.pool.end();
+  }
+});

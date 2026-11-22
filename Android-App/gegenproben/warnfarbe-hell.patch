@@ -1,7 +1,7 @@
 Gegenprobe: Warnfarbe der hellen Designs wieder #E3B341 (05.11.2026, thema.py lokal)
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.TextKontrastTest
-Rot: Warnfarbe ist als Grafik auf jeder Flaeche sichtbar
+Test: ch.brickinventoryapp.ui.TextContrastTest
+Rot: warning color is visible as a graphic on every surface
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt

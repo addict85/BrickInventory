@@ -1,17 +1,17 @@
 Gegenprobe: Pins älterer Fassungen behalten Host und Port im Namen
 Modul: core-data
-Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
-Rot: ein Pin frueherer Fassung kommt unter einen Namen
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: a pin of an earlier version goes under a name without server and keeps applying
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
 index c5ab2dd..a24cd25 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-@@ -135,7 +135,6 @@ class GeraeteAblage @Inject constructor(
-     fun bereiteVor() {
-         uebernimmAltenCaStand()
-         uebernimmKlartextVertrauen()
--        uebernimmPinNamen()
-         designSpiegel.edit { KlartextReste.SPIEGEL.forEach { remove(it) } }
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -135,7 +135,6 @@ class DevicesStore @Inject constructor(
+     fun prepareBefore() {
+         adoptOldCaStatus()
+         trustAdoptPlaintext()
+-        adoptPinNames()
+         designMirror.edit { PlaintextRemainder.MIRROR.forEach { remove(it) } }
      }
  

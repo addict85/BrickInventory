@@ -1,14 +1,14 @@
 /**
- * Prüfungen aus dem Review-Durchgang hardened-131.
+ * Checks from the review pass hardened-131.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  in der Strom-Route der erste send() vor die Anmeldung der Hörer
- *      gezogen → rot: „der CSV-Fortschrittsstrom überlebt Gegendruck …“
- *      (ReferenceError in cleanup); das Abmelden (csvImportStandAbonnieren) in cleanup gestrichen → rot
- *      „kein Hörer bleibt …“ (15.11.2026: 1 angemeldet, 0 abgemeldet)
- * Gestrichen, weil anderswo ausgeführt: Sitzungsschlüssel in Produktion →
- * startverbot.test.js K/L, compose.yaml ohne SESSION_SECRET → compose-
- * geheimnisse A; Pfad-Normalisierung → sicherheit-querschnitt-db I.
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   A  in the stream route the first send() moved before the registration of the listeners
+ *      → red: “the CSV progress stream survives back pressure …”
+ *      (ReferenceError in cleanup); the unsubscribe (subscribeCsvImportStatus) deleted in cleanup → red
+ *      „kein Hörer bleibt …“ (15.11.2026: 1 subscribed, 0 unsubscribed)
+ * Deleted because executed elsewhere: session keys in production →
+ * startverbot.test.js K/L, compose.yaml without SESSION_SECRET → compose-
+ * secrets A; path normalization → security-across-cut-db I.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,19 +17,19 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ROOT, buildAndRequire, ohneKommentare, testDaten, testZugang } = require('./helpers/sources');
+const { ROOT, buildAndRequire, ohneKommentare, testData, testAccess } = require('./helpers/sources');
 const _reqCsv = buildAndRequire();
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { portVon } = require('./helpers/server');
-const db = testDaten();
+const { portOf } = require('./helpers/server');
+const db = testData();
 
-/** Datei ohne Kommentare lesen (siehe ohneKommentare() in helpers/sources.js). */
+/** Read a file without comments (see ohneKommentare() in helpers/sources.js). */
 function quelle(...teile) {
   return ohneKommentare(fs.readFileSync(path.join(ROOT, ...teile), 'utf8'));
 }
 
-// ── Verhalten ───────────────────────────────────────────────────────────────
+// ── Behavior ───────────────────────────────────────────────────────────────
 
 async function dbReachable() {
   try {
@@ -40,7 +40,7 @@ async function dbReachable() {
   }
 }
 
-test('Teile-Rückfallebene für fremde Sets', async t => {
+test('parts fallback for foreign sets', async t => {
   if (!(await dbReachable())) {
     keineDb(t);
     return;
@@ -49,9 +49,9 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die Migrationen: Die Teileliste liest seit Migration 0034 aus
-  // part_catalog und part_color_catalog, und die gibt es nur dort —
-  // initSchema() legt sie nicht an.
+  // And the migrations: since migration 0034 the parts list reads from
+  // part_catalog and part_color_catalog, and those only exist there —
+  // initSchema() does not create them.
   const c0 = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(c0);
@@ -61,9 +61,9 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('marco','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='marco'`)).id;
 
-  const { teileAbfrage } = require('./helpers/sources').handlerModul(_req);
+  const { partsQuery } = require('./helpers/sources').handlerModule(_req);
 
-  await t.test('ohne eigene Teile kommt die Liste aus dem CSV-Bestand', async () => {
+  await t.test('without own parts the list comes from the CSV stock', async () => {
     await db.run(`INSERT INTO rb_inventories (id, set_num, version) VALUES (1,'10280-1',1)`);
     await db.run(
       `INSERT INTO rb_parts (part_num, name, part_img_url) VALUES ('3001','Brick 2x4','https://example.invalid/3001.png')`,
@@ -72,49 +72,53 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
     await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
                   VALUES (1,'3001',4,6,false)`);
 
-    const r = await teileAbfrage([uid], { set_number: '10280-1' });
+    const r = await partsQuery([uid], { set_number: '10280-1' });
     assert.equal(r.source, 'csv_cache', `Quelle war ${r.source}`);
     assert.equal(r.total, 1);
     assert.equal(r.parts[0].part_number, '3001');
   });
 
-  await t.test('ohne CSV-Eintrag und ohne API-Schlüssel gibt es eine leere Liste statt eines Fehlers', async () => {
-    // Der frühere Absturz lag genau hier: Die API-Rückfallebene rief einen
-    // Namen auf, den das Teilemodul nie exportiert hat — TypeError statt
-    // Antwort. Ohne Schlüssel wird der Zweig übersprungen; DASS er keinen
-    // TypeError mehr wirft, sichert test/require-exports.test.js ab.
-    const r = await teileAbfrage([uid], { set_number: '99999-1' });
+  await t.test('without a CSV entry and without an API key there is an empty list instead of an error', async () => {
+    // The earlier crash lay exactly here: the API fallback level called a
+    // name that the parts module never exported — TypeError instead of
+    // a response. Without a key the branch is skipped; THAT it no longer throws a
+    // TypeError is secured by test/require-exports.test.js.
+    const r = await partsQuery([uid], { set_number: '99999-1' });
     assert.equal(r.total, 0);
     assert.equal(r.source, 'db');
   });
 });
 test.after(() => db.pool.end().catch(() => {}));
 
-// ── Regeln ──────────────────────────────────────────────────────────────────
+// ── Rules ──────────────────────────────────────────────────────────────────
 
-test('Bilddownloads sind nach oben begrenzt', () => {
-  const src = quelle('src/bilder/setImages.ts');
+test('image downloads are capped', () => {
+  const src = quelle('src/images/setImages.ts');
   const fn = src.slice(src.indexOf('async function setBildHerunterladen'));
   const ende = fn.indexOf('\n}\n');
-  const körper = fn.slice(0, ende);
+  const body = fn.slice(0, ende);
 
   assert.doesNotMatch(
-    körper,
+    body,
     /fs\.writeFileSync|fs\.existsSync/,
     'blockierende Dateizugriffe im Anfragepfad — dieselbe Sache wie in routes/parts.ts',
   );
-  // holeBild (clients/bildCdn.ts) geht über denselben Helfer mit Umleitungsgrenze.
-  assert.match(körper, /hole(?:Https|Bild)\(url, \{/, 'eigener Abruf statt des Helfers mit Umleitungsgrenze');
-  assert.match(körper, /MAX_BYTES/, 'kein Grössendeckel — eine beliebig grosse Antwort landet komplett im Speicher');
+  // fetchImage (clients/imageCdn.ts) goes via the same helper with a redirect limit.
+  assert.match(
+    body,
+    /(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
+    'eigener Abruf statt des Helfers mit Umleitungsgrenze',
+  );
+  assert.match(body, /MAX_BYTES/, 'kein Grössendeckel — eine beliebig grosse Antwort landet komplett im Speicher');
 });
 
-test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
-  // routes/auth.ts ist der einzige Router ohne durchgehendes requireLogin —
-  // hier stehen die Endpunkte, die naturgemäss vor der Anmeldung erreichbar
-  // sind. Jeder schreibende darf entweder eine Anmeldung verlangen (per
-  // Middleware oder im Rumpf), oder er zählt Versuche je IP. qr-login hatte …
-  const src = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
-  // Alte Form router.post('/pfad' und Vertragsform router.endpunkt('POST /api/v1/auth/pfad'.
+test('write endpoints without login carry a throttle', () => {
+  // routes/auth.ts is the only router without a continuous requireLogin —
+  // here stand the endpoints that are naturally reachable before login.
+  // Every writing one may either require a login (via
+  // middleware or in the body), or it counts attempts per IP. qr-login had …
+  const src = ohneKommentare(require('./helpers/sources').loginSource());
+  // Old form router.post('/pfad' and contract form router.endpunkt('POST /api/v1/auth/pfad'.
   const stellen = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpunkt\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
@@ -124,7 +128,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
     const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
     const geschuetzt =
-      /requireLogin|requireToken|requireAdmin|ipThrottle|anmeldungErlaubt|pruefeAnmeldedaten|anmelden\(|req\.session\??\.?\.?userId/.test(
+      /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|anmelden\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
     if (!geschuetzt) offen.push(`${(stellen[i][1] ?? stellen[i][2]).toUpperCase()} ${stellen[i][3]}`);
@@ -132,9 +136,9 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);
 });
 
-test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
-  // Die Barcode-Suche (src/sets/barcode.ts) fragt Rebrickable nur über
-  // rebrickableJson() — und das zählt und drosselt.
+test('the barcode search counts its Rebrickable calls', () => {
+  // The barcode search (src/sets/barcode.ts) only asks Rebrickable via
+  // rebrickableJson() — and that counts and throttles.
   const dienst = quelle('src/sets/barcode.ts');
   assert.match(dienst, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
   assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
@@ -143,84 +147,83 @@ test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
     client.indexOf('async function rebrickableJson'),
     client.indexOf('function httpsGetRobust'),
   );
-  assert.match(rbJson, /tagesKontingentFrei/, 'rebrickableJson zählt nicht mit');
+  assert.match(rbJson, /dailyQuotaFree/, 'rebrickableJson zählt nicht mit');
   assert.match(rbJson, /waitForSlot/, 'rebrickableJson umgeht die Drossel');
 });
 
-test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', () => {
-  const { csvField, entschaerfe, entschaerfungRueckgaengig, csvZeilenBereinigen } = _reqCsv('src/infra/csvExport.js');
+test('CSV export defuses formulas, the own import reverses it', () => {
+  const { csvField, defuse, defusingUndo, csvRowsClean } = _reqCsv('src/infra/csvExport.js');
 
-  // Ein Feld, das Excel beim Öffnen ausführen würde.
-  assert.equal(entschaerfe('=HYPERLINK("http://x";"Klick")'), `'=HYPERLINK("http://x";"Klick")`);
+  // A field that Excel would execute when opening.
+  assert.equal(defuse('=HYPERLINK("http://x";"Klick")'), `'=HYPERLINK("http://x";"Klick")`);
   for (const anfang of ['=', '+', '-', '@', '\t', '\r']) {
-    assert.equal(entschaerfe(`${anfang}böse`)[0], "'", `${JSON.stringify(anfang)} nicht entschärft`);
+    assert.equal(defuse(`${anfang}böse`)[0], "'", `${JSON.stringify(anfang)} nicht entschärft`);
   }
 
-  // Zahlen bleiben Zahlen — sonst käme jeder negative Kaufpreis mit Hochkomma
-  // zurück und der eigene Importer läse ihn als Text.
+  // Numbers stay numbers — otherwise every negative purchase price would come back with an apostrophe
+  // and the own importer would read it as text.
   for (const zahl of ['-5', '-5.00', '-5,00', '42']) {
-    assert.equal(entschaerfe(zahl), zahl, `${zahl} wurde fälschlich entschärft`);
+    assert.equal(defuse(zahl), zahl, `${zahl} wurde fälschlich entschärft`);
   }
 
-  // Harmlose Texte bleiben unverändert.
-  assert.equal(entschaerfe('Millennium Falcon'), 'Millennium Falcon');
+  // Harmless texts stay unchanged.
+  assert.equal(defuse('Millennium Falcon'), 'Millennium Falcon');
 
-  // Rundlauf: was der Export schreibt, liest der Import wieder als Original.
+  // Round trip: what the export writes the import reads back as the original.
   const original = '=1+1';
-  assert.equal(entschaerfungRueckgaengig(entschaerfe(original)), original);
-  // Ein Feld, das echt mit Hochkomma beginnt, bleibt unangetastet.
-  assert.equal(entschaerfungRueckgaengig("'Zitat"), "'Zitat");
-  assert.deepEqual(csvZeilenBereinigen([{ a: "'=1+1", b: 'x', c: 3 }]), [{ a: '=1+1', b: 'x', c: 3 }]);
+  assert.equal(defusingUndo(defuse(original)), original);
+  // A field that really begins with an apostrophe stays untouched.
+  assert.equal(defusingUndo("'Zitat"), "'Zitat");
+  assert.deepEqual(csvRowsClean([{ a: "'=1+1", b: 'x', c: 3 }]), [{ a: '=1+1', b: 'x', c: 3 }]);
 
-  // Und die Zitierung bleibt korrekt: Das Hochkomma steht INNERHALB der
-  // Anführungszeichen, sonst wäre die Zeile kaputt.
+  // And the quoting stays correct: the apostrophe stands INSIDE the
+  // quotation marks, otherwise the row would be broken.
   assert.equal(csvField('=A1,B1'), `"'=A1,B1"`);
 });
 
 /**
- * Semikolon, Tabulator und Wagenrücklauf trennen in Excel Felder bzw. Zeilen:
- * Ungequotet begänne die nächste Zelle mit einer Formel. Gegenproben
- * (03.11.2026 gemessen): A  csvField quotet wieder nur bei `",\n` → rot:
- * „Rot;=1+1 bleibt eine Zelle“; B  FORMEL_START ohne Leerraum und volle
- * Breite → rot: „ =1+1 …“.
+ * Semicolon, tab and carriage return separate fields or rows in Excel:
+ * unquoted, the next cell would begin with a formula. Counter-checks
+ * (measured 03.11.2026): A  csvField quotes again only at `",\n` → red:
+ * „Rot;=1+1 bleibt eine Zelle“; B  FORMULA_START without whitespace and full
+ * width → red: „ =1+1 …“.
  */
-test('CSV-Export: Trennzeichen im Feld werden gequotet, Formeln auch nach Leerraum entschärft', () => {
-  const { csvField, toCsv, entschaerfe, entschaerfungRueckgaengig, csvZeilenAusAnfrage } =
-    _reqCsv('src/infra/csvExport.js');
+test('CSV export: separators in the field are quoted, formulas also defused after whitespace', () => {
+  const { csvField, toCsv, defuse, defusingUndo, csvRowsFromRequest } = _reqCsv('src/infra/csvExport.js');
   assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 bleibt eine Zelle');
   for (const t of ['a\rb', 'a\tb', 'a\nb', 'a,b', 'a"b']) assert.equal(csvField(t)[0], '"', JSON.stringify(t));
   for (const boese of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
-    assert.equal(entschaerfe(boese)[0], "'", `${JSON.stringify(boese)} nicht entschärft`);
-    assert.equal(entschaerfungRueckgaengig(entschaerfe(boese)), boese);
+    assert.equal(defuse(boese)[0], "'", `${JSON.stringify(boese)} nicht entschärft`);
+    assert.equal(defusingUndo(defuse(boese)), boese);
   }
-  assert.equal(entschaerfe(' -5 '), ' -5 ', 'Zahlen mit Leerraum bleiben Zahlen');
+  assert.equal(defuse(' -5 '), ' -5 ', 'Zahlen mit Leerraum bleiben Zahlen');
   const csv = toCsv(['a', 'b'], [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }]);
-  assert.deepEqual(csvZeilenAusAnfrage(csv).bereinigt, [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }], 'Rundlauf');
+  assert.deepEqual(csvRowsFromRequest(csv).cleaned, [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }], 'Rundlauf');
   const zeile = csv.split('\r\n')[1];
   assert.ok(zeile.startsWith('"Rot;=1+1\r=2",') && zeile.includes("' @SUMME(1)"), JSON.stringify(zeile));
 });
 
-test('alle drei CSV-Importwege entschärfen zurück', () => {
-  // Die Zeilenleser der Importe laufen hier selbst: der der Sets und der
-  // gemeinsame für Teile und Figuren (csvZeilenAusAnfrage). Dass beide
-  // Importe ihn benutzen, zeigt test/csv-rundlauf-db.test.js.
-  // Gegenprobe (29.10.2026): entschaerfungRueckgaengig in setCsvZeilen
-  // weggelassen → rot („Sets: …“).
-  const { setCsvZeilen } = _reqCsv('src/sets/csvImport.js');
-  const { csvZeilenAusAnfrage } = _reqCsv('src/infra/csvExport.js');
+test('all three CSV import paths defuse back', () => {
+  // The row readers of the imports run here themselves: the one of the sets and the
+  // shared one for parts and figures (csvRowsFromRequest). That both
+  // imports use it is shown by test/csv-round-run-db.test.js.
+  // Counter-check (29.10.2026): defusingUndo left out in setCsvRows
+  // → red („Sets: …“).
+  const { setCsvRows } = _reqCsv('src/sets/csvImport.js');
+  const { csvRowsFromRequest } = _reqCsv('src/infra/csvExport.js');
   assert.equal(
-    setCsvZeilen("set_number,quantity\n'-10001-1,1\n").rows[0].sn,
+    setCsvRows("set_number,quantity\n'-10001-1,1\n").rows[0].sn,
     '-10001-1',
     'Sets: ein hier erzeugter Export käme mit Hochkomma zurück',
   );
   assert.equal(
-    csvZeilenAusAnfrage("part_number,quantity\n'=X1,1\n").bereinigt[0].part_number,
+    csvRowsFromRequest("part_number,quantity\n'=X1,1\n").cleaned[0].part_number,
     '=X1',
     'Teile und Figuren: ein hier erzeugter Export käme mit Hochkomma zurück',
   );
 });
 
-test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', async t => {
+test('the CSV progress stream survives back pressure on the first write', async t => {
   if (!(await dbReachable())) {
     keineDb(t);
     return;
@@ -229,7 +232,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
     await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [`strom_${process.pid}`])
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
-  // Ein voller Puffer schon beim ersten Schreiben: send() ruft dann sofort cleanup() auf.
+  // A full buffer already on the first write: send() then calls cleanup() immediately.
   const express = require('express');
   const app = express();
   let geschrieben = 0;
@@ -242,7 +245,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
     };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const fehler = [];
   app.use((e, _req2, res, _next) => {
     fehler.push(e);
@@ -250,25 +253,25 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  // Der Strom hört auf NOTIFY anderer Worker; die Verbindung dafür hielte den Prozess offen.
-  t.after(() => testZugang().benachrichtigung.close());
-  // Der Strom horcht über den Signalweg des Zugangs; gezählt wird an ihm.
-  const signale = testZugang().benachrichtigung;
+  // The stream listens to NOTIFY of other workers; the connection for it would keep the process open.
+  t.after(() => testAccess().notification.close());
+  // The stream listens via the signal path of the access; counting happens on it.
+  const signals = testAccess().notification;
   const zahl = { an: 0, ab: 0 };
-  const { listen, unlisten } = signale;
-  signale.listen = (kanal, h) => {
+  const { listen, unlisten } = signals;
+  signals.listen = (kanal, h) => {
     if (kanal === 'csv_import_progress') zahl.an++;
-    return listen.call(signale, kanal, h);
+    return listen.call(signals, kanal, h);
   };
-  signale.unlisten = (kanal, h) => {
+  signals.unlisten = (kanal, h) => {
     if (kanal === 'csv_import_progress') zahl.ab++;
-    return unlisten.call(signale, kanal, h);
+    return unlisten.call(signals, kanal, h);
   };
   t.after(() => {
-    signale.listen = listen;
-    signale.unlisten = unlisten;
+    signals.listen = listen;
+    signals.unlisten = unlisten;
   });
-  const r = await fetch(`http://localhost:${portVon(srv)}/api/v1/sets/import/csv/stream`, {
+  const r = await fetch(`http://localhost:${portOf(srv)}/api/v1/sets/import/csv/stream`, {
     signal: AbortSignal.timeout(10_000),
   });
   const text = await r.text();
@@ -279,7 +282,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
     [],
     'cleanup() greift auf noch nicht angelegte Hörer zu',
   );
-  // Aufgeräumt: kein Hörer bleibt am Signalweg hängen.
+  // Cleaned up: no listener stays hanging on the signal path.
   for (let i = 0; i < 40 && zahl.ab < zahl.an; i++) await new Promise(r => setTimeout(r, 50));
   assert.ok(zahl.an > 0, 'der Strom horchte gar nicht — greift die Zählung noch?');
   assert.equal(zahl.ab, zahl.an, 'kein Hörer bleibt am Signalweg hängen');

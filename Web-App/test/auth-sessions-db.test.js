@@ -1,5 +1,5 @@
 /**
- * Passwortwechsel gegen echte Datenbank und echten Session-Store.
+ * Password change against a real database and a real session store.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,22 +9,22 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-// Die Adresse aus server.ts LESEN, nicht abschreiben: Ein eigener Pruefstand
-// mit fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
+const { dataOrSkip } = require('./helpers/db');
+// READ the address from server.ts, do not copy it: a separate test bench
+// with a fixed address stays green while the router hangs elsewhere long ago.
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+test('a password change ends sessions AND tokens — against a real store', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
 
-  // ── Aufbau: ein Administrator, ein Opfer ────────────────────────────────
+  // ── Setup: an administrator, a victim ───────────────────────────────────
   for (const name of ['pw_chef', 'pw_opfer']) {
     await db.run('DELETE FROM users WHERE username = $1', [name]);
   }
@@ -37,7 +37,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
     'pw_opfer',
     hash,
   ]);
-  const opferId = (await db.get("SELECT id FROM users WHERE username='pw_opfer'")).id;
+  const victimId = (await db.get("SELECT id FROM users WHERE username='pw_opfer'")).id;
 
   const app = express();
   app.use(express.json());
@@ -49,14 +49,14 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
-  // Passwort als Parameter, NICHT fest verdrahtet: Der zweite Subtest ändert
-  // das Passwort des Administrators — mit einem festen 'altesPasswort1' scheitert
-  // die nächste Anmeldung, und der dritte Subtest wäre aus einem Grund rot, der
-  // nichts mit der geprüften Regel zu tun hat.
+  // Password as a parameter, NOT hard-wired: the second subtest changes
+  // the administrator's password — with a fixed 'altesPasswort1' the next
+  // login fails, and the third subtest would be red for a reason that
+  // has nothing to do with the checked rule.
   const anmelden = async (user, passwort) => {
     const r = await fetch(`${basis}${AUTH}/login`, {
       method: 'POST',
@@ -73,22 +73,22 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
     (await db.get("SELECT COUNT(*)::int n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])).n;
 
   try {
-    await t.test('der Admin-Reset wirft das übernommene Fenster hinaus', async () => {
+    await t.test('the admin reset throws out the taken-over window', async () => {
       const angreifer = await anmelden('pw_opfer', 'altesPasswort1');
       const chef = await anmelden('pw_chef', 'altesPasswort1');
       assert.equal(await angemeldet(angreifer.cookie), true, 'Vorbedingung: Sitzung steht');
-      assert.ok((await sitzungen(opferId)) >= 1, 'Vorbedingung: Sitzung liegt in user_sessions');
+      assert.ok((await sitzungen(victimId)) >= 1, 'Vorbedingung: Sitzung liegt in user_sessions');
 
-      const r = await fetch(`${basis}${AUTH}/users/${opferId}/password`, {
+      const r = await fetch(`${basis}${AUTH}/users/${victimId}/password`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', cookie: chef.cookie },
         body: JSON.stringify({ password: 'neuesPasswort1', admin_password: 'altesPasswort1' }),
       });
       assert.equal(r.status, 200, await r.text());
 
-      // DER Punkt der Datei: Sitzung ist wirklich weg, nicht nur „das DELETE
-      // steht im Code".
-      assert.equal(await sitzungen(opferId), 0, 'Sitzungen des Kontos müssen enden');
+      // THE point of the file: the session is really gone, not just “the DELETE
+      // is in the code".
+      assert.equal(await sitzungen(victimId), 0, 'Sitzungen des Kontos müssen enden');
       assert.equal(
         await angemeldet(angreifer.cookie),
         false,
@@ -96,47 +96,47 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       );
     });
 
-    await t.test('der eigene Passwortwechsel wirft die anderen Fenster hinaus — nicht das eigene', async () => {
-      // Zwei Fenster desselben Kontos: eines wechselt das Passwort, das andere
-      // muss draussen sein. Das wechselnde Fenster bleibt drin (frische
-      // Session-ID über establishSession) — sonst flöge man sich selbst raus.
-      const fensterA = await anmelden('pw_chef', 'altesPasswort1');
-      const fensterB = await anmelden('pw_chef', 'altesPasswort1');
-      assert.equal(await angemeldet(fensterB.cookie), true, 'Vorbedingung: zweites Fenster offen');
+    await t.test('the own password change throws out the other windows — not the own one', async () => {
+      // Two windows of the same account: one changes the password, the other
+      // must be out. The changing window stays in (fresh
+      // session ID via establishSession) — otherwise one would throw oneself out.
+      const windowA = await anmelden('pw_chef', 'altesPasswort1');
+      const windowB = await anmelden('pw_chef', 'altesPasswort1');
+      assert.equal(await angemeldet(windowB.cookie), true, 'Vorbedingung: zweites Fenster offen');
 
       const r = await fetch(`${basis}${AUTH}/change-password`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', cookie: fensterA.cookie },
+        headers: { 'content-type': 'application/json', cookie: windowA.cookie },
         body: JSON.stringify({ current: 'altesPasswort1', newPassword: 'nochNeuer1234' }),
       });
       assert.equal(r.status, 200, await r.text());
 
       assert.equal(
-        await angemeldet(fensterB.cookie),
+        await angemeldet(windowB.cookie),
         false,
         'Das andere Fenster muss nach dem Passwortwechsel abgemeldet sein',
       );
-      // Das eigene Fenster: Die Session-ID wurde erneuert, das alte Cookie ist
-      // damit ebenfalls entwertet — erwünscht (Session Fixation) und der Grund,
-      // warum die Antwort ein neues Cookie mitschickt.
+      // The own window: the session ID was renewed, the old cookie is
+      // thereby invalidated too — desired (session fixation) and the reason
+      // why the response sends a new cookie along.
       assert.ok(r.headers.get('set-cookie'), 'Nach der Rotation muss ein neues Sitzungs-Cookie zurückkommen');
     });
 
-    await t.test('Bearer-Token des Kontos verfallen mit', async () => {
-      const { tokenAbdruck, nutzerZumToken } = _req('src/konto/geraeteToken.js');
+    await t.test('bearer tokens of the account expire along with it', async () => {
+      const { tokenDigest, nutzerZumToken } = _req('src/account/deviceToken.js');
       const crypto = require('node:crypto');
       const tok = crypto.randomBytes(16).toString('hex');
       await db.run("INSERT INTO api_tokens (token,user_id,label,expires_at) VALUES ($1,$2,'app',NULL)", [
-        tokenAbdruck(tok),
-        opferId,
+        tokenDigest(tok),
+        victimId,
       ]);
       assert.ok(await nutzerZumToken(tok), 'Vorbedingung: Token gilt');
 
-      // 'nochNeuer1234' — der Subtest davor hat es geändert.
+      // 'nochNeuer1234' — the subtest before changed it.
       const chef = await anmelden('pw_chef', 'nochNeuer1234');
-      // Das Passwort des OPFERS wurde im ersten Subtest geändert — hier zählt nur, dass
-      // der Reset läuft; der Admin-Weg verlangt kein altes Passwort.
-      const r = await fetch(`${basis}${AUTH}/users/${opferId}/password`, {
+      // The VICTIM's password was changed in the first subtest — here all that counts is that
+      // the reset runs; the admin path requires no old password.
+      const r = await fetch(`${basis}${AUTH}/users/${victimId}/password`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', cookie: chef.cookie },
         body: JSON.stringify({ password: 'wiederNeu123', admin_password: 'nochNeuer1234' }),
@@ -149,16 +149,16 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       );
     });
 
-    // Gegenprobe (11.11.2026 gemessen): in setzePasswortZurueck (src/konto/konten.ts)
-    // `await zugaengeBeenden(uid)` gestrichen → rot hier (Sitzung und Token bleiben).
-    await t.test('das Zurücksetzen per Link beendet Sitzungen und Token', async () => {
-      const { tokenAbdruck, tokenAnlegen, nutzerZumToken } = _req('src/konto/geraeteToken.js');
+    // Counter-check (measured 11.11.2026): in setPasswordBack (src/account/accounts.ts)
+    // `await endAccesses(uid)` deleted → red here (session and token stay).
+    await t.test('resetting via link ends sessions and tokens', async () => {
+      const { tokenDigest, createToken, nutzerZumToken } = _req('src/account/deviceToken.js');
       const fenster = await anmelden('pw_opfer', 'wiederNeu123');
-      const tok = await tokenAnlegen(opferId, 'Fremdgerät', true);
+      const tok = await createToken(victimId, 'Fremdgerät', true);
       const roh = 'd'.repeat(64);
       await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
-        opferId,
-        tokenAbdruck(roh),
+        victimId,
+        tokenDigest(roh),
       ]);
       await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
       const r = await fetch(`${basis}${AUTH}/reset-password`, {
@@ -167,14 +167,14 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
         body: JSON.stringify({ token: roh, password: 'perLinkGesetzt12' }),
       });
       assert.equal(r.status, 200, await r.text());
-      assert.equal(await sitzungen(opferId), 0, 'Sitzungen des Kontos müssen enden');
+      assert.equal(await sitzungen(victimId), 0, 'Sitzungen des Kontos müssen enden');
       assert.equal(await angemeldet(fenster.cookie), false);
       assert.equal(await nutzerZumToken(tok), null, 'Der Token darf das Zurücksetzen nicht überleben');
     });
 
-    // Gegenprobe (11.11.2026 gemessen): in PUT /users/:id/password die Prüfung
-    // `targetId === nutzerId(req)` gestrichen → rot „… nicht für das eigene Konto“ (200).
-    await t.test('der Verwalterweg gilt nicht für das eigene Konto und nicht für Unbekannte', async () => {
+    // Counter-check (measured 11.11.2026): in PUT /users/:id/password the check
+    // `targetId === nutzerId(req)` deleted → red “… not for the own account” (200).
+    await t.test('the admin path does not apply to the own account and not to unknown ones', async () => {
       const chef = await anmelden('pw_chef', 'nochNeuer1234');
       const chefId = (await db.get("SELECT id FROM users WHERE username='pw_chef'")).id;
       const setze = async (cookie, id) => {
@@ -194,7 +194,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       const opfer = await anmelden('pw_opfer', 'perLinkGesetzt12');
       assert.match(await setze(opfer.cookie, chefId), /^403 /, 'nur für Verwalter');
       assert.ok(
-        await _req('src/konto/passwortHash.js').passwortPasst(
+        await _req('src/account/passwordHash.js').passwordFits(
           'nochNeuer1234',
           (await db.get('SELECT password_hash FROM users WHERE id = $1', [chefId])).password_hash,
         ),

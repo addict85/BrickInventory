@@ -2,7 +2,7 @@
 #
 # Grundlage ist detekts Vorgabe (buildUponDefaultConfig); hier steht nur, was
 # davon abweicht, und jeweils warum. Die Baseline (baseline.xml) hält nur alte
-# Funde zu Länge und Verzweigung; tools/detekt-obergrenze.txt lässt sie schrumpfen.
+# Funde zu Länge und Verzweigung; tools/detekt-limit.txt lässt sie schrumpfen.
 
 config:
   validation: true
@@ -10,7 +10,7 @@ config:
 complexity:
   # Länge und Verzweigung gelten mit detekts Vorgabe (60 Zeilen, 15 Zweige). Die
   # heutigen Überschreitungen stehen in config/detekt/baseline.xml; neue scheitern,
-  # und tools/detekt-obergrenze.txt lässt die Liste nur schrumpfen.
+  # und tools/detekt-limit.txt lässt die Liste nur schrumpfen.
   CyclomaticComplexMethod:
     ignoreSimpleWhenEntries: true
   LongParameterList:
@@ -89,7 +89,7 @@ style:
       - 'androidx.compose.ui.graphics.*'
       - 'androidx.navigation.compose.*'
       - 'androidx.camera.core.*'
-    excludes: ['**/gemeinsam/ui/SetDetailComponents.kt', '**/verwaltung/ui/screens/MonitoringScreen.kt']
+    excludes: ['**/shared/ui/SetDetailComponents.kt', '**/management/ui/screens/MonitoringScreen.kt']
   ReturnCount:
     # Früh zurückgeben statt verschachteln ist Projektstil, auch nach der
     # Prüfung mitten in der Funktion (Netzantworten, Passkeys).
@@ -140,5 +140,5 @@ formatting:
     active: false
   NoConsecutiveBlankLines:
     # Die beiden Dateien schreibt `npm run design:tokens` (Web-App); ihre Form
-    # prüft design-abschrift.test.js Zeichen für Zeichen.
+    # prüft design-transcript.test.js Zeichen für Zeichen.
     excludes: ['**/ui/theme/DesignTokens.kt', '**/ui/theme/DunkelTokens.kt']

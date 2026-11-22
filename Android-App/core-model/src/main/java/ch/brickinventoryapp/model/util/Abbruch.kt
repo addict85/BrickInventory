@@ -3,16 +3,16 @@ package ch.brickinventoryapp.model.util
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Wie `runCatching`, aber das Abbrechen einer Koroutine geht weiter. Sonst liefe
- * ein abgebrochener Aufruf als gewöhnlicher Fehler weiter und hielte den Scope
- * offen. Errors (OutOfMemory u. ä.) fängt sie bewusst nicht.
+ * Like `runCatching`, but the cancellation of a coroutine propagates. Otherwise
+ * a cancelled call would continue as an ordinary error and keep the scope
+ * open. Errors (OutOfMemory etc.) it deliberately does not catch.
  */
-@Suppress("TooGenericExceptionCaught") // Die eine Stelle, an der breit gefangen wird.
+@Suppress("TooGenericExceptionCaught") // The one place where catching is broad.
 inline fun <T> fangeAusserAbbruch(block: () -> T): kotlin.Result<T> =
     try {
         kotlin.Result.success(block())
-    } catch (abbruch: CancellationException) {
-        throw abbruch
+    } catch (abort: CancellationException) {
+        throw abort
     } catch (e: Exception) {
         kotlin.Result.failure(e)
     }

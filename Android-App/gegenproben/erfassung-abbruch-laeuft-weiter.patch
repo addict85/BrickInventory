@@ -1,15 +1,15 @@
 Gegenprobe: Der Abbruch der Prüfanzeige bricht den laufenden Abruf nicht ab
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.ErfassungViewModelTest
-Rot: der Abbruch beendet den Abruf
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.EntryViewModelTest
+Rot: the abort ends the fetch and not only the display
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
-@@ -316,7 +316,6 @@ class ErfassungViewModel @Inject constructor(
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
+@@ -316,7 +316,6 @@ class EntryViewModel @Inject constructor(
  
      /** Der Abbrechen-Knopf der Prüfanzeige: Ein laufender Scan wird abgebrochen, die Anzeige geräumt. */
-     override fun brichPruefungAb() {
+     override fun abortCheckAb() {
 -        erfassungsJob?.cancel()
          erfassungsJob = null
          erfassung.fertig()

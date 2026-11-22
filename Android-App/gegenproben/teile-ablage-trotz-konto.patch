@@ -1,17 +1,17 @@
 Gegenprobe: Mit Kontofilter zeigt die Teileliste die Ablage statt der Kontosicht
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileViewModelTest
-Rot: der Kontofilter der Teile reist mit
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsViewModelTest
+Rot: the account filter of the parts travels along, that of another view does not
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
 @@ -89,7 +89,7 @@
       */
-     private fun teileAbfrage(st: TeileUiState): Kontosicht.TeileAbfrage? {
+     private fun partsQuery(st: PartsUiState): Kontosicht.PartsQuery? {
          val f = st.filter
--        return if (teileKonto == null && teileLager == null && f.ansicht != Listenansicht.TABELLE) null
-+        return if (f.ansicht != Listenansicht.TABELLE) null
-         else Kontosicht.TeileAbfrage(teileKonto, f.suche.ifBlank { null }, f.farbe,
-             f.kategorie, f.ersatz, f.ansicht == Listenansicht.TABELLE, teileLager)
+-        return if (partsAccount == null && partsStorage == null && f.ansicht != ListView.TABLE) null
++        return if (f.ansicht != ListView.TABLE) null
+         else Kontosicht.PartsQuery(partsAccount, f.suche.ifBlank { null }, f.farbe,
+             f.kategorie, f.ersatz, f.ansicht == ListView.TABLE, partsStorage)
      }

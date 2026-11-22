@@ -1,16 +1,16 @@
 Gegenprobe: Ein Ablageschlüssel unter dem Schlüssel ohne Entsperr-Bedingung wird nicht umgeschlüsselt
-Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.AblageEntsperrtTest
-Rot: ein Altbestand ohne Bedingung kommt beim ersten Lesen
+Modul: core-security
+Test: ch.brickinventoryapp.security.StoreUnlockedTest
+Rot: a legacy stock without condition goes under the unlocked one on first read, the stores stay readable
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 @@ -31,7 +31,6 @@
              val umhuellt = datei.readText().trim()
-             when (val befund = tresor.oeffne(umhuellt)) {
-                 is Tresorbefund.Lesbar -> hexZuBytes(befund.klartext)?.takeIf { it.size == LAENGE }?.let {
--                    if (tresor.veraltet(umhuellt)) umhuelleNeu(befund.klartext)
+             when (val finding = tresor.oeffne(umhuellt)) {
+                 is Tresorbefund.Readable -> hexToBytes(finding.klartext)?.takeIf { it.size == LENGTH }?.let {
+-                    if (tresor.veraltet(umhuellt)) wrapNew(finding.klartext)
                      bekannt = it
                      return it
                  }

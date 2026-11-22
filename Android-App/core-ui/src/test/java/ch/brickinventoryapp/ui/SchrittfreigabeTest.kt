@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.schritt.Schrittaktion
-import ch.brickinventoryapp.model.schritt.Schrittantwort
-import ch.brickinventoryapp.model.schritt.Schrittbindung
+import ch.brickinventoryapp.model.step.Schrittaktion
+import ch.brickinventoryapp.model.step.Schrittantwort
+import ch.brickinventoryapp.model.step.Schrittbindung
 import ch.brickinventoryapp.ui.components.Schrittablauf
 import ch.brickinventoryapp.ui.components.Schrittfreigabe
 import kotlinx.coroutines.runBlocking
@@ -17,19 +17,19 @@ import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 
 /**
- * Die Rückfrage per Gerätesperre ist an den Keystore und den Server gebunden:
- * Weiter geht es nur mit einer Signatur, die zum öffentlichen Schlüssel passt, und
- * bei einem Server mit Schrittschutz erst, wenn er sie über seine Challenge annimmt.
+ * The device-lock prompt is bound to the keystore and the server:
+ * it only proceeds with a signature matching the public key, and
+ * with a server that has step protection only once it accepts it via its challenge.
  *
- * Der Keystore läuft nur auf dem Gerät; hier steht ein EC-Schlüsselpaar dafür, und
- * „nicht freigegeben“ ist eine Signatur, die nicht signieren kann oder fremd signiert.
+ * The keystore only runs on the device; here stands an EC key pair for that, and
+ * „nicht freigegeben“ is a signature that cannot sign or signs with someone else's key.
  *
- * Gegenproben (09.11.2026 lokal mit kotlinc gemessen):
- *   A  Schrittfreigabe.unterschrift() nimmt jede vorhandene Signatur → rot „ein anderer
+ * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
+ *   A  Schrittfreigabe.unterschrift() accepts any existing signature → red „ein anderer
  *      Schluessel zaehlt nicht“; gegenproben/schrittschutz-ohne-signatur.patch
- *   B  Schrittablauf geht nach der Sperre weiter, ohne den Server zu fragen → rot
+ *   B  step flow continues past the lock without asking the server → red
  *      „lehnt der Server die Signatur ab …“; gegenproben/schrittablauf-ohne-server.patch
- *   C  eine Absage des Servers fällt auf die Prüfung im Gerät zurück → rot „ohne
+ *   C  a server refusal falls back to the on-device check → red „ohne
  *      Schluessel am Server …“; gegenproben/schrittablauf-absage-im-geraet.patch
  */
 class SchrittfreigabeTest {
@@ -42,79 +42,79 @@ class SchrittfreigabeTest {
     private fun signatur(mit: PrivateKey) =
         Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(mit) }
 
-    /** Ein Server, der wie routes/api_v1/geraet.ts prüft: Signatur über genau seine Nachricht. */
+    /** A server that checks like routes/api_v1/device.ts: signature over exactly its message. */
     private class Server(private val schluessel: PublicKey, var challenge: Schrittantwort) : Schrittbindung {
-        val freigaben = mutableListOf<String>()
+        val releases = mutableListOf<String>()
         override suspend fun challenge(aktion: Schrittaktion) = challenge
         override suspend fun freigeben(challenge: String, signatur: ByteArray): Schrittantwort {
-            freigaben += challenge
+            releases += challenge
             val c = this.challenge as Schrittantwort.Challenge
             val passt = Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).run {
                 initVerify(schluessel); update(c.nachricht.toByteArray(Charsets.UTF_8)); verify(signatur)
             }
-            return if (passt && challenge == c.challenge) Schrittantwort.Frei else Schrittantwort.Abgelehnt("abgelehnt")
+            return if (passt && challenge == c.challenge) Schrittantwort.Free else Schrittantwort.Rejected("abgelehnt")
         }
     }
 
     private val offen = Schrittantwort.Challenge("c1", "BrickInventory-Schritt/1\ngutschein\nc1")
 
     @Test
-    fun `die vom Schluessel freigegebene Signatur zaehlt`() {
+    fun `the signature authorized by the key counts`() {
         assertTrue(freigabe.gilt(signatur(geraet.private)))
     }
 
     @Test
-    fun `ein anderer Schluessel zaehlt nicht`() {
+    fun `a different key does not count`() {
         assertFalse(freigabe.gilt(signatur(paar().private)))
     }
 
     @Test
-    fun `eine Signatur ohne Freigabe zaehlt nicht`() {
-        // Wie ein Keystore-Schlüssel vor der Freigabe: sign() wirft.
+    fun `a signature without authorization does not count`() {
+        // Like a keystore key before unlock: sign() throws.
         assertFalse(freigabe.gilt(Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN)))
         assertFalse(freigabe.gilt(null))
     }
 
     @Test
-    fun `mit Challenge geht es erst weiter, wenn der Server die Signatur annimmt`() = runBlocking {
+    fun `with a challenge it continues only when the server accepts the signature`() = runBlocking {
         val server = Server(geraet.public, offen)
-        val a = Schrittablauf(server, freigabe).bestaetige(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
+        val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
         assertEquals(Schrittablauf.Ausgang.Weiter, a)
-        assertEquals(listOf("c1"), server.freigaben)
+        assertEquals(listOf("c1"), server.releases)
     }
 
     @Test
-    fun `lehnt der Server die Signatur ab, geht es nicht weiter`() = runBlocking {
-        // Der Server kennt einen anderen Schlüssel als das Gerät (neuer Fingerabdruck, fremdes Gerät).
+    fun `if the server rejects the signature, it does not continue`() = runBlocking {
+        // The server knows a different key than the device (new fingerprint, foreign device).
         val server = Server(paar().public, offen)
-        val a = Schrittablauf(server, Schrittfreigabe({ geraet.public })).bestaetige(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
-        assertEquals(Schrittablauf.Ausgang.Abgelehnt("abgelehnt"), a)
+        val a = Schrittablauf(server, Schrittfreigabe({ geraet.public })).confirm(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
+        assertEquals(Schrittablauf.Ausgang.Rejected("abgelehnt"), a)
     }
 
     @Test
-    fun `ein Rueckruf ohne CryptoObject laesst nicht weiter und fragt den Server nicht`() = runBlocking {
+    fun `a callback without CryptoObject does not let through and does not ask the server`() = runBlocking {
         val server = Server(geraet.public, offen)
-        val a = Schrittablauf(server, freigabe).bestaetige(Schrittaktion.GUTSCHEIN) { null }
+        val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.GUTSCHEIN) { null }
         assertEquals(Schrittablauf.Ausgang.Abgebrochen, a)
-        assertEquals(emptyList<String>(), server.freigaben)
+        assertEquals(emptyList<String>(), server.releases)
     }
 
     @Test
-    fun `ohne Schluessel am Server fragt die App die Sperre gar nicht`() = runBlocking {
-        val server = Server(geraet.public, Schrittantwort.Abgelehnt("Bitte neu anmelden."))
+    fun `without a key at the server the app does not ask for the lock at all`() = runBlocking {
+        val server = Server(geraet.public, Schrittantwort.Rejected("Bitte neu anmelden."))
         var gefragt = 0
-        val a = Schrittablauf(server, freigabe).bestaetige(Schrittaktion.VERWALTUNG) { gefragt++; signatur(geraet.private) }
-        assertEquals(Schrittablauf.Ausgang.Abgelehnt("Bitte neu anmelden."), a)
+        val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.VERWALTUNG) { gefragt++; signatur(geraet.private) }
+        assertEquals(Schrittablauf.Ausgang.Rejected("Bitte neu anmelden."), a)
         assertEquals(0, gefragt)
     }
 
     @Test
-    fun `ein Schritt ohne Aktion am Server bleibt bei der Pruefung im Geraet`() = runBlocking {
-        val server = Server(geraet.public, Schrittantwort.NichtGebunden)
+    fun `a step without an action at the server stays with the check on the device`() = runBlocking {
+        val server = Server(geraet.public, Schrittantwort.NotBound)
         assertEquals(Schrittablauf.Ausgang.Weiter,
-            Schrittablauf(server, freigabe).bestaetige(Schrittaktion.LOKAL) { signatur(geraet.private) })
+            Schrittablauf(server, freigabe).confirm(Schrittaktion.LOKAL) { signatur(geraet.private) })
         assertEquals(Schrittablauf.Ausgang.Abgebrochen,
-            Schrittablauf(server, freigabe).bestaetige(Schrittaktion.LOKAL) { signatur(paar().private) })
-        assertEquals(emptyList<String>(), server.freigaben)
+            Schrittablauf(server, freigabe).confirm(Schrittaktion.LOKAL) { signatur(paar().private) })
+        assertEquals(emptyList<String>(), server.releases)
     }
 }

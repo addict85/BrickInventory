@@ -17,13 +17,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.finanzen.ui.FinanzZiel
-import ch.brickinventoryapp.sammlung.ui.SammlungZiel
-import ch.brickinventoryapp.teile.ui.TeileZiel
+import ch.brickinventoryapp.finances.ui.FinanzZiel
+import ch.brickinventoryapp.collection.ui.SammlungZiel
+import ch.brickinventoryapp.parts.ui.TeileZiel
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -35,14 +35,14 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Ein angetippter Reiter beginnt oben: Das Gerüst meldet das Antippen, bevor es
- * navigiert, damit der Rollmerker die Stelle verwirft, ehe der Bildschirm sie liest.
- * „Ich komme zurück“ behält die Stelle; unterscheiden lässt sich das nur im Gerüst.
+ * A tapped tab starts at the top: the scaffold reports the tap before it
+ * navigates, so that the scroll memory discards the position before the screen reads it.
+ * “I come back” keeps the position; this can only be distinguished in the scaffold.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   reiter-meldet-nach-navigation      onTabAngetippt erst nach zuReiter → rot „die untere Leiste meldet …“
- *   umschalter-meldet-nach-navigation  im Sammlungs-Umschalter ebenso → rot „der Sammlungs-Umschalter meldet …“
- *   geruest-vergisst-nicht             ReiterGeruest verwirft die Rollposition nicht → rot „kein Reiter-Ziel …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   reiter-meldet-nach-navigation      onTabAngetippt only after toTab → red “the bottom bar reports …”
+ *   umschalter-meldet-nach-navigation  likewise in the collection switcher → red “the collection switcher reports …”
+ *   geruest-vergisst-nicht             ReiterGeruest does not discard the scroll position → red “no tab destination …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -54,7 +54,7 @@ class TabOpensAtTopTest {
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
 
-    /** Gemeldetes Ziel und ob beim Melden noch die Galerie offen war. */
+    /** Reported destination and whether the gallery was still open when reporting. */
     private val gemeldet = mutableListOf<Pair<Any, Boolean>>()
     private lateinit var nav: NavHostController
 
@@ -62,13 +62,13 @@ class TabOpensAtTopTest {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 nav = rememberNavController()
-                val reiter = remember {
+                val tab = remember {
                     listOf(
                         Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
                         Reiter(FinanzZiel.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
                 }
                 MainScaffold(
-                    title = "Sammlung", navController = nav, bottomNavItems = reiter,
+                    title = "Sammlung", navController = nav, bottomNavItems = tab,
                     snackbarHostState = remember { SnackbarHostState() },
                     csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                     onCsvAbbrechen = {},
@@ -86,7 +86,7 @@ class TabOpensAtTopTest {
     }
 
     @Test
-    fun `die untere Leiste meldet den Reiter, bevor sie navigiert`() {
+    fun `the bottom bar reports the tab before it navigates`() {
         zeige()
         compose.onNodeWithText("Finanzen").performClick()
         compose.waitForIdle()
@@ -95,7 +95,7 @@ class TabOpensAtTopTest {
     }
 
     @Test
-    fun `der Sammlungs-Umschalter meldet den Reiter, bevor er navigiert`() {
+    fun `the collection switcher reports the tab before it navigates`() {
         zeige()
         compose.onNodeWithText(ctx.getString(R.string.nav_parts)).performClick()
         compose.waitForIdle()
@@ -104,15 +104,15 @@ class TabOpensAtTopTest {
     }
 
     @Test
-    fun `kein Reiter-Ziel baut das Geruest selbst`() {
-        // Struktur: ReiterGeruest setzt den Rückruf einmal; ein Ziel, das MainScaffold
-        // selbst baut, müsste ihn wieder von Hand durchreichen.
-        val ziele = Quellen.unter("nav")
-        assertTrue("Nur ${ziele.size} Dateien unter nav/ — Pfad veraltet?", ziele.size >= 3)
-        val direkt = ziele.filter { Quellen.ohneKommentare(it.readText()).contains("MainScaffold(") }
+    fun `no tab destination builds the scaffold itself`() {
+        // Structure: ReiterGeruest sets the callback once; a destination that builds MainScaffold
+        // itself would have to pass it through by hand again.
+        val targets = Quellen.unter("nav")
+        assertTrue("Nur ${targets.size} Dateien unter nav/ — Pfad veraltet?", targets.size >= 3)
+        val direkt = targets.filter { Quellen.withoutComments(it.readText()).contains("MainScaffold(") }
         assertTrue("Diese Ziele bauen MainScaffold selbst statt ReiterGeruest: ${direkt.joinToString { it.name }}",
             direkt.isEmpty())
-        val geruest = Quellen.ohneKommentare(Quellen.lies("app/MainScaffold.kt"))
+        val geruest = Quellen.withoutComments(Quellen.lies("app/MainScaffold.kt"))
         assertTrue("Das Gerüst verwirft die Rollposition des angetippten Reiters nicht mehr",
             geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) }"))
     }

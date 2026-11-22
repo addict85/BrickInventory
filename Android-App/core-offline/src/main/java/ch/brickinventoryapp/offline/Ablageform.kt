@@ -10,32 +10,32 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Wie ein Fachmodell [T] als Zeile in der Ablage liegt: als eigene Form [A] mit Abbildung
- * in beide Richtungen. So folgt die Platte nicht jeder Änderung am Servermodell. Eine
- * unverträgliche Änderung bekommt eine neue [fassung]; die Zeile trägt sie im Feld
- * `fassung`, ohne das Feld ist es Fassung 1, und ältere Fassungen liest [aeltere].
+ * How a domain model [T] lies as a row in the store: as its own form [A] with mapping
+ * in both directions. This way the disk does not follow every change to the server model. An
+ * incompatible change gets a new [fassung]; the row carries it in the field
+ * `fassung`, without the field it is version 1, and older versions are read by [older].
  */
 internal class Ablageform<T, A>(
     private val serializer: KSerializer<A>,
     private val hin: (T) -> A,
     private val her: (A) -> T,
     val fassung: Int = 1,
-    private val aeltere: Map<Int, (Json, JsonObject) -> T> = emptyMap(),
+    private val older: Map<Int, (Json, JsonObject) -> T> = emptyMap(),
 ) {
-    fun kodiere(json: Json, wert: T): String {
+    fun encode(json: Json, wert: T): String {
         val zeile = json.encodeToJsonElement(serializer, hin(wert)).jsonObject
-        return if (fassung == 1) zeile.toString() else JsonObject(zeile + (FELD to JsonPrimitive(fassung))).toString()
+        return if (fassung == 1) zeile.toString() else JsonObject(zeile + (FIELD to JsonPrimitive(fassung))).toString()
     }
 
-    fun dekodiere(json: Json, text: String): T {
+    fun decode(json: Json, text: String): T {
         val zeile = json.parseToJsonElement(text).jsonObject
-        val von = zeile[FELD]?.jsonPrimitive?.intOrNull ?: 1
-        if (von == fassung) return her(json.decodeFromJsonElement(serializer, JsonObject(zeile - FELD)))
-        val leser = aeltere[von] ?: throw SerializationException("Ablagezeile in Fassung $von, gelesen wird $fassung")
-        return leser(json, JsonObject(zeile - FELD))
+        val von = zeile[FIELD]?.jsonPrimitive?.intOrNull ?: 1
+        if (von == fassung) return her(json.decodeFromJsonElement(serializer, JsonObject(zeile - FIELD)))
+        val reader = older[von] ?: throw SerializationException("Ablagezeile in Fassung $von, gelesen wird $fassung")
+        return reader(json, JsonObject(zeile - FIELD))
     }
 
     private companion object {
-        const val FELD = "fassung"
+        const val FIELD = "fassung"
     }
 }

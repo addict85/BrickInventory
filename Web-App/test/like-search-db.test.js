@@ -1,0 +1,108 @@
+/**
+ * Free-text search: `%` and `_` in the input count literally (db/likeSearch.ts).
+ * Otherwise `%` would find every entry and `_` every single character.
+ *
+ * Counter-checks (measured on 03.11.2026, each on its own):
+ *   A  likeLiteral() returns the text unchanged → red: all four
+ *      subtests (every list delivered both entries)
+ *   B  LIKE_ESCAPE with `!` instead of `\` (mask and ESCAPE do not match) → red:
+ *      all four subtests
+ *
+ * REQUIRE_DB=1.
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+const { buildAndRequire, testData } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { keineDb } = require('./helpers/db');
+const { testServer } = require('./helpers/server');
+const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
+const db = testData();
+
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
+
+test('search with % and _ only finds literal hits', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
+  }
+  {
+    const c = await db.pool.connect();
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
+  }
+  const NAME = `like_${process.pid}`;
+  const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
+  t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
+
+  await holdsPart(db, uid, 'pr%z', { colorId: 1, menge: 1 });
+  await holdsPart(db, uid, 'przz', { colorId: 1, menge: 1 });
+  await holdsMinifig(db, uid, 'fig_9', { menge: 1 });
+  await holdsMinifig(db, uid, 'figx9', { menge: 1 });
+  await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('77701-1', '100% Stein', 2020), ('77702-1', 'Ganz Stein', 2020)
+                ON CONFLICT (set_num) DO NOTHING`);
+  await catalogSet(db, '77701-1', { name: '100% Stein' });
+  await catalogSet(db, '77702-1', { name: 'Ganz Stein' });
+  await holdsSet(db, uid, '77701-1', 1);
+  await holdsSet(db, uid, '77702-1', 1);
+
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const hole = async pfad => {
+    const r = await fetch(base + '/api/v1' + pfad);
+    const j = await r.json();
+    assert.equal(r.status, 200, `${pfad}: ${JSON.stringify(j)}`);
+    return j;
+  };
+
+  await t.test('parts', async () => {
+    const r = await hole('/parts/manual?search=' + encodeURIComponent('%'));
+    assert.deepEqual(
+      r.parts.map(p => p.part_number),
+      ['pr%z'],
+    );
+    const l = await hole('/parts?page=1&page_size=50&search=' + encodeURIComponent('r%'));
+    assert.deepEqual(
+      l.parts.map(p => p.part_number),
+      ['pr%z'],
+    );
+  });
+
+  await t.test('figures', async () => {
+    const r = await hole('/minifigs/manual?search=' + encodeURIComponent('_'));
+    assert.deepEqual(
+      r.figs.map(f => f.fig_number),
+      ['fig_9'],
+    );
+    const l = await hole('/minifigs?search=' + encodeURIComponent('g_'));
+    assert.deepEqual(
+      l.figs.map(f => f.fig_number),
+      ['fig_9'],
+    );
+  });
+
+  await t.test('Sets', async () => {
+    const r = await hole('/sets?search=' + encodeURIComponent('%'));
+    assert.deepEqual(
+      r.sets.map(s => s.set_number),
+      ['77701-1'],
+    );
+  });
+
+  await t.test('catalog', async () => {
+    const r = await hole('/catalog/sets?q=' + encodeURIComponent('0%'));
+    assert.deepEqual(
+      r.sets.map(s => s.set_num ?? s.set_number),
+      ['77701-1'],
+    );
+  });
+});

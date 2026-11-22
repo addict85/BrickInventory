@@ -1,7 +1,7 @@
 Gegenprobe: Dialogfläche ein Grau wie outlineVariant
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.GesperrtKontrastTest
-Rot: Dialogschrift haelt
+Test: ch.brickinventoryapp.ui.LockedContrastTest
+Rot: dialog text keeps 4,5 to 1 and the dialog stands out with 3 to 1 from the background
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt

@@ -1,13 +1,13 @@
-// ── Übersetzungen: English ────────────────────────────────────────────────
+// ── Translations: English ─────────────────────────────────────────────────
 //
-// Aus public/i18n.js herausgelöst. Vorher lagen beide Sprachen in EINER Datei
-// und wanderten damit vollständig ins Frontend-Bündel — rund 70 KB, von denen
-// jeder Nutzer die Hälfte nie braucht. Jetzt lädt index.html nur die aktive
-// Sprache; der Wechsel holt die andere bei Bedarf nach (siehe loadLang() in
+// Split out of public/i18n.js. Before, both languages lived in ONE file
+// and thus went completely into the frontend bundle — about 70 KB, half of which
+// every user never needs. Now index.html only loads the active
+// language; switching fetches the other one when needed (see loadLang() in
 // i18n.js).
 //
-// Die Datei setzt window.I18N_EN und wird als klassisches Skript geladen —
-// kein Modul, weil der Rest des Frontends ebenfalls klassisch ist.
+// The file sets window.I18N_EN and is loaded as a classic script —
+// not a module, because the rest of the frontend is classic as well.
 window.I18N_EN = {
   // Auth
   'login.submit': 'Sign in',
@@ -331,9 +331,9 @@ window.I18N_EN = {
   'common.added_cap': 'Added',
   'common.updated_cap': 'Updated',
   'common.delete_title': 'Delete?',
-  // Vorlesetexte fuer Knoepfe, die nur ein Symbol tragen.
-  // common.close stand hier schon einmal und ist als tot entfernt worden —
-  // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
+  // Texts read aloud for buttons that only carry an icon.
+  // common.close stood here once before and was removed as dead —
+  // rightly at the time: nobody called it. Now there is a caller.
   'auth.resend_mail': 'Resend confirmation link',
   'auth.resend_need_email': 'Please enter your email address above instead of the username.',
   'common.close': 'Close',
@@ -406,7 +406,7 @@ window.I18N_EN = {
   'settings.smtp.hint':
     'For registration confirmations and password resets. Without SMTP configuration, links are printed to the server console.',
   'settings.export_rb': 'Export sets for Rebrickable',
-  // ── Angemeldete Geraete (Token-Verwaltung) ───────────────────────────────
+  // ── Logged-in devices (token management) ─────────────────────────────────
   'tokens.title': 'Signed-in devices',
   'tokens.hint':
     'Every sign-in — in the browser, in the app or via QR code — issues an access token. Lock out a lost or sold device here, without changing your password.',
@@ -958,10 +958,10 @@ window.I18N_EN = {
   'parts.new_section': 'Add new part',
   'parts.num_label': 'Part number *',
   'parts.color_label': 'Colour',
-  // ── Vorlesetexte (aria-label) der Auswahlfelder ──────────────────────────
-  // Diese neun standen als data-i18n im HTML und fehlten in
-  // BEIDEN Woerterbuechern. t() faellt auf den SCHLUESSEL zurueck — der
-  // Bildschirmleser las danach „catalog.year_from" vor, in beiden Sprachen.
+  // ── Texts read aloud (aria-label) of the select fields ───────────────────
+  // These nine stood as data-i18n in the HTML and were missing from
+  // BOTH dictionaries. t() falls back to the KEY — the
+  // screen reader then read out "catalog.year_from", in both languages.
   'import.csv_file': 'CSV file',
   'import.menu': 'Import',
   'import.csv_read': 'Read CSV file',

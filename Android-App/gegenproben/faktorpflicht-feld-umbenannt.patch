@@ -1,12 +1,12 @@
 Gegenprobe: Das Modell liest das Feld unter falschem Namen
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.ZweiterFaktorUebernahmeTest
-Rot: Anmeldung und auth me lesen
+Modul: core-state
+Test: ch.brickinventoryapp.state.SecondFactorTakeoverTest
+Rot: sign-in and auth me read the field zweiterFaktorPflicht
 
-diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
 index 7bc71ec..b751d87 100644
---- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
-+++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
 @@ -2413,7 +2413,7 @@ data class User(
      @SerialName("username") val username: String,
      @SerialName("is_admin") val isAdmin: Boolean = false,

@@ -1,17 +1,17 @@
 Gegenprobe: Spur der Jahresleiste wieder 28 dp
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaecheEinheitlichTest
-Rot: Jahresleiste ist 48 dp breit
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: year bar is 48 dp wide
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogScrubber.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogScrubber.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogScrubber.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogScrubber.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt
 @@ -202,7 +202,7 @@
      type == KeyEventType.KeyUp && (key == Key.Enter || key == Key.Spacebar || key == Key.DirectionCenter)
  
  /** Breite der Tippspur: die Mindestgrösse einer Tippfläche. */
--internal val SPUR_BREITE = 48.dp
-+internal val SPUR_BREITE = 28.dp
+-internal val TRACK_WIDTH = 48.dp
++internal val TRACK_WIDTH = 28.dp
  
- private val GRIFF_BREITE = 24.dp
- private val GRIFF_HOEHE = 48.dp
+ private val HANDLE_WIDTH = 24.dp
+ private val HANDLE_HEIGHT = 48.dp

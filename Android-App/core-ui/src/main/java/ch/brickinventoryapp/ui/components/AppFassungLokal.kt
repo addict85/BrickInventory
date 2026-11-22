@@ -3,15 +3,15 @@ package ch.brickinventoryapp.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.model.util.AppFassung
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.model.util.AppVersion
+import ch.brickinventoryapp.resources.R
 
 /**
- * Die laufende Fassung für die Oberfläche; MainActivity setzt sie. Ohne Anbieter
- * (Vorschau, Bildschirmfoto) steht eine leere Fassung da statt eines Absturzes.
+ * The running version for the UI; MainActivity sets it. Without a provider
+ * (preview, screenshot) an empty version sits there instead of a crash.
  */
-val LocalAppFassung = staticCompositionLocalOf { AppFassung(name = "", code = 0) }
+val LocalAppVersion = staticCompositionLocalOf { AppVersion(name = "", code = 0) }
 
-/** Der Name der laufenden Version für Sätze; ohne Namen „unbekannt“ statt „Installiert: “ mit nichts dahinter. */
+/** The running version's name for display; without a name „unknown“ instead of „Installed: “ with nothing after it. */
 @Composable
-fun versionsName(): String = LocalAppFassung.current.name.ifBlank { stringResource(R.string.update_version_unbekannt) }
+fun versionsName(): String = LocalAppVersion.current.name.ifBlank { stringResource(R.string.update_version_unbekannt) }

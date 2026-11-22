@@ -1,16 +1,16 @@
 Gegenprobe: nach dem Setzen eines Zeitplans wird nicht neu geholt
-Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.MonitoringNachladenTest
-Rot: nach dem Setzen eines Zeitplans
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringReloadTest
+Rot: after setting a schedule what the server makes of it applies
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
 @@ -341,7 +341,6 @@
  
      internal suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean {
          val ok = verwaltung.setJobSchedule(name, zeit, minuten) is Ergebnis.Erfolg
--        if (ok) ladeJobs()
+-        if (ok) loadJobs()
          return ok
      }
  

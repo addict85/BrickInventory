@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
+import ch.brickinventoryapp.security.Vertrauenschiffre
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -8,51 +8,51 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Ein Abmeldeauftrag liegt in der Datenbank von WorkManager nur als ein Geheimtext unter
- * dem Schlüssel der Angaben: Adresse, Pin und Herkunft stehen nicht lesbar darin. Bei
- * gesperrtem Gerät wartet er, statt aufzugeben.
+ * A sign-out job lies in WorkManager's database only as one ciphertext under
+ * the details' key: address, pin and origin are not readable in it. With a
+ * locked device it waits instead of giving up.
  *
- * Gegenproben (kotlinc und JUnit lokal):
- *   A  ablegen() gibt den Text unverschlüsselt zurück → rot „der Auftrag liegt nur
- *      verschluesselt …“; gegenproben/auftrag-im-klartext.patch
- *   B  lies() macht aus Gesperrt Unlesbar → rot „gesperrt wartet der Auftrag …“;
+ * Counter-checks (kotlinc and JUnit locally):
+ *   A  ablegen() returns the text unencrypted → red “the job lies in the queue only
+ *      encrypted …”; gegenproben/auftrag-im-klartext.patch
+ *   B  lies() turns Gesperrt into Unlesbar → red “locked the job waits …”;
  *      gegenproben/auftrag-gesperrt-aufgegeben.patch
  */
 class AuftragsablageTest {
 
     private var gesperrt = false
-    private val chiffre = Vertrauenschiffre(angaben = {
+    private val cipher = Vertrauenschiffre(angaben = {
         if (gesperrt) throw IOException("Keystore gerade nicht bereit")
         ByteArray(32) { 5 }
     }) { ByteArray(32) { 6 } }
-    private val ablage = Auftragsablage(chiffre::verschluessleAngabe, chiffre::oeffneAngabe)
+    private val ablage = Auftragsablage(cipher::verschluessleDetail, cipher::openDetail)
 
-    private val auftrag = Entwertungsauftrag(
+    private val job = Entwertungsauftrag(
         "https://brick.example.org:8443/inventar", "e1:R0VIRUlNVEVYVA==", "sha256/AAAABBBBCCCC=", "https://brick.example.org:8443",
     )
 
     @Test
-    fun `der Auftrag liegt nur verschluesselt in der Warteschlange und kommt ganz zurueck`() {
-        val geheim = ablage.ablegen(auftrag)!!
+    fun `the job lies in the queue only encrypted and comes back whole`() {
+        val geheim = ablage.ablegen(job)!!
         for (teil in listOf("brick", "example", "8443", "inventar", "R0VIRUlNVEVYVA", "AAAABBBBCCCC"))
             assertFalse("„$teil“ steht lesbar im Auftrag: $geheim", teil in geheim)
-        assertEquals(Auftragslage.Da(auftrag), ablage.lies(geheim))
+        assertEquals(JobState.Da(job), ablage.lies(geheim))
 
         val ohne = Entwertungsauftrag("https://nas.local", "e1:WA==", pin = null)
-        assertEquals("Ohne Pin, Herkunft wie der Server", Auftragslage.Da(ohne), ablage.lies(ablage.ablegen(ohne)!!))
+        assertEquals("Ohne Pin, Herkunft wie der Server", JobState.Da(ohne), ablage.lies(ablage.ablegen(ohne)!!))
     }
 
     @Test
-    fun `gesperrt wartet der Auftrag, ein fremder oder kaputter gibt nichts heraus`() {
-        val geheim = ablage.ablegen(auftrag)!!
+    fun `locked the job waits, a foreign or broken one yields nothing`() {
+        val geheim = ablage.ablegen(job)!!
         gesperrt = true
-        assertEquals(Auftragslage.Gesperrt, ablage.lies(geheim))
-        assertNull("Gesperrt wird nichts in die Warteschlange gelegt", ablage.ablegen(auftrag))
+        assertEquals(JobState.Gesperrt, ablage.lies(geheim))
+        assertNull("Gesperrt wird nichts in die Warteschlange gelegt", ablage.ablegen(job))
         gesperrt = false
-        assertEquals(Auftragslage.Unlesbar, ablage.lies("kein-base64-%%%"))
-        assertEquals("Unter anderem Namen gilt er nicht", Auftragslage.Unlesbar,
-            ablage.lies(chiffre.verschluessleAngabe("1\nhttps://x\nt\n\n", "server_url")!!))
-        assertEquals("Eine unbekannte Form gilt nicht", Auftragslage.Unlesbar,
-            ablage.lies(chiffre.verschluessleAngabe("2\nhttps://x\nt\n\n", "entwertungsauftrag")!!))
+        assertEquals(JobState.Unlesbar, ablage.lies("kein-base64-%%%"))
+        assertEquals("Unter anderem Namen gilt er nicht", JobState.Unlesbar,
+            ablage.lies(cipher.verschluessleDetail("1\nhttps://x\nt\n\n", "server_url")!!))
+        assertEquals("Eine unbekannte Form gilt nicht", JobState.Unlesbar,
+            ablage.lies(cipher.verschluessleDetail("2\nhttps://x\nt\n\n", "entwertungsauftrag")!!))
     }
 }

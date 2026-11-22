@@ -1,6 +1,6 @@
-/* ERZEUGT aus shared/design-tokens.json — NICHT von Hand aendern.
+/* GENERATED from shared/design-tokens.json — do NOT edit by hand.
 
-   Farben, die BEIDE Oberflaechen gleich fuehren muessen. Aus dieser Datei werden Web-App/public/tokens.css und Android-App/.../ui/theme/DesignTokens.kt ERZEUGT — beide Dateien nicht von Hand bearbeiten. Siehe shared/README.md. */
+   Colors that BOTH UIs must keep identical. Web-App/public/tokens.css and Android-App/.../ui/theme/DesignTokens.kt are GENERATED from this file — do not edit either file by hand. See shared/README.md. */
 
 :root {
   --b50: #eff6ff;
@@ -12,21 +12,19 @@
   --b600: #2563eb;
   --b700: #1d4ed8;
 
-  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
-     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
-     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
-     heraus. */
+  /* Chart colors — overridable per theme. Before, they were hard-coded in
+     the JavaScript; no theme could adjust them, and in the brick look the
+     amber of the used line stuck out of the otherwise blue palette. */
   --chart-new: #2563eb;
 
-  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
-     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
-     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
-     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
-     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
-     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
-     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
-     und verkleinert oder gedruckt verschwindet so ein Unterschied als
-     Erstes. */
+  /* In the brick theme sage green and sand — the same values as the
+     condition badges .cond-new and .cond-used. The reason is not taste:
+     everywhere in the UI these colors stand for exactly this distinction;
+     whoever recognizes them in the chart does not have to read the legend.
+     Before, it said --chart-used:#3d5a80 (the theme's primary color) —
+     together with the light blue of the new line that made TWO shades of
+     blue that only differed in lightness, and scaled down or printed such a
+     difference is the first to disappear. */
   --chart-used: #d97706;
 }
 
@@ -40,25 +38,23 @@
   --b600: #3d5a80;
   --b700: #2f4763;
 
-  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
-     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
-     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
-     heraus. */
+  /* Chart colors — overridable per theme. Before, they were hard-coded in
+     the JavaScript; no theme could adjust them, and in the brick look the
+     amber of the used line stuck out of the otherwise blue palette. */
   --chart-new: #3d6a8f;
 
-  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
-     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
-     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
-     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
-     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
-     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
-     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
-     und verkleinert oder gedruckt verschwindet so ein Unterschied als
-     Erstes. */
+  /* In the brick theme sage green and sand — the same values as the
+     condition badges .cond-new and .cond-used. The reason is not taste:
+     everywhere in the UI these colors stand for exactly this distinction;
+     whoever recognizes them in the chart does not have to read the legend.
+     Before, it said --chart-used:#3d5a80 (the theme's primary color) —
+     together with the light blue of the new line that made TWO shades of
+     blue that only differed in lightness, and scaled down or printed such a
+     difference is the first to disappear. */
   --chart-used: #7a5c2a;
 
-  /* Aktions- und Wertfarbe des Stein-Designs. Gibt es nur dort — im
-     Grunddesign existiert kein Gegenstueck. */
+  /* Action and value color of the brick theme. Exists only there — the base
+     theme has no counterpart. */
   --brick-petrol: #3d7a8c;
 }
 
@@ -72,21 +68,19 @@
   --b600: #4d9fff;
   --b700: #8cc2ff;
 
-  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
-     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
-     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
-     heraus. */
+  /* Chart colors — overridable per theme. Before, they were hard-coded in
+     the JavaScript; no theme could adjust them, and in the brick look the
+     amber of the used line stuck out of the otherwise blue palette. */
   --chart-new: #4d9fff;
 
-  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
-     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
-     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
-     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
-     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
-     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
-     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
-     und verkleinert oder gedruckt verschwindet so ein Unterschied als
-     Erstes. */
+  /* In the brick theme sage green and sand — the same values as the
+     condition badges .cond-new and .cond-used. The reason is not taste:
+     everywhere in the UI these colors stand for exactly this distinction;
+     whoever recognizes them in the chart does not have to read the legend.
+     Before, it said --chart-used:#3d5a80 (the theme's primary color) —
+     together with the light blue of the new line that made TWO shades of
+     blue that only differed in lightness, and scaled down or printed such a
+     difference is the first to disappear. */
   --chart-used: #d99a4e;
 }
 
@@ -100,21 +94,19 @@
   --b600: #2b2b2b;
   --b700: #111111;
 
-  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
-     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
-     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
-     heraus. */
+  /* Chart colors — overridable per theme. Before, they were hard-coded in
+     the JavaScript; no theme could adjust them, and in the brick look the
+     amber of the used line stuck out of the otherwise blue palette. */
   --chart-new: #2563eb;
 
-  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
-     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
-     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
-     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
-     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
-     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
-     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
-     und verkleinert oder gedruckt verschwindet so ein Unterschied als
-     Erstes. */
+  /* In the brick theme sage green and sand — the same values as the
+     condition badges .cond-new and .cond-used. The reason is not taste:
+     everywhere in the UI these colors stand for exactly this distinction;
+     whoever recognizes them in the chart does not have to read the legend.
+     Before, it said --chart-used:#3d5a80 (the theme's primary color) —
+     together with the light blue of the new line that made TWO shades of
+     blue that only differed in lightness, and scaled down or printed such a
+     difference is the first to disappear. */
   --chart-used: #d97706;
 }
 
@@ -128,27 +120,25 @@
   --b600: #d91f26;
   --b700: #a8141a;
 
-  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
-     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
-     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
-     heraus. */
+  /* Chart colors — overridable per theme. Before, they were hard-coded in
+     the JavaScript; no theme could adjust them, and in the brick look the
+     amber of the used line stuck out of the otherwise blue palette. */
   --chart-new: #1a6fd4;
 
-  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
-     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
-     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
-     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
-     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
-     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
-     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
-     und verkleinert oder gedruckt verschwindet so ein Unterschied als
-     Erstes. */
+  /* In the brick theme sage green and sand — the same values as the
+     condition badges .cond-new and .cond-used. The reason is not taste:
+     everywhere in the UI these colors stand for exactly this distinction;
+     whoever recognizes them in the chart does not have to read the legend.
+     Before, it said --chart-used:#3d5a80 (the theme's primary color) —
+     together with the light blue of the new line that made TWO shades of
+     blue that only differed in lightness, and scaled down or printed such a
+     difference is the first to disappear. */
   --chart-used: #ff7a00;
 
-  /* Die Kante des Designs "noppe" — Rahmen, Versatzschatten und Text stehen
-     alle auf demselben Ton. Kunststoff wirft keine Wolke, er liegt auf: Der
-     Schatten ist derselbe Ton wie der Rahmen, nur versetzt. Waeren es zwei
-     Toene, sieht die Kante aus wie ein Druckfehler. */
+  /* The edge of the theme "noppe" — border, offset shadow and text all use
+     the same tone. Plastic casts no cloud, it rests on the surface: the
+     shadow is the same tone as the border, only offset. With two tones the
+     edge would look like a misprint. */
   --ink: #161a21;
 }
 
@@ -162,31 +152,29 @@
   --b600: #d91f26;
   --b700: #a8141a;
 
-  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
-     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
-     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
-     heraus. */
+  /* Chart colors — overridable per theme. Before, they were hard-coded in
+     the JavaScript; no theme could adjust them, and in the brick look the
+     amber of the used line stuck out of the otherwise blue palette. */
   --chart-new: #1a6fd4;
 
-  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
-     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
-     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
-     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
-     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
-     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
-     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
-     und verkleinert oder gedruckt verschwindet so ein Unterschied als
-     Erstes. */
+  /* In the brick theme sage green and sand — the same values as the
+     condition badges .cond-new and .cond-used. The reason is not taste:
+     everywhere in the UI these colors stand for exactly this distinction;
+     whoever recognizes them in the chart does not have to read the legend.
+     Before, it said --chart-used:#3d5a80 (the theme's primary color) —
+     together with the light blue of the new line that made TWO shades of
+     blue that only differed in lightness, and scaled down or printed such a
+     difference is the first to disappear. */
   --chart-used: #ff7a00;
 
-  /* Die Kante des Designs "noppe" — Rahmen, Versatzschatten und Text stehen
-     alle auf demselben Ton. Kunststoff wirft keine Wolke, er liegt auf: Der
-     Schatten ist derselbe Ton wie der Rahmen, nur versetzt. Waeren es zwei
-     Toene, sieht die Kante aus wie ein Druckfehler. */
+  /* The edge of the theme "noppe" — border, offset shadow and text all use
+     the same tone. Plastic casts no cloud, it rests on the surface: the
+     shadow is the same tone as the border, only offset. With two tones the
+     edge would look like a misprint. */
   --ink: #161a21;
 }
 
-/* Dunkle Variante — siehe _dunkel_warum in shared/design-tokens.json. */
+/* Dark variant — see _dunkel_warum in shared/design-tokens.json. */
 [data-dunkel]:is([data-theme], :not([data-theme])) {
   --s50: #11151a;
   --s100: #161b21;
@@ -285,7 +273,7 @@
   --ink: #05070a;
 }
 
-/* faecher — siehe listen.faecher.warum in shared/design-tokens.json. */
+/* faecher — see listen.faecher.warum in shared/design-tokens.json. */
 :root {
   --faecher-0: #c0392b;
   --faecher-1: #c0682b;
@@ -301,7 +289,7 @@
   --faecher-11: #bb2f5e;
 }
 
-/* steine — siehe listen.steine.warum in shared/design-tokens.json. */
+/* steine — see listen.steine.warum in shared/design-tokens.json. */
 :root {
   --stein-0: #d91f26;
   --stein-1: #f5c400;

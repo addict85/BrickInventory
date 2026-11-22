@@ -1,28 +1,28 @@
 /**
- * Aufbau des Frontends: kein Importkreis, kein API-Aufruf an der Hülle vorbei.
+ * Structure of the frontend: no import cycle, no API call past the shell.
  *
- * Gegenproben (am 05.11.2026 gemessen):
- *   A  in api.js `import { loadGallery } from './sammlung.js'` samt
- *      Aufruf ergänzt → rot: „kein Importkreis“, der Kreis nennt api.js
- *   B  in konten-orte.js `import('./einstellungen.js')` ergänzt → rot: die
- *      dynamische Kante schliesst einen Kreis und zählt mit
- *   C  in einstellungen.js den Alarm-Import wieder per
- *      `fetch('/api/v1/alerts/import/csv', …)` → rot: „kein fetch an der
- *      Hülle vorbei“ mit Datei und Zeile
- *   D  in monitor.js wieder `export let _monitorTimer` → rot: „geteilter
- *      Zustand nur in zustand.js“
- *   E  in bausteine.js `import { loadGallery } from './sammlung.js'` → rot:
- *      „Kern importiert keine Ansicht“ (und der Kreis-Test)
- *   G  (08.11.2026) in minifigs.js wieder `import('./teile.js').ManuellesTeil` als JSDoc-Typ
- *      (teile.js importiert minifigs.js) → rot: „kein Importkreis“, der Kreis nennt beide Dateien
- *   F  im Kapitel „Oberfläche“ von docs/architektur.md `zustand.js` in
- *      `00-staat.js` umbenannt → rot; das Kapitel gestrichen → rot
- *   H  (11.11.2026) in registry.js (KERN) `import './sammlung.js'` ergänzt → rot: „Kern und
- *      Bausteine … importieren keine Ansicht“ nennt js/registry.js → js/sammlung.js
- *   I  (15.11.2026) in fortschritt.js wieder `new EventSource(url, { withCredentials: true })` statt
- *      strom() → rot: „kein fetch und kein EventSource an der API-Hülle vorbei“ mit Datei und Zeile
+ * Counter-checks (measured on 05.11.2026):
+ *   A  in api.js `import { loadGallery } from './sammlung.js'` including
+ *      call added → red: “no import cycle”, the cycle names api.js
+ *   B  in konten-orte.js `import('./einstellungen.js')` added → red: the
+ *      dynamic edge closes a cycle and counts along
+ *   C  in einstellungen.js the alert import again via
+ *      `fetch('/api/v1/alerts/import/csv', …)` → red: “no fetch past the
+ *      shell” with file and line
+ *   D  in monitor.js again `export let _monitorTimer` → red: “shared
+ *      state only in zustand.js”
+ *   E  in bausteine.js `import { loadGallery } from './sammlung.js'` → red:
+ *      “core imports no view” (and the cycle test)
+ *   G  (08.11.2026) in minifigs.js again `import('./parts.js').ManuellesTeil` as a JSDoc type
+ *      (teile.js imports minifigs.js) → red: “no import cycle”, the cycle names both files
+ *   F  in the chapter “Oberfläche” of docs/architektur.md `zustand.js` renamed to
+ *      `00-staat.js` → red; the chapter deleted → red
+ *   H  (11.11.2026) in registry.js (KERN) `import './sammlung.js'` added → red: “core and
+ *      building blocks … import no view” names js/registry.js → js/sammlung.js
+ *   I  (15.11.2026) in fortschritt.js again `new EventSource(url, { withCredentials: true })` instead of
+ *      strom() → red: “no fetch and no EventSource past the API shell” with file and line
  */
-const { istAppModul, KERN, BAUSTEINE } = require('../scripts/build-frontend');
+const { isAppModule, KERN, BAUSTEINE } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -33,7 +33,7 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 
-/** Importgraph des Bündels: Datei → importierte Dateien (relativ zu public/). */
+/** Import graph of the bundle: file → imported files (relative to public/). */
 function graph() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fe-graph-'));
   try {
@@ -60,8 +60,8 @@ function graph() {
         kurz(datei),
         info.imports.filter(i => !i.external).map(i => kurz(i.path)),
       );
-    // JSDoc-Typverweise `import('./x.js').Name` löscht esbuild; sie binden die Dateien für die Typprüfung
-    // trotzdem aneinander, also zählen sie als Kanten.
+    // esbuild deletes JSDoc type references `import('./x.js').Name`; they still bind the files together
+    // for the type check, so they count as edges.
     for (const [datei, ziele] of g) {
       if (!datei.startsWith('js/')) continue;
       const quelle = fs.readFileSync(`${path.join(ROOT, 'public')}/${datei}`, 'utf8');
@@ -76,15 +76,15 @@ function graph() {
   }
 }
 
-/** Stark zusammenhängende Komponenten mit mehr als einem Knoten (Tarjan). */
-function kreise(/** @type {Map<string, string[]>} */ g) {
+/** Strongly connected components with more than one node (Tarjan). */
+function circles(/** @type {Map<string, string[]>} */ g) {
   let n = 0;
   const index = new Map(),
     tief = new Map(),
     stapel = [],
     auf = new Set(),
     raus = [];
-  const besuche = (/** @type {string} */ v) => {
+  const visit = (/** @type {string} */ v) => {
     index.set(v, n);
     tief.set(v, n);
     n++;
@@ -92,7 +92,7 @@ function kreise(/** @type {Map<string, string[]>} */ g) {
     auf.add(v);
     for (const w of g.get(v) ?? []) {
       if (!index.has(w)) {
-        besuche(w);
+        visit(w);
         tief.set(v, Math.min(tief.get(v), tief.get(w)));
       } else if (auf.has(w)) tief.set(v, Math.min(tief.get(v), index.get(w)));
     }
@@ -107,60 +107,60 @@ function kreise(/** @type {Map<string, string[]>} */ g) {
       if (k.length > 1 || (g.get(v) ?? []).includes(v)) raus.push(k.sort());
     }
   };
-  for (const v of g.keys()) if (!index.has(v)) besuche(v);
+  for (const v of g.keys()) if (!index.has(v)) visit(v);
   return raus;
 }
 
-test('das Frontend-Bündel hat keinen Importkreis', () => {
+test('the frontend bundle has no import cycle', () => {
   const g = graph();
   const module = [...g.keys()].filter(k => k.startsWith('js/'));
   assert.ok(module.length >= 30, `nur ${module.length} Module im Graphen — greift die Auswertung noch?`);
   assert.ok([...g.values()].flat().length >= 150, 'kaum Kanten im Graphen — greift die Auswertung noch?');
   assert.ok(g.has('i18n.js'), 'i18n.js fehlt im Graphen — es ist Teil des Bündels');
   assert.deepEqual(
-    kreise(g),
+    circles(g),
     [],
-    'Importkreis im Frontend. Rückwege nach oben über ereignisse.js (melde/abonniere) ' +
-      'oder ziele.js (springe), geteilter Zustand in zustand.js.',
+    'Importkreis im Frontend. Rückwege nach oben über events.js (emit/subscribe) ' +
+      'oder targets.js (jumpTo), geteilter Zustand in state.js.',
   );
 });
 
-test('Kern und Bausteine (KERN, BAUSTEINE, i18n.js) importieren keine Ansicht', () => {
+test('core and building blocks (KERN, BAUSTEINE, i18n.js) import no view', () => {
   const g = graph();
-  const schicht = new Set([...KERN, ...BAUSTEINE].map(f => `js/${f}`));
-  const unten = (/** @type {string} */ k) => k === 'i18n.js' || schicht.has(k);
+  const layer = new Set([...KERN, ...BAUSTEINE].map(f => `js/${f}`));
+  const unten = (/** @type {string} */ k) => k === 'i18n.js' || layer.has(k);
   const kern = [...g.keys()].filter(unten);
   assert.equal(kern.length, KERN.length + BAUSTEINE.length, `nur ${kern.length} Kernmodule gefunden`);
   const aufwaerts = kern.flatMap(k => (g.get(k) ?? []).filter(z => !unten(z)).map(z => `${k} → ${z}`));
   assert.deepEqual(aufwaerts, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
 });
 
-test('geteilter veränderlicher Zustand nur in zustand.js', () => {
-  // Ein `export let` ist eine Variable, die jedes Modul lesen kann, deren
-  // Besitzer aber nicht feststeht. Ausserhalb des Zustandsmoduls gibt es
-  // stattdessen Lese- oder Stoppfunktionen (manuelleTeile(), stoppeMonitor()).
+test('shared mutable state only in state.js', () => {
+  // An `export let` is a variable every module can read, but whose
+  // owner is not fixed. Outside the state module there are
+  // read or stop functions instead (manualParts(), stopMonitor()).
   const treffer = [];
-  for (const f of fs.readdirSync(JS).filter(x => istAppModul(x) && x !== 'zustand.js')) {
+  for (const f of fs.readdirSync(JS).filter(x => isAppModule(x) && x !== 'state.js')) {
     fs.readFileSync(path.join(JS, f), 'utf8')
       .split('\n')
       .forEach((z, i) => {
         if (/^export\s+let\b/.test(z)) treffer.push(`${f}:${i + 1}: ${z.trim()}`);
       });
   }
-  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, 'zustand.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
+  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, 'state.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
   assert.deepEqual(treffer, []);
 });
 
-test('kein fetch und kein EventSource an der API-Hülle vorbei', () => {
-  // Ausnahmen: theme-boot.js läuft vor dem Bündel, logviewer.js in einem
-  // eigenen Fenster mit Bearer-Token; beide können die Hülle nicht laden.
-  const AUSNAHMEN = new Set(['theme-boot.js', 'logviewer.js', 'app.bundle.js']);
+test('no fetch and no EventSource bypassing the API wrapper', () => {
+  // Exceptions: theme-boot.js runs before the bundle, logviewer.js in its
+  // own window with a bearer token; neither can load the shell.
+  const EXCEPTIONS = new Set(['theme-boot.js', 'logviewer.js', 'app.bundle.js']);
   const treffer = [];
   let gesehen = 0;
   for (const f of [
     ...fs
       .readdirSync(JS)
-      .filter(x => x.endsWith('.js') && !AUSNAHMEN.has(x))
+      .filter(x => x.endsWith('.js') && !EXCEPTIONS.has(x))
       .map(x => path.join(JS, x)),
     path.join(ROOT, 'public', 'i18n.js'),
   ]) {
@@ -173,15 +173,15 @@ test('kein fetch und kein EventSource an der API-Hülle vorbei', () => {
       treffer.push(`${path.relative(ROOT, f)}:${i + 1}: ${z.trim()}`);
     });
   }
-  assert.ok(gesehen >= 2, 'Nicht einmal die Aufrufe in apiRoh() und strom() gefunden — greift die Suche noch?');
-  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api(), apiRoh() oder strom() (js/api.js)');
+  assert.ok(gesehen >= 2, 'Nicht einmal die Aufrufe in apiRaw() und strom() gefunden — greift die Suche noch?');
+  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api(), apiRaw() oder strom() (js/api.js)');
 });
 
-test('docs/architektur.md beschreibt die Oberfläche mit Dateien, die es gibt', () => {
-  require('./helpers/buendel').stelleBuendelSicher(); // das Kapitel nennt das Bündel, ein Erzeugnis
+test('docs/architektur.md describes the UI with files that exist', () => {
+  require('./helpers/bundle').placeBundleSafe(); // the chapter names the bundle, a product
   const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architektur.md'), 'utf8');
-  const kapitel = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';
-  const pfade = [...kapitel.matchAll(/`((?:public|test|frontend-typen|scripts)\/[\w./-]+)`/g)].map(m => m[1]);
+  const chapter = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';
+  const pfade = [...chapter.matchAll(/`((?:public|test|frontend-types|scripts)\/[\w./-]+)`/g)].map(m => m[1]);
   assert.ok(pfade.length >= 10, `nur ${pfade.length} Pfade im Kapitel „Oberfläche“`);
   const fehlt = pfade.filter(p => !fs.existsSync(path.join(__dirname, '..', p)));
   assert.deepEqual(fehlt, []);

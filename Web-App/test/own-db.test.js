@@ -1,0 +1,36 @@
+/**
+ * In the parallel run (scripts/test-run.js) every test file has its own
+ * database: a copy of the template with a finished schema, named after the
+ * process. Outside of this run (npm run test:seriell, single call)
+ * there is nothing to check.
+ *
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in scripts/test-run.js the preloader (--require) left out → red:
+ *      “the file has its own copy of the template” (the base database)
+ *   B  in test/helpers/test-db.js `TEMPLATE` left out (empty database)
+ *      → red: the same check (relation schema_migrations missing)
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+
+test('the file has its own copy of the template', async t => {
+  const vorlage = process.env.TEST_DB_VORLAGE;
+  if (!vorlage) {
+    t.skip('no parallel run');
+    return;
+  }
+  const url = new URL(process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest');
+  assert.equal(url.pathname, `/${vorlage}_${process.pid}`);
+  const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
+  const c = new Client({ connectionString: url.toString() });
+  await c.connect();
+  try {
+    const r = await c.query(`SELECT to_regclass('public.users') IS NOT NULL AS schema,
+                                    (SELECT count(*)::int FROM schema_migrations) AS migrationen`);
+    assert.equal(r.rows[0].schema, true, 'die Kopie trägt das Schema der Vorlage');
+    assert.ok(r.rows[0].migrationen > 50);
+  } finally {
+    await c.end();
+  }
+});

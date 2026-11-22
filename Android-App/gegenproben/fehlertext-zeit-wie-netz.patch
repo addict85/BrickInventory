@@ -1,11 +1,11 @@
 Gegenprobe: Die Zeitüberschreitung zeigt denselben Satz wie „kein Netz“
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.FehlerTexteTest
-Rot: jede Fehlerart hat einen eigenen Text
+Modul: core-state
+Test: ch.brickinventoryapp.state.ErrorTextsTest
+Rot: every error kind has its own text
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt
 @@ -14,7 +14,7 @@
   */
  fun fehlerTextId(f: Ergebnis.Fehler): Int = when (f) {

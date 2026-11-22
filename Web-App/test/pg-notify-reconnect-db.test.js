@@ -1,14 +1,14 @@
 /**
- * LISTEN/NOTIFY überlebt einen Verbindungsabriss — gegen echte Datenbank.
+ * LISTEN/NOTIFY survives a connection drop — against a real database.
  *
- * Gegenprobe (durchgeführt): retire() in db/pgNotify.ts wieder durch die
- * alte Fassung ersetzt (removeAllListeners ohne Ersatz-Zuhörer) → dieser Test
- * wird rot, Exitcode 7 statt 0.
- * Gegenprobe (10.11.2026 gemessen): in db/pgNotify.ts die Prüfung auf _closed
- * nach c.connect() gestrichen → rot: „close() während des Verbindungsaufbaus
- * …“ (das Kind endet nicht, ETIMEDOUT nach 15 s).
+ * Counter-check (carried out): retire() in db/pgNotify.ts again replaced by the
+ * old version (removeAllListeners without a replacement listener) → this test
+ * turns red, exit code 7 instead of 0.
+ * Counter-check (measured 10.11.2026): in db/pgNotify.ts the check for _closed
+ * after c.connect() deleted → red: “close() during connection setup
+ * …” (the child does not end, ETIMEDOUT after 15 s).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,19 +20,19 @@ const os = require('node:os');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
-// Der Kindprozess: horcht, lässt sich die Verbindung abschiessen und meldet
-// über den Exitcode, ob er das überlebt hat.
+// The child process: listens, lets its connection be shot down and reports
+// via the exit code whether it survived that.
 const CHILD = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
-const dbModul = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
-const db     = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
-const notify = db.benachrichtigung;
-const { bis } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'zeit.js'))});
+const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
+const db     = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const notify = db.notification;
+const { bis } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'time.js'))});
 const LISTEN = \`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND query LIKE 'LISTEN "reconnect_probe"%'\`;
 let empfangen = 0;
 process.on('uncaughtException', e => { console.log('CRASH:' + e.message); process.exit(7); });
@@ -55,7 +55,7 @@ process.on('uncaughtException', e => { console.log('CRASH:' + e.message); proces
 })().catch(e => { console.log('FEHLER:' + e.message); process.exit(9); });
 `;
 
-test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet neu', { concurrency: 1 }, async t => {
+test('a drop of the LISTEN connection does NOT end the process and reconnects', { concurrency: 1 }, async t => {
   try {
     await db.pool.query('SELECT 1');
   } catch (e) {
@@ -70,7 +70,7 @@ test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet n
     try {
       out = execFileSync(process.execPath, [file], { encoding: 'utf8', timeout: 40000 });
     } catch (e) {
-      // Exitcode != 0: Ausgabe trotzdem auswerten, sie sagt woran es lag.
+      // Exit code != 0: evaluate the output anyway, it says what the cause was.
       const stdout = (e.stdout || '').toString();
       assert.fail(
         `Der Kindprozess ist nicht sauber beendet worden (Exitcode ${e.status}). ` +
@@ -89,10 +89,10 @@ test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet n
   }
 });
 
-// Unter Last ist der Aufbau noch unterwegs, wenn ein Test close() ruft; die
-// Verbindung, die danach ankam, hielt den Prozess für immer offen.
-test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', async t => {
-  // Der Pool ist nach dem ersten Test zu: eine eigene Verbindung für die Probe.
+// Under load the setup is still on its way when a test calls close(); the
+// connection that arrived afterwards kept the process open forever.
+test('close() during connection setup leaves no connection open', async t => {
+  // The pool is closed after the first test: an own connection for the probe.
   const probe = new (require(path.join(ROOT, 'node_modules', 'pg')).Client)({
     connectionString: process.env.DATABASE_URL,
   });
@@ -104,12 +104,12 @@ test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', as
   } finally {
     await probe.end().catch(() => {});
   }
-  // Kein process.exit im Kind: Es muss von selbst enden.
+  // No process.exit in the child: it must end by itself.
   const kind = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
-const dbModul = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
-const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
-const notify = db.benachrichtigung;
+const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
+const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const notify = db.notification;
 notify.listen('rennen_probe', () => {});
 notify.close().then(() => console.log('GESCHLOSSEN'));
 `;

@@ -24,10 +24,10 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.model.ui.ScrollSpeicher
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.teile.ui.screens.MinifigsRoute
-import ch.brickinventoryapp.teile.ui.screens.PartsRoute
+import ch.brickinventoryapp.model.ui.ScrollStorage
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
+import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -44,17 +44,17 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Teile und Minifiguren beginnen bei den manuell erfassten Einträgen. Die Set-Teile
- * kommen meist zuerst an, und das Raster hält beim Einfügen oben den sichtbaren
- * Eintrag fest; deshalb gehört zur Reihenfolge die Korrektur im Rollmerker, die
- * gespeicherte Stellen und eigene Gesten in Ruhe lässt.
+ * Parts and minifigures start with the manually added entries. The set parts
+ * usually arrive first, and when inserting at the top the grid holds on to the visible
+ * entry; that is why the order includes the correction in the scroll memory that
+ * leaves saved positions and own gestures alone.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   manuelle-teile-unten           der Abschnitt der manuellen Teile hinter den Set-Teilen → rot „Teile: die manuell …“
- *   nachzuegler-ohne-korrektur     die Korrektur rollt nicht mehr an den Anfang → rot „ohne gespeicherte Stelle …“
- *   korrektur-ueber-gespeicherte   die Korrektur ohne !hatteGespeicherte → rot „eine gespeicherte Stelle …“
- *   korrektur-ueber-geste          die Korrektur ohne !nutzerGeste → rot „nach einer eigenen Geste …“
- *   bereit-ohne-manuelle           Teile gelten ohne manualParts als geladen → rot „beide Listen zaehlen …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   manuelle-teile-unten           the section of manual parts behind the set parts → red “parts - the manually …”
+ *   nachzuegler-ohne-korrektur     the correction no longer scrolls to the start → red “without a saved position …”
+ *   korrektur-ueber-gespeicherte   the correction without !hatteGespeicherte → red “a saved position …”
+ *   korrektur-ueber-geste          the correction without !nutzerGeste → red “after an own gesture …”
+ *   bereit-ohne-manuelle           parts count as loaded without manualParts → red “both lists count …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -66,15 +66,15 @@ class ManualItemsFirstTest {
 
     private val vorher = Locale.getDefault()
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val bilder = Beispielbilder.loader(ctx)
-    private val welt = Beispiele.Welt(KontextTexte())
+    private val bilder = SampleImages.loader(ctx)
+    private val world = Examples.Welt(ContextTexts())
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
     fun zu() {
         Locale.setDefault(vorher)
-        welt.close()
+        world.close()
     }
 
     private fun zeige(inhalt: @Composable () -> Unit) {
@@ -86,8 +86,8 @@ class ManualItemsFirstTest {
         compose.waitForIdle()
     }
 
-    /** Den Hauptlooper treiben, bis [bereit] gilt. */
-    private fun warte(was: String, bereit: () -> Boolean) {
+    /** Drive the main looper until [bereit] holds. */
+    private fun wait(was: String, bereit: () -> Boolean) {
         try {
             compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); bereit() }
         } catch (e: ComposeTimeoutException) {
@@ -99,88 +99,88 @@ class ManualItemsFirstTest {
     private fun oben(text: String) = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
 
     @Test
-    fun `Teile - die manuell erfassten stehen vor denen aus Sets`() {
-        welt.pfade.antworten["/api/v1/parts/manual"] =
+    fun `parts - the manually added ones come before those from sets`() {
+        world.paths.antworten["/api/v1/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1 manuell","color_id":1,"quantity":4}]}"""
-        val vm = welt.teile().also { it.loadParts() }
-        warte("Teile") { vm.teileState.value.let { it.parts.isNotEmpty() && !it.manualParts.isNullOrEmpty() } }
+        val vm = world.teile().also { it.loadParts() }
+        wait("Teile") { vm.teileState.value.let { it.parts.isNotEmpty() && !it.manualParts.isNullOrEmpty() } }
         zeige { PartsRoute(vm = vm, imageLoader = bilder) }
         val kopf = oben(ctx.getString(R.string.parts_manual_section))
         val kachel = oben("Brick 1 x 1 manuell")
-        val ausSets = oben(ctx.getString(R.string.parts_sets_section))
-        assertTrue("Reihenfolge: Kopf $kopf, manuelles Teil $kachel, „Aus Sets“ $ausSets", kopf < kachel && kachel < ausSets)
-        assertTrue("Das erste Teil aus Sets steht nicht unter „Aus Sets“", oben("Brick 2 x 4") > ausSets)
+        val fromSets = oben(ctx.getString(R.string.parts_sets_section))
+        assertTrue("Reihenfolge: Kopf $kopf, manuelles Teil $kachel, „Aus Sets“ $fromSets", kopf < kachel && kachel < fromSets)
+        assertTrue("Das erste Teil aus Sets steht nicht unter „Aus Sets“", oben("Brick 2 x 4") > fromSets)
     }
 
     @Test
-    fun `Figuren - die manuell erfassten stehen vor denen aus Sets`() {
-        welt.pfade.antworten["/api/v1/minifigs/manual"] =
+    fun `figures - the manually added ones come before those from sets`() {
+        world.paths.antworten["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia manuell","quantity":1}]}"""
-        val vm = welt.figuren().also { it.loadMinifigs() }
-        warte("Figuren") { vm.figurenZustand.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
+        val vm = world.figuren().also { it.loadMinifigs() }
+        wait("Figuren") { vm.minifigsState.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
         zeige { MinifigsRoute(vm = vm, imageLoader = bilder) }
         val kopf = oben(ctx.getString(R.string.minifigs_manual_section))
         val kachel = oben("Prinzessin Leia manuell")
-        val ausSets = oben(ctx.getString(R.string.minifigs_sets_section))
-        assertTrue("Reihenfolge: Kopf $kopf, manuelle Figur $kachel, „Aus Sets“ $ausSets", kopf < kachel && kachel < ausSets)
+        val fromSets = oben(ctx.getString(R.string.minifigs_sets_section))
+        assertTrue("Reihenfolge: Kopf $kopf, manuelle Figur $kachel, „Aus Sets“ $fromSets", kopf < kachel && kachel < fromSets)
         assertTrue("Die erste Figur aus Sets steht nicht unter „Aus Sets“",
-            oben("Luke Skywalker (Pilot Suit, White Helmet)") > ausSets)
+            oben("Luke Skywalker (Pilot Suit, White Helmet)") > fromSets)
     }
 
-    private val speicher = ScrollSpeicher()
-    private val nachzuegler = mutableStateListOf<String>()
+    private val speicher = ScrollStorage()
+    private val stragglers = mutableStateListOf<String>()
     private lateinit var raster: LazyGridState
 
-    /** Ein Raster wie das der Teile: oben Platz für Nachzügler, darunter 40 Einträge aus Sets. */
-    private fun zeigeRaster() {
+    /** A grid like that of the parts: room for latecomers at the top, below it 40 entries from sets. */
+    private fun showRaster() {
         zeige {
             raster = rememberLazyGridState()
             LazyVerticalGrid(GridCells.Fixed(2), Modifier.height(300.dp).testTag("raster"), state = raster) {
-                items(nachzuegler.toList(), key = { it }) { Text(it, Modifier.height(100.dp)) }
+                items(stragglers.toList(), key = { it }) { Text(it, Modifier.height(100.dp)) }
                 items((0 until 40).map { "set-$it" }, key = { it }) { Text(it, Modifier.height(100.dp)) }
             }
-            ScrollPositionKeeper("teile", raster, bereit = true, speicher = speicher, obenNachziehend = nachzuegler.size)
+            ScrollPositionKeeper("teile", raster, bereit = true, speicher = speicher, obenNachziehend = stragglers.size)
         }
     }
 
-    private fun nachzueglerKommen() {
-        nachzuegler.addAll((0 until 5).map { "manuell-$it" })
+    private fun stragglersCome() {
+        stragglers.addAll((0 until 5).map { "manuell-$it" })
         compose.waitForIdle()
     }
 
     @Test
-    fun `ohne gespeicherte Stelle zieht die Liste nach oben, wenn oben Eintraege nachkommen`() {
-        zeigeRaster()
-        nachzueglerKommen()
+    fun `without a saved position the list moves up when entries arrive above`() {
+        showRaster()
+        stragglersCome()
         assertEquals("Erster sichtbarer Eintrag", 0, raster.firstVisibleItemIndex)
         compose.onNodeWithText("manuell-0").fetchSemanticsNode()
     }
 
     @Test
-    fun `eine gespeicherte Stelle bleibt, auch wenn oben Eintraege nachkommen`() {
+    fun `a saved position stays, even when entries arrive above`() {
         speicher.merke("teile", 10, 0)
-        zeigeRaster()
+        showRaster()
         assertEquals("Wiederhergestellt", 10, raster.firstVisibleItemIndex)
-        nachzueglerKommen()
+        stragglersCome()
         assertTrue("Die Liste sprang von der gespeicherten Stelle weg: ${raster.firstVisibleItemIndex}",
             raster.firstVisibleItemIndex >= 10)
     }
 
     @Test
-    fun `nach einer eigenen Geste bleibt die Liste, wo der Nutzer sie hingerollt hat`() {
-        zeigeRaster()
+    fun `after an own gesture the list stays where the user scrolled it`() {
+        showRaster()
         compose.onNodeWithTag("raster").performTouchInput { swipeUp() }
         compose.waitForIdle()
         assertTrue("Die Geste hat nicht gerollt", raster.firstVisibleItemIndex > 0)
-        nachzueglerKommen()
+        stragglersCome()
         assertTrue("Die Korrektur riss die Liste nach oben", raster.firstVisibleItemIndex > 0)
     }
 
     @Test
-    fun `beide Listen zaehlen als geladen, nicht nur die aus den Sets`() {
-        // Verdrahtung im Graphen: Erst wenn auch die manuellen Einträge da sind (null heisst
-        // „noch nicht geladen“), stellt der Merker die Stelle wieder her.
-        val graph = Quellen.ohneKommentare(Quellen.lies("teile/ui/TeileGraph.kt"))
+    fun `both lists count as loaded, not only the one from the sets`() {
+        // Wiring in the graph: only when the manual entries are there too (null means
+        // “not loaded yet”) does the marker restore the position.
+        val graph = Quellen.withoutComments(Quellen.lies("parts/ui/TeileGraph.kt"))
         for ((schluessel, liste) in listOf("TeileZiel.Parts.rollSchluessel" to "manualParts", "TeileZiel.Minifigs.rollSchluessel" to "manualFigs")) {
             val block = Quellen.fenster(graph, "$schluessel, ", 12)
             assertTrue("Kein ScrollPositionKeeper für $schluessel gefunden", block.isNotEmpty())

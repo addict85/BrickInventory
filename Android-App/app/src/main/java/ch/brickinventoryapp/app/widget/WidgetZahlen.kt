@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.app.widget
 
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.GewinnAnsicht
-import ch.brickinventoryapp.model.fach.WertverlaufAnsicht
+import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.GewinnAnsicht
+import ch.brickinventoryapp.model.domain.ValueHistoryView
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
 import kotlinx.serialization.Serializable
 
 /**
- * Was das Startbildschirm-Widget zeigt: Sammlungswert, G&V heute und gesamt.
- * Als eigenes Modell, damit das Widget die Zahlen auch ohne Netz aus der Ablage
- * zeigen kann und die Rechnung ohne Android prüfbar bleibt.
+ * What the home screen widget shows: collection value, P&L today and in total.
+ * As its own model so that the widget can show the numbers from the store even without network
+ * and the calculation stays checkable without Android.
  */
 @Serializable
 data class WidgetZahlen(
@@ -20,76 +20,76 @@ data class WidgetZahlen(
     val gesamtProzent: Double? = null,
     val heute: Double? = null,
     val heuteProzent: Double? = null,
-    /** Wann die Zahlen geholt wurden, Millisekunden seit 1970. */
+    /** When the numbers were fetched, milliseconds since 1970. */
     val stand: Long = 0,
 )
 
 /**
- * Gesamt-G&V aus der G&V-Übersicht des Servers. Liefert er die Basis (nur Positionen
- * mit Kauf- und Marktpreis), stehen Wert und G&V wie in der Finanzkarte auf ihr, denn
- * pnl_prozent rechnet dort; ältere Server: aktueller Wert minus Kaufpreis. Für „heute“
- * gibt es keinen eigenen Abruf: Der Wochenverlauf hat einen Punkt je Tag.
+ * Total P&L from the server's P&L overview. If it supplies the basis (only positions
+ * with purchase and market price), value and P&L stand on it as in the finance card, because
+ * pnl_prozent computes there; older servers: current value minus purchase price. For “today”
+ * there is no separate fetch: the weekly history has one point per day.
  */
-fun widgetZahlen(pnl: GewinnAnsicht?, verlauf: WertverlaufAnsicht?, jetzt: Long): WidgetZahlen? {
+fun widgetNumbers(pnl: GewinnAnsicht?, verlauf: ValueHistoryView?, jetzt: Long): WidgetZahlen? {
     if (pnl == null && verlauf == null) return null
     val waehrung = pnl?.currency ?: verlauf?.waehrung ?: Waehrung.EUR
     val t = pnl?.totals
-    val mitBasis = t?.basisEinstand != null && (t.positionenBewertet ?: 0) > 0
-    val wert = (if (mitBasis) t.basisMarktwert else t?.current)?.toDoubleOrNull()
-        ?: verlauf?.punkte?.lastOrNull()?.wert?.alsDouble()
+    val withBase = t?.basisEinstand != null && (t.positionenBewertet ?: 0) > 0
+    val wert = (if (withBase) t.basisMarktwert else t?.current)?.toDoubleOrNull()
+        ?: verlauf?.punkte?.lastOrNull()?.wert?.asDouble()
     val kauf = t?.purchase?.toDoubleOrNull()
     val gesamt = when {
-        mitBasis -> t.basisGuvBetrag?.toDoubleOrNull()
+        withBase -> t.basisGuvBetrag?.toDoubleOrNull()
         t?.basisEinstand != null -> null
         wert != null && kauf != null -> wert - kauf
         else -> null
     }
     val punkte = verlauf?.punkte.orEmpty()
     val (heute, heuteProzent) = if (punkte.size >= 2) {
-        val vorher = punkte[punkte.size - 2].wert.alsDouble()
-        val diff = punkte.last().wert.alsDouble() - vorher
+        val vorher = punkte[punkte.size - 2].wert.asDouble()
+        val diff = punkte.last().wert.asDouble() - vorher
         diff to (if (vorher != 0.0) diff / vorher * 100 else null)
     } else null to null
     return WidgetZahlen(waehrung, wert, gesamt, pnl?.totals?.pnlProzent, heute, heuteProzent, jetzt)
 }
 
 /**
- * Was das Widget zeigen darf: abgemeldet nichts, auch wenn die Ablage noch Zahlen
- * hält. Das Leeren beim Abmelden kann ausbleiben (Prozess beendet, Fehler im
- * Haken); der Startbildschirm soll dann keine Zahlen eines fremden Kontos zeigen.
+ * What the widget may show: signed out nothing, even if the store still holds
+ * numbers. Emptying on sign-out can fail to happen (process ended, error in the
+ * hook); the home screen should then not show numbers of a foreign account.
  */
-fun widgetAnzeige(abgelegt: WidgetZahlen?, angemeldet: Boolean): WidgetZahlen? =
+fun widgetDisplay(abgelegt: WidgetZahlen?, angemeldet: Boolean): WidgetZahlen? =
     if (angemeldet) abgelegt else null
 
-/** Was der Arbeiter ohne Token tut. */
-enum class OhneToken { LEEREN, SPAETER }
+/** What the worker does without a token. */
+enum class WithoutToken { LEEREN, LATER }
 
 /**
- * Abgemeldet wird die Ablage geleert. Bei gesperrtem Gerät ist das Token nur noch nicht
- * gelesen (sein Schlüssel arbeitet nur entsperrt); geleert stünde nach dem Entsperren
- * bis zum nächsten Lauf ein leeres Widget da.
+ * Signed out, the store is emptied. With a locked device the token has merely not been
+ * read yet (its key only works unlocked); emptied, an empty widget would stand there
+ * after unlocking until the next run.
  */
-fun ohneToken(geraetGesperrt: Boolean): OhneToken = if (geraetGesperrt) OhneToken.SPAETER else OhneToken.LEEREN
+fun ohneToken(deviceLocked: Boolean): WithoutToken = if (deviceLocked) WithoutToken.LATER else WithoutToken.LEEREN
 
-/** Statt eines Betrags, solange der Nutzer Geldwerte im Widget nicht erlaubt hat. */
-const val WIDGET_VERDECKT = "••••"
+/** Instead of an amount, as long as the user has not allowed money values in the widget. */
+const val WIDGET_HIDDEN = "••••"
 
 /**
- * Wert, G&V heute und gesamt als Text. Ohne Erlaubnis ([zeigen]) verdeckt: Das Widget
- * liegt auf dem Startbildschirm, lesbar für jeden, der das Telefon sieht.
+ * Value, P&L today and in total as text. Without permission ([zeigen]) hidden: the widget
+ * lies on the home screen, readable for anyone who sees the phone.
  */
-fun widgetWerte(z: WidgetZahlen, zeigen: Boolean): Triple<String, String, String> =
-    if (!zeigen) Triple(WIDGET_VERDECKT, WIDGET_VERDECKT, WIDGET_VERDECKT)
+fun widgetValues(z: WidgetZahlen, zeigen: Boolean): Triple<String, String, String> =
+    if (!zeigen) Triple(WIDGET_HIDDEN, WIDGET_HIDDEN, WIDGET_HIDDEN)
     else Triple(
         z.wert?.let { fmtMoney(it, z.waehrung) } ?: "—",
         gvText(z.heute, z.heuteProzent, z.waehrung),
         gvText(z.gesamt, z.gesamtProzent, z.waehrung),
     )
 
-/** Ein Betrag mit Vorzeichen und, wenn bekannt, der Prozentzahl daneben. */
+/** An amount with sign and, if known, the percentage next to it. */
 fun gvText(betrag: Double?, prozent: Double?, waehrung: Waehrung): String {
     if (betrag == null) return "—"
-    val vorzeichen = if (betrag > 0.005) "+" else ""
-    val geld = vorzeichen + fmtMoney(betrag, waehrung)
-    return if (prozent != null) "$geld (${fmtProzent(prozent)})" else geld
+    val sign = if (betrag > 0.005) "+" else ""
+    val money = sign + fmtMoney(betrag, waehrung)
+    return if (prozent != null) "$money (${fmtProzent(prozent)})" else money
 }

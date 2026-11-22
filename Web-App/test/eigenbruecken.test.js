@@ -1,5 +1,5 @@
 /**
- * Jeder Pfad, mit dem ein Test eine QUELLDATEI liest, muss auch dorthin zeigen.
+ * Every path with which a test reads a SOURCE FILE must also point there.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Kommentare zeilenweise entfernen: Ein Regex hielte das /* in '/data/x/*' für einen Kommentar. */
+/** Remove comments line by line: a regex would take the /* in '/data/x/*' for a comment. */
 function ohneKommentare(s) {
   const zeilen = [];
   let imBlock = false;
@@ -29,22 +29,22 @@ function ohneKommentare(s) {
   return zeilen.join('\n');
 }
 
-/** Endungen, die auf eine Quelldatei dieses Baums zeigen. */
+/** Extensions that point to a source file of this tree. */
 const QUELLE = /\.(ts|js|sql|html|json|yml|xml)$/;
 
 /**
- * Gibt es diese Datei — oder die Quelle, aus der sie gebaut wird?
+ * Does this file exist — or the source it is built from?
  */
-function existiertQuelle(rel) {
+function existsSource(rel) {
   if (fs.existsSync(path.join(ROOT, rel))) return true;
   if (!rel.endsWith('.js')) return false;
   return fs.existsSync(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
 }
 
-/** Ordner, die es im Web-Baum wirklich gibt — alles andere ist kein Pfad von hier. */
+/** Folders that really exist in the web tree — everything else is not a path from here. */
 const ORDNER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
 
-test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
+test('no test reads a source file that does not exist', () => {
   const dateien = fs
     .readdirSync(__dirname)
     .filter(f => f.endsWith('.test.js'))
@@ -53,27 +53,27 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
 
   const kaputt = [];
   const offen = [];
-  const abwesend = [];
+  const absent = [];
   let geprueft = 0;
 
   /**
-   * Steht der Pfad in einer ABWESENHEITS-Zusicherung?
+   * Does the path stand in an ABSENCE assertion?
    */
-  const istAbwesenheitsPruefung = (src, bis) => /!\s*fs\.existsSync\($/.test(src.slice(0, bis).trimEnd());
+  const isAbwesenheitsCheck = (src, bis) => /!\s*fs\.existsSync\($/.test(src.slice(0, bis).trimEnd());
 
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(path.join(__dirname, datei), 'utf8'));
 
-    // ── Form 1: 'src/konto/geraeteToken.ts' als eine Zeichenkette ──────────────────────
+    // ── Form 1: 'src/account/deviceToken.ts' as one string ──────────────────────
     for (const m of src.matchAll(/['"]((?:[\w.-]+\/)+[\w.-]+)['"]/g)) {
       const p = m[1];
       if (!QUELLE.test(p)) continue;
       if (!ORDNER.includes(p.split('/')[0])) continue;
       geprueft++;
-      if (!existiertQuelle(p)) kaputt.push(`${datei}: ${p}`);
+      if (!existsSource(p)) kaputt.push(`${datei}: ${p}`);
     }
 
-    // ── Form 2: path.join(ROOT, 'src/konto/geraeteToken.ts') ────────────────────────
+    // ── Form 2: path.join(ROOT, 'src/account/deviceToken.ts') ────────────────────────
     for (const m of src.matchAll(/path\.join\(\s*ROOT\s*,([^)]*)\)/g)) {
       const roh = m[1]
         .split(',')
@@ -81,25 +81,25 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
         .filter(Boolean);
       const segmente = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);
       if (segmente.some(s => s === undefined)) {
-        // Nicht aufloesbar — gemeldet, nicht uebergangen.
+        // Not resolvable — reported, not skipped.
         offen.push(`${datei}: ${roh.find((_s, i) => segmente[i] === undefined)}`);
         continue;
       }
       const p = segmente.join('/');
       if (!QUELLE.test(p)) continue;
-      if (istAbwesenheitsPruefung(src, m.index)) {
-        abwesend.push(`${datei}: ${p}`);
+      if (isAbwesenheitsCheck(src, m.index)) {
+        absent.push(`${datei}: ${p}`);
         continue;
       }
       geprueft++;
-      if (!existiertQuelle(p)) kaputt.push(`${datei}: ${p}`);
+      if (!existsSource(p)) kaputt.push(`${datei}: ${p}`);
     }
   }
 
-  // Selbstbeweis: Findet die Suche nichts, waere die Zusicherung darunter
-  // still gruen. GEMESSEN sind es ueber hundert.
-  // GEMESSEN: 768. Die Schranke liegt bei der Haelfte — sie soll einen kaputten
-  // Suchausdruck fangen, nicht bei jeder neuen Testdatei anschlagen.
+  // Self-proof: if the search finds nothing, the assertion below would be
+  // silently green. MEASURED there are over a hundred.
+  // MEASURED: 768. The threshold is at half — it should catch a broken
+  // search expression, not trigger on every new test file.
   assert.ok(
     geprueft > 380,
     `Nur ${geprueft} Quellpfade gefunden (gemessen waren es 768) — die Muster sind ` +
@@ -114,19 +114,16 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
       'mehr findet und deshalb schweigt.',
   );
 
-  // Zweite Schreibweise desselben Pfades ist erlaubt; ein VARIABLES Segment
-  // nimmt der Pruefung aber die Sicht. Ein paar Faelle sind legitim (ein Test,
-  // der eine Liste von Dateien durchgeht) — die Zahl darf nur nicht wachsen,
-  // ohne dass es jemand merkt. …
-  assert.ok(
-    abwesend.length <= 3,
-    `${abwesend.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + abwesend.join('\n  '),
-  );
+  // A second spelling of the same path is allowed; a VARIABLE segment
+  // does take away the check's view though. A few cases are legitimate (a test
+  // that goes through a list of files) — the number just must not grow
+  // without anyone noticing. …
+  assert.ok(absent.length <= 3, `${absent.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + absent.join('\n  '));
 
-  // GEMESSEN: 62, und die Zahl ist nicht das Problem, das sie auf den ersten
-  // Blick scheint. Fast alle sind SCHLEIFENVARIABLEN (`f`, `datei`, `rel`,
-  // `ordner`) — Tests, die eine Liste von Dateien durchgehen. Das ist ein
-  // gutes Muster; es auszuschreiben wuerde die Tests schlechter machen.
+  // MEASURED: 62, and the number is not the problem it seems at first
+  // glance. Almost all are LOOP VARIABLES (`f`, `datei`, `rel`,
+  // `ordner`) — tests that go through a list of files. That is a
+  // good pattern; writing it out would make the tests worse.
   assert.ok(
     offen.length <= 76,
     `${offen.length} Pfade mit variablem Segment (gemessen waren es 76):\n  ` +
@@ -137,23 +134,23 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
 });
 
 /**
- * Wer die Bild-Warteschlange abarbeitet, leert sie vorher.
+ * Whoever processes the image queue empties it beforehand.
  *
- * Gegenprobe (durchgefuehrt): den Aufruf aus image-throttle-db.test.js
- * entfernt → dieser Schritt wird rot und nennt die Datei.
+ * Counter-check (performed): the call removed from image-throttle-db.test.js
+ * → this step turns red and names the file.
  */
-test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
+test('whoever processes the image queue clears it beforehand', () => {
   const dir = __dirname;
-  const BENUTZT = /_arbeiteStapel|_taktDurchgang/;
-  const LEERT = /leereWarteschlange\s*\(/;
+  const USED = /_workStack|_tickPass/;
+  const CLEARS = /emptyQueue\s*\(/;
 
   const betroffen = [];
   const ohne = [];
   for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.test.js'))) {
     const src = fs.readFileSync(path.join(dir, f), 'utf8');
-    // Kommentare raus: Die Erklaerbloecke dieser Dateien nennen die
-    // Funktionsnamen im Fliesstext, sonst gilt eine Datei als betroffen,
-    // weil sie ueber den Stapel SCHREIBT.
+    // Comments out: the explanation blocks of these files name the
+    // function names in prose, otherwise a file counts as affected
+    // because it WRITES via the batch.
     const code = src
       .split('\n')
       .map(z => {
@@ -161,12 +158,12 @@ test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
         return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') ? '' : z;
       })
       .join('\n');
-    if (!BENUTZT.test(code)) continue;
+    if (!USED.test(code)) continue;
     betroffen.push(f);
-    if (!LEERT.test(code)) ohne.push(f);
+    if (!CLEARS.test(code)) ohne.push(f);
   }
 
-  // Selbstbeweis: Ohne Fund prueft die Zusicherung darunter nichts.
+  // Self-proof: without a finding the assertion below checks nothing.
   assert.ok(
     betroffen.length >= 5,
     `Nur ${betroffen.length} Dateien arbeiten die Warteschlange ab — Muster veraltet? ` +
@@ -181,7 +178,7 @@ test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
       '\n\n_arbeiteStapel() nimmt die aeltesten Notizen der GANZEN Tabelle. Bleibt aus ' +
       'einer frueher gelaufenen Datei etwas liegen, arbeitet der Stapel DEREN Zeilen ab ' +
       'und der Test misst etwas anderes, als er glaubt — und zwar nur manchmal, je ' +
-      'nachdem, was vorher lief. Abhilfe: `await leereWarteschlange(db)` nach dem ' +
-      'Schema-Vorbau (helpers/bildwarteschlange.js).',
+      'nachdem, was vorher lief. Abhilfe: `await emptyQueue(db)` nach dem ' +
+      'Schema-Vorbau (helpers/image-queue.js).',
   );
 });

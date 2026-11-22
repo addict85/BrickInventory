@@ -1,39 +1,39 @@
-// Mailversand ist Werkzeug, keine Route.
+// Sending mail is a tool, not a route.
 
-import type { MailKontext } from './kontext';
-import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
-import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailDesign } from './vorlage';
+import type { MailContext } from './context';
+import { basisUrl, hintWithoutBaseUrl } from '../infra/basisUrl';
+import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailTheme } from './template';
 import { sendMail, testSmtp } from './transport';
-import { fachfehler } from '../infra/fehlerTexte';
-const einstellung = (k: MailKontext, key: string) => k.einstellungen.globalerWert(key, '');
+import { fachfehler } from '../infra/errorTexts';
+const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
 
-// Mitexportiert, damit Aufrufer und Tests bei einer Adresse bleiben.
-export { MAIL_THEMES, mailDesign, emailTemplate } from './vorlage';
+// Re-exported so callers and tests keep a single address.
+export { MAIL_THEMES, mailTheme, emailTemplate } from './template';
 export {
-  meldeSmtpAltlast,
-  linkFuerKonsole,
-  maskiereAdresse,
-  einzigerEmpfaenger,
+  reportSmtpLegacySetting,
+  linkForConsole,
+  maskAddress,
+  isSingleRecipient,
   sendMail,
   testSmtp,
 } from './transport';
 
-/** Ohne Namen: Die Adresse ist unbestätigt, und Name wie Benutzername wählt,
- * wer registriert — eine Anrede daraus trüge fremden Text in eine Mail des Servers.
- * Nennen mehrere Registrierungen die Adresse, verweist `mehrere` auf die Bestätigungsseite. */
+/** No name: the address is unconfirmed, and both name and username are chosen by whoever
+ * registers — a greeting built from them would carry foreign text into a server mail.
+ * If several registrations name the address, `multiple` points to the confirmation page. */
 export async function sendVerificationMail(
-  k: MailKontext,
+  k: MailContext,
   to: string,
   token: string,
   baseUrl: string,
   lang = 'de',
-  art: 'registrierung' | 'adresse' = 'registrierung',
-  mehrere = false,
+  kind: 'registrierung' | 'adresse' = 'registrierung',
+  multiple = false,
 ) {
-  // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
-  const theme = await mailDesign(k);
+  // Load at send time: the theme may have changed between two mails.
+  const theme = await mailTheme(k);
   const url = `${baseUrl}/verify#token=${token}`;
-  const adresse = art === 'adresse';
+  const isAddressChange = kind === 'adresse';
   const L =
     lang === 'en'
       ? {
@@ -43,16 +43,16 @@ export async function sendVerificationMail(
           preheader: 'Please confirm your email address.',
           greetHtml: `<p style="margin:0 0 8px">Hello,</p>
        <p style="margin:0 0 20px">${
-         adresse
+         isAddressChange
            ? 'this address is to become the new email address of a BrickInventory Manager account. It only takes effect once you confirm it.'
            : 'welcome to BrickInventory Manager! Please confirm your email address to activate your account.'
        }</p>`,
           btn: '✓  Confirm email',
-          mehrere:
+          multiple:
             'Several sign-ups name this address. Before confirming, the page shows the username this link belongs to: confirm only if it is yours.',
           note: `<p style="margin:0;font-size:13px;color:#6b7280">
          The link is valid for <strong>24 hours</strong>.<br>
-         ${adresse ? 'If you did not request this, ignore this email; nothing changes.' : 'If you did not sign up, you can safely ignore this email.'}
+         ${isAddressChange ? 'If you did not request this, ignore this email; nothing changes.' : 'If you did not sign up, you can safely ignore this email.'}
        </p>`,
         }
       : {
@@ -62,29 +62,29 @@ export async function sendVerificationMail(
           preheader: 'Bitte bestätige deine E-Mail-Adresse.',
           greetHtml: `<p style="margin:0 0 8px">Hallo,</p>
        <p style="margin:0 0 20px">${
-         adresse
+         isAddressChange
            ? 'diese Adresse soll die neue E-Mail-Adresse eines Kontos bei BrickInventory Manager werden. Sie gilt erst, wenn du sie bestätigst.'
            : 'willkommen bei BrickInventory Manager! Bitte bestätige deine E-Mail-Adresse um dein Konto zu aktivieren.'
        }</p>`,
           btn: '✓  E-Mail bestätigen',
-          mehrere:
+          multiple:
             'Mehrere Registrierungen nennen diese Adresse. Vor dem Bestätigen zeigt die Seite den Benutzernamen, zu dem dieser Link gehört: Bestätige nur, wenn es deiner ist.',
           note: `<p style="margin:0;font-size:13px;color:#6b7280">
          Der Link ist <strong>24 Stunden</strong> gültig.<br>
-         ${adresse ? 'Hast du das nicht veranlasst, ignoriere diese E-Mail; es ändert sich nichts.' : 'Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.'}
+         ${isAddressChange ? 'Hast du das nicht veranlasst, ignoriere diese E-Mail; es ändert sich nichts.' : 'Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.'}
        </p>`,
         };
-  const hinweis = mehrere && !adresse;
+  const notice = multiple && !isAddressChange;
   return sendMail(k, {
     to,
     subject: L.subject,
-    text: hinweis ? L.text.replace('\n\n', `\n\n${L.mehrere}\n\n`) : L.text,
+    text: notice ? L.text.replace('\n\n', `\n\n${L.multiple}\n\n`) : L.text,
     link: url,
     html: emailTemplate(
       L.title,
       L.preheader,
       `${L.greetHtml}
-       ${hinweis ? `<p style="margin:0 0 20px"><strong>${L.mehrere}</strong></p>` : ''}
+       ${notice ? `<p style="margin:0 0 20px"><strong>${L.multiple}</strong></p>` : ''}
        ${emailBtn(url, L.btn, theme)}
        ${DIVIDER}
        ${L.note}`,
@@ -93,30 +93,30 @@ export async function sendVerificationMail(
   });
 }
 
-export async function sendEmailGeaendertMail(
-  k: MailKontext,
+export async function sendEmailChangedMail(
+  k: MailContext,
   to: string,
   username: string,
-  neueAdresse: string,
+  newAddress: string,
   lang = 'de',
 ) {
-  const theme = await mailDesign(k);
+  const theme = await mailTheme(k);
   const L =
     lang === 'en'
       ? {
           subject: 'BrickInventory Manager — New email address requested',
           title: 'Email address change requested',
-          text: `Hello ${username},\n\na change of your account's email address to ${neueAdresse} was requested. It takes effect once it is confirmed there; until then this address stays.\n\nIf this was not you, sign in and change your password — or ask the administrator.\n\nBrickInventory Manager`,
+          text: `Hello ${username},\n\na change of your account's email address to ${newAddress} was requested. It takes effect once it is confirmed there; until then this address stays.\n\nIf this was not you, sign in and change your password — or ask the administrator.\n\nBrickInventory Manager`,
           html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">a change of your account's email address to <strong>${esc(neueAdresse)}</strong> was requested. It takes effect once it is confirmed there; until then this address stays.</p>`,
+       <p style="margin:0 0 16px">a change of your account's email address to <strong>${esc(newAddress)}</strong> was requested. It takes effect once it is confirmed there; until then this address stays.</p>`,
           note: 'If this was not you, sign in and change your password — or ask the administrator.',
         }
       : {
           subject: 'BrickInventory Manager — Neue E-Mail-Adresse beantragt',
           title: 'Neue E-Mail-Adresse beantragt',
-          text: `Hallo ${username},\n\nfür dein Konto wurde die E-Mail-Adresse ${neueAdresse} beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.\n\nWarst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Administrator.\n\nBrickInventory Manager`,
+          text: `Hallo ${username},\n\nfür dein Konto wurde die E-Mail-Adresse ${newAddress} beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.\n\nWarst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Administrator.\n\nBrickInventory Manager`,
           html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">für dein Konto wurde die E-Mail-Adresse <strong>${esc(neueAdresse)}</strong> beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.</p>`,
+       <p style="margin:0 0 16px">für dein Konto wurde die E-Mail-Adresse <strong>${esc(newAddress)}</strong> beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.</p>`,
           note: 'Warst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Administrator.',
         };
   return sendMail(k, {
@@ -127,16 +127,16 @@ export async function sendEmailGeaendertMail(
   });
 }
 
-/** Die Registrierung antwortet auf eine vergebene Adresse wie auf eine neue; das hier erfährt ihr Inhaber. */
-export async function sendRegistrierungsVersuchMail(
-  k: MailKontext,
+/** Registration answers a taken address like a new one; this is how its owner finds out. */
+export async function sendRegistrationAttemptMail(
+  k: MailContext,
   to: string,
   lang = 'de',
-  anlass: 'registrierung' | 'adresse' = 'registrierung',
+  reason: 'registrierung' | 'adresse' = 'registrierung',
 ) {
-  const theme = await mailDesign(k);
+  const theme = await mailTheme(k);
   const L =
-    anlass === 'adresse'
+    reason === 'adresse'
       ? lang === 'en'
         ? {
             subject: 'BrickInventory Manager — Your email address in another account',
@@ -179,11 +179,11 @@ export async function sendRegistrierungsVersuchMail(
   });
 }
 
-/** Die Registrierung antwortet bei vergebenem Namen wie bei Erfolg; nur die
- * angegebene Adresse erfährt, dass es ihn schon gibt. Ohne den Namen selbst:
- * Ihn wählt, wer registriert, und die Adresse ist unbestätigt. */
-export async function sendBenutzernameVergebenMail(k: MailKontext, to: string, lang = 'de', basis = '') {
-  const theme = await mailDesign(k);
+/** Registration answers a taken name like a success; only the given address learns
+ * that it already exists. Without the name itself: whoever registers chooses it,
+ * and the address is unconfirmed. */
+export async function sendUsernameTakenMail(k: MailContext, to: string, lang = 'de', base = '') {
+  const theme = await mailTheme(k);
   const L =
     lang === 'en'
       ? {
@@ -193,7 +193,7 @@ export async function sendBenutzernameVergebenMail(k: MailKontext, to: string, l
 
 someone tried to register an account with this email address under a username that already exists; no account was created.
 
-If this was you, register again with a different username: ${basis}
+If this was you, register again with a different username: ${base}
 
 BrickInventory Manager`,
           html: `<p style="margin:0 0 16px">someone tried to register an account with this email address under a username that already exists; no account was created.</p>`,
@@ -206,7 +206,7 @@ BrickInventory Manager`,
 
 mit dieser E-Mail-Adresse wollte jemand ein Konto unter einem Benutzernamen anlegen, den es schon gibt; angelegt wurde nichts.
 
-Warst du das, registriere dich mit einem anderen Benutzernamen: ${basis}
+Warst du das, registriere dich mit einem anderen Benutzernamen: ${base}
 
 BrickInventory Manager`,
           html: `<p style="margin:0 0 16px">mit dieser E-Mail-Adresse wollte jemand ein Konto unter einem Benutzernamen anlegen, den es schon gibt; angelegt wurde nichts.</p>`,
@@ -216,37 +216,37 @@ BrickInventory Manager`,
     to,
     subject: L.subject,
     text: L.text,
-    ...(basis ? { link: basis } : {}),
+    ...(base ? { link: base } : {}),
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme),
   });
 }
 
-/** Das Hauptkonto liest danach den Bestand mit; wer nur eine Sitzung erbeutet
- * hat, soll das nicht unbemerkt einrichten können. */
-export async function sendHaushaltVerknuepftMail(
-  k: MailKontext,
+/** The main account reads the collection afterwards; someone who only captured a
+ * session must not be able to set this up unnoticed. */
+export async function sendHouseholdLinkedMail(
+  k: MailContext,
   to: string,
   username: string,
-  hauptkonto: string,
+  mainAccount: string,
   lang = 'de',
 ) {
-  const theme = await mailDesign(k);
+  const theme = await mailTheme(k);
   const L =
     lang === 'en'
       ? {
           subject: 'BrickInventory Manager — Your account joined a household',
           title: 'Household linked',
-          text: `Hello ${username},\n\nyour account is now a sub-account of ${hauptkonto}. That account can see and change your collection.\n\nIf this was not you, sign in, change your password and leave the household under Menu → Household — or ask the administrator.\n\nBrickInventory Manager`,
+          text: `Hello ${username},\n\nyour account is now a sub-account of ${mainAccount}. That account can see and change your collection.\n\nIf this was not you, sign in, change your password and leave the household under Menu → Household — or ask the administrator.\n\nBrickInventory Manager`,
           html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">your account is now a sub-account of <strong>${esc(hauptkonto)}</strong>. That account can see and change your collection.</p>`,
+       <p style="margin:0 0 16px">your account is now a sub-account of <strong>${esc(mainAccount)}</strong>. That account can see and change your collection.</p>`,
           note: 'If this was not you, sign in, change your password and leave the household under Menu → Household — or ask the administrator.',
         }
       : {
           subject: 'BrickInventory Manager — Dein Konto ist einem Haushalt beigetreten',
           title: 'Haushalt verknüpft',
-          text: `Hallo ${username},\n\ndein Konto ist jetzt Unterkonto von ${hauptkonto}. Dieses Konto sieht und ändert deine Sammlung.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Administrator.\n\nBrickInventory Manager`,
+          text: `Hallo ${username},\n\ndein Konto ist jetzt Unterkonto von ${mainAccount}. Dieses Konto sieht und ändert deine Sammlung.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Administrator.\n\nBrickInventory Manager`,
           html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">dein Konto ist jetzt Unterkonto von <strong>${esc(hauptkonto)}</strong>. Dieses Konto sieht und ändert deine Sammlung.</p>`,
+       <p style="margin:0 0 16px">dein Konto ist jetzt Unterkonto von <strong>${esc(mainAccount)}</strong>. Dieses Konto sieht und ändert deine Sammlung.</p>`,
           note: 'Warst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Administrator.',
         };
   return sendMail(k, {
@@ -257,22 +257,22 @@ export async function sendHaushaltVerknuepftMail(
   });
 }
 
-/** Ohne Mailserver gibt es keinen Hinweis: Die Konsole erreicht den Inhaber nicht. */
-export async function mailEingerichtet(k: MailKontext): Promise<boolean> {
-  return !!(await einstellung(k, 'smtp_host')) && !!(await einstellung(k, 'smtp_user'));
+/** Without a mail server there is no notice: the console does not reach the owner. */
+export async function mailConfigured(k: MailContext): Promise<boolean> {
+  return !!(await setting(k, 'smtp_host')) && !!(await setting(k, 'smtp_user'));
 }
 
-/** Ein Link per Mail kommt nur mit Mailserver UND eigener Adresse an; `neu` sind Werte, die gerade gespeichert werden. */
-export async function mailBereit(
-  k: MailKontext,
-  neu: { smtp_host?: unknown; smtp_user?: unknown } = {},
+/** A link by mail only arrives with a mail server AND a public base URL; `incoming` holds values being saved right now. */
+export async function mailReady(
+  k: MailContext,
+  incoming: { smtp_host?: unknown; smtp_user?: unknown } = {},
 ): Promise<boolean> {
-  const wert = async (n: 'smtp_host' | 'smtp_user') =>
-    neu[n] !== undefined ? String(neu[n] ?? '') : await einstellung(k, n);
-  return !!basisUrl() && !!(await wert('smtp_host')) && !!(await wert('smtp_user'));
+  const value = async (n: 'smtp_host' | 'smtp_user') =>
+    incoming[n] !== undefined ? String(incoming[n] ?? '') : await setting(k, n);
+  return !!basisUrl() && !!(await value('smtp_host')) && !!(await value('smtp_user'));
 }
 
-export type KontoHinweis =
+export type AccountNotice =
   | 'passkey_neu'
   | 'passwort_geaendert'
   | 'passwort_zurueckgesetzt'
@@ -301,63 +301,63 @@ export type KontoHinweis =
   | 'verwaltung_aktion_ausgefuehrt'
   | 'anmeldung_freigeben';
 
-/** Ohne Geheimnisse; einen Link nur zum Abbrechen oder Freigeben, an das Konto selbst. `haushalt` nennt die Konten, die diese
- * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
-/** Was „Passwort vergessen“ ausser dem Passwort beendet hat. */
-export type Geloest = { haushalt: string[]; einladungen: number; adresse: string | null };
+/** No secrets; a link only for cancelling or releasing, sent to the account itself. `haushalt` names the accounts that see
+ * this collection: an intruder could have added themselves there. */
+/** What "forgot password" ended besides the password. */
+export type ResetSideEffects = { haushalt: string[]; einladungen: number; adresse: string | null };
 
-/** Der eine Satz, was am Konto geschah. */
-type HinweisAngaben = {
-  geloest?: Geloest | undefined;
+/** The one sentence about what happened to the account. */
+type NoticeDetails = {
+  resolved?: ResetSideEffects | undefined;
   passkey?: string;
   konto?: string | undefined;
   durch?: string | undefined;
   was?: string | undefined;
   bis?: string | undefined;
-  /** Klartext eines Links (Abbruch einer Ankündigung, Freigabe einer Anmeldung); nur an das Ziel. */
+  /** Plain text of a link (cancelling an announcement, releasing a sign-in); only to the target. */
   abbruch?: string | undefined;
   freigabe?: string | undefined;
   adresse?: string | undefined;
 };
 
-/** Was ein Verwalter an einem Verwalterkonto ändern will, und ab wann (UTC, ohne Sprache des Servers). */
-function uebernahme(o: HinweisAngaben, en: boolean): { was: string; bis: string } {
-  const arten = (o.was ?? '').split(', ');
-  const satz: Record<string, [string, string]> = {
+/** What an administrator wants to change on an administrator account, and from when (UTC, without the server's locale). */
+function takeover(o: NoticeDetails, en: boolean): { was: string; bis: string } {
+  const kinds = (o.was ?? '').split(', ');
+  const sentence: Record<string, [string, string]> = {
     passwort: ['ein neues Passwort setzen', 'set a new password'],
     zweiter_faktor: ['den zweiten Faktor entfernen', 'remove the second factor'],
     deaktivieren: ['das Konto deaktivieren', 'deactivate the account'],
     rolle_entziehen: ['die Administratorrechte entziehen', 'revoke the administrator rights'],
     loeschen: ['das Konto löschen', 'delete the account'],
   };
-  const was = arten.map(a => (satz[a] ?? ['', ''])[en ? 1 : 0]).join(en ? ' and ' : ' und ');
+  const was = kinds.map(a => (sentence[a] ?? ['', ''])[en ? 1 : 0]).join(en ? ' and ' : ' und ');
   return { was, bis: o.bis ? `${o.bis.slice(0, 16).replace('T', ' ')} UTC` : '' };
 }
 
-/** Der Inhaber soll sehen, was ein Eindringling angelegt haben könnte und wegfiel. */
-function geloestSatz(g: Geloest | undefined, en: boolean): string {
+/** The owner should see what an intruder might have created and what was removed. */
+function sideEffectsSentence(g: ResetSideEffects | undefined, en: boolean): string {
   if (!g) return '';
-  const teile: string[] = [];
+  const parts: string[] = [];
   if (g.haushalt.length)
-    teile.push(
+    parts.push(
       en
         ? `the link to ${g.haushalt.map(n => `“${n}”`).join(', ')} (these accounts could see your collection)`
         : `die Verknüpfung mit ${g.haushalt.map(n => `„${n}“`).join(', ')} (diese Konten sahen deine Sammlung)`,
     );
   if (g.adresse)
-    teile.push(
+    parts.push(
       en
         ? `the pending change of your email address to ${g.adresse}`
         : `die ausstehende Änderung deiner E-Mail-Adresse auf ${g.adresse}`,
     );
   if (g.einladungen)
-    teile.push(en ? `${g.einladungen} open household invitation(s)` : `${g.einladungen} offene Haushaltseinladung(en)`);
-  if (!teile.length) return '';
-  return en ? ` Also removed: ${teile.join('; ')}.` : ` Ausserdem aufgehoben: ${teile.join('; ')}.`;
+    parts.push(en ? `${g.einladungen} open household invitation(s)` : `${g.einladungen} offene Haushaltseinladung(en)`);
+  if (!parts.length) return '';
+  return en ? ` Also removed: ${parts.join('; ')}.` : ` Ausserdem aufgehoben: ${parts.join('; ')}.`;
 }
 
-function uebernahmeSaetze(o: HinweisAngaben, en: boolean) {
-  const u = uebernahme(o, en);
+function takeoverSentences(o: NoticeDetails, en: boolean) {
+  const u = takeover(o, en);
   return {
     uebernahme_angekuendigt: en
       ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough) or open the link below; the change is then dropped.`
@@ -383,9 +383,9 @@ function uebernahmeSaetze(o: HinweisAngaben, en: boolean) {
   };
 }
 
-function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string {
-  const saetze: Record<KontoHinweis, string> = {
-    ...uebernahmeSaetze(o, en),
+function noticeSentence(kind: AccountNotice, o: NoticeDetails, en: boolean): string {
+  const sentences: Record<AccountNotice, string> = {
+    ...takeoverSentences(o, en),
     passkey_neu: en
       ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
       : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,
@@ -394,7 +394,7 @@ function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string 
       (en
         ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
         : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.') +
-      geloestSatz(o.geloest, en),
+      sideEffectsSentence(o.resolved, en),
     token_neu: en
       ? `a new app token (“${o.passkey ?? ''}”) was created for your account.`
       : `für dein Konto wurde ein neuer App-Zugang („${o.passkey ?? ''}“) erzeugt.`,
@@ -447,19 +447,19 @@ function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string 
       ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
       : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   };
-  return saetze[art];
+  return sentences[kind];
 }
 
-export async function sendKontoHinweisMail(
-  k: MailKontext,
+export async function sendAccountNoticeMail(
+  k: MailContext,
   to: string,
   username: string,
-  art: KontoHinweis,
-  o: HinweisAngaben & { lang?: string; haushalt?: string[] } = {},
+  kind: AccountNotice,
+  o: NoticeDetails & { lang?: string; haushalt?: string[] } = {},
 ) {
-  const theme = await mailDesign(k);
+  const theme = await mailTheme(k);
   const en = o.lang === 'en';
-  const was = hinweisSatz(art, o, en);
+  const was = noticeSentence(kind, o, en);
   const subject = en
     ? 'BrickInventory Manager — Change to your account'
     : 'BrickInventory Manager — Änderung an deinem Konto';
@@ -471,23 +471,23 @@ export async function sendKontoHinweisMail(
   const note = en
     ? 'If this was not you, reset your password via “Forgot password”, check Menu → Account and Menu → Household — or ask the administrator.'
     : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Menü → Konto und Menü → Haushalt — oder wende dich an den Administrator.';
-  const hallo = en ? 'Hello' : 'Hallo';
-  const basis = basisUrl();
+  const hello = en ? 'Hello' : 'Hallo';
+  const base = basisUrl();
   const link =
-    basis && o.abbruch
+    base && o.abbruch
       ? {
-          url: `${basis}/uebernahme-abbrechen#token=${o.abbruch}`,
-          knopf: en ? 'Cancel the change' : 'Änderung abbrechen',
+          url: `${base}/uebernahme-abbrechen#token=${o.abbruch}`,
+          button: en ? 'Cancel the change' : 'Änderung abbrechen',
         }
-      : basis && o.freigabe
+      : base && o.freigabe
         ? {
-            url: `${basis}/anmeldung-freigeben#token=${o.freigabe}`,
-            knopf: en ? 'Allow this sign-in' : 'Anmeldung freigeben',
+            url: `${base}/anmeldung-freigeben#token=${o.freigabe}`,
+            button: en ? 'Allow this sign-in' : 'Anmeldung freigeben',
           }
         : null;
-  const text = `${hallo} ${username},\n\n${was}\n${link ? `\n${link.url}\n` : ''}${haushalt ? `\n${haushalt}\n` : ''}\n${note}\n\nBrickInventory Manager`;
-  const html = `<p style="margin:0 0 8px">${hallo} <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">${esc(was)}</p>${link ? emailBtn(link.url, link.knopf, theme) : ''}${haushalt ? `<p style="margin:0 0 16px">${esc(haushalt)}</p>` : ''}`;
+  const text = `${hello} ${username},\n\n${was}\n${link ? `\n${link.url}\n` : ''}${haushalt ? `\n${haushalt}\n` : ''}\n${note}\n\nBrickInventory Manager`;
+  const html = `<p style="margin:0 0 8px">${hello} <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">${esc(was)}</p>${link ? emailBtn(link.url, link.button, theme) : ''}${haushalt ? `<p style="margin:0 0 16px">${esc(haushalt)}</p>` : ''}`;
   return sendMail(k, {
     to,
     subject,
@@ -497,9 +497,9 @@ export async function sendKontoHinweisMail(
   });
 }
 
-// Sprache des Kontos, wie alle Mails.
-export async function sendPasswordResetMail(k: MailKontext, to: string, token: string, baseUrl: string, lang = 'de') {
-  const theme = await mailDesign(k);
+// In the account's language, like all mails.
+export async function sendPasswordResetMail(k: MailContext, to: string, token: string, baseUrl: string, lang = 'de') {
+  const theme = await mailTheme(k);
   const url = `${baseUrl}/reset-password#token=${token}`;
   const de = lang !== 'en';
   const L = de
@@ -545,91 +545,91 @@ export async function sendPasswordResetMail(k: MailKontext, to: string, token: s
   });
 }
 
-// Durch emailTemplate() wie die übrigen Mails, damit sie das Design trägt.
-export interface AlarmMailDaten {
+// Through emailTemplate() like the other mails, so it carries the theme.
+export interface AlertMailData {
   username: string;
-  /** Die Sprache des EMPFÄNGERS, nicht die des Servers. */
+  /** The RECIPIENT's language, not the server's. */
   lang: string;
   setNumber: string;
-  /** Fehlt er, trägt die Mail die Nummer. */
+  /** If missing, the mail shows the number. */
   setName?: string | null;
   condition: string;
-  richtung: 'unter' | 'ueber';
-  schwelle: number;
-  preis: number;
-  waehrung: string;
+  direction: 'unter' | 'ueber';
+  threshold: number;
+  price: number;
+  currency: string;
 }
 
-/** Marktpreis und Schwelle gross nebeneinander — die einzige Frage dieser Mail.
- * Tabelle statt flex wegen Outlook. */
-function alarmZahlen(theme: Awaited<ReturnType<typeof mailDesign>>, de: boolean, preis: string, schwelle: string) {
+/** Market price and threshold side by side in large type — the only question of this mail.
+ * A table instead of flex because of Outlook. */
+function alertNumbers(theme: Awaited<ReturnType<typeof mailTheme>>, de: boolean, price: string, threshold: string) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;table-layout:fixed">
     <tr>
       <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
                  padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Marktpreis' : 'Market price'}</div>
-        <div style="font-size:22px;font-weight:700;color:${theme.primary}">${esc(preis)}</div>
+        <div style="font-size:22px;font-weight:700;color:${theme.primary}">${esc(price)}</div>
       </td>
       <td width="12%" style="width:12%;font-size:0;line-height:0">&nbsp;</td>
       <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
                  padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Deine Schwelle' : 'Your threshold'}</div>
-        <div style="font-size:22px;font-weight:700;color:${theme.text}">${esc(schwelle)}</div>
+        <div style="font-size:22px;font-weight:700;color:${theme.text}">${esc(threshold)}</div>
       </td>
     </tr>
   </table>`;
 }
 
-// Ohne APP_BASE_URL sagt die Mail, warum der Knopf fehlt.
-export async function baueAlarmMail(
-  k: MailKontext,
-  d: AlarmMailDaten,
+// Without APP_BASE_URL the mail says why the button is missing.
+export async function buildAlertMail(
+  k: MailContext,
+  d: AlertMailData,
 ): Promise<{ subject: string; text: string; html: string; link?: string }> {
-  const theme = await mailDesign(k);
+  const theme = await mailTheme(k);
   const de = d.lang !== 'en';
-  const geld = (n: number) => `${d.waehrung} ${n.toFixed(2)}`;
-  const zustand = d.condition === 'U' ? (de ? 'gebraucht' : 'used') : de ? 'neu' : 'new';
-  const richtung = d.richtung === 'unter' ? (de ? 'unter' : 'below') : de ? 'über' : 'above';
-  const titel = d.setName || d.setNumber;
+  const money = (n: number) => `${d.currency} ${n.toFixed(2)}`;
+  const condition = d.condition === 'U' ? (de ? 'gebraucht' : 'used') : de ? 'neu' : 'new';
+  const direction = d.direction === 'unter' ? (de ? 'unter' : 'below') : de ? 'über' : 'above';
+  const title = d.setName || d.setNumber;
 
-  // Der Link ist OPTIONAL: Der Preislauf hat keine Anfrage; ohne APP_BASE_URL
-  // bleibt die Mail ohne Knopf, statt auf einen geratenen Host zu zeigen.
-  const basis = basisUrl();
-  if (!basis)
-    hinweisOhneBasisUrl(
+  // The link is OPTIONAL: the price run has no request; without APP_BASE_URL
+  // the mail goes out without a button instead of pointing at a guessed host.
+  const base = basisUrl();
+  if (!base)
+    hintWithoutBaseUrl(
       'mailer',
       'die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link.',
     );
-  const url = basis ? `${basis}/?set=${encodeURIComponent(d.setNumber)}` : '';
+  const url = base ? `${base}/?set=${encodeURIComponent(d.setNumber)}` : '';
 
   const subject = de
-    ? `Preisalarm: ${d.setNumber} liegt ${richtung} ${geld(d.schwelle)}`
-    : `Price alert: ${d.setNumber} is ${richtung} ${geld(d.schwelle)}`;
+    ? `Preisalarm: ${d.setNumber} liegt ${direction} ${money(d.threshold)}`
+    : `Price alert: ${d.setNumber} is ${direction} ${money(d.threshold)}`;
 
-  // Der Klartext geht als text/plain mit; manche Programme zeigen nur ihn.
+  // The plain text goes along as text/plain; some clients show only that.
   const text = de
     ? `Hallo ${d.username},\n\n` +
-      `der Marktpreis für ${d.setNumber} (${zustand}) liegt bei ${geld(d.preis)} ` +
-      `und damit ${richtung} deiner Schwelle von ${geld(d.schwelle)}.\n\n` +
+      `der Marktpreis für ${d.setNumber} (${condition}) liegt bei ${money(d.price)} ` +
+      `und damit ${direction} deiner Schwelle von ${money(d.threshold)}.\n\n` +
       `Diese Meldung kommt einmal je Übergang: Erst wenn der Preis wieder auf ` +
       `die andere Seite wechselt, kann sie erneut ausgelöst werden.\n`
     : `Hi ${d.username},\n\n` +
-      `the market price for ${d.setNumber} (${zustand}) is ${geld(d.preis)}, ` +
-      `which is ${richtung} your threshold of ${geld(d.schwelle)}.\n\n` +
+      `the market price for ${d.setNumber} (${condition}) is ${money(d.price)}, ` +
+      `which is ${direction} your threshold of ${money(d.threshold)}.\n\n` +
       `You get this once per crossing: it can only trigger again after the ` +
       `price has moved back to the other side.\n`;
 
-  const zahlen = alarmZahlen(theme, de, geld(d.preis), geld(d.schwelle));
+  const numbers = alertNumbers(theme, de, money(d.price), money(d.threshold));
 
-  const einleitung = de
+  const intro = de
     ? `<p style="margin:0 0 8px">Hallo <strong>${esc(d.username)}</strong>,</p>
-       <p style="margin:0 0 20px">der Marktpreis für <strong>${esc(titel)}</strong>
-          (${esc(d.setNumber)}, ${esc(zustand)}) liegt <strong>${esc(richtung)}</strong> deiner Schwelle.</p>`
+       <p style="margin:0 0 20px">der Marktpreis für <strong>${esc(title)}</strong>
+          (${esc(d.setNumber)}, ${esc(condition)}) liegt <strong>${esc(direction)}</strong> deiner Schwelle.</p>`
     : `<p style="margin:0 0 8px">Hi <strong>${esc(d.username)}</strong>,</p>
-       <p style="margin:0 0 20px">the market price for <strong>${esc(titel)}</strong>
-          (${esc(d.setNumber)}, ${esc(zustand)}) is <strong>${esc(richtung)}</strong> your threshold.</p>`;
+       <p style="margin:0 0 20px">the market price for <strong>${esc(title)}</strong>
+          (${esc(d.setNumber)}, ${esc(condition)}) is <strong>${esc(direction)}</strong> your threshold.</p>`;
 
-  const hinweis = de
+  const notice = de
     ? 'Diese Meldung kommt <strong>einmal je Übergang</strong>. Erst wenn der Preis wieder auf die andere Seite wechselt, kann sie erneut ausgelöst werden.'
     : 'You get this <strong>once per crossing</strong>. It can only trigger again after the price has moved back to the other side.';
 
@@ -640,12 +640,12 @@ export async function baueAlarmMail(
     html: emailTemplate(
       de ? 'Preisalarm' : 'Price alert',
       de
-        ? `${d.setNumber} liegt ${richtung} ${geld(d.schwelle)}.`
-        : `${d.setNumber} is ${richtung} ${geld(d.schwelle)}.`,
-      `${einleitung}
-       ${zahlen}
+        ? `${d.setNumber} liegt ${direction} ${money(d.threshold)}.`
+        : `${d.setNumber} is ${direction} ${money(d.threshold)}.`,
+      `${intro}
+       ${numbers}
        ${url ? emailBtn(url, de ? '🔔  Set ansehen' : '🔔  View set', theme) : ''}
-       ${infoBox(hinweis, theme)}
+       ${infoBox(notice, theme)}
        ${DIVIDER}
        <p style="margin:0;font-size:13px;color:#6b7280">
          ${
@@ -659,9 +659,9 @@ export async function baueAlarmMail(
   };
 }
 
-/** Erst die Verbindung, dann eine Probe an `to`; Betreff und Text gehören zum Versand, nicht zur Route. */
-/** Eine Absage bei der Prüfung des Servers wirft; der Versand selbst liefert, wie er ging. */
-export async function sendeSmtpTest(k: MailKontext, to: string) {
+/** First the connection, then a probe to `to`; subject and text belong to sending, not to the route. */
+/** A rejection while checking the server throws; sending itself reports how it went. */
+export async function sendSmtpTest(k: MailContext, to: string) {
   const verify = await testSmtp(k);
   if ('code' in verify) fachfehler('ungueltig', verify.code, 'vars' in verify ? verify.vars : undefined);
   return sendMail(k, {

@@ -5,20 +5,20 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Absicherung der Ziel-Plattform (SDK 36 / Android 16).
+ * Safeguarding of the target platform (SDK 36 / Android 16).
  *
- * Der Sprung von 35 auf 36 ist deshalb harmlos, weil das Manifest bestimmte
- * Dinge NICHT tut. Genau das prüft diese Klasse — sonst fällt es erst auf
- * einem Tablet oder beim Zurückwischen auf.
+ * The jump from 35 to 36 is harmless because the manifest does NOT do certain
+ * things. Exactly that is what this class checks — otherwise it only stands out on
+ * a tablet or when swiping back.
  *
- * Die SDK-Stände stehen in build-logic (Sdk.kt); ein Modulskript darf sie nicht
- * überschreiben, sonst prüfte diese Klasse eine Zahl, die nicht gilt.
- * Gegenproben (Patches unter gegenproben/, am 04.11.2026 rot wie angegeben):
- *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt auf 31 → rot „minSdk ist Android 11“
+ * The SDK levels stand in build-logic (Sdk.kt); a module script must not
+ * override them, otherwise this class would check a number that does not apply.
+ * Counter-checks (patches under gegenproben/, red as stated on 04.11.2026):
+ *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt to 31 → red “minSdk is Android 11“
  */
 class TargetSdkConfigTest {
 
-    private val buildLogic = File(Quellen.projekt, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
+    private val buildLogic = File(Quellen.project, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
 
     private val gradle: String by lazy {
         val f = File(buildLogic, "Sdk.kt")
@@ -32,7 +32,7 @@ class TargetSdkConfigTest {
         f.readText()
     }
 
-    /** XML-Kommentare ausblenden — die Erklärtexte nennen die Muster selbst. */
+    /** Hide XML comments — the explanatory texts name the patterns themselves. */
     private fun xmlCode(s: String) =
         s.replace(Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL), "")
 
@@ -40,29 +40,29 @@ class TargetSdkConfigTest {
         s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
 
     private fun intAfter(key: String): Int {
-        val m = Regex("""\b$key\s*=\s*(\d+)""").find(Quellen.ohneKommentare(gradle))
+        val m = Regex("""\b$key\s*=\s*(\d+)""").find(Quellen.withoutComments(gradle))
         assert(m != null) { "$key nicht in Sdk.kt gefunden" }
         return m!!.groupValues[1].toInt()
     }
 
     @Test
-    fun `kein Modulskript setzt die SDK-Stände selbst`() {
-        val skripte = Quellen.module.map { File(it, "build.gradle.kts") }
-        assert(skripte.size >= 12) { "Nur ${skripte.size} Modulskripte gefunden — Suche veraltet?" }
+    fun `no module script sets the SDK levels itself`() {
+        val scripts = Quellen.module.map { File(it, "build.gradle.kts") }
+        assert(scripts.size >= 12) { "Nur ${scripts.size} Modulskripte gefunden — Suche veraltet?" }
         val setzen = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=""")
-        val eigene = skripte.filter { setzen.containsMatchIn(Quellen.ohneKommentare(it.readText())) }
+        val eigene = scripts.filter { setzen.containsMatchIn(Quellen.withoutComments(it.readText())) }
             .map { it.parentFile!!.name }
         assert(eigene.isEmpty()) { "Diese Module setzen SDK-Stände selbst statt über build-logic: $eigene" }
-        // Und die Konventionen nehmen sie aus Sdk.kt, nicht als eigene Zahl.
-        val konventionen = buildLogic.listFiles { f -> f.extension == "kt" && f.name != "Sdk.kt" }.orEmpty()
-        assert(konventionen.size >= 2) { "Keine Konventionen unter ${buildLogic.path}" }
+        // And the conventions take them from Sdk.kt, not as their own number.
+        val conventions = buildLogic.listFiles { f -> f.extension == "kt" && f.name != "Sdk.kt" }.orEmpty()
+        assert(conventions.size >= 2) { "Keine Konventionen unter ${buildLogic.path}" }
         val zahl = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=\s*\d""")
-        val fest = konventionen.filter { zahl.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.name }
+        val fest = conventions.filter { zahl.containsMatchIn(Quellen.withoutComments(it.readText())) }.map { it.name }
         assert(fest.isEmpty()) { "SDK-Stand als Zahl neben Sdk.kt: $fest" }
     }
 
     @Test
-    fun `compileSdk und targetSdk sind 36 und identisch`() {
+    fun `compileSdk and targetSdk are 36 and identical`() {
         val compile = intAfter("compileSdk")
         val target = intAfter("targetSdk")
         assert(target >= 36) { "targetSdk ist $target, erwartet mindestens 36" }
@@ -73,11 +73,11 @@ class TargetSdkConfigTest {
         }
     }
 
-    // Android 11 als Untergrenze: Darunter keine Sicherheitsupdates, und
-    // erst ab 30 bindet die Gerätesperre einen Keystore-Schlüssel samt PIN/Muster
-    // (Schrittschutz). Wer sie senkt, holt die Sonderwege für 8 bis 10 zurück.
+    // Android 11 as the lower bound: below it no security updates, and
+    // only from 30 does the device lock bind a keystore key including PIN/pattern
+    // (Schrittschutz). Whoever lowers it brings back the special paths for 8 to 10.
     @Test
-    fun `minSdk ist Android 11`() {
+    fun `minSdk is Android 11`() {
         assert(intAfter("minSdk") == 30) {
             "minSdk ist nicht mehr 30. Gesenkt fehlt die schlüsselgebundene Gerätesperre " +
                 "für PIN und Muster; gehoben fallen Geräte weg, ohne dass es jemand entschieden hat."
@@ -85,7 +85,7 @@ class TargetSdkConfigTest {
     }
 
     @Test
-    fun `das Manifest erzwingt keine Ausrichtung und keine feste Groesse`() {
+    fun `the manifest forces no orientation and no fixed size`() {
         val m = xmlCode(manifest)
         for (attr in listOf("android:screenOrientation", "android:resizeableActivity")) {
             assert(!m.contains(attr)) {
@@ -97,7 +97,7 @@ class TargetSdkConfigTest {
     }
 
     @Test
-    fun `vorhersagendes Zurueck ist ausgeschrieben`() {
+    fun `predictive back is opted in`() {
         val m = xmlCode(manifest)
         assert(m.contains("android:enableOnBackInvokedCallback")) {
             "enableOnBackInvokedCallback fehlt im Manifest. Unter targetSdk 36 ist es " +
@@ -107,15 +107,15 @@ class TargetSdkConfigTest {
     }
 
     /**
-     * Wird ein BackHandler eingeführt, muss vorhersagendes Zurückwischen auf
-     * dem Gerät nachgeprüft werden — bis dahin überlässt die App Zurück
-     * komplett der Navigation-Compose-Voreinstellung.
+     * If a BackHandler is introduced, predictive back swiping must be re-checked on
+     * the device — until then the app leaves back
+     * completely to the Navigation Compose default.
      */
     @Test
-    fun `es gibt weiterhin keinen eigenen BackHandler`() {
-        // Untergrenze: Diese Prüfung behauptet eine ABWESENHEIT.
-        // Fände der Dateilauf nichts, wäre sie grün — und zwar genau dann,
-        // wenn sie am wenigsten wert ist.
+    fun `there is still no own BackHandler`() {
+        // Lower bound: this check claims an ABSENCE.
+        // If the file walk found nothing, it would be green — exactly when
+        // it is worth least.
         val hits = Quellen.alle()
             .asSequence()
             .filter { kotlinCode(it.readText()).contains("BackHandler(") }

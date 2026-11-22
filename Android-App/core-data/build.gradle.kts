@@ -1,7 +1,7 @@
-// Netz (Retrofit, OkHttp), DataStore, Repositories, das Senden des Ausgangs und
-// die Hilt-Module dafür. Room und Offlineablage liegen in core-offline, Tresor und
-// TLS-Vertrauen in core-sicherheit. Kennt keine Oberfläche: Was die App beisteuern
-// muss (Startziel, AppFassung), kommt über Hilt herein.
+// Network (Retrofit, OkHttp), DataStore, repositories, sending the outbox and
+// the Hilt modules for it. Room and the offline store lie in core-offline, vault and
+// TLS trust in core-security. Knows no UI: what the app has to contribute
+// (start destination, AppVersion) comes in via Hilt.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -16,47 +16,47 @@ android {
         buildConfig = true
     }
 
-    // Die Robolectric-Tests lesen die Ressourcen.
+    // The Robolectric tests read the resources.
     testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
     api(project(":core-model"))
-    // Nur innen: Die Repositories bilden das Wire-Format auf Fach- und Ansichtstypen ab.
-    implementation(project(":core-vertrag"))
-    // Wächter und Netzrichtlinie. Wer selbst etwas daraus nennt (NetworkPolicy, Protokoll),
-    // bindet core-netz selbst ein; über core-data reicht nichts davon hinaus.
-    implementation(project(":core-netz"))
-    // Tresor, Ablageschlüssel und TLS-Vertrauen; die Bereiche, die davon etwas zeigen, nennen es selbst.
-    implementation(project(":core-sicherheit"))
-    // Room und Offlineablage nur innen: Die Repositories liefern Lokal aus core-model,
-    // den Ausgang sieht die Oberfläche über Ausgangslage.
+    // Only internally: the repositories map the wire format to domain and view types.
+    implementation(project(":core-contract"))
+    // Guards and network policy. Whoever names something from it themselves (NetworkPolicy, Protokoll)
+    // includes core-network themselves; nothing of it reaches beyond core-data.
+    implementation(project(":core-network"))
+    // Vault, store key and TLS trust; the areas that show something of it name it themselves.
+    implementation(project(":core-security"))
+    // Room and offline store only internally: the repositories deliver Lokal from core-model,
+    // the UI sees the outbox via Ausgangslage.
     implementation(project(":core-offline"))
-    implementation(project(":core-ressourcen"))
+    implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
-    // Netz nur als implementation: Kein Modul darüber soll OkHttp oder Retrofit sehen,
-    // es nimmt die Repositories. Tests bekommen beides über core-testing.
+    // Network only as implementation: no module above should see OkHttp or Retrofit,
+    // it takes the repositories. Tests get both via core-testing.
     implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp.logging)
     implementation(libs.okhttp.sse)
-    // Coil, DataStore und WorkManager nur hier: Bereiche bekommen Coil über Compose,
-    // wer DataStore oder WorkManager selbst nennt (App, core-dienste, core-update), bindet sie selbst ein.
+    // Coil, DataStore and WorkManager only here: areas get Coil via Compose,
+    // whoever names DataStore or WorkManager themselves (app, core-services, core-update) includes them themselves.
     implementation(libs.coil.core)
     implementation(libs.coil.network.okhttp)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.work)
-    // @HiltWorker: Die Worker bekommen ihre Abhängigkeiten im Konstruktor.
+    // @HiltWorker: the workers get their dependencies in the constructor.
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.appcompat)
 
     testImplementation(project(":core-testing"))
-    // AbmeldenRaeumtAllesTest prüft das Abmelden samt Sitzung und Blickfeld.
-    testImplementation(project(":core-zustand"))
-    testImplementation(project(":core-sitzung"))
-    // Robolectric-Tests (BestandDatenbankTest, Ablagen, Netz-Clients).
+    // SignOutCleansEverythingTest checks sign-out including session and view.
+    testImplementation(project(":core-state"))
+    testImplementation(project(":core-session"))
+    // Robolectric-Tests (InventoryDatabaseTest, Ablagen, Netz-Clients).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
 }

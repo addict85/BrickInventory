@@ -1,17 +1,17 @@
 Gegenprobe: ThemeRow ohne Optionsfeld-Rolle
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitTest
-Rot: Themen- und Jahreswahl melden Rolle und Wahl
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: theme and year choice announce role and selection
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
 @@ -416,7 +416,7 @@ fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
          shape = Formen.kachel,
          color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                  else androidx.compose.ui.graphics.Color.Transparent,
--        modifier = Modifier.fillMaxWidth().fokusRahmen(Formen.kachel).semantics { role = Role.RadioButton }
-+        modifier = Modifier.fillMaxWidth().fokusRahmen(Formen.kachel)
+-        modifier = Modifier.fillMaxWidth().focusFrame(Formen.kachel).semantics { role = Role.RadioButton }
++        modifier = Modifier.fillMaxWidth().focusFrame(Formen.kachel)
      ) {
          Row(
              Modifier.padding(horizontal = Abstaende.mittel, vertical = 11.dp),

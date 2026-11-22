@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.ui.util.fmtAmount
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
-import ch.brickinventoryapp.model.util.zahlenLocale
+import ch.brickinventoryapp.model.util.numbersLocale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
@@ -14,49 +14,49 @@ import java.util.Locale
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Zahlen und Beträge kommen aus EINER Fassung — und die folgt der App-Sprache.
+ * Numbers and amounts come from ONE version — and it follows the app language.
  *
- * Gegenproben Teil 3 :
- *   A  zahlenLocale() wieder fest de-CH/en-GB → rot „de-DE schreibt Punkt und
- *      Komma …“ und „ohne passende Landesform …“ (de-AT)
- *   B  das Land ohne Sprachprüfung übernommen → rot „ohne passende Landesform …“
- *      (de mit Gerät en-US ergab de-US)
- *   C  in fmtEingabe() isGroupingUsed nicht abgeschaltet → rot „ein Eingabefeld
+ * Counter-checks part 3:
+ *   A  numbersLocale() fixed back to de-CH/en-GB → red „de-DE schreibt Punkt und
+ *      Komma …“ and „ohne passende Landesform …“ (de-AT)
+ *   B  the country taken without a language check → red „ohne passende Landesform …“
+ *      (de with device en-US gave de-US)
+ *   C  isGroupingUsed not turned off in fmtEingabe() → red „ein Eingabefeld
  *      bekommt den Betrag ohne Tausendertrennung zurück“
- *   D  in AcquisitionManagementScreen.kt wieder "%.2f".format → rot „keine
+ *   D  "%.2f".format back in AcquisitionManagementScreen.kt → red „keine
  *      Ansicht setzt Betrag und Währung selbst zusammen“
  */
 class NumberFormatTest {
 
     private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.root, "$rel").readText()
 
-    /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
+    /** Hide comments line by line — otherwise the explanatory text itself keeps the check green. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
-    // ── Teil 1: die Regel ────────────────────────────────────────────────────
+    // ── Part 1: the rule ────────────────────────────────────────────────────
 
     @Test
-    fun `keine Ansicht setzt Betrag und Waehrung selbst zusammen`() {
-        val schirme = listOf(
+    fun `no view assembles amount and currency itself`() {
+        val screens = listOf(
             "app/AppNavigation.kt",
-            "teile/ui/screens/PartsScreen.kt",
-            "teile/ui/screens/TeileFilterBlatt.kt",
-            "teile/ui/screens/TeileKarte.kt",
-            "finanzen/ui/screens/FinanceScreen.kt",
-            "sammlung/ui/screens/SetDetailScreen.kt",
-            "gemeinsam/ui/SetDetailComponents.kt",
-            "gemeinsam/ui/ManualItemComposables.kt",
-            "teile/ui/screens/ManualItemDetailScreen.kt",
-            "sammlung/ui/screens/AcquisitionManagementScreen.kt",
-            "sammlung/ui/screens/GalleryScreen.kt",
-            "sammlung/ui/screens/GalerieFilter.kt",
-            "sammlung/ui/screens/GalerieKarte.kt",
-            "sammlung/ui/screens/GalerieErfassen.kt",
-            "konto/ui/screens/EinstellungenAlarme.kt",
+            "parts/ui/screens/PartsScreen.kt",
+            "parts/ui/screens/TeileFilterBlatt.kt",
+            "parts/ui/screens/TeileKarte.kt",
+            "finances/ui/screens/FinanceScreen.kt",
+            "collection/ui/screens/SetDetailScreen.kt",
+            "shared/ui/SetDetailComponents.kt",
+            "shared/ui/ManualItemComposables.kt",
+            "parts/ui/screens/ManualItemDetailScreen.kt",
+            "collection/ui/screens/AcquisitionManagementScreen.kt",
+            "collection/ui/screens/GalleryScreen.kt",
+            "collection/ui/screens/GalerieFilter.kt",
+            "collection/ui/screens/GalerieKarte.kt",
+            "collection/ui/screens/GalerieErfassen.kt",
+            "account/ui/screens/EinstellungenAlarme.kt",
         )
-        for (f in schirme) {
+        for (f in screens) {
             val c = code(read(f))
             assert(!c.contains("fmtSwissAmount") && !c.contains("fmtSwissInt")) {
                 "$f benutzt noch die alte, fest auf de-CH genagelte Fassung"
@@ -65,7 +65,7 @@ class NumberFormatTest {
                 "$f baut sich das Währungssymbol selbst — das gehört in fmtMoney(), " +
                     "sonst steht es hier vor und anderswo hinter dem Betrag"
             }
-            // Das Dollarzeichen steht als ${'$'} und nicht als Backslash-$.
+            // The dollar sign is written as ${'$'} and not as a backslash-$.
             assert(!Regex("""\{[^}]*fmt[A-Za-z]*\([^)]*\)[^}]*\}\s*\${'$'}currency""").containsMatchIn(c)) {
                 "$f hängt den Währungscode von Hand an einen formatierten Betrag"
             }
@@ -79,47 +79,47 @@ class NumberFormatTest {
     }
 
     /**
-     * Die Stellung von Symbol und Betrag ist Sache der Landesform (getCurrencyInstance);
-     * von Hand zusammengesetzt stünde das Symbol überall auf derselben Seite.
-     * Gegenprobe betrag-symbol-von-hand (Symbol vor fmtAmount(); kotlinc) → rot hier.
+     * The placement of symbol and amount is up to the locale (getCurrencyInstance);
+     * assembled by hand, the symbol would stand on the same side everywhere.
+     * Counter-check betrag-symbol-von-hand (symbol before fmtAmount(); kotlinc) → red here.
      */
     @Test
-    fun `die Gegenrichtung bleibt Sache der Plattform`() {
-        mitGeraet("de-DE") { assertEquals("812,50\u00A0€", fmtMoney(812.5, Waehrung("EUR"))) }
-        mitGeraet("en-GB") { assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR"))) }
+    fun `the opposite direction stays the platform's business`() {
+        withDevice("de-DE") { assertEquals("812,50\u00A0€", fmtMoney(812.5, Waehrung("EUR"))) }
+        withDevice("en-GB") { assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR"))) }
     }
 
-    // ── Teil 2: das Ergebnis ─────────────────────────────────────────────────
+    // ── Part 2: the result ─────────────────────────────────────────────────
 
     @Test
-    fun `Betraege enthalten Zahl und Waehrung`() {
+    fun `amounts contain number and currency`() {
         val s = fmtMoney(1234.5, Waehrung("CHF"))
         assert(s.contains("1") && s.contains("234")) { "Der Betrag fehlt: $s" }
         assert(s.contains("CHF") || s.contains("Fr")) { "Die Währung fehlt: $s" }
-        // Zwei Nachkommastellen, wie in der Webapp (minimumFractionDigits: 2).
+        // Two decimal places, as in the web app (minimumFractionDigits: 2).
         assert(Regex("""[.,]\d{2}(\D|$)""").containsMatchIn(s)) {
             "Es fehlen die zwei Nachkommastellen: $s"
         }
     }
 
     @Test
-    fun `ein unbekannter Waehrungscode sprengt die Anzeige nicht`() {
-        // Kommt vor, wenn der Server einen Code liefert, den die Plattform
-        // nicht kennt. Vorher fiel das in ein catch, das eine ZWEITE
-        // Schreibweise erzeugte — jetzt ist der Rückfall Teil derselben Fassung.
+    fun `an unknown currency code does not break the display`() {
+        // Happens when the server delivers a code the platform doesn't
+        // know. It used to fall into a catch that produced a SECOND
+        // spelling — now the fallback is part of the same version.
         val s = fmtMoney(10.0, Waehrung("XYZ123"))
         assert(s.contains("10")) { "Der Betrag muss auch ohne bekannte Währung erscheinen: $s" }
     }
 
     @Test
-    fun `fehlender Betrag ergibt einen Gedankenstrich`() {
+    fun `a missing amount gives a dash`() {
         assertEquals("—", fmtMoneyOrDash(null as String?, Waehrung("CHF")))
         assertEquals("—", fmtMoneyOrDash("keine Zahl", Waehrung("CHF")))
         assert(fmtMoneyOrDash("12.5", Waehrung("CHF")).contains("12")) { "gültiger Wert muss durchkommen" }
     }
 
     @Test
-    fun `Zahlen ohne Waehrung tragen eine Tausendertrennung`() {
+    fun `numbers without currency carry a thousands separator`() {
         val i = fmtInt(60000)
         assert(i.length > 5) { "60000 sollte getrennt werden, war: $i" }
         assert(i.contains("60")) { "unerwartete Ausgabe: $i" }
@@ -127,53 +127,53 @@ class NumberFormatTest {
         assert(Regex("""[.,]\d{2}$""").containsMatchIn(a)) { "zwei Nachkommastellen erwartet: $a" }
     }
 
-    // ── Teil 3: die Landesform folgt dem Gerät, wie im Web ──────────────────
+    // ── Part 3: the locale follows the device, as in the web ──────────────
 
-    private fun mitGeraet(tag: String, block: () -> Unit) {
+    private fun withDevice(tag: String, block: () -> Unit) {
         val vorher = Locale.getDefault()
         Locale.setDefault(Locale.forLanguageTag(tag))
         try { block() } finally { Locale.setDefault(vorher) }
     }
 
     @Test
-    fun `de-DE schreibt Punkt und Komma, de-CH Hochkomma und Punkt`() {
-        mitGeraet("de-DE") { assertEquals("4.894,77", fmtAmount(4894.77)) }
-        mitGeraet("de-CH") { assertEquals("4\u2019894.77", fmtAmount(4894.77)) }
-        mitGeraet("en-US") { assertEquals("4,894.77", fmtAmount(4894.77)) }
+    fun `de-DE writes point and comma, de-CH apostrophe and point`() {
+        withDevice("de-DE") { assertEquals("4.894,77", fmtAmount(4894.77)) }
+        withDevice("de-CH") { assertEquals("4\u2019894.77", fmtAmount(4894.77)) }
+        withDevice("en-US") { assertEquals("4,894.77", fmtAmount(4894.77)) }
     }
 
     @Test
-    fun `ein Eingabefeld bekommt den Betrag ohne Tausendertrennung zurueck`() {
-        mitGeraet("de-DE") { assertEquals("4894,77", fmtEingabe(4894.77)) }
-        mitGeraet("de-CH") { assertEquals("4894.77", fmtEingabe(4894.77)) }
-        // So liest AcquisitionManagementRow das Feld beim Speichern.
-        mitGeraet("de-DE") { assertEquals(4894.77, fmtEingabe(4894.77).replace(',', '.').toDouble(), 0.0) }
+    fun `an input field gets the amount back without thousands separator`() {
+        withDevice("de-DE") { assertEquals("4894,77", fmtEingabe(4894.77)) }
+        withDevice("de-CH") { assertEquals("4894.77", fmtEingabe(4894.77)) }
+        // This is how AcquisitionManagementRow reads the field on save.
+        withDevice("de-DE") { assertEquals(4894.77, fmtEingabe(4894.77).replace(',', '.').toDouble(), 0.0) }
     }
 
     @Test
-    fun `ohne passende Landesform gelten de-CH und en-GB`() {
+    fun `without a matching country form de-CH and en-GB apply`() {
         val de = Locale.forLanguageTag("de")
-        assertEquals("de-CH", zahlenLocale(de, Locale.forLanguageTag("en-US")).toLanguageTag())
-        assertEquals("de-CH", zahlenLocale(de, de).toLanguageTag())
-        assertEquals("en-GB", zahlenLocale(Locale.forLanguageTag("fr-FR"), Locale.forLanguageTag("fr-FR")).toLanguageTag())
+        assertEquals("de-CH", numbersLocale(de, Locale.forLanguageTag("en-US")).toLanguageTag())
+        assertEquals("de-CH", numbersLocale(de, de).toLanguageTag())
+        assertEquals("en-GB", numbersLocale(Locale.forLanguageTag("fr-FR"), Locale.forLanguageTag("fr-FR")).toLanguageTag())
         assertEquals("Das Land kommt vom Gerät, die Sprache von der App",
-            "de-AT", zahlenLocale(de, Locale.forLanguageTag("de-AT")).toLanguageTag())
-        assertEquals("en-GB", zahlenLocale(Locale.forLanguageTag("en"), Locale.forLanguageTag("de-DE")).toLanguageTag())
+            "de-AT", numbersLocale(de, Locale.forLanguageTag("de-AT")).toLanguageTag())
+        assertEquals("en-GB", numbersLocale(Locale.forLanguageTag("en"), Locale.forLanguageTag("de-DE")).toLanguageTag())
     }
 
     /**
-     * Wie Intl im Web: „CHF 812.50“ mit festem Leerzeichen, nie „CHF812.50“.
-     * Gegenprobe: mitWaehrungsAbstand() in fmtMoney entfernt →
-     * rot (en-GB ergab „CHF812.50“).
+     * Like Intl in the web: „CHF 812.50“ with a fixed space, never „CHF812.50“.
+     * Counter-check: withCurrencyGap() removed from fmtMoney →
+     * red (en-GB gave „CHF812.50“).
      */
     @Test
-    fun `Waehrungscode und Betrag stehen mit festem Leerzeichen`() {
-        mitGeraet("en-GB") {
+    fun `currency code and amount stand with a non-breaking space`() {
+        withDevice("en-GB") {
             assertEquals("CHF\u00A0812.50", fmtMoney(812.5, Waehrung("CHF")))
             assertEquals("-CHF\u00A012.00", fmtMoney(-12.0, Waehrung("CHF")))
             assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR")))
         }
-        mitGeraet("de-CH") {
+        withDevice("de-CH") {
             val s = fmtMoney(812.5, Waehrung("CHF"))
             assertEquals("CHF\u00A0812.50", s.replace(' ', '\u00A0'))
             assert(!s.contains("\u00A0\u00A0") && !s.contains("  ")) { "doppelter Abstand: $s" }

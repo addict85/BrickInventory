@@ -1,60 +1,60 @@
 /**
- * Passkeys (WebAuthn): Registrieren, Anmelden ohne Passwort und als zweiter
- * Faktor — mit einem in Node erzeugten P-256-Schlüssel, der die Attestation
- * „none“ und jede Assertion selbst signiert. Geprüft wird über die echten
- * Routen gegen eine echte Datenbank.
+ * Passkeys (WebAuthn): registering, logging in without password and as second
+ * factor — with a P-256 key generated in Node that signs the attestation
+ * „none“ and every assertion itself. Checked via the real
+ * routes against a real database.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in loeseChallengeEin() das DELETE … RETURNING durch ein SELECT ersetzt
- *      (Challenge mehrfach gültig) → rot: „eine Antwort gilt nur einmal …“
- *      (beim Passkey ohne Zähler ging die Wiederholung durch)
- *   B  in anmeldungPruefen() zusätzlich 'https://boese.test' als Origin
- *      erlaubt → rot: „fremde Herkunft wird abgewiesen“
- *   C  requireUserVerification beim Anmelden ohne Passwort auf false → rot:
- *      „ohne Passwort braucht es User Verification“
- *   D  in pruefeAnmeldedaten() die Bindung an das Konto weggelassen (uid null)
- *      → rot: „Passkey als zweiter Faktor …“ (Berts Passkey öffnete Annas Konto)
- *   E  gespeicherten Zähler ignoriert (counter: 0, UPDATE ohne Zählerbedingung)
- *      → rot: „… und ein alter Zähler nicht“
- *   F  (31.10.2026) in anmeldungPruefen() `...androidHerkuenfte()` aus
- *      expectedOrigin gestrichen → rot: „die eingetragene App meldet sich an …“
- *   G  (31.10.2026) in /passkey/anmelden `mit_token` überhört (immer false) →
- *      rot: „die eingetragene App meldet sich an …“ (kein Token)
- * Gegenproben (01.11.2026 gemessen):
- *   H  Code-Pflicht in /passkey/registrieren/optionen entfernt → rot: „mit zweitem
- *      Faktor verlangt ein neuer Passkey auch den Code“
- *   I  setzePasswortZurueck() ohne loescheAlleDesKontos → rot: „Zurücksetzen per Mail …“
- *   J  hinweisNebenher() in /reset-password entfernt → rot: „kein Hinweis verschickt“
- *   K  passkeys_widerrufen überhört → rot: „ein Passwortwechsel widerruft Passkeys nur auf Wunsch“
- *   L  (11.11.2026) in speichereChallenge() die Zählbedingung gestrichen → rot:
- *      „über der Obergrenze offener Challenges …“ (200 statt 503)
- * Gegenproben (15.11.2026 gemessen, je einzeln; Anmeldeoptionen jetzt signiert statt abgelegt):
- *   M  in signierteFrist() den Vergleich der Signatur gestrichen → rot: „eine erfundene …“
- *   N  in signierteFrist() den Zweck nicht geprüft → rot: „eine erfundene …“ (zweiter Faktor 200)
- *   O  in anmeldungPruefen() vermerkeVerbraucht() übergangen → rot: „eine Antwort gilt nur einmal …“
- *   P  in speichereChallenge() ohne `WHERE zweck = $3` → rot: „Anmeldeoptionen legen nichts ab …“
- *      (Registrieren 503 bei vollen Anmeldetöpfen)
- *   Q  anmeldeOptionen() zusätzlich mit merkeChallenge() → rot u. a. „Anmeldeoptionen legen
- *      nichts ab …“ (Zeilen angelegt) und jede Anmeldung (der Vermerk trifft die abgelegte Zeile)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in loeseChallengeEin() the DELETE … RETURNING replaced by a SELECT
+ *      (challenge valid several times) → red: “a response only applies once …”
+ *      (with the passkey without a counter the repetition went through)
+ *   B  in anmeldungPruefen() additionally 'https://boese.test' allowed as origin
+ *      → red: “a foreign origin is rejected”
+ *   C  requireUserVerification set to false when logging in without password → red:
+ *      “without password user verification is needed”
+ *   D  in checkCredentials() the binding to the account left out (uid null)
+ *      → red: “passkey as second factor …” (Bert's passkey opened Anna's account)
+ *   E  stored counter ignored (counter: 0, UPDATE without counter condition)
+ *      → red: “… and an old counter does not”
+ *   F  (31.10.2026) in anmeldungPruefen() `...androidOrigins()` deleted from
+ *      expectedOrigin → red: “the registered app logs in …”
+ *   G  (31.10.2026) in /passkey/anmelden `mit_token` ignored (always false) →
+ *      red: “the registered app logs in …” (no token)
+ * Counter-checks (measured 01.11.2026):
+ *   H  code requirement removed in /passkey/registrieren/optionen → red: “with a second
+ *      factor a new passkey also requires the code”
+ *   I  setPasswordBack() without loescheAlleDesKontos → red: “resetting via mail …”
+ *   J  hintInBackground() removed in /reset-password → red: „kein Hinweis verschickt“
+ *   K  passkeys_widerrufen ignored → red: “a password change revokes passkeys only on request”
+ *   L  (11.11.2026) in speichereChallenge() the count condition deleted → red:
+ *      “above the upper limit of open challenges …” (200 instead of 503)
+ * Counter-checks (measured 15.11.2026, each on its own; login options now signed instead of stored):
+ *   M  in signierteFrist() the comparison of the signature deleted → red: “an invented …”
+ *   N  in signierteFrist() the purpose not checked → red: “an invented …” (second factor 200)
+ *   O  in anmeldungPruefen() vermerkeVerbraucht() skipped → red: “a response only applies once …”
+ *   P  in speichereChallenge() without `WHERE zweck = $3` → red: “login options store nothing …”
+ *      (registering 503 with full login pots)
+ *   Q  anmeldeOptionen() additionally with merkeChallenge() → red among others “login options store
+ *      nothing …” (rows created) and every login (the note hits the stored row)
  *
- * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
+ * Prerequisite: test DB (contents are touched!) via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
-umgebung({ APP_BASE_URL: 'https://lego.test' });
+environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+environment({ APP_BASE_URL: 'https://lego.test' });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const zf = _req('src/factors/secondFactor.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -69,7 +69,7 @@ const ORIGIN = 'https://lego.test',
 const b64u = b => Buffer.from(b).toString('base64url');
 const sha = b => crypto.createHash('sha256').update(b).digest();
 
-/** Ein Authenticator aus einem Schlüsselpaar: erzeugt Attestation und Assertions. */
+/** An authenticator from a key pair: produces attestation and assertions. */
 function authenticator() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const jwk = publicKey.export({ format: 'jwk' });
@@ -123,8 +123,8 @@ function authenticator() {
         response: { clientDataJSON: b64u(client), attestationObject: b64u(att), transports: ['internal'] },
       };
     },
-    /** @param challenge @param {object} [o] @param [o.uv] User Verification gesetzt @param [o.zaehler] fester Zählerstand
-     *  @param {string} [o.origin] Herkunft der Anmeldung */
+    /** @param challenge @param {object} [o] @param [o.uv] user verification set @param [o.zaehler] fixed counter value
+     *  @param {string} [o.origin] origin of the login */
     anmelden(challenge, o = {}) {
       const origin = o.origin ?? ORIGIN;
       const stand = o.zaehler ?? ++zaehler;
@@ -143,7 +143,7 @@ function authenticator() {
 }
 
 test('Passkeys', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const hash = await bcrypt.hash(PASS, 4);
   const ids = {};
@@ -168,11 +168,10 @@ test('Passkeys', { concurrency: 1 }, async t => {
   );
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
-      .anmeldungAmEingang,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}/api/v1/auth`;
   t.after(async () => {
@@ -194,7 +193,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     };
   };
   const sitzung = async name => (await ruf('/login', { username: name, password: PASS, ohne_token: true })).cookie;
-  const registriere = async (name, schluessel) => {
+  const register = async (name, schluessel) => {
     const c = await sitzung(name);
     const o = await ruf('/passkey/registrieren/optionen', { password: PASS }, c);
     assert.equal(o.status, 200, JSON.stringify(o.body));
@@ -211,11 +210,11 @@ test('Passkeys', { concurrency: 1 }, async t => {
 
   const anna = authenticator(),
     bert = authenticator(),
-    ohneZaehler = authenticator();
+    withoutCounter = authenticator();
   let annaCodes = [];
 
-  await t.test('registrieren und ohne Passwort anmelden', async () => {
-    const c = await registriere('pk_anna', anna);
+  await t.test('register and log in without password', async () => {
+    const c = await register('pk_anna', anna);
     const liste = await ruf('/passkeys', undefined, c);
     assert.equal(liste.body.passkeys.length, 1);
     assert.equal(liste.body.passkeys[0].name, 'Laptop');
@@ -227,26 +226,26 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(ich.body.user.id, ids.pk_anna, 'Die Anmeldung legt eine Sitzung an');
   });
 
-  await t.test('eine Antwort gilt nur einmal, und ein alter Zähler nicht', async () => {
+  await t.test('a response only applies once, and an old counter does not', async () => {
     const antwort = anna.anmelden(await optionen());
     assert.equal((await ruf('/passkey/anmelden', { antwort })).status, 200);
     assert.equal((await ruf('/passkey/anmelden', { antwort })).status, 401, 'Wiederholte Antwort');
-    // Neue Challenge, aber der Zählerstand von eben: ein geklonter Authenticator.
+    // New challenge, but the counter value from just now: a cloned authenticator.
     const stand = Number(
       (await db.get('SELECT sign_count FROM passkeys WHERE user_id = $1', [ids.pk_anna])).sign_count,
     );
     assert.ok(stand > 0);
-    const klon = anna.anmelden(await optionen(), { zaehler: stand });
-    assert.equal((await ruf('/passkey/anmelden', { antwort: klon })).status, 401, 'Zähler nicht gestiegen');
+    const clone = anna.anmelden(await optionen(), { zaehler: stand });
+    assert.equal((await ruf('/passkey/anmelden', { antwort: clone })).status, 401, 'Zähler nicht gestiegen');
 
-    // Viele Passkeys zählen gar nicht (immer 0): Dann schützt allein die Challenge.
-    await registriere('pk_bert', ohneZaehler);
-    const null1 = ohneZaehler.anmelden(await optionen(), { zaehler: 0 });
+    // Many passkeys do not count at all (always 0): then the challenge alone protects.
+    await register('pk_bert', withoutCounter);
+    const null1 = withoutCounter.anmelden(await optionen(), { zaehler: 0 });
     assert.equal((await ruf('/passkey/anmelden', { antwort: null1 })).status, 200);
     assert.equal((await ruf('/passkey/anmelden', { antwort: null1 })).status, 401, 'Challenge nur einmal gültig');
   });
 
-  await t.test('fremde Herkunft wird abgewiesen', async () => {
+  await t.test('a foreign origin is rejected', async () => {
     const fremd = anna.anmelden(await optionen(), { origin: 'https://boese.test' });
     assert.equal((await ruf('/passkey/anmelden', { antwort: fremd })).status, 401);
     const c = await sitzung('pk_bert');
@@ -259,15 +258,15 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(r.status, 400);
   });
 
-  await t.test('ohne Passwort braucht es User Verification', async () => {
-    const ohneUv = anna.anmelden(await optionen(), { uv: false });
-    assert.equal((await ruf('/passkey/anmelden', { antwort: ohneUv })).status, 401);
+  await t.test('without password user verification is needed', async () => {
+    const withoutUv = anna.anmelden(await optionen(), { uv: false });
+    assert.equal((await ruf('/passkey/anmelden', { antwort: withoutUv })).status, 401);
   });
 
-  await t.test('Passkey als zweiter Faktor statt des TOTP-Codes, nur für das eigene Konto', async () => {
-    const geheim = await zf.beginneEinrichtung(ids.pk_anna);
-    annaCodes = await zf.bestaetigeEinrichtung(ids.pk_anna, zf.hotp(zf.ausBase32(geheim), zf.zeitschritt()));
-    await registriere('pk_bert', bert);
+  await t.test('passkey as second factor instead of the TOTP code, only for the own account', async () => {
+    const geheim = await zf.beginSetup(ids.pk_anna);
+    annaCodes = await zf.confirmSetup(ids.pk_anna, zf.hotp(zf.fromBase32(geheim), zf.timeStep()));
+    await register('pk_bert', bert);
 
     const ohne = await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true });
     assert.equal(ohne.status, 401);
@@ -292,15 +291,15 @@ test('Passkeys', { concurrency: 1 }, async t => {
   });
 
   const APP_HASH = crypto.createHash('sha256').update('app-zertifikat').digest();
-  const appHerkunft = h => `android:apk-key-hash:${b64u(h)}`;
+  const appOrigin = h => `android:apk-key-hash:${b64u(h)}`;
 
-  await t.test('die eingetragene App meldet sich an und bekommt einen Token', async tt => {
-    umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex').match(/../g).join(':') });
+  await t.test('the registered app logs in and gets a token', async tt => {
+    environment({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex').match(/../g).join(':') });
     tt.after(() => {
-      umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
+      environment({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
     });
     const a = await ruf('/passkey/anmelden', {
-      antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }),
+      antwort: anna.anmelden(await optionen(), { origin: appOrigin(APP_HASH) }),
       mit_token: true,
       scope: 'app',
       label: 'Pixel',
@@ -319,31 +318,31 @@ test('Passkeys', { concurrency: 1 }, async t => {
       username: 'pk_anna',
       password: PASS,
       ohne_token: true,
-      passkey: anna.anmelden(await optionen('zweiter_faktor'), { origin: appHerkunft(APP_HASH) }),
+      passkey: anna.anmelden(await optionen('zweiter_faktor'), { origin: appOrigin(APP_HASH) }),
     });
     assert.equal(zweiter.status, 200, 'Auch als zweiter Faktor gilt die App');
   });
 
-  await t.test('eine App mit anderem oder ohne eingetragenes Zertifikat wird abgewiesen', async tt => {
+  await t.test('an app with a different or no registered certificate is rejected', async tt => {
     const fremd = crypto.createHash('sha256').update('fremdes-zertifikat').digest();
-    umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex') });
+    environment({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex') });
     tt.after(() => {
-      umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
+      environment({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
     });
     const r = await ruf('/passkey/anmelden', {
-      antwort: anna.anmelden(await optionen(), { origin: appHerkunft(fremd) }),
+      antwort: anna.anmelden(await optionen(), { origin: appOrigin(fremd) }),
       mit_token: true,
     });
     assert.equal(r.status, 401);
-    umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
+    environment({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
     const ohne = await ruf('/passkey/anmelden', {
-      antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }),
+      antwort: anna.anmelden(await optionen(), { origin: appOrigin(APP_HASH) }),
       mit_token: true,
     });
     assert.equal(ohne.status, 401, 'Ohne Eintrag nimmt der Server keine App an');
   });
 
-  await t.test('löschen verlangt das Passwort', async () => {
+  await t.test('deleting requires the password', async () => {
     const c = await sitzung('pk_bert');
     const liste = (await ruf('/passkeys', undefined, c)).body.passkeys;
     assert.equal(liste.length, 2);
@@ -360,7 +359,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
 
   const anzahl = async uid => (await db.get('SELECT COUNT(*)::int n FROM passkeys WHERE user_id = $1', [uid])).n;
 
-  await t.test('mit zweitem Faktor verlangt ein neuer Passkey auch den Code', async () => {
+  await t.test('with a second factor a new passkey also requires the code', async () => {
     const c = (await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true, code: annaCodes[0] }))
       .cookie;
     const ohne = await ruf('/passkey/registrieren/optionen', { password: PASS }, c);
@@ -377,8 +376,8 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(await anzahl(ids.pk_anna), 2);
   });
 
-  await t.test('ein Passwortwechsel widerruft Passkeys nur auf Wunsch', async () => {
-    const c = await registriere('pk_bert', authenticator());
+  await t.test('a password change revokes passkeys only on request', async () => {
+    const c = await register('pk_bert', authenticator());
     const wechsel = (cookie, alt, neu, mehr = {}) =>
       ruf('/change-password', { current: alt, newPassword: neu, ...mehr }, cookie);
     assert.equal((await wechsel(c, PASS, 'zwischenPasswort-9')).status, 200);
@@ -388,9 +387,9 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(await anzahl(ids.pk_bert), 0, 'passkeys_widerrufen wirkt nicht');
   });
 
-  await t.test('Zurücksetzen per Mail widerruft alle Passkeys und meldet es', async tt => {
+  await t.test('resetting via mail revokes all passkeys and reports it', async tt => {
     assert.ok((await anzahl(ids.pk_anna)) > 0);
-    // Ein Mailserver, der nicht antwortet: Der Versuch steht dann im Fehlerprotokoll.
+    // A mail server that does not answer: the attempt then stands in the error log.
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', '127.0.0.1'), ('smtp_port', '1'), ('smtp_user', 'x')
                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
     await db.run("UPDATE users SET email = 'pk_anna@example.org' WHERE id = $1", [ids.pk_anna]);
@@ -420,10 +419,10 @@ test('Passkeys', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('eine erfundene, veränderte oder umgewidmete Challenge wird abgewiesen', async () => {
-    // Annas Passkeys hat das Zurücksetzen eben widerrufen.
+  await t.test('an invented, changed or repurposed challenge is rejected', async () => {
+    // The resetting just revoked Anna's passkeys.
     const carl = authenticator();
-    await registriere('pk_bert', carl);
+    await register('pk_bert', carl);
     const echt = await optionen();
     const b = Buffer.from(echt, 'base64url');
     b[30] ^= 1;
@@ -438,27 +437,27 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal((await ruf('/passkey/anmelden', { antwort: carl.anmelden(echt) })).status, 200, 'die echte gilt');
   });
 
-  await t.test('Anmeldeoptionen legen nichts ab, ein voller Topf sperrt nur seinen Zweck', async tt => {
-    const { OFFENE_CHALLENGES_HOECHSTENS: N } = _req('src/faktoren/passkeys.js');
+  await t.test('login options store nothing, a full pot only locks its purpose', async tt => {
+    const { MAX_OPEN_CHALLENGES: N } = _req('src/factors/passkeys.js');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'passkey-optionen|%'");
     await db.run('DELETE FROM webauthn_challenges');
     tt.after(() => db.run("DELETE FROM webauthn_challenges WHERE challenge LIKE 'voll%'"));
-    const fuelle = zweck =>
+    const fill = zweck =>
       db.run(
-        `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
+        `INSERT INTO webauthn_challenges (challenge, user_id, purpose, expires_at)
         SELECT 'voll' || $2 || g, NULL, $2, NOW() + INTERVAL '5 minutes' FROM generate_series(1, $1::int) g`,
         [N, zweck],
       );
     const anzahl = async () => (await db.get('SELECT count(*)::int AS n FROM webauthn_challenges')).n;
-    await fuelle('anmelden');
-    await fuelle('zweiter_faktor');
+    await fill('anmelden');
+    await fill('zweiter_faktor');
     for (const zweck of ['anmelden', 'zweiter_faktor'])
       assert.equal((await ruf('/passkey/anmelden/optionen', { zweck })).status, 200, zweck);
     assert.equal(await anzahl(), 2 * N, 'die Anmeldeoptionen haben eine Zeile angelegt');
     const c = await sitzung('pk_bert');
     const reg = () => ruf('/passkey/registrieren/optionen', { password: PASS }, c);
     assert.equal((await reg()).status, 200, 'volle Anmeldetöpfe sperren das Registrieren');
-    await fuelle('registrieren');
+    await fill('registrieren');
     const r = await reg();
     assert.deepEqual([r.status, r.body?.code], [503, 'server_ausgelastet']);
     assert.equal(

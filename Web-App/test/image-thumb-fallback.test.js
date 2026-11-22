@@ -1,17 +1,17 @@
 /**
- * Fehlt die Vorschau, liefert die echte Bildroute (liefereBild) sofort das
- * Original und stösst die Vorschau an — vor dem Umweg über das CDN. Erst ohne
- * Original geht es zum Bild-Proxy, ohne bekannte CDN-Adresse bleibt es 404.
- * Teilebilder (images/parts) hängen an keinem Blickfeld; APP_ROOT ist ein
- * eigener Ordner.
+ * If the preview is missing, the real image route (deliverImage) delivers the
+ * original immediately and triggers the preview — before the detour via the CDN. Only without
+ * an original does it go to the image proxy, without a known CDN address it stays 404.
+ * Part images (images/parts) depend on no view; APP_ROOT is a
+ * separate folder.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut), in
- * src/bilder/http/bildAuslieferung.ts:
- *   A  `if (await originalStattVorschau(res, segmente)) return;` entfernt →
- *      rot: „fehlt die Vorschau …“ (302 zum CDN statt des Originals)
- *   B  den Aufruf hinter die CDN-Heilung gestellt → rot: ebenda
- *   C  in originalStattVorschau das setImmediate(vorschauErzeugenAus …) entfernt →
- *      rot: ebenda (keine Vorschau entsteht)
+ * Counter-checks (measured 10.11.2026, each alone, dist rebuilt), in
+ * src/images/http/imageDelivery.ts:
+ *   A  `if (await originalInsteadOfPreview(res, segmente)) return;` removed →
+ *      red: “if the preview is missing …” (302 to the CDN instead of the original)
+ *   B  the call placed behind the CDN healing → red: same place
+ *   C  in originalInsteadOfPreview the setImmediate(vorschauErzeugenAus …) removed →
+ *      red: same place (no preview is created)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,31 +24,31 @@ const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bildroute-'));
 process.env.APP_ROOT = wurzel;
 const express = require('express');
 const sharp = require('sharp');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { bis } = require('./helpers/zeit');
-const liefereBild = (...a) =>
-  _req('src/bilder/http/bildAuslieferung.js').liefereBild(require('./helpers/sources').testDienste(), ...a);
+const { dataOrSkip } = require('./helpers/db');
+const { bis } = require('./helpers/time');
+const deliverImage = (...a) =>
+  _req('src/images/http/imageDelivery.js').deliverImage(require('./helpers/sources').testServices(), ...a);
 
 const ordner = path.join(wurzel, 'data', 'images', 'parts');
 const NR = `zz-vorschau-${process.pid}`;
 const CDN = `https://cdn.rebrickable.com/media/parts/elements/${NR}.jpg`;
 
 test.after(async () => {
-  await testDaten()
+  await testData()
     .run('DELETE FROM part_color_catalog WHERE part_number = $1', [NR])
     .catch(() => {});
-  await testDaten()
+  await testData()
     .pool?.end?.()
     .catch(() => {});
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
-test('fehlt die Vorschau, kommt das Original vor dem CDN', async t => {
-  const db = await datenOderSkip(t, _req, { migrieren: false });
+test('if the preview is missing, the original comes before the CDN', async t => {
+  const db = await dataOrSkip(t, _req, { migrieren: false });
   if (!db) return;
-  // Die CDN-Adresse ist bekannt: Ohne den Rückfall ginge die Anfrage zum Bild-Proxy.
+  // The CDN address is known: without the fallback the request would go to the image proxy.
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, image_url, image_local) VALUES ($1, 5, $2, $3)
     ON CONFLICT DO NOTHING`,
@@ -66,7 +66,7 @@ test('fehlt die Vorschau, kommt das Original vor dem CDN', async t => {
     Object.assign(req, { session: { userId: 1 } });
     next();
   });
-  app.get('/images/*pfad', liefereBild);
+  app.get('/images/*pfad', deliverImage);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const hole = async p => {

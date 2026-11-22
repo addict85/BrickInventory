@@ -13,16 +13,16 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 /**
- * Ein Rahmen in der Hauptfarbe, solange die Fläche den Tastatur- oder Schalterfokus
- * hat: Materials Zustandsebene lag nur 1,2:1 über der Fläche (WCAG 2.4.7). Steht vor
- * dem `clickable`, dessen Fokus es beobachtet; im Touch-Betrieb gibt es keinen Fokus.
+ * A border in the primary color as long as the surface has
+ * keyboard or switch focus: Material's state layer sat at only 1.2:1 against the surface (WCAG 2.4.7). Sits in front of
+ * the `clickable` whose focus it observes; in touch mode there is no focus.
  */
-fun Modifier.fokusRahmen(form: Shape): Modifier = composed {
+fun Modifier.focusFrame(form: Shape): Modifier = composed {
     var fokus by remember { mutableStateOf(false) }
     val farbe = MaterialTheme.colorScheme.primary
     onFocusChanged { fokus = it.hasFocus }
-        .then(if (fokus) Modifier.border(FOKUS_RAHMEN, farbe, form) else Modifier)
+        .then(if (fokus) Modifier.border(FOCUS_FRAME, farbe, form) else Modifier)
 }
 
-/** Breite des Fokusrahmens: deutlich breiter als die 1-dp-Ränder der Karten. */
-val FOKUS_RAHMEN = 3.dp
+/** Width of the focus border: clearly wider than the cards' 1-dp borders. */
+val FOCUS_FRAME = 3.dp

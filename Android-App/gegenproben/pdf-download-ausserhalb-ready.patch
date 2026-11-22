@@ -1,11 +1,11 @@
 Gegenprobe: Herunterladen-Knopf steht ausserhalb des Ready-Zweigs und ist schon beim Laden sichtbar
 Modul: core-data
 Test: ch.brickinventoryapp.data.MediaAuthTest
-Rot: der Herunterladen-Knopf erscheint erst
+Rot: the download button appears only once the file is loaded
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt
 @@ -165,13 +165,15 @@ fun PdfViewerScreen(
                      // Datei, ein eigener Download kennte den Bearer-Token nicht. Beide nur,
                      // wo Speichern erlaubt ist: Der Druckdialog bietet „Als PDF speichern“.

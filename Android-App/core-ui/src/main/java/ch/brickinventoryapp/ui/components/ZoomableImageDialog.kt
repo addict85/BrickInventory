@@ -38,17 +38,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlin.math.roundToInt
 
 /**
- * Bild bildschirmfuellend anzeigen, mit Zoom und Verschieben.
- * Eine Komponente für Set-Detail und Katalog, damit die Gestenlogik nicht doppelt steht.
+ * Show an image full screen, with zoom and panning.
+ * One component for set detail and catalog, so the gesture logic doesn't exist twice.
  *
- * Zoomen geht auch ohne zwei Finger (WCAG 2.5.1): Doppeltipp und die Leiste unten mit
- * Minus, Faktor (zurück auf 100 %) und Plus, wie im PDF-Betrachter.
+ * Zooming also works without two fingers (WCAG 2.5.1): double-tap and the bar at the bottom with
+ * minus, factor (back to 100%) and plus, like in the PDF viewer.
  */
 @Composable
 fun ZoomableImageDialog(
@@ -87,36 +87,36 @@ fun ZoomableImageDialog(
                 model = imageUrl,
                 imageLoader = imageLoader,
                 contentDescription = contentDescription,
-                ersatzGroesse = 96.dp,
-                // Der Dialog folgt dem Design; nur das Bild steht auf (im Dunkeln gedämpftem) Weiss.
+                fallbackSize = 96.dp,
+                // The dialog follows the theme; only the image sits on (dimmed in the dark theme) white.
                 bildgrund = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .align(Alignment.Center)
-                    .padding(Abstaende.sehrGross)
+                    .padding(Abstaende.veryLarge)
                     .graphicsLayer(
                         scaleX = zoomScale, scaleY = zoomScale,
                         translationX = zoomOffset.x, translationY = zoomOffset.y
                     ),
                 contentScale = ContentScale.Fit
             )
-            SchliessenKnopf(onDismiss)
-            BildZoomLeiste(zoomScale, ::setzeZoom, Modifier.align(Alignment.BottomCenter).padding(bottom = Abstaende.sehrGross))
+            CloseButton(onDismiss)
+            ImageZoomBar(zoomScale, ::setzeZoom, Modifier.align(Alignment.BottomCenter).padding(bottom = Abstaende.veryLarge))
         }
     }
 }
 
-/** Minus, Faktor und Plus; der Faktor ist zugleich „zurück auf 100 %“. */
+/** Minus, factor and plus; the factor doubles as „back to 100%“. */
 @Composable
-private fun BildZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier) {
+private fun ImageZoomBar(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier) {
     Row(
-        modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape = Formen.chip).padding(horizontal = Abstaende.winzig),
+        modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape = Formen.chip).padding(horizontal = Abstaende.tiny),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MitTooltip(stringResource(R.string.pdfview_zoom_out)) {
             val an = zoom > ZOOM_MIN + 0.01f
-            IconButton(onClick = { setzeZoom(zoom / ZOOM_SCHRITT) }, enabled = an) {
+            IconButton(onClick = { setzeZoom(zoom / ZOOM_STEP) }, enabled = an) {
                 Icon(Icons.Default.ZoomOut, stringResource(R.string.pdfview_zoom_out), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (an) 1f else 0.38f))
             }
         }
@@ -129,7 +129,7 @@ private fun BildZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Mo
         }
         MitTooltip(stringResource(R.string.pdfview_zoom_in)) {
             val an = zoom < ZOOM_MAX - 0.01f
-            IconButton(onClick = { setzeZoom(zoom * ZOOM_SCHRITT) }, enabled = an) {
+            IconButton(onClick = { setzeZoom(zoom * ZOOM_STEP) }, enabled = an) {
                 Icon(Icons.Default.ZoomIn, stringResource(R.string.pdfview_zoom_in), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (an) 1f else 0.38f))
             }
         }
@@ -138,12 +138,12 @@ private fun BildZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Mo
 
 private const val ZOOM_MIN = 1f
 private const val ZOOM_MAX = 6f
-private const val ZOOM_SCHRITT = 1.5f
+private const val ZOOM_STEP = 1.5f
 private const val ZOOM_DOPPELTIPP = 2f
 
-/** Oben rechts auf eigenem Kreis: Das Bild füllt den Schirm, der Knopf muss sich davon abheben. */
+/** Top right on its own circle: the image fills the screen, the button must stand out from it. */
 @Composable
-private fun BoxScope.SchliessenKnopf(onDismiss: () -> Unit) {
+private fun BoxScope.CloseButton(onDismiss: () -> Unit) {
     MitTooltip(stringResource(R.string.detail_close), Modifier.align(Alignment.TopEnd)) {
         IconButton(
             onClick = onDismiss,

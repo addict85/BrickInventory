@@ -1,21 +1,21 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.data.api.VerwaltungApi
-import ch.brickinventoryapp.model.fach.ApiGrenzenAnsicht
-import ch.brickinventoryapp.model.fach.BricksetEintragAnsicht
-import ch.brickinventoryapp.model.fach.CacheKennzahlenAnsicht
-import ch.brickinventoryapp.model.fach.CsvErgebnisAnsicht
-import ch.brickinventoryapp.model.fach.CsvImportArt
-import ch.brickinventoryapp.model.fach.HintergrundAnsicht
-import ch.brickinventoryapp.model.fach.JobsAnsicht
-import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
-import ch.brickinventoryapp.model.fach.StartzustandAnsicht
-import ch.brickinventoryapp.vertrag.CsvArt
-import ch.brickinventoryapp.vertrag.GenericAdminResponse
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.vertrag.abbildung.alsDaten
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.data.api.ManagementApi
+import ch.brickinventoryapp.model.domain.ApiLimitsView
+import ch.brickinventoryapp.model.domain.BricksetEntryView
+import ch.brickinventoryapp.model.domain.CacheMetricsView
+import ch.brickinventoryapp.model.domain.CsvResultView
+import ch.brickinventoryapp.model.domain.CsvImportKind
+import ch.brickinventoryapp.model.domain.BackgroundView
+import ch.brickinventoryapp.model.domain.JobsView
+import ch.brickinventoryapp.model.domain.LogRowView
+import ch.brickinventoryapp.model.domain.StartStateView
+import ch.brickinventoryapp.contract.CsvKind
+import ch.brickinventoryapp.contract.GenericAdminResponse
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.contract.mapping.asData
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import okhttp3.MultipartBody
@@ -25,46 +25,46 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Betrieb und Datenpflege: CSV-Import, Protokoll, Hintergrundarbeiten, Caches, Kontingente, globale Vorgaben — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
+ * Operation and data maintenance: CSV import, log, background work, caches, quotas, global defaults — via Retrofit; the common fetch logic stands in Abruf.kt.
  */
 @Singleton
 class VerwaltungRepositoryImpl @Inject constructor(
-    private val api: VerwaltungApi,
-) : VerwaltungRepository {
+    private val api: ManagementApi,
+) : ManagementRepository {
 
     /**
-     * Eine CSV-Datei importieren. Die Bytes kommen fertig gelesen herein, weil ein
-     * content://-Verweis den ContentResolver braucht und das Repository keine
-     * Android-Typen kennt; der Dateiname geht fürs Serverprotokoll mit.
+     * Import a CSV file. The bytes come in already read, because a
+     * content:// reference needs the ContentResolver and the repository knows no
+     * Android types; the file name goes along for the server log.
      */
-    override suspend fun importiereCsv(
-        art: CsvImportArt, dateiname: String, inhalt: ByteArray,
-    ): Ergebnis<CsvErgebnisAnsicht> {
+    override suspend fun importCsv(
+        art: CsvImportKind, fileName: String, inhalt: ByteArray,
+    ): Ergebnis<CsvResultView> {
         val koerper = inhalt.toRequestBody("text/csv".toMediaType())
-        val teil = MultipartBody.Part.createFormData("file", dateiname, koerper)
+        val teil = MultipartBody.Part.createFormData("file", fileName, koerper)
         return sicherAufrufen {
-            when (art.alsDaten()) {
-                CsvArt.SETS      -> api.importSetsCsv(teil)
-                CsvArt.TEILE     -> api.importPartsCsv(teil)
-                CsvArt.MINIFIGUREN -> api.importMinifigsCsv(teil)
-                CsvArt.MERKLISTE -> api.importMerklisteCsv(teil)
-                CsvArt.PREISALARME -> api.importAlarmeCsv(teil)
+            when (art.asData()) {
+                CsvKind.SETS      -> api.importSetsCsv(teil)
+                CsvKind.TEILE     -> api.importPartsCsv(teil)
+                CsvKind.MINIFIGUREN -> api.importMinifigsCsv(teil)
+                CsvKind.MERKLISTE -> api.importWantedCsv(teil)
+                CsvKind.PREISALARME -> api.importAlertsCsv(teil)
             }
-        }.zugesagt({ it.success }) { it.alsAnsicht() }
+        }.promised({ it.success }) { it.alsAnsicht() }
     }
 
-    // Server-Protokoll. Die Nutzerverwaltung des Servers bleibt der Webapp vorbehalten
-    // — siehe VerwaltungApi.
-    override suspend fun getProtokoll(minuten: Int): Ergebnis<List<ProtokollZeileAnsicht>> =
-        sicherAufrufen { api.getProtokoll(minuten) }.zugesagt({ it.success }) { r -> r.logs.map { it.alsAnsicht() } }
+    // Server log. The server's user management stays reserved for the web app
+    // — see ManagementApi.
+    override suspend fun getLog(minuten: Int): Ergebnis<List<LogRowView>> =
+        sicherAufrufen { api.getLog(minuten) }.promised({ it.success }) { r -> r.logs.map { it.alsAnsicht() } }
 
     /**
-     * Zeitplan eines Jobs setzen — taeglich (HH:MM) oder als Abstand (Minuten).
+     * Set the schedule of a job — daily (HH:MM) or as an interval (minutes).
      *
-     * Genau EINES von beidem: Der Server liest `time` fuer taegliche Jobs und
-     * `minutes` fuer den Preis-Job und weist alles andere ab. Deshalb hier zwei
-     * benannte Parameter statt eines freien Rumpfes — welcher gilt, entscheidet
-     * der Aufrufer sichtbar.
+     * Exactly ONE of the two: the server reads `time` for daily jobs and
+     * `minutes` for the price job and rejects everything else. Hence two
+     * named parameters here instead of a free body — which one applies is decided
+     * visibly by the caller.
      */
     override suspend fun setJobSchedule(name: String, zeit: String?, minuten: Int?): Ergebnis<Unit> =
         sicherAufrufen {
@@ -73,73 +73,73 @@ class VerwaltungRepositoryImpl @Inject constructor(
                 zeit?.let { put("time", JsonPrimitive(it)) }
                 minuten?.let { put("minutes", JsonPrimitive(it)) }
             })
-        }.verwaltet { }
+        }.managed { }
 
-    /** Fehlende Katalogbilder einreihen — siehe VerwaltungApi.queueCatalogImages. */
-    override suspend fun queueCatalogImages(): Ergebnis<Unit> = sicherAufrufen { api.queueCatalogImages() }.verwaltet { }
+    /** Fehlende Katalogbilder einreihen — siehe ManagementApi.queueCatalogImages. */
+    override suspend fun queueCatalogImages(): Ergebnis<Unit> = sicherAufrufen { api.queueCatalogImages() }.managed { }
 
-    /** Das globale Design umstellen (nur Verwalter). */
+    /** Switch the global design (admins only). */
     override suspend fun setAppTheme(theme: Design): Ergebnis<Unit> =
-        sicherAufrufen { api.setAppTheme(mapOf("theme" to theme.kennung)) }.verwaltet { }
+        sicherAufrufen { api.setAppTheme(mapOf("theme" to theme.kennung)) }.managed { }
 
-    /** Startzustand des Servers — ohne Anmeldung. */
-    override suspend fun getStartupStatus(): Ergebnis<StartzustandAnsicht> = sicherAufrufen { api.getStartupStatus() }.abgebildet { it.alsAnsicht() }
+    /** Startup state of the server — without sign-in. */
+    override suspend fun getStartupStatus(): Ergebnis<StartStateView> = sicherAufrufen { api.getStartupStatus() }.shown { it.alsAnsicht() }
 
-    override suspend fun getJobs(): Ergebnis<JobsAnsicht> = sicherAufrufen { api.getJobs() }.abgebildet { r ->
-        JobsAnsicht(r.jobs.mapValues { it.value.alsAnsicht() }, r.schedules.mapValues { it.value.alsAnsicht() })
+    override suspend fun getJobs(): Ergebnis<JobsView> = sicherAufrufen { api.getJobs() }.shown { r ->
+        JobsView(r.jobs.mapValues { it.value.alsAnsicht() }, r.schedules.mapValues { it.value.alsAnsicht() })
     }
 
-    override suspend fun getCacheStats(): Ergebnis<CacheKennzahlenAnsicht> = sicherAufrufen { api.getCacheStats() }.abgebildet { it.alsAnsicht() }
+    override suspend fun getCacheStats(): Ergebnis<CacheMetricsView> = sicherAufrufen { api.getCacheStats() }.shown { it.alsAnsicht() }
 
-    override suspend fun getCacheTtl(): Ergebnis<String> = sicherAufrufen { api.getCacheTtl() }.abgebildet { it.ttl }
+    override suspend fun getCacheTtl(): Ergebnis<String> = sicherAufrufen { api.getCacheTtl() }.shown { it.ttl }
 
-    override suspend fun setCacheTtl(hours: Int): Ergebnis<Unit> = sicherAufrufen { api.setCacheTtl(mapOf("ttl" to hours.toString())) }.verwaltet { }
+    override suspend fun setCacheTtl(hours: Int): Ergebnis<Unit> = sicherAufrufen { api.setCacheTtl(mapOf("ttl" to hours.toString())) }.managed { }
 
     /**
-     * Cache leeren — nur Preise, oder alles.
+     * Clear the cache — only prices, or everything.
      *
-     * `alles = false` schickt einen LEEREN Rumpf und nicht `all=false`: Der
-     * Server prueft `req.body?.all` auf Wahrheit, beides waere also gleich —
-     * aber ein leerer Rumpf sagt dasselbe kuerzer und kann nicht versehentlich
-     * als „alles" gelesen werden.
+     * `alles = false` sends an EMPTY body and not `all=false`: the
+     * server checks `req.body?.all` for truth, so both would be the same —
+     * but an empty body says the same more briefly and cannot accidentally
+     * be read as „everything".
      */
     override suspend fun clearCache(alles: Boolean): Ergebnis<Unit> =
-        sicherAufrufen { api.clearCache(if (alles) mapOf("all" to true) else emptyMap()) }.verwaltet { }
+        sicherAufrufen { api.clearCache(if (alles) mapOf("all" to true) else emptyMap()) }.managed { }
 
-    override suspend fun getApiLimits(): Ergebnis<ApiGrenzenAnsicht> = sicherAufrufen { api.getApiLimits() }.abgebildet { it.limits.alsAnsicht() }
+    override suspend fun getApiLimits(): Ergebnis<ApiLimitsView> = sicherAufrufen { api.getApiLimits() }.shown { it.limits.alsAnsicht() }
 
-    override suspend fun setApiLimits(rb: Int, bl: Int, bs: Int): Ergebnis<Unit> = sicherAufrufen { api.setApiLimits(mapOf("rebrickable" to rb, "bricklink" to bl, "brickset" to bs)) }.verwaltet { }
+    override suspend fun setApiLimits(rb: Int, bl: Int, bs: Int): Ergebnis<Unit> = sicherAufrufen { api.setApiLimits(mapOf("rebrickable" to rb, "bricklink" to bl, "brickset" to bs)) }.managed { }
 
-    override suspend fun getBricksetQueue(): Ergebnis<List<BricksetEintragAnsicht>> =
-        sicherAufrufen { api.getBricksetQueue() }.abgebildet { r -> r.entries.map { it.alsAnsicht() } }
+    override suspend fun getBricksetQueue(): Ergebnis<List<BricksetEntryView>> =
+        sicherAufrufen { api.getBricksetQueue() }.shown { r -> r.entries.map { it.alsAnsicht() } }
 
-    override suspend fun retryBricksetEntry(setNumber: String): Ergebnis<Unit> = sicherAufrufen { api.retryBricksetEntry(setNumber) }.verwaltet { }
+    override suspend fun retryBricksetEntry(setNumber: String): Ergebnis<Unit> = sicherAufrufen { api.retryBricksetEntry(setNumber) }.managed { }
 
-    override suspend fun deleteBricksetEntry(setNumber: String): Ergebnis<Unit> = sicherAufrufen { api.deleteBricksetEntry(setNumber) }.verwaltet { }
+    override suspend fun deleteBricksetEntry(setNumber: String): Ergebnis<Unit> = sicherAufrufen { api.deleteBricksetEntry(setNumber) }.managed { }
 
-    override suspend fun redownloadMissingImages(): Ergebnis<Unit> = sicherAufrufen { api.redownloadMissingImages() }.verwaltet { }
+    override suspend fun redownloadMissingImages(): Ergebnis<Unit> = sicherAufrufen { api.redownloadMissingImages() }.managed { }
 
-    override suspend fun getAuftraege(status: String?, art: String?): Ergebnis<HintergrundAnsicht> =
-        sicherAufrufen { api.getAuftraege(status, art) }.abgebildet { it.alsAnsicht() }
+    override suspend fun getAuftraege(status: String?, art: String?): Ergebnis<BackgroundView> =
+        sicherAufrufen { api.getAuftraege(status, art) }.shown { it.alsAnsicht() }
 
-    override suspend fun brichAuftragAb(id: String): Ergebnis<Unit> = sicherAufrufen { api.brichAuftragAb(id) }.ohneInhalt()
+    override suspend fun abortJobAb(id: String): Ergebnis<Unit> = sicherAufrufen { api.abortJobAb(id) }.withoutContent()
 
-    override suspend fun wiederholeAuftrag(id: String): Ergebnis<Unit> = sicherAufrufen { api.wiederholeAuftrag(id) }.ohneInhalt()
+    override suspend fun repeatJob(id: String): Ergebnis<Unit> = sicherAufrufen { api.repeatJob(id) }.withoutContent()
 
-    override suspend fun starteAuftragsArt(art: String): Ergebnis<Boolean> = sicherAufrufen { api.starteAuftragsArt(art) }.abgebildet { it.gestartet }
+    override suspend fun starteAuftragsArt(art: String): Ergebnis<Boolean> = sicherAufrufen { api.starteAuftragsArt(art) }.shown { it.gestartet }
 
-    override suspend fun leereAuftragsArt(art: String): Ergebnis<Int> = sicherAufrufen { api.leereAuftragsArt(art) }.abgebildet { it.entfernt }
+    override suspend fun emptyJobKind(art: String): Ergebnis<Int> = sicherAufrufen { api.emptyJobKind(art) }.shown { it.entfernt }
 
-    override suspend fun triggerCsvSync(): Ergebnis<Unit> = sicherAufrufen { api.triggerCsvSync() }.verwaltet { }
+    override suspend fun triggerCsvSync(): Ergebnis<Unit> = sicherAufrufen { api.triggerCsvSync() }.managed { }
 
-    override suspend fun reimportInstructions(): Ergebnis<Int> = sicherAufrufen { api.reimportInstructions() }.verwaltet { it.enqueued }
+    override suspend fun reimportInstructions(): Ergebnis<Int> = sicherAufrufen { api.reimportInstructions() }.managed { it.enqueued }
 
-    override suspend fun triggerPriceJob(): Ergebnis<Unit> = sicherAufrufen { api.triggerPriceJob() }.verwaltet { }
+    override suspend fun triggerPriceJob(): Ergebnis<Unit> = sicherAufrufen { api.triggerPriceJob() }.managed { }
 
     // Admin-level: saves global default (Monitoring)
-    override suspend fun setDefaultCondition(condition: Zustand): Ergebnis<Unit> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition.kennung)) }.verwaltet { }
+    override suspend fun setDefaultCondition(condition: Zustand): Ergebnis<Unit> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition.kennung)) }.managed { }
 }
 
-/** Eine Verwalter-Antwort trägt `success`: eine Absage ist ein Fehler, kein Erfolg. */
-private inline fun <R> Ergebnis<GenericAdminResponse>.verwaltet(f: (GenericAdminResponse) -> R): Ergebnis<R> =
-    zugesagt({ it.success }, f = f)
+/** An admin response carries `success`: a refusal is an error, not a success. */
+private inline fun <R> Ergebnis<GenericAdminResponse>.managed(f: (GenericAdminResponse) -> R): Ergebnis<R> =
+    promised({ it.success }, f = f)

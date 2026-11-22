@@ -1,6 +1,6 @@
-// Was jeder Bereich von der App braucht, um seine Ziele zu zeigen (Bereichsumgebung).
-// Eigenes Modul, weil es Compose, Navigation und Coil kennt: core-zustand bleibt so
-// ohne Oberfläche (Modulkanten.ohneOberflaeche).
+// What every area needs from the app to show its destinations (Bereichsumgebung).
+// Own module because it knows Compose, Navigation and Coil: core-state thus stays
+// without UI (Modulkanten.withoutUi).
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.compose)
@@ -12,7 +12,7 @@ android {
 
 dependencies {
     api(project(":core-model"))
-    implementation(project(":core-sitzung"))
-    implementation(project(":core-zustand"))
+    implementation(project(":core-session"))
+    implementation(project(":core-state"))
     implementation(libs.kotlinx.coroutines.android)
 }

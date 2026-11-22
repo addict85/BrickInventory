@@ -1,50 +1,50 @@
-/** In Zehntausendsteln (NUMERIC(12,4)), gerundet erst am Ende: 120,3333 × 2
- * bleibt 240,67; toFixed() rundet 1,005 dagegen auf 1,00. */
+/** In ten-thousandths (NUMERIC(12,4)), rounded only at the end: 120.3333 × 2
+ * stays 240.67; toFixed() on the other hand rounds 1.005 to 1.00. */
 
-import { fachfehler, type FehlerCode } from './fehlerTexte';
+import { fachfehler, type ErrorCode } from './errorTexts';
 
-/** null heisst „unbekannt", nicht 0. */
+/** null means "unknown", not 0. */
 export type Zehntel4 = number;
 
-const FAKTOR = 10_000;
+const FACTOR = 10_000;
 
 export function inZehntel4(betrag: unknown): Zehntel4 | null {
   if (betrag === null || betrag === undefined || betrag === '') return null;
   const n = typeof betrag === 'number' ? betrag : Number(String(betrag).replace(',', '.'));
-  return Number.isFinite(n) ? Math.round(n * FAKTOR) : null;
+  return Number.isFinite(n) ? Math.round(n * FACTOR) : null;
 }
 
-/** Punkt oder Komma, höchstens vier Nachkommastellen, kein Tausendertrenner:
- * „1,5“ und „1.5“ sind dasselbe, „1.234,5“ ist mehrdeutig und wird abgelehnt. */
+/** Dot or comma, at most four decimal places, no thousands separator:
+ * "1,5" and "1.5" are the same, "1.234,5" is ambiguous and is rejected. */
 export const GELD_TEXT = /^\s*-?\d{1,12}(?:[.,]\d{1,4})?\s*$/;
 
-/** Die eine Lesart einer Geldeingabe (Vertrag: eingabe.geld).
- * @returns null für „kein Betrag“ (fehlt, null, leer), sonst der Betrag auf vier Stellen */
-export function geldEingabe(v: unknown, feld: string, max = 1_000_000, einCode?: FehlerCode): number | null {
+/** THE one reading of a money input (contract: eingabe.geld).
+ * @returns null for "no amount" (missing, null, empty), otherwise the amount to four places */
+export function moneyInput(v: unknown, feld: string, max = 1_000_000, oneCode?: ErrorCode): number | null {
   if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) return null;
   const n =
     typeof v === 'number' ? v : typeof v === 'string' && GELD_TEXT.test(v) ? Number(v.trim().replace(',', '.')) : NaN;
-  // Ein eigener Code (Gutscheine) gilt für jede Abweisung, den kennen die Apps dort.
-  if (!Number.isFinite(n)) fachfehler('ungueltig', einCode ?? 'betrag_ungueltig');
-  if (n < 0) fachfehler('ungueltig', einCode ?? 'feld_negativ', { feld });
-  if (n > max) fachfehler('ungueltig', einCode ?? 'feld_zu_hoch', { feld });
-  return Math.round(n * FAKTOR) / FAKTOR;
+  // An own code (vouchers) applies to every rejection; the apps know it there.
+  if (!Number.isFinite(n)) fachfehler('ungueltig', oneCode ?? 'betrag_ungueltig');
+  if (n < 0) fachfehler('ungueltig', oneCode ?? 'feld_negativ', { feld });
+  if (n > max) fachfehler('ungueltig', oneCode ?? 'feld_zu_hoch', { feld });
+  return Math.round(n * FACTOR) / FACTOR;
 }
 
-/** Halbe Rappen von der Null weg. */
+/** Half cents away from zero. */
 export function aufRappen(z: Zehntel4): number {
   const rappen = Math.sign(z) * Math.round(Math.abs(z) / 100);
   return rappen / 100 || 0;
 }
 
-/** Der Stückpreis wird vorher nicht gerundet. */
-export function zeilenwert(stueckpreis: unknown, menge: number): number | null {
-  const z = inZehntel4(stueckpreis);
+/** The unit price is not rounded beforehand. */
+export function zeilenwert(unitPrice: unknown, menge: number): number | null {
+  const z = inZehntel4(unitPrice);
   return z === null ? null : aufRappen(z * menge);
 }
 
-/** Zeilen ohne Preis zählen nicht. */
-export function summeAus(zeilen: Iterable<{ preis: unknown; menge: number }>): number {
+/** Rows without a price do not count. */
+export function sumFrom(zeilen: Iterable<{ preis: unknown; menge: number }>): number {
   let z = 0;
   for (const r of zeilen) {
     const p = inZehntel4(r.preis);

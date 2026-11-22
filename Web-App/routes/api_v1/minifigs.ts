@@ -1,45 +1,45 @@
-import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
-import { normalisiereLagerort } from '../../src/bestand';
-import { csvEmpfang } from '../../src/http/dateiEmpfang';
-import type { CsvImportBericht } from '../../src/infra/csvExport';
-import { seiteAus } from '../../src/infra/seite';
-import { Abstriche } from '../../src/infra/ergebnis';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
+import { kontoSchranke, viewOf, guardFor } from './middleware';
+import { normalizeLocation } from '../../src/inventory';
+import { csvReceive } from '../../src/http/fileUpload';
+import type { CsvImportReport } from '../../src/infra/csvExport';
+import { pageFrom } from '../../src/infra/page';
+import { Degradations } from '../../src/infra/result';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
+import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
-export function baueMinifigsRouter(
+export function buildMinifigsRouter(
   d: Pick<
     Dienste,
-    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'figuren' | 'sammlung'
+    'settings' | 'jobQueue' | 'household' | 'account' | 'finances' | 'inventory' | 'minifigs' | 'collection'
   >,
 ) {
-  const { requireToken } = waechterFuer(d.konto);
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/minifigs', requireToken, async req => {
-    // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
-    const r = await d.figuren.figurenLesen(sichtVon(req), req.abfrage);
+    // Without page_size unchanged behavior — the Android app calls it that way.
+    const r = await d.minifigs.readMinifigs(viewOf(req), req.abfrage);
     return { figs: r.figs, total: r.total };
   });
 
   router.endpunkt('POST /api/v1/minifigs', requireToken, async req => {
-    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-    const result = await d.figuren.legeManuelleFigurAn(owner, req.eingabe);
+    const owner = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const result = await d.minifigs.addManualMinifig(owner, req.eingabe);
     return { ...result };
   });
 
   router.endpunkt('PUT /api/v1/minifigs/:figNumber', requireToken, async req => {
-    // Ohne den Parameter das eigene Konto.
-    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-    const r = await d.figuren.aendereManuelleFigur(besitzer, req.pfad.figNumber, req.eingabe);
+    // Without the parameter the own account.
+    const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const r = await d.minifigs.updateManualMinifig(besitzer, req.pfad.figNumber, req.eingabe);
     return { ...r };
   });
 
-  // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
+  // Hits all rows of the minifig in the write scope: the minifig is meant, not a row.
   router.endpunkt('PUT /api/v1/minifigs/:figNumber/storage', requireToken, async req => {
-    const ort = normalisiereLagerort(req.eingabe.storage);
-    const n = await d.bestand.lagerortDienst.setzeLagerort(
+    const ort = normalizeLocation(req.eingabe.storage);
+    const n = await d.inventory.locationService.setLocation(
       'fig',
       { schreiber: req.apiUser.user_id },
       [req.pfad.figNumber],
@@ -49,62 +49,62 @@ export function baueMinifigsRouter(
   });
 
   router.endpunkt('DELETE /api/v1/minifigs/:figNumber', requireToken, async req => {
-    // Ohne den Parameter das eigene Konto.
-    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-    const geloescht = await d.sammlung.loescheFigur(besitzer, req.pfad.figNumber);
-    if (geloescht === null) nichtGefunden('minifig_nicht_manuell');
+    // Without the parameter the own account.
+    const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const geloescht = await d.collection.deleteMinifig(besitzer, req.pfad.figNumber);
+    if (geloescht === null) notFound('minifig_nicht_manuell');
     return { papierkorb: [geloescht] };
   });
 
   router.endpunkt('GET /api/v1/minifigs/manual', requireToken, async req => {
-    const ab = new Abstriche();
-    const alle = await d.figuren.manuelleFigurenLesen(
-      sichtVon(req),
+    const ab = new Degradations();
+    const alle = await d.minifigs.readManualMinifigs(
+      viewOf(req),
       req.apiUser.user_id,
       { search: req.abfrage.search ?? '' },
       ab,
     );
-    const { eintraege: figs, ...seite } = seiteAus(alle, req.abfrage);
+    const { eintraege: figs, ...seite } = pageFrom(alle, req.abfrage);
     return { figs, ...seite, ...ab.angabe() };
   });
 
-  /** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen. */
+  /** The same grouping as the list, so metric and list agree. */
   router.endpunkt('GET /api/v1/minifigs/stats', requireToken, async req => {
-    const stats = await d.figuren.figurenKennzahlen(sichtVon(req));
+    const stats = await d.minifigs.minifigStats(viewOf(req));
     return { stats };
   });
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/price-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    const currency = await d.einstellungen.nutzerWert(uid, 'currency', 'EUR');
-    // Blickfeld: Ohne blickfeldIds() fände sich für eine Figur des Unterkontos keine Erfassung.
-    const data = await d.finanzen.preisverlaufFigur(sichtVon(req), req.pfad.figNumber, currency);
+    const currency = await d.settings.userValue(uid, 'currency', 'EUR');
+    // Scope: without scopeIds() no acquisition would be found for a minifig of the sub-account.
+    const data = await d.finances.priceHistoryMinifig(viewOf(req), req.pfad.figNumber, currency);
     return { ...data };
   });
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/parts', requireToken, async req => {
-    return { ...(await d.figuren.teileDerFigur(req.pfad.figNumber)) };
+    return { ...(await d.minifigs.partsOfMinifig(req.pfad.figNumber)) };
   });
 
   router.endpunkt(
     'POST /api/v1/minifigs/import/csv',
     requireToken,
     kontoSchranke('upload'),
-    csvEmpfang.single('file'),
+    csvReceive.single('file'),
     async req => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
       return {
-        ...(await d.sammlung.importiere<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', {
+        ...(await d.collection.runImport<CsvImportReport>(req.apiUser.user_id, 'figuren_csv', {
           text: req.file.buffer.toString('utf-8'),
         })),
       };
     },
   );
 
-  // Dieselbe Abfrage wie bei Teilen (src/bestand/gemeinsam.ts), im Blickfeld des Haushalts.
+  // The same query as for parts (src/inventory/shared.ts), in the household's scope.
   router.endpunkt('GET /api/v1/minifigs/:figNumber/sets', requireToken, async req => {
-    const uids = sichtVon(req);
-    const { item, sets } = await d.bestand.verwendendeSets(uids, 'minifigs', {
+    const uids = viewOf(req);
+    const { item, sets } = await d.inventory.usingSets(uids, 'minifigs', {
       fig_number: req.pfad.figNumber,
     });
     return { item, sets };

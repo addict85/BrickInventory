@@ -4,44 +4,44 @@ import android.content.Context
 import androidx.glance.appwidget.updateAll
 import ch.brickinventoryapp.BuildConfig
 import ch.brickinventoryapp.app.MeldungsEinstieg
-import ch.brickinventoryapp.model.util.AppFassung
+import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.data.Startziel
-import ch.brickinventoryapp.zustand.ui.Abmeldehaken
+import ch.brickinventoryapp.state.ui.Abmeldehaken
 import ch.brickinventoryapp.app.widget.SammlungsWidget
-import ch.brickinventoryapp.app.widget.WidgetAblage
+import ch.brickinventoryapp.app.widget.WidgetStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import ch.brickinventoryapp.zustand.ui.Widgetanstoss
+import ch.brickinventoryapp.state.ui.Widgetanstoss
 
 /**
- * Was nur die App kennt: ihre Activity und ihr Widget. Die Module darunter sehen
- * davon nur die Schnittstellen, sonst hinge die Datenschicht an der App.
+ * What only the app knows: its activity and its widget. The modules below see
+ * only the interfaces of it, otherwise the data layer would depend on the app.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
     /**
-     * Der nicht exportierte Einstieg, nicht MainActivity: Nur er nimmt ein Ziel an.
-     * Die Klasse selbst, nicht ihr Name: Für R8 ist nur ein Klassenverweis ein Aufruf.
+     * The non-exported entry, not MainActivity: only it accepts a target.
+     * The class itself, not its name: for R8 only a class reference is a call.
      */
     @Provides
     fun provideStartziel(): Startziel = Startziel(MeldungsEinstieg::class.java)
 
     @Provides
-    fun provideAppFassung(): AppFassung = AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+    fun provideAppVersion(): AppVersion = AppVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
 
-    /** Das Widget zeigt nach dem Abmelden sonst die Zahlen des alten Kontos. */
+    /** Otherwise after sign-out the widget shows the numbers of the old account. */
     @Provides
     fun provideWidgetanstoss(@ApplicationContext ctx: Context): Widgetanstoss =
         Widgetanstoss { SammlungsWidget().updateAll(ctx) }
 
     @Provides
     fun provideAbmeldehaken(@ApplicationContext ctx: Context): Abmeldehaken = Abmeldehaken {
-        WidgetAblage.leeren(ctx)
+        WidgetStore.leeren(ctx)
         SammlungsWidget().updateAll(ctx)
     }
 }

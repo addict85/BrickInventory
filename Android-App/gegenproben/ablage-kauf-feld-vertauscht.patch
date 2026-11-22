@@ -1,7 +1,7 @@
 Gegenprobe: ein Kauf an manuellen Teilen vertauscht Kaufpreis und Durchschnitt
 Modul: core-offline
-Test: ch.brickinventoryapp.offline.AblageFassungTest
-Rot: jedes Feld jedes Fachs
+Test: ch.brickinventoryapp.offline.StoreVersionTest
+Rot: every field of every compartment survives the store
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt
@@ -9,9 +9,9 @@ diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline
 @@ -360,7 +360,7 @@
          setAddedAt = zeitpunkt(z.setAddedAt))
  
-     private fun kauf(a: BewertungsKaufAnsicht) = BewertungsKaufZeile(id = a.id, condition = a.condition, quantity = a.quantity,
--        kaufpreis = a.purchasePrice?.alsDouble(), preisSchnitt = a.avgPrice?.alsDouble(), totalAvg = a.totalAvg,
-+        kaufpreis = a.avgPrice?.alsDouble(), preisSchnitt = a.purchasePrice?.alsDouble(), totalAvg = a.totalAvg,
-         wertGesamt = a.wertGesamt?.alsDouble(), pnlPct = a.pnlPct, pnlProzent = a.pnlProzent, createdAt = zeit(a.createdAt))
+     private fun kauf(a: ValuationPurchaseView) = ValuationPurchaseRow(id = a.id, condition = a.condition, quantity = a.quantity,
+-        kaufpreis = a.purchasePrice?.asDouble(), priceCut = a.avgPrice?.asDouble(), totalAvg = a.totalAvg,
++        kaufpreis = a.avgPrice?.asDouble(), priceCut = a.purchasePrice?.asDouble(), totalAvg = a.totalAvg,
+         wertGesamt = a.wertGesamt?.asDouble(), pnlPct = a.pnlPct, pnlProzent = a.pnlProzent, createdAt = zeit(a.createdAt))
  
-     private fun kauf(z: BewertungsKaufZeile) = BewertungsKaufAnsicht(id = z.id, condition = z.condition, quantity = z.quantity,
+     private fun kauf(z: ValuationPurchaseRow) = ValuationPurchaseView(id = z.id, condition = z.condition, quantity = z.quantity,

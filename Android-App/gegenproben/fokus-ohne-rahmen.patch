@@ -1,16 +1,16 @@
 Gegenprobe: fokusRahmen zeichnet keinen Rahmen
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitTest
-Rot: Tastaturfokus zeigt einen Rahmen in der Hauptfarbe
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: keyboard focus shows a frame in the primary color
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt
-@@ -21,7 +21,7 @@ fun Modifier.fokusRahmen(form: Shape): Modifier = composed {
+@@ -21,7 +21,7 @@ fun Modifier.focusFrame(form: Shape): Modifier = composed {
      var fokus by remember { mutableStateOf(false) }
      val farbe = MaterialTheme.colorScheme.primary
      onFocusChanged { fokus = it.hasFocus }
--        .then(if (fokus) Modifier.border(FOKUS_RAHMEN, farbe, form) else Modifier)
+-        .then(if (fokus) Modifier.border(FOCUS_FRAME, farbe, form) else Modifier)
 +        .then(Modifier)
  }
  

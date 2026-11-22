@@ -1,0 +1,258 @@
+/**
+ * Condition and aggregate of a set against the database: what set-condition-aggregate.test.js
+ * used to search for as a pattern in the source text, here on results.
+ *
+ * Counter-checks (measured 08.11.2026, each reverted):
+ *   A  zustandsAggregat without max_purchase_price → red “readSet delivers
+ *      the same aggregate fields …”
+ *   B  changeAcquisition returns the bare response without withSetAggregate →
+ *      red “both paths of an entry …” (and the following case, which builds on
+ *      its part)
+ *   C  POST /api/v1/sets passes `null` instead of the condition to setErfassen → red
+ *      “the condition selected in the form arrives on creation”
+ *   D  aktuellerMarktpreis: `if (!condition)` → `if (true)` → red “an
+ *      explicitly requested condition …” and “the market price as purchase price …”
+ *   E  conditionFromAcquisitions always delivers 'N' with acquisitions → red
+ *      “readSet …” and “manual parts and minifigures …”
+ *   F  sampleAcquisitions sorts by `added_at` → red “the price probe …”;
+ *      likewise without `price_cache: cacheRows` in the response
+ *   G  priceFor() in setValue.ts always takes the new price → red “gainAndLoss
+ *      values by the condition of the entries” (effectiveCondition alone
+ *      set to 'N' stays green: with acquisitions their condition applies)
+ *   H  (09.11.2026) route and contract of the price probe again as GET → red
+ *      “the price probe …” (GET 200 instead of 404)
+ *
+ * Prerequisite: test DB via TEST_DATABASE_URL.
+ */
+require('./helpers/system-frame');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+// The follow-up after capturing otherwise runs after the test against a
+// closed pool; setErfassen can be set up for the route.
+/** @type {null | ((...a: unknown[]) => Promise<unknown>)} */
+let posedAddSet = null;
+const Module = require('node:module');
+const _realRequire = Module.prototype.require;
+Module.prototype.require = function (/** @type {string} */ name, /** @type {any[]} */ ...rest) {
+  const m = _realRequire.call(this, name, ...rest);
+  if (typeof name === 'string' && /[/\\]addSet(\.js)?$/.test(name))
+    return new Proxy(m, {
+      // The factory binds at build time (mit()): the replacement only checks the setting when called.
+      get: (t, k) => (k === 'setErfassen' ? (sk, ...a) => (posedAddSet ? posedAddSet(...a) : t[k](sk, ...a)) : t[k]),
+    });
+  return m;
+};
+
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { dataOrSkip } = require('./helpers/db');
+const { testServer } = require('./helpers/server');
+const { adminWithFactor } = require('./helpers/admin');
+const { catalogSet } = require('./helpers/inventory');
+
+test('condition and aggregate of a set', { concurrency: 1 }, async t => {
+  const db = await dataOrSkip(t, _req);
+  if (!db) return;
+  const P = process.pid;
+  const NAME = `zustand-agg-${P}`;
+  const SN = `${80000 + (P % 900)}-1`;
+  const PN = `za${P}`;
+  const FN = `fig-za${P}`;
+  const weg = async () => {
+    await db.run('DELETE FROM users WHERE username = $1', [NAME]);
+    await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
+    await db.run('DELETE FROM sets WHERE set_number = $1', [SN]);
+    await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SN]);
+    await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
+  };
+  await weg();
+  t.after(async () => {
+    await weg().catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
+  const uid = (
+    await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1,'x',true) RETURNING id`, [NAME])
+  ).id;
+  await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','CHF')`, [uid]);
+  for (const [z, preis] of [
+    ['N', 55],
+    ['U', 33],
+  ])
+    await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price) VALUES ($1,$2,'CHF',$3)`, [
+      SN,
+      z,
+      preis,
+    ]);
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
+  const erste = (
+    await db.get(
+      `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
+                               VALUES ($1,$2,2,100,'N','CHF', NOW() - INTERVAL '10 days') RETURNING id`,
+      [uid, SN],
+    )
+  ).id;
+
+  await adminWithFactor(_req, uid);
+  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
+  const anfrage = async (
+    /** @type {string} */ methode,
+    /** @type {string} */ pfad,
+    /** @type {unknown} */ rumpf = undefined,
+  ) => {
+    const r = await fetch(base + '/api/v1' + pfad, {
+      method: methode,
+      headers: { 'content-type': 'application/json' },
+      body: rumpf === undefined ? undefined : JSON.stringify(rumpf),
+    });
+    return { status: r.status, body: await r.json() };
+  };
+  const { setsLesen, readSet } = require('./helpers/sources').areaPage('sets');
+
+  await t.test('an explicitly requested condition beats the entry valuation', async () => {
+    const { aktuellerMarktpreis } = _req('src/finances/marketPrice.js');
+    assert.equal(await aktuellerMarktpreis(SN, uid), 55, 'ohne Wunsch: nach den (neuen) Erfassungen');
+    assert.equal(
+      await aktuellerMarktpreis(SN, uid, 'U'),
+      33,
+      'Der angefragte Zustand wurde von der Bewertung der Erfassungen überstimmt',
+    );
+  });
+
+  await t.test('the market price as purchase price depends on the selected condition', async () => {
+    const { setErfassen, setSupplement } = require('./helpers/sources').areaPage('sets');
+    const r = await setErfassen({
+      requester: uid,
+      setNumber: SN,
+      menge: 1,
+      zustand: 'U',
+      ifPresent: 'aufstocken',
+    });
+    assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
+    // The follow-up work fills in the estimated price; with a catalog it asks no network.
+    await catalogSet(db, SN, { name: 'Zustand', image_local: `/images/sets/${SN}.jpg` });
+    await setSupplement(SN, uid);
+    const neu = await db.get(
+      `SELECT condition, purchase_price::float AS preis FROM set_acquisitions
+        WHERE user_id = $1 AND set_number = $2 AND id <> $3`,
+      [uid, SN, erste],
+    );
+    assert.deepEqual(neu, { condition: 'U', preis: 33 }, 'Gebraucht erfasst, aber der Neupreis eingetragen');
+  });
+
+  await t.test('readSet delivers the same aggregate fields as setsLesen', async () => {
+    const liste = (await setsLesen([uid], {})).sets.find((/** @type {any} */ s) => s.set_number === SN);
+    const einzeln = await readSet([uid], SN);
+    assert.ok(liste && einzeln, 'Das Set fehlt in einer der beiden Antworten');
+    for (const feld of ['condition', 'acq_count', 'used_count', 'max_purchase_price']) {
+      assert.ok(einzeln[feld] !== undefined && einzeln[feld] !== null, `readSet() ohne ${feld}`);
+      assert.equal(
+        String(einzeln[feld]),
+        String(liste[feld]),
+        `${feld}: readSet ${einzeln[feld]}, setsLesen ${liste[feld]}`,
+      );
+    }
+    assert.equal(einzeln.condition, 'U', 'eine gebrauchte Erfassung macht das Set gebraucht');
+    assert.equal(Number(einzeln.used_count), 1);
+  });
+
+  await t.test('both paths of an entry deliver the aggregate — only for sets', async () => {
+    const geaendert = await anfrage('PUT', `/sets/${SN}/acquisitions/${erste}`, { condition: 'U' });
+    assert.equal(geaendert.status, 200, JSON.stringify(geaendert.body));
+    assert.equal(geaendert.body.set?.set_number, SN, 'Die Antwort auf das Ändern trägt kein Set-Aggregat');
+    assert.equal(geaendert.body.set.acq_count, 2);
+    assert.equal(geaendert.body.set.used_count, 2);
+    const geloescht = await anfrage('DELETE', `/sets/${SN}/acquisitions/${erste}`);
+    assert.equal(geloescht.status, 200, JSON.stringify(geloescht.body));
+    assert.equal(geloescht.body.set?.acq_count, 1, 'Die Antwort auf das Löschen trägt kein aktuelles Aggregat');
+
+    await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,5,'manual')`, [uid, PN]);
+    const tid = (
+      await db.get(
+        `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
+                               VALUES ($1,$2,5,1,1,'N') RETURNING id`,
+        [uid, PN],
+      )
+    ).id;
+    const teil = await anfrage('PUT', `/parts/${PN}/5/acquisitions/${tid}`, { quantity: 2 });
+    assert.equal(teil.status, 200, JSON.stringify(teil.body));
+    assert.equal(teil.body.set, undefined, 'Ein Teil hat kein Set-Aggregat');
+  });
+
+  await t.test('manual parts and minifigures use the same condition rule as sets', async () => {
+    await db.run(
+      `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
+                  VALUES ($1,$2,5,1,1,'U')`,
+      [uid, PN],
+    );
+    await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, FN]);
+    await db.run(
+      `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
+                  VALUES ($1,$2,1,1,'N'), ($1,$2,1,1,'U')`,
+      [uid, FN],
+    );
+    const { manualPartsList } = _req('src/parts/queries.js');
+    const { readManualMinifigs } = _req('src/minifigs/queries.js');
+    const teil = (await manualPartsList([uid], uid, {})).find((/** @type {any} */ p) => p.part_number === PN);
+    const figur = (await readManualMinifigs([uid], uid, {})).find((/** @type {any} */ f) => f.fig_number === FN);
+    assert.equal(teil?.condition, 'U', 'Teil mit gebrauchter Erfassung steht als neu da');
+    assert.equal(figur?.condition, 'U', 'Figur mit gebrauchter Erfassung steht als neu da');
+  });
+
+  await t.test('gainAndLoss values by the condition of the entries', async () => {
+    const { gainAndLoss } = _req('src/finances/financeCalc.js');
+    const pnl = await gainAndLoss(uid, [uid]);
+    const zeile = pnl.sets.find((/** @type {any} */ s) => s.set_number === SN);
+    assert.ok(zeile, 'Das Set fehlt in der Gewinn-und-Verlust-Rechnung');
+    assert.equal(
+      Number(zeile.current_price),
+      33,
+      `Ein gebraucht erfasstes Set bekommt den Neupreis: ${JSON.stringify(zeile)}`,
+    );
+  });
+
+  await t.test('the price probe runs without a server error', async () => {
+    // Via GET a link of a foreign site (lax cookie) already triggered the fetch.
+    const perLink = await fetch(`${base}/api/v1/admin/price-probe?set=${SN}&live=1`);
+    assert.equal(perLink.status, 404, 'die Probe lässt sich per GET auslösen');
+    const r = await anfrage('POST', '/admin/price-probe', { set: SN });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(r.body.condition_logic?.chosen_for_price, 'U', 'Die Probe zeigt nicht die Regel der Bewertung');
+    assert.deepEqual(
+      r.body.price_cache.map((/** @type {any} */ z) => z.condition).sort(),
+      ['N', 'U'],
+      'Die Cache-Zeilen des Sets gehören in die Antwort',
+    );
+  });
+
+  await t.test('the condition selected in the form arrives on creation', async () => {
+    /** @type {any[][]} */
+    const aufrufe = [];
+    posedAddSet = async (...a) => {
+      aufrufe.push(a);
+      return {
+        action: 'added',
+        set_number: /** @type {any} */ (a[0]).setNumber,
+        name: 'Testset',
+        katalog_offen: true,
+        ergaenzung: 'ausstehend',
+        besitzer: uid,
+      };
+    };
+    try {
+      const r = await anfrage('POST', '/sets', {
+        set_number: `${90000 + (P % 900)}-1`,
+        purchase_price: 20,
+        condition: 'u',
+      });
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+    } finally {
+      posedAddSet = null;
+    }
+    assert.equal(aufrufe.length, 1, 'setErfassen wurde nicht gerufen');
+    assert.equal(aufrufe[0][0].kaufpreis, 20, 'Der Kaufpreis kommt nicht an');
+    assert.equal(aufrufe[0][0].zustand, 'U', 'Der Zustand aus dem Formular kommt nicht bei setErfassen an');
+  });
+});

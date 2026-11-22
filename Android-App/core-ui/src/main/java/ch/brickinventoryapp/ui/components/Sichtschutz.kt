@@ -13,39 +13,39 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.util.LocalSdkStufe
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.util.LocalSdkLevel
 
 /**
- * Kein Bildschirmfoto, keine Aufnahme und kein Vorschaubild in der App-Übersicht, solange
- * dieser Bildschirm steht — für Nummer und PIN der Gutscheine.
+ * No screenshot, no recording and no preview thumbnail in the app overview, as long as
+ * this screen is up — for voucher number and PIN.
  */
 @Composable
-fun Sichtschutz(ueberdeckung: Boolean = true) {
-    if (ueberdeckung) Ueberdeckungsschutz()
+fun Sichtschutz(coverage: Boolean = true) {
+    if (coverage) Ueberdeckungsschutz()
     val view = LocalView.current
     val activity = LocalContext.current.findActivity()
     DisposableEffect(view, activity) {
-        // Ein Dialog hat ein eigenes Fenster und übernimmt FLAG_SECURE vom Fenster darunter
-        // erst bei seinem nächsten Neuaufbau. Darum beide sofort, und beide gezählt.
+        // A dialog has its own window and only takes over FLAG_SECURE from the window below it
+        // on its next rebuild. So both apply immediately, and both are counted.
         val fenster = listOfNotNull(activity?.window, (view.parent as? DialogWindowProvider)?.window).distinct()
-        fenster.forEach(::sichere)
-        onDispose { fenster.forEach(::gibFrei) }
+        fenster.forEach(::secure)
+        onDispose { fenster.forEach(::giveFree) }
     }
 }
 
 /**
- * Mit eingeschalteter App-Sperre zeigt die App-Übersicht kein Vorschaubild: Es zeigte
- * sonst gerade das, was die Sperre verdecken soll, auch wenn „Vorschau verbergen“ aus ist.
- * Ab Android 13 nur das Vorschaubild, Bildschirmfotos bleiben erlaubt; darunter geht das
- * nur mit FLAG_SECURE über den Zähler von [Sichtschutz].
+ * With the app lock turned on, the app overview shows no preview thumbnail: it otherwise
+ * showed exactly what the lock is meant to hide, even with „hide preview“ off.
+ * From Android 13 onward only the thumbnail, screenshots stay allowed; below that it
+ * only works with FLAG_SECURE via the counter of [Sichtschutz].
  */
 @Composable
-fun AppUebersichtSchutz(sperre: AppSperre) {
-    val minuten by sperre.minuten.collectAsState()
+fun AppOverviewProtection(lock: AppLock) {
+    val minuten by lock.minuten.collectAsState()
     if (minuten <= 0) return
-    if (LocalSdkStufe.current < Build.VERSION_CODES.TIRAMISU) {
-        Sichtschutz(ueberdeckung = false)
+    if (LocalSdkLevel.current < Build.VERSION_CODES.TIRAMISU) {
+        Sichtschutz(coverage = false)
         return
     }
     val activity = LocalContext.current.findActivity() ?: return
@@ -55,15 +55,15 @@ fun AppUebersichtSchutz(sperre: AppSperre) {
     }
 }
 
-private fun geschuetzteAnzahl(f: Window) = f.decorView.getTag(R.id.sichtschutz_anzahl) as? Int ?: 0
+private fun protectedCount(f: Window) = f.decorView.getTag(R.id.sichtschutz_anzahl) as? Int ?: 0
 
-private fun sichere(f: Window) {
-    if (geschuetzteAnzahl(f) == 0) f.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-    f.decorView.setTag(R.id.sichtschutz_anzahl, geschuetzteAnzahl(f) + 1)
+private fun secure(f: Window) {
+    if (protectedCount(f) == 0) f.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    f.decorView.setTag(R.id.sichtschutz_anzahl, protectedCount(f) + 1)
 }
 
-private fun gibFrei(f: Window) {
-    val rest = geschuetzteAnzahl(f) - 1
+private fun giveFree(f: Window) {
+    val rest = protectedCount(f) - 1
     f.decorView.setTag(R.id.sichtschutz_anzahl, rest)
     if (rest <= 0) f.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
 }

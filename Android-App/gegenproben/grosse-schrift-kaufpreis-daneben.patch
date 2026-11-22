@@ -1,16 +1,16 @@
 Gegenprobe: Kaufpreis auch bei grosser Schrift neben seiner Bezeichnung
-Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.WertKachelnTest
-Rot: Kaufpreis bei 200 Prozent
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.ValueTilesTest
+Rot: purchase price at 200 percent stands below the label in one line
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
 @@ -58,7 +58,7 @@ fun AcquisitionSummarySection(
  ) {
      // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
      // „CHF 700.00“ so wenig Breite, dass der Betrag Ziffer für Ziffer umbrach.
--    val untereinander = grosseSchrift()
+-    val untereinander = largeFont()
 +    val untereinander = false
      val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
      val kaeufe: @Composable () -> Unit = {

@@ -1,11 +1,11 @@
 /**
- * ALLE Erfassungs-Wege im Haushalt — Sets, Teile, Minifiguren, je Ändern und
- * Löschen.
+ * ALL entry paths in the household — sets, parts, minifigures, each change and
+ * delete.
  *
- * Gegenprobe (durchgeführt): schreibbereich in src/sammlung/erfassungen.ts durch die eigene ID
- * ersetzt → „Set-Erfassung löschen" endet wieder in 404.
+ * Counter-check (performed): schreibbereich in src/collection/acquisitions.ts replaced by the own ID
+ * → “delete set entry" ends in 404 again.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,45 +14,45 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementarten', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+test('acquisitions of the sub-account: change and delete for all three element kinds', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `acq6-h-${process.pid}`,
+  const MAIN = `acq6-h-${process.pid}`,
     SUB = `acq6-s-${process.pid}`;
   const SN = `77001-${process.pid}`,
     PN = `3001x${process.pid}`,
     FN = `sw${process.pid}`;
 
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
 
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.session = { userId: hauptId };
-    req.apiUser = { user_id: hauptId, is_admin: 0 };
+    req.session = { userId: mainId };
+    req.apiUser = { user_id: mainId, is_admin: 0 };
     next();
   });
-  // Die Erfassungs-Routen liegen seit einer früheren Runde nur noch hier — eine
-  // Adresse für Webapp UND App.
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  // Since an earlier round the entry routes only live here — one
+  // address for web app AND app.
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
 
-  // Alles gehört dem UNTERKONTO — wie im gemeldeten Fall.
+  // Everything belongs to the SUB-ACCOUNT — as in the reported case.
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
@@ -60,19 +60,19 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     await db.run(`DELETE FROM parts WHERE part_number=$1`, [PN]);
     await db.run(`DELETE FROM minifig_acquisitions WHERE fig_number=$1`, [FN]);
     await db.run(`DELETE FROM minifigs WHERE fig_number=$1`, [FN]);
-    await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, subId, SN, 0); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`,
       [subId, SN],
     );
-    await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                   VALUES ($1,$2,4,5,'N',1)`,
       [subId, PN],
     );
-    await haeltFigur(db, subId, FN, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsMinifig(db, subId, FN, { menge: 0 }); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                   VALUES ($1,$2,7,'N',1)`,
@@ -123,9 +123,9 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
   ];
 
   try {
-    for (const [name, methode, pfadFn, body] of faelle) {
+    for (const [name, methode, pathFn, body] of faelle) {
       await aufbauen();
-      const pfad = await pfadFn();
+      const pfad = await pathFn();
       const r = await fetch(`${base}${pfad}`, {
         method: methode,
         headers: { 'content-type': 'application/json' },
@@ -138,16 +138,16 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
       );
     }
 
-    // Löschen muss WIRKLICH löschen. Zwei der Wege prüften früher gar nicht,
-    // ob eine Zeile getroffen wurde: Das DELETE lief ins Leere, die Antwort
-    // meldete trotzdem Erfolg — der Nutzer sah „gelöscht", die Zeile blieb.
+    // Deleting must REALLY delete. Two of the paths used not to check at all
+    // whether a row was hit: the DELETE ran into nothing, the response
+    // still reported success — the user saw “deleted", the row stayed.
     await aufbauen();
     const figId = await acqId('minifig_acquisitions', 'fig_number', FN);
     await fetch(`${base}/api/v1/minifigs/${FN}/acquisitions/${figId}`, { method: 'DELETE' });
     const rest = await db.get(`SELECT COUNT(*)::int AS c FROM minifig_acquisitions WHERE id=$1`, [figId]);
     assert.equal(rest.c, 0, 'die Erfassung muss nach dem Löschen wirklich weg sein');
   } finally {
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     for (const [tab, sp, wert] of [
       ['set_acquisitions', 'set_number', SN],
       ['sets', 'set_number', SN],

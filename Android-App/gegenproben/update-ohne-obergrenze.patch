@@ -1,12 +1,12 @@
 Gegenprobe: der Download schreibt mehr als angekündigt
-Modul: feature-konto
-Test: ch.brickinventoryapp.konto.UpdateViewModelTest
-Rot: mehr als angekuendigt wird nicht geschrieben
+Modul: feature-account
+Test: ch.brickinventoryapp.account.UpdateViewModelTest
+Rot: more than announced is not written
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 +++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
-@@ -73,7 +73,7 @@ class UpdateLader @Inject constructor(
+@@ -73,7 +73,7 @@ class UpdateLoader @Inject constructor(
                              if (n < 0) break
                              geladen += n
                              // Abbrechen, BEVOR geschrieben wird: Sonst liegt das Zuviel schon auf der Platte.

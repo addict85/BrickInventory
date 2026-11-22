@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.testing
 
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.Sitzungsablage
 import kotlinx.coroutines.flow.Flow
@@ -12,19 +12,19 @@ import java.lang.reflect.Proxy
 import java.util.Collections
 
 /**
- * Die Api ohne Netz: Jede Methode antwortet sofort aus [antworten] (nach
- * Methodenname), sonst mit 404. Ohne Threads und Wartezeit, damit ein
- * StandardTestDispatcher den ganzen Ablauf eines ViewModels in virtueller Zeit steuert.
+ * The API without a network: every method answers immediately from [antworten] (by
+ * method name), otherwise with 404. Without threads and wait time, so a
+ * StandardTestDispatcher can drive a ViewModel's whole flow in virtual time.
  */
 class FakeApi {
     val antworten: MutableMap<String, Any> = Collections.synchronizedMap(mutableMapOf())
 
-    /** Abweichender Statuscode je Methode, z. B. 500 für „Server kaputt“. */
+    /** A deviating status code per method, e.g. 500 for „server broken“. */
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
-    val aufrufe: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    val calls: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
-    /** Die Argumente je Aufruf (ohne die Continuation), für „mit welchem Filter“. */
-    val argumente: MutableList<Pair<String, List<Any?>>> = Collections.synchronizedList(mutableListOf())
+    /** The arguments per call (without the continuation), for „with which filter“. */
+    val arguments: MutableList<Pair<String, List<Any?>>> = Collections.synchronizedList(mutableListOf())
 
     val api: BrickApiService = Proxy.newProxyInstance(
         BrickApiService::class.java.classLoader, arrayOf(BrickApiService::class.java),
@@ -34,16 +34,16 @@ class FakeApi {
             "hashCode" -> System.identityHashCode(proxy)
             "equals" -> proxy === args?.firstOrNull()
             else -> {
-                argumente += methode.name to args?.filterNot { it is kotlin.coroutines.Continuation<*> }.orEmpty()
+                arguments += methode.name to args?.filterNot { it is kotlin.coroutines.Continuation<*> }.orEmpty()
                 antwort(methode.name)
             }
         }
     } as BrickApiService
 
-    fun aufrufeVon(methode: String): Int = synchronized(aufrufe) { aufrufe.count { it == methode } }
+    fun callsOf(methode: String): Int = synchronized(calls) { calls.count { it == methode } }
 
     private fun antwort(methode: String): Response<Any> {
-        aufrufe += methode
+        calls += methode
         val rumpf = antworten[methode]
         val code = codes[methode] ?: if (rumpf != null) 200 else 404
         return if (code in 200..299 && rumpf != null) Response.success(code, rumpf)
@@ -51,11 +51,11 @@ class FakeApi {
     }
 }
 
-/** Die Sitzungsablage im Speicher; was das AppViewModel merkt, steht in den Flüssen. */
-class SpeicherSitzungsablage : Sitzungsablage {
+/** The in-memory session store; what the AppViewModel remembers lives in the flows. */
+class StorageSessionStore : Sitzungsablage {
     val server = MutableStateFlow("")
     val token = MutableStateFlow("")
-    val design = MutableStateFlow(Design.VORGABE)
+    val design = MutableStateFlow(Design.DEFAULT)
     val waehrung = MutableStateFlow(Waehrung.EUR)
     val sprache = MutableStateFlow("system")
     var abgelaufen = false
@@ -68,9 +68,9 @@ class SpeicherSitzungsablage : Sitzungsablage {
     override val language: Flow<String> = sprache
     override suspend fun serverUrlJetzt() = server.value
     override suspend fun tokenJetzt() = token.value
-    override suspend fun anmeldungAbgelaufen(jetzt: Long) = abgelaufen
+    override suspend fun loginExpired(jetzt: Long) = abgelaufen
     override suspend fun saveAppTheme(theme: Design) { design.value = theme }
     override suspend fun saveCurrency(cur: Waehrung) { waehrung.value = cur }
-    override fun gescheiterteEntwertungen(): Set<String> = gescheitert.toSet()
-    override fun quittiereGescheiterteEntwertungen() = gescheitert.clear()
+    override fun failedRedemptions(): Set<String> = gescheitert.toSet()
+    override fun acknowledgeFailedRedemptions() = gescheitert.clear()
 }

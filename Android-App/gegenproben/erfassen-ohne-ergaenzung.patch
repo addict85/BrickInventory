@@ -1,15 +1,15 @@
 Gegenprobe: Nach dem Anlegen holt die Ablage Name und Bild nicht nach
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.ErfassungViewModelTest
-Rot: das Anlegen zeigt die Schritte des Servers
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.EntryViewModelTest
+Rot: the creation shows the server's steps and reports the new set
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
 @@ -314,7 +314,6 @@
-     private fun ergaenzeAblage(antwort: SetErfasst) {
+     private fun supplementStore(antwort: SetRecorded) {
          viewModelScope.launch {
-             if (antwort.ergaenzungAusstehend) delay(ERGAENZUNG_NACH_MS)
+             if (antwort.supplementPending) delay(SUPPLEMENT_AFTER_MS)
 -            sets.aktualisiereSets()
          }
      }

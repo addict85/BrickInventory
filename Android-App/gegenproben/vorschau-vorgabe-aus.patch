@@ -1,17 +1,17 @@
 Gegenprobe: Die Vorschau in der App-Übersicht ist ohne Wahl wieder sichtbar
 Modul: app
-Test: ch.brickinventoryapp.app.GeraeteSchutzTest
-Rot: eine neue Installation verbirgt die Vorschau
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
+Rot: a new installation hides the preview until the user turns it off
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-@@ -271,7 +271,7 @@ class GeraeteAblage @Inject constructor(
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -271,7 +271,7 @@ class DevicesStore @Inject constructor(
       * an: Die Übersicht zeigt Bestand, Preise und Konto jedem, der das Telefon kurz
       * in der Hand hat. Wer Bildschirmfotos braucht, schaltet es aus.
       */
--    override fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, true)
-+    override fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, false)
+-    override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, true)
++    override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, false)
      override fun setzeVorschauVerbergen(an: Boolean) {
-         designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
+         designMirror.edit { putBoolean(PREVIEW_HIDE, an) }
      }

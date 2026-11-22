@@ -1,13 +1,13 @@
-/** Set zum Barcode: eigener Katalog, Rebrickable, Brickset und EAN-Quellen. */
-import { istVermutung, setnummerKandidaten } from '../katalog';
-import { resolveImageLocal } from '../bilder';
-import { RbSet, RbSetFigur, rbSeite } from '../fremdquellen';
-import { mitVersion, normalisiereSetNummer } from '../infra/setNummer';
+/** Set for a barcode: own catalog, Rebrickable, Brickset and EAN sources. */
+import { isGuess, setnummerCandidates } from '../catalog';
+import { resolveImageLocal } from '../images';
+import { RbSet, RbSetMinifig, rbPage } from '../externalSources';
+import { withVersion, normalisiereSetNummer } from '../infra/setNumber';
 import * as repo from './repository/setDetail';
-import { versuche } from '../infra/ergebnis';
-import type { SetsKontext } from './kontext';
+import { versuche } from '../infra/result';
+import type { SetsContext } from './context';
 
-export interface BarcodeTreffer {
+export interface BarcodeHits {
   unsicher: boolean;
   set_number: string;
   name: string | null;
@@ -20,28 +20,31 @@ export interface BarcodeTreffer {
   source: string;
 }
 
-/** Rebrickable zuerst: Dort stehen Figurenzahl und Bild am verlässlichsten.
- * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts). */
-async function barcodeErgebnis(
-  sk: SetsKontext,
+/** Rebrickable first: figure count and image are most reliable there.
+ * Every answer says how it came about (src/catalog/barcodeSource.ts). */
+async function barcodeResult(
+  sk: SetsContext,
   setNumber: string,
   name: string | null,
   source: string,
-): Promise<BarcodeTreffer> {
-  const rbData = await sk.fremdquellen.quellen.rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`, RbSet);
+): Promise<BarcodeHits> {
+  const rbData = await sk.externalSources.quellen.rebrickableJson(
+    `/lego/sets/${encodeURIComponent(setNumber)}/`,
+    RbSet,
+  );
   const mfData = rbData
-    ? await sk.fremdquellen.quellen.rebrickableJson(
+    ? await sk.externalSources.quellen.rebrickableJson(
         `/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`,
-        rbSeite(RbSetFigur),
+        rbPage(RbSetMinifig),
       )
     : null;
-  // Ohne Fang: Eine gestörte Datenbank ist kein „nicht im Katalog“.
-  const local = await repo.setKatalog(sk.db, setNumber);
+  // No catch: a disrupted database is not "not in the catalog".
+  const local = await repo.setCatalog(sk.db, setNumber);
 
   const minifigs = mfData?.count ?? local?.minifigs ?? null;
   const image_url = rbData?.set_img_url || local?.image_url || null;
   const image_local = (local?.image_local ? resolveImageLocal(local.image_local) : null) ?? null;
-  const unsicher = istVermutung(source);
+  const unsicher = isGuess(source);
 
   if (local) {
     return {
@@ -58,10 +61,10 @@ async function barcodeErgebnis(
     };
   }
   if (rbData?.set_num) {
-    // In den Katalog wie jeder Abruf; der Treffer gilt auch, wenn das Ablegen scheitert.
+    // Into the catalog like every fetch; the hit applies even if storing fails.
     await versuche(
       'sets:katalog schreiben',
-      sk.katalog.merkeSetKatalog(
+      sk.catalog.rememberSetCatalog(
         setNumber,
         rbData.name ?? null,
         rbData.year ?? null,
@@ -90,28 +93,28 @@ async function barcodeErgebnis(
   return { unsicher, set_number: setNumber, name, minifigs, image_url, source, ...leer };
 }
 
-async function imKatalog(
-  sk: SetsKontext,
+async function inCatalog(
+  sk: SetsContext,
   ...nummern: string[]
 ): Promise<{ set_number: string; name: string | null } | undefined> {
-  return repo.ersterKatalogTreffer(sk.db, nummern);
+  return repo.firstCatalogHits(sk.db, nummern);
 }
 
-/** Reihenfolge: eigener Katalog, EAN über Rebrickable, Brickset und UPCitemdb,
- * dann Bestellnummer — die billigste Quelle zuerst. */
-export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promise<BarcodeTreffer | null> {
-  const barcode = rohBarcode.trim();
-  const direct = await repo.katalogCacheNachNummer(sk.db, mitVersion(barcode));
-  if (direct) return barcodeErgebnis(sk, direct.set_number, direct.name, 'catalog_cache');
+/** Order: own catalog, EAN via Rebrickable, Brickset and UPCitemdb,
+ * then order number — the cheapest source first. */
+export async function setToBarcode(sk: SetsContext, rawBarcode: string): Promise<BarcodeHits | null> {
+  const barcode = rawBarcode.trim();
+  const direct = await repo.catalogCacheAfterNumber(sk.db, withVersion(barcode));
+  if (direct) return barcodeResult(sk, direct.set_number, direct.name, 'catalog_cache');
 
   if (/^\d{12,13}$/.test(barcode)) {
     const ean13 = barcode.length === 12 ? '0' + barcode : barcode;
-    const rb = await sk.fremdquellen.quellen.rebrickableJson(
+    const rb = await sk.externalSources.quellen.rebrickableJson(
       `/lego/sets/?search=${encodeURIComponent(ean13)}&page_size=5`,
-      rbSeite(RbSet),
+      rbPage(RbSet),
     );
     for (const set of rb?.results || []) {
-      const detail = await sk.fremdquellen.quellen.rebrickableJson(
+      const detail = await sk.externalSources.quellen.rebrickableJson(
         `/lego/sets/${encodeURIComponent(set.set_num)}/`,
         RbSet,
       );
@@ -119,35 +122,35 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
         .flat()
         .map(String);
       if (extIds.includes(ean13) || extIds.includes(barcode))
-        return barcodeErgebnis(sk, set.set_num, set.name ?? null, 'rebrickable-ean');
+        return barcodeResult(sk, set.set_num, set.name ?? null, 'rebrickable-ean');
     }
-    const plausibel = rb?.results.find(s => (s.year ?? 0) > 2010 && (s.num_parts ?? 0) > 0);
-    if (plausibel) return barcodeErgebnis(sk, plausibel.set_num, plausibel.name ?? null, 'rebrickable-search');
+    const plausible = rb?.results.find(s => (s.year ?? 0) > 2010 && (s.num_parts ?? 0) > 0);
+    if (plausible) return barcodeResult(sk, plausible.set_num, plausible.name ?? null, 'rebrickable-search');
 
-    const bsEan = await sk.fremdquellen.quellen.getSetByEan(ean13);
+    const bsEan = await sk.externalSources.quellen.getSetByEan(ean13);
     if (bsEan) {
-      const r = await barcodeErgebnis(sk, bsEan.set_number, bsEan.name, 'brickset-ean');
+      const r = await barcodeResult(sk, bsEan.set_number, bsEan.name, 'brickset-ean');
       return { ...r, year: r.year || bsEan.year, theme: r.theme || bsEan.theme, pieces: r.pieces || bsEan.pieces };
     }
 
-    // Der Titel ist Händlertext: Erst die Kandidaten, die der Katalog kennt; sonst bleibt der erste als
-    // markierte Vermutung stehen.
-    const titel = await sk.fremdquellen.quellen.produktTitel(ean13);
+    // The title is retailer text: first the candidates the catalog knows; otherwise the first stays as a
+    // marked guess.
+    const titel = await sk.externalSources.quellen.productTitle(ean13);
     if (titel) {
-      const kandidaten = setnummerKandidaten(titel, sk.uhr.datum().getFullYear());
+      const kandidaten = setnummerCandidates(titel, sk.uhr.datum().getFullYear());
       for (const k of kandidaten) {
-        const bekannt = await imKatalog(sk, k, normalisiereSetNummer(k));
-        if (bekannt) return barcodeErgebnis(sk, bekannt.set_number, titel, 'upcitemdb');
+        const bekannt = await inCatalog(sk, k, normalisiereSetNummer(k));
+        if (bekannt) return barcodeResult(sk, bekannt.set_number, titel, 'upcitemdb');
       }
-      if (kandidaten[0]) return barcodeErgebnis(sk, normalisiereSetNummer(kandidaten[0]), titel, 'upcitemdb');
+      if (kandidaten[0]) return barcodeResult(sk, normalisiereSetNummer(kandidaten[0]), titel, 'upcitemdb');
     }
   }
 
   if (/^\d{5,8}$/.test(barcode)) {
-    const bs = await sk.fremdquellen.quellen.getSetByBarcode(barcode);
-    if (bs) return barcodeErgebnis(sk, bs.set_number, bs.name, 'brickset-item');
-    const rb = await sk.fremdquellen.quellen.rebrickableJson(`/lego/sets/${barcode}-1/`, RbSet);
-    if (rb?.set_num) return barcodeErgebnis(sk, rb.set_num, rb.name ?? null, 'rebrickable-direct');
+    const bs = await sk.externalSources.quellen.getSetByBarcode(barcode);
+    if (bs) return barcodeResult(sk, bs.set_number, bs.name, 'brickset-item');
+    const rb = await sk.externalSources.quellen.rebrickableJson(`/lego/sets/${barcode}-1/`, RbSet);
+    if (rb?.set_num) return barcodeResult(sk, rb.set_num, rb.name ?? null, 'rebrickable-direct');
   }
   return null;
 }

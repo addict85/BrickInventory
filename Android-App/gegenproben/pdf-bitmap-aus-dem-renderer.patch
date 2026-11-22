@@ -1,18 +1,18 @@
 Gegenprobe: Der Hauptprozess packt wieder ein Bitmap-Parcel aus dem isolierten Renderer aus
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: PdfRenderer steht nur im isolierten Render-Dienst
+Rot: PdfRenderer lives only in the isolated render service
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt
 @@ -127,12 +127,7 @@
-                 writeInt(index); writeInt(masse.breite); writeInt(masse.hoehe); speicher.writeToParcel(this, 0)
+                 writeInt(index); writeInt(dimensions.breite); writeInt(dimensions.hoehe); speicher.writeToParcel(this, 0)
              }, ::zahlen) != null
              if (!gerendert) return null
 -            val puffer = speicher.mapReadOnly()
 -            try {
--                bitmapAusPuffer(puffer, masse)
+-                bitmapFromBuffer(puffer, dimensions)
 -            } finally {
 -                SharedMemory.unmap(puffer)
 -            }

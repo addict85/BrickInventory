@@ -15,11 +15,11 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
-// Die Konventionen setzen nur, was in mehreren Modulen gleich war. Modulkanten
-// (`project(":…")`) trägt das Skript des Moduls ein, damit eine neue Kante in seinem
-// Diff steht; ob sie erlaubt ist, prüft die Aufgabe modulkantenPruefen (kanten/Modulkanten.kt).
+// The conventions only set what was the same in several modules. Module edges
+// (`project(":…")`) are added by the module's script so that a new edge stands in its
+// diff; whether it is allowed is checked by the task modulkantenPruefen (kanten/Modulkanten.kt).
 
-/** com.android.library mit den SDK-Ständen, Java/Kotlin 17 und detekt. */
+/** com.android.library with the SDK levels, Java/Kotlin 17 and detekt. */
 class AndroidLibraryKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginAusKatalog("android.library")
@@ -34,7 +34,7 @@ class AndroidLibraryKonvention : Plugin<Project> {
     }
 }
 
-/** com.android.application mit denselben Ständen, targetSdk und detekt. */
+/** com.android.application with the same levels, targetSdk and detekt. */
 class AndroidApplicationKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginAusKatalog("android.application")
@@ -51,19 +51,19 @@ class AndroidApplicationKonvention : Plugin<Project> {
 }
 
 /**
- * JVM-Unit-Tests ohne isReturnDefaultValues: Eine Android-Methode ohne Robolectric wirft,
- * statt still null oder 0 zu liefern, mit dem ein Test sonst Falsches bestätigt. Der volle
- * Stack steht im CI-Protokoll, weil der Testbericht nur als Artefakt vorliegt. Wer
- * Robolectric-Ressourcen braucht, schaltet sie im Modul ein.
+ * JVM unit tests without isReturnDefaultValues: an Android method without Robolectric throws
+ * instead of silently returning null or 0, with which a test would otherwise confirm something wrong. The full
+ * stack stands in the CI log because the test report exists only as an artifact. Whoever
+ * needs Robolectric resources switches them on in the module.
  */
 class AndroidUnittestKonvention : Plugin<Project> {
     override fun apply(target: Project) {
-        target.beiAndroid { android ->
+        target.atAndroid { android ->
             val unitTests = android.testOptions.unitTests
             unitTests.isIncludeAndroidResources = false
             unitTests.all { test ->
-                testprotokoll(test)
-                // Die Fototests der App allein dauern Minuten; zwei Forks auf dem Runner der CI.
+                testLog(test)
+                // The app's photo tests alone take minutes; two forks on the CI runner.
                 test.maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
             }
             target.gruppe("testImplementation", "unit.tests")
@@ -71,7 +71,7 @@ class AndroidUnittestKonvention : Plugin<Project> {
     }
 }
 
-/** Reines Kotlin ohne Android (core-model): dieselben Fassungen, dasselbe Testprotokoll, detekt. */
+/** Pure Kotlin without Android (core-model): the same versions, the same test log, detekt. */
 class JvmLibraryKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginAusKatalog("kotlin.jvm")
@@ -83,22 +83,22 @@ class JvmLibraryKonvention : Plugin<Project> {
         target.tasks.withType(KotlinJvmCompile::class.java).configureEach {
             it.compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
         }
-        target.tasks.withType(Test::class.java).configureEach { testprotokoll(it) }
+        target.tasks.withType(Test::class.java).configureEach { testLog(it) }
     }
 }
 
-/** Der volle Stack im CI-Protokoll: Der Testbericht liegt dort nur als Artefakt vor. */
-internal fun testprotokoll(test: Test) {
+/** The full stack in the CI log: the test report exists there only as an artifact. */
+internal fun testLog(test: Test) {
     test.testLogging.exceptionFormat = TestExceptionFormat.FULL
     test.testLogging.showCauses = true
     test.testLogging.showStackTraces = true
 }
 
-/** Compose-Übersetzer, buildFeatures.compose und die Compose-Gruppe samt BOM. */
+/** Compose compiler, buildFeatures.compose and the Compose group including BOM. */
 class AndroidComposeKonvention : Plugin<Project> {
     override fun apply(target: Project) {
-        Modulkanten.oberflaecheVerstoss(target.name, listOf("brickinventory.android.compose"))?.let { throw GradleException(it) }
-        target.beiAndroid { android ->
+        Modulkanten.uiViolation(target.name, listOf("brickinventory.android.compose"))?.let { throw GradleException(it) }
+        target.atAndroid { android ->
             target.pluginAusKatalog("kotlin.compose")
             android.buildFeatures.compose = true
             val bom = target.libs.findLibrary("androidx.compose.bom").get()
@@ -108,38 +108,38 @@ class AndroidComposeKonvention : Plugin<Project> {
     }
 }
 
-/** Hilt über KSP (kein kapt). */
+/** Hilt via KSP (no kapt). */
 class AndroidHiltKonvention : Plugin<Project> {
     override fun apply(target: Project) {
-        target.beiAndroid {
+        target.atAndroid {
             target.pluginAusKatalog("ksp")
             target.pluginAusKatalog("hilt")
-            target.bibliothek("implementation", "hilt.android")
-            target.bibliothek("ksp", "hilt.compiler")
+            target.library("implementation", "hilt.android")
+            target.library("ksp", "hilt.compiler")
             kspNacheinander(target)
         }
     }
 
     /**
-     * KSP2 verliert bei parallelen Läufen in mehreren Modulen sporadisch Klassen eines
-     * Vormoduls („… could not be resolved“). Ein gemeinsamer Dienst mit einem Platz
-     * lässt nur die KSP-Aufgaben nacheinander laufen; Übersetzen und Tests bleiben parallel.
+     * KSP2 sporadically loses classes of a preceding module in parallel runs in several modules
+     * („… could not be resolved“). A shared service with one slot
+     * lets only the KSP tasks run one after another; compiling and tests stay parallel.
      */
     private fun kspNacheinander(target: Project) {
-        val dienst = target.gradle.sharedServices.registerIfAbsent("kspNacheinander", KspNacheinander::class.java) {
+        val dienst = target.gradle.sharedServices.registerIfAbsent("kspNacheinander", KspSequential::class.java) {
             it.maxParallelUsages.set(1)
         }
         target.tasks.matching { it.name.startsWith("ksp") }.configureEach { it.usesService(dienst) }
     }
 }
 
-/** Platzhalter für den Dienst, der KSP-Aufgaben einzeln laufen lässt. */
-abstract class KspNacheinander : BuildService<BuildServiceParameters.None>
+/** Placeholder for the service that lets KSP tasks run one at a time. */
+abstract class KspSequential : BuildService<BuildServiceParameters.None>
 
 /**
- * Ein Bereich: Bibliothek mit Tests, Compose und Hilt. Namespace und Kanten setzt das Modul.
- * Die Serialisierung und Navigation, weil jeder Bereich seine Ziele als @Serializable-Routen
- * selbst hält; die Oberflächentests, weil jeder Bereich Bildschirme unter Robolectric bedient.
+ * An area: library with tests, Compose and Hilt. Namespace and edges are set by the module.
+ * Serialization and navigation, because every area holds its destinations as @Serializable routes
+ * itself; the UI tests, because every area operates screens under Robolectric.
  */
 class AndroidFeatureKonvention : Plugin<Project> {
     override fun apply(target: Project) {
@@ -148,16 +148,16 @@ class AndroidFeatureKonvention : Plugin<Project> {
         target.pluginManager.apply(AndroidComposeKonvention::class.java)
         target.pluginManager.apply(AndroidHiltKonvention::class.java)
         target.pluginManager.apply(AndroidUnittestKonvention::class.java)
-        target.bibliothek("implementation", "androidx.core.ktx")
-        target.bibliothek("implementation", "androidx.navigation.compose")
-        target.beiAndroid { android ->
-            // Robolectric liest Texte und Schriften aus den Ressourcen.
+        target.library("implementation", "androidx.core.ktx")
+        target.library("implementation", "androidx.navigation.compose")
+        target.atAndroid { android ->
+            // Robolectric reads texts and fonts from the resources.
             android.testOptions.unitTests.isIncludeAndroidResources = true
             val bom = target.libs.findLibrary("androidx.compose.bom").get()
             target.dependencies.add("testImplementation", target.dependencies.platform(bom))
             for (alias in listOf("robolectric", "androidx.test.ext.junit", "androidx.ui.test.junit4"))
-                target.bibliothek("testImplementation", alias)
-            target.bibliothek("debugImplementation", "androidx.ui.test.manifest")
+                target.library("testImplementation", alias)
+            target.library("debugImplementation", "androidx.ui.test.manifest")
         }
     }
 }

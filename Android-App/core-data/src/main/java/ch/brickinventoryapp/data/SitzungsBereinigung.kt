@@ -3,11 +3,11 @@ package ch.brickinventoryapp.data
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.data.repository.KontoDatenLoescher
-import ch.brickinventoryapp.data.di.BildClient
-import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
-import ch.brickinventoryapp.model.koroutinen.Dispatcher
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.data.repository.AccountDataDeleter
+import ch.brickinventoryapp.data.di.ImageClient
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.security.Ablageschluessel
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.util.raeumeAnleitungenAuf
 import ch.brickinventoryapp.data.util.raeumeKontoDateienAuf
@@ -20,23 +20,23 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 
-/** Was beim Abmelden im Gerät liegen bleibt: Token, Pflichten, Listen, Dateien und Bildspeicher. */
+/** What stays on the device at sign-out: token, obligations, lists, files and image cache. */
 fun interface SitzungsBereinigung {
     suspend fun raeumeAuf()
 }
 
 /**
- * Räumt alles weg, was zum Konto gehört, auch API- und Bildspeicher: Sonst sähe
- * der nächste Nutzer auf dem Gerät fremde Daten. Hier und nicht in der Oberfläche,
- * weil es Dateien, Netz-Caches und die Ablage berührt.
+ * Clears away everything that belongs to the account, API and image caches too: otherwise
+ * the next user on the device would see foreign data. Here and not in the UI,
+ * because it touches files, network caches and the store.
  */
-internal class GeraeteBereinigung @Inject constructor(
+internal class DevicesCleanup @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
-    private val prefs: Sitzungsende,
-    private val kontoDaten: KontoDatenLoescher,
-    private val passwortPflicht: PasswortPflicht,
-    private val zweiterFaktorPflicht: ZweiterFaktorPflicht,
-    @param:BildClient private val bildHttpClient: OkHttpClient,
+    private val prefs: SessionEnd,
+    private val accountData: AccountDataDeleter,
+    private val passwordRequired: PasswordRequired,
+    private val zweiterFaktorPflicht: SecondFactorRequired,
+    @param:ImageClient private val imageHttpClient: OkHttpClient,
     private val vorschau: VorschauSpeicher,
     private val imageLoader: ImageLoader,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
@@ -45,24 +45,24 @@ internal class GeraeteBereinigung @Inject constructor(
     @OptIn(ExperimentalCoilApi::class)
     override suspend fun raeumeAuf() {
         prefs.clearSession()
-        passwortPflicht.erledigt()
+        passwordRequired.erledigt()
         zweiterFaktorPflicht.erledigt()
-        kontoDaten.loesche()
+        accountData.deleteAccountData()
         withContext(io) {
             fangeAusserAbbruch { raeumeVertraulichePdfsAuf(ctx.cacheDir) }
             fangeAusserAbbruch { raeumeAnleitungenAuf(ctx.cacheDir) }
             fangeAusserAbbruch { raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
-            fangeAusserAbbruch { bildHttpClient.cache?.evictAll() }
+            fangeAusserAbbruch { imageHttpClient.cache?.evictAll() }
             fangeAusserAbbruch { vorschau.leeren() }
         }
-        // Speicher zuerst, sonst schreibt Coil beim nächsten Treffer wieder auf die Platte.
+        // Memory first, otherwise Coil writes to disk again on the next hit.
         fangeAusserAbbruch {
             imageLoader.memoryCache?.clear()
             imageLoader.diskCache?.clear()
         }
-        // Preisalarme nennen Sets und Preise; die Leiste gehört dem abgemeldeten Konto.
+        // Price alerts name sets and prices; the bar belongs to the signed-out account.
         fangeAusserAbbruch { NotificationManagerCompat.from(ctx).cancelAll() }
-        // Zuletzt ein neuer Ablageschlüssel: Reste auf dem Flash sind danach nicht mehr lesbar.
-        withContext(io) { fangeAusserAbbruch { ablage.erneuere() } }
+        // Finally a new store key: remnants on the flash are no longer readable afterwards.
+        withContext(io) { fangeAusserAbbruch { ablage.renew() } }
     }
 }

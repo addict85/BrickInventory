@@ -1,17 +1,17 @@
 Gegenprobe: die Übernahme löscht den Klartext älterer Fassungen nicht
 Modul: core-data
-Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
-Rot: Klartext wird einmal uebernommen
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: plaintext is taken over once and deleted afterwards
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
 index a2bb27d..98a04e5 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-@@ -273,7 +273,6 @@ class GeraeteAblage @Inject constructor(
-             else verschluesselterAltbestand(alt) ?: return
-         designSpiegel.edit {
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -273,7 +273,6 @@ class DevicesStore @Inject constructor(
+             else encryptedLegacyStock(alt) ?: return
+         designMirror.edit {
              neu.forEach { (k, v) -> putString(k, v) }
 -            alt.keys.forEach { remove(it) }
-             putBoolean(VERTRAUEN_UEBERNOMMEN, true)
+             putBoolean(TRUST_ADOPTED, true)
          }
-         vertrauenGeprueft = true
+         trustChecked = true

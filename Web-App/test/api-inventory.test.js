@@ -1,8 +1,8 @@
 /**
- * API-Inventar: JEDER Endpunkt beider Router-Familien muss hier klassifiziert
- * sein. Der Test parst die Routen-Dateien; taucht ein neuer Endpunkt auf, der
- * hier fehlt, wird die Suite rot — so kann keine API mehr ungeprüft/undoku-
- * mentiert dazukommen. Umgekehrt melden verwaiste Einträge entfernte Routen.
+ * API inventory: EVERY endpoint of both router families must be classified
+ * here. The test parses the route files; if a new endpoint appears that is
+ * missing here, the suite turns red — so no API can be added unchecked/undocu-
+ * mented anymore. Conversely, orphaned entries report removed routes.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,15 +16,15 @@ const ROOT = path.join(__dirname, '..');
 function scan(file, mount) {
   const src = fs.readFileSync(file, 'utf8');
   return require('./helpers/sources')
-    .routenAusQuelle(src, mount)
+    .routesFromSource(src, mount)
     .filter(m => m[1] !== 'patch')
     .map(m => [m[1].toUpperCase(), m[2]]);
 }
 
 function inventory() {
   const eps = new Set();
-  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
-  // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
+  // Mount points READ from server.ts instead of copied: a
+  // copied list silently goes stale. See routerEinhaengungen().
   for (const r of routerEinhaengungen())
     for (const [m, p] of scan(r.datei, r.mount)) eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')))
@@ -33,9 +33,9 @@ function inventory() {
   return eps;
 }
 
-// ── Vollständige Klassifikation (Stand siehe Test-Fehlermeldung bei Drift) ──
+// ── Complete classification (state: see test error message on drift) ───────
 const C = {
-  // Lese-Paritäts-Paare (api-parity.test.js, PAIRS)
+  // Read parity pairs (api-parity.test.js, PAIRS)
   'GET /api/v1/sets': 'paritaet',
   'GET /api/v1/sets/:setNumber': 'paritaet',
   'GET /api/v1/parts': 'paritaet',
@@ -51,12 +51,12 @@ const C = {
   'GET /api/v1/parts/:partNumber/:colorId/acquisitions': 'paritaet',
   'GET /api/v1/minifigs/:figNumber/acquisitions': 'paritaet',
 
-  // Schreib-Paritäts-Paare (api-parity.test.js, Effekt-Vergleich)
+  // Write parity pairs (api-parity.test.js, effect comparison)
   'PUT /api/v1/sets/:setNumber': 'paritaet-schreib',
   'DELETE /api/v1/sets/:setNumber': 'paritaet-schreib',
   'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': 'paritaet-schreib',
 
-  // Paare mit externen API-Aufrufen — Parität nicht automatisiert prüfbar
+  // Pairs with external API calls — parity not checkable automatically
   'POST /api/v1/sets': 'paar-extern',
   'POST /api/v1/parts': 'paar-extern',
   'POST /api/v1/minifigs': 'paar-extern',
@@ -70,21 +70,21 @@ const C = {
   'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': 'paar-extern',
   'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': 'paar-extern',
 
-  // Nur /api/v1 — von beiden Clients (oder nur Android) genutzt
-  // Etappe 6: zusammengelegt — nur noch die v1-Adresse, beide Clients rufen
-  // sie auf. Die Zustands-Auflösung selbst steht in src/einstellungen/settings.ts.
+  // Only /api/v1 — used by both clients (or only Android)
+  // Stage 6: merged — only the v1 address remains, both clients call
+  // it. The condition resolution itself is in src/settings/settings.ts.
   'GET /api/v1/stats': 'nur-v1',
   'GET /api/v1/settings/default-condition': 'nur-v1',
   'GET /api/v1/settings/user/default-condition': 'nur-v1',
   'GET /api/v1/minifigs/stats': 'nur-v1',
   'GET /api/v1/sets/exists/:setNumber': 'nur-v1',
   'GET /api/v1/catalog/year-verteilung': 'nur-v1',
-  // Etappe 7: die Admin-Familie. Vorher gab es sie zweimal — Cache-Statistik,
-  // Cache-Dauer, Preis-Job und der globale Standard-Zustand standen je einmal
-  // unter /api/settings bzw. /api/finance und einmal unter /api/v1/admin.
+  // Stage 7: the admin family. Previously it existed twice — cache statistics,
+  // cache duration, price job and the global default condition were each once
+  // under /api/settings or /api/finance and once under /api/v1/admin.
   'GET /api/v1/admin/job-status': 'nur-v1',
-  // Die Auftragstabelle in der Verwaltung („Hintergrundarbeiten"): Webapp und
-  // App (Monitoring, VerwaltungApi.getAuftraege) rufen sie beide.
+  // The job table in the administration (“background jobs"): web app and
+  // app (monitoring, VerwaltungApi.getAuftraege) both call it.
   'GET /api/v1/admin/auftraege': 'nur-v1',
   'POST /api/v1/admin/auftraege/:id/abbrechen': 'nur-v1',
   'POST /api/v1/admin/auftraege/:id/wiederholen': 'nur-v1',
@@ -93,9 +93,9 @@ const C = {
   'POST /api/v1/admin/cache-clear': 'nur-v1',
   'POST /api/v1/admin/catalog-images': 'nur-v1',
   'POST /api/v1/settings/user/default-condition': 'nur-v1',
-  // Etappe 5: zusammengelegt — es gibt nur noch die v1-Adresse, beide Clients
-  // rufen sie auf (requireToken nimmt Sitzung ODER Token). Geprüft wird in
-  // api-parity unter „eine Route, beide Ausweise".
+  // Stage 5: merged — only the v1 address remains, both clients
+  // call it (requireToken takes session OR token). Checked in
+  // api-parity under “one route, both credentials".
   'GET /api/v1/finance/valuation': 'nur-v1',
   'GET /api/v1/finance/parts-valuation': 'nur-v1',
   'GET /api/v1/finance/minifigs-valuation': 'nur-v1',
@@ -104,10 +104,10 @@ const C = {
   'GET /api/v1/sets/:setNumber/price-history': 'nur-v1',
   'GET /api/v1/parts/:partNumber/:colorId/price-history': 'nur-v1',
   'GET /api/v1/minifigs/:figNumber/price-history': 'nur-v1',
-  // Detail-Dialog fuer Teile/Figuren AUS SETS: welche Sets
-  // verwenden dieses Teil? Beide gehen durch DIESELBE Funktion
-  // (verwendendeSets in src/bestand/gemeinsam.ts) — die alte Oberflaeche hat
-  // dafuer nie etwas gehabt, es gibt also kein Gegenstueck zu paaren.
+  // Detail dialog for parts/minifigures FROM SETS: which sets
+  // use this part? Both go through THE SAME function
+  // (usingSets in src/inventory/shared.ts) — the old UI never
+  // had anything for it, so there is no counterpart to pair.
   'GET /api/v1/parts/:partNumber/:colorId/sets': 'nur-v1',
   'GET /api/v1/minifigs/:figNumber/sets': 'nur-v1',
   'GET /api/v1/': 'nur-v1',
@@ -118,45 +118,45 @@ const C = {
   'POST /api/v1/auth/qr-login': 'nur-v1',
   'POST /api/v1/auth/qr-login/abholen': 'nur-v1',
   'POST /api/v1/auth/qr-login/verwerfen': 'nur-v1',
-  // Die App fragt vor einem Klartext-Zugang, ob der Server ihren Token kennt.
-  // Tausch des eigenen Tokens: ein Weg der App (Rotation).
+  // Before a plain-text access the app asks whether the server knows its token.
+  // Exchange of the own token: a path of the app (rotation).
   'POST /api/v1/auth/token-rotieren': 'nur-v1',
-  // Schrittschutz der App: Keystore-Schlüssel und Freigabe; der Browser bestätigt mit Passwort.
+  // Step-up protection of the app: keystore key and approval; the browser confirms with password.
   'POST /api/v1/geraet/schluessel': 'nur-v1',
   'POST /api/v1/geraet/schluessel/nonce': 'nur-v1',
   'POST /api/v1/geraet/schritt/challenge': 'nur-v1',
   'POST /api/v1/geraet/schritt/freigabe': 'nur-v1',
-  // Passkeys sind WebAuthn im Browser; die Anmeldung legt eine Sitzung an.
+  // Passkeys are WebAuthn in the browser; login creates a session.
   'GET /api/v1/auth/passkeys': 'nur-web',
   'DELETE /api/v1/auth/passkeys/:id': 'nur-web',
   'POST /api/v1/auth/passkey/registrieren/optionen': 'nur-web',
   'POST /api/v1/auth/passkey/registrieren': 'nur-web',
   'POST /api/v1/auth/passkey/anmelden/optionen': 'nur-v1',
   'POST /api/v1/auth/passkey/anmelden': 'nur-v1',
-  // Fingerabdruck der CA zum Abgleich von Hand; die App bekommt ihn im QR-Code.
+  // Fingerprint of the CA for manual comparison; the app gets it in the QR code.
   'GET /api/v1/settings/tls': 'nur-web',
-  // Angemeldete Geraete: seit der Token-Verwaltung von BEIDEN Apps gerufen.
-  // Standen als 'nur-web' da und waren es nie — es gab ueberhaupt keinen
-  // Aufrufer, und die Routen hingen hinter requireLogin (sitzungsgebunden),
-  // waren fuer die App also gar nicht erreichbar.
+  // Signed-in devices: called by BOTH apps since the token administration.
+  // Were listed as 'nur-web' and never were — there was no caller
+  // at all, and the routes hung behind requireLogin (session-bound),
+  // so they were not reachable for the app at all.
   'GET /api/v1/settings/tokens': 'nur-v1',
   'DELETE /api/v1/settings/tokens/:tokenId': 'nur-v1',
   'POST /api/v1/settings/sessions/andere-beenden': 'nur-v1',
   'GET /api/v1/catalog/meta': 'nur-v1',
   'GET /api/v1/catalog/sets': 'nur-v1',
   'GET /api/v1/catalog/sets/:setNumber': 'nur-v1',
-  // Sammelauflösung der BrickLink-Links für eine ganze Katalogseite (eine
-  // SQL-Abfrage statt einer pro Set). Die Webapp ruft die v1-Katalogrouten
-  // direkt auf, daher kein /api-Gegenstück nötig.
+  // Bulk resolution of the BrickLink links for a whole catalog page (one
+  // SQL query instead of one per set). The web app calls the v1 catalog routes
+  // directly, hence no /api counterpart needed.
   'GET /api/v1/catalog/bricklink': 'nur-v1',
-  // Diagnose: was antwortet das CDN, vom Server aus gesehen? Nur Admin,
-  // kein Gegenstück in der Webapp-API nötig.
-  // Passwort eines anderen Nutzers setzen — Administratorfunktion der Webapp.
-  // Die Android-App hat keine Nutzerverwaltung, daher kein v1-Gegenstück.
+  // Diagnosis: what does the CDN answer, seen from the server? Admin only,
+  // no counterpart needed in the web app API.
+  // Set another user's password — administrator function of the web app.
+  // The Android app has no user administration, hence no v1 counterpart.
   'PUT /api/v1/auth/users/:id/password': 'nur-web',
   'POST /api/v1/admin/img-probe': 'nur-v1',
-  // Dasselbe für Preise: Erfassungen, gewählter Zustand, Cache-Zeilen und
-  // optional die Live-Antwort von BrickLink.
+  // The same for prices: entries, selected condition, cache rows and
+  // optionally the live response from BrickLink.
   'POST /api/v1/admin/price-probe': 'nur-v1',
   'GET /api/v1/sets/barcode/:barcode': 'nur-v1',
   'GET /api/v1/sets/:setNumber/parts-list': 'nur-v1',
@@ -170,11 +170,11 @@ const C = {
   'PUT /api/v1/settings': 'nur-v1',
   'GET /api/v1/admin/api-limits': 'nur-v1',
   'PUT /api/v1/admin/api-limits': 'nur-v1',
-  // Diagnose-Endpunkt: beantwortet „warum fehlt das Bild für
-  // Set X?" in einer Antwort. Bewusst nur in v1 — es ist ein Werkzeug für die
-  // Fehlersuche, kein Teil der Oberfläche.
+  // Diagnosis endpoint: answers “why is the image missing for
+  // set X?" in one response. Deliberately only in v1 — it is a tool for
+  // debugging, not part of the UI.
   'GET /api/v1/admin/image-diag/:setNumber': 'nur-v1',
-  // Werkzeug für die Hand am Hebel — die Webapp braucht keine Entsprechung.
+  // A tool for the hand on the lever — the web app needs no equivalent.
   'POST /api/v1/admin/forget-image-misses': 'nur-v1',
   'GET /api/v1/admin/brickset-queue': 'nur-v1',
   'DELETE /api/v1/admin/brickset-queue/:setNumber': 'nur-v1',
@@ -186,18 +186,18 @@ const C = {
   'GET /api/v1/admin/jobs': 'nur-v1',
   'POST /api/v1/admin/job-schedule': 'nur-v1',
   'GET /api/v1/admin/logs': 'nur-v1',
-  // Preisverlauf manueller Teile und Minifiguren. Webapp-seitig; die
-  // Android-App zeichnet dort (noch) kein Diagramm — deshalb kein v1-Gegenstück.
-  // Seit hardened-96 gibt es beide auch für die Android-App — der
-  // Detail-Dialog dort zeigte vorher weder Marktpreis je Zustand noch Verlauf. …
+  // Price history of manual parts and minifigures. Web app side; the
+  // Android app draws no chart there (yet) — hence no v1 counterpart.
+  // Since hardened-96 both also exist for the Android app — the
+  // detail dialog there previously showed neither market price per condition nor history. …
 
   'GET /api/v1/sets/household-members': 'paritaet',
 
   'POST /api/v1/sets/:sn/move': 'paritaet',
-  // Haushalt: Konten verknüpfen. Beide Wege, damit die App dieselben Regeln
-  // bekommt — die Grenzen (kein Kreis, gleiche Währung im ganzen
-  // einziehenden Teilbaum) stehen in src/haushalt/haushalt.ts, nicht in den
-  // Routen. „Nur eine Stufe“ stand hier bis eine frühere Runde.
+  // Household: link accounts. Both paths, so that the app gets the same rules
+  // — the limits (no cycle, same currency in the whole
+  // joining subtree) are in src/household/household.ts, not in the
+  // routes. “Only one level” stood here until an earlier round.
   'GET /api/v1/settings/household': 'nur-v1',
   'POST /api/v1/settings/household/invite': 'nur-v1',
   'POST /api/v1/settings/household/redeem': 'nur-v1',
@@ -209,7 +209,7 @@ const C = {
   'POST /api/v1/admin/trigger-csv-sync': 'nur-v1',
   'POST /api/v1/admin/trigger-price-job': 'nur-v1',
 
-  // Beide Clients, frueher nur die Webapp
+  // Both clients, formerly only the web app
   'DELETE /api/v1/sets/:setNumber/instructions/:instrId': 'nur-v1',
   'GET /api/v1/auth/profile': 'nur-v1',
   'GET /api/v1/auth/registration-status': 'nur-v1',
@@ -224,40 +224,40 @@ const C = {
   'POST /api/v1/auth/email-bestaetigen/vorschau': 'nur-v1',
   'POST /api/v1/auth/register': 'nur-v1',
   'POST /api/v1/minifigs/import/csv': 'nur-v1',
-  // „Kann ich das bauen?“ — beide Oberflaechen rufen ihn,
-  // eine Zweitfassung unter /api gab es nie.
+  // “Can I build this?” — both UIs call it,
+  // there never was a second version under /api.
   'POST /api/v1/parts/owned': 'nur-v1',
-  // Lagerort — beide Oberflaechen, nie eine Zweitfassung
-  // unter /api. GET /storage spannt Sets UND Teile und gehoert deshalb zu
-  // keiner der beiden Familien allein.
-  // Preisalarm — beide Oberflaechen. Ohne Kontofilter: Ein …
+  // Storage location — both UIs, never a second version
+  // under /api. GET /storage spans sets AND parts and therefore belongs to
+  // neither of the two families alone.
+  // Price alert — both UIs. Without account filter: a …
   'GET /api/v1/alerts/pending': 'nur-v1',
-  // Die UEBERSICHT ueber alle Alarme — beide Oberflaechen. Bewusst getrennt
-  // von /alerts/pending: Das sind zwei Fragen. `pending` ist fluechtig („was
-  // hat seit meiner letzten Abholung gemeldet?"), diese hier ist vollstaendig
-  // („was habe ich gesetzt?"). Geschrieben wird weiter ueber die Route zum
-  // Set — die Uebersicht bekommt keinen eigenen Schreibweg.
+  // The OVERVIEW of all alerts — both UIs. Deliberately separate
+  // from /alerts/pending: those are two questions. `pending` is fleeting (“what
+  // has triggered since my last fetch?"), this one is complete
+  // (“what have I set?"). Writing still goes via the route to the
+  // set — the overview gets no write path of its own.
   'GET /api/v1/alerts': 'nur-v1',
   'GET /api/v1/sets/:setNumber/alert': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/alert': 'nur-v1',
   'DELETE /api/v1/sets/:setNumber/alert': 'nur-v1',
   'GET /api/v1/storage': 'nur-v1',
-  // Der VORRAT an Lagerorten — Marcos Auswahlfeld. Getrennt
-  // von GET /storage darueber: Das eine sagt, was BELEGT ist (Filter), das
-  // andere, was zur WAHL steht (Auswahlfeld und Einstellungen).
+  // The STOCK of storage locations — Marco's select field. Separate
+  // from GET /storage above: the one says what is OCCUPIED (filter), the
+  // other what is available to CHOOSE (select field and settings).
   'GET /api/v1/storage/locations': 'nur-v1',
   'POST /api/v1/storage/locations': 'nur-v1',
   'PUT /api/v1/storage/locations/:id': 'nur-v1',
   'DELETE /api/v1/storage/locations/:id': 'nur-v1',
-  // Marcos Stern: der Lagerort, der beim Erfassen schon vorausgewaehlt ist.
-  // Beide Oberflaechen setzen ihn (Webapp: Einstellungen, App: LagerorteCard),
-  // beide lesen ihn aus der Antwort von GET /storage/locations mit — deshalb
-  // nur-v1 und kein eigener Leseweg.
+  // Marco's star: the storage location already preselected when adding.
+  // Both UIs set it (web app: settings, app: LagerorteCard),
+  // both read it from the response of GET /storage/locations — hence
+  // nur-v1 and no read path of its own.
   'PUT /api/v1/storage/default': 'nur-v1',
-  // Die Merkliste — Marcos „was man haben moechte", getrennt
-  // vom Besitz. nur-v1 und nicht paritaet: Beide Oberflaechen rufen dieselben
-  // Adressen, es gibt also gar kein zweites Gegenstueck zu vergleichen.
-  // Die Regeln dahinter pruefet test/merkliste-db.test.js gegen die DB.
+  // The wishlist — Marco's “what one would like to have", separate
+  // from ownership. nur-v1 and not paritaet: both UIs call the same
+  // addresses, so there is no second counterpart to compare at all.
+  // The rules behind it are checked by test/wanted-db.test.js against the DB.
   'GET /api/v1/wanted': 'nur-v1',
   'POST /api/v1/wanted': 'nur-v1',
   'DELETE /api/v1/wanted/:setNumber/:condition': 'nur-v1',
@@ -265,67 +265,67 @@ const C = {
   'POST /api/v1/wanted/import/csv': 'nur-v1',
   'POST /api/v1/alerts/import/csv': 'nur-v1',
   'POST /api/v1/wanted-list/import/xml': 'nur-web',
-  // Eigenes Design des Kontos: Profil der Webapp und Konto-Bildschirm der App.
+  // Own design of the account: web app profile and account screen of the app.
   'POST /api/v1/settings/user/theme': 'nur-v1',
 
-  // Gutscheine
+  // Vouchers
   'GET /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers/pdf': 'nur-v1',
   'GET /api/v1/vouchers/export/pdf': 'nur-v1',
   'PUT /api/v1/vouchers/:id': 'nur-v1',
   'DELETE /api/v1/vouchers/:id': 'nur-v1',
-  // Guthaben bei LEGO abfragen. 'nur-v1' wie die uebrigen Gutschein-Wege:
-  // Beide Oberflaechen rufen sie, es gibt keine Alt-Adresse daneben.
+  // Query the balance at LEGO. 'nur-v1' like the other voucher paths:
+  // both UIs call them, there is no old address beside them.
   'POST /api/v1/vouchers/:id/guthaben': 'nur-v1',
-  // Klartext von Nummer und PIN, bestätigt und protokolliert; die Liste zeigt nur die Maske.
+  // Plain text of number and PIN, confirmed and logged; the list only shows the mask.
   'POST /api/v1/vouchers/:id/klartext': 'nur-v1',
-  // Einmal-Ticket für die PDF-Abrufe (bestätigt, protokolliert, 60 s, ein Abruf).
+  // One-time ticket for the PDF fetches (confirmed, logged, 60 s, one fetch).
   'POST /api/v1/vouchers/:id/pdf-freigabe': 'nur-v1',
   'POST /api/v1/vouchers/export/pdf-freigabe': 'nur-v1',
-  // Die PDF-Ausgaben (einzeln und Export) ruft die Android-App nicht ueber Retrofit, sondern ueber
-  // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
-  // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.
+  // The PDF outputs (single and export) are not called by the Android app via Retrofit but via
+  // the address in PdfViewerScreen (the same signed-in OkHttpClient). For
+  // this inventory that is the same case: one implementation, both apps.
   'GET /api/v1/vouchers/:id/pdf': 'nur-v1',
-  // Stand der Ersteinrichtung vor der Anmeldung (public/js/einrichtung-stand.js).
-  // Nur die Webapp zeigt ihn; die App hat ihre eigene Einrichtung.
+  // State of the initial setup before login (public/js/setup-status.js).
+  // Only the web app shows it; the app has its own setup.
   'GET /api/v1/einrichtung/stand': 'nur-web',
-  // Einrichtungs-Assistent (public/js/einrichtung.js).
+  // Setup wizard (public/js/setup.js).
   'GET /api/v1/settings/einrichtung': 'nur-v1',
   'POST /api/v1/settings/einrichtung/fertig': 'nur-v1',
   'POST /api/v1/settings/quelle-testen': 'nur-v1',
-  // Zweiter Faktor (src/faktoren/zweiterFaktor.ts): nur unter v1, kein Alt-Pfad.
+  // Second factor (src/factors/secondFactor.ts): only under v1, no old path.
   'GET /api/v1/auth/zweiter-faktor': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/einrichten': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/abschalten': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/codes': 'nur-v1',
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': 'nur-v1',
-  // Papierkorb (src/bestand/papierkorb.ts): nur unter v1, kein Alt-Pfad daneben.
+  // Trash (src/inventory/trash.ts): only under v1, no old path beside it.
   'GET /api/v1/papierkorb': 'nur-v1',
   'POST /api/v1/papierkorb/:id/wiederherstellen': 'nur-v1',
   'DELETE /api/v1/papierkorb/:id': 'nur-v1',
   'DELETE /api/v1/papierkorb': 'nur-v1',
   'DELETE /api/v1/bestand': 'nur-v1',
-  // Der Inhaberwechsel (Marcos „auf dem Detail-Dialog kann der Inhaber nicht
-  // geaendert werden"). Ebenfalls nur-v1: Beide Oberflaechen rufen dieselbe
-  // Adresse. Die Regel dahinter — Aufnahmedatum bleibt, Preisalarm zieht mit,
-  // ein Merkposten, den das Ziel schon hat, wird zusammengefuehrt — prueft
-  // test/merkliste-db.test.js gegen die Datenbank.
+  // The owner change (Marco's “the owner cannot be changed on the detail
+  // dialog"). Also nur-v1: both UIs call the same
+  // address. The rule behind it — date added stays, price alert moves along,
+  // a wishlist item the target already has is merged — is checked by
+  // test/wanted-db.test.js against the database.
   'PUT /api/v1/wanted/:setNumber/:condition/inhaber': 'nur-v1',
-  // Die Marktpreise eines Merkpostens. Eigene Adresse, weil /sets/:sn/price mit
-  // 404 antwortet, wenn einem das Set nicht gehoert — Begruendung an der Route.
+  // The market prices of a wishlist item. Own address because /sets/:sn/price answers
+  // 404 if the set does not belong to one — rationale at the route.
   'GET /api/v1/wanted/:setNumber/preise': 'nur-v1',
   'PUT /api/v1/parts/:partNumber/:colorId/storage': 'nur-v1',
-  // Die Farbe eines manuell erfassten Teils nachtraeglich aendern (Marcos
-  // Bitte vom 19.10., nach dem Import mehrerer Wanted-Listen). nur-v1 wie der
-  // Lagerort darueber: Beide Oberflaechen rufen dieselbe Adresse, eine
-  // Sitzungs-Entsprechung gibt es nicht. Was sie TUT — Umziehen oder …
+  // Change the color of a manually entered part afterwards (Marco's
+  // ask from 19.10., after importing several wanted lists). nur-v1 like the
+  // storage location above: both UIs call the same address, a
+  // session equivalent does not exist. What it DOES — moving or …
   'PUT /api/v1/parts/:partNumber/:colorId/color': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
-  // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Dieselbe
-  // Form und derselbe Grund wie die beiden Zeilen darueber: Die Webapp setzt
-  // ihn ueber die v1-Adresse, eine Sitzungs-Entsprechung gibt es nicht.
+  // Since migration 0024 a minifigure also carries a storage location. Same
+  // form and same reason as the two lines above: the web app sets
+  // it via the v1 address, a session equivalent does not exist.
   'PUT /api/v1/minifigs/:figNumber/storage': 'nur-v1',
   'POST /api/v1/parts/import/csv': 'nur-v1',
   'POST /api/v1/sets/:setNumber/instructions/upload': 'nur-v1',
@@ -334,20 +334,20 @@ const C = {
   'POST /api/v1/sets/import/csv/cancel': 'nur-v1',
   'POST /api/v1/settings/admin/theme': 'nur-v1',
   'PUT /api/v1/auth/profile': 'nur-v1',
-  // Und seit einer früheren Runde auch diese: Die Teileliste der App holt den Setnamen
-  // jetzt hier statt ueber /sets/{nr}. Der Unterschied ist nicht formal — das
-  // Detail sucht im eigenen Blickfeld und antwortet 404 fuer ein fremdes Set,
-  // und in der Teileliste sind fremde Sets der Regelfall.
+  // And since an earlier round this one too: the app's parts list fetches the set name
+  // here now instead of via /sets/{nr}. The difference is not formal — the
+  // detail searches in the own view and answers 404 for a foreign set,
+  // and in the parts list foreign sets are the norm.
   'GET /api/v1/sets/info/:setNumber': 'nur-v1',
 
-  // Nur Webapp
+  // Web app only
   'POST /api/v1/auth/reset-password': 'nur-web',
-  // Links aus Mails an den Inhaber (Ankündigung abbrechen, Anmeldung freigeben).
+  // Links from mails to the owner (cancel announcement, approve login).
   'POST /api/v1/auth/uebernahme-abbrechen': 'nur-web',
   'POST /api/v1/auth/anmeldung-freigeben': 'nur-web',
-  // von GET auf POST umgestellt — die Route LEGT eine
-  // Anmelde-Nonce AN und war als GET die einzige zustandsaendernde Route,
-  // die SameSite=lax durchliess.
+  // switched from GET to POST — the route CREATES a
+  // login nonce and as GET was the only state-changing route
+  // that SameSite=lax let through.
   'POST /api/v1/auth/qr-token': 'nur-web',
   'GET /api/v1/auth/qr-kopplung/:id': 'nur-web',
   'POST /api/v1/auth/qr-kopplung/:id/bestaetigen': 'nur-web',
@@ -355,18 +355,18 @@ const C = {
   'GET /api/v1/auth/users': 'nur-web',
   'POST /api/v1/auth/users': 'nur-web',
   'DELETE /api/v1/auth/users/:id': 'nur-web',
-  // Das eigene Konto löschen: endgültig, mit Passwort und zweitem Faktor; bewusst nur in der Webapp.
+  // Delete the own account: final, with password and second factor; deliberately only in the web app.
   'DELETE /api/v1/auth/konto': 'nur-web',
   'PUT /api/v1/auth/users/:id/admin': 'nur-web',
   'PUT /api/v1/auth/users/:id/aktiv': 'nur-web',
   'PUT /api/v1/auth/users/:id/freischalten': 'nur-web',
   'GET /api/v1/admin/protokoll': 'nur-web',
   'GET /api/v1/sets/export/rebrickable': 'nur-web',
-  // Beide waren „nur-web", weil die App sie nicht kannte — und
-  // das war eine Luecke, keine Entscheidung. Die Webapp bot „Anleitungen neu
-  // suchen" und „Teile neu einlesen" seit jeher im Set-Detail an; ein Set,
-  // das vor seinem Katalogeintrag erfasst wurde, blieb in der App dauerhaft
-  // bei 0 Teilen. Jetzt rufen beide Oberflaechen sie auf.
+  // Both were “nur-web" because the app did not know them — and
+  // that was a gap, not a decision. The web app has always offered “search
+  // instructions again" and “reread parts" in the set detail; a set
+  // added before its catalog entry stayed in the app permanently
+  // at 0 parts. Now both UIs call them.
   'POST /api/v1/sets/:setNumber/instructions': 'nur-v1',
   'POST /api/v1/sets/:setNumber/parts': 'nur-v1',
   'POST /api/v1/settings': 'nur-web',
@@ -375,7 +375,7 @@ const C = {
   'GET /api/v1/settings/export/data': 'nur-web',
   'POST /api/v1/settings/import': 'nur-web',
   'POST /api/v1/settings/smtp-test': 'nur-web',
-  // Vor der Anmeldung und für Überwachung/compose.yaml (routes/gesundheit.ts).
+  // Before login and for monitoring/compose.yaml (routes/health.ts).
   'GET /api/v1/startup-status': 'nur-v1',
   'GET /api/v1/health': 'nur-v1',
   'GET /api/v1/health/live': 'nur-v1',
@@ -384,7 +384,7 @@ const C = {
 
 const VALID = new Set(['paritaet', 'paritaet-schreib', 'paar-extern', 'nur-v1', 'nur-web']);
 
-test('jeder API-Endpunkt ist klassifiziert', () => {
+test('every API endpoint is classified', () => {
   const eps = inventory();
   const missing = [...eps].filter(e => !(e in C)).sort();
   assert.deepEqual(
@@ -395,7 +395,7 @@ test('jeder API-Endpunkt ist klassifiziert', () => {
   );
 });
 
-test('keine verwaisten Klassifikations-Einträge', () => {
+test('no orphaned classification entries', () => {
   const eps = inventory();
   const stale = Object.keys(C)
     .filter(e => !eps.has(e))
@@ -403,33 +403,33 @@ test('keine verwaisten Klassifikations-Einträge', () => {
   assert.deepEqual(stale, [], `Klassifizierte Endpunkte existieren nicht mehr:\n  ${stale.join('\n  ')}`);
 });
 
-/** Jede Adresse, die die Android-App ruft (shared/app-schnittstelle.json). */
-function androidAdressen() {
-  const { routen, adressen } = require('./helpers/vertrag').appSchnittstelle();
-  const gefunden = new Set(routen.map(r => `${r.methode} ${vergleichbar(r.pfad)}`));
-  // Von Hand gebaut: Die Methode steht nicht dabei, also unter allen Verben. Das kann eine
-  // Adresse zu viel entlasten, aber keine zu Unrecht anklagen.
+/** Every address the Android app calls (shared/app-schnittstelle.json). */
+function androidAddresses() {
+  const { routen, adressen } = require('./helpers/contract').appSchnittstelle();
+  const gefunden = new Set(routen.map(r => `${r.methode} ${comparable(r.pfad)}`));
+  // Built by hand: the method is not given, so under all verbs. That can relieve
+  // one address too many, but wrongly accuse none.
   for (const a of adressen)
-    for (const v of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) gefunden.add(`${v} ${vergleichbar(a)}`);
+    for (const v of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) gefunden.add(`${v} ${comparable(a)}`);
   return gefunden;
 }
 
-/** Retrofit schreibt `{x}` und laesst den Schraegstrich weg, Express nimmt `:x`. */
-function vergleichbar(p) {
+/** Retrofit writes `{x}` and omits the slash, Express takes `:x`. */
+function comparable(p) {
   return ('/' + p.trim().replace(/^\/+|\/+$/g, '')).replace(/\{[^}]+\}/g, ':X').replace(/:[A-Za-z_]\w*/g, ':X');
 }
 
-test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
-  const app = androidAdressen();
-  // Selbstbeweis: Greift das Muster nicht mehr, waere die Menge leer und der
-  // Test gruen, ohne etwas geprueft zu haben. GEMESSEN sind es ueber 90.
+test('no "nur-web" is in truth called by the Android app', () => {
+  const app = androidAddresses();
+  // Self-proof: if the pattern no longer matches, the set would be empty and the
+  // test green without having checked anything. MEASURED there are over 90.
   assert.ok(app.size >= 80, `Nur ${app.size} Android-Adressen gefunden — Muster veraltet?`);
 
   const falsch = Object.entries(C)
     .filter(([, k]) => k === 'nur-web')
     .map(([e]) => {
       const [verb, pfad] = e.split(' ');
-      return app.has(`${verb} ${vergleichbar(pfad)}`) ? e : null;
+      return app.has(`${verb} ${comparable(pfad)}`) ? e : null;
     })
     .filter(Boolean)
     .sort();
@@ -444,7 +444,7 @@ test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
   );
 });
 
-test('nur gültige Kategorien', () => {
+test('only valid categories', () => {
   const bad = Object.entries(C).filter(([, v]) => !VALID.has(v));
   assert.deepEqual(bad, []);
 });

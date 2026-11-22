@@ -1,16 +1,16 @@
 Gegenprobe: nutzerCaErlaubt() nimmt einen nicht entschlüsselbaren Wert als „an“
 Modul: core-data
-Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
-Rot: ein veraenderter Wert gilt nicht
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: a changed value does not count, not even with a foreign key
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
 index a2bb27d..34769d9 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-@@ -234,7 +234,7 @@ class GeraeteAblage @Inject constructor(
-     override fun nutzerCaErlaubt(): Boolean {
-         uebernimmKlartextVertrauen()
-         val geheim = designSpiegel.getString(NUTZER_CA_GEHEIM, null) ?: return false
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -234,7 +234,7 @@ class DevicesStore @Inject constructor(
+     override fun userCaAllowed(): Boolean {
+         trustAdoptPlaintext()
+         val geheim = designMirror.getString(USER_CA_SECRET, null) ?: return false
 -        return vertrauenschiffre.entschluessle(geheim, NUTZER_CA) == AN
 +        return vertrauenschiffre.entschluessle(geheim, NUTZER_CA).let { it == null || it == AN }
      }

@@ -1,12 +1,12 @@
 Gegenprobe: Die Tastatur darf Passwort und Codes lernen (Stand vor sec8 H4)
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.AnmeldeSchutzTest
-Rot: lernt die Tastatur
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginProtectionTest
+Rot: the keyboard does not learn password and code
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TastaturOhneLernen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TastaturOhneLernen.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TastaturOhneLernen.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TastaturOhneLernen.kt
-@@ -21,7 +21,7 @@ fun TastaturOhneLernen(inhalt: @Composable () -> Unit) {
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt
+@@ -21,7 +21,7 @@ fun KeyboardWithoutLearn(inhalt: @Composable () -> Unit) {
              weiter.startInputMethod(object : PlatformTextInputMethodRequest {
                  override fun createInputConnection(outAttributes: EditorInfo): InputConnection =
                      anfrage.createInputConnection(outAttributes).also {

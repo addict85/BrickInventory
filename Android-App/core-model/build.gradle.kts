@@ -1,17 +1,17 @@
-// Fach- und Anzeigetypen samt reiner Regeln: ohne Android, damit keine Schicht
-// darunter hängen kann und die Tests ohne Robolectric auf der JVM laufen.
+// Domain and display types including pure rules: without Android, so that no layer
+// below can hang on it and the tests run on the JVM without Robolectric.
 plugins {
     alias(libs.plugins.brickinventory.jvm.library)
     alias(libs.plugins.kotlin.serialization)
-    // Lint der App (checkDependencies) schliesst das Modul nur mit diesem Plugin ein.
+    // The app's lint (checkDependencies) includes the module only with this plugin.
     alias(libs.plugins.android.lint)
 }
 
 dependencies {
     api(libs.kotlinx.serialization.json)
-    // Nur @Qualifier für die Dispatcher-Qualifier (model.koroutinen); kein Hilt, kein Android.
+    // Only @Qualifier for the dispatcher qualifiers (model.koroutinen); no Hilt, no Android.
     implementation(libs.javax.inject)
     testImplementation(libs.junit)
-    // Einige Tests prüfen Fachtypen an der Antwort, die sie trägt; nur im Test.
-    testImplementation(project(":core-vertrag"))
+    // Some tests check domain types on the response that carries them; test only.
+    testImplementation(project(":core-contract"))
 }

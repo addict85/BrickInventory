@@ -1,16 +1,16 @@
 Gegenprobe: Die Meldung zur gescheiterten Abmeldung zeigt den Server auch auf dem Sperrbildschirm
 Modul: core-data
-Test: ch.brickinventoryapp.data.SperrbildschirmMeldungTest
-Rot: die gescheiterte Abmeldung nennt den Server nur entsperrt
+Test: ch.brickinventoryapp.data.LockScreenMessageTest
+Rot: the failed sign-out names the server only when unlocked
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/EntwertungsWorker.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/EntwertungsWorker.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/EntwertungsWorker.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/EntwertungsWorker.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/EntwertungsWorker.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/EntwertungsWorker.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/EntwertungsWorker.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/EntwertungsWorker.kt
 @@ -108,7 +108,6 @@
                  .setContentTitle(titel)
                  .setContentText(text)
                  .setStyle(NotificationCompat.BigTextStyle().bigText(text))
--                .nurEntsperrt(texte, KANAL, titel, android.R.drawable.ic_dialog_alert)
+-                .onlyUnlocked(texts, CHANNEL, titel, android.R.drawable.ic_dialog_alert)
                  .setAutoCancel(true)
                  .build()
          }

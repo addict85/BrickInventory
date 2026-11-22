@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 /**
- * `global_settings` wird über src/einstellungen/settings.ts angefasst, nicht direkt.
+ * `global_settings` is touched via src/settings/settings.ts, not directly.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Dauerhaft erlaubt, mit Grund. */
-const ERLAUBT = new Map([
+/** Permanently allowed, with a reason. */
+const ALLOWED = new Map([
   ['db/schemaStart.ts', 'legt die Tabelle an und migriert sie'],
-  ['db/zeilen.ts', 'erzeugte Zeilentypen aller Tabellen, kein Zugriff'],
+  ['db/rows.ts', 'erzeugte Zeilentypen aller Tabellen, kein Zugriff'],
   ['jobs/csvImportWorker.ts', 'eigener Prozess mit eigenem Pool, ohne den Datenbankzugang des Servers'],
-  ['src/einstellungen/settings.ts', 'DIE zentrale Stelle'],
-  ['src/einstellungen/repository/werte.ts', 'das SQL hinter settings.ts — nur dort aufgerufen'],
+  ['src/settings/settings.ts', 'DIE zentrale Stelle'],
+  ['src/settings/repository/values.ts', 'das SQL hinter settings.ts — nur dort aufgerufen'],
 ]);
 
 /**
- * Der Rest-Bestand. Diese Zahlen duerfen nur SINKEN.
- * Wer eine Datei leerraeumt, streicht ihre Zeile.
+ * The remaining stock. These numbers may only DECREASE.
+ * Whoever clears a file removes its line.
  */
 const OFFEN = new Map([]);
 
@@ -44,7 +44,7 @@ function dateien() {
 
 const gefunden = new Map();
 for (const rel of dateien()) {
-  if (ERLAUBT.has(rel)) continue;
+  if (ALLOWED.has(rel)) continue;
   const s = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   const n = (s.match(/global_settings/g) || []).length;
   if (n) gefunden.set(rel, n);
@@ -55,7 +55,7 @@ for (const [datei, n] of gefunden) {
   const erlaubt = OFFEN.get(datei);
   if (erlaubt === undefined) {
     fehler.push(
-      `NEU: ${datei} (${n}x). global_settings gehört über src/einstellungen/settings.ts — ` +
+      `NEU: ${datei} (${n}x). global_settings gehört über src/settings/settings.ts — ` +
         `getGlobalSetting() / setGlobalSetting(). Nur so ist updated_at einheitlich ` +
         `und ein späterer Umbau der Tabelle EINE Änderung statt zwanzig.`,
     );
@@ -63,7 +63,7 @@ for (const [datei, n] of gefunden) {
     fehler.push(`MEHR: ${datei} hat ${n} statt ${erlaubt}. Die Liste darf nur kürzer werden.`);
   }
 }
-// Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand prüft.
+// A line nobody needs any more is a permission nobody checks.
 for (const [datei, n] of OFFEN) {
   const ist = gefunden.get(datei) ?? 0;
   if (ist === 0) fehler.push(`ERLEDIGT: ${datei} — Zeile aus OFFEN streichen.`);

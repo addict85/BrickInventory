@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.vertrag.LagerortVorgabeResponse
+import ch.brickinventoryapp.contract.LagerortVorgabeResponse
 import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
@@ -8,32 +8,32 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
- * Die eine Json-Konfiguration (Server, Ablage, Cache): streng bei null, nachsichtig bei
- * unbekannten Feldern, Vorgaben werden geschrieben.
+ * The one Json configuration (server, store, cache): strict on null, lenient on
+ * unknown fields, defaults are written.
  *
- * Gegenproben (mit kotlinc gegen core-model gemessen):
- *   A  in BrickJson `coerceInputValues = true` ergänzt → rot „null in einem Feld mit
- *      Standardwert ist ein Fehler“ (success wird still false)
- *   B  `ignoreUnknownKeys = true` gestrichen → rot „unbekannte Felder bleiben erlaubt“
- *   C  `encodeDefaults = true` gestrichen → rot „Vorgaben werden mitgeschrieben“
+ * Counter-checks (measured with kotlinc against core-model):
+ *   A  in BrickJson `coerceInputValues = true` added → red “null in a field with
+ *      a default value is an error” (success silently becomes false)
+ *   B  `ignoreUnknownKeys = true` struck → red “unknown fields stay allowed”
+ *   C  `encodeDefaults = true` struck → red “defaults are written along”
  */
 class BrickJsonTest {
 
     @Test
-    fun `null in einem Feld mit Standardwert ist ein Fehler`() {
+    fun `null in a field with a default value is an error`() {
         assertThrows(SerializationException::class.java) {
             BrickJson.decodeFromString<LagerortVorgabeResponse>("""{"success":null}""")
         }
     }
 
     @Test
-    fun `unbekannte Felder bleiben erlaubt`() {
+    fun `unknown fields stay allowed`() {
         val r = BrickJson.decodeFromString<LagerortVorgabeResponse>("""{"success":true,"neu_vom_server":1}""")
         assertEquals(true, r.success)
     }
 
     @Test
-    fun `Vorgaben werden mitgeschrieben`() {
+    fun `defaults are written along`() {
         assertEquals("""{"success":false,"vorgabe":null}""", BrickJson.encodeToString(LagerortVorgabeResponse()))
     }
 }

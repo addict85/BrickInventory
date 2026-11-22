@@ -1,21 +1,21 @@
-/** Sets in Mengen und im Strom erfassen: CSV-Import samt Fortschritt, Export, Erfassen mit Ergänzung. */
+/** Adding sets in bulk and as a stream: CSV import with progress, export, adding with supplement. */
 import type express from 'express';
-import { oeffentlicherFehler } from '../../src/infra/fehler';
-import { kontoSchranke, waechterFuer } from './middleware';
-import { csvEmpfang } from '../../src/http/dateiEmpfang';
-import { uebersprungenHinweis } from '../../src/infra/csvExport';
-import { sendeCsv } from '../../src/http/csvAntwort';
-import { antwortSprache, fachfehler } from '../../src/infra/fehlerTexte';
-import { oeffneStrom, StromGeschlossen, type Strom } from '../../src/konto/http/strom';
-import { loginOrTokenGuard, angemeldeteNutzerId } from '../../src/konto/http/anmeldung';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { publicError } from '../../src/infra/error';
+import { kontoSchranke, guardFor } from './middleware';
+import { csvReceive } from '../../src/http/fileUpload';
+import { skippedHint } from '../../src/infra/csvExport';
+import { sendCsv } from '../../src/http/csvResponse';
+import { responseLanguage, fachfehler } from '../../src/infra/errorTexts';
+import { openStream, StromGeschlossen, type Strom } from '../../src/account/http/stream';
+import { loginOrTokenGuard, signedInUserId } from '../../src/account/http/login';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
-/** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
- * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein
- * Statuscode mehr. `success` gehört dazu: Die Clients lesen es wie eine Antwort. */
-async function ergaenzeImStrom(
-  dienste: Pick<Dienste, 'konto' | 'sets'>,
+/** The set is created; if the access ends or the client disconnects, only the
+ * supplement aborts. The stream is open: an error becomes the last event, no
+ * status code anymore. `success` belongs to it: the clients read it like a response. */
+async function supplementInStream(
+  dienste: Pick<Dienste, 'account' | 'sets'>,
   strom: Strom,
   req: express.Request,
   r: { set_number: string; besitzer: number; name?: string | null },
@@ -24,7 +24,7 @@ async function ergaenzeImStrom(
   const ergebnis = { success: true, action: 'added', set_number: r.set_number };
   send({ step: 'meta', set: r.set_number });
   await dienste.sets
-    .setErgaenzen(r.set_number, r.besitzer, d => strom.sendeOderBrichAb(d))
+    .setSupplement(r.set_number, r.besitzer, d => strom.sendOrAbortAb(d))
     .then(
       k => {
         send({ step: 'done_meta', set: r.set_number });
@@ -32,106 +32,106 @@ async function ergaenzeImStrom(
       },
       (f: unknown) => {
         if (f instanceof StromGeschlossen) return;
-        oeffentlicherFehler(f, 'sets:add-stream', req);
+        publicError(f, 'sets:add-stream', req);
         send({ step: 'done', ...ergebnis, name: r.name, katalog_offen: true, ergaenzung: 'ausstehend' });
       },
     );
   strom.ende();
 }
 
-export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
-  const { requireToken } = waechterFuer(d.konto);
+export function buildSetsImportRouter(d: Pick<Dienste, 'account' | 'sets'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
-  // ── CSV-Import: Fortschritt als Abfrage und als Strom ───────────────────────
-  // 503 nach 3 s statt zu warten: Die Zustandsrouten hängen an jeder geöffneten
-  // Seite und dürfen bei voller Datenbank nicht stauen.
-  const zustandsWaechter = loginOrTokenGuard(d.konto, { timeoutMs: 3000 });
+  // ── CSV import: progress as a query and as a stream ──────────────────────────
+  // 503 after 3 s instead of waiting: the status routes hang on every open
+  // page and must not pile up when the database is full.
+  const stateGuard = loginOrTokenGuard(d.account, { timeoutMs: 3000 });
 
-  router.endpunkt('GET /api/v1/sets/import/csv/status', zustandsWaechter, async (req, res) => {
-    res.json(await d.sets.csvImportStand(angemeldeteNutzerId(req), req));
+  router.endpunkt('GET /api/v1/sets/import/csv/status', stateGuard, async (req, res) => {
+    res.json(await d.sets.csvImportStand(signedInUserId(req), req));
   });
 
-  // Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
-  router.endpunkt('GET /api/v1/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), async (req, res) => {
-    const uid = angemeldeteNutzerId(req);
-    const strom = oeffneStrom(d.konto, req, res, { nurAenderungen: true, gegendruck: `csv-import ${uid}` });
-    // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
+  // Open streams per account are counted by kontoSchranke('strom') for all streams together.
+  router.endpunkt('GET /api/v1/sets/import/csv/stream', stateGuard, kontoSchranke('strom'), async (req, res) => {
+    const uid = signedInUserId(req);
+    const strom = openStream(d.account, req, res, { onlyChanges: true, backpressure: `csv-import ${uid}` });
+    // EventSource sets no headers, so the language comes as ?sprache=.
     const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
-    const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : antwortSprache(req);
-    const sendeStand = async () => strom.sende(await d.sets.csvImportStandFuerStrom(uid, req, sprache));
-    // Erst anmelden, dann den ersten Stand schicken: Sonst geht ein Ereignis zwischen
-    // Lesen und Anmelden verloren. Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
-    strom.beiEnde(d.sets.csvImportStandAbonnieren(uid, sendeStand));
-    const takt = setInterval(sendeStand, 120000);
-    strom.beiEnde(() => clearInterval(takt));
-    await sendeStand();
+    const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : responseLanguage(req);
+    const sendStatus = async () => strom.sende(await d.sets.csvImportStatusForStream(uid, req, sprache));
+    // Subscribe first, then send the first state: otherwise an event between
+    // read and subscribe is lost. Other workers report via LISTEN/NOTIFY; the tick catches anything missed.
+    strom.atEnd(d.sets.subscribeCsvImportStatus(uid, sendStatus));
+    const takt = setInterval(sendStatus, 120000);
+    strom.atEnd(() => clearInterval(takt));
+    await sendStatus();
   });
 
   router.endpunkt(
     'POST /api/v1/sets/import/csv',
     requireToken,
     kontoSchranke('upload'),
-    csvEmpfang.single('file'),
+    csvReceive.single('file'),
     async req => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
-      const { total, uebersprungen, vorhanden, gestartet } = await d.sets.setCsvImportStarten(
-        angemeldeteNutzerId(req),
+      const { total, uebersprungen, vorhanden, gestartet } = await d.sets.startSetCsvImport(
+        signedInUserId(req),
         req.file.buffer.toString('utf-8'),
         req.abfrage.pruefen === true,
       );
-      // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
+      // Skipped rows belong in the immediate response; the import continues.
       return {
         total,
         gestartet,
         vorhanden: vorhanden.length,
         vorhanden_nummern: vorhanden.slice(0, 20),
         skipped: uebersprungen.length || undefined,
-        skipped_hint: uebersprungenHinweis(uebersprungen, antwortSprache(req)) || undefined,
+        skipped_hint: skippedHint(uebersprungen, responseLanguage(req)) || undefined,
       };
     },
   );
 
   router.endpunkt('POST /api/v1/sets/import/csv/cancel', requireToken, async req => {
-    await d.sets.setCsvImportAbbrechen(angemeldeteNutzerId(req));
+    await d.sets.cancelSetCsvImport(signedInUserId(req));
     return {};
   });
 
   router.endpunkt('GET /api/v1/sets/export/rebrickable', requireToken, async (req, res) => {
-    sendeCsv(
+    sendCsv(
       res,
       `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
       ['Set Number', 'Quantity'],
-      await d.sets.rebrickableListe(angemeldeteNutzerId(req)),
+      await d.sets.rebrickableList(signedInUserId(req)),
     );
   });
 
   router.endpunkt('POST /api/v1/sets/add-stream', requireToken, kontoSchranke('strom'), async (req, res) => {
     const e = req.eingabe;
-    const uid = angemeldeteNutzerId(req);
-    // Erst anlegen, dann strömen: Ein schon vorhandenes Set antwortet „exists“, es gibt nichts zu verfolgen.
-    // Der Auftrag wartet: Der Strom ergänzt selbst und braucht ihn nur, wenn er abreisst.
+    const uid = signedInUserId(req);
+    // Create first, then stream: an already existing set answers "exists", there is nothing to follow.
+    // The job waits: the stream supplements itself and only needs it if it breaks off.
     const r = await d.sets.setErfassen({
-      anfragender: uid,
-      besitzerWunsch: e.owner_user_id,
+      requester: uid,
+      ownerWish: e.owner_user_id,
       setNumber: String(e.set_number ?? ''),
       menge: e.quantity ?? 1,
       kaufpreis: e.purchase_price ?? null,
       zustand: e.condition?.toUpperCase() ?? null,
       lagerort: e.storage ?? null,
-      erfasstAm: e.date ?? null,
+      recordedAt: e.date ?? null,
       waehrung: e.currency ?? null,
-      ergaenzenNachSekunden: 60,
+      supplementAfterSeconds: 60,
     });
     if (r.action === 'exists') {
       res.json({ success: true, ...r });
       return;
     }
-    await ergaenzeImStrom(d, oeffneStrom(d.konto, req, res, { herzschlag: false }), req, r);
+    await supplementInStream(d, openStream(d.account, req, res, { heartbeat: false }), req, r);
   });
 
   router.endpunkt('POST /api/v1/sets/:setNumber/parts', requireToken, async req => {
-    return { count: await d.sets.teileDesSetsImportieren(angemeldeteNutzerId(req), req.pfad.setNumber) };
+    return { count: await d.sets.importPartsOfSets(signedInUserId(req), req.pfad.setNumber) };
   });
   return router;
 }

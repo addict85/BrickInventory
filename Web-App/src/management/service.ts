@@ -1,0 +1,262 @@
+/** The monitoring page reaches foreign services and jobs only from here, without a layer jump in the routes. */
+import fs from 'node:fs';
+import { AbrufFehler } from '../infra/fetch';
+import { DAILY_JOBS } from './timesOfDay';
+import { SET_IMAGES_DIR } from '../infra/appPaths';
+import { fehlertext, reportError, withoutMissingFile } from '../infra/error';
+import { Degradations, versuche } from '../infra/result';
+import { requestsJeMinute } from '../images';
+import { asFetchError } from '../externalSources';
+import { fachfehler, type ErrorCode } from '../infra/errorTexts';
+import type { ManagementContext } from './context';
+
+const SOURCES: Record<string, (q: ManagementContext['externalSources']['quellen']) => Promise<void>> = {
+  rebrickable: q => q.checkRebrickableAccess(),
+  brickset: q => q.checkBricksetAccess(),
+  bricklink: q => q.checkBricklinkAccess(),
+};
+
+const SOURCE_NAME: Record<string, string> = {
+  rebrickable: 'Rebrickable',
+  brickset: 'Brickset',
+  bricklink: 'BrickLink',
+};
+
+/** The wizard shows the admin what to do; the raw text stays as `grund` for "details". */
+function sourceRejection(e: unknown): ErrorCode {
+  const f = asFetchError(e),
+    text = f.message;
+  if (/nicht konfiguriert|nicht vollständig|not configured/i.test(text)) return 'quelle_ohne_schluessel';
+  if (
+    f.isTransient ||
+    (e instanceof AbrufFehler && (e.grund === 'netz' || e.grund === 'zeitlimit')) ||
+    /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|socket hang up/i.test(text)
+  )
+    return 'quelle_nicht_erreichbar';
+  if (/\b(401|403)\b|invalid|ungültig|unauthori[sz]ed/i.test(text)) return 'quelle_abgelehnt';
+  return 'quelle_test_fehlgeschlagen';
+}
+
+/** null if the access answers; otherwise code, name and raw reason. Only throws for an unknown source. */
+export async function checkSource(
+  k: ManagementContext,
+  quelle: string,
+): Promise<{ code: ErrorCode; quelle: string; grund: string } | null> {
+  const pruefe = Object.hasOwn(SOURCES, quelle) ? SOURCES[quelle] : undefined;
+  if (!pruefe) fachfehler('ungueltig', 'quelle_unbekannt');
+  try {
+    await pruefe(k.externalSources.quellen);
+    return null;
+  } catch (e) {
+    return { code: sourceRejection(e), quelle: SOURCE_NAME[quelle] ?? quelle, grund: fehlertext(e).slice(0, 200) };
+  }
+}
+
+export async function cacheStats(k: ManagementContext) {
+  const leer = { count: 0, limit: 0, remaining: 0 };
+  const ab = new Degradations();
+  const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
+    ab.oder(
+      'cache',
+      Promise.all([k.catalog.cacheStand(), k.management.pricesInCache()]).then(([c, prices]) => ({ ...c, prices })),
+      { prices: 0, subsets: 0, catalog: 0 },
+    ),
+    ab.oder('veraltete_preise', k.management.stalePrices(), 0),
+    ab.oder('kontingent_bricklink', k.externalSources.quotaStatus('bricklink'), leer),
+    ab.oder('kontingent_rebrickable', k.externalSources.quotaStatus('rebrickable'), leer),
+    ab.oder('kontingent_brickset', k.externalSources.quotaStatus('brickset'), leer),
+  ]);
+  return {
+    ...stats,
+    price_stale: stale,
+    rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS },
+    db_pool: k.db.getPoolStats(),
+    ...ab.angabe(),
+  };
+}
+
+export async function clearCaches(k: ManagementContext, alle: boolean) {
+  await k.finances.emptyPriceCache();
+  if (alle) {
+    await k.catalog.emptySubsetsCache();
+    await k.catalog.emptyCatalogCache();
+  }
+}
+
+/** If there is quota left today, process right away instead of waiting until tomorrow. */
+export async function bricksetLimitSet(k: ManagementContext, alt: number, neu: number) {
+  if (!(neu > alt)) return;
+  // The new limit is saved; without a counter state the queue waits for the next run.
+  const rl = await versuche('management:kontingentUebersicht', k.externalSources.quotaStatus('brickset'));
+  if (!rl.ok) return;
+  const rest = Math.max(0, neu - (rl.wert.count || 0));
+  if (rest <= 0) return;
+  console.log(`[brickset] Limit erhöht ${alt}→${neu}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
+  await k.externalSources.brickset.jetzt();
+}
+
+export async function requeueInstructions(k: ManagementContext) {
+  const fehlend = await k.management.setsWithoutInstructions();
+  for (const { set_number } of fehlend) {
+    await k.catalog.deleteInstructions(set_number);
+    await k.catalog.anleitungEinreihen(set_number);
+  }
+  return fehlend.length;
+}
+
+/** In the old format, so that the UI stays unchanged. */
+export async function priceJobStatus(k: ManagementContext) {
+  const plan = await k.management.lastRunOfType();
+  let letzter: {
+    lastRun?: string | null;
+    lastDuration?: number | null;
+    lastUpdated?: number;
+    lastErrors?: number;
+    log?: unknown;
+  } = {};
+  try {
+    letzter = JSON.parse((await k.jobQueue.liesZustand('preis_job_stand')) ?? '{}');
+  } catch (e) {
+    reportError('management:preis-stand', e);
+  }
+  const laeuft = plan?.status === 'laeuft';
+  const job = {
+    running: laeuft,
+    lastRun: letzter.lastRun ?? null,
+    lastDuration: letzter.lastDuration ?? null,
+    lastUpdated: letzter.lastUpdated ?? 0,
+    lastErrors: letzter.lastErrors ?? 0,
+    nextRun: plan && !laeuft ? new Date(plan.due_at).toISOString() : null,
+    progress:
+      laeuft && plan?.progress
+        ? {
+            current: plan.progress.erledigt ?? 0,
+            total: plan.progress.gesamt ?? 0,
+            set: plan.progress.text ?? null,
+          }
+        : null,
+    log: Array.isArray(letzter.log) ? letzter.log : [],
+  };
+  return { job, rate_limit: await k.externalSources.quotaStatus('bricklink') };
+}
+
+/** false if it is already running. */
+export const runPriceJobNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('preise');
+/** Only queues the job; if that fails, the admin learns about it instead of the log. */
+export async function reloadMissingImages(k: ManagementContext): Promise<void> {
+  await k.jobQueue.placeJobOne('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxAttempts: 2 });
+}
+
+export const runCatalogSyncNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('csv_sync');
+
+/** Even beyond the daily quota. */
+export async function retryBrickset(k: ManagementContext, sn: string) {
+  await k.externalSources.setQuotaBack('brickset');
+  await k.externalSources.brickset.jetzt(sn);
+}
+
+export async function removeBrickset(k: ManagementContext, sn: string) {
+  await k.externalSources.quellen.fromRetryQueue(sn);
+  await k.catalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
+}
+
+/** The open scheduled job gets the new appointment immediately. */
+export async function setJobSchedule(
+  k: ManagementContext,
+  name: string,
+  time: string | null | undefined,
+  minutes: number | string | null | undefined,
+) {
+  const daily = DAILY_JOBS.find(j => j.monitorKey === name);
+  if (daily) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
+    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
+    await k.settings.setGlobalValue(
+      `job_time_${daily.name}`,
+      `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
+    );
+  } else if (name === 'priceJob') {
+    await k.settings.setGlobalValue(
+      'price_job_interval_minutes',
+      String(Math.max(5, parseInt(String(minutes), 10) || 60)),
+    );
+  } else {
+    fachfehler('ungueltig', 'unbekannter_job');
+  }
+  await rescheduleJobs(k);
+}
+
+export async function rescheduleJobs(k: ManagementContext) {
+  await k.jobQueue.scheduleChanged('csv_sync');
+  await k.jobQueue.scheduleChanged('preise');
+  await k.externalSources.brickset.prefer(await k.externalSources.brickset.dueAb(false));
+}
+
+/** A set is finished with original AND preview; withdrawn negative results
+ * are counted as well. */
+export async function queueCatalogImages(kx: ManagementContext, allAgain: boolean) {
+  const toForgotten = await (allAgain ? kx.management.setImageMisses() : kx.management.setImageMissesWithout404());
+  const verworfen = toForgotten.length ? await kx.images.forgetMissing(toForgotten.map(r => r.cache_key)) : 0;
+  // What is already finished is not queued again.
+  const vorhanden: Set<string> = new Set();
+  try {
+    const namen = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));
+    // If the preview is missing, the set stays in the queue; the job then does not
+    // load again.
+    for (const n of namen) {
+      if (!n.endsWith('_thumb.jpg')) continue;
+      const basis = n.slice(0, -'_thumb.jpg'.length);
+      if (namen.has(`${basis}.jpg`)) vorhanden.add(basis);
+    }
+  } catch (e) {
+    // Without a folder nothing is finished yet; every other read error goes into the log.
+    withoutMissingFile('management:vorschauen lesen')(e);
+  }
+
+  const kandidaten = await kx.management.catalogImageCandidates();
+
+  // The same naming rule as setBildHerunterladen(), otherwise the comparison would find nothing.
+  const fileName = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
+  const openSets: string[] = [];
+  const openUrls: string[] = [];
+  for (const k of kandidaten) {
+    if (vorhanden.has(fileName(k.set_num))) continue;
+    openSets.push(k.set_num);
+    openUrls.push(k.set_img_url);
+  }
+
+  let newEnqueued = 0;
+  if (openUrls.length) {
+    newEnqueued = await kx.images.catalogImagesReserve(openUrls, openSets);
+    await kx.images.imageDemandKick();
+  }
+  const offen = await kx.management.openImageJobs();
+  // "Hours or days?" is the first question; the rate comes from the job itself.
+  const proMinute = requestsJeMinute();
+  return {
+    queued: newEnqueued,
+    pending: offen?.n ?? 0,
+    skipped: kandidaten.length - openUrls.length,
+    // Without the number it would stay unclear why images considered missing are pending again.
+    verworfen,
+    dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
+  };
+}
+/** Without a set list not the whole table: the preview notes have a
+ * different purpose and only disappear on request (`vorschauen`). */
+export async function forgetImageMisses(
+  k: ManagementContext,
+  sets: string[] | null,
+  vorschauen: boolean,
+): Promise<number> {
+  const v = k.management;
+  const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setImageMisses()).map(r => r.cache_key);
+  if (vorschauen) schluessel.push(...(await v.thumbnailImageMisses()).map(r => r.cache_key));
+  return schluessel.length ? k.images.forgetMissing(schluessel) : 0;
+}
+
+export function serverLogSince(k: ManagementContext, minuten: number) {
+  return k.management.logSince(minuten);
+}
+
+export { AccountImageRow } from './repository/management';

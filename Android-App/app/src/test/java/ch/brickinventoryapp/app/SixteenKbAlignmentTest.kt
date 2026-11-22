@@ -5,13 +5,13 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Absicherung der 16-KB-Speicherseiten-Tauglichkeit.
+ * Safeguarding of the 16 KB memory page compatibility.
  *
- * Vier native Bibliotheken lagen im APK, alle mit 4-KB-Ausrichtung:
+ * Four native libraries lay in the APK, all with 4 KB alignment:
  *
- * Jede dieser Entscheidungen lässt sich mit einer einzigen Zeile in
- * libs.versions.toml wieder rückgängig machen, ohne dass es auffiele —
- * deshalb dieser Test.
+ * Each of these decisions can be undone with a single line in
+ * libs.versions.toml without it standing out —
+ * hence this test.
  */
 class SixteenKbAlignmentTest {
 
@@ -34,7 +34,7 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `CameraX ist mindestens 1_4`() {
+    fun `CameraX is at least 1_4`() {
         val m = Regex("""camerax\s*=\s*"(\d+)\.(\d+)\.""").find(toml)
         assert(m != null) { "camerax-Version nicht gefunden" }
         val major = m!!.groupValues[1].toInt()
@@ -46,7 +46,7 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `ML Kit laeuft unbundled ueber die Play-Dienste`() {
+    fun `ML Kit runs unbundled via Play services`() {
         assert(toml.contains("play-services-mlkit-barcode-scanning")) {
             "Das gebündelte ML Kit (com.google.mlkit:barcode-scanning) ist zurück. " +
                 "Dessen libbarhopper_v3.so war auch in 17.3.0 noch 4-KB-ausgerichtet — " +
@@ -59,11 +59,11 @@ class SixteenKbAlignmentTest {
     }
 
     /**
-     * Ohne diesen Eintrag lädt das Modell erst beim ersten Scan — dann geht der
-     * erste Scan ohne Netz nicht.
+     * Without this entry the model loads only on the first scan — then the
+     * first scan does not work without network.
      */
     @Test
-    fun `das Barcode-Modul wird bei der Installation angefordert`() {
+    fun `the barcode module is requested on installation`() {
         assert(manifest.contains("com.google.mlkit.vision.DEPENDENCIES")) {
             "meta-data com.google.mlkit.vision.DEPENDENCIES fehlt im Manifest"
         }
@@ -73,48 +73,48 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `DataStore wird auf EINE Fassung festgenagelt`() {
-        // ── Was diese Pruefung NICHT mehr tut ───────────────────────────────
+    fun `DataStore is pinned to ONE version`() {
+        // ── What this check NO longer does ──────────────────────────────────
         //
-        // Hier stand `== "1.1.7"`: eine bestimmte NUMMER, weil 1.2.0 die
-        // 16-KB-Ausrichtung verloren hatte. Das hatte zwei Luecken, und beide
-        // sind grundsaetzlich:
+        // Here stood `== "1.1.7"`: a specific NUMBER, because 1.2.0 had lost the
+        // 16 KB alignment. That had two gaps, and both
+        // are fundamental:
         //
-        //   1. Es prueft die Nummer, nicht die Ausrichtung. Richtet Google
-        //      eine spaetere Fassung wieder aus, bleibt der Riegel trotzdem
-        //      zu. Faellt eine ANDERE Bibliothek zurueck, merkt es niemand.
+        //   1. It checks the number, not the alignment. If Google aligns
+        //      a later version again, the bolt stays closed
+        //      anyway. If ANOTHER library falls back, nobody notices.
         //
-        // Gemessen wird das jetzt am ERGEBNIS: tools/apk-ausrichtung.py liest
-        // die ELF-Koepfe aller .so im gebauten APK und meldet jede Ausrichtung
-        // unter 16 KB. Die Action ruft es nach dem Release-Bau auf.
+        // This is now measured on the RESULT: tools/apk-alignment.py reads
+        // the ELF headers of all .so in the built APK and reports every alignment
+        // below 16 KB. The action calls it after the release build.
         //
-        // Was hier BLEIBT, ist das, was ein Texttest kann und jene Messung
-        // nicht: dass die Fassung ueberhaupt FESTGENAGELT ist. Ohne den
-        // force-Block zoege eine andere Abhaengigkeit die Fassung transitiv
-        // hoch, und das APK waere beim naechsten Mal ein anderes als geprueft.
+        // What REMAINS here is what a text test can do and that measurement
+        // cannot: that the version is PINNED at all. Without the
+        // force block another dependency would pull the version up transitively,
+        // and the APK would next time be different from the checked one.
         assert(Regex("""datastore\s*=\s*"([\d.]+)"""").containsMatchIn(toml)) { "datastore-Version nicht gefunden" }
         val block = gradle.substringAfter("resolutionStrategy", "")
         assert("libs.versions.datastore.get()" in gradle && "force(\"androidx.datastore:\$it:\$datastore\")" in block) {
             "DataStore wird nicht auf die Fassung des Katalogs festgenagelt"
         }
-        for (artefakt in listOf("datastore", "datastore-android", "datastore-core",
+        for (artifact in listOf("datastore", "datastore-android", "datastore-core",
                                 "datastore-core-android", "datastore-preferences",
                                 "datastore-preferences-android")) {
-            assert("\"$artefakt\"" in block) {
-                "androidx.datastore:$artefakt wird nicht festgenagelt. Eine " +
+            assert("\"$artifact\"" in block) {
+                "androidx.datastore:$artifact wird nicht festgenagelt. Eine " +
                     "transitive Anhebung wuerde ein anderes APK ergeben als das geprüfte."
             }
         }
     }
 
     /**
-     * graphics-path kommt sonst transitiv über Compose herein. Der direkte
-     * Eintrag hebt es auf die eigene, neuere Versionslinie — ohne die
-     * Compose-BOM anzufassen, was eine breite Änderung quer durch die
-     * Oberfläche wäre.
+     * graphics-path otherwise comes in transitively via Compose. The direct
+     * entry raises it to its own, newer version line — without
+     * touching the Compose BOM, which would be a broad change across the
+     * UI.
      */
     @Test
-    fun `graphics-path ist direkt festgelegt`() {
+    fun `graphics-path is set directly`() {
         assert(toml.contains("graphics-path")) {
             "graphics-path wird nicht mehr direkt deklariert — dann zieht Compose " +
                 "wieder die transitive 1.0.x-Fassung mit der 4-KB-ausgerichteten " +
@@ -131,7 +131,7 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `native Bibliotheken werden unkomprimiert verpackt`() {
+    fun `native libraries are packaged uncompressed`() {
         assert(gradle.contains("useLegacyPackaging = false")) {
             "useLegacyPackaging steht wieder auf true. Legacy Packaging komprimiert " +
                 "die .so-Dateien und entpackt sie bei der Installation — an der " +

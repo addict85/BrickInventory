@@ -1,17 +1,17 @@
 Gegenprobe: dekodiere() liest jede Fassung mit dem heutigen Leser
 Modul: core-offline
-Test: ch.brickinventoryapp.offline.AblageFassungTest
-Rot: eine unbekannte Fassung ist unlesbar
+Test: ch.brickinventoryapp.offline.StoreVersionTest
+Rot: an unknown version is unreadable instead of misread
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablageform.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablageform.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablageform.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablageform.kt
 @@ -30,7 +30,7 @@
-     fun dekodiere(json: Json, text: String): T {
+     fun decode(json: Json, text: String): T {
          val zeile = json.parseToJsonElement(text).jsonObject
-         val von = zeile[FELD]?.jsonPrimitive?.intOrNull ?: 1
--        if (von == fassung) return her(json.decodeFromJsonElement(serializer, JsonObject(zeile - FELD)))
-+        if (von == fassung || true) return her(json.decodeFromJsonElement(serializer, JsonObject(zeile - FELD)))
-         val leser = aeltere[von] ?: throw SerializationException("Ablagezeile in Fassung $von, gelesen wird $fassung")
-         return leser(json, JsonObject(zeile - FELD))
+         val von = zeile[FIELD]?.jsonPrimitive?.intOrNull ?: 1
+-        if (von == fassung) return her(json.decodeFromJsonElement(serializer, JsonObject(zeile - FIELD)))
++        if (von == fassung || true) return her(json.decodeFromJsonElement(serializer, JsonObject(zeile - FIELD)))
+         val reader = older[von] ?: throw SerializationException("Ablagezeile in Fassung $von, gelesen wird $fassung")
+         return reader(json, JsonObject(zeile - FIELD))
      }

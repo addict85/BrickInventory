@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.ui.Modifier
 
 /**
- * Für Bildschirme ohne Gerüst (Anmelden, Registrieren, Einrichten): Seit
- * enableEdgeToEdge zeichnet die App unter Status- und Gestenleiste, und die Tastatur
- * schrumpft das Fenster nicht. Die Tastatur zuletzt, damit sie nur abzieht, was über
- * die Gestenleiste hinausragt.
+ * For screens without a scaffold (sign-in, register, setup): since
+ * enableEdgeToEdge, the app draws under the status and gesture bars, and the keyboard
+ * doesn't shrink the window. The keyboard last, so it only subtracts what sticks
+ * out past the gesture bar.
  */
-fun Modifier.ausserhalbDerSystemleisten(): Modifier = systemBarsPadding().displayCutoutPadding().imePadding()
+fun Modifier.outsideTheSystemBars(): Modifier = systemBarsPadding().displayCutoutPadding().imePadding()

@@ -1,16 +1,16 @@
 Gegenprobe: ladeJeServer lädt bei jeder Änderung der Sitzung, nicht je Adresse
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.LadenBeimBeobachtenTest
-Rot: ladeJeServer laedt je Adresse einmal
+Modul: core-state
+Test: ch.brickinventoryapp.state.LoadOnObserveTest
+Rot: ladeJeServer loads once per address as long as someone observes
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
 index 2c2fb0b..61a493d 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
-@@ -148,7 +148,7 @@ fun ViewModel.ladeBeimBeobachten(zustand: Beobachtet<*>, laden: () -> Unit) {
- private fun ViewModel.ladeJeServer(sitzung: Sitzung, beobachter: StateFlow<Int>, laden: () -> Unit) {
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
+@@ -148,7 +148,7 @@ fun ViewModel.observeLoadOn(zustand: Observed<*>, laden: () -> Unit) {
+ private fun ViewModel.loadPerServer(sitzung: Sitzung, observer: StateFlow<Int>, laden: () -> Unit) {
      viewModelScope.launch {
-         beobachter.map { it > 0 }.distinctUntilChanged().collectLatest { beobachtet ->
+         observer.map { it > 0 }.distinctUntilChanged().collectLatest { beobachtet ->
 -            if (beobachtet) sitzung.state.map { it.serverUrl }.distinctUntilChanged().filter { it.isNotBlank() }.collect { laden() }
 +            if (beobachtet) sitzung.state.map { it.serverUrl }.filter { it.isNotBlank() }.collect { laden() }
          }

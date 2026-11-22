@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.data.api.FigurenApi
-import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.data.api.GutscheineApi
-import ch.brickinventoryapp.data.api.HaushaltApi
-import ch.brickinventoryapp.data.api.KatalogApi
-import ch.brickinventoryapp.data.api.GeraetApi
-import ch.brickinventoryapp.data.api.KontoApi
+import ch.brickinventoryapp.data.api.MinifigsApi
+import ch.brickinventoryapp.data.api.FinancesApi
+import ch.brickinventoryapp.data.api.VouchersApi
+import ch.brickinventoryapp.data.api.HouseholdApi
+import ch.brickinventoryapp.data.api.CatalogApi
+import ch.brickinventoryapp.data.api.DeviceApi
+import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.data.api.VerwaltungApi
+import ch.brickinventoryapp.data.api.PartsApi
+import ch.brickinventoryapp.data.api.ManagementApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,21 +18,21 @@ import retrofit2.Retrofit
 import javax.inject.Singleton
 
 /**
- * Je Bereich der Schnittstelle ein Binding (data/api/): Jedes Repository bekommt
- * nur seinen Bereich und kann nichts anderes aufrufen. Ein Retrofit, ein Client —
- * das Netzverhalten steht in NetzModule und ist für alle Bereiche dasselbe.
+ * One binding per area of the interface (data/api/): every repository gets
+ * only its area and cannot call anything else. One Retrofit, one client —
+ * the network behavior stands in NetzModule and is the same for all areas.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 internal object ApiModule {
-    @Provides @Singleton fun provideKontoApi(r: Retrofit): KontoApi = r.create(KontoApi::class.java)
-    @Provides @Singleton fun provideVerwaltungApi(r: Retrofit): VerwaltungApi = r.create(VerwaltungApi::class.java)
-    @Provides @Singleton fun provideKatalogApi(r: Retrofit): KatalogApi = r.create(KatalogApi::class.java)
+    @Provides @Singleton fun provideAccountApi(r: Retrofit): AccountApi = r.create(AccountApi::class.java)
+    @Provides @Singleton fun provideManagementApi(r: Retrofit): ManagementApi = r.create(ManagementApi::class.java)
+    @Provides @Singleton fun provideCatalogApi(r: Retrofit): CatalogApi = r.create(CatalogApi::class.java)
     @Provides @Singleton fun provideSetsApi(r: Retrofit): SetsApi = r.create(SetsApi::class.java)
-    @Provides @Singleton fun provideTeileApi(r: Retrofit): TeileApi = r.create(TeileApi::class.java)
-    @Provides @Singleton fun provideFigurenApi(r: Retrofit): FigurenApi = r.create(FigurenApi::class.java)
-    @Provides @Singleton fun provideHaushaltApi(r: Retrofit): HaushaltApi = r.create(HaushaltApi::class.java)
-    @Provides @Singleton fun provideFinanzenApi(r: Retrofit): FinanzenApi = r.create(FinanzenApi::class.java)
-    @Provides @Singleton fun provideGutscheineApi(r: Retrofit): GutscheineApi = r.create(GutscheineApi::class.java)
-    @Provides @Singleton fun provideGeraetApi(r: Retrofit): GeraetApi = r.create(GeraetApi::class.java)
+    @Provides @Singleton fun providePartsApi(r: Retrofit): PartsApi = r.create(PartsApi::class.java)
+    @Provides @Singleton fun provideMinifigsApi(r: Retrofit): MinifigsApi = r.create(MinifigsApi::class.java)
+    @Provides @Singleton fun provideHouseholdApi(r: Retrofit): HouseholdApi = r.create(HouseholdApi::class.java)
+    @Provides @Singleton fun provideFinancesApi(r: Retrofit): FinancesApi = r.create(FinancesApi::class.java)
+    @Provides @Singleton fun provideVouchersApi(r: Retrofit): VouchersApi = r.create(VouchersApi::class.java)
+    @Provides @Singleton fun provideDeviceApi(r: Retrofit): DeviceApi = r.create(DeviceApi::class.java)
 }

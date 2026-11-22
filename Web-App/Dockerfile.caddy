@@ -3,6 +3,9 @@
 # Caddy-Doku („Adding modules“); die Laufzeit bleibt das offizielle Alpine-Image,
 # dessen sh, sed und cmp der Startbefehl in compose.yaml braucht.
 FROM caddy:2.11.8-builder-alpine@sha256:e42a64b3bc70aa3a1387bde85b930e507a378fecae5852d5bfde9dcd37d0b999 AS bau
+# CVE-2026-97054 (Go-stdlib net/http, HIGH): das Builder-Image bringt go1.27.3
+# mit; GOTOOLCHAIN lädt die behobene Patchfassung automatisch nach.
+ENV GOTOOLCHAIN=go1.27.4
 RUN xcaddy build v2.11.8 \
       --with github.com/go-jose/go-jose/v4@v4.1.9 \
       --replace golang.org/x/net=golang.org/x/net@v0.62.0 \

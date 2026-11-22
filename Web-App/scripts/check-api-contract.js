@@ -2,13 +2,13 @@
 'use strict';
 
 /**
- * API-Vertrag gegen einen laufenden Server: jede GET-Route des Vertrags
- * (src/vertrag/) ohne Platzhalter gegen ihr Schema. Die vollständige
- * Prüfung mit Bestand steht in test/vertrag-lesen-db.test.js; dieses Skript
- * ist für einen echten Bestand (nach `npm run build`).
+ * API contract against a running server: every GET route of the contract
+ * (src/contract/) without placeholders against its schema. The complete
+ * check with inventory is in test/contract-read-db.test.js; this script
+ * is for a real inventory (after `npm run build`).
  */
 const path = require('node:path');
-const { VERTRAG } = require(path.join(__dirname, '..', 'dist', 'src', 'vertrag', 'index.js'));
+const { CONTRACT } = require(path.join(__dirname, '..', 'dist', 'src', 'contract', 'index.js'));
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 async function token() {
@@ -34,7 +34,7 @@ async function token() {
 (async () => {
   const t = await token();
   /** @type {[string, { antwort?: import('zod').ZodType }][]} */
-  const routen = Object.entries(VERTRAG).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.antwort);
+  const routen = Object.entries(CONTRACT).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.antwort);
   let falsch = 0;
   for (const [schluessel, r] of routen) {
     const pfad = schluessel.slice(4);

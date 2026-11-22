@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
@@ -10,49 +10,49 @@ import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
-/** Der Stand eines CSV-Imports, auch eines aus der Webapp. */
+/** The state of a CSV import, also one from the web app. */
 interface CsvImportRepository {
     /**
-     * Jeder Stand, solange jemand sammelt. Reisst der Strom ab, wird einmal abgefragt
-     * und mit wachsendem Abstand neu verbunden; schliesst der Server sauber, sofort.
+     * Every state as long as someone collects. If the stream breaks, it queries once
+     * and reconnects with growing delay; if the server closes cleanly, immediately.
      */
-    fun beobachte(): Flow<CsvImportStandAnsicht>
+    fun observe(): Flow<CsvImportStatusView>
 
-    /** „Ab hier nicht weiter“; schon angelegte Sets bleiben. */
+    /** „No further from here“; sets already created stay. */
     suspend fun abbrechen(): Ergebnis<Unit>
 }
 
-/** Über den SSE-Strom, mit der Statusabfrage als Rückfall. */
-class CsvImportBeobachter @Inject constructor(
-    private val strom: CsvImportStrom,
+/** Via the SSE stream, with the status query as fallback. */
+class CsvImportObserver @Inject constructor(
+    private val strom: CsvImportStream,
     private val dateien: SetDateienRepository,
 ) : CsvImportRepository {
 
-    override fun beobachte(): Flow<CsvImportStandAnsicht> = flow {
-        var rueckzugMs = RUECKZUG_START_MS
+    override fun observe(): Flow<CsvImportStatusView> = flow {
+        var retreatMs = RETREAT_START_MS
         while (true) {
-            var abgerissen = false
+            var tornDown = false
             fangeAusserAbbruch {
-                strom.stream().collect { ereignis ->
-                    when (ereignis) {
+                strom.stream().collect { event ->
+                    when (event) {
                         is CsvImportSseClient.Event.Status -> {
-                            rueckzugMs = RUECKZUG_START_MS
-                            emit(ereignis.status)
+                            retreatMs = RETREAT_START_MS
+                            emit(event.status)
                         }
-                        is CsvImportSseClient.Event.Failed -> abgerissen = true
+                        is CsvImportSseClient.Event.Failed -> tornDown = true
                     }
                 }
-            }.onFailure { abgerissen = true }
-            if (abgerissen) {
-                // Einmal nachsehen, damit der Balken nicht auf dem letzten Stand hängt.
-                frageAb()
-                delay(rueckzugMs)
-                rueckzugMs = minOf(rueckzugMs * 2, RUECKZUG_MAX_MS)
+            }.onFailure { tornDown = true }
+            if (tornDown) {
+                // Look once so that the bar does not hang on the last state.
+                questionAb()
+                delay(retreatMs)
+                retreatMs = minOf(retreatMs * 2, RETREAT_MAX_MS)
             }
         }
     }
 
-    private suspend fun FlowCollector<CsvImportStandAnsicht>.frageAb() {
+    private suspend fun FlowCollector<CsvImportStatusView>.questionAb() {
         val stand = fangeAusserAbbruch { (dateien.getCsvImportStatus() as? Ergebnis.Erfolg)?.data }.getOrNull()
         if (stand != null) emit(stand)
     }
@@ -60,7 +60,7 @@ class CsvImportBeobachter @Inject constructor(
     override suspend fun abbrechen(): Ergebnis<Unit> = dateien.cancelCsvImport()
 
     private companion object {
-        const val RUECKZUG_START_MS = 5_000L
-        const val RUECKZUG_MAX_MS = 60_000L
+        const val RETREAT_START_MS = 5_000L
+        const val RETREAT_MAX_MS = 60_000L
     }
 }

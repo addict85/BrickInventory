@@ -1,16 +1,16 @@
 Gegenprobe: Hinweis ohne Authenticator-App ohne ansagen()
-Modul: feature-konto
-Test: ch.brickinventoryapp.konto.ZweiterFaktorMaskeTest
-Rot: ohne Authenticator-App
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SecondFactorMaskTest
+Rot: without an authenticator app the hint is announced
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
 @@ -151,7 +151,7 @@ fun ZweiterFaktorPflichtMaske(
                          ) { Text(stringResource(R.string.zf_open_app)) }
-                         if (ohneApp) {
+                         if (withoutApp) {
                              Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodyMedium,
--                                color = MaterialTheme.colorScheme.error, modifier = Modifier.ansagen())
+-                                color = MaterialTheme.colorScheme.error, modifier = Modifier.announce())
 +                                color = MaterialTheme.colorScheme.error, modifier = Modifier)
                          }
                          Text(geheimnis.chunked(4).joinToString(" "), fontFamily = FontFamily.Monospace,

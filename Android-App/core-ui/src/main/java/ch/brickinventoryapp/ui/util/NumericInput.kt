@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui.util
 
-import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.domain.Geld
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -8,115 +8,115 @@ import androidx.compose.ui.text.input.KeyboardType
 import java.text.DecimalFormatSymbols
 
 /**
- * Zahlenfelder — eine Fassung für Tastatur und erlaubte Zeichen, für Setnummer,
- * Preise und Anzahlen.
- * Tastaturwahl und Zeichenfilter gehören zusammen: Die Tastatur ist nur eine Bitte, über
- * Zwischenablage oder Hardwaretastatur kommt trotzdem Text.
+ * Number fields — one version for keyboard and allowed characters, for set number,
+ * prices and quantities.
+ * Keyboard choice and character filter belong together: the keyboard is only a request, text
+ * still comes in via clipboard or hardware keyboard regardless.
  */
 object NumericInput {
 
     /**
-     * Setnummer: ASCII-Buchstaben, Ziffern und der Varianten-Bindestrich — dieselben Zeichen
-     * wie normalisiereSetNummer der Web-App. Nummern wie „llca30" oder „comcon001" sind echt;
-     * ein reiner Ziffernfilter machte sie hier unerfassbar.
+     * Set number: ASCII letters, digits and the variant hyphen — the same characters
+     * as the web app's normalizeSetNumber. Numbers like „llca30" or „comcon001" are real;
+     * a plain digit filter would make them unenterable here.
      */
     fun setNumber(eingabe: String): String =
         eingabe.filter { it in '0'..'9' || it in 'a'..'z' || it in 'A'..'Z' || it == '-' }
 
-    // Dieselbe Regel wie istSetnummer() der Web-App: Der Filter oben lässt auch "-" oder "1--2" durch.
-    private val setnummerMuster = Regex("""[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?""")
+    // Same rule as the web app's isSetNumber(): the filter above also lets "-" or "1--2" through.
+    private val setNumberPattern = Regex("""[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?""")
 
-    /** Ob [eingabe] wie eine Setnummer aussieht (z. B. 10294 oder 10294-1). */
-    fun istSetnummer(eingabe: String): Boolean = setnummerMuster.matches(eingabe.trim())
+    /** Whether [eingabe] looks like a set number (e.g. 10294 or 10294-1). */
+    fun isSetNumber(eingabe: String): Boolean = setNumberPattern.matches(eingabe.trim())
 
-    /** Menge: nur Ziffern. */
+    /** Quantity: digits only. */
     fun quantity(eingabe: String): String =
         eingabe.filter { it.isDigit() }
 
     /**
-     * Preis: Ziffern und EIN Dezimaltrennzeichen.
+     * Price: digits and ONE decimal separator.
      *
-     * Punkt und Komma sind beide erlaubt (deutsche Tastaturen liefern das Komma), aber nur
-     * einmal — „12.3.4" wäre sonst tippbar und flöge erst beim Umwandeln auf. Ausnahme: Ein
-     * eingefügter Betrag mit Tausendertrennung („1.299,00") wird zur schlichten Zahl
-     * („1299,00"); das Abschneiden am zweiten Trenner machte daraus 1,299.
+     * Both period and comma are allowed (German keyboards produce the comma), but only
+     * once — „12.3.4" would otherwise be typeable and only surface on conversion. Exception: a
+     * pasted amount with thousands grouping ("1.299,00") is turned into a plain number
+     * ("1299,00"); cutting at the second separator would have made it 1,299.
      */
     fun price(eingabe: String, gruppe: Char = gruppenzeichen()): String {
         val roh = eingabe.filter { it.isDigit() || it == '.' || it == ',' }
         if (roh.count { it == '.' || it == ',' } > 1) {
-            zerlege(roh, gruppe)?.let { (ganz, dezimal, nach) -> return ganz + (dezimal?.toString() ?: "") + nach }
+            zerlege(roh, gruppe)?.let { (ganz, decimal, nach) -> return ganz + (decimal?.toString() ?: "") + nach }
         }
         val sb = StringBuilder()
-        var trennerGesetzt = false
+        var separatorSet = false
         for (c in roh) {
             when {
                 c.isDigit() -> sb.append(c)
-                !trennerGesetzt -> { sb.append(c); trennerGesetzt = true }
+                !separatorSet -> { sb.append(c); separatorSet = true }
             }
         }
         return sb.toString()
     }
 
     /**
-     * Ein Betrag, gelesen wie leseBetrag der Web-App: „1.299,00" und „1,299.50" sind 1299
-     * bzw. 1299,5, „149,95" ist 149,95. Ein einzelner Trenner vor genau drei Ziffern ist
-     * Tausender nur, wenn er das Gruppenzeichen der App-Sprache ist. `null` bei leerer
-     * oder unlesbarer Eingabe.
+     * An amount, read like the web app's readAmount: "1.299,00" and "1,299.50" are 1299
+     * resp. 1299.5, "149,95" is 149.95. A single separator before exactly three digits is
+     * a thousands separator only if it is the app language's grouping character. `null` for
+     * empty or unreadable input.
      */
-    fun leseBetrag(roh: String, gruppe: Char = gruppenzeichen()): Double? =
+    fun readAmount(roh: String, gruppe: Char = gruppenzeichen()): Double? =
         zerlege(roh, gruppe)?.let { (ganz, _, nach) -> (ganz.ifEmpty { "0" } + if (nach.isEmpty()) "" else ".$nach").toDouble() }
 
-    /** Wie [leseBetrag], als Geld ohne Umweg über Double. */
-    fun leseGeld(roh: String, gruppe: Char = gruppenzeichen()): Geld? =
-        zerlege(roh, gruppe)?.let { (ganz, _, nach) -> Geld.ausText(ganz.ifEmpty { "0" } + if (nach.isEmpty()) "" else ".$nach") }
+    /** Like [readAmount], as money without the detour through Double. */
+    fun readMoney(roh: String, gruppe: Char = gruppenzeichen()): Geld? =
+        zerlege(roh, gruppe)?.let { (ganz, _, nach) -> Geld.fromText(ganz.ifEmpty { "0" } + if (nach.isEmpty()) "" else ".$nach") }
 
-    /** Ein Preisfeld darf leer sein (kein Preis); was drinsteht, muss ein Betrag sein. */
-    fun preisUngueltig(text: String, gruppe: Char = gruppenzeichen()): Boolean =
-        text.isNotBlank() && leseBetrag(text, gruppe) == null
+    /** A price field may be empty (no price); whatever is in it must be an amount. */
+    fun priceInvalid(text: String, gruppe: Char = gruppenzeichen()): Boolean =
+        text.isNotBlank() && readAmount(text, gruppe) == null
 
-    /** Eine leere Menge heisst eins; was drinsteht, muss eine Zahl ab 1 sein (nicht 0, nicht über Int). */
-    fun mengeUngueltig(text: String): Boolean = text.isNotEmpty() && (text.toIntOrNull() ?: 0) < 1
+    /** An empty quantity means one; whatever is in it must be a number from 1 up (not 0, not over Int). */
+    fun quantityInvalid(text: String): Boolean = text.isNotEmpty() && (text.toIntOrNull() ?: 0) < 1
 
     private fun gruppenzeichen(): Char = DecimalFormatSymbols.getInstance(appNumberLocale()).groupingSeparator
 
-    private val WAEHRUNG = setOf('€', '$', '£')
+    private val CURRENCY = setOf('€', '$', '£')
     private val BETRAGSFORM = Regex("""[\d.,]*\d[\d.,]*""")
-    private val DREI_ZIFFERN = Regex("""\d{3}""")
-    private val ERSTE_GRUPPE = Regex("""\d{1,3}""")
+    private val THREE_DIGITS = Regex("""\d{3}""")
+    private val FIRST_GROUP = Regex("""\d{1,3}""")
 
-    /** (ganzer Teil ohne Gruppen, Dezimalzeichen oder null, Nachkommastellen); null, wenn es kein Betrag ist. */
+    /** (integer part without grouping, decimal separator or null, decimal places); null if it isn't an amount. */
     private fun zerlege(roh: String, gruppe: Char): Triple<String, Char?, String>? {
-        val s = ohneWaehrung(roh.filterNot { it.isWhitespace() || it == '\'' || it == '’' })
+        val s = withoutCurrency(roh.filterNot { it.isWhitespace() || it == '\'' || it == '’' })
         if (!BETRAGSFORM.matches(s)) return null
         val letztes = maxOf(s.lastIndexOf(','), s.lastIndexOf('.'))
-        val dezimal = dezimalzeichen(s, letztes, gruppe)
-        val ganz = if (dezimal != null) s.substring(0, letztes) else s
-        val nach = if (dezimal != null) s.substring(letztes + 1) else ""
-        if (nach.any { it == '.' || it == ',' } || (dezimal != null && dezimal in ganz)) return null
-        val gruppen = ganz.split('.', ',')
-        if (gruppen.size > 1 && !gruppenGueltig(gruppen)) return null
-        return Triple(gruppen.joinToString(""), dezimal, nach)
+        val decimal = decimalSeparator(s, letztes, gruppe)
+        val ganz = if (decimal != null) s.substring(0, letztes) else s
+        val nach = if (decimal != null) s.substring(letztes + 1) else ""
+        if (nach.any { it == '.' || it == ',' } || (decimal != null && decimal in ganz)) return null
+        val groups = ganz.split('.', ',')
+        if (groups.size > 1 && !groupsValid(groups)) return null
+        return Triple(groups.joinToString(""), decimal, nach)
     }
 
-    private fun ohneWaehrung(s: String): String {
-        val vorn = if (s.isNotEmpty() && s.first() in WAEHRUNG) s.drop(1) else s
-        return if (vorn.isNotEmpty() && vorn.last() in WAEHRUNG) vorn.dropLast(1) else vorn
+    private fun withoutCurrency(s: String): String {
+        val vorn = if (s.isNotEmpty() && s.first() in CURRENCY) s.drop(1) else s
+        return if (vorn.isNotEmpty() && vorn.last() in CURRENCY) vorn.dropLast(1) else vorn
     }
 
     /** Das letzte Trennzeichen ist das Dezimalzeichen, ausser es steht mehrfach oder ist ein Gruppenzeichen vor drei Ziffern. */
-    private fun dezimalzeichen(s: String, letztes: Int, gruppe: Char): Char? {
-        val trenner = s.filter { it == '.' || it == ',' }
-        val mehrfachGleich = trenner.toSet().size == 1 && trenner.length > 1
-        val alsGruppe = trenner.length == 1 && trenner[0] == gruppe &&
-            DREI_ZIFFERN.matches(s.substring(letztes + 1)) && !(s.startsWith("0.") || s.startsWith("0,"))
-        return if (trenner.isEmpty() || mehrfachGleich || alsGruppe) null else s[letztes]
+    private fun decimalSeparator(s: String, letztes: Int, gruppe: Char): Char? {
+        val separator = s.filter { it == '.' || it == ',' }
+        val multipleEqual = separator.toSet().size == 1 && separator.length > 1
+        val asGroup = separator.length == 1 && separator[0] == gruppe &&
+            THREE_DIGITS.matches(s.substring(letztes + 1)) && !(s.startsWith("0.") || s.startsWith("0,"))
+        return if (separator.isEmpty() || multipleEqual || asGroup) null else s[letztes]
     }
 
-    private fun gruppenGueltig(gruppen: List<String>): Boolean =
-        ERSTE_GRUPPE.matches(gruppen[0]) && gruppen.drop(1).all { DREI_ZIFFERN.matches(it) }
+    private fun groupsValid(groups: List<String>): Boolean =
+        FIRST_GROUP.matches(groups[0]) && groups.drop(1).all { THREE_DIGITS.matches(it) }
 
     /** Setnummer: Buchstaben kommen vor, also die Texttastatur, ohne Grossschreibung und Korrektur. */
-    fun setnummerTastatur(imeAction: ImeAction = ImeAction.Next) =
+    fun setNumberKeyboard(imeAction: ImeAction = ImeAction.Next) =
         KeyboardOptions(
             capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false,
             keyboardType = KeyboardType.Ascii, imeAction = imeAction,
@@ -127,6 +127,6 @@ object NumericInput {
         KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = imeAction)
 
     /** Kommazahlen (Preise). */
-    fun preisTastatur(imeAction: ImeAction = ImeAction.Done) =
+    fun priceKeyboard(imeAction: ImeAction = ImeAction.Done) =
         KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = imeAction)
 }

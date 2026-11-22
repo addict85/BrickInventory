@@ -1,27 +1,27 @@
 Gegenprobe: Serverantwort und Puffern ohne Sperre: Ein Schritt zwischen Lesen und Schreiben geht verloren
 Modul: core-offline
-Test: ch.brickinventoryapp.offline.OfflineablageSperreTest
-Rot: ein puffere waehrend einer Serverantwort geht nicht verloren
+Test: ch.brickinventoryapp.offline.OfflineablageLockTest
+Rot: a puffere during a server response is not lost
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 index a6f47c3..3dbaadc 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 @@ -270,7 +270,7 @@ class Offlineablage(
-         bestand.raeumeAndere(b)
+         bestand.cleanOther(b)
          // Unter der Sperre: Ein puffere() zwischen dem Lesen des Ausgangs und dem
          // Schreiben ginge sonst mit der Serverliste verloren.
--        sperre(b, fach.art).withLock {
+-        lock(b, fach.art).withLock {
 +        run {
-             val wartend = ausgang.alle(b).map { it.bearbeitung }.filter { it.art == fach.art }
+             val waiting = ausgang.alle(b).map { it.bearbeitung }.filter { it.art == fach.art }
              var zusammen = liste
-             for (w in wartend) zusammen = fach.anwenden(zusammen, w)
+             for (w in waiting) zusammen = fach.anwenden(zusammen, w)
 @@ -300,7 +300,7 @@ class Offlineablage(
-     suspend fun puffere(bearbeitung: Bearbeitung, schluessel: String = neuerSchluessel()): Boolean {
+     suspend fun buffer(bearbeitung: Editing, schluessel: String = newKey()): Boolean {
          val b = bereich() ?: return false
          // Einreihen und Anwenden in einem Zug: uebernimm() sieht beides oder keines.
--        sperre(b, bearbeitung.art).withLock {
+-        lock(b, bearbeitung.art).withLock {
 +        run {
-             ausgang.einreihen(b, bearbeitung, uhr(), schluessel)
-             wendeAnGesperrt(bearbeitung.art, bearbeitung, b)
+             ausgang.einreihen(b, bearbeitung, clock(), schluessel)
+             applyAnLocked(bearbeitung.art, bearbeitung, b)
          }

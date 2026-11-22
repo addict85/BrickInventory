@@ -1,55 +1,55 @@
 /**
- * Die Android-App als Partei der Passkeys: /.well-known/assetlinks.json und die
- * Herkunft `android:apk-key-hash:…` kommen aus PASSKEY_ANDROID_ZERTIFIKATE.
- * Ob der Server die Antwort einer App annimmt, prüft passkeys-db.test.js.
+ * The Android app as a party of the passkeys: /.well-known/assetlinks.json and the
+ * origin `android:apk-key-hash:…` come from PASSKEY_ANDROID_ZERTIFIKATE.
+ * Whether the server accepts the response of an app is checked by passkeys-db.test.js.
  *
- * Gegenproben (am 31.10.2026 gemessen):
- *   A  in assetlinks() die Doppelpunkte weggelassen (`hex` statt `AB:CD:…`) →
- *      rot: „das Dokument nennt Paket und Fingerabdruck …“
- *   B  in androidHerkuenfte() base64 statt base64url → rot: „die Herkunft ist …“
- *   C  in androidZertifikate() die Formprüfung entfernt → rot: „ein falscher
- *      Fingerabdruck ist ein Startfehler …“
- *   D  den Router in routes/wellKnown.ts ohne Pfad `.well-known` → rot: „ohne
- *      Eintrag gibt es kein Dokument“ und „das Dokument nennt …“
+ * Counter-checks (measured on 31.10.2026):
+ *   A  in assetlinks() the colons left out (`hex` instead of `AB:CD:…`) →
+ *      red: “the document names package and fingerprint …”
+ *   B  in androidOrigins() base64 instead of base64url → red: “the origin is …”
+ *   C  in androidZertifikate() the form check removed → red: “a wrong
+ *      fingerprint … is a startup error …”
+ *   D  the router in routes/wellKnown.ts without the path `.well-known` → red: “without
+ *      an entry there is no document” and “the document names …”
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { environment } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { buildAndRequire } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 
 const _req = buildAndRequire();
-const { ladeKonfig, KonfigFehler } = _req('src/infra/konfig.js');
-const { androidHerkuenfte: herkuenfte } = _req('src/faktoren/androidApp.js');
-const androidHerkuenfte = () => herkuenfte(_req('src/infra/konfig.js').konfig());
+const { ladeKonfig, KonfigFehler } = _req('src/infra/config.js');
+const { androidOrigins: origins } = _req('src/factors/androidApp.js');
+const androidOrigins = () => origins(_req('src/infra/config.js').konfig());
 
-/** Ein Hash, dessen base64 ein „+“ und ein „/“ enthält: base64url muss sie ersetzen. */
+/** A hash whose base64 contains a „+“ and a „/“: base64url must replace them. */
 const HASH = Buffer.from('fbff' + '00'.repeat(28) + 'fbff', 'hex');
-const MIT_DOPPELPUNKT = HASH.toString('hex').toUpperCase().match(/../g).join(':');
+const WITH_COLON = HASH.toString('hex').toUpperCase().match(/../g).join(':');
 
-function mitUmgebung(t, werte) {
+function withEnvironment(t, werte) {
   const vorher = Object.fromEntries(Object.keys(werte).map(k => [k, process.env[k]]));
-  umgebung(werte);
+  environment(werte);
   t.after(() => {
     for (const [k, v] of Object.entries(vorher)) {
-      if (v === undefined) umgebung({ [k]: undefined });
-      else umgebung({ [k]: v });
+      if (v === undefined) environment({ [k]: undefined });
+      else environment({ [k]: v });
     }
   });
 }
 
-test('ohne Eintrag gibt es kein Dokument und keine App-Herkunft', async t => {
-  mitUmgebung(t, { PASSKEY_ANDROID_ZERTIFIKATE: '' });
+test('without an entry there is no document and no app origin', async t => {
+  withEnvironment(t, { PASSKEY_ANDROID_ZERTIFIKATE: '' });
   const { base } = testServer(_req, { t });
   const r = await fetch(`${base}/.well-known/assetlinks.json`);
   assert.equal(r.status, 404);
   assert.match(await r.text(), /PASSKEY_ANDROID_ZERTIFIKATE/);
-  assert.deepEqual(androidHerkuenfte(), []);
+  assert.deepEqual(androidOrigins(), []);
 });
 
-test('das Dokument nennt Paket und Fingerabdruck, nur für die Anmeldedaten', async t => {
-  mitUmgebung(t, {
+test('the document names package and fingerprint, only for the credentials', async t => {
+  withEnvironment(t, {
     PASSKEY_ANDROID_ZERTIFIKATE: HASH.toString('hex'),
     PASSKEY_ANDROID_PAKET: 'ch.brickinventoryapp.debug',
   });
@@ -63,21 +63,21 @@ test('das Dokument nennt Paket und Fingerabdruck, nur für die Anmeldedaten', as
       target: {
         namespace: 'android_app',
         package_name: 'ch.brickinventoryapp.debug',
-        sha256_cert_fingerprints: [MIT_DOPPELPUNKT],
+        sha256_cert_fingerprints: [WITH_COLON],
       },
     },
   ]);
 });
 
-test('die Herkunft ist base64url des Hashes, gleich in welcher Schreibweise er eingetragen ist', t => {
-  mitUmgebung(t, { PASSKEY_ANDROID_ZERTIFIKATE: `${MIT_DOPPELPUNKT.toLowerCase()}, ${HASH.toString('hex')}` });
+test('the origin is base64url of the hash, regardless of the notation it is entered in', t => {
+  withEnvironment(t, { PASSKEY_ANDROID_ZERTIFIKATE: `${WITH_COLON.toLowerCase()}, ${HASH.toString('hex')}` });
   const erwartet =
     'android:apk-key-hash:' + HASH.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   assert.match(HASH.toString('base64'), /[+/]/, 'Die Probe deckt die Ersetzung nicht ab');
-  assert.deepEqual(androidHerkuenfte(), [erwartet], 'Doppelt eingetragen zählt einmal');
+  assert.deepEqual(androidOrigins(), [erwartet], 'Doppelt eingetragen zählt einmal');
 });
 
-test('ein falscher Fingerabdruck oder Paketname ist ein Startfehler mit Namen', () => {
+test('a wrong fingerprint or package name is a startup error with a name', () => {
   const fehler = env => {
     try {
       ladeKonfig(env);

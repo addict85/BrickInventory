@@ -1,0 +1,80 @@
+/** Market price, price history and price alert of a set. */
+import type { Sicht } from '../household';
+import { normalisiereSetNummer } from '../infra/setNumber';
+import type { Zustand } from '../infra/validate';
+import type { CsvImportReport } from '../infra/csvExport';
+import * as repo from './repository/setDetail';
+import { versuche } from '../infra/result';
+import type { SetsContext } from './context';
+
+/** In the inventory's condition. null: no set in scope. */
+export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht | number[], sn: string) {
+  const blickfeld = await sk.household.scopeFrom(scopeChoice);
+  const set = await repo.setInField(sk.db, sn, blickfeld);
+  if (!set) return null;
+  // The currency from the setting: the app sent its local start value before it knew
+  // the setting.
+  const currency = await currencyOf(sk, uid);
+  const guideType = String(await sk.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
+  const ttlHours = String(await sk.einstellungen.userValue(uid, 'price_cache_ttl', '24'));
+  const preis = await versuche('sets:preis', async () =>
+    sk.finances.fetchPrice(sn, await sk.finances.setState(blickfeld, sn), guideType, currency, ttlHours, null),
+  );
+  if (!preis.ok)
+    return {
+      set_number: sn,
+      currency,
+      min_price: null,
+      avg_price: null,
+      max_price: null,
+      qty_avg_price: null,
+      no_price: true,
+      error: preis.fehler.grund,
+    };
+  const pd = preis.wert;
+  return {
+    set_number: sn,
+    currency,
+    min_price: pd.min_price,
+    avg_price: pd.avg_price,
+    max_price: pd.max_price,
+    qty_avg_price: pd.qty_avg_price,
+    from_cache: pd.from_cache,
+    no_price: !!(pd as { no_price?: boolean }).no_price,
+  };
+}
+
+/** The currency from the settings, not from the request: two sources
+ * would drift apart at the next change. */
+export async function currencyOf(sk: SetsContext, uid: number): Promise<string> {
+  return String(await sk.einstellungen.userValue(uid, 'currency', 'EUR'));
+}
+
+export function readSetAlerts(sk: SetsContext, uid: number, sn: string) {
+  return sk.finances.preisalarm.alertsFor(uid, normalisiereSetNummer(sn));
+}
+
+export async function setAlarmOfSets(
+  sk: SetsContext,
+  uid: number,
+  sn: string,
+  eingabe: Parameters<SetsContext['finances']['preisalarm']['setzeAlarm']>[3],
+) {
+  return sk.finances.preisalarm.setzeAlarm(uid, normalisiereSetNummer(sn), await currencyOf(sk, uid), eingabe);
+}
+
+export function deleteAlarmOfSets(sk: SetsContext, uid: number, sn: string, condition: Zustand | undefined) {
+  return sk.finances.preisalarm.loescheAlarm(uid, normalisiereSetNummer(sn), condition ?? 'N');
+}
+
+export async function startAlarmCsvImport(sk: SetsContext, uid: number, text: string) {
+  return sk.jobQueue.waitOnJob<CsvImportReport, 'csv_import'>(
+    'csv_import',
+    { user_id: uid, quelle: 'alarme_csv', eingabe: { waehrung: await currencyOf(sk, uid), text } },
+    { userId: uid },
+  );
+}
+
+export async function setPriceHistory(sk: SetsContext, uid: number, sicht: Sicht | number[], sn: string) {
+  return sk.finances.priceHistorySet(sicht, sn, await currencyOf(sk, uid));
+}

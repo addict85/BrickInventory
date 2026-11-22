@@ -1,7 +1,7 @@
 Gegenprobe: Der beobachtete Bereich kommt aus der Punktabfrage statt aus dem Fluss der Sitzung
 Modul: core-offline
-Test: ch.brickinventoryapp.offline.OfflineablageSperreTest
-Rot: der beobachtete Bereich folgt der Sitzung
+Test: ch.brickinventoryapp.offline.OfflineablageLockTest
+Rot: the observed area follows the session without anyone writing
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline
          }
      }
  
--    private val aktuell: Flow<String?> = bereichFluss.map { gueltig(it) }.distinctUntilChanged()
-+    private val aktuell: Flow<String?> = flow { emit(gueltig(bereichQuelle())) }
+-    private val aktuell: Flow<String?> = areaFlow.map { gueltig(it) }.distinctUntilChanged()
++    private val aktuell: Flow<String?> = flow { emit(gueltig(areaSource())) }
  
      /**
       * Eine Sperre je Bereich und Liste: Lesen, Ändern und Schreiben einer Liste

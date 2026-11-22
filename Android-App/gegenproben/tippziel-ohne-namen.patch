@@ -1,6 +1,6 @@
 Gegenprobe: Erfassen-Knopf ohne Beschreibung
 Modul: app
-Test: ch.brickinventoryapp.app.TippzielUndNameTest
+Test: ch.brickinventoryapp.app.TipTargetAndNameTest
 Rot: galerie
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt

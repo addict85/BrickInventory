@@ -1,10 +1,10 @@
 pluginManagement {
-    // Konventions-Plugins (brickinventory.android.*): der gemeinsame Android-Block
-    // der Module steht dort einmal statt in jedem build.gradle.kts.
+    // Convention plugins (brickinventory.android.*): the modules' shared Android block
+    // lives there once instead of in every build.gradle.kts.
     includeBuild("build-logic")
     repositories {
-        // Googles Android-Gruppen nur von Google: Ein gleichnamiges Paket aus mavenCentral
-        // oder dem Plugin-Portal würde gar nicht erst angefragt.
+        // Google's Android groups only from Google: a package of the same name from mavenCentral
+        // or the plugin portal would not even be requested.
         exclusiveContent {
             forRepository { google() }
             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
@@ -18,8 +18,8 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // Wie oben: Googles Gruppen nur von Google, alles andere allein aus mavenCentral;
-        // kein gleichnamiges Paket rutscht über den zweiten Weg herein.
+        // As above: Google's groups only from Google, everything else only from mavenCentral;
+        // no identically named package can sneak in through the second path.
         exclusiveContent {
             forRepository { google() }
             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
@@ -32,30 +32,30 @@ dependencyResolutionManagement {
 rootProject.name = "BrickInventoryManager"
 include(":app")
 
-// Abhängigkeiten nur in diese Richtung: app → feature-* → core-*; kein Bereich
-// kennt einen anderen. Unter den Kernmodulen: core-update und core-dienste →
-// core-data → core-offline → core-sicherheit → core-netz → core-vertrag → core-model; core-navigation →
-// core-zustand → core-sitzung → core-data.
-// Die Regel: build-logic/…/kanten/Modulkanten.kt (Aufgabe modulkantenPruefen, ModulgrenzenTest).
+// Dependencies only in this direction: app → feature-* → core-*; no area
+// knows another. Among the core modules: core-update and core-services →
+// core-data → core-offline → core-security → core-network → core-contract → core-model; core-navigation →
+// core-state → core-session → core-data.
+// The rule: build-logic/…/kanten/Modulkanten.kt (task modulkantenPruefen, ModulgrenzenTest).
 include(":core-model")
-include(":core-vertrag")
-include(":core-ressourcen")
-include(":core-netz")
-include(":core-sicherheit")
+include(":core-contract")
+include(":core-resources")
+include(":core-network")
+include(":core-security")
 include(":core-offline")
 include(":core-data")
 include(":core-update")
-include(":core-dienste")
+include(":core-services")
 include(":core-ui")
-include(":core-ui-bestand")
-include(":core-sitzung")
-include(":core-zustand")
+include(":core-ui-inventory")
+include(":core-session")
+include(":core-state")
 include(":core-navigation")
 include(":core-testing")
-include(":feature-anmeldung")
-include(":feature-katalog")
-include(":feature-sammlung")
-include(":feature-teile")
-include(":feature-finanzen")
-include(":feature-konto")
-include(":feature-verwaltung")
+include(":feature-login")
+include(":feature-catalog")
+include(":feature-collection")
+include(":feature-parts")
+include(":feature-finances")
+include(":feature-account")
+include(":feature-management")

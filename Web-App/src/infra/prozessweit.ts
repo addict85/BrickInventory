@@ -1,10 +1,10 @@
-/** Zustand, der bewusst dem Prozess gehört und nicht einem Zugang. Alles andere hält
- * ein Bereich in seinen Fächern (zwischenspeicher.ts), damit zwei Zugänge in einem
- * Prozess (Tests, Werkzeuge) einander nichts vorspiegeln. Wer hier etwas ablegt,
- * nennt den Grund in GRUENDE; die Ratsche in test/ratschen.test.js zählt den Rest. */
-import { Faecher } from './zwischenspeicher';
+/** State that deliberately belongs to the process and not to an access. Everything else is kept
+ * by an area in its compartments (cache.ts), so that two accesses in one
+ * process (tests, tools) do not deceive each other. Whoever stores something here
+ * names the reason in REASONS; the ratchet in test/ratschen.test.js counts the rest. */
+import { Faecher } from './cache';
 
-export const GRUENDE = {
+export const REASONS = {
   apiDrossel: 'Anfragebudget je Konto: schützt Rechenzeit und Speicher dieses Prozesses, gleich welcher Zugang',
   kontoSchranke: 'gleichzeitige Uploads und Ströme je Konto belegen Speicher dieses Prozesses',
   anmeldeRueckfall: 'Rückfall der Anmeldebremse, wenn die Datenbank klemmt: zählt gerade ohne sie',
@@ -29,6 +29,6 @@ export const GRUENDE = {
 
 const faecher = new Faecher();
 
-export function prozessweit<T>(name: keyof typeof GRUENDE, erzeuge: () => T): T {
-  return faecher.fach(name, erzeuge);
+export function prozessweit<T>(name: keyof typeof REASONS, create: () => T): T {
+  return faecher.fach(name, create);
 }

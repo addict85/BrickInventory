@@ -1,16 +1,16 @@
 Gegenprobe: ein Betrag in einem Fachtyp wieder als Double
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: Fachtypen tragen Betraege
+Rot: domain types carry amounts as Money and points in time as Instant, not as Double and String
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
 @@ -55,6 +55,7 @@
- data class KaufSummenAnsicht(
+ data class PurchaseSumsView(
      val quantity: Int = 0,
      val amount: Geld? = null,
 +    val betragAlt: Double? = null,
  )
  
- data class LagerortAnsicht(
+ data class LocationView(

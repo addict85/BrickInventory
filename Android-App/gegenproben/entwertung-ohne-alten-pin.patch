@@ -1,17 +1,17 @@
 Gegenprobe: Die nachgeholte Entwertung behandelt den alten Server als fremden Host, nur System-CAs (Stand vor sec8 N2)
 Modul: core-data
 Test: ch.brickinventoryapp.data.AlterServerPinTest
-Rot: eigener CA
+Rot: the old server with its own CA is reached with its pin
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -295,7 +295,7 @@ internal fun auftragsVertrauen(
-         override fun pin(schluessel: String): String? = pin.takeIf { schluessel == auftrag }
-         override fun merkePin(schluessel: String, fingerabdruck: String) = Unit
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
+@@ -295,7 +295,7 @@ internal fun trustJob(
+         override fun pin(schluessel: String): String? = pin.takeIf { schluessel == job }
+         override fun rememberPin(schluessel: String, fingerabdruck: String) = Unit
      }
--    return PinVertrauen(kette, ablage, eigenerServer = { auftrag }, frage = ZertifikatsFrage(), fremdeHosts = system)
-+    return PinVertrauen(kette, ablage, eigenerServer = { null }, frage = ZertifikatsFrage(), fremdeHosts = system)
+-    return PinTrust(kette, ablage, ownServer = { job }, frage = CertificateQuestion(), foreignHosts = system)
++    return PinTrust(kette, ablage, ownServer = { null }, frage = CertificateQuestion(), foreignHosts = system)
  }
  
  /**

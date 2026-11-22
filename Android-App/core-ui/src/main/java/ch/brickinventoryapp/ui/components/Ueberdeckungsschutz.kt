@@ -8,72 +8,72 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 
 /**
- * Berührungen verwerfen, solange ein fremdes Fenster darüber liegt (Tapjacking; ab Android 12
- * blockiert das System selbst, betroffen ist Android 11).
+ * Discards touches as long as a foreign window sits on top (tapjacking; from Android 12
+ * the system blocks this itself, Android 11 is affected).
  */
 @Composable
 fun Ueberdeckungsschutz() {
     val view = LocalView.current
     DisposableEffect(view) {
-        val eigenesFenster = (view.parent as? DialogWindowProvider)?.window
-        val ziel = eigenesFenster?.decorView ?: view.rootView
-        val fenster = eigenesFenster ?: activityFenster(view.context)
+        val ownWindow = (view.parent as? DialogWindowProvider)?.window
+        val ziel = ownWindow?.decorView ?: view.rootView
+        val fenster = ownWindow ?: activityWindow(view.context)
         fun anzahl() = ziel.getTag(R.id.ueberdeckung_anzahl) as? Int ?: 0
         ziel.setTag(R.id.ueberdeckung_anzahl, anzahl() + 1)
         ziel.filterTouchesWhenObscured = true
-        fenster?.let(TeilweiseVerdecktFilter::legeAn)
+        fenster?.let(PartialHiddenFilter::putAn)
         onDispose {
             val rest = anzahl() - 1
             ziel.setTag(R.id.ueberdeckung_anzahl, rest)
             if (rest <= 0) ziel.filterTouchesWhenObscured = false
-            if (rest <= 0) fenster?.let(TeilweiseVerdecktFilter::entferne)
+            if (rest <= 0) fenster?.let(PartialHiddenFilter::entferne)
         }
     }
 }
 
-private fun activityFenster(context: android.content.Context): Window? =
+private fun activityWindow(context: android.content.Context): Window? =
     generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }
         .filterIsInstance<android.app.Activity>().firstOrNull()?.window
 
 /**
- * filterTouchesWhenObscured greift nur, wenn das fremde Fenster genau über dem
- * Tipp liegt. Liegt es daneben (FLAG_WINDOW_IS_PARTIALLY_OBSCURED),
- * kann es Text verdecken oder vortäuschen, während der Tipp durchgeht — darum
- * wird er hier vor dem ganzen Fenster verworfen. Ein laufender Zug endet mit
- * ACTION_CANCEL, damit kein Knopf gedrückt stehen bleibt.
+ * filterTouchesWhenObscured only applies when the foreign window sits exactly over the
+ * tap. If it sits next to it (FLAG_WINDOW_IS_PARTIALLY_OBSCURED),
+ * it can cover or fake text while the tap goes through — that's why
+ * it's discarded here for the whole window. An ongoing gesture ends with
+ * ACTION_CANCEL, so no button stays stuck down.
  */
-internal class TeilweiseVerdecktFilter(val alt: Window.Callback) : Window.Callback by alt {
+internal class PartialHiddenFilter(val alt: Window.Callback) : Window.Callback by alt {
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        if (!teilweiseVerdeckt(event)) return alt.dispatchTouchEvent(event)
+        if (!partialHidden(event)) return alt.dispatchTouchEvent(event)
         if (event.actionMasked != MotionEvent.ACTION_DOWN) {
-            val abbruch = MotionEvent.obtain(event).apply { action = MotionEvent.ACTION_CANCEL }
-            alt.dispatchTouchEvent(abbruch)
-            abbruch.recycle()
+            val abort = MotionEvent.obtain(event).apply { action = MotionEvent.ACTION_CANCEL }
+            alt.dispatchTouchEvent(abort)
+            abort.recycle()
         }
         return true
     }
 
-    // Standardmethoden der Schnittstelle reicht `by` nicht weiter.
+    // `by` doesn't forward the interface's default methods.
     override fun onProvideKeyboardShortcuts(data: MutableList<KeyboardShortcutGroup>?, menu: Menu?, deviceId: Int) =
         alt.onProvideKeyboardShortcuts(data, menu, deviceId)
 
     override fun onPointerCaptureChanged(hasCapture: Boolean) = alt.onPointerCaptureChanged(hasCapture)
 
     companion object {
-        fun legeAn(fenster: Window) {
+        fun putAn(fenster: Window) {
             val jetzt = fenster.callback ?: return
-            if (jetzt !is TeilweiseVerdecktFilter) fenster.callback = TeilweiseVerdecktFilter(jetzt)
+            if (jetzt !is PartialHiddenFilter) fenster.callback = PartialHiddenFilter(jetzt)
         }
 
         fun entferne(fenster: Window) {
-            (fenster.callback as? TeilweiseVerdecktFilter)?.let { fenster.callback = it.alt }
+            (fenster.callback as? PartialHiddenFilter)?.let { fenster.callback = it.alt }
         }
     }
 }
 
-internal fun teilweiseVerdeckt(event: MotionEvent): Boolean =
+internal fun partialHidden(event: MotionEvent): Boolean =
     (event.flags and MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0

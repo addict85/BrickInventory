@@ -1,17 +1,17 @@
 Gegenprobe: Der Bild-Client lässt wieder direkte Anfragen an Bild-CDNs durch
-Modul: core-netz
-Test: ch.brickinventoryapp.netz.BildHostWaechterTest
-Rot: auch ein Bild-CDN wird nicht direkt angefragt
+Modul: core-network
+Test: ch.brickinventoryapp.network.ImageHostGuardTest
+Rot: an image CDN is not requested directly either
 
-diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt
---- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt
-+++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt
-@@ -44,7 +44,7 @@ class BildHostWaechter(
+diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/BildHosts.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/BildHosts.kt
+--- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/BildHosts.kt
++++ b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/BildHosts.kt
+@@ -44,7 +44,7 @@ class ImageHostGuard(
          return gesperrt(anfrage)
      }
  
--    private fun vorbereitet(r: Request): Request? = r.takeIf { eigenerServer(it.url) }
-+    private fun vorbereitet(r: Request): Request? = r.takeIf { eigenerServer(it.url) || it.url.host.endsWith("rebrickable.com") || it.url.host.endsWith("brickset.com") || it.url.host.endsWith("bricklink.com") }
+-    private fun prepared(r: Request): Request? = r.takeIf { ownServer(it.url) }
++    private fun prepared(r: Request): Request? = r.takeIf { ownServer(it.url) || it.url.host.endsWith("rebrickable.com") || it.url.host.endsWith("brickset.com") || it.url.host.endsWith("bricklink.com") }
  
      private fun gesperrt(r: Request): Response = Response.Builder()
          .request(r).protocol(Protocol.HTTP_1_1).code(403).message("Bild-Host nicht erlaubt")

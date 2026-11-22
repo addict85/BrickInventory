@@ -1,19 +1,19 @@
 /**
- * Der Start des Job-Prozesses trägt jede Hintergrundarbeit als Auftrag ein.
+ * The start of the job process registers every background job as a job.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in starteJobs() `ziehePlanVor('csv_sync', …)` entfernt → rot: „jede
- *      geplante Art hat einen Termin“ (der Katalog stand erst um 03:00 an).
- *      `planeAlle()` allein zu entfernen bleibt grün: Heute zieht der Start
- *      jede geplante Art vor und legt sie dabei an; planeAlle() deckt eine
- *      künftige Art ab, die nicht vorgezogen wird.
- *   B  in starteJobs() die Schleife über NACHLAEUFE entfernt → rot: „jeder
- *      Nachlauf ist einmal eingestellt“
- *   C  starteAuftragsWorker() aus starteJobs() entfernt → rot: „der Worker läuft an“
- *   D  (05.11.2026) das Lebenszeichen ohne Blick auf den Worker geschrieben →
- *      rot: „das Lebenszeichen folgt dem Worker“ (es kam auch ohne Worker)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in startJobs() `pullPlanBefore('csv_sync', …)` removed → red: “every
+ *      scheduled kind has a date” (the catalog was only due at 03:00).
+ *      Removing `planeAll()` alone stays green: today the start pulls forward
+ *      every scheduled kind and creates it in the process; planeAll() covers a
+ *      future kind that is not pulled forward.
+ *   B  in startJobs() the loop over FOLLOWUP_RUNS removed → red: “every
+ *      follow-up run is enqueued once”
+ *   C  startJobWorker() removed from startJobs() → red: “the worker starts”
+ *   D  (05.11.2026) the heartbeat written without looking at the worker →
+ *      red: “the heartbeat follows the worker” (it came even without a worker)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,38 +21,38 @@ const Module = require('node:module');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-let workerGestartet = 0;
-const echtesRequire = Module.prototype.require;
+let workerStarted = 0;
+const realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /jobs[/\\]auftraegeStarten(\.js)?$/.test(name))
+  const m = realRequire.call(this, name, ...rest);
+  if (typeof name === 'string' && /jobs[/\\]startJobs(\.js)?$/.test(name))
     return {
       ...m,
-      starteAuftragsWorker: () => {
-        workerGestartet++;
-        return { letzteRunde: () => Date.now(), stoppe: async () => {} };
+      startJobWorker: () => {
+        workerStarted++;
+        return { lastRound: () => Date.now(), stop: async () => {} };
       },
     };
   return m;
 };
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 
-test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 1 }, async t => {
-  const db = testDaten();
-  /** Was starteJobs zurückgibt: Der Test hält es wie server.ts. */
-  const laeufe = [];
+test('starting the job process queues everything as a job', { concurrency: 1 }, async t => {
+  const db = testData();
+  /** What startJobs returns: the test holds it like server.ts. */
+  const runs = [];
   t.after(async () => {
-    for (const lauf of laeufe)
-      await _req('startup/jobsProzess.js').stoppeJobs(require('./helpers/sources').testDienste(), lauf);
-    await testZugang()
-      .benachrichtigung.close()
+    for (const lauf of runs)
+      await _req('startup/jobsProcess.js').stopJobs(require('./helpers/sources').testServices(), lauf);
+    await testAccess()
+      .notification.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});
-    Module.prototype.require = echtesRequire;
+    Module.prototype.require = realRequire;
   });
   try {
     await db.initSchemaOnce();
@@ -60,55 +60,55 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     keineDb(t, e);
     return;
   }
-  await db.run('DELETE FROM auftraege');
-  laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste()));
+  await db.run('DELETE FROM jobs');
+  runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
 
-  const zeilen = await db.all(`SELECT art, schluessel, nutzlast, EXTRACT(EPOCH FROM faellig_ab - NOW())::int AS in_sek
-                                 FROM auftraege WHERE status = 'offen'`);
-  const plan = art => zeilen.find(z => z.schluessel === `plan:${art}`);
+  const zeilen = await db.all(`SELECT type, dedupe_key, payload, EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek
+                                 FROM jobs WHERE status = 'offen'`);
+  const plan = type => zeilen.find(z => z.dedupe_key === `plan:${type}`);
 
-  await t.test('jede geplante Art hat einen Termin', () => {
+  await t.test('every scheduled kind has an appointment', () => {
     for (const { art } of require('./helpers/sources')
-      .testDienste()
-      .auftraege.angemeldeteArten()
+      .testServices()
+      .jobQueue.signedInKinds()
       .filter(a => a.zeitplan))
-      assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.schluessel).join(', ')}`);
+      assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
     assert.ok(
-      plan('csv_sync').in_sek <= 0 && plan('csv_sync').nutzlast.beimStart,
+      plan('csv_sync').in_sek <= 0 && plan('csv_sync').payload.onStart,
       'der Katalog wird beim Start sofort geprüft',
     );
     assert.ok(plan('preise').in_sek <= 30, 'der Preis-Job läuft 30 s nach dem Start');
     assert.ok(
-      zeilen.some(z => z.art === 'wechselkurse'),
+      zeilen.some(z => z.type === 'wechselkurse'),
       'kein Wechselkurs-Auftrag',
     );
   });
 
-  await t.test('jeder Nachlauf ist einmal eingestellt', async () => {
-    const { NACHLAEUFE } = _req('src/verwaltung/startNachlaeufe.js');
-    for (const schritt of Object.keys(NACHLAEUFE))
+  await t.test('every follow-up run is queued once', async () => {
+    const { FOLLOWUP_RUNS } = _req('src/management/startFollowUpRuns.js');
+    for (const schritt of Object.keys(FOLLOWUP_RUNS))
       assert.ok(
-        zeilen.some(z => z.schluessel === `nachlauf:${schritt}`),
+        zeilen.some(z => z.dedupe_key === `nachlauf:${schritt}`),
         `Nachlauf ${schritt} fehlt`,
       );
-    laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste()));
-    const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE status = 'offen'
-                                    GROUP BY schluessel HAVING COUNT(*) > 1 LIMIT 1`);
+    runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
+    const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE status = 'offen'
+                                    GROUP BY dedupe_key HAVING COUNT(*) > 1 LIMIT 1`);
     assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
   });
 
-  await t.test('der Worker läuft an', () => {
-    assert.ok(workerGestartet >= 1);
+  await t.test('the worker starts', () => {
+    assert.ok(workerStarted >= 1);
   });
 
-  await t.test('das Lebenszeichen folgt dem Worker', async () => {
-    const jp = _req('startup/jobsProzess.js');
-    const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
-    for (let i = 0; i < 50 && !(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL)); i++) await warte(20);
-    assert.ok(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), 'nach dem Start fehlt das Lebenszeichen');
-    for (const lauf of laeufe) await jp.stoppeJobs(require('./helpers/sources').testDienste(), lauf);
-    await loescheZustand(jp.LEBENSZEICHEN_SCHLUESSEL);
-    await jp.erneuereLebenszeichen(require('./helpers/sources').testDienste(), laeufe[0].worker);
-    assert.equal(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), null, 'ohne Worker kein Lebenszeichen');
+  await t.test('the sign of life follows the worker', async () => {
+    const jp = _req('startup/jobsProcess.js');
+    const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+    for (let i = 0; i < 50 && !(await liesZustand(jp.HEARTBEAT_KEY)); i++) await warte(20);
+    assert.ok(await liesZustand(jp.HEARTBEAT_KEY), 'nach dem Start fehlt das Lebenszeichen');
+    for (const lauf of runs) await jp.stopJobs(require('./helpers/sources').testServices(), lauf);
+    await deleteState(jp.HEARTBEAT_KEY);
+    await jp.renewHeartbeat(require('./helpers/sources').testServices(), runs[0].worker);
+    assert.equal(await liesZustand(jp.HEARTBEAT_KEY), null, 'ohne Worker kein Lebenszeichen');
   });
 });

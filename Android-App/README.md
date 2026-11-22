@@ -97,10 +97,10 @@ jedem Push, der `Android-App/` berührt. Der Job `build` macht nacheinander:
    ohne eingecheckte Referenzen `recordRoborazziDebug`)
 3. Room-Schema eingecheckt?
 4. `assembleRelease bundleRelease`, danach `:app:lintRelease`
-5. Warnungen der Test- und Release-Übersetzung zählen (`tools/warnungen-obergrenze.txt`)
-   und Lint-Befunde zählen (`tools/lint-obergrenze.txt`)
+5. Warnungen der Test- und Release-Übersetzung zählen (`tools/warnings-limit.txt`)
+   und Lint-Befunde zählen (`tools/lint-limit.txt`)
 6. `detekt` gegen `config/detekt/baseline.xml`
-7. Rückstand der Abhängigkeiten melden (`tools/fassungen-pruefen.py`)
+7. Rückstand der Abhängigkeiten melden (`tools/versions-check.py`)
 
 Daneben misst der Job `gegenproben` die Patches unter `gegenproben/`: auf einem
 Push nur die betroffenen, nachts und von Hand alle. Die Test- und Lint-Berichte
@@ -173,7 +173,7 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
 ## Datenschutz: mit wem die App spricht
 
 - **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
-  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`netz/util/BildHosts.kt`).
+  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`network/util/BildHosts.kt`).
 - **GitHub** — nur die Update-Prüfung (`update/util/AppUpdate.kt`): beim Start, solange
   der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
   Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
@@ -181,7 +181,7 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
   (Credential Manager). Barcode-Scan und Texterkennung laufen auf dem Gerät. Den Weg,
   über den ML Kit Nutzungsstatistiken an Google meldet (datatransport, Backend `cct`
   zu `firebaselogging.googleapis.com`), nimmt das App-Manifest heraus; die Prüfung
-  des fertigen APK (`tools/manifest-pruefen.py`) ist rot, sobald er wieder drin ist.
+  des fertigen APK (`tools/manifest-check.py`) ist rot, sobald er wieder drin ist.
   Was die Play-Dienste in ihrem eigenen Prozess senden, regelt Google.
 - **Browser-Ziele** (BrickLink, Hersteller-Anleitungen) — nur auf Tipp.
 
@@ -190,7 +190,7 @@ Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
 ## Sicherheit im Netz
 
 **Nur https.** Die Release-App sendet nichts unverschlüsselt. Zwei Linien:
-der Wächter (`netz/di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
+der Wächter (`network/di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
 und die Network-Security-Config (`app/src/main/res/xml/`) verbietet Klartext
 für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 `10.0.2.2` (Emulator), festgelegt in `app/src/debug/res/xml/` und
@@ -198,7 +198,7 @@ für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 führt beim Start in die Einrichtung mit einer Anleitung (QR neu scannen oder
 https-Adresse eintragen).
 
-**Wem die App beim eigenen Server vertraut** (`sicherheit/ServerVertrauen.kt`):
+**Wem die App beim eigenen Server vertraut** (`security/ServerVertrauen.kt`):
 
 | Weg | Was passiert |
 | --- | --- |
@@ -218,31 +218,31 @@ der Pin die regelmässige Erneuerung des Serverzertifikats durch Caddy (alle paa
 Stunden). Unter einer öffentlichen CA fragt die App bei jedem neuen Serverschlüssel
 (Caddy erneuert ACME-Zertifikate standardmässig mit neuem Schlüssel, etwa alle 60
 Tage). Wechselt die Wurzel innerhalb einer Familie (ISRG Root X1 → X2, GTS R1 → R4
-usw.), fragt sie nicht; die Familien stehen fest in `CA_FAMILIEN`, nicht im frei
+usw.), fragt sie nicht; die Familien stehen fest in `CA_FAMILIES`, nicht im frei
 wählbaren `O=` des Subjekts. Andere Hosts
 (GitHub für die Selbstaktualisierung) prüft nur die System-CA-Liste.
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.
 
-**Logcat.** Die App schreibt nur über `netz/util/Protokoll.kt`, und das nur im
+**Logcat.** Die App schreibt nur über `network/util/Protokoll.kt`, und das nur im
 Debug-Build; dort zeigt der Netzmitschnitt Anfrage- und Statuszeile, nie Rümpfe,
 und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
-`ProtokollTest` verbietet rohe Log-Aufrufe ausserhalb der Hülle.
+`LogTest` verbietet rohe Log-Aufrufe ausserhalb der Hülle.
 
 ## Daten auf dem Gerät
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
-(`sicherheit/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
+(`security/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
 Zweck gebunden). Der Ablageschlüssel ist wie das Token unter einem Keystore-Schlüssel
-mit `setUnlockedDeviceRequired` umhüllt (`EntsperrTresor`, Alias
+mit `setUnlockedDeviceRequired` umhüllt (`EntsperrVault`, Alias
 `brickinventory_ablage_entsperrt`): Ein Prozess, der bei gesperrtem Gerät neu startet,
 liest weder Bestand noch Kaufpreise. Ein Schlüssel älterer Fassungen (Alias
 `brickinventory_ablage`, ohne Bedingung) wird beim ersten Zugriff mit entsperrtem Gerät
-umgeschlüsselt, derselbe Schlüssel, nichts geht verloren (`AblageEntsperrtTest`);
+umgeschlüsselt, derselbe Schlüssel, nichts geht verloren (`StoreUnlockedTest`);
 danach wird der alte Alias gelöscht, beim Token ebenso `brickinventory_auth_token`.
 Einen fehlenden alten Schlüssel legt die App nie neu an, der Altbestand gilt dann als
-weg (`KeystoreAltbestandTest`). Die Keystore-Geheimtexte tragen eine AAD (`a1:`); ältere
+weg (`KeystoreLegacyStockTest`). Die Keystore-Geheimtexte tragen eine AAD (`a1:`); ältere
 ohne bleiben lesbar und werden beim ersten Zugriff umgeschlüsselt. Gesperrt meldet eine
 Ablage „gesperrt“ (IOException) statt „unlesbar“, damit niemand ihre Dateien löscht.
 Der Ausgang liegt in derselben Datenbank: Senden braucht ohnehin das Token, und das
@@ -251,11 +251,11 @@ Der Ausgang liegt in derselben Datenbank: Senden braucht ohnehin das Token, und 
 | Ablage | Wie |
 | --- | --- |
 | Bestand (Room) samt Kennzahlen und Katalog-Metadaten | SQLCipher |
-| Widget-Zahlen | `AblageChiffre` |
-| Vorschau-Ablage `files/vorschau/` | `AblageChiffre`; Klartext älterer Fassungen wird verworfen |
-| Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
+| Widget-Zahlen | `StoreCipher` |
+| Vorschau-Ablage `files/vorschau/` | `StoreCipher`; Klartext älterer Fassungen wird verworfen |
+| Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `EncryptedFileSystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
 | Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
-| Bauanleitungen `cache/anleitung_*.bin` (höchstens 500 MB) | `VerschluesseltesDateisystem` (Zweck `anleitungen`, an den Dateinamen gebunden, Endmarker); angezeigt aus einem Bereich ohne Namen (siehe unten); beim Abmelden gelöscht, Klartext älterer Fassungen (`pdfview_*`) beim Start |
+| Bauanleitungen `cache/anleitung_*.bin` (höchstens 500 MB) | `EncryptedFileSystem` (Zweck `anleitungen`, an den Dateinamen gebunden, Endmarker); angezeigt aus einem Bereich ohne Namen (siehe unten); beim Abmelden gelöscht, Klartext älterer Fassungen (`pdfview_*`) beim Start |
 | Teileliste-PDF `files/pdf/teileliste.bin` | AES-GCM (Ablageschlüssel, Zweck „teileliste“); die Ziel-App liest über den nicht exportierten `TeilelistenProvider` aus dem Speicher (Proxy-Deskriptor), nie Klartext auf der Platte; nach 30 Minuten gelöscht (WorkManager, dazu beim Start und beim Abmelden) |
 
 **Anleitungen anzeigen:** `PdfRenderer` braucht einen Deskriptor, in dem er
@@ -273,13 +273,13 @@ Druckdialog kann „Als PDF speichern“).
 Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
 weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
 Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
-gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `AbmeldenRaeumtAllesTest`
+gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `SignOutCleansEverythingTest`
 prüft das ausgeführt.
 
-**Token und Ablagen unter `setUnlockedDeviceRequired`** (`EntsperrTresor`): Preisalarm,
+**Token und Ablagen unter `setUnlockedDeviceRequired`** (`EntsperrVault`): Preisalarm,
 Widget und Ausgang arbeiten im Hintergrund nur in einem Prozess, der seit dem letzten
 Entsperren läuft; ein bei gesperrtem Gerät neu gestarteter wartet bis zum Entsperren
-(`liesToken`, Rückzug von WorkManager). Abgefedert ist der Rest durch die Rotation mit
+(`readToken`, Rückzug von WorkManager). Abgefedert ist der Rest durch die Rotation mit
 Wiederverwendungserkennung am Server und die harte Höchstdauer von 180 Tagen.
 
 **Pins und Nutzer-CA-Schalter verschlüsselt:** Sie liegen in `design_spiegel.xml`
@@ -288,7 +288,7 @@ eigenen Ablageschlüssel (`vertrauen.schluessel`), den das Abmelden nicht erneue
 Ein Pin gehört zum Server, nicht zum Konto. Was sich nicht entschlüsseln lässt,
 gilt als „kein Pin“ bzw. „Schalter aus“; der Nutzer bestätigt dann neu. Klartext
 älterer Fassungen wird einmal übernommen und gelöscht, später auftauchender nur
-gelöscht (`VertrauenVerschluesseltTest`). Wer Code mit der UID der App ausführt,
+gelöscht (`TrustEncryptedTest`). Wer Code mit der UID der App ausführt,
 kann den Keystore weiterhin benutzen wie die App.
 
 **Update-Angebot nie aus einer zurückgesetzten Beschreibung (sec12 H2):** Ist die
@@ -296,7 +296,7 @@ signierte Beschreibung älter als eine schon gesehene oder als die installierte
 Fassung, bietet die App kein Update an; die Einstellungen sagen, warum. Sonst hielte
 eine wieder eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
 Zwischenfassung fest. Eine nur abgelaufene, aber neuere Beschreibung bietet ihre
-Fassung an, mit dem Hinweis, dass es Neueres geben könnte (`UpdateFrischeTest`):
+Fassung an, mit dem Hinweis, dass es Neueres geben könnte (`UpdateFreshTest`):
 Ohne neues Etikett binnen sieben Tagen bliebe das Gerät sonst auf der alten Fassung.
 
 ## Manipulationsschutz (MASVS-RESILIENCE)
@@ -316,13 +316,13 @@ App), prüft der Server über die Key Attestation des Geräteschlüssels
 verdeckt die App nach der gewählten Zeit im Hintergrund; Hintergrundarbeit läuft
 weiter, die Daten schützt der Keystore (siehe „Daten auf dem Gerät“). Das
 Widget verdeckt seine Beträge, sobald die Sperre greifen kann
-(`AppSperre.verdecktWidget`).
+(`AppLock.hiddenWidget`).
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
 Konstruktor und `doWork()` und Rooms Datenbank-Konstruktoren. Die API-Modelle
 werden umbenannt; ihre Serializer hält die Regel von kotlinx.serialization, und
-`tools/apk-pruefen.py` prüft am fertigen APK, dass `vertrag.SetItem` nicht
+`tools/apk-check.py` prüft am fertigen APK, dass `vertrag.SetItem` nicht
 mehr unter seinem Namen steht.
 
 **PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
@@ -336,7 +336,7 @@ stammen inhaltlich von Dritten; eine pdfium-Lücke träfe so nur den leeren
 Render-Prozess und reichte nicht über ein Bitmap-Parcel zurück.
 
 **TOTP-Geheimnis an die Authenticator-App:** immer über die Systemauswahl
-(`oeffneMitAuswahl`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
+(`openWithSelection`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
 Geheimnis nur, wenn man sie dort auswählt.
 
 ## Hinweise
@@ -348,7 +348,7 @@ Geheimnis nur, wenn man sie dort auswählt.
 
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
-`core-ui-bestand`. Die Regel steht einmal in
+`core-ui-inventory`. Die Regel steht einmal in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt`:
 Die Aufgabe `modulkantenPruefen` (an `check`, in der CI für alle Module) führt sie
 gegen die aufgelösten Kanten aus, `ModulgrenzenTest` gegen die Build-Dateien.
@@ -366,48 +366,48 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
 | `brickinventory.android.feature` | die vier oben, `core-ktx`, Navigation, Robolectric- und Compose-Testbibliotheken samt Testressourcen — ein Bereich |
-| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, Länge und Verzweigung alter Funktionen in `baseline.xml`, Obergrenze `tools/detekt-obergrenze.txt`); kommt mit library/application/jvm.library |
+| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, Länge und Verzweigung alter Funktionen in `baseline.xml`, Obergrenze `tools/detekt-limit.txt`); kommt mit library/application/jvm.library |
 | `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
 des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
-`core-model` und `core-vertrag` bleiben reines Kotlin (`brickinventory.jvm.library`).
+`core-model` und `core-contract` bleiben reines Kotlin (`brickinventory.jvm.library`).
 
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
-| `core-model` | `ch.brickinventoryapp.model` | Fachtypen in `model.fach` (Beträge als `Geld` in Zehntausendsteln, Zeitpunkte als `Instant`), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
-| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/vertrag-kotlin-zuordnung.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
-| `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
-| `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
-| `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
+| `core-model` | `ch.brickinventoryapp.model` | Fachtypen in `model.fach` (Beträge als `Geld` in Zehntausendsteln, Zeitpunkte als `Instant`), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAddress`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-contract` | `ch.brickinventoryapp.contract` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/contract-kotlin-mapping.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
+| `core-resources` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.resources.R` |
+| `core-network` | `ch.brickinventoryapp.network` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
+| `core-security` | `ch.brickinventoryapp.security` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
 | `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen, alles in Fachtypen; kennt weder Netz noch Repositories noch das Wire-Format |
 | `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories (geben Fach- und Ansichtstypen zurück), DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags |
 | `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
-| `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
+| `core-services` | `ch.brickinventoryapp.services` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine, geheime Zwischenablage); kennt keine Ansichten und keine Servermodelle |
-| `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
-| `core-sitzung` | `ch.brickinventoryapp.sitzung` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
-| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` und ohne Compose (`Modulkanten.ohneOberflaeche`) |
+| `core-ui-inventory` | `ch.brickinventoryapp.shared` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-resources`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
+| `core-session` | `ch.brickinventoryapp.session` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
+| `core-state` | `ch.brickinventoryapp.state` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-session`, ohne `core-ui` und ohne Compose (`Modulkanten.withoutUi`) |
 | `core-navigation` | `ch.brickinventoryapp.navigation` | `Bereichsumgebung`: was jeder Bereich von der App zum Zeigen seiner Ziele bekommt (NavController, Bilder, Snackbar, Sitzung, Blickfeld, Rollgedächtnis) — einzelne Flüsse und Rückrufe, kein AppViewModel |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
-| `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
-| `feature-katalog` | `ch.brickinventoryapp.katalog` | Katalog und Katalog-Detail |
-| `feature-sammlung` | `ch.brickinventoryapp.sammlung` | Galerie, Set-Detail, Merkliste, Käufe, Vergleich, Scanner |
-| `feature-teile` | `ch.brickinventoryapp.teile` | Teile, Minifiguren, eigene Einträge, Teilelisten |
-| `feature-finanzen` | `ch.brickinventoryapp.finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
-| `feature-konto` | `ch.brickinventoryapp.konto` | Einstellungen |
-| `feature-verwaltung` | `ch.brickinventoryapp.verwaltung` | Monitoring für Verwalter |
-| `app` | `ch.brickinventoryapp.app` | Setzt die Navigation zusammen (jeder Bereich hält seine Routen, fremde Ziele öffnet er über Rückrufe, die nur `ZielUmgebung` erfüllt), Hilt-Einstieg, Activity, CSV-Import-Balken, Widget |
+| `feature-login` | `ch.brickinventoryapp.login` | Anmelden, Server einrichten, QR |
+| `feature-catalog` | `ch.brickinventoryapp.catalog` | Katalog und Katalog-Detail |
+| `feature-collection` | `ch.brickinventoryapp.collection` | Galerie, Set-Detail, Merkliste, Käufe, Vergleich, Scanner |
+| `feature-parts` | `ch.brickinventoryapp.parts` | Teile, Minifiguren, eigene Einträge, Teilelisten |
+| `feature-finances` | `ch.brickinventoryapp.finances` | Finanzen, Gutscheine, PDF-Betrachter |
+| `feature-account` | `ch.brickinventoryapp.account` | Einstellungen |
+| `feature-management` | `ch.brickinventoryapp.management` | Monitoring für Verwalter |
+| `app` | `ch.brickinventoryapp.app` | Setzt die Navigation zusammen (jeder Bereich hält seine Routen, fremde Ziele öffnet er über Rückrufe, die nur `TargetEnvironment` erfüllt), Hilt-Einstieg, Activity, CSV-Import-Balken, Widget |
 
 Jedes Modul hat seinen eigenen Paketstamm: Paket = Stamm + bisheriger
-Unterpfad (`ui.screens` in `feature-sammlung` heisst
-`ch.brickinventoryapp.sammlung.ui.screens`); `core-ui` und `core-data` beginnen
+Unterpfad (`ui.screens` in `feature-collection` heisst
+`ch.brickinventoryapp.collection.ui.screens`); `core-ui` und `core-data` beginnen
 schon mit ihrem Stamm (`ch.brickinventoryapp.ui.*`, `ch.brickinventoryapp.data.*`).
 Die Tests eines Moduls liegen direkt im Stamm. Aus einem Import ist so das Modul
 ablesbar, und kein Paket verteilt sich auf zwei Module; `ModulgrenzenTest` prüft
 es an jeder Kotlin-Datei. Die R-Klassen folgen dem `namespace` des Moduls
-(`ch.brickinventoryapp.core.ui.R`, `ch.brickinventoryapp.ressourcen.R`), die der
+(`ch.brickinventoryapp.core.ui.R`, `ch.brickinventoryapp.resources.R`), die der
 App bleibt `ch.brickinventoryapp.R`. Was ein Modul dem anderen zeigt, ist
 öffentlich, der Rest `internal`.
 
@@ -473,7 +473,7 @@ hält, ist das die billigste Absicherung, die es gibt.
 
 Der eingetragene Wert stammt aus Gradles Veröffentlichung und gilt nur für die
 Fassung in `distributionUrl` derselben Datei. Ob er die amtliche Prüfsumme ist,
-misst `tools/gradle-wrapper-pruefen.py` in jedem CI-Job, bevor Gradle startet.
+misst `tools/gradle-wrapper-check.py` in jedem CI-Job, bevor Gradle startet.
 
 **Beim Anheben der Gradle-Fassung muss die Zeile mitwandern**, sonst bricht der
 nächste Build mit „Verification of Gradle distribution failed" ab. Die neue
@@ -522,7 +522,7 @@ Diese Sprünge sind Umbauten und gehören einzeln gebaut und ausprobiert:
 
 Die Stände stehen in `gradle/libs.versions.toml`; welche neuere Fassung es
 gibt, meldet der CI-Schritt „Sind die Abhängigkeiten auf der neuesten Fassung?“
-(`tools/fassungen-pruefen.py`).
+(`tools/versions-check.py`).
 
 ## Zwei Arten von Tests
 
@@ -531,7 +531,7 @@ Der Unterschied ist wichtig:
 **Verhaltenstests** führen Code aus. `BrickRepositoryErrorMappingTest` startet
 einen echten HTTP-Server (MockWebServer) und prüft, was das Repository aus
 einer Antwort macht — 409 mit Fehlerrumpf, 500 ohne, Zeitüberschreitung,
-Verbindungsabriss. `FehlerTexteTest` ruft die Zuordnung Ursache → Text direkt
+Verbindungsabriss. `ErrorTextsTest` ruft die Zuordnung Ursache → Text direkt
 auf. Solche Tests sind die wertvollen: Sie finden, ob eine Regel WIRKT.
 
 **Quelltextlesende Tests** suchen Muster im Code und finden nur, ob eine Regel im
@@ -546,7 +546,7 @@ braucht. `fehlerTextId()` und die Bereichsquelle der `Offlineablage` sind
 beides Beispiele dafür.
 
 Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Quellen.kt` —
-insbesondere `fenster()` (misst ZEILEN, nicht Zeichen) und `ohneKommentare()`.
+insbesondere `fenster()` (misst ZEILEN, nicht Zeichen) und `withoutComments()`.
 `Quellen.wurzel` legt die Quellen aller Module zu einem Baum zusammen.
 
 ## Release signieren
@@ -702,10 +702,10 @@ Release. Herkunft: `gh attestation verify BrickInventory.apk --repo addict85/Bri
 (ebenso für `version-signiert.json` und das Bundle).
 
 Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
-(`tools/release-pruefen.py`):
+(`tools/release-check.py`):
 
 - **Zertifikat:** Das APK muss mit einem der Zertifikate in
-  `tools/release-zertifikat.sha256` signiert sein. Den Wert liefert
+  `tools/release-certificate.sha256` signiert sein. Den Wert liefert
   `keytool -list -v -keystore brick.jks` (Zeile `SHA256:`; Doppelpunkte und
   Grossschreibung sind gleichgültig). Wird der Schlüssel je gewechselt
   (Rotation), kommt der neue Wert als zweite Zeile dazu. Ein Lauf ohne Etikett
@@ -759,7 +759,7 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 
 Ein Schlüssel signiert Daten nur für einen Zweck: Der APK-Schlüssel signiert
 APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
-App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`),
+App einen solchen Schlüssel (`core-resources/src/main/res/raw/beschreibungs_schluessel.pem`),
 nimmt sie nur dessen Signatur an. Ist die Datei leer, nimmt sie keine Beschreibung an.
 
 **Stand:** Eingerichtet (10.11.2026): ein Schlüssel in

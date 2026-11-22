@@ -1,26 +1,26 @@
 Gegenprobe: Leere Merkliste wieder mit schwebendem Knopf und Suchzeile samt Scan-Symbol
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
-Rot: leere Merkliste bietet Merken und Scannen
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: empty wishlist offers remembering and scanning
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt
 @@ -210,7 +210,7 @@ fun MerklisteScreen(
              // Fehlerzustand weder Suche noch Filter — es gibt nichts zu durchsuchen.
              // Ohne Merkposten weder Suche noch Filter: Die Leermeldung bietet Merken und
              // Scannen an, ein zweiter Scan-Knopf darüber wäre derselbe Weg noch einmal.
--            val mitKopf = anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER
-+            val mitKopf = anzeige != Ladeanzeige.FEHLER
-             if (mitKopf) Row(
+-            val withHeader = anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER
++            val withHeader = anzeige != LoadingIndicator.FEHLER
+             if (withHeader) Row(
                  Modifier.fillMaxWidth(),
                  verticalAlignment = Alignment.CenterVertically,
 @@ -296,7 +296,7 @@ fun MerklisteScreen(
  
          // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand
          // nicht, und leer auch nicht: Dort steht „Set merken“ schon mitten im Bild.
--        if (anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
-+        if (anzeige != Ladeanzeige.FEHLER) ErfassenFab(
-             stringResource(R.string.wanted_add_title), { maskeOffen = true },
+-        if (anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER) AddFab(
++        if (anzeige != LoadingIndicator.FEHLER) AddFab(
+             stringResource(R.string.wanted_add_title), { openMask = true },
              Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
          )

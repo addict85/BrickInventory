@@ -1,16 +1,16 @@
 Gegenprobe: Die Wahl der Widget-Werte stösst das Widget nicht mehr an
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
-Rot: eine Wahl wird gemerkt und gilt sofort
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
+Rot: a choice is remembered and applies immediately, the widget learns of its values
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DarstellungViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DarstellungViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DarstellungViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DarstellungViewModel.kt
 @@ -64,7 +64,6 @@ class DarstellungViewModel @Inject constructor(
-     override fun setWidgetWerte(an: Boolean) {
-         prefs.setzeWidgetWerteZeigen(an)
-         _widgetWerte.value = an
--        viewModelScope.launch { fangeAusserAbbruch { widget.aktualisiere() } }
+     override fun setWidgetValues(an: Boolean) {
+         prefs.showSetWidgetValues(an)
+         _widgetValues.value = an
+-        viewModelScope.launch { fangeAusserAbbruch { widget.refresh() } }
      }
  
      override fun setLanguage(languageCode: String) {

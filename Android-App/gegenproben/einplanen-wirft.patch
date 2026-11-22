@@ -1,15 +1,15 @@
 Gegenprobe: einplanen() reicht einen Fehler des WorkManagers weiter, statt ihn zurückzugeben
-Modul: core-dienste
-Test: ch.brickinventoryapp.dienste.AlarmEinplanenTest
-Rot: einplanen meldet einen Fehler des WorkManagers
+Modul: core-services
+Test: ch.brickinventoryapp.services.AlarmScheduleTest
+Rot: scheduling reports an error of the WorkManager instead of throwing
 
-diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt
---- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt
-+++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt
 @@ -70,7 +70,7 @@
                  )
                  .build()
-             wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, auftrag)
+             wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, job)
 -        }.exceptionOrNull()
 +        }.getOrThrow().let { null }
  

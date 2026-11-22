@@ -1,8 +1,8 @@
 /**
- * Vorschaubilder entstehen WIRKLICH — und fehlende heilen sich selbst.
+ * Previews REALLY arise — and missing ones heal themselves.
  *
- * Gegenprobe (durchgeführt): temporären Namen zurück auf `.tmp` gedreht →
- * der erste Teilschritt wird rot (keine Datei, vorschauErzeugenAus liefert null).
+ * Counter-check (carried out): temporary name turned back to `.tmp` →
+ * the first substep turns red (no file, vorschauErzeugenAus delivers null).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('vorschauErzeugenAus() legt tatsächlich eine kleinere Datei an', async () => {
+test('vorschauErzeugenAus() actually creates a smaller file', async () => {
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
@@ -23,12 +23,12 @@ test('vorschauErzeugenAus() legt tatsächlich eine kleinere Datei an', async () 
   const vorschau = path.join(ordner, `${name}_thumb.jpg`);
   fs.rmSync(vorschau, { force: true });
 
-  // Echtes JPEG — Jimp muss es lesen können; ein Buffer voller Nullen genügt nicht.
+  // A real JPEG — Jimp must be able to read it; a buffer full of zeros does not suffice.
   const bild = new Jimp({ width: 800, height: 600, color: 0xff0000ff });
   await bild.write(original);
 
   try {
-    const { vorschauErzeugenAus } = _req('src/bilder/thumbs.js');
+    const { vorschauErzeugenAus } = _req('src/images/thumbs.js');
     const web = await vorschauErzeugenAus(`/images/sets/${name}.jpg`);
 
     assert.ok(
@@ -51,11 +51,11 @@ test('vorschauErzeugenAus() legt tatsächlich eine kleinere Datei an', async () 
   }
 });
 
-test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
-  // Die Quelltextregel zum Verhaltenstest oben: Jimp entscheidet über die
-  // Endung, deshalb muss der temporäre Name auf .jpg enden.
-  // Fundort seit einer früheren Runde: src/bilder/proxyThumbs.ts.
-  for (const datei of ['src/bilder/thumbs.ts', 'src/bilder/proxyThumbs.ts']) {
+test('both generators write temporarily to an IMAGE extension', () => {
+  // The source text rule for the behavior test above: Jimp decides by the
+  // extension, hence the temporary name must end in .jpg.
+  // Location since an earlier round: src/images/proxyThumbs.ts.
+  for (const datei of ['src/images/thumbs.ts', 'src/images/proxyThumbs.ts']) {
     const src = fs
       .readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n')
@@ -69,18 +69,18 @@ test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
   }
 });
 
-test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
-  // ohneKommentare() statt eines //-Filters: Der Filter liess
-  // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
-  // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
-  // Die Bildroute (routes/seiten.ts) liefert über src/bilder/http/bildAuslieferung.ts;
-  // die Vorschau stösst originalStattVorschau() dort an.
+test('the image route triggers a missing preview itself', () => {
+  // ohneKommentare() instead of a // filter: the filter left
+  // block comments standing, and one of them contained "app.get('/images/*', …)"
+  // as an example. indexOf() thereby landed in the file header instead of at the route.
+  // The image route (routes/pages.ts) delivers via src/images/http/imageDelivery.ts;
+  // originalInsteadOfPreview() triggers the preview there.
   const src = require('./helpers/sources').ohneKommentare(
-    require('node:fs').readFileSync(path.join(__dirname, '..', 'src/bilder/http/bildAuslieferung.ts'), 'utf8'),
+    require('node:fs').readFileSync(path.join(__dirname, '..', 'src/images/http/imageDelivery.ts'), 'utf8'),
   );
-  const start = src.indexOf('function originalStattVorschau(');
+  const start = src.indexOf('function originalInsteadOfPreview(');
   assert.ok(
-    start > 0 && src.indexOf('originalStattVorschau(', start + 10) > 0,
+    start > 0 && src.indexOf('originalInsteadOfPreview(', start + 10) > 0,
     'die Bildroute ruft den Vorschau-Rückfall nicht',
   );
   const block = src.slice(start, start + 4000);

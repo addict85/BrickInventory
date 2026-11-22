@@ -1,7 +1,7 @@
 Gegenprobe: Der Debug-Build prüft Certificate Transparency nicht mehr (sec16 N10)
 Modul: core-data
 Test: ch.brickinventoryapp.data.NetzsicherheitTest
-Rot: der Debug-Build verlangt Certificate Transparency
+Rot: the debug build requires Certificate Transparency like release
 
 diff --git a/Android-App/app/src/debug/res/xml/network_security_config.xml b/Android-App/app/src/debug/res/xml/network_security_config.xml
 --- a/Android-App/app/src/debug/res/xml/network_security_config.xml

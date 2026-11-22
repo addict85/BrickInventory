@@ -1,15 +1,15 @@
 Gegenprobe: PdfBetrachterViewModel lädt bei jedem oeffne() neu, wie früher der LaunchedEffect nach einer Drehung
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.PdfBetrachterViewModelTest
-Rot: eine Drehung laedt nicht neu
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfViewerViewModelTest
+Rot: a rotation does not reload
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
 @@ -48,7 +48,6 @@
      fun oeffne(pdfUrl: String, serverUrl: String) {
          val bisher = _state.value
-         val abgewiesen = bisher is PdfLoadState.Error && bisher.grund == PdfFehler.FREMDER_HOST
+         val abgewiesen = bisher is PdfLoadState.Error && bisher.grund == PdfError.FREMDER_HOST
 -        if (pdfUrl == adresse && !abgewiesen) return
          adresse = pdfUrl
          server = serverUrl

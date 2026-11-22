@@ -1,11 +1,11 @@
 Gegenprobe: Das Design des Servers geht nicht in die Ablage
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
-Rot: das Design des Servers gilt und wird gemerkt
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
+Rot: the server's design applies and is remembered, without a response the remembered one stays
 
-diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
---- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
-+++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt
 @@ -106,7 +106,7 @@
  
      override fun spracheGeaendert(language: String) = _state.update { it.copy(language = language) }
@@ -13,5 +13,5 @@ diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung
 -    override fun setzeDesign(theme: Design) = werte.setzeDesign(theme)
 +    override fun setzeDesign(theme: Design) = Unit
  
-     override fun serverstartGeaendert(stand: StartzustandAnsicht?) = _state.update { it.copy(startupStatus = stand) }
+     override fun serverstartGeaendert(stand: StartStateView?) = _state.update { it.copy(startupStatus = stand) }
  

@@ -1,15 +1,15 @@
 Gegenprobe: Papierkorb im Set-Detail fragt auch mit Rückgängig nach
 Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
-Rot: ein Set loescht mit Rueckgaengig sofort
+Rot: a set deletes immediately with undo, without undo only after confirmation
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
 @@ -149,7 +149,7 @@ fun SetDetailScreen(
                      MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
                          IconButton(onClick = {
-                             haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                             haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
 -                            if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
 +                            showSetDeleteConfirm = true
                          }) {

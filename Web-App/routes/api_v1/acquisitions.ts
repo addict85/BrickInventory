@@ -1,29 +1,29 @@
-/** Kaufpreis-Erfassungen; die Regeln stehen in src/sammlung/erfassungen.ts. */
-import { acquisitionTotals } from '../../src/bestand';
-import { Abstriche } from '../../src/infra/ergebnis';
-import { sichtVon, waechterFuer } from './middleware';
-import type { ErfassungsArt } from '../../src/sammlung';
-import { vertragsRouter, type Anfrage } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+/** Purchase price acquisitions; the rules live in src/collection/acquisitions.ts. */
+import { acquisitionTotals } from '../../src/inventory';
+import { Degradations } from '../../src/infra/result';
+import { viewOf, guardFor } from './middleware';
+import type { ErfassungsArt } from '../../src/collection';
+import { vertragsRouter, type Anfrage } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
-/** Ohne bekannten Preis fehlt der Betrag, statt null zu sein: Geld hat im Vertrag einen Typ. */
-function ohneLeerenBetrag<T extends { amount: number | null }>(summe: T) {
+/** Without a known price the amount is missing instead of null: money has a type in the contract. */
+function withoutClearAmount<T extends { amount: number | null }>(summe: T) {
   const { amount, ...rest } = summe;
   return amount === null ? rest : { ...rest, amount };
 }
 
-/** Summe in der Kontowährung (src/bestand/acquisitions.ts), in der Form des Vertrags. */
-async function inKontowaehrung<T extends Parameters<Dienste['bestand']['erfassungenInKontowaehrung']>[0][number]>(
-  d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
+/** Sum in the account currency (src/inventory/acquisitions.ts), in the shape of the contract. */
+async function inKontowaehrung<T extends Parameters<Dienste['inventory']['erfassungenInKontowaehrung']>[0][number]>(
+  d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
   rows: T[],
-  betrachter: number,
+  viewer: number,
 ) {
-  const { acquisitions, totals } = await d.bestand.erfassungenInKontowaehrung(rows, betrachter);
-  return { acquisitions, totals: ohneLeerenBetrag(totals) };
+  const { acquisitions, totals } = await d.inventory.erfassungenInKontowaehrung(rows, viewer);
+  return { acquisitions, totals: withoutClearAmount(totals) };
 }
 
 type Schluessel = (pfad: Record<string, string | number>) => Array<string | number>;
-/** Was die drei Routen teilen: die Kennung im Pfad und ein Vertragsschema (Erfassungsaenderung). */
+/** What the three routes share: the id in the path and a contract schema (Erfassungsaenderung). */
 type Erfassungsanfrage<E = unknown> = AuthedRequest & {
   pfad: Record<string, string | number> & { acqId: number };
   eingabe: E;
@@ -32,74 +32,72 @@ type Aenderung = Erfassungsanfrage<Anfrage<'PUT /api/v1/sets/:setNumber/acquisit
 
 const aendern =
   (
-    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
+    d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
   (req: Aenderung) =>
-    d.sammlung.erfassungAendern(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad), req.eingabe);
+    d.collection.changeAcquisition(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad), req.eingabe);
 
 const loeschen =
   (
-    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
+    d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
   (req: Erfassungsanfrage) =>
-    d.sammlung.erfassungLoeschen(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad));
-const setSchluessel: Schluessel = p => [String(p.setNumber)];
-const teilSchluessel: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
-const figurSchluessel: Schluessel = p => [String(p.figNumber)];
+    d.collection.deleteAcquisition(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad));
+const setKey: Schluessel = p => [String(p.setNumber)];
+const partKey: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
+const minifigKey: Schluessel = p => [String(p.figNumber)];
 
-export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>) {
-  const { requireToken } = waechterFuer(d.konto);
+export function buildAcquisitionsRouter(
+  d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
+) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/sets/:setNumber/acquisitions', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // Blickfeld: Im Haushalt gehören die Kaufpreise eines Sets oft mehreren Konten.
-    // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite;
-    // `degradiert` sagt ihr, dass sie nicht wirklich leer ist.
-    const ab = new Abstriche();
-    const rows = await ab.oder('erfassungen', d.sammlung.setErfassungen(sichtVon(req), req.pfad.setNumber), null);
-    if (!rows) return { acquisitions: [], totals: ohneLeerenBetrag(acquisitionTotals([])), ...ab.angabe() };
+    // Scope: in a household the purchase prices of a set often belong to several accounts.
+    // If reading fails, the app shows an empty list instead of an error page;
+    // `degradiert` tells it that it is not really empty.
+    const ab = new Degradations();
+    const rows = await ab.oder(
+      'erfassungen',
+      d.collection.setAcquisitionsForSet(viewOf(req), req.pfad.setNumber),
+      null,
+    );
+    if (!rows) return { acquisitions: [], totals: withoutClearAmount(acquisitionTotals([])), ...ab.angabe() };
     return { ...(await inKontowaehrung(d, rows, uid)), owner_user_id: uid };
   });
-  router.endpunkt('PUT /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, aendern(d, 'set', setSchluessel));
-  router.endpunkt(
-    'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId',
-    requireToken,
-    loeschen(d, 'set', setSchluessel),
-  );
+  router.endpunkt('PUT /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, aendern(d, 'set', setKey));
+  router.endpunkt('DELETE /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, loeschen(d, 'set', setKey));
 
   router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/acquisitions', requireToken, async req => {
-    const rows = await d.teile.teilErfassungen(sichtVon(req), req.pfad.partNumber, req.pfad.colorId);
+    const rows = await d.parts.partAcquisitions(viewOf(req), req.pfad.partNumber, req.pfad.colorId);
     return { ...(await inKontowaehrung(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
   router.endpunkt(
     'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId',
     requireToken,
-    aendern(d, 'part', teilSchluessel),
+    aendern(d, 'part', partKey),
   );
   router.endpunkt(
     'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId',
     requireToken,
-    loeschen(d, 'part', teilSchluessel),
+    loeschen(d, 'part', partKey),
   );
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/acquisitions', requireToken, async req => {
-    const rows = await d.figuren.figurErfassungen(sichtVon(req), req.pfad.figNumber);
+    const rows = await d.minifigs.minifigAcquisitions(viewOf(req), req.pfad.figNumber);
     return { ...(await inKontowaehrung(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
-  router.endpunkt(
-    'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId',
-    requireToken,
-    aendern(d, 'fig', figurSchluessel),
-  );
+  router.endpunkt('PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId', requireToken, aendern(d, 'fig', minifigKey));
   router.endpunkt(
     'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId',
     requireToken,
-    loeschen(d, 'fig', figurSchluessel),
+    loeschen(d, 'fig', minifigKey),
   );
   return router;
 }

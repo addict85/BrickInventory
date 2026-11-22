@@ -1,45 +1,45 @@
 /**
- * Menge eines UNTERKONTO-Sets ändern — beide Routenfamilien.
+ * Changing the quantity of a SUB-ACCOUNT set — both route families.
  *
- * Gegenprobe (durchgeführt): schreibbereich in setAendern zurück auf die eigene ID
- * → beide Teilschritte enden wieder in 404.
- * Gegenprobe (09.11.2026 gemessen): in requireToken den Sitzungszweig entfernt →
- * rot: „Webapp: … 401 !== 200“. Der App-Weg kommt ohne Sitzung, mit echtem Token;
- * ein falscher Token ergibt 401 (eigene Zusicherung vor der Schleife).
+ * Counter-check (carried out): schreibbereich in changeSet back to the own ID
+ * → both substeps end in 404 again.
+ * Counter-check (measured 09.11.2026): the session branch removed in requireToken →
+ * red: „Webapp: … 401 !== 200“. The app path comes without a session, with a real token;
+ * a wrong token results in 401 (own assertion before the loop).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
-const { haeltSet, mengeVon } = require('./helpers/bestand');
+const db = testData();
+const { holdsSet, quantityOf } = require('./helpers/inventory');
 
-test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+test('a quantity increase on the sub-account set lands in the own account', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `qty-haupt-${process.pid}`,
+  const MAIN = `qty-haupt-${process.pid}`,
     SUB = `qty-sub-${process.pid}`;
   const SN = `31142-${process.pid}`;
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
 
-  // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
-  const web = testServer(_req, { sitzung: { userId: hauptId }, t });
+  // The web app comes with the session, the app with a real token and without a session.
+  const web = testServer(_req, { sitzung: { userId: mainId }, t });
   const app = testServer(_req, { sitzung: {}, t });
-  const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(hauptId, 'test-app', false, null, {
+  const token = await _req('src/account/deviceToken.js').createToken(mainId, 'test-app', false, null, {
     scope: 'app',
   });
   const srv = web.srv;
@@ -47,9 +47,9 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurr
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    // Set UND Erfassung gehören dem Unterkonto.
-    // Marktpreis im Cache: Die neue Erfassung soll IHN bekommen und nicht den
-    // Kaufpreis des anderen Kontos — dessen Kauf ist nicht meiner.
+    // Set AND acquisition belong to the sub-account.
+    // Market price in the cache: the new acquisition should get IT and not the
+    // purchase price of the other account — its purchase is not mine.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','EUR')
                   ON CONFLICT (key) DO UPDATE SET value='EUR'`);
     await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]);
@@ -58,9 +58,9 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurr
                   VALUES ($1,'U','EUR',77.00,77.00,4)`,
       [SN],
     );
-    // Nur die Bestandszeile: Menge, Preis und Zustand stehen in der Erfassung
-    // darunter (Migration 0032 fuer Preis und Zustand, 0036 fuer die Menge).
-    await haeltSet(db, subId, SN, 0);
+    // Only the inventory row: quantity, price and condition stand in the acquisition
+    // below (migration 0032 for price and condition, 0036 for the quantity).
+    await holdsSet(db, subId, SN, 0);
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,108.00,'U',1)`,
@@ -80,38 +80,38 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurr
       ['Webapp', web.base, {}],
       ['Android', app.base, { authorization: `Bearer ${token}` }],
     ];
-    for (const [name, base, ausweis] of wege) {
+    for (const [name, base, credential] of wege) {
       await aufbauen();
       const r = await fetch(`${base}/api/v1/sets/${SN}`, {
         method: 'PUT',
-        headers: { 'content-type': 'application/json', ...ausweis },
+        headers: { 'content-type': 'application/json', ...credential },
         body: JSON.stringify({ quantity: 3 }),
       });
       assert.equal(r.status, 200, `${name}: die Mengenänderung darf nicht mehr in 404 enden`);
 
-      // (Die Mengen kommen jetzt alle aus den Erfassungen — Migration 0036.)
-      // ── Marcos neue Regel ────────────────────────────────
+      // (The quantities now all come from the acquisitions — migration 0036.)
+      // ── Marco's new rule ────────────────────────────────
       // „Die Anzahl soll immer von allen angezeigt werden. Wenn ich diese
       // erhöhe, soll es für meinen Account einen neuen Kaufpreis-Eintrag …
-      const beimBesitzer = await mengeVon(db, subId, SN);
+      const onOwner = await quantityOf(db, subId, SN);
       assert.equal(
-        beimBesitzer,
+        onOwner,
         1,
         `${name}: der Bestand des Unterkontos darf sich durch eine fremde Erhöhung nicht ändern`,
       );
 
-      const beimBetrachter = await mengeVon(db, hauptId, SN);
-      assert.equal(beimBetrachter, 2, `${name}: die Differenz (3 − 1) muss im eigenen Konto liegen`);
+      const onViewer = await quantityOf(db, mainId, SN);
+      assert.equal(onViewer, 2, `${name}: die Differenz (3 − 1) muss im eigenen Konto liegen`);
 
-      const gesamt = await mengeVon(db, [subId, hauptId], SN);
+      const gesamt = await quantityOf(db, [subId, mainId], SN);
       assert.equal(gesamt, 3, `${name}: die Gesamtmenge muss der Eingabe entsprechen`);
 
-      // Und die Erfassungen ziehen mit — im eigenen Konto, mit Preis.
+      // And the acquisitions follow — in the own account, with a price.
       const acq = await db.get(
         `SELECT COALESCE(SUM(quantity),0)::int AS q,
                 COUNT(*) FILTER (WHERE purchase_price IS NOT NULL)::int AS mit_preis
            FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
-        [hauptId, SN],
+        [mainId, SN],
       );
       assert.equal(acq.q, 2, `${name}: die Erfassungsmenge des eigenen Kontos muss folgen`);
       assert.ok(
@@ -121,7 +121,7 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurr
       const preis = await db.get(
         `SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
           ORDER BY id DESC LIMIT 1`,
-        [hauptId, SN],
+        [mainId, SN],
       );
       assert.equal(
         Number(preis.purchase_price),
@@ -130,7 +130,7 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurr
       );
     }
   } finally {
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]).catch(() => {});

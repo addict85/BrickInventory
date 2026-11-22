@@ -5,8 +5,8 @@ import ch.brickinventoryapp.model.util.Textquelle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
-/** Über LanguageManager, nicht den Context direkt: Die App kann eine andere Sprache haben als das System. */
-internal class AppTextquelle @Inject constructor(@param:ApplicationContext private val ctx: Context) : Textquelle {
+/** Via LanguageManager, not the context directly: the app can have a different language than the system. */
+internal class AppTextSource @Inject constructor(@param:ApplicationContext private val ctx: Context) : Textquelle {
     override fun text(id: Int, vararg args: Any?): String {
         val c = LanguageManager.localizedContext(ctx)
         return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)

@@ -1,21 +1,21 @@
 package ch.brickinventoryapp.ui.components
 
 /**
- * Wie lange eine Bestätigung durch die Gerätesperre gilt. Wer eben bestätigt hat,
- * wird für die nächsten Schritte (PIN aufdecken, dann kopieren) nicht erneut
- * gefragt; verlässt die App den Vordergrund, gilt sie nicht mehr ([vergiss]).
- * [uhr] läuft monoton (SystemClock.elapsedRealtime), eine verstellte Uhr verlängert nichts.
+ * How long a confirmation via the screen lock stays valid. Whoever just confirmed
+ * is not asked again for the next steps (reveal PIN, then copy);
+ * once the app leaves the foreground, it no longer counts ([vergiss]).
+ * [clock] runs monotonically (SystemClock.elapsedRealtime), a changed clock extends nothing.
  */
-class Bestaetigungsfrist(private val dauerMs: Long = DAUER_MS, private val uhr: () -> Long) {
+class Bestaetigungsfrist(private val durationMs: Long = DURATION_MS, private val clock: () -> Long) {
     private var bis: Long? = null
 
-    fun gilt(): Boolean = bis?.let { uhr() < it } == true
+    fun gilt(): Boolean = bis?.let { clock() < it } == true
 
-    fun bestaetigt() { bis = uhr() + dauerMs }
+    fun confirmed() { bis = clock() + durationMs }
 
     fun vergiss() { bis = null }
 
     companion object {
-        const val DAUER_MS = 60_000L
+        const val DURATION_MS = 60_000L
     }
 }
