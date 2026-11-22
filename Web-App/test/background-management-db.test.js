@@ -85,7 +85,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   const verschoben = await A.placeJobOne('anleitung', { set_number: '44444-1' });
   const receipt = await A.claimJob(['anleitung'], 60);
   assert.equal(receipt.id, verschoben, 'der verschobene Auftrag sollte als erster belegt werden');
-  await A.verschoben(receipt, new Date(Date.now() + 3_600_000), 'Tageskontingent erschöpft', false);
+  await A.moved(receipt, new Date(Date.now() + 3_600_000), 'Tageskontingent erschöpft', false);
   const abgebrochen = await A.placeJobOne('nachlauf', { schritt: 'vorschauen' });
   await A.abortAb(abgebrochen);
 

@@ -53,7 +53,7 @@ export const access = (db: Db, l: ImagesReadContract) => ({
     deleteOldImageRequests: bound(db)(imageDemand.deleteOldImageRequests),
     countImageRequests: bound(db)(imageDemand.countImageRequests),
     deleteAllImageRequests: bound(db)(imageDemand.deleteAllImageRequests),
-    takeImageRequests: bound(db)(imageDemand.takeImageRequests),
+    takeImageRequests: bound(db)(imageDemand.takeImageRequestRows),
     seriesCatalogImagesOne: bound(db)(imageDemand.seriesCatalogImagesOne),
   },
 });

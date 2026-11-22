@@ -28,7 +28,7 @@ export const access = (db: Db, l: HouseholdReadContract) => ({
     // Before joining, the invitee does not see the inviting account (0121).
     inviterName: bound(l)(imSystem(db, FOREIGN_INVITATION, repository.accountName)),
     cleanInvitationsOn: imSystem(db, 'Abgelaufene Einladungen aller Konten', repository.cleanInvitationsOn),
-    createInvitation: bound(db)(repository.createInvitation),
+    createInvitation: bound(db)(repository.insertInvitation),
     receiptsInvitation: imSystem(db, FOREIGN_INVITATION, repository.receiptsInvitation),
     inviterToCode: imSystem(db, FOREIGN_INVITATION, repository.inviterToCode),
     giveInvitationFree: imSystem(db, FOREIGN_INVITATION, repository.giveInvitationFree),

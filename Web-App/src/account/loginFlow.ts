@@ -97,7 +97,7 @@ export async function createQrAccess(k: AccountContext, uid: number, validity: u
 }
 
 /** The name from the table: with an app token there is no session that carries it. */
-export async function changeOwnPassword(k: AccountContext, uid: number, fresh: string, passkeysWiderrufen: boolean) {
+export async function changeOwnPasswordChecked(k: AccountContext, uid: number, fresh: string, passkeysWiderrufen: boolean) {
   const konto = await k.konten.accountShort(uid);
   const mangel = passwordLack(fresh, konto?.username);
   if (mangel) failDomain('ungueltig', mangel);

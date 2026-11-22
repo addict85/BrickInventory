@@ -82,12 +82,12 @@ test('price alert against a real database', async t => {
 
   await t.test('the direction means what it says', () => {
     // The only place in the module where a sign error arises.
-    assert.equal(A.reisst('unter', 199, 200), true);
-    assert.equal(A.reisst('unter', 200, 200), false, 'genau auf der Schwelle ist nicht darunter');
-    assert.equal(A.reisst('unter', 201, 200), false);
-    assert.equal(A.reisst('ueber', 201, 200), true);
-    assert.equal(A.reisst('ueber', 200, 200), false, 'genau auf der Schwelle ist nicht darüber');
-    assert.equal(A.reisst('ueber', 199, 200), false);
+    assert.equal(A.crosses('unter', 199, 200), true);
+    assert.equal(A.crosses('unter', 200, 200), false, 'genau auf der Schwelle ist nicht darunter');
+    assert.equal(A.crosses('unter', 201, 200), false);
+    assert.equal(A.crosses('ueber', 201, 200), true);
+    assert.equal(A.crosses('ueber', 200, 200), false, 'genau auf der Schwelle ist nicht darüber');
+    assert.equal(A.crosses('ueber', 199, 200), false);
   });
 
   await t.test('nonsensical input is rejected, not bent into shape', async () => {

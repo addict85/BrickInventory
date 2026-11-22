@@ -19,7 +19,7 @@ export async function recolorPartRow(
   const merged = await purchases.stallSameEntriesOn(k.db, uid, teil, source.farbe, newColor);
   await purchases.deleteToppedUpEntries(k.db, uid, teil, source.farbe, newColor);
   const moved = await purchases.recolorEntries(k.db, uid, teil, source.farbe, newColor);
-  if (!target) await sharedRepo.recolorPartRow(k.db, newColor, source.id);
+  if (!target) await sharedRepo.updatePartRowColor(k.db, newColor, source.id);
   else {
     if (source.storage_id && !target.storage_id) await sharedRepo.setPartLocation(k.db, source.storage_id, target.id);
     await sharedRepo.loescheTeilzeile(k.db, source.id);
@@ -36,7 +36,7 @@ export function enterMinifigs(k: InventoryContext, uid: number, sn: string, numb
   return setContentRepo.enterSetMinifigs(k.db, uid, sn, numbers);
 }
 
-export function remove(k: InventoryContext, uids: number[], sn: string) {
+export function removeContent(k: InventoryContext, uids: number[], sn: string) {
   return sharedRepo.removeSetContent(k.db, uids, sn);
 }
 

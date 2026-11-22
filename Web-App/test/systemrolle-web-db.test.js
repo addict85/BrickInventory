@@ -116,7 +116,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
               (SELECT rolbypassrls FROM pg_roles WHERE rolname = $1) AS bypass`,
       [WEB],
     );
-    assert.deepEqual(fn, { kopien: true, number: true, aufraeumen: false, bypass: true });
+    assert.deepEqual(fn, { kopien: true, zahl: true, aufraeumen: false, bypass: true });
   });
 
   await t.test('every view reads with the rights of the querying role, the web role only the named ones', async tt => {

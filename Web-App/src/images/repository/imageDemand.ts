@@ -25,7 +25,7 @@ export function deleteAllImageRequests(db: DbInterface) {
   return db.run('DELETE FROM image_wanted');
 }
 
-export function takeImageRequests(db: DbInterface, validMs: string, count: number) {
+export function takeImageRequestRows(db: DbInterface, validMs: string, count: number) {
   return db.all<{ url: string; set_number: string | null }>(
     `DELETE FROM image_wanted
       WHERE url IN (SELECT url FROM image_wanted

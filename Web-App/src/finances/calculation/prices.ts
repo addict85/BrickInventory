@@ -25,7 +25,7 @@ type Hours = string | number;
 
 /** THE condition resolution for a set — one, because several versions of their own
  * had drifted apart. */
-export async function setState(k: FinancesContext, uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
+export async function conditionOfSet(k: FinancesContext, uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
   // Scope instead of a bare ID: the set often belongs to a sub-account.
   const row = await k.preisCache.setStateCounter(asIds(uid), setNumber);
   return effectiveCondition(row);

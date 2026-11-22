@@ -25,7 +25,7 @@ export async function rememberInstruction(
 /** The file stays as long as another row points to it. */
 export async function deleteInstruction(sk: SetsContext, uid: number, id: number): Promise<void> {
   const instr = (await repo.instructionPath(sk.db, id, uid)) ?? notFound();
-  await repo.deleteInstruction(sk.db, id, uid);
+  await repo.deleteInstructionRow(sk.db, id, uid);
   if (!instr.local_path?.startsWith('/data/uploads/')) return;
   // If the database does not know whether anyone still needs the file, it stays. Another
   // account's row is hidden by row security; that is why the question is asked in the system frame.

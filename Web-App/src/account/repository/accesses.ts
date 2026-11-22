@@ -81,7 +81,7 @@ export type NewToken = {
   fixedDays: number;
 };
 
-export async function createToken(db: DbInterface, t: NewToken): Promise<void> {
+export async function insertToken(db: DbInterface, t: NewToken): Promise<void> {
   if (t.art === 'gleitend') {
     await db.run(
       `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_range)
@@ -224,7 +224,7 @@ export async function deleteOrphanedConsumed(db: DbInterface): Promise<number> {
   );
 }
 
-export async function deleteToken(db: DbInterface, hash: string): Promise<void> {
+export async function deleteTokenRow(db: DbInterface, hash: string): Promise<void> {
   await db.run('DELETE FROM api_tokens WHERE token = $1', [hash]);
 }
 

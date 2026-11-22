@@ -105,8 +105,8 @@ test('the number of workers is capped', () => {
   assert.equal(bcryptArbeiter(null, 64, null), 4, '64 Kerne ohne Kontingent');
   assert.equal(bcryptArbeiter(null, 64, 1), 2, '64 Kerne, Kontingent 1');
   assert.equal(bcryptArbeiter(null, 3, null), 3);
-  assert.equal(bcryptArbeiter(loadConfig({ BCRYPT_ARBEITER: '8' }).bcryptWorkers, 64, 2), 8, 'die Variable gilt');
-  assert.equal(loadConfig({}).bcryptWorkers, null);
+  assert.equal(bcryptArbeiter(loadConfig({ BCRYPT_ARBEITER: '8' }).bcryptArbeiter, 64, 2), 8, 'die Variable gilt');
+  assert.equal(loadConfig({}).bcryptArbeiter, null);
   assert.throws(
     () => loadConfig({ BCRYPT_ARBEITER: '0' }),
     /BCRYPT_ARBEITER="0"/,

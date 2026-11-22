@@ -50,7 +50,7 @@ export async function cleanInvitationsOn(db: DbInterface): Promise<void> {
   await db.run('DELETE FROM account_link_invites WHERE expires_at < NOW() OR used_at IS NOT NULL');
 }
 
-export async function createInvitation(db: DbInterface, tokenHash: string, main: number, bis: Date): Promise<void> {
+export async function insertInvitation(db: DbInterface, tokenHash: string, main: number, bis: Date): Promise<void> {
   await db.run('INSERT INTO account_link_invites (token_hash, main_user_id, expires_at) VALUES ($1,$2,$3)', [
     tokenHash,
     main,

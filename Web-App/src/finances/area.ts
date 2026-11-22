@@ -54,7 +54,7 @@ export function createFinances(a: Omit<FinancesDependencies, 'faecher'>, inspect
       valueMinifigs: bound(k)(valuationService.valueMinifigs),
       valueParts: bound(k)(valuationService.valueParts),
       gainAndLoss: bound(k)(gainLossService.gainAndLoss),
-      setState: bound(k)(prices.setState),
+      setState: bound(k)(prices.conditionOfSet),
       emptyPriceCache: bound(k)(prices.emptyPriceCache),
       fetchPrice: bound(k)(prices.fetchPrice),
       colorChart: bound(k)(prices.colorChart),

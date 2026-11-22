@@ -33,7 +33,7 @@ export function createInventory(a: InventoryDependencies, inspect?: Inspect<Inve
       setInhalt: {
         enterParts: bound(k)(content.enterParts),
         enterMinifigs: bound(k)(content.enterMinifigs),
-        remove: bound(k)(content.remove),
+        remove: bound(k)(content.removeContent),
         copy: bound(k)(content.copy),
       },
       manuell: {

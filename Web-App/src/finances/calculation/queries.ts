@@ -1,6 +1,6 @@
 // What valuation and profit both read.
 
-export function count(
+export function countFlagged(
   rows: Iterable<{ kaufpreis_fremd?: unknown; kaufpreis_umgerechnet?: unknown }>,
   feature: 'kaufpreis_fremd' | 'kaufpreis_umgerechnet',
 ): number {

@@ -103,7 +103,7 @@ test('every login with password goes through the same check', () => {
   );
 
   const outlier = withPassword
-    .filter(h => !/\b(checkCredentials|anmelden)\(/.test(h.koerper))
+    .filter(h => !/\b(checkCredentials|login)\(/.test(h.koerper))
     .map(h => `${h.datei}  ${h.pfad}`);
   assert.deepEqual(
     outlier,

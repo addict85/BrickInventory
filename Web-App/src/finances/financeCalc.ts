@@ -15,7 +15,7 @@ export {
   preloadMinifigPrices,
   colorChart,
   loadBlNumbersBefore,
-  setState,
+  conditionOfSet as setState,
 } from './calculation/prices';
 
 export {

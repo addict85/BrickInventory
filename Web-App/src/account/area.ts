@@ -45,7 +45,7 @@ function loginAndDevices(k: AccountContext) {
   return {
     verifyEmailToken: bound(k)(loginCheck.verifyEmailToken),
     checkCredentials: bound(k)(loginCheck.checkCredentials),
-    changeOwnPassword: bound(k)(loginFlow.changeOwnPassword),
+    changeOwnPassword: bound(k)(loginFlow.changeOwnPasswordChecked),
     loginResponse: bound(k)(loginFlow.loginResponse),
     devicesTokenIssue: bound(k)(loginFlow.devicesTokenIssue),
     createQrAccess: bound(k)(loginFlow.createQrAccess),

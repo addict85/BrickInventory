@@ -120,7 +120,7 @@ export function instructionPath(db: DbInterface, id: number, uid: number) {
   ]);
 }
 
-export function deleteInstruction(db: DbInterface, id: number, uid: number) {
+export function deleteInstructionRow(db: DbInterface, id: number, uid: number) {
   return db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [id, uid]);
 }
 

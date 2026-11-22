@@ -23,7 +23,7 @@ type Tiles = Record<string, Tile>;
 const count = (ab: Degradations, p: Promise<number>, ort: string) => ab.orElse(ort, p, 0);
 
 /** A JSON state from laufzustand; a damaged one counts as none. */
-async function readState<T>(k: ManagementContext, ab: Degradations, key: string): Promise<T | null> {
+async function readRunState<T>(k: ManagementContext, ab: Degradations, key: string): Promise<T | null> {
   const raw = await ab.orElse(key, k.jobQueue.readState(key), null);
   try {
     return raw ? (JSON.parse(raw) as T) : null;
@@ -107,7 +107,7 @@ async function imagesInProgress(k: ManagementContext, ab: Degradations, open: nu
 }
 
 async function redownloadState(k: ManagementContext, ab: Degradations) {
-  const reDl = await readState<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>(
+  const reDl = await readRunState<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>(
     k,
     ab,
     'imgredl_status',
@@ -135,7 +135,7 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
   const active = await imagesInProgress(k, ab, open);
   const { reDl, laeuft: reDlRunning, sub: reDlSub } = await redownloadState(k, ab);
   // "running" means: has recently done something, according to the database.
-  const lastRun = await readState<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
+  const lastRun = await readRunState<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
   const sinceRun = lastRun?.zeit ? k.uhr.jetzt() - lastRun.zeit : null;
   const jobRunning = isFresh(k, lastRun?.zeit);
   const catalogSub =

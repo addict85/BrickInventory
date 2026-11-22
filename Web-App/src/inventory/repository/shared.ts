@@ -213,7 +213,7 @@ export function loescheTeilzeile(tx: DbInterface, id: number) {
   return tx.run('DELETE FROM parts WHERE id = $1', [id]);
 }
 
-export function recolorPartRow(tx: DbInterface, colorId: number, id: number) {
+export function updatePartRowColor(tx: DbInterface, colorId: number, id: number) {
   return tx.run('UPDATE parts SET color_id = $1 WHERE id = $2', [colorId, id]);
 }
 

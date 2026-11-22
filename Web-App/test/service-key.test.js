@@ -146,7 +146,7 @@ test('service keys become fewer, never more, and each has a caller', () => {
 const RAW_ALLOWED = {
   'jobQueue.claimJob': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.giveBack': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
-  'jobQueue.lebenszeichen': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.heartbeat': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.rememberExclusive': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.lastPerKind': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
   'jobQueue.cleanCompletedOn': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',

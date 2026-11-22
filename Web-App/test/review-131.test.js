@@ -128,7 +128,7 @@ test('write endpoints without login carry a throttle', () => {
     const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
     const geschuetzt =
-      /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|anmelden\(|req\.session\??\.?\.?userId/.test(
+      /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|login\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
     if (!geschuetzt) offen.push(`${(stellen[i][1] ?? stellen[i][2]).toUpperCase()} ${stellen[i][3]}`);

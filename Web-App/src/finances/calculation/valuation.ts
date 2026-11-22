@@ -21,7 +21,7 @@ import {
   type Blickfeld,
   type PriceData,
 } from './prices';
-import { count } from './queries';
+import { countFlagged } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
 import { NO_COLOR, zustand } from '../../infra/validate';
 import { aufRappen, inTenThousandths } from '../../infra/geld';
@@ -240,8 +240,8 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
   return {
     ...header,
     // Foreign purchase prices are missing from the sums (no rates); the number says how many there are.
-    kaufpreise_fremde_waehrung: count(acqRows, 'kaufpreis_fremd'),
-    kaufpreise_umgerechnet: count(acqRows, 'kaufpreis_umgerechnet'),
+    kaufpreise_fremde_waehrung: countFlagged(acqRows, 'kaufpreis_fremd'),
+    kaufpreise_umgerechnet: countFlagged(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
     totals: valuationSums(results),
     preise_ausstehend: await rememberPricesForAccountBefore(kx, viewerId, currency, situation.fehlt),
@@ -379,7 +379,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
     figs: results,
     ...total(results),
     kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByFig),
-    kaufpreise_umgerechnet: count([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
+    kaufpreise_umgerechnet: countFlagged([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
     preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
   };
 }
@@ -453,7 +453,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     parts: results,
     ...total(results),
     kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByPart),
-    kaufpreise_umgerechnet: count([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
+    kaufpreise_umgerechnet: countFlagged([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
     preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
   };
 }

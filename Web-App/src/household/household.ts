@@ -129,7 +129,7 @@ export async function createInvitation(k: HouseholdContext, uid: number) {
     failDomain('konflikt', 'einladungen_zu_viele', { n: OPEN_INVITATIONS_MAX });
 
   const code = newCode();
-  await repo.createInvitation(k.db, invitationHash(code), id, new Date(k.uhr.jetzt() + INVITE_TTL_MS));
+  await repo.insertInvitation(k.db, invitationHash(code), id, new Date(k.uhr.jetzt() + INVITE_TTL_MS));
   return { code, expires_in: INVITE_TTL_MS / 1000 };
 }
 

@@ -1,15 +1,15 @@
 // Probe für test/services-limits.test.js: Jede Zeile mit @ts-expect-error greift auf
 // Innenleben eines Bereichs zu (Zugang, Arbeitseinheit, Repository, Fach). Gibt eine
 // Fabrik es wieder heraus, ist die Erwartung unbenutzt und tsc meldet die Zeile.
-import type { Dienste } from '../../startup/wiring';
+import type { Services } from '../../startup/wiring';
 
-export function probe(d: Dienste): unknown[] {
+export function probe(d: Services): unknown[] {
   return [
     // Kein Bereich gibt seinen Zugang oder seine Transaktion heraus.
     // @ts-expect-error
     d.inventory.db,
     // @ts-expect-error
-    d.inventory.transaktion,
+    d.inventory.transact,
     // @ts-expect-error
     d.inventory.papierkorb,
     // @ts-expect-error
@@ -62,9 +62,9 @@ export function probe(d: Dienste): unknown[] {
     d.management.db,
     // @ts-expect-error
     d.idempotency.db,
-    // Die ausdrücklichen Dienste dagegen stehen da.
-    d.inventory.locationService.lagerorte,
-    d.jobQueue.liesZustand,
+    // Die ausdrücklichen Services dagegen stehen da.
+    d.inventory.locationService.storages,
+    d.jobQueue.readState,
     d.account.verwalter.rememberAdminAction,
   ];
 }

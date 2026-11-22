@@ -3,7 +3,7 @@ import { valueSet, valueAcquisitionRows, weightedPurchase, developmentPercent, t
 import { effectiveCondition } from './condition';
 import { valueMinifigs, valueParts } from './valuation';
 import type { Blickfeld } from './prices';
-import { count } from './queries';
+import { countFlagged } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
 import { aufRappen, inTenThousandths, sumFrom } from '../../infra/geld';
 import type * as repo from '../repository/profitLoss';
@@ -161,11 +161,11 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
       pnl_pct: totalPnlPct,
       pnl_prozent: totalPnlPct === null ? null : Number(totalPnlPct),
       kaufpreise_fremde_waehrung:
-        count(acqRows, 'kaufpreis_fremd') +
+        countFlagged(acqRows, 'kaufpreis_fremd') +
         (partsVal.kaufpreise_fremde_waehrung ?? 0) +
         (figsVal.kaufpreise_fremde_waehrung ?? 0),
       kaufpreise_umgerechnet:
-        count(acqRows, 'kaufpreis_umgerechnet') +
+        countFlagged(acqRows, 'kaufpreis_umgerechnet') +
         (partsVal.kaufpreise_umgerechnet ?? 0) +
         (figsVal.kaufpreise_umgerechnet ?? 0),
       // From the same items as pnl_pct: calculated from all of them, every item

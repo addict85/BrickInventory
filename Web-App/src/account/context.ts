@@ -132,7 +132,7 @@ const sessionAccess = (db: Db) => ({
     validToken: imSystem(db, WITHOUT_ACCOUNT, accesses.validToken),
     endOverlap: imSystem(db, WITHOUT_ACCOUNT, accesses.endOverlap),
     touchToken: imSystem(db, WITHOUT_ACCOUNT, accesses.touchToken),
-    createToken: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', accesses.createToken),
+    createToken: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', accesses.insertToken),
     lockSwapSource: bound(db)(accesses.lockSwapSource),
     unusedSuccessor: bound(db)(accesses.unusedSuccessor),
     deleteFamily: bound(db)(accesses.deleteFamily),
@@ -144,7 +144,7 @@ const sessionAccess = (db: Db) => ({
     deleteToken: imSystem(
       db,
       'Abmelden mit einem Token, dessen Konto die Anfrage nicht mehr trägt',
-      accesses.deleteToken,
+      accesses.deleteTokenRow,
     ),
     deleteTokensOfAccount: imSystem(db, FOREIGN_ACCOUNT, accesses.deleteTokensOfAccount),
     capSessions: imSystem(db, SYSTEM_ROLE_ONLY, accesses.capSessions),
