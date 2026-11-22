@@ -36,7 +36,7 @@ import kotlin.math.abs
 /**
  * Every tab with a list is back at its row after an excursion that takes it out of the
  * composition: gallery, parts and figures after their detail page, finances after the set,
- * settings and parts list after “More”. Run on [TestApp] with long lists.
+ * settings and parts list after another tab. Run on [TestApp] with long lists.
  *
  * Counter-checks (run here):
  *   GalleryScreen's grid without `state = gridState` → red “the gallery …”;
@@ -44,7 +44,9 @@ import kotlin.math.abs
  *   MinifigsScreen's grid without `state = gridState` → red “figures …”;
  *   FinanceScreen's list without `state = listState` → red “the finance list …”;
  *   the ScrollPositionKeeper of the settings removed from AccountGraph → red “the settings …”;
- *   PartsListScreen's list without `state = listState` → red “the parts list …”.
+ *   PartsListScreen's list without `state = listState` → red “the parts list …”;
+ *   `gridState.scrollToItem(index, offset)` removed from the grid keeper → red “the gallery …”, “parts …”, “figures …”;
+ *   `ready` for parts or figures without `manualParts != null` / `manualFigs != null` → red “… wait for the manually added …”.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w411dp-h891dp-port-xxhdpi")
@@ -178,6 +180,27 @@ class TabScrollPositionTest {
         driveUntil("parts list") { shown("Part 0") }
         roundTrip("the parts list", "partslist", { scrollTo(40) }, ::viaAnotherTab)
     }
+
+    /** The remembered row comes only once the manually added entries, which stand on top, are there too. */
+    private fun waitsForManual(what: String, toggle: Int, key: String, manual: String) {
+        start()
+        app.world.paths.missing += manual
+        tap(text(toggle))
+        app.world.t.scrollMemory.track(key, 30, 0)
+        idle()
+        assertEquals("$what jumped before the manually added ones were there", 30, remembered(key))
+        app.world.paths.release()
+        driveUntil(what) { position() > 0f }
+        assertTrue("$what: “${COUNT - 20}” not in view", shown(if (key == "parts") "Part 30" else "Figure 30"))
+    }
+
+    @Test
+    fun `parts wait for the manually added ones before they jump back`() =
+        waitsForManual("parts", R.string.nav_parts, "parts", "/api/v1/parts/manual")
+
+    @Test
+    fun `figures wait for the manually added ones before they jump back`() =
+        waitsForManual("figures", R.string.nav_minifigs, "minifigs", "/api/v1/minifigs/manual")
 
     private companion object {
         const val COUNT = 50

@@ -112,9 +112,9 @@ class SourceRatchetTest {
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 188
+        val FUNCTIONS = 179
         val ONLY_SOURCE_TEXT = 32
-        val BEHAVIOR = 44
+        val BEHAVIOR = 35
         // Every module and build-logic, with device tests and test fixtures: a check that moves does not vanish.
         val all = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
             m.walkTopDown().onEnter { it.name != "build" }

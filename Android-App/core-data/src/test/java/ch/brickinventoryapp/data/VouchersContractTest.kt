@@ -1,14 +1,18 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.finances.VouchersRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.TestApi
-import ch.brickinventoryapp.data.testing.testVouchersRepository
 import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.VoucherInfo
+import ch.brickinventoryapp.model.local.StockKind
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.OutboxPlanner
+import ch.brickinventoryapp.offline.OutboxStorage
+import ch.brickinventoryapp.offline.StorageInventory
 import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
@@ -25,8 +29,8 @@ import java.io.File
  *
  * ── What this test checks, and what NOT ─────────────────────────────────────
  *
- * Addresses and store run against a test server; the rest reads source text,
- * because it concerns screens. What the routes DO — who may see which voucher,
+ * Addresses and store run against a test server; the order on the More page runs in the app
+ * (MorePageTest), the rest reads source text as structure. What the routes DO — who may see which voucher,
  * how the three values come out of the PDF — is checked by the server against a real
  * database (Web-App/test/vouchers-db.test.js) and needs no
  * second, weaker version here.
@@ -35,18 +39,13 @@ import java.io.File
  * the app uses the same services and builds none of its own — that drifts apart
  * most easily.
  *
- * Counter-checks: in VouchersRepository.list() the fetch
- * wrapped with cached("gutscheine", …) → red “the list is not
- * cached”; @PUT("api/v1/vouchers/{id}") to POST → red “the app
- * calls the same addresses as the web app”.
- *
  * Counter-checks:
+ *  - withoutSecret() returns the voucher unchanged → red “the stored list holds neither …”.
+ *  - @PUT("api/v1/vouchers/{id}") to POST → red “the app calls the same addresses as the web app”.
  *  - deleting again as @DELETE without body (confirmation not sent along) → red
  *    “deleting, plaintext and PDF release carry password and code”.
  *  - pdfRelease() calls the route of the single PDF (with id 0) for id=null → red
  *    “the app calls the same addresses as the web app”.
- *  - plaintext in list() stored with cached("gutscheine-klartext", …) → red
- *    “the plaintext is not cached”.
  */
 class VouchersContractTest {
 
@@ -68,16 +67,22 @@ class VouchersContractTest {
         code(listOf("VouchersCard.kt", "VoucherForm.kt", "VoucherCard.kt").joinToString("\n") { read("finances/ui/screens/$it") })
     }
 
-    /** Vouchers against a test server, with disk storage in a throwaway folder. */
-    private fun <T> withServer(block: (PathServer, VouchersRepository, File) -> T): T {
+    /** Vouchers against a test server, on a store whose rows the test reads. */
+    private fun <T> withServer(block: (PathServer, VouchersRepository, StorageInventory) -> T): T {
         val paths = PathServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
-        val folder = File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
+        val inventory = StorageInventory()
+        val store = OfflineStore(inventory, OutboxStorage(), { "test" }, OutboxPlanner {})
         try {
-            return block(paths, testVouchersRepository(TestApi.forTarget(paths.server)), folder)
+            return block(paths, VouchersRepositoryImpl(TestApi.forTarget(paths.server), store), inventory)
         } finally {
-            paths.server.shutdown(); folder.deleteRecursively()
+            paths.server.shutdown()
         }
+    }
+
+    /** Everything the store holds, as text. */
+    private fun stored(inventory: StorageInventory) = runBlocking {
+        StockKind.entries.flatMap { inventory.read("test", it).list }.joinToString("\n") { it.content }
     }
 
     /**
@@ -119,17 +124,6 @@ class VouchersContractTest {
             assertEquals("${paths.requests[i]}: password", "geheim", o.getString("password"))
             assertEquals("${paths.requests[i]}: Code", "123456", o.getString("code"))
         }
-    }
-
-    @Test
-    fun `the plaintext is not cached`() = withServer { paths, repo, folder ->
-        paths.responses["/api/v1/vouchers/5/klartext"] =
-            """{"success":true,"id":5,"number":"6000111122223333","pin":"9876"}"""
-        val r = runBlocking { repo.list(); repo.plaintext(5, Confirmation(password = "geheim")) }
-        assertEquals("6000111122223333", (r as Outcome.Success).data.number)
-        val stored = folder.walkTopDown().filter { it.isFile }
-            .filter { it.readText().let { t -> "6000111122223333" in t || "9876" in t } }.toList()
-        assertTrue("Plaintext is on disk: $stored", stored.isEmpty())
     }
 
     @Test
@@ -236,57 +230,14 @@ class VouchersContractTest {
     }
 
     /**
-     * The vouchers are the first entry of the „Mehr“ page (MoreScreen.kt), so that
-     * one finds them at the checkout without searching. Checked is the order, not merely
-     * the occurrence: whoever builds in something new likes to put it at the top.
+     * The store keeps the list for offline use, but only the last four digits and no PIN; the
+     * plaintext call does not touch the store at all.
      */
     @Test
-    fun `the vouchers are at the very top of the More page`() {
-        // The page draws the groups from 0; the first entry is the first of group 0.
-        val source = code(read("app/MoreScreen.kt"))
-        val page = source.substringAfter("fun MoreScreen(").substringBefore("fun MoreGroupContent(")
-        assert(Regex("""for \(i in 0 until""").containsMatchIn(page)) { "The More page does not start with group 0" }
-        val groupNull = source.substringAfter("fun MoreGroupContent(").substringAfter("0 ->")
-        val first = Regex("""MoreItem\(R\.string\.(\w+)""").find(groupNull)?.groupValues?.get(1)
-        assert(first == "vouchers_title") {
-            "The first entry of the More page leads to $first instead of the " +
-                "VOUCHERS — then one has to search for the cards again."
-        }
-    }
-
-    /**
-     * The sections NO longer lie in the settings.
-     *
-     * The opposite direction to the assertion above. Without it both would
-     * be green at the same time: the entries on „Mehr“ AND a forgotten
-     * copy in the settings screen. Two ways to the same page cannot be seen
-     * in the source text, but they can on the screen — and here there is
-     * no emulator in which that would stand out.
-     */
-    @Test
-    fun `the settings no longer lead to the sections themselves`() {
-        val once = code(read("account/ui/screens/SettingsScreen.kt"))
-        for (route in listOf("FinanceTarget.Gutscheine", "AccountTarget.Preisalarme", "AccountTarget.Lagerorte",
-                             "AccountTarget.Haushalt", "AccountTarget.CsvImport", "AccountTarget.Konto")) {
-            assert(!once.contains(route)) {
-                "SettingsScreen.kt still leads to $route itself — then the " +
-                    "section exists twice, on „Mehr“ and in the settings."
-            }
-        }
-        assert(!once.contains("EinstellungsBereich")) {
-            "The settings area is still in the settings — the route via " +
-                "the list is not completely dismantled."
-        }
-    }
-
-    /**
-     * The other repositories store responses on disk. A list with
-     * numbers and PINs does not belong there, not even for five minutes.
-     */
-    @Test
-    fun `the list is not cached`() = withServer { _, repo, folder ->
+    fun `the stored list holds neither the full number nor the PIN`() = withServer { _, repo, inventory ->
         runBlocking { repo.list() }
-        val stored = folder.walkTopDown().filter { it.isFile }.filter { it.readText().contains("9876") }.toList()
-        assertTrue("Number and PIN are on disk: $stored", stored.isEmpty())
+        val text = stored(inventory)
+        assertTrue("the list is not stored at all: $text", "5678" in text)
+        assertTrue("number or PIN in the store: $text", "1234-5678" !in text && "9876" !in text)
     }
 }

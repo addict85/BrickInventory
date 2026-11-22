@@ -28,7 +28,6 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
@@ -54,7 +53,7 @@ import java.util.Locale
  *   nachzuegler-ohne-korrektur     the correction no longer scrolls to the start → red “without a saved position …”
  *   korrektur-ueber-gespeicherte   the correction without !hadSaved → red “a saved position …”
  *   korrektur-ueber-geste          the correction without !userGesture → red “after an own gesture …”
- *   bereit-ohne-manuelle           parts count as loaded without manualParts → red “both lists count …”
+ * That the graph waits for both lists before jumping back runs in TabScrollPositionTest.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -174,18 +173,5 @@ class ManualItemsFirstTest {
         assertTrue("the gesture did not scroll", raster.firstVisibleItemIndex > 0)
         stragglersCome()
         assertTrue("the correction tore the list to the top", raster.firstVisibleItemIndex > 0)
-    }
-
-    @Test
-    fun `both lists count as loaded, not only the one from the sets`() {
-        // Wiring in the graph: only when the manual entries are there too (null means
-        // “not loaded yet”) does the marker restore the position.
-        val graph = Sources.withoutComments(Sources.read("parts/ui/PartsGraph.kt"))
-        for ((key, list) in listOf("PartsTarget.Parts.rollKey" to "manualParts", "PartsTarget.Minifigs.rollKey" to "manualFigs")) {
-            val block = Sources.window(graph, "$key, ", 12)
-            assertTrue("no ScrollPositionKeeper found for $key", block.isNotEmpty())
-            assertTrue("$key: `ready` does not wait for $list", block.contains("$list != null"))
-            assertTrue("$key: topTrailing is missing", block.contains("topTrailing ="))
-        }
     }
 }
