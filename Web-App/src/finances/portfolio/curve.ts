@@ -11,7 +11,7 @@ export interface CurvesPoint {
 export async function reconstructCurve(
   kx: FinancesContext,
   opts: {
-    db?: unknown;
+    db?: FinancesContext['db'];
     setNumbers: string[];
     setQty: Record<string, number>;
     placeholders: string;

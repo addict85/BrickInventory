@@ -424,7 +424,7 @@ test('any in all forms, unknown parameters and success in services become fewer,
   // domain types (Zustand, string). Exempt are the checkers for raw values
   // (src/contract, src/infra, src/http) and error parameters.
   // Counter-check (11.11.2026): `condition: unknown` back in deleteAlarmOfSets → red (75).
-  const LIMIT_UNKNOWN = 63;
+  const LIMIT_UNKNOWN = 61;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
     ('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length,
