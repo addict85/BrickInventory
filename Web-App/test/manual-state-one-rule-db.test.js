@@ -151,11 +151,11 @@ test('manual parts and figures: list and valuation state the same condition', { 
 });
 
 test('the app fetches the manual pieces from their own address', () => {
-  // What the app calls stands in shared/app-schnittstelle.json (generated from its source text).
+  // What the app calls stands in shared/app-interface.json (generated from its source text).
   const gerufen = new Set(
     require('./helpers/contract')
       .appRoutes(_req)
-      .map(r => `${r.methode} ${r.path}`),
+      .map(r => `${r.method} ${r.path}`),
   );
   assert.ok(gerufen.has('GET /api/v2/parts/manual'), 'Die App ruft /parts/manual nicht');
   assert.ok(gerufen.has('GET /api/v2/minifigs/manual'), 'Die App ruft /minifigs/manual nicht');

@@ -3,7 +3,7 @@
  * responses on a stock in which no list is empty — a set with
  * parts and minifigure, a manual part, a manual minifigure, wishlist,
  * storage location, voucher, price alert, prices in the cache. Which routes the app calls
- * is in shared/app-schnittstelle.json; that its models match the contract
+ * is in shared/app-interface.json; that its models match the contract
  * is checked by the Android run (tools/contract/contract-kotlin.test.js).
  *
  * Counter-checks (measured 31.10.2026):
@@ -31,7 +31,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerMounts, testData } = require('./helpers/sources');
 const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
-const { contractTo, appRoutes, APP_KEYS } = require('./helpers/contract');
+const { contractTo, appRoutes } = require('./helpers/contract');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -270,7 +270,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const routen = appRoutes(_req).filter(r => r.methode === 'GET');
+  const routen = appRoutes(_req).filter(r => r.method === 'GET');
   const values = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGURE };
 
   const deviations = [],
@@ -285,7 +285,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
       status.push(`${r.path}: kein Wert für einen Platzhalter`);
       continue;
     }
-    const anfrage = [...r.abfrage.filter(q => q[APP_KEYS.required]).map(q => `${q.name}=60`), EXTRA.get(r.path)]
+    const anfrage = [...r.query.filter(q => q.required).map(q => `${q.name}=60`), EXTRA.get(r.path)]
       .filter(Boolean)
       .join('&');
     const response = await fetch(basis + path + (anfrage ? '?' + anfrage : ''));

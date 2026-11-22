@@ -1,7 +1,7 @@
 /**
  * The image proxy has moved to /api/v1 — everywhere, also in the data.
  * Address building and server run for real; that the old address is built
- * nowhere (web; the app via shared/app-schnittstelle.json) and the migration covers every
+ * nowhere (web; the app via shared/app-interface.json) and the migration covers every
  * table stays structure.
  *
  * Counter-checks (measured 10.11.2026, dist rebuilt):
@@ -102,8 +102,8 @@ test('only the new address is built', () => {
 
 /** The app need not recognize the old one: a stored path is only completed with the server address. */
 test('the app builds the new address and nowhere the old one', () => {
-  // Addresses built by hand by the app (shared/app-schnittstelle.json, generated from its source text).
-  const { adressen } = require('./helpers/contract').appInterface();
+  // Addresses built by hand by the app (shared/app-interface.json, generated from its source text).
+  const { addresses: adressen } = require('./helpers/contract').appInterface();
   assert.ok(adressen.includes(NEU), `Die App baut ${NEU} nicht (gefunden: ${adressen.join(', ')})`);
   assert.deepEqual(
     adressen.filter(a => a === ALT || a.startsWith(`${ALT}?`)),

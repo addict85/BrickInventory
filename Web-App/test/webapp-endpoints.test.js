@@ -314,7 +314,7 @@ const NUR_WEB = new Map([
 ]);
 
 test('what only the web app can do has a reason', () => {
-  // The app's Retrofit routes (shared/app-schnittstelle.json); `{x}` becomes `:X`.
+  // The app's Retrofit routes (shared/app-interface.json); `{x}` becomes `:X`.
   const appPaths = new Set(
     require('./helpers/contract')
       .appRoutes(require('./helpers/sources').buildAndRequire())

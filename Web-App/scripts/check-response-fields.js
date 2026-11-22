@@ -146,20 +146,15 @@ if (consumer.length < 40) {
   );
   process.exit(1);
 }
-// What the app reads is in shared/app-schnittstelle.json (generated from its models).
+// What the app reads is in shared/app-interface.json (generated from its models).
 const appFields = JSON.parse(
-  fs.readFileSync(path.join(ROOT, '..', 'shared', 'app-schnittstelle.json'), 'utf8'),
-).antwortfelder;
+  fs.readFileSync(path.join(ROOT, '..', 'shared', 'app-interface.json'), 'utf8'),
+).response_fields;
 if (!Array.isArray(appFields) || appFields.length < 100) {
-  console.error('❌ shared/app-schnittstelle.json nennt kaum Antwortfelder der App — erzeugt?');
+  console.error('❌ shared/app-interface.json nennt kaum Antwortfelder der App — erzeugt?');
   process.exit(1);
 }
-// The app reads API v1: its German names stand for the v2 fields they are mapped from.
-const { V1_FIELDS } = require(path.join(ROOT, 'dist', 'src', 'contract', 'v1Names.js'));
-/** @type {Map<string, string>} */
-const fromV1 = new Map(Object.entries(/** @type {Record<string, string>} */ (V1_FIELDS)).map(([v2, v1]) => [v1, v2]));
-const appV2 = appFields.map((/** @type {string} */ f) => fromV1.get(f) ?? f);
-const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields, ...appV2].join('\n');
+const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields].join('\n');
 
 const error = [];
 for (const [k, filesList] of [...whence].sort()) {

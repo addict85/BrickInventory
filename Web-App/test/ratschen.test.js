@@ -865,7 +865,7 @@ test('tests use the real setup: no DB facade, substitute paths become fewer', ()
 
 /**
  * Web tests read no Android source text: what the app needs from the server stands in
- * shared/app-schnittstelle.json (generated from its source text and checked in the Android run);
+ * shared/app-interface.json (generated from its source text and checked in the Android run);
  * what only concerns the app is checked by the Android suite. The helpers are counted too.
  */
 const READS_ANDROID = /require\(['"]\.\/helpers\/android['"]\)|['"`]Android-App['"`/]|\.kt['"`]/;
@@ -885,7 +885,7 @@ test('web tests do not read Android source code', () => {
   assert.ok(
     readsOnly.length <= LIMIT,
     `${readsOnly.length} Web-Testdateien lesen Android-Quellen, erlaubt sind ${LIMIT}: ${readsOnly.join(', ')}. ` +
-      'Den Server gegen shared/app-schnittstelle.json prüfen; was nur die App betrifft, gehört in die Android-Suite.',
+      'Den Server gegen shared/app-interface.json prüfen; was nur die App betrifft, gehört in die Android-Suite.',
   );
 });
 

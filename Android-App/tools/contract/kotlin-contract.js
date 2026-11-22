@@ -161,7 +161,7 @@ function schreibRouten(serviceDatei) {
 
 /**
  * All @Serializable classes (the generated ones too): name → JSON fields, with `hatDefault`.
- * For shared/app-schnittstelle.json: which fields the app's models read.
+ * For shared/app-interface.json: which fields the app's models read.
  * @param {string[]} wurzeln @returns {Map<string, { felder: { json: string, hatDefault: boolean }[] }>}
  */
 function kotlinModelle(wurzeln) {

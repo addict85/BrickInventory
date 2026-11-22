@@ -225,12 +225,10 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     const a = await allAlerts(ich.id);
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
-    // The app's model (shared/app-schnittstelle.json, generated from its source text).
-    const app = require('./helpers/contract').appInterface().modelle.Preisalarm?.felder ?? [];
-    assert.ok(app.includes('set_number'), 'Modell Preisalarm nicht gefunden — umbenannt?');
-    // The app reads API v1, so a field arrives under its v1 name.
-    const { v1Field } = _req('src/contract/v1.js');
-    const fehlen = felder.filter(k => !app.includes(v1Field(undefined, k)));
+    // The app's model (shared/app-interface.json, generated from its source text).
+    const app = require('./helpers/contract').appInterface().models.PriceAlert?.fields ?? [];
+    assert.ok(app.includes('set_number'), 'Modell PriceAlert nicht gefunden — umbenannt?');
+    const fehlen = felder.filter(k => !app.includes(k));
     assert.deepEqual(
       fehlen,
       [],
