@@ -399,7 +399,7 @@ async function jobs(_t, a) {
   const { b } = a;
   // One service waiting with work (total > 0), one running: only the running one shows the bar.
   await b.auswerten(`window.__echt = window.fetch; window.fetch = async (u, o) => { const r = await window.__echt(u, o);
-    if (!/v1\\/admin\\/jobs$/.test(String(u))) return r;
+    if (!/v2\\/admin\\/jobs$/.test(String(u))) return r;
     const d = await r.clone().json(); const [x, y] = Object.keys(d.jobs);
     d.jobs[x] = { ...d.jobs[x], status: 'idle', total: 10, progress: 3 }; d.jobs[y] = { ...d.jobs[y], status: 'running', total: 10, progress: 5 };
     window.__dienste = [x, y]; return new Response(JSON.stringify(d), { status: 200, headers: { 'Content-Type': 'application/json' } }); }; true`);
@@ -480,8 +480,8 @@ async function bauliste(_t, a) {
       const m = await b.auswerten(`({ feld: document.getElementById('pl-setnr').getBoundingClientRect().width,
         karte: document.querySelector('#tab-partslist .ph').getBoundingClientRect().width })`);
       if (telefon)
-        assert.ok(m.field >= m.karte - 1, `${breite} px: Feld nicht über die ganze Breite: ${JSON.stringify(m)}`);
-      else assert.ok(m.field >= 480, `${breite} px: Feld für mehrere Setnummern zu schmal: ${JSON.stringify(m)}`);
+        assert.ok(m.feld >= m.karte - 1, `${breite} px: Feld nicht über die ganze Breite: ${JSON.stringify(m)}`);
+      else assert.ok(m.feld >= 480, `${breite} px: Feld für mehrere Setnummern zu schmal: ${JSON.stringify(m)}`);
     }
   } finally {
     await groesse(b, 1280, false);
@@ -497,7 +497,7 @@ async function wantedTo(_t, a) {
       await b.auswerten(`(() => { const d = document.getElementById('mk-box'), h = d.querySelector('summary h2');
       const kd = d.getBoundingClientRect(), kh = h.getBoundingClientRect();
       return { offen: d.open, oben: Math.round(kh.top - kd.top), unten: Math.round(kd.bottom - kh.bottom) }; })()`);
-    assert.equal(m.open, false, 'Testdaten: am Telefon zugeklappt');
+    assert.equal(m.offen, false, 'Testdaten: am Telefon zugeklappt');
     assert.ok(Math.abs(m.oben - m.unten) <= 2, `Leerraum unter der zugeklappten Karte: ${JSON.stringify(m)}`);
   } finally {
     await groesse(b, 1280, false);

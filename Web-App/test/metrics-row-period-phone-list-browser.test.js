@@ -95,7 +95,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     assert.equal(m.punkte, 2, 'Trenner zwischen drei Kennzahlen');
     assert.equal(m.oben.length, 1, `Kennzahlen auf mehreren Zeilen: ${m.oben}`);
     assert.equal(m.visibleBelowRows, 0);
-    assert.equal(m.hint, 'Teileliste für das Set fehlt noch');
+    assert.equal(m.hinweis, 'Teileliste für das Set fehlt noch');
     assert.ok(m.hintTop >= m.unten, 'Erklärsatz unter der ganzen Leiste');
   });
 
@@ -116,7 +116,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
         flaeche: k.map(e => getComputedStyle(e).backgroundColor),
       };
     })()`);
-    assert.notEqual(m.reason, 'rgba(0, 0, 0, 0)', 'Segment ohne Grund');
+    assert.notEqual(m.grund, 'rgba(0, 0, 0, 0)', 'Segment ohne Grund');
     assert.equal(m.rand, '1px');
     assert.equal(m.oben, 1, 'Zeitraum bricht um');
     assert.ok(Math.max(...m.runde) <= 8, `Knöpfe wie Pillen gerundet: ${m.runde}`);
@@ -215,8 +215,8 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
           .slice(0, 3)
           .reduce((a, x) => a + Number(x), 0) / 3;
       if (dunkel) {
-        assert.ok(hell(m.reason) < 60, `Kasten im Dunkelmodus hell: ${m.reason}`);
+        assert.ok(hell(m.grund) < 60, `Kasten im Dunkelmodus hell: ${m.grund}`);
         assert.ok(hell(m.schrift) > 180, `Schrift dunkel auf dunkel: ${m.schrift}`);
-      } else assert.equal(m.reason, 'rgb(255, 255, 255)');
+      } else assert.equal(m.grund, 'rgb(255, 255, 255)');
     });
 });

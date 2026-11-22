@@ -516,11 +516,11 @@ async function showJobs() {
       <tbody>${kinds.map(
         kind => html`<tr>
         <td>${kindName(kind)}</td>
-        <td class="number">${digit(number[kind].open)}${afterError[kind] ? html`<span class="mon-quiet mon-extra">${tRaw('monitor.jobs.of_which_nach_error', { n: afterError[kind] })}</span>` : ''}</td>
+        <td class="number">${digit(number[kind].pending)}${afterError[kind] ? html`<span class="mon-quiet mon-extra">${tRaw('monitor.jobs.of_which_nach_error', { n: afterError[kind] })}</span>` : ''}</td>
         <td class="number">${digit(number[kind].running, 'mon-running')}</td>
         <td class="number">${digit(number[kind].error, 'mon-error')}</td>
         <td>${next[kind] ? fmtDate(next[kind], 'when') : ''}</td>
-        <td><div class="mon-buttons">${button('runJobKindNow', kind, tRaw('monitor.jobs.now'), kindName(kind))}${number[kind].open ? button('emptyJobKind', kind, tRaw('monitor.jobs.clear'), kindName(kind)) : ''}</div></td>
+        <td><div class="mon-buttons">${button('runJobKindNow', kind, tRaw('monitor.jobs.now'), kindName(kind))}${number[kind].pending ? button('emptyJobKind', kind, tRaw('monitor.jobs.clear'), kindName(kind)) : ''}</div></td>
       </tr>`,
       )}</tbody></table></div>`
         : ''

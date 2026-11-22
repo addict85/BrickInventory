@@ -154,9 +154,9 @@ test('the filter bars keep distance to the list', t => {
 test('the own stock is on its own line in the parts list', t => {
   const e = gemessen(t);
   if (!e) return;
-  const { setnr, knopf, loose } = e.holding;
-  assert.ok(setnr && knopf && loose, 'Set-Nummer, Bestand-Knopf oder „nur lose“ fehlt');
+  const { setnr, knopf, lose } = e.bestand;
+  assert.ok(setnr && knopf && lose, 'Set-Nummer, Bestand-Knopf oder „nur lose“ fehlt');
   // The tool row carries flex-wrap:nowrap: one more button would push the rest out of view there.
   assert.ok(knopf[0] >= setnr[1], `der Bestand-Knopf (${knopf[0]}) steht in der Werkzeugzeile (bis ${setnr[1]})`);
-  assert.ok(loose[0] >= setnr[1], '„nur lose Teile“ steht in der Werkzeugzeile');
+  assert.ok(lose[0] >= setnr[1], '„nur lose Teile“ steht in der Werkzeugzeile');
 });

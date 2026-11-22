@@ -226,7 +226,7 @@ async function setDetail(_t, a) {
       return { bild: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), letzte: zeilen.at(-1) }; })()`);
     if (!telefon) {
       assert.ok(l.chart.right <= l.det.left, `Preisverlauf nicht in der linken Spalte: ${JSON.stringify(l)}`);
-      assert.ok(l.chart.top >= l.image.bottom, 'Preisverlauf nicht unter dem Bild');
+      assert.ok(l.chart.top >= l.bild.bottom, 'Preisverlauf nicht unter dem Bild');
     } else assert.ok(l.chart.top >= l.letzte.bottom, 'Telefon: Preisverlauf nicht am Ende');
     await b.auswerten(CLOSE);
   }

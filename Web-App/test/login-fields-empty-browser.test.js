@@ -40,8 +40,8 @@ test('login fields after the session expired and after logout', { timeout: 180_0
     const f = await app.b.auswerten(felder);
     assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
     assert.match(f.lu, /^ablauf_/, 'der Name bleibt zum schnellen Wiederanmelden');
-    assert.match(f.hint, /Sitzung abgelaufen/);
-    assert.deepEqual(f.error, [], 'Fehler-Toast neben dem Hinweis');
+    assert.match(f.hinweis, /Sitzung abgelaufen/);
+    assert.deepEqual(f.fehler, [], 'Fehler-Toast neben dem Hinweis');
   });
 
   await t.test('logout clears name, password and code', async () => {
@@ -62,6 +62,6 @@ test('login fields after the session expired and after logout', { timeout: 180_0
     assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
     assert.equal(f.lc, '', 'der Code steht noch im Feld');
     assert.equal(f.lu, '', 'der Name steht noch im Feld');
-    assert.equal(f.hint, '', 'nach eigenem Abmelden kein Ablauf-Hinweis');
+    assert.equal(f.hinweis, '', 'nach eigenem Abmelden kein Ablauf-Hinweis');
   });
 });

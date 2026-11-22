@@ -88,7 +88,7 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
     await b.auswerten(check);
     await bis(`document.getElementById('wiz-error-rebrickable').textContent !== ''`, 'Fehler am leeren Feld', 50);
     const leer = await b.auswerten(state);
-    assert.match(leer.error, /Schlüssel eintragen/);
+    assert.match(leer.fehler, /Schlüssel eintragen/);
     assert.deepEqual([leer.ungueltig, leer.fokus, leer.toasts], ['true', 'wiz-rb', []]);
     await b.auswerten(`document.getElementById('wiz-rb').value = 'probe-schluessel'; true`);
     await b.auswerten(check);
@@ -102,7 +102,7 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
       await db.get("SELECT 1 FROM global_settings WHERE key = 'rebrickable_api_key'"),
       'in der Einrichtung speichert der Assistent den ersten Schlüssel ohne Passwortfrage',
     );
-    assert.match(z.error, /Technische Details/, 'die technische Ursache steht aufklappbar dabei');
+    assert.match(z.fehler, /Technische Details/, 'die technische Ursache steht aufklappbar dabei');
     assert.match(z.zeichen, /missing/, '✗ neben dem Titel');
     assert.deepEqual(z.toasts, []);
     await b.auswerten(

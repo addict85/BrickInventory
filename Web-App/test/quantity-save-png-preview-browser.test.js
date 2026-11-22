@@ -96,7 +96,7 @@ async function transparentPreview(_t, a, nr) {
       const g = c.getContext('2d'); g.drawImage(bild, 0, 0);
       return { quelle: i.currentSrc.replace(/^.*\\/images\\//, ''), typ: r.headers.get('content-type'),
         rand: g.getImageData(0, 0, 1, 1).data[3], innen: g.getImageData(3, 2, 1, 1).data[3] }; })()`);
-    assert.match(m.source, /_thumb\.jpg$/, `Testdaten: Kachel zeigt die Vorschau: ${JSON.stringify(m)}`);
+    assert.match(m.quelle, /_thumb\.jpg$/, `Testdaten: Kachel zeigt die Vorschau: ${JSON.stringify(m)}`);
     assert.equal(m.typ, 'image/png', `Vorschau mit falschem Typ: ${JSON.stringify(m)}`);
     assert.deepEqual([m.rand, m.innen], [255, 0], `Transparenz ging verloren: ${JSON.stringify(m)}`);
   } finally {

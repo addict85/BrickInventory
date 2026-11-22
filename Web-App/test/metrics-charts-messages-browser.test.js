@@ -53,7 +53,7 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     // Named briefly since UX check 25 (B2); what „bewertet“ means stands in the tooltip and below the cards.
     assert.equal(z.titel, 'Kaufpreis (bewertete Positionen)', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
     assert.match(z.unter, /^Insgesamt bezahlt: /, 'die Summe aller Käufe ist benannt (UX-Prüfung 19 N4)');
-    assert.ok(z.unter.includes(z.total), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.total}`);
+    assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
   });
 
   await t.test('value line in the accent color', async () => {

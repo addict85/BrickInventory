@@ -117,8 +117,8 @@ test('finance table, storage locations, number format, screen reader', {
                  rand: Math.round(tw.getBoundingClientRect().right) }; })()`);
       if (m.seite > m.fenster) error.push(`${w}: Seite ${m.seite} px breit`);
       if (m.rollt > 1) error.push(`${w}: Tabelle rollt ${m.rollt} px`);
-      if (m.state > m.rand + 1 || m.wert > m.rand + 1)
-        error.push(`${w}: Stand/Marktwert bei ${m.state}/${m.wert}, Rand ${m.rand}`);
+      if (m.stand > m.rand + 1 || m.wert > m.rand + 1)
+        error.push(`${w}: Stand/Marktwert bei ${m.stand}/${m.wert}, Rand ${m.rand}`);
     }
     assert.deepEqual(error, []);
     await groesse(1280);
@@ -183,7 +183,7 @@ test('finance table, storage locations, number format, screen reader', {
     await language('en');
     assert.deepEqual(await b.auswerten(lies), {
       konto: 'All accounts',
-      location: 'All locations',
+      ort: 'All locations',
       kein: '— no location —',
       neu: '＋ new location …',
       aria: 'Search sets',
@@ -192,7 +192,7 @@ test('finance table, storage locations, number format, screen reader', {
     await language('de');
     assert.deepEqual(await b.auswerten(lies), {
       konto: 'Alle Konten',
-      location: 'Alle Lagerorte',
+      ort: 'Alle Lagerorte',
       kein: '— kein Lagerort —',
       neu: '＋ neuer Lagerort …',
       aria: 'Sets suchen',

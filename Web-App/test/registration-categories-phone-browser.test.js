@@ -212,8 +212,8 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
         verwalter: /Administrator/.test(tabelle), admin: /\\bAdmin\\b/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
         hinweis: document.getElementById('reg-mail-hint').textContent }; })()`);
     assert.deepEqual(
-      { ...z, hint: /E-Mail-Versand/.test(z.hint) },
-      { waiting: true, knopf: true, verwalter: true, admin: false, schalter: true, hint: true },
+      { ...z, hinweis: /E-Mail-Versand/.test(z.hinweis) },
+      { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hinweis: true },
     );
     assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Administrator\\)`));
     await b.auswerten(
@@ -287,7 +287,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       zurueck: '← Zurück zur Sammlung',
       formular: {
         titel: 'Registrieren',
-        required: true,
+        pflicht: true,
         regel: 'Mindestens 12 Zeichen, kein häufig verwendetes Passwort.',
       },
     });

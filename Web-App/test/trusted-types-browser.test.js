@@ -87,7 +87,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
       await app.b.auswerten(`({ klasse: window.__fenster.document.getElementById('log-wrap').firstElementChild.className,
       stand: window.__fenster.document.getElementById('status').textContent })`);
     assert.match(f.klasse, /^(ll|leer)\b/);
-    assert.doesNotMatch(f.state, /Fehler/, f.state);
+    assert.doesNotMatch(f.stand, /Fehler/, f.stand);
     await app.b.auswerten(`window.__fenster.close(); true`);
   });
 });

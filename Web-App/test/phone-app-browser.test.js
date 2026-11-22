@@ -220,13 +220,13 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
                navHoehe: Math.round(nav.height), pagesWidth: document.documentElement.scrollWidth }; })()`);
     const vorher = await state();
     assert.equal(vorher.sichtbar.length, 1, `sichtbar: ${vorher.sichtbar}`);
-    assert.equal(vorher.current, vorher.sichtbar[0]);
+    assert.equal(vorher.aktuell, vorher.sichtbar[0]);
     assert.equal(vorher.navRows, 1, 'am Telefon steht die Leiste in einer Zeile');
     assert.ok(vorher.pagesWidth <= 390, `Seite ${vorher.pagesWidth} px breit`);
     await b.auswerten(`document.querySelector('.settings-nav a[data-arg="settings-smtp"]').click(); true`);
     await ruhig();
     const nachher = await state();
-    assert.deepEqual([nachher.sichtbar, nachher.current], [['settings-smtp'], 'settings-smtp']);
+    assert.deepEqual([nachher.sichtbar, nachher.aktuell], [['settings-smtp'], 'settings-smtp']);
     assert.equal(await b.auswerten(`localStorage.getItem('bim_settings_section')`), 'settings-smtp');
   });
 
@@ -239,7 +239,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
                partsVisible: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
     // The place is always called „Sammlung“; which view is open is told by the toggle at the top.
     assert.equal(telefon.text, 'Sammlung', 'Der erste Platz der Leiste wechselt seinen Namen');
-    assert.equal(telefon.current, 'page');
+    assert.equal(telefon.aktuell, 'page');
     assert.equal(telefon.partsVisible, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
     // On the computer ONE navigation: „Sammlung“ in the bar, sets/parts/
     // minifigures only in the toggle on the page (before, both).
@@ -258,7 +258,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await bis('innerWidth === 390', 'Fensterbreite');
     await ruhig();
-    assert.deepEqual(calculator, { parts: false, minifigs: false, toggle: true, collectionActive: true });
+    assert.deepEqual(calculator, { teile: false, figuren: false, toggle: true, collectionActive: true });
     await reiter('gallery');
     assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
   });
@@ -325,7 +325,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await reiter('finance');
     await bis(`!!document.querySelector('#portfolio-chart svg.chart')`, 'Wertdiagramm');
     const [d] = await b.auswerten(DIAGRAMMSCHRIFT('#portfolio-chart'));
-    assert.ok(d.count >= 4, `nur ${d.count} Beschriftungen`);
+    assert.ok(d.anzahl >= 4, `nur ${d.anzahl} Beschriftungen`);
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
     assert.equal(d.rolle, 'img');
     assert.match(d.name, /Wert der Sammlung, .+ bis .+: von .+ auf .+/);

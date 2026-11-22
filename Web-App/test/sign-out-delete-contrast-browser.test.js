@@ -172,7 +172,7 @@ async function finanzen(_t, a) {
     const zeilen = [...document.querySelectorAll('[data-fin-kind="sets"] tbody tr')].map(z => ({
       menge: z.querySelector('.qbadge')?.textContent, je: z.querySelector('.fin-value .fin-per')?.textContent || '' }));
     return { zeilen, karte: document.getElementById('fin-cost-basis-sub').textContent, linie: ${text('#portfolio-chart')} }; })()`);
-  const einzeln = f.zeilen.filter(z => z.quantity === '×1');
+  const einzeln = f.zeilen.filter(z => z.menge === '×1');
   assert.ok(einzeln.length >= 2, 'Testdaten: Zeilen mit Menge 1');
   assert.deepEqual(
     einzeln.filter(z => z.je),
@@ -237,7 +237,7 @@ async function drossel(_t, a) {
     await groesse(b, breite, telefon);
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
     await b.auswerten(`(() => { window.__echt = window.fetch;
-      window.fetch = (u, o) => /\\/api\\/v1\\/sets\\?/.test(String(u))
+      window.fetch = (u, o) => /\\/api\\/v2\\/sets\\?/.test(String(u))
         ? Promise.resolve(new Response(JSON.stringify({ success: false, code: 'too_many_requests', error: 'Zu viele Anfragen' }),
             { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '200' } }))
         : window.__echt(u, o); return true; })()`);

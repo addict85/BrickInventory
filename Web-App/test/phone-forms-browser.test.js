@@ -65,7 +65,7 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
       m.platzhalter.passt,
       `Platzhalter braucht ${m.platzhalter.breit} px, das Feld hat ${m.platzhalter.innen} px`,
     );
-    assert.ok(m.currency.passt, `Währung braucht ${m.currency.breit} px, das Feld hat ${m.currency.innen} px`);
+    assert.ok(m.waehrung.passt, `Währung braucht ${m.waehrung.breit} px, das Feld hat ${m.waehrung.innen} px`);
     assert.equal(m.nebeneinander, true, 'Währung steht nicht neben dem Preis');
     assert.equal(m.imDialog, true, 'Preis oder Währung ragen aus dem Dialog');
     assert.ok(m.seite <= 390, `Seite ${m.seite} px breit`);

@@ -58,7 +58,7 @@ async function financesOffline(_t, a) {
       erneut: [...document.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]')].filter(e => e.checkVisibility()).length,
       zeitraum: [...document.querySelectorAll('.period-choice .period-btn')].map(k => k.disabled) })`);
     assert.equal(z.karten, 'weg', 'Karten ohne Zahl');
-    assert.equal(z.hints, 0, '„Keine Verbindung“ in den Karten');
+    assert.equal(z.hinweise, 0, '„Keine Verbindung“ in den Karten');
     assert.equal(z.erneut, 1, 'genau ein „Erneut versuchen“');
     assert.deepEqual(z.zeitraum, [true, true, true, true], 'Zeitraumknöpfe bedienbar');
   } finally {
@@ -111,7 +111,7 @@ async function purchasePriceDialog(_t, a) {
   assert.equal(m.spalten, m.cells, 'Meldung über alle Spalten');
   assert.equal(m.rollt, false, 'Tabelle rollt seitlich');
   assert.deepEqual(m.headers, [], 'Spalten rutschen aus dem Bild');
-  assert.ok(m.condition >= 80, `„Zustand“ nur ${m.condition} px breit`);
+  assert.ok(m.zustand >= 80, `„Zustand“ nur ${m.zustand} px breit`);
   await eingeben('12,x');
   await bis(
     `/„12,x“ ist kein Betrag/.test(${text('.acq-table .field-error')})`,
@@ -177,7 +177,7 @@ async function tilePurchases(_t, a) {
       lose: [...d.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim() && !/^\\d{2}\\.\\d{2}\\.\\d{4}$/.test(n.textContent.trim())).map(n => n.textContent) }; })()`);
   assert.equal(k.text, '2 Käufe, zuletzt 02.06.2026');
   assert.equal(k.etikett, '2 Käufe, zuletzt', 'Etikett ohne eigenes Element');
-  assert.deepEqual(k.loose, [], 'loser Text neben dem Datum');
+  assert.deepEqual(k.lose, [], 'loser Text neben dem Datum');
 }
 
 async function momentsWithTag(_t, a) {

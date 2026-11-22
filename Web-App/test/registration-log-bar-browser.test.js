@@ -70,7 +70,7 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
       assert.equal(m.ring, '3px');
       assert.ok(dunkel ? m.hell < 80 : m.hell > 200, `Grund ${m.hell} bei dunkel=${dunkel}`);
       assert.deepEqual(
-        m.levels.map(s => s.replace(/^\W+\s*/, '')),
+        m.stufen.map(s => s.replace(/^\W+\s*/, '')),
         ['Hinweise', 'Warnungen', 'Fehler'],
       );
       await b.auswerten(`document.getElementById('lv-rahmen').remove(); true`);

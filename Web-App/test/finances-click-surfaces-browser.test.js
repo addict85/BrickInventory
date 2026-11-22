@@ -47,7 +47,7 @@ test('finances on the computer: controls at least 32 px', { concurrency: 1, time
     const m =
       await b.auswerten(`({ sort: document.querySelectorAll('.sort-button').length, zeile: document.querySelectorAll('.row-open').length,
       kopf: Math.round(document.querySelector('header').getBoundingClientRect().height) })`);
-    assert.ok(m.sort >= 3 && m.row >= 1, `zu wenig gemessen: ${JSON.stringify(m)}`);
+    assert.ok(m.sort >= 3 && m.zeile >= 1, `zu wenig gemessen: ${JSON.stringify(m)}`);
     assert.equal(m.kopf, 58, 'Kopfleiste ist nicht mehr 58 px hoch');
   });
 });

@@ -56,10 +56,10 @@ test('header of the collection: the same and without a jump', { concurrency: 1, 
     intercept: [
       { muster: '*household-members*', contains: '/household-members', delay: 600 },
       { muster: '*settings/raw*', contains: '/settings/raw', delay: 300 },
-      { muster: '*/v1/stats*', contains: '/v2/stats', delay: 900 },
+      { muster: '*/v2/stats*', contains: '/v2/stats', delay: 900 },
       // List and parts filter only come after the skeleton: then the select fields visibly fill.
-      { muster: '*/v1/sets?*', contains: '/v2/sets?', delay: 1200 },
-      { muster: '*/v1/parts/colors*', contains: '/v2/parts/colors', delay: 1200 },
+      { muster: '*/v2/sets?*', contains: '/v2/sets?', delay: 1200 },
+      { muster: '*/v2/parts/colors*', contains: '/v2/parts/colors', delay: 1200 },
     ],
   });
   if (app.reason) {

@@ -279,12 +279,12 @@ async function createUser(_t, a) {
   assert.equal(s.pwError, '');
   assert.equal(s.pwRule, true, 'Passwortregel fehlt');
   assert.equal(s.oben[0], s.oben[1], `Eingabefelder versetzt: ${s.oben}`);
-  assert.ok(s.hook > s.field[0] && s.hook < s.field[1], `Häkchen ${s.hook} neben Feld ${s.field}`);
+  assert.ok(s.hook > s.feld[0] && s.hook < s.feld[1], `Häkchen ${s.hook} neben Feld ${s.feld}`);
   try {
     await groesse(b, 390, 844);
     await bis(`innerWidth === 390`, 'Telefonbreite');
     s = await b.auswerten(state);
-    for (const w of s.breiten) assert.ok(w >= s.row - 1, `${w} px von ${s.row} px`);
+    for (const w of s.breiten) assert.ok(w >= s.zeile - 1, `${w} px von ${s.zeile} px`);
   } finally {
     await setze('nu-n', '');
     await setze('nu-p', '');

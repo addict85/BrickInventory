@@ -274,7 +274,7 @@ async function giftAndMinifigs(_t, a) {
   assert.match(d.kauf, /Geschenk/);
   assert.doesNotMatch(d.kauf, /0,00/, 'Kaufpreis 0 als Betrag');
   assert.equal(tabelle, '4', 'Testdaten: Katalog kennt 4 Figuren');
-  assert.equal(d.minifigs, tabelle, 'Tabelle und Detail zählen verschieden');
+  assert.equal(d.figuren, tabelle, 'Tabelle und Detail zählen verschieden');
   await b.auswerten(CLOSE);
 }
 
@@ -316,7 +316,7 @@ async function addLargeFont(_t, a) {
     const m = await b.auswerten(`(() => { const r = id => document.getElementById(id).getBoundingClientRect();
       return { preis: r('add-price').width, oben: r('add-price').top, waehrung: r('add-currency').top }; })()`);
     assert.ok(m.preis >= 200, `Preisfeld zu schmal: ${JSON.stringify(m)}`);
-    assert.ok(m.currency > m.oben, `Währung nicht unter dem Preis: ${JSON.stringify(m)}`);
+    assert.ok(m.waehrung > m.oben, `Währung nicht unter dem Preis: ${JSON.stringify(m)}`);
   } finally {
     await b.auswerten(`${CLOSE}; document.documentElement.style.fontSize = ''; true`);
     await groesse(b, 1280, false);
@@ -426,7 +426,7 @@ async function cancelSingleLine(_t, a) {
   const h = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#jobs-card .mon-buttons .btn')];
     const hoehe = t => Math.max(...k.filter(x => x.textContent.trim() === t).map(x => x.getBoundingClientRect().height));
     return { abbrechen: hoehe('Abbrechen'), jetzt: hoehe('Jetzt starten') }; })()`);
-  assert.ok(h.abbrechen <= h.now + 1, `„Abbrechen“ bricht um: ${JSON.stringify(h)}`);
+  assert.ok(h.abbrechen <= h.jetzt + 1, `„Abbrechen“ bricht um: ${JSON.stringify(h)}`);
 }
 
 async function emptyCollection(_t, a, kid) {

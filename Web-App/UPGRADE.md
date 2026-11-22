@@ -2552,3 +2552,26 @@ Daten, keine Bezeichner, und bleiben unverändert.
 - **Eigene Werkzeuge**, die `jobs` direkt lesen (SQL-Abfragen auf `status = 'offen'`),
   auf die neuen Werte umstellen.
 - Sonst nichts von Hand zu tun.
+
+## 73. API v2: restliche Werte englisch, `routes/api` (Migration 0137)
+
+- **Unter `/api/v2` englisch**, unter `/api/v1` unverändert (übersetzt): Kachelquelle
+  (`markt`/`kauf` → `market`/`purchase`), Alarmrichtung (`unter`/`ueber` → `below`/`above`),
+  QR-Kopplung (`offen`, `wartet` … → `open`, `waiting`, `confirmed`, `collected`, `rejected`,
+  `expired`), Teilereihenfolge (`farbe`/`menge` → `color`/`quantity`), angekündigte
+  Verwalteraktionen (`passwort` … → `password`, `second_factor`, `deactivate`, `revoke_role`,
+  `delete`), Nachtrag (`pending`/`done`), Rebrickable-Abbruch (`quota`, `no_key`, `failure`),
+  Proxy-Hinweis (`docker_network`, `single_address`), Teilcodes des Auftragsmonitors,
+  Sortierung `kauf_*` → `purchase_*`, Passkey-Zweck (`register`, `login`, `second_factor`),
+  Aktionen des Verwalterprotokolls (`konto_angelegt` → `account_created` …) und der
+  Einstellungsschlüssel `gutschein_land` → `voucher_country`. Merkliste-XML: Fehlerzahl
+  `failed`, Korrekturfeld `purchase_price`, Fortschritt `done` mit Phase `write`. Das letzte
+  Ereignis eines Stroms nach Zugangsende heisst unter v2 `access_ended`.
+- **Migration 0137** schreibt die gespeicherten Werte um (`admin_takeovers.type`,
+  `price_alerts.direction`, `webauthn_challenges.purpose`, `admin_log.action`,
+  `global_settings` und `kaufpreis` in wartenden Merkliste-Importen). Die Tabellen sind
+  dabei gesperrt; danach weisen die Prüfungen deutsche Werte ab — `web` und `jobs` zusammen
+  aktualisieren. Ältere Datensicherungen mit `gutschein_land` lassen sich weiter einlesen.
+- **Lesezeichen** der Sammlung mit `sortierung=kauf_desc` fallen auf die Standardsortierung
+  zurück.
+- Sonst nichts von Hand zu tun.

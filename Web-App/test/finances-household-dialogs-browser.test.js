@@ -156,7 +156,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
     await bis(`!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
     const z = await b.auswerten(`({ offen: document.getElementById('mk-box').open,
       oben: document.querySelector('#mk-list .mk-row').getBoundingClientRect().top, hoehe: innerHeight })`);
-    assert.equal(z.open, false, 'Formular am Telefon zugeklappt');
+    assert.equal(z.offen, false, 'Formular am Telefon zugeklappt');
     assert.ok(z.oben < z.hoehe * 0.6, `erster Merkposten im ersten Bild: ${JSON.stringify(z)}`);
   });
 
@@ -188,7 +188,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       const z = await b.auswerten(`(() => { const s = getComputedStyle(document.querySelector('.button-floating'));
         return { deckend: s.opacity, grund: s.backgroundColor }; })()`);
       assert.equal(z.deckend, '1', 'der gesperrte Knopf ist deckend');
-      assert.doesNotMatch(z.reason, /rgba\(.*, 0(\.\d+)?\)$/, `mit deckendem Grund: ${z.reason}`);
+      assert.doesNotMatch(z.grund, /rgba\(.*, 0(\.\d+)?\)$/, `mit deckendem Grund: ${z.grund}`);
     } finally {
       await b.tab('Network.emulateNetworkConditions', {
         offline: false,

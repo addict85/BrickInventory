@@ -55,7 +55,7 @@ test('settings: section list with large font on the desktop', { concurrency: 1, 
           document.documentElement.style.fontSize = '${schrift}'; true`);
         await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
         const m = await b.auswerten(MEASURE);
-        assert.ok(m.entries >= 6, `nur ${m.entries} Einträge gemessen`);
+        assert.ok(m.eintraege >= 6, `nur ${m.eintraege} Einträge gemessen`);
         assert.deepEqual(m.funde, [], `Spalte ${m.spalte} px`);
         assert.ok(m.seite <= m.innen, `Seite ${m.seite} px breit bei ${m.innen} px Fenster`);
       });
