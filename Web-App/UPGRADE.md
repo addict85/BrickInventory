@@ -2461,3 +2461,43 @@ Daten, keine Bezeichner, und bleiben unverändert.
 - **Caddy:** Alle Anmeldewege ohne Sitzung (auch Abmelden, E-Mail bestätigen, das Nein
   der App beim QR-Code, Abbruch- und Freigabelink) haben die Rumpfgrenze von 16 KB.
   Wer ein eigenes Caddyfile pflegt, übernimmt den Block `(anmeldung)`.
+
+## 70. Runde 30, Phase 2 – Server-Code, Skripte, Umgebungsvariablen und Datenbanknamen auf Englisch (Migration 0127)
+
+- **Umgebungsvariablen** heissen englisch. Die alten Namen gelten weiter; beim Start
+  steht je alter Variable eine Warnung im Log (`Variable umbenannt: …`). Ist der neue
+  Name gesetzt, gewinnt er. Umbenannt sind:
+  `ROLLE`→`ROLE` (Wert `beides`→`both`, `beides` wird weiter angenommen),
+  `PROXY_NETZ_BESTAETIGT`→`PROXY_NETWORK_CONFIRMED`, `APP_BASE_URL_FEHLT_OK`→`APP_BASE_URL_MISSING_OK`,
+  `ERFASSUNG_ZEITZONE`→`ACQUISITION_TIME_ZONE`, `UPLOAD_KONTINGENT_MB`→`UPLOAD_QUOTA_MB`,
+  `UPLOAD_GESAMT_MB`→`UPLOAD_TOTAL_MB`, `MAIL_KONSOLE_MIT_TOKEN`→`MAIL_CONSOLE_WITH_TOKEN`,
+  `BILD_CACHE_MAX_MB`→`IMAGE_CACHE_MAX_MB`, `BILD_ABRUFE_JE_MINUTE`→`IMAGE_FETCHES_PER_MINUTE`,
+  `CSV_ZEILE_FRIST_MS`→`CSV_ROW_DEADLINE_MS`, `AUFTRAG_PARALLEL`→`JOB_PARALLEL`,
+  `BCRYPT_ARBEITER`→`BCRYPT_WORKERS`, `AUFTRAG_FRIST_SEK`→`JOB_DEADLINE_SEC`,
+  `CA_ZERTIFIKAT`→`CA_CERTIFICATE`, `VERTRAG_PRUEFEN`→`CHECK_CONTRACT`,
+  `PASSKEY_ANDROID_ZERTIFIKATE`→`PASSKEY_ANDROID_CERTIFICATES`,
+  `PASSKEY_ANDROID_PAKET`→`PASSKEY_ANDROID_PACKAGE`, `DB_SUPERUSER_ERLAUBT`→`DB_SUPERUSER_ALLOWED`,
+  `ATTESTATION_WURZELN`→`ATTESTATION_ROOTS`, `GERAETESCHLUESSEL_ALT_BIS`→`DEVICE_KEY_OLD_UNTIL`,
+  `ATTESTATION_WIDERRUF_TAGE`→`ATTESTATION_REVOCATION_DAYS`,
+  `ATTESTATION_PATCH_MINDESTENS`→`ATTESTATION_PATCH_MINIMUM`. Am besten die `.env` gleich
+  umstellen (Vorlage: `.env.example`).
+- **Skripte:** `schluessel-anlegen.sh`→`create-keys.sh`, `daten-rechte.sh`→`data-permissions.sh`,
+  `postgres/app-rolle.sh`→`postgres/app-role.sh`, in `scripts/`:
+  `geheimnisse-einrichten.sh`→`setup-secrets.sh`, `ca-einrichten.sh`→`setup-ca.sh`,
+  `rollen-trennen.sh`→`separate-roles.sh`, `datenschluessel-wechseln.sh`→`rotate-data-key.sh`,
+  `archiv-pruefen.sh`→`check-archive.sh`, `image-pruefen.sh`→`check-image.sh`. Wer sie aus
+  eigenen Cronjobs oder Anleitungen aufruft, zieht die Namen nach. Die Dienstnamen in
+  `docker-compose.yml` bleiben.
+- **npm-Skripte** (nur Entwicklung und CI): `format:pruefen`→`format:check`,
+  `format:alles`→`format:all`, `abdeckung`→`coverage`, `test:seriell`→`test:serial`,
+  `schema:stand`→`schema:snapshot`, `schema:zeilen`→`schema:rows`,
+  `vertrag:openapi|frontend|kotlin`→`contract:openapi|frontend|kotlin`.
+- **Migration 0127** benennt Constraints, Indizes, Trigger, Policies und Funktionen der
+  Datenbank englisch (z. B. `zeilenschutz_konto()`→`row_security_account()`,
+  `set_nummer_mit_version()`→`set_number_with_version()`). Eigene SQL-Abfragen oder
+  Auswertungen, die diese Namen nennen, ziehen nach; die Liste steht in der Migration.
+  Gespeicherte Werte (Auftragsstatus, Auftragsarten) bleiben, sie gehören zu API v1.
+- **Sitzungsvariable `app.konto` heisst `app.account`.** Der Zeilenschutz liest nur noch
+  `app.account`. Ein Prozess mit dem alten Code sieht nach der Migration keine Zeilen mehr
+  (er schliesst, statt zu öffnen) – Web- und Job-Prozess deshalb zusammen mit dem Update
+  neu starten, wie bei jedem Update mit Migration.
