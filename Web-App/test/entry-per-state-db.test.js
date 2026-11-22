@@ -250,18 +250,18 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     );
     assert.ok(n, 'Vorbedingung: die N-Zeile von oben');
     assert.equal(
-      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'N', { preis: 1.5 }),
+      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'N', { price: 1.5 }),
       null,
       'Gegen den EIGENEN Zustand ist der Tag frei — die eigene Zeile zählt nicht',
     );
-    const clash = await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.5 });
+    const clash = await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { price: 0.5 });
     assert.ok(
       clash,
       'Gegen den ANDEREN Zustand mit gleichem Preis liegt dort eine Zeile. Wer sie ' +
         'übersieht, lässt eine Dublette entstehen — und der Index weist sie ab',
     );
     assert.equal(
-      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.9 }),
+      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { price: 0.9 }),
       null,
       'Mit anderem Preis ist es seit Migration 0047 eine eigene Zeile, keine Kollision',
     );

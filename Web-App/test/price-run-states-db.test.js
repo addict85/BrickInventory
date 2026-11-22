@@ -42,10 +42,10 @@ test('conditions per set for the price run', { concurrency: 1 }, async t => {
   ]) {
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2) ON CONFLICT DO NOTHING', [uid, sn]);
     await bookEntry(require('./helpers/sources').testContext('sets'), {
-      konto: uid,
+      account: uid,
       setNumber: sn,
       quantity: 1,
-      kaufpreis: 10,
+      purchasePrice: 10,
       condition: z,
     });
   }

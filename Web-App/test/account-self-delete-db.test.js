@@ -108,7 +108,7 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
     assert.ok(await da(id));
   });
 
-  const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
+  const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').accounts };
   const { verifyEmailToken } = _req('src/account/loginCheck.js');
   const { tokenDigest } = _req('src/account/deviceToken.js');
   const registered = async (name, daysAlt) => {

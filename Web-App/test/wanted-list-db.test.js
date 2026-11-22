@@ -258,7 +258,7 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
     return {
       gesehen,
       creator: {
-        teil: async (_u, body) => {
+        part: async (_u, body) => {
           gesehen.push(body);
           return { action: secondRun ? 'updated' : 'created' };
         },

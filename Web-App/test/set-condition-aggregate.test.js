@@ -120,7 +120,7 @@ test('a manually entered part gets market price and entry', () => {
   // The rule, not its notation
   assert.match(
     fn,
-    /price: erfassungsPreis/,
+    /price: acquisitionPrice/,
     'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
       '(src/finances/priceRule.ts, acquisitionPrice) — in der Erfassung hiesse eine 0 ' +
       '„für null Franken gekauft"',
@@ -128,7 +128,7 @@ test('a manually entered part gets market price and entry', () => {
   const regel = fs.readFileSync(path.join(ROOT, 'src/finances/priceRule.ts'), 'utf8');
   assert.match(
     regel,
-    /erfassungsPreis:\s*kaufpreis > 0 \? kaufpreis : null/,
+    /acquisitionPrice:\s*purchasePrice > 0 \? purchasePrice : null/,
     'src/finances/priceRule.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung',
   );
   assert.match(fn, /condition: effectiveCondition/, 'Die Erfassung braucht den Zustand');
@@ -278,7 +278,7 @@ test('entries without a purchase price are filled in', () => {
   // Independent of the set row: backfillSets() only sees sets with a NULL price
   assert.match(
     job,
-    /FROM \$\{l\.setErfassungen\(\)\} e\s+WHERE purchase_price IS NULL/,
+    /FROM \$\{l\.setAcquisitions\(\)\} e\s+WHERE purchase_price IS NULL/,
     'Der Nachtrag muss alle preislosen Erfassungen finden',
   );
   // The condition of the ACQUISITION determines the price, not that of the set

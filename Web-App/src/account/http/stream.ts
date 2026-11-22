@@ -12,7 +12,7 @@ export interface Stream {
   end(): void;
   /** Runs along at the end, even if the client or the watch triggers it. */
   atEnd(f: () => void): void;
-  readonly to: boolean;
+  readonly closed: boolean;
   /** Like send(), but StromGeschlossen when the stream is closed: the work behind it aborts. */
   sendOrAbort(data: object): void;
 }
@@ -40,11 +40,11 @@ export function openStream(account: AccountServices, req: Request, res: Response
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
   const deregister = [registerSse(res)];
-  let to = false,
+  let closed = false,
     lastUsed = '';
   const end = () => {
-    if (to) return;
-    to = true;
+    if (closed) return;
+    closed = true;
     for (const f of deregister) f();
     if (!res.writableEnded) res.end();
   };
@@ -60,7 +60,7 @@ export function openStream(account: AccountServices, req: Request, res: Response
   }
   req.on('close', end);
   const send = (data: object) => {
-    if (to || res.destroyed) return;
+    if (closed || res.destroyed) return;
     const json = JSON.stringify(lineToV1(res, data));
     if (o.onlyChanges && json === lastUsed) return;
     lastUsed = json;
@@ -73,14 +73,14 @@ export function openStream(account: AccountServices, req: Request, res: Response
     send,
     end,
     atEnd: f => {
-      if (to) f();
+      if (closed) f();
       else deregister.push(f);
     },
-    get to() {
-      return to;
+    get closed() {
+      return closed;
     },
     sendOrAbort: data => {
-      if (to) throw new StreamClosed();
+      if (closed) throw new StreamClosed();
       send(data);
     },
   };

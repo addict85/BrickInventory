@@ -53,7 +53,7 @@ function instance(t, uid) {
     await db.pool.end();
   });
   const base = `http://localhost:${portOf(srv)}`;
-  return { db, dienste, clock, get: p => fetch(base + p) };
+  return { db, services: dienste, clock, get: p => fetch(base + p) };
 }
 
 test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, async t => {
@@ -126,8 +126,8 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
     for (let i = 0; i < JOB_BUDGET; i++)
       assert.equal((await claim(i % 2 ? a : b, eins, 'POST', '/sets/partslist-pdf', now)).allowed, true);
     const ab = await claim(a, eins, 'POST', '/sets/partslist-pdf', now);
-    assert.deepEqual([ab.allowed, ab.auftrag], [false, true]);
-    assert.equal(ab.units, JOB_BUDGET * COST.auftrag, 'sonst hätte das allgemeine Budget zugemacht, nicht der Topf');
+    assert.deepEqual([ab.allowed, ab.job], [false, true]);
+    assert.equal(ab.units, JOB_BUDGET * COST.job, 'sonst hätte das allgemeine Budget zugemacht, nicht der Topf');
     assert.equal((await claim(b, eins, 'GET', '/sets', now)).allowed, true);
   });
 

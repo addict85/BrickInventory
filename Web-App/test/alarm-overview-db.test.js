@@ -34,7 +34,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
 
   const { allAlerts, setAlert, deleteAlert } = {
     ..._req('src/finances/priceAlert.js'),
-    ...require('./helpers/sources').testArea('finances').preisalarm,
+    ...require('./helpers/sources').testArea('finances').priceAlert,
   };
 
   for (const n of ['alarm_ich', 'alarm_fremd', 'alarm_kind'])

@@ -550,15 +550,19 @@ test('routes, jobs and clients import no repositories', () => {
 
   // xBereich() delivers bound repositories and the access (db); a route takes
   // the services the scope offers in its index.ts. Counter-checks (13.11.2026):
-  // `await kontoBereich().protokoll.protokolliere(…)` back in routes/auth/users.ts
-  // → rot „routes/auth/users.ts: kontoBereich()“; `gutscheineBereich` als Import in
-  // routes/api/vouchers.ts → rot „…: gutscheineBereich (Import)“.
-  const FACTORIES = fs.readdirSync(path.join(ROOT, 'src')).flatMap(b => {
-    const f = path.join(ROOT, 'src', b, 'area.ts');
-    return fs.existsSync(f)
-      ? [...fs.readFileSync(f, 'utf8').matchAll(/^export function (create\w+)/gm)].map(m => m[1])
-      : [];
-  });
+  // `createAccount(d)` in routes/api/admin.ts → red (22.11.2026, since the English names;
+  // before, the search looked for xBereich() and found nothing).
+  // The scope factories as the wiring imports them from src/<scope>.
+  const FACTORIES = [
+    ...fs
+      .readFileSync(path.join(ROOT, 'startup/wiring.ts'), 'utf8')
+      .matchAll(/import \{([^}]*)\} from '\.\.\/src\/\w+'/g),
+  ].flatMap(m =>
+    m[1]
+      .split(',')
+      .map(n => n.trim())
+      .filter(n => /^create[A-Z]\w*$/.test(n)),
+  );
   assert.ok(FACTORIES.length >= 15, `nur ${FACTORIES.length} Bereichsfabriken gefunden`);
   const CALL = new RegExp(`\\b(?:${FACTORIES.join('|')})\\s*\\(`, 'g');
   const IMPORT = /import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/[^']+'/g;

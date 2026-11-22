@@ -52,7 +52,7 @@ Object.assign(require('./helpers/sources').testArea('sets'), {
       name: e.setNumber,
       catalog_pending: true,
       supplement: 'pending',
-      besitzer: e.requester,
+      owner: e.requester,
     };
   },
   setSupplement: async () => {

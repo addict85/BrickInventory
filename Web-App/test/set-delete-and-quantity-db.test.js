@@ -66,8 +66,8 @@ test('the quantity multiplication is in all places', () => {
   // alias `sm` does not exist at all. Without this second assertion the rule would also be
   // green with a multiplication that aborts at runtime.
   assert.ok(
-    (h.match(/mengeJoin\(/g) || []).length >= 3,
-    'Zu wenige JOIN-Quellen: quantityFrom() liest `sm.menge`, und den Alias hängt ' + 'erst mengeJoin() an',
+    (h.match(/setQuantityJoin\(/g) || []).length >= 3,
+    'Zu wenige JOIN-Quellen: quantityFrom() liest `sm.quantity`, und den Alias hängt ' + 'erst setQuantityJoin() an',
   );
 
   // That the summary follows a quantity change is checked by

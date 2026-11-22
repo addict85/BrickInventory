@@ -53,7 +53,7 @@ function sequenceJob(
 ) {
   const check = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
-    if (stream.to) return;
+    if (stream.closed) return;
     if (job) stream.send(streamStatus(job));
     if (!job || finished(job.status)) stream.end();
   };

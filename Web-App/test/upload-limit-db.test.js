@@ -128,7 +128,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
     try {
       const r = await readInBackground(await pdfWith(3));
       assert.equal(r.kind, 'gelesen');
-      assert.equal(r.seiten, 3);
+      assert.equal(r.pages, 3);
     } finally {
       wt.Worker = Echt;
     }

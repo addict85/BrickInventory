@@ -95,7 +95,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
       name: 'Testset',
       catalog_pending: true,
       supplement: 'pending',
-      besitzer: e.requester,
+      owner: e.requester,
     });
     const vorher = positionCalled;
 

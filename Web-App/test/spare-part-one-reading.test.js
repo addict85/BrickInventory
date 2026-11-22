@@ -63,11 +63,11 @@ test('the spellings are enumerated in only one place', () => {
   // Self-proof: the helper must really know the notations — otherwise
   // the check above would be green because there is nothing left to find anywhere.
   const helper = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
-  // isSparePart() reads with isJa(), the reading of all yes/no values from outside.
-  const i = helper.indexOf('export function isJa(');
-  assert.ok(i > 0, 'isJa() fehlt');
+  // isSparePart() reads with isYes(), the reading of all yes/no values from outside.
+  const i = helper.indexOf('export function isYes(');
+  assert.ok(i > 0, 'isYes() fehlt');
   const rumpf = helper.slice(i, helper.indexOf('\n}', i));
-  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isJa() kennt ${form} nicht`);
+  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isYes() kennt ${form} nicht`);
 });
 
 test('the response carries a real boolean', async t => {

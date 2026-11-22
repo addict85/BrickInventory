@@ -268,7 +268,7 @@ test('the rebuild does not block the request', () => {
     'Veralteter Stand wird ausgeliefert; ohne jeden Stand übernimmt die Live-Abfrage',
   );
 
-  assert.match(src, /neuaufbau: new Map/, 'Ohne Sperre starten parallele Anfragen denselben Aufbau mehrfach');
+  assert.match(src, /rebuild: new Map/, 'Ohne Sperre starten parallele Anfragen denselben Aufbau mehrfach');
   assert.match(
     src,
     /export async function rebuildNow/,

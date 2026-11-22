@@ -1669,8 +1669,8 @@ test('German identifiers: none in the server, fewer and fewer in the tests', () 
       'wert',
       'farbe',
     ],
-    /** Fields on the wire that the UI reads (contract.d.ts does not list them). */
-    WIRE: ['abdeckung'],
+    /** On the wire: a field the UI reads (contract.d.ts does not list it), a QR validity older pages send. */
+    WIRE: ['abdeckung', 'unbegrenzt'],
     /** Names of others: Node's TLS option, operator environment variables, keys of shared/app-schnittstelle.json,
      * the keys of the JSON log line (README) and of the security events in it, which log tools read. */
     EXTERNAL: [
@@ -1706,7 +1706,7 @@ test('German identifiers: none in the server, fewer and fewer in the tests', () 
   assert.deepEqual(unused, [], 'Ausnahme ohne Vorkommen — aus NOT_OURS streichen');
 
   // Distinct names in the test area; the goal is 0.
-  const LIMIT_TEST = 1182;
+  const LIMIT_TEST = 1180;
   const inTests = new Set();
   for (const f of files(__dirname)) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) inTests.add(id);
   assert.ok(inTests.size <= LIMIT_TEST, `${inTests.size} deutsche Bezeichner in test, erlaubt sind ${LIMIT_TEST}`);

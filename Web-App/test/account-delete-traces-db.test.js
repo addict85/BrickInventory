@@ -30,7 +30,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { secureUserData, cleanOldBackupsOn } = _req('db/migrate.js');
-const { cleanLogOn } = require('./helpers/sources').testArea('account').protokoll;
+const { cleanLogOn } = require('./helpers/sources').testArea('account').log;
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('account deletion without traces', { concurrency: 1 }, async t => {

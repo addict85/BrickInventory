@@ -14,7 +14,7 @@ const OUT_FILE = path.join(__dirname, '..', 'db/schema-snapshot.sql');
  */
 async function schemaText(db) {
   const columns = await db.all(`
-    SELECT c.relname AS table_name, a.attname AS column_name, format_type(a.atttypid, a.atttypmod) AS typ,
+    SELECT c.relname AS table_name, a.attname AS column_name, format_type(a.atttypid, a.atttypmod) AS type,
            a.attnotnull AS not_null, pg_get_expr(d.adbin, d.adrelid) AS default_expr
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'

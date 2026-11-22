@@ -207,8 +207,8 @@ test('a broken CSV entry does not topple the whole file', () => {
   // Really empty lines count as skipped and are named.
   const leer = csvReadIn('set_number,quantity\n10280,1\n,\n');
   assert.equal(leer.records.length, 1);
-  assert.deepEqual(leer.uebersprungen, [3], 'Zeilennummer wie im Editor, 1-basiert mit Kopfzeile');
-  assert.match(skippedHint(leer.uebersprungen), /1 Zeile\(n\) übersprungen \(Zeile 3\)/);
+  assert.deepEqual(leer.skipped, [3], 'Zeilennummer wie im Editor, 1-basiert mit Kopfzeile');
+  assert.match(skippedHint(leer.skipped), /1 Zeile\(n\) übersprungen \(Zeile 3\)/);
   assert.equal(skippedHint([]), null, 'ohne Übersprungene kein Hinweis');
 });
 

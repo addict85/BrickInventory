@@ -190,17 +190,17 @@ export function escapeLike(s: unknown): string {
 }
 
 /** Choices of the QR dialog; above TOKEN_MAX_DAYS they are cut to it (tokenDays). There is no
- * "unlimited" any more, it removed the only automatic rip cord for a lost device: the old
+ * "unbegrenzt" any more, it removed the only automatic rip cord for a lost device: the old
  * choice is still accepted from older pages and means the bound. */
 const TOKEN_RUNTIMES: Record<string, number> = {
   '1m': 30,
   '2m': 60,
   '6m': 180,
   '12m': 365,
-  unlimited: 0,
+  unbegrenzt: 0,
 };
 
-/** The choices the QR dialog may offer; 6m, 12m and "unlimited" exceed the default bound and are
+/** The choices the QR dialog may offer; 6m, 12m and "unbegrenzt" exceed the default bound and are
  * only still accepted from older pages. */
 export const RUNTIME_CHOICES: readonly string[] = Object.freeze(['1m', '2m']);
 

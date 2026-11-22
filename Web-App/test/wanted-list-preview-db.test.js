@@ -265,7 +265,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       preview: false,
       corrections: [{ index: 1, blId: '3001', kind: 'part', rbColor: 7 }],
       creator: {
-        teil: async (_u, body) => {
+        part: async (_u, body) => {
           zaehler.push(body);
           return { action: 'created' };
         },
@@ -315,7 +315,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       preview: false,
       corrections: [{ index: 0, blId: '4444', kind: 'part', rbColor: 7 }],
       creator: {
-        teil: async (_u, body) => {
+        part: async (_u, body) => {
           zaehler.push(body);
           return { action: 'created' };
         },
@@ -336,7 +336,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   await t.test('5. only a REGISTERED number is remembered, no catalog hit', async () => {
     const gemerkt = [];
     const creator = {
-      teil: async () => ({ action: 'created' }),
+      part: async () => ({ action: 'created' }),
       minifig: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
@@ -368,7 +368,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       preview: false,
       viaRebrickable: true,
       creator: {
-        teil: async () => ({ action: 'created' }),
+        part: async () => ({ action: 'created' }),
         minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
@@ -402,7 +402,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       preview: true,
       corrections: [{ index: 0, blId: '9999', kind: 'part', rbId: '3002', rbColor: 4 }],
       creator: {
-        teil: async () => ({ action: 'created' }),
+        part: async () => ({ action: 'created' }),
         minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
@@ -448,7 +448,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   await t.test('8. name and image are in the report EVEN after writing', async () => {
     // Marco's finding of 21.10.
     const creator = {
-      teil: async () => ({ action: 'created' }),
+      part: async () => ({ action: 'created' }),
       minifig: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
@@ -488,7 +488,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       preview: false,
       creator: {
         // The way addManualPart would do it: fill the catalog first, then report.
-        teil: async () => {
+        part: async () => {
           await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url)
                         VALUES ('7777',4,'https://cdn.example/7777.png')
                         ON CONFLICT DO NOTHING`);
