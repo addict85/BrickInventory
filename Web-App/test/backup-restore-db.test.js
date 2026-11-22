@@ -105,7 +105,7 @@ test('backup and restore', async t => {
     return lastRun.status;
   };
   /** What psql said — the last lines, so that the message stays readable. */
-  const grund = () =>
+  const reason = () =>
     (lastRun?.stderr || '').trim().split('\n').slice(-8).join('\n') || '(psql hat nichts nach stderr geschrieben)';
 
   await t.test('setup: schema and some data', async () => {
@@ -137,7 +137,7 @@ test('backup and restore', async t => {
        VALUES ($1,'10214-1',2,44.50,'U')`,
       [uid],
     );
-    await holdsPart(db, uid, '3001', { menge: 17, colorId: 4 });
+    await holdsPart(db, uid, '3001', { quantity: 17, colorId: 4 });
     // What does not belong in the backup: a session, a login counter, a log line.
     await db.run(
       `INSERT INTO user_sessions (sid, sess, expire) VALUES ('sicherung-sid', '{"userId":1}', NOW() + INTERVAL '1 day')`,
@@ -147,15 +147,15 @@ test('backup and restore', async t => {
   });
 
   // The same options as backup.sh: what is measured is what the script backs up.
-  const optionen = (
+  const options = (
     fs.readFileSync(path.join(ROOT, 'scripts', 'backup.sh'), 'utf8').match(/^DUMP_OPTIONEN="([^"]+)"$/m)?.[1] ?? ''
   )
     .split(' ')
     .filter(Boolean);
 
   await t.test('pg_dump creates a complete dump', () => {
-    assert.ok(optionen.includes('--clean'), `backup.sh: DUMP_OPTIONEN nicht gefunden (${optionen})`);
-    execFileSync(pgDump, [...optionen, '-f', dump, url], { stdio: 'pipe', timeout: CALL_DEADLINE });
+    assert.ok(options.includes('--clean'), `backup.sh: DUMP_OPTIONEN nicht gefunden (${options})`);
+    execFileSync(pgDump, [...options, '-f', dump, url], { stdio: 'pipe', timeout: CALL_DEADLINE });
     const inhalt = fs.readFileSync(dump, 'utf8');
     assert.match(
       inhalt.slice(-500),
@@ -181,7 +181,8 @@ test('backup and restore', async t => {
     assert.equal(
       einspielen(dump),
       0,
-      `Das Zurückspielen scheiterte. psql sagt:\n${grund()}\n` + `pg_dump: ${fassung(pgDump)} · psql: ${fassung(psql)}`,
+      `Das Zurückspielen scheiterte. psql sagt:\n${reason()}\n` +
+        `pg_dump: ${fassung(pgDump)} · psql: ${fassung(psql)}`,
     );
 
     const s = await db.get(`SELECT user_id, set_number FROM sets`);

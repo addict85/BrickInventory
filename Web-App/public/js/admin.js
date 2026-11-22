@@ -21,7 +21,7 @@ function formatDuration(ms) {
 }
 
 export async function pollJobStatus() {
-  const d = await api('GET', '/v1/admin/job-status');
+  const d = await api('GET', '/v2/admin/job-status');
   if (!d.success) return;
   const j = d.job;
   const dot = G('job-dot');
@@ -36,7 +36,7 @@ export async function pollJobStatus() {
     dot.style.background = 'var(--b500)';
     dot.style.animation = 'sp .8s linear infinite';
     stxt.textContent = tRaw('monitor.job_running');
-    // The contract doesn't name the progress shape (PreisJobStand.job is open); the service writes it
+    // The contract doesn't name the progress shape (PriceJobState.job is open); the service writes it
     // this way.
     const progress = /** @type {{ total?: number, current?: number, set?: string } | undefined} */ (j.progress);
     if (progress) {
@@ -80,7 +80,7 @@ function nextJobPoll(ms) {
 export async function triggerCsvSync(btn) {
   btn.disabled = true;
   btn.textContent = tRaw('monitor.starting');
-  const d = await api('POST', '/v1/admin/trigger-csv-sync');
+  const d = await api('POST', '/v2/admin/trigger-csv-sync');
   if (d?.success) {
     toast(tRaw('monitor.sync_started'), 'success');
     btn.textContent = tRaw('monitor.started');
@@ -105,8 +105,8 @@ export async function queueCatalogImages(btn) {
   btn.textContent = tRaw('monitor.starting');
   // The contract doesn't name these numbers (GenericAdminResponse); the service supplies them this way.
   const d =
-    /** @type {{ success?: boolean, error?: string, pending?: number, skipped?: number, verworfen?: number, dauer_minuten?: number } | null} */ (
-      await api('POST', '/v1/admin/catalog-images')
+    /** @type {{ success?: boolean, error?: string, pending?: number, skipped?: number, discarded?: number, duration_minutes?: number } | null} */ (
+      await api('POST', '/v2/admin/catalog-images')
     );
   if (d?.success) {
     // Name both numbers: what's pending AND what was already done. Without the second, a "0 images
@@ -120,10 +120,10 @@ export async function queueCatalogImages(btn) {
     ];
     // Only name retried failures and the estimated duration when there's something to name — otherwise
     // the message grows by two zeros.
-    if (d.verworfen && d.verworfen > 0)
-      parts.push(tRaw('monitor.catalog_images_retried', { n: d.verworfen.toLocaleString(locale()) }));
-    if (d.dauer_minuten && d.dauer_minuten > 0)
-      parts.push(tRaw('monitor.catalog_images_eta', { n: d.dauer_minuten.toLocaleString(locale()) }));
+    if (d.discarded && d.discarded > 0)
+      parts.push(tRaw('monitor.catalog_images_retried', { n: d.discarded.toLocaleString(locale()) }));
+    if (d.duration_minutes && d.duration_minutes > 0)
+      parts.push(tRaw('monitor.catalog_images_eta', { n: d.duration_minutes.toLocaleString(locale()) }));
     toast(parts.join(' · '), 'success');
     setHtml(btn, ico('ok'));
     setTimeout(() => {
@@ -141,7 +141,7 @@ export async function queueCatalogImages(btn) {
 export async function redownloadMissingImages(btn) {
   btn.disabled = true;
   btn.textContent = tRaw('monitor.starting');
-  const d = await api('POST', '/v1/admin/redownload-missing-images');
+  const d = await api('POST', '/v2/admin/redownload-missing-images');
   if (d?.success) {
     toast(tRaw('monitor.redownload_started'), 'success');
     setHtml(btn, ico('ok'));
@@ -160,7 +160,7 @@ export async function redownloadMissingImages(btn) {
 export async function reimportMissingInstructions(btn) {
   btn.disabled = true;
   btn.textContent = tRaw('common.loading');
-  const d = await api('POST', '/v1/admin/reimport-instructions');
+  const d = await api('POST', '/v2/admin/reimport-instructions');
   if (d?.success) {
     toast(tRaw('monitor.enqueued', { n: d.enqueued }), 'success');
     btn.textContent = tRaw('monitor.enqueued_short', { n: d.enqueued });
@@ -200,7 +200,7 @@ export async function toggleBricksetQueue(btn) {
 export async function loadBricksetQueue() {
   const panel = G('brickset-queue-panel');
   if (!panel) return;
-  const d = await api('GET', '/v1/admin/brickset-queue');
+  const d = await api('GET', '/v2/admin/brickset-queue');
   if (!d?.success) {
     setHtml(panel, html`<div data-style="color:var(--r500)">${tRaw('monitor.load_error')}</div>`);
     panel.style.display = 'block';
@@ -254,7 +254,7 @@ export async function loadBricksetQueue() {
 async function retryBricksetQueueEntry(btn, setNumber) {
   btn.disabled = true;
   setHtml(btn, ico('clock'));
-  const d = await api('POST', `/v1/admin/brickset-queue/${setNumber}/retry`);
+  const d = await api('POST', `/v2/admin/brickset-queue/${setNumber}/retry`);
   if (d?.success) {
     setHtml(btn, ico('ok'));
     toast(tRaw('monitor.retrying', { set: setNumber }), 'success');
@@ -280,7 +280,7 @@ async function deleteBricksetQueueEntry(btn, setNumber) {
   if (row) row.style.opacity = '0.4';
   btn.disabled = true;
   setHtml(btn, ico('clock'));
-  const d = await api('DELETE', `/v1/admin/brickset-queue/${setNumber}`);
+  const d = await api('DELETE', `/v2/admin/brickset-queue/${setNumber}`);
   if (d?.success) {
     if (row) row.remove();
     toast(tRaw('monitor.removed_fallback', { set: setNumber }), 'success');
@@ -293,7 +293,7 @@ async function deleteBricksetQueueEntry(btn, setNumber) {
 }
 
 G('btn-job-trigger').onclick = async () => {
-  const d = await api('POST', '/v1/admin/trigger-price-job');
+  const d = await api('POST', '/v2/admin/trigger-price-job');
   if (d.success && d.started) {
     toast(tRaw('monitor.job_started'), 'info');
     setTimeout(pollJobStatus, 1000);

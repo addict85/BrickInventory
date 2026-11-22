@@ -19,9 +19,9 @@ const SET = {
   set: { set_number: '10294-1', name: 'Titanic', quantity: 1, instructions: [], owners: [] },
 };
 const spaeter =
-  (antwort, ms = 400) =>
+  (response, ms = 400) =>
   () =>
-    new Promise(r => setTimeout(() => r(antwort), ms));
+    new Promise(r => setTimeout(() => r(response), ms));
 
 async function detail(o) {
   const k = o.d.createElement('button');
@@ -34,8 +34,8 @@ async function detail(o) {
 
 test('set detail opens immediately with a placeholder', async () => {
   const o = await openUi({
-    '/v1/sets/10294-1': spaeter(SET),
-    '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
+    '/v2/sets/10294-1': spaeter(SET),
+    '/v2/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
   try {
     await detail(o);
@@ -51,8 +51,8 @@ test('set detail opens immediately with a placeholder', async () => {
 
 test('set detail: closed stays closed', async () => {
   const o = await openUi({
-    '/v1/sets/10294-1': spaeter(SET),
-    '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
+    '/v2/sets/10294-1': spaeter(SET),
+    '/v2/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
   try {
     await detail(o);
@@ -67,9 +67,9 @@ test('set detail: closed stays closed', async () => {
 test('wishlist shows placeholder rows until the list is there', async () => {
   const liste = {
     success: true,
-    merkposten: [{ set_number: '10276-1', condition: 'N', name: 'Kolosseum', added_at: '2026-10-01T00:00:00Z' }],
+    item: [{ set_number: '10276-1', condition: 'N', name: 'Kolosseum', added_at: '2026-10-01T00:00:00Z' }],
   };
-  const o = await openUi({ '/v1/wanted': spaeter(liste) });
+  const o = await openUi({ '/v2/wanted': spaeter(liste) });
   try {
     await reiter(o.w, 'wanted');
     assert.ok(o.d.querySelector('#mk-list .skeleton-list[aria-busy="true"]'), 'keine Platzhalter');

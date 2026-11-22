@@ -82,8 +82,8 @@ test('storage location when capturing — against a real database', async t => {
   }
   await seed();
   const setService = require('./helpers/sources').areaPage('sets');
-  const teile = _req('src/parts/manualParts.js');
-  const figuren = _req('src/minifigs/manualMinifigs.js');
+  const parts = _req('src/parts/manualParts.js');
+  const minifigs = _req('src/minifigs/manualMinifigs.js');
   const merkliste = _req('src/wanted/wanted.js');
   const L = {
     ..._req('src/inventory/storageLocation.js'),
@@ -95,13 +95,13 @@ test('storage location when capturing — against a real database', async t => {
     await setService.acquireSet({
       requester: U.ich,
       setNumber: '10179-1',
-      menge: 1,
-      zustand: 'N',
+      quantity: 1,
+      condition: 'N',
       lagerort: 'Kiste 3',
       ifPresent: 'aufstocken',
     });
-    const ort = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '10179-1']);
-    assert.equal(ort, 'Kiste 3', 'Das Set wurde erfasst, aber ohne den mitgegebenen Lagerort.');
+    const location = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '10179-1']);
+    assert.equal(location, 'Kiste 3', 'Das Set wurde erfasst, aber ohne den mitgegebenen Lagerort.');
   });
 
   await t.test('2. the newly typed place lands in the stock', async () => {
@@ -112,7 +112,7 @@ test('storage location when capturing — against a real database', async t => {
   });
 
   await t.test('3. a manually captured part gets its storage location', async () => {
-    await teile.addManualPart(U.ich, { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
+    await parts.addManualPart(U.ich, { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
     const r = await db.get(
       `SELECT l.name AS storage FROM parts t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
@@ -125,7 +125,7 @@ test('storage location when capturing — against a real database', async t => {
 
   await t.test('4. a manually captured minifigure gets its storage location', async () => {
     // Until migration 0024 the column did not exist at all.
-    await figuren.addManualMinifig(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
+    await minifigs.addManualMinifig(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
     const r = await db.get(
       `SELECT l.name AS storage FROM minifigs t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
@@ -139,38 +139,38 @@ test('storage location when capturing — against a real database', async t => {
   await t.test('5. the adoption from the wishlist passes it through', async () => {
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`, [U.ich, '75192-1']);
     await merkliste.fulfillWantedItem(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
-    const ort = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '75192-1']);
-    assert.equal(ort, 'Dachboden', 'Der Merkposten wurde übernommen, der Lagerort ging dabei verloren.');
+    const location = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '75192-1']);
+    assert.equal(location, 'Dachboden', 'Der Merkposten wurde übernommen, der Lagerort ging dabei verloren.');
   });
 
   await t.test('6. the overview counts figures SEPARATELY, not as part kinds', async () => {
     // „18 Teilesorten" would otherwise mean 18 part kinds at one time and 12 plus 6
     // figures at another, and nobody could tell from the number what is meant.
     const liste = await L.lagerorte([U.ich]);
-    const vitrine = liste.find(o => o.ort === 'Vitrine');
+    const vitrine = liste.find(o => o.location === 'Vitrine');
     assert.ok(vitrine, 'Ein Ort, in dem NUR eine Figur liegt, fehlt in der Übersicht.');
-    assert.deepEqual([vitrine.sets, vitrine.teile, vitrine.figuren], [0, 0, 1]);
-    const kiste = liste.find(o => o.ort === 'Kiste 3');
-    assert.deepEqual([kiste.sets, kiste.teile, kiste.figuren], [1, 0, 0]);
+    assert.deepEqual([vitrine.sets, vitrine.parts, vitrine.minifigs], [0, 0, 1]);
+    const kiste = liste.find(o => o.location === 'Kiste 3');
+    assert.deepEqual([kiste.sets, kiste.parts, kiste.minifigs], [1, 0, 0]);
   });
 
   await t.test('7. a place with only one figure in it cannot be deleted', async () => {
     // Otherwise the assignment of the figure would afterwards point to a name that the
     // stock no longer knows.
-    const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
+    const location = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
     // What is checked is `code`, not the text: fachfehler() puts the German
     // version into `message` and the code next to it (src/infra/errorTexts.ts). Checking
     // the text would mean hanging the rule on a translation.
     await assert.rejects(
-      () => L.deleteStorage(U.ich, parseInt(ort.id, 10)),
-      (/** @type {any} */ e) => e?.code === 'lagerort_in_benutzung',
+      () => L.deleteStorage(U.ich, parseInt(location.id, 10)),
+      (/** @type {any} */ e) => e?.code === 'storage_in_use',
       'Der Ort liess sich löschen, obwohl eine Figur darin liegt.',
     );
   });
 
   await t.test('8. renaming takes the figures along', async () => {
-    const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
-    await L.renameStorage(U.ich, parseInt(ort.id, 10), 'Vitrine Wohnzimmer');
+    const location = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
+    await L.renameStorage(U.ich, parseInt(location.id, 10), 'Vitrine Wohnzimmer');
     const minifigLocation = await locationOf(db, 'minifigs', 't.user_id=$1 AND t.fig_number=$2', [U.ich, 'sw0001']);
     assert.equal(
       minifigLocation,

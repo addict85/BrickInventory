@@ -19,7 +19,7 @@ import type { WantedServices } from '../wanted';
 import type { Clock } from '../infra/clock';
 
 export interface ManagementDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
   settings: SettingsServices;
   jobQueue: JobsServices;

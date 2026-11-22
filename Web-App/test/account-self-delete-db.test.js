@@ -1,5 +1,5 @@
 /**
- * An account deletes itself (DELETE /api/v1/auth/konto) with password and,
+ * An account deletes itself (DELETE /api/v2/auth/konto) with password and,
  * if set up, second factor; the last administrator cannot.
  * Unconfirmed registrations are cleared by the daily run after seven days,
  * accounts with only a not yet confirmed new address are not.
@@ -71,7 +71,7 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
   const als = uid => {
     const { base } = testServer(_req, { sitzung: { userId: uid, destroy: cb => cb() }, t });
     return async body => {
-      const r = await fetch(`${base}/api/v1/auth/konto`, {
+      const r = await fetch(`${base}/api/v2/auth/account`, {
         method: 'DELETE',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
@@ -97,14 +97,14 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
     const id = await konto(NAMEN[1]);
     await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [id]);
     const r = await als(id)({ password: PASS });
-    assert.equal(r.body.code, 'zweiter_faktor_noetig', JSON.stringify(r.body));
+    assert.equal(r.body.code, 'second_factor_required', JSON.stringify(r.body));
     assert.ok(await da(id));
   });
 
   await t.test('the last admin stays', async () => {
     const id = await konto(NAMEN[2], true);
     const r = await als(id)({ password: PASS });
-    assert.deepEqual([r.status, r.body.code], [409, 'letzter_verwalter']);
+    assert.deepEqual([r.status, r.body.code], [409, 'last_admin']);
     assert.ok(await da(id));
   });
 
@@ -130,19 +130,19 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
     const bestaetigt = await registered(NAMEN[6], 8);
     assert.ok((await verifyEmailToken(bestaetigt.roh)).userId);
     // An old account whose new address is not yet confirmed.
-    const adresse = await konto(NAMEN[5]);
+    const address = await konto(NAMEN[5]);
     await db.run(
       `UPDATE users SET email_verified = false, verification_token = 'x', created_at = NOW() - INTERVAL '30 days' WHERE id = $1`,
-      [adresse],
+      [address],
     );
 
     await _req('src/management/cleanup.js').cleanupDaily();
-    const stand = {
+    const state = {
       alt: await da(alt.id),
       neu: await da(neu.id),
       bestaetigt: await da(bestaetigt.id),
-      adresse: await da(adresse),
+      address: await da(address),
     };
-    assert.deepEqual(stand, { alt: false, neu: true, bestaetigt: true, adresse: true });
+    assert.deepEqual(state, { alt: false, neu: true, bestaetigt: true, address: true });
   });
 });

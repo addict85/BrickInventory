@@ -4,7 +4,7 @@ import type { InventoryReadContract } from '../readContract';
 import { teilSichtJoin, minifigViewJoin, setMasterJoin, TEIL, MINIFIG, SET } from '../../../db/catalogView';
 
 /** Purchase price weighted by quantity in the account currency. */
-export function entryMetrics(db: DbInterface, l: InventoryReadContract, art: 'part' | 'fig', uids: number[]) {
+export function entryMetrics(db: DbInterface, l: InventoryReadContract, kind: 'part' | 'fig', uids: number[]) {
   return db.all<{
     part_number?: string;
     color_id?: number | null;
@@ -13,7 +13,7 @@ export function entryMetrics(db: DbInterface, l: InventoryReadContract, art: 'pa
     used_count: string;
     avg_purchase_price: number | null;
   }>(
-    art === 'part'
+    kind === 'part'
       ? `SELECT part_number, color_id,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
@@ -38,16 +38,16 @@ const SEARCH_COLUMNS = new Set(['part_number', 'color_id', 'fig_number']);
 /** Figures have neither color nor category; fixed NULL, so that both branches
  * deliver the same shape. */
 const HEADER_FIELDS = {
-  parts: `x.part_number AS nummer, MAX(${TEIL.name}) AS name,
+  parts: `x.part_number AS number, MAX(${TEIL.name}) AS name,
           MAX(x.color_id) AS color_id, MAX(${TEIL.farbname}) AS color_name,
           MAX(${TEIL.farbcode}) AS color_hex, MAX(${TEIL.kategorie}) AS category_name,
-          MAX(${TEIL.bildDatei}) AS teil_image_local, MAX(${TEIL.bild}) AS teil_image_url,
+          MAX(${TEIL.bildDatei}) AS teil_image_local, MAX(${TEIL.image}) AS teil_image_url,
           bool_or(COALESCE(spc.is_spare, false)) AS is_spare,
           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
-  minifigs: `x.fig_number AS nummer, MAX(${MINIFIG.name}) AS name,
+  minifigs: `x.fig_number AS number, MAX(${MINIFIG.name}) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
-          MAX(${MINIFIG.bildDatei}) AS teil_image_local, MAX(${MINIFIG.bild}) AS teil_image_url,
+          MAX(${MINIFIG.bildDatei}) AS teil_image_local, MAX(${MINIFIG.image}) AS teil_image_url,
           false AS is_spare, NULL::text AS storage`,
 } as const;
 
@@ -72,7 +72,7 @@ export interface UsageRow {
   set_name: string | null;
   set_image_local: string | null;
   set_image_url: string | null;
-  nummer: string;
+  number: string;
   name: string | null;
   color_id: number | null;
   color_name: string | null;
@@ -177,11 +177,11 @@ export async function copySetContent(
 /** Without quantity: it arises from the acquisition that moves along right away. */
 export async function createManual(
   tx: DbInterface,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   uid: number,
   key: (string | number)[],
 ): Promise<void> {
-  if (art === 'part')
+  if (kind === 'part')
     await tx.run(
       `INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual') ON CONFLICT DO NOTHING`,
       [uid, ...key],

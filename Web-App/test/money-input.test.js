@@ -27,19 +27,19 @@ async function setErfassen(o, preis) {
   d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
   await takt(10);
   d.getElementById('add-num').value = '10294-1';
-  const feld = d.getElementById('add-price');
-  feld.value = preis;
-  feld.dispatchEvent(new w.Event('input', { bubbles: true }));
+  const field = d.getElementById('add-price');
+  field.value = preis;
+  field.dispatchEvent(new w.Event('input', { bubbles: true }));
   const vorher = aufrufe.length;
   d.getElementById('btn-add').click();
   await takt(30);
   const a = aufrufe.slice(vorher).find(x => x.url.includes('/sets/add-stream'));
-  const fehler = d.getElementById('add-price-error');
+  const error = d.getElementById('add-price-error');
   return {
     gesendet: !!a,
     wert: a ? JSON.parse(a.body).purchase_price : undefined,
-    fehler: fehler && !fehler.hidden ? fehler.textContent : '',
-    feld,
+    error: error && !error.hidden ? error.textContent : '',
+    field,
   };
 }
 
@@ -60,7 +60,7 @@ test('add set: comma, dot and thousands', async () => {
       ['  ', null],
     ]) {
       const r = await setErfassen(o, ein);
-      assert.equal(r.fehler, '', `„${ein}“ gemeldet: ${r.fehler}`);
+      assert.equal(r.error, '', `„${ein}“ gemeldet: ${r.error}`);
       assert.equal(r.wert, aus, `„${ein}“ ging als ${r.wert} hinaus`);
     }
   } finally {
@@ -69,7 +69,7 @@ test('add set: comma, dot and thousands', async () => {
 });
 
 test('English: comma as thousands, dot as decimal', async () => {
-  const o = await openUi({}, { sprache: 'en', browserLanguage: 'en-GB' });
+  const o = await openUi({}, { language: 'en', browserLanguage: 'en-GB' });
   try {
     for (const [ein, aus] of [
       ['1,299', 1299],
@@ -92,12 +92,8 @@ test('nonsense is reported at the field and not sent', async () => {
       const r = await setErfassen(o, ein);
       assert.equal(r.gesendet, false, `„${ein}“ ging an den Server`);
       // Readable, only negative: own text (UX check 20).
-      assert.match(
-        r.fehler,
-        ein === '-5' ? /^Der Kaufpreis kann nicht negativ sein\.$/ : /ist kein Betrag/,
-        `„${ein}“`,
-      );
-      assert.equal(r.feld.getAttribute('aria-invalid'), 'true');
+      assert.match(r.error, ein === '-5' ? /^Der Kaufpreis kann nicht negativ sein\.$/ : /ist kein Betrag/, `„${ein}“`);
+      assert.equal(r.field.getAttribute('aria-invalid'), 'true');
     }
   } finally {
     o.w.close();
@@ -105,7 +101,7 @@ test('nonsense is reported at the field and not sent', async () => {
 });
 
 test('voucher: amount with comma', async () => {
-  const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } }, { browserLanguage: 'de-DE' });
+  const o = await openUi({ '/v2/vouchers': { success: true, vouchers: [] } }, { browserLanguage: 'de-DE' });
   try {
     await sicht(o.w, 'vouchers');
     o.d.getElementById('v-number').value = '6123-4567-8901';
@@ -113,7 +109,7 @@ test('voucher: amount with comma', async () => {
     const vorher = o.aufrufe.length;
     o.d.querySelector('[data-click="saveVoucher"]').click();
     await warte(() => o.aufrufe.slice(vorher).some(a => a.method === 'POST'));
-    const a = o.aufrufe.slice(vorher).find(x => x.method === 'POST' && x.url.includes('/v1/vouchers'));
+    const a = o.aufrufe.slice(vorher).find(x => x.method === 'POST' && x.url.includes('/v2/vouchers'));
     assert.equal(JSON.parse(a.body).amount, 50.5);
   } finally {
     o.w.close();
@@ -124,7 +120,7 @@ test("purchase price dialog: display in the language's form, comma saved, marker
   const puts = [];
   const o = await openUi(
     {
-      '/v1/sets/10294-1/acquisitions': (_url, opt) => {
+      '/v2/sets/10294-1/acquisitions': (_url, opt) => {
         if (opt.method === 'PUT') return { success: true };
         return {
           success: true,
@@ -134,7 +130,7 @@ test("purchase price dialog: display in the language's form, comma saved, marker
           totals: { quantity: 1, amount: 129.99 },
         };
       },
-      '/v1/sets/10294-1/acquisitions/7': (_url, opt) => {
+      '/v2/sets/10294-1/acquisitions/7': (_url, opt) => {
         puts.push(JSON.parse(opt.body));
         return { success: true };
       },
@@ -148,11 +144,11 @@ test("purchase price dialog: display in the language's form, comma saved, marker
     o.d.body.append(knopf);
     knopf.click();
     await warte(() => o.d.getElementById('acq-price-7'));
-    const feld = o.d.getElementById('acq-price-7');
-    assert.equal(feld.value, '129,99');
+    const field = o.d.getElementById('acq-price-7');
+    assert.equal(field.value, '129,99');
     assert.equal(o.d.getElementById('acq-ok-7').hidden, true, 'Marke vor dem Speichern sichtbar');
-    feld.value = '149,95';
-    feld.dispatchEvent(new o.w.FocusEvent('blur'));
+    field.value = '149,95';
+    field.dispatchEvent(new o.w.FocusEvent('blur'));
     await warte(() => puts.length);
     assert.deepEqual(puts[0], { purchase_price: 149.95 });
     await warte(() => o.d.getElementById('acq-ok-7')?.hidden === false);

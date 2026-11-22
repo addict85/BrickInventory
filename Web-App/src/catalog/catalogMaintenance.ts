@@ -240,7 +240,7 @@ export interface CatalogPart {
   name: string | null;
   kategorie: string | null;
   /** Only as an https URL; a local path counts for `hatImage`, not here. */
-  bild: string | null;
+  image: string | null;
   hatImage: boolean;
   /** Set lists carry no images of their own; theirs are attached to the color. */
   bildQuelle: 'farbe' | 'allgemein' | null;
@@ -267,7 +267,7 @@ export async function catalogPart(
   return {
     name: z.name ?? null,
     kategorie: z.kategorie ?? null,
-    bild: url && String(url).startsWith('https:') ? String(url) : null,
+    image: url && String(url).startsWith('https:') ? String(url) : null,
     hatImage: source !== null,
     bildQuelle: source,
     bildDatei: file ?? null,
@@ -278,13 +278,13 @@ export async function catalogMinifig(
   k: CatalogContext,
   figNumber: string,
   forUser: From = null,
-): Promise<{ name: string | null; bild: string | null; hatImage: boolean } | null> {
+): Promise<{ name: string | null; image: string | null; hatImage: boolean } | null> {
   if (!figNumber) return null;
   const z = await k.catalogMaster.minifigFromCatalog(figNumber, forUser);
   if (!z) return null;
   return {
     name: z.fig_name ?? null,
-    bild: z.image_url && String(z.image_url).startsWith('https:') ? String(z.image_url) : null,
+    image: z.image_url && String(z.image_url).startsWith('https:') ? String(z.image_url) : null,
     hatImage: !!(z.image_local || z.image_url),
   };
 }

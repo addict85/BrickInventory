@@ -32,7 +32,7 @@ test('range requests to an instruction', async t => {
   const { srv, basis } = starte();
   t.after(() => srv.close());
 
-  const hol = async (pfad, range) => await fetch(basis + pfad, range ? { headers: { Range: range } } : undefined);
+  const hol = async (path, range) => await fetch(basis + path, range ? { headers: { Range: range } } : undefined);
 
   await t.test('without a range the whole file comes', async () => {
     const r = await hol('/data/instructions/BI-3004.pdf');

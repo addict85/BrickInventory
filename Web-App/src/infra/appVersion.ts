@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { konfig } from './config';
+import { config } from './config';
 import { processWide } from './processWide';
 
 const G = processWide('appVersion', () => ({ v: null as string | null }));
 
 export function appVersion(): string {
-  const assigned = konfig().appVersion;
+  const assigned = config().appVersion;
   if (assigned) return assigned;
   if (G.v) return G.v;
   try {

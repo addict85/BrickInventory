@@ -55,6 +55,6 @@ test('quantity change without lost additions', { concurrency: 1 }, async t => {
   });
 
   await t.test('an invalid step is rejected', async () => {
-    await assert.rejects(changeSet(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.art === 'ungueltig');
+    await assert.rejects(changeSet(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.kind === 'ungueltig');
   });
 });

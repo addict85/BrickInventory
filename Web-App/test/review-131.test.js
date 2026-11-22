@@ -25,8 +25,8 @@ const { portOf } = require('./helpers/server');
 const db = testData();
 
 /** Read a file without comments (see ohneKommentare() in helpers/sources.js). */
-function quelle(...teile) {
-  return ohneKommentare(fs.readFileSync(path.join(ROOT, ...teile), 'utf8'));
+function source(...parts) {
+  return ohneKommentare(fs.readFileSync(path.join(ROOT, ...parts), 'utf8'));
 }
 
 // ── Behavior ───────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ test.after(() => db.pool.end().catch(() => {}));
 // ── Rules ──────────────────────────────────────────────────────────────────
 
 test('image downloads are capped', () => {
-  const src = quelle('src/images/setImages.ts');
+  const src = source('src/images/setImages.ts');
   const fn = src.slice(src.indexOf('async function downloadSetImage'));
   const ende = fn.indexOf('\n}\n');
   const body = fn.slice(0, ende);
@@ -118,11 +118,11 @@ test('write endpoints without login carry a throttle', () => {
   // Every writing one may either require a login (via
   // middleware or in the body), or it counts attempts per IP. qr-login had …
   const src = ohneKommentare(require('./helpers/sources').loginSource());
-  // Old form router.post('/pfad' and contract form router.endpoint('POST /api/v1/auth/pfad'.
+  // Old form router.post('/pfad' and contract form router.endpoint('POST /api/v2/auth/pfad'.
   const stellen = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpoint\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
-  const offen = [];
+  const open = [];
   for (let i = 0; i < stellen.length; i++) {
     const von = stellen[i].index;
     const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
@@ -131,18 +131,18 @@ test('write endpoints without login carry a throttle', () => {
       /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|login\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
-    if (!geschuetzt) offen.push(`${(stellen[i][1] ?? stellen[i][2]).toUpperCase()} ${stellen[i][3]}`);
+    if (!geschuetzt) open.push(`${(stellen[i][1] ?? stellen[i][2]).toUpperCase()} ${stellen[i][3]}`);
   }
-  assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);
+  assert.deepEqual(open, [], `weder Anmeldung noch Drossel: ${open.join(', ')}`);
 });
 
 test('the barcode search counts its Rebrickable calls', () => {
   // The barcode search (src/sets/barcode.ts) only asks Rebrickable via
   // rebrickableJson() — and that counts and throttles.
-  const dienst = quelle('src/sets/barcode.ts');
+  const dienst = source('src/sets/barcode.ts');
   assert.match(dienst, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
   assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
-  const client = quelle('clients/rebrickable.ts');
+  const client = source('clients/rebrickable.ts');
   const rbJson = client.slice(
     client.indexOf('async function rebrickableJson'),
     client.indexOf('function httpsGetRobust'),
@@ -199,8 +199,8 @@ test('CSV export: separators in the field are quoted, formulas also defused afte
   assert.equal(defuse(' -5 '), ' -5 ', 'Zahlen mit Leerraum bleiben Zahlen');
   const csv = toCsv(['a', 'b'], [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }]);
   assert.deepEqual(csvRowsFromRequest(csv).cleaned, [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }], 'Rundlauf');
-  const zeile = csv.split('\r\n')[1];
-  assert.ok(zeile.startsWith('"Rot;=1+1\r=2",') && zeile.includes("' @SUMME(1)"), JSON.stringify(zeile));
+  const row = csv.split('\r\n')[1];
+  assert.ok(row.startsWith('"Rot;=1+1\r=2",') && row.includes("' @SUMME(1)"), JSON.stringify(row));
 });
 
 test('all three CSV import paths defuse back', () => {
@@ -245,10 +245,11 @@ test('the CSV progress stream survives back pressure on the first write', async 
     };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
-  const fehler = [];
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
+  const error = [];
   app.use((e, _req2, res, _next) => {
-    fehler.push(e);
+    error.push(e);
     res.end();
   });
   const srv = app.listen(0);
@@ -271,14 +272,14 @@ test('the CSV progress stream survives back pressure on the first write', async 
     signals.listen = listen;
     signals.unlisten = unlisten;
   });
-  const r = await fetch(`http://localhost:${portOf(srv)}/api/v1/sets/import/csv/stream`, {
+  const r = await fetch(`http://localhost:${portOf(srv)}/api/v2/sets/import/csv/stream`, {
     signal: AbortSignal.timeout(10_000),
   });
   const text = await r.text();
   assert.equal(r.status, 200);
   assert.match(text, /^data: \{/, 'Der erste Stand kommt nicht an');
   assert.deepEqual(
-    fehler.map(e => e.message),
+    error.map(e => e.message),
     [],
     'cleanup() greift auf noch nicht angelegte Hörer zu',
   );

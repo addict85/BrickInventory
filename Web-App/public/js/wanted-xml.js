@@ -14,23 +14,23 @@ import { loadManualParts } from './parts.js';
 import { loadBrickColors } from './part-add.js';
 
 /**
- * The server's report (WantedXmlErgebnis). The contract does not yet name the per-item fields the table
+ * The server's report (WantedXmlResult). The contract does not yet name the per-item fields the table
  * shows, so src/wanted writes them here.
- * @typedef {import('../../frontend-types/contract').WantedXmlErgebnis['posten'][number] & {
- *   bild?: string | null, blFarbe?: number | null, farbHex?: string | null, farbName?: string | null,
- *   grund?: string | null, grundCode?: string | null, maxPreis?: number | null, name?: string | null,
- *   nameGeraten?: boolean, rbId?: string | null, set?: string | null, zustand?: string | null }} Item
- * @typedef {import('../../frontend-types/contract').WantedXmlErgebnis & { posten: Item[],
- *   abgebrochen?: boolean, farbeOffen?: number, fremdeArten?: Record<string, number>,
- *   korrekturen?: { abgewiesen?: unknown[] },
- *   rebrickable?: { gefragt: number, gefunden: number, abgebrochen?: 'kontingent' | 'kein_schluessel' | 'stoerung' } | null,
- *   stufen?: Record<string, number>, standardZustand?: string | null }} Report
+ * @typedef {import('../../frontend-types/contract').WantedXmlResult['items'][number] & {
+ *   image?: string | null, blColor?: number | null, colorHex?: string | null, colorName?: string | null,
+ *   reason?: string | null, reasonCode?: string | null, maxPrice?: number | null, name?: string | null,
+ *   nameGuessed?: boolean, rbId?: string | null, set?: string | null, condition?: string | null }} Item
+ * @typedef {import('../../frontend-types/contract').WantedXmlResult & { items: Item[],
+ *   aborted?: boolean, colorPending?: number, foreignTypes?: Record<string, number>,
+ *   corrections?: { rejected?: unknown[] },
+ *   rebrickable?: { asked: number, found: number, aborted?: 'quota' | 'no_key' | 'failure' } | null,
+ *   levels?: Record<string, number>, defaultCondition?: string | null }} Report
  */
 /** Why the Rebrickable stage ended early; the remaining items stayed open. */
 const RB_CANCEL_REASON = /** @type {const} */ ({
-  kontingent: 'wanted.rb_stopped_quota',
-  kein_schluessel: 'wanted.rb_stopped_key',
-  stoerung: 'wanted.rb_stopped_error',
+  quota: 'wanted.rb_stopped_quota',
+  no_key: 'wanted.rb_stopped_key',
+  failure: 'wanted.rb_stopped_error',
 });
 /**
  * The chosen file stays in memory until import: the second step sends it again together with the
@@ -38,7 +38,7 @@ const RB_CANCEL_REASON = /** @type {const} */ ({
  * @type {File | null}
  */
 let _file = null;
-/** index → { rbId?, rbFarbe? } — what was changed in the table. */
+/** index → { rbId?, rbColor? } — what was changed in the table. */
 /** @type {Map<number, Record<string, string | number | null>>} */
 let _corrections = new Map();
 /** The last report, for the table. @type {Report | null} */
@@ -56,9 +56,9 @@ let _busy = false;
 function updateButtons() {
   const write = G('wanted-xml-write');
   const reload = G('wanted-xml-new');
-  // Write only once a preview is showing: after writing, `vorschau` is
+  // Write only once a preview is showing: after writing, `preview` is
   // false, and a second click would be a second import.
-  if (write) write.disabled = _busy || !_report?.vorschau;
+  if (write) write.disabled = _busy || !_report?.preview;
   // Reloading needs the file — it's gone after writing.
   if (reload) reload.disabled = _busy || !_file;
 }
@@ -129,17 +129,17 @@ async function read(write) {
 /**
  * Set or hide the progress bar. It distinguishes two phases (asking Rebrickable, writing), with a line
  * underneath — a bar with no label would leave open what you're waiting for.
- * @param {{phase:string,fertig:number,gesamt:number}|null} state
+ * @param {{phase:string,done:number,total:number}|null} state
  *   null hides it (before the first run, after the last).
  */
 function drawProgress(state) {
   const box = G('wanted-xml-progress');
   if (!box) return;
-  if (!state?.gesamt) {
+  if (!state?.total) {
     box.style.display = 'none';
     return;
   }
-  const share = Math.max(0, Math.min(100, Math.round((state.fertig / state.gesamt) * 100)));
+  const share = Math.max(0, Math.min(100, Math.round((state.done / state.total) * 100)));
   box.style.display = '';
   const bar = G('wanted-xml-bar');
   if (bar) bar.style.width = share + '%';
@@ -150,8 +150,8 @@ function drawProgress(state) {
     // tRaw, not t: the target is textContent, and t() escapes for HTML — the escaping would show up as
     // literal characters (test/frontend-escaping.test.js).
     txt.textContent = tRaw(state.phase === 'rebrickable' ? 'wanted.progress_rb' : 'wanted.progress_write', {
-      done: state.fertig,
-      total: state.gesamt,
+      done: state.done,
+      total: state.total,
     });
   }
 }
@@ -184,8 +184,8 @@ async function readStream(r) {
       } catch {
         continue;
       }
-      if (o.fortschritt) {
-        drawProgress(o.fortschritt);
+      if (o.progress) {
+        drawProgress(o.progress);
         continue;
       }
       last = o;
@@ -217,27 +217,27 @@ async function readReally(write) {
     // The index travels WITH it: a list may contain the same item twice, and a key built from number and
     // color would then hit both. Kind and number are the server's cross-check.
     fd.append(
-      'korrekturen',
+      'corrections',
       JSON.stringify(
         [..._corrections.entries()].map(([index, k]) => ({
           index: Number(index),
-          blId: _report?.posten?.[index]?.blId ?? '',
-          art: _report?.posten?.[index]?.art ?? 'part',
+          blId: _report?.items?.[index]?.blId ?? '',
+          kind: _report?.items?.[index]?.kind ?? 'part',
           ...k,
         })),
       ),
     );
   }
   const p = new URLSearchParams();
-  if (write) p.set('schreiben', '1');
+  if (write) p.set('write', '1');
   if (G('wanted-rb')?.checked) p.set('rebrickable', '1');
   // Progress costs nothing when nobody's watching — but here somebody is, so always.
-  p.set('strom', '1');
+  p.set('stream', '1');
 
   drawProgress(null);
   let d;
   try {
-    const r = await apiRaw('POST', `/v1/wanted-list/import/xml?${p}`, { body: fd });
+    const r = await apiRaw('POST', `/v2/wanted-list/import/xml?${p}`, { body: fd });
     d = await readStream(r);
   } catch {
     d = {};
@@ -249,18 +249,18 @@ async function readReally(write) {
     return;
   }
   // success means the server sent the whole report.
-  const resultReport = /** @type {Report} */ (d);
+  const resultReport = /** @type {Report} */ (/** @type {unknown} */ (d));
   _report = resultReport;
   drawSummary(resultReport);
   drawTable(resultReport);
   if (write) {
     toast(
-      tRaw('import.summary', { added: d.angelegt, updated: d.aufgestockt, errors: d.fehler }),
-      d.fehler ? 'info' : 'success',
+      tRaw('import.summary', { added: d.created, updated: d.topped_up, errors: d.failed }),
+      d.failed ? 'info' : 'success',
     );
     // What gets reloaded depends on WHAT the list contained — and the report knows that better than the
     // button it came from: a wanted list may mix parts, figures AND sets.
-    const kinds = new Set((d.posten || []).map(x => x.art));
+    const kinds = new Set((d.items || []).map(x => x.kind));
     if (kinds.has('part')) loadManualParts().catch(() => {});
     if (kinds.has('fig')) loadManualFigsTable().catch(() => {});
     if (kinds.has('set')) emit('collectionLoad');
@@ -277,7 +277,7 @@ function drawSummary(d) {
   // The stages SEPARATELY and in words rather than colors: Marco sees red and green poorly, and
   // "probably" is a statement that must be stated, not just implied.
   const stage = (/** @type {string} */ k, /** @type {string} */ text) =>
-    d.stufen?.[k] ? html`<div>• ${text}: <strong>${d.stufen[k]}</strong></div>` : '';
+    d.levels?.[k] ? html`<div>• ${text}: <strong>${d.levels[k]}</strong></div>` : '';
   G('wanted-xml-sub').textContent = _file?.name || '';
   // Button state comes from updateButtons() — see its reasoning there.
   updateButtons();
@@ -285,26 +285,26 @@ function drawSummary(d) {
     el,
     html`
     <div data-style="border:1px solid var(--bdr);border-radius:8px;padding:.6rem">
-      <div><strong>${d.gelesen}</strong> ${tRaw('settings.wanted_read')}${d.vorschau ? html` — ${tRaw('settings.wanted_preview_only')}` : ''}</div>
+      <div><strong>${d.parsed}</strong> ${tRaw('settings.wanted_read')}${d.preview ? html` — ${tRaw('settings.wanted_preview_only')}` : ''}</div>
       ${stage('zuordnung', tRaw('settings.wanted_s1'))}
       ${stage('gleich_vermerkt', tRaw('settings.wanted_s2'))}
       ${stage('katalogtreffer', tRaw('settings.wanted_s3'))}
       ${stage('rebrickable', tRaw('settings.wanted_s4'))}
       ${stage('korrigiert', tRaw('wanted.s_corrected'))}
-      ${d.offen?.length ? html`<div>${ico('warning')} <strong>${d.offen.length}</strong> ${tRaw('settings.wanted_open')}</div>` : ''}
-      ${d.farbeOffen ? html`<div>${ico('warning')} <strong>${d.farbeOffen}</strong> ${tRaw('settings.wanted_color_open')}</div>` : ''}
+      ${d.open?.length ? html`<div>${ico('warning')} <strong>${d.open.length}</strong> ${tRaw('settings.wanted_open')}</div>` : ''}
+      ${d.colorPending ? html`<div>${ico('warning')} <strong>${d.colorPending}</strong> ${tRaw('settings.wanted_color_open')}</div>` : ''}
       ${
-        Object.keys(d.fremdeArten || {}).length
-          ? html`<div>${ico('warning')} ${tRaw('settings.wanted_other_kinds')}: ${Object.entries(d.fremdeArten ?? {})
+        Object.keys(d.foreignTypes || {}).length
+          ? html`<div>${ico('warning')} ${tRaw('settings.wanted_other_kinds')}: ${Object.entries(d.foreignTypes ?? {})
               .map(([k, n]) => `${k}=${n}`)
               .join(', ')}</div>`
           : ''
       }
-      ${d.rebrickable ? html`<div>${tRaw('settings.wanted_rb_asked')}: ${d.rebrickable.gefragt} → ${d.rebrickable.gefunden}</div>` : ''}
-      ${d.rebrickable?.abgebrochen ? html`<div>${ico('warning')} ${tRaw(RB_CANCEL_REASON[d.rebrickable.abgebrochen])}</div>` : ''}
-      ${d.korrekturen?.abgewiesen?.length ? html`<div>${ico('warning')} <strong>${d.korrekturen.abgewiesen.length}</strong> ${tRaw('wanted.corrections_rejected')}</div>` : ''}
-      ${d.abgebrochen ? html`<div>${ico('warning')} ${tRaw('wanted.cancelled')}</div>` : ''}
-      ${!d.vorschau ? html`<div data-style="margin-top:.4rem"><strong>${d.angelegt}</strong> ${tRaw('settings.wanted_written')}${d.aufgestockt ? html`, ${d.aufgestockt} ${tRaw('wanted.topped_up')}` : ''}${d.fehler ? html`, ${d.fehler} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}
+      ${d.rebrickable ? html`<div>${tRaw('settings.wanted_rb_asked')}: ${d.rebrickable.asked} → ${d.rebrickable.found}</div>` : ''}
+      ${d.rebrickable?.aborted ? html`<div>${ico('warning')} ${tRaw(RB_CANCEL_REASON[d.rebrickable.aborted])}</div>` : ''}
+      ${d.corrections?.rejected?.length ? html`<div>${ico('warning')} <strong>${d.corrections.rejected.length}</strong> ${tRaw('wanted.corrections_rejected')}</div>` : ''}
+      ${d.aborted ? html`<div>${ico('warning')} ${tRaw('wanted.cancelled')}</div>` : ''}
+      ${!d.preview ? html`<div data-style="margin-top:.4rem"><strong>${d.created}</strong> ${tRaw('settings.wanted_written')}${d.topped_up ? html`, ${d.topped_up} ${tRaw('wanted.topped_up')}` : ''}${d.failed ? html`, ${d.failed} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}
     </div>`,
   );
 }
@@ -312,27 +312,31 @@ function drawSummary(d) {
 /** What a row shows. See the reasoning on ItemResult. */
 /** @param {Item} p @param {number} i */
 function row(p, i) {
-  const image = p.bild
-    ? imageTag({ src: imgUrl(fullUrl(p.bild), true), alt: '', class: 'image-40', ph: 'teil' })
+  const image = p.image
+    ? imageTag({ src: imgUrl(fullUrl(p.image), true), alt: '', class: 'image-40', ph: 'teil' })
     : html`<span class="image-ph image-40" aria-hidden="true">${placeholderContent('teil')}</span>`;
-  const dot = p.farbHex
+  const dot = p.colorHex
     ? html`<span data-style="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
-        data-color-hex="${escHex(p.farbHex, 'var(--s300)')}"></span>`
+        data-color-hex="${escHex(p.colorHex, 'var(--s300)')}"></span>`
     : '';
   // The outcome in words, not just a color. In the preview "will be created", after import "created":
   // otherwise every row would still read in future tense after writing.
-  const future = !!_report?.vorschau;
+  const future = !!_report?.preview;
   const outcome = esc(
-    tRaw(p.ausgang === 'angelegt' && !future ? 'wanted.out_angelegt_done' : `wanted.out_${p.ausgang}`) || p.ausgang,
+    tRaw(p.outcome === 'created' && !future ? 'wanted.out_created_done' : `wanted.out_${p.outcome}`) || p.outcome,
   );
-  // The reason in the viewer's language. `grund` from the server is a German sentence — right for the log,
+  // The reason in the viewer's language. `reason` from the server is a German sentence — right for the log,
   // wrong in an English table (seen exactly that way on the running server). If the code is missing (for
-  // outcome 'fehler' the exception message is there instead), the sentence stays as is.
-  const reason = p.grundCode ? t(`wanted.reason_${p.grundCode}`, { farbe: p.blFarbe }) : p.grund ? esc(p.grund) : '';
+  // outcome 'error' the exception message is there instead), the sentence stays as is.
+  const reason = p.reasonCode
+    ? t(`wanted.reason_${p.reasonCode}`, { blColor: p.blColor })
+    : p.reason
+      ? esc(p.reason)
+      : '';
   // The condition that gets created: from the file, else the account's default — with a note that it came
   // from there. Without the note, "Used" would read like a value from the file.
-  const conditionValue = p.zustand === 'N' || p.zustand === 'U' ? p.zustand : _report?.standardZustand || null;
-  const fromDefault = p.zustand !== 'N' && p.zustand !== 'U';
+  const conditionValue = p.condition === 'N' || p.condition === 'U' ? p.condition : _report?.defaultCondition || null;
+  const fromDefault = p.condition !== 'N' && p.condition !== 'U';
   const conditionCell = conditionValue
     ? html`<span class="cond-badge ${conditionValue === 'U' ? 'cond-used' : 'cond-new'}">${tRaw(conditionValue === 'U' ? 'common.condition_used' : 'common.condition_new')}</span>${fromDefault ? html`<div data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.cond_default')}</div>` : ''}`
     : '';
@@ -354,10 +358,10 @@ function row(p, i) {
        value="${value}" ${rawHtml(extra)}
        data-width-px="${width}"
        data-style="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--field-border);border-radius:5px;text-align:right" />`;
-  const quantityCell = field('menge', correction.menge ?? p.menge, 'type="number" min="1" step="1"');
+  const quantityCell = field('quantity', correction.quantity ?? p.quantity, 'type="number" min="1" step="1"');
   // The price per unit. Empty means "none" — then import fetches the market price, like MAXPRICE=-1 in
   // the file.
-  const priceValue = correction.kaufpreis !== undefined ? (correction.kaufpreis ?? '') : (p.maxPreis ?? '');
+  const priceValue = correction.purchase_price !== undefined ? (correction.purchase_price ?? '') : (p.maxPrice ?? '');
   const priceCell = field(
     'purchase-price',
     priceValue,
@@ -367,21 +371,21 @@ function row(p, i) {
   );
   // The condition as a choice with THREE options: the empty value isn't a gap, it's "the account's
   // default" — the same statement as CONDITION=X.
-  const conditionNow = correction.zustand !== undefined ? (correction.zustand ?? '') : (p.zustand ?? '');
+  const conditionNow = correction.condition !== undefined ? (correction.condition ?? '') : (p.condition ?? '');
   const option = (/** @type {string} */ w, /** @type {string} */ text) =>
     html`<option value="${w}"${conditionNow === w ? ' selected' : ''}>${text}</option>`;
-  const conditionSelect = html`<select data-change="wantedCorrectionValue" data-field="zustand" data-i="${i}" aria-label="${tRaw('wanted.field_state', { id })}"
+  const conditionSelect = html`<select data-change="wantedCorrectionValue" data-field="condition" data-i="${i}" aria-label="${tRaw('wanted.field_state', { id })}"
       data-style="font-size:var(--fs-1);padding:2px;border:1px solid var(--field-border);border-radius:5px">
       ${option('', tRaw('wanted.cond_default_opt'))}
       ${option('N', tRaw('common.condition_new'))}
       ${option('U', tRaw('common.condition_used'))}
     </select>`;
 
-  return html`<tr${p.ausgang === 'offen' ? html` data-style="background:var(--s50)"` : ''}>
+  return html`<tr${p.outcome === 'open' ? html` data-style="background:var(--s50)"` : ''}>
     <td>${image}</td>
     <td data-style="font-family:monospace;font-size:var(--fs-1)">${p.blId}${p.rbId && p.rbId !== p.blId ? html`<div data-style="color:var(--mut)">→ ${p.rbId}</div>` : ''}</td>
-    <td data-style="font-size:var(--fs-2)">${p.name || ''}${p.nameGeraten ? html`<div data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.name_guessed')}</div>` : ''}</td>
-    <td data-style="font-size:var(--fs-2);white-space:nowrap">${dot}${p.farbName || ''}${p.blFarbe !== null && !p.farbName ? html`<span data-style="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
+    <td data-style="font-size:var(--fs-2)">${p.name || ''}${p.nameGuessed ? html`<div data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.name_guessed')}</div>` : ''}</td>
+    <td data-style="font-size:var(--fs-2);white-space:nowrap">${dot}${p.colorName || ''}${p.blColor !== null && !p.colorName ? html`<span data-style="color:var(--mut)">BL ${p.blColor}</span>` : ''}</td>
     <td data-style="text-align:right">${quantityCell}</td>
     <td data-style="font-size:var(--fs-1);white-space:nowrap">${conditionSelect}${conditionNow === '' && conditionCell ? html`<div data-style="margin-top:2px">${conditionCell}</div>` : ''}</td>
     <td data-style="text-align:right">${priceCell}</td>
@@ -399,7 +403,7 @@ function row(p, i) {
 function drawTable(d) {
   const el = G('wanted-xml-table');
   if (!el) return;
-  const items = d.posten || [];
+  const items = d.items || [];
   if (!items.length) {
     el.replaceChildren();
     return;
@@ -425,7 +429,7 @@ function drawTable(d) {
 /**
  * Fill the color dropdowns — AFTER drawing.
  *
- * /v1/parts/brick-colors goes over the network the first time; the table shouldn't wait for it. Until
+ * /v2/parts/brick-colors goes over the network the first time; the table shouldn't wait for it. Until
  * then every dropdown shows "unchanged", and that is exactly the right default.
  */
 async function fillColorChoices() {
@@ -438,7 +442,7 @@ async function fillColorChoices() {
     G('wanted-xml-table').querySelectorAll('select[data-change="wantedCorrectionColor"]')
   )) {
     const i = Number(sel.dataset.i);
-    const chosen = _corrections.get(i)?.rbFarbe;
+    const chosen = _corrections.get(i)?.rbColor;
     setHtml(sel, html`<option value="">${tRaw('wanted.keep')}</option>${rawHtml(opts)}`);
     if (chosen !== undefined && chosen !== null) sel.value = String(chosen);
   }
@@ -464,8 +468,8 @@ function wantedCorrectionColor() {
   if (!el) return;
   const i = Number(el.dataset.i);
   const k = { ..._corrections.get(i) };
-  if (el.value === '') delete k.rbFarbe;
-  else k.rbFarbe = parseInt(el.value, 10);
+  if (el.value === '') delete k.rbColor;
+  else k.rbColor = parseInt(el.value, 10);
   setCorrection(i, k);
 }
 
@@ -480,40 +484,40 @@ function wantedCorrectionValue() {
   if (!el) return;
   const i = Number(el.dataset.i);
   const name = el.dataset.field;
-  const p = _report?.posten?.[i];
+  const p = _report?.items?.[i];
   if (!p) return;
   const k = { ..._corrections.get(i) };
   const raw = el.value.trim();
 
-  if (name === 'menge') {
+  if (name === 'quantity') {
     const m = parseInt(raw, 10);
     // Don't send anything unusable: the server would reject the whole correction, and the color next to it
     // would be lost too. The field shows the current value again instead.
     if (!Number.isFinite(m) || m < 1) {
-      el.value = String(k.menge ?? p.menge);
+      el.value = String(k.quantity ?? p.quantity);
       return;
     }
-    if (m === p.menge) delete k.menge;
-    else k.menge = m;
-  } else if (name === 'zustand') {
+    if (m === p.quantity) delete k.quantity;
+    else k.quantity = m;
+  } else if (name === 'condition') {
     const w = raw === '' ? null : raw;
-    if (w === (p.zustand ?? null)) delete k.zustand;
-    else k.zustand = w;
+    if (w === (p.condition ?? null)) delete k.condition;
+    else k.condition = w;
   } else if (name === 'purchase-price') {
-    const old = p.maxPreis ?? null;
+    const old = p.maxPrice ?? null;
     /** @type {number | null} */
     let w = null;
     if (raw !== '') {
       const z = Number(raw);
       if (!Number.isFinite(z) || z < 0) {
-        el.value = String(k.kaufpreis ?? old ?? '');
+        el.value = String(k.purchase_price ?? old ?? '');
         return;
       }
       // 0 means "none", like MAXPRICE=-1 in the file.
       w = z > 0 ? z : null;
     }
-    if (w === old) delete k.kaufpreis;
-    else k.kaufpreis = w;
+    if (w === old) delete k.purchase_price;
+    else k.purchase_price = w;
   } else return;
 
   setCorrection(i, k);

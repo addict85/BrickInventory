@@ -51,18 +51,18 @@ function smtpServer(tlsOpt) {
       s.on('data', b => {
         puffer += b.toString('latin1');
         for (let i = puffer.indexOf('\r\n'); i >= 0; i = puffer.indexOf('\r\n')) {
-          const zeile = puffer.slice(0, i);
+          const row = puffer.slice(0, i);
           puffer = puffer.slice(i + 2);
-          recording.push({ layer, zeile });
+          recording.push({ layer, row });
           if (daten !== null) {
-            if (zeile === '.') {
+            if (row === '.') {
               post.push(daten);
               daten = null;
               s.write('250 angenommen\r\n');
-            } else daten += zeile + '\n';
+            } else daten += row + '\n';
             continue;
           }
-          const command = zeile.slice(0, 8).toUpperCase();
+          const command = row.slice(0, 8).toUpperCase();
           if (command.startsWith('EHLO'))
             s.write(`250-test\r\n${tlsOpt && layer === 'klar' ? '250-STARTTLS\r\n' : ''}250 AUTH PLAIN\r\n`);
           else if (command === 'STARTTLS') {
@@ -155,7 +155,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     await db.pool.end().catch(() => {});
   });
 
-  const setze = async werte => {
+  const setze = async values => {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     const alle = {
       smtp_host: '127.0.0.1',
@@ -163,7 +163,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
       smtp_pass: 'Geheim-Smtp-9',
       smtp_secure: '0',
       smtp_from: 'test@example.org',
-      ...werte,
+      ...values,
     };
     for (const [k, v] of Object.entries(alle))
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
@@ -176,7 +176,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Rücksetzen', text: LINK });
     assert.equal(r.success, false);
     assert.match(r.error, /kein STARTTLS/);
-    const zeilen = ohne.recording.map(z => z.zeile);
+    const zeilen = ohne.recording.map(z => z.row);
     assert.ok(
       zeilen.some(z => /^EHLO/i.test(z)),
       'Der Mailer hat den Server gar nicht erreicht',
@@ -191,10 +191,10 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
   await t.test('the mail test in the settings takes the same path', async () => {
     await setze({ smtp_port: ohne.port });
     const beforeRows = ohne.recording.length;
-    assert.equal((await mailer.testSmtp()).code, 'smtp_fehler');
+    assert.equal((await mailer.testSmtp()).code, 'smtp_error');
     await adminWithFactor(_req, uid);
     const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
-    const r = await fetch(`${base}/api/v1/settings/smtp-test`, {
+    const r = await fetch(`${base}/api/v2/settings/smtp-test`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: '{}',
@@ -202,7 +202,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     assert.equal(r.status, 400);
     assert.match((await r.json()).error, /kein STARTTLS/);
     assert.deepEqual(
-      ohne.recording.slice(beforeRows).filter(z => /^AUTH/i.test(z.zeile)),
+      ohne.recording.slice(beforeRows).filter(z => /^AUTH/i.test(z.row)),
       [],
     );
   });
@@ -213,10 +213,10 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     assert.equal(r.success, true, r.error);
     assert.equal(mit.post.length, 1);
     assert.deepEqual(
-      mit.recording.filter(z => z.layer === 'klar').map(z => z.zeile.split(' ')[0].toUpperCase()),
+      mit.recording.filter(z => z.layer === 'klar').map(z => z.row.split(' ')[0].toUpperCase()),
       ['EHLO', 'STARTTLS'],
     );
-    assert.ok(mit.recording.some(z => z.layer === 'tls' && /^AUTH PLAIN/i.test(z.zeile)));
+    assert.ok(mit.recording.some(z => z.layer === 'tls' && /^AUTH PLAIN/i.test(z.row)));
   });
 
   await t.test('TLS 1.1 is rejected, even if the process would allow it', async () => {
@@ -230,7 +230,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
       assert.equal(r.success, false);
       assert.equal(alt.post.length, 0);
       assert.deepEqual(
-        alt.recording.filter(z => /^AUTH/i.test(z.zeile)),
+        alt.recording.filter(z => /^AUTH/i.test(z.row)),
         [],
       );
     } finally {
@@ -243,10 +243,10 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
   const withDns = async (ziel, work) => {
     const dns = require('node:dns');
     const echt = dns.lookup;
-    const gefragt = [];
+    const asked = [];
     /** @type {any} */ (dns).lookup = (host, opt, callback) => {
       if (host !== 'mail.fake.test') return echt(host, opt, callback);
-      gefragt.push(host);
+      asked.push(host);
       const a = { address: ziel, family: 4 };
       setImmediate(() => (opt?.all ? callback(null, [a]) : callback(null, a.address, 4)));
     };
@@ -255,19 +255,19 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     } finally {
       dns.lookup = echt;
     }
-    return gefragt;
+    return asked;
   };
 
   await t.test('a name that resolves to a blocked address is not connected', async () => {
     await setze({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
     const beforeRows = ohne.recording.length;
     let r;
-    const gefragt = await withDns('169.254.169.254', async () => {
+    const asked = await withDns('169.254.169.254', async () => {
       r = await mailer.testSmtp();
     });
-    assert.deepEqual(gefragt, ['mail.fake.test']);
-    assert.equal(r.code, 'smtp_fehler');
-    assert.match(r.vars.grund, /keine erlaubte Adresse/);
+    assert.deepEqual(asked, ['mail.fake.test']);
+    assert.equal(r.code, 'smtp_error');
+    assert.match(r.vars.reason, /keine erlaubte Adresse/);
     assert.equal(ohne.recording.length, beforeRows, 'kein Verbindungsversuch');
   });
 
@@ -289,7 +289,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     } finally {
       dns.lookup = echt;
     }
-    assert.match(r.vars.grund, /kein STARTTLS/, JSON.stringify(r));
-    assert.ok(ohne.recording.slice(beforeRows).some(z => /^EHLO/i.test(z.zeile)));
+    assert.match(r.vars.reason, /kein STARTTLS/, JSON.stringify(r));
+    assert.ok(ohne.recording.slice(beforeRows).some(z => /^EHLO/i.test(z.row)));
   });
 });

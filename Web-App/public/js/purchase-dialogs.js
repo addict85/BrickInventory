@@ -48,7 +48,7 @@ G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && cl
  * @param {string} sn
  */
 async function refreshSum(sn) {
-  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
+  const ad = await api('GET', `/v2/sets/${sn}/acquisitions`);
   if (!ad?.success || acquisition.sn !== sn) return;
   const price = G('acq-total-price'),
     quantity = G('acq-total-qty');
@@ -56,8 +56,8 @@ async function refreshSum(sn) {
   if (quantity) quantity.textContent = String(ad.totals?.quantity ?? 0);
   const hint = G('acq-sum-hint');
   if (hint) {
-    hint.hidden = !ad.totals?.ohne_kurs;
-    hint.textContent = ad.totals?.ohne_kurs ? tRaw('acq.without_rate', { n: ad.totals.ohne_kurs }) : '';
+    hint.hidden = !ad.totals?.without_rate;
+    hint.textContent = ad.totals?.without_rate ? tRaw('acq.without_rate', { n: ad.totals.without_rate }) : '';
   }
   for (const a of ad.acquisitions || []) {
     const um = G(`acq-um-${a.id}`);
@@ -69,15 +69,15 @@ async function refreshSum(sn) {
  * @param {string} sn
  */
 async function loadAcqModal(sn) {
-  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
-  // A read error is not an empty list: otherwise "—" would stand there as if there were no acquisition.
+  const ad = await api('GET', `/v2/sets/${sn}/acquisitions`);
+  // A read error is not an empty list: otherwise "—" would state there as if there were no acquisition.
   if (!ad.success) {
     toast(ad.error || tRaw('settings.error'), 'error');
     return;
   }
   const acqs = ad.acquisitions || [];
   if (!acquisition.members.length) {
-    const hm = await api('GET', '/v1/sets/household-members');
+    const hm = await api('GET', '/v2/sets/household-members');
     acquisition.members = hm?.members || [];
   }
   acquisition.owner = ad?.owner_user_id ?? loggedInAccount?.id ?? null;
@@ -185,7 +185,7 @@ async function acqSave(sn, id, field, value) {
   } else {
     body.condition = value;
   }
-  const d = await api('PUT', `/v1/sets/${sn}/acquisitions/${id}`, body);
+  const d = await api('PUT', `/v2/sets/${sn}/acquisitions/${id}`, body);
   if (field === 'owner') {
     if (!d.success) {
       toast(d.error || t('settings.error'), 'error');
@@ -227,7 +227,7 @@ async function acqSave(sn, id, field, value) {
   // If a purchase price is captured in a condition for the first time, a NEW row arises for it (the server delivers
   // by_condition only for conditions with an acquisition). Without this reload it would only appear on the next
   // opening of the dialog.
-  api('GET', `/v1/sets/${sn}/price-history`)
+  api('GET', `/v2/sets/${sn}/price-history`)
     .then(renderMarketRows)
     .catch(() => {});
 
@@ -239,7 +239,7 @@ async function acqSave(sn, id, field, value) {
   // Date changed → reload order/summary
   if (field === 'date') {
     loadAcqModal(sn);
-    api('GET', `/v1/sets/${sn}/acquisitions`)
+    api('GET', `/v2/sets/${sn}/acquisitions`)
       .then(ad => {
         if (ad?.success && openSet?.set_number === sn) {
           const summaryEl = G('m-acq-summary');
@@ -257,7 +257,7 @@ async function acqSave(sn, id, field, value) {
   // Update the summary in the detail dialog. The condition aggregate now comes from the PUT response
   // (applySetAggregate above) — here only the acquisition list is re-rendered.
   if (field === 'cond') {
-    api('GET', `/v1/sets/${sn}/acquisitions`)
+    api('GET', `/v2/sets/${sn}/acquisitions`)
       .then(ad => {
         if (!ad?.success) return;
         const sumEl = G('m-acq-summary');
@@ -269,7 +269,7 @@ async function acqSave(sn, id, field, value) {
   if (field === 'qty') {
     loadAcqModal(sn);
     // Refresh the summary in the set detail too
-    api('GET', `/v1/sets/${sn}/acquisitions`)
+    api('GET', `/v2/sets/${sn}/acquisitions`)
       .then(ad => {
         if (ad.success && openSet?.set_number === sn) {
           const summaryEl = G('m-acq-summary');
@@ -290,7 +290,7 @@ async function acqDelete(sn, id) {
     title: tRaw('acq.delete_title'),
     text: tRaw('acq.delete_text'),
     icon: 'delete',
-    request: () => api('DELETE', `/v1/sets/${sn}/acquisitions/${id}`),
+    request: () => api('DELETE', `/v2/sets/${sn}/acquisitions/${id}`),
   });
   if (!d) return;
   // update openSet and the quantity field in the set detail
@@ -299,7 +299,7 @@ async function acqDelete(sn, id) {
     setQuantitiesField(openSet.quantity);
   }
   // reload the acquisition dialog
-  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
+  const ad = await api('GET', `/v2/sets/${sn}/acquisitions`);
   // Only an empty list closes the dialog, not an error while reloading.
   if (!ad.success) {
     toast(ad.error || tRaw('settings.error'), 'error');
@@ -315,7 +315,7 @@ async function acqDelete(sn, id) {
   if (dvEl) setHtml(dvEl, summary(ad.acquisitions, sn));
   // As in acqSave(): a deleted acquisition changes inventory and value — and makes a condition row
   // disappear if it was the last one.
-  api('GET', `/v1/sets/${sn}/price-history`)
+  api('GET', `/v2/sets/${sn}/price-history`)
     .then(renderMarketRows)
     .catch(() => {});
   emit('collectionLoad', { restore: true });
@@ -331,7 +331,7 @@ export function closeAcqModal() {
   } else if (acquisition.sn) {
     const sn = acquisition.sn;
     G('set-modal').classList.add('open');
-    api('GET', `/v1/sets/${sn}/acquisitions`)
+    api('GET', `/v2/sets/${sn}/acquisitions`)
       .then(ad => {
         if (!ad?.success) return;
         const sumEl = G('m-acq-summary');

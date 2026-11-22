@@ -35,7 +35,7 @@ test('the layers are complete', () => {
 });
 
 test('no layer reaches upwards', () => {
-  const fehler = [];
+  const error = [];
   let kanten = 0;
   SCHICHTEN.forEach((name, hoehe) => {
     for (const ziel of importsOf(name)) {
@@ -43,7 +43,7 @@ test('no layer reaches upwards', () => {
       if (targetHeight < 0) continue; // not a sibling of the layer
       kanten++;
       if (targetHeight >= hoehe) {
-        fehler.push(`${name}.ts holt ${ziel}.ts — das steht gleich hoch oder hoeher`);
+        error.push(`${name}.ts holt ${ziel}.ts — das steht gleich hoch oder hoeher`);
       }
     }
   });
@@ -51,7 +51,7 @@ test('no layer reaches upwards', () => {
   // the assertion below would be silently green.
   assert.ok(kanten >= 4, `Nur ${kanten} Abhaengigkeiten zwischen den Schichten gefunden — greift die Suche noch?`);
   assert.deepEqual(
-    fehler,
+    error,
     [],
     'Ein Griff nach oben schliesst den Kreis. Node laedt im Kreis ein halb ' +
       'fertiges Modul aus — das faellt nicht beim Uebersetzen auf, sondern zur ' +

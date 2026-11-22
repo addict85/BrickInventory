@@ -39,9 +39,9 @@ test('without switch without token', () => {
 test('NODE_ENV opens nothing — not even development', () => {
   const alt = process.env.NODE_ENV;
   try {
-    for (const art of ['development', 'test', 'production']) {
-      environment({ NODE_ENV: art });
-      assert.equal(linkForConsole(TEXT), 'https://lego.example.org/reset?token=…', art);
+    for (const kind of ['development', 'test', 'production']) {
+      environment({ NODE_ENV: kind });
+      assert.equal(linkForConsole(TEXT), 'https://lego.example.org/reset?token=…', kind);
     }
   } finally {
     if (alt === undefined) environment({ NODE_ENV: undefined });

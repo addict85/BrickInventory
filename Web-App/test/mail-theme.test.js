@@ -30,7 +30,7 @@ test('the theme is loaded when sending, not hard-wired', () => {
   // constant.
   assert.match(
     SRC,
-    /await k\.einstellungen\.globalValue\('app_theme'\)/,
+    /await k\.settings\.globalValue\('app_theme'\)/,
     'Das Design ist eine globale Einstellung und muss von dort kommen',
   );
   // `'./settings'` OR `'../src/settings/settings'`: the mailer moved with an earlier round

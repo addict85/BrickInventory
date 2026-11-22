@@ -67,10 +67,10 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
   const { base } = testServer(_req, { sitzung: {}, t });
   const anmelden = async c => {
     await db.run('DELETE FROM rate_limit_attempts');
-    const r = await fetch(`${base}/api/v1/auth/login`, {
+    const r = await fetch(`${base}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: NAME, password: PASS, code: c, ohne_token: false, label: 'Probe' }),
+      body: JSON.stringify({ username: NAME, password: PASS, code: c, without_token: false, label: 'Probe' }),
     });
     return r.status;
   };
@@ -87,8 +87,8 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
       gesendet.map(g => [g.type, Date.parse(g.bis)]),
       [['alte_codes_ablauf', bis.getTime()]],
     );
-    const stand = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
-    assert.equal(Date.parse(stand.alte_codes_bis), bis.getTime());
+    const state = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
+    assert.equal(Date.parse(state.old_codes_until), bis.getTime());
   });
 
   await t.test('an expired code of the old kind no longer applies', async () => {
@@ -103,8 +103,8 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
     await code(searchValue('zweiter-faktor-code', `${uid}:${neu.replace(/-/g, '')}`), frist);
     await code('anderer-code-desselben-satzes', frist);
     assert.equal(await anmelden(neu), 200);
-    const stand = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
-    assert.deepEqual([stand.codes_uebrig, stand.alte_codes_bis], [1, null]);
+    const state = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
+    assert.deepEqual([state.codes_left, state.old_codes_until], [1, null]);
   });
 
   await t.test('the migration is repeatable and leaves new codes without a deadline', async () => {

@@ -46,7 +46,7 @@ const PROBE = {
 };
 
 /** @param {unknown} v */
-function art(v) {
+function kind(v) {
   if (v instanceof Date) return 'Date';
   if (Buffer.isBuffer(v)) return 'Buffer';
   return typeof v === 'object' ? 'unknown' : typeof v;
@@ -86,7 +86,7 @@ test('row types against the database', { concurrency: 1 }, async t => {
     assert.deepEqual(fehlt, [], 'Probe für neue Spaltentypen nachtragen');
     for (const typ of typen) {
       const z = await db.get(`SELECT (${PROBE[/** @type {keyof typeof PROBE} */ (typ)]})::${typ} AS v`);
-      assert.equal(art(z.v), Z.jsType(typ), `${typ}: erwartet ${Z.jsType(typ)}, kam ${art(z.v)}`);
+      assert.equal(kind(z.v), Z.jsType(typ), `${typ}: erwartet ${Z.jsType(typ)}, kam ${kind(z.v)}`);
     }
   });
 });

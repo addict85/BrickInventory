@@ -83,13 +83,13 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
   const koppeln = (qr, keks) =>
     pairQr((p, body, kopf) => ruf(p, { method: 'POST', headers: kopf, body }), qr, { cookie: keks });
   /** The api_tokens row for an issued plaintext token. */
-  const zeile = token =>
+  const row = token =>
     db.get('SELECT expires_at, hard_expires_at, sliding, never_expires FROM api_tokens WHERE token = $1', [
       auth.tokenDigest(token),
     ]);
 
   try {
-    const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, ohne_token: true } });
+    const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, without_token: true } });
     assert.equal(an.status, 200, `Anmeldung scheiterte: ${JSON.stringify(an.body)}`);
     const keks = an.cookie.split(';')[0];
 
@@ -100,20 +100,20 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     const withoutPw = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
-      body: { gueltigkeit: '6m' },
+      body: { validity: '6m' },
     });
     assert.equal(withoutPw.status, 400, `ohne Passwort: ${withoutPw.status} ${JSON.stringify(withoutPw.body)}`);
     const falsch = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
-      body: { gueltigkeit: '6m', password: 'falsch-falsch' },
+      body: { validity: '6m', password: 'falsch-falsch' },
     });
     assert.equal(falsch.status, 400);
-    const geraet = await auth.createToken(uid, 'Probe', true);
+    const device = await auth.createToken(uid, 'Probe', true);
     const perToken = await ruf('/qr-token', {
       method: 'POST',
-      headers: { authorization: `Bearer ${geraet}` },
-      body: { gueltigkeit: 'unbegrenzt', password: PASS },
+      headers: { authorization: `Bearer ${device}` },
+      body: { validity: 'unbegrenzt', password: PASS },
     });
     assert.equal(perToken.status, 403, 'Mit einem Token allein darf kein neuer Zugang entstehen');
 
@@ -121,7 +121,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     const sechs = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
-      body: { gueltigkeit: '6m', password: PASS },
+      body: { validity: '6m', password: PASS },
     });
     assert.equal(sechs.status, 200, JSON.stringify(sechs.body));
     assert.equal(sechs.body.token_days, 180, 'Sechs Monate sind 180 Tage');
@@ -129,7 +129,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     // ── 2. Redeeming creates BOTH periods ──────────────────────────
     const ein = await koppeln(sechs.body, keks);
     assert.equal(ein.status, 200, JSON.stringify(ein.body));
-    const z = await zeile(ein.body.token);
+    const z = await row(ein.body.token);
     assert.ok(z, 'Zum ausgegebenen Token muss eine Zeile existieren');
     assert.equal(z.sliding, true, 'Die Gleitfrist bleibt — sie ist der Rueckhalt gegen vergessene Geraete');
     assert.ok(
@@ -150,13 +150,13 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     assert.equal(ohne.body.token_days, 180, 'Ohne Wahl gilt die Höchstdauer von 180 Tagen');
     const versuch = await ruf('/qr-login', {
       method: 'POST',
-      body: { token: ohne.body.token, gueltigkeit: 'unbegrenzt', token_days: 3650 },
+      body: { token: ohne.body.token, validity: 'unbegrenzt', token_days: 3650 },
     });
     // The contract knows no wish when redeeming: 400, and the code stays unused.
-    assert.deepEqual([versuch.status, versuch.body.code], [400, 'feld_unbekannt'], JSON.stringify(versuch.body));
+    assert.deepEqual([versuch.status, versuch.body.code], [400, 'field_unknown'], JSON.stringify(versuch.body));
     const eingeloest = await koppeln(ohne.body, keks);
     assert.equal(eingeloest.status, 200, JSON.stringify(eingeloest.body));
-    const zv = await zeile(eingeloest.body.token);
+    const zv = await row(eingeloest.body.token);
     assert.ok(
       zv.hard_expires_at && Math.abs(daysAhead(zv.hard_expires_at) - 180) < 1,
       'Das einloesende Geraet darf sich keine Laufzeit erteilen — sonst reicht ein abfotografierter Code',
@@ -171,10 +171,10 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       const r = await ruf('/qr-token', {
         method: 'POST',
         headers: { cookie: keks },
-        body: { gueltigkeit: wahl, password: PASS },
+        body: { validity: wahl, password: PASS },
       });
       assert.equal(r.body.token_days, tage, `„${wahl}" ergibt die Höchstdauer aus TOKEN_MAX_DAYS`);
-      const ze = await zeile((await koppeln(r.body, keks)).body.token);
+      const ze = await row((await koppeln(r.body, keks)).body.token);
       assert.ok(
         Math.abs(daysAhead(ze.hard_expires_at) - Number(tage)) < 1,
         `${wahl}: feste Frist ${ze.hard_expires_at}`,
@@ -189,7 +189,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       [auth.tokenDigest(alt)],
     );
     await auth.tokensCleanup();
-    const begrenzt = await zeile(alt);
+    const begrenzt = await row(alt);
     assert.ok(begrenzt && Math.abs(daysAhead(begrenzt.hard_expires_at) - 180) < 1, JSON.stringify(begrenzt));
     assert.equal(begrenzt.never_expires, false);
 
@@ -202,7 +202,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       const r = await ruf('/qr-token', {
         method: 'POST',
         headers: { cookie: keks },
-        body: { gueltigkeit: nonsense, password: PASS },
+        body: { validity: nonsense, password: PASS },
       });
       assert.equal(r.status, 200, `„${nonsense}" soll nicht scheitern, sondern nichts waehlen`);
       assert.equal(r.body.token_days, 180, `„${nonsense}" darf nur die Vorgabe von 180 Tagen ergeben`);
@@ -215,7 +215,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     const abgelaufen = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
-      body: { gueltigkeit: '1m', password: PASS },
+      body: { validity: '1m', password: PASS },
     });
     const zugang = await koppeln(abgelaufen.body, keks);
     const roh = zugang.body.token;
@@ -240,7 +240,7 @@ test('QR access: the UI chooses when CREATING, not when redeeming', () => {
   const einst = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
 
   assert.ok(
-    /api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit: validity, password\b/.test(einst),
+    /api\('POST', '\/v2\/auth\/qr-token', \{ validity, password\b/.test(einst),
     'Die Webapp soll die gewaehlte Laufzeit beim Erzeugen des Codes mitschicken',
   );
   assert.ok(

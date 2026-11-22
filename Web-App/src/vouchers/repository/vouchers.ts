@@ -11,7 +11,7 @@ export interface VoucherRow {
   pdf_path: string | null;
   created_at: string | Date;
   updated_at: string | Date;
-  guthaben_geprueft_am: string | Date | null;
+  balance_checked_at: string | Date | null;
 }
 /** currency null: the database sets the account's currency (trigger vouchers_currency). */
 export interface VoucherFields {
@@ -22,7 +22,7 @@ export interface VoucherFields {
 }
 
 const COLUMNS =
-  'id, number, pin, amount, currency, pdf_path, created_at, updated_at, balance_checked_at AS guthaben_geprueft_am';
+  'id, number, pin, amount, currency, pdf_path, created_at, updated_at, balance_checked_at AS balance_checked_at';
 
 /** Account and row as context: a number or PIN copied into another voucher stays unreadable.
  * NOTE: these tags are part of the encryption AAD / HMAC input for data already stored —

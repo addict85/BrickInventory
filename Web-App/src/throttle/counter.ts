@@ -12,7 +12,7 @@ export interface CounterState {
 export type State = CounterState & { laufend: number };
 
 type Entry = { count: number; firstAt: number; lastAt: number | null; laufend: number };
-const fallback = () => processWide('anmeldeRueckfall', () => ({ eintraege: new Map<string, Entry>(), reportedAt: 0 }));
+const fallback = () => processWide('anmeldeRueckfall', () => ({ entries: new Map<string, Entry>(), reportedAt: 0 }));
 const MEMORY_AT_MOST = 5000;
 
 function inMemory(wo: string, e: unknown): void {
@@ -23,9 +23,9 @@ function inMemory(wo: string, e: unknown): void {
 }
 
 function trim(windowMs: number): void {
-  if (fallback().eintraege.size <= MEMORY_AT_MOST) return;
+  if (fallback().entries.size <= MEMORY_AT_MOST) return;
   const limit = Date.now() - windowMs;
-  for (const [k, v] of fallback().eintraege) if (v.firstAt < limit) fallback().eintraege.delete(k);
+  for (const [k, v] of fallback().entries) if (v.firstAt < limit) fallback().entries.delete(k);
 }
 
 const restMin = (firstAt: number, windowMin: number, now: number) =>
@@ -38,12 +38,12 @@ export async function counterState(k: ThrottleContext, key: string, windowMin: n
     return {
       count: parseInt(row.count, 10) || 0,
       waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)),
-      sinceLast: Math.max(0, parseFloat(row.seit) || 0),
+      sinceLast: Math.max(0, parseFloat(row.since) || 0),
     };
   } catch (error) {
     inMemory('read', error);
-    const e = fallback().eintraege.get(key);
-    const now = k.uhr.jetzt();
+    const e = fallback().entries.get(key);
+    const now = k.clock.now();
     if (!e || now - e.firstAt > windowMin * 60000) return null;
     return {
       count: e.count,
@@ -59,17 +59,17 @@ export async function countAttempt(k: ThrottleContext, key: string, windowMin: n
     return await k.counter.increase(key, windowMin);
   } catch (error) {
     inMemory('count', error);
-    const now = k.uhr.jetzt();
-    const e = fallback().eintraege.get(key);
+    const now = k.clock.now();
+    const e = fallback().entries.get(key);
     if (!e || now - e.firstAt > windowMin * 60000)
-      fallback().eintraege.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
+      fallback().entries.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
     else {
       e.count++;
       e.lastAt = now;
       e.laufend = Math.max(0, (e.laufend || 0) - 1);
     }
     trim(windowMin * 60000);
-    return fallback().eintraege.get(key)?.count ?? 1;
+    return fallback().entries.get(key)?.count ?? 1;
   }
 }
 
@@ -80,7 +80,7 @@ export async function reserve(
   windowMin: number,
   decayS: number,
   allowed: (s: State) => boolean,
-): Promise<{ ok: boolean; stand: State }> {
+): Promise<{ ok: boolean; state: State }> {
   try {
     return await k.transact(async t => {
       const r = await t.counter.lock(key, windowMin, decayS);
@@ -89,20 +89,20 @@ export async function reserve(
         count: fresh ? 0 : parseInt(r.count, 10) || 0,
         laufend: r.laufend_alt ? 0 : parseInt(r.ongoing, 10) || 0,
         waitMin: fresh ? windowMin : Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)),
-        sinceLast: Math.max(0, parseFloat(r.seit) || 0),
+        sinceLast: Math.max(0, parseFloat(r.since) || 0),
       };
-      if (!allowed(s)) return { ok: false, stand: s };
+      if (!allowed(s)) return { ok: false, state: s };
       await t.counter.occupySlot(key, s.laufend + 1, fresh);
-      return { ok: true, stand: s };
+      return { ok: true, state: s };
     });
   } catch (error) {
     inMemory('reserve', error);
     // In process memory this block without await is atomic.
-    const now = k.uhr.jetzt();
-    let e = fallback().eintraege.get(key);
+    const now = k.clock.now();
+    let e = fallback().entries.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {
       e = { count: 0, firstAt: now, lastAt: null, laufend: 0 };
-      fallback().eintraege.set(key, e);
+      fallback().entries.set(key, e);
     }
     const s: State = {
       count: e.count,
@@ -110,10 +110,10 @@ export async function reserve(
       waitMin: restMin(e.firstAt, windowMin, now),
       sinceLast: (now - (e.lastAt ?? e.firstAt)) / 1000,
     };
-    if (!allowed(s)) return { ok: false, stand: s };
+    if (!allowed(s)) return { ok: false, state: s };
     e.laufend = s.laufend + 1;
     trim(windowMin * 60000);
-    return { ok: true, stand: s };
+    return { ok: true, state: s };
   }
 }
 
@@ -122,7 +122,7 @@ export async function releaseSlot(k: ThrottleContext, key: string): Promise<void
     await k.counter.freeSlot(key);
   } catch (error) {
     inMemory('release', error);
-    const e = fallback().eintraege.get(key);
+    const e = fallback().entries.get(key);
     if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
   }
 }
@@ -134,9 +134,9 @@ export async function forgetCounter(k: ThrottleContext, key: string, o: { alsoBe
     if (o.alsoBelow) await k.counter.deleteCountersWithPrefix(`${key}|`);
   } catch (e) {
     inMemory('delete', e);
-    fallback().eintraege.delete(key);
+    fallback().entries.delete(key);
     if (o.alsoBelow)
-      for (const n of fallback().eintraege.keys()) if (n.startsWith(`${key}|`)) fallback().eintraege.delete(n);
+      for (const n of fallback().entries.keys()) if (n.startsWith(`${key}|`)) fallback().entries.delete(n);
   }
 }
 
@@ -151,11 +151,11 @@ export async function countInWindow(
     return { count: parseInt(r.count, 10) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
   } catch (error) {
     inMemory('request', error);
-    const now = k.uhr.jetzt();
-    let e = fallback().eintraege.get(key);
+    const now = k.clock.now();
+    let e = fallback().entries.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {
       e = { count: 0, firstAt: now, lastAt: now, laufend: 0 };
-      fallback().eintraege.set(key, e);
+      fallback().entries.set(key, e);
     }
     e.count++;
     e.lastAt = now;

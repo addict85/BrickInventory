@@ -4,7 +4,7 @@ import { failDomain } from './errorTexts';
 /** Digits; spaces and hyphens are dropped, that is how retailers print the number. */
 export function voucherNumber(v: unknown): string {
   const n = typeof v === 'string' && v.length <= 40 ? v.replace(/[\s-]/g, '') : '';
-  if (!/^\d{4,25}$/.test(n)) failDomain('ungueltig', 'nummer_ungueltig');
+  if (!/^\d{4,25}$/.test(n)) failDomain('ungueltig', 'number_invalid');
   return n;
 }
 
@@ -12,7 +12,7 @@ export function voucherPin(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   const p = typeof v === 'string' ? v.trim() : '-';
   if (!p) return null;
-  if (!/^\d{3,10}$/.test(p)) failDomain('ungueltig', 'pin_ungueltig');
+  if (!/^\d{3,10}$/.test(p)) failDomain('ungueltig', 'pin_invalid');
   return p;
 }
 
@@ -20,7 +20,7 @@ export function voucherPin(v: unknown): string | null {
 export function voucherCurrency(v: unknown): string | null {
   if (v === null || v === undefined || v === '') return null;
   const w = typeof v === 'string' ? v.toUpperCase() : '';
-  if (!/^[A-Z]{3}$/.test(w)) failDomain('ungueltig', 'waehrung_ungueltig');
+  if (!/^[A-Z]{3}$/.test(w)) failDomain('ungueltig', 'currency_invalid');
   return w;
 }
 

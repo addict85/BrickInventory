@@ -59,7 +59,7 @@ async function geh(a, hash, bereit, was) {
   await a.ruhig(5000);
 }
 
-async function sprache(a, lang) {
+async function language(a, lang) {
   await a.b.auswerten(`(() => { const s = document.getElementById('lang-select'); s.value = '${lang}';
     s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await a.bis(`document.documentElement.lang === '${lang}'`, `Sprache ${lang}`);
@@ -140,17 +140,17 @@ const IMAGE_SIZE = sel => `(() => [...document.querySelectorAll(${JSON.stringify
       raus: r.left < rahmen.left - 0.5 || r.right > rahmen.right + 0.5 || r.top < rahmen.top - 0.5 || r.bottom > rahmen.bottom + 0.5 };
   }))()`;
 
-function checkImages(m, wo, anzahl) {
-  assert.equal(m.length, anzahl, `${wo}: ${m.length} Bilder statt ${anzahl}`);
+function checkImages(m, wo, count) {
+  assert.equal(m.length, count, `${wo}: ${m.length} Bilder statt ${count}`);
   for (const x of m) {
     const soll = IMAGES.find(([nr]) => nr === x.nr);
     assert.ok(soll && x.geladen, `${wo}: ${x.nr} nicht geladen`);
-    const quelle = Number(soll[1]) / Number(soll[2]);
+    const source = Number(soll[1]) / Number(soll[2]);
     // A preview may be smaller, but not shaped differently: a square one would mean „zugeschnitten“.
-    assert.ok(Math.abs(x.datei / quelle - 1) < 0.05, `${wo}: ${x.nr} Datei ${x.datei} statt ${quelle} (zugeschnitten)`);
+    assert.ok(Math.abs(x.datei / source - 1) < 0.05, `${wo}: ${x.nr} Datei ${x.datei} statt ${source} (zugeschnitten)`);
     assert.ok(
-      Math.abs(x.painted / quelle - 1) < 0.05,
-      `${wo}: ${x.nr} gemalt ${x.painted} statt ${quelle} (gestreckt)`,
+      Math.abs(x.painted / source - 1) < 0.05,
+      `${wo}: ${x.nr} gemalt ${x.painted} statt ${source} (gestreckt)`,
     );
     assert.ok(!x.raus, `${wo}: ${x.nr} ragt aus seinem Rahmen`);
   }
@@ -226,23 +226,23 @@ async function minusAtOne(_t, a) {
       e =>
         e.method === 'Network.requestWillBeSent' &&
         e.params.request.method !== 'GET' &&
-        /\/api\/v1\/sets\/10300-1/.test(e.params.request.url),
+        /\/api\/v2\/sets\/10300-1/.test(e.params.request.url),
     ).length;
-  const stand = () =>
+  const state = () =>
     b.auswerten(`(() => { const k = document.getElementById('m-qty-dec');
       return { wert: document.getElementById('m-qty').value, gesperrt: k.getAttribute('aria-disabled'), titel: k.title,
         beschreibung: document.getElementById(k.getAttribute('aria-describedby') || '-')?.textContent || '' }; })()`);
   const vorher = schreibend();
-  const m = await stand();
+  const m = await state();
   assert.equal(m.gesperrt, 'true', `„−“ bei einem Exemplar nicht gesperrt: ${JSON.stringify(m)}`);
   assert.equal(m.titel, 'Zum Entfernen: „Set löschen“ unter „Weitere Aktionen“');
   assert.equal(m.beschreibung, m.titel, 'Vorleser hören den Hinweis nicht');
   await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
   await a.warte(700);
-  assert.deepEqual([(await stand()).wert, schreibend() - vorher], ['1', 0], '„−“ bei 1 hat etwas getan');
+  assert.deepEqual([(await state()).wert, schreibend() - vorher], ['1', 0], '„−“ bei 1 hat etwas getan');
   await b.auswerten(`document.querySelector('[data-click="mQtyInc"]').click(); true`);
   await bis(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'false'`, '„−“ frei bei 2');
-  assert.equal((await stand()).titel, '', 'Hinweis bleibt bei 2 stehen');
+  assert.equal((await state()).titel, '', 'Hinweis bleibt bei 2 stehen');
   await bis(`document.querySelector('#m-quantity .field-status')?.textContent.trim() !== ''`, 'saved');
   await a.ruhig();
   await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
@@ -255,7 +255,7 @@ async function minusAtOne(_t, a) {
 
 async function floatingButton(_t, a) {
   const { b } = a;
-  await sprache(a, 'en');
+  await language(a, 'en');
   try {
     // B3: the date field inherits the language of the page.
     assert.deepEqual(
@@ -295,7 +295,7 @@ async function floatingButton(_t, a) {
     }
   } finally {
     await groesse(b, 1280, false);
-    await sprache(a, 'de');
+    await language(a, 'de');
   }
 }
 
@@ -399,7 +399,7 @@ async function jobs(_t, a) {
   const { b } = a;
   // One service waiting with work (total > 0), one running: only the running one shows the bar.
   await b.auswerten(`window.__echt = window.fetch; window.fetch = async (u, o) => { const r = await window.__echt(u, o);
-    if (!/v1\\/admin\\/jobs$/.test(String(u))) return r;
+    if (!/v2\\/admin\\/jobs$/.test(String(u))) return r;
     const d = await r.clone().json(); const [x, y] = Object.keys(d.jobs);
     d.jobs[x] = { ...d.jobs[x], status: 'idle', total: 10, progress: 3 }; d.jobs[y] = { ...d.jobs[y], status: 'running', total: 10, progress: 5 };
     window.__dienste = [x, y]; return new Response(JSON.stringify(d), { status: 200, headers: { 'Content-Type': 'application/json' } }); }; true`);
@@ -477,11 +477,11 @@ async function bauliste(_t, a) {
     ]) {
       await groesse(b, breite, telefon);
       await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
-      const m = await b.auswerten(`({ feld: document.getElementById('pl-setnr').getBoundingClientRect().width,
+      const m = await b.auswerten(`({ field: document.getElementById('pl-setnr').getBoundingClientRect().width,
         karte: document.querySelector('#tab-partslist .ph').getBoundingClientRect().width })`);
       if (telefon)
-        assert.ok(m.feld >= m.karte - 1, `${breite} px: Feld nicht über die ganze Breite: ${JSON.stringify(m)}`);
-      else assert.ok(m.feld >= 480, `${breite} px: Feld für mehrere Setnummern zu schmal: ${JSON.stringify(m)}`);
+        assert.ok(m.field >= m.karte - 1, `${breite} px: Feld nicht über die ganze Breite: ${JSON.stringify(m)}`);
+      else assert.ok(m.field >= 480, `${breite} px: Feld für mehrere Setnummern zu schmal: ${JSON.stringify(m)}`);
     }
   } finally {
     await groesse(b, 1280, false);
@@ -510,18 +510,18 @@ test('quantity, table values, second factor, build list', { concurrency: 1, time
   const a = await startApp(t, {
     name,
     allDesigns: true,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternHousehold(db, uid);
       await putImages(t, db, uid, req);
       await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
-        VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'Zeitüberschreitung')`);
+        VALUES ('exchange_rates', NOW() + interval '5 hours', 4, 6, 'Zeitüberschreitung')`);
     },
   });
-  if (a.grund) {
-    t.skip(a.grund);
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'pending'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [

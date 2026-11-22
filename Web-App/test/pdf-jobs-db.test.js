@@ -76,7 +76,8 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   const app = express();
   // As in operation the body is read by the server's parser, not the router.
   app.use(express.json({ limit: '4mb' })); // like server.ts for this route
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/pdf.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/pdf.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -84,17 +85,17 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   async function jobPut(jobId, userId, status = 'done') {
     await db.run(
       `INSERT INTO jobs (type, user_id, dedupe_key, status, locked_by, deadline_at)
-                  VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'laeuft' THEN 'test' END,
-                          CASE WHEN $3 = 'laeuft' THEN NOW() + INTERVAL '1 hour' END)`,
-      [jobs.pdfKey(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft'],
+                  VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'running' THEN 'test' END,
+                          CASE WHEN $3 = 'running' THEN NOW() + INTERVAL '1 hour' END)`,
+      [jobs.pdfKey(jobId), userId, status === 'done' ? 'done' : 'running'],
     );
     await fs.mkdir(PDF_JOB_DIR, { recursive: true });
     if (status === 'done') {
       await fs.writeFile(path.join(PDF_JOB_DIR, `${jobId}.pdf`), '%PDF-1.4 test');
     }
   }
-  const hol = (pfad, token) =>
-    fetch(`${basis}/api/v1/sets/partslist-pdf/${pfad}`, { headers: { Authorization: `Bearer ${token}` } });
+  const hol = (path, token) =>
+    fetch(`${basis}/api/v2/sets/partslist-pdf/${path}`, { headers: { Authorization: `Bearer ${token}` } });
 
   try {
     const jobA = jobs.newJobId(Date.now());
@@ -127,7 +128,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       await jobPut(jobs.newJobId(Date.now()), idA, 'running');
       await jobPut(jobs.newJobId(Date.now()), idB, 'running'); // a foreign run does not count
 
-      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+      const r = await fetch(`${basis}/api/v2/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
@@ -135,7 +136,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       assert.equal(r.status, 429, `dritter Auftrag wurde angenommen (${r.status})`);
 
       // The second user is not affected by it.
-      const r2 = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+      const r2 = await fetch(`${basis}/api/v2/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokB}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
@@ -153,7 +154,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       await db.run(`UPDATE jobs SET created_at = NOW() - INTERVAL '1 day' WHERE dedupe_key = ANY($1)`, [
         [alt1, alt2].map(jobs.pdfKey),
       ]);
-      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+      const r = await fetch(`${basis}/api/v2/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
@@ -166,7 +167,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       const job = jobs.newJobId(Date.now());
       await jobPut(job, idA, 'running');
       const ctrl = new AbortController();
-      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf/stream/${job}`, {
+      const r = await fetch(`${basis}/api/v2/sets/partslist-pdf/stream/${job}`, {
         headers: { Authorization: `Bearer ${tokA}` },
         signal: ctrl.signal,
       });
@@ -176,13 +177,13 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       let text = '';
       const start = Date.now();
       // The worker reports the end via erledigt(); the job here belongs to the claimer 'test'.
-      const zeile = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfKey(job)]);
+      const row = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfKey(job)]);
       setTimeout(
         () =>
           Object.assign({}, _req('src/jobQueue/jobs.js'), {
             ..._req('src/jobQueue/service.js'),
             ...require('./helpers/sources').testArea('jobQueue').jobs,
-          }).done({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
+          }).done({ id: String(row.id), locked_by: 'test', type: 'pdf' }),
         300,
       );
       while (!text.includes('"done"') && Date.now() - start < 8000) {
@@ -201,7 +202,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
     await t.test('the parts list is checked before a job arises', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
       const starte = rumpf =>
-        fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+        fetch(`${basis}/api/v2/sets/partslist-pdf`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
           body: JSON.stringify(rumpf),
@@ -221,7 +222,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       for (const [fall, rumpf] of Object.entries(falsch)) {
         const r = await starte(rumpf);
         assert.equal(r.status, 400, `${fall}: ${JSON.stringify(r.body).slice(0, 200)}`);
-        assert.equal(r.body.code, 'eingabe_ungueltig', fall);
+        assert.equal(r.body.code, 'input_invalid', fall);
       }
       assert.equal((await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n, 0, 'ein Auftrag trotz 400');
 

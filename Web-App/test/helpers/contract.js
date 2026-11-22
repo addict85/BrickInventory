@@ -10,14 +10,14 @@ const uniform = p => p.replace(/\{\w+\}|:\w+/g, '{}');
 /**
  * @param {(rel: string) => any} _req  buildAndRequire() of the test file
  * @param {string} methode
- * @param {string} pfad
- * @returns {{ antwort?: import('zod').ZodType, eingabe?: import('zod').ZodType } | undefined}
+ * @param {string} path
+ * @returns {{ response?: import('zod').ZodType, eingabe?: import('zod').ZodType } | undefined}
  */
-function contractTo(_req, methode, pfad) {
+function contractTo(_req, methode, path) {
   const { CONTRACT } = _req('src/contract/index.js');
   const treffer = Object.entries(CONTRACT).filter(([k]) => {
     const [m, p] = k.split(' ');
-    return m === methode && uniform(p) === uniform(pfad);
+    return m === methode && uniform(p) === uniform(path);
   });
   return treffer.length === 1 ? treffer[0][1] : undefined;
 }
@@ -32,4 +32,26 @@ function appSchnittstelle() {
   return JSON.parse(require('node:fs').readFileSync(datei, 'utf8'));
 }
 
-module.exports = { contractTo, uniform, appSchnittstelle };
+/**
+ * The app's routes with `path` as the v2 address ({x} placeholders kept): the app calls /api/v1,
+ * the contract and the routers name /api/v2.
+ */
+function appRoutes(_req) {
+  const { v2PathOf } = _req('src/http/apiV1Alias.js');
+  return appSchnittstelle().routen.map(r => {
+    const { path, key } = v2PathOf(r.methode, r.pfad);
+    // With a contract key the placeholders carry their v2 names ({kind} instead of {art}).
+    return { ...r, path: key ? key.split(' ')[1].replace(/:(\w+)/g, '{$1}') : path };
+  });
+}
+
+/** The app's hand-built addresses (no method known) as v2 addresses. */
+function appAddresses(_req) {
+  const { v2PathOf } = _req('src/http/apiV1Alias.js');
+  return appSchnittstelle().adressen.map(a => (a.startsWith('/api/v1/') ? v2PathOf('GET', a).path : a));
+}
+
+/** Keys of shared/app-schnittstelle.json that its generator names in German (the file stays v1). */
+const APP_KEYS = { required: 'pflicht', withoutToken: 'ohne_token' };
+
+module.exports = { contractTo, uniform, appSchnittstelle, appRoutes, appAddresses, APP_KEYS };

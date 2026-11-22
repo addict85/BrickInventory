@@ -9,11 +9,11 @@ import { openCapture, clearerReason } from './components.js';
 import { withSecondFactor, saveSettings } from './confirm-prompt.js';
 import { html } from './escaping.js';
 
-// ═══ First-run setup wizard (server: routes/api_v1/settings.ts /settings/einrichtung) ═
+// ═══ First-run setup wizard (server: routes/api/settings.ts /settings/einrichtung) ═
 // Admins only, and only while something is still missing. "Later" just closes it — the wizard comes back
 // on the next login, until it is completed.
 
-/** The steps of this pass; "passwort" only while the start password still applies. */
+/** The steps of this pass; "password" only while the start password still applies. */
 /** @type {string[]} */
 let _steps = [];
 let _now = 0;
@@ -80,16 +80,16 @@ function sourceError(source, text, details = '', fields = []) {
  * about the Rebrickable key is enough.
  */
 export async function checkSetup() {
-  const d = await api('GET', '/v1/settings/einrichtung');
-  if (!d?.success || !d.offen) return;
-  if (!d.passwort_aendern) {
-    const s = (await api('GET', '/v1/stats'))?.stats;
+  const d = await api('GET', '/v2/settings/setup');
+  if (!d?.success || !d.open) return;
+  if (!d.change_password) {
+    const s = (await api('GET', '/v2/stats'))?.stats;
     const total = s ? (s.total_sets || 0) + (s.total_parts || 0) + (s.total_minifigs || 0) : 0;
     if (total > 0) return;
   }
-  _steps = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'first-set'];
+  _steps = [...(d.change_password ? ['password'] : []), 'rebrickable', 'bricklink', 'brickset', 'first-set'];
   _now = 0;
-  _saved = Object.fromEntries(Object.entries(d.quellen || {}).map(([q, ok]) => [q, !!ok]));
+  _saved = Object.fromEntries(Object.entries(d.sources || {}).map(([q, ok]) => [q, !!ok]));
   for (const [q, ok] of Object.entries(_saved)) setStatus(q, ok ? true : null);
   render();
   G('setup-modal').classList.add('open');
@@ -102,7 +102,7 @@ function close() {
 
 async function finish() {
   close();
-  const d = await api('POST', '/v1/settings/einrichtung/fertig');
+  const d = await api('POST', '/v2/settings/setup/complete');
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
 }
 
@@ -144,12 +144,12 @@ export async function setupPassword() {
     return;
   }
   const d = await withSecondFactor(z =>
-    api('POST', '/v1/auth/change-password', { current: old, newPassword: newValue, ...z }),
+    api('POST', '/v2/auth/change-password', { current: old, newPassword: newValue, ...z }),
   );
   if (!d) return;
   if (!d?.success) {
     formError(box, d?.error || tRaw('settings.error'), [
-      d?.code === 'aktuelles_passwort_falsch' ? 'wiz-pw-alt' : 'wiz-pw-new',
+      d?.code === 'current_password_wrong' ? 'wiz-pw-alt' : 'wiz-pw-new',
     ]);
     return;
   }
@@ -192,20 +192,20 @@ export async function setupSource(source) {
     }
     if (!empty.length) _saved[source] = true;
   }
-  const d = await api('POST', '/v1/settings/quelle-testen', { quelle: source });
+  const d = await api('POST', '/v2/settings/test-source', { source: source });
   setStatus(source, !!d?.success);
   if (d?.success) {
     toast(tRaw('setup.test_ok'), 'success');
     return;
   }
-  const { grund: reason, details } = d?.code
-    ? { grund: d.error, details: d.details == null ? undefined : String(d.details) }
+  const { reason, details } = d?.code
+    ? { reason: d.error, details: d.details == null ? undefined : String(d.details) }
     : clearerReason(d);
   sourceError(
     source,
     reason || tRaw('settings.error'),
     details || '',
-    d?.code === 'quelle_abgelehnt' ? Object.values(fields) : [],
+    d?.code === 'source_rejected' ? Object.values(fields) : [],
   );
 }
 

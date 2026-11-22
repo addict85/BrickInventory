@@ -21,9 +21,9 @@ const { startApp } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
 test('Trusted Types', { timeout: 180_000 }, async t => {
-  const app = await startApp(t, { name: `tt_${process.pid}`, bestand: patternCollection });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `tt_${process.pid}`, holding: patternCollection });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
 
@@ -48,7 +48,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
       (await app.b.auswerten(`document.querySelectorAll('#gallery .sc').length`)) > 0,
       'keine Kachel in der Sammlung',
     );
-    const fehler = await app.b.auswerten(`(() => {
+    const error = await app.b.auswerten(`(() => {
       const versuch = (f) => { try { f(); return 'kein Fehler'; } catch (e) { return e.name; } };
       const div = document.createElement('div');
       return {
@@ -59,7 +59,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
         ownScript: versuch(() => { document.createElement('script').src = '/locales/en.js'; }),
       };
     })()`);
-    assert.deepEqual(fehler, {
+    assert.deepEqual(error, {
       innerHTML: 'TypeError',
       insertAdjacentHTML: 'TypeError',
       leer: 'kein Fehler',

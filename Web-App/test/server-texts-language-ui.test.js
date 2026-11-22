@@ -11,32 +11,32 @@ const assert = require('node:assert/strict');
 const { openUi, warte, reiter } = require('./helpers/ui');
 
 test('tile subtitles in the UI language', async () => {
-  const kachel = (sub, sub_teile) => ({ label: 'x', status: 'idle', progress: 0, total: 0, sub, sub_teile });
+  const kachel = (sub, sub_parts) => ({ label: 'x', status: 'idle', progress: 0, total: 0, sub, sub_parts });
   const { w, d } = await openUi(
     {
-      '/v1/admin/job-status': { success: true, job: { running: false } },
-      '/v1/admin/jobs': {
+      '/v2/admin/job-status': { success: true, job: { running: false } },
+      '/v2/admin/jobs': {
         success: true,
         schedules: {},
         db: { csvCache: {}, blMapping: {} },
         jobs: {
-          bricksetRetry: kachel('Keine ausstehenden Einträge', [{ code: 'keine_ausstehenden' }]),
+          bricksetRetry: kachel('Keine ausstehenden Einträge', [{ code: 'none_pending' }]),
           imgDl: kachel('Bestand: 3 Bilder noch nicht gecacht · 2 Katalog-Bilder in Warteschlange', [
-            { code: 'bilder_offen', werte: { n: 3 }, vor: 'bestand' },
-            { code: 'katalog_warteschlange', werte: { n: 2 } },
+            { code: 'images_open', values: { n: 3 }, ago: 'holding' },
+            { code: 'catalog_queue', values: { n: 2 } },
           ]),
         },
       },
-      '/v1/admin/auftraege': {
+      '/v2/admin/job-queue': {
         success: true,
-        auftraege: [],
-        zusammenfassung: [],
-        pausen: [],
-        job_prozess: { laeuft: true },
-        bildbedarf: 0,
+        jobs: [],
+        summary: [],
+        pauses: [],
+        job_process: { running: true },
+        image_demand: 0,
       },
     },
-    { sprache: 'en' },
+    { language: 'en' },
   );
   try {
     await reiter(w, 'monitor');

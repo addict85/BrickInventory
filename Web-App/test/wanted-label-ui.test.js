@@ -16,7 +16,7 @@ const { openUi, reiter } = require('./helpers/ui');
 const sichtbar = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
 test('English: tab and wishlist are called “Wishlist”', async () => {
-  const o = await openUi({ '/v1/wanted': { success: true, items: [], total: 0 } }, { sprache: 'en' });
+  const o = await openUi({ '/v2/wanted': { success: true, items: [], total: 0 } }, { language: 'en' });
   try {
     const { d, w } = o;
     assert.equal(sichtbar(d.querySelector('.ntab[data-tab="wanted"]')), 'Wishlist', 'Reiter');
@@ -34,7 +34,7 @@ test('English: tab and wishlist are called “Wishlist”', async () => {
 });
 
 test('English: export button of the settings names the “wishlist”', async () => {
-  const o = await openUi({}, { sprache: 'en' });
+  const o = await openUi({}, { language: 'en' });
   try {
     const knopf = o.d.querySelector('[data-i18n="settings.data_zip_btn"]');
     assert.ok(knopf, 'Export-Knopf nicht gefunden');

@@ -13,11 +13,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-const antwort = waehrung => ({
-  '/v1/settings/raw': { success: true, settings: { currency: waehrung, language: 'de', rebrickable_api_key: 'probe' } },
-  '/v1/finance/valuation': {
+const response = currency => ({
+  '/v2/settings/raw': { success: true, settings: { currency: currency, language: 'de', rebrickable_api_key: 'probe' } },
+  '/v2/finance/valuation': {
     success: true,
-    currency: waehrung,
+    currency: currency,
     totals: { min: '0', avg: '0', max: '0' },
     sets: [
       {
@@ -31,16 +31,16 @@ const antwort = waehrung => ({
       },
     ],
   },
-  '/v1/finance/pnl': {
+  '/v2/finance/pnl': {
     success: true,
-    currency: waehrung,
+    currency: currency,
     sets: [],
     totals: { purchase: '1097.93', sets_purchase: '1097.93' },
   },
 });
 
-async function einstand(browserLanguage, waehrung = 'EUR') {
-  const o = await openUi(antwort(waehrung), { browserLanguage });
+async function einstand(browserLanguage, currency = 'EUR') {
+  const o = await openUi(response(currency), { browserLanguage });
   try {
     await reiter(o.w, 'finance');
     await warte(() => o.d.getElementById('fin-cost-basis').textContent.includes('1'));

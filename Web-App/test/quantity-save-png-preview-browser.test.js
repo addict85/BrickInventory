@@ -113,7 +113,7 @@ test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, asy
   });
   const a = await startApp(t, {
     name: `r25b_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternCollection(db, uid);
       // How the app stores set images: <nr>.jpg, next to it the preview from vorschauErzeugenAus.
       fs.mkdirSync(ordner, { recursive: true });
@@ -127,8 +127,8 @@ test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, asy
       await holdsSet(db, uid, nr, 1, { preis: 5 });
     },
   });
-  if (a.grund) {
-    t.skip(a.grund);
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
   await a.ruhig();

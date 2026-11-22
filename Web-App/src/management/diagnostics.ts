@@ -26,12 +26,12 @@ const VARIANTS = [
 
 /** Reports what the proxy would deliver of it — with and without referer. */
 export async function imageProbe(k: ManagementContext, url: string) {
-  if (!/^https:\/\//.test(url)) failDomain('ungueltig', 'url_fehlt_https');
+  if (!/^https:\/\//.test(url)) failDomain('ungueltig', 'url_missing_https');
   const address = urlOrNull(url);
-  if (!address) failDomain('ungueltig', 'url_ungueltig');
+  if (!address) failDomain('ungueltig', 'url_invalid');
   // The same hosts as the image proxy: the fetch runs from the internal network;
   // allowing every address would be server-side request forgery.
-  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) failDomain('verboten', 'host_nicht_erlaubt', { host: address.hostname });
+  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) failDomain('verboten', 'host_not_allowed', { host: address.hostname });
 
   const results: Awaited<ReturnType<typeof probeVariant>>[] = [];
   for (const v of VARIANTS) results.push(await probeVariant(k, url, v));
@@ -49,23 +49,23 @@ export async function imageProbe(k: ManagementContext, url: string) {
 
 /** Without redirects: the probe should show the CDN's raw status. */
 const fetchWithoutRedirect = (k: ManagementContext, url: string, kopfzeilen: Record<string, string>) =>
-  k.externalSources.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, redirects: 0, kopfzeilen });
+  k.externalSources.sources.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, redirects: 0, kopfzeilen });
 
 function readStream(a: FetchStream, enough = Infinity) {
-  return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(finished => {
-    const teile: Buffer[] = [];
+  return new Promise<{ parts: Buffer[]; bytes: number; truncated: boolean }>(finished => {
+    const parts: Buffer[] = [];
     let bytes = 0;
-    const s = a.strom();
+    const s = a.stream();
     s.on('data', (c: Buffer) => {
-      teile.push(c);
+      parts.push(c);
       bytes += c.length;
       if (bytes >= enough) {
         s.destroy();
-        finished({ teile, bytes, truncated: false });
+        finished({ parts, bytes, truncated: false });
       }
     });
-    s.on('end', () => finished({ teile, bytes, truncated: false }));
-    s.on('error', () => finished({ teile, bytes, truncated: true }));
+    s.on('end', () => finished({ parts, bytes, truncated: false }));
+    s.on('error', () => finished({ parts, bytes, truncated: true }));
   });
 }
 
@@ -95,7 +95,7 @@ async function probeVariant(kx: ManagementContext, url: string, v: { name: strin
       variant: v.name,
       ms: Math.round(performance.now() - t0),
       error: errorMessage(e),
-      code: e instanceof FetchError ? e.grund : undefined,
+      code: e instanceof FetchError ? e.reason : undefined,
     };
   }
 }
@@ -114,7 +114,7 @@ function firstBytes(k: ManagementContext, url: string) {
     'Accept-Encoding': 'identity',
   }).then(
     async a => {
-      const b = Buffer.concat((await readStream(a, 32)).teile);
+      const b = Buffer.concat((await readStream(a, 32)).parts);
       return {
         status: a.status,
         content_encoding: a.kopf['content-encoding'] || null,
@@ -160,7 +160,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
     condition_logic: {
       any_acquisition_used: anyUsed,
       chosen_for_price: chosen,
-      hinweis:
+      hint:
         'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu. ' +
         'Der Zustand steht seit Migration 0032 nur in den Erfassungen; das Feld ' +
         'mit dem gespeicherten Wert, das hier vorher stand, ist weggefallen. ' +
@@ -210,7 +210,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
 export async function imageDiagnostics(kx: ManagementContext, sn: string) {
   const ab = new Degradations();
   const konten: AccountImageRow = await ab.orElse('konten', kx.management.accountImageRows(sn), {
-    anzahl_konten: 0,
+    account_count: 0,
     image_local: null,
     image_url: null,
   });
@@ -219,53 +219,51 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const file = async (p: string) => {
     const st = await fs.promises.stat(p).catch(withoutMissingFile('management:bilddatei', null));
-    return st
-      ? { vorhanden: true, bytes: st.size, geaendert: st.mtime }
-      : { vorhanden: false, bytes: 0, geaendert: null };
+    return st ? { existing: true, bytes: st.size, changed: st.mtime } : { existing: false, bytes: 0, changed: null };
   };
   const original = await file(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
-  const vorschau = await file(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
+  const preview = await file(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
 
   const cdnUrl = konten.image_url || catalog?.image_url || null;
-  let proxy: { gecacht: boolean; [k: string]: unknown } = { adresse: cdnUrl, gecacht: false };
+  let proxy: { cached: boolean; [k: string]: unknown } = { address: cdnUrl, cached: false };
   if (cdnUrl) {
     const cf = proxyCachePathFor ? proxyCachePathFor(cdnUrl) : null;
     if (cf) {
       const cache = await file(cf);
-      proxy = { adresse: cdnUrl, gecacht: cache.vorhanden, cache, vorschau: await file(cf + '_thumb.jpg') };
+      proxy = { address: cdnUrl, cached: cache.existing, cache, preview: await file(cf + '_thumb.jpg') };
     }
   }
 
-  const merker = await ab.orElse('fehlanzeige', kx.management.setImageMiss(sn), null);
+  const marker = await ab.orElse('fehlanzeige', kx.management.setImageMiss(sn), null);
   const previewMarker = await ab.orElse('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
 
   // A diagnosis from substitute values would mislead: say first what was not readable.
-  const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];
-  if (!konten.anzahl_konten) hinweise.push('Kein Konto führt dieses Set.');
-  if (konten.anzahl_konten && !konten.image_local && !cdnUrl)
-    hinweise.push('Weder lokale Datei noch CDN-Adresse bekannt — die Clients können nichts anzeigen.');
-  if (konten.image_local && !original.vorhanden)
-    hinweise.push('image_local ist gesetzt, die Datei fehlt aber — die Bildroute weicht auf den Proxy aus.');
-  if (original.vorhanden && !vorschau.vorhanden)
-    hinweise.push('Original da, Vorschau fehlt — sie entsteht beim nächsten Abruf oder über den Bilder-Nachlauf.');
-  if (vorschau.vorhanden && vorschau.bytes < 200)
-    hinweise.push('Die Vorschau ist unbrauchbar klein und wird beim Ausliefern verworfen.');
-  if (merker)
-    hinweise.push(
-      `Gilt seit ${new Date(merker.checked_at).toLocaleString()} als fehlend` +
-        (merker.reason ? ` (${merker.reason})` : ' (Grund nicht vermerkt — Altbestand)') +
+  const hints: string[] = ab.parts.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.parts.join(', ')}.`] : [];
+  if (!konten.account_count) hints.push('Kein Konto führt dieses Set.');
+  if (konten.account_count && !konten.image_local && !cdnUrl)
+    hints.push('Weder lokale Datei noch CDN-Adresse bekannt — die Clients können nichts anzeigen.');
+  if (konten.image_local && !original.existing)
+    hints.push('image_local ist gesetzt, die Datei fehlt aber — die Bildroute weicht auf den Proxy aus.');
+  if (original.existing && !preview.existing)
+    hints.push('Original da, Vorschau fehlt — sie entsteht beim nächsten Abruf oder über den Bilder-Nachlauf.');
+  if (preview.existing && preview.bytes < 200)
+    hints.push('Die Vorschau ist unbrauchbar klein und wird beim Ausliefern verworfen.');
+  if (marker)
+    hints.push(
+      `Gilt seit ${new Date(marker.checked_at).toLocaleString()} als fehlend` +
+        (marker.reason ? ` (${marker.reason})` : ' (Grund nicht vermerkt — Altbestand)') +
         '. Solange der Eintrag steht, wird das Bild NICHT geholt. ' +
-        'Zurücknehmen: POST /api/v1/admin/forget-image-misses',
+        'Zurücknehmen: POST /api/v2/admin/forget-image-misses',
     );
-  if (previewMarker) hinweise.push('Für die Vorschau ist ein Fehlschlag vermerkt — sie wird nicht erneut versucht.');
-  if (!hinweise.length) hinweise.push('Alles vorhanden: Original und Vorschau liegen bereit.');
+  if (previewMarker) hints.push('Für die Vorschau ist ein Fehlschlag vermerkt — sie wird nicht erneut versucht.');
+  if (!hints.length) hints.push('Alles vorhanden: Original und Vorschau liegen bereit.');
 
   return {
     set_number: sn,
-    datenbank: { ...konten, katalog_bild: catalog?.image_url || null },
-    lokal: { original, vorschau },
-    merker: merker ? { seit: merker.checked_at, grund: merker.reason || null } : null,
+    database: { ...konten, catalog_image: catalog?.image_url || null },
+    local: { original, preview },
+    marker: marker ? { since: marker.checked_at, reason: marker.reason || null } : null,
     proxy,
-    hinweise,
+    hints,
   };
 }

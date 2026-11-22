@@ -9,7 +9,7 @@ const path = require('node:path');
 const TREE = path.join(__dirname, '..', '..');
 const css = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'noppe.css'), 'utf8');
 const glanz = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'hochglanz.css'), 'utf8');
-const quelle = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-tokens.json'), 'utf8'));
+const source = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-tokens.json'), 'utf8'));
 
 /**
  * The theme "noppe" — the clamping brick as a component of the UI. What is checked
@@ -17,7 +17,7 @@ const quelle = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-toke
  */
 
 test('the lid colors come from the SAME source', () => {
-  const steine = quelle.listen.steine.werte;
+  const steine = source.listen.steine.werte;
   assert.ok(
     steine.length === 6,
     `Die Steinliste hat ${steine.length} Eintraege statt sechs — sechs, damit die ` +
@@ -98,7 +98,7 @@ test('the design leads its font', () => {
 
 test('hochglanz inherits the palette instead of copying it', () => {
   assert.equal(
-    quelle.designs.hochglanz.erbt,
+    source.designs.hochglanz.erbt,
     'noppe',
     'hochglanz fuehrt eine eigene Palette. Es ist dieselbe wie die von noppe — ' +
       'eine Abschrift zieht beim naechsten Mal nicht mit.',
@@ -200,15 +200,15 @@ test('bar and lid share ONE stud shape', () => {
   // Two forms would drift apart at the next touch-up: one row
   // would get round studs, the other would keep its old ones — and both stand
   // one below the other on the same screen.
-  const grund = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
-  const explanations = [...(css + grund).matchAll(/--studs-form:/g)].length;
+  const reason = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
+  const explanations = [...(css + reason).matchAll(/--studs-form:/g)].length;
   assert.equal(
     explanations,
     1,
     `Die Noppenform steht ${explanations}-mal im Baum. Einmal reicht; jede ` +
       'weitere Reihe nimmt dieselbe Form in einem anderen Takt (mask-size).',
   );
-  assert.match(grund, /--studs-form:url\("data:image\/svg\+xml,/, 'Die Noppenform ist keine Maske mehr');
+  assert.match(reason, /--studs-form:url\("data:image\/svg\+xml,/, 'Die Noppenform ist keine Maske mehr');
 });
 
 test('the gloss is in step with the mask', () => {

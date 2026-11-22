@@ -1,14 +1,14 @@
 /**
- * Open without login at the entrance (PUBLIC_ROUTES, routes/api_v1/middleware.ts) is exactly
+ * Open without login at the entrance (PUBLIC_ROUTES, routes/api/middleware.ts) is exactly
  * what the app calls before it has a token (`ohne_token` in shared/app-schnittstelle.json),
  * plus named exceptions; Caddy buffers each open POST as a sign-in path. The app's "No" on
  * the QR screen (POST /auth/qr-login/verwerfen) comes without session and token.
  *
  * Counter-checks (measured 22.11.2026, each on its own):
- *   A  'POST /auth/qr-login/verwerfen' removed from PUBLIC_ROUTES → red: “the app's No
+ *   A  'POST /auth/qr-login/discard' removed from PUBLIC_ROUTES → red: “the app's No
  *      without session is stored” (401 instead of 200) and “the app's sign-in screen calls
  *      only open routes” (verwerfen missing)
- *   B  '/api/v1/auth/uebernahme-abbrechen' removed from the Caddyfile matcher → red:
+ *   B  '/api/v2/auth/cancel-takeover' removed from the Caddyfile matcher → red:
  *      “Caddy buffers every open POST” (missing in Caddy)
  *   C  'POST /auth/settings-probe' added to PUBLIC_ROUTES → red: “every open route
  *      is named” and “Caddy buffers every open POST” (an open route nobody calls without login)
@@ -30,14 +30,21 @@ const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const WEB = path.join(__dirname, '..');
-const { PUBLIC_ROUTES, isPublicRoute } = _req('routes/api_v1/middleware.js');
+const { PUBLIC_ROUTES, isPublicRoute } = _req('routes/api/middleware.js');
 /** What the app needs from the server, generated from its source (Android-App/tools/contract). */
 const APP = JSON.parse(fs.readFileSync(path.join(WEB, '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
-const ohnePraefix = (/** @type {string} */ r) => r.replace(' /api/v1/', ' /');
+const ohnePraefix = (/** @type {string} */ r) => r.replace(' /api/v2/', ' /');
 
 /** What the sign-in screen calls before there is a token (the generator follows
  * AnmeldungViewModel → KontoRepositoryImpl → AccountApi). */
-const signInScreenRoutes = () => new Set((APP.ohne_token ?? []).map(ohnePraefix));
+const { v2PathOf } = _req('src/http/apiV1Alias.js');
+/** The app calls /api/v1: its routes under their v2 address. */
+const v2Of = (/** @type {string} */ r) => {
+  const [m, p] = r.split(' ');
+  return `${m} ${v2PathOf(m, p).path}`;
+};
+const signInScreenRoutes = () =>
+  new Set((APP[require('./helpers/contract').APP_KEYS.withoutToken] ?? []).map(r => ohnePraefix(v2Of(r))));
 
 /** Open, but not from the sign-in screen; each with the reason. */
 const EXCEPTIONS = {
@@ -47,21 +54,21 @@ const EXCEPTIONS = {
   'GET /auth/me': 'app',
   // An expired token must still be able to sign out and to swap (it checks itself).
   'POST /auth/logout': 'app',
-  'POST /auth/token-rotieren': 'app',
+  'POST /auth/rotate-token': 'app',
   // Pages of the web app and links from mails (routes/pages.ts).
-  'GET /einrichtung/stand': 'web',
+  'GET /setup/state': 'web',
   'POST /auth/reset-password': 'web',
-  'POST /auth/bestaetigung-erneut': 'web',
-  'POST /auth/email-bestaetigen': 'web',
-  'POST /auth/email-bestaetigen/vorschau': 'web',
-  'POST /auth/uebernahme-abbrechen': 'web',
-  'POST /auth/anmeldung-freigeben': 'web',
+  'POST /auth/resend-confirmation': 'web',
+  'POST /auth/confirm-email': 'web',
+  'POST /auth/confirm-email/preview': 'web',
+  'POST /auth/cancel-takeover': 'web',
+  'POST /auth/approve-login': 'web',
 };
 
 test("the app's sign-in screen calls only open routes, and every open route is named", () => {
   const screen = signInScreenRoutes();
   assert.ok(screen.size >= 8, `nur ${screen.size} Adressen der Anmeldung — greift die Suche noch?`);
-  assert.ok(screen.has('POST /auth/qr-login/verwerfen'), 'das Nein der App fehlt in der Ermittlung');
+  assert.ok(screen.has('POST /auth/qr-login/discard'), 'das Nein der App fehlt in der Ermittlung');
   const geschlossen = [...screen].filter(r => !isPublicRoute(...r.split(' ')));
   assert.deepEqual(geschlossen, [], 'die Anmeldung der App ruft diese ohne Token');
   assert.deepEqual(
@@ -71,7 +78,7 @@ test("the app's sign-in screen calls only open routes, and every open route is n
   );
   // The exceptions marked `app` are routes the app really calls.
   const app = new Set(
-    APP.routen.map((/** @type {{ methode: string, pfad: string }} */ r) => ohnePraefix(`${r.methode} ${r.pfad}`)),
+    APP.routen.map((/** @type {{ methode: string, pfad: string }} */ r) => ohnePraefix(v2Of(`${r.methode} ${r.pfad}`))),
   );
   for (const [r, wer] of Object.entries(EXCEPTIONS))
     if (wer === 'app') assert.ok(app.has(r), `${r} ruft die App nicht`);
@@ -82,8 +89,13 @@ test('Caddy buffers every open POST as a sign-in path', () => {
   const block = caddy.match(/@anmeldung \{([\s\S]*?)\n\t\}/)?.[1] ?? '';
   const pfade = (block.match(/^\s*path (.+)$/m)?.[1] ?? '').trim().split(/\s+/);
   assert.ok(/method POST/.test(block) && pfade.length > 5, 'Block @anmeldung nicht gefunden');
-  const offen = PUBLIC_ROUTES.filter(r => r.startsWith('POST ')).map(r => `/api/v1${r.slice(5)}`);
-  assert.deepEqual([...pfade].sort(), [...offen].sort());
+  // The app still posts to the v1 alias, so Caddy buffers both addresses.
+  const { v1Key } = _req('src/contract/v1Routes.js');
+  const open = PUBLIC_ROUTES.filter(r => r.startsWith('POST ')).flatMap(r => [
+    `/api/v2${r.slice(5)}`,
+    v1Key(`POST /api/v2${r.slice(5)}`).slice(5),
+  ]);
+  assert.deepEqual([...pfade].sort(), [...open].sort());
 });
 
 test("the app's No without session is stored", { concurrency: 1, timeout: 60_000 }, async t => {
@@ -105,11 +117,11 @@ test("the app's No without session is stored", { concurrency: 1, timeout: 60_000
   /** The browser has the session, the app has none: the same server, the session switched per call. */
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
-  const adresse = base.replace('localhost', '127.0.0.1');
-  const ruf = async (/** @type {boolean} */ browser, /** @type {string} */ pfad, /** @type {object} */ body) => {
+  const address = base.replace('localhost', '127.0.0.1');
+  const ruf = async (/** @type {boolean} */ browser, /** @type {string} */ path, /** @type {object} */ body) => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
     if (browser) Object.assign(sitzung, { userId: uid, username: NAME });
-    const r = await fetch(`${adresse}/api/v1/auth${pfad}`, {
+    const r = await fetch(`${address}/api/v2/auth${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -121,12 +133,12 @@ test("the app's No without session is stored", { concurrency: 1, timeout: 60_000
   const m = await ruf(false, '/qr-login', { token: qr.body.token, label: 'Pixel Nein' });
   assert.equal(m.status, 200, JSON.stringify(m.body));
 
-  const nein = await ruf(false, '/qr-login/verwerfen', { abholung: m.body.abholung });
+  const nein = await ruf(false, '/qr-login/discard', { pickup: m.body.pickup });
   assert.equal(nein.status, 200, JSON.stringify(nein.body));
-  const zeile = await db.get('SELECT rejected_at FROM qr_login_tokens WHERE user_id = $1', [uid]);
-  assert.ok(zeile?.rejected_at, 'die Ablehnung steht in der Datenbank');
+  const row = await db.get('SELECT rejected_at FROM qr_login_tokens WHERE user_id = $1', [uid]);
+  assert.ok(row?.rejected_at, 'die Ablehnung steht in der Datenbank');
   // The web session confirms afterwards: the app still gets no token.
-  assert.equal((await ruf(true, `/qr-kopplung/${qr.body.kopplung}/bestaetigen`, { code: m.body.code })).status, 409);
-  const ab = await ruf(false, '/qr-login/abholen', { abholung: m.body.abholung });
+  assert.equal((await ruf(true, `/qr-pairing/${qr.body.pairing}/confirm`, { code: m.body.code })).status, 409);
+  const ab = await ruf(false, '/qr-login/collect', { pickup: m.body.pickup });
   assert.equal(ab.body?.token, undefined, JSON.stringify(ab.body));
 });

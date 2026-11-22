@@ -1,5 +1,5 @@
 /**
- * The background jobs in the administration (routes/api_v1/admin.ts,
+ * The background jobs in the administration (routes/api/admin.ts,
  * src/management/background.ts) via the real route: job list, cancel,
  * retry, clear, now — and the old addresses (brickset-queue,
  * job-status, job-schedule, trigger-price-job) keep delivering their fields.
@@ -9,7 +9,7 @@
  *      discards waiting ones, not the schedule”
  *   B  in auftragAbbrechen() planeNext() removed → red: “an
  *      aborted scheduled run leaves the next date”
- *   C  in rescheduleJobs() scheduleChanged('preise') removed → red: “a
+ *   C  in rescheduleJobs() scheduleChanged('prices') removed → red: “a
  *      new interval moves the open date”
  *   D  in bricksetList() `to_char(…)` replaced by the raw timestamp →
  *      red: “the Brickset list keeps its fields” (retry_after not a date)
@@ -65,8 +65,8 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   });
   await adminWithFactor(_req, uid);
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: true }, t });
-  const rufe = async (methode, pfad, body) => {
-    const r = await fetch(base + '/api/v1' + pfad, {
+  const rufe = async (methode, path, body) => {
+    const r = await fetch(base + '/api/v2' + path, {
       method: methode,
       headers: body ? { 'content-type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined,
@@ -74,7 +74,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     return { status: r.status, body: await r.json() };
   };
   const plan = type =>
-    db.get(`SELECT id::text AS id, status, due_at FROM jobs WHERE dedupe_key = $1 AND status = 'offen'`, [
+    db.get(`SELECT id::text AS id, status, due_at FROM jobs WHERE dedupe_key = $1 AND status = 'pending'`, [
       `plan:${type}`,
     ]);
 
@@ -82,103 +82,103 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   await db.run(`DELETE FROM global_settings WHERE key = 'price_job_interval_minutes'`);
   await Z.planeAll();
   // A postponed (quota) and an aborted job next to the failed one.
-  const verschoben = await A.placeJobOne('anleitung', { set_number: '44444-1' });
-  const receipt = await A.claimJob(['anleitung'], 60);
-  assert.equal(receipt.id, verschoben, 'der verschobene Auftrag sollte als erster belegt werden');
+  const moved = await A.placeJobOne('instructions', { set_number: '44444-1' });
+  const receipt = await A.claimJob(['instructions'], 60);
+  assert.equal(receipt.id, moved, 'der verschobene Auftrag sollte als erster belegt werden');
   await A.moved(receipt, new Date(Date.now() + 3_600_000), 'Tageskontingent erschöpft', false);
-  const abgebrochen = await A.placeJobOne('nachlauf', { schritt: 'vorschauen' });
-  await A.abortAb(abgebrochen);
+  const aborted = await A.placeJobOne('followup', { schritt: 'vorschauen' });
+  await A.abortAb(aborted);
 
   const wartend = [];
   for (const sn of ['11111-1', '22222-1'])
-    wartend.push(await A.placeJobOne('anleitung', { set_number: sn }, { schluessel: `anleitung:${sn}` }));
-  const kaputt = await A.placeJobOne('nachlauf', { schritt: 'katalog' });
-  await db.run(`UPDATE jobs SET status = 'fehler', error_message = 'Quelle weg' WHERE id = $1`, [kaputt]);
+    wartend.push(await A.placeJobOne('instructions', { set_number: sn }, { schluessel: `instructions:${sn}` }));
+  const kaputt = await A.placeJobOne('followup', { schritt: 'katalog' });
+  await db.run(`UPDATE jobs SET status = 'error', error_message = 'Quelle weg' WHERE id = $1`, [kaputt]);
   await db.run(`INSERT INTO run_state (key, value) VALUES ('jobs_lebenszeichen', NOW()::text)
                 ON CONFLICT (key) DO UPDATE SET value = NOW()::text`);
 
   await t.test('the list only shows pending ones, the summary also failed ones', async st => {
-    st.after(() => db.run('DELETE FROM jobs WHERE id = ANY($1)', [[verschoben, abgebrochen]]));
-    const r = await rufe('GET', '/admin/auftraege');
+    st.after(() => db.run('DELETE FROM jobs WHERE id = ANY($1)', [[moved, aborted]]));
+    const r = await rufe('GET', '/admin/job-queue');
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const { auftraege, zusammenfassung, job_prozess } = r.body;
+    const { jobs, summary, job_process } = r.body;
     assert.deepEqual(
-      auftraege.filter(a => a.id === kaputt || a.id === abgebrochen),
+      jobs.filter(a => a.id === kaputt || a.id === aborted),
       [],
       'beendete Aufträge stehen in der Liste der einzelnen',
     );
-    assert.deepEqual([...new Set(auftraege.map(a => a.status))].sort(), ['offen']);
-    const w = auftraege.find(a => a.id === verschoben);
-    assert.deepEqual([w?.status, w?.waiting, w?.error_message], ['offen', true, 'Tageskontingent erschöpft']);
-    assert.equal(auftraege.find(a => a.set_number === '11111-1')?.waiting, false, 'ein gewöhnlicher waiting nicht');
-    assert.ok(zusammenfassung.some(z => z.type === 'nachlauf' && z.status === 'fehler' && z.anzahl === 1));
-    assert.equal(job_prozess.laeuft, true);
-    const f = (await rufe('GET', '/admin/auftraege?status=fehler')).body.auftraege.find(a => a.id === kaputt);
+    assert.deepEqual([...new Set(jobs.map(a => a.status))].sort(), ['pending']);
+    const w = jobs.find(a => a.id === moved);
+    assert.deepEqual([w?.status, w?.waiting, w?.error_message], ['pending', true, 'Tageskontingent erschöpft']);
+    assert.equal(jobs.find(a => a.set_number === '11111-1')?.waiting, false, 'ein gewöhnlicher waiting nicht');
+    assert.ok(summary.some(z => z.type === 'followup' && z.status === 'error' && z.count === 1));
+    assert.equal(job_process.running, true);
+    const f = (await rufe('GET', '/admin/job-queue?status=error')).body.jobs.find(a => a.id === kaputt);
     assert.deepEqual(
       [f?.status, f?.error_message, f?.waiting],
-      ['fehler', 'Quelle weg', false],
+      ['error', 'Quelle weg', false],
       'mit Filter bleibt er abrufbar',
     );
   });
 
   await t.test('the list shows waiting and scheduled ones', async () => {
-    const r = await rufe('GET', '/admin/auftraege');
-    const { auftraege, zusammenfassung } = r.body;
+    const r = await rufe('GET', '/admin/job-queue');
+    const { jobs, summary } = r.body;
     assert.deepEqual(
-      auftraege
-        .filter(a => a.type === 'anleitung')
+      jobs
+        .filter(a => a.type === 'instructions')
         .map(a => a.set_number)
         .sort(),
       ['11111-1', '22222-1'],
     );
     assert.ok(
-      auftraege.some(a => a.type === 'preise' && a.geplant === true),
+      jobs.some(a => a.type === 'prices' && a.scheduled === true),
       'geplante Läufe fehlen',
     );
-    assert.ok(zusammenfassung.some(z => z.type === 'anleitung' && z.status === 'offen' && z.anzahl === 2));
-    assert.equal((await rufe('GET', '/admin/auftraege?art=gibtsnicht')).status, 400);
+    assert.ok(summary.some(z => z.type === 'instructions' && z.status === 'pending' && z.count === 2));
+    assert.equal((await rufe('GET', '/admin/job-queue?kind=gibtsnicht')).status, 400);
   });
 
   await t.test('retry queues a failed one anew', async () => {
-    assert.equal((await rufe('POST', `/admin/auftraege/${kaputt}/wiederholen`)).status, 200);
-    assert.equal((await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [kaputt])).status, 'offen');
+    assert.equal((await rufe('POST', `/admin/job-queue/${kaputt}/retry`)).status, 200);
+    assert.equal((await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [kaputt])).status, 'pending');
     assert.equal(
-      (await rufe('POST', `/admin/auftraege/${kaputt}/wiederholen`)).status,
+      (await rufe('POST', `/admin/job-queue/${kaputt}/retry`)).status,
       409,
       'ein offener lässt sich nicht wiederholen',
     );
   });
 
   await t.test('an aborted scheduled run leaves the next appointment', async () => {
-    const p = await plan('bild_nachlauf');
-    assert.equal((await rufe('POST', `/admin/auftraege/${p.id}/abbrechen`)).status, 200);
-    const neu = await plan('bild_nachlauf');
+    const p = await plan('image_followup');
+    assert.equal((await rufe('POST', `/admin/job-queue/${p.id}/cancel`)).status, 200);
+    const neu = await plan('image_followup');
     assert.ok(neu && neu.id !== p.id, 'kein neuer Termin nach dem Abbruch');
   });
 
   await t.test('clearing discards waiting ones, not the schedule', async () => {
-    const r = await rufe('DELETE', '/admin/auftraege/art/anleitung');
-    assert.deepEqual([r.status, r.body.entfernt], [200, 2]);
-    await A.placeJobOne('preise', {}, {});
-    const r2 = await rufe('DELETE', '/admin/auftraege/art/preise');
-    assert.equal(r2.body.entfernt, 1, 'der einzelne Preis-Auftrag ist weg');
-    assert.ok(await plan('preise'), 'der geplante Preis-Lauf wurde mit geleert');
+    const r = await rufe('DELETE', '/admin/job-queue/kind/instructions');
+    assert.deepEqual([r.status, r.body.removed], [200, 2]);
+    await A.placeJobOne('prices', {}, {});
+    const r2 = await rufe('DELETE', '/admin/job-queue/kind/prices');
+    assert.equal(r2.body.removed, 1, 'der einzelne Preis-Auftrag ist weg');
+    assert.ok(await plan('prices'), 'der geplante Preis-Lauf wurde mit geleert');
   });
 
   await t.test('now brings the scheduled run forward', async () => {
-    const r = await rufe('POST', '/admin/auftraege/art/aufraeumen/jetzt');
-    assert.deepEqual([r.status, r.body.gestartet], [200, true]);
-    assert.ok(new Date((await plan('aufraeumen')).due_at) <= new Date());
+    const r = await rufe('POST', '/admin/job-queue/kind/cleanup/now');
+    assert.deepEqual([r.status, r.body.started], [200, true]);
+    assert.ok(new Date((await plan('cleanup')).due_at) <= new Date());
   });
 
   await t.test('a new interval moves the open appointment', async () => {
     const r = await rufe('POST', '/admin/job-schedule', { name: 'priceJob', minutes: 600 });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const in_min = (new Date((await plan('preise')).due_at).getTime() - Date.now()) / 60_000;
+    const in_min = (new Date((await plan('prices')).due_at).getTime() - Date.now()) / 60_000;
     assert.ok(in_min > 590 && in_min <= 600, `Termin in ${Math.round(in_min)} min statt 600`);
-    const stand = await rufe('GET', '/admin/job-status');
-    assert.equal(stand.body.job.running, false);
-    assert.equal(new Date(stand.body.job.nextRun).getTime(), new Date((await plan('preise')).due_at).getTime());
+    const state = await rufe('GET', '/admin/job-status');
+    assert.equal(state.body.job.running, false);
+    assert.equal(new Date(state.body.job.nextRun).getTime(), new Date((await plan('prices')).due_at).getTime());
     assert.equal((await rufe('POST', '/admin/trigger-price-job')).body.started, true);
   });
 

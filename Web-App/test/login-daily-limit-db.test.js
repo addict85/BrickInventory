@@ -91,7 +91,7 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
       body: JSON.stringify({
         username: name,
         password: passwort,
-        ohne_token: true,
+        without_token: true,
         ...(withCode ? { code: withCode } : {}),
       }),
     });
@@ -134,16 +134,16 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
   await t.test('above the limit: the password alone is not enough, even from the known address', async () => {
     const r = await anmelden(OHNE, PASS);
     assert.equal(r.status, 429, JSON.stringify(r.body));
-    assert.equal(r.body.code, 'konto_tagesgrenze');
-    assert.equal(r.body.zweiter_faktor, true, 'die Oberfläche bietet das Codefeld an');
+    assert.equal(r.body.code, 'account_daily_limit');
+    assert.equal(r.body.second_factor, true, 'die Oberfläche bietet das Codefeld an');
     // Without a factor even a code does not help; the response does not reveal the password.
-    assert.equal((await anmelden(OHNE, PASS, '123456')).body.code, 'konto_tagesgrenze');
-    assert.equal((await anmelden(OHNE, 'falsch', '123456')).body.code, 'konto_tagesgrenze');
+    assert.equal((await anmelden(OHNE, PASS, '123456')).body.code, 'account_daily_limit');
+    assert.equal((await anmelden(OHNE, 'falsch', '123456')).body.code, 'account_daily_limit');
   });
 
   await t.test('… with code it continues, without not', async () => {
     await setCounter(MIT, 50, true);
-    assert.equal((await anmelden(MIT, PASS)).body?.code, 'konto_tagesgrenze');
+    assert.equal((await anmelden(MIT, PASS)).body?.code, 'account_daily_limit');
     const r = await anmelden(MIT, PASS, await code());
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal((await anmelden(MIT, 'falsch-geraten', await code())).status, 401);
@@ -173,7 +173,7 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     // Without a known row the same address is foreign: there the shared counter applies.
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`login-bekannt|%|konto:${id[OHNE]}`]);
-    assert.equal((await anmelden(OHNE, neu)).body?.code, 'konto_tagesgrenze');
+    assert.equal((await anmelden(OHNE, neu)).body?.code, 'account_daily_limit');
   });
 
   await t.test('at an unknown address an unlock link comes; it unlocks it, once', async () => {
@@ -184,10 +184,10 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
         .map(m => /\/anmeldung-freigeben#token=(\S+)/.exec(m.text)?.[1])
         .filter(Boolean);
     assert.ok(await bis(() => links().length > 0, 10_000), 'kein Freigabelink an den Inhaber');
-    assert.equal((await anmelden(OHNE, 'falsch-noch-einmal')).body?.code, 'konto_tagesgrenze');
+    assert.equal((await anmelden(OHNE, 'falsch-noch-einmal')).body?.code, 'account_daily_limit');
     assert.equal(await bis(() => links().length > 1, 300), false, 'je Adresse und Stunde nur eine Mail');
     const freigeben = token =>
-      fetch(`${base}${AUTH}/anmeldung-freigeben`, {
+      fetch(`${base}${AUTH}/approve-login`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token }),
@@ -195,11 +195,11 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
     const [token] = links();
     const [uid, ...rest] = token.split('.');
     const forged = [String(id[MIT]), ...rest].join('.');
-    assert.equal((await freigeben(forged)).body.code, 'freigabe_link_ungueltig', 'Signatur');
+    assert.equal((await freigeben(forged)).body.code, 'approval_link_invalid', 'Signatur');
     assert.equal(Number(uid), id[OHNE]);
     const r = await freigeben(token);
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal((await freigeben(token)).body.code, 'freigabe_link_ungueltig', 'nur einmal');
+    assert.equal((await freigeben(token)).body.code, 'approval_link_invalid', 'nur einmal');
     const a = await anmelden(OHNE, neu);
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(await dailyCounter(OHNE), 50, 'der gemeinsame Zähler bleibt für andere Adressen');

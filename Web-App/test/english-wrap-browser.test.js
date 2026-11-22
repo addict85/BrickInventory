@@ -30,7 +30,7 @@ async function english(e) {
       if (oben !== null && q.top > oben + 2) out.push(n.data.slice(0, i)); oben = q.top; }
     return { text: n.data, out }; })()`);
   assert.ok(breaks.out.length > 0, `Testaufbau: „${breaks.text}“ bricht nicht um`);
-  for (const vor of breaks.out) assert.ok(/[ \u00ad]$/.test(vor), `Bruch nach „${vor}“ ohne Trennstrich`);
+  for (const ago of breaks.out) assert.ok(/[ \u00ad]$/.test(ago), `Bruch nach „${ago}“ ohne Trennstrich`);
   const american = await b.auswerten(`[...document.querySelectorAll('[data-i18n]')].map(e => e.textContent)
     .concat([...document.querySelectorAll('[aria-label], [title]')].map(e => e.getAttribute('aria-label') + ' ' + e.getAttribute('title')))
     .filter(t => /\\bcolors?\\b|\\bcolorful\\b/i.test(t))`);
@@ -39,9 +39,9 @@ async function english(e) {
 }
 
 test('English UI: wrapping and terms', { timeout: 120_000 }, async t => {
-  const e = await startApp(t, { name: `r21_en_${process.pid}`, sprache: 'en', bestand: patternHousehold });
-  if (e.grund) {
-    t.skip(e.grund);
+  const e = await startApp(t, { name: `r21_en_${process.pid}`, language: 'en', holding: patternHousehold });
+  if (e.reason) {
+    t.skip(e.reason);
     return;
   }
   await english(e);

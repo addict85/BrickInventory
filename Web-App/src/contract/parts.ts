@@ -1,17 +1,19 @@
 import { WITHOUT_BODY, CONDITION, IDENTIFIER, TEXT, query, Q, PAGE, PAGES_DETAIL, type Route } from './base';
 import { z } from 'zod';
+import { V1_PARTS_ORDER } from './v1Names';
+import { v1Keys, v1Values } from './v1';
 import { input } from '../infra/validate';
 import {
   CsvImportResult,
   DEGRADED,
-  StueckGeaendert,
-  ManuellesTeil,
+  PieceChanged,
+  ManualPart,
   PartsResponse,
   UsingSetsResponse,
   MovedToTrash,
 } from './shared';
 
-export { ManuellesTeil, StueckGeaendert };
+export { ManualPart, PieceChanged };
 
 export const AddPartResponse = z.looseObject({
   success: z.boolean(),
@@ -22,13 +24,13 @@ export const AddPartResponse = z.looseObject({
 });
 
 export const HoldingEntry = z.looseObject({
-  gesamt: z.number().int(),
-  lose: z.number().int(),
+  total: z.number().int(),
+  loose: z.number().int(),
 });
 
 export const HoldingResponse = z.looseObject({
   success: z.boolean(),
-  bestand: z.record(z.string(), HoldingEntry),
+  holding: z.record(z.string(), HoldingEntry),
 });
 
 export const BrickColor = z.looseObject({
@@ -46,8 +48,8 @@ export const ManualPartsResponse = z.looseObject({
   success: z.boolean(),
   ...PAGES_DETAIL,
   /** The list carries no acquisitions; the detail view loads them via /acquisitions. */
-  parts: z.array(ManuellesTeil),
-  degradiert: DEGRADED,
+  parts: z.array(ManualPart),
+  degraded: DEGRADED,
 });
 
 export const PartsCategory = z.looseObject({
@@ -87,11 +89,11 @@ export const PartsStatsResponse = z.looseObject({
 });
 
 export const PartColorResponse = z.looseObject({
-  bild: z.string().nullable(),
+  image: z.string().nullable(),
   success: z.boolean(),
-  zusammengelegt: z.boolean(),
-  verschoben: z.number().int(),
-  vereint: z.number().int(),
+  combined: z.boolean(),
+  moved: z.number().int(),
+  united: z.number().int(),
 });
 
 /** BrickLink color → Rebrickable color; `source` says where the table comes from. */
@@ -99,74 +101,80 @@ export const BlColorTable = z.looseObject({
   success: z.literal(true),
   source: z.string(),
   map: z.record(z.string(), z.unknown()),
-  degradiert: DEGRADED,
+  degraded: DEGRADED,
 });
 
-export const routen = {
-  'GET /api/v1/parts': {
-    antwort: PartsResponse,
-    abfrage: query({
-      accounts: Q.konten,
+// v1 names of fields whose v2 name also exists unchanged elsewhere (v1.ts).
+v1Keys(HoldingEntry, { total: 'gesamt' });
+
+export const routes = {
+  'GET /api/v2/parts': {
+    response: PartsResponse,
+    query: query({
+      accounts: Q.accounts,
       search: Q.text(),
       color: Q.text(64),
       category: Q.text(),
       page: Q.number(),
       page_size: Q.number(),
       set_number: Q.text(64),
-      exclude_manual: Q.schalter,
+      exclude_manual: Q.toggle,
       spare: z.enum(['0', '1', '']),
-      with_sets: Q.schalter,
+      with_sets: Q.toggle,
       storage: Q.text(),
-      ordnung: z.enum(['farbe', 'name', 'menge']),
+      order: v1Values(z.enum(['color', 'name', 'quantity']), V1_PARTS_ORDER),
     }),
   },
-  'GET /api/v1/parts/:partNumber/:colorId/sets': {
-    klein: true,
-    antwort: UsingSetsResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/parts/:partNumber/:colorId/sets': {
+    small: true,
+    response: UsingSetsResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/parts/stats': { antwort: PartsStatsResponse, abfrage: query({ accounts: Q.konten }) },
-  'GET /api/v1/parts/brick-colors': { klein: true, antwort: BrickColorsResponse },
-  'GET /api/v1/parts/colors': {
-    klein: true,
-    antwort: PartsFilterColorsResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/parts/stats': { response: PartsStatsResponse, query: query({ accounts: Q.accounts }) },
+  'GET /api/v2/parts/brick-colors': { small: true, response: BrickColorsResponse },
+  'GET /api/v2/parts/colors': {
+    small: true,
+    response: PartsFilterColorsResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/parts/categories': {
-    klein: true,
-    antwort: PartsCategoriesResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/parts/categories': {
+    small: true,
+    response: PartsCategoriesResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/parts/manual': {
-    antwort: ManualPartsResponse,
-    abfrage: query({ accounts: Q.konten, search: Q.text(), storage: Q.text(), ...PAGE }),
+  'GET /api/v2/parts/manual': {
+    response: ManualPartsResponse,
+    query: query({ accounts: Q.accounts, search: Q.text(), storage: Q.text(), ...PAGE }),
   },
-  'PUT /api/v1/parts/:partNumber/:colorId/color': {
-    antwort: PartColorResponse,
-    abfrage: query({ owner: Q.konto }),
-    eingabe: z.strictObject({
+  'PUT /api/v2/parts/:partNumber/:colorId/color': {
+    response: PartColorResponse,
+    query: query({ owner: Q.account }),
+    input: z.strictObject({
       color_id: IDENTIFIER.nullable().optional(),
       color_name: input.text(100),
       color_hex: input.colorCode(),
     }),
   },
-  'POST /api/v1/parts/owned': {
-    antwort: HoldingResponse,
-    abfrage: query({ accounts: Q.konten }),
-    eingabe: z.strictObject({
-      teile: z
-        .array(
-          z.looseObject({
-            part_number: z.union([z.string(), z.number()]).optional(),
-            color_id: z.union([z.string(), z.number()]).nullable().optional(),
-          }),
-        )
-        .optional(),
-    }),
+  'POST /api/v2/parts/owned': {
+    response: HoldingResponse,
+    query: query({ accounts: Q.accounts }),
+    input: v1Keys(
+      z.strictObject({
+        parts: z
+          .array(
+            z.looseObject({
+              part_number: z.union([z.string(), z.number()]).optional(),
+              color_id: z.union([z.string(), z.number()]).nullable().optional(),
+            }),
+          )
+          .optional(),
+      }),
+      { parts: 'teile' },
+    ),
   },
-  'POST /api/v1/parts': {
-    antwort: AddPartResponse,
-    eingabe: z.strictObject({
+  'POST /api/v2/parts': {
+    response: AddPartResponse,
+    input: z.strictObject({
       part_number: input.itemNumber('part_number'),
       color_id: input.color(),
       color_name: input.text(100),
@@ -182,21 +190,21 @@ export const routen = {
       acquired_at: TEXT(40).nullable().optional(),
     }),
   },
-  'PUT /api/v1/parts/:partNumber/:colorId': {
-    abfrage: query({ owner: Q.konto }),
-    eingabe: z.strictObject({
+  'PUT /api/v2/parts/:partNumber/:colorId': {
+    query: query({ owner: Q.account }),
+    input: z.strictObject({
       quantity: input.quantityOrNothing(0, 100_000).optional(),
       quantity_delta: input.quantitiesDelta(),
       unit_price: input.geld('Stückpreis'),
       condition: CONDITION.nullable().optional(),
     }),
-    antwort: StueckGeaendert,
+    response: PieceChanged,
   },
-  'DELETE /api/v1/parts/:partNumber/:colorId': {
-    eingabe: WITHOUT_BODY,
-    antwort: MovedToTrash,
-    abfrage: query({ owner: Q.konto }),
+  'DELETE /api/v2/parts/:partNumber/:colorId': {
+    input: WITHOUT_BODY,
+    response: MovedToTrash,
+    query: query({ owner: Q.account }),
   },
-  'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportResult },
-  'GET /api/v1/parts/bl-color-map': { klein: true, antwort: BlColorTable },
+  'POST /api/v2/parts/import/csv': { form: true, response: CsvImportResult },
+  'GET /api/v2/parts/bl-color-map': { small: true, response: BlColorTable },
 } satisfies Record<string, Route>;

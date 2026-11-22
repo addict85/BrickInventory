@@ -23,7 +23,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
-test('POST /api/v1/auth/serverbeweis no longer exists', { concurrency: 1 }, async t => {
+test('POST /api/v2/auth/serverbeweis no longer exists', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const app = express();
@@ -33,14 +33,15 @@ test('POST /api/v1/auth/serverbeweis no longer exists', { concurrency: 1 }, asyn
     next();
   });
   app.use(
-    '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    '/api/v2',
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const frage = (kopf = {}) =>
-    fetch(`http://127.0.0.1:${srv.address().port}/api/v1/auth/serverbeweis`, {
+    fetch(`http://127.0.0.1:${srv.address().port}/api/v2/auth/serverbeweis`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...kopf },
       body: JSON.stringify({ kennung: '0123456789abcdef', nonce: 'ab'.repeat(16) }),

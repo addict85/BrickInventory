@@ -42,11 +42,11 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
       [nr],
     );
   }
-  const withCurrency = async (nr, menge, preis, waehrung, am) => {
-    await record(db, uid, nr, menge, { preis, am });
+  const withCurrency = async (nr, quantity, preis, currency, am) => {
+    await record(db, uid, nr, quantity, { preis, am });
     await db.run(
       `UPDATE set_acquisitions SET currency = $1 WHERE id = (SELECT max(id) FROM set_acquisitions WHERE user_id = $2)`,
-      [waehrung, uid],
+      [currency, uid],
     );
   };
   await holdsSet(db, uid, NR.eur, 0);
@@ -65,11 +65,11 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
 
   const { gainAndLoss } = _req('src/finances/financeCalc.js');
   const pnl = await gainAndLoss(uid, [uid]);
-  const zeile = nr => pnl.sets.find(s => s.set_number === nr);
+  const row = nr => pnl.sets.find(s => s.set_number === nr);
   assert.equal(pnl.currency, 'CHF');
 
   await t.test('only captured in EUR: purchase price unknown', () => {
-    const z = zeile(NR.eur);
+    const z = row(NR.eur);
     assert.equal(z.current_price, 120);
     assert.equal(z.purchase_price, null);
     assert.equal(z.pnl_abs, null);
@@ -77,7 +77,7 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
   });
 
   await t.test('mixed: only the acquisition in CHF counts', () => {
-    const z = zeile(NR.gemischt);
+    const z = row(NR.gemischt);
     assert.equal(z.purchase_price, 80);
     assert.equal(z.pnl_pct, '50.0');
   });
@@ -85,7 +85,7 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
   await t.test('a captured price of 0 counts', () => {
     // Known and 0 (gift): the amount counts, there is no
     // percentage — see gift-guv-db.test.js.
-    const z = zeile(NR.null);
+    const z = row(NR.null);
     assert.equal(z.purchase_price, 0);
     assert.equal(z.pnl_abs, '120.00');
     assert.equal(z.pnl_pct, null);

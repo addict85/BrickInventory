@@ -25,7 +25,7 @@ import { createForeignSources, type Sources } from '../src/externalSources';
 import { createSettings } from '../src/settings';
 import { createThrottle } from '../src/throttle';
 import { createDevices } from '../src/devices';
-import { konfig, type AppConfig } from '../src/infra/config';
+import { config, type AppConfig } from '../src/infra/config';
 import { systemClock, type Clock } from '../src/infra/clock';
 import { LESEVERTRAG, type Services } from '../src/services';
 
@@ -35,15 +35,15 @@ export type { Services } from '../src/services';
 export interface Components {
   bildwerk?: ImageWorker;
   /** Replaced clients (src/externalSources/sources.ts), read at call time. */
-  quellen?: Partial<Sources>;
+  sources?: Partial<Sources>;
   /** Test helpers only: every factory stores its context here (insight). */
   contexts?: Record<string, unknown>;
   /** The configuration; without a value that of the process (src/infra/config.ts). */
-  konfig?: Readonly<AppConfig>;
+  config?: Readonly<AppConfig>;
   /** The services' time (k.uhr); without a value that of the system. */
-  uhr?: Clock;
+  clock?: Clock;
 }
-type Assigned = Components & { konfig: Readonly<AppConfig>; uhr: Clock };
+type Assigned = Components & { config: Readonly<AppConfig>; clock: Clock };
 
 // The catalog import runs in a process of its own; its entry point lives in the build under jobs/.
 const IMPORT_PROCESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
@@ -54,8 +54,8 @@ const IMPORT_PROCESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
 export function buildServices(db: Db, components: Components = {}): Services {
   const d = buildAreas(db, {
     ...components,
-    konfig: components.konfig ?? konfig(),
-    uhr: components.uhr ?? systemClock,
+    config: components.config ?? config(),
+    clock: components.clock ?? systemClock,
   });
   registerJobTypes(d);
   return d;
@@ -63,25 +63,25 @@ export function buildServices(db: Db, components: Components = {}): Services {
 
 /** Every declared kind (JobPayloads): the compiler requires each here, startup checks their registration. */
 export const DECLARED_KINDS: Record<JobKind, true> = {
-  anleitung: true,
-  aufraeumen: true,
-  aufraeumen_taeglich: true,
-  bild_nachlauf: true,
-  bildbedarf: true,
-  bilder: true,
-  bilder_neu_laden: true,
+  account_files: true,
   brickset: true,
+  catalog_followup: true,
+  cleanup: true,
+  cleanup_daily: true,
   csv_import: true,
   csv_sync: true,
-  katalog_nachzug: true,
-  konto_dateien: true,
-  nacharbeit: true,
-  nachlauf: true,
+  exchange_rates: true,
+  followup: true,
+  image_demand: true,
+  image_followup: true,
+  images: true,
+  images_reload: true,
+  instructions: true,
   pdf: true,
-  preise: true,
-  preise_nachladen: true,
-  wechselkurse: true,
-  widerrufsliste: true,
+  price_refresh: true,
+  prices: true,
+  revocation_list: true,
+  rework: true,
 };
 
 export class KindNotSignedIn extends Error {}
@@ -99,7 +99,7 @@ function registerJobTypes(d: Services): void {
     ...d.management.jobTypes(),
   ];
   for (const a of kinds) d.jobQueue.registerKind(a);
-  const signedIn = new Set(d.jobQueue.signedInKinds().map(a => a.art));
+  const signedIn = new Set(d.jobQueue.signedInKinds().map(a => a.kind));
   const isMissing = Object.keys(DECLARED_KINDS).filter(a => !signedIn.has(a as JobKind));
   if (isMissing.length) throw new KindNotSignedIn(`Auftragsart ohne Anmeldung: ${isMissing.join(', ')}`);
 }
@@ -117,37 +117,37 @@ function inspectIn(contexts: Record<string, unknown> | undefined) {
 }
 
 /** The areas up to the catalog: they only need each other and the access. */
-function buildRationale(db: Db, { bildwerk, quellen, konfig, uhr }: Assigned, zeige: Show) {
-  const throttle = createThrottle({ db, uhr }, zeige('throttle'));
-  const einstellungen = createSettings({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('settings'));
-  const mail = createMail({ uhr, einstellungen, konfig }, zeige('mail'));
-  const jobQueue = createJobs({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('jobQueue'));
-  const household = createHousehold({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('household'));
-  const devices = createDevices({ db, uhr, konfig, jobQueue, lesevertrag: LESEVERTRAG }, zeige('devices'));
-  const factors = createFactors({ db, uhr, konfig, einstellungen }, zeige('factors'));
+function buildRationale(db: Db, { bildwerk, sources, config, clock }: Assigned, zeige: Show) {
+  const throttle = createThrottle({ db, clock }, zeige('throttle'));
+  const settings = createSettings({ db, clock, throttle, readContract: LESEVERTRAG }, zeige('settings'));
+  const mail = createMail({ clock, settings, config }, zeige('mail'));
+  const jobQueue = createJobs({ db, clock, settings, readContract: LESEVERTRAG }, zeige('jobQueue'));
+  const household = createHousehold({ db, clock, settings, readContract: LESEVERTRAG }, zeige('household'));
+  const devices = createDevices({ db, clock, config, jobQueue, readContract: LESEVERTRAG }, zeige('devices'));
+  const factors = createFactors({ db, clock, config, settings }, zeige('factors'));
   const account = createAccount(
-    { db, uhr, konfig, einstellungen, jobQueue, household, mail, throttle, devices, factors },
+    { db, clock, config, settings, jobQueue, household, mail, throttle, devices, factors },
     zeige('account'),
   );
-  const profile = createProfile({ db, uhr, konfig, einstellungen, account, mail }, zeige('profile'));
-  const idempotency = createIdempotency({ db, uhr }, zeige('idempotency'));
+  const profile = createProfile({ db, clock, config, settings, account, mail }, zeige('profile'));
+  const idempotency = createIdempotency({ db, clock }, zeige('idempotency'));
   const externalSources = createForeignSources(
-    { db, uhr, einstellungen, jobQueue, ersatz: quellen },
+    { db, clock, settings, jobQueue, ersatz: sources },
     zeige('externalSources'),
   );
   const images = createImages(
-    { db, uhr, konfig, jobQueue, household, externalSources, bildwerk, lesevertrag: LESEVERTRAG },
+    { db, clock, config, jobQueue, household, externalSources, bildwerk, readContract: LESEVERTRAG },
     zeige('images'),
   );
   const catalog = createCatalog(
-    { db, uhr, einstellungen, jobQueue, household, externalSources, images, throttle, lesevertrag: LESEVERTRAG },
+    { db, clock, settings, jobQueue, household, externalSources, images, throttle, readContract: LESEVERTRAG },
     zeige('catalog'),
   );
   // The entry on the set is made by the catalog (higher); it listens to the images instead of them calling it.
   images.atSetImageLoaded((sn, source) => catalog.enterSetImageLocal(sn, source));
   return {
     throttle,
-    settings: einstellungen,
+    settings: settings,
     mail,
     jobQueue,
     household,
@@ -164,23 +164,23 @@ function buildRationale(db: Db, { bildwerk, quellen, konfig, uhr }: Assigned, ze
 
 function buildAreas(db: Db, components: Assigned): Services {
   const zeige = inspectIn(components.contexts);
-  const grund = buildRationale(db, components, zeige);
-  const { throttle, settings: einstellungen, mail, jobQueue, household, factors } = grund;
-  const { account, idempotency, externalSources, images, catalog } = grund;
-  const { konfig, uhr } = components;
+  const reason = buildRationale(db, components, zeige);
+  const { throttle, settings, mail, jobQueue, household, factors } = reason;
+  const { account, idempotency, externalSources, images, catalog } = reason;
+  const { config, clock } = components;
   const finances = createFinances(
-    { db, uhr, konfig, einstellungen, jobQueue, household, catalog, externalSources, mail, lesevertrag: LESEVERTRAG },
+    { db, clock, config, settings, jobQueue, household, catalog, externalSources, mail, readContract: LESEVERTRAG },
     zeige('finances'),
   );
   const inventory = createInventory(
-    { db, uhr, einstellungen, household, account, catalog, finances, lesevertrag: LESEVERTRAG },
+    { db, clock, settings, household, account, catalog, finances, readContract: LESEVERTRAG },
     zeige('inventory'),
   );
   const sets = createSets(
     {
       db,
-      uhr,
-      konfig,
+      clock,
+      config,
       catalog,
       externalSources,
       images,
@@ -188,33 +188,33 @@ function buildAreas(db: Db, components: Assigned): Services {
       household,
       jobQueue,
       inventory,
-      einstellungen,
+      settings,
       account,
     },
     zeige('sets'),
   );
   const parts = createParts(
-    { db, uhr, einstellungen, jobQueue, household, catalog, externalSources, finances, inventory },
+    { db, clock, settings, jobQueue, household, catalog, externalSources, finances, inventory },
     zeige('parts'),
   );
   const minifigs = createMinifigs(
-    { db, uhr, einstellungen, household, catalog, externalSources, jobQueue, finances, inventory },
+    { db, clock, settings, household, catalog, externalSources, jobQueue, finances, inventory },
     zeige('minifigs'),
   );
   const wanted = createWanted(
-    { db, uhr, einstellungen, household, catalog, externalSources, images, finances, sets },
+    { db, clock, settings, household, catalog, externalSources, images, finances, sets },
     zeige('wanted'),
   );
-  const vouchers = createVouchers({ db, uhr, einstellungen, account, externalSources, throttle }, zeige('vouchers'));
+  const vouchers = createVouchers({ db, clock, settings, account, externalSources, throttle }, zeige('vouchers'));
   const collection = createCollection(
-    { db, uhr, household, jobQueue, catalog, finances, inventory, sets, parts, minifigs, wanted },
+    { db, clock, household, jobQueue, catalog, finances, inventory, sets, parts, minifigs, wanted },
     zeige('collection'),
   );
   const management = createManagement(
     {
       db,
-      uhr,
-      settings: einstellungen,
+      clock,
+      settings: settings,
       jobQueue,
       factors,
       account,
@@ -231,7 +231,7 @@ function buildAreas(db: Db, components: Assigned): Services {
     },
     zeige('management'),
   );
-  return { ...grund, finances, inventory, sets, parts, minifigs, wanted, vouchers, collection, management };
+  return { ...reason, finances, inventory, sets, parts, minifigs, wanted, vouchers, collection, management };
 }
 
 /** The process's access including the first start, wired. The first start creates the first

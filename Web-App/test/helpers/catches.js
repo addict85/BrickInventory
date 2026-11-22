@@ -37,13 +37,13 @@ function mask(s) {
         }
         // In `${…}` there is code: it stays visible, braces count along.
         if (c === '`' && s[i] === '$' && s[i + 1] === '{') {
-          let tiefe = 1;
+          let depth = 1;
           o += '${';
           i += 2;
-          while (i < n && tiefe) {
-            if (s[i] === '{') tiefe++;
-            else if (s[i] === '}') tiefe--;
-            o += tiefe ? s[i] : '}';
+          while (i < n && depth) {
+            if (s[i] === '{') depth++;
+            else if (s[i] === '}') depth--;
+            o += depth ? s[i] : '}';
             i++;
           }
           continue;
@@ -93,8 +93,8 @@ function instructions(rumpf) {
  * Every catch of a file with masked body (`rumpf`), original text (`roh`) and line.
  * For `.catch(…)` only arrow functions: `.catch(logAndContinue('x'))` is counted by another ratchet.
  */
-function catches(quelle) {
-  const s = mask(quelle);
+function catches(source) {
+  const s = mask(source);
   const raus = [];
   const re = /\bcatch\b\s*(?:\(\s*\w*\s*(?::\s*\w+)?\s*\))?\s*\{|\.catch\(/g;
   for (const m of s.matchAll(re)) {
@@ -116,9 +116,9 @@ function catches(quelle) {
       e = schliesst(s, a - 1, '{', '}');
     }
     raus.push({
-      zeile: quelle.slice(0, m.index).split('\n').length,
+      row: source.slice(0, m.index).split('\n').length,
       rumpf: s.slice(a, e),
-      roh: quelle.slice(a, e),
+      roh: source.slice(a, e),
     });
   }
   return raus;

@@ -84,12 +84,12 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
   const server = (id, name, admin = false) =>
     routerServer(_req, {
       sitzung: { userId: id, username: name, isAdmin: admin },
-      routen: { '/api/v1/auth': 'routes/auth.js' },
+      routen: { '/api/v2/auth': 'routes/auth.js' },
       t,
     }).base;
   const basis = server(uid, NAME);
   const ruf = async (b, methode, weg, body) => {
-    const r = await fetch(`${b}/api/v1/auth${weg}`, {
+    const r = await fetch(`${b}/api/v2/auth${weg}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -102,14 +102,14 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       current: PASS,
       newPassword: 'Neues-Passwort-22',
     });
-    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'Passwortwechsel ohne Code');
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'Passwortwechsel ohne Code');
     assert.equal(withoutCode.status, 400);
     const falsch = await ruf(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
       code: '000000',
     });
-    assert.equal(falsch.body.code, 'zweiter_faktor_falsch');
+    assert.equal(falsch.body.code, 'second_factor_wrong');
     const gut = await ruf(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
@@ -129,7 +129,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       )
     ).id;
     const withoutCode = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS });
-    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'Passkey löschen ohne Code');
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'Passkey löschen ohne Code');
     assert.ok(await db.get('SELECT 1 FROM passkeys WHERE id = $1', [pk]), 'der Passkey steht noch');
     const gut = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS, code: codes[1] });
     assert.equal(gut.body.deleted, 1, JSON.stringify(gut.body));
@@ -141,7 +141,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       email: `${NAME}@neu.example`,
       password_current: PASS,
     });
-    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'E-Mail ändern ohne Code');
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'E-Mail ändern ohne Code');
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@alt.example`);
     const gut = await ruf(basis, 'PUT', '/profile', {
       username: NAME,

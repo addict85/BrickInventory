@@ -198,7 +198,7 @@ test('the minifigure market price asks BrickLink even without a separate BL numb
   // Estimating happens in the job preise_nachladen; the valuation queues the condition.
   assert.match(
     fc,
-    /art: 'schaetzung', nummer: key, zustand: cond/,
+    /kind: 'schaetzung', number: key, condition: cond/,
     'Die Minifiguren-Bewertung muss den Zustand mitgeben',
   );
 });
@@ -385,7 +385,7 @@ test('CDN requests force IPv4', () => {
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
-    /await (?:k\.externalSources\.quellen\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
+    /await (?:k\.externalSources\.sources\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort',
   );
 });
@@ -406,14 +406,14 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
     await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
   });
   assert.deepEqual(
-    aufrufe.map(a => [a.art, a.optionen.family]),
+    aufrufe.map(a => [a.kind, a.options.family]),
     [
       ['get', 4],
       ['request', 4],
       ['get', 4],
     ],
   );
-  assert.equal(aufrufe[2].optionen.agent?.options?.family, 4, 'der Pool der Bild-CDNs erzwingt IPv4 nicht');
+  assert.equal(aufrufe[2].options.agent?.options?.family, 4, 'der Pool der Bild-CDNs erzwingt IPv4 nicht');
 });
 
 test('the background job for parts and minifigures now creates preview images', () => {
@@ -560,7 +560,7 @@ test('both login paths check the same', async () => {
   for (const name of ['a b', "' OR 1=1 --", '@example.com'])
     assert.deepEqual(
       await checkCredentials({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
-      { ok: false, absage: { art: 'ungueltig', code: 'name_oder_email_eingeben' } },
+      { ok: false, absage: { kind: 'ungueltig', code: 'enter_name_or_email' } },
       name,
     );
 
@@ -584,9 +584,9 @@ test('the tile takes the condition from the server response', async () => {
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, conditions: ['N'], condition: 'N' };
   let listen = 0;
   const { w, d } = await openUi({
-    '/v1/sets': () => (++listen === 1 ? { success: true, total: 1, themes: [], sets: [SET] } : new Promise(() => {})),
-    '/v1/sets/10294-1': { success: true, set: SET },
-    '/v1/sets/10294-1/acquisitions': {
+    '/v2/sets': () => (++listen === 1 ? { success: true, total: 1, themes: [], sets: [SET] } : new Promise(() => {})),
+    '/v2/sets/10294-1': { success: true, set: SET },
+    '/v2/sets/10294-1/acquisitions': {
       success: true,
       acquisitions: [
         {
@@ -601,7 +601,7 @@ test('the tile takes the condition from the server response', async () => {
       ],
       totals: { quantity: 1, amount: 100, currency: 'EUR' },
     },
-    '/v1/sets/10294-1/acquisitions/7': {
+    '/v2/sets/10294-1/acquisitions/7': {
       success: true,
       set: { set_number: '10294-1', conditions: ['U'], condition: 'U' },
     },

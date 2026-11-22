@@ -85,7 +85,7 @@ async function fromCdn(
       r = await openCdn(HEADER_SETS[1]);
     }
   } catch (e) {
-    const time = e instanceof FetchError && e.grund === 'zeitlimit';
+    const time = e instanceof FetchError && e.reason === 'time_limit';
     if (time) imgProxyFailures.timeout++;
     else imgProxyFailures.error++;
     imgProxyFailures.lastError = errorMessage(e);
@@ -151,14 +151,14 @@ function intoCache(
   const ws = fs.createWriteStream(tmpFile);
   let bytes = 0,
     aborted = false;
-  const discard = (grund: string) => {
+  const discard = (reason: string) => {
     if (aborted) return;
     aborted = true;
     ws.destroy();
     fs.promises.unlink(tmpFile).catch(withoutMissingFile('bild-proxy:unlink'));
     imgProxyFailures.other++;
-    imgProxyFailures.lastError = `${grund}: ${url}`;
-    console.error(`[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`);
+    imgProxyFailures.lastError = `${reason}: ${url}`;
+    console.error(`[img-proxy] ${reason} — weder gecacht noch verkleinert: ${url}`);
   };
   // The decompressed stream counts: compressed data must not grow arbitrarily either.
   body.on('data', (chunk: Buffer) => {
@@ -300,7 +300,7 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
   // ?thumb=1: part images are not available in reduced size on the CDN.
   const wantThumb = req.query.thumb === '1';
   // gen=0: the request computes nothing, it leaves a note for the
-  // job 'bildbedarf' — throttled and only in the job process.
+  // job 'image_demand' — throttled and only in the job process.
   const createMay = req.query.gen !== '0';
   const setNumber = setNumberFromImageAddress(String(url || ''));
   const thumbFile = cacheFile + '_thumb.jpg';
@@ -406,7 +406,7 @@ function forward(
   if (expected > 0) res.setHeader('Content-Length', String(expected));
 
   const enc = String(r.kopf['content-encoding'] || '').toLowerCase();
-  const raw = r.strom();
+  const raw = r.stream();
   const body = unpacked(raw, enc, res, url, expected);
   // Short: streamed unchecked, a long max-age would nail errors in the browser.
   res.setHeader('Cache-Control', 'private, max-age=3600, must-revalidate');

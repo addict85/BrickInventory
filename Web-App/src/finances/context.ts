@@ -24,17 +24,17 @@ import type { ForeignSourcesServices } from '../externalSources';
 import type { Clock } from '../infra/clock';
 
 export interface FinancesDependencies {
-  uhr: Clock;
-  konfig: Readonly<AppConfig>;
+  clock: Clock;
+  config: Readonly<AppConfig>;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   jobQueue: JobsServices;
   household: HouseholdServices;
   catalog: CatalogServices;
   externalSources: ForeignSourcesServices;
   faecher: Compartments;
   mail: MailServices;
-  lesevertrag: FinancesReadContract;
+  readContract: FinancesReadContract;
 }
 
 /** Valuation, acquisitions, profit and market prices. */

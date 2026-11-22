@@ -91,12 +91,12 @@ test('storage location: detail and stock against a real database', async t => {
     // List and detail must say the same. Exactly between these two
     // the QUANTITY already drifted apart (see readSet in src/sets/read.ts).
     const liste = await S.readSets(writable, { page: 1, page_size: 10 });
-    const zeile = (liste.sets || []).find(s => s.set_number === SN);
-    assert.ok(zeile, 'Das Set fehlt in der Liste');
+    const row = (liste.sets || []).find(s => s.set_number === SN);
+    assert.ok(row, 'Das Set fehlt in der Liste');
     assert.equal(
-      zeile.storage,
+      row.storage,
       detail.storage,
-      `Liste sagt ${JSON.stringify(zeile.storage)}, Detail sagt ` +
+      `Liste sagt ${JSON.stringify(row.storage)}, Detail sagt ` +
         `${JSON.stringify(detail.storage)} — zwei Antworten auf dieselbe Frage`,
     );
 
@@ -159,10 +159,10 @@ test('storage location: detail and stock against a real database', async t => {
       ['Hauptkonto', MAIN],
       ['Unterkonto', KIND],
     ]) {
-      const orte = (await L.locationsOf([id])).map(o => o.name);
+      const locations = (await L.locationsOf([id])).map(o => o.name);
       assert.ok(
-        !orte.includes('Garage'),
-        `Der Vorrat des ${wer} hat „Garage" bekommen, obwohl kein Set getroffen wurde: ${orte}`,
+        !locations.includes('Garage'),
+        `Der Vorrat des ${wer} hat „Garage" bekommen, obwohl kein Set getroffen wurde: ${locations}`,
       );
     }
   });
@@ -179,8 +179,8 @@ test('storage location: detail and stock against a real database', async t => {
       ['Hauptkonto', MAIN],
       ['Unterkonto', KIND],
     ]) {
-      const orte = (await L.locationsOf([id])).map(o => o.name);
-      assert.ok(orte.includes('Keller'), `Der Vorrat des ${wer} hat „Keller" nicht: ${orte}`);
+      const locations = (await L.locationsOf([id])).map(o => o.name);
+      assert.ok(locations.includes('Keller'), `Der Vorrat des ${wer} hat „Keller" nicht: ${locations}`);
     }
     // And the detail combines both instead of concealing one.
     await L.setLocation('set', [MAIN], [SN], 'Estrich');
@@ -196,7 +196,7 @@ test('storage location: detail and stock against a real database', async t => {
 
 /**
  * The storage location filter of the set list, checked via the ROUTE. Counter-check: `storage` removed from
- * the passing-on in routes/api_v1/sets.ts → red („2 Sets statt 1“); without a filter
+ * the passing-on in routes/api/sets.ts → red („2 Sets statt 1“); without a filter
  * both sets come (otherwise an empty list would pass too).
  */
 test("the lists' storage location filter works via the route", async t => {
@@ -226,21 +226,21 @@ test("the lists' storage location filter works via the route", async t => {
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
                   ('3001',4,'Rot'), ('3002',4,'Rot')
                 ON CONFLICT (part_number, color_id) DO NOTHING`);
-  await holdsPart(db, MAIN, '3001', { setNumber: SN, menge: 2, colorId: 4 });
-  await holdsPart(db, MAIN, '3002', { setNumber: OHNE, menge: 2, colorId: 4 });
+  await holdsPart(db, MAIN, '3001', { setNumber: SN, quantity: 2, colorId: 4 });
+  await holdsPart(db, MAIN, '3002', { setNumber: OHNE, quantity: 2, colorId: 4 });
   // The keys are a FLAT list in the order of the CONDITION
   // (src/inventory/storageLocation.ts): for a part number AND color, i.e. two entries.
   await L.setLocation('part', [MAIN], ['3001', 4], 'Estrich');
 
   const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
-  const hole = async pfad => {
-    const r = await fetch(base + pfad);
-    assert.equal(r.status, 200, `${pfad} antwortete ${r.status}`);
+  const hole = async path => {
+    const r = await fetch(base + path);
+    assert.equal(r.status, 200, `${path} antwortete ${r.status}`);
     return r.json();
   };
 
   await t.test('sets: without a filter both come', async () => {
-    const d = await hole('/api/v1/sets?page=1&page_size=60');
+    const d = await hole('/api/v2/sets?page=1&page_size=60');
     const nummern = (d.sets || []).map(s => s.set_number).sort();
     assert.deepEqual(
       nummern,
@@ -250,7 +250,7 @@ test("the lists' storage location filter works via the route", async t => {
   });
 
   await t.test('sets: with storage=Estrich ONLY the set in the box comes', async () => {
-    const d = await hole(`/api/v1/sets?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);
+    const d = await hole(`/api/v2/sets?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);
     const nummern = (d.sets || []).map(s => s.set_number);
     assert.deepEqual(
       nummern,
@@ -270,7 +270,7 @@ test("the lists' storage location filter works via the route", async t => {
   await t.test('sets: a place that does not exist delivers nothing', async () => {
     // The opposite direction: without it the case above would be green too if the
     // filter mapped every value to the same one set.
-    const d = await hole('/api/v1/sets?page=1&page_size=60&storage=Dachboden');
+    const d = await hole('/api/v2/sets?page=1&page_size=60&storage=Dachboden');
     assert.deepEqual(
       (d.sets || []).map(s => s.set_number),
       [],
@@ -279,7 +279,7 @@ test("the lists' storage location filter works via the route", async t => {
   });
 
   await t.test('parts: the same filter, the same path', async () => {
-    const alle = await hole('/api/v1/parts?page=1&page_size=60');
+    const alle = await hole('/api/v2/parts?page=1&page_size=60');
     const numbersAll = (alle.parts || []).map(p => p.part_number).sort();
     assert.deepEqual(
       numbersAll,
@@ -287,7 +287,7 @@ test("the lists' storage location filter works via the route", async t => {
       `Vorbedingung: beide Teile ohne Filter, bekam ${JSON.stringify(numbersAll)}`,
     );
 
-    const d = await hole(`/api/v1/parts?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);
+    const d = await hole(`/api/v2/parts?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);
     assert.deepEqual(
       (d.parts || []).map(p => p.part_number),
       ['3001'],

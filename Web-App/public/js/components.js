@@ -102,14 +102,14 @@ export function textOrStroke(value) {
 /**
  * Error state of a list: reason and "try again". An empty list at this place would read as
  * "nothing captured", although only the server did not answer.
- * @param {{ grund?: string, again: string, arg?: string, title?: string, details?: string }} o  again: name of the load function (data-click)
+ * @param {{ reason?: string, again: string, arg?: string, title?: string, details?: string }} o  again: name of the load function (data-click)
  */
 export function errorState(o) {
   const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
   const details = o.details
     ? html`<details class="error-details"><summary>${tRaw('list.details')}</summary><code>${o.details}</code></details>`
     : '';
-  return html`${html`<div class="empty empty-state error-state" role="alert"><div class="empty-ico">${ico('warning')}</div>`}${html`<h2>${o.title || tRaw('list.error_title')}</h2><p>${o.grund || tRaw('common.unknown_error')}</p>${details}`}${html`<button type="button" class="btn bp" data-reading data-click="${o.again}"${rawHtml(arg)}>${ico('refresh')}<span>${tRaw('list.again')}</span></button></div>`}`;
+  return html`${html`<div class="empty empty-state error-state" role="alert"><div class="empty-ico">${ico('warning')}</div>`}${html`<h2>${o.title || tRaw('list.error_title')}</h2><p>${o.reason || tRaw('common.unknown_error')}</p>${details}`}${html`<button type="button" class="btn bp" data-reading data-click="${o.again}"${rawHtml(arg)}>${ico('refresh')}<span>${tRaw('list.again')}</span></button></div>`}`;
 }
 
 /**
@@ -129,7 +129,7 @@ export function listLoadError(target, d, o) {
   if (a && a.success !== false) return false;
   // The expired session is reported by the login card; "try again" would not help there.
   if (a?.status === 401) return true;
-  const { grund: reason, details } = clearerReason(a);
+  const { reason, details } = clearerReason(a);
   const again = () => {
     const f = resolveAction(o.again);
     if (f) o.arg !== undefined ? f(o.arg) : f();
@@ -144,7 +144,7 @@ export function listLoadError(target, d, o) {
       { text: tRaw('list.again'), fn: again },
       throttled ? undefined : [reason, details].filter(Boolean).join(' — '),
     );
-  else if (target) setHtml(target, errorState({ grund: reason, details, again: o.again, arg: o.arg, title: o.title }));
+  else if (target) setHtml(target, errorState({ reason: reason, details, again: o.again, arg: o.arg, title: o.title }));
   return true;
 }
 
@@ -153,18 +153,18 @@ export function listLoadError(target, d, o) {
  * "details" for the report to the admin. The admin themselves gets the way to the log. 4xx texts
  * are written understandably by the server itself.
  * @param {{ networkError?: boolean, status?: number, error?: unknown, waitSec?: unknown } | null | undefined} d response of api()
- * @returns {{ grund: string, details?: string }}
+ * @returns {{ reason: string, details?: string }}
  */
 export function clearerReason(d) {
-  if (d?.networkError) return { grund: tRaw('net.list_offline') };
+  if (d?.networkError) return { reason: tRaw('net.list_offline') };
   if (d?.status === 429)
-    return { grund: tRaw('list.throttled', { minuten: Math.max(1, Math.ceil((Number(d.waitSec) || 60) / 60)) }) };
+    return { reason: tRaw('list.throttled', { minutes: Math.max(1, Math.ceil((Number(d.waitSec) || 60) / 60)) }) };
   if (!d || (d.status ?? 0) >= 500 || !d.error)
     return {
-      grund: tRaw(loggedInAccount?.isAdmin ? 'list.server_error_admin' : 'list.server_error'),
+      reason: tRaw(loggedInAccount?.isAdmin ? 'list.server_error_admin' : 'list.server_error'),
       details: d?.error ? String(d.error) : undefined,
     };
-  return { grund: String(d.error) };
+  return { reason: String(d.error) };
 }
 
 /**
@@ -301,27 +301,27 @@ export function closeCapture(kind) {
  * alerts. Skipped rows and additional hints are in the message everywhere, otherwise a patchy
  * import would look like a complete one.
  * @typedef {{ success: boolean, error?: string, added?: number, updated?: number, errors?: number,
- *   skipped?: number, skipped_hint?: string, [feld: string]: unknown }} CsvResult
- * @param {{ feld: string, pfad: string, fields?: Record<string, string>,
- *           show?: (laeuft: boolean) => void, hinweise?: (d: CsvResult) => unknown[] }} o
+ *   skipped?: number, skipped_hint?: string, [field: string]: unknown }} CsvResult
+ * @param {{ field: string, path: string, fields?: Record<string, string>,
+ *           show?: (running: boolean) => void, hints?: (d: CsvResult) => unknown[] }} o
  * @returns {Promise<CsvResult | null>} the response on success, otherwise null
  */
 export async function uploadCsv(o) {
-  const fi = G(o.feld);
+  const fi = G(o.field);
   if (!fi?.files?.[0]) return null;
   const fd = new FormData();
   fd.append('file', fi.files[0]);
   for (const [k, v] of Object.entries(o.fields ?? {})) fd.append(k, v);
   o.show?.(true);
   /** @type {CsvResult} */
-  const d = await api('POST', o.pfad, fd);
+  const d = await api('POST', o.path, fd);
   fi.value = '';
   o.show?.(false);
   if (!d.success) {
     toast(d.error || tRaw('settings.error'), 'error');
     return null;
   }
-  const extra = (o.hinweise?.(d) ?? []).filter(Boolean);
+  const extra = (o.hints?.(d) ?? []).filter(Boolean);
   const extraText = [d.skipped_hint, ...extra].filter(Boolean).join(' — ');
   toast(
     tRaw('import.summary', { added: d.added, updated: d.updated, errors: d.errors }) +

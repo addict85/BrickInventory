@@ -51,7 +51,7 @@ const SET = '99181-1',
   FIGUR = 'fk0001';
 const GUTSCHEIN = '5045076374450019876';
 const BEFORE_THE_LOGIN =
-  /^(POST|GET) \/api\/v1\/auth\/(login|register|forgot-password|reset-password|verify[\w/-]*|resend-verification|qr-login[\w/-]*|passkey\/anmelden[\w/-]*|name-frei|email-frei)$/;
+  /^(POST|GET) \/api\/v2\/auth\/(login|register|forgot-password|reset-password|verify[\w/-]*|resend-verification|qr-login[\w/-]*|passkey\/anmelden[\w/-]*|name-frei|email-frei)$/;
 
 function pdfWith(rows) {
   return new Promise(fertig => {
@@ -137,7 +137,8 @@ test('a foreign account sees and changes no data of another via any route', {
     req.apiUser = { user_id: als, username: name, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   for (const r of S.routerEinhaengungen())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
@@ -172,20 +173,20 @@ test('a foreign account sees and changes no data of another via any route', {
   };
 
   // ── The victim creates via the API what it owns ─────────────────────────
-  const ort = (await ok('POST', '/api/v1/storage/locations', { name: `Ort ${MARKE}` })).ort.id;
-  await ok('POST', '/api/v1/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
-  await ok('PUT', `/api/v1/sets/${SET}/storage`, { storage: `Ort ${MARKE}` });
-  await ok('PUT', `/api/v1/sets/${SET}/alert`, { direction: 'unter', threshold: 30, condition: 'N' });
+  const location = (await ok('POST', '/api/v2/storage/locations', { name: `Ort ${MARKE}` })).location.id;
+  await ok('POST', '/api/v2/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
+  await ok('PUT', `/api/v2/sets/${SET}/storage`, { storage: `Ort ${MARKE}` });
+  await ok('PUT', `/api/v2/sets/${SET}/alert`, { direction: 'below', threshold: 30, condition: 'N' });
   const setAcq = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [opfer, SET]))
     .id;
   const pdf = await pdfWith(['Bauanleitung']);
   const f = new FormData();
   f.append('file', new Blob([pdf], { type: 'application/pdf' }), 'anleitung.pdf');
   f.append('description', `Anleitung ${MARKE}`);
-  await ok('POST', `/api/v1/sets/${SET}/instructions/upload`, undefined, f);
+  await ok('POST', `/api/v2/sets/${SET}/instructions/upload`, undefined, f);
   const anleitung = (await db.get('SELECT id FROM instructions WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [opfer]))
     .id;
-  await ok('POST', '/api/v1/parts', {
+  await ok('POST', '/api/v2/parts', {
     part_number: TEIL,
     color_id: FARBE,
     color_name: 'Rot',
@@ -193,16 +194,16 @@ test('a foreign account sees and changes no data of another via any route', {
     unit_price: 0.2,
     condition: 'N',
   });
-  await ok('PUT', `/api/v1/parts/${TEIL}/${FARBE}/storage`, { storage: `Kiste ${MARKE}` });
+  await ok('PUT', `/api/v2/parts/${TEIL}/${FARBE}/storage`, { storage: `Kiste ${MARKE}` });
   const teilAcq = (await db.get('SELECT id FROM part_acquisitions WHERE user_id = $1', [opfer])).id;
-  await ok('POST', '/api/v1/minifigs', { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' });
+  await ok('POST', '/api/v2/minifigs', { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' });
   const figAcq = (await db.get('SELECT id FROM minifig_acquisitions WHERE user_id = $1', [opfer])).id;
-  await ok('POST', '/api/v1/wanted', { set_number: SET2, condition: 'N' });
+  await ok('POST', '/api/v2/wanted', { set_number: SET2, condition: 'N' });
   const gutschein = (
-    await ok('POST', '/api/v1/vouchers', { number: GUTSCHEIN, pin: '4711', amount: 50, currency: 'CHF' })
+    await ok('POST', '/api/v2/vouchers', { number: GUTSCHEIN, pin: '4711', amount: 50, currency: 'CHF' })
   ).voucher.id;
-  await ok('POST', '/api/v1/sets', { set_number: SET3, quantity: 1, condition: 'N' });
-  await ok('DELETE', `/api/v1/sets/${SET3}`);
+  await ok('POST', '/api/v2/sets', { set_number: SET3, quantity: 1, condition: 'N' });
+  await ok('DELETE', `/api/v2/sets/${SET3}`);
   const trash = (await db.get('SELECT id FROM trash WHERE user_id = $1', [opfer])).id;
   const token = await auth.createToken(opfer, `Gerät ${MARKE}`, true);
   const nonce = `fremd${process.pid}${Date.now()}`;
@@ -217,7 +218,7 @@ test('a foreign account sees and changes no data of another via any route', {
   /** What the victim owns, row by row; afterwards none of it may have changed. */
   const spalten = await db.all(`SELECT table_name, column_name FROM information_schema.columns
     WHERE table_schema = current_schema() AND column_name IN ('user_id', 'owner_user_id', 'main_user_id', 'sub_user_id')`);
-  const bestand = async () => {
+  const holding = async () => {
     const aus = { users: await db.all('SELECT * FROM users WHERE id = $1', [opfer]) };
     for (const { table_name: tab, column_name: sp } of spalten) {
       const rows = await db.all(`SELECT * FROM "${tab}" WHERE "${sp}" = $1`, [opfer]);
@@ -225,26 +226,26 @@ test('a foreign account sees and changes no data of another via any route', {
     }
     return aus;
   };
-  const vorher = await bestand();
+  const vorher = await holding();
   const rowsOfVictim = Object.values(vorher).reduce((n, z) => n + z.length, 0);
   assert.ok(rowsOfVictim >= 15, `nur ${rowsOfVictim} Zeilen des Opfers angelegt`);
 
   // ── Values of the victim for path, query and body ───────────────────────
   const idFor = p =>
     p.includes('/storage/locations/')
-      ? ort
-      : p.includes('/papierkorb/')
+      ? location
+      : p.includes('/trash/')
         ? trash
         : p.includes('/vouchers/')
           ? gutschein
-          : p.includes('/qr-kopplung/')
+          : p.includes('/qr-pairing/')
             ? qr
             : p.includes('/parts/')
               ? teilAcq
               : p.includes('/minifigs/')
                 ? figAcq
                 : opfer;
-  const acqFor = p => (p.startsWith('/api/v1/parts') ? teilAcq : p.startsWith('/api/v1/minifigs') ? figAcq : setAcq);
+  const acqFor = p => (p.startsWith('/api/v2/parts') ? teilAcq : p.startsWith('/api/v2/minifigs') ? figAcq : setAcq);
   const pathValue = (p, n) =>
     ({
       setNumber: p.includes('/wanted/') ? SET2 : SET,
@@ -258,7 +259,7 @@ test('a foreign account sees and changes no data of another via any route', {
       tokenId: auth.tokenDigest(token).slice(0, 16),
       jobId: '1700000000000-abcd',
       condition: 'N',
-      type: 'anleitung',
+      type: 'instructions',
       barcode: '5702016616354',
     })[n];
   /** `konto`: the victim (foreign account ID in the field) or the own one — then the request gets past the
@@ -272,8 +273,8 @@ test('a foreign account sees and changes no data of another via any route', {
       sub_user_id: konto,
       main_user_id: konto,
       to_user_id: konto,
-      neuer_inhaber: fremd,
-      id: ort,
+      new_owner: fremd,
+      id: location,
       acquisition_ids: [setAcq],
       set_number: SET,
       sets: [SET],
@@ -281,7 +282,6 @@ test('a foreign account sees and changes no data of another via any route', {
       part_number: TEIL,
       color_id: FARBE,
       fig_number: FIGUR,
-      teile: [{ part_number: TEIL, color_id: FARBE }],
       parts: [{ part_number: TEIL, color_id: FARBE }],
       condition: 'N',
       storage: 'Lager des Fremden',
@@ -309,19 +309,17 @@ test('a foreign account sees and changes no data of another via any route', {
   const leaks = [],
     gerufen = [];
   for (const [schluessel, route] of Object.entries(CONTRACT)) {
-    if (BEFORE_THE_LOGIN.test(schluessel) || schluessel === 'DELETE /api/v1/auth/konto') continue;
+    if (BEFORE_THE_LOGIN.test(schluessel) || schluessel === 'DELETE /api/v2/auth/account') continue;
     const [methode, muster] = schluessel.split(' ');
     const weg = muster.replace(/:(\w+)/g, (_, n) => encodeURIComponent(String(pathValue(muster, n) ?? 'x')));
-    const felder = route.abfrage?.shape ? Object.keys(route.abfrage.shape) : [];
+    const felder = route.query?.shape ? Object.keys(route.query.shape) : [];
     for (const konto of [opfer, fremd]) {
       const w = k => fieldValue(k, konto);
       const abfrage = new URLSearchParams(
         felder.map(k => [k, queryValue(k, konto)]).filter(([, v]) => v !== undefined),
       ).toString();
       const rumpfe =
-        methode === 'GET' || route.formular
-          ? [undefined]
-          : [example(route.eingabe, w, false), example(route.eingabe, w, true)];
+        methode === 'GET' || route.form ? [undefined] : [example(route.input, w, false), example(route.input, w, true)];
       for (const rumpf of rumpfe)
         for (const q of abfrage ? [abfrage, ''] : ['']) {
           const r = await ruf(methode, weg + (q ? '?' + q : ''), rumpf);
@@ -348,10 +346,10 @@ test('a foreign account sees and changes no data of another via any route', {
   await t.test("no response contains the victim's data", () => assert.deepEqual(leaks, []));
 
   await t.test('no row of the victim changes', async () => {
-    const nachher = await bestand();
-    const geaendert = Object.keys(vorher).filter(k => JSON.stringify(vorher[k]) !== JSON.stringify(nachher[k]));
+    const nachher = await holding();
+    const changed = Object.keys(vorher).filter(k => JSON.stringify(vorher[k]) !== JSON.stringify(nachher[k]));
     assert.deepEqual(
-      geaendert.map(k => [k, vorher[k].length, nachher[k].length]),
+      changed.map(k => [k, vorher[k].length, nachher[k].length]),
       [],
     );
   });

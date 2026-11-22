@@ -131,16 +131,16 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
           [FIGUR, p, `2026-01-02T${zeit}:00Z`],
         );
       await c.query(sql);
-      const teile = await c.query(`SELECT avg_price FROM part_price_history WHERE part_number = $1 AND color_id = 7`, [
+      const parts = await c.query(`SELECT avg_price FROM part_price_history WHERE part_number = $1 AND color_id = 7`, [
         TEIL,
       ]);
-      const figuren = await c.query(`SELECT avg_price FROM minifig_price_history WHERE fig_number = $1`, [FIGUR]);
+      const minifigs = await c.query(`SELECT avg_price FROM minifig_price_history WHERE fig_number = $1`, [FIGUR]);
       assert.deepEqual(
-        teile.rows.map(r => Number(r.avg_price)),
+        parts.rows.map(r => Number(r.avg_price)),
         [3],
       );
       assert.deepEqual(
-        figuren.rows.map(r => Number(r.avg_price)),
+        minifigs.rows.map(r => Number(r.avg_price)),
         [5],
       );
       await c.query('COMMIT');
@@ -161,12 +161,12 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
     const { fetchMinifigPrice } = _req('src/finances/financeCalc.js');
     const p = await fetchMinifigPrice(FIGUR, 'N', 'EUR', 24);
     assert.equal(Number(p.avg_price), 20);
-    const zeile = await db.get(
+    const row = await db.get(
       'SELECT estimated AS geschaetzt, coverage AS abdeckung FROM minifig_price_cache WHERE fig_number = $1',
       [FIGUR],
     );
-    assert.equal(zeile.geschaetzt, false, 'der echte Preis trägt noch die Schätzmarke');
-    assert.equal(zeile.abdeckung, null);
+    assert.equal(row.geschaetzt, false, 'der echte Preis trägt noch die Schätzmarke');
+    assert.equal(row.abdeckung, null);
   });
 
   await t.test('the estimate carries its coverage', async () => {

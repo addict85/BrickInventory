@@ -24,15 +24,15 @@ const TABLES: Record<PaperKind, { tabelle: string; wo: string }[]> = {
   ],
 };
 
-export const tablesTheKind = (art: PaperKind): string[] => TABLES[art].map(t => t.tabelle);
+export const tablesTheKind = (kind: PaperKind): string[] => TABLES[kind].map(t => t.tabelle);
 
 export async function inventoryRows(
   tx: DbInterface,
-  art: PaperKind,
+  kind: PaperKind,
   values: unknown[],
 ): Promise<Record<string, unknown[]>> {
   const rows: Record<string, unknown[]> = {};
-  for (const { tabelle, wo } of TABLES[art]) {
+  for (const { tabelle, wo } of TABLES[kind]) {
     const r = await tx.get<{ z: unknown[] }>(
       `SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${tabelle} t WHERE ${wo}`,
       values,
@@ -55,14 +55,14 @@ const LABEL: Record<PaperKind, string> = {
 /** So that the list stays readable even without a catalog row. */
 export async function label(
   tx: DbInterface,
-  art: PaperKind,
+  kind: PaperKind,
   userId: number,
   number: string,
   colorId: number | null,
 ): Promise<string | null> {
   const r = await tx.get<{ b: string | null }>(
-    LABEL[art],
-    art === 'teil' ? [number, userId, colorId] : [number, userId],
+    LABEL[kind],
+    kind === 'teil' ? [number, userId, colorId] : [number, userId],
   );
   return r?.b || null;
 }
@@ -70,7 +70,7 @@ export async function label(
 export async function createEntry(
   tx: DbInterface,
   userId: number,
-  art: PaperKind,
+  kind: PaperKind,
   number: string,
   colorId: number | null,
   name: string | null,
@@ -79,7 +79,7 @@ export async function createEntry(
   const r = await tx.get<{ id: number }>(
     `INSERT INTO trash (user_id, type, number, color_id, label, rows)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb) RETURNING id`,
-    [userId, art, number, colorId, name, JSON.stringify(rows)],
+    [userId, kind, number, colorId, name, JSON.stringify(rows)],
   );
   return r?.id ?? null;
 }
@@ -94,13 +94,13 @@ export interface TrashRow {
   label: string | null;
   rows: Record<string, { quantity?: unknown }[]> | null;
   deleted_at: string;
-  endgueltig_am: string;
+  purge_at: string;
 }
 
 export function entries(db: DbInterface, uids: number[], retentionDays: number) {
   return db.all<TrashRow>(
     `SELECT id, user_id, type, number, color_id, label, rows, deleted_at,
-            deleted_at + make_interval(days => $2) AS endgueltig_am
+            deleted_at + make_interval(days => $2) AS purge_at
        FROM trash WHERE user_id = ANY($1)
       ORDER BY deleted_at DESC, id DESC LIMIT 500`,
     [uids, retentionDays],
@@ -119,10 +119,10 @@ export function lockTrashEntry(tx: DbInterface, id: number, uids: number[]) {
 /** Tables from TABELLEN, only columns that still exist and are not computed (a deleted one drops out). */
 export async function writeBack(
   tx: DbInterface,
-  art: PaperKind,
+  kind: PaperKind,
   rows: Record<string, Record<string, unknown>[] | undefined>,
 ): Promise<void> {
-  for (const { tabelle } of TABLES[art]) {
+  for (const { tabelle } of TABLES[kind]) {
     const list = rows[tabelle] ?? [];
     const first = list[0];
     if (!first) continue;

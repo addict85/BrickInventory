@@ -66,8 +66,8 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
     [FIGUR, MINIFIG_PRICE],
   );
   await holdsSet(db, uid, SET, 2, { preis: 30 });
-  await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 4, preis: 0.2 });
-  await holdsMinifig(db, uid, FIGUR, { menge: 1, preis: 5 });
+  await holdsPart(db, uid, TEIL, { colorId: FARBE, quantity: 4, preis: 0.2 });
+  await holdsMinifig(db, uid, FIGUR, { quantity: 1, preis: 5 });
 
   const f = _req('src/finances/financeCalc.js');
 
@@ -75,13 +75,13 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
     const sets = await f.valueSets(uid, [uid]);
     const s = sets.sets.find(z => z.set_number === SET);
     assert.equal(s.avg_price, SET_PRICE);
-    assert.equal(s.wert_gesamt, 75);
-    const teile = await f.valueParts(uid, [uid]);
-    assert.equal(teile.parts.find(z => z.part_number === TEIL).avg_price, PART_PRICE);
-    assert.equal(teile.wert_gesamt, 1);
-    const figuren = await f.valueMinifigs(uid, [uid]);
-    assert.equal(figuren.figs.find(z => z.fig_number === FIGUR).avg_price, MINIFIG_PRICE);
-    assert.equal(figuren.wert_gesamt, MINIFIG_PRICE);
+    assert.equal(s.value_total, 75);
+    const parts = await f.valueParts(uid, [uid]);
+    assert.equal(parts.parts.find(z => z.part_number === TEIL).avg_price, PART_PRICE);
+    assert.equal(parts.value_total, 1);
+    const minifigs = await f.valueMinifigs(uid, [uid]);
+    assert.equal(minifigs.figs.find(z => z.fig_number === FIGUR).avg_price, MINIFIG_PRICE);
+    assert.equal(minifigs.value_total, MINIFIG_PRICE);
   });
 
   await t.test('G&V', async () => {

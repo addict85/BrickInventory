@@ -21,9 +21,9 @@ test('the daily rates come as XML from the ECB host', async t => {
   const stub = await httpsStub(t, (_c, res) => reply(res, 200, fixture('ecb-daily.xml')));
   const kurse = ecb.readDailyRates((await ecb.ecbFetch(ecb.ECB_DAILY_RATES)).toString('utf8'));
   assert.deepEqual(kurse, [
-    { tag: '2026-11-20', waehrung: 'USD', je_eur: 1.0832 },
-    { tag: '2026-11-20', waehrung: 'CHF', je_eur: 0.9415 },
-    { tag: '2026-11-20', waehrung: 'GBP', je_eur: 0.835 },
+    { tag: '2026-11-20', currency: 'USD', je_eur: 1.0832 },
+    { tag: '2026-11-20', currency: 'CHF', je_eur: 0.9415 },
+    { tag: '2026-11-20', currency: 'GBP', je_eur: 0.835 },
   ]);
   assert.deepEqual(
     stub.calls.map(c => [c.host, c.path]),
@@ -35,11 +35,11 @@ test('the history as ZIP, packed and stored', async t => {
   const zip = { '/stats/eurofxref/eurofxref-hist.zip': 'ecb-hist.zip', '/stored.zip': 'ecb-hist-stored.zip' };
   await httpsStub(t, (c, res) => reply(res, 200, fixture(zip[c.path], true)));
   const erwartet = [
-    { tag: '2026-11-20', waehrung: 'USD', je_eur: 1.0832 },
-    { tag: '2026-11-20', waehrung: 'JPY', je_eur: 162.1 },
-    { tag: '2026-11-20', waehrung: 'CHF', je_eur: 0.9415 },
-    { tag: '2026-11-19', waehrung: 'USD', je_eur: 1.0811 },
-    { tag: '2026-11-19', waehrung: 'CHF', je_eur: 0.9402 },
+    { tag: '2026-11-20', currency: 'USD', je_eur: 1.0832 },
+    { tag: '2026-11-20', currency: 'JPY', je_eur: 162.1 },
+    { tag: '2026-11-20', currency: 'CHF', je_eur: 0.9415 },
+    { tag: '2026-11-19', currency: 'USD', je_eur: 1.0811 },
+    { tag: '2026-11-19', currency: 'CHF', je_eur: 0.9402 },
   ];
   for (const url of [ecb.ECB_HISTORY, 'https://www.ecb.europa.eu/stored.zip']) {
     const csv = ecb.firstZipFile(await ecb.ecbFetch(url)).toString('utf8');

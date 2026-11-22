@@ -53,9 +53,9 @@ test('price and history of a new set come in condition N', { concurrency: 1 }, a
   );
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: false }, t });
   try {
-    let j = await (await fetch(`${base}/api/v1/sets/${SET}/price`)).json();
+    let j = await (await fetch(`${base}/api/v2/sets/${SET}/price`)).json();
     assert.equal(j.avg_price, 100, '/price nimmt den Neupreis');
-    j = await (await fetch(`${base}/api/v1/sets/${SET}/price-history`)).json();
+    j = await (await fetch(`${base}/api/v2/sets/${SET}/price-history`)).json();
     assert.equal(j.success, true);
     assert.equal(j.condition, 'N', '/price-history im Zustand des Sets');
   } finally {

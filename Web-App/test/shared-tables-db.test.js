@@ -5,7 +5,7 @@
  * source text (a new place on a catalog table must be registered here …
  *
  * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
- *   A  routes/api_v1/wanted.ts: rememberNumber always writes rememberBlNumber →
+ *   A  routes/api/wanted.ts: rememberNumber always writes rememberBlNumber →
  *      red: “input of an account lands in no shared table”
  *      (bl_mapping carries the marker)
  *   B  rememberMinifig() in src/catalog/catalogMaintenance.ts without the branch for `von` →
@@ -397,15 +397,15 @@ async function measureFile(datei, bekannt) {
     for (const m of String(sql).matchAll(LIES)) if (bekannt.has(m[1])) liest.add(m[1]);
     for (const m of String(sql).matchAll(WRITE)) if (bekannt.has(m[1] ?? m[2])) schreibt.add(m[1] ?? m[2]);
   };
-  const antwort = value => async sql => {
+  const response = value => async sql => {
     remember(sql);
     return value;
   };
   const zugang = {
-    get: antwort(c),
-    all: antwort([c]),
-    run: antwort({ changes: 1 }),
-    query: antwort({ rows: [c], rowCount: 1 }),
+    get: response(c),
+    all: response([c]),
+    run: response({ changes: 1 }),
+    query: response({ rows: [c], rowCount: 1 }),
   };
   const modul = _req(datei.replace(/\.ts$/, '.js'));
   const listen = Object.values(modul).filter(Array.isArray).flat();
@@ -473,9 +473,9 @@ function stufenAusDoku() {
 }
 
 /** „aufwärts“, „katalog“ or „abwärts“ for the reader `b` of a table of the owner `owner`. */
-function readDirection(stufen, b, owner) {
+function readDirection(levels, b, owner) {
   if (owner === 'src/catalog') return 'katalog';
-  return stufen.get(owner) > stufen.get(b) ? 'aufwärts' : 'abwärts';
+  return levels.get(owner) > levels.get(b) ? 'aufwärts' : 'abwärts';
 }
 
 function foreignReader(besitzer) {
@@ -732,14 +732,14 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
 
   await t.test('triggers only write into tables of their owner or into justified targets', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
-    const trigger = await db.all(`SELECT DISTINCT c.relname AS tabelle, p.proname AS funktion, p.prosrc AS quelle
+    const trigger = await db.all(`SELECT DISTINCT c.relname AS tabelle, p.proname AS funktion, p.prosrc AS source
       FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
       JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
       JOIN pg_proc p ON p.oid = t.tgfoid WHERE NOT t.tgisinternal`);
     const ziele = new Set(),
       fremd = new Set();
-    for (const { tabelle, quelle } of trigger)
-      for (const m of quelle.matchAll(/\b(?:INSERT INTO|DELETE FROM|UPDATE)\s+([a-z_][a-z0-9_]*)/g)) {
+    for (const { tabelle, source } of trigger)
+      for (const m of source.matchAll(/\b(?:INSERT INTO|DELETE FROM|UPDATE)\s+([a-z_][a-z0-9_]*)/g)) {
         ziele.add(m[1]);
         if (besitzer.get(m[1]) !== besitzer.get(tabelle)) fremd.add(`${besitzer.get(tabelle)} → ${m[1]}`);
       }
@@ -754,8 +754,8 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
   await t.test('foreign scopes never read upwards, otherwise fewer tables directly', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
     assert.ok(besitzer.size > 60, `nur ${besitzer.size} Tabellen in docs/architecture.md — greift die Suche noch?`);
-    const stufen = stufenAusDoku();
-    assert.ok(stufen.size > 20, `nur ${stufen.size} Stufen in docs/architecture.md — greift die Suche noch?`);
+    const levels = stufenAusDoku();
+    assert.ok(levels.size > 20, `nur ${levels.size} Stufen in docs/architecture.md — greift die Suche noch?`);
     const je = { aufwärts: [], katalog: [], abwärts: [] };
     const pairs = new Set(foreignReader(besitzer));
     assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');
@@ -768,11 +768,11 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
       }
     for (const paar of [...pairs].sort()) {
       const [b, tabelle] = paar.split(' → ');
-      assert.ok(stufen.has(b), `${b} hat keine Stufe`);
-      je[readDirection(stufen, b, besitzer.get(tabelle))].push(paar);
+      assert.ok(levels.has(b), `${b} hat keine Stufe`);
+      je[readDirection(levels, b, besitzer.get(tabelle))].push(paar);
     }
     // Self-proof of the classification, on real levels.
-    assert.equal(readDirection(stufen, 'src/finances', besitzer.get('sets')), 'aufwärts');
+    assert.equal(readDirection(levels, 'src/finances', besitzer.get('sets')), 'aufwärts');
     assert.ok(je.abwärts.includes('src/management → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
     assert.ok(je.katalog.length > 10, 'Selbstbeweis: Katalogtabellen werden gelesen');
     assert.deepEqual(
@@ -795,7 +795,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
 
   await t.test('not even via db/ does a scope read the table of a higher one', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
-    const stufen = stufenAusDoku();
+    const levels = stufenAusDoku();
     const bausteine = await lesebausteine(_req);
     // Self-proof: what the building blocks read comes from their result, also via constants.
     assert.deepEqual(bausteine.inventoryView?.setBestand, ['sets'], 'setBestand liest sets');
@@ -807,8 +807,8 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.ok(reader.includes('src/services.ts → price_alerts'), 'Selbstbeweis: `* as` zählt alle Exporte');
     const aufwaerts = reader.filter(paar => {
       const [b, tabelle] = paar.split(' → ');
-      assert.ok(stufen.has(b), `${b} hat keine Stufe`);
-      return besitzer.has(tabelle) && stufen.get(besitzer.get(tabelle)) > stufen.get(b);
+      assert.ok(levels.has(b), `${b} hat keine Stufe`);
+      return besitzer.has(tabelle) && levels.get(besitzer.get(tabelle)) > levels.get(b);
     });
     assert.deepEqual(
       aufwaerts,
@@ -830,7 +830,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
 
     const { addManualPart } = _req('src/parts/manualParts.js');
     const { addManualMinifig, updateManualMinifig, importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
-    const bild = `https://cdn.rebrickable.com/${MARKE}.png`;
+    const image = `https://cdn.rebrickable.com/${MARKE}.png`;
     await asAccount(A, async () => {
       await addManualPart(A, {
         part_number: '3005',
@@ -838,14 +838,14 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
         part_name: `${MARKE} Teil`,
         color_name: MARKE,
         category_name: MARKE,
-        image_url: bild,
+        image_url: image,
         quantity: 1,
         unit_price: 1,
       });
       await addManualMinifig(A, {
         fig_number: 'fig-000002',
         fig_name: `${MARKE} Figur`,
-        image_url: bild,
+        image_url: image,
         bl_fig_number: `${MARKE}1`,
         quantity: 1,
         unit_price: 1,
@@ -872,15 +872,15 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
       'w.xml',
     );
     fd.append(
-      'korrekturen',
+      'corrections',
       JSON.stringify([
-        { index: 0, blId: `${MARKE}4`, art: 'fig', rbId: 'fig-000001' },
-        { index: 1, blId: `${MARKE}5`, art: 'part', rbId: '3003', rbFarbe: 4 },
+        { index: 0, blId: `${MARKE}4`, kind: 'fig', rbId: 'fig-000001' },
+        { index: 1, blId: `${MARKE}5`, kind: 'part', rbId: '3003', rbColor: 4 },
       ]),
     );
-    const r = await fetch(`${srv.base}/api/v1/wanted-list/import/xml?schreiben=1`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v2/wanted-list/import/xml?write=1`, { method: 'POST', body: fd });
     const bericht = await r.json();
-    assert.equal(bericht.korrekturen?.angewandt, 2, JSON.stringify(bericht));
+    assert.equal(bericht.corrections?.applied, 2, JSON.stringify(bericht));
 
     const befallen = [];
     for (const [name, e] of Object.entries(SHARED)) {

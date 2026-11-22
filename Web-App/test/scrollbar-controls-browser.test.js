@@ -26,12 +26,12 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
     name: `scrollbalken_${process.pid}`,
     allDesigns: true,
     // Enough tiles that the page is taller than the window.
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       for (let i = 0; i < 40; i++) await holdsSet(db, uid, `${10000 + i}-1`, 1, { preis: 10 });
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;
@@ -46,7 +46,7 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
   );
 
   await t.test('thumb stands out in every design (3:1)', async () => {
-    const werte = [];
+    const values = [];
     for (const design of DESIGNS)
       for (const dunkel of design === 'werkbank' ? [true] : [false, true]) {
         await b.auswerten(
@@ -58,14 +58,14 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
         const [x, y] = [l(f(getComputedStyle(document.getElementById('app-scrollbar-thumb')).backgroundColor)),
                         l(f(getComputedStyle(document.body).backgroundColor))].sort((p, q) => q - p);
         return Math.round((x + 0.05) / (y + 0.05) * 100) / 100; })()`);
-        werte.push({ design: `${design} ${dunkel ? 'dark' : 'hell'}`, kontrast: k });
+        values.push({ design: `${design} ${dunkel ? 'dark' : 'hell'}`, kontrast: k });
       }
     await b.auswerten(
       `document.documentElement.setAttribute('data-theme', 'classic'); document.documentElement.removeAttribute('data-dark'); true`,
     );
-    assert.equal(werte.length, 11);
+    assert.equal(values.length, 11);
     assert.deepEqual(
-      werte.filter(w => w.kontrast < 3),
+      values.filter(w => w.kontrast < 3),
       [],
       'Griff zu blass gegen den Seitengrund',
     );
@@ -101,10 +101,10 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
   });
 
   await t.test("contrast mode: the browser's bar stays", async () => {
-    const stand = () =>
+    const state = () =>
       b.auswerten(`({ eigen: getComputedStyle(document.getElementById('app-scrollbar')).display,
       browserBar: innerWidth - document.documentElement.clientWidth })`);
-    const normal = await stand();
+    const normal = await state();
     assert.equal(normal.eigen, 'block', 'Vorbedingung: der Eigenbau steht');
     assert.equal(normal.browserBar, 0, 'Vorbedingung: die Leiste des Browsers ist versteckt');
     await b.tab('Emulation.setEmulatedMedia', {
@@ -117,7 +117,7 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
       `getComputedStyle(document.getElementById('app-scrollbar')).display === 'none'`,
       'Eigenbau im Kontrastmodus weg',
     );
-    const kontrast = await stand();
+    const kontrast = await state();
     await b.tab('Emulation.setEmulatedMedia', {
       features: [
         { name: 'forced-colors', value: 'none' },

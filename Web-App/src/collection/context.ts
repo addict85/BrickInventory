@@ -14,7 +14,7 @@ import type { WantedServices } from '../wanted';
 import type { Clock } from '../infra/clock';
 
 export interface CollectionDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
   household: HouseholdServices;
   jobQueue: JobsServices;

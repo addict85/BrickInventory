@@ -57,15 +57,16 @@ test('start password: change it first, then everything else', { concurrency: 1 }
     }),
   );
   app.use(
-    '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    '/api/v2',
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   // Like startup/app.ts: an error path behind everything, also behind the entrance.
   app.use(_req('src/http/httpResponse.js').errorResponse);
   const srv = app.listen(0);
-  const basis = `http://localhost:${srv.address().port}/api/v1`;
+  const basis = `http://localhost:${srv.address().port}/api/v2`;
   t.after(async () => {
     await new Promise(r => srv.close(r));
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
@@ -96,12 +97,12 @@ test('start password: change it first, then everything else', { concurrency: 1 }
   const {
     body: { token },
   } = anmeldung;
-  const { cookie } = await ruf('/auth/login', { body: { username: NAME, password: PASS, ohne_token: true } });
+  const { cookie } = await ruf('/auth/login', { body: { username: NAME, password: PASS, without_token: true } });
 
   await t.test('session and token only get as far as the change', async () => {
     const s = await ruf('/settings/tokens', { cookie });
     assert.equal(s.status, 403, 'Sitzung kommt am Wechsel vorbei');
-    assert.equal(s.body.code, 'passwort_wechsel_noetig');
+    assert.equal(s.body.code, 'password_change_required');
     const k = await ruf('/settings/tokens', { token });
     assert.equal(k.status, 403, 'Token kommt am Wechsel vorbei');
     const ich = await ruf('/auth/me', { cookie });
@@ -122,7 +123,7 @@ test('start password: change it first, then everything else', { concurrency: 1 }
     assert.equal(w.status, 200, JSON.stringify(w.body));
     const neu = w.cookie ?? cookie;
     // Since 04.11.2026 admin rights require a code generator afterwards.
-    assert.equal((await ruf('/settings/tokens', { cookie: neu })).body.code, 'zweiter_faktor_pflicht');
+    assert.equal((await ruf('/settings/tokens', { cookie: neu })).body.code, 'second_factor_mandatory');
     await require('./helpers/admin').adminWithFactor(_req, uid);
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).status, 200);
     assert.equal((await ruf('/auth/me', { cookie: neu })).body.user.mustChangePassword, false);

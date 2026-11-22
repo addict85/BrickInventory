@@ -143,20 +143,18 @@ test('the connection pool is wide enough', async () => {
     await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
     await oeffneBild(url, { maxBytes: 1000 }).catch(() => {});
   });
-  const agent = withPool?.optionen.agent;
+  const agent = withPool?.options.agent;
   assert.ok(agent, 'der Proxy-Abruf nimmt den Pool nicht');
   assert.ok(agent.maxSockets >= 32, `maxSockets ${agent.maxSockets} ist zu eng — Einzelabrufe warten spürbar`);
   assert.equal(agent.keepAlive, true, 'Wiederverwendung spart den TLS-Handshake');
-  assert.equal(withoutPool?.optionen.agent, undefined, 'ein Einzelabruf hält keine Verbindung offen');
+  assert.equal(withoutPool?.options.agent, undefined, 'ein Einzelabruf hält keine Verbindung offen');
   assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
 });
 
 test('the diagnostic endpoints are present', () => {
-  const route = require('./helpers/sources').kompakt(
-    fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8'),
-  );
-  assert.match(route, /router\.endpoint\('POST \/api\/v1\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
-  assert.match(route, /router\.endpoint\('POST \/api\/v1\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
+  const route = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api/admin.ts'), 'utf8'));
+  assert.match(route, /router\.endpoint\('POST \/api\/v2\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
+  assert.match(route, /router\.endpoint\('POST \/api\/v2\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // The fetches themselves stand in the administration's service (routes do not call into the network).
   const admin = fs.readFileSync(path.join(ROOT, 'src/management/diagnostics.ts'), 'utf8');
   assert.match(
@@ -259,7 +257,7 @@ test('minifigure images are stored locally like set images', () => {
 test('the cache cleanup run is a scheduled job', () => {
   // The daily cleanup once stood in registerImgProxy() and thus ran
   // in every web worker; today it is a step of the scheduled job
-  // 'aufraeumen_taeglich' (src/management/cleanup.ts) and only runs in the job process.
+  // 'cleanup_daily' (src/management/cleanup.ts) and only runs in the job process.
   assert.match(
     SERVER,
     /export async function cleanImageCacheOn/,

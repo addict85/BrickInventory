@@ -50,8 +50,8 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const ruf = async (methode, pfad, body) => {
-    const r = await fetch(`${base}/api/v1/auth${pfad}`, {
+  const ruf = async (methode, path, body) => {
+    const r = await fetch(`${base}/api/v2/auth${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: body && JSON.stringify(body),
@@ -73,11 +73,11 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
 
   await t.test('profile: username by the same rule and regardless of case', async () => {
     const ungueltig = await ruf('PUT', '/profile', { username: 'a b', password_current: PASS });
-    assert.deepEqual([ungueltig.status, ungueltig.body.code], [400, 'benutzername_ungueltig']);
+    assert.deepEqual([ungueltig.status, ungueltig.body.code], [400, 'username_invalid']);
     const mail = await ruf('PUT', '/profile', { username: 'x@example.org', password_current: PASS });
     assert.equal(mail.status, 400, 'Eine E-Mail-Adresse als Benutzername — der Login sucht beides');
     const vergeben = await ruf('PUT', '/profile', { username: NEIGHBOR.toLowerCase(), password_current: PASS });
-    assert.deepEqual([vergeben.status, vergeben.body.code], [400, 'benutzername_vergeben']);
+    assert.deepEqual([vergeben.status, vergeben.body.code], [400, 'username_taken']);
     assert.equal((await db.get('SELECT username FROM users WHERE id = $1', [uid])).username, NAME);
   });
 
@@ -89,7 +89,7 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
     );
     try {
       const r = await ruf('POST', '/login', { username: NAME, password: PASS });
-      assert.deepEqual([r.status, r.body.code, 'token' in r.body], [500, 'token_nicht_ausgestellt', false]);
+      assert.deepEqual([r.status, r.body.code, 'token' in r.body], [500, 'token_not_issued', false]);
     } finally {
       await db.run('DROP TRIGGER regeln_token_sperre ON api_tokens');
     }

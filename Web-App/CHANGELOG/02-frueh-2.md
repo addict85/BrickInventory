@@ -432,7 +432,7 @@ Neu werden beide Zustände geholt und je Set nach **dessen eigenem** Zustand
 gewählt — der globale Standardzustand passt für eine gemischte Sammlung ohnehin
 nicht. Der andere Zustand springt nur ein, wenn der eigene keinen Preis hat.
 
-Zwei weitere Fundstellen derselben Art mitbehoben: `routes/api_v1/sets.ts`
+Zwei weitere Fundstellen derselben Art mitbehoben: `routes/api/sets.ts`
 (Preisverlauf) und `utils/portfolioHistory.ts`.
 
 **Test.** `test/set-value.test.js` prüft jetzt **alle fünf** Dateien auf die alte

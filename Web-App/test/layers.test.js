@@ -36,20 +36,20 @@ function ohneKommentare(s) {
 
 /** All .ts files of the inner layers. */
 function innerFiles() {
-  const gefunden = [];
+  const found = [];
   const lauf = rel => {
     const voll = path.join(ROOT, rel);
     if (!fs.existsSync(voll)) return;
     for (const e of fs.readdirSync(voll, { withFileTypes: true })) {
       const kind = path.posix.join(rel, e.name);
       if (e.isDirectory()) lauf(kind);
-      else if (e.name.endsWith('.ts')) gefunden.push(kind);
+      else if (e.name.endsWith('.ts')) found.push(kind);
     }
   };
   // startup/ is the outsourced server start (only server.ts uses it) and
   // counts to the outer layer; its own rule stands further below.
   ['src', 'jobs', 'clients', 'db'].forEach(lauf);
-  return gefunden;
+  return found;
 }
 
 /** Source text of a file (relative to ROOT) without comments. */
@@ -96,21 +96,21 @@ test('a v1 route imports no other route file', () => {
   // Shared things belong in src/<bereich>/ (manualParts, manualMinifigs). A
   // route that imports a route drags its router including middleware along.
   // Counter-check (28.10.2026): require('../parts') in wanted.ts → red.
-  const ordner = path.join(ROOT, 'routes/api_v1');
+  const ordner = path.join(ROOT, 'routes/api');
   const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.ts'));
   assert.ok(dateien.length > 10, `nur ${dateien.length} v1-Dateien gefunden`);
   const treffer = [];
   for (const f of dateien)
-    for (const ziel of importe(`routes/api_v1/${f}`).filter(z => /^\.\.\/[^.]/.test(z)))
-      treffer.push(`api_v1/${f} -> ${ziel}`);
+    for (const ziel of importe(`routes/api/${f}`).filter(z => /^\.\.\/[^.]/.test(z)))
+      treffer.push(`api/${f} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 
 test('no route imports another route file', () => {
-  // Only the guard (api_v1/middleware) and the assembly in
-  // api_v1/index.ts, auth.ts (from routes/auth/) and api_v1/settings.ts (settingsGlobal behind requireLogin) are allowed.
-  // Counter-check (10.11.2026): `import { requireLogin } from '../auth'` in routes/api_v1/minifigs.ts → red;
-  // (14.11.2026) `import { buildSetsRouter } from './sets'` in routes/api_v1/settingsGlobal.ts → rot.
+  // Only the guard (api/middleware) and the assembly in
+  // api/index.ts, auth.ts (from routes/auth/) and api/settings.ts (settingsGlobal behind requireLogin) are allowed.
+  // Counter-check (10.11.2026): `import { requireLogin } from '../auth'` in routes/api/minifigs.ts → red;
+  // (14.11.2026) `import { buildSetsRouter } from './sets'` in routes/api/settingsGlobal.ts → rot.
   const dateien = [];
   const lauf = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -122,14 +122,14 @@ test('no route imports another route file', () => {
   lauf('routes');
   assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
   const treffer = [];
-  for (const d of dateien.filter(d => d !== 'routes/api_v1/index.ts'))
+  for (const d of dateien.filter(d => d !== 'routes/api/index.ts'))
     for (const ziel of importe(d).filter(z => z.startsWith('.'))) {
       const voll = path.posix.normalize(path.posix.join(path.posix.dirname(d), ziel)).replace(/\.js$/, '');
       if (
         voll.startsWith('routes/') &&
-        voll !== 'routes/api_v1/middleware' &&
+        voll !== 'routes/api/middleware' &&
         !(d === 'routes/auth.ts' && voll.startsWith('routes/auth/')) &&
-        !(d === 'routes/api_v1/settings.ts' && voll === 'routes/api_v1/settingsGlobal')
+        !(d === 'routes/api/settings.ts' && voll === 'routes/api/settingsGlobal')
       )
         treffer.push(`${d} -> ${ziel}`);
     }
@@ -249,8 +249,8 @@ test('no route executes SQL or imports from db/', () => {
   // Routes read the request, call a service and write the response;
   // data access, locks and notifications stand behind src/<bereich>/.
   // Counter-checks: `import * as db from '../../db/database'` and a db.get line
-  // in routes/api_v1/catalog.ts → red, both hits (29.10.2026);
-  // `import { withInventoryLock } from '../../db/txLock'` in api_v1/sets.ts → rot (05.11.2026).
+  // in routes/api/catalog.ts → red, both hits (29.10.2026);
+  // `import { withInventoryLock } from '../../db/txLock'` in api/sets.ts → rot (05.11.2026).
   const dateien = routesFiles();
   assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
   const treffer = [];
@@ -267,7 +267,7 @@ test('no route imports from jobs/ or clients/', () => {
   // it reaches foreign services via a service in src/<bereich>/.
   // Counter-check (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts and `import { getSetByEan } from '../../clients/brickset'` in
-  // api_v1/sets.ts → red, both hits.
+  // api/sets.ts → red, both hits.
   const treffer = [];
   for (const d of routesFiles())
     for (const ziel of importe(d).filter(z => /(?:^|\/)(?:jobs|clients)\//.test(z))) treffer.push(`${d} -> ${ziel}`);
@@ -292,9 +292,9 @@ test('startup/ and routes/ know each other in only one direction, router factori
   // the assembly of the app (startup/app.ts). Conversely routes/ and jobs/ do not depend
   // on startup/: the type Dienste exists in src/services.ts, and every router factory
   // narrows it to the scopes it calls.
-  // Counter-checks: `import { startPdfJobCleanup } from '../routes/api_v1/pdf'` in
+  // Counter-checks: `import { startPdfJobCleanup } from '../routes/api/pdf'` in
   // startup/jobsProcess.ts → red (10.11.2026); `import type { Dienste } from
-  // '../../startup/wiring'` back in routes/api_v1/catalog.ts → red with this file,
+  // '../../startup/wiring'` back in routes/api/catalog.ts → red with this file,
   // `buildCatalogRouter(d: Dienste)` in the same place → red with “buildCatalogRouter” (14.11.2026).
   const treffer = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts') && f !== 'app.ts'))
@@ -353,19 +353,19 @@ test('no import cycles in the inner layers', () => {
     kanten.set(d, ziele);
   }
   const cycles = [];
-  const zustand = new Map(); // 1 = on the path, 2 = done
-  const pfad = [];
+  const visitState = new Map(); // 1 = on the path, 2 = done
+  const trail = [];
   const visit = d => {
-    zustand.set(d, 1);
-    pfad.push(d);
+    visitState.set(d, 1);
+    trail.push(d);
     for (const z of kanten.get(d) || []) {
-      if (zustand.get(z) === 1) cycles.push(pfad.slice(pfad.indexOf(z)).concat(z).join(' → '));
-      else if (!zustand.has(z)) visit(z);
+      if (visitState.get(z) === 1) cycles.push(trail.slice(trail.indexOf(z)).concat(z).join(' → '));
+      else if (!visitState.has(z)) visit(z);
     }
-    pfad.pop();
-    zustand.set(d, 2);
+    trail.pop();
+    visitState.set(d, 2);
   };
-  for (const d of dateien) if (!zustand.has(d)) visit(d);
+  for (const d of dateien) if (!visitState.has(d)) visit(d);
   assert.deepEqual(cycles, []);
 });
 
@@ -386,7 +386,7 @@ test('nothing lies in routes/ that is not a route', () => {
   // Where this check comes from
   const allowedWithoutRouter = {
     'imgProxy.ts': 'registriert seine Routen ueber app.get() statt router.get()',
-    'api_v1/middleware.ts': 'Waechter FUER Routen; ohne Routen sinnlos',
+    'api/middleware.ts': 'Waechter FUER Routen; ohne Routen sinnlos',
   };
   // As with EXCEPTIONS: an entry without a file is dead.
   // Counter-check: 'mailer.ts' registered again → red.
@@ -542,7 +542,7 @@ test('outside of repository/ and db/ nobody queries the database', () => {
 
 test('routes, jobs and clients import no repositories', () => {
   // Counter-check (31.10.2026): `import * as r from '../../src/account/repository/accounts'`
-  // in routes/api_v1/admin.ts → rot.
+  // in routes/api/admin.ts → rot.
   const treffer = [];
   for (const d of tsBelow('routes', 'jobs', 'clients', 'startup').concat('server.ts'))
     for (const z of resolvedImports(d)) if (isRepository(z)) treffer.push(`${d} -> ${z}`);
@@ -552,7 +552,7 @@ test('routes, jobs and clients import no repositories', () => {
   // the services the scope offers in its index.ts. Counter-checks (13.11.2026):
   // `await kontoBereich().protokoll.protokolliere(…)` back in routes/auth/users.ts
   // → rot „routes/auth/users.ts: kontoBereich()“; `gutscheineBereich` als Import in
-  // routes/api_v1/vouchers.ts → rot „…: gutscheineBereich (Import)“.
+  // routes/api/vouchers.ts → rot „…: gutscheineBereich (Import)“.
   const CALL = /\b\w+Bereich\s*\(\s*\)/g;
   const IMPORT = /import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/[^']+'/g;
   for (const d of tsBelow('routes')) {
@@ -576,8 +576,8 @@ function routesWithoutSlotFlow() {
   // A route reads the request, calls d and answers; whoever imports src/mail, tokenDigest or
   // forgetTheme or a scope as a namespace builds the flow themselves.
   // Counter-checks (14.11.2026): `import { tokenDigest } from '../../src/account'` in
-  // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
-  // routes/api_v1/sets.ts → rot; `import { createMail } from '../../src/mail'` in
+  // routes/api/settings.ts → rot; `import * as sets from '../../src/sets'` in
+  // routes/api/sets.ts → rot; `import { createMail } from '../../src/mail'` in
   // routes/auth/registration.ts → rot.
   /** @type {[RegExp, string][]} */
   const MUSTER = [
@@ -625,12 +625,12 @@ function routesOnlyViaFactory() {
   // An import from the index.ts would go via the process's facade; the route would not
   // see which services it needs. Excepted: the guards in front of all routers.
   // Counter-check (13.11.2026): `import { readParts } from '../../src/parts'` in
-  // routes/api_v1/parts.ts → rot „routes/api_v1/parts.ts: parts.partsList“.
+  // routes/api/parts.ts → rot „routes/api/parts.ts: parts.partsList“.
   const dienste = boundServices();
   assert.ok(dienste.get('parts')?.has('readParts') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
   const treffer = [];
   for (const d of tsBelow('routes')) {
-    if (d === 'routes/api_v1/middleware.ts') continue;
+    if (d === 'routes/api/middleware.ts') continue;
     for (const m of sourceText(d).matchAll(/import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/(\w+)'/g))
       for (const n of m[1]
         .split(',')
@@ -706,7 +706,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
       !z.startsWith(`src/${b}/http/`)
     );
   };
-  const tiefe = dateien =>
+  const depth = dateien =>
     dateien.flatMap(d =>
       resolvedImports(d, { withTypes: true })
         .filter(z => tief(d, z))
@@ -714,7 +714,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
     );
   // Counter-check (11.11.2026): `import { USERNAME_RE } from '../../src/account/nameRules'`
   // in routes/auth/users.ts → rot.
-  assert.deepEqual(tiefe(tsBelow('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
+  assert.deepEqual(depth(tsBelow('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
   const indizes = tsBelow('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
   assert.ok(indizes.length >= 15, `nur ${indizes.length} index.ts gefunden`);
   indexWithoutAccess(indizes);
@@ -724,7 +724,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
 const ACCESS_PARAMETER = /\b(?:Db|DbInterface|Pool|PoolClient|ClientBase|\w+Kontext|\w+Dienste)\b/;
 
 /** The declaration of an exported name, also via `export { … } from` and further imports. */
-function declaration(rel, name, tiefe = 0) {
+function declaration(rel, name, depth = 0) {
   const voll = [`${rel}.ts`, `${rel}/index.ts`, rel].find(x => fs.existsSync(path.join(ROOT, x)) && x.endsWith('.ts'));
   if (!voll) return null;
   const s = sourceText(voll);
@@ -738,7 +738,7 @@ function declaration(rel, name, tiefe = 0) {
   for (const m of s.matchAll(/(?:export|import) \{([^}]*)\} from '(\.[^']+)'/g))
     for (const teil of m[1].split(',')) {
       const [a, b = a] = teil.trim().split(/\s+as\s+/);
-      if (b === name && tiefe < 3) return declaration(path.posix.join(path.posix.dirname(voll), m[2]), a, tiefe + 1);
+      if (b === name && depth < 3) return declaration(path.posix.join(path.posix.dirname(voll), m[2]), a, depth + 1);
     }
   return null;
 }
@@ -799,7 +799,7 @@ test('routes do not resolve accounts — the services do that', () => {
   // A route passes on the view (viewOf) or the request; the household rules
   // stand in src/household and the services that apply them.
   // Counter-check (05.11.2026): `await scopeIds(req.apiUser.user_id)` back in
-  // routes/api_v1/misc.ts → rot.
+  // routes/api/misc.ts → rot.
   const RESOLUTION =
     /\b(?:scopeIds|schreibbereich|writeTargetOrNull|scopeKind|darfSchreibenFuer|asIds|storageAccounts|scopeFrom|writeAreaFrom)\s*\(/;
   const dateien = tsBelow('routes');
@@ -877,13 +877,13 @@ const TRY_IN_ROUTES = new Map([]);
 /** Where a route does answer itself, with a reason. Otherwise it throws (`fachfehler`, `notFound`). */
 const SEND_ERROR_IN_ROUTES = new Map([
   // bodyDeadline: the clock runs after next(); a throw would no longer reach an error path.
-  ['routes/api_v1/middleware.ts', 1],
+  ['routes/api/middleware.ts', 1],
 ]);
 
 test("routes catch no errors — the router's error path answers", () => {
-  // Counter-checks: a route in routes/api_v1/minifigs.ts wrapped again in `try { … } catch (e) {
+  // Counter-checks: a route in routes/api/minifigs.ts wrapped again in `try { … } catch (e) {
   // handleRouteError(res, e, undefined, req); }` → red (31.10.2026). In parts.ts
-  // `return sendError(req, res, 404, 'teil_nicht_manuell')` instead of notFound → red
+  // `return sendError(req, res, 404, 'part_not_manual')` instead of notFound → red
   // “sendError in routes”; in settings.ts again `String(req.eingabe.condition ?? '')` → red
   // “conversions of checked inputs” (14.11.2026). Refusals of the services (15.11.2026): in
   // routes/auth/users.ts again `if (r === LAST_ADMIN) fachfehler(…)` → red “route
@@ -1028,11 +1028,11 @@ test('docs/architecture.md names the order of the areas like LEVELS', () => {
   // Counter-check: `src/mail` and `src/settings` swapped in the table → red.
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8');
   const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
-  const stufen = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
+  const levels = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
     [...m[2].matchAll(/`([^`]+)`/g)].map(b => b[1]),
   );
-  assert.ok(stufen.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
-  assert.deepEqual(stufen, LEVELS);
+  assert.ok(levels.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
+  assert.deepEqual(levels, LEVELS);
 });
 
 /** Every file below `dir` (relative to ROOT), without products and dependencies. */
@@ -1108,7 +1108,7 @@ test('docs/architecture.md names only what exists', () => {
   const fehlt = [];
   for (const s of spans) {
     if (/^\/[\w/:-]*$/.test(s)) {
-      if (![`'${s}`, `/api/v1${s}`, ` ${s}`].some(x => code.includes(x))) fehlt.push(s);
+      if (![`'${s}`, `/api/v2${s}`, ` ${s}`].some(x => code.includes(x))) fehlt.push(s);
     } else if (
       /^[\w-]+\.(ts|js|json|md|sql|html|grit|sh|yaml|txt)$/.test(s) ||
       (/^[\w.<>*-]+\/[\w./<>*-]*$/.test(s) && (oben.has(s.split('/')[0]) || /^[<*]/.test(s)))

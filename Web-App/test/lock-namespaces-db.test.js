@@ -61,14 +61,14 @@ test('lock namespaces against a real database', async t => {
   }
 
   await t.test('all namespaces are pairwise different', () => {
-    const eintraege = Object.entries(LOCKS);
+    const entries = Object.entries(LOCKS);
     assert.ok(
-      eintraege.length >= 8,
-      `Nur ${eintraege.length} Namensräume gefunden — ist LOCKS noch die vollständige Liste?`,
+      entries.length >= 8,
+      `Nur ${entries.length} Namensräume gefunden — ist LOCKS noch die vollständige Liste?`,
     );
 
     const gesehen = new Map();
-    for (const [name, zahl] of eintraege) {
+    for (const [name, zahl] of entries) {
       assert.equal(typeof zahl, 'number', `${name} ist keine Zahl`);
       // Advisory locks are 64-bit; the single-value form takes bigint, the
       // two-value one two int4. All entries here are used with two values OR
@@ -150,7 +150,7 @@ test('lock namespaces against a real database', async t => {
     const frei = {};
     await testContext('inventory').transact(
       async () => {
-        frei.bild = await stillFree(LOCKS.IMAGE_DOWNLOAD, zweiter);
+        frei.image = await stillFree(LOCKS.IMAGE_DOWNLOAD, zweiter);
         // On an own connection: db.get would run here via the transaction that already holds the lock.
         frei.selbst = await stillFree(
           LOCKS.INVENTORY,
@@ -159,7 +159,7 @@ test('lock namespaces against a real database', async t => {
       },
       { sperren: [{ konto: LOCKS.IMAGE_DOWNLOAD, schluessel: SET }] },
     );
-    assert.equal(frei.bild, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
+    assert.equal(frei.image, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
     assert.equal(
       frei.selbst,
       false,
@@ -190,12 +190,12 @@ test('lock namespaces against a real database', async t => {
     let geprueft = 0;
     for (const p of dateien) {
       if (p.endsWith(path.join('src/infra/lockNamespaces.ts'))) continue; // the list itself
-      for (const zeile of fs.readFileSync(p, 'utf8').split('\n')) {
-        if (!/pg_(try_)?advisory(_xact)?(_)?lock|pg_advisory_unlock/.test(zeile)) continue;
-        if (/^\s*[*/]/.test(zeile)) continue; // comment
+      for (const row of fs.readFileSync(p, 'utf8').split('\n')) {
+        if (!/pg_(try_)?advisory(_xact)?(_)?lock|pg_advisory_unlock/.test(row)) continue;
+        if (/^\s*[*/]/.test(row)) continue; // comment
         geprueft++;
-        if (/advisory[a-z_]*\(\s*\d/.test(zeile)) {
-          treffer.push(`${path.relative(ROOT, p)}: ${zeile.trim().slice(0, 90)}`);
+        if (/advisory[a-z_]*\(\s*\d/.test(row)) {
+          treffer.push(`${path.relative(ROOT, p)}: ${row.trim().slice(0, 90)}`);
         }
       }
     }

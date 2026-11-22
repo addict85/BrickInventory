@@ -58,7 +58,7 @@ function quantitiesByAccount(set, acqs) {
   return owners
     .map(o => ({
       ...o,
-      menge: acqs
+      quantity: acqs
         .filter(a => (a.owner_user_id ?? loggedInAccount?.id) === o.id)
         .reduce((s, a) => s + (a.quantity || 0), 0),
     }))
@@ -79,15 +79,15 @@ function quantityBlock(set, acqs) {
       <button class="btn bs btn-sm detail-button quantity-button" data-click="mQtyInc" aria-label="${tRaw('detail.qty_more')}">+</button>
       <span class="field-status" role="status"></span><span class="vh" id="m-qty-last">${tRaw('detail.qty_last')}</span></span>`;
   const accounts = quantitiesByAccount(set, acqs);
-  const total = accounts.reduce((s, k) => s + k.menge, 0);
+  const total = accounts.reduce((s, k) => s + k.quantity, 0);
   const rows = accounts.map(k => {
     const allowed = !_writableAccounts || _writableAccounts.includes(k.id);
     const name = accountName(k);
     const button = (/** @type {number} */ step, /** @type {string} */ symbol, /** @type {string} */ label) =>
-      html`<button class="btn bs btn-sm detail-button quantity-button" data-click="quantityPerAccount" data-arg="${k.id}" data-arg2="${step}" aria-label="${tRaw(label)}: ${name}"${step < 0 && (k.menge === 0 || total <= 1) ? html` disabled title="${tRaw(total <= 1 ? 'detail.qty_last' : 'detail.qty_less')}"` : ''}>${symbol}</button>`;
+      html`<button class="btn bs btn-sm detail-button quantity-button" data-click="quantityPerAccount" data-arg="${k.id}" data-arg2="${step}" aria-label="${tRaw(label)}: ${name}"${step < 0 && (k.quantity === 0 || total <= 1) ? html` disabled title="${tRaw(total <= 1 ? 'detail.qty_last' : 'detail.qty_less')}"` : ''}>${symbol}</button>`;
     return html`<div class="quantity-account" data-account="${k.id}">
       <span class="quantity-name">${name}</span>
-      ${allowed ? button(-1, '−', 'detail.qty_less') : ''}<output class="quantity-number" aria-label="${tRaw('detail.qty')}: ${name}">${k.menge}</output>${allowed ? button(1, '+', 'detail.qty_more') : ''}
+      ${allowed ? button(-1, '−', 'detail.qty_less') : ''}<output class="quantity-number" aria-label="${tRaw('detail.qty')}: ${name}">${k.quantity}</output>${allowed ? button(1, '+', 'detail.qty_more') : ''}
     </div>`;
   });
   return html`<div class="quantity-accounts" data-feedback>${rows}
@@ -190,7 +190,7 @@ function loadSetFollowups(sn, acqs) {
     new Set(acqs.filter(a => a.condition === z && a.purchase_price != null).map(a => a.unit_price ?? a.purchase_price));
   const multi = new Set(['N', 'U'].filter(z => prices(z).size > 1));
   // The answer can arrive after closing or after switching sets; then it no longer belongs in the dialog.
-  api('GET', `/v1/sets/${sn}/price-history`).then(ph => {
+  api('GET', `/v2/sets/${sn}/price-history`).then(ph => {
     if (!openSet || openSet.set_number !== sn) return;
     renderMarketRows(ph);
     const el = G('m-sparkline-content');
@@ -221,9 +221,9 @@ export async function openModal(sn) {
   G('set-modal').dataset.number = sn;
   G('set-modal').classList.add('open');
   const [d, ad, hm] = await Promise.all([
-    api('GET', `/v1/sets/${sn}`),
-    api('GET', `/v1/sets/${sn}/acquisitions`),
-    _writableAccounts ? null : api('GET', '/v1/sets/household-members'),
+    api('GET', `/v2/sets/${sn}`),
+    api('GET', `/v2/sets/${sn}/acquisitions`),
+    _writableAccounts ? null : api('GET', '/v2/sets/household-members'),
   ]);
   if (hm?.success) _writableAccounts = hm.members.map(m => m.id);
   // Closed or another set opened in the meantime: draw nothing further.
@@ -343,7 +343,7 @@ async function delInstr(sn, instrId) {
     title: tRaw('instr.delete_title'),
     text: tRaw('instr.delete_text'),
     icon: 'file',
-    request: () => api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`),
+    request: () => api('DELETE', `/v2/sets/${sn}/instructions/${instrId}`),
   });
   if (!d) return;
   toast(tRaw('instr.deleted'), 'success');
@@ -364,7 +364,7 @@ async function uploadInstr(sn) {
   const desc = G('instr-desc').value.trim();
   if (desc) fd.append('description', desc);
   try {
-    const d = await api('POST', `/v1/sets/${sn}/instructions/upload`, fd);
+    const d = await api('POST', `/v2/sets/${sn}/instructions/upload`, fd);
     if (d.success) {
       toast(tRaw('instr.uploaded'), 'success');
       openModal(sn);
@@ -448,14 +448,14 @@ function quantityPerAccount(account, step) {
 async function changeQuantity(body, step, field, set = openSet) {
   if (!set || !step) return;
   const sn = set.set_number;
-  const d = await api('PUT', `/v1/sets/${esc(sn)}`, body);
+  const d = await api('PUT', `/v2/sets/${esc(sn)}`, body);
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
   }
   // Saved, but without a market price for the new acquisition: it follows with the price job.
-  if (d.degradiert?.includes('purchase-price')) toast(tRaw('set.purchase_price_follows'), 'info');
-  if (d.entfallen?.length) reportRemovedPurchase(sn, d, body.owner_user_id);
+  if (d.degraded?.includes('purchase-price')) toast(tRaw('set.purchase_price_follows'), 'info');
+  if (d.dropped?.length) reportRemovedPurchase(sn, d, body.owner_user_id);
   const ad = await refreshDetail(sn, field);
   if (step > 0 && ad) reportNewCopies(sn, ad.acquisitions, step);
   emit('collectionLoad');
@@ -463,9 +463,9 @@ async function changeQuantity(body, step, field, set = openSet) {
 }
 
 /** "Purchase from 09/13/2026 (€250.00) removed" with Undo; the acquisition sits in the trash.
- * @param {string} sn @param {import('../../frontend-types/contract').MengeGeaendert} d @param {number} [accountId] */
+ * @param {string} sn @param {import('../../frontend-types/contract').QuantityChanged} d @param {number} [accountId] */
 function reportRemovedPurchase(sn, d, accountId) {
-  const removed = d.entfallen || [];
+  const removed = d.dropped || [];
   const k = removed[0];
   const price = k?.purchase_price != null ? ` (${fmtMoney(k.purchase_price, k.currency || accountCurrency)})` : '';
   const owner = accountId ? (openSet?.owners || []).find(o => o.id === accountId) : null;
@@ -473,8 +473,8 @@ function reportRemovedPurchase(sn, d, accountId) {
     removed.length === 1 && k
       ? tRaw('detail.purchase_removed', { date: fmtDate(k.date || ''), price })
       : tRaw('detail.purchases_removed', { n: removed.length });
-  const ids = typeof d.papierkorb === 'number' ? [d.papierkorb] : d.papierkorb || [];
-  deletedWithUndo(owner ? `${text} · ${accountName(owner)}` : text, { papierkorb: ids }, () => {
+  const ids = typeof d.trash === 'number' ? [d.trash] : d.trash || [];
+  deletedWithUndo(owner ? `${text} · ${accountName(owner)}` : text, { trash: ids }, () => {
     if (openSet?.set_number === sn) refreshDetail(sn, null);
   });
 }
@@ -487,8 +487,8 @@ function reportRemovedPurchase(sn, d, accountId) {
  */
 async function refreshDetail(sn, field) {
   const [d, ad] = await Promise.all([
-    api('GET', `/v1/sets/${esc(sn)}`),
-    api('GET', `/v1/sets/${esc(sn)}/acquisitions`),
+    api('GET', `/v2/sets/${esc(sn)}`),
+    api('GET', `/v2/sets/${esc(sn)}/acquisitions`),
   ]);
   if (!d?.success || !d.set || openSet?.set_number !== sn || !G('set-modal').classList.contains('open')) return ad;
   setOpenSet(d.set);
@@ -542,7 +542,7 @@ function reportNewCopies(sn, acqs, n) {
 }
 
 // No separate confirmation here anymore — delSet() asks (see there). The dialog closes only on an
-// actual delete; otherwise it would stand empty after a "Cancel".
+// actual delete; otherwise it would state empty after a "Cancel".
 G('btn-md').onclick = async () => {
   if (!openSet) return;
   if (await delSet(openSet.set_number)) closeModal();
@@ -553,9 +553,9 @@ G('btn-md').onclick = async () => {
  */
 async function redownloadInstr(sn) {
   toast(tRaw('instr.loading'), 'info');
-  const d = await api('POST', `/v1/sets/${sn}/instructions`);
+  const d = await api('POST', `/v2/sets/${sn}/instructions`);
   if (d.success) {
-    if (!d.auftrag_id) toast(tRaw('instr.loaded', { count: d.instructions.length }), 'success');
+    if (!d.job_id) toast(tRaw('instr.loaded', { count: d.instructions.length }), 'success');
     if (openSet) {
       openModal(sn);
     }

@@ -37,7 +37,7 @@ const ERFASSUNGEN = [
     condition: 'N',
     purchase_price: 260.66,
     currency: 'USD',
-    preis_konto: 208.528,
+    account_price: 208.528,
     price_estimated: false,
     created_at: '2019-03-04T12:00:00Z',
   },
@@ -47,27 +47,27 @@ const ERFASSUNGEN = [
     condition: 'N',
     purchase_price: 354.5,
     currency: 'EUR',
-    preis_konto: 354.5,
+    account_price: 354.5,
     price_estimated: false,
     created_at: '2019-03-05T12:00:00Z',
   },
 ];
 
 /** Set detail and acquisitions; the sum changes after the first PUT. */
-function antworten(stand) {
+function antworten(state) {
   return {
-    [`/v1/sets/${SN}`]: {
+    [`/v2/sets/${SN}`]: {
       success: true,
       set: { set_number: SN, name: 'Natural History Museum', quantity: 5, conditions: ['N'], instructions: [] },
     },
-    [`/v1/sets/${SN}/acquisitions`]: () => ({
+    [`/v2/sets/${SN}/acquisitions`]: () => ({
       success: true,
       owner_user_id: 1,
       acquisitions: ERFASSUNGEN,
-      totals: { quantity: 5, amount: stand.betrag, priced_rows: 2, currency: 'EUR', ohne_kurs: 0 },
+      totals: { quantity: 5, amount: state.betrag, priced_rows: 2, currency: 'EUR', without_rate: 0 },
     }),
-    [`/v1/sets/${SN}/acquisitions/2`]: () => {
-      stand.betrag = 1309.58;
+    [`/v2/sets/${SN}/acquisitions/2`]: () => {
+      state.betrag = 1309.58;
       return { success: true };
     },
   };
@@ -83,20 +83,20 @@ async function openSet(o) {
 }
 
 test('purchase price dialog: currency per row, the sum follows', async () => {
-  const stand = { betrag: 1334.58 };
-  const o = await openUi(antworten(stand), { browserLanguage: 'de-DE' });
+  const state = { betrag: 1334.58 };
+  const o = await openUi(antworten(state), { browserLanguage: 'de-DE' });
   try {
     await openSet(o);
     o.d.querySelector('#set-modal [data-click="openAcqModal"]').click();
     await warte(() => o.d.getElementById('acq-price-2'));
-    const zeile = id => text(o.d.getElementById(`acq-row-${id}`).textContent);
-    assert.match(zeile(1), /USD/);
-    assert.match(zeile(1), /≈ 208,53 €/);
-    assert.match(zeile(2), /EUR/);
+    const row = id => text(o.d.getElementById(`acq-row-${id}`).textContent);
+    assert.match(row(1), /USD/);
+    assert.match(row(1), /≈ 208,53 €/);
+    assert.match(row(2), /EUR/);
     assert.equal(text(o.d.getElementById('acq-total-price').textContent), '1.334,58 €');
-    const feld = o.d.getElementById('acq-price-2');
-    feld.value = '342,04';
-    feld.dispatchEvent(new o.w.FocusEvent('blur'));
+    const field = o.d.getElementById('acq-price-2');
+    field.value = '342,04';
+    field.dispatchEvent(new o.w.FocusEvent('blur'));
     assert.ok(
       await warte(() => text(o.d.getElementById('acq-total-price').textContent) === '1.309,58 €', 1500),
       `Summe: ${o.d.getElementById('acq-total-price').textContent}`,
@@ -144,19 +144,19 @@ test('finances: ≈ and number of estimates', async () => {
     quantity: 4,
     purchase_price: preis,
     avg_price: 310,
-    wert_gesamt: 1240,
-    pnl_prozent: 0.6,
+    value_total: 1240,
+    pnl_percent: 0.6,
     created_at: '2026-11-05T12:00:00Z',
     ...(geschaetzt ? { price_estimated: true } : {}),
   });
   const o = await openUi(
     {
-      '/v1/finance/valuation': {
+      '/v2/finance/valuation': {
         success: true,
         currency: 'EUR',
         condition: 'N',
         total_value: '2480',
-        kaufpreise_fremde_waehrung: 0,
+        foreign_currency_purchases: 0,
         totals: { min: '0', avg: '2480', max: '0', qty_avg: '2480' },
         sets: [
           {
@@ -164,7 +164,7 @@ test('finances: ≈ and number of estimates', async () => {
             name: 'Burg',
             quantity: 4,
             avg_price: 310,
-            wert_gesamt: 1240,
+            value_total: 1240,
             from_cache: true,
             is_fallback: false,
             no_price: false,
@@ -176,7 +176,7 @@ test('finances: ≈ and number of estimates', async () => {
             name: 'Titanic',
             quantity: 4,
             avg_price: 310,
-            wert_gesamt: 1240,
+            value_total: 1240,
             from_cache: true,
             is_fallback: false,
             no_price: false,
@@ -185,22 +185,22 @@ test('finances: ≈ and number of estimates', async () => {
           },
         ],
       },
-      '/v1/finance/pnl': {
+      '/v2/finance/pnl': {
         success: true,
         currency: 'EUR',
         sets: [],
         totals: {
           purchase: '2432',
           current: '2480',
-          kaufpreise_fremde_waehrung: 0,
-          positionen: 2,
-          positionen_bewertet: 2,
-          positionen_ohne_marktpreis: 0,
-          positionen_ohne_kaufpreis: 0,
-          basis_einstand: '2432',
-          basis_marktwert: '2480',
-          basis_guv_betrag: '48',
-          pnl_prozent: 2,
+          foreign_currency_purchases: 0,
+          positions: 2,
+          positions_valued: 2,
+          positions_without_market_price: 0,
+          positions_without_purchase_price: 0,
+          baseline_cost: '2432',
+          baseline_market_value: '2480',
+          baseline_pnl_amount: '48',
+          pnl_percent: 2,
         },
       },
     },

@@ -14,7 +14,7 @@ import {
 /** `offen` guards against stragglers after COMMIT; `db` is the access that opened it. */
 export type TxStand = PathTransaction & {
   client: PoolClient;
-  offen: boolean;
+  open: boolean;
   db: object;
   pool: Pool;
   innerster: string | null;
@@ -50,11 +50,11 @@ export function contextCheckSql(context: string): string {
 }
 
 /** If the account changes in the middle of the transaction (asRequest), the setting follows. */
-export async function contextSync(stand: TxStand): Promise<void> {
+export async function contextSync(state: TxStand): Promise<void> {
   const expected = contextSql();
-  if (expected === stand.kontext) return;
-  await stand.client.query(expected || CONTEXT_EMPTY);
-  stand.kontext = expected;
+  if (expected === state.kontext) return;
+  await state.client.query(expected || CONTEXT_EMPTY);
+  state.kontext = expected;
 }
 
 /** What the body of a transaction gets: its queries and `db`, a whole access
@@ -64,12 +64,12 @@ export interface TxHandleOf<D> extends DbInterface {
 }
 
 /** The queries over the transaction's connection; `pruefe` guards the frame. */
-export function txQueries(stand: TxStand, check: () => void): DbInterface {
+export function txQueries(state: TxStand, check: () => void): DbInterface {
   const q = async (sql: string, p?: unknown[]) => {
-    openStill(stand);
+    openStill(state);
     check();
-    await contextSync(stand);
-    return stand.client.query(sql, p);
+    await contextSync(state);
+    return state.client.query(sql, p);
   };
   return {
     all: <T = unknown>(sql: string, p?: unknown[]) => q(sql, p).then(r => r.rows as T[]),
@@ -97,8 +97,8 @@ export class TransactionEnded extends Error {
     super('Abfrage nach dem Ende ihrer Transaktion (Nachzügler aus Promise.all?)');
   }
 }
-function openStill(stand: TxStand): void {
-  if (!stand.offen) throw new TransactionEnded();
+function openStill(state: TxStand): void {
+  if (!state.open) throw new TransactionEnded();
 }
 
 export class BesideTheTransaction extends Error {
@@ -139,35 +139,35 @@ export class ConcurrentSavepoint extends Error {
  * the other's work with it. Hence each begins in the innermost open one, and
  * which one that is is told by the handle it is called through (`rahmen`). */
 export function innerTransaction<T>(
-  stand: TxStand,
+  state: TxStand,
   frame: string | null,
   number: number,
   fn: (name: string) => Promise<T>,
 ): Promise<T> {
-  if (stand.innerster !== frame) return Promise.reject(new ConcurrentSavepoint(stand.innerster ?? ''));
+  if (state.innerster !== frame) return Promise.reject(new ConcurrentSavepoint(state.innerster ?? ''));
   const name = `sp_${number}`;
-  stand.innerster = name;
+  state.innerster = name;
   return (async () => {
-    const { client } = stand;
+    const { client } = state;
     // ROLLBACK TO also undoes a set_config() from the savepoint.
-    const contextBefore = stand.kontext;
+    const contextBefore = state.kontext;
     try {
-      openStill(stand);
+      openStill(state);
       await client.query(`SAVEPOINT ${name}`);
       try {
         const r = await fn(name);
-        openStill(stand);
+        openStill(state);
         await client.query(`RELEASE SAVEPOINT ${name}`);
         return r;
       } catch (e) {
-        if (!stand.offen) throw e;
+        if (!state.open) throw e;
         await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
-        stand.kontext = contextBefore;
+        state.kontext = contextBefore;
         if (e !== null && typeof e === 'object') fromSavepointCaught.add(e);
         throw e;
       }
     } finally {
-      stand.innerster = frame;
+      state.innerster = frame;
     }
   })();
 }
@@ -177,13 +177,13 @@ export function innerTransaction<T>(
 const fromSavepointCaught = new WeakSet<object>();
 
 /** The state of a new transaction; it is also its guard against fallback values. */
-export function newTxStatus(t: Omit<TxStand, 'verdirbt' | 'offen' | 'innerster' | 'kontext'>): TxStand {
-  const stand: TxStand = {
+export function newTxStatus(t: Omit<TxStand, 'verdirbt' | 'open' | 'innerster' | 'kontext'>): TxStand {
+  const state: TxStand = {
     ...t,
-    offen: true,
+    open: true,
     innerster: null,
     kontext: '',
-    verdirbt: e => stand.offen && !(e !== null && typeof e === 'object' && fromSavepointCaught.has(e)),
+    verdirbt: e => state.open && !(e !== null && typeof e === 'object' && fromSavepointCaught.has(e)),
   };
-  return stand;
+  return state;
 }

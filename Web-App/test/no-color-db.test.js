@@ -62,11 +62,11 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
           farbe,
           satz ? 'set' : 'manual',
         ]);
-      const kauf = (u, nr, farbe, menge, tag = '2026-01-05') =>
+      const kauf = (u, nr, farbe, quantity, tag = '2026-01-05') =>
         c.query(
           `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, currency, created_at)
          VALUES ($1,$2,$3,$4,1.5,'N','CHF',$5)`,
-          [u, nr, farbe, menge, `${tag}T12:00:00Z`],
+          [u, nr, farbe, quantity, `${tag}T12:00:00Z`],
         );
       const katalog = (nr, farbe, name, hex, von) =>
         c.query(
@@ -163,14 +163,14 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
         unit_price: 1,
       });
       const zeilen = await db.all(
-        `SELECT p.color_id, SUM(a.quantity)::int AS menge FROM parts p
+        `SELECT p.color_id, SUM(a.quantity)::int AS quantity FROM parts p
         JOIN part_acquisitions a ON a.user_id = p.user_id AND a.part_number = p.part_number AND a.color_id = p.color_id
         WHERE p.user_id = $1 GROUP BY p.color_id ORDER BY p.color_id`,
         [uid],
       );
       assert.deepEqual(zeilen, [
-        { color_id: 0, menge: 1 },
-        { color_id: 9999, menge: 2 },
+        { color_id: 0, quantity: 1 },
+        { color_id: 9999, quantity: 2 },
       ]);
     } finally {
       await db.run('DELETE FROM users WHERE id=$1', [uid]);

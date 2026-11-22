@@ -41,36 +41,36 @@ const CatalogSyncPayload = z.object({ onStart: z.boolean().optional() });
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
     pdf: typeof PdfPayload;
-    bilder: typeof ImagesPayload;
-    anleitung: typeof InstructionPayload;
-    bilder_neu_laden: typeof LEER;
+    images: typeof ImagesPayload;
+    instructions: typeof InstructionPayload;
+    images_reload: typeof LEER;
     csv_sync: typeof CatalogSyncPayload;
-    bild_nachlauf: typeof LEER;
-    widerrufsliste: typeof LEER;
+    image_followup: typeof LEER;
+    revocation_list: typeof LEER;
   }
 }
 
-export const CATALOG_SYNC_TIME_OF_DAY = { setting: 'job_time_csv_sync', vorgabe: '03:00' } as const;
+export const CATALOG_SYNC_TIME_OF_DAY = { setting: 'job_time_csv_sync', preset: '03:00' } as const;
 
 /** Exclusive are kinds that spare a remote side or swap tables. */
 export function catalogJobTypes(k: CatalogContext, importProcess: string): Login[] {
   return [
     jobKind({
-      art: 'pdf',
+      kind: 'pdf',
       payload: PdfPayload,
       ausfuehren: (n, l) => pdfGeneration.createPdf(k, n, l),
       givenUp: (n, error) => pdfGeneration.pdfGivenUp(n, error),
       discardPayload: true,
     }),
     jobKind({
-      art: 'anleitung',
+      kind: 'instructions',
       payload: InstructionPayload,
       ausfuehren: (n, l) => loadInstruction.loadInstruction(k, n, l),
       exklusiv: true,
     }),
     bricksetJobType((n, l) => bricksetFollowUp.bricksetFollowUp(k, n, l)),
     jobKind({
-      art: 'bilder_neu_laden',
+      kind: 'images_reload',
       payload: LEER,
       ausfuehren: async (_n, l) => {
         await reloadImages.redownloadMissingImages(k, l);
@@ -79,7 +79,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
       kontouebergreifend: 'fehlende Bilder aller Bestände',
     }),
     jobKind({
-      art: 'csv_sync',
+      kind: 'csv_sync',
       payload: CatalogSyncPayload,
       ausfuehren: (n, l) => csvReconcile.csvReconcile(k, n, l, importProcess),
       exklusiv: true,
@@ -87,18 +87,18 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
       zeitplan: { taeglich: CATALOG_SYNC_TIME_OF_DAY },
     }),
     jobKind({
-      art: 'bild_nachlauf',
+      kind: 'image_followup',
       payload: LEER,
       ausfuehren: (_n, l) => imageFollowUp.imageFollowUp(k, l),
       exklusiv: true,
       kontouebergreifend: 'Bilder aller Bestände',
-      zeitplan: { minuten: { vorgabe: 60 } },
+      zeitplan: { minutes: { preset: 60 } },
     }),
     jobKind({
-      art: 'widerrufsliste',
+      kind: 'revocation_list',
       payload: LEER,
       ausfuehren: (_n, l) => revocationList.loadRevocationList(k, l),
-      zeitplan: { minuten: { vorgabe: 6 * 60 } },
+      zeitplan: { minutes: { preset: 6 * 60 } },
     }),
   ];
 }

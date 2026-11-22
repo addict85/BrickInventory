@@ -77,7 +77,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
   const anmelden = async name => {
     const a = await ruf(AUTH + '/login', {
       method: 'POST',
-      body: { username: name, password: PASS, ohne_token: true },
+      body: { username: name, password: PASS, without_token: true },
     });
     assert.equal(a.status, 200, `Anmeldung von ${name} scheiterte: ${JSON.stringify(a.body)}`);
     assert.ok(a.cookie, 'Ohne Set-Cookie gibt es keine Sitzung');
@@ -204,13 +204,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
     const prot = await db.all(`SELECT action, target_name FROM admin_log WHERE target_id = $1 ORDER BY id`, [idTarget]);
     assert.deepEqual(
       prot.map(p => p.action),
-      [
-        'uebernahme_angekuendigt',
-        'verwalter_entzogen',
-        'verwalter_ernannt',
-        'uebernahme_angekuendigt',
-        'konto_geloescht',
-      ],
+      ['takeover_announced', 'admin_revoked', 'admin_appointed', 'takeover_announced', 'account_deleted'],
     );
     assert.ok(
       prot.every(p => p.target_name === ZIEL),

@@ -65,45 +65,49 @@ test('order of the parts list', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ('ORD1',5,'Rot'),('ORD2',1,'Blau'),('ORD3',3,'Gelb')
                 ON CONFLICT (part_number, color_id) DO UPDATE SET color_name = EXCLUDED.color_name`);
   await holdsSet(db, U, 'ORD-1', 1);
-  await holdsPart(db, U, 'ORD1', { setNumber: 'ORD-1', menge: 9, colorId: 5 });
-  await holdsPart(db, U, 'ORD2', { setNumber: 'ORD-1', menge: 1, colorId: 1 });
-  await holdsPart(db, U, 'ORD3', { setNumber: 'ORD-1', menge: 7, colorId: 3 });
+  await holdsPart(db, U, 'ORD1', { setNumber: 'ORD-1', quantity: 9, colorId: 5 });
+  await holdsPart(db, U, 'ORD2', { setNumber: 'ORD-1', quantity: 1, colorId: 1 });
+  await holdsPart(db, U, 'ORD3', { setNumber: 'ORD-1', quantity: 7, colorId: 3 });
   // In the household the second account has the same part: the quantity must sort summed up.
   await holdsSet(db, U2, 'ORD-2', 1);
-  await holdsPart(db, U2, 'ORD3', { setNumber: 'ORD-2', menge: 1, colorId: 3 });
+  await holdsPart(db, U2, 'ORD3', { setNumber: 'ORD-2', quantity: 1, colorId: 3 });
 
-  const EXPECTED = { farbe: ['ORD2', 'ORD3', 'ORD1'], name: ['ORD3', 'ORD1', 'ORD2'], menge: ['ORD1', 'ORD3', 'ORD2'] };
-  const abfrage = ordnung => ({ exclude_manual: '1', page: 1, page_size: 50, ordnung });
+  const EXPECTED = {
+    farbe: ['ORD2', 'ORD3', 'ORD1'],
+    name: ['ORD3', 'ORD1', 'ORD2'],
+    quantity: ['ORD1', 'ORD3', 'ORD2'],
+  };
+  const abfrage = order => ({ exclude_manual: '1', page: 1, page_size: 50, order });
   const reihe = r => r.parts.map(p => p.part_number);
 
   await t.test('the server sorts as chosen on every path', async () => {
     const results = [];
-    for (const ordnung of Object.keys(EXPECTED)) {
+    for (const order of Object.keys(EXPECTED)) {
       await db.run('DELETE FROM parts_summary_state WHERE user_id = ANY($1)', [[U, U2]]);
       await db.run('DELETE FROM parts_summary WHERE user_id = ANY($1)', [[U, U2]]);
-      const live = await H.partsQuery(U, abfrage(ordnung));
-      const liveHousehold = await H.partsQuery([U, U2], abfrage(ordnung));
+      const live = await H.partsQuery(U, abfrage(order));
+      const liveHousehold = await H.partsQuery([U, U2], abfrage(order));
       await PS.rebuildNow(U);
       await PS.rebuildNow(U2);
-      const zsf = await H.partsQuery(U, abfrage(ordnung));
-      const zsfHousehold = await H.partsQuery([U, U2], abfrage(ordnung));
-      for (const [weg, r, quelle] of [
+      const zsf = await H.partsQuery(U, abfrage(order));
+      const zsfHousehold = await H.partsQuery([U, U2], abfrage(order));
+      for (const [weg, r, source] of [
         ['Live', live, 'db'],
         ['Live Haushalt', liveHousehold, 'db'],
         ['Zusammenfassung', zsf, 'summary'],
         ['Zusammenfassung Haushalt', zsfHousehold, 'summary'],
       ])
         results.push({
-          ordnung,
+          order,
           weg,
-          quelle: r.source,
+          source: r.source,
           reihe: reihe(r),
-          erwartet: { quelle, reihe: EXPECTED[ordnung] },
+          erwartet: { source, reihe: EXPECTED[order] },
         });
     }
     assert.deepEqual(
-      results.map(e => `${e.ordnung}/${e.weg}: ${e.quelle} ${e.reihe}`),
-      results.map(e => `${e.ordnung}/${e.weg}: ${e.erwartet.quelle} ${e.erwartet.reihe}`),
+      results.map(e => `${e.order}/${e.weg}: ${e.source} ${e.reihe}`),
+      results.map(e => `${e.order}/${e.weg}: ${e.erwartet.source} ${e.erwartet.reihe}`),
     );
   });
 
@@ -112,18 +116,18 @@ test('order of the parts list', { concurrency: 1 }, async t => {
   });
 
   await t.test('ungrouped, the UI draws no color tiles', async () => {
-    const teile = [
+    const parts = [
       { part_number: '3003', part_name: 'Axle', color_id: 3, color_name: 'Yellow', total_quantity: 7 },
       { part_number: '3001', part_name: 'Brick', color_id: 5, color_name: 'Red', total_quantity: 3 },
     ];
-    const { w, d, aufrufe } = await openUi({ '/v1/parts': { success: true, parts: teile, total: 2 } });
+    const { w, d, aufrufe } = await openUi({ '/v2/parts': { success: true, parts: parts, total: 2 } });
     await reiter(w, 'parts');
     await warte(() => d.querySelectorAll('#parts-main .part-card').length === 2);
     assert.equal(d.querySelectorAll('#parts-main .group-hd').length, 2, 'nach Farbe: je Farbe eine Kachel');
 
-    const feld = d.getElementById('parts-order');
-    feld.value = 'name';
-    feld.dispatchEvent(new w.Event('change'));
+    const field = d.getElementById('parts-order');
+    field.value = 'name';
+    field.dispatchEvent(new w.Event('change'));
     await warte(
       () =>
         aufrufe.some(a => a.url.includes('ordnung=name')) && d.querySelectorAll('#parts-main .part-card').length === 2,

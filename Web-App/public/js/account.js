@@ -81,7 +81,7 @@ export async function initDefaultCondition() {
   try {
     // The user's effective default (user override → global → 'N'), so that the capture forms prefill the
     // condition chosen in the settings.
-    const d = await api('GET', '/v1/settings/user/default-condition');
+    const d = await api('GET', '/v2/settings/user/default-condition');
     if (d?.success && d.condition) {
       ['add-condition', 'ap-condition', 'af-condition'].forEach(id => {
         const el = G(id);
@@ -131,5 +131,5 @@ registerActions({
 // (account label "Name (Admin)") is updated.
 subscribe('languageChanged', ({ language, save }) => {
   if (loggedInAccount) showUsernames();
-  if (save) api('POST', '/v1/settings', { language: language });
+  if (save) api('POST', '/v2/settings', { language: language });
 });

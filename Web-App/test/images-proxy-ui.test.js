@@ -28,7 +28,7 @@ const proxy = url => `/api/v1/img-proxy?url=${encodeURIComponent(url)}`;
 
 test('part tile: preview and zoom via the proxy, without a guessed preview address', async () => {
   const { w, d, warte } = await openUi({
-    '/v1/parts': {
+    '/v2/parts': {
       success: true,
       parts: [
         { part_number: '3001', part_name: 'Stein', color_id: 5, color_name: 'Red', total_quantity: 1, image_url: CDN },
@@ -52,7 +52,7 @@ test('part tile: preview and zoom via the proxy, without a guessed preview addre
 
 test('manually captured part: tile image via the proxy', async () => {
   const { w, d, warte } = await openUi({
-    '/v1/parts/manual': {
+    '/v2/parts/manual': {
       success: true,
       parts: [
         { part_number: '3002', part_name: 'Stein 2 x 3', color_id: 5, color_name: 'Red', quantity: 2, image_url: CDN },
@@ -74,14 +74,14 @@ test('set detail and zoom: full resolution, a CDN address only via the proxy', a
   const SET_CDN = 'https://cdn.rebrickable.com/media/sets/10294-1.jpg';
   const set = (nr, felder) => ({ set_number: nr, name: `Set ${nr}`, year: 2021, quantity: 1, ...felder });
   const { w, d, warte } = await openUi({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       total: 2,
       themes: [],
       sets: [set('10294-1', { image_url: SET_CDN }), set('10295-1', { image_local: '/images/sets/10295-1_thumb.jpg' })],
     },
-    '/v1/sets/10294-1': { success: true, set: set('10294-1', { image_url: SET_CDN }) },
-    '/v1/sets/10295-1': { success: true, set: set('10295-1', { image_local: '/images/sets/10295-1_thumb.jpg' }) },
+    '/v2/sets/10294-1': { success: true, set: set('10294-1', { image_url: SET_CDN }) },
+    '/v2/sets/10295-1': { success: true, set: set('10295-1', { image_local: '/images/sets/10295-1_thumb.jpg' }) },
   });
   try {
     const oeffne = async nr => {
@@ -112,7 +112,7 @@ test('set detail and zoom: full resolution, a CDN address only via the proxy', a
 test("minifigure: the tile's data-orig goes via the proxy", async () => {
   const FIG_CDN = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
   const { w, d, warte } = await openUi({
-    '/v1/minifigs': {
+    '/v2/minifigs': {
       success: true,
       total: 1,
       figs: [{ fig_number: 'fig-000123', fig_name: 'Chewbacca', source: 'set', total_quantity: 1, image_url: FIG_CDN }],

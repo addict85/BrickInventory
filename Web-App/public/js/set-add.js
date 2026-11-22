@@ -38,7 +38,7 @@ async function checkUnknown(num) {
   const box = G('add-unknown');
   // The own collection first: an existing set is never "unknown", and the server never creates it twice
   // anyway, it opens it instead.
-  const own = await api('GET', `/v1/sets/${encodeURIComponent(nr)}`);
+  const own = await api('GET', `/v2/sets/${encodeURIComponent(nr)}`);
   if (own?.success && own.set) {
     G('add-num').dataset.confirmed = nr;
     G('add-num').dataset.present = nr;
@@ -48,12 +48,12 @@ async function checkUnknown(num) {
     G('btn-add-text').textContent = tRaw('gallery.add.to_set');
     return true;
   }
-  const d = await api('GET', `/v1/catalog/sets/${encodeURIComponent(nr)}`);
+  const d = await api('GET', `/v2/catalog/sets/${encodeURIComponent(nr)}`);
   if (d?.success) return false;
   const reason =
-    d?.code === 'katalog_nicht_geladen'
+    d?.code === 'catalog_not_loaded'
       ? 'gallery.add.catalog_missing'
-      : d?.code === 'set_nicht_im_katalog' || d?.status === 404
+      : d?.code === 'set_not_in_catalog' || d?.status === 404
         ? 'gallery.add.unknown'
         : null;
   if (!reason) return false;
@@ -101,7 +101,7 @@ async function addSet() {
   showProgress(tRaw('gallery.adding_set', { num }), false);
   try {
     await streamRequest(
-      '/v1/sets/add-stream',
+      '/v2/sets/add-stream',
       {
         set_number: num,
         quantity: qty,
@@ -133,7 +133,7 @@ async function addSet() {
             if (G('add-price')) G('add-price').value = '';
             if (G('add-date')) G('add-date').value = '';
             emptyLocationField('add-storage');
-            if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
+            if (ev.catalog_pending) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
             else
               toast(
                 tRaw(ev.action === 'added' ? 'gallery.set_added' : 'gallery.set_updated', {
@@ -144,7 +144,7 @@ async function addSet() {
             // Background jobs are still running: refresh every tab periodically
             setLastImportAt(Date.now());
             // If the stream couldn't fill in name and image, a job catches up after a minute.
-            for (const delay of [3000, 8000, 15000, 25000, ...(ev.ergaenzung === 'ausstehend' ? [70000, 120000] : [])])
+            for (const delay of [3000, 8000, 15000, 25000, ...(ev.supplement === 'pending' ? [70000, 120000] : [])])
               setTimeout(() => {
                 const tab = activeTab();
                 emit(tab === 'parts' || tab === 'minifigs' ? 'stockChanged' : 'collectionLoad');

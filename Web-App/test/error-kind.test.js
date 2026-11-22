@@ -28,7 +28,7 @@ const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
 const { failDomain, asDuplicate } = _req('src/infra/errorTexts.js');
 
 /** What handleRouteError writes to a response. */
-function antwort(e) {
+function response(e) {
   let status = 0,
     rumpf = null;
   const res = {
@@ -66,9 +66,9 @@ const geworfen = fn => {
 test('every kind yields its status', () => {
   const erwartet = {
     ungueltig: 400,
-    nicht_angemeldet: 401,
+    not_signed_in: 401,
     verboten: 403,
-    nicht_gefunden: 404,
+    not_found: 404,
     konflikt: 409,
     zu_gross: 413,
     falscher_typ: 415,
@@ -85,11 +85,11 @@ test('every kind yields its status', () => {
     zu_alt: 426,
   };
   assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(erwartet).sort());
-  for (const [art, status] of Object.entries(erwartet)) {
+  for (const [kind, status] of Object.entries(erwartet)) {
     assert.deepEqual(
-      antwort(geworfen(() => failDomain(art, 'set_nicht_gefunden'))),
-      { status, code: 'set_nicht_gefunden' },
-      art,
+      response(geworfen(() => failDomain(kind, 'set_not_found'))),
+      { status, code: 'set_not_found' },
+      kind,
     );
     // Whoever answers themselves (guards, HTTP sides) names the kind; the same table chooses the status.
     let gesendet = 0;
@@ -99,17 +99,17 @@ test('every kind yields its status', () => {
         return { json: () => {} };
       },
     };
-    sendError({ headers: {} }, res, art, 'set_nicht_gefunden');
-    assert.equal(gesendet, status, `sendError ${art}`);
+    sendError({ headers: {} }, res, kind, 'set_not_found');
+    assert.equal(gesendet, status, `sendError ${kind}`);
   }
 });
 
 test('a duplicate from the database becomes a conflict', () => {
-  const e = geworfen(() => asDuplicate('benutzername_vergeben')({ code: '23505' }));
-  assert.equal(e.art, 'konflikt');
-  assert.deepEqual(antwort(e), { status: 409, code: 'benutzername_vergeben' });
+  const e = geworfen(() => asDuplicate('username_taken')({ code: '23505' }));
+  assert.equal(e.kind, 'konflikt');
+  assert.deepEqual(response(e), { status: 409, code: 'username_taken' });
   // A foreign error with its own status (body parser) keeps it.
-  assert.equal(antwort(Object.assign(new Error('x'), { status: 413, type: 'entity.too.large' })).status, 413);
+  assert.equal(response(Object.assign(new Error('x'), { status: 413, type: 'entity.too.large' })).status, 413);
 });
 
 /** All TypeScript sources except src/http and the test helpers. */

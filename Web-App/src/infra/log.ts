@@ -75,7 +75,7 @@ export function oneLine(s: string): string {
 
 const PLACEHOLDER = /%[sdifjoOc%]/;
 
-export function split(args: unknown[]): { nachricht: string; kontext?: Record<string, unknown> } {
+export function split(args: unknown[]): { message: string; kontext?: Record<string, unknown> } {
   const parts = [...args];
   let kontext: Record<string, unknown> | undefined;
   const last = parts[parts.length - 1];
@@ -84,15 +84,15 @@ export function split(args: unknown[]): { nachricht: string; kontext?: Record<st
     parts.pop();
   }
   const error = parts.find((t): t is Error => t instanceof Error);
-  if (error) kontext = { ...kontext, fehler: { name: error.name, message: error.message, stack: error.stack } };
+  if (error) kontext = { ...kontext, error: { name: error.name, message: error.message, stack: error.stack } };
   const plain = parts.map(t => (t instanceof Error ? t.message : t));
   // As console does it: placeholders in the first text take the following values.
   const text =
     plain.length > 1 && typeof plain[0] === 'string' && PLACEHOLDER.test(plain[0])
       ? format(...plain)
       : plain.map(logText).join(' ');
-  const nachricht = oneLine(text).substring(0, MAX_TEXT);
-  return kontext ? { nachricht, kontext } : { nachricht };
+  const message = oneLine(text).substring(0, MAX_TEXT);
+  return kontext ? { message, kontext } : { message };
 }
 
 interface State {
@@ -111,11 +111,11 @@ const pidTag = String(process.pid).slice(-4);
 
 /** Fields in a fixed order. */
 export function jsonRow(stufe: Level, args: unknown[], time: number, rid?: string): string {
-  const { nachricht, kontext } = split(args);
+  const { message, kontext } = split(args);
   return JSON.stringify({
     zeit: new Date(time).toISOString(),
     stufe,
-    nachricht,
+    message,
     pid: process.pid,
     ...(rid ? { rid } : {}),
     ...(kontext ? { kontext } : {}),
@@ -212,8 +212,8 @@ export function installLog(output: Output = PROCESS): () => void {
       const row = jsonRow(stufe, args, P.z.output.now(), rid);
       (stufe === 'warn' || stufe === 'error' ? P.z.output.err : P.z.output.out)(row);
       // app_logs keeps the previous text format; the log view reads it like that.
-      const { nachricht, kontext } = split(args);
-      const text = `[${pidTag}${rid ? '/' + rid : ''}] ${nachricht}${kontext ? ' ' + logText(kontext) : ''}`;
+      const { message, kontext } = split(args);
+      const text = `[${pidTag}${rid ? '/' + rid : ''}] ${message}${kontext ? ' ' + logText(kontext) : ''}`;
       P.z.puffer.push({ level: name === 'log' ? 'log' : stufe, message: text.substring(0, MAX_TEXT) });
       // Without a pool the buffer would grow without limit; every line is on stdout anyway.
       if (P.z.puffer.length > 500) P.z.puffer.splice(0, P.z.puffer.length - 500);

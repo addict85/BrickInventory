@@ -29,8 +29,8 @@ function zeilen(csv) {
     .map(z => z.replace(/\r$/, ''));
   const namen = kopf.split(',');
   return rest.filter(Boolean).map(z => {
-    const werte = z.split(',');
-    return Object.fromEntries(namen.map((n, i) => [n, (werte[i] ?? '').replace(/^"|"$/g, '')]));
+    const values = z.split(',');
+    return Object.fromEntries(namen.map((n, i) => [n, (values[i] ?? '').replace(/^"|"$/g, '')]));
   });
 }
 
@@ -174,7 +174,7 @@ test('minifigures export: the same rule, the same single query', { concurrency: 
       // fig-a gets NO entry — that is the case the export
       // must distinguish. The test below creates the entry for fig-b.
       // Quantity 0: fig-b gets its entry below, fig-a deliberately none.
-      await holdsMinifig(db, uid, nr, { menge: 0 });
+      await holdsMinifig(db, uid, nr, { quantity: 0 });
     }
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
@@ -251,7 +251,7 @@ test('parts export: the same rule, the same single query', { concurrency: 1 }, a
       );
       // Quantity 0: the test creates the entries below deliberately so that the
       // cases “with" and “without price" stay distinguishable.
-      await holdsPart(db, uid, nr, { menge: 0, colorId: farbe });
+      await holdsPart(db, uid, nr, { quantity: 0, colorId: farbe });
     }
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)

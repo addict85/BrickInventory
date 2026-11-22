@@ -53,13 +53,13 @@ test('every dialog has exactly one close button for Escape', async () => {
   try {
     const ovl = [...w.document.querySelectorAll('.ovl')];
     assert.ok(ovl.length >= 12, `nur ${ovl.length} Dialoge gefunden — Markup umgebaut?`);
-    const fehler = [];
+    const error = [];
     for (const el of ovl) {
-      if (el.getAttribute('role') !== 'dialog') fehler.push(`#${el.id}: role="dialog" fehlt`);
+      if (el.getAttribute('role') !== 'dialog') error.push(`#${el.id}: role="dialog" fehlt`);
       const n = el.querySelectorAll('[data-dialog-close]').length;
-      if (n !== 1) fehler.push(`#${el.id}: ${n}× data-dialog-close`);
+      if (n !== 1) error.push(`#${el.id}: ${n}× data-dialog-close`);
     }
-    assert.deepEqual(fehler, []);
+    assert.deepEqual(error, []);
   } finally {
     w.close();
   }
@@ -140,12 +140,12 @@ test('Escape in an input field first only leaves the field', async () => {
     // As in the preview: the correction field sits in a table cell.
     d.getElementById('wanted-xml-table').innerHTML =
       '<table><tbody><tr><td><input id="cell"></td></tr></tbody></table>';
-    const feld = d.getElementById('cell');
-    feld.focus();
+    const field = d.getElementById('cell');
+    field.focus();
     taste(w, 'Escape');
     await takt();
     assert.ok(modal.classList.contains('open'), 'Escape im Feld schliesst den Dialog — die Korrekturen wären weg');
-    assert.notEqual(d.activeElement, feld, 'Der Fokus bleibt im Feld');
+    assert.notEqual(d.activeElement, field, 'Der Fokus bleibt im Feld');
     taste(w, 'Escape');
     await takt();
     assert.equal(modal.classList.contains('open'), false, 'Das zweite Escape schliesst nicht');

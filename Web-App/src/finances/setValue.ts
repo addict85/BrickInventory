@@ -1,7 +1,7 @@
 /** Per acquisition with the price of its condition, because mixed inventories would otherwise
  * get a wrong average. */
 import { inTenThousandths, aufRappen, alsText } from '../infra/money';
-import { zustand } from '../infra/validate';
+import { conditionOf } from '../infra/validate';
 import type { FinancesContext } from './context';
 
 export interface SetValue {
@@ -38,7 +38,7 @@ export async function loadConditionPrices(
   const rows = await k.setWert.cachePricesForSets(params, ttlClause);
 
   for (const r of rows) {
-    const p = num(r.marktpreis);
+    const p = num(r.market_price);
     if (p > 0) out.set(`${r.set_number}|${r.condition}`, p);
   }
   return out;
@@ -62,10 +62,10 @@ export function valueSet(
 ): SetValue {
   const rows = acquisitions?.length
     ? acquisitions.map(a => ({
-        condition: zustand(a.condition),
+        condition: conditionOf(a.condition),
         quantity: Math.max(1, parseInt(String(a.quantity), 10) || 1),
       }))
-    : [{ condition: zustand(fallbackCondition), quantity: Math.max(1, fallbackQuantity) }];
+    : [{ condition: conditionOf(fallbackCondition), quantity: Math.max(1, fallbackQuantity) }];
 
   const byCond = new Map<'N' | 'U', number>();
   for (const r of rows) byCond.set(r.condition, (byCond.get(r.condition) || 0) + r.quantity);
@@ -143,13 +143,13 @@ export interface AcquisitionValueRow {
   purchase_price: number | null;
   avg_price: number | null;
   total_avg: string | null;
-  wert_gesamt: number | null;
+  value_total: number | null;
   pnl_pct: string | null;
-  pnl_prozent: number | null;
+  pnl_percent: number | null;
   created_at: Date | string | null;
   /** A purchase price in a foreign currency without a rate: it does not count, but it is shown. */
-  kaufpreis_original?: number;
-  kaufpreis_waehrung?: string;
+  original_purchase_price?: number;
+  purchase_currency?: string;
   price_estimated?: true;
 }
 
@@ -163,7 +163,7 @@ export interface EntryForValue {
   created_at?: Date | string | null;
   currency?: string | null;
   kaufpreis_fremd?: boolean | null;
-  kaufpreis_original?: number | string | null;
+  original_purchase_price?: number | string | null;
   price_estimated?: boolean | null;
 }
 
@@ -188,12 +188,15 @@ export function valueAcquisitionRows(
       purchase_price: purchase,
       avg_price: unit,
       total_avg: unit != null ? alsText(aufRappen((inTenThousandths(unit) ?? 0) * quantity)) : null,
-      wert_gesamt: unit != null ? aufRappen((inTenThousandths(unit) ?? 0) * quantity) : null,
+      value_total: unit != null ? aufRappen((inTenThousandths(unit) ?? 0) * quantity) : null,
       pnl_pct: pnlPct(purchase, unit),
-      pnl_prozent: pnlProzent(purchase, unit),
+      pnl_percent: pnlProzent(purchase, unit),
       created_at: a.created_at ?? null,
-      ...(a.kaufpreis_fremd && a.kaufpreis_original != null
-        ? { kaufpreis_original: parseFloat(String(a.kaufpreis_original)), kaufpreis_waehrung: String(a.currency) }
+      ...(a.kaufpreis_fremd && a.original_purchase_price != null
+        ? {
+            original_purchase_price: parseFloat(String(a.original_purchase_price)),
+            purchase_currency: String(a.currency),
+          }
         : {}),
       ...(a.price_estimated && purchase != null ? { price_estimated: true as const } : {}),
     };
@@ -210,9 +213,9 @@ export function weightedPurchase(rows: AcquisitionValueRow[]): number | null {
 }
 
 export interface TileValue {
-  kachel_preis: number | null;
-  kachel_pnl_pct: number | null;
-  kachel_quelle: 'markt' | 'kauf' | null;
+  tile_price: number | null;
+  tile_pnl_pct: number | null;
+  tile_source: 'market' | 'purchase' | null;
 }
 
 export interface TileSource {
@@ -235,15 +238,15 @@ export function tileValues(rows: TileSource[]): Map<string, TileValue> {
     const market = Number(zs[0]?.current_price) || 0;
     const weighted = (field: 'baseline_price' | 'purchase_price') => {
       let sum = 0,
-        menge = 0;
+        quantity = 0;
       for (const z of zs) {
         const b = z[field];
         if (b == null) continue;
         const m = Math.max(1, Number(z.quantity) || 1);
         sum += Number(b) * m;
-        menge += m;
+        quantity += m;
       }
-      return menge > 0 ? sum / menge : null;
+      return quantity > 0 ? sum / quantity : null;
     };
     let pct: number | null;
     if (zs.length === 1) {
@@ -255,16 +258,16 @@ export function tileValues(rows: TileSource[]): Map<string, TileValue> {
       pct = e == null ? null : Math.round(e * 10) / 10;
     }
     const purchase = weighted('purchase_price');
-    const source = market > 0 ? 'markt' : purchase != null ? 'kauf' : null;
+    const source = market > 0 ? 'market' : purchase != null ? 'purchase' : null;
     from.set(nr, {
-      kachel_preis:
-        source === 'markt'
+      tile_price:
+        source === 'market'
           ? aufRappen(inTenThousandths(market) ?? 0)
           : purchase != null
             ? aufRappen(inTenThousandths(purchase) ?? 0)
             : null,
-      kachel_pnl_pct: pct,
-      kachel_quelle: source,
+      tile_pnl_pct: pct,
+      tile_source: source,
     });
   }
   return from;

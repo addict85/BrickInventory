@@ -14,42 +14,42 @@ const CONDITION_SQL: Record<StorageTable, (ab: number) => string> = {
  * exist in two accounts with their own ID each. */
 export async function sortLocationTo(
   dbh: DbInterface,
-  art: StorageTable,
+  kind: StorageTable,
   owner: number[],
-  ort: string | null,
+  location: string | null,
   key: string[],
 ): Promise<number> {
   const r = await dbh.run(
-    `UPDATE ${TABLES[art]} t
+    `UPDATE ${TABLES[kind]} t
         SET storage_id = (SELECT l.id FROM storage_locations l
                            WHERE l.user_id = t.user_id
                              AND lower(l.name) = lower($2))
-      WHERE t.user_id = ANY($1) AND ${CONDITION_SQL[art](3)}`,
-    [owner, ort, ...key],
+      WHERE t.user_id = ANY($1) AND ${CONDITION_SQL[kind](3)}`,
+    [owner, location, ...key],
   );
   return r.changes ?? 0;
 }
 
 export async function ownerWithRow(
   tx: DbInterface,
-  art: StorageTable,
+  kind: StorageTable,
   owner: number[],
   key: string[],
 ): Promise<number[]> {
   const rows = await tx.all<{ user_id: number }>(
-    `SELECT DISTINCT t.user_id FROM ${TABLES[art]} t
-      WHERE t.user_id = ANY($1) AND ${CONDITION_SQL[art](2)}`,
+    `SELECT DISTINCT t.user_id FROM ${TABLES[kind]} t
+      WHERE t.user_id = ANY($1) AND ${CONDITION_SQL[kind](2)}`,
     [owner, ...key],
   );
   return rows.map(b => parseInt(String(b.user_id), 10));
 }
 
-export async function takeLocationOn(tx: DbInterface, ids: number[], ort: string): Promise<void> {
+export async function takeLocationOn(tx: DbInterface, ids: number[], location: string): Promise<void> {
   await tx.run(
     `INSERT INTO storage_locations (user_id, name)
      SELECT id, $2 FROM users WHERE id = ANY($1)
      ON CONFLICT (user_id, lower(name)) DO NOTHING`,
-    [ids, ort],
+    [ids, location],
   );
 }
 
@@ -108,29 +108,29 @@ export function removeLocation(db: DbInterface, id: number, userId: number) {
 }
 
 export function locationsWithInventory(db: DbInterface, l: InventoryReadContract, uids: number[]) {
-  return db.all<{ ort: string; sets: number; teile: number; figuren: number }>(
-    `SELECT ort,
+  return db.all<{ location: string; sets: number; parts: number; minifigs: number }>(
+    `SELECT location,
             SUM(sets)::int    AS sets,
-            SUM(teile)::int   AS teile,
-            SUM(figuren)::int AS figuren
+            SUM(parts)::int   AS parts,
+            SUM(minifigs)::int AS minifigs
        FROM (
-         SELECT l.name AS ort, COUNT(*)::int AS sets, 0 AS teile, 0 AS figuren
+         SELECT l.name AS location, COUNT(*)::int AS sets, 0 AS parts, 0 AS minifigs
            FROM ${l.setBestand('= ANY($1)')} s JOIN storage_locations l ON l.id = s.storage_id
           WHERE s.user_id = ANY($1)
           GROUP BY l.name
          UNION ALL
-         SELECT l.name AS ort, 0 AS sets, COUNT(*)::int AS teile, 0 AS figuren
+         SELECT l.name AS location, 0 AS sets, COUNT(*)::int AS parts, 0 AS minifigs
            FROM parts p JOIN storage_locations l ON l.id = p.storage_id
           WHERE p.user_id = ANY($1)
           GROUP BY l.name
          UNION ALL
-         SELECT l.name AS ort, 0 AS sets, 0 AS teile, COUNT(*)::int AS figuren
+         SELECT l.name AS location, 0 AS sets, 0 AS parts, COUNT(*)::int AS minifigs
            FROM minifigs m JOIN storage_locations l ON l.id = m.storage_id
           WHERE m.user_id = ANY($1)
           GROUP BY l.name
        ) q
-      GROUP BY ort
-      ORDER BY ort`,
+      GROUP BY location
+      ORDER BY location`,
     [uids],
   );
 }

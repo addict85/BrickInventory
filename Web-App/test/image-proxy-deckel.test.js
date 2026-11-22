@@ -74,16 +74,16 @@ const echt = https.get;
   geholt.push(String(url));
   kopfzeilen.push(o?.headers ?? {});
   const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
-  const bild = cdnBody;
+  const image = cdnBody;
   if (cdnNetworkError) {
     setImmediate(() => req.emit('error', Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })));
     return req;
   }
   setImmediate(() =>
     cb(
-      Object.assign(Readable.from([bild]), {
+      Object.assign(Readable.from([image]), {
         statusCode: cdnStatus,
-        headers: { 'content-type': cdnType, 'content-length': String(bild.length), ...cdnHeader },
+        headers: { 'content-type': cdnType, 'content-length': String(image.length), ...cdnHeader },
       }),
     ),
   );
@@ -99,8 +99,8 @@ app.use((req, _res, next) => {
 app.get('/p', passThroughImage);
 const srv = app.listen(0);
 const basis = `http://127.0.0.1:${portOf(srv)}/p?url=`;
-const hole = adresse =>
-  fetch(basis + encodeURIComponent(adresse)).then(async r => ({
+const hole = address =>
+  fetch(basis + encodeURIComponent(address)).then(async r => ({
     status: r.status,
     n: (await r.arrayBuffer()).byteLength,
     cache: r.headers.get('cache-control'),
@@ -156,9 +156,9 @@ test('the fourth foreign image is throttled, hits and other accounts are not', a
 
 test("a comma list in the CDN's Content-Type does not go out", async () => {
   konto = 500000 + (process.pid % 100000);
-  const typ = async (cdn, adresse) => {
+  const typ = async (cdn, address) => {
     cdnType = cdn;
-    const r = await fetch(basis + encodeURIComponent(adresse));
+    const r = await fetch(basis + encodeURIComponent(address));
     await r.arrayBuffer();
     return [r.status, r.headers.get('content-type')];
   };
@@ -187,13 +187,13 @@ test('only images leave the image proxy', async () => {
   // otherwise run under our origin.
   konto = 400000 + (process.pid % 100000);
   try {
-    for (const [typ, adresse] of [
+    for (const [typ, address] of [
       ['text/html', 'h1.png'],
       ['image/svg+xml', 's1.svg'],
       ['application/octet-stream', 'o1.png'],
     ]) {
       cdnType = typ;
-      const r = await fetch(basis + encodeURIComponent(`https://cdn.rebrickable.com/media/parts/${adresse}`));
+      const r = await fetch(basis + encodeURIComponent(`https://cdn.rebrickable.com/media/parts/${address}`));
       await r.arrayBuffer();
       assert.equal(r.status, 415, `${typ} ging als Bild hinaus`);
     }
@@ -205,12 +205,12 @@ test('only images leave the image proxy', async () => {
 test('a missing image comes as a placeholder, and the server remembers it', async () => {
   konto = 300000 + (process.pid % 100000);
   const platzhalter = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'));
-  const adresse = 'https://cdn.rebrickable.com/media/sets/fehlt-1.jpg';
+  const address = 'https://cdn.rebrickable.com/media/sets/fehlt-1.jpg';
   cdnStatus = 404;
   try {
     geholt.length = 0;
     const fetchRaw = async () => {
-      const r = await fetch(basis + encodeURIComponent(adresse));
+      const r = await fetch(basis + encodeURIComponent(address));
       return { status: r.status, typ: r.headers.get('content-type'), rumpf: Buffer.from(await r.arrayBuffer()) };
     };
     const erst = await fetchRaw();
@@ -232,9 +232,9 @@ test('only 404 is remembered, no 403', async () => {
   cdnStatus = 403;
   try {
     geholt.length = 0;
-    const adresse = basis + encodeURIComponent('https://cdn.rebrickable.com/media/sets/gesperrt-1.jpg');
+    const address = basis + encodeURIComponent('https://cdn.rebrickable.com/media/sets/gesperrt-1.jpg');
     for (let i = 0; i < 2; i++) {
-      const r = await fetch(adresse);
+      const r = await fetch(address);
       await r.arrayBuffer();
       assert.equal(r.status, 403);
     }
@@ -247,7 +247,7 @@ test('only 404 is remembered, no 403', async () => {
 test('the cap deletes the image unused the longest', async () => {
   fs.rmSync(cacheDir, { recursive: true, force: true });
   fs.mkdirSync(cacheDir, { recursive: true });
-  const jetzt = Date.now() / 1000;
+  const now = Date.now() / 1000;
   const put = (schluessel, alterDays) => {
     for (const [name, n] of [
       [schluessel, 1000],
@@ -256,14 +256,14 @@ test('the cap deletes the image unused the longest', async () => {
     ]) {
       const p = path.join(cacheDir, name);
       fs.writeFileSync(p, Buffer.alloc(n));
-      fs.utimesSync(p, jetzt - alterDays * 86400, jetzt - alterDays * 86400);
+      fs.utimesSync(p, now - alterDays * 86400, now - alterDays * 86400);
     }
   };
   put('a'.repeat(40), 20);
   put('b'.repeat(40), 10);
   put('c'.repeat(40), 1);
-  assert.equal(await cleanImageCacheOn(4000, jetzt * 1000), 0, 'unter der Grenze wird nichts gelöscht');
-  assert.equal(await cleanImageCacheOn(3000, jetzt * 1000), 3);
+  assert.equal(await cleanImageCacheOn(4000, now * 1000), 0, 'unter der Grenze wird nichts gelöscht');
+  assert.equal(await cleanImageCacheOn(3000, now * 1000), 3);
   assert.deepEqual(
     fs
       .readdirSync(cacheDir)
@@ -280,17 +280,17 @@ test('images/sets counts in the cap and stays', async () => {
   const sets = path.join(wurzel, 'data', 'images', 'sets');
   fs.mkdirSync(sets, { recursive: true });
   fs.writeFileSync(path.join(sets, '10294-1.jpg'), Buffer.alloc(2000));
-  const jetzt = Date.now() / 1000;
+  const now = Date.now() / 1000;
   for (const [schluessel, alterDays] of /** @type {[string, number][]} */ ([
     ['a'.repeat(40), 5],
     ['b'.repeat(40), 1],
   ])) {
     const p = path.join(cacheDir, schluessel);
     fs.writeFileSync(p, Buffer.alloc(1000));
-    fs.utimesSync(p, jetzt - alterDays * 86400, jetzt - alterDays * 86400);
+    fs.utimesSync(p, now - alterDays * 86400, now - alterDays * 86400);
   }
   // 2000 bytes in the cache would be below 3500, with images/sets it is 4000.
-  assert.equal(await cleanImageCacheOn(3500, jetzt * 1000), 1);
+  assert.equal(await cleanImageCacheOn(3500, now * 1000), 1);
   assert.deepEqual(fs.readdirSync(cacheDir), ['b'.repeat(40)]);
   assert.deepEqual(fs.readdirSync(sets), ['10294-1.jpg']);
   fs.rmSync(sets, { recursive: true, force: true });
@@ -299,11 +299,11 @@ test('images/sets counts in the cap and stays', async () => {
 test('errors are counted and logged', async () => {
   const { imgProxyFailures: f } = _req('src/images/imgProxyStats.js');
   const vorher = { ...f };
-  const fehler = [];
+  const error = [];
   const echtError = console.error;
-  console.error = (...a) => fehler.push(a.join(' '));
+  console.error = (...a) => error.push(a.join(' '));
   try {
-    for (const [status, netz, adresse] of /** @type {[number, boolean, string][]} */ ([
+    for (const [status, netz, address] of /** @type {[number, boolean, string][]} */ ([
       [404, false, 'https://cdn.rebrickable.com/media/sets/zaehl-404.jpg'],
       [403, false, 'https://cdn.rebrickable.com/media/sets/zaehl-403.jpg'],
       [200, true, 'https://cdn.rebrickable.com/media/sets/zaehl-netz.jpg'],
@@ -312,7 +312,7 @@ test('errors are counted and logged', async () => {
       konto = 400000 + status * 1000 + (process.pid % 1000);
       cdnStatus = status;
       cdnNetworkError = netz;
-      const r = await fetch(basis + encodeURIComponent(adresse));
+      const r = await fetch(basis + encodeURIComponent(address));
       await r.arrayBuffer();
       if (netz) assert.equal(r.status, 502);
     }
@@ -324,22 +324,22 @@ test('errors are counted and logged', async () => {
   assert.deepEqual([f.notFound - vorher.notFound, f.other - vorher.other, f.error - vorher.error], [1, 1, 1]);
   assert.match(f.lastError, /ECONNRESET/);
   assert.ok(
-    fehler.some(z => z.includes('CDN antwortete 403') && z.includes('zaehl-403')),
-    fehler.join('\n'),
+    error.some(z => z.includes('CDN antwortete 403') && z.includes('zaehl-403')),
+    error.join('\n'),
   );
   assert.ok(
-    fehler.some(z => z.includes('Verbindungsfehler') && z.includes('ECONNRESET')),
-    fehler.join('\n'),
+    error.some(z => z.includes('Verbindungsfehler') && z.includes('ECONNRESET')),
+    error.join('\n'),
   );
 });
 
 test('the probe shows WHAT is delivered', async () => {
   const { imageProbe: bildProbe } = _req('src/management/diagnostics.js');
-  const adresse = 'https://cdn.rebrickable.com/media/sets/probe-1.jpg';
+  const address = 'https://cdn.rebrickable.com/media/sets/probe-1.jpg';
   try {
     cdnBody = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
     kopfzeilen.length = 0;
-    const jpeg = await bildProbe(adresse);
+    const jpeg = await bildProbe(address);
     assert.equal(jpeg.body_check.looks_like, 'JPEG');
     assert.match(jpeg.body_check.first_bytes_hex, /^ff d8 ff e0/);
     assert.deepEqual(
@@ -356,7 +356,7 @@ test('the probe shows WHAT is delivered', async () => {
     // A CDN that compresses anyway shows up in the response.
     cdnBody = Buffer.from([0x1f, 0x8b, 8, 0, 0, 0, 0, 0]);
     cdnHeader = { 'content-encoding': 'gzip' };
-    const gz = await bildProbe(adresse);
+    const gz = await bildProbe(address);
     assert.deepEqual([gz.body_check.looks_like, gz.probes[0].content_encoding], ['gzip (komprimiert!)', 'gzip']);
   } finally {
     cdnBody = Buffer.alloc(300, 7);

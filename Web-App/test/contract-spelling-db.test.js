@@ -91,7 +91,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  for (let i = 0; i < 240 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 240 && (await fetch(`http://127.0.0.1:${port}/api/v2/health`).catch(() => null)) === null; i++)
     await warte(250);
 
   let n = 0;
@@ -112,14 +112,14 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     );
 
   assert.ok(ROUTES.length > 150, `nur ${ROUTES.length} Vertragsrouten — greift die Suche noch?`);
-  assert.ok((await rufe('GET', '/api/v1/settings')).status === 200, `der Token gilt nicht: ${log.slice(-400)}`);
+  assert.ok((await rufe('GET', '/api/v2/settings')).status === 200, `der Token gilt nicht: ${log.slice(-400)}`);
 
   await t.test('upper case is a different route', async () => {
     const falsch = [],
       key = [];
     for (const { m, url } of ROUTES) {
-      const rest = url.slice('/api/v1/'.length);
-      for (const anders of [url.toUpperCase(), rest && `/api/v1/${rest[0].toUpperCase()}${rest.slice(1)}`]) {
+      const rest = url.slice('/api/v2/'.length);
+      for (const anders of [url.toUpperCase(), rest && `/api/v2/${rest[0].toUpperCase()}${rest.slice(1)}`]) {
         if (!anders || anders === url) continue;
         const r = await rufe(m, anders);
         key.push(r.key);
@@ -146,7 +146,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
   await t.test('a trailing slash is a different route', async () => {
     const falsch = [],
       key = [];
-    // `/api/v1/` stands like this in the contract; `//` at the end is the same path there.
+    // `/api/v2/` stands like this in the contract; `//` at the end is the same path there.
     for (const { m, url } of ROUTES.filter(r => !r.url.endsWith('/')))
       for (const anders of [url + '/', url + '//']) {
         const r = await rufe(m, anders);

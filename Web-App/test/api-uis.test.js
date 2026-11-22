@@ -18,8 +18,8 @@ function routesFrom(datei, mount) {
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const out = [];
   for (const m of require('./helpers/sources').routesFromSource(src, mount)) {
-    const pfad = (mount + '/' + m[2].replace(/^\//, '')).replace(/\/+$/, '') || '/';
-    out.push(`${m[1].toUpperCase()} ${pfad}`);
+    const path = (mount + '/' + m[2].replace(/^\//, '')).replace(/\/+$/, '') || '/';
+    out.push(`${m[1].toUpperCase()} ${path}`);
   }
   return out;
 }
@@ -30,7 +30,7 @@ function routesFrom(datei, mount) {
  * its routes would then silently drop out of the check.
  */
 function webRouter() {
-  // The same reading as in the other checks (helpers/sources.js); api_v1 is the second UI.
+  // The same reading as in the other checks (helpers/sources.js); routes/api is the second UI.
   return require('./helpers/sources').routerEinhaengungen();
 }
 
@@ -44,7 +44,7 @@ function webRouter() {
  */
 const ALLOWED = new Map([]);
 
-/** Prefix off: /api/v1/sets/x and /api/sets/x both become /sets/x. */
+/** Prefix off: /api/v2/sets/x and /api/sets/x both become /sets/x. */
 function withoutPrefix(eintrag) {
   return eintrag.replace(/ \/api(\/v1)?/, ' ');
 }
@@ -54,7 +54,7 @@ test('no unjustified route on either API surface', () => {
   for (const r of webRouter()) for (const x of routesFrom(r.datei, r.mount)) web.add(x);
 
   const v1 = new Set();
-  const v1Dir = path.join(ROOT, 'routes/api_v1');
+  const v1Dir = path.join(ROOT, 'routes/api');
   for (const f of fs.readdirSync(v1Dir)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     for (const x of routesFrom(path.join(v1Dir, f), '/api')) v1.add(x);
@@ -67,7 +67,7 @@ test('no unjustified route on either API surface', () => {
   assert.ok(v1.size >= 80, `Nur ${v1.size} v1-Routen gefunden — Muster veraltet?`);
 
   // Compare both sides without prefix: since the move the
-  // web app routers themselves hang under /api/v1/<bereich>, and a comparison of the raw
+  // web app routers themselves hang under /api/v2/<bereich>, and a comparison of the raw
   // addresses would find no overlap at all anymore — the test would be green
   // without checking anything.
   const webN = new Set([...web].map(withoutPrefix));
@@ -110,7 +110,7 @@ test('every router hangs under /api/v1', () => {
 
   const daneben = einhaengungen
     .map(r => r.mount)
-    .filter(m => !m.startsWith('/api/v1') && !STILL_NOT.has(m))
+    .filter(m => !m.startsWith('/api/v2') && !STILL_NOT.has(m))
     .sort();
   assert.deepEqual(
     daneben,
@@ -123,11 +123,11 @@ test('every router hangs under /api/v1', () => {
 
   // And the exception must not be left lying around: if it is there although the router
   // moved long ago, the conversion looks less finished than it is.
-  const erledigt = [...STILL_NOT.keys()].filter(m => !einhaengungen.some(r => r.mount === m));
+  const done = [...STILL_NOT.keys()].filter(m => !einhaengungen.some(r => r.mount === m));
   assert.deepEqual(
-    erledigt,
+    done,
     [],
-    'Diese Ausnahmen beschreiben keinen Einhaengepunkt mehr — streichen:\n  ' + erledigt.join('\n  '),
+    'Diese Ausnahmen beschreiben keinen Einhaengepunkt mehr — streichen:\n  ' + done.join('\n  '),
   );
 });
 
@@ -139,6 +139,11 @@ test('the directly registered routes are under /api/v1 too', () => {
   // The ONE exception — and it is a phase-out address, not a second
   // equal one.
   const WITHOUT_VERSION = new Map([
+    [
+      'GET /api/v1/img-proxy',
+      'Bleibt unter v1, waehrend die API nach v2 zieht: gespeicherte Bildadressen (image_url) und ' +
+        'installierte App-Fassungen zeigen dorthin; der v1-Alias rechnet sie nicht um.',
+    ],
     [
       'GET /api/img-proxy',
       'Auslauf-Adresse. Die kanonische ist /api/v1/img-proxy; alles, was der ' +
@@ -166,33 +171,33 @@ test('the directly registered routes are under /api/v1 too', () => {
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
 
   // Also registrations via a CONSTANT
-  const quellen = dateien.map(d => ohneKommentare(fs.readFileSync(d, 'utf8')));
+  const sources = dateien.map(d => ohneKommentare(fs.readFileSync(d, 'utf8')));
   const constants = new Map();
-  for (const src of quellen)
+  for (const src of sources)
     for (const m of src.matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9_]*)\s*=\s*'(\/api\/[^']*)'/g))
       constants.set(m[1], m[2]);
 
-  const gefunden = [];
-  for (const src of quellen) {
+  const found = [];
+  for (const src of sources) {
     for (const m of src.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']*)'/g))
-      gefunden.push(`${m[1].toUpperCase()} ${m[2]}`);
+      found.push(`${m[1].toUpperCase()} ${m[2]}`);
     for (const m of src.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*([A-Z][A-Z0-9_]*)\s*,/g)) {
-      const pfad = constants.get(m[2]);
+      const path = constants.get(m[2]);
       assert.ok(
-        pfad,
+        path,
         `app.${m[1]}(${m[2]}, …) meldet eine Route unter einem Bezeichner an, ` +
           'dessen Wert hier nicht auffindbar ist. Ohne ihn kann diese Pruefung ' +
           'nicht sagen, ob die Adresse unter /api/v1 liegt.',
       );
-      gefunden.push(`${m[1].toUpperCase()} ${pfad}`);
+      found.push(`${m[1].toUpperCase()} ${path}`);
     }
   }
   // Self-proof: if the pattern finds nothing, everything below checks nothing.
   // TWO is the MEASURED state (the two addresses of the image proxy); health
   // and startup-status hang in the router routes/health.ts.
-  assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
+  assert.ok(found.length >= 2, `Nur ${found.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
 
-  const daneben = gefunden.filter(r => !r.split(' ')[1].startsWith('/api/v1') && !WITHOUT_VERSION.has(r)).sort();
+  const daneben = found.filter(r => !r.split(' ')[1].startsWith('/api/v2') && !WITHOUT_VERSION.has(r)).sort();
   assert.deepEqual(
     daneben,
     [],
@@ -205,7 +210,7 @@ test('the directly registered routes are under /api/v1 too', () => {
 
   // The same opposite direction as above: an exception for a route that
   // no longer exists makes the conversion look less finished than it is.
-  const veraltet = [...WITHOUT_VERSION.keys()].filter(r => !gefunden.includes(r));
+  const veraltet = [...WITHOUT_VERSION.keys()].filter(r => !found.includes(r));
   assert.deepEqual(
     veraltet,
     [],
@@ -220,7 +225,7 @@ test('the health check from compose.yaml points to a real address', () => {
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
   const treffer = compose.match(/http:\/\/localhost:\d+(\/api\/[^'"\s)]*)/);
   assert.ok(treffer, 'compose.yaml enthaelt keinen Gesundheitscheck auf eine /api-Adresse');
-  const adresse = treffer[1];
+  const address = treffer[1];
 
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   const direkt = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
@@ -233,8 +238,8 @@ test('the health check from compose.yaml points to a real address', () => {
       if (m[1] === 'get') direkt.push(r.mount + m[2]);
   assert.ok(direkt.length >= 2, `Nur ${direkt.length} direkte GET-Routen gefunden — Muster veraltet?`);
   assert.ok(
-    direkt.includes(adresse),
-    `compose.yaml prueft ${adresse}; server.ts kennt nur ${direkt.join(', ')}. ` +
+    direkt.includes(address),
+    `compose.yaml prueft ${address}; server.ts kennt nur ${direkt.join(', ')}. ` +
       'Der Container gaelte damit dauerhaft als „unhealthy", ohne dass die ' +
       'Anwendung selbst etwas davon merkt.',
   );

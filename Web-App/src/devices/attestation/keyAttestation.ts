@@ -11,7 +11,7 @@ const AT_MOST_LINKS = 8;
 
 /** Tags of the AuthorizationList (KeyMint, hardware/interfaces/security/keymint). */
 const TAG = {
-  zweck: 1,
+  purpose: 1,
   algorithm: 2,
   kurve: 10,
   withoutLogin: 503,
@@ -36,7 +36,7 @@ const SECURITY: readonly Confidence[] = ['software', 'tee', 'strongbox'];
 
 export interface Description {
   version: number;
-  sicherheit: Confidence;
+  confidence: Confidence;
   keymintSecurity: Confidence;
   challenge: Buffer;
   software: Map<number, Tlv>;
@@ -47,10 +47,10 @@ function list(t: Tlv): Map<number, Tlv> {
   const m = new Map<number, Tlv>();
   for (const k of kinder(expect(t, UNIVERSAL.SEQUENCE))) {
     if (k.klasse !== 2 || !k.zusammengesetzt) throw new TheError('AuthorizationList: Eintrag ohne Kontext-Tag');
-    if (m.has(k.nummer)) throw new TheError(`AuthorizationList: Tag ${k.nummer} doppelt`);
+    if (m.has(k.number)) throw new TheError(`AuthorizationList: Tag ${k.number} doppelt`);
     const inner = kinder(k);
     if (inner.length !== 1) throw new TheError('AuthorizationList: Eintrag ohne genau einen Wert');
-    m.set(k.nummer, inner[0] as Tlv);
+    m.set(k.number, inner[0] as Tlv);
   }
   return m;
 }
@@ -67,7 +67,7 @@ export function readDescription(der: Buffer): Description {
   if (f.length < 8) throw new TheError('KeyDescription: zu wenige Felder');
   return {
     version: theNumber(expect(f[0], UNIVERSAL.INTEGER)),
-    sicherheit: confidence(f[1]),
+    confidence: confidence(f[1]),
     keymintSecurity: confidence(f[3]),
     challenge: expect(f[4], UNIVERSAL.OCTET_STRING).inhalt,
     software: list(f[6] as Tlv),
@@ -78,7 +78,7 @@ export function readDescription(der: Buffer): Description {
 /** The content of the attestation extension, null without it. */
 export function attestationExtension(certificateThe: Buffer): Buffer | null {
   const [tbs] = kinder(expect(readWhole(certificateThe), UNIVERSAL.SEQUENCE));
-  const ext = kinder(expect(tbs, UNIVERSAL.SEQUENCE)).find(k => k.klasse === 2 && k.nummer === 3);
+  const ext = kinder(expect(tbs, UNIVERSAL.SEQUENCE)).find(k => k.klasse === 2 && k.number === 3);
   if (!ext) return null;
   let hits: Buffer | null = null;
   for (const e of kinder(expect(kinder(ext)[0], UNIVERSAL.SEQUENCE))) {
@@ -111,7 +111,7 @@ export interface Expectation {
   /** Serial numbers from Google's revocation list (seriennummer()); mandatory so that no caller forgets them. */
   widerrufen: ReadonlySet<string>;
   patchAtLeast?: number | null;
-  jetzt: Date;
+  now: Date;
 }
 
 /** That is how Google's list writes them: hex lower case, without leading zeros. */
@@ -132,20 +132,20 @@ function checkBoot(t: Tlv | undefined): string | null {
 }
 
 export type Check =
-  | { ok: true; oeffentlich: KeyObject; challenge: Buffer; sicherheit: Confidence }
-  | { ok: false; grund: string };
+  | { ok: true; public_key: KeyObject; challenge: Buffer; confidence: Confidence }
+  | { ok: false; reason: string };
 
 const spki = (c: X509Certificate) => c.publicKey.export({ format: 'der', type: 'spki' }) as Buffer;
 
 function checkLinks(z: X509Certificate[], raw: Buffer[], e: Expectation): string | null {
-  const { jetzt } = e;
+  const { now } = e;
   for (let i = 0; i < z.length; i++) {
     const c = z[i] as X509Certificate;
     // Issuers only with the CA bit (ca also checks keyCertSign) and without KeyDescription: otherwise
     // an ordinary keystore key would sign a leaf with an invented description.
     if (i > 0 && (!c.ca || attestationExtension(raw[i] as Buffer))) return `glied_${i}_kein_aussteller`;
     // The leaf carries the validity the keystore inserts (often 1970–2048), not a real one.
-    if (i > 0 && (new Date(c.validFrom) > jetzt || new Date(c.validTo) < jetzt)) return `glied_${i}_abgelaufen`;
+    if (i > 0 && (new Date(c.validFrom) > now || new Date(c.validTo) < now)) return `glied_${i}_abgelaufen`;
     const issuer = z[i + 1];
     if (issuer && (c.issuer !== issuer.subject || !c.verify(issuer.publicKey))) return `glied_${i}_signatur`;
   }
@@ -154,19 +154,19 @@ function checkLinks(z: X509Certificate[], raw: Buffer[], e: Expectation): string
     e.roots.find(w => spki(w).equals(spki(last))) ??
     e.roots.find(w => last.issuer === w.subject && last.verify(w.publicKey));
   if (!anker) return 'fremde_wurzel';
-  if (new Date(anker.validFrom) > jetzt || new Date(anker.validTo) < jetzt) return 'wurzel_abgelaufen';
+  if (new Date(anker.validFrom) > now || new Date(anker.validTo) < now) return 'wurzel_abgelaufen';
   return null;
 }
 
 function checkDescription(b: Description, e: Expectation): string | null {
-  if (b.sicherheit === 'software' || b.keymintSecurity === 'software') return 'nur_software';
+  if (b.confidence === 'software' || b.keymintSecurity === 'software') return 'nur_software';
   const hw = b.hardware;
   const z = (tag: number) => {
     const t = hw.get(tag);
     return t ? theNumber(t) : null;
   };
   if (z(TAG.algorithm) !== ALGORITHM_EC || z(TAG.kurve) !== CURVE_P256) return 'kein_ec_p256';
-  const purposes = hw.get(TAG.zweck);
+  const purposes = hw.get(TAG.purpose);
   if (!purposes || !kinder(expect(purposes, UNIVERSAL.SET)).some(t => theNumber(t) === PURPOSE_SIGN))
     return 'kein_signieren';
   if (z(TAG.herkunft) !== ORIGIN_CREATED) return 'importiert';
@@ -186,25 +186,25 @@ function checkDescription(b: Description, e: Expectation): string | null {
 
 /** The whole check without the nonce: the caller compares that with its database. */
 export function checkChain(chainB64: readonly string[], e: Expectation): Check {
-  if (!chainB64.length || chainB64.length > AT_MOST_LINKS) return { ok: false, grund: 'kette_laenge' };
+  if (!chainB64.length || chainB64.length > AT_MOST_LINKS) return { ok: false, reason: 'kette_laenge' };
   try {
     const raw = chainB64.map(s => Buffer.from(s, 'base64'));
     const z = raw.map(d => new X509Certificate(d));
     const error = checkLinks(z, raw, e);
-    if (error) return { ok: false, grund: error };
-    if (z.some(c => e.widerrufen.has(serialNumber(c)))) return { ok: false, grund: 'widerrufen' };
+    if (error) return { ok: false, reason: error };
+    if (z.some(c => e.widerrufen.has(serialNumber(c)))) return { ok: false, reason: 'widerrufen' };
     const ext = attestationExtension(raw[0] as Buffer);
-    if (!ext) return { ok: false, grund: 'ohne_attestation' };
+    if (!ext) return { ok: false, reason: 'ohne_attestation' };
     const b = readDescription(ext);
-    const grund = checkDescription(b, e);
-    if (grund) return { ok: false, grund };
+    const reason = checkDescription(b, e);
+    if (reason) return { ok: false, reason };
     return {
       ok: true,
-      oeffentlich: (z[0] as X509Certificate).publicKey,
+      public_key: (z[0] as X509Certificate).publicKey,
       challenge: b.challenge,
-      sicherheit: b.sicherheit,
+      confidence: b.confidence,
     };
   } catch (err) {
-    return { ok: false, grund: err instanceof TheError ? 'der_fehler' : 'kette_unlesbar' };
+    return { ok: false, reason: err instanceof TheError ? 'der_fehler' : 'kette_unlesbar' };
   }
 }

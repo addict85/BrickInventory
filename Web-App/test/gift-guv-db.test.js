@@ -75,8 +75,8 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
 
   await holdsSet(db, uid, SET, 0);
   await record(db, uid, SET, 2, { preis: 0, am: '2026-01-05' });
-  await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 0 });
-  await holdsMinifig(db, uid, FIGUR, { menge: 1, preis: 0 });
+  await holdsPart(db, uid, TEIL, { colorId: FARBE, quantity: 10, preis: 0 });
+  await holdsMinifig(db, uid, FIGUR, { quantity: 1, preis: 0 });
 
   const { gainAndLoss } = _req('src/finances/financeCalc.js');
   const pnl = await gainAndLoss(uid, [uid]);
@@ -85,9 +85,9 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
     const z = pnl.sets.find(s => s.set_number === SET);
     assert.equal(z.purchase_price, 0, 'bekannt und 0, nicht null');
     assert.equal(z.pnl_pct, null);
-    assert.equal(z.pnl_prozent, null);
+    assert.equal(z.pnl_percent, null);
     assert.equal(z.baseline_pnl_pct, null);
-    assert.equal(z.pnl_betrag, 240, 'der Betrag ist der Marktwert: 2 × 120');
+    assert.equal(z.pnl_amount, 240, 'der Betrag ist der Marktwert: 2 × 120');
     assert.equal(z.pnl_abs, '240.00');
   });
 
@@ -98,8 +98,8 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
 
   await t.test('tile', () => {
     const z = pnl.sets.find(s => s.set_number === SET);
-    assert.equal(z.kachel_preis, 120);
-    assert.equal(z.kachel_pnl_pct, null);
+    assert.equal(z.tile_price, 120);
+    assert.equal(z.tile_pnl_pct, null);
   });
 
   await t.test('price history', async () => {
@@ -107,7 +107,7 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
     const v = await priceHistorySet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 0);
     assert.equal(v.pnl_pct, null);
-    assert.equal(v.pnl_prozent, null);
+    assert.equal(v.pnl_percent, null);
     assert.equal(v.by_condition.N.purchase_price, 0);
     assert.equal(v.by_condition.N.pnl_pct, null);
     assert.equal(v.by_condition.N.market_price, 120);
@@ -116,17 +116,17 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
   await t.test('part and figure', async () => {
     const { priceHistoryPart, priceHistoryMinifig } = _req('src/finances/priceHistory.js');
     const teil = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');
-    assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
+    assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_percent: null });
     const figur = await priceHistoryMinifig([uid], FIGUR, 'CHF');
-    assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
+    assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_percent: null });
     const { valueAcquisitionRows } = _req('src/finances/setValue.js');
-    const [zeile] = valueAcquisitionRows(
+    const [row] = valueAcquisitionRows(
       TEIL,
       [{ id: 1, condition: 'N', quantity: 10, unit_price: 0 }],
       new Map([[`${TEIL}|N`, 0.4]]),
     );
-    assert.equal(zeile.purchase_price, 0);
-    assert.equal(zeile.pnl_pct, null);
-    assert.equal(zeile.pnl_prozent, null);
+    assert.equal(row.purchase_price, 0);
+    assert.equal(row.pnl_pct, null);
+    assert.equal(row.pnl_percent, null);
   });
 });

@@ -57,15 +57,15 @@ test('the suite separates the roles as in production, exceptions become fewer', 
 
   const LIMIT = { superuser: 21, systemrahmen: 129 };
   const dateien = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'));
-  const quelle = (/** @type {string} */ n) => fs.readFileSync(path.join(__dirname, n), 'utf8');
+  const source = (/** @type {string} */ n) => fs.readFileSync(path.join(__dirname, n), 'utf8');
   /** @type {Record<string, number>} */
   const ist = {
-    superuser: dateien.filter(n => asSuperuser(quelle(n))).length,
-    systemrahmen: dateien.filter(n => !asSuperuser(quelle(n)) && inSystemFrame(quelle(n))).length,
+    superuser: dateien.filter(n => asSuperuser(source(n))).length,
+    systemrahmen: dateien.filter(n => !asSuperuser(source(n)) && inSystemFrame(source(n))).length,
   };
   assert.ok(dateien.length > 500, `nur ${dateien.length} Testdateien — greift die Suche noch?`);
-  for (const [art, s] of Object.entries(LIMIT)) {
-    assert.ok((ist[art] ?? 0) <= s, `${ist[art]} Testdateien mit ${art}, erlaubt sind ${s}`);
-    if ((ist[art] ?? 0) < s) console.log(`  ℹ Testdateien mit ${art}: ${ist[art]} (Schranke ${s}) — nachziehen`);
+  for (const [kind, s] of Object.entries(LIMIT)) {
+    assert.ok((ist[kind] ?? 0) <= s, `${ist[kind]} Testdateien mit ${kind}, erlaubt sind ${s}`);
+    if ((ist[kind] ?? 0) < s) console.log(`  ℹ Testdateien mit ${kind}: ${ist[kind]} (Schranke ${s}) — nachziehen`);
   }
 });

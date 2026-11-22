@@ -34,9 +34,9 @@ const MIGRATION = fs.readFileSync(
 const SCHEMA = `probe0101_${process.pid}`;
 
 test('the proxy stores the fallback address locally', () => {
-  const adresse = rebrickableSetImage('75192');
-  assert.equal(adresse, 'https://cdn.rebrickable.com/media/sets/75192-1.jpg');
-  assert.equal(setNumberFromImageAddress(adresse), '75192-1', 'der Proxy legt die Rückfall-Adresse lokal ab');
+  const address = rebrickableSetImage('75192');
+  assert.equal(address, 'https://cdn.rebrickable.com/media/sets/75192-1.jpg');
+  assert.equal(setNumberFromImageAddress(address), '75192-1', 'der Proxy legt die Rückfall-Adresse lokal ab');
 });
 
 test('only the main image is stored locally, no additional image and nothing foreign', () => {

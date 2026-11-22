@@ -25,7 +25,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 const { verifyEmailToken } = _req('src/account/loginCheck.js');
-const INVALID = { code: 'bestaetigungslink_ungueltig' };
+const INVALID = { code: 'confirmation_link_invalid' };
 const { tokenDigest } = _req('src/account/deviceToken.js');
 
 async function dbReachable() {
@@ -64,7 +64,7 @@ async function newUser(name, { minutesValid = 60, email = `${name}@example.ch` }
   return { id, token };
 }
 
-const zustand = id =>
+const condition = id =>
   db.get(
     'SELECT email, email_verified, registration_pending, new_email, new_email_token, new_email_until FROM users WHERE id=$1',
     [id],
@@ -85,7 +85,7 @@ test('email verification against a real database', async t => {
       { userId: u.id },
       'Ein frischer Token muss eingelöst werden können',
     );
-    assert.deepEqual(await zustand(u.id), {
+    assert.deepEqual(await condition(u.id), {
       email: 'gueltig@example.ch',
       email_verified: true,
       registration_pending: false,
@@ -98,7 +98,7 @@ test('email verification against a real database', async t => {
   await t.test('an expired token is rejected and changes nothing', async () => {
     const u = await newUser('abgelaufen', { minutesValid: -5 });
     await assert.rejects(verifyEmailToken(u.token), INVALID);
-    const z = await zustand(u.id);
+    const z = await condition(u.id);
     assert.deepEqual(
       [z.email, z.email_verified, z.registration_pending],
       [null, false, true],
@@ -126,8 +126,8 @@ test('email verification against a real database', async t => {
     const erste = await newUser('erste', { email: 'geteilt@example.ch' });
     const zweite = await newUser('zweite', { email: 'GETEILT@example.ch' });
     await verifyEmailToken(erste.token);
-    await assert.rejects(verifyEmailToken(zweite.token), { code: 'email_vergeben' });
-    const z = await zustand(zweite.id);
+    await assert.rejects(verifyEmailToken(zweite.token), { code: 'email_taken' });
+    const z = await condition(zweite.id);
     assert.deepEqual([z.email, z.registration_pending, z.new_email_token], [null, true, null]);
   });
 

@@ -45,8 +45,8 @@ const MASS = `(() => {
 
 test('N5 jump bar in the account', { timeout: 240_000 }, async t => {
   const app = await startApp(t, { name: `r26_${process.pid}` });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   for (const [breite, telefon] of [
@@ -70,7 +70,7 @@ test('N5 jump bar in the account', { timeout: 240_000 }, async t => {
         assert.ok(m.linkHeight >= 40, `Links zu klein: ${m.linkHeight} px`);
         assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
         assert.equal(m.rollt, telefon, telefon ? 'rollt am Telefon nicht' : 'rollt am Rechner');
-        assert.notEqual(m.farbe, m.grund, 'Linkfarbe gleich dem Grund');
+        assert.notEqual(m.farbe, m.reason, 'Linkfarbe gleich dem Grund');
         for (const ziel of ['account-t-danger', 'account-t-profile']) {
           await app.b.auswerten(`document.querySelector('.account-nav a[data-arg="${ziel}"]').click(); true`);
           await app.ruhig(500);

@@ -20,14 +20,14 @@ export const GELD_TEXT = /^\s*-?\d{1,12}(?:[.,]\d{1,4})?\s*$/;
 
 /** THE one reading of a money input (contract: eingabe.geld).
  * @returns null for "no amount" (missing, null, empty), otherwise the amount to four places */
-export function moneyInput(v: unknown, feld: string, max = 1_000_000, oneCode?: ErrorCode): number | null {
+export function moneyInput(v: unknown, field: string, max = 1_000_000, oneCode?: ErrorCode): number | null {
   if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) return null;
   const n =
     typeof v === 'number' ? v : typeof v === 'string' && GELD_TEXT.test(v) ? Number(v.trim().replace(',', '.')) : NaN;
   // An own code (vouchers) applies to every rejection; the apps know it there.
-  if (!Number.isFinite(n)) failDomain('ungueltig', oneCode ?? 'betrag_ungueltig');
-  if (n < 0) failDomain('ungueltig', oneCode ?? 'feld_negativ', { feld });
-  if (n > max) failDomain('ungueltig', oneCode ?? 'feld_zu_hoch', { feld });
+  if (!Number.isFinite(n)) failDomain('ungueltig', oneCode ?? 'amount_invalid');
+  if (n < 0) failDomain('ungueltig', oneCode ?? 'field_negative', { field });
+  if (n > max) failDomain('ungueltig', oneCode ?? 'field_too_high', { field });
   return Math.round(n * FACTOR) / FACTOR;
 }
 
@@ -38,17 +38,17 @@ export function aufRappen(z: TenThousandths): number {
 }
 
 /** The unit price is not rounded beforehand. */
-export function rowValue(unitPrice: unknown, menge: number): number | null {
+export function rowValue(unitPrice: unknown, quantity: number): number | null {
   const z = inTenThousandths(unitPrice);
-  return z === null ? null : aufRappen(z * menge);
+  return z === null ? null : aufRappen(z * quantity);
 }
 
 /** Rows without a price do not count. */
-export function sumFrom(rows: Iterable<{ preis: unknown; menge: number }>): number {
+export function sumFrom(rows: Iterable<{ preis: unknown; quantity: number }>): number {
   let z = 0;
   for (const r of rows) {
     const p = inTenThousandths(r.preis);
-    if (p !== null) z += p * r.menge;
+    if (p !== null) z += p * r.quantity;
   }
   return aufRappen(z);
 }

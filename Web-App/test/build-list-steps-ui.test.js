@@ -39,15 +39,15 @@ const TEIL = {
   total_quantity: 6,
 };
 
-async function create(teile, nummern = '10294') {
+async function create(parts, nummern = '10294') {
   const o = await openUi({
-    '/v1/sets/10294-1/parts-list': { success: true, parts: teile },
-    '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
-    '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
-    '/v1/sets/info/99999-1': { success: true, name: '99999-1', im_katalog: false },
-    '/v1/sets/99999-1/parts-list': { success: true, parts: [] },
-    '/v1/sets/99999-1/minifigs-list': { success: true, figs: [] },
-    '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
+    '/v2/sets/10294-1/parts-list': { success: true, parts: parts },
+    '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
+    '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
+    '/v2/sets/info/99999-1': { success: true, name: '99999-1', in_catalog: false },
+    '/v2/sets/99999-1/parts-list': { success: true, parts: [] },
+    '/v2/sets/99999-1/minifigs-list': { success: true, figs: [] },
+    '/v2/parts/bl-color-map': { success: true, map: { 4: 5 } },
   });
   await reiter(o.w, 'partslist');
   o.d.getElementById('pl-setnr').value = nummern;
@@ -75,10 +75,10 @@ test('setup: labels, reset not red', async () => {
 
 test('adding computes immediately, without a second step; "recompute" only with a set', async () => {
   const o = await openUi({
-    '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
-    '/v1/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
-    '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
-    '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
+    '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
+    '/v2/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
+    '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
+    '/v2/parts/bl-color-map': { success: true, map: { 4: 5 } },
   });
   const { w, d } = o;
   try {

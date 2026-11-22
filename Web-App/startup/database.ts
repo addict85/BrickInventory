@@ -1,13 +1,13 @@
 import type { Db } from '../db/database';
 import { altKey, dataKey } from '../src/infra/secret';
-import { konfig } from '../src/infra/config';
+import { config } from '../src/infra/config';
 import type { Services } from './wiring';
 
 /** A superuser reaches COPY … PROGRAM and every database of the server: in
  * production (even without NODE_ENV) a startup prohibition, unless DB_SUPERUSER_ALLOWED=1 (UPGRADE.md). */
 export async function warnAtSuperuser(db: Db): Promise<boolean> {
-  if (!konfig().operation || !(await db.asSuperuserConnected())) return false;
-  if (!konfig().dbSuperuserAllowed) {
+  if (!config().operation || !(await db.asSuperuserConnected())) return false;
+  if (!config().dbSuperuserAllowed) {
     console.error(
       '❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md#eigene-datenbankrolle; ' +
         'wer es bewusst so betreibt, setzt DB_SUPERUSER_ALLOWED=1 (UPGRADE.md#superuser-ausnahme).',

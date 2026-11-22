@@ -113,7 +113,9 @@ async function bricklinkRequest(
     !raw.bricklink_token ||
     !raw.bricklink_token_secret
   )
-    throw Object.assign(new Error('BrickLink API Zugangsdaten nicht vollständig.'), { code: 'bricklink_zugang_fehlt' });
+    throw Object.assign(new Error('BrickLink API Zugangsdaten nicht vollständig.'), {
+      code: 'bricklink_credentials_missing',
+    });
   // The guard above checks exactly these four fields — so it must also
   // PRODUCE the type, not just claim it. getCredentials() returns
   // a Record<string,string>, and the compiler cannot derive a fixed shape

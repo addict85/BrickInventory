@@ -33,12 +33,12 @@ const { spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const quellen = require('./helpers/sources');
-const _req = quellen.buildAndRequire();
+const sources = require('./helpers/sources');
+const _req = sources.buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
-const db = quellen.testData();
+const db = sources.testData();
 const { asRequest, asWebRequest, inSystemContext } = _req('src/infra/accountContext.js');
 
 const WEB = process.env.PGSYSTEM_WEB_USER;
@@ -89,7 +89,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     keineDb(t, new Error('ohne Testlauf (scripts/test-run.js) keine Web-Systemrolle'));
     return;
   }
-  const zugang = quellen.testAccess();
+  const zugang = sources.testAccess();
   t.after(() => db.pool.end().catch(() => {}));
   const imWeb = f => asWebRequest({}, () => inSystemContext('Test', f));
 
@@ -205,19 +205,19 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     const uid = (
       await db.get(`INSERT INTO users (username, password_hash) VALUES ('systemweb-teile', 'x') RETURNING id`)
     ).id;
-    await db.run(`DELETE FROM jobs WHERE type = 'katalog_nachzug'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'catalog_followup'`);
     await db.run(`INSERT INTO parts_catalog_pending (number) VALUES ('3001')`);
     const { summaryFresh } = _req('src/parts/summary.js');
     await asWebRequest({ session: { userId: uid } }, () => summaryFresh(uid));
-    const offen = async () => (await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n;
-    assert.equal(await offen(), 1, 'die Anfrage hat die Warteschlange geleert');
-    assert.ok(await db.get(`SELECT 1 FROM jobs WHERE type = 'katalog_nachzug' AND status = 'offen'`));
-    const followUp = quellen
+    const open = async () => (await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n;
+    assert.equal(await open(), 1, 'die Anfrage hat die Warteschlange geleert');
+    assert.ok(await db.get(`SELECT 1 FROM jobs WHERE type = 'catalog_followup' AND status = 'pending'`));
+    const followUp = sources
       .testServices()
       .jobQueue.signedInKinds()
-      .find(a => a.art === 'katalog_nachzug');
+      .find(a => a.kind === 'catalog_followup');
     await inSystemContext('Test', () => followUp.ausfuehren({}, {}));
-    assert.equal(await offen(), 0, 'der Auftrag leert sie');
+    assert.equal(await open(), 0, 'der Auftrag leert sie');
   });
 
   await t.test('the web process starts with the web system role and waits for the re-encryption', async tt => {
@@ -251,7 +251,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
     });
     const bereit = () =>
-      fetch(`http://127.0.0.1:${port}/api/v1/health/ready`).then(
+      fetch(`http://127.0.0.1:${port}/api/v2/health/ready`).then(
         r => r.status,
         () => null,
       );
@@ -265,7 +265,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       if (status !== 200) await warte(250);
     }
     assert.equal(status, 200, log.slice(-1500));
-    const anmeldung = await fetch(`http://127.0.0.1:${port}/api/v1/auth/login`, {
+    const anmeldung = await fetch(`http://127.0.0.1:${port}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'niemand-systemrolle-web', password: 'falsch-falsch-falsch' }),

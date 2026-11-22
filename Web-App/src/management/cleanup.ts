@@ -41,7 +41,7 @@ function cleanupDaily(k: ManagementContext, lauf?: JobRun): Promise<void> {
     [
       ['Preisverlauf', k.finances.deleteOldPrices],
       ...k.account.onCleanupSteps('taeglich'),
-      ['Bild-Cache', () => k.images.cleanImageCacheOn(k.images.imageLimits().cacheMaxBytes, k.uhr.jetzt())],
+      ['Bild-Cache', () => k.images.cleanImageCacheOn(k.images.imageLimits().cacheMaxBytes, k.clock.now())],
       ['Kopien vor Migrationen', () => cleanOldBackupsOn(k.db)],
     ],
     lauf,

@@ -52,7 +52,7 @@ test('household currency', { concurrency: 1 }, async t => {
     await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [id]);
   // A real change pulls the scheduled price job forward; it is not executed here.
   t.after(async () => {
-    await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'prices'`);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'waehrung|%'");
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
     await db.pool.end().catch(() => {});
@@ -82,7 +82,7 @@ test('household currency', { concurrency: 1 }, async t => {
     for (const unter of [ids[1], ids[2]]) {
       await assert.rejects(
         setUserSetting(unter, 'currency', 'USD'),
-        (/** @type {any} */ e) => e.code === 'waehrung_nur_hauptkonto' && e.art === 'verboten',
+        (/** @type {any} */ e) => e.code === 'currency_main_account_only' && e.kind === 'verboten',
       );
     }
     await setUserSetting(ids[1], 'currency', 'CHF');
@@ -103,7 +103,7 @@ test('household currency', { concurrency: 1 }, async t => {
     // Dragging dora along would give erik's household two currencies: rejected.
     await assert.rejects(
       setUserSetting(ids[4], 'currency', 'CHF'),
-      (/** @type {any} */ e) => e.code === 'waehrung_geteiltes_unterkonto' && e.art === 'konflikt',
+      (/** @type {any} */ e) => e.code === 'currency_shared_sub_account' && e.kind === 'konflikt',
     );
     assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'ein geteiltes Unterkonto …');
     await setUserSetting(ids[6], 'currency', 'EUR');
@@ -122,7 +122,7 @@ test('household currency', { concurrency: 1 }, async t => {
     for (const w of ['GBP', 'EUR', 'CHF', 'SEK']) await setUserSetting(ids[3], 'currency', w);
     await assert.rejects(
       setUserSetting(ids[3], 'currency', 'NOK'),
-      (/** @type {any} */ e) => e.code === 'zu_viele_anfragen' && e.art === 'zu_viele',
+      (/** @type {any} */ e) => e.code === 'too_many_requests' && e.kind === 'zu_viele',
     );
     await setUserSetting(ids[3], 'currency', 'SEK');
     assert.equal((await currencies())[3], 'SEK', 'ein unveränderter Wert zählt nicht und geht durch');

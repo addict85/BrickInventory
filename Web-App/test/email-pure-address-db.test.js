@@ -85,9 +85,9 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   // The IP throttle (5/h) should not hide the check of the address.
-  const rufe = async (methode, pfad, body) => {
+  const rufe = async (methode, path, body) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");
-    const r = await fetch(`${base}/api/v1/auth${pfad}`, {
+    const r = await fetch(`${base}/api/v2/auth${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -98,7 +98,7 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
   await t.test('registration only accepts plain addresses', async () => {
     for (const [i, email] of UNREIN.entries()) {
       const r = await rufe('POST', '/register', { username: `spam${i}_${P}`, email, password: 'Langes-Passwort-42' });
-      assert.deepEqual(r, { status: 400, code: 'email_ungueltig' }, email);
+      assert.deepEqual(r, { status: 400, code: 'email_invalid' }, email);
     }
     assert.equal((await db.get('SELECT count(*)::int AS n FROM users WHERE username LIKE $1', [`spam%_${P}`])).n, 0);
     const gut = await rufe('POST', '/register', {
@@ -110,18 +110,14 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
   });
 
   await t.test('forgot password and confirmation only accept plain addresses', async () => {
-    for (const weg of ['/forgot-password', '/bestaetigung-erneut'])
+    for (const weg of ['/forgot-password', '/resend-confirmation'])
       for (const email of UNREIN)
-        assert.deepEqual(
-          await rufe('POST', weg, { email }),
-          { status: 400, code: 'email_ungueltig' },
-          `${weg} ${email}`,
-        );
+        assert.deepEqual(await rufe('POST', weg, { email }), { status: 400, code: 'email_invalid' }, `${weg} ${email}`);
   });
 
   await t.test('the profile only accepts plain addresses', async () => {
     const r = await rufe('PUT', '/profile', { email: 'x<opfer@example.org>', password_current: PASS });
-    assert.deepEqual(r, { status: 400, code: 'email_ungueltig' });
+    assert.deepEqual(r, { status: 400, code: 'email_invalid' });
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@example.org`);
   });
 

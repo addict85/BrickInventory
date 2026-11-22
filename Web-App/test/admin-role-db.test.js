@@ -48,7 +48,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
   const { base, srv } = routerServer(_req, {
     sitzung: { userId: adminId, username: ADMIN, isAdmin: true },
     apiNutzer: { user_id: adminId, is_admin: 1 },
-    routen: { [AUTH]: 'routes/auth.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { [AUTH]: 'routes/auth.js', '/api/v2': 'routes/api/index.js' },
     t,
   });
 
@@ -58,11 +58,11 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
   };
   /** 0 as soon as the revocation is announced (or carried out). */
   const istAdmin = async () => {
-    const angekuendigt = await db.get(`SELECT 1 FROM admin_takeovers WHERE target_id=$1 AND type='rolle_entziehen'`, [
+    const announced = await db.get(`SELECT 1 FROM admin_takeovers WHERE target_id=$1 AND type='revoke_role'`, [
       targetId,
     ]);
     const admin = (await db.get(`SELECT is_admin FROM users WHERE id=$1`, [targetId])).is_admin;
-    return admin && !angekuendigt ? 1 : 0;
+    return admin && !announced ? 1 : 0;
   };
 
   const revoke = async (url, methode, wert) => {

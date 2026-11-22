@@ -28,7 +28,7 @@ import { emptyLocationField, selectedOwner, selectedStorage } from './account-lo
 
 // ── MINIFIGS ──────────────────────────────────────────────────────────────
 /**
- * @typedef {import('../../frontend-types/contract').GET_api_v1_minifigs['figs'][number]} Minifig
+ * @typedef {import('../../frontend-types/contract').GET_api_v2_minifigs['figs'][number]} Minifig
  */
 /** @type {Minifig[]} */
 let allFigsCache = [];
@@ -66,7 +66,7 @@ async function loadMinifigsMore() {
   _figLoadingMore = true;
   const gen = minifigsGuard.current();
   try {
-    const d = await api('GET', `/v1/minifigs?${figParams(_figPage + 1)}`);
+    const d = await api('GET', `/v2/minifigs?${figParams(_figPage + 1)}`);
     if (!minifigsGuard.isCurrent(gen)) return;
     const batch = d.figs || [];
     if (!batch.length) {
@@ -119,7 +119,7 @@ export async function loadMinifigs() {
   // An old error state gives way to the skeleton while reloading (as in the wishlist).
   const list = G('figs-list');
   if (list?.querySelector('.error-state')) setHtml(list, skeletonTiles(8, tRaw('common.loading')));
-  const d = await minifigsGuard.whenCurrent(api('GET', `/v1/minifigs?${figParams(1)}`));
+  const d = await minifigsGuard.whenCurrent(api('GET', `/v2/minifigs?${figParams(1)}`));
   if (d === undefined) return;
   if (listLoadError(G('figs-list'), d, { again: 'loadMinifigs', keep: allFigsCache.length > 0 })) return;
   allFigsCache = d.figs || [];
@@ -132,13 +132,13 @@ export async function loadMinifigs() {
 
   // Metrics with the tab's filter: otherwise the tile in the household would show the own numbers while
   // the list below showed all accounts.
-  const s = await api('GET', `/v1/minifigs/stats${scopeQuery('minifigs')}`);
+  const s = await api('GET', `/v2/minifigs/stats${scopeQuery('minifigs')}`);
   if (s.success) {
     G('mf-unique').textContent = String(s.stats.types);
     G('mf-total').textContent = String(s.stats.total_quantity);
   }
   // Manual valuation — with the minifigures tab's filter, so that the value matches the list above.
-  const v = await api('GET', `/v1/finance/minifigs-valuation${scopeQuery('minifigs')}`);
+  const v = await api('GET', `/v2/finance/minifigs-valuation${scopeQuery('minifigs')}`);
   if (v.success && parseFloat(v.total_value) > 0) {
     G('mf-val').textContent = fmtN(v.total_value, v.currency || accountCurrency);
   } else if (G('mf-val')) {
@@ -148,7 +148,7 @@ export async function loadMinifigs() {
 
 /**
  * The server filters search and source; here a reload happens, otherwise the filter would only search the loaded
- * page. Both lists, because the manual figures stand under the same filter bar.
+ * page. Both lists, because the manual figures state under the same filter bar.
  */
 function filterFigs() {
   loadMinifigs();
@@ -307,7 +307,7 @@ export async function deleteManualFig(figNumber, owner) {
     request: () =>
       api(
         'DELETE',
-        `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+        `/v2/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
       ),
     message: tRaw('figs.deleted'),
     focus: `.man-tile[data-arg="fig"][data-arg2="${CSS.escape(figNumber)}"]`,
@@ -325,7 +325,7 @@ export function manualMinifigs() {
   return manualFigsCache;
 }
 export async function loadManualFigsTable() {
-  const d = await api('GET', `/v1/minifigs/manual${manualQuery('minifigs', 'fig-search')}`);
+  const d = await api('GET', `/v2/minifigs/manual${manualQuery('minifigs', 'fig-search')}`);
   if (!d.success) return;
   manualFigsCache = d.figs || [];
   renderManualFigsTable();
@@ -429,7 +429,7 @@ export function renderManualFigsTable() {
 export async function updateManualFig(figNumber, body, owner) {
   const d = await api(
     'PUT',
-    `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+    `/v2/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
     body,
   );
   if (d.success) {
@@ -468,7 +468,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
   btn.textContent = '…';
   res.style.color = 'var(--mut)';
   res.textContent = tRaw('adding.progress');
-  const d = await api('POST', '/v1/minifigs', {
+  const d = await api('POST', '/v2/minifigs', {
     fig_number: num,
     bl_fig_number: G('af-blnum-inline')?.value.trim() || null,
     quantity: quantity.value,
@@ -537,8 +537,8 @@ export function csvImportStatus(elId, state, msg) {
 
 async function importFigsCsv() {
   const d = await uploadCsv({
-    feld: 'fig-csv-file',
-    pfad: '/v1/minifigs/import/csv',
+    field: 'fig-csv-file',
+    path: '/v2/minifigs/import/csv',
     show: l => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', tRaw('import.running')),
   });
   if (d) loadMinifigs();

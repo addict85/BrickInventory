@@ -14,7 +14,7 @@ import type { AccountContext } from './context';
 
 /** Domain, not HTTP: the HTTP layer chooses the status (src/http/errorKind.ts). */
 export type ConfirmationRejection = {
-  art: ErrorKind;
+  kind: ErrorKind;
   code: ErrorCode;
   vars?: Record<string, string | number>;
   passkey?: boolean;
@@ -25,28 +25,28 @@ const leer = (w: unknown) => w === undefined || w === null || String(w).trim() =
 
 async function braked(
   k: AccountContext,
-  art: Brake,
+  kind: Brake,
   uid: number,
   zugang: string,
   check: () => Promise<boolean>,
   refusal: ErrorCode,
 ): Promise<ConfirmationRejection | null> {
-  const locked = await confirmationLocked(k, art, uid, zugang);
+  const locked = await confirmationLocked(k, kind, uid, zugang);
   if (locked) {
-    reportLoginEvent('bestaetigung_gesperrt', { konto: uid, art, zugang });
-    return { art: 'zu_viele', ...locked };
+    reportLoginEvent('bestaetigung_gesperrt', { konto: uid, kind, zugang });
+    return { kind: 'zu_viele', ...locked };
   }
   if (!(await check())) {
-    reportLoginEvent('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
+    reportLoginEvent('bestaetigung_fehlgeschlagen', { konto: uid, kind, zugang });
     // Whoever guesses in a running session has captured an access: the owner learns about it (1×/day).
-    if (await confirmationFailed(k, art, uid, zugang)) {
-      reportLoginEvent('bestaetigung_gebremst', { konto: uid, art, zugang });
+    if (await confirmationFailed(k, kind, uid, zugang)) {
+      reportLoginEvent('bestaetigung_gebremst', { konto: uid, kind, zugang });
       if (!(await accountThrottled(k, 'bestaetigung-hinweis', uid, 1, 86_400_000)))
         hintInBackground(k, uid, 'bestaetigung_gebremst');
     }
-    return { art: 'ungueltig', code: refusal };
+    return { kind: 'ungueltig', code: refusal };
   }
-  await confirmationSucceeded(k, art, uid, zugang);
+  await confirmationSucceeded(k, kind, uid, zugang);
   return null;
 }
 
@@ -64,8 +64,8 @@ export async function checkConfirmation(
   const withFactor = await k.factors.isActive(uid);
   if (withFactor && leer(factor.code) && leer(factor.passkey))
     return {
-      art: 'ungueltig',
-      code: 'zweiter_faktor_noetig',
+      kind: 'ungueltig',
+      code: 'second_factor_required',
       ...((await k.factors.hasPasskeys(uid)) ? { passkey: true } : {}),
     };
   const pw = await braked(
@@ -77,10 +77,9 @@ export async function checkConfirmation(
       const u = await k.accesses.passwordHash(uid);
       return !!u && typeof password === 'string' && password !== '' && passwordFits(password, u.password_hash);
     },
-    'aktuelles_passwort_falsch',
+    'current_password_wrong',
   ).catch((e: unknown) => {
-    if (e instanceof BcryptOverload)
-      return { art: 'nicht_verfuegbar', code: 'server_ausgelastet' } as ConfirmationRejection;
+    if (e instanceof BcryptOverload) return { kind: 'nicht_verfuegbar', code: 'server_busy' } as ConfirmationRejection;
     throw e;
   });
   if (pw || !withFactor) return pw;
@@ -91,15 +90,15 @@ export async function checkConfirmation(
         uid,
         zugang,
         async () => !!(await k.factors.checkCode(uid, factor.code)),
-        'zweiter_faktor_falsch',
+        'second_factor_wrong',
       )
     : braked(
         k,
         'faktor',
         uid,
         zugang,
-        async () => (await k.factors.verifyAuthentication(factor.passkey, 'zweiter_faktor', uid)) === uid,
-        'passkey_ungueltig',
+        async () => (await k.factors.verifyAuthentication(factor.passkey, 'second_factor', uid)) === uid,
+        'passkey_invalid',
       );
 }
 
@@ -110,14 +109,7 @@ export function checkCodeConfirmation(
   zugang: string,
   code: string | number | null | undefined,
 ): Promise<ConfirmationRejection | null> {
-  return braked(
-    k,
-    'faktor',
-    uid,
-    zugang,
-    async () => !!(await k.factors.checkCode(uid, code)),
-    'zweiter_faktor_falsch',
-  );
+  return braked(k, 'faktor', uid, zugang, async () => !!(await k.factors.checkCode(uid, code)), 'second_factor_wrong');
 }
 
 /** Confirming the setup also checks a code; without a brake
@@ -139,7 +131,7 @@ export async function confirmSetupThrottled(
       codes = await k.factors.confirmSetup(uid, String(code ?? ''));
       return !!codes;
     },
-    'zweiter_faktor_falsch',
+    'second_factor_wrong',
   );
-  return refusal ?? codes ?? { art: 'ungueltig', code: 'zweiter_faktor_falsch' };
+  return refusal ?? codes ?? { kind: 'ungueltig', code: 'second_factor_wrong' };
 }

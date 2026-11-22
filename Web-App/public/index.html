@@ -299,7 +299,7 @@
       </div>
     </div>
 
-    <!-- ── REPLACE THE START PASSWORD (server: 403 passwort_wechsel_noetig) ─ -->
+    <!-- ── REPLACE THE START PASSWORD (server: 403 password_change_required) ─ -->
     <div id="panel-required-change" data-style="display:none">
       <h1 class="login-subline" data-i18n="required.title">Vorläufiges Passwort ersetzen</h1>
       <div class="text-small space-bottom-075" data-i18n="required.hint">Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Administrator vergeben hat. Bitte zuerst ein eigenes setzen.</div>
@@ -492,8 +492,8 @@
             <option value="price_asc" data-i18n="gallery.sort.price_asc">Preis ↑</option>
             <option value="qty_desc" data-i18n="gallery.sort.qty_desc">Anzahl ↓</option>
             <option value="qty_asc" data-i18n="gallery.sort.qty_asc">Anzahl ↑</option>
-            <option value="kauf_desc" data-i18n="gallery.sort.purchase_desc">Kaufdatum ↓</option>
-            <option value="kauf_asc" data-i18n="gallery.sort.purchase_asc">Kaufdatum ↑</option>
+            <option value="purchase_desc" data-i18n="gallery.sort.purchase_desc">Kaufdatum ↓</option>
+            <option value="purchase_asc" data-i18n="gallery.sort.purchase_asc">Kaufdatum ↑</option>
             <option value="name_desc" data-i18n="gallery.sort.name_desc" hidden>Name Z–A</option>
             <option value="num_desc" data-i18n="gallery.sort.num_desc" hidden>Nummer ↓</option>
             <option value="year_asc" data-i18n="gallery.sort.year_asc" hidden>Jahr ↑</option>
@@ -635,9 +635,9 @@
             <option value="1" data-i18n="parts.filter.spare">Nur Ersatzteile</option>
           </select>
           <select class="w-auto" id="parts-order" aria-label="Reihenfolge" data-i18n="parts.order_label" data-i18n-attr="aria-label">
-            <option value="farbe" data-i18n="parts.order.color">Nach Farbe gruppiert</option>
+            <option value="color" data-i18n="parts.order.color">Nach Farbe gruppiert</option>
             <option value="name" data-i18n="parts.order.name">Nach Name</option>
-            <option value="menge" data-i18n="parts.order.qty">Nach Menge</option>
+            <option value="quantity" data-i18n="parts.order.qty">Nach Menge</option>
           </select>
           <select id="scope-parts" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="parts" data-style="display:none"></select>
           <!-- Location: the same shape as the account filter next to it. Stays … -->
@@ -1277,7 +1277,7 @@
             <div class="fg"><label for="alert-new-state" data-i18n="common.condition">Zustand</label>
               <select id="alert-new-state"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg"><label for="alert-new-direction" data-i18n="alerts.new_dir">Melden, wenn der Preis</label>
-              <select id="alert-new-direction"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
+              <select id="alert-new-direction"><option value="below" data-i18n="detail.alert_below">fällt unter</option><option value="above" data-i18n="detail.alert_above">steigt über</option></select></div>
             <div class="fg"><label for="alert-new-price" data-i18n="alerts.new_price">Grenzpreis</label>
               <input type="text" id="alert-new-price" inputmode="decimal" autocomplete="off" /></div>
           </div>
@@ -1403,7 +1403,7 @@
               <span data-i18n="settings.data_zip_hint">Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Eingelesen wird jede Datei über „Importieren“ auf ihrer eigenen Seite. Gutscheine sind nicht enthalten: Nummer und PIN wirken wie Bargeld. Sie lassen sich unter „Gutscheine“ nach Bestätigung mit dem Passwort als PDF sichern.</span>
             </p>
             <div class="row gap-10 flex-wrap items-center space-bottom-1">
-              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="export">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
+              <a class="btn bs" href="/api/v2/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="export">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
             </div>
 
             <!-- ── The BrickLink wanted list has MOVED ── … -->
@@ -1412,7 +1412,7 @@
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten „Set Number,Quantity“), um sie unter „My Sets → Add via List“ bei Rebrickable zu importieren.</span>
             </p>
             <div class="row gap-10 flex-wrap items-center">
-              <a class="btn bs" href="/api/v1/sets/export/rebrickable" data-i18n="settings.export_rb" data-ico="export">Sets für Rebrickable exportieren</a>
+              <a class="btn bs" href="/api/v2/sets/export/rebrickable" data-i18n="settings.export_rb" data-ico="export">Sets für Rebrickable exportieren</a>
             </div>
           </div>
         </div>
@@ -1782,7 +1782,7 @@
       </div>
       <!-- Price alert when adding to the wanted list, including condition … -->
       <div class="row gap-8 items-end flex-wrap">
-        <div class="fg max-120"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select class="selection-compact" id="cat-m-alert-dir"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
+        <div class="fg max-120"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select class="selection-compact" id="cat-m-alert-dir"><option value="below" data-i18n="detail.alert_below">fällt unter</option><option value="above" data-i18n="detail.alert_above">steigt über</option></select></div>
         <div class="fg max-110"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-alert-val" placeholder="—" /></div>
       </div>
       <!-- BrickLink one row higher, the two … -->
@@ -1950,7 +1950,7 @@
     <div class="mhd"><h2 class="mtit" id="wiz-title" data-i18n="setup.title">Willkommen — BrickInventory einrichten</h2><button class="btn bs btn-sm" data-click="setupLater" data-dialog-close aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="text-small space-bottom-075" id="wiz-steps"></div>
 
-    <section class="wiz-step" data-step="passwort">
+    <section class="wiz-step" data-step="password">
       <p class="text-3" data-i18n="setup.pw_hint">Das Startpasswort stand nur im Protokoll des Servers. Bitte jetzt ein eigenes setzen.</p>
       <div class="lerr" id="wiz-pw-error" role="alert"></div>
       <form class="sform" data-submit="wiz-pw-set">
@@ -2002,7 +2002,7 @@
     <section class="wiz-step" data-step="first-set">
       <p class="text-3" data-i18n="setup.first_hint">Fast fertig. Wie kommt das erste Set in die Sammlung?</p>
       <div class="col-05">
-        <button type="button" class="btn bs" data-click="setupTarget" data-arg="nummer" data-i18n="setup.first_number" data-ico="list">Setnummer eingeben</button>
+        <button type="button" class="btn bs" data-click="setupTarget" data-arg="number" data-i18n="setup.first_number" data-ico="list">Setnummer eingeben</button>
         <button type="button" class="btn bs" data-click="setupTarget" data-arg="csv" data-i18n="setup.first_csv" data-ico="import">Liste als CSV importieren</button>
         <button type="button" class="btn bs" data-click="setupTarget" data-arg="catalog" data-i18n="setup.first_catalog" data-ico="catalog">Im Katalog stöbern</button>
       </div>

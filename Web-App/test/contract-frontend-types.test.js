@@ -85,14 +85,14 @@ const nr = String(Math.random());
 test('api(): every path gets the response of its route', () => {
   // Every line from the third on should be red exactly when it ends with FEHLT.
   const faelle = [
-    "api('GET', '/v1/sets').then(d => { if (d.success) zahl(d.total); });",
-    "api('GET', '/v1/sets').then(d => { if (d.success) zahl(d.gibtsnicht); }); // FEHLT",
-    "api('GET', `/v1/sets?${nr}`).then(d => { if (d.success) zahl(d.total); });",
-    "api('GET', `/v1/stats${nr}`).then(d => { if (d.success) zahl(d.stats?.total_sets ?? 0); });",
-    "api('GET', `/v1/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });",
-    "api('GET', `/v1/sets/${nr}`).then(d => { if (d.success) zahl(d.parts.length); }); // FEHLT",
-    "api('GET', '/v1/sets').then(d => { zahl(d.total); }); // FEHLT",
-    "api('GET', '/v1/sets/' + nr).then(d => { zahl(d.waswillstdu); });",
+    "api('GET', '/v2/sets').then(d => { if (d.success) zahl(d.total); });",
+    "api('GET', '/v2/sets').then(d => { if (d.success) zahl(d.gibtsnicht); }); // FEHLT",
+    "api('GET', `/v2/sets?${nr}`).then(d => { if (d.success) zahl(d.total); });",
+    "api('GET', `/v2/stats${nr}`).then(d => { if (d.success) zahl(d.stats?.total_sets ?? 0); });",
+    "api('GET', `/v2/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });",
+    "api('GET', `/v2/sets/${nr}`).then(d => { if (d.success) zahl(d.parts.length); }); // FEHLT",
+    "api('GET', '/v2/sets').then(d => { zahl(d.total); }); // FEHLT",
+    "api('GET', '/v2/sets/' + nr).then(d => { zahl(d.waswillstdu); });",
   ];
   const probe = HEADER + faelle.join('\n') + '\n';
   const versatz = HEADER.split('\n').length - 1;
@@ -104,33 +104,33 @@ test('api(): every path gets the response of its route', () => {
   });
 });
 
-test('/v1/sets/:nr/parts-list only hits its route', () => {
+test('/v2/sets/:nr/parts-list only hits its route', () => {
   const m = pruefe(
-    HEADER + "api('GET', `/v1/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });\n",
+    HEADER + "api('GET', `/v2/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });\n",
   );
   assert.deepEqual(Object.values(m), []);
 });
 
 test('without checking success a field is undefined, not unknown', () => {
   // Under strict: `d.total` is number | undefined, so with a fallback a number.
-  const m = pruefe(HEADER + "api('GET', '/v1/sets').then(d => { zahl(d.total ?? 0); });\n");
+  const m = pruefe(HEADER + "api('GET', '/v2/sets').then(d => { zahl(d.total ?? 0); });\n");
   assert.deepEqual(Object.values(m), []);
 });
 
 test('api() paths are written as a literal or template', () => {
   // Only then does tsc know the route. A composed path (variable,
-  // `'/v1/x/' + nr`) stays unchecked; their number may sink, never rise.
+  // `'/v2/x/' + nr`) stays unchecked; their number may sink, never rise.
   const LIMIT = 12;
   const js = path.join(ROOT, 'public', 'js');
-  const offen = [];
+  const open = [];
   for (const f of fs.readdirSync(js).filter(n => isAppModule(n))) {
     const src = fs.readFileSync(path.join(js, f), 'utf8');
     for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*([^'"`\s])/g))
-      offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
+      open.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
     for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*(['"])[^'"]*\2\s*\+/g))
-      offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
+      open.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
   }
-  assert.ok(offen.length <= LIMIT, `${offen.length} ungeprüfte Pfade (Schranke ${LIMIT}):\n${offen.join('\n')}`);
-  if (offen.length < LIMIT)
-    console.log(`  ℹ ungeprüfte api()-Pfade: ${offen.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
+  assert.ok(open.length <= LIMIT, `${open.length} ungeprüfte Pfade (Schranke ${LIMIT}):\n${open.join('\n')}`);
+  if (open.length < LIMIT)
+    console.log(`  ℹ ungeprüfte api()-Pfade: ${open.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });

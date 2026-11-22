@@ -8,7 +8,7 @@
  *      “administrator without second factor” (200 instead of 403)
  *   B  inboundLock deleted from registerImgProxy → red: the same
  *      subtests for the image proxy (no longer 403)
- *   C  check zweiterFaktorPflicht deleted in inboundLock → red:
+ *   C  check secondFactorRequired deleted in inboundLock → red:
  *      “administrator without second factor”, “password change” stays green
  *   D  (09.11.2026) in routes/pages.ts the image route again without
  *      requireLoginOrToken, inboundLock → red: both lock subtests for
@@ -76,12 +76,12 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
     const r = await fetch(base + weg);
     return { status: r.status, body: await r.text() };
   };
-  const bild = 'url=https%3A%2F%2Fcdn.rebrickable.com%2Fx.jpg';
+  const image = 'url=https%3A%2F%2Fcdn.rebrickable.com%2Fx.jpg';
   const wege = uid => [
     `/data/uploads/${uid}/a.pdf`,
     `/data/instructions/${SN}_1.pdf`,
-    `/api/v1/img-proxy?${bild}`,
-    `/api/img-proxy?${bild}`,
+    `/api/v1/img-proxy?${image}`,
+    `/api/img-proxy?${image}`,
     '/images/parts/probe.png',
   ];
 
@@ -95,7 +95,7 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
     for (const weg of wege(wechsel)) {
       const r = await hole(wechsel, weg);
       assert.equal(r.status, 403, `${weg}: ${r.body}`);
-      assert.match(r.body, /passwort_wechsel_noetig/, weg);
+      assert.match(r.body, /password_change_required/, weg);
     }
   });
 
@@ -103,7 +103,7 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
     for (const weg of wege(chef)) {
       const r = await hole(chef, weg);
       assert.equal(r.status, 403, `${weg}: ${r.body}`);
-      assert.match(r.body, /zweiter_faktor_pflicht/, weg);
+      assert.match(r.body, /second_factor_mandatory/, weg);
     }
   });
 

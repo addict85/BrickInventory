@@ -4,14 +4,14 @@ import { marketPriceSql } from '../../../db/moneySql';
 import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSearch';
 import { fromTable } from '../../infra/validate';
 
-export function markSetWanted(db: DbInterface, userId: number, sn: string, c: string, seit: Date | string | null) {
-  return db.get<{ war_neu: boolean }>(
+export function markSetWanted(db: DbInterface, userId: number, sn: string, c: string, since: Date | string | null) {
+  return db.get<{ was_new: boolean }>(
     `INSERT INTO wanted (user_id, set_number, condition, created_at)
      VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
         SET condition = wanted.condition
-     RETURNING (xmax = 0) AS war_neu`,
-    [userId, sn, c, seit],
+     RETURNING (xmax = 0) AS was_new`,
+    [userId, sn, c, since],
   );
 }
 
@@ -63,7 +63,7 @@ export type WantedRow = {
   alarm_direction: string | null;
   alarm_threshold: number | null;
   alarm_triggered: boolean | null;
-  marktpreis: number | null;
+  market_price: number | null;
   owned: boolean;
 };
 
@@ -94,7 +94,7 @@ export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedS
             sc.image_url,
             pa.direction AS alarm_direction, pa.threshold AS alarm_threshold,
             pa.triggered AS alarm_triggered,
-            ${marketPriceSql('pc')} AS marktpreis,
+            ${marketPriceSql('pc')} AS market_price,
             EXISTS (SELECT 1 FROM ${setBestand('= ANY($1)')} s
                      WHERE s.set_number = w.set_number) AS owned
        FROM wanted w

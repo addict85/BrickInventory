@@ -20,7 +20,7 @@ const SET = {
   quantity: 1,
   conditions: ['N'],
   avg_purchase_price: 199.99,
-  letzter_kauf: '2026-06-01T10:00:00Z',
+  last_purchase: '2026-06-01T10:00:00Z',
   instructions: [],
 };
 
@@ -31,9 +31,9 @@ test('axis from the first market price, purchase at the edge', async () => {
     { recorded_at: '2026-10-01', avg_price: 190 },
   ];
   const { w, d } = await openUi({
-    '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
-    '/v1/sets/21318-1': { success: true, set: SET },
-    '/v1/sets/21318-1/price-history': {
+    '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] },
+    '/v2/sets/21318-1': { success: true, set: SET },
+    '/v2/sets/21318-1/price-history': {
       success: true,
       currency: 'EUR',
       history_new: historie,
@@ -62,7 +62,7 @@ test('axis from the first market price, purchase at the edge', async () => {
 test('cost basis label moves aside', async () => {
   // Cost 1530, the curve ends at 1545 — just above it.
   const { w, d } = await openUi({
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       totals: { min: '0', avg: '1545', max: '0' },
@@ -73,32 +73,32 @@ test('cost basis label moves aside', async () => {
           quantity: 1,
           purchase_price: 1530,
           avg_price: 1545,
-          wert_gesamt: 1545,
+          value_total: 1545,
           acquisitions: [],
         },
       ],
     },
-    '/v1/finance/pnl': {
+    '/v2/finance/pnl': {
       success: true,
       currency: 'EUR',
       sets: [],
       totals: {
         purchase: '1530.00',
         grand_total: '1545.00',
-        pnl_prozent: 1,
-        positionen: 1,
-        positionen_bewertet: 1,
-        positionen_ohne_marktpreis: 0,
-        positionen_ohne_kaufpreis: 0,
-        basis_einstand: '1530.00',
-        basis_marktwert: '1545.00',
-        basis_guv_betrag: '15.00',
+        pnl_percent: 1,
+        positions: 1,
+        positions_valued: 1,
+        positions_without_market_price: 0,
+        positions_without_purchase_price: 0,
+        baseline_cost: '1530.00',
+        baseline_market_value: '1545.00',
+        baseline_pnl_amount: '15.00',
       },
     },
-    '/v1/finance/portfolio-history': {
+    '/v2/finance/portfolio-history': {
       success: true,
       currency: 'EUR',
-      messpunkte: 3,
+      data_points: 3,
       period_change_pct: 0.5,
       points: [
         { x_label: 'a', value: 1900 },

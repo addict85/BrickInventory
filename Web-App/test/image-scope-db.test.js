@@ -131,7 +131,7 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
-  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/health`).catch(() => null)) === null; i++)
     await warte(250);
 
   const hole = async (wer, weg) => {
@@ -141,16 +141,16 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
     });
     return { status: r.status, text: await r.text() };
   };
-  const bild = (sn, zusatz = '') => `/images/sets/${sn}${zusatz}.jpg`;
+  const image = (sn, zusatz = '') => `/images/sets/${sn}${zusatz}.jpg`;
 
   await t.test('without login no image and no instruction, and images only cached privately', async () => {
-    for (const weg of [bild(SN.unter), `/images/parts/${TEIL}`, `/data/instructions/${SN.unter}_1.pdf`]) {
+    for (const weg of [image(SN.unter), `/images/parts/${TEIL}`, `/data/instructions/${SN.unter}_1.pdf`]) {
       const r = await fetch(`http://127.0.0.1:${port}${weg}`, { redirect: 'manual' });
       const text = await r.text();
       assert.ok([401, 403].includes(r.status), `${weg} ohne Anmeldung: ${r.status}`);
       assert.doesNotMatch(text, /^Inhalt /, `${weg} lieferte die Datei ohne Anmeldung aus`);
     }
-    const r = await fetch(`http://127.0.0.1:${port}${bild(SN.unter)}`, {
+    const r = await fetch(`http://127.0.0.1:${port}${image(SN.unter)}`, {
       headers: { Authorization: `Bearer ${token.unter}` },
     });
     await r.text();
@@ -162,9 +162,9 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
   });
 
   await t.test('the own set image including preview', async () => {
-    assert.equal((await hole('unter', bild(SN.unter))).status, 200);
-    assert.equal((await hole('unter', bild(SN.unter, '_thumb'))).text, `Inhalt ${SN.unter}_thumb.jpg`);
-    assert.equal((await hole('fremd', bild(SN.fremd))).status, 200);
+    assert.equal((await hole('unter', image(SN.unter))).status, 200);
+    assert.equal((await hole('unter', image(SN.unter, '_thumb'))).text, `Inhalt ${SN.unter}_thumb.jpg`);
+    assert.equal((await hole('fremd', image(SN.fremd))).status, 200);
   });
 
   await t.test('set images go to every logged-in account', async () => {
@@ -174,11 +174,11 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
       ['unter', SN.gemerkt],
       ['haupt', SN.fremd],
     ]) {
-      const r = await hole(wer, bild(sn));
+      const r = await hole(wer, image(sn));
       assert.deepEqual(r, { status: 200, text: `Inhalt ${sn}.jpg` }, `${wer} → ${sn}`);
     }
-    assert.equal((await hole('fremd', bild(SN.unter, '_thumb'))).status, 200);
-    assert.equal((await hole('haupt', bild(SN.none))).status, 404, 'eine fehlende Datei bleibt 404');
+    assert.equal((await hole('fremd', image(SN.unter, '_thumb'))).status, 200);
+    assert.equal((await hole('haupt', image(SN.none))).status, 404, 'eine fehlende Datei bleibt 404');
   });
 
   await t.test('part images are catalog', async () => {
@@ -199,7 +199,7 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
   });
 
   await t.test('the API names the local image of every set', async () => {
-    const info = async sn => JSON.parse((await hole('haupt', `/api/v1/sets/info/${sn}`)).text);
+    const info = async sn => JSON.parse((await hole('haupt', `/api/v2/sets/info/${sn}`)).text);
     assert.equal((await info(SN.unter)).image_local, `/images/sets/${SN.unter}.jpg`);
     assert.equal((await info(SN.fremd)).image_local, `/images/sets/${SN.fremd}.jpg`);
   });
@@ -210,13 +210,13 @@ test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, a
       200,
       'vorher: im Zwischenspeicher als Treffer',
     );
-    const r = await fetch(`http://127.0.0.1:${port}/api/v1/settings/household/unlink`, {
+    const r = await fetch(`http://127.0.0.1:${port}/api/v2/settings/household/unlink`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token.unter}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ main_user_id: ids[0] }),
     });
     assert.equal(r.status, 200, await r.text());
     assert.equal((await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status, 404);
-    assert.equal((await hole('haupt', bild(SN.unter))).status, 200, 'das Set-Bild bleibt Katalog');
+    assert.equal((await hole('haupt', image(SN.unter))).status, 200, 'das Set-Bild bleibt Katalog');
   });
 });

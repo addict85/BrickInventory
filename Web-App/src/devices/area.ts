@@ -9,7 +9,7 @@ export type { DevicesDependencies, DevicesContext } from './context';
 export function createDevices(a: DevicesDependencies, inspect?: Inspect<DevicesContext>) {
   return buildArea(
     a,
-    (db: Db) => access(db, a.lesevertrag),
+    (db: Db) => access(db, a.readContract),
     (k: DevicesContext) => ({
       newNonce: bound(k)(deviceChallenge.newNonce),
       depositKey: bound(k)(deviceChallenge.depositKey),

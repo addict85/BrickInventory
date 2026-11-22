@@ -31,15 +31,15 @@ test('limits for forms with a file', { concurrency: 1 }, async t => {
   });
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const datei = () => new Blob([JSON.stringify({ user_settings: { currency: 'CHF' } })], { type: 'application/json' });
-  const sende = async (pfad, fd) => {
-    const r = await fetch(base + pfad, { method: 'POST', body: fd });
+  const sende = async (path, fd) => {
+    const r = await fetch(base + path, { method: 'POST', body: fd });
     return [r.status, (await r.json()).code ?? null];
   };
 
   await t.test('precondition: the settings import accepts an ordinary form', async () => {
     const fd = new FormData();
     fd.append('file', datei(), 'e.json');
-    assert.deepEqual(await sende('/api/v1/settings/import', fd), [200, null]);
+    assert.deepEqual(await sende('/api/v2/settings/import', fd), [200, null]);
   });
 
   await t.test('too many fields, fields too large, two files: 400', async () => {
@@ -54,14 +54,14 @@ test('limits for forms with a file', { concurrency: 1 }, async t => {
     zwei.append('file', datei(), 'f.json');
     assert.deepEqual(
       [
-        await sende('/api/v1/settings/import', viele),
-        await sende('/api/v1/vouchers/pdf', gross),
-        await sende('/api/v1/settings/import', zwei),
+        await sende('/api/v2/settings/import', viele),
+        await sende('/api/v2/vouchers/pdf', gross),
+        await sende('/api/v2/settings/import', zwei),
       ],
       [
-        [400, 'upload_ungueltig'],
-        [400, 'upload_ungueltig'],
-        [400, 'upload_ungueltig'],
+        [400, 'upload_invalid'],
+        [400, 'upload_invalid'],
+        [400, 'upload_invalid'],
       ],
     );
   });

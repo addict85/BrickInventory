@@ -9,35 +9,35 @@ const FollowUpPayload = z.object({ schritt: z.enum(FOLLOW_UP_STEPS) });
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    nachlauf: typeof FollowUpPayload;
-    aufraeumen: typeof EMPTY;
-    aufraeumen_taeglich: typeof EMPTY;
+    followup: typeof FollowUpPayload;
+    cleanup: typeof EMPTY;
+    cleanup_daily: typeof EMPTY;
   }
 }
 
 export function managementJobTypes(k: ManagementContext): Login[] {
   return [
     jobKind({
-      art: 'nachlauf',
+      kind: 'followup',
       payload: FollowUpPayload,
       ausfuehren: (n, l) => runFollowUp(k, n, l),
       kontouebergreifend: 'Altbestand und Katalog aller Konten',
     }),
     jobKind({
-      art: 'aufraeumen',
+      kind: 'cleanup',
       payload: EMPTY,
       ausfuehren: (_n, l) => cleanup(k, l),
       exklusiv: true,
       kontouebergreifend: 'Reste aller Konten',
-      zeitplan: { minuten: { vorgabe: 60 } },
+      zeitplan: { minutes: { preset: 60 } },
     }),
     jobKind({
-      art: 'aufraeumen_taeglich',
+      kind: 'cleanup_daily',
       payload: EMPTY,
       ausfuehren: (_n, l) => cleanupDaily(k, l),
       exklusiv: true,
       kontouebergreifend: 'Reste aller Konten',
-      zeitplan: { minuten: { vorgabe: 24 * 60 } },
+      zeitplan: { minutes: { preset: 24 * 60 } },
     }),
   ];
 }

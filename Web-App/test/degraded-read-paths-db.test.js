@@ -54,7 +54,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
   });
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const manuelle = async () => {
-    const r = await fetch(`${base}/api/v1/parts/manual`);
+    const r = await fetch(`${base}/api/v2/parts/manual`);
     assert.equal(r.status, 200);
     return r.json();
   };
@@ -65,7 +65,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
       j.parts.map((/** @type {any} */ p) => p.part_number),
       [TEIL],
     );
-    assert.equal(j.degradiert, undefined);
+    assert.equal(j.degraded, undefined);
   });
 
   await t.test('without prices the list says why', async () => {
@@ -78,7 +78,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
         'die Liste bleibt',
       );
       assert.equal(j.parts[0].avg_price, null);
-      assert.deepEqual(j.degradiert, ['marktpreise']);
+      assert.deepEqual(j.degraded, ['marktpreise']);
     } finally {
       await zurueck();
     }

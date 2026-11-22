@@ -25,7 +25,7 @@ async function createAlert() {
     fieldError('alert-new-price', tRaw('alerts.new_price_missing'));
     return;
   }
-  const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
+  const d = await api('PUT', `/v2/sets/${encodeURIComponent(sn)}/alert`, {
     direction: G('alert-new-direction').value,
     threshold,
     condition: G('alert-new-state').value,
@@ -53,7 +53,7 @@ export async function loadAlertOverview() {
       suggestions,
       gallerySets.map(x => html`<option value="${x.set_number}">${x.name || ''}</option>`),
     );
-  const d = await api('GET', '/v1/alerts');
+  const d = await api('GET', '/v2/alerts');
   if (!d?.success) return;
   const alerts = d.alerts || [];
   if (!alerts.length) {
@@ -64,7 +64,7 @@ export async function loadAlertOverview() {
     el,
     alerts.map(a => {
       const condition = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
-      const direction = a.direction === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
+      const direction = a.direction === 'below' ? tRaw('alerts.below') : tRaw('alerts.above');
       // The key is (set, condition) — both are needed, otherwise changing one hits the wrong one of a
       // set's two possible alerts.
       const key = `${a.set_number}|${a.condition}`;
@@ -85,7 +85,7 @@ export async function loadAlertOverview() {
       // The row opens the set detail, but only if the set is in the collection — otherwise an error would
       // show instead of the dialog. The field and delete button have their own data-click, otherwise every
       // click into the field would open the dialog above it.
-      const opens = a.besitzt ? ` class="cursor-pointer" data-click="openModal" data-arg="${esc(a.set_number)}"` : '';
+      const opens = a.owns ? ` class="cursor-pointer" data-click="openModal" data-arg="${esc(a.set_number)}"` : '';
       return html`<div class="alert-item"${rawHtml(opens)}>
       ${rawHtml(image)}
       <div class="alert-item-text">
@@ -131,8 +131,8 @@ async function changeAlertThreshold(key, value) {
   }
   const { setNumber, condition } = alertKey(key);
   // Written via the EXISTING route on the set — the overview gets no write path of its own (see
-  // routes/api_v1/sets.ts).
-  const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`, { condition, threshold });
+  // routes/api/sets.ts).
+  const d = await api('PUT', `/v2/sets/${encodeURIComponent(setNumber)}/alert`, { condition, threshold });
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
   await loadAlertOverview();
 }
@@ -144,16 +144,16 @@ async function changeAlertThreshold(key, value) {
 async function deleteAlert(key, setNumber) {
   // Restorable: the undo writes the old threshold back, so no question before (js/deletion.js).
   const { setNumber: sn, condition } = alertKey(key);
-  const before = (await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`))?.alerts?.find(
+  const before = (await api('GET', `/v2/sets/${encodeURIComponent(sn)}/alert`))?.alerts?.find(
     a => a.condition === condition,
   );
   await deleteRestorable({
-    request: () => api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${encodeURIComponent(condition)}`),
+    request: () => api('DELETE', `/v2/sets/${encodeURIComponent(sn)}/alert?condition=${encodeURIComponent(condition)}`),
     message: tRaw('alerts.deleted', { set: setNumber }),
     undo: before
       ? async () => {
-          const r = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
-            direction: before.direction === 'ueber' ? 'ueber' : 'unter',
+          const r = await api('PUT', `/v2/sets/${encodeURIComponent(sn)}/alert`, {
+            direction: before.direction === 'above' ? 'above' : 'below',
             threshold: Number(before.threshold),
             condition,
           });
@@ -173,9 +173,9 @@ async function deleteAlert(key, setNumber) {
 async function importAlertsCsv() {
   const status = G('alerts-csv-status');
   const d = await uploadCsv({
-    feld: 'alerts-csv-file',
-    pfad: '/v1/alerts/import/csv',
-    hinweise: a => [a.waehrung_hinweis],
+    field: 'alerts-csv-file',
+    path: '/v2/alerts/import/csv',
+    hints: a => [a.currency_note],
     show: l => {
       if (status) status.textContent = l ? tRaw('import.running') : '';
     },

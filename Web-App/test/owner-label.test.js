@@ -20,14 +20,14 @@ const ANNA = { id: 1, username: 'anna' },
 
 async function galerie() {
   const o = await openUi({
-    '/v1/sets/household-members': {
+    '/v2/sets/household-members': {
       success: true,
       members: [
-        { ...ANNA, is_self: true, tiefe: 0 },
-        { ...EMILY, is_self: false, tiefe: 1 },
+        { ...ANNA, is_self: true, depth: 0 },
+        { ...EMILY, is_self: false, depth: 1 },
       ],
     },
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       total: 3,
       themes: [],

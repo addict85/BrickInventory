@@ -8,12 +8,12 @@ import type { PartsContext } from './context';
 // Fix a wrong color without re-entering the row.
 export type ColorChange = {
   /** The row moved (false) or was merged with an existing one (true). */
-  zusammengelegt: boolean;
-  verschoben: number;
+  combined: boolean;
+  moved: number;
   /** Added into an acquisition from the same day. */
-  vereint: number;
+  united: number;
   /** `null` is information, not an error; the UI names it. */
-  bild: ImageSource;
+  image: ImageSource;
 };
 
 /** `vorhanden`: already there (even from a set list); `rebrickable`: fetched;
@@ -27,7 +27,7 @@ async function fetchImageLater(k: PartsContext, partNumber: string, color: numbe
   if (local?.bildQuelle === 'farbe') return 'vorhanden';
 
   // The change already stands; a failed fetch only drops the image.
-  const info = await attempts('partColor:lookupPart', () => k.externalSources.quellen.lookupPart(partNumber, color));
+  const info = await attempts('partColor:lookupPart', () => k.externalSources.sources.lookupPart(partNumber, color));
   if (!info.ok || !info.wert?.image_url) return null;
   try {
     await k.catalog.rememberPartColor(partNumber, color, null, null, info.wert.image_url, null);
@@ -56,14 +56,14 @@ export async function changePartColor(
   // own values only fill in what's missing there.
   const catalogColor = await k.partColor.rbColor(fresh);
 
-  const change = await k.transact(async (t): Promise<Omit<ColorChange, 'bild'>> => {
+  const change = await k.transact(async (t): Promise<Omit<ColorChange, 'image'>> => {
     const source = await repo.lockManualPartRow(t.db, uid, partNumber, alt);
     if (!source) {
-      failDomain('nicht_gefunden', 'teil_nicht_manuell');
+      failDomain('not_found', 'part_not_manual');
     }
     // Same color is REPORTED rather than treated as success: otherwise a misclick
     // would look like a real change.
-    if (alt === fresh) return { zusammengelegt: false, verschoben: 0, vereint: 0 };
+    if (alt === fresh) return { combined: false, moved: 0, united: 0 };
 
     // The TARGET color's catalog entry must exist before the move: the parts list
     // reads name and color code from there, otherwise a color dot with no label.
@@ -72,17 +72,17 @@ export async function changePartColor(
 
     const target = await repo.lockManualPartRow(t.db, uid, partNumber, fresh);
 
-    const { vereint, verschoben } = await t.inventory.manuell.recolorPartRow(
+    const { united, moved } = await t.inventory.manuell.recolorPartRow(
       uid,
       partNumber,
       { ...source, farbe: alt },
       target ?? null,
       fresh,
     );
-    return { zusammengelegt: !!target, verschoben, vereint };
+    return { combined: !!target, moved, united };
   });
 
   // Even when alt === neu: an exception here would be a second path that only
   // adds the image some of the time.
-  return { ...change, bild: await fetchImageLater(k, partNumber, fresh) };
+  return { ...change, image: await fetchImageLater(k, partNumber, fresh) };
 }

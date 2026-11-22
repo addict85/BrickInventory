@@ -62,31 +62,31 @@ test('without Chrome and Caddy the closing line names both numbers', { timeout: 
   delete process.env.REQUIRE_BROWSER;
   const chromeDa = !!require('./helpers/app-browser').chrome();
   for (const [k, v] of Object.entries(vorher)) if (v !== undefined) process.env[k] = v;
-  const zeile = abschluss(t, { SKIP_BROWSER: '1' });
+  const row = abschluss(t, { SKIP_BROWSER: '1' });
   assert.match(
-    zeile,
+    row,
     new RegExp(`übersprungen: ${chromeDa ? 0 : 1} Browser-Dateien ohne Chrome \\(CHROME_BIN, SKIP_BROWSER=1\\)`),
   );
-  assert.match(zeile, /, 1 Caddy-Dateien ohne Caddy \(CADDY_BIN, REQUIRE_CADDY=1\)$/);
+  assert.match(row, /, 1 Caddy-Dateien ohne Caddy \(CADDY_BIN, REQUIRE_CADDY=1\)$/);
 });
 
 test('with Chrome and Caddy nothing is skipped', { timeout: 120_000 }, t => {
-  const zeile = abschluss(t, { CHROME_BIN: process.execPath, CADDY_BIN: process.execPath });
-  assert.match(zeile, /übersprungen: 0 Browser-Dateien ohne Chrome .*, 0 Caddy-Dateien ohne Caddy/);
+  const row = abschluss(t, { CHROME_BIN: process.execPath, CADDY_BIN: process.execPath });
+  assert.match(row, /übersprungen: 0 Browser-Dateien ohne Chrome .*, 0 Caddy-Dateien ohne Caddy/);
 });
 
 test('with REQUIRE_BROWSER=1 nothing counts as skipped', { timeout: 120_000 }, t => {
   // Then every real browser file fails loudly; the throwaway file here does not ask for Chrome.
-  const zeile = abschluss(t, { CHROME_BIN: '/gibt/es/nicht', REQUIRE_BROWSER: '1', REQUIRE_CADDY: '1' });
-  assert.match(zeile, /übersprungen: 0 Browser-Dateien .*, 0 Caddy-Dateien/);
+  const row = abschluss(t, { CHROME_BIN: '/gibt/es/nicht', REQUIRE_BROWSER: '1', REQUIRE_CADDY: '1' });
+  assert.match(row, /übersprungen: 0 Browser-Dateien .*, 0 Caddy-Dateien/);
 });
 
 test('without SKIP_BROWSER=1 the files run with REQUIRE_BROWSER=1', { timeout: 120_000 }, t => {
   // With it helpers/app-browser throws instead of skipping; the throwaway file asserts the variable.
-  const zeile = abschluss(
+  const row = abschluss(
     t,
     { CHROME_BIN: '/gibt/es/nicht' },
     { browserBody: "require('node:assert').equal(process.env.REQUIRE_BROWSER, '1');" },
   );
-  assert.match(zeile, /übersprungen: 0 Browser-Dateien/);
+  assert.match(row, /übersprungen: 0 Browser-Dateien/);
 });

@@ -75,8 +75,8 @@ export function onceDecoded(text: string): string {
 
 export function numberRequired(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
-  if (!v) failDomain('ungueltig', 'feld_erforderlich', { feld: field });
-  if (!ITEM_NUMBER_RE.test(v)) failDomain('ungueltig', 'feld_nummer_ungueltig', { feld: field });
+  if (!v) failDomain('ungueltig', 'field_required', { field: field });
+  if (!ITEM_NUMBER_RE.test(v)) failDomain('ungueltig', 'field_number_invalid', { field: field });
   return v;
 }
 
@@ -95,14 +95,14 @@ export function optionalText(value: unknown, maxLen = 200): string | null {
 export function optionalImageUrl(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   const v = String(value).trim();
-  if (v.length > 2048) failDomain('ungueltig', 'bild_url_zu_lang');
+  if (v.length > 2048) failDomain('ungueltig', 'image_url_too_long');
   let u: URL;
   try {
     u = new URL(v);
   } catch {
-    failDomain('ungueltig', 'bild_url_ungueltig');
+    failDomain('ungueltig', 'image_url_invalid');
   }
-  if (u.protocol !== 'https:') failDomain('ungueltig', 'bild_url_nicht_https');
+  if (u.protocol !== 'https:') failDomain('ungueltig', 'image_url_not_https');
   return u.toString();
 }
 
@@ -116,7 +116,7 @@ export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): numb
  * "quantity 0" and deleted the inventory. */
 export function inventoryQuantity(value: unknown, min = 0, max = 100_000): number {
   const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^\d{1,6}$/.test(raw) || +raw < min || +raw > max) failDomain('ungueltig', 'wert_ungueltig');
+  if (!/^\d{1,6}$/.test(raw) || +raw < min || +raw > max) failDomain('ungueltig', 'value_invalid');
   return +raw;
 }
 
@@ -142,7 +142,7 @@ export type ConditionState = 'N' | 'U';
 
 /** THE one rule for conditions from database, CSV and input: 'U' (lower case too)
  * is used, 'N' new, everything else the default. */
-export function zustand(raw: unknown, defaultValue: ConditionState = 'N'): ConditionState {
+export function conditionOf(raw: unknown, defaultValue: ConditionState = 'N'): ConditionState {
   const v = String(raw ?? '')
     .trim()
     .toUpperCase();
@@ -163,15 +163,15 @@ export function acquisitionQuantity(value: unknown, fallback = 1): number {
 export function quantitiesDelta(value: unknown): number | null {
   if (value === undefined || value === null) return null;
   const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^-?\d{1,4}$/.test(raw)) failDomain('ungueltig', 'wert_ungueltig');
+  if (!/^-?\d{1,4}$/.test(raw)) failDomain('ungueltig', 'value_invalid');
   return Number(raw);
 }
 
 /** Strict: the string "false" is truthy in JavaScript. */
-export function strictBool(value: unknown, feld = 'Wert'): boolean {
+export function strictBool(value: unknown, field = 'Wert'): boolean {
   if (value === true || value === 'true' || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
-  failDomain('ungueltig', 'feld_kein_wahrheitswert', { feld });
+  failDomain('ungueltig', 'field_not_boolean', { field });
 }
 
 /** Aggregates come as strings, and "0" is truthy in JavaScript. */
@@ -224,7 +224,7 @@ function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, m
       try {
         return check(v);
       } catch (e) {
-        ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e), params: { fehler: e } });
+        ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e), params: { error: e } });
         return z.NEVER;
       }
     });
@@ -234,12 +234,12 @@ function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, m
 export const input = {
   /** An own rule with its own error code; mandatory. */
   rule: <T>(check: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(check, json, true),
-  itemNumber: (feld: string) =>
-    alsSchema(v => numberRequired(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
+  itemNumber: (field: string) =>
+    alsSchema(v => numberRequired(v, field), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
   imageUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
   /** Without `pflicht` the quantity may be missing or null; then it stays as it is. */
-  menge: (min = 0, max = 100_000) =>
+  quantity: (min = 0, max = 100_000) =>
     alsSchema(v => inventoryQuantity(v, min, max), { type: ['integer', 'string'], minimum: min, maximum: max }, true),
   /** If it is missing or null, the quantity stays as it is. */
   quantityOrNothing: (min = 0, max = 100_000) =>
@@ -255,8 +255,8 @@ export const input = {
   colorCode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   /** Money (src/infra/money.ts). Described as a number; text with a dot or comma is still accepted by the
    * server (forms), it is not part of the contract. */
-  geld: (feld: string, o: { nullbar?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
-    alsSchema(v => moneyInput(v, feld, o.max, o.oneCode), {
+  geld: (field: string, o: { nullbar?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
+    alsSchema(v => moneyInput(v, field, o.max, o.oneCode), {
       ...(o.nullbar === false ? { type: 'number' } : { anyOf: [{ type: 'number' }, { type: 'null' }] }),
       minimum: 0,
       maximum: o.max ?? 1_000_000,
@@ -265,15 +265,15 @@ export const input = {
   quantitiesDelta: () =>
     alsSchema(quantitiesDelta, { anyOf: [{ type: 'integer', minimum: -9999, maximum: 9999 }, { type: 'null' }] }),
   condition: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
-  flag: (feld: string) =>
+  flag: (field: string) =>
     alsSchema(
-      v => strictBool(v, feld),
+      v => strictBool(v, field),
       { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] },
       true,
     ),
   /** May be missing; then it is no. */
-  toggleOrNo: (feld: string) =>
-    alsSchema(v => strictBool(v, feld), {
+  toggleOrNo: (field: string) =>
+    alsSchema(v => strictBool(v, field), {
       type: ['boolean', 'integer', 'string'],
       enum: [true, false, 1, 0, 'true', 'false', '1', '0'],
     }),

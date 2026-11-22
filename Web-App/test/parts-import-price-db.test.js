@@ -40,8 +40,8 @@ test('import without a price leaves the same as capturing without a price', { co
     const csv = `part_number,part_name,quantity\n${IMPORTED},Testteil,3\n`;
     const fd = new FormData();
     fd.append('file', new Blob([csv], { type: 'text/csv' }), 'teile.csv');
-    const antwort = await fetch(`${base}/api/v1/parts/import/csv`, { method: 'POST', body: fd });
-    const ergebnis = await antwort.json();
+    const response = await fetch(`${base}/api/v2/parts/import/csv`, { method: 'POST', body: fd });
+    const ergebnis = await response.json();
     assert.equal(ergebnis.success, true, `Import fehlgeschlagen: ${JSON.stringify(ergebnis)}`);
     assert.equal(ergebnis.added, 1, `Es wurde nichts angelegt: ${JSON.stringify(ergebnis)}`);
 

@@ -14,7 +14,7 @@ type Details = {
   resolved?: ResetSideEffects | undefined;
   abbruch?: string | undefined;
   freigabe?: string | undefined;
-  adresse?: string | undefined;
+  address?: string | undefined;
 };
 
 // Also runs before login and for other accounts (all administrators): it therefore reads
@@ -22,24 +22,24 @@ type Details = {
 export function reportAccountChange(
   k: AccountContext,
   uid: number,
-  art: AccountNotice,
+  kind: AccountNotice,
   details: Details = {},
 ): Promise<boolean> {
-  return inSystemContext('kontohinweis', () => reportAccountChangeFor(k, uid, art, details));
+  return inSystemContext('kontohinweis', () => reportAccountChangeFor(k, uid, kind, details));
 }
 
 async function reportAccountChangeFor(
   kx: AccountContext,
   uid: number,
-  art: AccountNotice,
+  kind: AccountNotice,
   details: Details,
 ): Promise<boolean> {
   if (!(await kx.mail.mailConfigured())) return false;
   const k = await kx.konten.profileRow(uid);
   if (!k?.email) return false;
-  const lang = String(await kx.einstellungen.userValue(uid, 'language', 'de'));
+  const lang = String(await kx.settings.userValue(uid, 'language', 'de'));
   const haushalt = (await kx.household.householdStatus(uid)).parents.map(p => p.username);
-  const r = await kx.mail.mailAccountNotice(k.email, k.username, art, {
+  const r = await kx.mail.mailAccountNotice(k.email, k.username, kind, {
     lang,
     haushalt,
     ...(details.name ? { passkey: details.name } : {}),
@@ -50,7 +50,7 @@ async function reportAccountChangeFor(
     resolved: details.resolved,
     abbruch: details.abbruch,
     freigabe: details.freigabe,
-    adresse: details.adresse,
+    address: details.address,
   });
   return r.success;
 }
@@ -59,21 +59,21 @@ async function reportAccountChangeFor(
 export function hintInBackground(
   k: AccountContext,
   uid: number,
-  art: AccountNotice,
+  kind: AccountNotice,
   name?: string,
   details: Details = {},
 ): void {
   // A trace in the log even without a mail address; without name and label, which are typed freely.
-  console.info(`[konto] ${art}`, { ereignis: art, konto: uid });
-  reportAccountChange(k, uid, art, { ...details, name }).catch(logAndContinue(`konto:hinweismail ${art}`));
+  console.info(`[konto] ${kind}`, { ereignis: kind, konto: uid });
+  reportAccountChange(k, uid, kind, { ...details, name }).catch(logAndContinue(`konto:hinweismail ${kind}`));
 }
 
 /** To all administrators: nobody should appoint an administrator or dismantle protection unnoticed. */
-export function adminHintInBackground(k: AccountContext, art: AccountNotice, details: Details): void {
+export function adminHintInBackground(k: AccountContext, kind: AccountNotice, details: Details): void {
   k.konten
     .activeAdmin()
-    .then(ids => Promise.all(ids.map(id => reportAccountChange(k, id, art, details))))
-    .catch(logAndContinue(`konto:verwalterhinweis ${art}`));
+    .then(ids => Promise.all(ids.map(id => reportAccountChange(k, id, kind, details))))
+    .catch(logAndContinue(`konto:verwalterhinweis ${kind}`));
 }
 
 /** After joining, the owner learns by mail whom they joined; in the background,
@@ -82,7 +82,7 @@ export async function joinHousehold(k: AccountContext, uid: number, code: string
   const r = await k.household.redeemInvitation(uid, code);
   const ich = await k.konten.profileRow(uid);
   if (ich?.email) {
-    const language = await k.einstellungen
+    const language = await k.settings
       .userValue(uid, 'language', 'de')
       .catch(reportAndDeliver('einstellungen:sprache', 'de'));
     void k.mail

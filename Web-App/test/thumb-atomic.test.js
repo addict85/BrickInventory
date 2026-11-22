@@ -74,7 +74,7 @@ test('vorschauErzeugenAus writes via a temporary file', async () => {
   fs.mkdirSync(ordner, { recursive: true });
   const name = `zz-atomar-${process.pid}`;
   const original = path.join(ordner, `${name}.jpg`),
-    vorschau = path.join(ordner, `${name}_thumb.jpg`);
+    preview = path.join(ordner, `${name}_thumb.jpg`);
   await sharp({ create: { width: 400, height: 300, channels: 3, background: '#c00' } })
     .jpeg()
     .toFile(original);
@@ -83,10 +83,10 @@ test('vorschauErzeugenAus writes via a temporary file', async () => {
       _req('src/images/thumbs.js').previewFrom(`/images/sets/${name}.jpg`),
     );
     assert.equal(ergebnis, `/images/sets/${name}_thumb.jpg`);
-    checkAtomic(spur, vorschau);
+    checkAtomic(spur, preview);
   } finally {
     fs.rmSync(original, { force: true });
-    fs.rmSync(vorschau, { force: true });
+    fs.rmSync(preview, { force: true });
   }
 });
 
@@ -94,14 +94,14 @@ test('createProxyPreview writes via a temporary file', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'proxyvorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const quelle = path.join(ordner, 'a'.repeat(40)),
-    ziel = quelle + '_thumb.jpg';
+  const source = path.join(ordner, 'a'.repeat(40)),
+    ziel = source + '_thumb.jpg';
   await sharp({ create: { width: 400, height: 300, channels: 3, background: '#0a0' } })
     .jpeg()
-    .toFile(quelle + '.jpg');
-  fs.renameSync(quelle + '.jpg', quelle);
+    .toFile(source + '.jpg');
+  fs.renameSync(source + '.jpg', source);
   const { ergebnis, spur } = await withRenameTrack(() =>
-    _req('src/images/proxyThumbs.js').createProxyPreview(quelle, ziel),
+    _req('src/images/proxyThumbs.js').createProxyPreview(source, ziel),
   );
   assert.equal(ergebnis, true);
   checkAtomic(spur, ziel);

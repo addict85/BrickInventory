@@ -34,8 +34,8 @@ const TEXT_WIDTH = `(el, texte) => { const cs = getComputedStyle(el), c = docume
 
 test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `telform_${process.pid}`, telefon: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

@@ -40,7 +40,7 @@ export async function b() {
 declare const fn: any;
 `;
 
-/** @returns {{ datei: string, zeile: number }[]} */
+/** @returns {{ datei: string, row: number }[]} */
 function funde(/** @type {string} */ wurzel, /** @type {string[]} */ pfade) {
   const r = spawnSync(process.execPath, [BIOME, 'lint', '--reporter=json', '--max-diagnostics=none', ...pfade], {
     cwd: wurzel,
@@ -51,7 +51,7 @@ function funde(/** @type {string} */ wurzel, /** @type {string[]} */ pfade) {
   const bericht = JSON.parse(r.stdout);
   return bericht.diagnostics
     .filter(d => d.category === 'plugin')
-    .map(d => ({ datei: d.location.path, zeile: d.location.start?.line ?? 0 }));
+    .map(d => ({ datei: d.location.path, row: d.location.start?.line ?? 0 }));
 }
 
 function probebaum() {

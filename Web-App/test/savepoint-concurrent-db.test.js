@@ -49,7 +49,7 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
     await db.pool.end();
   });
   const schreibe = (tx, w) => tx.run(`INSERT INTO ${TABELLE} (wert) VALUES ($1)`, [w]);
-  const werte = async () => (await db.all(`SELECT wert FROM ${TABELLE} ORDER BY wert`)).map(z => z.wert);
+  const values = async () => (await db.all(`SELECT wert FROM ${TABELLE} ORDER BY wert`)).map(z => z.wert);
   /** An inner transaction via the access of the outer one (like t.transact). */
   const innen = (tx, fn) => tx.db.transaction(fn);
   t.beforeEach(() => db.run(`DELETE FROM ${TABELLE}`));
@@ -73,7 +73,7 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
     assert.equal(results[1].status, 'rejected', 'die zweite wird abgewiesen, statt Erfolg zu melden');
     assert.ok(results[1].reason instanceof modul.ConcurrentSavepoint, String(results[1].reason));
     assert.match(results[1].reason.message, /sp_\d+ derselben Transaktion noch läuft.*nacheinander ausführen/);
-    assert.deepEqual(await werte(), ['aussen'], 'was gemeldet wurde, gilt');
+    assert.deepEqual(await values(), ['aussen'], 'was gemeldet wurde, gilt');
   });
 
   await t.test('… also in a savepoint', async () => {
@@ -86,7 +86,7 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
       ),
       modul.ConcurrentSavepoint,
     );
-    assert.deepEqual(await werte(), []);
+    assert.deepEqual(await values(), []);
   });
 
   await t.test('a straggler does not spoil the next transaction of its connection', async () => {
@@ -112,7 +112,7 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
         await schreibe(tx, 'fremd');
       });
       await assert.rejects(stragglers, modul.TransactionEnded);
-      assert.deepEqual(await werte(), ['fremd']);
+      assert.deepEqual(await values(), ['fremd']);
     } finally {
       await eng.pool.end();
     }
@@ -134,11 +134,11 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
       });
       await innen(tx, async zwei => schreibe(zwei, '5-zwei'));
     });
-    assert.deepEqual(await werte(), ['1-aussen', '2-eins', '4-tief-danach', '5-zwei']);
+    assert.deepEqual(await values(), ['1-aussen', '2-eins', '4-tief-danach', '5-zwei']);
   });
 
   await t.test('separate outer transactions may run concurrently', async () => {
     await Promise.all(['p', 'q', 'r'].map(w => db.transaction(async tx => schreibe(tx, w))));
-    assert.deepEqual(await werte(), ['p', 'q', 'r']);
+    assert.deepEqual(await values(), ['p', 'q', 'r']);
   });
 });

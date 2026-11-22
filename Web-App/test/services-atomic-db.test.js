@@ -23,15 +23,15 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const quellen = require('./helpers/sources');
-const _req = quellen.buildAndRequire();
+const sources = require('./helpers/sources');
+const _req = sources.buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 
 /** Before loading the services: they hold the module object they get when loading. */
 const replace = (rel, zusatz) => {
-  const pfad = require.resolve(path.join(quellen.DIST, rel));
+  const file = require.resolve(path.join(sources.DIST, rel));
   _req(rel);
-  require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
+  require.cache[file].exports = Object.assign({}, require.cache[file].exports, zusatz);
 };
 const stoerung = { protokoll: false, rememberPdf: false, writePdf: false };
 const kaputt = was => {
@@ -103,7 +103,7 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
     // Without interference account and entry arise together.
     const id = await K.addAccount(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false);
     const eintrag = await db.get('SELECT action FROM admin_log WHERE target_id = $1', [id]);
-    assert.equal(eintrag?.action, 'konto_angelegt');
+    assert.equal(eintrag?.action, 'account_created');
   });
 
   await t.test('if the log entry fails while locking, the account stays active', async () => {
@@ -142,9 +142,9 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
     } finally {
       limit = null;
     }
-    const jetzt = await G.voucherPlaintext(nutzer, z.id);
-    assert.equal(Number(jetzt.amount), 42, 'der Betrag der ersten Änderung ging verloren');
-    assert.equal(jetzt.pin, '999');
-    assert.equal(jetzt.number, '6000444455556666');
+    const now = await G.voucherPlaintext(nutzer, z.id);
+    assert.equal(Number(now.amount), 42, 'der Betrag der ersten Änderung ging verloren');
+    assert.equal(now.pin, '999');
+    assert.equal(now.number, '6000444455556666');
   });
 });

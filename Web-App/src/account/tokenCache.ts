@@ -39,57 +39,57 @@ export const TOKEN_TTL_MS = 5 * 1000;
 /** Per access: a token only applies in the database it comes from. `stand` counts
  * every clearing: a row read before a revocation does not get in afterwards. */
 const store = (k: AccountContext) =>
-  k.faecher.slot('tokenCache', () => ({ eintraege: new Map<string, CacheEntry>(), stand: 0, verteilt: false }));
+  k.faecher.slot('tokenCache', () => ({ entries: new Map<string, CacheEntry>(), state: 0, verteilt: false }));
 
 function empty(k: AccountContext): void {
   const c = store(k);
-  c.eintraege.clear();
-  c.stand++;
+  c.entries.clear();
+  c.state++;
   reportAccessChange();
 }
 
 function _pruneCache(k: AccountContext) {
-  const { eintraege } = store(k);
-  if (eintraege.size <= 200) return;
-  const cutoff = k.uhr.jetzt() - TOKEN_TTL_MS;
-  for (const [t, v] of eintraege) {
-    if (v.cachedAt < cutoff) eintraege.delete(t);
+  const { entries } = store(k);
+  if (entries.size <= 200) return;
+  const cutoff = k.clock.now() - TOKEN_TTL_MS;
+  for (const [t, v] of entries) {
+    if (v.cachedAt < cutoff) entries.delete(t);
   }
 }
 
 /** The state before reading, or null if the cache may not apply right now. */
 export function cacheStand(k: AccountContext): number | null {
-  return tokenCacheUsable(k) ? store(k).stand : null;
+  return tokenCacheUsable(k) ? store(k).state : null;
 }
 
 export function tokenFromCache(
   k: AccountContext,
   token: string,
-  stand: number | null,
+  state: number | null,
   now: number,
 ): CacheEntry | undefined {
-  if (stand === null) return undefined;
-  const hit = store(k).eintraege.get(token);
+  if (state === null) return undefined;
+  const hit = store(k).entries.get(token);
   return hit && now - hit.cachedAt < TOKEN_TTL_MS ? hit : undefined;
 }
 
 /** Only if no revocation came since reading. */
-export function rememberEntry(k: AccountContext, token: string, entry: CacheEntry, stand: number | null): void {
+export function rememberEntry(k: AccountContext, token: string, entry: CacheEntry, state: number | null): void {
   const c = store(k);
-  if (stand !== null && stand === c.stand) c.eintraege.set(token, entry);
+  if (state !== null && state === c.state) c.entries.set(token, entry);
   _pruneCache(k);
 }
 
 export function forgetEntry(k: AccountContext, token: string): void {
-  store(k).eintraege.delete(token);
+  store(k).entries.delete(token);
 }
 
 /** So that the token becomes invalid immediately, not only after the cache expires. */
 export function tokenForgotten(k: AccountContext, token: string | null | undefined): void {
   if (!token) return;
   const c = store(k);
-  c.eintraege.delete(token);
-  c.stand++;
+  c.entries.delete(token);
+  c.state++;
   reportAccessChange();
   reportRevocation(k);
 }

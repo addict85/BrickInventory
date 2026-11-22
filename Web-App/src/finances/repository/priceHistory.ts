@@ -96,7 +96,7 @@ const PRICE_TABLES = {
 /** `keySql` is a fixed expression of the callers, not an input. */
 export function manualSeries(
   db: DbInterface,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   currency: string,
@@ -105,7 +105,7 @@ export function manualSeries(
   return db.all<{ avg_price: number | null; qty_avg_price: number | null; recorded_at: string }>(
     `SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))
             avg_price, qty_avg_price, to_char(recorded_at, 'YYYY-MM-DD') AS recorded_at
-       FROM ${PRICE_TABLES[art].verlauf}
+       FROM ${PRICE_TABLES[kind].verlauf}
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND condition = $${keyVals.length + 2}
       ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
     [...keyVals, currency, cond],
@@ -114,13 +114,13 @@ export function manualSeries(
 
 export function cachePricesAfterKey(
   db: DbInterface,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   currency: string,
 ) {
   return db.all<{ condition: string; avg_price: number | null; qty_avg_price: number | null }>(
-    `SELECT condition, avg_price, qty_avg_price FROM ${PRICE_TABLES[art].cache}
+    `SELECT condition, avg_price, qty_avg_price FROM ${PRICE_TABLES[kind].cache}
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND ${marketPriceSql()} IS NOT NULL
       ORDER BY fetched_at DESC`,
     [...keyVals, currency],
@@ -130,7 +130,7 @@ export function cachePricesAfterKey(
 export function purchaseAveragesByKey(
   db: DbInterface,
   l: FinancesReadContract,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   acqKeySql: string,
   acqKeyVals: unknown[],
   uids: number[],
@@ -139,7 +139,7 @@ export function purchaseAveragesByKey(
   return db.all<{ condition: string; avg_purchase: number | null }>(
     `SELECT condition, ${averageOver('k')} AS avg_purchase
        FROM (SELECT condition, quantity, ${purchasePriceIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k
-               FROM ${art === 'part' ? l.teilErfassungen() : l.figurErfassungen()} x
+               FROM ${kind === 'part' ? l.teilErfassungen() : l.figurErfassungen()} x
               WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})) e
       GROUP BY condition`,
     [...acqKeyVals, uids, currency],

@@ -7,10 +7,10 @@ const AccountFiles = z.object({ user_id: z.number().int().positive() });
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    konto_dateien: typeof AccountFiles;
+    account_files: typeof AccountFiles;
   }
 }
 
 export function accountJobTypes(): Login[] {
-  return [jobKind({ art: 'konto_dateien', payload: AccountFiles, ausfuehren: n => deleteAccountFiles(n.user_id) })];
+  return [jobKind({ kind: 'account_files', payload: AccountFiles, ausfuehren: n => deleteAccountFiles(n.user_id) })];
 }

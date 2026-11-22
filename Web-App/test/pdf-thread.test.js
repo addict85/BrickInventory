@@ -31,7 +31,7 @@ test('the event loop stays free while the PDF is being created', async () => {
   }));
   let letzte = Date.now(),
     longest = 0;
-  const uhr = setInterval(() => {
+  const clock = setInterval(() => {
     const j = Date.now();
     longest = Math.max(longest, j - letzte);
     letzte = j;
@@ -39,7 +39,7 @@ test('the event loop stays free while the PDF is being created', async () => {
   try {
     await drawPdfInThread([{ set_number: '1-1' }], parts, ziel);
   } finally {
-    clearInterval(uhr);
+    clearInterval(clock);
   }
   try {
     assert.equal(fs.readFileSync(ziel).subarray(0, 5).toString(), '%PDF-');

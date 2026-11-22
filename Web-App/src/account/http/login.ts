@@ -105,7 +105,7 @@ export async function userIdTheRequest(konto: AccountServices, req: Request): Pr
     .checkToken(token, { ip: req.ip })
     .catch(reportAndDeliver<TokenCheck>('auth:nutzerZumToken', { nutzer: null }));
   const user = check.nutzer;
-  if (check.grund) req.tokenRejection = check.grund;
+  if (check.reason) req.tokenRejection = check.reason;
   // The notice travels with every response; the app then swaps by itself.
   if (user && rotationDue(user)) req.res?.setHeader('X-Token-Rotation', 'faellig');
   if (user) req.apiUser = { ...user, is_admin: !!user.is_admin };
@@ -114,8 +114,8 @@ export async function userIdTheRequest(konto: AccountServices, req: Request): Pr
 
 /** 429 instead of 401: on 401 the app may discard the access, and it may still be valid. */
 export function sendTokenRejection(req: Request, res: Response): void {
-  if (req.tokenRejection === 'zu_viele_anfragen') sendError(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: 1 });
-  else sendError(req, res, 'nicht_angemeldet', req.tokenRejection ?? 'nicht_angemeldet');
+  if (req.tokenRejection === 'too_many_requests') sendError(req, res, 'zu_viele', 'too_many_requests', { minutes: 1 });
+  else sendError(req, res, 'not_signed_in', req.tokenRejection ?? 'not_signed_in');
 }
 
 /** @param opts.timeoutMs Answers with 503 after this time: the progress
@@ -125,7 +125,7 @@ export function loginOrTokenGuard(konto: AccountServices, opts: { timeoutMs?: nu
     if (req.session?.userId || req.tokenUserId) return next();
     const timer = opts.timeoutMs
       ? setTimeout(() => {
-          if (!res.headersSent) sendError(req, res, 'nicht_verfuegbar', 'server_ausgelastet');
+          if (!res.headersSent) sendError(req, res, 'nicht_verfuegbar', 'server_busy');
         }, opts.timeoutMs)
       : null;
     let uid: number | null = null;
@@ -166,7 +166,7 @@ export function isAdmin(req: Request): boolean {
 export function ipThrottle(konto: AccountServices, bucket: string, max: number, windowMs: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const st = await konto.countRequest(bucket, address(req), windowMs);
-    if (st.count > max) return sendError(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: st.waitMin });
+    if (st.count > max) return sendError(req, res, 'zu_viele', 'too_many_requests', { minutes: st.waitMin });
     next();
   };
 }
@@ -179,14 +179,14 @@ export function accessOf(req: Request): string {
       .update(String(req.sessionID ?? ''))
       .digest('hex')
       .slice(0, 16)}`;
-  const seit = req.apiUser?.created_at;
-  return `t:${seit ? new Date(seit).getTime() : '?'}`;
+  const since = req.apiUser?.created_at;
+  return `t:${since ? new Date(since).getTime() : '?'}`;
 }
 
 function rejections(req: Request, res: Response, refusal: ConfirmationRejection): void {
-  const status = STATUS_THE_KIND[refusal.art];
+  const status = STATUS_THE_KIND[refusal.kind];
   if (!refusal.passkey) {
-    sendError(req, res, refusal.art, refusal.code, refusal.vars);
+    sendError(req, res, refusal.kind, refusal.code, refusal.vars);
     return;
   }
   res.status(status).json({
@@ -210,10 +210,10 @@ export async function confirmWithFactor(
   // The key under which the contract router registered the route; an error of the
   // wiring, not a case of the request, hence loud in operation too.
   const key = String(res.locals.contractKey ?? '');
-  if (routeFor(key) && !routeFor(key)?.bestaetigung)
+  if (routeFor(key) && !routeFor(key)?.confirmation)
     throw new Error(`${key} bestätigt, ohne \`bestaetigung\` im Vertrag`);
   // The checked body (checkInput): the confirmation fields are in the contract (bestaetigt()).
-  const input = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};
+  const input = (req as Request & { input?: Record<string, unknown> }).input ?? {};
   const factor = { code: input[codeField], passkey: input.passkey } as Factor;
   const refusal = await konto.checkConfirmation(uid, accessOf(req), password, factor);
   if (refusal) rejections(req, res, refusal);

@@ -36,15 +36,15 @@ const UNKNOWN = {
   quantity: 2,
 };
 
-async function exportiere(sprache) {
+async function exportiere(language) {
   const o = await openUi(
     {
-      '/v1/sets/10294-1/parts-list': { success: true, parts: [ROT, UNKNOWN] },
-      '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
-      '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
-      '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
+      '/v2/sets/10294-1/parts-list': { success: true, parts: [ROT, UNKNOWN] },
+      '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
+      '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
+      '/v2/parts/bl-color-map': { success: true, map: { 4: 5 } },
     },
-    { sprache },
+    { language },
   );
   const dateien = [];
   o.w.URL.createObjectURL = blob => {
@@ -74,7 +74,7 @@ async function bedienen(o, dateien) {
     'Kein Export',
   );
   const xml = await dateien[0].text();
-  const meldungen = [...o.d.querySelectorAll('#toasts .toast')].map(t => ({ art: t.className, text: t.textContent }));
+  const meldungen = [...o.d.querySelectorAll('#toasts .toast')].map(t => ({ kind: t.className, text: t.textContent }));
   return { ...o, xml, meldungen };
 }
 
@@ -86,9 +86,9 @@ test('no Rebrickable color number goes out as a BrickLink color — items withou
     assert.match(xml, /<ITEMID>3001<\/ITEMID>\s*<COLOR>5<\/COLOR>/, 'Die BrickLink-Farbe aus der Zuordnung');
     assert.doesNotMatch(xml, /3002|<COLOR>999<\/COLOR>|<COLOR>4<\/COLOR>/, xml);
     assert.equal((xml.match(/<ITEM>/g) || []).length, 1);
-    const fehler = meldungen.find(m => /error/.test(m.art));
+    const error = meldungen.find(m => /error/.test(m.kind));
     assert.match(
-      fehler?.text ?? '',
+      error?.text ?? '',
       /1 Posten ohne bekannte BrickLink-Farbe.*3002 \(Mystery\)/,
       JSON.stringify(meldungen),
     );

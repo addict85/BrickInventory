@@ -27,7 +27,7 @@ const db = testData();
 const { maintainTable } = _req('db/maintainTable.js');
 
 /** When was the table last cleaned up and measured? */
-async function stand(tabelle) {
+async function state(tabelle) {
   const r = await db.get(`SELECT last_vacuum, last_analyze FROM pg_stat_user_tables WHERE relname = $1`, [tabelle]);
   return {
     vacuum: r?.last_vacuum ? new Date(r.last_vacuum).getTime() : 0,
@@ -42,9 +42,9 @@ async function stand(tabelle) {
 async function waitOnStatus(tabelle, vorher, ms = 5000) {
   const ende = Date.now() + ms;
   for (;;) {
-    const jetzt = await stand(tabelle);
-    if (jetzt.vacuum > vorher.vacuum && jetzt.analyze > vorher.analyze) return jetzt;
-    if (Date.now() > ende) return jetzt;
+    const now = await state(tabelle);
+    if (now.vacuum > vorher.vacuum && now.analyze > vorher.analyze) return now;
+    if (Date.now() > ende) return now;
     await new Promise(r => setTimeout(r, 100));
   }
 }
@@ -70,7 +70,7 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
       FROM generate_series(1, 200) g ON CONFLICT DO NOTHING`,
       [uid],
     );
-    const vorher = await stand('parts_summary');
+    const vorher = await state('parts_summary');
     await new Promise(r => setTimeout(r, 1100)); // Timestamps have second resolution in the display
 
     const ok = await maintainTable(sql => db.exec(sql), 'parts_summary');
@@ -148,7 +148,7 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
       [nutzer],
     );
 
-    const vorher = await stand('parts_summary');
+    const vorher = await state('parts_summary');
     await new Promise(r => setTimeout(r, 1100));
     await rebuild(nutzer);
     const nachher = await waitOnStatus('parts_summary', vorher);

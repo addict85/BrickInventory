@@ -44,7 +44,7 @@ const { openUi, warte, takt, reiter } = require('./helpers/ui');
 
 test('metrics with separators, complete in English too', async () => {
   const stats = {
-    '/v1/stats': {
+    '/v2/stats': {
       success: true,
       stats: { total_sets: 1565, total_quantity: 3095, total_parts: 10828, total_minifigs: 19, total_instructions: 0 },
     },
@@ -58,7 +58,7 @@ test('metrics with separators, complete in English too', async () => {
   } finally {
     de.w.close();
   }
-  const en = await openUi(stats, { sprache: 'en', browserLanguage: 'en-US' });
+  const en = await openUi(stats, { language: 'en', browserLanguage: 'en-US' });
   try {
     assert.ok(await warte(() => en.d.getElementById('bstat-parts').textContent !== '—'));
     assert.equal(en.d.getElementById('bstat-parts').textContent, '10,828');
@@ -75,15 +75,15 @@ test('metrics with separators, complete in English too', async () => {
 test('title without soft hyphens', async () => {
   const o = await openUi(
     {
-      '/v1/admin/job-status': { success: true, job: { running: false } },
-      '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
-      '/v1/admin/auftraege': {
+      '/v2/admin/job-status': { success: true, job: { running: false } },
+      '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
+      '/v2/admin/job-queue': {
         success: true,
-        auftraege: [],
-        zusammenfassung: [],
-        job_prozess: { laeuft: true },
-        bildbedarf: 0,
-        pausen: [],
+        jobs: [],
+        summary: [],
+        job_process: { running: true },
+        image_demand: 0,
+        pauses: [],
       },
     },
     { browserLanguage: 'de-DE' },
@@ -98,18 +98,18 @@ test('title without soft hyphens', async () => {
 });
 
 test('admin without (Administrator)', async () => {
-  for (const [username, sprache] of [
+  for (const [username, language] of [
     ['admin', 'en'],
     ['admin', 'de'],
     ['Administrator', 'de'],
   ]) {
     const o = await openUi(
-      { '/v1/auth/me': { loggedIn: true, user: { id: 1, username, is_admin: true } } },
-      sprache === 'en' ? { sprache: 'en', browserLanguage: 'en-US' } : {},
+      { '/v2/auth/me': { loggedIn: true, user: { id: 1, username, is_admin: true } } },
+      language === 'en' ? { language: 'en', browserLanguage: 'en-US' } : {},
     );
     try {
       assert.ok(await warte(() => o.d.getElementById('ubadge').textContent.trim()));
-      assert.equal(o.d.getElementById('ubadge').textContent, username, sprache);
+      assert.equal(o.d.getElementById('ubadge').textContent, username, language);
     } finally {
       o.w.close();
     }
@@ -119,13 +119,13 @@ test('admin without (Administrator)', async () => {
 test('log with fmtDate', async () => {
   const o = await openUi(
     {
-      '/v1/admin/protokoll': {
+      '/v2/admin/audit-log': {
         success: true,
-        eintraege: [
+        entries: [
           {
             occurred_at: '2026-11-05T17:29:38Z',
             verwalter_name: 'anna',
-            action: 'konto_angelegt',
+            action: 'account_created',
             target_name: 'bert',
           },
         ],
@@ -148,9 +148,9 @@ test('empty credentials report "access removed"', async () => {
     o.d.getElementById('rb-key').value = '';
     o.d.getElementById('btn-sav-rb').click();
     // Confirmation happens at the button (reportAtField), not in the toast.
-    const stand = () => o.d.querySelector('#settings-rb .field-status')?.textContent || '';
-    assert.ok(await warte(() => /Zugang entfernt/.test(stand()), 2000), stand());
-    assert.doesNotMatch(stand() + o.d.getElementById('toasts').textContent, /gespeichert/i);
+    const state = () => o.d.querySelector('#settings-rb .field-status')?.textContent || '';
+    assert.ok(await warte(() => /Zugang entfernt/.test(state()), 2000), state());
+    assert.doesNotMatch(state() + o.d.getElementById('toasts').textContent, /gespeichert/i);
   } finally {
     o.w.close();
   }
@@ -158,18 +158,18 @@ test('empty credentials report "access removed"', async () => {
 
 test('recovery codes: saved and as a file', async () => {
   const o = await openUi(
-    { '/v1/auth/zweiter-faktor/bestaetigen': { success: true, codes: ['aaaa-bbbb', 'cccc-dddd'] } },
+    { '/v2/auth/second-factor/confirm': { success: true, codes: ['aaaa-bbbb', 'cccc-dddd'] } },
     { browserLanguage: 'de-DE' },
   );
   try {
     o.w.URL.createObjectURL = () => 'blob:probe';
     o.w.URL.revokeObjectURL = () => {};
-    const feld = o.d.createElement('input');
-    feld.id = 'sf-code';
-    feld.value = '123456';
+    const field = o.d.createElement('input');
+    field.id = 'sf-code';
+    field.value = '123456';
     const knopf = o.d.createElement('button');
     knopf.dataset.click = 'confirmSecondFactor';
-    o.d.getElementById('zf-bereich')?.append(feld, knopf) ?? o.d.body.append(feld, knopf);
+    o.d.getElementById('zf-bereich')?.append(field, knopf) ?? o.d.body.append(field, knopf);
     knopf.click();
     assert.ok(await warte(() => o.d.getElementById('sf-saved')));
     assert.match(o.d.getElementById('sf-saved').textContent, /gesichert/);
@@ -189,7 +189,7 @@ test('recovery codes: saved and as a file', async () => {
 test('minifigures: bought on and total first', async () => {
   const o = await openUi(
     {
-      '/v1/minifigs': {
+      '/v2/minifigs': {
         success: true,
         total: 1,
         figs: [
@@ -217,7 +217,7 @@ test('minifigures: bought on and total first', async () => {
 
 test('a button "open set" for an existing set', async () => {
   const o = await openUi(
-    { '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 2 } } },
+    { '/v2/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 2 } } },
     { browserLanguage: 'de-DE' },
   );
   try {
@@ -236,9 +236,9 @@ test('a button "open set" for an existing set', async () => {
 test('remember names the collection', async () => {
   const o = await openUi(
     {
-      '/v1/wanted': (_u, opt) =>
-        opt?.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] },
-      '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 3 } },
+      '/v2/wanted': (_u, opt) =>
+        opt?.method === 'POST' ? { success: true, was_new: true } : { success: true, items: [] },
+      '/v2/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 3 } },
     },
     { browserLanguage: 'de-DE' },
   );
@@ -260,11 +260,11 @@ test('remember names the collection', async () => {
 test('household in the subtitle', async () => {
   const o = await openUi(
     {
-      '/v1/sets/household-members': {
+      '/v2/sets/household-members': {
         success: true,
         members: [
-          { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-          { id: 2, username: 'ben', is_self: false, tiefe: 1 },
+          { id: 1, username: 'anna', is_self: true, depth: 0 },
+          { id: 2, username: 'ben', is_self: false, depth: 1 },
         ],
       },
     },

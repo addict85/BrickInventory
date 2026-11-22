@@ -19,7 +19,7 @@ const { openUi, sicht, warte } = require('./helpers/ui');
 
 async function hintFor(url) {
   const o = await openUi({
-    '/v1/auth/qr-token': { success: true, url, token: 'abc', expires_in: 300, token_days: null },
+    '/v2/auth/qr-token': { success: true, url, token: 'abc', expires_in: 300, token_days: null },
   });
   try {
     o.d.getElementById('btn-gen-qr').click();
@@ -45,8 +45,8 @@ test('https:// gets none', async () => {
 
 test('without HTTPS the TLS area says that the app only connects via HTTPS', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/tls': { success: true, https: false, fp: null },
-    '/v1/settings/tokens': { success: true, tokens: [] },
+    '/v2/settings/tls': { success: true, https: false, fp: null },
+    '/v2/settings/tokens': { success: true, tokens: [] },
   });
   try {
     await sicht(w, 'app');
@@ -58,13 +58,13 @@ test('without HTTPS the TLS area says that the app only connects via HTTPS', asy
 });
 
 test("the countdown counts from the server's duration, the hint names the same", async () => {
-  for (const [sprache, minuten] of /** @type {[string, RegExp][]} */ ([
+  for (const [language, minutes] of /** @type {[string, RegExp][]} */ ([
     ['de', /5 Minuten gültig/],
     ['en', /valid for 5 minutes/],
   ])) {
     const { w, d } = await openUi(
       {
-        '/v1/auth/qr-token': {
+        '/v2/auth/qr-token': {
           success: true,
           url: 'https://lego.example.org',
           token: 'abc',
@@ -72,10 +72,10 @@ test("the countdown counts from the server's duration, the hint names the same",
           token_days: null,
         },
       },
-      { sprache },
+      { language },
     );
     try {
-      assert.match(d.querySelector('[data-i18n="settings.qr.hint"]').textContent, minuten);
+      assert.match(d.querySelector('[data-i18n="settings.qr.hint"]').textContent, minutes);
       d.getElementById('btn-gen-qr').click();
       await warte(() => d.getElementById('qr-code').textContent.includes('abc'));
       assert.match(

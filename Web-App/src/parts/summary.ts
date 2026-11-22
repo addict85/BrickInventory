@@ -7,7 +7,7 @@ import type { PartsContext } from './context';
 const currentVersion = (k: PartsContext, userId: number) => k.summary.rawState(userId);
 
 export async function rebuildSummary(k: PartsContext, userId: number, version?: { v: number }): Promise<void> {
-  const stand = version ?? (await currentVersion(k, userId));
+  const state = version ?? (await currentVersion(k, userId));
   // Whether THIS call built it: if another call holds the lock, there is nothing to catch up on.
   let built = false;
   await k.transact(async t => {
@@ -15,21 +15,21 @@ export async function rebuildSummary(k: PartsContext, userId: number, version?: 
     if (!(await repo.lockAccount(t.db, userId))) {
       return;
     }
-    await repo.rebuildAll(t.db, userId, stand.v);
+    await repo.rebuildAll(t.db, userId, state.v);
     built = true;
   });
 
   // Without fresh statistics the planner picks the wrong index after the bulk insert.
   // At most every ten minutes, because ANALYZE scans the table across all accounts.
-  const z = state(k);
-  if (built && k.uhr.jetzt() - z.lastAnalyse > 10 * 60_000) {
-    z.lastAnalyse = k.uhr.jetzt();
+  const z = processState(k);
+  if (built && k.clock.now() - z.lastAnalyse > 10 * 60_000) {
+    z.lastAnalyse = k.clock.now();
     await k.summary.analyze().catch((e: unknown) => reportError('parts-summary:analyze', e));
   }
 }
 
 /** Per access: account IDs, rebuilds and the follow-up belong to the database they run in. */
-const state = (k: PartsContext) =>
+const processState = (k: PartsContext) =>
   k.faecher.slot('partsSummary', () => ({
     lastAnalyse: 0,
     neuaufbau: new Map<number, Promise<void>>(),
@@ -37,7 +37,7 @@ const state = (k: PartsContext) =>
   }));
 
 function rebuildInBackground(k: PartsContext, userId: number, v: { v: number }) {
-  const _rebuilding = state(k).neuaufbau;
+  const _rebuilding = processState(k).neuaufbau;
   if (_rebuilding.has(userId)) return;
   const p = rebuildSummary(k, userId, v)
     .catch((e: unknown) => reportError('parts-summary:background', e))
@@ -85,10 +85,10 @@ export async function summaryFresh(
  * as a job, because the web system role can't reach other accounts' stock; until then, stale BL numbers. */
 async function catalogFollowUpOnce(k: PartsContext) {
   if (rowsContext().web) {
-    await k.jobQueue.placeJobOne('katalog_nachzug', {}, { schluessel: 'katalog_nachzug' });
+    await k.jobQueue.placeJobOne('catalog_followup', {}, { schluessel: 'catalog_followup' });
     return { konten: 0, gruppen: 0 };
   }
-  const z = state(k);
+  const z = processState(k);
   z.followUp ??= runCatalogFollowUp(k).finally(() => {
     z.followUp = null;
   });
@@ -123,7 +123,7 @@ async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ konten: num
 
 /** For call sites that need guaranteed current numbers right after (end of a CSV import). */
 export async function rebuildNow(k: PartsContext, userId: number): Promise<void> {
-  const _rebuilding = state(k).neuaufbau;
+  const _rebuilding = processState(k).neuaufbau;
   const running = _rebuilding.get(userId);
   if (running) return running;
   const v = await currentVersion(k, userId);

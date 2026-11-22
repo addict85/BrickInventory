@@ -72,13 +72,13 @@ test('own catalog details stay with the account and its household', { concurrenc
 
   const api = uid => {
     const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-    return async (methode, pfad, body) => {
-      const r = await fetch(base + '/api/v1' + pfad, {
+    return async (methode, path, body) => {
+      const r = await fetch(base + '/api/v2' + path, {
         method: methode,
         ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
       });
       const j = await r.json();
-      assert.equal(r.status, 200, `${methode} ${pfad}: ${JSON.stringify(j)}`);
+      assert.equal(r.status, 200, `${methode} ${path}: ${JSON.stringify(j)}`);
       return j;
     };
   };

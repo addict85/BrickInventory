@@ -32,7 +32,7 @@ const zahl = s =>
 function antworten({ withPrice }) {
   const setPrice = withPrice ? 700 : 0;
   return {
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       totals: { min: withPrice ? '650' : '0', avg: String(setPrice), max: withPrice ? '760' : '0' },
@@ -44,7 +44,7 @@ function antworten({ withPrice }) {
           purchase_price: 629,
           avg_price: setPrice,
           total_avg: String(setPrice),
-          wert_gesamt: setPrice,
+          value_total: setPrice,
           acquisitions: [
             {
               id: 1,
@@ -52,7 +52,7 @@ function antworten({ withPrice }) {
               quantity: 1,
               purchase_price: 629,
               avg_price: setPrice || null,
-              wert_gesamt: setPrice,
+              value_total: setPrice,
             },
           ],
           ...(withPrice ? {} : { error: '10294-1 — kein BrickLink-Preis gefunden' }),
@@ -64,13 +64,13 @@ function antworten({ withPrice }) {
           purchase_price: 399,
           avg_price: 0,
           total_avg: '0',
-          wert_gesamt: 0,
-          acquisitions: [{ id: 2, condition: 'N', quantity: 1, purchase_price: 399, wert_gesamt: 0 }],
+          value_total: 0,
+          acquisitions: [{ id: 2, condition: 'N', quantity: 1, purchase_price: 399, value_total: 0 }],
           error: 'kein Preis',
         },
       ],
     },
-    '/v1/finance/parts-valuation': {
+    '/v2/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
@@ -86,13 +86,13 @@ function antworten({ withPrice }) {
         },
       ],
     },
-    '/v1/finance/minifigs-valuation': {
+    '/v2/finance/minifigs-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
       figs: [{ fig_number: 'fig-1', fig_name: 'Chewbacca', quantity: 1, avg_price: 0, acquisitions: [] }],
     },
-    '/v1/finance/pnl': {
+    '/v2/finance/pnl': {
       success: true,
       currency: 'EUR',
       sets: [],
@@ -103,18 +103,18 @@ function antworten({ withPrice }) {
         figs_purchase: '0.00',
         grand_total: String(setPrice),
         pnl_pct: withPrice ? '11.3' : null,
-        pnl_prozent: withPrice ? 11.3 : null,
+        pnl_percent: withPrice ? 11.3 : null,
         pnl_purchase: withPrice ? '629.00' : '0.00',
         pnl_current: withPrice ? '700.00' : '0.00',
-        positionen: 4,
-        positionen_bewertet: withPrice ? 1 : 0,
-        positionen_ohne_marktpreis: withPrice ? 3 : 4,
-        positionen_ohne_kaufpreis: 0,
-        basis_einstand: withPrice ? '629.00' : '0.00',
-        basis_marktwert: withPrice ? '700.00' : '0.00',
-        basis_guv_betrag: withPrice ? '71.00' : '0.00',
-        ohne_marktpreis_einstand: withPrice ? '468.93' : '1097.93',
-        ohne_kaufpreis_marktwert: '0.00',
+        positions: 4,
+        positions_valued: withPrice ? 1 : 0,
+        positions_without_market_price: withPrice ? 3 : 4,
+        positions_without_purchase_price: 0,
+        baseline_cost: withPrice ? '629.00' : '0.00',
+        baseline_market_value: withPrice ? '700.00' : '0.00',
+        baseline_pnl_amount: withPrice ? '71.00' : '0.00',
+        cost_without_market_price: withPrice ? '468.93' : '1097.93',
+        market_value_without_purchase_price: '0.00',
       },
     },
   };

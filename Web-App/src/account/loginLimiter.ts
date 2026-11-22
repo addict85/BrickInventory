@@ -53,7 +53,7 @@ function namedDigest(name: string): string {
   return searchValue('anmeldename', name);
 }
 
-export type Sperre = { code: ErrorCode; vars: { minuten: number } };
+export type Sperre = { code: ErrorCode; vars: { minutes: number } };
 
 /** Occupies the attempt; loginFailed, loginSucceeded or giveLoginSpaceFree release it. */
 export async function loginAllowed(k: AccountContext, ip: string, username: string): Promise<Sperre | null> {
@@ -67,7 +67,7 @@ export async function loginAllowed(k: AccountContext, ip: string, username: stri
     RUNNING_EXPIRY_S,
     s => known || s.count + s.laufend < MAX_JE_ADDRESS,
   );
-  if (!total.ok) return { code: 'zu_viele_fehlversuche', vars: { minuten: total.stand.waitMin } };
+  if (!total.ok) return { code: 'too_many_failed_attempts', vars: { minutes: total.state.waitMin } };
   const address = await k.throttle.reserve(
     _key(ip, key),
     WINDOW_MIN,
@@ -76,7 +76,7 @@ export async function loginAllowed(k: AccountContext, ip: string, username: stri
   );
   if (!address.ok) {
     await k.throttle.releaseSlot(_addressKey(ip));
-    return { code: 'zu_viele_fehlversuche', vars: { minuten: address.stand.waitMin } };
+    return { code: 'too_many_failed_attempts', vars: { minutes: address.state.waitMin } };
   }
   if (known) return null;
   let rest = 0;
@@ -88,7 +88,7 @@ export async function loginAllowed(k: AccountContext, ip: string, username: stri
   if (!konto.ok) {
     await k.throttle.releaseSlot(_key(ip, key));
     await k.throttle.releaseSlot(_addressKey(ip));
-    return { code: 'zu_viele_fehlversuche', vars: { minuten: Math.max(1, Math.ceil(Math.max(rest, 1) / 60)) } };
+    return { code: 'too_many_failed_attempts', vars: { minutes: Math.max(1, Math.ceil(Math.max(rest, 1) / 60)) } };
   }
   return null;
 }
@@ -133,7 +133,7 @@ const releaseSignature = (uid: number, fingerprint: string, bis: number) =>
   searchValue('anmeldefreigabe', `${uid}|${fingerprint}|${bis}`);
 export function releaseToken(k: AccountContext, ip: string, uid: number): string {
   const fingerprint = addressDigest(ip);
-  const bis = Math.floor(k.uhr.jetzt() / 1000) + ACCOUNT_WINDOW_MIN * 60;
+  const bis = Math.floor(k.clock.now() / 1000) + ACCOUNT_WINDOW_MIN * 60;
   return `${uid}.${fingerprint}.${bis}.${releaseSignature(uid, fingerprint, bis)}`;
 }
 export async function approveLogin(k: AccountContext, token: string): Promise<void> {
@@ -142,9 +142,9 @@ export async function approveLogin(k: AccountContext, token: string): Promise<vo
     bis = Number(b);
   const expected = Number.isInteger(uid) && Number.isInteger(bis) ? releaseSignature(uid, fingerprint, bis) : '';
   const echt = expected.length === sig.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
-  if (!echt || bis * 1000 <= k.uhr.jetzt()) failDomain('konflikt', 'freigabe_link_ungueltig');
+  if (!echt || bis * 1000 <= k.clock.now()) failDomain('konflikt', 'approval_link_invalid');
   if ((await k.throttle.countAttempt(`login-freigabe-benutzt|${sig}`, ACCOUNT_WINDOW_MIN)) > 1)
-    failDomain('konflikt', 'freigabe_link_ungueltig');
+    failDomain('konflikt', 'approval_link_invalid');
   await k.throttle.countAttempt(_releaseKey(`konto:${uid}`, fingerprint), ACCOUNT_WINDOW_MIN);
 }
 export async function dailyLimitReached(k: AccountContext, ip: string, username: string): Promise<boolean> {
@@ -159,7 +159,7 @@ export type LoginEvent =
   | 'anmeldung_fehlgeschlagen'
   | 'anmeldung_gesperrt'
   | 'anmeldung_tagesgrenze'
-  | 'zweiter_faktor_falsch'
+  | 'second_factor_wrong'
   | 'bestaetigung_fehlgeschlagen'
   | 'bestaetigung_gesperrt'
   | 'bestaetigung_gebremst';
@@ -167,12 +167,12 @@ export type LoginEvent =
  * or entered name, because a password sometimes lands in the name field. */
 export function reportLoginEvent(
   ereignis: LoginEvent,
-  details: { ip?: string; konto?: number | null; art?: Brake; zugang?: string },
+  details: { ip?: string; konto?: number | null; kind?: Brake; zugang?: string },
 ): void {
   const { ip, konto, ...rest } = details;
   console.warn(`[anmeldung] ${ereignis}`, {
     ereignis,
-    ...(ip ? { adresse: throttleAddress(ip) } : {}),
+    ...(ip ? { address: throttleAddress(ip) } : {}),
     konto: konto ?? 'unbekannt',
     ...rest,
   });
@@ -184,7 +184,7 @@ export function reportLogin(details: { ip?: string | undefined; konto: number; z
   const { ip, konto, zugang } = details;
   console.info('[anmeldung] anmeldung_erfolgreich', {
     ereignis: 'anmeldung_erfolgreich',
-    ...(ip ? { adresse: throttleAddress(ip) } : {}),
+    ...(ip ? { address: throttleAddress(ip) } : {}),
     konto,
     zugang,
   });
@@ -229,43 +229,53 @@ export function countRequest(
  * Codes count separately and longer; only a correct code resets them. */
 export type Brake = 'passwort' | 'faktor';
 const FACTOR_WINDOW_MIN = 60;
-const _confirmationKey = (art: Brake, uid: number, zugang: string) =>
-  `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen|${uid}|${zugang}`;
-const window = (art: Brake) => (art === 'faktor' ? FACTOR_WINDOW_MIN : WINDOW_MIN);
+const _confirmationKey = (kind: Brake, uid: number, zugang: string) =>
+  `${kind === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen|${uid}|${zugang}`;
+const window = (kind: Brake) => (kind === 'faktor' ? FACTOR_WINDOW_MIN : WINDOW_MIN);
 
 /** Across all accesses of an account, so several captured accesses do not guess several times;
  * only accesses that guessed wrong themselves get locked. */
 export const MAX_CONFIRMATION_JE_ACCOUNT = 20;
 const ACCOUNT_WINDOW_MIN = 24 * 60;
-const _accountConfirmationKey = (art: Brake, uid: number) =>
-  `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen-konto|${uid}`;
+const _accountConfirmationKey = (kind: Brake, uid: number) =>
+  `${kind === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen-konto|${uid}`;
 
 export async function confirmationLocked(
   k: AccountContext,
-  art: Brake,
+  kind: Brake,
   uid: number,
   zugang: string,
 ): Promise<Sperre | null> {
-  const konto = await k.throttle.counterState(_accountConfirmationKey(art, uid), ACCOUNT_WINDOW_MIN);
+  const konto = await k.throttle.counterState(_accountConfirmationKey(kind, uid), ACCOUNT_WINDOW_MIN);
   const accountFull = !!konto && konto.count >= MAX_CONFIRMATION_JE_ACCOUNT;
   const r = await k.throttle.reserve(
-    _confirmationKey(art, uid, zugang),
-    window(art),
+    _confirmationKey(kind, uid, zugang),
+    window(kind),
     RUNNING_EXPIRY_S,
     s => s.count + s.laufend < MAX_ATTEMPTS && !(accountFull && s.count > 0),
   );
   if (r.ok) return null;
-  const minuten = accountFull && r.stand.count < MAX_ATTEMPTS ? konto!.waitMin : r.stand.waitMin;
-  return { code: 'zu_viele_fehlversuche', vars: { minuten } };
+  const minutes = accountFull && r.state.count < MAX_ATTEMPTS ? konto!.waitMin : r.state.waitMin;
+  return { code: 'too_many_failed_attempts', vars: { minutes } };
 }
 /** @returns true if this failed attempt just reached a brake (access or account) */
-export async function confirmationFailed(k: AccountContext, art: Brake, uid: number, zugang: string): Promise<boolean> {
-  const jeAccess = await k.throttle.countAttempt(_confirmationKey(art, uid, zugang), window(art));
-  const jeAccount = await k.throttle.countAttempt(_accountConfirmationKey(art, uid), ACCOUNT_WINDOW_MIN);
+export async function confirmationFailed(
+  k: AccountContext,
+  kind: Brake,
+  uid: number,
+  zugang: string,
+): Promise<boolean> {
+  const jeAccess = await k.throttle.countAttempt(_confirmationKey(kind, uid, zugang), window(kind));
+  const jeAccount = await k.throttle.countAttempt(_accountConfirmationKey(kind, uid), ACCOUNT_WINDOW_MIN);
   return jeAccess === MAX_ATTEMPTS || jeAccount === MAX_CONFIRMATION_JE_ACCOUNT;
 }
-export async function confirmationSucceeded(k: AccountContext, art: Brake, uid: number, zugang: string): Promise<void> {
-  await k.throttle.forgetCounter(_confirmationKey(art, uid, zugang));
+export async function confirmationSucceeded(
+  k: AccountContext,
+  kind: Brake,
+  uid: number,
+  zugang: string,
+): Promise<void> {
+  await k.throttle.forgetCounter(_confirmationKey(kind, uid, zugang));
 }
 
 /** Whoever knows the password would otherwise slowly guess the code under every waiting time;

@@ -145,8 +145,8 @@ export async function setsWithoutInstructionFetch(db: DbInterface, l: CatalogRea
   const rows = await db.all<{ set_number: string }>(
     `SELECT DISTINCT s.set_number FROM ${l.setBestand()} s
      WHERE NOT EXISTS (SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number)
-       AND NOT EXISTS (SELECT 1 FROM jobs a WHERE a.dedupe_key = 'anleitung:' || s.set_number
-                         AND a.status IN ('offen', 'laeuft', 'erledigt'))`,
+       AND NOT EXISTS (SELECT 1 FROM jobs a WHERE a.dedupe_key = 'instructions:' || s.set_number
+                         AND a.status IN ('pending', 'running', 'done'))`,
   );
   return rows.map(r => r.set_number);
 }

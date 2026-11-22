@@ -11,8 +11,8 @@ export const imgProxyFailures = {
 
 /** A side step of delivery failed: it does not hold up the response, but it
  * shows in the diagnostics (counter and last error), not only in the log. */
-export function countProxyError(ort: string, e: unknown): void {
+export function countProxyError(location: string, e: unknown): void {
   imgProxyFailures.other++;
-  imgProxyFailures.lastError = `${ort}: ${errorMessage(e)}`;
-  reportError(ort, e);
+  imgProxyFailures.lastError = `${location}: ${errorMessage(e)}`;
+  reportError(location, e);
 }

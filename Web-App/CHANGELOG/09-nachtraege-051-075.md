@@ -282,7 +282,7 @@ implementiert werden muss und das Verhalten immer gleich ist?" — erste Etappe
 umgesetzt, für die Erfassungen (dort kamen die meisten Fehler her).
 
 **Neun doppelte Routen entfernt** (GET/PUT/DELETE × Sets/Teile/Minifiguren).
-Sie leben nur noch in routes/api_v1/acquisitions.ts. Möglich war das ohne neue
+Sie leben nur noch in routes/api/acquisitions.ts. Möglich war das ohne neue
 Schicht, weil `requireToken` BEIDE Ausweise akzeptiert: Sitzungs-Cookie ODER
 Bearer-Token. Es brauchte also nur das Entfernen der Zweitfassung. Das
 Frontend ruft an allen zehn Stellen `/api/v1/...`.
@@ -324,14 +324,14 @@ DELETE) wurden vorher gegeneinander geprüft: Antwort UND Wirkung auf die
 Datenbank, jeweils identisch. Erst danach ist die Zweitfassung gefallen.
 
 **Fünf doppelte Routen entfernt**; sie leben nur noch in
-routes/api_v1/minifigs.ts. Das Frontend ruft an sieben Stellen /api/v1/….
+routes/api/minifigs.ts. Das Frontend ruft an sieben Stellen /api/v1/….
 
 **Drei Routen sind bewusst geblieben:** /stats, /export/csv und /import/csv gibt
 es nur an einem Ort — sie können gar nicht auseinanderlaufen. Sie zu
 verschieben wäre Umzug ohne Gewinn.
 
 Tests: Die Kontofilter- und Schreibrecht-Regeln prüfen jetzt
-routes/api_v1/minifigs.ts statt der entfernten Session-Route (Regel unverändert,
+routes/api/minifigs.ts statt der entfernten Session-Route (Regel unverändert,
 nur der Ort). Die beiden Paritäts-Paare wurden zu „eine Adresse, beide Ausweise"
 umgeformt, und die alten Adressen stehen in der 404-Gegenprobe.
 
@@ -347,7 +347,7 @@ einer überraschenden 404 zuerst prüfen, ob die eigene Anfrage zur Route passt.
 
 Dritte Etappe. NEUN doppelte Routen entfernt (Liste, manuelle Liste, Farben,
 Statistik, BrickLink-Farbtabelle, Steinfarben, Anlegen, Ändern, Löschen); sie
-leben nur noch in routes/api_v1/parts.ts. Frontend an neun Stellen umgestellt.
+leben nur noch in routes/api/parts.ts. Frontend an neun Stellen umgestellt.
 
 **Erst gemessen, dann entfernt — und danach nochmal gemessen** (Marcos
 Vorgabe). 18 Fälle gegen den gesicherten Vorher-Stand, jeweils HTTP-Antwort UND
@@ -378,7 +378,7 @@ einem Ort.
 
 SIEBEN doppelte Routen entfernt (Liste, Detail, Anlegen, Ändern, Löschen,
 Eigentümerwechsel, Haushaltsmitglieder); sie leben nur noch in
-routes/api_v1/sets.ts. Frontend an zehn Stellen umgestellt.
+routes/api/sets.ts. Frontend an zehn Stellen umgestellt.
 
 **Verifikation gegen den gesicherten Vorher-Stand** (11 Fälle, jeweils Antwort
 UND vollständiger Datenbankzustand): Liste, Detail, unbekanntes Set,

@@ -141,9 +141,9 @@ test('the storage locations are laid out like a table', () => {
   // loadLocationManagement() fetches the data from the server itself. What is checked
   // here is the PRODUCED structure, not the fetching — hence only the
   // markup part is executed, with fixed data.
-  const quelle = QUELLE.slice(QUELLE.indexOf('export async function loadLocationManagement'));
-  const ende = quelle.indexOf('\n}\n') + 3;
-  const rumpf = quelle.slice(0, ende);
+  const source = QUELLE.slice(QUELLE.indexOf('export async function loadLocationManagement'));
+  const ende = source.indexOf('\n}\n') + 3;
+  const rumpf = source.slice(0, ende);
   assert.match(rumpf, /storage-list/, 'Der Abschnitt wurde nicht gefunden');
 
   const sandbox = {
@@ -159,24 +159,24 @@ test('the storage locations are laid out like a table', () => {
     // occupancy is keyed on `ort`, not on `name` — exactly Marco's situation:
     // three places with content, one empty, so that the column „Belegung" really
     // gets texts of different lengths.
-    api: async (_m, pfad) =>
-      pfad.includes('locations')
+    api: async (_m, path) =>
+      path.includes('locations')
         ? {
             success: true,
-            orte: [
+            locations: [
               { id: 1, name: 'Büro' },
               { id: 2, name: 'Estrich' },
               { id: 3, name: 'Zimmer Alessio' },
               { id: 4, name: 'Zimmer Emily' },
             ],
-            vorgabe: { id: 2 },
+            preset: { id: 2 },
           }
         : {
             success: true,
-            orte: [
-              { ort: 'Büro', sets: 24, teile: 0, figuren: 0 },
-              { ort: 'Estrich', sets: 406, teile: 0, figuren: 0 },
-              { ort: 'Zimmer Alessio', sets: 2, teile: 0, figuren: 0 },
+            locations: [
+              { location: 'Büro', sets: 24, parts: 0, minifigs: 0 },
+              { location: 'Estrich', sets: 406, parts: 0, minifigs: 0 },
+              { location: 'Zimmer Alessio', sets: 2, parts: 0, minifigs: 0 },
             ],
           },
   };

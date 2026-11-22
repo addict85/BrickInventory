@@ -1,5 +1,5 @@
 /**
- * The set routes (routes/api_v1/sets.ts) against a REAL database.
+ * The set routes (routes/api/sets.ts) against a REAL database.
  *
  * ── Counter-checks (carried out) ──────────────────────────────────────────────
  * See the individual checks — each names the intervention with which it turned
@@ -61,13 +61,14 @@ async function startApi() {
     req.session = { userId: _actingAs };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }
-async function asAccount(actor, pfad, opts = {}) {
+async function asAccount(actor, path, opts = {}) {
   _actingAs = actor;
-  const r = await fetch(_base + pfad, opts);
+  const r = await fetch(_base + path, opts);
   return { status: r.status, body: await r.json().catch(() => null) };
 }
 
@@ -95,7 +96,7 @@ test('routes/sets against a real database', async t => {
 
   await t.test('the own account can delete its instructions', async () => {
     const id = await anleitung(U.anna, '10001-1', '/data/uploads/1/a_1.pdf');
-    const r = await asAccount(U.anna, `/api/v1/sets/10001-1/instructions/${id}`, { method: 'DELETE' });
+    const r = await asAccount(U.anna, `/api/v2/sets/10001-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     assert.equal(
       await db.get('SELECT id FROM instructions WHERE id=$1', [id]),
@@ -112,7 +113,7 @@ test('routes/sets against a real database', async t => {
     // That is the most expensive failure in the whole module: it reports no error,
     // it simply deletes somebody else's data.
     const id = await anleitung(U.anna, '10002-1', '/data/uploads/1/b_1.pdf');
-    const r = await asAccount(U.bruno, `/api/v1/sets/10002-1/instructions/${id}`, { method: 'DELETE' });
+    const r = await asAccount(U.bruno, `/api/v2/sets/10002-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 404, 'Ein fremdes Konto bekam Zugriff auf die Anleitung');
     assert.ok(
       await db.get('SELECT id FROM instructions WHERE id=$1', [id]),
@@ -124,13 +125,13 @@ test('routes/sets against a real database', async t => {
     // After moving two accounts share ONE file; if one deletes its row,
     // it stays. Counter-check: the count replaced by `const rest = null` → red.
     const rel = '/data/uploads/geteilt/x.pdf';
-    const abs = path.join(ROOT, rel.slice(1));
+    const abs = path.join(ROOT, 'data/uploads/geteilt/x.pdf');
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, 'PDF');
     const idA = await anleitung(U.anna, '10003-1', rel);
     await anleitung(U.bruno, '10003-1', rel);
 
-    const r = await asAccount(U.anna, `/api/v1/sets/10003-1/instructions/${idA}`, { method: 'DELETE' });
+    const r = await asAccount(U.anna, `/api/v2/sets/10003-1/instructions/${idA}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     assert.ok(fs.existsSync(abs), 'Die Datei wurde gelöscht, obwohl das andere Konto noch darauf zeigt');
     fs.rmSync(path.dirname(abs), { recursive: true, force: true });
@@ -140,18 +141,18 @@ test('routes/sets against a real database', async t => {
     // The opposite direction of the same rule: without it files accumulate that
     // no longer belong to anybody.
     const rel = '/data/uploads/allein/y.pdf';
-    const abs = path.join(ROOT, rel.slice(1));
+    const abs = path.join(ROOT, 'data/uploads/allein/y.pdf');
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, 'PDF');
     const id = await anleitung(U.anna, '10004-1', rel);
 
-    await asAccount(U.anna, `/api/v1/sets/10004-1/instructions/${id}`, { method: 'DELETE' });
+    await asAccount(U.anna, `/api/v2/sets/10004-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(fs.existsSync(abs), false, 'Die verwaiste Datei blieb liegen');
     fs.rmSync(path.dirname(abs), { recursive: true, force: true });
   });
 
   await t.test('an unknown instruction ID reports 404 instead of 500', async () => {
-    const r = await asAccount(U.anna, '/api/v1/sets/10005-1/instructions/999999', { method: 'DELETE' });
+    const r = await asAccount(U.anna, '/api/v2/sets/10005-1/instructions/999999', { method: 'DELETE' });
     assert.equal(r.status, 404);
     assert.equal(r.body?.success, false);
   });

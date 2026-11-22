@@ -66,7 +66,7 @@ test('prices are under the BrickLink number, acquisitions under the Rebrickable 
     'Der Kaufpreis kommt nicht an — die Erfassung steht unter der ' +
       'Rebrickable-Nummer und darf NICHT mit übersetzt werden.',
   );
-  assert.equal(r.by_condition.U.pnl_prozent, 18.2);
+  assert.equal(r.by_condition.U.pnl_percent, 18.2);
   assert.equal(r.by_condition.U.pnl_pct, '18.2', 'der Text wie in allen anderen Antworten (veraltet)');
 
   await db.run('DELETE FROM part_acquisitions WHERE user_id = $1', [u.id]);

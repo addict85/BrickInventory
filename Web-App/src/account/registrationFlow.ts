@@ -19,7 +19,7 @@ const RESET_VALID_MIN = 60,
 /** Exception: the mail goes out even without a readable setting, then in German.
  * The owner's account is not the request's (row-level security). */
 async function mailLanguage(k: AccountContext, uid: number): Promise<string> {
-  const wert = inSystemContext('registrierung', () => k.einstellungen.userValue(uid, 'language', 'de'));
+  const wert = inSystemContext('registrierung', () => k.settings.userValue(uid, 'language', 'de'));
   return String(await wert.catch(reportAndDeliver('registrierung:sprache', 'de')));
 }
 
@@ -71,10 +71,10 @@ async function newAccount(k: AccountContext, r: Registration): Promise<boolean> 
     last_name: r.last_name,
     passwort: r.passwort,
     tokenHash: tokenDigest(token),
-    bis: new Date(k.uhr.jetzt() + 24 * HOUR_MS),
-  }).catch(asDuplicate('benutzername_oder_email_vergeben'));
+    bis: new Date(k.clock.now() + 24 * HOUR_MS),
+  }).catch(asDuplicate('username_or_email_taken'));
   if (newId)
-    await inSystemContext('registrierung', () => k.einstellungen.setUserSetting(newId, 'language', r.lang)).catch(
+    await inSystemContext('registrierung', () => k.settings.setUserSetting(newId, 'language', r.lang)).catch(
       logAndContinue(`registrierung:sprache ${newId}`),
     );
   const several = (await k.konten.openRegistrations(r.email)) > 1;

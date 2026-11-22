@@ -7,12 +7,12 @@ import { LOCKS } from '../../infra/lockNamespaces';
 
 /** State of an account's raw data and whether catalog changes are pending (migration 0079). */
 export async function rawState(db: DbInterface, userId: number): Promise<{ v: number; openCatalog: boolean }> {
-  const r = await db.get<{ v: number | null; katalog_offen: boolean }>(
+  const r = await db.get<{ v: number | null; catalog_pending: boolean }>(
     `SELECT (SELECT v FROM parts_version_user WHERE user_id = $1) AS v,
-            EXISTS (SELECT 1 FROM parts_catalog_pending) AS katalog_offen`,
+            EXISTS (SELECT 1 FROM parts_catalog_pending) AS catalog_pending`,
     [userId],
   );
-  return { v: Number(r?.v) || 0, openCatalog: !!r?.katalog_offen };
+  return { v: Number(r?.v) || 0, openCatalog: !!r?.catalog_pending };
 }
 
 export async function builtState(db: DbInterface, userId: number): Promise<number | null> {
@@ -35,7 +35,7 @@ function summaryInsert(groupsOnly: boolean): string {
              p.color_id,
              MIN(p.part_number), MIN(${blNumberSql('p.part_number')}),
              MIN(${TEIL.name}), MIN(${TEIL.farbname}), MIN(${TEIL.farbcode}), MIN(${TEIL.kategorie}),
-             MIN(${TEIL.bild}), MIN(${TEIL.bildDatei}),
+             MIN(${TEIL.image}), MIN(${TEIL.bildDatei}),
              -- Spare is a property of the set list; the same part can be spare in
              -- one set and required in the next.
              bool_or(COALESCE(tm_k.is_spare, false)),
@@ -69,7 +69,7 @@ export async function waitForAccount(tx: DbInterface, userId: number): Promise<v
   await tx.run('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.PARTS_SUMMARY, userId]);
 }
 
-export async function rebuildAll(tx: DbInterface, userId: number, stand: number): Promise<void> {
+export async function rebuildAll(tx: DbInterface, userId: number, state: number): Promise<void> {
   await tx.run('DELETE FROM parts_summary WHERE user_id = $1', [userId]);
   await tx.run(summaryInsert(false), [userId]);
   await tx.run(
@@ -77,7 +77,7 @@ export async function rebuildAll(tx: DbInterface, userId: number, stand: number)
       INSERT INTO parts_summary_state (user_id, built_version, built_at)
       VALUES ($1, $2, NOW())
       ON CONFLICT (user_id) DO UPDATE SET built_version = $2, built_at = NOW()`,
-    [userId, stand],
+    [userId, state],
   );
 }
 

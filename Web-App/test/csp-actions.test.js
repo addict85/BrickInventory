@@ -115,11 +115,11 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
     // reported exactly that instead of running through green.
     const knoepfe = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)].map(m => m[0]);
     buttonsTotal += knoepfe.length;
-    let gefunden = 0;
+    let found = 0;
     for (const k of knoepfe) {
       const name = (k.match(/data-click="(del\w*)"/) || [])[1];
       if (EXCEPTION.has(name)) {
-        gefunden++;
+        found++;
         continue;
       }
       assert.match(
@@ -129,7 +129,7 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
           `dieselbe Aktion soll überall gleich aussehen:\n${k.slice(0, 160)}`,
       );
     }
-    exceptionsSeen += gefunden;
+    exceptionsSeen += found;
   }
   assert.ok(buttonsTotal >= 1, 'Kein einziger Löschknopf gefunden — Muster veraltet?');
 

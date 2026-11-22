@@ -30,12 +30,12 @@ export function createImages(
   };
   return buildArea(
     { ...a, bildwerk, faecher: new Compartments() },
-    (db: Db) => access(db, a.lesevertrag),
+    (db: Db) => access(db, a.readContract),
     (k: ImagesContext) => ({
       /** Limits of the image proxy and the cache from the passed configuration. */
       imageLimits: () => ({
-        cacheMaxBytes: k.konfig.imageCacheMaxMb * 1024 * 1024,
-        fetchesJeMinute: k.konfig.imageFetchesJeMinute,
+        cacheMaxBytes: k.config.imageCacheMaxMb * 1024 * 1024,
+        fetchesJeMinute: k.config.imageFetchesJeMinute,
       }),
       deleteExpired: bound(k)(imageDemandService.deleteExpired),
       catalogImagesReserve: bound(k)(imageDemandService.catalogImagesReserve),
@@ -65,8 +65,8 @@ export function createImages(
       cleanImageCacheOn: imgCacheServe.cleanImageCacheOn,
       loadImage: bound(k)(imageFile.loadImage),
       fitTailoredPreviews: (local: { web: string; datei: string }[]) => fitPreviews.fitTailoredPreviews(k, local),
-      openImage: (...x: Parameters<ImagesContext['externalSources']['quellen']['oeffneBild']>) =>
-        k.externalSources.quellen.oeffneBild(...x),
+      openImage: (...x: Parameters<ImagesContext['externalSources']['sources']['oeffneBild']>) =>
+        k.externalSources.sources.oeffneBild(...x),
     }),
     inspect,
   );

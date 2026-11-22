@@ -23,7 +23,7 @@ function withFallback(echt: Sources, ersatz: Partial<Sources> | undefined): Sour
 export function createForeignSources(a: ForeignSourcesDependencies, inspect?: Inspect<ForeignSourcesContext>) {
   const k: ForeignSourcesContext = buildContext(a, access);
   inspect?.(k);
-  const drossel = rateLimiter.throttleRebrickable(k.apiTick, k.uhr);
+  const drossel = rateLimiter.throttleRebrickable(k.apiTick, k.clock);
   const quota = {
     quotaStatus: bound(k)(apiQuotaService.quotaOverview),
     quotaFree: bound(k)(apiQuotaService.quotaFree),
@@ -31,7 +31,7 @@ export function createForeignSources(a: ForeignSourcesDependencies, inspect?: In
     quotaLimit: bound(k)(apiQuotaService.limitTheSource),
   };
   const clients: ClientsAccess = {
-    schluessel: async name => (await k.einstellungen.globalValue(name)) || '',
+    schluessel: async name => (await k.settings.globalValue(name)) || '',
     zaehle: api => apiQuotaService.checkAndCountQuota(k, api),
     quotaStatus: api => quota.quotaStatus(api),
     drossel,
@@ -40,7 +40,7 @@ export function createForeignSources(a: ForeignSourcesDependencies, inspect?: In
   };
   const services = {
     /** The clients of this access; a test replaces individual ones via `ersatz`. */
-    quellen: withFallback(buildSources(clients), a.ersatz),
+    sources: withFallback(buildSources(clients), a.ersatz),
     drossel,
     quotaStatus: quota.quotaStatus,
     quotaFree: quota.quotaFree,

@@ -108,11 +108,11 @@ test.after(async () => {
 /**
  * `zustand` since 20.10. — previously this was a fixed `X`.
  */
-function item(typ, id, farbe, menge = 1, zustand = 'X') {
+function item(typ, id, farbe, quantity = 1, condition = 'X') {
   return (
     `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
-    `${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MINQTY>${menge}</MINQTY>\n` +
-    `${zustand === null ? '' : `<CONDITION>${zustand}</CONDITION>\n`}</ITEM>`
+    `${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MINQTY>${quantity}</MINQTY>\n` +
+    `${condition === null ? '' : `<CONDITION>${condition}</CONDITION>\n`}</ITEM>`
   );
 }
 const liste = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
@@ -154,12 +154,12 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // `vorschau: true` is there EXPLICITLY. The default of this function is
     // WRITE (`vorschau: !!opt.vorschau`), and that is right: whoever calls it
     // brings a creator along. The decision "preview or for real"
-    // is made by the route from `?schreiben=1` — not by a default value here.
-    const b = await importWantedList(1, xml, { vorschau: true });
-    assert.equal(b.vorschau, true, 'Mit vorschau: true muss es eine Vorschau sein');
-    assert.equal(b.angelegt, 0, 'Eine Vorschau schreibt nichts');
+    // is made by the route from `?write=1` — not by a default value here.
+    const b = await importWantedList(1, xml, { preview: true });
+    assert.equal(b.preview, true, 'Mit vorschau: true muss es eine Vorschau sein');
+    assert.equal(b.created, 0, 'Eine Vorschau schreibt nichts');
 
-    const nach = new Map(b.posten.map(p => [p.blId, p]));
+    const nach = new Map(b.items.map(p => [p.blId, p]));
     assert.equal(
       nach.get('3001').name,
       'Brick 2 x 4',
@@ -167,20 +167,20 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         'und Marco kann an Posten 57 nicht erkennen, dass es der falsche Stein ist.',
     );
     assert.equal(
-      nach.get('3001').bild,
+      nach.get('3001').image,
       'https://cdn.example/3001-rot.png',
       'Das Bild hängt an Teil UND Farbe (ein roter 2x4 sieht anders aus als ein ' + 'blauer). Hier fehlt das Farbbild.',
     );
-    assert.equal(nach.get('3001').farbName, 'Red');
-    assert.equal(nach.get('3001').farbHex, 'C91A09');
+    assert.equal(nach.get('3001').colorName, 'Red');
+    assert.equal(nach.get('3001').colorHex, 'C91A09');
 
     // 3002 is ONLY in rb_parts (the CSV sync), not in part_catalog.
     // The resolution therefore leaves it OPEN — stage 3 reads part_catalog, and
     // it should: it is a guess, and widening it to the 50,000 rows of
     // rb_parts would mean many more items on the strength of a guess …
     assert.equal(
-      nach.get('3002').ausgang,
-      'offen',
+      nach.get('3002').outcome,
+      'open',
       'Stufe 3 liest part_catalog; 3002 steht dort nicht und bleibt offen',
     );
     assert.equal(
@@ -190,17 +190,17 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         'jedes Teil namenlos, das noch in keinem Set war.',
     );
     assert.equal(
-      nach.get('3002').bild,
+      nach.get('3002').image,
       'https://cdn.example/3002.png',
       'Ohne Farbbild muss das allgemeine Teilebild einspringen',
     );
     assert.equal(
-      nach.get('3002').nameGeraten,
+      nach.get('3002').nameGuessed,
       true,
       'Der Name wurde unter der BrickLink-Nummer gefunden, nicht über eine ' +
         'Abbildung. Ohne dieses Kennzeichen sieht die Zeile aus wie ein Treffer.',
     );
-    assert.equal(nach.get('3001').nameGeraten, false, '3001 ist abgebildet — da ist nichts geraten.');
+    assert.equal(nach.get('3001').nameGuessed, false, '3001 ist abgebildet — da ist nichts geraten.');
 
     // 9999 is in no catalog. Empty is the HONEST answer here.
     assert.equal(
@@ -210,7 +210,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         'dieses Baums. Ein geratener Name ist schlimmer als eine leere Zelle.',
     );
     assert.notEqual(
-      nach.get('9999').nameGeraten,
+      nach.get('9999').nameGuessed,
       true,
       'Eine leere Zeile „geraten" zu nennen wäre eine Behauptung über nichts',
     );
@@ -219,19 +219,19 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   await t.test('2. quantity, BL color and condition travel into the preview', async () => {
     // Without it the preview cannot show the row — and the correction
     // cannot say which color was meant.
-    const b = await importWantedList(1, liste(item('P', '3001', 85, 7)), { vorschau: true });
-    const p = b.posten[0];
-    assert.equal(p.blFarbe, 85, 'Die BrickLink-Farbnummer aus der Datei fehlt');
-    assert.equal(p.menge, 7);
-    assert.equal(p.ausgang, 'offen', 'Farbe 85 ist nicht abbildbar — der Posten bleibt offen');
-    assert.match(p.grund || '', /BrickLink-Farbe 85/);
+    const b = await importWantedList(1, liste(item('P', '3001', 85, 7)), { preview: true });
+    const p = b.items[0];
+    assert.equal(p.blColor, 85, 'Die BrickLink-Farbnummer aus der Datei fehlt');
+    assert.equal(p.quantity, 7);
+    assert.equal(p.outcome, 'open', 'Farbe 85 ist nicht abbildbar — der Posten bleibt offen');
+    assert.match(p.reason || '', /BrickLink-Farbe 85/);
   });
 
   await t.test('2b. the account default condition travels ONCE per report', async () => {
     // Asked for by Marco on 20.10.
-    const ohne = await importWantedList(1, liste(item('P', '3001', 5, 1, 'X')), { vorschau: true });
-    assert.equal(ohne.standardZustand, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
-    assert.equal(ohne.posten[0].zustand, null, 'Am ITEM steht weiterhin, was in der Datei stand — nicht der Standard');
+    const ohne = await importWantedList(1, liste(item('P', '3001', 5, 1, 'X')), { preview: true });
+    assert.equal(ohne.defaultCondition, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
+    assert.equal(ohne.items[0].condition, null, 'Am ITEM steht weiterhin, was in der Datei stand — nicht der Standard');
 
     await db.run(`INSERT INTO user_settings (user_id, key, value)
                   VALUES (1,'user_default_condition','U')
@@ -244,11 +244,11 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         item('P', '3001', 5, 1, 'X'),
         item('P', '3001', 5, 1, null),
       ),
-      { vorschau: true },
+      { preview: true },
     );
-    assert.equal(mit.standardZustand, 'U', 'Die Einstellung des Kontos gewinnt');
+    assert.equal(mit.defaultCondition, 'U', 'Die Einstellung des Kontos gewinnt');
     assert.deepEqual(
-      mit.posten.map(x => x.zustand),
+      mit.items.map(x => x.condition),
       ['N', 'U', null, null],
       'N und U bleiben, X bleibt null — der Standard ersetzt sie NICHT im Posten. ' +
         'Die Vorschau setzt beides zusammen (row() in public/js/wanted-xml.js)',
@@ -262,8 +262,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     const xml = liste(item('P', '3001', 85, 2), item('P', '3001', 85, 5));
     const zaehler = [];
     const b = await importWantedList(1, xml, {
-      vorschau: false,
-      korrekturen: [{ index: 1, blId: '3001', art: 'part', rbFarbe: 7 }],
+      preview: false,
+      corrections: [{ index: 1, blId: '3001', kind: 'part', rbColor: 7 }],
       creator: {
         teil: async (_u, body) => {
           zaehler.push(body);
@@ -273,8 +273,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         set: async () => ({ action: 'created' }),
       },
     });
-    assert.equal(b.korrekturen?.angewandt, 1, JSON.stringify(b.korrekturen));
-    assert.deepEqual(b.korrekturen?.abgewiesen, []);
+    assert.equal(b.corrections?.applied, 1, JSON.stringify(b.corrections));
+    assert.deepEqual(b.corrections?.rejected, []);
     assert.equal(
       zaehler.length,
       1,
@@ -298,7 +298,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     );
     assert.equal(zaehler[0].color_hex, '0055BF');
     assert.equal(
-      b.posten[1].sicherheit,
+      b.items[1].confidence,
       'korrigiert',
       'Eine eingetragene Nummer ist nicht „zuordnung" — der Bericht darf nicht ' +
         'behaupten, der Katalog habe geliefert, was jemand getippt hat.',
@@ -312,8 +312,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     const xml = liste(item('P', '3001', 85, 2));
     const zaehler = [];
     const b = await importWantedList(1, xml, {
-      vorschau: false,
-      korrekturen: [{ index: 0, blId: '4444', art: 'part', rbFarbe: 7 }],
+      preview: false,
+      corrections: [{ index: 0, blId: '4444', kind: 'part', rbColor: 7 }],
       creator: {
         teil: async (_u, body) => {
           zaehler.push(body);
@@ -323,9 +323,9 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         set: async () => ({ action: 'created' }),
       },
     });
-    assert.equal(b.korrekturen?.angewandt, 0);
+    assert.equal(b.corrections?.applied, 0);
     assert.equal(
-      b.korrekturen?.abgewiesen.length,
+      b.corrections?.rejected.length,
       1,
       'Die abgewiesene Korrektur muss im Bericht STEHEN — stillschweigend zu ' +
         'übergehen heisst: Marco korrigiert, und nichts passiert.',
@@ -344,17 +344,17 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // 9999 is corrected → 3002.
     const xml = liste(item('P', '3001', 5, 1), item('P', '9999', 5, 1));
     const b = await importWantedList(1, xml, {
-      vorschau: false,
+      preview: false,
       creator,
-      korrekturen: [{ index: 1, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
-      rememberNumber: async (art, rbId, blId) => {
-        gemerkt.push({ art, rbId, blId });
+      corrections: [{ index: 1, blId: '9999', kind: 'part', rbId: '3002', rbColor: 4 }],
+      rememberNumber: async (kind, rbId, blId) => {
+        gemerkt.push({ kind, rbId, blId });
       },
     });
-    assert.equal(b.korrekturen?.angewandt, 1, JSON.stringify(b.korrekturen));
+    assert.equal(b.corrections?.applied, 1, JSON.stringify(b.corrections));
     assert.deepEqual(
       gemerkt,
-      [{ art: 'part', rbId: '3002', blId: '9999' }],
+      [{ kind: 'part', rbId: '3002', blId: '9999' }],
       `Gemerkt wurde ${JSON.stringify(gemerkt)}. Erwartet ist GENAU die ` +
         'eingetragene Zuordnung 9999→3002. Steht 3001 mit dabei, wird ein ' +
         'Katalogtreffer — also eine Vermutung — als Abbildung eingetragen.',
@@ -365,25 +365,25 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     const gemerkt = [];
     const xml = liste(item('P', '98765', 5, 1));
     const b = await importWantedList(1, xml, {
-      vorschau: false,
+      preview: false,
       viaRebrickable: true,
       creator: {
         teil: async () => ({ action: 'created' }),
         minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
-      rememberNumber: async (art, rbId, blId) => {
-        gemerkt.push({ art, rbId, blId });
+      rememberNumber: async (kind, rbId, blId) => {
+        gemerkt.push({ kind, rbId, blId });
       },
     });
     assert.deepEqual(
-      b.stufen,
+      b.levels,
       { rebrickable: 1 },
       'Der Posten muss ueber Rebrickable aufgeloest worden sein — sonst sagt ' + 'der Fall nichts ueber diese Stufe',
     );
     assert.deepEqual(
       gemerkt,
-      [{ art: 'part', rbId: '12345', blId: '98765' }],
+      [{ kind: 'part', rbId: '12345', blId: '98765' }],
       `Gemerkt wurde ${JSON.stringify(gemerkt)}. Ohne diesen Eintrag fragt der ` +
         'naechste Import dieselbe Nummer wieder bei Rebrickable — 1,5 Sekunden ' +
         'und ein Abruf aus dem Tageskontingent je Posten, bei jedem Lauf',
@@ -399,8 +399,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // not be reached for that reason alone — the case would be green without
     // saying anything about the preview.
     const b = await importWantedList(1, liste(item('P', '9999', 5, 1)), {
-      vorschau: true,
-      korrekturen: [{ index: 0, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
+      preview: true,
+      corrections: [{ index: 0, blId: '9999', kind: 'part', rbId: '3002', rbColor: 4 }],
       creator: {
         teil: async () => ({ action: 'created' }),
         minifig: async () => ({ action: 'created' }),
@@ -410,8 +410,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         gemerkt.push(a);
       },
     });
-    assert.equal(b.korrekturen?.angewandt, 1, 'Vorbedingung: die Korrektur muss greifen, sonst sagt der Fall nichts');
-    assert.equal(b.angelegt, 0, 'Eine Vorschau legt nichts an');
+    assert.equal(b.corrections?.applied, 1, 'Vorbedingung: die Korrektur muss greifen, sonst sagt der Fall nichts');
+    assert.equal(b.created, 0, 'Eine Vorschau legt nichts an');
     assert.deepEqual(gemerkt, [], 'In der Vorschau darf nichts gemerkt werden');
   });
 
@@ -425,14 +425,14 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       return echt(...a);
     };
     try {
-      const gelesen = readWantedList(
+      const parsed = readWantedList(
         liste(
           ...Array.from({ length: 60 }, (_, i) => item('P', `300${i % 10}`, 5, 1)),
           ...Array.from({ length: 20 }, (_, i) => item('M', `fig${i}`, null, 1)),
           ...Array.from({ length: 20 }, (_, i) => item('S', `1049${i}-1`, null, 1)),
         ),
       );
-      const auf = await resolveLocalOn(gelesen.posten);
+      const auf = await resolveLocalOn(parsed.items);
       abfragen = 0;
       await describeItem(auf);
       assert.ok(
@@ -453,18 +453,18 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       set: async () => ({ action: 'created' }),
     };
     const b = await importWantedList(1, liste(item('P', '3001', 5, 1)), {
-      vorschau: false,
+      preview: false,
       creator,
     });
     assert.equal(
-      b.posten[0].ausgang,
-      'angelegt',
+      b.items[0].outcome,
+      'created',
       'Der Posten muss wirklich geschrieben worden sein — sonst sagt der Fall ' +
         'nichts über den Weg NACH dem Schreiben',
     );
-    assert.equal(b.posten[0].name, 'Brick 2 x 4');
+    assert.equal(b.items[0].name, 'Brick 2 x 4');
     assert.equal(
-      b.posten[0].bild,
+      b.items[0].image,
       'https://cdn.example/3001-rot.png',
       'Ohne das zeichnet der Dialog nach dem Import leere Zellen — genau ' + 'Marcos Befund',
     );
@@ -477,15 +477,15 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // the loop would show nothing for exactly these items.
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
-    const vorher = await importWantedList(1, liste(item('P', '7777', 5, 1)), { vorschau: true });
+    const vorher = await importWantedList(1, liste(item('P', '7777', 5, 1)), { preview: true });
     assert.equal(
-      vorher.posten[0].bild,
+      vorher.items[0].image,
       null,
       'In der Vorschau gibt es das Bild noch nicht — sonst sagt der Fall nichts',
     );
 
     const b = await importWantedList(1, liste(item('P', '7777', 5, 1)), {
-      vorschau: false,
+      preview: false,
       creator: {
         // The way addManualPart would do it: fill the catalog first, then report.
         teil: async () => {
@@ -499,7 +499,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       },
     });
     assert.equal(
-      b.posten[0].bild,
+      b.items[0].image,
       'https://cdn.example/7777.png',
       'Das beim Anlegen geschriebene Bild muss im Bericht ankommen',
     );

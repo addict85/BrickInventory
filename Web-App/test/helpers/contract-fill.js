@@ -6,7 +6,7 @@
  */
 
 /** @param {any} s */
-const art = s => s._zod.def.type;
+const kind = s => s._zod.def.type;
 
 /**
  * @param {any} schema  zod schema
@@ -14,18 +14,18 @@ const art = s => s._zod.def.type;
  */
 function fill(schema, wert) {
   const def = schema._zod.def;
-  switch (art(schema)) {
+  switch (kind(schema)) {
     case 'optional':
       return wert === undefined ? undefined : fill(def.innerType, wert);
     case 'nullable':
       return wert == null ? null : fill(def.innerType, wert);
     case 'object': {
       if (wert !== undefined && (wert === null || typeof wert !== 'object' || Array.isArray(wert))) return wert;
-      const quelle = wert ?? {};
+      const source = wert ?? {};
       const aus = {};
-      for (const [k, v] of Object.entries(quelle)) if (!Object.hasOwn(def.shape, k)) aus[k] = v;
+      for (const [k, v] of Object.entries(source)) if (!Object.hasOwn(def.shape, k)) aus[k] = v;
       for (const [k, s] of Object.entries(def.shape)) {
-        const v = fill(s, quelle[k]);
+        const v = fill(s, source[k]);
         if (v !== undefined) aus[k] = v;
       }
       return aus;

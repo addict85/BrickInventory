@@ -15,40 +15,40 @@ const { openUi, warte } = require('./helpers/ui');
 
 const ANTWORT = {
   success: true,
-  erledigt: false,
-  konfiguriert: false,
-  schritte: [
-    { id: 'datenbank', ok: true, pflicht: true },
-    { id: 'basis_url', ok: true, pflicht: true },
-    { id: 'https', ok: false, pflicht: false },
-    { id: 'ca', ok: false, pflicht: true },
-    { id: 'account', ok: true, pflicht: true },
-    { id: 'quelle', ok: false, pflicht: true },
+  done: false,
+  configured: false,
+  steps: [
+    { id: 'database', ok: true, required: true },
+    { id: 'base_url', ok: true, required: true },
+    { id: 'https', ok: false, required: false },
+    { id: 'ca', ok: false, required: true },
+    { id: 'account', ok: true, required: true },
+    { id: 'source', ok: false, required: true },
   ],
-  ca: { vorhanden: false, download: '/ca.crt' },
-  basis_url: null,
+  ca: { existing: false, download: '/ca.crt' },
+  base_url: null,
   https: false,
 };
 
 test('the state shows ready or missing per check', async () => {
-  const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': ANTWORT }, { loggedIn: false });
+  const { w, d, ruhig } = await openUi({ '/v2/setup/state': ANTWORT }, { loggedIn: false });
   try {
     await ruhig();
     // Without a stored source the check belongs to the initial setup and stands there.
     assert.equal(d.getElementById('btn-setup-check').hidden, false, 'ohne Quelle bleibt der Prüfknopf');
     // First-time users must read at the button what is checked.
     assert.equal(d.getElementById('btn-setup-check').textContent.trim(), 'Was fehlt noch zur Einrichtung?');
-    const hinweis = d.getElementById('setup-check-hint');
-    assert.equal(hinweis.hidden, false, 'der Hinweis steht beim Knopf');
-    assert.match(hinweis.textContent, /Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel/);
-    assert.equal(d.getElementById('btn-setup-check').getAttribute('aria-describedby'), hinweis.id);
+    const hint = d.getElementById('setup-check-hint');
+    assert.equal(hint.hidden, false, 'der Hinweis steht beim Knopf');
+    assert.match(hint.textContent, /Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel/);
+    assert.equal(d.getElementById('btn-setup-check').getAttribute('aria-describedby'), hint.id);
     d.getElementById('btn-setup-check').click();
     await warte(() => d.getElementById('setup-status-modal').classList.contains('open'));
     await warte(() => d.querySelectorAll('#es-list .es-row').length === 6);
 
     assert.equal(d.querySelectorAll('#es-list .es-row').length, 6, 'jede Prüfung braucht eine Zeile');
-    assert.ok(d.getElementById('es-datenbank').classList.contains('ok'), 'bereit ist nicht als solches markiert');
-    assert.equal(d.querySelector('#es-datenbank .es-value').textContent, 'bereit', 'bereit steht als Text');
+    assert.ok(d.getElementById('es-database').classList.contains('ok'), 'bereit ist nicht als solches markiert');
+    assert.equal(d.querySelector('#es-database .es-value').textContent, 'bereit', 'bereit steht als Text');
     assert.ok(d.getElementById('es-ca').classList.contains('missing'));
     assert.equal(d.querySelector('#es-ca .es-value').textContent, 'fehlt');
     // The missing certificate names the reason, not only the color.
@@ -61,8 +61,8 @@ test('the state shows ready or missing per check', async () => {
 });
 
 test('with a stored source the check button disappears', async () => {
-  const antwort = { ...ANTWORT, konfiguriert: true };
-  const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': antwort }, { loggedIn: false });
+  const response = { ...ANTWORT, configured: true };
+  const { w, d, ruhig } = await openUi({ '/v2/setup/state': response }, { loggedIn: false });
   try {
     await ruhig();
     assert.equal(d.getElementById('btn-setup-check').hidden, true, 'mit Quelle verschwindet er');
@@ -73,8 +73,8 @@ test('with a stored source the check button disappears', async () => {
 });
 
 test('after completion the message stays, the checklist disappears', async () => {
-  const antwort = { ...ANTWORT, erledigt: true, schritte: [] };
-  const { w, d } = await openUi({ '/v1/einrichtung/stand': antwort }, { loggedIn: false });
+  const response = { ...ANTWORT, done: true, steps: [] };
+  const { w, d } = await openUi({ '/v2/setup/state': response }, { loggedIn: false });
   try {
     d.getElementById('btn-setup-check').click();
     await warte(() => d.getElementById('es-banner').textContent.includes('abgeschlossen'));
@@ -86,7 +86,7 @@ test('after completion the message stays, the checklist disappears', async () =>
 });
 
 test('English: button and hint', async () => {
-  const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': ANTWORT }, { loggedIn: false, sprache: 'en' });
+  const { w, d, ruhig } = await openUi({ '/v2/setup/state': ANTWORT }, { loggedIn: false, language: 'en' });
   try {
     await ruhig();
     await warte(() => d.getElementById('btn-setup-check').textContent.trim() === 'What is still missing in the setup?');

@@ -65,13 +65,13 @@ test('set_number and storage deliberately bypass the summary', () => {
   // and cannot filter by anything that differs WITHIN a
   // group.
   const h = require('./helpers/sources').handlerQuelle();
-  const zeile = /if \(filter\.withoutManual && ([^)]*)\)/.exec(h)?.[1] || '';
+  const row = /if \(filter\.withoutManual && ([^)]*)\)/.exec(h)?.[1] || '';
   assert.ok(
-    zeile.includes('!filter.set_number'),
+    row.includes('!filter.set_number'),
     'Die Teile EINES Sets sind ein anderer Anwendungsfall — dort ist die Live-Abfrage passend und schnell genug',
   );
   assert.ok(
-    zeile.includes('!filter.storage'),
+    row.includes('!filter.storage'),
     'Der Lagerort steht in der Zusammenfassung nur verdichtet — ein Filter darauf träfe die Gruppe falsch',
   );
 });
@@ -128,9 +128,9 @@ test('summary matches the live query and does not go stale', { skip: skip || und
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
     ('3001',5,'Rot'),('3002',1,'Blau'),('3003',2,'Gruen')
     ON CONFLICT (part_number, color_id) DO NOTHING`);
-  await holdsPart(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
-  await holdsPart(db, U, '3001', { setNumber: 'B-1', menge: 4, colorId: 5 });
-  await holdsPart(db, U, '3002', { setNumber: 'A-1', menge: 1, colorId: 1 });
+  await holdsPart(db, U, '3001', { setNumber: 'A-1', quantity: 3, colorId: 5 });
+  await holdsPart(db, U, '3001', { setNumber: 'B-1', quantity: 4, colorId: 5 });
+  await holdsPart(db, U, '3002', { setNumber: 'A-1', quantity: 1, colorId: 1 });
   // The set list for 3003 already stands in the catalog now; below only the
   // stock row is added (a catalog change would update the group immediately).
   await db.run(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('A-1','3003',2,9)
@@ -181,7 +181,7 @@ test('summary matches the live query and does not go stale', { skip: skip || und
   );
   await PS.rebuildNow(U);
   assert.equal(await PS.summaryFresh(U, { strict: true }), true, 'Vorbedingung: die eigene Zusammenfassung ist frisch');
-  await holdsPart(db, FREMD, '9999', { menge: 1, colorId: 7 });
+  await holdsPart(db, FREMD, '9999', { quantity: 1, colorId: 7 });
   assert.equal(
     await PS.summaryFresh(U, { strict: true }),
     true,
@@ -321,8 +321,8 @@ test('both paths of the metrics count THE SAME — also with manual parts', { sk
     [U],
   );
   await holdsSet(db, U, 'A-1', 1);
-  await holdsPart(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
-  await holdsPart(db, U, '9999', { menge: 11, colorId: 7 });
+  await holdsPart(db, U, '3001', { setNumber: 'A-1', quantity: 3, colorId: 5 });
+  await holdsPart(db, U, '9999', { quantity: 11, colorId: 7 });
 
   // Path 1: from the summary.
   await PS.rebuildNow(U);
@@ -348,12 +348,12 @@ test('both paths of the metrics count THE SAME — also with manual parts', { sk
   assert.equal(fromSummary.unique_colors, 2, 'Die Farbe des manuellen Teils fehlt');
   assert.equal(fromSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');
   // Shown separately: the parts tab counts both together, like the
-  // tile of the collection (/v1/stats). Counter-check (01.11.2026): manual_parts in
+  // tile of the collection (/v2/stats). Counter-check (01.11.2026): manual_parts in
   // kennzahlen() fixed to 0 → red „Die einzeln erfassten Teile fehlen …“.
   assert.equal(fromSummary.manual_parts, 11, 'Die einzeln erfassten Teile fehlen in der Aufschlüsselung');
-  const gesamt = await S.getStats([U]);
+  const total = await S.getStats([U]);
   assert.deepEqual(
-    [gesamt.total_parts, gesamt.set_parts, gesamt.manual_parts],
+    [total.total_parts, total.set_parts, total.manual_parts],
     [14, 3, 11],
     'Die Kachel der Sammlung zeigt nicht dieselbe Summe wie der Teile-Reiter',
   );

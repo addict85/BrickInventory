@@ -87,14 +87,14 @@ export function fontFactor() {
  * @param {number} fs
  */
 function axesEdge(division, cur, fs) {
-  const step = division.werte.length > 1 ? division.werte[1] - division.werte[0] : 1;
-  const longest = Math.max(...division.werte.map(v => axesAmount(v, step, cur, fs >= 18).length));
+  const step = division.values.length > 1 ? division.values[1] - division.values[0] : 1;
+  const longest = Math.max(...division.values.map(v => axesAmount(v, step, cur, fs >= 18).length));
   return Math.ceil(longest * fs * 0.62 + fs * 1.2);
 }
 
 /**
  * Left margin and position of the axis amounts. If less than a good half remained next to them for the curve
- * (phone, large font), the amounts stand inside above their grid lines: otherwise at 320 px and
+ * (phone, large font), the amounts state inside above their grid lines: otherwise at 320 px and
  * 200 % 15 px of curve would remain.
  * @param {Split} division
  * @param {string} cur
@@ -112,7 +112,7 @@ function axesSituation(division, cur, fs, W, right) {
 // Values in steps of 1, 2 or 5 times a power of ten (nobody reads 4'219 / 4'441), time as a real
 // axis instead of by index — otherwise a month would be as wide as a day.
 
-/** Axis division: first and last tick, all values in between. @typedef {{ of: number, bis: number, werte: number[] }} Split */
+/** Axis division: first and last tick, all values in between. @typedef {{ of: number, bis: number, values: number[] }} Split */
 
 /**
  * Division by 1-2-5 over [min, max] with at most about `target` ticks.
@@ -132,7 +132,7 @@ export function niceSplit(min, max, target = 5) {
     bis = Math.ceil(max / step - 1e-9) * step;
   const values = [];
   for (let i = 0; of + i * step <= bis + step / 2; i++) values.push(Number((of + i * step).toPrecision(12)));
-  return { of, bis, werte: values };
+  return { of, bis, values: values };
 }
 
 /**
@@ -265,8 +265,8 @@ export function axesAmount(v, step, cur, short = false) {
  * @param {string} cur
  */
 function yAxis(division, min, yOf, links, right, top, bottom, cur, f = 1, inside = false) {
-  const step = division.werte.length > 1 ? division.werte[1] - division.werte[0] : 1;
-  const stripes = division.werte
+  const step = division.values.length > 1 ? division.values[1] - division.values[0] : 1;
+  const stripes = division.values
     .filter((/** @type {number} */ v) => v >= min)
     .map(v => {
       const y = yOf(v).toFixed(1);
@@ -293,8 +293,8 @@ function yAxis(division, min, yOf, links, right, top, bottom, cur, f = 1, inside
  * @param {number[]} [avoid]
  */
 function yAmountsInner(division, min, yOf, links, cur, f, avoid = []) {
-  const step = division.werte.length > 1 ? division.werte[1] - division.werte[0] : 1;
-  const values = division.werte.filter((/** @type {number} */ v) => v >= min);
+  const step = division.values.length > 1 ? division.values[1] - division.values[0] : 1;
+  const values = division.values.filter((/** @type {number} */ v) => v >= min);
   return [values[0], values[values.length - 1]]
     .filter((v, i, a) => a.indexOf(v) === i)
     .filter(v => avoid.every(y => Math.abs(yOf(v) - y) > 30 * f))
@@ -323,9 +323,9 @@ function wrap(text, space, f) {
 }
 
 /**
- * Labels of reference lines that would wrap inside the picture stand below the chart: multi-line they lay
+ * Labels of reference lines that would wrap inside the picture state below the chart: multi-line they lay
  * over the curve and end point. `height` is the room the chart adds at the bottom for them.
- * @param {{ text: string, farbe: string }[]} entries @param {number} W @param {number} f
+ * @param {{ text: string, color: string }[]} entries @param {number} W @param {number} f
  */
 function referenceLegend(entries, W, f) {
   let y = 0;
@@ -341,7 +341,7 @@ function referenceLegend(entries, W, f) {
       const b = start + top + 12 * f,
         x = 4 + 22 * f;
       const tspans = rows.map((z, i) => (i ? html`<tspan x="${x}" dy="${14 * f}">${z}</tspan>` : z));
-      return html`<g data-legend="basis"><line x1="4" y1="${(b - 4 * f).toFixed(1)}" x2="${4 + 16 * f}" y2="${(b - 4 * f).toFixed(1)}" stroke="${e.farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
+      return html`<g data-legend="basis"><line x1="4" y1="${(b - 4 * f).toFixed(1)}" x2="${4 + 16 * f}" y2="${(b - 4 * f).toFixed(1)}" stroke="${e.color}" stroke-width="1.5" stroke-dasharray="6 4"/>
       <text x="${x}" y="${b.toFixed(1)}" font-size="${12 * f}" font-weight="600" fill="var(--txt)" font-family="inherit">${tspans}</text></g>`;
     });
   return { height: parts.length ? y + 6 * f : 0, svg };
@@ -388,14 +388,14 @@ function referenceLine(
       paint-order="stroke" stroke="var(--sur)" stroke-width="4" stroke-linejoin="round">${tspans}</text></g>`;
 }
 
-/** Response of /v1/…/price-history, as far as the charts read it.
+/** Response of /v2/…/price-history, as far as the charts read it.
  * @typedef {Partial<Pick<import('../../frontend-types/contract').PriceHistoryResponse, 'chart' | 'history_new' | 'history_used' | 'by_condition'>> | null | undefined} PriceData */
 
 /**
  * The series of the price history per condition, from the server's chart data (src/finances/chartData.ts). Before
  * firstRealIndex there are padded zeros; the purchase price on the purchase day is not a market price and stands as a point
  * there.
- * @param {PriceData} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], kauf: number, purchaseTag: string | null }[]}
+ * @param {PriceData} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], purchase: number, purchaseTag: string | null }[]}
  */
 function priceRows(data) {
   /** @type {Record<string, string>} */
@@ -417,7 +417,7 @@ function priceRows(data) {
         name: NAMES[sd.name] || sd.name,
         color: COLORS[sd.name] || 'var(--mut)',
         pts: (sd.values || []).slice(sd.firstRealIndex ?? 0).filter(pt => pt.y > 0 && !days.has(String(pt.x))),
-        kauf: Number(sd.name === 'N' || sd.name === 'U' ? data?.by_condition?.[sd.name]?.purchase_price : 0) || 0,
+        purchase: Number(sd.name === 'N' || sd.name === 'U' ? data?.by_condition?.[sd.name]?.purchase_price : 0) || 0,
         purchaseTag: [...days][0] || null,
       };
     })
@@ -453,7 +453,7 @@ let _nextId = 0;
  * not from the index: used prices often start later, and stretched series would show a comparison that
  * does not exist.
  * @param {PriceData} data
- *   Response of /v1/sets/:nummer/price-history
+ *   Response of /v2/sets/:number/price-history
  * @param {string} [uid]  abbreviation for the gradient IDs in the SVG
  * @param {number} [width]
  * @param {Set<string>} [medium] conditions whose purchase price is the average of several purchases ("Ø purchase price")
@@ -474,8 +474,8 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, width = 700, medium =
     last = axis[axis.length - 1];
   const span = Math.max(1, toTime(last) - toTime(first));
 
-  const purchases = series.filter(sd => sd.kauf > 0);
-  const vals = [...series.flatMap(sd => sd.pts.map(p => p.y)), ...purchases.map(sd => sd.kauf)];
+  const purchases = series.filter(sd => sd.purchase > 0);
+  const vals = [...series.flatMap(sd => sd.pts.map(p => p.y)), ...purchases.map(sd => sd.purchase)];
   const division = niceSplit(Math.min(...vals), Math.max(...vals), 4);
   const min = Math.max(0, division.of),
     max = division.bis,
@@ -490,12 +490,12 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, width = 700, medium =
     t: situation.inside ? 22 * f : 12 * f,
     b: 46 * f,
   };
-  const purchaseText = (/** @type {{ key: string, name: string, kauf: number }} */ sd) =>
-    `${tRaw(medium.has(sd.key) ? 'detail.purchase_price_avg' : 'detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, accountCurrency)}`;
+  const purchaseText = (/** @type {{ key: string, name: string, purchase: number }} */ sd) =>
+    `${tRaw(medium.has(sd.key) ? 'detail.purchase_price_avg' : 'detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.purchase, accountCurrency)}`;
   const refLegend = referenceLegend(
     purchases
       .filter(sd => !inImage(purchaseText(sd), PAD.l, W - PAD.r, f))
-      .map(sd => ({ text: purchaseText(sd), farbe: sd.color })),
+      .map(sd => ({ text: purchaseText(sd), color: sd.color })),
     W,
     f,
   );
@@ -512,7 +512,7 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, width = 700, medium =
 
   const purchaseLines = purchases.map(sd =>
     referenceLine(
-      sd.kauf,
+      sd.purchase,
       yOf,
       PAD.l,
       W - PAD.r,
@@ -528,7 +528,7 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, width = 700, medium =
     .flatMap(sd => (sd.purchaseTag ? [{ ...sd, purchaseTag: sd.purchaseTag }] : []))
     .map(
       sd =>
-        html`<circle cx="${Math.max(PAD.l, xOf(sd.purchaseTag)).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="${4.5 * f}" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="purchase-dot"><title>${tRaw('detail.purchase_price')} ${fmtN(sd.kauf, accountCurrency)}</title></circle>`,
+        html`<circle cx="${Math.max(PAD.l, xOf(sd.purchaseTag)).toFixed(1)}" cy="${yOf(sd.purchase).toFixed(1)}" r="${4.5 * f}" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="purchase-dot"><title>${tRaw('detail.purchase_price')} ${fmtN(sd.purchase, accountCurrency)}</title></circle>`,
     );
 
   const fmtDay = (/** @type {string} */ d) => fmtDate(new Date(toTime(d)));
@@ -606,7 +606,7 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, width = 700, medium =
             PAD.l,
             accountCurrency,
             f,
-            purchases.map(sd => yOf(sd.kauf)),
+            purchases.map(sd => yOf(sd.purchase)),
           )
         : ''
     }
@@ -658,7 +658,7 @@ export function portfolioChartSVG(
     ? `${W < 560 ? tRaw('finance.chart.purchase_price') : costText} ${fmtN(costBasis, cur)}`
     : '';
   const belowTheImage = !!referenceText && !inImage(referenceText, PAD.l, W - PAD.r, f);
-  const refLegend = referenceLegend(belowTheImage ? [{ text: referenceText, farbe: 'var(--txt)' }] : [], W, f);
+  const refLegend = referenceLegend(belowTheImage ? [{ text: referenceText, color: 'var(--txt)' }] : [], W, f);
   const hCurve = Math.round(180 * (1 + (f - 1) * 0.6)),
     H = hCurve + refLegend.height;
   PAD.b += refLegend.height;

@@ -9,7 +9,7 @@ const { valuesFromPdf, valuesFromText, parseNumber, pdfText } = _req('src/vouche
 // `require('pdfkit')` and NOT via the directory path: pdfkit 0.20 has
 // no `main` any more, only `exports` — a path to the directory bypasses
 // the resolution and fails. The tree does the same at its own two
-// places (routes/api_v1/pdf.ts, src/catalog/instructions.ts).
+// places (routes/api/pdf.ts, src/catalog/instructions.ts).
 const PDFDocument = require('pdfkit');
 
 /** Build a PDF with the passed lines — one text operator per line. */

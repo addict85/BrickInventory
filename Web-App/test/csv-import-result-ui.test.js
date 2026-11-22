@@ -33,11 +33,11 @@ const assert = require('node:assert/strict');
 const { openUi, warte, takt } = require('./helpers/ui');
 
 const RESULTS = [
-  { zeile: 2, set_number: '10200-1', success: true, action: 'added', menge: 1 },
-  { zeile: 4, set_number: 'abc', success: false, error: 'Das ist keine Setnummer' },
-  { zeile: 5, set_number: '10312-1', success: false, code: 'csv_menge_ungueltig', error: 'Menge „x“ ungültig' },
-  { zeile: 6, set_number: '99999-1', success: true, action: 'added', menge: 1, katalog_offen: true },
-  { zeile: 7, set_number: '', success: false, code: 'csv_keine_setnummer', error: 'keine Setnummer' },
+  { row: 2, set_number: '10200-1', success: true, action: 'added', quantity: 1 },
+  { row: 4, set_number: 'abc', success: false, error: 'Das ist keine Setnummer' },
+  { row: 5, set_number: '10312-1', success: false, code: 'csv_quantity_invalid', error: 'Menge „x“ ungültig' },
+  { row: 6, set_number: '99999-1', success: true, action: 'added', quantity: 1, catalog_pending: true },
+  { row: 7, set_number: '', success: false, code: 'csv_no_set_number', error: 'keine Setnummer' },
   { success: true, action: 'updated' },
 ];
 const DONE = {
@@ -50,25 +50,25 @@ const DONE = {
   warn: 1,
   err: 3,
   results: RESULTS,
-  beendet_am: new Date().toISOString(),
+  finished_at: new Date().toISOString(),
 };
 
 /** Choose a file as the browser would. */
 function chooseFile(w, d) {
-  const feld = d.getElementById('csv-file');
-  Object.defineProperty(feld, 'files', {
+  const field = d.getElementById('csv-file');
+  Object.defineProperty(field, 'files', {
     configurable: true,
     value: [new w.File(['Set Number,Quantity\n'], 'import.csv')],
   });
-  feld.dispatchEvent(new w.Event('change', { bubbles: true }));
+  field.dispatchEvent(new w.Event('change', { bubbles: true }));
 }
 
 test('existing sets: ask first, cancel starts nothing', async () => {
   const posts = [];
   const { w, d, ruhig } = await openUi({
-    '/v1/sets/import/csv': u => {
-      posts.push(new URL(u, 'http://x').searchParams.get('pruefen'));
-      return { success: true, total: 8, gestartet: false, vorhanden: 2, vorhanden_nummern: ['10305-1', '10200-1'] };
+    '/v2/sets/import/csv': u => {
+      posts.push(new URL(u, 'http://x').searchParams.get('check'));
+      return { success: true, total: 8, started: false, existing: 2, existing_numbers: ['10305-1', '10200-1'] };
     },
   });
   try {
@@ -86,17 +86,17 @@ test('existing sets: ask first, cancel starts nothing', async () => {
 
 test('result list with rows, colors and read rows', async () => {
   let fetches = 0,
-    gestartet = false;
+    started = false;
   const { w, d } = await openUi({
-    '/v1/sets/import/csv': u => {
-      if (u.includes('pruefen=1')) return { success: true, total: 8, gestartet: false, vorhanden: 0 };
-      gestartet = true;
-      return { success: true, total: 8, gestartet: true };
+    '/v2/sets/import/csv': u => {
+      if (u.includes('pruefen=1')) return { success: true, total: 8, started: false, existing: 0 };
+      started = true;
+      return { success: true, total: 8, started: true };
     },
     // Before the start nothing runs; afterwards first a waiting job, then the result.
-    '/v1/sets/import/csv/status': () =>
-      !gestartet
-        ? { success: false, code: 'kein_import_laeuft' }
+    '/v2/sets/import/csv/status': () =>
+      !started
+        ? { success: false, code: 'no_import_running' }
         : ++fetches < 2
           ? { success: true, status: 'running', total: 8, done: 0, current: null, ok: 0, warn: 0, err: 0, results: [] }
           : DONE,
@@ -136,7 +136,7 @@ test('result list with rows, colors and read rows', async () => {
 });
 
 test('after reloading: the last import in the menu', async () => {
-  const { w, d } = await openUi({ '/v1/sets/import/csv/status': DONE });
+  const { w, d } = await openUi({ '/v2/sets/import/csv/status': DONE });
   try {
     const knopf = d.getElementById('last-import');
     assert.ok(await warte(() => !knopf.hidden), 'Eintrag sichtbar');
@@ -150,8 +150,8 @@ test('after reloading: the last import in the menu', async () => {
 });
 
 test('an old import stays out of the menu', async () => {
-  const alt = { ...DONE, beendet_am: new Date(Date.now() - 25 * 3600_000).toISOString() };
-  const { w, d, ruhig } = await openUi({ '/v1/sets/import/csv/status': alt });
+  const alt = { ...DONE, finished_at: new Date(Date.now() - 25 * 3600_000).toISOString() };
+  const { w, d, ruhig } = await openUi({ '/v2/sets/import/csv/status': alt });
   try {
     await ruhig();
     assert.equal(d.getElementById('last-import').hidden, true);

@@ -159,11 +159,11 @@ export type AcquisitionKind = keyof typeof ACQUISITIONS;
 export async function ownerTheEntry(
   db: DbInterface,
   l: HouseholdReadContract,
-  art: AcquisitionKind,
+  kind: AcquisitionKind,
   id: number,
 ): Promise<number | null> {
   const r = await db.get<{ user_id: number | string }>(
-    `SELECT user_id FROM ${l[ACQUISITIONS[art]]()} e WHERE id = $1`,
+    `SELECT user_id FROM ${l[ACQUISITIONS[kind]]()} e WHERE id = $1`,
     [id],
   );
   return r ? number(r.user_id) : null;

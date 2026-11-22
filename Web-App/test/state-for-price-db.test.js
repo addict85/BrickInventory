@@ -31,13 +31,13 @@ test('condition for the market price: input → stock → default', { concurrenc
 
   // Own user per process — the test runs next to others on the same DB.
   const name = `zfp_${process.pid}`;
-  const angelegt = await db.get(
+  const created = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ($1,'x')
        ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username
      RETURNING id`,
     [name],
   );
-  const uid = angelegt.id;
+  const uid = created.id;
 
   const beforeGlobal = await db
     .get(`SELECT value FROM global_settings WHERE key='default_price_condition'`)

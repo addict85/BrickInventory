@@ -1,27 +1,27 @@
 /**
  * The ZIP export produces a valid archive — with exactly the API that
- * routes/api_v1/settings.ts uses.
+ * routes/api/settings.ts uses.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { PassThrough } = require('node:stream');
 
-/** Builds an archive like routes/api_v1/settings.ts and returns the bytes. */
+/** Builds an archive like routes/api/settings.ts and returns the bytes. */
 function zippen(dateien) {
   const { ZipArchive } = require('archiver');
-  return new Promise((fertig, fehler) => {
-    const teile = [];
+  return new Promise((fertig, error) => {
+    const parts = [];
     const out = new PassThrough();
-    out.on('data', c => teile.push(c));
-    out.on('end', () => fertig(Buffer.concat(teile)));
+    out.on('data', c => parts.push(c));
+    out.on('end', () => fertig(Buffer.concat(parts)));
     const archive = new ZipArchive({ zlib: { level: 9 } });
-    archive.on('error', fehler);
+    archive.on('error', error);
     archive.pipe(out);
     for (const [name, inhalt] of Object.entries(dateien)) {
       archive.append('\uFEFF' + inhalt, { name });
     }
-    archive.finalize().catch(fehler);
+    archive.finalize().catch(error);
   });
 }
 
@@ -34,7 +34,7 @@ test('archiver is usable from CommonJS', () => {
   assert.equal(
     typeof mod.ZipArchive,
     'function',
-    'archiver exportiert kein ZipArchive mehr — routes/api_v1/settings.ts baut darauf. ' +
+    'archiver exportiert kein ZipArchive mehr — routes/api/settings.ts baut darauf. ' +
       "Vor 8.x hiess derselbe Weg archiver('zip', opts).",
   );
   const a = new mod.ZipArchive({ zlib: { level: 9 } });

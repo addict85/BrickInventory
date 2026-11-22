@@ -6,7 +6,7 @@ import type { PoolClient, PoolConfig, QueryResult } from 'pg';
 import { Notification, type Signals } from './pgNotify';
 import type { DbInterface } from './types';
 import { errorCode, reportError } from '../src/infra/error';
-import { konfig, databaseConnection, systemConnection, systemWebConnection } from '../src/infra/config';
+import { config, databaseConnection, systemConnection, systemWebConnection } from '../src/infra/config';
 import { queryWithRetry, isReading } from './retry';
 import { inTransactionPath, rowsContext } from '../src/infra/accountContext';
 import {
@@ -75,7 +75,7 @@ export interface DbConfig {
 export interface TxGriff extends TxHandleOf<Db> {}
 
 export function dbConfigFromEnvironment(): DbConfig {
-  const K = konfig();
+  const K = config();
   return {
     verbindung: databaseConnection(),
     system: systemConnection(),
@@ -183,7 +183,7 @@ function poolOfFrame(r: Frame): Pool {
  * state, possibly against its locks). That is an error: choose the frame before the transaction. */
 function openTx(r: Frame): TxStand | null {
   const t = runningTx();
-  return t?.offen && t.db === r.ich ? t : null;
+  return t?.open && t.db === r.ich ? t : null;
 }
 function checkFrame(r: Frame, t: TxStand): void {
   if (t.pool !== poolOfFrame(r)) throw new BesideTheTransaction(t.pool !== r.pool);
@@ -230,12 +230,12 @@ async function query(r: Frame, sql: string, params?: unknown[]): Promise<QueryRe
 
 async function oneTimeTransaction<T>(
   r: Frame,
-  griff: (stand: TxStand) => TxGriff,
+  griff: (state: TxStand) => TxGriff,
   fn: (tx: TxGriff) => Promise<T>,
 ): Promise<T> {
   const p = poolOfFrame(r);
   const client = await p.connect();
-  const stand = newTxStatus({ client, db: r.ich, pool: p, streng: r.streng });
+  const state = newTxStatus({ client, db: r.ich, pool: p, streng: r.streng });
   let kaputt: Error | undefined;
   // If the connection drops in the middle of the transaction, the client reports that
   // as an 'error' event; without a listener it would end the whole process.
@@ -245,16 +245,16 @@ async function oneTimeTransaction<T>(
   client.on('error', teardown);
   try {
     // The context in the same round trip as BEGIN; contextSync() follows changes afterwards.
-    stand.kontext = contextSql();
-    await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
-    const result = await inTransactionPath(stand, () => fn(griff(stand)));
-    await commitCompanion()?.(griff(stand));
-    stand.offen = false;
-    if (!rowsContext().system) await client.query(contextCheckSql(stand.kontext));
+    state.kontext = contextSql();
+    await client.query(state.kontext ? `BEGIN; ${state.kontext}` : 'BEGIN');
+    const result = await inTransactionPath(state, () => fn(griff(state)));
+    await commitCompanion()?.(griff(state));
+    state.open = false;
+    if (!rowsContext().system) await client.query(contextCheckSql(state.kontext));
     await client.query('COMMIT');
     return result;
   } catch (e) {
-    stand.offen = false;
+    state.open = false;
     // If the ROLLBACK fails as well, the connection is broken: it must not
     // go back into the pool, and the error that caused it is reported.
     try {
@@ -292,15 +292,15 @@ async function withRetry<T>(once: () => Promise<T>, o: TxOptions): Promise<T> {
 
 /** The handle of a transaction or one of its savepoints (`punkt`): queries over
  * its connection and an access on top; a transaction inside it becomes a savepoint. */
-function griff(r: Frame, access: Db, counter: { savepoints: number }, stand: TxStand, point: string | null): TxGriff {
-  const q = txQueries(stand, () => checkFrame(r, stand));
-  if (point === null) return { ...q, db: connectionAccess(r, access, counter, stand) };
+function griff(r: Frame, access: Db, counter: { savepoints: number }, state: TxStand, point: string | null): TxGriff {
+  const q = txQueries(state, () => checkFrame(r, state));
+  if (point === null) return { ...q, db: connectionAccess(r, access, counter, state) };
   const tdb: Db = {
     ...access,
     ...q,
     transaction: (fn, o = {}) =>
-      innerTransaction(stand, point, ++counter.savepoints, name =>
-        lockWith(fn, o.sperren)(griff(r, access, counter, stand, name)),
+      innerTransaction(state, point, ++counter.savepoints, name =>
+        lockWith(fn, o.sperren)(griff(r, access, counter, state, name)),
       ),
     notification: access.notification.over(q.run),
     inTransaction: () => true,
@@ -313,24 +313,24 @@ function griff(r: Frame, access: Db, counter: { savepoints: number }, stand: TxS
  * per transaction). It queries over the transaction currently running on the connection, and only from
  * its call path; a straggler of an earlier one gets TransactionEnded. */
 interface ConnectionSlot {
-  stand: TxStand | null;
+  state: TxStand | null;
   q: DbInterface | null;
   db: Db;
 }
-function connectionAccess(r: Frame, access: Db, counter: { savepoints: number }, stand: TxStand): Db {
-  const da = r.jeConnection.get(stand.client);
+function connectionAccess(r: Frame, access: Db, counter: { savepoints: number }, state: TxStand): Db {
+  const da = r.jeConnection.get(state.client);
   const slot = da ?? newSpace(r, access, counter);
-  if (!da) r.jeConnection.set(stand.client, slot);
-  slot.stand = stand;
-  slot.q = txQueries(stand, () => checkFrame(r, stand));
+  if (!da) r.jeConnection.set(state.client, slot);
+  slot.state = state;
+  slot.q = txQueries(state, () => checkFrame(r, state));
   return slot.db;
 }
 
 function newSpace(r: Frame, access: Db, counter: { savepoints: number }): ConnectionSlot {
-  const active = (): { stand: TxStand; q: DbInterface } => {
-    const { stand, q } = slot;
-    if (!stand || !q || runningTx() !== stand) throw new TransactionEnded();
-    return { stand, q };
+  const active = (): { state: TxStand; q: DbInterface } => {
+    const { state, q } = slot;
+    if (!state || !q || runningTx() !== state) throw new TransactionEnded();
+    return { state, q };
   };
   const q: DbInterface = {
     all: (sql, p) => active().q.all(sql, p),
@@ -339,15 +339,15 @@ function newSpace(r: Frame, access: Db, counter: { savepoints: number }): Connec
     exec: sql => active().q.exec(sql),
   };
   const slot: ConnectionSlot = {
-    stand: null,
+    state: null,
     q: null,
     db: {
       ...access,
       ...q,
       transaction: (fn, o = {}) => {
-        const { stand } = active();
-        return innerTransaction(stand, null, ++counter.savepoints, name =>
-          lockWith(fn, o.sperren)(griff(r, access, counter, stand, name)),
+        const { state } = active();
+        return innerTransaction(state, null, ++counter.savepoints, name =>
+          lockWith(fn, o.sperren)(griff(r, access, counter, state, name)),
         );
       },
       notification: access.notification.over(q.run),
@@ -388,7 +388,7 @@ export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
   async function transaction<T>(body: (tx: TxGriff) => Promise<T>, opt: TxOptions = {}): Promise<T> {
     watch(r);
     return withRetry(
-      () => oneTimeTransaction(r, stand => griff(r, access, counter, stand, null), lockWith(body, opt.sperren)),
+      () => oneTimeTransaction(r, state => griff(r, access, counter, state, null), lockWith(body, opt.sperren)),
       opt,
     );
   }

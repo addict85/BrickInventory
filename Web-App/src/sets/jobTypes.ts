@@ -10,24 +10,24 @@ const SET_NUMBER = z.string().min(1).max(64);
 const ReworkPayload = z.object({
   set_number: SET_NUMBER,
   user_id: ACCOUNT,
-  art: z.enum(['zweit', 'neu', 'csv', 'ergaenzen']).optional(),
+  kind: z.enum(['zweit', 'neu', 'csv', 'ergaenzen']).optional(),
 });
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    nacharbeit: typeof ReworkPayload;
+    rework: typeof ReworkPayload;
   }
 }
 
 export function setsJobTypes(sk: SetsContext): Login[] {
   return [
     jobKind({
-      art: 'nacharbeit',
+      kind: 'rework',
       payload: ReworkPayload,
-      ausfuehren: (n, l) => afterAcquisition.pullAfter(sk, n.set_number, n.user_id, n.art ?? 'neu', l),
+      ausfuehren: (n, l) => afterAcquisition.pullAfter(sk, n.set_number, n.user_id, n.kind ?? 'neu', l),
     }),
     jobKind({
-      art: 'bilder',
+      kind: 'images',
       payload: ImagesPayload,
       ausfuehren: async (n, l) => {
         if (n.only_images) await sk.catalog.loadSetImages(n.set_number);

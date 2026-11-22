@@ -93,24 +93,24 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
       action: 'added',
       set_number: e.setNumber,
       name: 'Testset',
-      katalog_offen: true,
-      ergaenzung: 'ausstehend',
+      catalog_pending: true,
+      supplement: 'pending',
       besitzer: e.requester,
     });
     const vorher = positionCalled;
 
-    const strom = await fetch(`${base}/api/v1/sets/add-stream`, {
+    const stream = await fetch(`${base}/api/v2/sets/add-stream`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ set_number: NEW_A, quantity: 1 }),
     });
-    assert.equal(strom.status, 200);
+    assert.equal(stream.status, 200);
     assert.match(
-      strom.headers.get('content-type') || '',
+      stream.headers.get('content-type') || '',
       /text\/event-stream/,
       'fuer ein neues Set muss es der Ereignisstrom sein, nicht die JSON-Form',
     );
-    const roh = await strom.text();
+    const roh = await stream.text();
     assert.ok(
       positionCalled > vorher,
       'acquireSet() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts',
@@ -144,7 +144,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
 
     // ── 3. The token route with the same result ───────────────────────────
     const vorher2 = positionCalled;
-    const token = await fetch(`${base}/api/v1/sets`, {
+    const token = await fetch(`${base}/api/v2/sets`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ set_number: NEW_B, quantity: 1 }),
@@ -174,10 +174,15 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     // model (shared/app-schnittstelle.json, generated from its source text).
     const model = require('./helpers/contract').appSchnittstelle().modelle.AddSetResponse;
     assert.ok(model && model.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
-    const zeilen = model.felder.map(name => ({ name, pflicht: model.pflicht.includes(name) }));
+    const zeilen = model.felder.map(name => ({
+      name,
+      required: model[require('./helpers/contract').APP_KEYS.required].includes(name),
+    }));
 
-    const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)]);
-    const requiredAndMissing = zeilen.filter(f => f.pflicht && !geliefert.has(f.name)).map(f => f.name);
+    // The app reads API v1: what arrives counts under its v1 name.
+    const { v1Field } = _req('src/contract/v1.js');
+    const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)].map(k => v1Field(undefined, k)));
+    const requiredAndMissing = zeilen.filter(f => f.required && !geliefert.has(f.name)).map(f => f.name);
     assert.deepEqual(
       requiredAndMissing,
       [],

@@ -13,9 +13,9 @@ import type { ImagesServices } from '../images';
 import type { Clock } from '../infra/clock';
 
 export interface WantedDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   household: HouseholdServices;
   catalog: CatalogServices;
   finances: FinancesServices;

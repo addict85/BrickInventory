@@ -10,9 +10,9 @@
  *   C  importAlsAuftrag() calls importPartsCsv directly instead of submitting
  *      → red: “without a worker the job stays open” (and the second case)
  *   D  runImportFrom() does not catch the domain error → red: “a domain error
- *      arrives with a code” (500 import_fehlgeschlagen)
+ *      arrives with a code” (500 import_failed)
  *   E  (14.11.2026) the calls here without asAccount (without the request's account) → red: all
- *      three (import_abgebrochen: jobStatus runs under row security and only sees the
+ *      three (import_cancelled: jobStatus runs under row security and only sees the
  *      own job in the request's account).
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -33,7 +33,7 @@ const pa = require.resolve(path.join(require('./helpers/sources').DIST, 'src/fin
 _req('src/finances/priceAlert.js');
 require.cache[pa].exports = Object.assign({}, require.cache[pa].exports, {
   alertsFromCsv: async () => {
-    throw fileError('ungueltig', 'alarm_schwelle_ungueltig');
+    throw fileError('ungueltig', 'alert_threshold_invalid');
   },
 });
 
@@ -57,14 +57,14 @@ test('import as a job', { concurrency: 1 }, async t => {
   await t.test('without a worker the job stays open', async () => {
     await assert.rejects(
       importAlsAuftrag(uid, 'teile_csv', { text: csv('ohne1') }, { wartenMs: 300 }),
-      (/** @type {any} */ e) => e.code === 'import_laeuft_noch' && e.art === 'zeitueberschreitung',
+      (/** @type {any} */ e) => e.code === 'import_still_running' && e.kind === 'zeitueberschreitung',
     );
     const a = await db.get(
-      `SELECT status, payload->>'quelle' AS quelle FROM jobs
+      `SELECT status, payload->>'source' AS source FROM jobs
       WHERE type = 'csv_import' AND user_id = $1 ORDER BY id DESC LIMIT 1`,
       [uid],
     );
-    assert.deepEqual(a, { status: 'offen', quelle: 'teile_csv' });
+    assert.deepEqual(a, { status: 'pending', source: 'teile_csv' });
     assert.equal(await db.get("SELECT 1 FROM parts WHERE user_id = $1 AND part_number = 'ohne1'", [uid]), undefined);
     await db.run("DELETE FROM jobs WHERE type = 'csv_import' AND user_id = $1", [uid]);
   });
@@ -81,14 +81,14 @@ test('import as a job', { concurrency: 1 }, async t => {
       ORDER BY id DESC LIMIT 1`,
       [uid],
     );
-    assert.deepEqual(a, { status: 'erledigt', result: null }, 'gelesen ist gelesen');
+    assert.deepEqual(a, { status: 'done', result: null }, 'gelesen ist gelesen');
   });
 
   await t.test('a domain error arrives with a code', async tt => {
     importWorker(tt, _req);
     await assert.rejects(
-      importAlsAuftrag(uid, 'alarme_csv', { waehrung: 'CHF', text: 'set_number\n1-1\n' }),
-      (/** @type {any} */ e) => e.code === 'alarm_schwelle_ungueltig' && e.art === 'ungueltig',
+      importAlsAuftrag(uid, 'alarme_csv', { currency: 'CHF', text: 'set_number\n1-1\n' }),
+      (/** @type {any} */ e) => e.code === 'alert_threshold_invalid' && e.kind === 'ungueltig',
     );
   });
 });

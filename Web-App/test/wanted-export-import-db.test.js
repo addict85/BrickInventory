@@ -124,8 +124,8 @@ function csvRows(text) {
   return rest
     .filter(z => z.trim())
     .map(z => {
-      const werte = z.split(',').map(s => s.replace(/^"|"$/g, ''));
-      return Object.fromEntries(spalten.map((s, i) => [s, werte[i] ?? '']));
+      const values = z.split(',').map(s => s.replace(/^"|"$/g, ''));
+      return Object.fromEntries(spalten.map((s, i) => [s, values[i] ?? '']));
     });
 }
 
@@ -144,7 +144,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
   let csvText = '';
 
   await t.test('1. merkliste.csv is in the ZIP of the data export', async () => {
-    const r = await fetch(`${srv.base}/api/v1/settings/export/data`);
+    const r = await fetch(`${srv.base}/api/v2/settings/export/data`);
     assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
     const buf = Buffer.from(await r.arrayBuffer());
     assert.equal(buf.slice(0, 2).toString(), 'PK', 'Das ist kein ZIP-Archiv');
@@ -190,7 +190,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
 
     const fd = new FormData();
     fd.append('file', new Blob([csvText], { type: 'text/csv' }), 'merkliste.csv');
-    const r = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, `Der Import antwortete mit ${r.status}: ${JSON.stringify(b)}`);
     assert.equal(b.added, ITEM.length, `${b.added} angelegt statt ${ITEM.length}`);
@@ -226,7 +226,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     const einlesen = async () => {
       const fd = new FormData();
       fd.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
-      const r = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd });
+      const r = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd });
       return r.json();
     };
     await db.run('DELETE FROM wanted');
@@ -250,7 +250,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     const fd = new FormData();
     fd.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
     fd.append('owner_user_id', String(FREMD));
-    const r = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd });
     assert.equal(r.status, 403, `Erwartet 403, bekam ${r.status}`);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM wanted WHERE user_id=$1', [FREMD])).c,
@@ -264,7 +264,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     const fd2 = new FormData();
     fd2.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
     fd2.append('owner_user_id', String(KIND));
-    const r2 = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd2 });
+    const r2 = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd2 });
     assert.equal(r2.status, 200, `Der Import für das Unterkonto antwortete mit ${r2.status}`);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM wanted WHERE user_id=$1', [KIND])).c,
@@ -287,7 +287,7 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
 
     const fd = new FormData();
     fd.append('file', new Blob(['set_number\n21309-1\n'], { type: 'text/csv' }), 'ohne.csv');
-    const r = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v2/wanted/import/csv`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(b.added, 1, `${b.added} angelegt statt 1: ${JSON.stringify(b.results)}`);
     const z = await db.get('SELECT condition FROM wanted WHERE user_id=$1 AND set_number=$2', [MAIN, '21309-1']);

@@ -810,7 +810,7 @@ derselben Datei, zeigte korrekt auf `/v1/…` — dieselbe Handlung, zwei
 Schreibweisen. Korrigiert.
 
 Ein quelltextlesender Test verlangte `await triggerNow()` in `routes/finance.ts`
-UND `routes/api_v1/admin.ts` — die Doppelung, bei der eine Seite das `await`
+UND `routes/api/admin.ts` — die Doppelung, bei der eine Seite das `await`
 verlieren kann, ohne dass es auffällt. Jetzt nur noch die eine Stelle.
 
 ### 2. Der Katalog-Scrollbalken

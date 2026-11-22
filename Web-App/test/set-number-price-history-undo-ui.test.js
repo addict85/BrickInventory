@@ -35,17 +35,17 @@ const SET = {
   quantity: 1,
   conditions: ['N'],
   avg_purchase_price: 199.99,
-  letzter_kauf: '2026-06-01T10:00:00Z',
+  last_purchase: '2026-06-01T10:00:00Z',
   added_at: '2026-11-01T10:00:00Z',
   instructions: [],
 };
 
 test('unknown set number: ask first, then create', async () => {
   const { w, d, aufrufe } = await openUi({
-    '/v1/catalog/sets/99999-1': {
+    '/v2/catalog/sets/99999-1': {
       $status: 404,
       success: false,
-      code: 'set_nicht_im_katalog',
+      code: 'set_not_in_catalog',
       error: 'Set nicht im Katalog',
     },
   });
@@ -79,9 +79,9 @@ test('price history: purchase price as a point, not as the start of the curve', 
     { recorded_at: '2026-10-01', avg_price: 190 },
   ];
   const { w, d } = await openUi({
-    '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
-    '/v1/sets/21318-1': { success: true, set: SET },
-    '/v1/sets/21318-1/price-history': {
+    '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] },
+    '/v2/sets/21318-1': { success: true, set: SET },
+    '/v2/sets/21318-1/price-history': {
       success: true,
       currency: 'EUR',
       history_new: historie,
@@ -107,13 +107,13 @@ test('price history: purchase price as a point, not as the start of the curve', 
 
 test('account: currency applies immediately, password has its own button', async () => {
   const { w, d, aufrufe } = await openUi({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
+    '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
     await sicht(w, 'profile');
-    const feld = d.getElementById('s-cur');
-    feld.value = 'CHF';
-    feld.dispatchEvent(new w.Event('change', { bubbles: true }));
+    const field = d.getElementById('s-cur');
+    field.value = 'CHF';
+    field.dispatchEvent(new w.Event('change', { bubbles: true }));
     // Before the change a prompt says that the market prices are reloaded.
     assert.ok(
       await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
@@ -121,19 +121,19 @@ test('account: currency applies immediately, password has its own button', async
     );
     assert.match(d.getElementById('cd-msg').textContent, /Marktpreise/);
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && /CHF/.test(a.body)));
+    await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/settings') && /CHF/.test(a.body)));
     await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
     assert.ok(
-      aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && JSON.parse(a.body).currency === 'CHF'),
+      aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/settings') && JSON.parse(a.body).currency === 'CHF'),
     );
     d.getElementById('pw-n').value = d.getElementById('pw-r').value = 'neu-Passwort-1';
     d.getElementById('btn-sav-pw').click();
     await warte(() => d.getElementById('confirm-modal').style.display === 'flex');
     d.getElementById('cd-pw').value = 'alt-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/v1/auth/change-password')));
+    await warte(() => aufrufe.some(a => a.url.endsWith('/v2/auth/change-password')));
     assert.equal(
-      aufrufe.some(a => a.url.endsWith('/v1/auth/profile') && a.method === 'PUT'),
+      aufrufe.some(a => a.url.endsWith('/v2/auth/profile') && a.method === 'PUT'),
       false,
       'Passwort speichert das Profil mit',
     );
@@ -144,10 +144,10 @@ test('account: currency applies immediately, password has its own button', async
 
 test('delete pending item: undo creates it again', async () => {
   const { w, d, aufrufe } = await openUi({
-    '/v1/wanted': (_u, o) =>
+    '/v2/wanted': (_u, o) =>
       o.method === 'POST'
-        ? { success: true, merkposten: { set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' } }
-        : { success: true, merkposten: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] },
+        ? { success: true, item: { set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' } }
+        : { success: true, item: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] },
   });
   try {
     await reiter(w, 'wanted');
@@ -155,8 +155,8 @@ test('delete pending item: undo creates it again', async () => {
     d.querySelector('.mk-row .delbtn').click();
     await warte(() => [...d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)));
     [...d.querySelectorAll('#toasts button')].find(b => /Rückgängig/.test(b.textContent)).click();
-    await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/wanted')));
-    const neu = aufrufe.find(a => a.method === 'POST' && a.url.endsWith('/v1/wanted'));
+    await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v2/wanted')));
+    const neu = aufrufe.find(a => a.method === 'POST' && a.url.endsWith('/v2/wanted'));
     assert.deepEqual(JSON.parse(neu.body), { set_number: '10276-1', condition: 'N', owner_user_id: 1 });
   } finally {
     w.close();
@@ -165,13 +165,13 @@ test('delete pending item: undo creates it again', async () => {
 
 test('vouchers: currency of the issuing country, deviation named', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/raw': {
+    '/v2/settings/raw': {
       success: true,
-      settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe', gutschein_land: 'de-CH' },
+      settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe', voucher_country: 'de-CH' },
     },
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '6123456789012', pin: '', amount: 50, currency: 'EUR', hat_pdf: false }],
+      vouchers: [{ id: 3, number: '6123456789012', pin: '', amount: 50, currency: 'EUR', has_pdf: false }],
     },
   });
   try {
@@ -186,7 +186,7 @@ test('vouchers: currency of the issuing country, deviation named', async () => {
 });
 
 test('create price alert in its view', async () => {
-  const { w, d, aufrufe } = await openUi({ '/v1/alerts': { success: true, alerts: [] } });
+  const { w, d, aufrufe } = await openUi({ '/v2/alerts': { success: true, alerts: [] } });
   try {
     await sicht(w, 'alerts');
     d.getElementById('alert-new-set').value = '10294';
@@ -194,8 +194,8 @@ test('create price alert in its view', async () => {
     d.getElementById('alert-new-button').click();
     await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/alert')));
     const ruf = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/alert'));
-    assert.match(ruf.url, /\/v1\/sets\/10294-1\/alert$/);
-    assert.deepEqual(JSON.parse(ruf.body), { direction: 'unter', threshold: 599.9, condition: 'N' });
+    assert.match(ruf.url, /\/v2\/sets\/10294-1\/alert$/);
+    assert.deepEqual(JSON.parse(ruf.body), { direction: 'below', threshold: 599.9, condition: 'N' });
   } finally {
     w.close();
   }
@@ -203,24 +203,24 @@ test('create price alert in its view', async () => {
 
 test('background jobs: labeled columns, error in the row, time in 24 h', async () => {
   const { w, d, aufrufe } = await openUi({
-    '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/jobs': {
+    '/v2/admin/job-status': { success: true, job: { running: false } },
+    '/v2/admin/jobs': {
       success: true,
       jobs: { csvImport: { status: 'done', label: 'CSV' } },
       schedules: { csvImport: { type: 'daily', time: '03:00' } },
       db: { csvCache: { parts: 5 }, blMapping: {} },
     },
-    '/v1/admin/auftraege': {
+    '/v2/admin/job-queue': {
       success: true,
-      zusammenfassung: [{ type: 'wechselkurse', status: 'fehler', anzahl: 1 }],
-      job_prozess: { laeuft: true },
-      pausen: [],
-      bildbedarf: 0,
-      auftraege: [
+      summary: [{ type: 'exchange_rates', status: 'error', count: 1 }],
+      job_process: { running: true },
+      pauses: [],
+      image_demand: 0,
+      jobs: [
         {
           id: '9',
-          type: 'wechselkurse',
-          status: 'fehler',
+          type: 'exchange_rates',
+          status: 'error',
           error_message: 'ENOTFOUND ecb',
           attempts: 6,
           max_attempts: 6,
@@ -246,8 +246,8 @@ test('background jobs: labeled columns, error in the row, time in 24 h', async (
     assert.equal(zeit.getAttribute('aria-invalid'), 'true');
     zeit.value = '4:30';
     zeit.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await warte(() => aufrufe.some(a => a.url.endsWith('/v1/admin/job-schedule')));
-    assert.equal(JSON.parse(aufrufe.find(a => a.url.endsWith('/v1/admin/job-schedule')).body).time, '04:30');
+    await warte(() => aufrufe.some(a => a.url.endsWith('/v2/admin/job-schedule')));
+    assert.equal(JSON.parse(aufrufe.find(a => a.url.endsWith('/v2/admin/job-schedule')).body).time, '04:30');
   } finally {
     w.close();
   }
@@ -255,8 +255,8 @@ test('background jobs: labeled columns, error in the row, time in 24 h', async (
 
 test('date in English with month names', async () => {
   const { w, d } = await openUi(
-    { '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] } },
-    { sprache: 'en' },
+    { '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] } },
+    { language: 'en' },
   );
   try {
     await warte(() => d.querySelector('#gallery .tile-date'));

@@ -85,11 +85,11 @@ test('the storage location default applies to every new capture', { concurrency:
   const ortId = async name =>
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
-  const bestand = require('./helpers/sources').testArea('inventory');
+  const holding = require('./helpers/sources').testArea('inventory');
   const { setDefault, locationForNewEntry } = {
     ..._req('src/inventory/storageLocation.js'),
-    ...bestand.locationService,
-    setDefault: bestand.setDefault,
+    ...holding.locationService,
+    setDefault: holding.setDefault,
   };
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
@@ -106,7 +106,7 @@ test('the storage location default applies to every new capture', { concurrency:
     )?.name ?? null;
 
   await t.test('a part without a place gets the default', async () => {
-    // Exactly like this the wanted import calls (routes/api_v1/wanted.ts, `creator`):
+    // Exactly like this the wanted import calls (routes/api/wanted.ts, `creator`):
     // number, color, quantity, condition — no storage.
     await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(await locationOfPart('3001'), 'Kiste 7');

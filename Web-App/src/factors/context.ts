@@ -9,10 +9,10 @@ import * as passkeys from './repository/passkeys';
 import * as secondFactor from './repository/secondFactor';
 
 export interface FactorsDependencies {
-  uhr: Clock;
-  konfig: Readonly<AppConfig>;
+  clock: Clock;
+  config: Readonly<AppConfig>;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
 }
 
 /** Row guard (0112): only a caller checking before login, or against a foreign account, gets the system frame. */

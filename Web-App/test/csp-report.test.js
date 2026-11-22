@@ -38,11 +38,11 @@ test('CSP reports', async t => {
     console.warn = echt;
   });
   let n = 0;
-  const melde = async (rumpf, typ, adresse = `10.0.0.${++n}`) => {
+  const melde = async (rumpf, typ, address = `10.0.0.${++n}`) => {
     log.length = 0;
     const r = await fetch(basis, {
       method: 'POST',
-      headers: { 'content-type': typ, 'x-forwarded-for': adresse },
+      headers: { 'content-type': typ, 'x-forwarded-for': address },
       body: typeof rumpf === 'string' ? rumpf : JSON.stringify(rumpf),
     });
     return { status: r.status, text: await r.text() };

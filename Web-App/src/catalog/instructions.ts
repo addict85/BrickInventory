@@ -53,7 +53,7 @@ async function brickinstructionsFund(k: CatalogContext, n: string) {
   const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
   const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
   const hdrs = { 'User-Agent': 'Mozilla/5.0 (compatible; BrickManager/3.0)', Referer: pageUrl };
-  const probe = await k.externalSources.quellen.httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
+  const probe = await k.externalSources.sources.httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
   if (probe.status !== 200 || !probe.buffer || probe.buffer.length <= 500) return null;
   return { baseUrl, pageUrl, hdrs, firstImage: probe.buffer };
 }
@@ -78,7 +78,7 @@ export async function scrapeInstructionsFromFallback(k: CatalogContext, setNumbe
       await k.anleitungen.rememberInstruction(n, pageUrl, desc, null);
       setImmediate(() => {
         void collectAndBuildPDF(k, baseUrl, hdrs, fund.firstImage, pdfDest, relPath, n).catch(
-          logAndContinue('anleitung:collectAndBuildPDF'),
+          logAndContinue('instructions:collectAndBuildPDF'),
         );
       });
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
@@ -86,7 +86,7 @@ export async function scrapeInstructionsFromFallback(k: CatalogContext, setNumbe
     }
   } catch (e) {
     // Exception: BrickInstructions is the last source; without it the set stays without instructions (0).
-    reportError(`anleitung:brickinstructions ${n}`, e);
+    reportError(`instructions:brickinstructions ${n}`, e);
   }
   return 0;
 }
@@ -136,12 +136,12 @@ async function instructionSources(k: CatalogContext, n: string) {
   let instrList: InstructionSource[] = [];
   let bricksetSucceededEmpty = false;
   try {
-    instrList = await k.externalSources.quellen.scrapeInstructions(n);
+    instrList = await k.externalSources.sources.scrapeInstructions(n);
   } catch (e) {
     reportError('anleitungen:auslesen', e);
   }
   if (!instrList.length) {
-    const bs = await attempts('anleitungen:brickset', k.externalSources.quellen.brickset.getInstructions(n));
+    const bs = await attempts('anleitungen:brickset', k.externalSources.sources.brickset.getInstructions(n));
     instrList = bs.ok ? bs.wert.instructions || [] : [];
     // usesFallback false means quota exhausted. An error is not an answer —
     // both stay in the queue.
@@ -161,7 +161,7 @@ async function bdpFallback(k: CatalogContext, n: string, ownTick: boolean): Prom
     fs.mkdirSync(instrDir, { recursive: true });
     const pdfDest = path.join(instrDir, pdfName);
     const relPath = `/data/instructions/${pdfName}`;
-    const ok = await k.externalSources.quellen.downloadFile(bdpUrl, pdfDest, undefined, PDF_START);
+    const ok = await k.externalSources.sources.downloadFile(bdpUrl, pdfDest, undefined, PDF_START);
     if (ok) {
       console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
       await k.anleitungen.rememberInstruction(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath);
@@ -170,7 +170,7 @@ async function bdpFallback(k: CatalogContext, n: string, ownTick: boolean): Prom
     }
   } catch (e) {
     // Exception: the BDP fallback is one of several sources; false lets the next one be asked.
-    reportError(`anleitung:bdp ${n}`, e);
+    reportError(`instructions:bdp ${n}`, e);
   }
   if (!ownTick) await warte(5000);
   return false;
@@ -190,7 +190,7 @@ async function brickinstructionsSource(k: CatalogContext, n: string): Promise<In
     };
   } catch (e) {
     // Exception: the search then shows the remaining sources; null here means "no preview".
-    reportError(`anleitung:brickinstructions-probe ${n}`, e);
+    reportError(`instructions:brickinstructions-probe ${n}`, e);
     return null;
   }
 }
@@ -213,7 +213,7 @@ async function saveInstructions(k: CatalogContext, n: string, instrList: Instruc
       const { brickinstructions_base: basis, brickinstructions_hdrs: header, brickinstructions_first: erstes } = instr;
       setImmediate(() => {
         void collectAndBuildPDF(k, basis, header, erstes, pdfDest, relPath, n).catch(
-          logAndContinue('anleitung:collectAndBuildPDF'),
+          logAndContinue('instructions:collectAndBuildPDF'),
         );
       });
       continue;
@@ -221,7 +221,7 @@ async function saveInstructions(k: CatalogContext, n: string, instrList: Instruc
     const safeName = `${safeBase}_${i + 1}.pdf`;
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
-    const ok = await k.externalSources.quellen.downloadFile(instr.url, dest, undefined, PDF_START);
+    const ok = await k.externalSources.sources.downloadFile(instr.url, dest, undefined, PDF_START);
     await k.anleitungen.rememberInstruction(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
     saved++;
     if (i < instrList.length - 1) await warte(200);
@@ -243,7 +243,7 @@ async function collectAndBuildPDF(
   for (let p = 2; p <= 99; p++) {
     await warte(500);
     try {
-      const r = await k.externalSources.quellen.httpsGetRobust(
+      const r = await k.externalSources.sources.httpsGetRobust(
         `${baseUrl}/${String(p).padStart(3, '0')}.jpg`,
         hdrs,
         8000,
@@ -284,7 +284,7 @@ async function buildImagePDF_fromBuffers(imgBuffers: Buffer[], destPath: string)
           doc.addPage({ size: 'A4', layout: 'landscape', margin: 0 });
           doc.image(buf, 0, 0, { fit: [doc.page.width, doc.page.height], align: 'center', valign: 'center' });
         } catch (e) {
-          reportError('anleitung:image', e);
+          reportError('instructions:image', e);
         }
       }
       doc.end();

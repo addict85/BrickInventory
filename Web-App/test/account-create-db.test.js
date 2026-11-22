@@ -7,7 +7,7 @@
  *      administrator password no account”
  *   B  back to `isAdmin ? 1 : 0` instead of strictBool → red: “"false" creates no
  *      administrator”
- *   C  protokolliere(…, 'konto_angelegt') removed → red: “the log …”
+ *   C  protokolliere(…, 'account_created') removed → red: “the log …”
  * Counter-checks (measured 01.11.2026):
  *   D  migration 0090 renamed to .sql.aus and nameTaken() removed from POST /users → red:
  *      “a name in another spelling is taken” and “the database rejects …”;
@@ -65,7 +65,7 @@ test('create account', { concurrency: 1 }, async t => {
     });
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
-  const a = await ruf(AUTH + '/login', { username: CHEF, password: PASS, ohne_token: true });
+  const a = await ruf(AUTH + '/login', { username: CHEF, password: PASS, without_token: true });
   assert.equal(a.status, 200, JSON.stringify(a.body));
   const cookie = a.cookie.split(';')[0];
   const konto = n => db.get('SELECT id, is_admin FROM users WHERE username = $1', [n]);
@@ -98,7 +98,7 @@ test('create account', { concurrency: 1 }, async t => {
     const p = (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [k.id])).map(
       z => z.action,
     );
-    assert.deepEqual(p, ['konto_angelegt', 'verwalter_ernannt'], 'das Protokoll hält die Anlage nicht fest');
+    assert.deepEqual(p, ['account_created', 'admin_appointed'], 'das Protokoll hält die Anlage nicht fest');
   });
 
   await t.test('a name in a different spelling is taken', async () => {
@@ -108,7 +108,7 @@ test('create account', { concurrency: 1 }, async t => {
       cookie,
     );
     assert.equal(r.status, 409, JSON.stringify(r.body));
-    assert.equal(r.body.code, 'benutzername_vergeben');
+    assert.equal(r.body.code, 'username_taken');
     const n = await db.get('SELECT COUNT(*)::int AS n FROM users WHERE lower(username) = lower($1)', [NEU[1]]);
     assert.equal(n.n, 1);
   });

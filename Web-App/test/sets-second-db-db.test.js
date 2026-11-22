@@ -22,7 +22,7 @@
  *      “price history from the second database” and “the process access …”
  *   F  partListOfSets() calls newestInventory(setNum) without sk.katalog → red:
  *      “parts list from the catalog …” and “the process access …”
- *   G  the same placeJobOne('bilder', …) without sk.auftraege → red:
+ *   G  the same placeJobOne('images', …) without sk.auftraege → red:
  *      “parts list … image job there” (no job in the second one) and “the
  *      process access …”
  *   H  src/household/household.ts again with one memory for all accesses →
@@ -40,8 +40,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const ROOT = path.join(__dirname, '..');
 const { testName, cleanRemainder, id } = require('./helpers/test-names');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
-const quellen = require('./helpers/sources');
-const _req = quellen.buildAndRequire();
+const sources = require('./helpers/sources');
+const _req = sources.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { createDb } = _req('db/database.js');
 
@@ -80,7 +80,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
     await zweite.pool.end().catch(() => {});
     await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)} WITH (FORCE)`).catch(() => {});
     await admin.end().catch(() => {});
-    quellen.buildAndRequire();
+    sources.buildAndRequire();
     await db.pool.end().catch(() => {});
   });
   await zweite.initSchemaOnce();
@@ -90,11 +90,11 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   );
   await zweite.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')", [uid]);
   await zweite.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
-  for (const zustand of ['N', 'U'])
+  for (const condition of ['N', 'U'])
     await zweite.run(
       `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
        VALUES ($1, $2, 'CHF', 40, 42.5, 45, 42.5, 7, NOW())`,
-      [SN, zustand],
+      [SN, condition],
     );
   await zweite.run(
     `INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price)
@@ -112,7 +112,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   const contexts = {};
   const alle = buildServices(zweite, { contexts });
   const sets = alle.sets;
-  const prozess = zaehle(quellen.testAccess());
+  const prozess = zaehle(sources.testAccess());
   t.after(() => prozess.back());
 
   await t.test('currency from the second database', async () => {
@@ -120,18 +120,18 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('storage location in the second database', async () => {
-    const { ort, n } = await sets.setLocationOfSets(uid, SN, 'Kiste Z');
-    assert.equal(ort, 'Kiste Z');
+    const { location, n } = await sets.setLocationOfSets(uid, SN, 'Kiste Z');
+    assert.equal(location, 'Kiste Z');
     assert.equal(n, 1);
-    const { orte } = await sets.locationsWithDefault(uid, undefined);
+    const { locations } = await sets.locationsWithDefault(uid, undefined);
     assert.ok(
-      orte.some(o => o.name === 'Kiste Z' || o === 'Kiste Z'),
-      JSON.stringify(orte),
+      locations.some(o => o.name === 'Kiste Z' || o === 'Kiste Z'),
+      JSON.stringify(locations),
     );
   });
 
   await t.test('price alert in the second database', async () => {
-    const alarm = await sets.setAlarmOfSets(uid, SN, { direction: 'unter', threshold: 12.5, condition: 'N' });
+    const alarm = await sets.setAlarmOfSets(uid, SN, { direction: 'below', threshold: 12.5, condition: 'N' });
     assert.equal(alarm.currency_code, 'CHF', 'die Währung des Alarms kommt aus der zweiten Datenbank');
     assert.equal((await sets.readSetAlerts(uid, SN)).length, 1);
     assert.equal(await sets.deleteAlarmOfSets(uid, SN, 'N'), 1);
@@ -166,7 +166,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
       [['3001', 4]],
     );
     const { n } = await zweite.get(
-      "SELECT count(*)::int AS n FROM jobs WHERE type = 'bilder' AND payload->>'set_number' = $1",
+      "SELECT count(*)::int AS n FROM jobs WHERE type = 'images' AND payload->>'set_number' = $1",
       [SN],
     );
     assert.equal(n, 1, 'der Bilderauftrag steht in der zweiten Datenbank');

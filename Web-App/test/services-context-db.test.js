@@ -13,12 +13,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const quellen = require('./helpers/sources');
+const sources = require('./helpers/sources');
 const { accessOrSkip } = require('./helpers/db');
 const { holdsPart } = require('./helpers/inventory');
 
-const _req = quellen.buildAndRequire();
-const testAccess = () => quellen.testAccess();
+const _req = sources.buildAndRequire();
+const testAccess = () => sources.testAccess();
 test.after(() => testAccess().pool.end());
 
 /** An access that counts its queries; otherwise the same as the test's. */
@@ -37,7 +37,7 @@ test('services take the access from their context, not from the process', async 
   if (!(await accessOrSkip(t, _req))) return;
   const { buildServices } = _req('startup/wiring.js');
   // Test data as the owner role (bypassing row security), the service asks as the runtime role.
-  const eigen = quellen.testData();
+  const eigen = sources.testData();
   const { asRequest } = _req('src/infra/accountContext.js');
   const db = testAccess();
   const name = `kontext_${process.pid}`;
@@ -48,7 +48,7 @@ test('services take the access from their context, not from the process', async 
     ])
   ).id;
   t.after(() => eigen.run('DELETE FROM users WHERE id = $1', [uid]));
-  await holdsPart(eigen, uid, '3001', { menge: 4 });
+  await holdsPart(eigen, uid, '3001', { quantity: 4 });
 
   const { zaehler, zugang } = counting(db);
   const d = buildServices(zugang);

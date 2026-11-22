@@ -24,15 +24,15 @@ export interface ImageWorker {
 }
 
 export interface ImagesDependencies {
-  uhr: Clock;
-  konfig: Readonly<AppConfig>;
+  clock: Clock;
+  config: Readonly<AppConfig>;
   db: Db;
   faecher: Compartments;
   bildwerk: ImageWorker;
   externalSources: ForeignSourcesServices;
   jobQueue: JobsServices;
   household: HouseholdServices;
-  lesevertrag: ImagesReadContract;
+  readContract: ImagesReadContract;
 }
 
 export const access = (db: Db, l: ImagesReadContract) => ({

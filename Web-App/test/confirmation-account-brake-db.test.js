@@ -28,8 +28,8 @@ const _req = S.buildAndRequire();
 const mails = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
-  mailAccountNotice: async (an, _name, art) => {
-    mails.push({ an, art });
+  mailAccountNotice: async (an, _name, kind) => {
+    mails.push({ an, kind });
     return { success: true };
   },
 });
@@ -69,7 +69,7 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
     await db.pool.end().catch(() => {});
   });
   const versuch = async (zugang, pw = FALSCH) =>
-    STATUS_THE_KIND[(await checkConfirmation(uid, zugang, pw, {}))?.art] ?? 200;
+    STATUS_THE_KIND[(await checkConfirmation(uid, zugang, pw, {}))?.kind] ?? 200;
 
   await t.test('across many accesses at most 20 failed attempts per day', async () => {
     const ist = [];
@@ -87,10 +87,10 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
   await t.test('mail and log on reaching the brake, the mail once a day', async () => {
     for (let i = 0; i < 40 && mails.length < 1; i++) await new Promise(r => setTimeout(r, 25));
     await new Promise(r => setTimeout(r, 200));
-    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, art: 'bestaetigung_gebremst' }]);
+    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'bestaetigung_gebremst' }]);
     const gebremst = zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'bestaetigung_gebremst');
     assert.deepEqual(
-      gebremst.map(z => [z.kontext.konto, z.kontext.art]),
+      gebremst.map(z => [z.kontext.konto, z.kontext.kind]),
       [[uid, 'passwort']],
     );
     // Afterwards one access reaches its own limit: log yes, second mail no.

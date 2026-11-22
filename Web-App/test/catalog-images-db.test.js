@@ -8,7 +8,7 @@
  *      → red: “… the preview takes precedence” (original path instead of _thumb)
  *   B  in katalogSuche.ts c.image_local removed from SET_SPALTEN → red: “the list
  *      names the image from set_catalog …” (undefined)
- *   C  in catalogPage() k.bilder.rememberUsed() per row → red: “the
+ *   C  in catalogPage() k.images.rememberUsed() per row → red: “the
  *      list triggers no image work”
  *   D  in catalogSet() image_local only for own sets (`set.owned ? … : null`)
  *      → red: “even a foreign account gets the local file”
@@ -78,9 +78,9 @@ test('catalog images from set_catalog', { concurrency: 1 }, async t => {
     );
 
   await t.test('the list names the image from set_catalog — and the preview takes precedence', async () => {
-    const bild = await bilder(uid);
-    assert.equal(bild[MIT], '/images/sets/KB_1-1_thumb.jpg', 'die Liste nennt das Bild; die Vorschau hat Vorrang');
-    assert.equal(bild[OHNE], null);
+    const image = await bilder(uid);
+    assert.equal(image[MIT], '/images/sets/KB_1-1_thumb.jpg', 'die Liste nennt das Bild; die Vorschau hat Vorrang');
+    assert.equal(image[OHNE], null);
   });
 
   await t.test('a foreign account also gets the local file', async () => {

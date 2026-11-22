@@ -91,10 +91,10 @@ test('the app only writes to ./data and /tmp — daten-rechte too', () => {
   // Executed fully once, /app/data in the sandbox; id, su-exec and chown are substitutes.
   // Counter-check (measured 11.11.2026): `/app/data/images/sets \` deleted from the mkdir list
   // → red “daten-rechte does not create what the server needs”.
-  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'daten-rechte-'));
+  const location = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'daten-rechte-'));
   try {
-    const daten = path.join(ort, 'data'),
-      bin = path.join(ort, 'bin');
+    const daten = path.join(location, 'data'),
+      bin = path.join(location, 'bin');
     fs.mkdirSync(daten);
     fs.mkdirSync(bin);
     fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 4242\n', { mode: 0o755 });
@@ -105,15 +105,15 @@ test('the app only writes to ./data and /tmp — daten-rechte too', () => {
       env: { PATH: `${bin}:/usr/bin:/bin`, BRICKINV_CHOWN: 'always' },
     });
     assert.equal(r.status, 0, r.stderr);
-    const angelegt = fs.readdirSync(daten, { recursive: true }).sort();
+    const created = fs.readdirSync(daten, { recursive: true }).sort();
     assert.deepEqual(
-      angelegt,
+      created,
       ['.eigentuemer', 'images', 'images/minifigs', 'images/parts', 'images/sets', 'instructions', 'uploads'],
       'daten-rechte legt nicht an, was der Server braucht',
     );
     assert.equal(fs.readFileSync(path.join(daten, '.eigentuemer'), 'utf8'), '4242');
   } finally {
-    fs.rmSync(ort, { recursive: true, force: true });
+    fs.rmSync(location, { recursive: true, force: true });
   }
 });
 
@@ -194,15 +194,15 @@ test('the data key lies outside of ./data for app and jobs', () => {
 test('TRUST_PROXY trusts exactly Caddy, the network has a fixed subnet', () => {
   const app = readService(compose, 'app');
   const caddy = readService(compose, 'caddy');
-  const adresse = caddy.match(/ipv4_address:\s*(\S+)/)?.[1];
-  assert.equal(adresse, '172.28.73.10', 'Caddy hat keine feste Adresse');
+  const address = caddy.match(/ipv4_address:\s*(\S+)/)?.[1];
+  assert.equal(address, '172.28.73.10', 'Caddy hat keine feste Adresse');
   assert.match(
     app,
     /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-172\.28\.73\.10\}\s*$/m,
     'TRUST_PROXY nennt ohne Angabe nicht genau Caddy',
   );
   const { proxyTrust } = require('./helpers/sources').buildAndRequire()('src/infra/proxyTrust.js');
-  assert.deepEqual(proxyTrust(adresse), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
+  assert.deepEqual(proxyTrust(address), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
   const netz = compose.slice(compose.indexOf('\nnetworks:'));
   assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net hat kein festes Subnetz');
   // The DOCKER-USER rule in UPGRADE.md (section 53) names exactly this network.

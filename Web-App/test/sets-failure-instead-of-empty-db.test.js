@@ -48,7 +48,7 @@ test('result: value, substitute and reported failure', async () => {
   const r = await versuche('probe', async () => {
     throw new Error('weg');
   });
-  assert.deepEqual(r, { ok: false, fehler: { kontext: 'probe', grund: 'weg' } });
+  assert.deepEqual(r, { ok: false, error: { kontext: 'probe', reason: 'weg' } });
   assert.equal(valueOr(r, 'ersatz'), 'ersatz');
 });
 
@@ -86,12 +86,12 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
     const nacharbeit = require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
-      .find(a => a.art === 'nacharbeit');
+      .find(a => a.kind === 'rework');
     // With catalog and image: the follow-up work then asks no network for the master, only the steps after it.
     await require('./helpers/inventory').catalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
     try {
       await nacharbeit.ausfuehren(
-        { set_number: SN, user_id: 0, art: 'zweit' },
+        { set_number: SN, user_id: 0, kind: 'zweit' },
         {
           progress: async f => {
             states.push(f);

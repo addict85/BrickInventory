@@ -31,9 +31,9 @@ test('the follow-up run creates missing previews — also for set images', { con
 
   const name = `zz-redl-${process.pid}`;
   const original = path.join(ordner, `${name}.jpg`);
-  const vorschau = path.join(ordner, `${name}_thumb.jpg`);
+  const preview = path.join(ordner, `${name}_thumb.jpg`);
   await new Jimp({ width: 600, height: 400, color: 0x00ff00ff }).write(original);
-  fs.rmSync(vorschau, { force: true });
+  fs.rmSync(preview, { force: true });
 
   const USER = `redltest-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
@@ -56,16 +56,16 @@ test('the follow-up run creates missing previews — also for set images', { con
       'die fehlende Vorschau des SET-Bildes wurde nicht erzeugt — vermutlich lässt ' +
         '_fsPathFromLocal() wieder alles ausser /images/parts/ fallen',
     );
-    assert.ok(fs.existsSync(vorschau), 'die Vorschau-Datei fehlt');
+    assert.ok(fs.existsSync(preview), 'die Vorschau-Datei fehlt');
     assert.ok(
-      fs.statSync(vorschau).size < fs.statSync(original).size,
+      fs.statSync(preview).size < fs.statSync(original).size,
       'die Vorschau muss kleiner sein als das Original',
     );
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]).catch(() => {});
     fs.rmSync(original, { force: true });
-    fs.rmSync(vorschau, { force: true });
+    fs.rmSync(preview, { force: true });
     await db.pool.end().catch(() => {});
   }
 });
@@ -77,8 +77,8 @@ test('the path resolver knows all three image kinds', () => {
     .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
     .join('\n');
   const fn = src.slice(src.indexOf('function _fsPathFromLocal'));
-  for (const art of ['/images/parts/', '/images/minifigs/', '/images/sets/']) {
-    assert.ok(fn.includes(art), `_fsPathFromLocal kennt ${art} nicht — diese Bilder fallen still aus dem Lauf`);
+  for (const kind of ['/images/parts/', '/images/minifigs/', '/images/sets/']) {
+    assert.ok(fn.includes(kind), `_fsPathFromLocal kennt ${kind} nicht — diese Bilder fallen still aus dem Lauf`);
   }
   // The protection against path tricks must stay: the value comes from the database.
   assert.ok(/includes\('\.\.'\)/.test(fn), 'die Prüfung auf .. fehlt');

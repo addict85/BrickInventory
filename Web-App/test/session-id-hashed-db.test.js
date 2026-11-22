@@ -25,7 +25,7 @@ const { buildAndRequire, testData, testServices } = require('./helpers/sources')
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const bcrypt = require('bcryptjs');
-const signatur = require(path.join(__dirname, '..', 'node_modules', 'cookie-signature'));
+const signature = require(path.join(__dirname, '..', 'node_modules', 'cookie-signature'));
 const db = testData();
 
 const GEHEIM = 'h'.repeat(48);
@@ -55,15 +55,15 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
   const dienste = testServices();
   const app = _req('startup/app.js').buildApp({
     pool: db.systemPool,
-    konfig: _req('src/infra/config.js').konfig(),
+    config: _req('src/infra/config.js').config(),
     sitzungsGeheimnis: GEHEIM,
     dienste,
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}`;
-  const ruf = async (pfad, cookie, body) => {
-    const r = await fetch(basis + pfad, {
+  const ruf = async (path, cookie, body) => {
+    const r = await fetch(basis + path, {
       method: body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json', origin: basis, ...(cookie ? { cookie } : {}) },
       body: body && JSON.stringify(body),
@@ -71,13 +71,13 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
     return { status: r.status, body: await r.json().catch(() => null), cookie: r.headers.get('set-cookie') };
   };
   const anmelden = async () => {
-    const r = await ruf('/api/v1/auth/login', null, { username: NAME, password: PASS, ohne_token: true });
+    const r = await ruf('/api/v2/auth/login', null, { username: NAME, password: PASS, without_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return (r.cookie ?? '').split(';')[0];
   };
-  const idAus = cookie => signatur.unsign(decodeURIComponent(cookie.split('=')[1]).slice(2), GEHEIM);
-  const keks = sid => `bim.sid=${encodeURIComponent(`s:${signatur.sign(sid, GEHEIM)}`)}`;
-  const angemeldet = async cookie => (await ruf('/api/v1/auth/me', cookie)).body?.loggedIn === true;
+  const idAus = cookie => signature.unsign(decodeURIComponent(cookie.split('=')[1]).slice(2), GEHEIM);
+  const keks = sid => `bim.sid=${encodeURIComponent(`s:${signature.sign(sid, GEHEIM)}`)}`;
+  const angemeldet = async cookie => (await ruf('/api/v2/auth/me', cookie)).body?.loggedIn === true;
   const zeilen = async () =>
     (await db.all(`SELECT sid FROM user_sessions WHERE sess::jsonb->>'userId' = $1`, [String(uid)])).map(z => z.sid);
 
@@ -100,7 +100,7 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
   await t.test('logout deletes the row', async () => {
     const cookie = await anmelden();
     const vorher = (await zeilen()).length;
-    assert.equal((await ruf('/api/v1/auth/logout', cookie, {})).status, 200);
+    assert.equal((await ruf('/api/v2/auth/logout', cookie, {})).status, 200);
     assert.equal((await zeilen()).length, vorher - 1);
     assert.ok(!(await zeilen()).includes(sessionDigest(idAus(cookie))));
     assert.equal(await angemeldet(cookie), false);
@@ -109,7 +109,7 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
   await t.test('end other sessions keeps the own one', async () => {
     const eigen = await anmelden();
     const fremd = await anmelden();
-    const r = await ruf('/api/v1/settings/sessions/andere-beenden', eigen, { password: PASS });
+    const r = await ruf('/api/v2/settings/sessions/end-others', eigen, { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(r.body.deleted >= 1);
     assert.deepEqual(await zeilen(), [sessionDigest(idAus(eigen))]);

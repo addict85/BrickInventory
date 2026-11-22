@@ -39,7 +39,7 @@ test('capture only what is meant', { concurrency: 1 }, async t => {
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const post = async (weg, body) => {
-    const r = await fetch(`${base}/api/v1${weg}`, {
+    const r = await fetch(`${base}/api/v2${weg}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -51,12 +51,12 @@ test('capture only what is meant', { concurrency: 1 }, async t => {
 
   await t.test('a sentence is not a set number', async () => {
     for (const roh of ["1'; DROP TABLE sets;--", '75192 Millennium Falcon', '75192;2'])
-      assert.deepEqual(await post('/sets', { set_number: roh }), { status: 400, code: 'setnummer_ungueltig' }, roh);
+      assert.deepEqual(await post('/sets', { set_number: roh }), { status: 400, code: 'set_number_invalid' }, roh);
     assert.deepEqual(await sets(), []);
   });
 
   await t.test('without a wishlist item nothing is adopted', async () => {
-    assert.deepEqual(await post('/wanted/75192-1/N/uebernehmen', {}), { status: 404, code: 'nicht_gefunden' });
+    assert.deepEqual(await post('/wanted/75192-1/N/take-over', {}), { status: 404, code: 'not_found' });
     assert.deepEqual(await sets(), []);
   });
 });

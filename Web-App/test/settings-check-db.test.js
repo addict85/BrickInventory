@@ -44,12 +44,13 @@ test('settings: validation of the values and export per role', { concurrency: 1 
       req.session = { userId: uid, isAdmin };
       next();
     });
-    app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+    app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/settings.js'));
     return app.listen(0);
   };
   const nutzer = appFor(false),
     verwalter = appFor(true);
-  const url = (srv, p) => `http://localhost:${srv.address().port}/api/v1/settings${p}`;
+  const url = (srv, p) => `http://localhost:${srv.address().port}/api/v2/settings${p}`;
   const send = body =>
     fetch(url(nutzer, '/'), {
       method: 'POST',
@@ -70,7 +71,7 @@ test('settings: validation of the values and export per role', { concurrency: 1 
     await t.test('a foreign currency is rejected', async () => {
       const r = await send({ currency: '<img src=x>' });
       assert.equal(r.status, 400);
-      assert.equal((await r.json()).code, 'wert_ungueltig');
+      assert.equal((await r.json()).code, 'value_invalid');
       assert.equal(await wert('currency'), 'CHF', 'der alte Wert bleibt');
       assert.equal((await send({ language: 'xx' })).status, 400);
       assert.equal((await send({ user_default_condition: 'Z' })).status, 400);

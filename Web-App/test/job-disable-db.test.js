@@ -32,7 +32,7 @@ test('switching off during a claim', async t => {
   // A test kind needs a schema for its payload like any other.
   require('./helpers/sources')
     .testServices()
-    .jobQueue.registerKind({ art: ART, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
+    .jobQueue.registerKind({ kind: ART, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
   await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
   let loslassen = () => {};
@@ -85,5 +85,5 @@ test('switching off during a claim', async t => {
 
   const z = await db.get('SELECT status FROM jobs WHERE id = $1', [id]);
   assert.equal(started, false, 'nach stoppe() läuft kein Bearbeiter mehr an');
-  assert.notEqual(z.status, 'laeuft', 'der Auftrag bleibt nicht belegt');
+  assert.notEqual(z.status, 'running', 'der Auftrag bleibt nicht belegt');
 });

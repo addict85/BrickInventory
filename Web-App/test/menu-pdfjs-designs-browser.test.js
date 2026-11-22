@@ -39,15 +39,15 @@ const geladen =
 test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t => {
   const a = await startApp(t, {
     name: `uxr_${process.pid}`,
-    bestand: patternCollection,
+    holding: patternCollection,
     intercept: [
-      { muster: '*finance/*valuation*', contains: '/finance/valuation', antwort: { ...LEER, totals: {} } },
-      { muster: '*finance/*valuation*', contains: '/finance/parts-valuation', antwort: LEER },
-      { muster: '*finance/*valuation*', contains: '/finance/minifigs-valuation', antwort: LEER },
+      { muster: '*finance/*valuation*', contains: '/finance/valuation', response: { ...LEER, totals: {} } },
+      { muster: '*finance/*valuation*', contains: '/finance/parts-valuation', response: LEER },
+      { muster: '*finance/*valuation*', contains: '/finance/minifigs-valuation', response: LEER },
     ],
   });
-  if (a.grund) {
-    t.skip(a.grund);
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
   const { b, bis, ruhig } = a;

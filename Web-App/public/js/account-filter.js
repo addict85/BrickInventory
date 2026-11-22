@@ -5,7 +5,7 @@
  * their own numbers in the finances. Filtering happens on the server (accounts=), otherwise total and valuation would not match.
  */
 // 'merkliste' has been included since 24.09. (Marco's requirement: "Add a filter to the wishlist like for the
-// sets, including owner"). The server always understood `accounts=` on /v1/wanted — scopeIds() applies
+// sets, including owner"). The server always understood `accounts=` on /v2/wanted — scopeIds() applies
 // there as everywhere —, only neither of the two UIs sent it. So only the choice was missing.
 export const SCOPE_VIEWS = ['gallery', 'parts', 'minifigs', 'finance', 'wanted'];
 

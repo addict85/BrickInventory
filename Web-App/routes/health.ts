@@ -1,5 +1,5 @@
 /** Startup state and health: without login (compose.yaml) and mounted before the
- * other /api/v1 routes; asked already during startup. */
+ * other /api/v2 routes; asked already during startup. */
 import express from 'express';
 import { attempts, valueOr } from '../src/infra/result';
 import { errorText, responseLanguage } from '../src/infra/errorTexts';
@@ -27,9 +27,9 @@ export function buildGesundheitRouter(d: Pick<Services, 'jobQueue' | 'account' |
     if (await d.management.databaseReady()) return void res.json({ status: 'ok' });
     res.status(503).json({
       success: false,
-      code: 'datenbank_nicht_erreichbar',
+      code: 'database_unreachable',
       status: 'unavailable',
-      error: errorText('datenbank_nicht_erreichbar', responseLanguage(req)),
+      error: errorText('database_unreachable', responseLanguage(req)),
     });
   });
   // If the database is stuck, the report stays reachable — only without details.

@@ -31,18 +31,18 @@ export async function setInCatalog(db: DbInterface, number: string): Promise<boo
 export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
 
 /** NONE means "no price", with a timestamp. */
-export async function rememberBricklinkKind(db: DbInterface, number: string, art: BricklinkArt): Promise<void> {
-  if (art === 'NONE') {
+export async function rememberBricklinkKind(db: DbInterface, number: string, kind: BricklinkArt): Promise<void> {
+  if (kind === 'NONE') {
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,true)
       ON CONFLICT (set_number) DO UPDATE SET bl_type=$2, is_gear=true, fetched_at=NOW()`,
-      [number, art],
+      [number, kind],
     );
   } else {
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,false)
       ON CONFLICT (set_number) DO UPDATE SET bl_type=$2, is_gear=false`,
-      [number, art],
+      [number, kind],
     );
   }
 }

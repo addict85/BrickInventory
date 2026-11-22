@@ -24,7 +24,7 @@ export async function recolorPartRow(
     if (source.storage_id && !target.storage_id) await sharedRepo.setPartLocation(k.db, source.storage_id, target.id);
     await sharedRepo.loescheTeilzeile(k.db, source.id);
   }
-  return { vereint: merged.changes ?? 0, verschoben: moved.changes ?? 0 };
+  return { united: merged.changes ?? 0, moved: moved.changes ?? 0 };
 }
 
 /** A set's parts or figures: what the catalog names, and only that. */
@@ -46,8 +46,8 @@ export function copy(k: InventoryContext, table: 'parts' | 'minifigs', sn: strin
 }
 
 /** Without quantity: it arises from the acquisition below. */
-export function createRow(k: InventoryContext, art: 'part' | 'fig', uid: number, key: (string | number)[]) {
-  return sharedRepo.createManual(k.db, art, uid, key);
+export function createRow(k: InventoryContext, kind: 'part' | 'fig', uid: number, key: (string | number)[]) {
+  return sharedRepo.createManual(k.db, kind, uid, key);
 }
 
 export function partsOfAccount(k: InventoryContext, uid: number) {

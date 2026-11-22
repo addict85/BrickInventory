@@ -26,13 +26,13 @@ const TO_SMALL = `[...document.querySelectorAll('a[href], button, [role=button],
 test('finances on the computer: controls at least 32 px', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `finklick_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await holdsSet(db, uid, '10294-1', 2, { preis: 100 });
       await holdsSet(db, uid, '75192-1', 1, { preis: 50 });
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

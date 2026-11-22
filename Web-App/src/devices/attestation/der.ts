@@ -4,7 +4,7 @@
 export interface Tlv {
   /** 0 universal, 1 application, 2 context-specific, 3 private */
   klasse: number;
-  nummer: number;
+  number: number;
   zusammengesetzt: boolean;
   inhalt: Buffer;
 }
@@ -21,12 +21,12 @@ export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
     return b[p++] as number;
   };
   const erstes = byte();
-  let nummer = erstes & 0x1f;
-  if (nummer === 0x1f) {
-    nummer = 0;
+  let number = erstes & 0x1f;
+  if (number === 0x1f) {
+    number = 0;
     for (let b7 = byte(); ; b7 = byte()) {
-      nummer = nummer * 128 + (b7 & 0x7f);
-      if (nummer >= HIGHEST_NUMBER) throw new TheError('DER: Tag zu gross');
+      number = number * 128 + (b7 & 0x7f);
+      if (number >= HIGHEST_NUMBER) throw new TheError('DER: Tag zu gross');
       if (!(b7 & 0x80)) break;
     }
   }
@@ -39,7 +39,7 @@ export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
     for (let i = 0; i < n; i++) length = length * 256 + byte();
   }
   if (p + length > b.length) throw new TheError('DER: Länge über das Ende');
-  const tlv = { klasse: erstes >> 6, nummer, zusammengesetzt: !!(erstes & 0x20), inhalt: b.subarray(p, p + length) };
+  const tlv = { klasse: erstes >> 6, number, zusammengesetzt: !!(erstes & 0x20), inhalt: b.subarray(p, p + length) };
   return { tlv, ende: p + length };
 }
 
@@ -72,14 +72,14 @@ export const UNIVERSAL = {
   SET: 17,
 };
 
-export function expect(t: Tlv | undefined, nummer: number, kind = 0): Tlv {
-  if (!t || t.nummer !== nummer || t.klasse !== kind) throw new TheError(`DER: Tag ${nummer} erwartet`);
+export function expect(t: Tlv | undefined, number: number, kind = 0): Tlv {
+  if (!t || t.number !== number || t.klasse !== kind) throw new TheError(`DER: Tag ${number} erwartet`);
   return t;
 }
 
 /** INTEGER or ENUMERATED, not negative and small enough for a number. */
 export function theNumber(t: Tlv): number {
-  if (t.klasse !== 0 || (t.nummer !== UNIVERSAL.INTEGER && t.nummer !== UNIVERSAL.ENUMERATED))
+  if (t.klasse !== 0 || (t.number !== UNIVERSAL.INTEGER && t.number !== UNIVERSAL.ENUMERATED))
     throw new TheError('DER: keine Zahl');
   if (!t.inhalt.length || (t.inhalt[0] as number) & 0x80) throw new TheError('DER: negative oder leere Zahl');
   if (t.inhalt.length > 7) throw new TheError('DER: Zahl zu gross');

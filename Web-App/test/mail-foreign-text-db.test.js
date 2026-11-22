@@ -72,8 +72,8 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
-  const rufe = (methode, pfad, body) =>
-    fetch(`${base}/api/v1/auth${pfad}`, {
+  const rufe = (methode, path, body) =>
+    fetch(`${base}/api/v2/auth${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -97,7 +97,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     ].entries()) {
       const r = await register(`name${i}_${P}`, `name${i}_${P}@example.org`, extra);
       assert.equal(r.status, 400, JSON.stringify(r.body));
-      assert.equal(r.body.code, 'name_ungueltig');
+      assert.equal(r.body.code, 'name_invalid');
     }
     const lang = await register(`lang_${P}`, `lang_${P}@example.org`, { first_name: 'x'.repeat(101) });
     assert.equal(lang.status, 400, 'über 100 Zeichen weist der Eingabevertrag ab');
@@ -114,7 +114,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     ).id;
     const p = await rufe('PUT', '/profile', { first_name: 'Anna\u0007' });
     assert.equal(p.status, 400, JSON.stringify(p.body));
-    assert.equal(p.body.code, 'name_ungueltig');
+    assert.equal(p.body.code, 'name_invalid');
     assert.equal(
       (
         await rufe('PUT', '/profile', {

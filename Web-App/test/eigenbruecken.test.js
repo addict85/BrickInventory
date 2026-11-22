@@ -52,7 +52,7 @@ test('no test reads a source file that does not exist', () => {
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Testdateien gefunden — Ordner umbenannt?`);
 
   const kaputt = [];
-  const offen = [];
+  const open = [];
   const absent = [];
   let geprueft = 0;
 
@@ -82,7 +82,7 @@ test('no test reads a source file that does not exist', () => {
       const segmente = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);
       if (segmente.some(s => s === undefined)) {
         // Not resolvable — reported, not skipped.
-        offen.push(`${datei}: ${roh.find((_s, i) => segmente[i] === undefined)}`);
+        open.push(`${datei}: ${roh.find((_s, i) => segmente[i] === undefined)}`);
         continue;
       }
       const p = segmente.join('/');
@@ -125,9 +125,9 @@ test('no test reads a source file that does not exist', () => {
   // `ordner`) — tests that go through a list of files. That is a
   // good pattern; writing it out would make the tests worse.
   assert.ok(
-    offen.length <= 76,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 76):\n  ` +
-      offen.join('\n  ') +
+    open.length <= 76,
+    `${open.length} Pfade mit variablem Segment (gemessen waren es 76):\n  ` +
+      open.join('\n  ') +
       '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
       'variables Segment nimmt dieser Pruefung die Sicht.',
   );

@@ -45,18 +45,18 @@ test('extensions, envelopes and records', () => {
 });
 
 test('in a union the option that fits counts', () => {
-  const A = z.looseObject({ art: z.literal('a'), x: z.number() });
-  const B = z.looseObject({ art: z.literal('b'), y: z.number() });
-  assert.deepEqual(unknownFields(z.union([A, B]), { art: 'b', y: 1 }), []);
-  assert.deepEqual(unknownFields(z.union([A, B]), { art: 'b', y: 1, z: 0 }), ['z']);
+  const A = z.looseObject({ kind: z.literal('a'), x: z.number() });
+  const B = z.looseObject({ kind: z.literal('b'), y: z.number() });
+  assert.deepEqual(unknownFields(z.union([A, B]), { kind: 'b', y: 1 }), []);
+  assert.deepEqual(unknownFields(z.union([A, B]), { kind: 'b', y: 1, z: 0 }), ['z']);
 });
 
 test('the route answers 500 if a field is missing in the contract', async () => {
   const { checkContract } = _req('src/http/contractRouter.js');
   const checker = checkContract();
   assert.ok(checker, 'CHECK_CONTRACT ist in Tests gesetzt');
-  // GET /api/v1/sets/info/:setNumber: SetInfoResponse names no field `geheim`.
-  const req = { method: 'GET', baseUrl: '/api/v1', route: { path: '/sets/info/:setNumber' }, body: {} };
+  // GET /api/v2/sets/info/:setNumber: SetInfoResponse names no field `geheim`.
+  const req = { method: 'GET', baseUrl: '/api/v2', route: { path: '/sets/info/:setNumber' }, body: {} };
   let status = 200;
   let gesendet;
   const res = {
@@ -73,7 +73,7 @@ test('the route answers 500 if a field is missing in the contract', async () => 
     },
   };
   checker(req, res, () => {});
-  res.json({ success: true, set_number: '1-1', name: 'x', im_katalog: true, geheim: 1 });
+  res.json({ success: true, set_number: '1-1', name: 'x', in_catalog: true, geheim: 1 });
   assert.equal(status, 500);
   assert.match(String(gesendet.deviations), /nicht im Vertrag: geheim/);
 
@@ -88,6 +88,6 @@ test('the route answers 500 if a field is missing in the contract', async () => 
   };
   status = 200;
   checker(req, res2, () => {});
-  res2.json({ success: true, set_number: '1-1', name: 'x', im_katalog: true });
+  res2.json({ success: true, set_number: '1-1', name: 'x', in_catalog: true });
   assert.equal(status, 200);
 });

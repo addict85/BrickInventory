@@ -1,4 +1,4 @@
-import { konfig } from './config';
+import { config } from './config';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,7 +20,7 @@ const S = processWide('datenSchluessel', () => ({
 }));
 
 export function keyFile(): string {
-  return konfig().dataKeyFile || path.join(APP_ROOT, 'schluessel', 'datenschluessel');
+  return config().dataKeyFile || path.join(APP_ROOT, 'schluessel', 'datenschluessel');
 }
 
 /** The location used by older installations; it is part of every backup of data/. */
@@ -54,7 +54,7 @@ function warnAlterLocation(alt: string, fresh: string): void {
  * (with a warning); if everything is missing, the own file is created. */
 export function dataKey(): Buffer {
   if (S.geladen) return S.geladen;
-  const env = konfig().datenSchluessel;
+  const env = config().datenSchluessel;
   if (env) {
     const k = Buffer.from(env, 'base64');
     if (k.length !== 32) throw new Error('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
@@ -104,7 +104,7 @@ export function dataKey(): Buffer {
  * rewrites it (scripts/rotate-data-key.sh). Missing file: no rotation. */
 export function altKey(): Buffer | null {
   if (S.alt !== undefined) return S.alt;
-  const k = konfig();
+  const k = config();
   const raw = k.dataKeyAlt
     ? Buffer.from(k.dataKeyAlt, 'base64')
     : k.dataKeyAltFile

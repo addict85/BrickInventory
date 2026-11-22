@@ -62,11 +62,11 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const zeile = klartext =>
+  const row = klartext =>
     db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenDigest(klartext)]);
 
   try {
-    const frist = _req('src/infra/config.js').konfig().tokenIdleDays;
+    const frist = _req('src/infra/config.js').config().tokenIdleDays;
     assert.equal(frist, 23, 'die Frist kommt aus TOKEN_IDLE_DAYS');
 
     // ── 1. The app token ────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     });
     assert.equal(appA.status, 200, `Anmeldung scheiterte: ${JSON.stringify(appA.body)}`);
     const appToken = appA.body.token;
-    const appRow = await zeile(appToken);
+    const appRow = await row(appToken);
     assert.equal(appRow.sliding, true, 'Der App-Token muss als gleitend markiert sein');
     // Exact to the day instead of to the millisecond: between the INSERT and
     // this line real time passes, and NOW() is that of the database.
@@ -89,7 +89,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
 
     // ── 2. The browser token does not slide ──────────────────────────────────
     const webA = await ruf(AUTH + '/login', { method: 'POST', body: { username: NAME, password: PASS } });
-    const webRow = await zeile(webA.body.token);
+    const webRow = await row(webA.body.token);
     assert.equal(
       webRow.sliding,
       false,
@@ -108,9 +108,9 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     // The UPDATE runs without await in the request path (fire-and-forget, so that
     // auth does not cost two DB rounds). Hence we wait instead of guess —
     // a fixed sleep would be either too short or a waste of time.
-    await bis(async () => daysUntil((await zeile(appToken)).expires_at) > 3, 2000);
+    await bis(async () => daysUntil((await row(appToken)).expires_at) > 3, 2000);
     assert.equal(
-      daysUntil((await zeile(appToken)).expires_at),
+      daysUntil((await row(appToken)).expires_at),
       frist,
       'Die Benutzung muss das Ablaufdatum wieder auf die volle Frist schieben — sonst ' +
         'sperrt sich ein taeglich benutztes Telefon nach 90 Tagen selbst aus',
@@ -133,7 +133,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
       'die Benutzung wurde nicht vermerkt',
     );
     assert.equal(
-      daysUntil((await zeile(webA.body.token)).expires_at),
+      daysUntil((await row(webA.body.token)).expires_at),
       3,
       'Der Browser-Token darf durch Benutzung nicht laenger werden',
     );

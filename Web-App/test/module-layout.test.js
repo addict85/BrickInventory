@@ -16,14 +16,14 @@ const { ohneKommentare } = require('./helpers/sources');
  */
 function srcDirs() {
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
-  const zeile = build.match(/const SRC_DIRS = \[([^\]]*)\]/);
-  assert.ok(zeile, 'SRC_DIRS im Bauskript nicht gefunden');
-  const dirs = [...zeile[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+  const row = build.match(/const SRC_DIRS = \[([^\]]*)\]/);
+  assert.ok(row, 'SRC_DIRS im Bauskript nicht gefunden');
+  const dirs = [...row[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   assert.ok(dirs.length >= 5, `nur ${dirs.length} Quellordner — das Muster greift nicht mehr`);
   return dirs;
 }
 
-function quellen() {
+function sources() {
   const raus = [];
   for (const dir of srcDirs()) {
     const abs = path.join(ROOT, dir);
@@ -46,7 +46,7 @@ test('the API quotas are named after the API, not after a path', () => {
   // The keys stand in rate_limits/global_settings. A path in them
   // means: a second, empty count next to the real one.
   const treffer = [];
-  for (const datei of quellen()) {
+  for (const datei of sources()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const fn of [
       'zaehleKontingent',
@@ -92,7 +92,7 @@ test('no module is fetched under a bare name', () => {
     'database',
   ]);
   const treffer = [];
-  for (const datei of quellen()) {
+  for (const datei of sources()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(/(?:require\(|from )\s*'([^'./][^']*)'/g)) {
       if (eigene.has(m[1])) treffer.push(`${path.relative(ROOT, datei)}: '${m[1]}'`);
@@ -124,15 +124,15 @@ test('clients/ contains no routes and is built anyway', () => {
   // dist/clients/ arises and EVERY import of it runs into nothing at the start — exactly
   // on that the move almost failed.
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
-  const zeile = build.match(/const SRC_DIRS = \[([^\]]*)\]/);
-  assert.ok(zeile, 'SRC_DIRS nicht gefunden');
-  assert.match(zeile[1], /'clients'/, 'Das Bauskript baut clients/ nicht mit');
+  const row = build.match(/const SRC_DIRS = \[([^\]]*)\]/);
+  assert.ok(row, 'SRC_DIRS nicht gefunden');
+  assert.match(row[1], /'clients'/, 'Das Bauskript baut clients/ nicht mit');
 });
 
 test('no cycles via real import statements', () => {
   // Why this deserves its own check
   const graph = new Map();
-  const dateien = quellen();
+  const dateien = sources();
   const kennt = new Set(dateien.map(d => path.resolve(d)));
 
   const aufloesen = (von, rel) => {
@@ -154,7 +154,7 @@ test('no cycles via real import statements', () => {
     graph.set(path.resolve(datei), ziele);
   }
 
-  const gefunden = [];
+  const found = [];
   const stapel = [];
   const fertig = new Set();
   const lauf = u => {
@@ -162,7 +162,7 @@ test('no cycles via real import statements', () => {
     for (const v of graph.get(u) || []) {
       const i = stapel.indexOf(v);
       if (i >= 0) {
-        gefunden.push(
+        found.push(
           stapel
             .slice(i)
             .concat(v)
@@ -179,11 +179,11 @@ test('no cycles via real import statements', () => {
   for (const n of graph.keys()) lauf(n);
 
   assert.deepEqual(
-    [...new Set(gefunden)],
+    [...new Set(found)],
     [],
     'Kreis über echte import-Anweisungen — zur Ladezeit ist eine Seite ' +
       'undefined, und das fällt erst im Betrieb auf:\n  ' +
-      [...new Set(gefunden)].join('\n  '),
+      [...new Set(found)].join('\n  '),
   );
 });
 
@@ -264,7 +264,7 @@ test('the base schema is looked for where it lies at runtime', () => {
 test('every late require() points to a file that exists', () => {
   // A real runtime error during the move
   const treffer = [];
-  for (const datei of quellen()) {
+  for (const datei of sources()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(/require\(\s*'(\.[^']+)'\s*\)/g)) {
       const basis = path.resolve(path.dirname(datei), m[1]);

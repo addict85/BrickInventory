@@ -62,7 +62,7 @@ test('email verification only lives in one place', async t => {
   });
 
   await t.test('the one remaining path calls the shared function', () => {
-    // The only path is POST /api/v1/auth/email-bestaetigen (the button on the
+    // The only path is POST /api/v2/auth/email-bestaetigen (the button on the
     // page behind the mail link). GET /verify in server.ts only delivers the
     // page; if it redeemed by itself again, a link scanner would already confirm.
     // The behavior is checked by sicherheit-server-grenzen-db on the real server.

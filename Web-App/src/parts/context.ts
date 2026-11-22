@@ -16,11 +16,11 @@ import type { InventoryServices } from '../inventory';
 import type { Clock } from '../infra/clock';
 
 export interface PartsDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
   /** State per access (rebuilding the parts summary); createParts sets it up. */
   faecher: Compartments;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   jobQueue: JobsServices;
   household: HouseholdServices;
   catalog: CatalogServices;

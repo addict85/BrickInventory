@@ -16,7 +16,7 @@ const ROUTES = path.join(__dirname, '..', 'routes');
  * uses it instead of defining it does not belong here.
  */
 const ALLOWED = {
-  'api_v1/middleware.ts':
+  'api/middleware.ts':
     'requireToken übersetzt die Sitzung IN die gemeinsame Form (req.apiUser). ' + 'Hier entsteht sie.',
   'auth/secondFactor.ts':
     'Nach dem Einrichten des Faktors enden alle anderen Zugänge; die eigene ' +
@@ -30,12 +30,12 @@ const ALLOWED = {
 
 /** All .ts under routes/, also in subfolders. */
 function routesFiles(dir, praefix = '') {
-  const gefunden = [];
+  const found = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) gefunden.push(...routesFiles(path.join(dir, e.name), praefix + e.name + '/'));
-    else if (e.name.endsWith('.ts')) gefunden.push([praefix + e.name, path.join(dir, e.name)]);
+    if (e.isDirectory()) found.push(...routesFiles(path.join(dir, e.name), praefix + e.name + '/'));
+    else if (e.name.endsWith('.ts')) found.push([praefix + e.name, path.join(dir, e.name)]);
   }
-  return gefunden;
+  return found;
 }
 
 test('no handler asks the session for the user identifier itself', () => {
@@ -53,13 +53,13 @@ test('no handler asks the session for the user identifier itself', () => {
       .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
       .join('\n');
     for (const m of src.matchAll(/req\.session\??\.(userId|isAdmin|username)\b/g)) {
-      const zeile = src.slice(0, m.index).split('\n').length;
+      const row = src.slice(0, m.index).split('\n').length;
       // Allowed files are SEARCHED nevertheless: their hit proves that
       // the exception still describes something. Whoever skips it instead
       // never notices when it becomes moot — and then a dead
       // entry permanently exempts a whole file from the check.
       if (rel in ALLOWED) gebraucht.add(rel);
-      else violations.push(`${rel}:${zeile}  ${m[0]}`);
+      else violations.push(`${rel}:${row}  ${m[0]}`);
     }
   }
 
@@ -89,15 +89,15 @@ test('no handler asks the session for the user identifier itself', () => {
 test('no router brings its own guard', () => {
   // The second part of the same finding: routes/auth.ts DEFINED requireLogin
   // and requireAdmin itself — session-bound, while src/account/http/login.ts and
-  // routes/api_v1/middleware.ts had long had token-capable versions. Three
+  // routes/api/middleware.ts had long had token-capable versions. Three
   // versions of one rule, and the app could only fulfill one.
   const dateien = routesFiles(ROUTES);
   const eigene = [];
   for (const [rel, voll] of dateien) {
     const src = fs.readFileSync(voll, 'utf8');
     for (const m of src.matchAll(/^\s*(?:export\s+)?function\s+(require\w+)\s*\(/gm)) {
-      // api_v1/middleware.ts is the place WHERE they should stand.
-      if (rel === 'api_v1/middleware.ts') continue;
+      // api/middleware.ts is the place WHERE they should stand.
+      if (rel === 'api/middleware.ts') continue;
       eigene.push(`${rel}  function ${m[1]}`);
     }
   }
@@ -107,7 +107,7 @@ test('no router brings its own guard', () => {
     'Diese Router definieren einen eigenen Anmelde-Wächter:\n  ' +
       eigene.join('\n  ') +
       '\nEs gibt genau zwei: requireLoginOrToken (src/account/http/login.ts) und ' +
-      'requireApiAdmin (routes/api_v1/middleware.ts). Beide nehmen Sitzung ODER ' +
+      'requireApiAdmin (routes/api/middleware.ts). Beide nehmen Sitzung ODER ' +
       'Token. Eine dritte Fassung sperrt zuverlässig die App aus.',
   );
 });

@@ -39,7 +39,7 @@ function melder(kx: CatalogContext, lauf: CsvLauf) {
       .reportStartState({ ready: false, step, progress, total: TOTAL_STEPS, sub })
       .catch(logAndContinue('rb-csv:start'));
     void lauf
-      .progress?.({ erledigt: progress, gesamt: TOTAL_STEPS, text: sub, schritt: `CSV-Import: ${step}` })
+      .progress?.({ done: progress, total: TOTAL_STEPS, text: sub, schritt: `CSV-Import: ${step}` })
       .catch(logAndContinue('rb-csv:stand'));
     if (!sub && !step.includes('k)')) log(step);
   };
@@ -59,11 +59,11 @@ async function runWorker(
   const tmpFile = path.join(DATA_DIR, filename.replace('.gz', '.tmp'));
   let last = 0;
   try {
-    await k.externalSources.quellen.loadCatalogCsv(filename, tmpFile, {
+    await k.externalSources.sources.loadCatalogCsv(filename, tmpFile, {
       ...(lauf.signal ? { signal: lauf.signal } : {}),
       atProgress: (bytes, total) => {
-        if (k.uhr.jetzt() - last < 700) return;
-        last = k.uhr.jetzt();
+        if (k.clock.now() - last < 700) return;
+        last = k.clock.now();
         const pct = total > 0 ? Math.round((bytes / total) * 100) : 0;
         report(
           `${stepLabel} (Download...)`,
@@ -189,7 +189,7 @@ async function loadEverything(kx: CatalogContext, lauf: CsvLauf, process: Import
 }
 
 async function loadBlColors(k: CatalogContext): Promise<void> {
-  const key = await k.externalSources.quellen.getRbKey();
+  const key = await k.externalSources.sources.getRbKey();
   if (!key) return;
   log('[colors] Fetching BrickLink color mapping from Rebrickable API…');
   let page = 1,
@@ -199,7 +199,7 @@ async function loadBlColors(k: CatalogContext): Promise<void> {
     // Without an answer the previous mapping stays; the next reconciliation tries again.
     const fetch = await attempts(
       'csv-abgleich:abruf',
-      k.externalSources.quellen.httpsGetRobust(
+      k.externalSources.sources.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
         { Authorization: `key ${key}` },
         30000,
@@ -223,7 +223,7 @@ async function loadBlColors(k: CatalogContext): Promise<void> {
 
 async function run(k: CatalogContext, lauf: CsvLauf = {}, process: ImportProcess = null) {
   await fs.promises.mkdir(DATA_DIR, { recursive: true });
-  const today = k.uhr.datum().toISOString().slice(0, 10);
+  const today = k.clock.datum().toISOString().slice(0, 10);
   if ((await k.jobQueue.readState(SYNC_KEY)) === today) {
     log(`Already synced today (${today}) — skipping CSV download`);
     await syncPartCategoriesDaily(k, lauf, process, today);

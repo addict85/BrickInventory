@@ -76,7 +76,7 @@ test('login: spraying from a /64 hits the per-address limit', async t => {
   }
   const sperre = await L.loginAllowed('2001:db8:5:0:ffff::9', 'v6_spray_neu');
   assert.ok(sperre, 'Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse');
-  assert.equal(sperre.code, 'zu_viele_fehlversuche');
+  assert.equal(sperre.code, 'too_many_failed_attempts');
 });
 
 test('key per address: /64, IPv4 in IPv6, others stay', () => {

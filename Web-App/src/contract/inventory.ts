@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { v1Keys } from './v1';
 import { input } from '../infra/validate';
 import {
   type Route,
@@ -30,7 +31,7 @@ export const Acquisition = z.looseObject({
   price_estimated: z.boolean(),
   currency: z.string().nullable(),
   /** The price in the account's currency (rate of the purchase day); null without a price or without a rate. */
-  preis_konto: z.number().nullable(),
+  account_price: z.number().nullable(),
 });
 
 export const AcquisitionTotals = z.looseObject({
@@ -39,7 +40,7 @@ export const AcquisitionTotals = z.looseObject({
   amount: z.number().optional(),
   priced_rows: z.number().int(),
   currency: z.string().optional(),
-  ohne_kurs: z.number().int().optional(),
+  without_rate: z.number().int().optional(),
 });
 
 export const AcquisitionsResponse = z.looseObject({
@@ -48,7 +49,7 @@ export const AcquisitionsResponse = z.looseObject({
   owner_user_id: z.number().int().optional(),
   acquisitions: z.array(Acquisition),
   totals: AcquisitionTotals,
-  degradiert: DEGRADED,
+  degraded: DEGRADED,
 });
 
 export const DeleteWithQuantityResponse = z.looseObject({
@@ -57,10 +58,10 @@ export const DeleteWithQuantityResponse = z.looseObject({
 });
 
 export const Storage = z.looseObject({
-  figuren: z.number().int().nullable(),
-  ort: z.string(),
+  minifigs: z.number().int().nullable(),
+  location: z.string(),
   sets: z.number().int(),
-  teile: z.number().int(),
+  parts: z.number().int(),
 });
 
 export const StorageEntry = z.looseObject({
@@ -71,7 +72,7 @@ export const StorageEntry = z.looseObject({
 
 export const StorageEntryResponse = z.looseObject({
   success: z.boolean(),
-  ort: StorageEntry.nullable(),
+  location: StorageEntry.nullable(),
 });
 
 export const StorageResponse = z.looseObject({
@@ -82,18 +83,18 @@ export const StorageResponse = z.looseObject({
 
 export const StorageDefaultResponse = z.looseObject({
   success: z.boolean(),
-  vorgabe: StorageEntry.nullable(),
+  preset: StorageEntry.nullable(),
 });
 
 export const StorageStockResponse = z.looseObject({
   success: z.boolean(),
-  orte: z.array(StorageEntry),
-  vorgabe: StorageEntry.nullable(),
+  locations: z.array(StorageEntry),
+  preset: StorageEntry.nullable(),
 });
 
 export const StoragesResponse = z.looseObject({
   success: z.boolean(),
-  orte: z.array(Storage),
+  locations: z.array(Storage),
 });
 
 export const TrashEntry = z.looseObject({
@@ -102,26 +103,26 @@ export const TrashEntry = z.looseObject({
   number: z.string(),
   color_id: whole.nullable(),
   label: z.string().nullable(),
-  anzahl: whole,
+  count: whole,
   user_id: whole,
   deleted_at: time,
-  endgueltig_am: time,
+  purge_at: time,
 });
-export const Trash = z.looseObject({ success: z.literal(true), eintraege: z.array(TrashEntry) });
+export const Trash = z.looseObject({ success: z.literal(true), entries: z.array(TrashEntry) });
 export const Restored = z.looseObject({
   success: z.literal(true),
   type: z.enum(['set', 'teil', 'figur']),
   number: z.string(),
   user_id: whole,
 });
-export const TrashEmptied = z.looseObject({ success: z.literal(true), entfernt: whole });
+export const TrashEmptied = z.looseObject({ success: z.literal(true), removed: whole });
 /** What "empty inventory" put into the trash, with the identifiers for restoring. */
 export const HoldingCleared = z.looseObject({
   success: z.literal(true),
   sets: whole,
-  teile: whole,
-  figuren: whole,
-  papierkorb: z.array(whole),
+  parts: whole,
+  minifigs: whole,
+  trash: z.array(whole),
 });
 
 /** The price is called purchase_price for sets, otherwise unit_price; the app sends both. */
@@ -137,80 +138,87 @@ const AcquisitionChange = z.strictObject({
     .meta({ deprecated: true, description: 'not evaluated: the owner comes from the row' }),
 });
 
-export const routen = {
-  'GET /api/v1/sets/:setNumber/acquisitions': {
-    klein: true,
-    antwort: AcquisitionsResponse,
-    abfrage: query({ accounts: Q.konten }),
+// v1 names of fields whose v2 name also exists unchanged elsewhere (v1.ts).
+v1Keys(Storage, { minifigs: 'figuren', parts: 'teile' });
+v1Keys(TrashEntry, { count: 'anzahl' });
+v1Keys(Trash, { entries: 'eintraege' });
+v1Keys(TrashEmptied, { removed: 'entfernt' });
+v1Keys(HoldingCleared, { minifigs: 'figuren', parts: 'teile' });
+
+export const routes = {
+  'GET /api/v2/sets/:setNumber/acquisitions': {
+    small: true,
+    response: AcquisitionsResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/parts/:partNumber/:colorId/acquisitions': {
-    klein: true,
-    antwort: AcquisitionsResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/parts/:partNumber/:colorId/acquisitions': {
+    small: true,
+    response: AcquisitionsResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/minifigs/:figNumber/acquisitions': {
-    klein: true,
-    antwort: AcquisitionsResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/minifigs/:figNumber/acquisitions': {
+    small: true,
+    response: AcquisitionsResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/storage/locations': {
-    klein: true,
-    antwort: StorageStockResponse,
-    abfrage: query({
+  'GET /api/v2/storage/locations': {
+    small: true,
+    response: StorageStockResponse,
+    query: query({
       owner: STORAGE_ACCOUNTS,
-      accounts: Q.konten.meta({ deprecated: true, description: 'not evaluated: the list follows the permission' }),
+      accounts: Q.accounts.meta({ deprecated: true, description: 'not evaluated: the list follows the permission' }),
     }),
   },
-  'GET /api/v1/storage': { klein: true, antwort: StoragesResponse, abfrage: query({ accounts: Q.konten }) },
-  'PUT /api/v1/minifigs/:figNumber/storage': {
-    eingabe: z.strictObject({ storage: TEXT().nullable().optional() }),
-    antwort: StorageResponse,
+  'GET /api/v2/storage': { small: true, response: StoragesResponse, query: query({ accounts: Q.accounts }) },
+  'PUT /api/v2/minifigs/:figNumber/storage': {
+    input: z.strictObject({ storage: TEXT().nullable().optional() }),
+    response: StorageResponse,
   },
-  'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': { antwort: AcquisitionReply, eingabe: AcquisitionChange },
-  'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { eingabe: WITHOUT_BODY, antwort: AcquisitionReply },
-  'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': {
-    antwort: AcquisitionReply,
-    eingabe: AcquisitionChange,
+  'PUT /api/v2/sets/:setNumber/acquisitions/:acqId': { response: AcquisitionReply, input: AcquisitionChange },
+  'DELETE /api/v2/sets/:setNumber/acquisitions/:acqId': { input: WITHOUT_BODY, response: AcquisitionReply },
+  'PUT /api/v2/parts/:partNumber/:colorId/acquisitions/:acqId': {
+    response: AcquisitionReply,
+    input: AcquisitionChange,
   },
-  'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': {
-    eingabe: WITHOUT_BODY,
-    antwort: DeleteWithQuantityResponse,
+  'DELETE /api/v2/parts/:partNumber/:colorId/acquisitions/:acqId': {
+    input: WITHOUT_BODY,
+    response: DeleteWithQuantityResponse,
   },
-  'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId': { antwort: AcquisitionReply, eingabe: AcquisitionChange },
-  'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': {
-    eingabe: WITHOUT_BODY,
-    antwort: DeleteWithQuantityResponse,
+  'PUT /api/v2/minifigs/:figNumber/acquisitions/:acqId': { response: AcquisitionReply, input: AcquisitionChange },
+  'DELETE /api/v2/minifigs/:figNumber/acquisitions/:acqId': {
+    input: WITHOUT_BODY,
+    response: DeleteWithQuantityResponse,
   },
-  'PUT /api/v1/sets/:setNumber/storage': {
-    eingabe: z.strictObject({ storage: TEXT().nullable().optional() }),
-    antwort: StorageResponse,
+  'PUT /api/v2/sets/:setNumber/storage': {
+    input: z.strictObject({ storage: TEXT().nullable().optional() }),
+    response: StorageResponse,
   },
-  'PUT /api/v1/parts/:partNumber/:colorId/storage': {
-    eingabe: z.strictObject({ storage: TEXT().nullable().optional() }),
-    antwort: StorageResponse,
+  'PUT /api/v2/parts/:partNumber/:colorId/storage': {
+    input: z.strictObject({ storage: TEXT().nullable().optional() }),
+    response: StorageResponse,
   },
-  'POST /api/v1/storage/locations': {
-    eingabe: z.strictObject({ name: TEXT().optional(), owner: IDENTIFIER.optional() }),
-    antwort: StorageEntryResponse,
-    abfrage: query({ owner: STORAGE_ACCOUNTS }),
+  'POST /api/v2/storage/locations': {
+    input: z.strictObject({ name: TEXT().optional(), owner: IDENTIFIER.optional() }),
+    response: StorageEntryResponse,
+    query: query({ owner: STORAGE_ACCOUNTS }),
   },
-  'PUT /api/v1/storage/locations/:id': {
-    eingabe: z.strictObject({ name: TEXT().optional(), owner: IDENTIFIER.optional() }),
-    antwort: StorageEntryResponse,
-    abfrage: query({ owner: STORAGE_ACCOUNTS }),
+  'PUT /api/v2/storage/locations/:id': {
+    input: z.strictObject({ name: TEXT().optional(), owner: IDENTIFIER.optional() }),
+    response: StorageEntryResponse,
+    query: query({ owner: STORAGE_ACCOUNTS }),
   },
-  'DELETE /api/v1/storage/locations/:id': {
-    eingabe: WITHOUT_BODY,
-    antwort: StorageResponse,
-    abfrage: query({ owner: STORAGE_ACCOUNTS }),
+  'DELETE /api/v2/storage/locations/:id': {
+    input: WITHOUT_BODY,
+    response: StorageResponse,
+    query: query({ owner: STORAGE_ACCOUNTS }),
   },
-  'PUT /api/v1/storage/default': {
-    eingabe: z.strictObject({ id: IDENTIFIER.nullable().optional() }),
-    antwort: StorageDefaultResponse,
+  'PUT /api/v2/storage/default': {
+    input: z.strictObject({ id: IDENTIFIER.nullable().optional() }),
+    response: StorageDefaultResponse,
   },
-  'GET /api/v1/papierkorb': { klein: true, antwort: Trash },
-  'POST /api/v1/papierkorb/:id/wiederherstellen': { eingabe: WITHOUT_BODY, antwort: Restored },
-  'DELETE /api/v1/papierkorb/:id': { antwort: Success, ...confirmed() },
-  'DELETE /api/v1/papierkorb': { antwort: TrashEmptied, ...confirmed() },
-  'DELETE /api/v1/bestand': { antwort: HoldingCleared, ...confirmed() },
+  'GET /api/v2/trash': { small: true, response: Trash },
+  'POST /api/v2/trash/:id/restore': { input: WITHOUT_BODY, response: Restored },
+  'DELETE /api/v2/trash/:id': { response: Success, ...confirmed() },
+  'DELETE /api/v2/trash': { response: TrashEmptied, ...confirmed() },
+  'DELETE /api/v2/inventory': { response: HoldingCleared, ...confirmed() },
 } satisfies Record<string, Route>;

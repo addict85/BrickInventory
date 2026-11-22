@@ -191,7 +191,7 @@ async function seed() {
 function buildApp() {
   return require(path.join(ROOT, 'dist/startup/app.js')).buildApp({
     pool: db.pool,
-    konfig: require(path.join(ROOT, 'dist/src/infra/config.js')).konfig(),
+    config: require(path.join(ROOT, 'dist/src/infra/config.js')).config(),
     sitzungsGeheimnis: 'lasttest-sitzungsgeheimnis-lang-genug',
     dienste,
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {

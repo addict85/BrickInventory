@@ -79,8 +79,8 @@ export async function cacheHit(
     const cst = await fs.promises.stat(cacheFile).catch(withoutMissingFile('bild-cache:stat', null));
     // The cap deletes by last use; under noatime nobody else remembers
     // that. mtime stays, it is part of the ETag.
-    if (cst && k.uhr.jetzt() - cst.atimeMs > 86_400_000)
-      fs.promises.utimes(cacheFile, k.uhr.datum(), cst.mtime).catch(withoutMissingFile('bild-cache:utimes'));
+    if (cst && k.clock.now() - cst.atimeMs > 86_400_000)
+      fs.promises.utimes(cacheFile, k.clock.datum(), cst.mtime).catch(withoutMissingFile('bild-cache:utimes'));
     return {
       datei: cacheFile,
       typ: imageType(ctRaw),
@@ -156,14 +156,14 @@ export async function cleanImageCacheOn(maxBytes: number, now: number): Promise<
 /** Between two daily runs the cache can grow quickly; after every tenth of the limit
  * in new bytes it is therefore capped immediately. */
 export function rememberCacheGrowth(bytes: number, max: number): void {
-  const z = processWide('bildCacheZuwachs', () => ({ bytes: 0, laeuft: false }));
+  const z = processWide('bildCacheZuwachs', () => ({ bytes: 0, running: false }));
   z.bytes += bytes;
-  if (z.laeuft || z.bytes < max / 10) return;
+  if (z.running || z.bytes < max / 10) return;
   z.bytes = 0;
-  z.laeuft = true;
+  z.running = true;
   cleanImageCacheOn(max, Date.now())
     .catch(e => reportError('bild-cache:deckel', e))
     .finally(() => {
-      z.laeuft = false;
+      z.running = false;
     });
 }

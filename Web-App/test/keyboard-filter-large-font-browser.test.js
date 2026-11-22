@@ -13,7 +13,7 @@
  *   F  SET_SORTS without name_desc → red: “table of the sets” (not sorted descending); action buttons
  *      again without set names → red: same place
  *   G  acquisitionPrice() without the gift branch → red: “gift and minifigure count” (“0,00 €”)
- *   H  the minifigure count again from /v1/minifigs?source=set → red: same place (detail 1, table 4)
+ *   H  the minifigure count again from /v2/minifigs?source=set → red: same place (detail 1, table 4)
  *   I  Brick .ntab back to 6px 2px → red: “Brick at 320 px” (tabs two lines); #app back to 16 px margin →
  *      red: same place (collection choice in two rows); .hint-close back in the flow → red: same place (× own line)
  *   K  .price-with-currency without flex-wrap → red: “large font: add set” (price field 95 px)
@@ -76,31 +76,31 @@ async function enterFromEachField(_t, a) {
       e =>
         e.method === 'Network.requestWillBeSent' &&
         e.params.request.method === 'GET' &&
-        /\/api\/v1\/sets\/21318-1$/.test(e.params.request.url),
+        /\/api\/v2\/sets\/21318-1$/.test(e.params.request.url),
     ).length;
-  for (const feld of ['add-num', 'add-qty', 'add-price', 'add-date']) {
+  for (const field of ['add-num', 'add-qty', 'add-price', 'add-date']) {
     await b.auswerten(CLOSE);
     await b.auswerten(addOpenSet);
     await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
     await b.auswerten(`(() => { document.getElementById('add-num').value = '21318-1';
-      document.getElementById('${feld}').focus(); return true; })()`);
+      document.getElementById('${field}').focus(); return true; })()`);
     const vorher = anfragen();
     await taste(b, 'Enter', 13);
-    await bis(`!document.getElementById('add-unknown').hidden`, `Enter aus ${feld} schickt nicht ab`, 50);
+    await bis(`!document.getElementById('add-unknown').hidden`, `Enter aus ${field} schickt nicht ab`, 50);
     await a.ruhig(2000);
-    assert.equal(anfragen() - vorher, 1, `Enter aus ${feld}: Abfragen`);
+    assert.equal(anfragen() - vorher, 1, `Enter aus ${field}: Abfragen`);
     assert.match(await b.auswerten(text('#add-unknown')), /schon in deiner Sammlung/);
   }
   // Part and minifigure: without a number the dialog reports it at the result, submitted from the price field.
-  for (const [hash, type, feld, result, meldung] of [
+  for (const [hash, type, field, result, meldung] of [
     ['#/teile', 'part', 'ap-price-inline', 'ap-inline-result', 'Teilenummer erforderlich'],
     ['#/minifiguren', 'fig', 'af-price-inline', 'af-inline-result', 'Figur-Nummer erforderlich'],
   ]) {
     await geh(a, hash, `document.querySelector('.tab.active [data-arg="${type}"][data-click="openCapture"]')`, type);
     await b.auswerten(`(() => { document.querySelector('.tab.active [data-click="openCapture"][data-arg="${type}"]').click();
-      document.getElementById('${result}').textContent = ''; document.getElementById('${feld}').focus(); return true; })()`);
+      document.getElementById('${result}').textContent = ''; document.getElementById('${field}').focus(); return true; })()`);
     await taste(b, 'Enter', 13);
-    await bis(`/erforderlich/.test(${text(`#${result}`)})`, `Enter aus ${feld}`, 50);
+    await bis(`/erforderlich/.test(${text(`#${result}`)})`, `Enter aus ${field}`, 50);
     assert.equal(await b.auswerten(text(`#${result}`)), meldung);
   }
   await b.auswerten(CLOSE);
@@ -233,16 +233,16 @@ async function setsTabelle(_t, a) {
     assert.equal(t.bunt, false, 'buntes Sinnbild in der Zeile');
 
     const sequence = `[...document.querySelectorAll('#gallery tbody tr')].map(z => z.children[2].textContent.trim())`;
-    const stand = `document.querySelector('#gallery [data-arg="name"]').closest('th').getAttribute('aria-sort')`;
+    const state = `document.querySelector('#gallery [data-arg="name"]').closest('th').getAttribute('aria-sort')`;
     await b.auswerten(`document.querySelector('#gallery [data-click="sortSets"][data-arg="name"]').click(); true`);
-    await bis(`${stand} === 'ascending'`, 'Name aufsteigend');
+    await bis(`${state} === 'ascending'`, 'Name aufsteigend');
     const auf = await b.auswerten(sequence);
     assert.deepEqual(
       auf,
       [...auf].sort((x, y) => x.localeCompare(y, 'de')),
     );
     await b.auswerten(`document.querySelector('#gallery [data-click="sortSets"][data-arg="name"]').click(); true`);
-    await bis(`${stand} === 'descending'`, 'Name absteigend');
+    await bis(`${state} === 'descending'`, 'Name absteigend');
     await a.ruhig();
     assert.deepEqual(await b.auswerten(sequence), [...auf].reverse(), 'absteigend nicht sortiert');
     assert.equal(
@@ -394,7 +394,7 @@ async function wertlinie(_t, a) {
   }
 }
 
-async function sprache(_t, a) {
+async function language(_t, a) {
   const m = await a.b.auswerten(`({ lang: document.documentElement.lang,
     eigen: document.getElementById('add-date').closest('[lang]')?.tagName })`);
   assert.deepEqual(m, { lang: 'de', eigen: 'HTML' });
@@ -456,16 +456,16 @@ test('keyboard in forms, filter bar, large font', { concurrency: 1, timeout: 600
   const a = await startApp(t, {
     name,
     allDesigns: true,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       kid = await patternHousehold(db, uid);
-      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('wechselkurse', NOW() + interval '6 hours')`);
+      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('exchange_rates', NOW() + interval '6 hours')`);
     },
   });
-  if (a.grund) {
-    t.skip(a.grund);
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'pending'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, kid: number) => Promise<void>][]} */
   const pruefungen = [
@@ -480,7 +480,7 @@ test('keyboard in forms, filter bar, large font', { concurrency: 1, timeout: 600
     ['Grosse Schrift: Set-Detail', largeFontDetail],
     ['Offline-Band allein', offlineBand],
     ['Wertlinie in der Farbe der Beträge', wertlinie],
-    ['Sprache der Seite', sprache],
+    ['Sprache der Seite', language],
     ['Fokus nach Rückgängig', rueckgaengig],
     ['Abbrechen in einer Zeile', cancelSingleLine],
     // Reloads the page and thereby loses the other design stylesheets: after the design checks.

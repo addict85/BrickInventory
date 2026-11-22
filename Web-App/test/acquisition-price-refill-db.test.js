@@ -88,12 +88,12 @@ test('a cleared purchase price is filled from the market price — web app AND a
 
   try {
     const results = {};
-    for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([
-      ['Webapp', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
-      ['Android', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
+    for (const [name, path] of /** @type {[string, (id: number) => string][]} */ ([
+      ['Webapp', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
+      ['Android', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
     ])) {
       const id = await aufbauen();
-      const r = await fetch(`${base}${pfad(id)}`, {
+      const r = await fetch(`${base}${path(id)}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ purchase_price: '' }), // field cleared

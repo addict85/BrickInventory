@@ -14,11 +14,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, takt } = require('./helpers/ui');
 
-async function suche(sprache) {
-  const o = await openUi({}, { sprache });
-  const feld = o.d.getElementById('gs');
-  feld.value = 'xyzxyz';
-  feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
+async function suche(language) {
+  const o = await openUi({}, { language });
+  const field = o.d.getElementById('gs');
+  field.value = 'xyzxyz';
+  field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
   await warte(() => /xyzxyz/.test(o.d.getElementById('gallery').textContent), 3000);
   await takt(20);
   const text = o.d.querySelector('#gallery .empty-state h2')?.textContent || o.d.getElementById('gallery').textContent;

@@ -14,13 +14,13 @@ test('4. and the web app redeems it', async () => {
   const { openUi, warte } = require('./helpers/ui');
   const { w, d, aufrufe } = await openUi(
     {
-      '/v1/sets/10294-1': { success: true, set: { set_number: '10294-1', name: 'Titanic', quantity: 1 } },
+      '/v2/sets/10294-1': { success: true, set: { set_number: '10294-1', name: 'Titanic', quantity: 1 } },
     },
     { before: fenster => fenster.history.replaceState({}, '', '/?set=10294-1') },
   );
   try {
     assert.ok(
-      await warte(() => aufrufe.some(a => a.url.includes('/v1/sets/10294-1'))),
+      await warte(() => aufrufe.some(a => a.url.includes('/v2/sets/10294-1'))),
       'Die Webapp liest ?set= nicht — der Knopf in der Mail öffnet nur die Startseite.',
     );
     assert.ok(

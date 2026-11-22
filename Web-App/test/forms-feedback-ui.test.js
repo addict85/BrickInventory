@@ -33,16 +33,16 @@ const assert = require('node:assert/strict');
 const { openUi, warte, takt, sicht } = require('./helpers/ui');
 
 const SN = '10305-1';
-const loeschen = (o, pfad) => o.aufrufe.filter(a => a.method === 'DELETE' && a.url.includes(pfad));
+const loeschen = (o, path) => o.aufrufe.filter(a => a.method === 'DELETE' && a.url.includes(path));
 
 test('alert in the set detail', async () => {
   const o = await openUi(
     {
-      [`/v1/sets/${SN}`]: {
+      [`/v2/sets/${SN}`]: {
         success: true,
         set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['U'], instructions: [] },
       },
-      [`/v1/sets/${SN}/alert`]: { success: true, alerts: [] },
+      [`/v2/sets/${SN}/alert`]: { success: true, alerts: [] },
     },
     { browserLanguage: 'de-DE' },
   );
@@ -55,13 +55,13 @@ test('alert in the set detail', async () => {
     await warte(() => o.d.getElementById('m-alert-val'), 4000);
     assert.equal(o.d.getElementById('m-alert-cond').value, 'U', 'gebrauchtes Set: Gebraucht vorgewählt');
     assert.match(o.d.getElementById('m-alert-val').getAttribute('aria-label'), /EUR/);
-    const feld = o.d.getElementById('m-alert-val');
-    feld.value = 'abc';
-    feld.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    const field = o.d.getElementById('m-alert-val');
+    field.value = 'abc';
+    field.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await takt(30);
     assert.equal(loeschen(o, '/alert').length, 0, 'abc löschte den Alarm');
-    const fehler = o.d.getElementById('m-alert-val-error');
-    assert.ok(fehler && !fehler.hidden && fehler.textContent.trim(), 'kein Fehler am Feld');
+    const error = o.d.getElementById('m-alert-val-error');
+    assert.ok(error && !error.hidden && error.textContent.trim(), 'kein Fehler am Feld');
   } finally {
     o.w.close();
   }
@@ -72,14 +72,14 @@ test('delete alert without question, with undo', async () => {
     set_number: SN,
     name: 'Burg',
     condition: 'N',
-    direction: 'unter',
+    direction: 'below',
     threshold: 249,
     currency_code: 'EUR',
   };
   const o = await openUi(
     {
-      '/v1/alerts': { success: true, alerts: [alarm] },
-      [`/v1/sets/${SN}/alert`]: { success: true, alerts: [alarm] },
+      '/v2/alerts': { success: true, alerts: [alarm] },
+      [`/v2/sets/${SN}/alert`]: { success: true, alerts: [alarm] },
     },
     { browserLanguage: 'de-DE' },
   );
@@ -103,7 +103,7 @@ test('delete alert without question, with undo', async () => {
     [...o.d.querySelectorAll('#toasts button')].find(b => /Rückgängig/.test(b.textContent)).click();
     assert.ok(await warte(() => o.aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/sets/${SN}/alert`))));
     const rumpf = JSON.parse(o.aufrufe.find(a => a.method === 'PUT').body);
-    assert.deepEqual(rumpf, { direction: 'unter', threshold: 249, condition: 'N' });
+    assert.deepEqual(rumpf, { direction: 'below', threshold: 249, condition: 'N' });
   } finally {
     o.w.close();
   }
@@ -112,15 +112,15 @@ test('delete alert without question, with undo', async () => {
 test('storage locations', async () => {
   const o = await openUi(
     {
-      '/v1/storage/locations': {
+      '/v2/storage/locations': {
         success: true,
-        orte: [
+        locations: [
           { id: 1, name: 'Regal A' },
           { id: 2, name: 'Kiste B' },
         ],
-        vorgabe: null,
+        preset: null,
       },
-      '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 2, teile: 0, figuren: 0 }] },
+      '/v2/storage': { success: true, locations: [{ location: 'Regal A', sets: 2, parts: 0, minifigs: 0 }] },
     },
     { browserLanguage: 'de-DE' },
   );
@@ -158,7 +158,7 @@ test('storage locations', async () => {
 test('voucher sum per currency', async () => {
   const o = await openUi(
     {
-      '/v1/vouchers': {
+      '/v2/vouchers': {
         success: true,
         vouchers: [
           { id: 1, number: '1111222233334444', amount: 50, currency: 'EUR' },

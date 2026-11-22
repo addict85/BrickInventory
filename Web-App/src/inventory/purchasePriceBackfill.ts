@@ -9,9 +9,9 @@ function log(msg: string) {
 
 /** Acquisitions without a purchase price (BrickLink at the daily limit) get the market price. Every row is
  * attempted; failed ones make the step fail at the end so that run() reports it. */
-async function jeRow<Z>(art: string, rows: Z[], f: (z: Z) => Promise<boolean>): Promise<void> {
+async function jeRow<Z>(kind: string, rows: Z[], f: (z: Z) => Promise<boolean>): Promise<void> {
   if (!rows.length) return;
-  log(`${art} ohne Kaufpreis: ${rows.length}`);
+  log(`${kind} ohne Kaufpreis: ${rows.length}`);
   let done = 0;
   const error: unknown[] = [];
   for (const row of rows) {
@@ -22,8 +22,8 @@ async function jeRow<Z>(art: string, rows: Z[], f: (z: Z) => Promise<boolean>): 
     }
     await warte(1500); // spare BrickLink's daily quota
   }
-  log(`${art} nachgetragen: ${done} von ${rows.length}`);
-  if (error.length) throw new AggregateError(error, `${art}: ${error.length} von ${rows.length} gescheitert`);
+  log(`${kind} nachgetragen: ${done} von ${rows.length}`);
+  if (error.length) throw new AggregateError(error, `${kind}: ${error.length} von ${rows.length} gescheitert`);
 }
 
 async function backfillAcquisitions(k: InventoryContext) {

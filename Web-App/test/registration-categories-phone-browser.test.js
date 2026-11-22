@@ -33,7 +33,7 @@ const { buildAndRequire } = require('./helpers/sources');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const offen = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
+const open = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
 const rect = sel => `(() => { const r = document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect();
   return r ? { l: Math.round(r.left), r: Math.round(r.right), o: Math.round(r.top), u: Math.round(r.bottom), b: Math.round(r.width) } : null; })()`;
 const cut = (a, b) => a.l < b.r && b.l < a.r && a.o < b.u && b.o < a.u;
@@ -44,16 +44,16 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     WARTET = `${NAME}_wartet`;
   const app = await startApp(t, {
     name: NAME,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternHousehold(db, uid);
       await db.run(
         `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ('99901', 'Rätselteil', '999') ON CONFLICT DO NOTHING`,
       );
-      await holdsPart(db, uid, '99901', { setNumber: '10294-1', colorId: 0, menge: 3 });
+      await holdsPart(db, uid, '99901', { setNumber: '10294-1', colorId: 0, quantity: 3 });
       await db.run(
         `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ('99902', 'Kennstein', 'Bricks') ON CONFLICT DO NOTHING`,
       );
-      await holdsPart(db, uid, '99902', { setNumber: '10294-1', colorId: 0, menge: 2 });
+      await holdsPart(db, uid, '99902', { setNumber: '10294-1', colorId: 0, quantity: 2 });
       await db.run(
         `INSERT INTO users (username, new_email, password_hash, is_active, email_verified, registration_pending)
       VALUES ($1, $2, 'x', true, false, true)`,
@@ -61,8 +61,8 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       );
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db, port, uid, ruhig } = app;
@@ -72,13 +72,13 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     "SELECT key, value FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')",
   );
   await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')");
-  const geh = async pfad => {
-    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+  const geh = async path => {
+    await b.auswerten(`location.hash = '#/${path}'; true`);
     await warte(400);
   };
   const zu = async () => {
     await b.auswerten(klick('#cd-cancel'));
-    await bis(`!(${offen})`, 'Dialog zu');
+    await bis(`!(${open})`, 'Dialog zu');
   };
   const telefon = (breite, hoehe) =>
     b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 1, mobile: true });
@@ -88,7 +88,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
 
   await t.test('wishlist: error 500 above the fold', async () => {
     await b.auswerten(`(() => { const echt = window.fetch; window.__echtFetch = echt;
-      window.fetch = (u, o) => String(u).includes('/api/v1/wanted?') ? Promise.resolve(new Response('{"success":false,"error":"kaputt"}', { status: 500, headers: { 'Content-Type': 'application/json' } })) : echt(u, o);
+      window.fetch = (u, o) => String(u).includes('/api/v2/wanted?') ? Promise.resolve(new Response('{"success":false,"error":"kaputt"}', { status: 500, headers: { 'Content-Type': 'application/json' } })) : echt(u, o);
       return true; })()`);
     try {
       await geh('merkliste');
@@ -190,7 +190,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     await geh('haushalt');
     await bis(`!!document.querySelector('[data-click="unlinkHousehold"]')`, 'Haushalt');
     await b.auswerten(klick('[data-click="unlinkHousehold"]'));
-    await bis(offen, 'Dialog');
+    await bis(open, 'Dialog');
     assert.equal(await b.auswerten(text('#cd-title')), `Verknüpfung mit „${KIND}“ lösen?`);
     assert.match(
       await b.auswerten(text('#cd-msg')),
@@ -210,16 +210,16 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       const tabelle = document.getElementById('users-tbl').innerText;
       return { wartet: /wartet auf Bestätigung/.test(zeile.textContent), knopf: !!zeile.querySelector('[data-click="unlockAccount"]'),
         verwalter: /Administrator/.test(tabelle), admin: /\\bAdmin\\b/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
-        hinweis: document.getElementById('reg-mail-hint').textContent }; })()`);
+        hint: document.getElementById('reg-mail-hint').textContent }; })()`);
     assert.deepEqual(
-      { ...z, hinweis: /E-Mail-Versand/.test(z.hinweis) },
-      { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hinweis: true },
+      { ...z, hint: /E-Mail-Versand/.test(z.hint) },
+      { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hint: true },
     );
     assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Administrator\\)`));
     await b.auswerten(
       `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)})).querySelector('[data-click="unlockAccount"]').click(); true`,
     );
-    await bis(offen, 'Dialog');
+    await bis(open, 'Dialog');
     assert.equal(await b.auswerten(text('#cd-title')), `Konto „${WARTET}“ freischalten?`);
     await zu();
   });
@@ -280,14 +280,14 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     );
     const z =
       await b.auswerten(`({ haupt: document.getElementById('btn-verify').classList.contains('bp'), zurueck: ${text('#link-verify-to-login')},
-      formular: { titel: ${text('#panel-register h1')}, pflicht: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
+      formular: { titel: ${text('#panel-register h1')}, required: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
         regel: document.getElementById(document.getElementById('reg-pass').getAttribute('aria-describedby'))?.textContent } })`);
     assert.deepEqual(z, {
       haupt: true,
       zurueck: '← Zurück zur Sammlung',
       formular: {
         titel: 'Registrieren',
-        pflicht: true,
+        required: true,
         regel: 'Mindestens 12 Zeichen, kein häufig verwendetes Passwort.',
       },
     });

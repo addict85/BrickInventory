@@ -182,8 +182,8 @@ test('server-side error messages go through esc() in the HTML context', () => {
       if (!/<\w/.test(line)) return; // no HTML context
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
         // In html`` the template itself escapes — unless the value goes through rawHtml().
-        const vor = src.lastIndexOf('`', rowAb + (m.index ?? 0));
-        if (src.slice(vor - 4, vor) === 'html' && !/rawHtml\(/.test(m[1])) continue;
+        const ago = src.lastIndexOf('`', rowAb + (m.index ?? 0));
+        if (src.slice(ago - 4, ago) === 'html' && !/rawHtml\(/.test(m[1])) continue;
         // Remove string literals so that translation keys
         // ('…error') do not count as a data field.
         const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");

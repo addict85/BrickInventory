@@ -24,10 +24,10 @@ const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8')
 const MAILER = lies('src/mail/mailer.ts');
 
 /** The body of a function — from its head up to the next one at the start of a column. */
-function rumpf(quelle, kopf) {
-  const i = quelle.indexOf(kopf);
+function rumpf(source, kopf) {
+  const i = source.indexOf(kopf);
   assert.ok(i >= 0, `${kopf} nicht gefunden — umbenannt?`);
-  const rest = quelle.slice(i + kopf.length);
+  const rest = source.slice(i + kopf.length);
   const m = rest.search(/\n(?:export )?(?:async )?function |\nexport \{/);
   return m >= 0 ? rest.slice(0, m) : rest;
 }
@@ -95,12 +95,12 @@ test("3. and every caller passes it along — the mail is in the account's langu
     "DELETE FROM rate_limit_attempts WHERE key LIKE '%mailsprache%' OR key LIKE 'forgot-password|%' OR key LIKE 'bestaetigung-erneut|%'",
   );
   const konten = {};
-  for (const [sprache, bestaetigt] of [
+  for (const [language, bestaetigt] of [
     ['en', true],
     ['de', true],
     ['en', false],
   ]) {
-    const n = `${NAME}_${sprache}_${bestaetigt ? 'ok' : 'neu'}`;
+    const n = `${NAME}_${language}_${bestaetigt ? 'ok' : 'neu'}`;
     // An open account of the registration carries the address only as new_email.
     const id = bestaetigt
       ? (
@@ -117,7 +117,7 @@ test("3. and every caller passes it along — the mail is in the account's langu
             [n, `${n}@example.org`],
           )
         ).id;
-    await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [id, sprache]);
+    await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [id, language]);
     konten[n] = `${n}@example.org`;
   }
   const zurueck = await enterMailServer(db);
@@ -126,20 +126,20 @@ test("3. and every caller passes it along — the mail is in the account's langu
     await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
   });
   const { base } = require('./helpers/server').testServer(_req, { t });
-  const post = (pfad, email) =>
-    fetch(`${base}/api/v1/auth${pfad}`, {
+  const post = (path, email) =>
+    fetch(`${base}/api/v2/auth${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'accept-language': 'de' },
       body: JSON.stringify({ email }),
     });
-  const mailAn = async adresse => {
-    assert.ok(await bis(() => gesendet.some(m => m.to === adresse), 15_000), `keine Mail an ${adresse}`);
-    return gesendet.find(m => m.to === adresse);
+  const mailAn = async address => {
+    assert.ok(await bis(() => gesendet.some(m => m.to === address), 15_000), `keine Mail an ${address}`);
+    return gesendet.find(m => m.to === address);
   };
   // The request comes in German; what counts is the language of the recipient.
-  for (const [n, adresse] of Object.entries(konten).filter(([n]) => n.endsWith('_ok'))) {
-    assert.equal((await post('/forgot-password', adresse)).status, 200);
-    const mail = await mailAn(adresse);
+  for (const [n, address] of Object.entries(konten).filter(([n]) => n.endsWith('_ok'))) {
+    assert.equal((await post('/forgot-password', address)).status, 200);
+    const mail = await mailAn(address);
     assert.match(
       mail.subject + mail.text,
       n.includes('_en_') ? /Reset|password/i : /Passwort/,
@@ -148,7 +148,7 @@ test("3. and every caller passes it along — the mail is in the account's langu
     if (n.includes('_en_')) assert.doesNotMatch(mail.subject, /Passwort|zurücksetzen/, mail.subject);
   }
   const neu = Object.entries(konten).find(([n]) => n.endsWith('_neu'))[1];
-  assert.equal((await post('/bestaetigung-erneut', neu)).status, 200);
+  assert.equal((await post('/resend-confirmation', neu)).status, 200);
   const bestaetigung = await mailAn(neu);
   assert.doesNotMatch(bestaetigung.subject, /bestätig|Bestätig/, bestaetigung.subject);
 });
@@ -165,7 +165,7 @@ test('4. the alert mail carries the same envelope as the others', async t => {
     setNumber: '10294-1',
     setName: 'Titanic',
     condition: 'N',
-    direction: 'unter',
+    direction: 'below',
     price: 600,
     threshold: 650,
     currency: 'EUR',

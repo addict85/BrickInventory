@@ -11,7 +11,7 @@ export interface SetEntryRow {
   quantity: number;
   purchase_price: number | null;
   kaufpreis_fremd: boolean;
-  kaufpreis_original: number | null;
+  original_purchase_price: number | null;
   kaufpreis_umgerechnet: boolean;
   currency: string | null;
   price_estimated: boolean;

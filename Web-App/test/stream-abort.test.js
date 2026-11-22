@@ -32,13 +32,13 @@ function fake() {
 
 test('after closing sendOrAbort aborts with StreamClosed', () => {
   const { req, res } = fake();
-  const strom = openStream({}, req, res, { heartbeat: false });
-  strom.sendOrAbort({ step: 'a' });
+  const stream = openStream({}, req, res, { heartbeat: false });
+  stream.sendOrAbort({ step: 'a' });
   assert.equal(res.geschrieben.length, 1, 'offen geht das Ereignis hinaus');
   req.emit('close');
-  assert.equal(strom.zu, true);
+  assert.equal(stream.zu, true);
   assert.throws(
-    () => strom.sendOrAbort({ step: 'b' }),
+    () => stream.sendOrAbort({ step: 'b' }),
     e => e instanceof StreamClosed,
   );
   assert.equal(res.geschrieben.length, 1, 'nach dem Schliessen geht nichts mehr hinaus');

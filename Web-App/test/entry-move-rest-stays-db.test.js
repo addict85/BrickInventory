@@ -81,12 +81,12 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     );
     return (
       await db.all(`SELECT id, quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY created_at`, [MAIN])
-    ).map(r => ({ id: r.id, menge: Number(r.quantity) }));
+    ).map(r => ({ id: r.id, quantity: Number(r.quantity) }));
   };
 
   const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
   const move = async (entryId, afterAccount) => {
-    const r = await fetch(`${base}/api/v1/parts/3001/4/acquisitions/${entryId}`, {
+    const r = await fetch(`${base}/api/v2/parts/3001/4/acquisitions/${entryId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ owner_user_id: afterAccount }),

@@ -22,9 +22,9 @@ export async function setInfoForAccount(sk: SetsContext, uid: number, setNumber:
   const n = withVersion(setNumber);
   const master = await setInfo(sk, n);
   const foreignPlaceholder = !!master?.platzhalter && !(await sk.images.setNumberInScope(uid, n));
-  if (!master || foreignPlaceholder) return { set_number: n, name: n, im_katalog: false as const };
+  if (!master || foreignPlaceholder) return { set_number: n, name: n, in_catalog: false as const };
   const { platzhalter: _placeholder, ...row } = master;
-  return { set_number: n, ...row, name: row.name || n, im_katalog: true as const };
+  return { set_number: n, ...row, name: row.name || n, in_catalog: true as const };
 }
 
 function catalogOfSets(sk: SetsContext, setNumber: string): Promise<CatalogPart[]> {
@@ -51,7 +51,7 @@ export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (s
     const fetched = await attempts('sets:alleTeileDesSets', sk.catalog.allSetParts(n));
     const rb =
       fetched.ok && fetched.wert ? fetched : await attempts('sets:alleTeileDesSets', sk.catalog.allSetParts(bare));
-    if (!rb.ok) return { parts: [], source: SOURCE_DISRUPTED, error: rb.fehler.grund, ...einePage(0) };
+    if (!rb.ok) return { parts: [], source: SOURCE_DISRUPTED, error: rb.error.reason, ...einePage(0) };
     parts = (rb.wert || []).map((r: RbSetTeil) => ({
       part_number: r.part.part_num,
       bl_part_number: firstBlNumber(r.part.external_ids) || r.part.part_num,
@@ -96,11 +96,11 @@ export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (s
   for (const p of parts) {
     const key = `${p.part_number}|${p.color_id}`;
     const cat = catalog.get(key);
-    const menge = parseInt(String(p.total_quantity), 10) || 0;
+    const quantity = parseInt(String(p.total_quantity), 10) || 0;
     const image = cat?.image_local || (cat?.image_url ? proxyImageUrl(cat.image_url) : null) || p.rb_image_url || null;
     const da = rows.get(key);
     if (da) {
-      da.total_quantity += menge;
+      da.total_quantity += quantity;
       continue;
     }
     rows.set(key, {
@@ -112,13 +112,13 @@ export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (s
       color_name: cat?.color_name || p.color_name || '',
       color_hex: cat?.color_hex || p.color_hex || null,
       image_url: image,
-      total_quantity: menge,
+      total_quantity: quantity,
       is_spare: isSparePart(p.is_spare),
     });
   }
   await attempts(
     `sets:bilder einstellen ${setNum}`,
-    sk.jobQueue.placeJobOne('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxAttempts: 3 }),
+    sk.jobQueue.placeJobOne('images', { set_number: setNum }, { schluessel: `images:${n}`, maxAttempts: 3 }),
   );
   return { parts: [...rows.values()], source, ...einePage(rows.size) };
 }
@@ -154,12 +154,12 @@ export async function minifigsListOfSets(sk: SetsContext, setNum: string) {
     figs = await repo.inventoryMinifigsOfSets(sk.db, invId);
   }
   if (!figs.length) {
-    const fetched = await attempts('sets:getSetMinifigs', sk.externalSources.quellen.getSetMinifigs(n));
+    const fetched = await attempts('sets:getSetMinifigs', sk.externalSources.sources.getSetMinifigs(n));
     const rb =
       fetched.ok && fetched.wert
         ? fetched
-        : await attempts('sets:getSetMinifigs', sk.externalSources.quellen.getSetMinifigs(bare));
-    if (!rb.ok) return { figs: [], source: SOURCE_DISRUPTED, error: rb.fehler.grund };
+        : await attempts('sets:getSetMinifigs', sk.externalSources.sources.getSetMinifigs(bare));
+    if (!rb.ok) return { figs: [], source: SOURCE_DISRUPTED, error: rb.error.reason };
     figs = rb.wert || [];
   }
   if (!figs.length) return { figs: [], source: 'not_found' };
@@ -178,7 +178,7 @@ async function storeSetMinifigs(
     let image = f.image_url || null;
     if (!image)
       image =
-        valueOr(await attempts('sets:minifigur-info', k.externalSources.quellen.getMinifigInfo(f.fig_number)), null)
+        valueOr(await attempts('sets:minifigur-info', k.externalSources.sources.getMinifigInfo(f.fig_number)), null)
           ?.image_url || null;
     await k.catalog.rememberMinifig(f.fig_number, f.fig_name, image);
     await k.catalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
@@ -188,9 +188,9 @@ async function storeSetMinifigs(
 /** Only for sets in scope and throttled: every import can cost Rebrickable quota. */
 export async function importPartsOfSets(sk: SetsContext, uid: number, sn: string): Promise<number> {
   const set = await findSetInScope(sk, uid, sn);
-  if (!set) failDomain('nicht_gefunden', 'set_nicht_gefunden');
+  if (!set) failDomain('not_found', 'set_not_found');
   const tick = await sk.account.countRequest('teile-import', `konto:${uid}`, 60 * 60 * 1000);
-  if (tick.count > 30) failDomain('zu_viele', 'zu_viele_anfragen', { minuten: tick.waitMin });
+  if (tick.count > 30) failDomain('zu_viele', 'too_many_requests', { minutes: tick.waitMin });
   return importParts(sk, set.set_number, set.owner_user_id);
 }
 

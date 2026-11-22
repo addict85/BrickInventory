@@ -14,9 +14,9 @@ const { startApp } = require('./helpers/app-browser');
 const { patternHousehold } = require('./helpers/inventory');
 
 test('wishlist: CSV import into the selected account', { timeout: 120_000 }, async t => {
-  const app = await startApp(t, { name: `mkcsv_${process.pid}`, bestand: patternHousehold });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `mkcsv_${process.pid}`, holding: patternHousehold });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db, ruhig } = app;
@@ -35,7 +35,7 @@ test('wishlist: CSV import into the selected account', { timeout: 120_000 }, asy
     const echt = window.fetch.bind(window);
     window.__upload = null;
     window.fetch = (url, o) => {
-      if (!String(url).includes('/v1/wanted/import/csv')) return echt(url, o);
+      if (!String(url).includes('/v2/wanted/import/csv')) return echt(url, o);
       window.__upload = Object.fromEntries([...o.body.entries()].filter(([k]) => k !== 'file'));
       return Promise.resolve(new Response(JSON.stringify({ success: true, total: 0, added: 0, skipped: 0 }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }));

@@ -34,10 +34,10 @@ function maintenanceFake(t) {
   t.mock.method(https, 'get', (url, _o, atResponse) => {
     aufrufe.push(String(url));
     const anfrage = Object.assign(new EventEmitter(), { destroy() {} });
-    const antwort = Object.assign(new PassThrough(), { statusCode: 302, headers: { location: MAINTENANCE } });
+    const response = Object.assign(new PassThrough(), { statusCode: 302, headers: { location: MAINTENANCE } });
     setImmediate(() => {
-      atResponse(antwort);
-      antwort.end();
+      atResponse(response);
+      response.end();
     });
     return anfrage;
   });
@@ -78,8 +78,8 @@ test('BrickLink in maintenance', { concurrency: 1 }, async t => {
     for (const sn of ['10305-1', '21318-1', '75192-1']) await holdsSet(db, uid, sn);
     await setGlobalSetting('bricklink_consumer_key', 'schluessel');
     const zeilen = [];
-    t.mock.method(console, 'log', (...teile) => {
-      zeilen.push(teile.join(' '));
+    t.mock.method(console, 'log', (...parts) => {
+      zeilen.push(parts.join(' '));
     });
     await runPriceRefresh();
     t.mock.restoreAll();

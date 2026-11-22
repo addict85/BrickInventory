@@ -83,7 +83,7 @@ export function ipArea(ip: string | null | undefined): string | null {
 
 export interface TokenCheck {
   nutzer: TokenUser | null;
-  grund?: 'token_rotation_noetig' | 'zu_viele_anfragen';
+  reason?: 'token_rotation_required' | 'too_many_requests';
 }
 
 /** `zweck: 'rotation'` lets an unlimited token through even after the
@@ -96,17 +96,17 @@ export async function tokenGilt(k: AccountContext, plaintext: string): Promise<b
 export async function checkToken(
   k: AccountContext,
   token: string | null | undefined,
-  o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {},
+  o: { ip?: string | null | undefined; purpose?: 'nutzung' | 'rotation' } = {},
 ): Promise<TokenCheck> {
   if (!token) return { nutzer: null };
-  const now = k.uhr.jetzt();
+  const now = k.clock.now();
   const result = (u: TokenUser): TokenCheck =>
-    o.zweck !== 'rotation' && rotationRequired(u, now)
-      ? { nutzer: null, grund: 'token_rotation_noetig' }
+    o.purpose !== 'rotation' && rotationRequired(u, now)
+      ? { nutzer: null, reason: 'token_rotation_required' }
       : { nutzer: u };
 
-  const stand = cacheStand(k);
-  const hit = tokenFromCache(k, token, stand, now);
+  const state = cacheStand(k);
+  const hit = tokenFromCache(k, token, state, now);
   if (hit) {
     // Both deadlines here too: this branch does not query the database.
     if (deadlineReached(hit.user.expires_at, now) || deadlineReached(hit.user.hard_expires_at, now)) {
@@ -118,7 +118,7 @@ export async function checkToken(
   }
 
   // Only after the cache: whoever has a valid token in the cache is never slowed down.
-  if (toManyFailedAttempts(o.ip)) return { nutzer: null, grund: 'zu_viele_anfragen' };
+  if (toManyFailedAttempts(o.ip)) return { nutzer: null, reason: 'too_many_requests' };
   const hashed = tokenDigest(token);
   const row: TokenUser | undefined = await k.accesses.validToken(hashed);
   if (!row) {
@@ -136,7 +136,7 @@ export async function checkToken(
   }
 
   const entry: CacheEntry = { user: row, cachedAt: now, dbKey: hashed };
-  rememberEntry(k, token, entry, stand);
+  rememberEntry(k, token, entry, state);
   _touchLastUsed(k, entry, o.ip);
   return result(row);
 }
@@ -154,7 +154,7 @@ async function reportReuse(k: AccountContext, hash: string): Promise<boolean> {
 export async function userForToken(
   k: AccountContext,
   token: string | null | undefined,
-  o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {},
+  o: { ip?: string | null | undefined; purpose?: 'nutzung' | 'rotation' } = {},
 ): Promise<TokenUser | null> {
   return (await checkToken(k, token, o)).nutzer;
 }
@@ -163,15 +163,15 @@ export async function userForToken(
  * decision is made on the record read, so it holds across several workers;
  * the WHERE clause catches the race. */
 function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null): void {
-  const now = k.uhr.jetzt();
+  const now = k.clock.now();
   const u = entry.user;
   const lastUsed = u.last_used ? new Date(u.last_used).getTime() : 0;
-  const target = now + k.konfig.tokenIdleDays * TAG_MS;
+  const target = now + k.config.tokenIdleDays * TAG_MS;
   const deadlineLags = u.sliding === true && !!u.expires_at && new Date(u.expires_at).getTime() < target - TAG_MS;
   if ((now - lastUsed < TAG_MS && !deadlineLags) || entry.schreibt) return;
   entry.schreibt = true;
   void k.accesses
-    .touchToken(entry.dbKey, k.konfig.tokenIdleDays, ipArea(ip))
+    .touchToken(entry.dbKey, k.config.tokenIdleDays, ipArea(ip))
     .then(() => {
       // Update the cache too, otherwise the hit branch would once reject a just
       // renewed token at the old end of its deadline.
@@ -223,8 +223,8 @@ export const ACCESSES_AT_MOST = 50;
 
 /** The fixed end, in days from now: never beyond TOKEN_MAX_DAYS; nothing chosen (null, 0 from an
  * old QR code) is that bound. Every access thus ends, whatever a client asks for. */
-export function tokenDays(k: Pick<AccountContext, 'konfig'>, fixedDays: number | null): number {
-  const max = k.konfig.tokenMaxDays;
+export function tokenDays(k: Pick<AccountContext, 'config'>, fixedDays: number | null): number {
+  const max = k.config.tokenMaxDays;
   return fixedDays && fixedDays > 0 ? Math.min(fixedDays, max) : max;
 }
 
@@ -247,8 +247,8 @@ export async function createToken(
     label,
     scope: o.scope === 'voll' ? 'voll' : 'app',
     bereich: ipArea(o.ip),
-    art: permanent ? 'gleitend' : 'kurz',
-    idleDays: k.konfig.tokenIdleDays,
+    kind: permanent ? 'gleitend' : 'kurz',
+    idleDays: k.config.tokenIdleDays,
     fixedDays: tokenDays(k, fixedDays),
   });
   if (await k.accesses.capTokens(userId, hash, ACCESSES_AT_MOST - 1)) emptyTokenCache(k);
@@ -262,7 +262,7 @@ export interface Swap {
   hard_expires_at: Date | null;
   never_expires: boolean;
   rotated_at: Date;
-  alt_gueltig_bis: Date;
+  old_valid_until: Date;
 }
 
 /** A second swap so shortly after is concurrent (409), not a lost response. */
@@ -289,7 +289,7 @@ export async function rotateToken(kx: AccountContext, alt: string, ip?: string |
       }
       if (open && open.alter_s < SWAP_LOCK_S) return 'laeuft' as const;
       if (z.replaced_by) await repo.deleteUnusedSuccessor(t.db, z.replaced_by, altHash);
-      const row = await repo.createSuccessor(t.db, newHash, altHash, z, t.konfig.tokenIdleDays, ipArea(ip));
+      const row = await repo.createSuccessor(t.db, newHash, altHash, z, t.config.tokenIdleDays, ipArea(ip));
       const before = await repo.limitTimePredecessor(t.db, altHash, newHash, OVERLAP_MS / 1000);
       return {
         token: fresh,
@@ -298,7 +298,7 @@ export async function rotateToken(kx: AccountContext, alt: string, ip?: string |
         hard_expires_at: row!.hard_expires_at,
         never_expires: z.never_expires,
         rotated_at: row!.rotated_at,
-        alt_gueltig_bis: before!.expires_at,
+        old_valid_until: before!.expires_at,
       };
     }),
   );
@@ -308,7 +308,7 @@ export async function rotateToken(kx: AccountContext, alt: string, ip?: string |
     console.warn(`[tokens] zweiter Tausch aus einem anderen Netz — Familie von Konto ${k.user_id} gesperrt`);
     hintInBackground(kx, k.user_id, 'token_wiederverwendet', k.label ?? undefined);
   }
-  if (result === 'laeuft') failDomain('konflikt', 'tausch_laeuft');
+  if (result === 'laeuft') failDomain('konflikt', 'token_swap_running');
   return result;
 }
 
@@ -335,15 +335,15 @@ export async function tokensCleanup(k: AccountContext) {
     return r.ok ? r.wert : 0;
   };
   // Safety net beside migration 0126: a row without a fixed end gets one.
-  const g = await step('ohne Ende', () => k.accesses.boundUnlimited(k.konfig.tokenMaxDays));
-  if (g) console.log(`[tokens] ${g} Token ohne festes Ende auf ${k.konfig.tokenMaxDays} Tage begrenzt`);
-  const m = await step('Altzeilen nachziehen', () => k.accesses.pullOldRowsAfter(k.konfig.tokenIdleDays));
+  const g = await step('ohne Ende', () => k.accesses.boundUnlimited(k.config.tokenMaxDays));
+  if (g) console.log(`[tokens] ${g} Token ohne festes Ende auf ${k.config.tokenMaxDays} Tage begrenzt`);
+  const m = await step('Altzeilen nachziehen', () => k.accesses.pullOldRowsAfter(k.config.tokenIdleDays));
   if (m)
-    console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenIdleDays} Tagen gesetzt`);
+    console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.config.tokenIdleDays} Tagen gesetzt`);
   const expired = await step('abgelaufene', () => k.accesses.deleteExpired());
-  const n = await step('ungenutzte', () => k.accesses.deleteUnused(k.konfig.tokenIdleDays));
+  const n = await step('ungenutzte', () => k.accesses.deleteUnused(k.config.tokenIdleDays));
   await step('verbrauchte', () => k.accesses.deleteOrphanedConsumed());
-  if (n) console.log(`[tokens] ${n} Token seit über ${k.konfig.tokenIdleDays} Tagen ungenutzt — entfernt`);
+  if (n) console.log(`[tokens] ${n} Token seit über ${k.config.tokenIdleDays} Tagen ungenutzt — entfernt`);
   if (without.length) throw new Error(`Token-Aufräumen ohne: ${without.join(', ')}`);
   return expired + n;
 }

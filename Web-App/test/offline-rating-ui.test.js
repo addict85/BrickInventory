@@ -71,19 +71,17 @@ async function offline(w) {
 
 const ZEIT = '2026-11-01T10:00:00Z';
 const DATEN = {
-  '/v1/sets': {
+  '/v2/sets': {
     success: true,
     total: 1,
     themes: [],
     sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1, year: 2021 }],
   },
-  '/v1/wanted': {
+  '/v2/wanted': {
     success: true,
-    merkposten: [
-      { set_number: '99999-1', name: 'Burg', condition: 'N', user_id: 1, marktpreis: 12.5, waehrung: 'EUR' },
-    ],
+    item: [{ set_number: '99999-1', name: 'Burg', condition: 'N', user_id: 1, market_price: 12.5, currency: 'EUR' }],
   },
-  '/v1/settings/household': {
+  '/v2/settings/household': {
     success: true,
     is_main: true,
     is_sub: true,
@@ -93,37 +91,37 @@ const DATEN = {
     open_invites: 0,
     former_links: [],
   },
-  '/v1/papierkorb': {
+  '/v2/trash': {
     success: true,
-    eintraege: [
+    entries: [
       {
         id: 4,
-        art: 'set',
-        nummer: '42143-1',
+        kind: 'set',
+        number: '42143-1',
         farbe_id: null,
         bezeichnung: 'Ferrari',
-        anzahl: 1,
+        count: 1,
         user_id: 1,
         geloescht_am: ZEIT,
-        endgueltig_am: ZEIT,
+        purge_at: ZEIT,
       },
     ],
   },
-  '/v1/settings/tokens': { success: true, tokens: [{ token_id: 't1', label: 'Telefon', aktuell: false }] },
-  '/v1/vouchers': {
+  '/v2/settings/tokens': { success: true, tokens: [{ token_id: 't1', label: 'Telefon', current: false }] },
+  '/v2/vouchers': {
     success: true,
-    vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }],
+    vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: false }],
   },
-  '/v1/storage/locations': { success: true, orte: [{ id: 1, name: 'Regal A' }], vorgabe: null },
-  '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 2, teile: 0, figuren: 0 }] },
-  '/v1/alerts': {
+  '/v2/storage/locations': { success: true, locations: [{ id: 1, name: 'Regal A' }], preset: null },
+  '/v2/storage': { success: true, locations: [{ location: 'Regal A', sets: 2, parts: 0, minifigs: 0 }] },
+  '/v2/alerts': {
     success: true,
     alerts: [
       {
         set_number: '10294-1',
         name: 'Titanic',
         condition: 'N',
-        direction: 'unter',
+        direction: 'below',
         threshold: 249,
         currency_code: 'EUR',
       },

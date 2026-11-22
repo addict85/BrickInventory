@@ -20,23 +20,23 @@ async function inAccountCurrency<
   return { acquisitions, totals: withoutClearAmount(totals) };
 }
 
-type Key = (pfad: Record<string, string | number>) => Array<string | number>;
+type Key = (path: Record<string, string | number>) => Array<string | number>;
 /** What the three routes share: the id in the path and a contract schema (Erfassungsaenderung). */
 type Erfassungsanfrage<E = unknown> = AuthedRequest & {
-  pfad: Record<string, string | number> & { acqId: number };
-  eingabe: E;
+  pathArgs: Record<string, string | number> & { acqId: number };
+  input: E;
 };
-type Change = Erfassungsanfrage<Request0<'PUT /api/v1/sets/:setNumber/acquisitions/:acqId'>['eingabe']>;
+type Change = Erfassungsanfrage<Request0<'PUT /api/v2/sets/:setNumber/acquisitions/:acqId'>['input']>;
 
 const change =
-  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, art: ErfassungsArt, key: Key) =>
+  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, kind: ErfassungsArt, key: Key) =>
   (req: Change) =>
-    d.collection.changeAcquisition(art, req.apiUser.user_id, req.pfad.acqId, key(req.pfad), req.eingabe);
+    d.collection.changeAcquisition(kind, req.apiUser.user_id, req.pathArgs.acqId, key(req.pathArgs), req.input);
 
 const remove =
-  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, art: ErfassungsArt, key: Key) =>
+  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, kind: ErfassungsArt, key: Key) =>
   (req: Erfassungsanfrage) =>
-    d.collection.deleteAcquisition(art, req.apiUser.user_id, req.pfad.acqId, key(req.pfad));
+    d.collection.deleteAcquisition(kind, req.apiUser.user_id, req.pathArgs.acqId, key(req.pathArgs));
 const setKey: Key = p => [String(p.setNumber)];
 const partKey: Key = p => [String(p.partNumber), Number(p.colorId)];
 const minifigKey: Key = p => [String(p.figNumber)];
@@ -45,9 +45,9 @@ export function buildAcquisitionsRouter(
   d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
 ) {
   const { requireToken } = guardFor(d.account);
-  const router = contractRouter('/api/v1');
+  const router = contractRouter('/api/v2');
 
-  router.endpoint('GET /api/v1/sets/:setNumber/acquisitions', requireToken, async req => {
+  router.endpoint('GET /api/v2/sets/:setNumber/acquisitions', requireToken, async req => {
     const uid = req.apiUser.user_id;
     // Scope: in a household the purchase prices of a set often belong to several accounts.
     // If reading fails, the app shows an empty list instead of an error page;
@@ -55,35 +55,35 @@ export function buildAcquisitionsRouter(
     const ab = new Degradations();
     const rows = await ab.orElse(
       'erfassungen',
-      d.collection.setAcquisitionsForSet(viewOf(req), req.pfad.setNumber),
+      d.collection.setAcquisitionsForSet(viewOf(req), req.pathArgs.setNumber),
       null,
     );
     if (!rows) return { acquisitions: [], totals: withoutClearAmount(acquisitionTotals([])), ...ab.detail() };
     return { ...(await inAccountCurrency(d, rows, uid)), owner_user_id: uid };
   });
-  router.endpoint('PUT /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, change(d, 'set', setKey));
-  router.endpoint('DELETE /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, remove(d, 'set', setKey));
+  router.endpoint('PUT /api/v2/sets/:setNumber/acquisitions/:acqId', requireToken, change(d, 'set', setKey));
+  router.endpoint('DELETE /api/v2/sets/:setNumber/acquisitions/:acqId', requireToken, remove(d, 'set', setKey));
 
-  router.endpoint('GET /api/v1/parts/:partNumber/:colorId/acquisitions', requireToken, async req => {
-    const rows = await d.parts.partAcquisitions(viewOf(req), req.pfad.partNumber, req.pfad.colorId);
+  router.endpoint('GET /api/v2/parts/:partNumber/:colorId/acquisitions', requireToken, async req => {
+    const rows = await d.parts.partAcquisitions(viewOf(req), req.pathArgs.partNumber, req.pathArgs.colorId);
     return { ...(await inAccountCurrency(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
   router.endpoint(
-    'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId',
+    'PUT /api/v2/parts/:partNumber/:colorId/acquisitions/:acqId',
     requireToken,
     change(d, 'part', partKey),
   );
   router.endpoint(
-    'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId',
+    'DELETE /api/v2/parts/:partNumber/:colorId/acquisitions/:acqId',
     requireToken,
     remove(d, 'part', partKey),
   );
 
-  router.endpoint('GET /api/v1/minifigs/:figNumber/acquisitions', requireToken, async req => {
-    const rows = await d.minifigs.minifigAcquisitions(viewOf(req), req.pfad.figNumber);
+  router.endpoint('GET /api/v2/minifigs/:figNumber/acquisitions', requireToken, async req => {
+    const rows = await d.minifigs.minifigAcquisitions(viewOf(req), req.pathArgs.figNumber);
     return { ...(await inAccountCurrency(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
-  router.endpoint('PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId', requireToken, change(d, 'fig', minifigKey));
-  router.endpoint('DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId', requireToken, remove(d, 'fig', minifigKey));
+  router.endpoint('PUT /api/v2/minifigs/:figNumber/acquisitions/:acqId', requireToken, change(d, 'fig', minifigKey));
+  router.endpoint('DELETE /api/v2/minifigs/:figNumber/acquisitions/:acqId', requireToken, remove(d, 'fig', minifigKey));
   return router;
 }

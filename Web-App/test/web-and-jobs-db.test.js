@@ -154,23 +154,23 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
 
     await t.test('the web process processes no jobs', async () => {
       const id = (
-        await db.get(`INSERT INTO jobs (type, payload) VALUES ('bilder', $1) RETURNING id`, [
+        await db.get(`INSERT INTO jobs (type, payload) VALUES ('images', $1) RETURNING id`, [
           JSON.stringify({ set_number: `rollen-nichtda-${process.pid}`, marke: MARKE }),
         ])
       ).id;
-      await db.run(`SELECT pg_notify('jobs', 'bilder')`);
+      await db.run(`SELECT pg_notify('jobs', 'images')`);
       await warte(1500);
-      assert.equal((await auftrag(id)).status, 'offen', 'Der Web-Prozess hat einen Auftrag belegt');
+      assert.equal((await auftrag(id)).status, 'pending', 'Der Web-Prozess hat einen Auftrag belegt');
       erster = id;
     });
 
     await t.test('the web process sees the startup state of the job process', async () => {
-      const vorher = await hole(port, '/api/v1/startup-status');
+      const vorher = await hole(port, '/api/v2/startup-status');
       assert.equal(vorher.body.ready, false, 'Vorbedingung: ohne Job-Prozess ist der Katalog nicht geprüft');
       jobs = starte('jobs', jobsPort);
       let r;
       for (let i = 0; i < 120; i++) {
-        r = await hole(port, '/api/v1/startup-status');
+        r = await hole(port, '/api/v2/startup-status');
         if (r.body?.ready) break;
         await warte(250);
       }
@@ -184,13 +184,13 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
         if (z.status !== 'offen' && z.status !== 'laeuft') break;
         await warte(250);
       }
-      assert.equal(z.status, 'erledigt', jobs.log.slice(-1500));
+      assert.equal(z.status, 'done', jobs.log.slice(-1500));
       assert.match(jobs.log, /Rolle jobs/);
-      await assert.rejects(hole(jobsPort, '/api/v1/health'), /ECONNREFUSED/, 'Der Job-Prozess lauscht auf einem Port');
+      await assert.rejects(hole(jobsPort, '/api/v2/health'), /ECONNREFUSED/, 'Der Job-Prozess lauscht auf einem Port');
     });
 
     await t.test('every API response names the interface version', async () => {
-      const r = await hole(port, '/api/v1/health');
+      const r = await hole(port, '/api/v2/health');
       const { API_VERSION, API_MIN_APP } = _req('src/http/apiVersion.js');
       assert.equal(r.headers['x-api-version'], String(API_VERSION));
       assert.equal(r.headers['x-api-min-app'], String(API_MIN_APP));
@@ -201,20 +201,20 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
     await t.test('a too old app is rejected with 426', async () => {
       const { API_MIN_APP } = _req('src/http/apiVersion.js');
       assert.equal(
-        (await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP - 1) } })).status,
+        (await hole(port, '/api/v2/health', { kopf: { 'X-App-Api': String(API_MIN_APP - 1) } })).status,
         426,
       );
-      assert.equal((await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP) } })).status, 200);
+      assert.equal((await hole(port, '/api/v2/health', { kopf: { 'X-App-Api': String(API_MIN_APP) } })).status, 200);
     });
 
     await t.test('an app with numbers instead of booleans (version 1) gets “app too old”', async () => {
       // How the app recognizes the hint: status code, header, code (ServerWaechter.kt).
-      const r = await hole(port, '/api/v1/auth/profile', { kopf: { 'X-App-Api': '1' } });
-      assert.deepEqual([r.status, r.headers['x-api-min-app'], r.body.code], [426, '2', 'app_zu_alt']);
+      const r = await hole(port, '/api/v2/auth/profile', { kopf: { 'X-App-Api': '1' } });
+      assert.deepEqual([r.status, r.headers['x-api-min-app'], r.body.code], [426, '2', 'app_too_old']);
     });
 
     await t.test('rejects writing requests from foreign sites', async () => {
-      const r = await hole(port, '/api/v1/auth/logout', { methode: 'POST', kopf: { 'sec-fetch-site': 'cross-site' } });
+      const r = await hole(port, '/api/v2/auth/logout', { methode: 'POST', kopf: { 'sec-fetch-site': 'cross-site' } });
       assert.equal(r.status, 403, 'src/http/origin.ts hängt nicht in server.ts');
     });
 
@@ -222,7 +222,7 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
       // A job with a long deadline that the job process claims but never finishes:
       // It does not know the kind, so the test simulates the claim itself with its ID.
       const id = (
-        await db.get(`INSERT INTO jobs (type, payload) VALUES ('bilder', $1) RETURNING id`, [
+        await db.get(`INSERT INTO jobs (type, payload) VALUES ('images', $1) RETURNING id`, [
           JSON.stringify({ set_number: `rollen-zwei-${process.pid}`, marke: MARKE }),
         ])
       ).id;
@@ -234,7 +234,7 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
       for (const p of [jobs, web]) assert.match(p.log, /\[shutdown\] Datenbankverbindungen geschlossen/);
       assert.match(jobs.log, /\[auftraege\] beendet/, 'Der Job-Prozess hat seinen Worker nicht angehalten');
       const z = await auftrag(id);
-      assert.notEqual(z.status, 'laeuft', 'Ein Auftrag blieb belegt');
+      assert.notEqual(z.status, 'running', 'Ein Auftrag blieb belegt');
     });
   } finally {
     await beende(web);

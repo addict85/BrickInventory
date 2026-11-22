@@ -39,16 +39,16 @@ test('global settings: one rule per key', { concurrency: 1 }, async t => {
     fetch(base + p, { method: m, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
   await t.test('invalid limit values yield 400 and change nothing', async () => {
-    const r0 = await send('PUT', '/api/v1/admin/api-limits', { bricklink: 4000 });
+    const r0 = await send('PUT', '/api/v2/admin/api-limits', { bricklink: 4000 });
     assert.equal(r0.status, 200);
     assert.equal(await wert('api_limit_bricklink'), '4000', 'das Limit steht nach der Antwort in der Tabelle');
     for (const falsch of ['abc', -7, '-7', 0, 100001, '12abc', 1.5]) {
-      const r = await send('PUT', '/api/v1/admin/api-limits', { bricklink: falsch });
+      const r = await send('PUT', '/api/v2/admin/api-limits', { bricklink: falsch });
       assert.equal(r.status, 400, `${JSON.stringify(falsch)} als BrickLink-Limit wurde angenommen`);
-      assert.equal((await r.json()).code, 'tageslimit_bereich');
+      assert.equal((await r.json()).code, 'daily_limit_area');
     }
     assert.equal(await wert('api_limit_bricklink'), '4000', 'die Tabelle bleibt unverändert');
-    const ttl = await send('POST', '/api/v1/admin/cache-ttl', { ttl: '7' });
+    const ttl = await send('POST', '/api/v2/admin/cache-ttl', { ttl: '7' });
     assert.equal(ttl.status, 400, 'eine TTL ausserhalb der Auswahl');
   });
 
@@ -59,13 +59,13 @@ test('global settings: one rule per key', { concurrency: 1 }, async t => {
       new Blob([JSON.stringify({ version: '3.0', global: { api_limit_bricklink: 'NaN' } })]),
       'k.json',
     );
-    const r = await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: form });
+    const r = await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: form });
     assert.equal(r.status, 400, 'ein Import mit ungültigem Limit …');
     assert.equal(await wert('api_limit_bricklink'), '4000');
     const kaputt = new FormData();
     kaputt.append('file', new Blob([JSON.stringify({ global: 'kein Objekt' })]), 'k.json');
     assert.equal(
-      (await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: kaputt })).status,
+      (await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: kaputt })).status,
       400,
       'eine Importdatei ausserhalb des Schemas',
     );

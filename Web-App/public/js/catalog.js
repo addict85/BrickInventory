@@ -15,7 +15,7 @@ import { esc, html, joinHtml } from './escaping.js';
 import { handleSseEvent, hideProgress, showProgress, streamDone, streamRequest } from './progress.js';
 import { emptyLocationField, selectedOwner, selectedStorage } from './account-locations.js';
 
-// The data source is /api/v1/catalog/* (local rb_* tables from the daily CSV sync) — paginated
+// The data source is /api/v2/catalog/* (local rb_* tables from the daily CSV sync) — paginated
 // on the server side, since the catalog comprises ~25k sets.
 
 const _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'year_desc' };
@@ -98,7 +98,7 @@ function _bindCatalogControls() {
 }
 
 async function loadCatalogMeta() {
-  const d = await api('GET', '/v1/catalog/meta');
+  const d = await api('GET', '/v2/catalog/meta');
   if (!d.success) return;
   // Theme dropdown: path names ("Star Wars › UCS") with set count
   const themeEl = G('cat-theme');
@@ -198,7 +198,7 @@ async function loadCatalogSets() {
   const grid = G('catalog-grid');
   setHtml(grid, loadDisplay(tRaw('catalog.loading')));
   _catState.page = 1;
-  const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(1)}`));
+  const d = await loadCatalog.whenCurrent(api('GET', `/v2/catalog/sets?${_catQuery(1)}`));
   if (d === undefined) return;
   if (listLoadError(grid, d, { again: 'loadCatalogSets' })) return;
 
@@ -290,7 +290,7 @@ function _setPlaceholderHeight() {
 let _catBlockStates = [];
 // Years with their count, in the order of the list — the basis for the label on the scroll bar (see
 // _yearOnPosition).
-/** @type {import('../../frontend-types/contract').JahrAnzahl[]} */
+/** @type {import('../../frontend-types/contract').YearCount[]} */
 let _catYearDistribution = [];
 
 function _measureBlocks() {
@@ -374,7 +374,7 @@ export async function loadPage(page) {
   if (_catLoadedPages.has(page) || _catLoadingPages.has(page)) return;
   _catLoadingPages.add(page);
   try {
-    const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(page)}`));
+    const d = await loadCatalog.whenCurrent(api('GET', `/v2/catalog/sets?${_catQuery(page)}`));
     if (d === undefined) return;
     if (!d.success || !d.sets?.length) return;
     const block = queryOne(`#catalog-grid .cat-page[data-page="${page}"]`);
@@ -432,7 +432,7 @@ function catCard(s) {
 // ── Detail-Modal ──────────────────────────────────────────────────────────────
 /** @param {string} setNumber */
 async function openCatModal(setNumber) {
-  const d = await api('GET', `/v1/catalog/sets/${encodeURIComponent(setNumber)}`);
+  const d = await api('GET', `/v2/catalog/sets/${encodeURIComponent(setNumber)}`);
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -511,7 +511,7 @@ async function addCatalogSetToGallery() {
   showProgress(tRaw('gallery.adding_set', { num }), false);
   try {
     await streamRequest(
-      '/v1/sets/add-stream',
+      '/v2/sets/add-stream',
       { set_number: num, quantity: qty, purchase_price, condition, owner_user_id, storage },
       ev => {
         handleSseEvent(ev, num);
@@ -616,7 +616,7 @@ async function _loadYearDistribution() {
   if (p.toString() === _yearDistributionFor && _catYearDistribution.length) return;
   _yearDistributionFor = p.toString();
   _catYearDistribution = [];
-  const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/year-verteilung?${p.toString()}`));
+  const d = await loadCatalog.whenCurrent(api('GET', `/v2/catalog/year-distribution?${p.toString()}`));
   if (d === undefined) return;
   if (d?.success) _catYearDistribution = (d.years || []).filter(y => y.year);
   else _yearDistributionFor = '';

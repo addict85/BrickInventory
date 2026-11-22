@@ -30,8 +30,8 @@ const CHECK = `(() => {
 test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `xss_${process.pid}`,
-    bestand: async (db, uid) => {
-      const ort = (
+    holding: async (db, uid) => {
+      const location = (
         await db.get('INSERT INTO storage_locations (user_id, name) VALUES ($1, $2) RETURNING id', [
           uid,
           `${SPUR} ${N}`,
@@ -43,22 +43,26 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
       ])
         await catalogSet(db, nr, { name: `${SPUR} ${was} ${N}`, theme: `${SPUR} Thema ${N}`, year: 2020, pieces: 100 });
       await holdsSet(db, uid, '99901-1', 1, { preis: 10 });
-      await db.run('UPDATE sets SET storage_id = $1 WHERE user_id = $2 AND set_number = $3', [ort, uid, '99901-1']);
+      await db.run('UPDATE sets SET storage_id = $1 WHERE user_id = $2 AND set_number = $3', [
+        location,
+        uid,
+        '99901-1',
+      ]);
       await db.run(
         `INSERT INTO part_custom (user_id, part_number, part_name, category_name) VALUES ($1, 'xss1', $2, $3)`,
         [uid, `${SPUR} Teil ${N}`, `${SPUR} Kategorie ${N}`],
       );
-      await holdsPart(db, uid, 'xss1', { storageId: ort, preis: 1 });
+      await holdsPart(db, uid, 'xss1', { storageId: location, preis: 1 });
       await db.run(`INSERT INTO minifig_custom (user_id, fig_number, fig_name) VALUES ($1, 'fig-xss1', $2)`, [
         uid,
         `${SPUR} Figur ${N}`,
       ]);
-      await holdsMinifig(db, uid, 'fig-xss1', { storageId: ort, preis: 1 });
+      await holdsMinifig(db, uid, 'fig-xss1', { storageId: location, preis: 1 });
       await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '99902-1', 'N')`, [uid]);
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

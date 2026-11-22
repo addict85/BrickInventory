@@ -53,7 +53,7 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
   await t.test('a deleted set takes its contents along — only in the own account', async () => {
     for (const k of [uid, andere]) {
       await holdsSet(db, k, SN, 1);
-      await holdsPart(db, k, '3001', { setNumber: SN, menge: 4 });
+      await holdsPart(db, k, '3001', { setNumber: SN, quantity: 4 });
       await holdsMinifig(db, k, 'sw0001', { setNumber: SN });
       await db.run(`INSERT INTO instructions (user_id, set_number, url) VALUES ($1, $2, 'x.pdf')`, [k, SN]);
     }
@@ -121,10 +121,10 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
       const r = await c.query(`SELECT conname, convalidated FROM pg_constraint WHERE conname = ANY($1)`, [
         SCHLUESSEL.map(s => s[1]),
       ]);
-      const stand = Object.fromEntries(r.rows.map(z => [z.conname, z.convalidated]));
-      assert.equal(Object.keys(stand).length, SCHLUESSEL.length, 'nicht jeder Schlüssel wurde angelegt');
-      assert.equal(stand.parts_set_fk, false, 'der verletzte Schlüssel gilt als geprüft');
-      assert.equal(stand.minifigs_set_fk, true, 'ein sauberer Schlüssel blieb ungeprüft');
+      const state = Object.fromEntries(r.rows.map(z => [z.conname, z.convalidated]));
+      assert.equal(Object.keys(state).length, SCHLUESSEL.length, 'nicht jeder Schlüssel wurde angelegt');
+      assert.equal(state.parts_set_fk, false, 'der verletzte Schlüssel gilt als geprüft');
+      assert.equal(state.minifigs_set_fk, true, 'ein sauberer Schlüssel blieb ungeprüft');
     } finally {
       await c.query('ROLLBACK');
       c.release();

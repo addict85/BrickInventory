@@ -169,24 +169,24 @@ const CLOSE = `(() => {
   return true; })()`;
 
 /** Registers the test for one design and one device. */
-function checkUi(design, geraet) {
-  test(`UI ${design}, ${geraet}: axe and layout`, { concurrency: 1, timeout: 300_000 }, async t => {
+function checkUi(design, device) {
+  test(`UI ${design}, ${device}: axe and layout`, { concurrency: 1, timeout: 300_000 }, async t => {
     const app = await startApp(t, {
-      name: `ofl_${design}_${geraet}_${process.pid}`,
-      bestand: patternHousehold,
+      name: `ofl_${design}_${device}_${process.pid}`,
+      holding: patternHousehold,
       allDesigns: true,
     });
-    if (app.grund) {
-      t.skip(app.grund);
+    if (app.reason) {
+      t.skip(app.reason);
       return;
     }
     const { b } = app;
-    const [w, h, mobil] = DEVICES[geraet];
+    const [w, h, mobil] = DEVICES[device];
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
     // Without a Rebrickable key the setup wizard opens after startup.
     await warte(1000);
     await b.auswerten(klick('#setup-modal.open [data-click="setupLater"]'));
-    const bild = () =>
+    const image = () =>
       b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
     // Instead of fixed pauses: wait until no request runs anymore, then two frames.
     await b.auswerten(`(() => { if (window.__offen === undefined) { window.__offen = 0; const f = window.fetch;
@@ -194,25 +194,25 @@ function checkUi(design, geraet) {
     const ruhig = async () => {
       await warte(60);
       await app.bis('window.__offen === 0', 'Anfragen fertig', 60);
-      await bild();
+      await image();
     };
 
-    for (const [ansicht, schritte] of VIEWS) {
+    for (const [ansicht, steps] of VIEWS) {
       const funde = [];
       // If the login mask is shown, the rest only measures it; then better name the cause.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
-        assert.fail(`Sitzung vor „${ansicht}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'none'}`);
+        assert.fail(`Sitzung vor „${ansicht}“ verloren; 401 auf: ${app.rejected.join(', ') || 'none'}`);
       await b.auswerten(CLOSE);
       await b.auswerten(
         `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.removeAttribute('data-dark'); true`,
       );
-      for (const s of schritte) {
+      for (const s of steps) {
         await b.auswerten(s);
         await ruhig();
       }
       for (const dunkel of [false, true]) {
         await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`);
-        await bild();
+        await image();
         const wo = dunkel ? 'dark' : 'hell';
         for (const f of await b.auswerten(LAYOUT(mobil))) funde.push(`${wo}: ${f}`);
         for (const f of await b.auswerten(AXE_LAUF)) funde.push(`${wo}: axe ${f}`);
@@ -241,12 +241,12 @@ function checkLargeFont(modus, breite = 320) {
     // Narrow in English: the longer labels are the tight case there.
     const app = await startApp(t, {
       name: `ofl_gross_${modus}_${process.pid}`,
-      bestand: patternHousehold,
-      sprache: modus === 'schmal' ? 'en' : 'de',
+      holding: patternHousehold,
+      language: modus === 'schmal' ? 'en' : 'de',
       allDesigns: true,
     });
-    if (app.grund) {
-      t.skip(app.grund);
+    if (app.reason) {
+      t.skip(app.reason);
       return;
     }
     const { b } = app;
@@ -268,10 +268,10 @@ function checkLargeFont(modus, breite = 320) {
         : modus === 'schmal'
           ? ['classic', 'noppe']
           : ['classic'];
-    for (const [ansicht, schritte] of VIEWS) {
+    for (const [ansicht, steps] of VIEWS) {
       const funde = [];
       await b.auswerten(CLOSE);
-      for (const s of schritte) {
+      for (const s of steps) {
         await b.auswerten(s);
         await warte(250);
       }

@@ -37,8 +37,8 @@ test('price run at the daily limit', { concurrency: 1 }, async t => {
   await checkAndCountQuota('bricklink');
 
   const zeilen = [];
-  t.mock.method(console, 'log', (...teile) => {
-    zeilen.push(teile.join(' '));
+  t.mock.method(console, 'log', (...parts) => {
+    zeilen.push(parts.join(' '));
   });
   await runPriceRefresh();
   t.mock.restoreAll();

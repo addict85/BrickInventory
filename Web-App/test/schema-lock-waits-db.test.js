@@ -49,7 +49,7 @@ test('schema lock: waiting takes longer than statement_timeout', async t => {
       },
     );
     // The waiting one has been standing at the lock for more than twice the statement_timeout.
-    const wartet = await bis(
+    const waiting = await bis(
       async () =>
         (
           await fremder.query(
@@ -59,7 +59,7 @@ test('schema lock: waiting takes longer than statement_timeout', async t => {
         ).rowCount > 0,
       8000,
     );
-    assert.ok(wartet, `abgebrochen: ${ergebnis?.code ?? ergebnis} ${ergebnis?.message ?? ''}`);
+    assert.ok(waiting, `abgebrochen: ${ergebnis?.code ?? ergebnis} ${ergebnis?.message ?? ''}`);
     await fremder.query('SELECT pg_advisory_unlock($1)', [LOCKS.SCHEMA_INIT]);
     await start;
     assert.equal(ergebnis, 'fertig', String(ergebnis?.message ?? ergebnis));

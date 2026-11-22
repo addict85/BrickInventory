@@ -43,18 +43,18 @@ test('the spellings are enumerated in only one place', () => {
   // first attempt, the FILTER parameter across the line break
   // (`spare === '1'`), and three of four hits were wrong.
   const suspicious = [/\bis_spare\s*===?\s*'(?:t|true|True|1)'/, /===?\s*'True'/];
-  const gefunden = [];
+  const found = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei).split(path.sep).join('/');
     if (rel === 'src/infra/validate.ts') continue; // THE one place
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    if (suspicious.some(r => r.test(src))) gefunden.push(rel);
+    if (suspicious.some(r => r.test(src))) found.push(rel);
   }
   assert.deepEqual(
-    gefunden,
+    found,
     [],
     'Hier wird wieder selbst entschieden, was ein Ersatzteil ist:\n  ' +
-      gefunden.join('\n  ') +
+      found.join('\n  ') +
       '\nDie Lesart steht in src/infra/validate.ts, isSparePart(). Sechs Fassungen ' +
       'mit vier verschiedenen Bedeutungen waren der Grund, warum die ' +
       'Ersatzteil-Plakette jahrelang nicht gezeichnet wurde.',
@@ -97,8 +97,8 @@ test('the response carries a real boolean', async t => {
   await db.run(`INSERT INTO set_parts (set_number,part_number,color_id,quantity,is_spare)
                 VALUES ('75192-1','3001',4,10,true),
                        ('75192-1','3020',0,2,false)`);
-  await holdsPart(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
-  await holdsPart(db, uid, '3020', { setNumber: '75192-1', menge: 2, colorId: 0 });
+  await holdsPart(db, uid, '3001', { setNumber: '75192-1', quantity: 10, colorId: 4 });
+  await holdsPart(db, uid, '3020', { setNumber: '75192-1', quantity: 2, colorId: 0 });
 
   const { partsQuery } = _req('src/parts/queries.js');
   const parts = (await partsQuery([uid], { page_size: 60 })).parts || [];

@@ -6,7 +6,7 @@ import { confirmDelete } from './confirm-prompt.js';
 import { toast } from './messages.js';
 import { deletedWithUndo } from './trash.js';
 
-/** @typedef {{ success?: boolean, error?: string, papierkorb?: number[] }} DeleteResponse */
+/** @typedef {{ success?: boolean, error?: string, trash?: number[] }} DeleteResponse */
 /** @param {unknown} d @returns {DeleteResponse} */
 const asResponse = d => /** @type {DeleteResponse} */ (d ?? {});
 

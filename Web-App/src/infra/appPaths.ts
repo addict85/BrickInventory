@@ -2,10 +2,10 @@
  * from the sources. */
 import path from 'node:path';
 import fs from 'node:fs';
-import { konfig } from './config';
+import { config } from './config';
 
 function findRoot(): string {
-  const wurzel = konfig().appRoot;
+  const wurzel = config().appRoot;
   if (wurzel) return path.resolve(wurzel);
   let dir = __dirname;
   for (let i = 0; i < 6; i++) {

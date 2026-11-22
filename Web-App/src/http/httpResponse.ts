@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'node:http';
-import { konfig } from '../infra/config';
+import { config } from '../infra/config';
 import {
   ERRORS,
   DomainError,
@@ -41,12 +41,12 @@ export interface ErrorSource {
 export function sendError(
   req: { headers?: Record<string, unknown> } | undefined,
   res: { status(c: number): { json(b: unknown): unknown } },
-  art: ErrorKind,
+  kind: ErrorKind,
   code: ErrorCode,
   vars?: Record<string, string | number>,
 ): void {
   res
-    .status(STATUS_THE_KIND[art])
+    .status(STATUS_THE_KIND[kind])
     .json(withRequestId({ success: false, error: errorText(code, responseLanguage(req), vars), code }));
 }
 
@@ -87,7 +87,7 @@ export function handleRouteError(res: ErrorTarget, error: unknown, status?: numb
   }
   // A library's text names parsers, paths or bytes; it stays in the log.
   if (!isServerError) {
-    const ersatz: ErrorCode = code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
+    const ersatz: ErrorCode = code === 404 ? 'not_found' : code === 413 ? 'request_too_large' : 'request_invalid';
     res
       .status(code)
       .json(withRequestId({ success: false, code: ersatz, error: errorText(ersatz, responseLanguage(req)) }));
@@ -95,20 +95,20 @@ export function handleRouteError(res: ErrorTarget, error: unknown, status?: numb
   }
   // Every error response carries a code so that the apps do not guess from the sentence.
   // Only development sees the exception's text; in production it names internals.
-  const key: ErrorCode = isServerError ? 'interner_fehler' : 'anfrage_ungueltig';
+  const key: ErrorCode = isServerError ? 'internal_error' : 'request_invalid';
   const message =
-    isServerError && konfig().operation ? errorText('interner_fehler', responseLanguage(req)) : errorMessage(e);
+    isServerError && config().operation ? errorText('internal_error', responseLanguage(req)) : errorMessage(e);
   res.status(code).json(withRequestId({ success: false, code: key, error: message }));
 }
 
 /** SQLSTATE of the integrity rules → response. The log still names the violated rule. */
 const DB_RULES: Record<string, [ErrorCode, ErrorKind]> = {
-  '22003': ['wert_ungueltig', 'ungueltig'], // numeric_value_out_of_range
-  '22P02': ['wert_ungueltig', 'ungueltig'], // invalid_text_representation
-  '23502': ['wert_ungueltig', 'ungueltig'], // not_null_violation
-  '23514': ['wert_ungueltig', 'ungueltig'], // check_violation
-  '23505': ['schon_vorhanden', 'konflikt'], // unique_violation
-  '23503': ['bezug_fehlt', 'konflikt'], // foreign_key_violation
+  '22003': ['value_invalid', 'ungueltig'], // numeric_value_out_of_range
+  '22P02': ['value_invalid', 'ungueltig'], // invalid_text_representation
+  '23502': ['value_invalid', 'ungueltig'], // not_null_violation
+  '23514': ['value_invalid', 'ungueltig'], // check_violation
+  '23505': ['already_exists', 'konflikt'], // unique_violation
+  '23503': ['reference_missing', 'konflikt'], // foreign_key_violation
 };
 
 /** Without a status a file that is too large would look like a server error; here it
@@ -116,22 +116,22 @@ const DB_RULES: Record<string, [ErrorCode, ErrorKind]> = {
 function asUploadError<T>(e: T): T | Error {
   const m = e as { name?: unknown; code?: unknown; type?: unknown } | null;
   // Errors of the body parser: its text names parser and character position.
-  if (m?.type === 'entity.parse.failed') return fileError('ungueltig', 'anfrage_json_ungueltig');
+  if (m?.type === 'entity.parse.failed') return fileError('ungueltig', 'request_json_invalid');
   // Second line behind the contract: what only fails at a database rule
   // is a wrong input or a race, not a server error.
   if (typeof m?.code === 'string' && m.code in DB_RULES) {
-    const [code, art] = DB_RULES[m.code]!;
-    return fileError(art, code);
+    const [code, kind] = DB_RULES[m.code]!;
+    return fileError(kind, code);
   }
-  if (m?.type === 'entity.too.large') return fileError('zu_gross', 'anfrage_zu_gross');
+  if (m?.type === 'entity.too.large') return fileError('zu_gross', 'request_too_large');
   if (
     typeof m?.type === 'string' &&
     /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type)
   )
-    return fileError('ungueltig', 'anfrage_unlesbar');
+    return fileError('ungueltig', 'request_unreadable');
   if (m?.name !== 'MulterError') return e;
   const zuGross = m.code === 'LIMIT_FILE_SIZE';
-  return fileError(zuGross ? 'zu_gross' : 'ungueltig', zuGross ? 'datei_zu_gross' : 'upload_ungueltig');
+  return fileError(zuGross ? 'zu_gross' : 'ungueltig', zuGross ? 'file_too_large' : 'upload_invalid');
 }
 
 // Express 5 also delivers placeholders as an array; joined with / instead of a comma.
@@ -155,7 +155,7 @@ export function errorResponse(e: unknown, req: Request, res: Response, _next: Ne
 /** Behind all routes under /api: a typo in the path gets the same
  * error shape as any other response, not the index.html. */
 export function unknownApiPath(req: Request, res: Response): void {
-  sendError(req, res, 'nicht_gefunden', 'nicht_gefunden');
+  sendError(req, res, 'not_found', 'not_found');
 }
 
 /** @param req only for the message's language; without it German. */
@@ -172,7 +172,7 @@ export function streamFileToResponse(
       // Do not rely on Express methods: the helper also runs on a bare
       // http response.
       if ('status' in res && typeof res.status === 'function')
-        sendError(req, res as Response, 'nicht_gefunden', 'datei_nicht_verfuegbar');
+        sendError(req, res as Response, 'not_found', 'file_not_available');
       else {
         res.statusCode = 404;
         res.end();

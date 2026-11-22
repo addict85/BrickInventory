@@ -58,8 +58,8 @@ export async function openSetItemDetail(type, id, colorId) {
   // scopeQuery() appended, not in the path, so test/frontend-api-paths.test.js can read the address.
   const url =
     (type === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
-      : `/v1/parts/${encodeURIComponent(id)}/${color}/sets`) + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
+      ? `/v2/minifigs/${encodeURIComponent(id)}/sets`
+      : `/v2/parts/${encodeURIComponent(id)}/${color}/sets`) + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
   const d = await api('GET', url);
   // Closed in the meantime? Then nothing more gets written in.
   if (!modal.classList.contains('open')) return;
@@ -146,8 +146,8 @@ async function savePartLocation() {
   const color = parseInt(el.dataset.color ?? '', 10) || 0;
   const url =
     el.dataset.entryType === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(number)}/storage`
-      : `/v1/parts/${encodeURIComponent(number)}/${color}/storage`;
+      ? `/v2/minifigs/${encodeURIComponent(number)}/storage`
+      : `/v2/parts/${encodeURIComponent(number)}/${color}/storage`;
   const d = await api('PUT', url, { storage: el.value });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');

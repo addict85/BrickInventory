@@ -21,7 +21,7 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
   const arten = new Kinds();
   return buildArea(
     { ...a, faecher: new Compartments(), arten },
-    (db: Db) => access(db, a.lesevertrag),
+    (db: Db) => access(db, a.readContract),
     (k: JobsContext) => ({
       registerKind: (an: Login) => arten.report(an),
       signedInKinds: () => arten.all(),

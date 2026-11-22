@@ -79,7 +79,7 @@
     const minutes = /** @type {HTMLSelectElement} */ (el('period')).value;
     el('status').textContent = tx('common.loading');
     try {
-      const r = await fetch(BASE + '/api/v1/admin/logs?minutes=' + minutes, { credentials: 'same-origin' });
+      const r = await fetch(BASE + '/api/v2/admin/logs?minutes=' + minutes, { credentials: 'same-origin' });
       const d = await r.json();
       if (d.success) {
         _logs = d.logs;

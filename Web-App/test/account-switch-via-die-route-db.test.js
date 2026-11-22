@@ -88,24 +88,24 @@ test('an acquisition changes the account — all three kinds via their route', {
   await setup();
 
   const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
-  const setze = async (pfad, koerper) => {
-    const r = await fetch(base + pfad, {
+  const setze = async (path, koerper) => {
+    const r = await fetch(base + path, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(koerper),
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const entryId = async (tab, feld, wert) =>
-    (await db.get(`SELECT id FROM ${tab} WHERE ${feld} = $1 ORDER BY id LIMIT 1`, [wert])).id;
-  const besitzer = async (tab, feld, wert) =>
-    (await db.all(`SELECT user_id FROM ${tab} WHERE ${feld} = $1 ORDER BY user_id`, [wert])).map(r =>
+  const entryId = async (tab, field, wert) =>
+    (await db.get(`SELECT id FROM ${tab} WHERE ${field} = $1 ORDER BY id LIMIT 1`, [wert])).id;
+  const besitzer = async (tab, field, wert) =>
+    (await db.all(`SELECT user_id FROM ${tab} WHERE ${field} = $1 ORDER BY user_id`, [wert])).map(r =>
       Number(r.user_id),
     );
 
   await t.test('set: the acquisition AND the inventory row are with the child afterwards', async () => {
     const id = await entryId('set_acquisitions', 'set_number', SN);
-    const a = await setze(`/api/v1/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await setze(`/api/v2/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
       await besitzer('set_acquisitions', 'set_number', SN),
@@ -125,7 +125,7 @@ test('an acquisition changes the account — all three kinds via their route', {
 
   await t.test('part: the same factory, a different address', async () => {
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await setze(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [KIND]);
     assert.deepEqual(
@@ -140,7 +140,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     // contains `manualEntryReassign(tx, 'fig'`. Exactly this kind of assurance
     // passed twice today while the path was broken.
     const id = await entryId('minifig_acquisitions', 'fig_number', 'sw0001');
-    const a = await setze(`/api/v1/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await setze(`/api/v2/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(await besitzer('minifig_acquisitions', 'fig_number', 'sw0001'), [KIND]);
     assert.deepEqual(
@@ -156,7 +156,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     // applies, or a writeTargetOrNull() that allows too much.
     await setup();
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });
+    const a = await setze(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });
     assert.equal(
       a.status,
       403,
@@ -183,7 +183,7 @@ test('an acquisition changes the account — all three kinds via their route', {
     // `unchanged`. Without this case the route could reject every switch
     // and the 403 case above would still be green.
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
+    const a = await setze(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(a.body?.unchanged, true, 'Ein Wechsel auf das eigene Konto muss als „unveraendert" antworten');
     assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [MAIN]);

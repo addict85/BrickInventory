@@ -39,12 +39,12 @@ function proxyErrorText(wrong: string[], onlyToWide: boolean): string {
 export function proxyEntryValid(entry: string, networkConfirmed = false): boolean {
   const [address, prefix, rest] = entry.split('/');
   if (rest !== undefined || !address) return false;
-  const art = net.isIP(address);
-  if (!art) return false;
+  const kind = net.isIP(address);
+  if (!kind) return false;
   if (prefix === undefined) return true;
   if (!/^\d{1,3}$/.test(prefix)) return false;
   const p = Number(prefix);
-  const [eng, wide, max] = art === 4 ? [29, 16, 32] : [120, 64, 128];
+  const [eng, wide, max] = kind === 4 ? [29, 16, 32] : [120, 64, 128];
   return p <= max && p >= (networkConfirmed ? wide : eng);
 }
 

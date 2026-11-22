@@ -108,13 +108,13 @@ test('the portfolio percentage measures prices, not additional purchases', { con
     // All periods must make the same statement — the monthly resolution
     // (year/max) has its own path for the starting point, and that one has
     // already drifted apart once in this series.
-    const werte = {};
-    for (const per of ['week', 'month', 'year', 'max']) werte[per] = (await kurve(per)).period_change_pct;
-    const only = [...new Set(Object.values(werte))];
+    const values = {};
+    for (const per of ['week', 'month', 'year', 'max']) values[per] = (await kurve(per)).period_change_pct;
+    const only = [...new Set(Object.values(values))];
     assert.equal(
       only.length,
       1,
-      `Die Zeiträume sind sich uneinig: ${JSON.stringify(werte)} — bei Daten aus ` +
+      `Die Zeiträume sind sich uneinig: ${JSON.stringify(values)} — bei Daten aus ` +
         'einer einzigen Woche müssen Woche, Monat, Jahr und Max dasselbe zeigen',
     );
   } finally {

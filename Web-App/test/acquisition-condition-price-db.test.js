@@ -66,14 +66,14 @@ test('a cleared purchase price is refilled in the condition of the row', { concu
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,77,'manual')`, [uid, PN]);
   await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, FN]);
-  const zeile = async (sql, p) => (await db.get(sql + ` VALUES ($1,$2,1,10,'N','CHF') RETURNING id`, p)).id;
+  const row = async (sql, p) => (await db.get(sql + ` VALUES ($1,$2,1,10,'N','CHF') RETURNING id`, p)).id;
   const faelle = [
     [
       'set',
       'set_acquisitions',
       'purchase_price',
       [SN],
-      await zeile('INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)', [
+      await row('INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)', [
         uid,
         SN,
       ]),
@@ -96,19 +96,19 @@ test('a cleared purchase price is refilled in the condition of the row', { concu
       'minifig_acquisitions',
       'unit_price',
       [FN],
-      await zeile('INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, currency)', [
+      await row('INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, currency)', [
         uid,
         FN,
       ]),
     ],
   ];
-  for (const [art, tabelle, spalte, keys, id] of faelle) {
-    await changeAcquisition(art, uid, id, keys, { [spalte]: '', condition: 'U' });
+  for (const [kind, tabelle, spalte, keys, id] of faelle) {
+    await changeAcquisition(kind, uid, id, keys, { [spalte]: '', condition: 'U' });
     const z = await db.get(
       `SELECT ${spalte}::float AS preis, price_estimated, condition FROM ${tabelle} WHERE id = $1`,
       [id],
     );
-    assert.deepEqual(z, { preis: 60, price_estimated: true, condition: 'U' }, art);
+    assert.deepEqual(z, { preis: 60, price_estimated: true, condition: 'U' }, kind);
   }
 });
 
@@ -148,8 +148,8 @@ test('every market price fetch gets a condition', () => {
           .map(a => a.trim())
           .filter(Boolean);
         if (args.length >= 4) continue; // …, condition
-        const zeile = code.slice(0, m.index).split('\n').length;
-        treffer.push(`${path.relative(ROOT, datei)}:${zeile} ${fn}(${m[1].slice(0, 40)})`);
+        const row = code.slice(0, m.index).split('\n').length;
+        treffer.push(`${path.relative(ROOT, datei)}:${row} ${fn}(${m[1].slice(0, 40)})`);
       }
     }
   }

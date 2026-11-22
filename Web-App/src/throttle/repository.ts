@@ -3,12 +3,12 @@ import type { DbInterface } from '../../db/database';
 /** `ongoing` counts checks currently in flight, so concurrent attempts can't jointly
  * jump the limit. */
 
-export type CounterRow = { count: string; wait_min: string; seit: string };
+export type CounterRow = { count: string; wait_min: string; since: string };
 
 export function read(db: DbInterface, key: string, windowMin: number) {
   return db.get<CounterRow>(
     `SELECT count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
-            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
+            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS since
        FROM rate_limit_attempts
       WHERE key = $1 AND first_at > NOW() - make_interval(mins => $2)`,
     [key, windowMin],
@@ -40,7 +40,7 @@ export type LockState = {
   abgelaufen: boolean;
   laufend_alt: boolean;
   wait_min: string;
-  seit: string;
+  since: string;
 };
 
 export async function lock(tx: DbInterface, key: string, windowMin: number, ongoingDecayS: number): Promise<LockState> {
@@ -54,7 +54,7 @@ export async function lock(tx: DbInterface, key: string, windowMin: number, ongo
             first_at < NOW() - make_interval(mins => $2) AS abgelaufen,
             COALESCE(ongoing_since < NOW() - make_interval(secs => $3), TRUE) AS laufend_alt,
             EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
-            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
+            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS since
        FROM rate_limit_attempts WHERE key = $1 FOR UPDATE`,
     [key, windowMin, ongoingDecayS],
   ))!;
@@ -117,8 +117,8 @@ export async function countUp(
 
 /** Per account and hour (balance lookups): the limit only falls after a full hour. */
 export function hourlyState(tx: DbInterface, key: string) {
-  return tx.get<{ anzahl: number; warten_sek: number }>(
-    `SELECT count AS anzahl,
+  return tx.get<{ count: number; warten_sek: number }>(
+    `SELECT count AS count,
        CEIL(EXTRACT(EPOCH FROM (first_at + INTERVAL '1 hour' - NOW())))::int AS warten_sek
      FROM rate_limit_attempts WHERE key = $1 AND first_at > NOW() - INTERVAL '1 hour'`,
     [key],

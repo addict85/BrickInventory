@@ -53,11 +53,11 @@ test('SMTP test only to the own address or with password', { concurrency: 1 }, a
   });
   const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v1': 'routes/api_v1/settings.js' },
+    routen: { '/api/v2': 'routes/api/settings.js' },
     t,
   });
   const probe = body =>
-    fetch(`${base}/api/v1/settings/smtp-test`, {
+    fetch(`${base}/api/v2/settings/smtp-test`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -74,7 +74,7 @@ test('SMTP test only to the own address or with password', { concurrency: 1 }, a
   await t.test('a foreign address needs the password', async () => {
     gesendet.length = 0;
     const r = await probe({ to: 'fremd@example.net' });
-    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_falsch']);
+    assert.deepEqual([r.status, r.body.code], [400, 'current_password_wrong']);
     assert.deepEqual(gesendet, []);
     const falsch = await probe({ to: 'fremd@example.net', password: 'falsch' });
     assert.equal(falsch.status, 400);

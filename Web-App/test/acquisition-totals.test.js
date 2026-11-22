@@ -8,7 +8,7 @@
  * for missing prices → the edge case substep turns red. And an
  * inserted `acqs.reduce(...)` in admin.js → the rule substep.
  * Counter-check of 30.10.2026: `totals` removed from the parts response in
- * routes/api_v1/acquisitions.ts → red: “parts” in the route substep.
+ * routes/api/acquisitions.ts → red: “parts” in the route substep.
  * Since 05.11.2026 `amount` is missing without a known price (money has a type);
  * measured: the route without the omission → red: “minifigs” (amount: null
  * violates the contract, the response has no entries).
@@ -115,18 +115,22 @@ test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t
   );
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  for (const [art, pfad, erwartet] of /** @type {[string, string, object][]} */ ([
-    ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2, currency: 'CHF', ohne_kurs: 0 }],
+  for (const [kind, path, erwartet] of /** @type {[string, string, object][]} */ ([
+    [
+      'sets',
+      `sets/${SN}/acquisitions`,
+      { quantity: 3, amount: 24.3, priced_rows: 2, currency: 'CHF', without_rate: 0 },
+    ],
     [
       'parts',
       `parts/${PN}/4/acquisitions`,
-      { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', ohne_kurs: 0 },
+      { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', without_rate: 0 },
     ],
-    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', ohne_kurs: 0 }],
+    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', without_rate: 0 }],
   ])) {
-    const r = await (await fetch(`${base}/api/v1/${pfad}`)).json();
-    assert.equal(r.acquisitions?.length > 0, true, `${art}: keine Erfassungen in der Antwort`);
-    assert.deepEqual(r.totals, erwartet, art);
+    const r = await (await fetch(`${base}/api/v2/${path}`)).json();
+    assert.equal(r.acquisitions?.length > 0, true, `${kind}: keine Erfassungen in der Antwort`);
+    assert.deepEqual(r.totals, erwartet, kind);
   }
 });
 
@@ -134,7 +138,7 @@ test('no UI computes the sum again', async () => {
   // The server sends the total row as `totals`; here deliberately NOT the sum of the rows
   // (10 + 20 at quantity 2): what the UI shows must come from the server.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 2 };
-  const zeile = (id, preis) => ({
+  const row = (id, preis) => ({
     id,
     quantity: 1,
     purchase_price: preis,
@@ -144,11 +148,11 @@ test('no UI computes the sum again', async () => {
     user_id: 1,
   });
   const { d } = await openUi({
-    '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
-    '/v1/sets/10294-1': { success: true, set: SET },
-    '/v1/sets/10294-1/acquisitions': {
+    '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v2/sets/10294-1': { success: true, set: SET },
+    '/v2/sets/10294-1/acquisitions': {
       success: true,
-      acquisitions: [zeile(1, 10), zeile(2, 20)],
+      acquisitions: [row(1, 10), row(2, 20)],
       totals: { quantity: 5, amount: 99, currency: 'EUR' },
     },
   }).then(async o => {

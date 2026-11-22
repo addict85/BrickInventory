@@ -15,7 +15,7 @@
  *   G  without the 429 branch in clearerReason() → red: „Drossel“ (text);
  *      .toast-close without position:absolute → red: same place (✕ 65 px below the top edge)
  *   H  again loadGallery() and loadStats() on tab change → red: „Drossel“
- *      (twice /v1/stats)
+ *      (twice /v2/stats)
  *   I  alsKarten() without phoneWidth() → red: „Telefon nur Karten …“ (as a consequence
  *      also „Drossel“ and „Kontrastmodus“: the table stays)
  *   K  „Ø Kaufpreis“ never chosen → red: „Set-Detail“
@@ -78,11 +78,11 @@ async function setDetail(_t, a) {
     situation.link >= situation.unten - 1,
     `„Alle Preisalarme“ nicht in eigener Zeile: ${JSON.stringify(situation)}`,
   );
-  const feld = await b.auswerten(`(() => { const f = document.getElementById('instr-desc');
+  const field = await b.auswerten(`(() => { const f = document.getElementById('instr-desc');
     return { stil: f.getAttribute('style'), hoehe: f.getBoundingClientRect().height, balken: getComputedStyle(document.querySelector('#set-modal .modal')).scrollbarWidth }; })()`);
-  assert.equal(feld.stil, null, 'Inline-Stil am Beschreibungsfeld');
-  assert.ok(feld.hoehe >= 36, `Beschreibungsfeld ${feld.hoehe} px hoch`);
-  assert.equal(feld.balken, 'thin', 'Scrollleiste im Dialog wie die der Seite');
+  assert.equal(field.stil, null, 'Inline-Stil am Beschreibungsfeld');
+  assert.ok(field.hoehe >= 36, `Beschreibungsfeld ${field.hoehe} px hoch`);
+  assert.equal(field.balken, 'thin', 'Scrollleiste im Dialog wie die der Seite');
   await b.auswerten(`(() => { const f = document.getElementById('m-alert-val'); f.value = '';
     f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await a.ruhig(3000);
@@ -97,7 +97,7 @@ async function allViews(_t, a) {
   const funde = [];
   await groesse(b, 390, true);
   try {
-    for (const pfad of [
+    for (const path of [
       'sammlung',
       'teile',
       'minifiguren',
@@ -116,7 +116,7 @@ async function allViews(_t, a) {
       'app',
     ]) {
       await b.auswerten(CLOSE);
-      await b.auswerten(`location.hash = '#/${pfad}'; true`);
+      await b.auswerten(`location.hash = '#/${path}'; true`);
       await a.ruhig(5000);
       await b.auswerten(`(() => { const t = document.querySelector('.tab.active');
         t?.querySelectorAll('details').forEach(d => { d.open = true; });
@@ -125,7 +125,7 @@ async function allViews(_t, a) {
       const m = await b.auswerten(
         `({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth })`,
       );
-      if (m.sw > m.cw) funde.push(`${pfad}: ${m.sw} > ${m.cw}`);
+      if (m.sw > m.cw) funde.push(`${path}: ${m.sw} > ${m.cw}`);
     }
   } finally {
     await groesse(b, 1280, false);
@@ -153,10 +153,10 @@ async function hintergrund(_t, a) {
   );
   assert.equal(bunt, 0, 'farbige Sinnbilder statt Strichsymbolen');
   await bis(`!!document.querySelector('.mon-kinds')`, 'Auftragsarten');
-  const zeile = await b.auswerten(
+  const row = await b.auswerten(
     `[...document.querySelectorAll('.mon-kinds tbody tr')].find(z => /Wechselkurse/.test(z.textContent))?.textContent.replace(/\\s+/g, ' ')`,
   );
-  assert.match(zeile, /davon \d+ nach Fehler/, 'gescheiterter Versuch fehlt in der Übersicht');
+  assert.match(row, /davon \d+ nach Fehler/, 'gescheiterter Versuch fehlt in der Übersicht');
   assert.notEqual(
     await b.auswerten(text('#settings-background h2')),
     await b.auswerten(text('#tab-monitor h1')),
@@ -237,8 +237,8 @@ async function drossel(_t, a) {
     await groesse(b, breite, telefon);
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
     await b.auswerten(`(() => { window.__echt = window.fetch;
-      window.fetch = (u, o) => /\\/api\\/v1\\/sets\\?/.test(String(u))
-        ? Promise.resolve(new Response(JSON.stringify({ success: false, code: 'zu_viele_anfragen', error: 'Zu viele Anfragen' }),
+      window.fetch = (u, o) => /\\/api\\/v2\\/sets\\?/.test(String(u))
+        ? Promise.resolve(new Response(JSON.stringify({ success: false, code: 'too_many_requests', error: 'Zu viele Anfragen' }),
             { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '200' } }))
         : window.__echt(u, o); return true; })()`);
     try {
@@ -264,11 +264,11 @@ async function drossel(_t, a) {
   await geh(a, '#/katalog', `!!document.querySelector('#catalog-grid .sc')`, 'Katalog');
   const pfade = b.ereignisse
     .slice(vorher)
-    .filter(e => e.method === 'Network.requestWillBeSent' && /\/api\/v1\//.test(e.params.request.url))
+    .filter(e => e.method === 'Network.requestWillBeSent' && /\/api\/v2\//.test(e.params.request.url))
     .map(e => e.params.request.url.replace(/^.*\/api/, '').replace(/\?.*/, ''));
   const zahl = p => pfade.filter(x => x === p).length;
   assert.deepEqual(
-    [zahl('/v1/sets'), zahl('/v1/stats'), zahl('/v1/catalog/year-verteilung')],
+    [zahl('/v2/sets'), zahl('/v2/stats'), zahl('/v2/catalog/year-distribution')],
     [1, 1, 0],
     pfade.join(' '),
   );
@@ -375,9 +375,9 @@ async function loeschen(_t, a, name) {
   const ziel = b.ereignisse
     .slice(vorher)
     .find(e => e.method === 'Network.requestWillBeSent' && e.params.request.method === 'DELETE')?.params.request.url;
-  assert.match(ziel, /\/v1\/sets\/21318-1\?accounts=\d+$/, 'nur das Unterkonto gewählt');
-  const aktiv = `(() => { const e = document.activeElement; return e.tagName + ' ' + (e.dataset.arg || e.textContent.trim().slice(0, 20)); })()`;
-  assert.equal(await b.auswerten(aktiv), 'DIV 21318-1', 'Fokus nicht auf dem bleibenden Set');
+  assert.match(ziel, /\/v2\/sets\/21318-1\?accounts=\d+$/, 'nur das Unterkonto gewählt');
+  const active = `(() => { const e = document.activeElement; return e.tagName + ' ' + (e.dataset.arg || e.textContent.trim().slice(0, 20)); })()`;
+  assert.equal(await b.auswerten(active), 'DIV 21318-1', 'Fokus nicht auf dem bleibenden Set');
 
   const reihe = await b.auswerten(`[...document.querySelectorAll('#gallery .sc')].map(k => k.dataset.arg)`);
   const nr = reihe[1];
@@ -390,7 +390,7 @@ async function loeschen(_t, a, name) {
     'Rückfrage vor dem eigenen Set',
   );
   await a.ruhig();
-  assert.equal(await b.auswerten(aktiv), `DIV ${reihe[2]}`, 'Fokus nach dem Löschen nicht auf der nächsten Karte');
+  assert.equal(await b.auswerten(active), `DIV ${reihe[2]}`, 'Fokus nach dem Löschen nicht auf der nächsten Karte');
   await b.auswerten(
     `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].at(-1); k.focus(); k.click(); return true; })()`,
   );
@@ -443,8 +443,8 @@ async function abmelden(_t, a, name) {
   assert.equal(dom.zoom, '100% – reset zoom (key 0)');
 
   // Empty collection: the hint names the menu only on the phone, also after changing the width.
-  const hinweis = () => b.auswerten(text('#gallery .empty p'));
-  assert.doesNotMatch(await hinweis(), /•••/);
+  const hint = () => b.auswerten(text('#gallery .empty p'));
+  assert.doesNotMatch(await hint(), /•••/);
   await groesse(b, 390, true);
   try {
     await bis(`/•••/.test(${text('#gallery .empty p')})`, 'Hinweis am Telefon');
@@ -461,12 +461,12 @@ test('logout, deleting in the household, offline banner, contrast mode', {
   const name = `r23_${process.pid}`;
   const a = await startApp(t, {
     name,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternHousehold(db, uid);
       // Two open runs of one kind, one after errors: label and long hint on the phone.
       await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
-        VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'getaddrinfo ENOTFOUND www.ecb.europa.eu https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')`);
-      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('wechselkurse', NOW() + interval '6 hours')`);
+        VALUES ('exchange_rates', NOW() + interval '5 hours', 4, 6, 'getaddrinfo ENOTFOUND www.ecb.europa.eu https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')`);
+      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('exchange_rates', NOW() + interval '6 hours')`);
       const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
       const en = await db.get(
         `INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
@@ -476,11 +476,11 @@ test('logout, deleting in the household, offline banner, contrast mode', {
       await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', 'en')`, [en.id]);
     },
   });
-  if (a.grund) {
-    t.skip(a.grund);
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'pending'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, name: string) => Promise<void>][]} */
   const pruefungen = [

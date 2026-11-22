@@ -5,7 +5,7 @@
  * execute the same job.
  *
  * Counter-checks (measured on 29.10.2026):
- *   A  in belegeAuftrag only `status = 'offen'` instead of `IN ('offen', 'laeuft')`
+ *   A  in belegeAuftrag only `status = 'pending'` instead of `IN ('pending', 'running')`
  *      → red: “an orphaned job is done after its deadline”
  *   B  in fehlgeschlagen always 'fehler' instead of 'offen' → red: “an error is
  *      retried”
@@ -23,7 +23,7 @@
  *      only counts when it should”
  *   H  folgeplan() empty in the worker → red: “after a scheduled run
  *      the next one is pending”
- *   I  in erledigt() the condition `status = 'laeuft'` removed → red: “an
+ *   I  in erledigt() the condition `status = 'running'` removed → red: “an
  *      aborted job stays aborted”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -54,11 +54,11 @@ test('job table', { concurrency: 1 }, async t => {
   for (const type of [ART, `${ART}-ex`]) {
     require('./helpers/sources')
       .testServices()
-      .jobQueue.registerKind({ art: type, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
+      .jobQueue.registerKind({ kind: type, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
     await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [type]);
   }
   const leeren = () => db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]);
-  const zeile = id =>
+  const row = id =>
     db.get('SELECT status, attempts, error_message, due_at > NOW() AS spaeter FROM jobs WHERE id=$1', [id]);
   await leeren();
 
@@ -68,13 +68,13 @@ test('job table', { concurrency: 1 }, async t => {
       // A process occupies it with a deadline of one second and then ends.
       const tot = await A.claimJob([ART], 1);
       assert.equal(tot.id, id);
-      const erledigt = [];
+      const done = [];
       const w = createWorker(
         require('./helpers/sources').testServices().jobQueue,
         {
           [ART]: {
             ausfuehren: async n => {
-              erledigt.push(n.n);
+              done.push(n.n);
             },
           },
         },
@@ -83,9 +83,9 @@ test('job table', { concurrency: 1 }, async t => {
       assert.equal(await w.processOne(), false, 'vor Ablauf der Frist gehört er noch dem anderen');
       // The dead process's deadline expires; then the second one takes it.
       assert.ok(await bis(() => w.processOne(), 5000), 'nach Ablauf der Frist übernimmt der Worker');
-      assert.deepEqual(erledigt, [1]);
-      assert.equal((await zeile(id)).status, 'erledigt');
-      assert.equal((await zeile(id)).attempts, 2);
+      assert.deepEqual(done, [1]);
+      assert.equal((await row(id)).status, 'done');
+      assert.equal((await row(id)).attempts, 2);
     });
 
     await t.test('an error is retried and ends after the last attempt', async () => {
@@ -105,20 +105,20 @@ test('job table', { concurrency: 1 }, async t => {
       });
       const id = await A.placeJobOne(ART, { marke: MARKE }, { maxAttempts: 3 });
       assert.equal(await w.processOne(), true);
-      const afterError = await zeile(id);
-      assert.equal(afterError.status, 'offen', 'ein Fehler wird wiederholt');
+      const afterError = await row(id);
+      assert.equal(afterError.status, 'pending', 'ein Fehler wird wiederholt');
       assert.equal(afterError.error_message, 'Quelle weg');
       assert.equal(afterError.spaeter, true, 'mit Wartezeit, nicht sofort');
       assert.equal(await w.processOne(), false);
       await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id]);
       assert.equal(await w.processOne(), true);
-      assert.equal((await zeile(id)).status, 'erledigt');
+      assert.equal((await row(id)).status, 'done');
 
       const id2 = await A.placeJobOne(ART, { marke: MARKE, immer: true }, { maxAttempts: 2 });
       await w.processOne();
       await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id2]);
       await w.processOne();
-      assert.equal((await zeile(id2)).status, 'fehler');
+      assert.equal((await row(id2)).status, 'error');
       assert.deepEqual(aufgegeben, ['Quelle weg'], 'aufgegeben genau einmal, nach dem letzten Versuch');
     });
 
@@ -154,11 +154,11 @@ test('job table', { concurrency: 1 }, async t => {
       w1.starte();
       w2.starte();
       for (let i = 0; i < 200; i++) {
-        const offen = await db.get(
-          `SELECT COUNT(*)::int AS n FROM jobs WHERE payload->>'marke' = $1 AND status <> 'erledigt'`,
+        const open = await db.get(
+          `SELECT COUNT(*)::int AS n FROM jobs WHERE payload->>'marke' = $1 AND status <> 'done'`,
           [MARKE],
         );
-        if (offen.n === 0 && w1.running() === 0 && w2.running() === 0) break;
+        if (open.n === 0 && w1.running() === 0 && w2.running() === 0) break;
         await warte(25);
       }
       await w1.stop(0);
@@ -193,10 +193,8 @@ test('job table', { concurrency: 1 }, async t => {
       );
       w.starte();
       for (let i = 0; i < 100; i++) {
-        const offen = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE type = $1 AND status <> 'erledigt'`, [
-          EX,
-        ]);
-        if (offen.n === 0 && w.running() === 0) break;
+        const open = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE type = $1 AND status <> 'done'`, [EX]);
+        if (open.n === 0 && w.running() === 0) break;
         await warte(25);
       }
       await w.stop(0);
@@ -217,15 +215,15 @@ test('job table', { concurrency: 1 }, async t => {
       });
       const id = await A.placeJobOne(ART, { marke: MARKE }, { maxAttempts: 2 });
       await w.processOne();
-      let z = await zeile(id);
-      assert.deepEqual([z.status, z.attempts, z.error_message, z.spaeter], ['offen', 0, 'gedrosselt', true]);
+      let z = await row(id);
+      assert.deepEqual([z.status, z.attempts, z.error_message, z.spaeter], ['pending', 0, 'gedrosselt', true]);
       zaehlt = true;
       for (let i = 0; i < 2; i++) {
         await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id]);
         await w.processOne();
       }
-      z = await zeile(id);
-      assert.deepEqual([z.status, z.attempts], ['fehler', 2], 'gezählte Verschiebungen enden nach max_attempts');
+      z = await row(id);
+      assert.deepEqual([z.status, z.attempts], ['error', 2], 'gezählte Verschiebungen enden nach max_attempts');
     });
 
     await t.test('an aborted job stays aborted', async () => {
@@ -233,18 +231,18 @@ test('job table', { concurrency: 1 }, async t => {
       let lebt = null;
       // Without fixed waits: the handler reports that it is running, and
       // only asks for its heartbeat after the abort.
-      let laeuft = () => {},
-        abgebrochen = () => {};
+      let running = () => {},
+        aborted = () => {};
       const started_at = new Promise(r => {
-        laeuft = () => r(null);
+        running = () => r(null);
       });
       const afterAbort = new Promise(r => {
-        abgebrochen = () => r(null);
+        aborted = () => r(null);
       });
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
         [ART]: {
           ausfuehren: async (_n, k) => {
-            laeuft();
+            running();
             await afterAbort;
             lebt = await k.heartbeat();
           },
@@ -254,26 +252,26 @@ test('job table', { concurrency: 1 }, async t => {
       const lauf = w.processOne();
       await started_at;
       assert.ok(await A.abortAb(id), 'ein laufender Auftrag lässt sich abbrechen');
-      abgebrochen();
+      aborted();
       await lauf;
       assert.equal(lebt, false, 'der Bearbeiter erfährt vom Abbruch');
-      assert.equal((await zeile(id)).status, 'abgebrochen');
+      assert.equal((await row(id)).status, 'cancelled');
       assert.equal(await A.repeat(id), true);
-      assert.equal((await zeile(id)).status, 'offen', 'wiederholen stellt ihn neu ein');
+      assert.equal((await row(id)).status, 'pending', 'wiederholen stellt ihn neu ein');
     });
 
     await t.test('after a scheduled run the next one is pending', async () => {
       const Z = _req('src/jobQueue/schedule.js');
-      await db.run(`DELETE FROM jobs WHERE type = 'aufraeumen'`);
+      await db.run(`DELETE FROM jobs WHERE type = 'cleanup'`);
       await Z.planeAll();
       await Z.planeAll();
-      const plans = await db.all(`SELECT due_at FROM jobs WHERE dedupe_key = 'plan:aufraeumen' AND status = 'offen'`);
+      const plans = await db.all(`SELECT due_at FROM jobs WHERE dedupe_key = 'plan:cleanup' AND status = 'pending'`);
       assert.equal(plans.length, 1, 'planeAll legt je Art genau einen Termin an');
       assert.ok(new Date(plans[0].due_at) > new Date(Date.now() + 55 * 60_000), 'stündlich heisst in einer Stunde');
-      assert.equal(await Z.pullPlanBefore('aufraeumen'), true);
+      assert.equal(await Z.pullPlanBefore('cleanup'), true);
       let lief = 0;
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
-        aufraeumen: {
+        cleanup: {
           ausfuehren: async () => {
             lief++;
           },
@@ -281,14 +279,14 @@ test('job table', { concurrency: 1 }, async t => {
       });
       assert.equal(await w.processOne(), true);
       assert.equal(lief, 1);
-      const danach = await db.all(`SELECT status, due_at FROM jobs WHERE dedupe_key = 'plan:aufraeumen' ORDER BY id`);
+      const danach = await db.all(`SELECT status, due_at FROM jobs WHERE dedupe_key = 'plan:cleanup' ORDER BY id`);
       assert.deepEqual(
         danach.map(z => z.status),
-        ['erledigt', 'offen'],
+        ['done', 'pending'],
         'kein Folgetermin eingetragen',
       );
       assert.ok(new Date(danach[1].due_at) > new Date(Date.now() + 55 * 60_000));
-      await db.run(`DELETE FROM jobs WHERE type = 'aufraeumen'`);
+      await db.run(`DELETE FROM jobs WHERE type = 'cleanup'`);
     });
 
     await t.test('a PDF job is created in the worker', async () => {
@@ -312,14 +310,14 @@ test('job table', { concurrency: 1 }, async t => {
           },
           { userId: uid, schluessel: pdfA.pdfKey(jobId) },
         );
-        let stand;
+        let state;
         for (let i = 0; i < 200; i++) {
           // Like the route: in the request's account, under row security.
-          stand = await asAccount(uid, () => pdfA.readJob(jobId, uid));
-          if (stand?.status !== 'running') break;
+          state = await asAccount(uid, () => pdfA.readJob(jobId, uid));
+          if (state?.status !== 'running') break;
           await warte(25);
         }
-        assert.equal(stand?.status, 'done', JSON.stringify(stand));
+        assert.equal(state?.status, 'done', JSON.stringify(state));
         const datei = pdfA.pdfFilePath(jobId);
         assert.equal(require('node:fs').readFileSync(datei).subarray(0, 5).toString(), '%PDF-');
         require('node:fs').rmSync(datei, { force: true });

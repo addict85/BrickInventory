@@ -7,8 +7,8 @@
  *
  * Counter-checks (measured on 28.10.2026):
  *   A  loginAtInbox not mounted in server.ts and requireToken removed from
- *      GET /stats (routes/api_v1/misc.ts) → red: “only the
- *      public paths answer without login” (GET /api/v1/stats open)
+ *      GET /stats (routes/api/misc.ts) → red: “only the
+ *      public paths answer without login” (GET /api/v2/stats open)
  *      and “a wrong token does not get in”. With the entrance but
  *      without the protection on /stats everything stays green — that is the purpose.
  *
@@ -32,27 +32,27 @@ const { portOf } = require('./helpers/server');
 
 /** Deliberately reachable without login — with a reason. If the list grows, someone must justify it. */
 const EXPECTED_OPEN = new Map([
-  ['POST /api/v1/auth/login', 'Die Anmeldung selbst'],
-  ['POST /api/v1/auth/logout', 'Muss auch ohne gültige Sitzung gehen'],
-  ['GET /api/v1/auth/me', 'Antwortet „nicht angemeldet" — der Startpunkt der Oberfläche'],
-  ['POST /api/v1/auth/qr-login', 'Anmeldung per QR-Code'],
-  ['POST /api/v1/auth/qr-login/abholen', 'Die App holt nach der Bestätigung im Browser ihren Zugang ab'],
-  ['POST /api/v1/auth/qr-login/verwerfen', 'Das Nein der App auf dem QR-Bildschirm, vor jedem Token'],
-  ['GET /api/v1/auth/registration-status', 'Ob Registrierung offen ist — vor dem Konto'],
-  ['POST /api/v1/auth/forgot-password', 'Wer sein Passwort vergisst, kann sich nicht anmelden'],
-  ['POST /api/v1/auth/bestaetigung-erneut', 'Ein unbestätigtes Konto kann sich nicht anmelden'],
-  ['POST /api/v1/auth/reset-password', 'Dasselbe, zweiter Schritt'],
-  ['POST /api/v1/auth/uebernahme-abbrechen', 'Der Link aus der Mail: Das Ziel ist deaktiviert oder abgemeldet'],
-  ['POST /api/v1/auth/anmeldung-freigeben', 'Der Link aus der Mail: Die Anmeldung ist gerade gesperrt'],
-  ['POST /api/v1/auth/email-bestaetigen', 'Wer seine Adresse bestätigt, ist noch nicht angemeldet'],
-  ['POST /api/v1/auth/email-bestaetigen/vorschau', 'Dasselbe, vor dem Bestätigen'],
-  ['POST /api/v1/auth/passkey/anmelden/optionen', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],
-  ['GET /api/v1/settings/theme', 'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
-  ['GET /api/v1/einrichtung/stand', 'Was vor dem ersten Konto fehlt — die Anmeldeseite fragt es ab'],
-  ['GET /api/v1/startup-status', 'Der Ladebildschirm vor der Anmeldung'],
-  ['GET /api/v1/health', 'Status für Überwachung, Details nur für Verwalter'],
-  ['GET /api/v1/health/live', 'Lebenszeichen des Prozesses'],
-  ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (Datenbank)'],
+  ['POST /api/v2/auth/login', 'Die Anmeldung selbst'],
+  ['POST /api/v2/auth/logout', 'Muss auch ohne gültige Sitzung gehen'],
+  ['GET /api/v2/auth/me', 'Antwortet „nicht angemeldet" — der Startpunkt der Oberfläche'],
+  ['POST /api/v2/auth/qr-login', 'Anmeldung per QR-Code'],
+  ['POST /api/v2/auth/qr-login/collect', 'Die App holt nach der Bestätigung im Browser ihren Zugang ab'],
+  ['POST /api/v2/auth/qr-login/discard', 'Das Nein der App auf dem QR-Bildschirm, vor jedem Token'],
+  ['GET /api/v2/auth/registration-status', 'Ob Registrierung offen ist — vor dem Konto'],
+  ['POST /api/v2/auth/forgot-password', 'Wer sein Passwort vergisst, kann sich nicht anmelden'],
+  ['POST /api/v2/auth/resend-confirmation', 'Ein unbestätigtes Konto kann sich nicht anmelden'],
+  ['POST /api/v2/auth/reset-password', 'Dasselbe, zweiter Schritt'],
+  ['POST /api/v2/auth/cancel-takeover', 'Der Link aus der Mail: Das Ziel ist deaktiviert oder abgemeldet'],
+  ['POST /api/v2/auth/approve-login', 'Der Link aus der Mail: Die Anmeldung ist gerade gesperrt'],
+  ['POST /api/v2/auth/confirm-email', 'Wer seine Adresse bestätigt, ist noch nicht angemeldet'],
+  ['POST /api/v2/auth/confirm-email/preview', 'Dasselbe, vor dem Bestätigen'],
+  ['POST /api/v2/auth/passkey/login/options', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],
+  ['GET /api/v2/settings/theme', 'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
+  ['GET /api/v2/setup/state', 'Was vor dem ersten Konto fehlt — die Anmeldeseite fragt es ab'],
+  ['GET /api/v2/startup-status', 'Der Ladebildschirm vor der Anmeldung'],
+  ['GET /api/v2/health', 'Status für Überwachung, Details nur für Verwalter'],
+  ['GET /api/v2/health/live', 'Lebenszeichen des Prozesses'],
+  ['GET /api/v2/health/ready', 'Gesundheitsprüfung von compose.yaml (Datenbank)'],
 ]);
 
 const freePort = () =>
@@ -92,12 +92,12 @@ test('entrance to /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
-  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/health`).catch(() => null)) === null; i++)
     await warte(250);
 
   const alle = v1Routes();
   assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);
-  const offen = new Set();
+  const open = new Set();
   for (const [m, p] of alle) {
     const url = p.replace(/:[A-Za-z_]+\??/g, '1').replace(/\*[a-z]+/g, 'a');
     // Empty body: a public endpoint then answers 400, but not 401.
@@ -110,15 +110,15 @@ test('entrance to /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
     await r.arrayBuffer();
     // /auth/register is public but answers 403 as long as registration
     // is off — that depends on a setting other tests toggle.
-    if (r.status !== 401 && r.status !== 403 && p !== '/api/v1/auth/register') offen.add(`${m} ${p}`);
+    if (r.status !== 401 && r.status !== 403 && p !== '/api/v2/auth/register') open.add(`${m} ${p}`);
   }
 
   await t.test('only the public paths answer without login', () =>
-    assert.deepEqual([...offen].sort(), [...EXPECTED_OPEN.keys()].sort()),
+    assert.deepEqual([...open].sort(), [...EXPECTED_OPEN.keys()].sort()),
   );
 
   await t.test('a wrong token does not get in', async () => {
-    const r = await fetch(`http://127.0.0.1:${port}/api/v1/stats`, { headers: { authorization: 'Bearer falsch' } });
+    const r = await fetch(`http://127.0.0.1:${port}/api/v2/stats`, { headers: { authorization: 'Bearer falsch' } });
     assert.equal(r.status, 401);
   });
 });

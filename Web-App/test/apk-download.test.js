@@ -23,7 +23,7 @@ const { openUi, sicht } = require('./helpers/ui');
 
 /** The button as the opened “App” view shows it. */
 async function knopf() {
-  const o = await openUi({ '/v1/settings/tokens': { success: true, tokens: [] } });
+  const o = await openUi({ '/v2/settings/tokens': { success: true, tokens: [] } });
   try {
     await sicht(o.w, 'app');
     const a = o.d.querySelector('a.apk-btn');
@@ -57,7 +57,7 @@ test('1. the button is in the "app" view, before the QR code, without a foreign 
 });
 
 test('2. the same address as in the workflow', async () => {
-  const adresse = (await knopf()).href;
+  const address = (await knopf()).href;
   // ── From the workflow: fixed link and the name under which the APK is created ──
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-release.yml'), 'utf8');
   const link = yml.match(/^\s*LINK="https:\/\/github\.com\/\$GITHUB_REPOSITORY\/(\S+)"/m)?.[1];
@@ -67,13 +67,13 @@ test('2. the same address as in the workflow', async () => {
   assert.match(yml, /gh release create "\$QUELLE" [^\n]*"\$APK"/, 'Die Release wird ohne $APK angelegt.');
 
   assert.equal(
-    adresse,
+    address,
     `https://github.com/addict85/BrickInventory/${link}`,
     'Knopf und fester Link des Workflows zeigen auf verschiedene Orte.',
   );
   assert.ok(
-    adresse.endsWith(`/releases/latest/download/${apkName}`),
-    `Der Knopf zeigt auf "${adresse}", die Release trägt das APK aber als "${apkName}". ` +
+    address.endsWith(`/releases/latest/download/${apkName}`),
+    `Der Knopf zeigt auf "${address}", die Release trägt das APK aber als "${apkName}". ` +
       'Ein Klick endete auf der 404-Seite von GitHub.',
   );
 });

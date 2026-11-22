@@ -76,7 +76,7 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
 
   try {
     await t.test('the button queues, without known negative results', async () => {
-      const d = await (await fetch(`${base}/api/v1/admin/catalog-images`, { method: 'POST' })).json();
+      const d = await (await fetch(`${base}/api/v2/admin/catalog-images`, { method: 'POST' })).json();
       assert.equal(d.success, true);
       // finished items stay out
       assert.equal(
@@ -96,9 +96,9 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       // table." — The many entries are the bug from an earlier round:
       // every network hiccup counted as “does not exist".
       assert.equal(
-        d.verworfen,
+        d.discarded,
         1,
-        `verworfen=${d.verworfen} statt 1 — genau die Fehlanzeige ohne Grund ` + 'gehört zurückgenommen',
+        `verworfen=${d.discarded} statt 1 — genau die Fehlanzeige ohne Grund ` + 'gehört zurückgenommen',
       );
       assert.equal(
         (await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key = $1`, [`set:${P}_3`])).c,
@@ -113,7 +113,7 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
         'Die grundlose Fehlanzeige steht noch — dann bleibt das Bild weitere ' +
           'sieben Tage aus, obwohl nie etwas an ihm war',
       );
-      assert.ok(d.dauer_minuten >= 0, 'Die Dauerabschätzung fehlt');
+      assert.ok(d.duration_minutes >= 0, 'Die Dauerabschätzung fehlt');
     });
 
     await t.test('a second click does not requeue anything finished', async () => {
@@ -135,14 +135,14 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
         }
       }
       try {
-        const d = await (await fetch(`${base}/api/v1/admin/catalog-images`, { method: 'POST' })).json();
+        const d = await (await fetch(`${base}/api/v2/admin/catalog-images`, { method: 'POST' })).json();
         assert.equal(d.queued, 0, `${d.queued} eingereiht, obwohl alles fertig ist — genau Marcos Befund`);
         assert.equal(d.pending, 0, 'Die Warteschlange darf leer bleiben');
       } finally {
         for (const f of extra) fs.rmSync(f, { force: true });
         // Bring the queue back into its initial state — the
         // substep below processes it and needs it filled.
-        await (await fetch(`${base}/api/v1/admin/catalog-images`, { method: 'POST' })).json();
+        await (await fetch(`${base}/api/v2/admin/catalog-images`, { method: 'POST' })).json();
       }
     });
 
@@ -153,7 +153,7 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       // skipped). Since an earlier round the pass delivers a
       // breakdown instead of a bare number — otherwise the job was silent
       // exactly when it only skips.
-      for (let i = 0; i < 3; i++) n += (await IQ._workStack()).gesamt;
+      for (let i = 0; i < 3; i++) n += (await IQ._workStack()).total;
       assert.equal(
         geladen,
         7,
@@ -189,10 +189,10 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       // default: for old sets Rebrickable mostly has no image at all, and
       // refetching all of them costs hours at thirty requests per minute.
       const d = await (
-        await fetch(`${base}/api/v1/admin/catalog-images`, {
+        await fetch(`${base}/api/v2/admin/catalog-images`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alle_erneut: true }),
+          body: JSON.stringify({ all_again: true }),
         })
       ).json();
       assert.equal(d.success, true);

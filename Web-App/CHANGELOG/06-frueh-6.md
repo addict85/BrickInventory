@@ -210,7 +210,7 @@ ein Dialog kann die Frage nicht mehr falsch beantworten.
 
 ### 2. Eigentümerwechsel über die App war ein stiller No-op — Fehler
 
-`routes/api_v1/acquisitions.ts`
+`routes/api/acquisitions.ts`
 
 Die Android-App schickt `owner_user_id` an die v1-PUT-Routen. Die gemeinsame
 Fabrik dort las aber nur Menge, Preis und Zustand: Die Anfrage lief als **leeres
@@ -247,7 +247,7 @@ Logzeile. Alle anderen Schreibwege am Bestand laufen längst unter der Sperre.
 Neu: beides in **einer** gesperrten Transaktion. Damit der Netzaufruf nicht in
 der offenen Transaktion hängt, ist die Preisermittlung als
 `priceForNewAcquisition()` herausgezogen und läuft **vor** der Sperre — dasselbe
-Muster wie in `routes/api_v1/acquisitions.ts`. Reihenfolge (Cache → BrickLink →
+Muster wie in `routes/api/acquisitions.ts`. Reihenfolge (Cache → BrickLink →
 Historie) und Ergebnis unverändert, gegen echtes Postgres nachgestellt:
 Erhöhung legt die Tageszeile an, Reduktion bleibt LIFO.
 

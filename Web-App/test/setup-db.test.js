@@ -7,7 +7,7 @@
  *   B  Object.hasOwn removed in /quelle-testen     → red: „__proto__ gilt als Quelle"
  *   C  istVerwalter check in /einrichtung gone     → red: „Nicht-Verwalter sieht den Stand"
  *   D  (04.11.) in quellenAbsage the line for missing keys removed
- *      → red: „fehlender Schlüssel in Klartext" (quelle_test_fehlgeschlagen)
+ *      → red: „fehlender Schlüssel in Klartext" (source_test_failed)
  *   E  (13.11.) the check switchMust() removed in inboundLock() → red:
  *      “with the initial password the entry only leads to the change” (200 instead of 403)
  *
@@ -56,7 +56,7 @@ test('setup wizard', { concurrency: 1 }, async t => {
   const V = testServer(_req, { sitzung: verwalter, t });
   const N = testServer(_req, { sitzung: { userId: uid, isAdmin: false }, t });
   const ruf = async (srv, weg, body) => {
-    const r = await fetch(srv.base + '/api/v1/settings' + weg, {
+    const r = await fetch(srv.base + '/api/v2/settings' + weg, {
       method: body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json' },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -71,56 +71,56 @@ test('setup wizard', { concurrency: 1 }, async t => {
 
   try {
     await t.test('with the initial password the entry only leads to the change', async () => {
-      const r = await ruf(V, '/einrichtung');
+      const r = await ruf(V, '/setup');
       assert.equal(r.status, 403, JSON.stringify(r.body));
-      assert.equal(r.body.code, 'passwort_wechsel_noetig');
+      assert.equal(r.body.code, 'password_change_required');
     });
 
     await t.test('fresh installation after the mandatory change: open, without password step', async () => {
       // Like POST /auth/change-password: account and session forget the obligation.
       await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
       delete verwalter.mussPasswortAendern;
-      const r = await ruf(V, '/einrichtung');
+      const r = await ruf(V, '/setup');
       assert.equal(r.status, 200, JSON.stringify(r.body));
-      assert.equal(r.body.offen, true);
-      assert.equal(r.body.passwort_aendern, false);
-      assert.deepEqual(r.body.quellen, { rebrickable: false, brickset: false, bricklink: false });
-      const n = await ruf(N, '/einrichtung');
+      assert.equal(r.body.open, true);
+      assert.equal(r.body.change_password, false);
+      assert.deepEqual(r.body.sources, { rebrickable: false, brickset: false, bricklink: false });
+      const n = await ruf(N, '/setup');
       assert.equal(n.status, 403, 'Nicht-Verwalter sieht den Stand');
-      assert.equal(n.body.code, 'nur_admins');
+      assert.equal(n.body.code, 'admins_only');
     });
 
     await t.test('set up: key present, password set → no longer open', async () => {
       await setze('rebrickable_api_key', 'abc');
       await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
-      const r = await ruf(V, '/einrichtung');
-      assert.equal(r.body.offen, false);
-      assert.equal(r.body.quellen.rebrickable, true);
+      const r = await ruf(V, '/setup');
+      assert.equal(r.body.open, false);
+      assert.equal(r.body.sources.rebrickable, true);
       assert.ok(!JSON.stringify(r.body).includes('abc'), 'Der Stand gibt den Schlüssel heraus');
     });
 
     await t.test('“Fertig” closes it even if something is still missing', async () => {
       await db.run('DELETE FROM global_settings WHERE key = $1', ['rebrickable_api_key']);
-      assert.equal((await ruf(V, '/einrichtung')).body.offen, true);
-      assert.equal((await ruf(V, '/einrichtung/fertig', {})).status, 200);
-      assert.equal((await ruf(V, '/einrichtung')).body.offen, false, 'erscheint nach Fertig weiter');
+      assert.equal((await ruf(V, '/setup')).body.open, true);
+      assert.equal((await ruf(V, '/setup/complete', {})).status, 200);
+      assert.equal((await ruf(V, '/setup')).body.open, false, 'erscheint nach Fertig weiter');
     });
 
     await t.test('test button: only known sources, without a key an understandable refusal', async () => {
       for (const q of ['gibtsnicht', '__proto__', 'constructor']) {
-        const r = await ruf(V, '/quelle-testen', { quelle: q });
+        const r = await ruf(V, '/test-source', { source: q });
         assert.equal(r.status, 400, q);
-        assert.equal(r.body.code, 'quelle_unbekannt', `${q} gilt als Quelle`);
+        assert.equal(r.body.code, 'source_unknown', `${q} gilt als Quelle`);
       }
-      const bs = await ruf(V, '/quelle-testen', { quelle: 'brickset' });
+      const bs = await ruf(V, '/test-source', { source: 'brickset' });
       assert.equal(bs.status, 400);
-      assert.equal(bs.body.code, 'quelle_ohne_schluessel', 'fehlender Schlüssel in Klartext');
+      assert.equal(bs.body.code, 'source_without_key', 'fehlender Schlüssel in Klartext');
       assert.match(bs.body.error, /Für Brickset ist noch kein Zugang gespeichert/);
       assert.match(bs.body.details, /nicht konfiguriert/, 'der rohe Grund steht unter „Details“');
-      const bl = await ruf(V, '/quelle-testen', { quelle: 'bricklink' });
-      assert.equal(bl.body.code, 'quelle_ohne_schluessel');
+      const bl = await ruf(V, '/test-source', { source: 'bricklink' });
+      assert.equal(bl.body.code, 'source_without_key');
       assert.match(bl.body.details, /nicht vollständig/);
-      assert.equal((await ruf(N, '/quelle-testen', { quelle: 'brickset' })).status, 403);
+      assert.equal((await ruf(N, '/test-source', { source: 'brickset' })).status, 403);
     });
   } finally {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]).catch(() => {});

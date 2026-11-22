@@ -20,12 +20,12 @@ const { startApp } = require('./helpers/app-browser');
 test('admin pages and unknown paths for normal accounts', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `nutzer_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]);
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, ruhig } = app;

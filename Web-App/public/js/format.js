@@ -100,7 +100,7 @@ export function amountForField(v) {
 }
 
 /**
- * Percent in the UI's form (de-DE "+51,1 %", en-GB "+51.1%"), so that it does not stand in a second notation next to the amounts from
+ * Percent in the UI's form (de-DE "+51,1 %", en-GB "+51.1%"), so that it does not state in a second notation next to the amounts from
  * fmtN().
  * @param {number|string} v  percentage value (51.1, not 0.511)
  * @param {{sign?: boolean, places?: number}} [o]

@@ -48,7 +48,7 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
 
   // The queue works concurrently — wait briefly after the fetch.
   const visit = async () => {
-    await (await fetch(`${base}/api/v1/catalog/sets?limit=60&page=1&q=${PREFIX}`)).json();
+    await (await fetch(`${base}/api/v2/catalog/sets?limit=60&page=1&q=${PREFIX}`)).json();
     await new Promise(r => setTimeout(r, 700));
   };
 
@@ -81,7 +81,7 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
       const IM = _req('src/images/imageMisses.js');
       IM.rememberMissing('set:' + PREFIX + '_frist');
       assert.equal(IM.isKnownMissing('set:' + PREFIX + '_frist'), true);
-      testClock().vor(7 * 24 * 60 * 60 * 1000 + 1);
+      testClock().ago(7 * 24 * 60 * 60 * 1000 + 1);
       try {
         assert.equal(IM.isKnownMissing('set:' + PREFIX + '_frist'), false, 'die Frist ist abgelaufen');
       } finally {

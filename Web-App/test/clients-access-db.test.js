@@ -27,12 +27,12 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-/** @type {{ pfad: string, schluessel: string | undefined }[]} */
+/** @type {{ path: string, schluessel: string | undefined }[]} */
 const fetches = [];
 // @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
 https.get = (url, opts, cb) => {
   const u = new URL(url);
-  fetches.push({ pfad: u.pathname, schluessel: /** @type {any} */ (opts)?.headers?.Authorization });
+  fetches.push({ path: u.pathname, schluessel: /** @type {any} */ (opts)?.headers?.Authorization });
   const req = new EventEmitter();
   setImmediate(() =>
     cb(
@@ -93,8 +93,8 @@ test('via the services fetches carry the stored key and count', { concurrency: 1
 
   const { RbSet } = _req('src/externalSources/index.js');
   fetches.length = 0;
-  const antwort = await S.testServices().externalSources.quellen.rebrickableJson('/lego/sets/10001-1/', RbSet);
-  assert.deepEqual(antwort, { set_num: '10001-1', name: 'Attrappe' });
-  assert.deepEqual(fetches, [{ pfad: '/api/v3/lego/sets/10001-1/', schluessel: 'key schluessel-zugang-1' }]);
+  const response = await S.testServices().externalSources.sources.rebrickableJson('/lego/sets/10001-1/', RbSet);
+  assert.deepEqual(response, { set_num: '10001-1', name: 'Attrappe' });
+  assert.deepEqual(fetches, [{ path: '/api/v3/lego/sets/10001-1/', schluessel: 'key schluessel-zugang-1' }]);
   assert.equal(await zaehler(), vorher + 1);
 });

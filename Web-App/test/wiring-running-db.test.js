@@ -62,7 +62,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
   const mit = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   await t.test('1. the PDF download does not respond with the file without a token', async () => {
-    const r = await fetch(`${ohne.base}/api/v1/sets/partslist-pdf/download/irgendwas`);
+    const r = await fetch(`${ohne.base}/api/v2/sets/partslist-pdf/download/irgendwas`);
     assert.ok(
       r.status === 401 || r.status === 403,
       `Erwartet 401 oder 403, bekam ${r.status}. Ohne requireToken lieferte diese ` +
@@ -108,7 +108,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
       if (baseBefore === undefined) environment({ APP_BASE_URL: undefined });
       else environment({ APP_BASE_URL: baseBefore });
     });
-    const r = await fetch(`${mit.base}/api/v1/auth/register`, {
+    const r = await fetch(`${mit.base}/api/v2/auth/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org', password: '12345678901', language: 'de' }),
@@ -132,7 +132,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
 
     // Opposite direction: twelve characters pass. Without it the rule would also be
     // satisfied if EVERY registration failed.
-    const r2 = await fetch(`${mit.base}/api/v1/auth/register`, {
+    const r2 = await fetch(`${mit.base}/api/v2/auth/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling2', email: 'n2@example.org', password: 'zwoelf12Zchn', language: 'de' }),
@@ -162,7 +162,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     assert.equal(zeilen.length, 2, 'Vorbedingung: zwei Erfassungen an zwei Tagen');
 
     // Move the OLDER one to the day of the younger one.
-    const r = await fetch(`${mit.base}/api/v1/sets/${SN}/acquisitions/${zeilen[0].id}`, {
+    const r = await fetch(`${mit.base}/api/v2/sets/${SN}/acquisitions/${zeilen[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ date: heute }),
@@ -184,7 +184,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     // Opposite direction: a FREE day passes. Without it the rule would also be
     // satisfied if every date change were rejected.
     const dayBeforeYesterday = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
-    const r2 = await fetch(`${mit.base}/api/v1/sets/${SN}/acquisitions/${zeilen[0].id}`, {
+    const r2 = await fetch(`${mit.base}/api/v2/sets/${SN}/acquisitions/${zeilen[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ date: dayBeforeYesterday }),
@@ -197,7 +197,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
   });
 
   await t.test('5. moving a set without acquisition_ids is rejected', async () => {
-    const r = await fetch(`${mit.base}/api/v1/sets/${SN}/move`, {
+    const r = await fetch(`${mit.base}/api/v2/sets/${SN}/move`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to_user_id: KIND }),

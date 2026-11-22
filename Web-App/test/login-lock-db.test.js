@@ -91,10 +91,10 @@ async function prepare(t) {
 }
 
 test('proxyTrust: whom X-Forwarded-For is believed', () => {
-  const vertraut = (setting, adresse) => {
+  const vertraut = (setting, address) => {
     const app = express();
     app.set('trust proxy', proxyTrust(setting));
-    return app.get('trust proxy fn')(adresse, 0);
+    return app.get('trust proxy fn')(address, 0);
   };
   // Without a setting only loopback: outside of Docker 172.16/12 is a network like any other.
   for (const eigen of ['127.0.0.1', '127.8.9.10', '::1', '::ffff:127.0.0.1'])
@@ -275,7 +275,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
   const anmelden = async (password, ip) => {
     try {
       return (
-        await fetch(`http://127.0.0.1:${port}/api/v1/auth/login`, {
+        await fetch(`http://127.0.0.1:${port}/api/v2/auth/login`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
           body: JSON.stringify({ username: NAME, password }),
@@ -286,10 +286,10 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
     }
   };
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
-  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/`).catch(() => null)) === null; i++)
     await warte(250);
   assert.equal(
-    (await fetch(`http://127.0.0.1:${port}/api/v1/`)).headers.get('x-powered-by'),
+    (await fetch(`http://127.0.0.1:${port}/api/v2/`)).headers.get('x-powered-by'),
     null,
     'Der Server verrät X-Powered-By',
   );

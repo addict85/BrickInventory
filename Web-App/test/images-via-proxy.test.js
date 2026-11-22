@@ -38,15 +38,15 @@ test('no src attribute inserts an image field without imgUrl()/fullUrl()', () =>
     // And the templates via imageTag({ src: … }) — up to the comma at bracket depth 0.
     for (const m of src.matchAll(/imageTag\(\{\s*src:\s*/g)) {
       let i = m.index + m[0].length,
-        tiefe = 0,
+        depth = 0,
         ausdruck = '';
       for (; i < src.length; i++) {
         const c = src[i];
-        if ('([{'.includes(c)) tiefe++;
+        if ('([{'.includes(c)) depth++;
         else if (')]}'.includes(c)) {
-          if (tiefe === 0) break;
-          tiefe--;
-        } else if (c === ',' && tiefe === 0) break;
+          if (depth === 0) break;
+          depth--;
+        } else if (c === ',' && depth === 0) break;
         ausdruck += c;
       }
       pruefe(ausdruck, m.index);

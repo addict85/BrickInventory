@@ -49,15 +49,15 @@ test('metrics', { concurrency: 1 }, async t => {
   await t.test('HTTP responses are counted by route pattern and status, not by path', async st => {
     M.resetMetrics();
     const { base } = testServer(_req, { t: st });
-    assert.equal((await fetch(`${base}/api/v1/sets/10294-1`)).status, 401);
-    await fetch(`${base}/api/v1/sets/10295-1`);
+    assert.equal((await fetch(`${base}/api/v2/sets/10294-1`)).status, 401);
+    await fetch(`${base}/api/v2/sets/10295-1`);
     const text = await (await fetch(`${base}/metrics`)).text();
     assert.equal(
-      value(text, 'http_requests_total', { method: 'GET', route: '/api/v1/sets/:setNumber', status: 401 }),
+      value(text, 'http_requests_total', { method: 'GET', route: '/api/v2/sets/:setNumber', status: 401 }),
       2,
     );
     assert.equal(
-      value(text, 'http_request_duration_seconds_count', { method: 'GET', route: '/api/v1/sets/:setNumber' }),
+      value(text, 'http_request_duration_seconds_count', { method: 'GET', route: '/api/v2/sets/:setNumber' }),
       2,
     );
     assert.doesNotMatch(text, /10294-1/, 'ein roher Pfad als Bezeichnung liesse die Reihen unbegrenzt wachsen');
@@ -160,7 +160,7 @@ test('metrics', { concurrency: 1 }, async t => {
   await t.test('an error response names the request, taken over from X-Request-Id', async st => {
     const { base } = testServer(_req, { t: st });
     // Without login: the entrance answers 401 through the common error path.
-    const r = await fetch(`${base}/api/v1/sets`, { headers: { 'X-Request-Id': 'abc-123' } });
+    const r = await fetch(`${base}/api/v2/sets`, { headers: { 'X-Request-Id': 'abc-123' } });
     assert.equal(r.status, 401);
     assert.equal(r.headers.get('x-request-id'), 'abc-123');
     assert.equal((await r.json()).request_id, 'abc-123');

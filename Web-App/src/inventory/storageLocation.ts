@@ -17,7 +17,7 @@ export type LagerArt = StorageTable;
 export function normalizeLocation(v: unknown): string | null {
   const s = String(v ?? '').trim();
   if (!s) return null;
-  if (s.length > LOCATION_MAX_CHARS) failDomain('ungueltig', 'lagerort_zu_lang');
+  if (s.length > LOCATION_MAX_CHARS) failDomain('ungueltig', 'storage_too_long');
   return s;
 }
 
@@ -31,8 +31,8 @@ export interface Storage {
 
 function nameOrError(v: unknown): string {
   const s = String(v ?? '').trim();
-  if (!s) failDomain('ungueltig', 'lagerort_leer');
-  if (s.length > LOCATION_MAX_CHARS) failDomain('ungueltig', 'lagerort_zu_lang');
+  if (!s) failDomain('ungueltig', 'storage_empty');
+  if (s.length > LOCATION_MAX_CHARS) failDomain('ungueltig', 'storage_too_long');
   return s;
 }
 
@@ -52,15 +52,16 @@ export async function createStorage(
   k: InventoryContext,
   userId: number,
   name: string | undefined,
-): Promise<{ ort: Storage; war_neu: boolean }> {
+): Promise<{ location: Storage; was_new: boolean }> {
   const n = nameOrError(name);
   const isNew = await places.addLocationOne(k.db, userId, n);
-  if (isNew) return { ort: { id: parseInt(String(isNew.id), 10), user_id: userId, name: isNew.name }, war_neu: true };
+  if (isNew)
+    return { location: { id: parseInt(String(isNew.id), 10), user_id: userId, name: isNew.name }, was_new: true };
   const alt = await places.ortNachName(k.db, userId, n);
   // Without a hit something other than a duplicate went wrong — better a
   // refusal than a silent "already there".
-  if (!alt) failDomain('intern', 'lagerort_unbekannt');
-  return { ort: { id: parseInt(String(alt.id), 10), user_id: userId, name: alt.name }, war_neu: false };
+  if (!alt) failDomain('intern', 'storage_unknown');
+  return { location: { id: parseInt(String(alt.id), 10), user_id: userId, name: alt.name }, was_new: false };
 }
 
 /** The assignment is an ID; the new name thus applies everywhere immediately. */
@@ -72,10 +73,10 @@ export async function renameStorage(
 ): Promise<Storage> {
   const isNew = nameOrError(name);
   const alt = await places.ortName(k.db, id, userId);
-  if (!alt) failDomain('nicht_gefunden', 'lagerort_unbekannt');
+  if (!alt) failDomain('not_found', 'storage_unknown');
   // The refusal beforehand is easier to understand than the error at the index.
   const collision = await places.otherLocationSameNamed(k.db, userId, isNew, id);
-  if (collision) failDomain('konflikt', 'lagerort_doppelt');
+  if (collision) failDomain('konflikt', 'storage_duplicate');
   await places.writeLocationNames(k.db, id, userId, isNew);
   return { id, user_id: userId, name: isNew };
 }
@@ -83,12 +84,12 @@ export async function renameStorage(
 /** Refusal as long as something is still in it: silent clearing would lose assignments
  * the deleting user did not have in view, with no way back. */
 export async function deleteStorage(k: InventoryContext, userId: number, id: number): Promise<void> {
-  const ort = await places.ortName(k.db, id, userId);
-  if (!ort) failDomain('nicht_gefunden', 'lagerort_unbekannt');
+  const location = await places.ortName(k.db, id, userId);
+  if (!location) failDomain('not_found', 'storage_unknown');
   // All three tables, via the ID: otherwise a place could be deleted that
   // only holds figures or is assigned with a different spelling.
-  const belegt = await places.locationOccupancy(k.db, k.lesevertrag, userId, id);
-  if (parseInt(String(belegt?.n ?? 0), 10) > 0) failDomain('konflikt', 'lagerort_in_benutzung');
+  const belegt = await places.locationOccupancy(k.db, k.readContract, userId, id);
+  if (parseInt(String(belegt?.n ?? 0), 10) > 0) failDomain('konflikt', 'storage_in_use');
   await places.removeLocation(k.db, id, userId);
 }
 
@@ -98,14 +99,14 @@ export async function lagerorte(k: InventoryContext, scopeChoice: Sicht | ScopeI
   const uids = asIds(scope);
   // Grouped by NAME, on purpose: "basement" of grandfather and grandchild
   // are two stock rows, but belong together in the overview.
-  const rows = await places.locationsWithInventory(k.db, k.lesevertrag, uids);
+  const rows = await places.locationsWithInventory(k.db, k.readContract, uids);
   // SUM() comes from the driver as a string; hence parseInt below.
-  type Row = { ort: string; sets: string | number; teile: string | number; figuren: string | number };
+  type Row = { location: string; sets: string | number; parts: string | number; minifigs: string | number };
   return ((rows as Row[]) || []).map(r => ({
-    ort: r.ort,
+    location: r.location,
     sets: parseInt(String(r.sets), 10) || 0,
-    teile: parseInt(String(r.teile), 10) || 0,
-    figuren: parseInt(String(r.figuren), 10) || 0,
+    parts: parseInt(String(r.parts), 10) || 0,
+    minifigs: parseInt(String(r.minifigs), 10) || 0,
   }));
 }
 
@@ -114,7 +115,7 @@ export const DEFAULT_KEY = 'default_storage_id';
 
 /** Only a place of the account: a default whose place was deleted is none, and a foreign ID does not count. */
 export async function defaultOf(k: InventoryContext, userId: number): Promise<Storage | null> {
-  const id = Number.parseInt(String((await k.einstellungen.userValue(userId, DEFAULT_KEY)) ?? '').trim(), 10);
+  const id = Number.parseInt(String((await k.settings.userValue(userId, DEFAULT_KEY)) ?? '').trim(), 10);
   const row = Number.isInteger(id) ? await places.locationOfAccount(k.db, id, userId) : undefined;
   if (!row) return null;
   return { id: parseInt(String(row.id), 10), user_id: parseInt(String(row.user_id), 10), name: row.name };
@@ -124,8 +125,8 @@ export async function defaultOf(k: InventoryContext, userId: number): Promise<St
 export async function locationForNewEntry(k: InventoryContext, userId: number, given: unknown): Promise<string | null> {
   // The length limit first: a place that is too long should be refused before anything
   // is created.
-  const ort = normalizeLocation(given);
-  if (ort) return ort;
+  const location = normalizeLocation(given);
+  if (location) return location;
   if (given !== undefined && given !== null) return null;
   return (await defaultOf(k, userId))?.name ?? null;
 }

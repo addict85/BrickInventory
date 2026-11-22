@@ -71,8 +71,7 @@ test('reload instructions', { concurrency: 1 }, async t => {
                                   ON CONFLICT DO NOTHING`,
       [SET, URL_A],
     );
-  const vorhanden = async () =>
-    !!(await db.get('SELECT 1 AS ok FROM shared_instructions WHERE set_number = $1', [SET]));
+  const existing = async () => !!(await db.get('SELECT 1 AS ok FROM shared_instructions WHERE set_number = $1', [SET]));
 
   const drossel = () => db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`anleitung-neu|${SET}`]);
   await drossel();
@@ -86,21 +85,21 @@ test('reload instructions', { concurrency: 1 }, async t => {
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
-  const loadNew = async (als, nummer = SET) => {
+  const loadNew = async (als, number = SET) => {
     Object.assign(sitzung, als);
-    return (await fetch(`${base}/api/v1/sets/${nummer}/instructions`, { method: 'POST' })).status;
+    return (await fetch(`${base}/api/v2/sets/${number}/instructions`, { method: 'POST' })).status;
   };
 
   await t.test('a foreign account', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: false }), 404);
-    assert.ok(await vorhanden(), 'Die geteilte Anleitung ist weg, obwohl das Konto das Set nicht hat');
+    assert.ok(await existing(), 'Die geteilte Anleitung ist weg, obwohl das Konto das Set nicht hat');
   });
 
   await t.test('whoever has the set does not replace a shared instruction', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 403);
-    assert.ok(await vorhanden(), 'die geteilte Anleitung ist für alle weg');
+    assert.ok(await existing(), 'die geteilte Anleitung ist für alle weg');
   });
 
   await t.test('whoever has the set fetches a missing one once a day', async () => {
@@ -116,11 +115,11 @@ test('reload instructions', { concurrency: 1 }, async t => {
   await t.test('the admin replaces', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202);
-    assert.ok(!(await vorhanden()), 'der Verwalter hat die alte Zeile nicht ersetzt');
-    const auftrag = await db.get(`SELECT status FROM jobs WHERE type = 'anleitung' AND dedupe_key = $1`, [
-      `anleitung:${SET}`,
+    assert.ok(!(await existing()), 'der Verwalter hat die alte Zeile nicht ersetzt');
+    const auftrag = await db.get(`SELECT status FROM jobs WHERE type = 'instructions' AND dedupe_key = $1`, [
+      `instructions:${SET}`,
     ]);
-    assert.equal(auftrag?.status, 'offen', 'das Neuladen steht als Auftrag an');
+    assert.equal(auftrag?.status, 'pending', 'das Neuladen steht als Auftrag an');
     await anleitung();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202, 'den Verwalter hält die Drossel nicht');
   });

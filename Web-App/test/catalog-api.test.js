@@ -1,10 +1,10 @@
 /**
- * Integration test for /api/v1/catalog against real PostgreSQL.
+ * Integration test for /api/v2/catalog against real PostgreSQL.
  * ONLY requireToken (auth) is stubbed — router, db module and SQL run
  * 1:1 as in production. Checks among other things the future-year edge case (only a few
  * sets in the maximum year), from-to ranges, theme inheritance and owned flags.
  *
- * Counter-checks: (05.11.2026) page_size not read in routes/api_v1/catalog.ts
+ * Counter-checks: (05.11.2026) page_size not read in routes/api/catalog.ts
  * → red: “Pagination” (the page has 60 instead of 10 sets). (10.11.2026) in
  * src/catalog/repository/catalogSearch.ts c.image_local removed from SET_SPALTEN →
  * red: “the list names the local image …” (undefined instead of the address); there
@@ -30,7 +30,7 @@ const { keineDb } = require('./helpers/db');
 // its dependency, and only a hit in the same require cache entry
 // replaces it effectively.
 const { DIST, testData } = require('./helpers/sources');
-const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
+const mwPath = require.resolve(path.join(DIST, 'routes/api', 'middleware.js'));
 require.cache[mwPath] = /** @type {any} */ ({
   id: mwPath,
   filename: mwPath,
@@ -139,9 +139,10 @@ test('catalog API (Postgres integration)', async t => {
   }
   await seed();
   const app = express();
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/catalog.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/catalog.js'));
   const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}/api/v1`;
+  const base = `http://localhost:${srv.address().port}/api/v2`;
   const get = async p => {
     const r = await fetch(base + p);
     return { status: r.status, body: await r.json() };

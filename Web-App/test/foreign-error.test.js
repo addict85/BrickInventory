@@ -23,7 +23,7 @@ function fetchOfUs(ursprung = 'https://lego.bigolin.online') {
   return new Function('location', `${text}; return fromUs;`)({ origin: ursprung });
 }
 
-const withStack = (nachricht, stapel) => Object.assign(new Error(nachricht), { stack: stapel });
+const withStack = (message, stapel) => Object.assign(new Error(message), { stack: stapel });
 const UNS = 'https://lego.bigolin.online';
 
 test('an extension triggers no error with us', () => {
@@ -99,10 +99,10 @@ test('both listeners go through the check', () => {
   // those of an extension land there just the same.
   // Braces counted instead of `indexOf('});')`: without a curly block that would hit the next listener.
   const argument = (text, ab) => {
-    let tiefe = 0;
+    let depth = 0;
     for (let i = text.indexOf('(', ab); i < text.length; i++) {
-      if (text[i] === '(') tiefe++;
-      else if (text[i] === ')' && --tiefe === 0) return text.slice(ab, i + 1);
+      if (text[i] === '(') depth++;
+      else if (text[i] === ')' && --depth === 0) return text.slice(ab, i + 1);
     }
     return '';
   };

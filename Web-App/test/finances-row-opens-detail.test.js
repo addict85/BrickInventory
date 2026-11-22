@@ -6,7 +6,7 @@
  * Counter-check (measured on 07.11.2026): openManDetail() in kauf-dialoge.js as before —
  * if the entry is missing in the cache, reload loadManualParts()/loadManualFigsTable() (with the tab's search)
  * → red: “with search in the tabs”, title { teil: null, figur: null } (the dialog stayed closed, only
- * /v1/parts/manual?search=Plate or /v1/minifigs/manual?search=Marty came). “without filter” stayed green.
+ * /v2/parts/manual?search=Plate or /v2/minifigs/manual?search=Marty came). “without filter” stayed green.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ const teil = {
   quantity: 2,
   source: 'manual',
   avg_price: 0.5,
-  wert_gesamt: 1,
+  value_total: 1,
   acquisitions: [],
 };
 const figur = {
@@ -33,7 +33,7 @@ const figur = {
   quantity: 1,
   source: 'manual',
   avg_price: 3,
-  wert_gesamt: 3,
+  value_total: 3,
   acquisitions: [],
 };
 
@@ -45,29 +45,29 @@ const gefiltert = (schluessel, eintrag) => url => ({
 
 async function oeffne() {
   const o = await openUi({
-    '/v1/finance/parts-valuation': { ...ANMELDUNG['/v1/finance/parts-valuation'], parts: [teil], total_value: '1.00' },
-    '/v1/finance/minifigs-valuation': {
-      ...ANMELDUNG['/v1/finance/minifigs-valuation'],
+    '/v2/finance/parts-valuation': { ...ANMELDUNG['/v2/finance/parts-valuation'], parts: [teil], total_value: '1.00' },
+    '/v2/finance/minifigs-valuation': {
+      ...ANMELDUNG['/v2/finance/minifigs-valuation'],
       figs: [figur],
       total_value: '3.00',
     },
-    '/v1/parts/manual': gefiltert('parts', teil),
-    '/v1/minifigs/manual': gefiltert('figs', figur),
+    '/v2/parts/manual': gefiltert('parts', teil),
+    '/v2/minifigs/manual': gefiltert('figs', figur),
   });
   return o;
 }
 
 /** Click the row (not the row button) and return the dialog title; close it again afterwards. */
-async function klicke(o, art) {
-  const zeile = o.d.querySelector(`#fin-tbl [data-fin-kind="${art}"] tbody tr[data-click="openManDetail"]`);
-  assert.ok(zeile, `keine ${art}-Zeile in der Finanztabelle`);
+async function klicke(o, kind) {
+  const row = o.d.querySelector(`#fin-tbl [data-fin-kind="${kind}"] tbody tr[data-click="openManDetail"]`);
+  assert.ok(row, `keine ${kind}-Zeile in der Finanztabelle`);
   const m = o.d.getElementById('man-detail-modal');
-  zeile.querySelector('td.fin-value').click();
-  const offen = await warte(() => m.classList.contains('open'), 2000);
+  row.querySelector('td.fin-value').click();
+  const open = await warte(() => m.classList.contains('open'), 2000);
   const titel = o.d.getElementById('man-detail-tit').textContent;
-  if (offen) m.querySelector('[data-click="closeManDetail"]').click();
+  if (open) m.querySelector('[data-click="closeManDetail"]').click();
   await o.ruhig();
-  return offen ? titel : null;
+  return open ? titel : null;
 }
 
 for (const [fall, suche] of [
@@ -91,14 +91,14 @@ for (const [fall, suche] of [
       assert.deepEqual(titel, { teil: 'Brick 2 x 4', figur: 'Doc Brown' }, 'jede Zeile öffnet ihr eigenes Detail');
       const urls = o.aufrufe.map(a => a.url);
       assert.ok(
-        urls.some(u => u.includes('/v1/parts/3001/4/acquisitions')),
+        urls.some(u => u.includes('/v2/parts/3001/4/acquisitions')),
         'Kaufpreise des Teils geladen',
       );
       assert.ok(
-        urls.some(u => u.includes('/v1/minifigs/fig-000002/acquisitions')),
+        urls.some(u => u.includes('/v2/minifigs/fig-000002/acquisitions')),
         'Kaufpreise der Figur geladen',
       );
-      assert.deepEqual(o.fehler, []);
+      assert.deepEqual(o.error, []);
     } finally {
       o.w.close();
     }

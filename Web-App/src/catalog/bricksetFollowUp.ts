@@ -30,7 +30,7 @@ async function bricksetFollowUp(k: CatalogContext, n: Payload<'brickset'>, lauf?
   if ((await instructionCount(k, sn)) === 0) {
     await loadSetInstructions(k, sn).catch(logAndContinue('brickset-retry:setAnleitungenLaden'));
   }
-  await k.jobQueue.pauseKind('brickset', new Date(k.uhr.jetzt() + 1000), 'Abstand zwischen zwei Abrufen');
+  await k.jobQueue.pauseKind('brickset', new Date(k.clock.now() + 1000), 'Abstand zwischen zwei Abrufen');
 }
 
 const tag = (d: Date) =>
@@ -47,7 +47,7 @@ async function bricksetList(k: CatalogContext) {
     name: names.get(w.set_number) ?? null,
     attempts: w.versuch,
     retry_after: tag(new Date(w.faellig_ab)),
-    last_error: w.fehler,
+    last_error: w.error,
     created_at: w.erstellt,
   }));
 }

@@ -34,7 +34,7 @@ export async function manualMinifigPurchase(
     effectiveUnitPrice: r.unitPrice,
     effectivePurchasePrice: r.kaufpreis,
     acquisitionPrice: r.erfassungsPreis,
-    effectiveCondition: r.zustand,
+    effectiveCondition: r.condition,
     priceFromCondition: r.priceFromState,
     estimated: r.geschaetzt,
   };
@@ -43,10 +43,10 @@ export async function manualMinifigPurchase(
 /** Twin of manuellesTeilAnlegen — one implementation for webapp and app. */
 export async function addManualMinifig(k: MinifigsContext, uid: number, body: Record<string, unknown>) {
   // Without a given location, the account's default location applies.
-  const ort = await k.inventory.locationService.locationForNewEntry(uid, body?.storage);
+  const location = await k.inventory.locationService.locationForNewEntry(uid, body?.storage);
   const result = await addManualMinifigInternal(k, uid, body);
-  if (ort && result?.fig_number) {
-    await k.inventory.locationService.setLocation('fig', [uid], [String(result.fig_number)], ort);
+  if (location && result?.fig_number) {
+    await k.inventory.locationService.setLocation('fig', [uid], [String(result.fig_number)], location);
   }
   return result;
 }
@@ -61,7 +61,7 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
   // Allows several acquisitions of the same minifig at different times.
   const acquiredAt = String(body?.acquired_at || '').trim() || null;
   // Only looked-up data goes into the catalog as verified.
-  const input = { name: V.optionalText(body?.fig_name, 200), bild: V.optionalImageUrl(body?.image_url) };
+  const input = { name: V.optionalText(body?.fig_name, 200), image: V.optionalImageUrl(body?.image_url) };
   const { fig_name, found } = await minifigDescription(k, uid, num, input);
 
   const existing = await findManualMinifig(k, uid, num);
@@ -98,7 +98,7 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
   // The catalog first: if the request fails in between, a description without
   // a holding is invisible, a holding without a name is not.
   await k.catalog.rememberMinifig(num, found?.fig_name, found?.image_url);
-  await k.catalog.rememberMinifig(num, input.name, input.bild, null, k.db, uid);
+  await k.catalog.rememberMinifig(num, input.name, input.image, null, k.db, uid);
   // Without quantity, price and condition: they sit in the acquisition below.
   await k.inventory.manuell.createRow('fig', uid, [num]);
   if (blNum) await k.catalog.rememberOwnBlNumber(uid, 'fig', num, blNum);
@@ -121,23 +121,23 @@ async function minifigDescription(
   k: MinifigsContext,
   uid: number,
   num: string,
-  input: { name: string | null; bild: string | null },
+  input: { name: string | null; image: string | null },
 ) {
   let fig_name = input.name;
-  let image_url = input.bild;
+  let image_url = input.image;
   let found: Awaited<ReturnType<Sources['getMinifigInfo']>> | null = null;
   if (fig_name) return { fig_name, found };
 
   const local = await k.catalog.catalogMinifig(num, uid);
   if (local) {
     fig_name = local.name;
-    image_url = image_url || local.bild;
+    image_url = image_url || local.image;
   }
   // `hatImage`, not `image_url`: a local path would fail the URL check but
   // still proves there's nothing left to fetch.
   if (!fig_name || !(image_url || local?.hatImage)) {
     // Without Rebrickable, the minifig is entered with whatever the catalog already knows.
-    const fetch = await attempts('figuren:getMinifigInfo', k.externalSources.quellen.getMinifigInfo(num));
+    const fetch = await attempts('figuren:getMinifigInfo', k.externalSources.sources.getMinifigInfo(num));
     found = fetch.ok ? fetch.wert : null;
     // `||`: what the catalog already knew stays.
     if (found) fig_name = fig_name || found.fig_name;
@@ -152,16 +152,16 @@ export async function updateManualMinifig(
   uid: number,
   figNumber: string,
   body: Record<string, unknown>,
-): Promise<{ quantity?: number; degradiert?: string[] }> {
+): Promise<{ quantity?: number; degraded?: string[] }> {
   const existing = await k.manualMinifigs.minifigRowWithCondition(uid, figNumber);
-  if (!existing) failDomain('nicht_gefunden', 'minifig_nicht_manuell');
+  if (!existing) failDomain('not_found', 'minifig_not_manual');
 
   const out: { quantity?: number } = {};
   // If the market price for the new acquisition didn't arrive, `degradiert` says so.
   const ab = new Degradations();
   const wish = quantityRequest(body);
   if (wish) {
-    const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
+    const cond = await k.settings.conditionForPrice(undefined, existing.condition, uid);
     out.quantity = await k.inventory.adjustManualQuantity(
       'fig',
       uid,
@@ -191,7 +191,7 @@ export async function updateManualMinifig(
     await k.inventory.setNewest('fig', 'preis', unitPrice, uid, [figNumber]);
   }
   if (body.condition !== undefined && body.condition !== null) {
-    const cond = V.zustand(body.condition);
+    const cond = V.conditionOf(body.condition);
     await k.inventory.setNewest('fig', 'zustand', cond, uid, [figNumber]);
   }
   return { ...out, ...ab.detail() };
@@ -223,7 +223,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
     const figNumber = String(row.fig_number || row.Nummer || row.fig_num || Object.values(row)[0] || '').trim();
     if (!figNumber) continue;
     const blFigNumber = String(row.bl_fig_number || row['BrickLink-Nr'] || '').trim() || null;
-    const { menge: qty, preis: unitPrice, recordedAt: acquiredAt, zustand: rawCondition } = csvSharedFields(row);
+    const { quantity: qty, preis: unitPrice, recordedAt: acquiredAt, condition: rawCondition } = csvSharedFields(row);
 
     try {
       let figName = row.fig_name || row.Name || null;
@@ -231,7 +231,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       let imageUrl: string | null = null;
       if (!figName) {
         // Without Rebrickable, the minifig is entered without a name; the image job won't fetch it later.
-        const fetch = await attempts('figuren:import-info', k.externalSources.quellen.getMinifigInfo(figNumber));
+        const fetch = await attempts('figuren:import-info', k.externalSources.sources.getMinifigInfo(figNumber));
         const info = fetch.ok ? fetch.wert : null;
         if (info) {
           figName = info.fig_name;
@@ -249,7 +249,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
         price: acquisitionPrice,
         geschaetzt: estimated,
         condition: effectiveCondition || 'N',
-        createdAt: acquiredAt || k.uhr.datum().toISOString().slice(0, 10),
+        createdAt: acquiredAt || k.clock.datum().toISOString().slice(0, 10),
       };
 
       if (await findManualMinifig(k, uid, figNumber)) {

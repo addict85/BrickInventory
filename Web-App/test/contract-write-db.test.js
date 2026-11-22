@@ -3,10 +3,10 @@
  * contract (src/contract/): response and, where the contract names one, the input.
  *
  * Counter-checks (measured on 27.10.):
- *   A  in routes/api_v1/sets.ts PUT /storage/default with `success: null` →
- *      red (31.10.2026): “every step answers with 200” (500 vertrag_verletzt,
+ *   A  in routes/api/sets.ts PUT /storage/default with `success: null` →
+ *      red (31.10.2026): “every step answers with 200” (500 contract_violated,
  *      response success) and “every writing route is checked …”
- *   B  a step removed from STEPS (PUT /api/v1/vouchers/{id}) → red:
+ *   B  a step removed from STEPS (PUT /api/v2/vouchers/{id}) → red:
  *      “every writing route is checked or omitted with reason"
  *   C  a path the app does not know added to OMITTED → red:
  *      “no dead exception"
@@ -38,7 +38,7 @@ const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
-const { contractTo, appSchnittstelle } = require('./helpers/contract');
+const { contractTo, appRoutes } = require('./helpers/contract');
 const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
 mailAttrappe();
 
@@ -53,32 +53,29 @@ const SET = '99075-1',
 
 /** Routes that must not or cannot run here — with reason. */
 const OMITTED = new Map([
-  ['POST /api/v1/admin/trigger-csv-sync', 'startet den Katalogabgleich mit Rebrickable im Netz'],
-  ['POST /api/v1/admin/reimport-instructions', 'lädt Anleitungen bei LEGO im Netz'],
-  ['POST /api/v1/admin/trigger-price-job', 'fragt BrickLink im Netz'],
-  ['POST /api/v1/admin/redownload-missing-images', 'lädt Bilder im Netz'],
-  ['POST /api/v1/admin/catalog-images', 'reiht Bilder für den Download im Netz ein'],
-  ['POST /api/v1/vouchers/{id}/guthaben', 'fragt das Guthaben bei LEGO im Netz ab'],
-  ['POST /api/v1/sets/partslist-pdf', 'liefert eine Datei, kein JSON-Modell'],
+  ['POST /api/v2/admin/trigger-csv-sync', 'startet den Katalogabgleich mit Rebrickable im Netz'],
+  ['POST /api/v2/admin/reimport-instructions', 'lädt Anleitungen bei LEGO im Netz'],
+  ['POST /api/v2/admin/trigger-price-job', 'fragt BrickLink im Netz'],
+  ['POST /api/v2/admin/redownload-missing-images', 'lädt Bilder im Netz'],
+  ['POST /api/v2/admin/catalog-images', 'reiht Bilder für den Download im Netz ein'],
+  ['POST /api/v2/vouchers/{id}/balance', 'fragt das Guthaben bei LEGO im Netz ab'],
+  ['POST /api/v2/sets/partslist-pdf', 'liefert eine Datei, kein JSON-Modell'],
   [
-    'POST /api/v1/auth/passkey/anmelden/optionen',
+    'POST /api/v2/auth/passkey/login/options',
     'braucht APP_BASE_URL mit Domain; die Optionen bleiben JSON (passkeys-db)',
   ],
-  ['POST /api/v1/auth/passkey/anmelden', 'braucht eine WebAuthn-Signatur; antwortet wie /auth/login (passkeys-db)'],
-  ['POST /api/v1/vouchers/{id}/klartext', 'verlangt Passwort und zweiten Faktor; Antwort geprüft in gutscheine-db'],
-  ['POST /api/v1/vouchers/{id}/pdf-freigabe', 'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
+  ['POST /api/v2/auth/passkey/login', 'braucht eine WebAuthn-Signatur; antwortet wie /auth/login (passkeys-db)'],
+  ['POST /api/v2/vouchers/{id}/plaintext', 'verlangt Passwort und zweiten Faktor; Antwort geprüft in gutscheine-db'],
+  ['POST /api/v2/vouchers/{id}/pdf-grant', 'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
+  ['POST /api/v2/vouchers/export/pdf-grant', 'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
+  ['POST /api/v2/device/key', 'nur mit App-Token, dieser Lauf hat eine Sitzung; geprüft in schrittschutz-db'],
+  ['POST /api/v2/device/key/nonce', 'nur mit App-Token in seinen ersten Minuten; geprüft in schrittschutz-db'],
   [
-    'POST /api/v1/vouchers/export/pdf-freigabe',
-    'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db',
-  ],
-  ['POST /api/v1/geraet/schluessel', 'nur mit App-Token, dieser Lauf hat eine Sitzung; geprüft in schrittschutz-db'],
-  ['POST /api/v1/geraet/schluessel/nonce', 'nur mit App-Token in seinen ersten Minuten; geprüft in schrittschutz-db'],
-  [
-    'POST /api/v1/auth/qr-login/verwerfen',
+    'POST /api/v2/auth/qr-login/discard',
     'braucht eine bestätigte, nicht abgeholte Kopplung; geprüft in qr-kopplung-db',
   ],
-  ['POST /api/v1/geraet/schritt/challenge', 'nur mit App-Token und Schlüssel; geprüft in schrittschutz-db'],
-  ['POST /api/v1/geraet/schritt/freigabe', 'braucht eine Signatur des Geräteschlüssels; geprüft in schrittschutz-db'],
+  ['POST /api/v2/device/step/challenge', 'nur mit App-Token und Schlüssel; geprüft in schrittschutz-db'],
+  ['POST /api/v2/device/step/approval', 'braucht eine Signatur des Geräteschlüssels; geprüft in schrittschutz-db'],
 ]);
 
 /** A PDF with the passed lines. */
@@ -208,18 +205,19 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     req.apiUser = { user_id: als.id, username: als.name, is_admin: als.admin ? 1 : 0 };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   for (const r of routerEinhaengungen())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const routen = appSchnittstelle().routen.filter(r => r.methode !== 'GET');
+  const routen = appRoutes(_req).filter(r => r.methode !== 'GET');
 
   /** Values for the placeholders in the path; steps add new ones. */
   const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
-  const erst = async (sql, werte) => await db.get(sql, werte);
+  const erst = async (sql, values) => await db.get(sql, values);
 
   /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, kopf?: () => object, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
   /** @type {any[]} */
@@ -227,17 +225,17 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     // ── Login and account ─────────────────────────────────────────────────
     {
       m: 'POST',
-      p: '/api/v1/auth/login',
+      p: '/api/v2/auth/login',
       body: { username: NAME, password: PASS, label: 'Vertrag', never_expires: true },
       danach: j => {
         w.appToken = j.token;
       },
     },
     // The exchange takes the token from the header, not the test's session.
-    { m: 'POST', p: '/api/v1/auth/token-rotieren', kopf: () => ({ Authorization: 'Bearer ' + w.appToken }) },
+    { m: 'POST', p: '/api/v2/auth/rotate-token', kopf: () => ({ Authorization: 'Bearer ' + w.appToken }) },
     {
       m: 'POST',
-      p: '/api/v1/auth/qr-login',
+      p: '/api/v2/auth/qr-login',
       davor: async () => {
         const nonce = 'vertrag' + process.pid + Date.now();
         await db.run(
@@ -248,23 +246,23 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       },
       body: () => ({ token: w.qr, label: 'Vertrag' }),
       danach: j => {
-        w.abholung = j.abholung;
+        w.pickup = j.pickup;
       },
     },
     // Confirmation happens in the browser (qr-kopplung/:id/bestaetigen); here the response to the app counts.
     {
       m: 'POST',
-      p: '/api/v1/auth/qr-login/abholen',
+      p: '/api/v2/auth/qr-login/collect',
       davor: async () => {
         await db.run('UPDATE qr_login_tokens SET confirmed_at = NOW() WHERE token = $1', [
           _req('src/account/deviceToken.js').tokenDigest(w.qr.slice(4)),
         ]);
       },
-      body: () => ({ abholung: w.abholung }),
+      body: () => ({ pickup: w.pickup }),
     },
     {
       m: 'POST',
-      p: '/api/v1/auth/register',
+      p: '/api/v2/auth/register',
       davor: async () => {
         await db.run(
           `INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'`,
@@ -272,10 +270,10 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       },
       body: { username: `${NAME}_reg`, email: `${NAME}_reg@example.org`, password: PASS, language: 'de' },
     },
-    { m: 'POST', p: '/api/v1/auth/forgot-password', body: { email: `${NAME}@example.org` } },
+    { m: 'POST', p: '/api/v2/auth/forgot-password', body: { email: `${NAME}@example.org` } },
     {
       m: 'PUT',
-      p: '/api/v1/auth/profile',
+      p: '/api/v2/auth/profile',
       body: {
         username: NAME,
         email: `${NAME}@example.org`,
@@ -286,18 +284,18 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     {
       m: 'POST',
-      p: '/api/v1/auth/zweiter-faktor/einrichten',
+      p: '/api/v2/auth/second-factor/setup',
       body: { password: PASS },
       danach: j => {
-        w.geheimnis = j.geheimnis;
+        w.secret = j.secret;
       },
     },
     {
       m: 'POST',
-      p: '/api/v1/auth/zweiter-faktor/bestaetigen',
+      p: '/api/v2/auth/second-factor/confirm',
       body: () => {
         const zf = _req('src/factors/secondFactor.js');
-        return { code: zf.hotp(zf.fromBase32(w.geheimnis), zf.timeStep()) };
+        return { code: zf.hotp(zf.fromBase32(w.secret), zf.timeStep()) };
       },
       danach: j => {
         w.codes = j.codes;
@@ -305,38 +303,38 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     {
       m: 'POST',
-      p: '/api/v1/auth/zweiter-faktor/codes',
+      p: '/api/v2/auth/second-factor/codes',
       body: () => ({ code: w.codes[0] }),
       danach: j => {
         w.codes = j.codes;
       },
     },
-    { m: 'POST', p: '/api/v1/auth/zweiter-faktor/abschalten', body: () => ({ password: PASS, code: w.codes[0] }) },
+    { m: 'POST', p: '/api/v2/auth/second-factor/disable', body: () => ({ password: PASS, code: w.codes[0] }) },
 
     // ── Settings ──────────────────────────────────────────────────────────
-    { m: 'PUT', p: '/api/v1/settings', body: { currency: 'EUR', price_condition: 'N' } },
-    { m: 'POST', p: '/api/v1/settings/user/default-condition', body: { condition: 'N' } },
-    { m: 'POST', p: '/api/v1/settings/admin/theme', body: { theme: 'classic' } },
+    { m: 'PUT', p: '/api/v2/settings', body: { currency: 'EUR', price_condition: 'N' } },
+    { m: 'POST', p: '/api/v2/settings/user/default-condition', body: { condition: 'N' } },
+    { m: 'POST', p: '/api/v2/settings/admin/theme', body: { theme: 'classic' } },
     // Own design (account screen of the app), then back to the default.
     {
       m: 'POST',
-      p: '/api/v1/settings/user/theme',
+      p: '/api/v2/settings/user/theme',
       body: { theme: 'noppe' },
       danach: j => {
-        assert.deepEqual([j.theme, j.vorgabe, j.eigenes], ['noppe', 'classic', 'noppe']);
+        assert.deepEqual([j.theme, j.preset, j.own], ['noppe', 'classic', 'noppe']);
       },
     },
     {
       m: 'POST',
-      p: '/api/v1/settings/user/theme',
+      p: '/api/v2/settings/user/theme',
       body: { theme: '' },
       danach: j => {
-        assert.deepEqual([j.theme, j.eigenes], ['classic', null]);
+        assert.deepEqual([j.theme, j.own], ['classic', null]);
       },
     },
     {
       m: 'DELETE',
-      p: '/api/v1/settings/tokens/{tokenId}',
+      p: '/api/v2/settings/tokens/{tokenId}',
       davor: async () => {
         await _req('src/account/deviceToken.js').createToken(uid, 'Zum Entwerten');
         w.tokenId = (
@@ -350,33 +348,33 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     {
       m: 'POST',
-      p: '/api/v1/settings/sessions/andere-beenden',
-      body: { password: PASS, zugaenge: true },
+      p: '/api/v2/settings/sessions/end-others',
+      body: { password: PASS, accesses: true },
       davor: async () => {
         await _req('src/account/deviceToken.js').createToken(uid, 'Anderes Gerät');
       },
       danach: j => {
-        assert.equal(j.zugaenge, 1);
+        assert.equal(j.accesses, 1);
       },
     },
 
     // ── Storage locations ─────────────────────────────────────────────────
     {
       m: 'POST',
-      p: '/api/v1/storage/locations',
+      p: '/api/v2/storage/locations',
       body: { name: 'Regal Probe' },
       danach: j => {
-        w.id = String(j.ort.id);
+        w.id = String(j.location.id);
       },
     },
-    { m: 'PUT', p: '/api/v1/storage/locations/{id}', body: { name: 'Regal Probe 2' } },
-    { m: 'PUT', p: '/api/v1/storage/default', body: () => ({ id: Number(w.id) }) },
+    { m: 'PUT', p: '/api/v2/storage/locations/{id}', body: { name: 'Regal Probe 2' } },
+    { m: 'PUT', p: '/api/v2/storage/default', body: () => ({ id: Number(w.id) }) },
 
     // ── Sets ──────────────────────────────────────────────────────────────
-    { m: 'POST', p: '/api/v1/sets', body: { set_number: SET, quantity: 1, purchase_price: 49.9, condition: 'N' } },
+    { m: 'POST', p: '/api/v2/sets', body: { set_number: SET, quantity: 1, purchase_price: 49.9, condition: 'N' } },
     {
       m: 'PUT',
-      p: '/api/v1/sets/{setNumber}',
+      p: '/api/v2/sets/{setNumber}',
       body: { quantity: 2, purchase_price: 40, condition: 'N' },
       danach: async () => {
         w.acqId = String(
@@ -389,16 +387,16 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         );
       },
     },
-    { m: 'PUT', p: '/api/v1/sets/{setNumber}/acquisitions/{acqId}', body: { purchase_price: 45 } },
-    { m: 'DELETE', p: '/api/v1/sets/{setNumber}/acquisitions/{acqId}' },
+    { m: 'PUT', p: '/api/v2/sets/{setNumber}/acquisitions/{acqId}', body: { purchase_price: 45 } },
+    { m: 'DELETE', p: '/api/v2/sets/{setNumber}/acquisitions/{acqId}' },
     // The only entry is gone and with it the set — create it anew.
-    { m: 'POST', p: '/api/v1/sets', body: { set_number: SET, quantity: 1, condition: 'N' } },
-    { m: 'PUT', p: '/api/v1/sets/{setNumber}/alert', body: { direction: 'unter', threshold: 30, condition: 'N' } },
-    { m: 'DELETE', p: '/api/v1/sets/{setNumber}/alert', q: 'condition=N' },
-    { m: 'PUT', p: '/api/v1/sets/{setNumber}/storage', body: { storage: 'Regal Probe 2' } },
+    { m: 'POST', p: '/api/v2/sets', body: { set_number: SET, quantity: 1, condition: 'N' } },
+    { m: 'PUT', p: '/api/v2/sets/{setNumber}/alert', body: { direction: 'below', threshold: 30, condition: 'N' } },
+    { m: 'DELETE', p: '/api/v2/sets/{setNumber}/alert', q: 'condition=N' },
+    { m: 'PUT', p: '/api/v2/sets/{setNumber}/storage', body: { storage: 'Regal Probe 2' } },
     {
       m: 'POST',
-      p: '/api/v1/sets/{setNumber}/instructions/upload',
+      p: '/api/v2/sets/{setNumber}/instructions/upload',
       form: async () =>
         formular(await pdfWith(['Bauanleitung']), 'application/pdf', 'anleitung.pdf', { description: 'Probe' }),
       danach: async () => {
@@ -412,18 +410,18 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         );
       },
     },
-    { m: 'DELETE', p: '/api/v1/sets/{setNumber}/instructions/{instrId}' },
-    { m: 'DELETE', p: '/api/v1/sets/{setNumber}' },
+    { m: 'DELETE', p: '/api/v2/sets/{setNumber}/instructions/{instrId}' },
+    { m: 'DELETE', p: '/api/v2/sets/{setNumber}' },
 
     // ── Parts ─────────────────────────────────────────────────────────────
     {
       m: 'POST',
-      p: '/api/v1/parts',
+      p: '/api/v2/parts',
       body: { part_number: TEIL, color_id: FARBE, color_name: 'Rot', quantity: 3, unit_price: 0.2, condition: 'N' },
     },
     {
       m: 'PUT',
-      p: '/api/v1/parts/{partNumber}/{colorId}',
+      p: '/api/v2/parts/{partNumber}/{colorId}',
       body: { quantity: 4, unit_price: 0.25, condition: 'N' },
       danach: async () => {
         w.partPrice = (
@@ -433,7 +431,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
             [uid, TEIL],
           )
         ).p;
-        w.id = String(
+        w.acqId = String(
           (
             await erst(`SELECT id FROM part_acquisitions WHERE user_id = $1 AND part_number = $2 ORDER BY id LIMIT 1`, [
               uid,
@@ -443,33 +441,33 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         );
       },
     },
-    { m: 'PUT', p: '/api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}', body: { unit_price: 0.3 } },
-    { m: 'DELETE', p: '/api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}' },
+    { m: 'PUT', p: '/api/v2/parts/{partNumber}/{colorId}/acquisitions/{acqId}', body: { unit_price: 0.3 } },
+    { m: 'DELETE', p: '/api/v2/parts/{partNumber}/{colorId}/acquisitions/{acqId}' },
     {
       m: 'POST',
-      p: '/api/v1/parts',
+      p: '/api/v2/parts',
       body: { part_number: TEIL, color_id: FARBE, color_name: 'Rot', quantity: 2, condition: 'N' },
     },
-    { m: 'PUT', p: '/api/v1/parts/{partNumber}/{colorId}/storage', body: { storage: 'Kiste' } },
-    { m: 'POST', p: '/api/v1/parts/owned', body: { teile: [{ part_number: TEIL, color_id: FARBE }] } },
+    { m: 'PUT', p: '/api/v2/parts/{partNumber}/{colorId}/storage', body: { storage: 'Kiste' } },
+    { m: 'POST', p: '/api/v2/parts/owned', body: { parts: [{ part_number: TEIL, color_id: FARBE }] } },
     {
       m: 'PUT',
-      p: '/api/v1/parts/{partNumber}/{colorId}/color',
+      p: '/api/v2/parts/{partNumber}/{colorId}/color',
       body: { color_id: FARBE2, color_name: 'Blau', color_hex: '0055BF' },
       danach: () => {
         w.colorId = String(FARBE2);
       },
     },
-    { m: 'DELETE', p: '/api/v1/parts/{partNumber}/{colorId}' },
+    { m: 'DELETE', p: '/api/v2/parts/{partNumber}/{colorId}' },
 
     // ── Minifiguren ───────────────────────────────────────────────────────
-    { m: 'POST', p: '/api/v1/minifigs', body: { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' } },
+    { m: 'POST', p: '/api/v2/minifigs', body: { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' } },
     {
       m: 'PUT',
-      p: '/api/v1/minifigs/{figNumber}',
+      p: '/api/v2/minifigs/{figNumber}',
       body: { quantity: 2, unit_price: 4.5, condition: 'N' },
       danach: async () => {
-        w.id = String(
+        w.acqId = String(
           (
             await erst(
               `SELECT id FROM minifig_acquisitions WHERE user_id = $1 AND fig_number = $2 ORDER BY id LIMIT 1`,
@@ -479,19 +477,19 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         );
       },
     },
-    { m: 'PUT', p: '/api/v1/minifigs/{figNumber}/acquisitions/{id}', body: { unit_price: 5 } },
-    { m: 'DELETE', p: '/api/v1/minifigs/{figNumber}/acquisitions/{id}' },
-    { m: 'POST', p: '/api/v1/minifigs', body: { fig_number: FIGUR, quantity: 1, condition: 'N' } },
-    { m: 'PUT', p: '/api/v1/minifigs/{figNumber}/storage', body: { storage: 'Kiste' } },
-    { m: 'DELETE', p: '/api/v1/minifigs/{figNumber}' },
+    { m: 'PUT', p: '/api/v2/minifigs/{figNumber}/acquisitions/{acqId}', body: { unit_price: 5 } },
+    { m: 'DELETE', p: '/api/v2/minifigs/{figNumber}/acquisitions/{acqId}' },
+    { m: 'POST', p: '/api/v2/minifigs', body: { fig_number: FIGUR, quantity: 1, condition: 'N' } },
+    { m: 'PUT', p: '/api/v2/minifigs/{figNumber}/storage', body: { storage: 'Kiste' } },
+    { m: 'DELETE', p: '/api/v2/minifigs/{figNumber}' },
 
     // ── Wishlist ──────────────────────────────────────────────────────────
-    { m: 'POST', p: '/api/v1/wanted', body: { set_number: SET2, condition: 'N' } },
+    { m: 'POST', p: '/api/v2/wanted', body: { set_number: SET2, condition: 'N' } },
     {
       m: 'POST',
-      p: '/api/v1/wanted/{setNumber}/{condition}/uebernehmen',
+      p: '/api/v2/wanted/{setNumber}/{condition}/take-over',
       davor: async () => {
-        w.setNumber = SET2;
+        w.setNumber = w.sn = SET2;
         w.condition = 'N';
       },
       body: { quantity: 1, purchase_price: 30 },
@@ -499,7 +497,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     // The takeover entered SET2 — the purchase price moves into the sub-account.
     {
       m: 'POST',
-      p: '/api/v1/sets/{setNumber}/move',
+      p: '/api/v2/sets/{sn}/move',
       body: async () => ({
         to_user_id: sub,
         acquisition_ids: (
@@ -509,7 +507,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     {
       m: 'POST',
-      p: '/api/v1/wanted',
+      p: '/api/v2/wanted',
       body: { set_number: SET2, condition: 'U' },
       danach: () => {
         w.condition = 'U';
@@ -517,15 +515,15 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     {
       m: 'PUT',
-      p: '/api/v1/wanted/{setNumber}/{condition}/inhaber',
-      body: () => ({ owner_user_id: uid, neuer_inhaber: sub }),
+      p: '/api/v2/wanted/{setNumber}/{condition}/owner',
+      body: () => ({ owner_user_id: uid, new_owner: sub }),
     },
-    { m: 'DELETE', p: '/api/v1/wanted/{setNumber}/{condition}', q: () => `owner_user_id=${sub}` },
+    { m: 'DELETE', p: '/api/v2/wanted/{setNumber}/{condition}', q: () => `owner_user_id=${sub}` },
 
     // ── Remove the storage location (after the sets/parts that used it) ───
     {
       m: 'DELETE',
-      p: '/api/v1/storage/locations/{id}',
+      p: '/api/v2/storage/locations/{id}',
       davor: async () => {
         await db.run(`UPDATE sets SET storage_id = NULL WHERE user_id = ANY($1)`, [[uid, sub]]);
         w.id = String(
@@ -537,7 +535,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     // ── Vouchers ──────────────────────────────────────────────────────────
     {
       m: 'POST',
-      p: '/api/v1/vouchers',
+      p: '/api/v2/vouchers',
       body: { number: '5045076374450011111', pin: '1234', amount: 50, currency: 'CHF' },
       danach: j => {
         w.id = String(j.voucher.id);
@@ -545,13 +543,13 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     {
       m: 'PUT',
-      p: '/api/v1/vouchers/{id}',
+      p: '/api/v2/vouchers/{id}',
       body: { number: '5045076374450011111', pin: '4321', amount: 40, currency: 'CHF' },
     },
-    { m: 'DELETE', p: '/api/v1/vouchers/{id}', body: { password: PASS } },
+    { m: 'DELETE', p: '/api/v2/vouchers/{id}', body: { password: PASS } },
     {
       m: 'POST',
-      p: '/api/v1/vouchers/pdf',
+      p: '/api/v2/vouchers/pdf',
       form: async () =>
         formular(
           await pdfWith(['Ihre LEGO-Geschenkkarte im Wert von 25 CHF:', '5045076374450012222', 'PIN: 4711']),
@@ -563,21 +561,21 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     // ── Household: invite, join as third account, unlink ──────────────────
     {
       m: 'POST',
-      p: '/api/v1/settings/household/invite',
+      p: '/api/v2/settings/household/invite',
       danach: j => {
         w.code = j.code;
       },
     },
     {
       m: 'POST',
-      p: '/api/v1/settings/household/redeem',
+      p: '/api/v2/settings/household/redeem',
       als: { id: neu, name: `${NAME}_neu`, admin: false },
       body: () => ({ code: w.code, password: PASS }),
     },
-    { m: 'POST', p: '/api/v1/settings/household/unlink', body: () => ({ sub_user_id: neu }) },
+    { m: 'POST', p: '/api/v2/settings/household/unlink', body: () => ({ sub_user_id: neu }) },
     {
       m: 'POST',
-      p: '/api/v1/settings/household/former/dismiss',
+      p: '/api/v2/settings/household/former/dismiss',
       davor: async () => {
         await erst(
           `INSERT INTO household_former_links (main_user_id, sub_user_id) VALUES ($1, $2)
@@ -591,49 +589,49 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     // ── CSV imports: only the header so that no job goes to the network ───
     {
       m: 'POST',
-      p: '/api/v1/sets/import/csv',
+      p: '/api/v2/sets/import/csv',
       form: () => formular(`set_number,quantity\n${SET},1\n`, 'text/csv', 'sets.csv'),
     },
-    { m: 'POST', p: '/api/v1/sets/import/csv/cancel' },
+    { m: 'POST', p: '/api/v2/sets/import/csv/cancel' },
     {
       m: 'POST',
-      p: '/api/v1/parts/import/csv',
+      p: '/api/v2/parts/import/csv',
       form: () => formular('part_number,color_id,quantity\n', 'text/csv', 'teile.csv'),
     },
     {
       m: 'POST',
-      p: '/api/v1/minifigs/import/csv',
+      p: '/api/v2/minifigs/import/csv',
       form: () => formular('fig_number,quantity\n', 'text/csv', 'figuren.csv'),
     },
     {
       m: 'POST',
-      p: '/api/v1/wanted/import/csv',
+      p: '/api/v2/wanted/import/csv',
       form: () => formular('set_number,condition\n', 'text/csv', 'merkliste.csv'),
     },
     {
       m: 'POST',
-      p: '/api/v1/alerts/import/csv',
+      p: '/api/v2/alerts/import/csv',
       form: () => formular('set_number,condition,richtung,schwelle\n', 'text/csv', 'alarme.csv'),
     },
 
     // ── Administration ────────────────────────────────────────────────────
     {
       m: 'POST',
-      p: '/api/v1/admin/job-schedule',
+      p: '/api/v2/admin/job-schedule',
       davor: async () => {
-        w.minuten =
+        w.minutes =
           Number(
             (await erst(`SELECT value FROM global_settings WHERE key = 'price_job_interval_minutes'`, []))?.value,
           ) || 60;
       },
-      body: () => ({ name: 'priceJob', minutes: w.minuten }),
+      body: () => ({ name: 'priceJob', minutes: w.minutes }),
     },
-    { m: 'POST', p: '/api/v1/admin/cache-ttl', body: { ttl: '24' } },
-    { m: 'POST', p: '/api/v1/admin/cache-clear', body: {} },
-    { m: 'POST', p: '/api/v1/admin/default-condition', body: { condition: 'N' } },
+    { m: 'POST', p: '/api/v2/admin/cache-ttl', body: { ttl: '24' } },
+    { m: 'POST', p: '/api/v2/admin/cache-clear', body: {} },
+    { m: 'POST', p: '/api/v2/admin/default-condition', body: { condition: 'N' } },
     {
       m: 'PUT',
-      p: '/api/v1/admin/api-limits',
+      p: '/api/v2/admin/api-limits',
       davor: async () => {
         const g = await db.all(`SELECT key, value FROM global_settings WHERE key LIKE 'rate_limit_%'`).catch(() => []);
         w.limits = Object.fromEntries(g.map(r => [r.key.replace('rate_limit_', ''), Number(r.value) || 1000]));
@@ -646,39 +644,39 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     {
       m: 'POST',
-      p: '/api/v1/admin/brickset-queue/{setNumber}/retry',
+      p: '/api/v2/admin/brickset-queue/{setNumber}/retry',
       davor: async () => {
         w.setNumber = SET2;
       },
     },
-    { m: 'DELETE', p: '/api/v1/admin/brickset-queue/{setNumber}' },
+    { m: 'DELETE', p: '/api/v2/admin/brickset-queue/{setNumber}' },
 
     // ── Background jobs (job table) ───────────────────────────────────────
     {
       m: 'POST',
-      p: '/api/v1/admin/auftraege/{id}/abbrechen',
+      p: '/api/v2/admin/job-queue/{id}/cancel',
       davor: async () => {
         w.id = String(
           await {
             ..._req('src/jobQueue/service.js'),
             ...require('./helpers/sources').testArea('jobQueue').jobs,
-          }.placeJobOne('anleitung', { set_number: SET }, { schluessel: `vertrag:${process.pid}:${Date.now()}` }),
+          }.placeJobOne('instructions', { set_number: SET }, { schluessel: `vertrag:${process.pid}:${Date.now()}` }),
         );
       },
     },
-    { m: 'POST', p: '/api/v1/admin/auftraege/{id}/wiederholen' },
+    { m: 'POST', p: '/api/v2/admin/job-queue/{id}/retry' },
     {
       m: 'POST',
-      p: '/api/v1/admin/auftraege/art/{art}/jetzt',
+      p: '/api/v2/admin/job-queue/kind/{kind}/now',
       davor: async () => {
-        w.art = 'anleitung';
+        w.kind = 'instructions';
       },
     },
-    { m: 'DELETE', p: '/api/v1/admin/auftraege/art/{art}' },
+    { m: 'DELETE', p: '/api/v2/admin/job-queue/kind/{kind}' },
 
     // ── Finally: change password (discards all tokens), log out ───────────
-    { m: 'POST', p: '/api/v1/auth/change-password', body: { current: PASS, newPassword: PASS + 'x' } },
-    { m: 'POST', p: '/api/v1/auth/logout' },
+    { m: 'POST', p: '/api/v2/auth/change-password', body: { current: PASS, newPassword: PASS + 'x' } },
+    { m: 'POST', p: '/api/v2/auth/logout' },
   ];
 
   const deviations = [],
@@ -690,7 +688,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     const start = Date.now();
     if (s.davor) await s.davor();
     if (s.als) als = s.als;
-    const pfad = s.p.replace(/\{(\w+)\}/g, (_, n) => encodeURIComponent(w[n] ?? `<${n}>`));
+    const path = s.p.replace(/\{(\w+)\}/g, (_, n) => encodeURIComponent(w[n] ?? `<${n}>`));
     const q = typeof s.q === 'function' ? s.q() : s.q;
     const body = typeof s.body === 'function' ? await s.body() : s.body;
     // A time limit per step: a hanging step thus becomes a red test, not a hanging one.
@@ -701,32 +699,32 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       init.headers = { 'Content-Type': 'application/json' };
     }
     if (s.kopf) init.headers = { ...(init.headers || {}), ...s.kopf() };
-    let antwort;
+    let response;
     try {
-      antwort = await fetch(basis + pfad + (q ? '?' + q : ''), init);
+      response = await fetch(basis + path + (q ? '?' + q : ''), init);
     } catch (e) {
       status.push(`${schluessel}: ${e.name}`);
       als = { id: uid, name: NAME, admin: true };
       continue;
     }
     als = { id: uid, name: NAME, admin: true };
-    const text = await antwort.text();
+    const text = await response.text();
     let json;
     try {
       json = JSON.parse(text);
     } catch {
-      status.push(`${schluessel}: ${antwort.status} kein JSON`);
+      status.push(`${schluessel}: ${response.status} kein JSON`);
       continue;
     }
-    if (antwort.status !== 200) {
-      status.push(`${schluessel}: ${antwort.status} ${text.slice(0, 160)}`);
+    if (response.status !== 200) {
+      status.push(`${schluessel}: ${response.status} ${text.slice(0, 160)}`);
       continue;
     }
     gelaufen.add(schluessel);
     const vertrag = contractTo(_req, s.m, s.p);
-    if (!vertrag?.antwort) deviations.push(`${schluessel}: kein Vertrag`);
+    if (!vertrag?.response) deviations.push(`${schluessel}: kein Vertrag`);
     else {
-      const r = vertrag.antwort.safeParse(json);
+      const r = vertrag.response.safeParse(json);
       if (!r.success) deviations.push(...r.error.issues.map(i => `${schluessel} $.${i.path.join('.')}: ${i.message}`));
     }
     if (s.danach) await s.danach(json);
@@ -737,12 +735,12 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   await t.test('every step answers with 200', () => assert.deepEqual(status, []));
   await t.test('matches the contract', () => assert.deepEqual(deviations, []));
   await t.test('every writing route is checked or omitted with a reason', () => {
-    const offen = routen.map(r => `${r.methode} ${r.pfad}`).filter(k => !gelaufen.has(k) && !OMITTED.has(k));
-    assert.deepEqual(offen, []);
+    const open = routen.map(r => `${r.methode} ${r.path}`).filter(k => !gelaufen.has(k) && !OMITTED.has(k));
+    assert.deepEqual(open, []);
   });
   await t.test('a unit price with decimal places is kept when changing', () => assert.equal(w.partPrice, 0.25));
   await t.test('no dead exception', () => {
-    const bekannt = new Set(routen.map(r => `${r.methode} ${r.pfad}`));
+    const bekannt = new Set(routen.map(r => `${r.methode} ${r.path}`));
     assert.deepEqual(
       [...OMITTED.keys()].filter(k => !bekannt.has(k)),
       [],

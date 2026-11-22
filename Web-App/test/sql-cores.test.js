@@ -33,10 +33,10 @@ test('no SQL statement is in more than one file', () => {
   assert.ok(dateien.length >= 60, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   // Fetch statements from strings, unify whitespace. A
-  // route key of the API contract ('DELETE /api/v1/…') is not SQL.
+  // route key of the API contract ('DELETE /api/v2/…') is not SQL.
   const sql = /(['"`])((?:SELECT|INSERT|UPDATE|DELETE)\s(?!\/)[\s\S]*?)\1/g;
   const wo = new Map();
-  let gefunden = 0;
+  let found = 0;
   for (const f of dateien) {
     const code = fs
       .readFileSync(f, 'utf8')
@@ -47,18 +47,18 @@ test('no SQL statement is in more than one file', () => {
       const k = m[2].replace(/\s+/g, ' ').trim();
       // Too short to mean anything of its own (`SELECT 1 FROM x WHERE id=$1`).
       if (k.length < 45) continue;
-      gefunden++;
+      found++;
       if (!wo.has(k)) wo.set(k, new Set());
       wo.get(k).add(rel);
     }
   }
   // Self-proof: if the search found hardly any statements, the rule would be vacuously true.
-  assert.ok(gefunden >= 300, `Nur ${gefunden} SQL-Anweisungen gefunden — die Suche greift nicht mehr`);
+  assert.ok(found >= 300, `Nur ${found} SQL-Anweisungen gefunden — die Suche greift nicht mehr`);
 
   const doppelt = [];
   const gebraucht = new Set();
-  for (const [k, orte] of wo) {
-    if (orte.size < 2) continue;
+  for (const [k, locations] of wo) {
+    if (locations.size < 2) continue;
     // Book instead of skip — otherwise it never stands out when an entry
     // becomes moot. The list is empty today; the check stands
     // here nevertheless, so that the first entry already finds it.
@@ -66,7 +66,7 @@ test('no SQL statement is in more than one file', () => {
       gebraucht.add(k);
       continue;
     }
-    doppelt.push(`${[...orte].sort().join(' + ')}\n      ${k.slice(0, 130)}`);
+    doppelt.push(`${[...locations].sort().join(' + ')}\n      ${k.slice(0, 130)}`);
   }
   const veraltet = [...ALLOWED.keys()].filter(k => !gebraucht.has(k));
   assert.deepEqual(

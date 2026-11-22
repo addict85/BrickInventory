@@ -9,7 +9,7 @@ import { isSensitive } from './dataExport';
 import { bricksetLimitSet } from './service';
 import type { ManagementContext } from './context';
 
-type SettingsInput = Input<'POST /api/v1/settings'>;
+type SettingsInput = Input<'POST /api/v2/settings'>;
 
 export interface SaveSettingsOptions {
   uid: number;
@@ -49,8 +49,7 @@ async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput)
     if (String(e[key]) !== String((await kx.settings.globalValue(key)) ?? '')) changed.push(key);
     await kx.settings.setGlobalValue(key, e[key]);
   }
-  if (changed.length)
-    await kx.account.verwalter.rememberAdminAction(uid, uid, 'einstellungen_geaendert', changed.join(', '));
+  if (changed.length) await kx.account.verwalter.rememberAdminAction(uid, uid, 'settings_changed', changed.join(', '));
   // Whoever saved the mail form has seen the hint about the old exception.
   if (GLOBAL_SETTINGS.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.settings.deleteGlobalValues('smtp_insecure_tls');
@@ -62,16 +61,16 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   const global = o.verwalter && hasGlobalValues(e);
   if (global) {
     if (GLOBAL_SETTINGS.some(k => e[k] !== undefined && !isValidGlobalValue(k, e[k])))
-      failDomain('ungueltig', 'wert_ungueltig');
+      failDomain('ungueltig', 'value_invalid');
     if (
       String(e.registration_enabled) === '1' &&
       (await kx.settings.globalValue('registration_enabled')) !== '1' &&
       !(await kx.mail.mailReady(e))
     )
-      failDomain('ungueltig', 'registrierung_braucht_mail');
+      failDomain('ungueltig', 'registration_needs_mail');
   }
   const sensitive = global ? await sensitiveKeys(kx, e) : [];
-  if (sensitive.length && !e.admin_password) failDomain('ungueltig', 'aktuelles_passwort_erforderlich');
+  if (sensitive.length && !e.admin_password) failDomain('ungueltig', 'current_password_required');
   if (sensitive.length && !(await o.confirm(e.admin_password))) return false;
 
   // The currency applies to the whole household and therefore needs the system frame, which
@@ -96,7 +95,7 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   // Only after the COMMIT: a cache would otherwise still read the old value.
   await kx.settings.notifyGlobalChange();
   if (sensitive.some(k => !k.startsWith('smtp_')))
-    kx.account.adminHintInBackground('einstellungen_geaendert', { konto: sensitive.join(', '), durch: o.name });
+    kx.account.adminHintInBackground('settings_changed', { konto: sensitive.join(', '), durch: o.name });
   if (bricksetAlt !== null) await bricksetLimitSet(kx, bricksetAlt, parseInt(String(e.api_limit_brickset), 10));
   return true;
 }

@@ -28,7 +28,7 @@ export async function storageWriteAccount(
   wish: string | number | undefined,
 ): Promise<number> {
   const konto = (await storageAccounts(k, userRow, wish, true))[0];
-  if (konto === undefined) failDomain('verboten', 'kein_schreibrecht');
+  if (konto === undefined) failDomain('verboten', 'no_write_access');
   return konto;
 }
 
@@ -41,12 +41,12 @@ export async function locationsFor(k: InventoryContext, userRow: number, wish: s
  * star would otherwise be on the wrong entry. */
 export async function setDefault(k: InventoryContext, userId: number, id: number | null): Promise<Storage | null> {
   if (id === null) {
-    await k.einstellungen.deleteUserSetting(userId, DEFAULT_KEY);
+    await k.settings.deleteUserSetting(userId, DEFAULT_KEY);
     return null;
   }
-  const ort = await storages.locationOfAccount(k.db, id, userId);
-  if (!ort) failDomain('nicht_gefunden', 'lagerort_unbekannt');
+  const location = await storages.locationOfAccount(k.db, id, userId);
+  if (!location) failDomain('not_found', 'storage_unknown');
   // Via the account's settings: user_settings belongs there.
-  await k.einstellungen.setUserSetting(userId, DEFAULT_KEY, String(id));
-  return { id: parseInt(String(ort.id), 10), user_id: userId, name: ort.name };
+  await k.settings.setUserSetting(userId, DEFAULT_KEY, String(id));
+  return { id: parseInt(String(location.id), 10), user_id: userId, name: location.name };
 }

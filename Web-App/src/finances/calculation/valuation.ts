@@ -23,7 +23,7 @@ import {
 } from './prices';
 import { countFlagged } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
-import { NO_COLOR, zustand } from '../../infra/validate';
+import { NO_COLOR, conditionOf } from '../../infra/validate';
 import { aufRappen, inTenThousandths } from '../../infra/money';
 import type { Payload } from '../../jobQueue';
 import { PRICE_ITEM_AT_MOST, rememberPricesBefore } from '../priceItems';
@@ -31,14 +31,14 @@ import { errorText } from '../../infra/errorTexts';
 import type { FinancesContext } from '../context';
 
 type ConditionState = 'N' | 'U';
-type Item = Payload<'preise_nachladen'>['posten'][number];
+type Item = Payload<'price_refresh'>['items'][number];
 type MinifigPrice = PriceData & { estimated_from_parts?: true; abdeckung?: number | null };
 
 /** @returns Map key → acquisition rows; key is `konto|nummer|farbe` or `konto|nummer` */
-async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
+async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 'part' | 'fig', currency: string) {
   // A main account values the whole household; the currency is forced to be
   // the same when linking, otherwise this would sum two currencies.
-  const rows = await k.valuation.manualEntries(kind, asIds(uid), waehrung);
+  const rows = await k.valuation.manualEntries(kind, asIds(uid), currency);
   const out = new Map<string, repo.ManualEntry[]>();
   for (const r of rows) {
     const key =
@@ -60,11 +60,11 @@ function foreignPurchasePrices(jeEntry: Map<string, Array<{ kaufpreis_fremd?: bo
 async function rememberPricesForAccountBefore(
   k: FinancesContext,
   viewerId: number,
-  waehrung: string,
+  currency: string,
   item: Item[],
 ): Promise<number> {
   if (!item.length) return 0;
-  await rememberPricesBefore(k, { user_id: viewerId, waehrung, posten: item.slice(0, PRICE_ITEM_AT_MOST) }).catch(
+  await rememberPricesBefore(k, { user_id: viewerId, currency, items: item.slice(0, PRICE_ITEM_AT_MOST) }).catch(
     logAndContinue('bewertung:preise vormerken'),
   );
   return item.length;
@@ -86,7 +86,7 @@ type Bewertungslage = {
 function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   // Without an acquisition the set counts as new (effectiveCondition without counters).
   const fallbackCond: ConditionState = 'N';
-  const needed: ConditionState[] = acqs.length ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
+  const needed: ConditionState[] = acqs.length ? [...new Set(acqs.map(a => conditionOf(a.condition)))] : [fallbackCond];
   const preise = new Map<ConditionState, PriceData>(
     needed.map(c => [c, setPriceFromStock(set.set_number, c, l.ttl, l.now, l.pre)]),
   );
@@ -94,7 +94,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   for (const [cond, p] of preise) {
     const market = marketPriceFrom(p);
     if (market !== null) preisMap.set(`${set.set_number}|${cond}`, market);
-    if (p.ausstehend) l.fehlt.push({ art: 'set', nummer: set.set_number, zustand: cond });
+    if (p.pending) l.fehlt.push({ kind: 'set', number: set.set_number, condition: cond });
   }
   const valued = valueSet(set.set_number, acqs, preisMap, fallbackCond, set.quantity || 1);
   const rows = valueAcquisitionRows(set.set_number, acqs, preisMap);
@@ -106,8 +106,8 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
     valued.by_condition
       .map(bc => (preise.get(bc.condition as ConditionState)?.[key] ?? 0) * bc.quantity)
       .reduce((a, b) => a + b, 0) / qty;
-  const onePrice = needed.map(c => preise.get(c)).find(p => p && !p.ausstehend);
-  const pending = needed.some(c => preise.get(c)?.ausstehend === true);
+  const onePrice = needed.map(c => preise.get(c)).find(p => p && !p.pending);
+  const pending = needed.some(c => preise.get(c)?.pending === true);
   const unitAvg = valued.unit_price ?? 0;
   const conditions = valued.by_condition.map(bc => bc.condition);
   return {
@@ -130,19 +130,19 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
     qty_avg_price: weighted('qty_avg_price'),
     // From the unrounded unit price: 120.3333 × 2 is 240.67, not 240.66.
     total_avg: aufRappen((valued.unit_z ?? 0) * qty).toFixed(2),
-    wert_gesamt: aufRappen((valued.unit_z ?? 0) * qty),
+    value_total: aufRappen((valued.unit_z ?? 0) * qty),
     total_qty_avg: aufRappen((inTenThousandths(weighted('qty_avg_price')) ?? 0) * qty).toFixed(2),
     pnl_pct: calcPnlPct(purchase, unitAvg),
-    pnl_prozent: pnlProzent(purchase, unitAvg),
+    pnl_percent: pnlProzent(purchase, unitAvg),
     acquisitions: rows,
     from_cache: true,
     is_fallback: onePrice?.is_fallback === true,
     // A pending price is not a price yet; a check mark would mean "loaded".
     no_price: (!!onePrice || pending) && valued.unit_price == null,
-    bl_unbekannt: needed.some(c => preise.get(c)?.bl_unbekannt === true),
-    preis_ausstehend: pending,
+    bl_unknown: needed.some(c => preise.get(c)?.bl_unknown === true),
+    price_pending: pending,
     ...(pending && l.withoutAccess && valued.unit_price == null
-      ? { error: l.withoutAccess, error_code: 'kein_bricklink_zugang' }
+      ? { error: l.withoutAccess, error_code: 'no_bricklink_access' }
       : {}),
   };
 }
@@ -176,9 +176,9 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
   // filter "sub-accounts" the asking account is missing from ids.
   const uids = await kx.household.scopeFrom(idsChoice);
   const [currency, ttlHours, guideType] = await Promise.all([
-    kx.einstellungen.userValue(viewerId, 'currency', 'EUR'),
-    kx.einstellungen.userValue(viewerId, 'price_cache_ttl', '24'),
-    kx.einstellungen.userValue(viewerId, 'price_guide_type', 'sold'),
+    kx.settings.userValue(viewerId, 'currency', 'EUR'),
+    kx.settings.userValue(viewerId, 'price_cache_ttl', '24'),
+    kx.settings.userValue(viewerId, 'price_guide_type', 'sold'),
   ]);
   const header = {
     currency,
@@ -186,16 +186,16 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
     guide_type: guideType,
     ttl_hours: ttlHours,
     // ttl_hours stays text for older clients.
-    ttl_stunden: Number(ttlHours) || 24,
+    cache_ttl_hours: Number(ttlHours) || 24,
   };
   const sets = await kx.valuation.setsToValuation(uids);
   if (!sets.length)
     return {
       ...header,
-      kaufpreise_fremde_waehrung: 0,
-      kaufpreise_umgerechnet: 0,
+      foreign_currency_purchases: 0,
+      converted_purchase_prices: 0,
       sets: [],
-      preise_ausstehend: 0,
+      prices_pending: 0,
       totals: { min: '0.00', avg: '0.00', max: '0.00', qty_avg: '0.00' },
     };
 
@@ -209,15 +209,15 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
     kx.acquisitions.loadSetEntries(uids, currency),
   ]);
   // Without BrickLink access the job can fetch nothing: that is then shown on the row.
-  const withoutAccess = (await kx.einstellungen.globalValue('bricklink_consumer_key'))
+  const withoutAccess = (await kx.settings.globalValue('bricklink_consumer_key'))
     ? null
     : errorText(
-        'kein_bricklink_zugang',
-        (await kx.einstellungen.userValue(viewerId, 'language', 'de')) === 'en' ? 'en' : 'de',
+        'no_bricklink_access',
+        (await kx.settings.userValue(viewerId, 'language', 'de')) === 'en' ? 'en' : 'de',
       );
   const situation: Bewertungslage = {
     ttl,
-    now: kx.uhr.jetzt(),
+    now: kx.clock.now(),
     fehlt: [],
     withoutAccess,
     pre: {
@@ -240,17 +240,17 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
   return {
     ...header,
     // Foreign purchase prices are missing from the sums (no rates); the number says how many there are.
-    kaufpreise_fremde_waehrung: countFlagged(acqRows, 'kaufpreis_fremd'),
-    kaufpreise_umgerechnet: countFlagged(acqRows, 'kaufpreis_umgerechnet'),
+    foreign_currency_purchases: countFlagged(acqRows, 'kaufpreis_fremd'),
+    converted_purchase_prices: countFlagged(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
     totals: valuationSums(results),
-    preise_ausstehend: await rememberPricesForAccountBefore(kx, viewerId, currency, situation.fehlt),
+    prices_pending: await rememberPricesForAccountBefore(kx, viewerId, currency, situation.fehlt),
   };
 }
 
 function conditionsOf(acqs: { condition?: string | null }[]): ConditionState[] {
   if (!acqs?.length) return ['N'];
-  const set = new Set(acqs.map(a => zustand(a.condition)));
+  const set = new Set(acqs.map(a => conditionOf(a.condition)));
   return (['N', 'U'] as const).filter(c => set.has(c));
 }
 
@@ -267,12 +267,12 @@ function pricesJeState<P extends PriceData>(key: string, conds: ConditionState[]
   return { priceMap, priceData };
 }
 
-function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string, number>, menge: number) {
+function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string, number>, quantity: number) {
   // 'N': the fallback only applies without acquisitions, and there "new" applies.
-  const valued = valueSet(key, acqs, priceMap, 'N', menge);
+  const valued = valueSet(key, acqs, priceMap, 'N', quantity);
   const rows = valueAcquisitionRows(key, acqs, priceMap);
   const unitVal = valued.unit_price ?? 0;
-  const totalQty = acqs.length ? valued.quantity : menge;
+  const totalQty = acqs.length ? valued.quantity : quantity;
   // A purchase price only counts in the account currency; a foreign currency or "unknown"
   // as 0 would drive the P&L to tens of thousands of percent.
   const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
@@ -285,10 +285,10 @@ function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string
     acquisitions: rows,
     purchase_price: hasCost ? purchasePrice : null,
     pnl_pct: hasCost ? calcPnlPct(purchasePrice, unitVal) : null,
-    pnl_prozent: hasCost ? pnlProzent(purchasePrice, unitVal) : null,
+    pnl_percent: hasCost ? pnlProzent(purchasePrice, unitVal) : null,
     avg_price: unitVal,
     qty_avg_price: unitVal,
-    wert_gesamt: aufRappen(wert_z),
+    value_total: aufRappen(wert_z),
     total_value: (wert_z / 10000).toFixed(4),
     display_value: aufRappen(wert_z).toFixed(2),
   };
@@ -297,15 +297,15 @@ function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string
 /** Sum of the row values, rounded only at the end; as a number and (deprecated) as text. */
 function total(rows: Array<{ total_value: string }>) {
   const z = rows.reduce((s, r) => s + (inTenThousandths(r.total_value) ?? 0), 0);
-  return { wert_gesamt: aufRappen(z), total_value: aufRappen(z).toFixed(2) };
+  return { value_total: aufRappen(z), total_value: aufRappen(z).toFixed(2) };
 }
 
 /** One implementation for session route and token API. */
 export async function valueMinifigs(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
   const uids = asIds(await k.household.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
-    k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
-    k.einstellungen.globalValue('price_cache_ttl', '24'),
+    k.settings.userValue(viewerId, 'currency', 'EUR'),
+    k.settings.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
   const manualFigs = await k.valuation.manualMinifigsToValuation(uids);
@@ -314,9 +314,9 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
       currency,
       figs: [],
       ...total([]),
-      kaufpreise_fremde_waehrung: 0,
-      kaufpreise_umgerechnet: 0,
-      preise_ausstehend: 0,
+      foreign_currency_purchases: 0,
+      converted_purchase_prices: 0,
+      prices_pending: 0,
     };
 
   const acqByFig = await loadManualAcquisitions(k, uids, 'fig', currency);
@@ -345,8 +345,8 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
       const acqs = acqByFig.get(`${fig.user_id}|${key}`) || [];
       const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), (cond): MinifigPrice => {
         if (fig.bl_fig_number) {
-          const p = priceFromStock(c => figStock.get(`${fig.bl_fig_number}|${c}`), cond, ttl, k.uhr.jetzt());
-          if (p.ausstehend) isMissing.push({ art: 'figur', nummer: fig.bl_fig_number, zustand: cond });
+          const p = priceFromStock(c => figStock.get(`${fig.bl_fig_number}|${c}`), cond, ttl, k.clock.now());
+          if (p.pending) isMissing.push({ kind: 'figur', number: fig.bl_fig_number, condition: cond });
           return p;
         }
         // Without a BL number estimated from the part prices (the job computes the estimate).
@@ -361,14 +361,14 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
             estimated_from_parts: true as const,
             abdeckung: s.abdeckung,
           };
-        isMissing.push({ art: 'schaetzung', nummer: key, zustand: cond });
+        isMissing.push({ kind: 'schaetzung', number: key, condition: cond });
         return {
           min_price: 0,
           avg_price: 0,
           max_price: 0,
           qty_avg_price: 0,
           from_cache: false,
-          ausstehend: true as const,
+          pending: true as const,
         };
       });
       return { ...fig, ...priceData, ...valueManual(key, acqs, priceMap, fig.quantity || 1) };
@@ -378,17 +378,17 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
     currency,
     figs: results,
     ...total(results),
-    kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByFig),
-    kaufpreise_umgerechnet: countFlagged([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
+    foreign_currency_purchases: foreignPurchasePrices(acqByFig),
+    converted_purchase_prices: countFlagged([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
+    prices_pending: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
   };
 }
 
 export async function valueParts(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
   const uids = asIds(await k.household.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
-    k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
-    k.einstellungen.globalValue('price_cache_ttl', '24'),
+    k.settings.userValue(viewerId, 'currency', 'EUR'),
+    k.settings.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
   const manualParts = await k.valuation.manualPartsToValuation(uids);
@@ -397,12 +397,12 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
       currency,
       parts: [],
       ...total([]),
-      kaufpreise_fremde_waehrung: 0,
-      kaufpreise_umgerechnet: 0,
-      preise_ausstehend: 0,
+      foreign_currency_purchases: 0,
+      converted_purchase_prices: 0,
+      prices_pending: 0,
     };
 
-  const blNumber = (p: repo.ManuellesTeil) => String(p.bl_part_number || p.part_number);
+  const blNumber = (p: repo.ManualPart) => String(p.bl_part_number || p.part_number);
   await loadBlNumbersBefore(k, manualParts.map(blNumber));
   const acqByPart = await loadManualAcquisitions(k, uids, 'part', currency);
   const partStock = await preloadPartPrices(
@@ -421,9 +421,9 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     const acqs = acqByPart.get(`${part.user_id}|${key}`) || [];
     const stockKey = await partKey(k, blNumber(part), part.color_id ?? NO_COLOR);
     const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), cond => {
-      const p = priceFromStock(c => partStock.get(`${stockKey}|${c}`), cond, ttl, k.uhr.jetzt());
-      if (p.ausstehend)
-        isMissing.push({ art: 'teil', nummer: blNumber(part), farbe: part.color_id ?? NO_COLOR, zustand: cond });
+      const p = priceFromStock(c => partStock.get(`${stockKey}|${c}`), cond, ttl, k.clock.now());
+      if (p.pending)
+        isMissing.push({ kind: 'teil', number: blNumber(part), farbe: part.color_id ?? NO_COLOR, condition: cond });
       return p;
     });
     const wert = valueManual(key, acqs, priceMap, part.quantity || 1);
@@ -452,8 +452,8 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     currency,
     parts: results,
     ...total(results),
-    kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByPart),
-    kaufpreise_umgerechnet: countFlagged([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
+    foreign_currency_purchases: foreignPurchasePrices(acqByPart),
+    converted_purchase_prices: countFlagged([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
+    prices_pending: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
   };
 }

@@ -56,7 +56,7 @@ test('if the preview is missing, the original comes before the CDN', async t => 
   );
   fs.mkdirSync(ordner, { recursive: true });
   const original = path.join(ordner, `${NR}.jpg`),
-    vorschau = path.join(ordner, `${NR}_thumb.jpg`);
+    preview = path.join(ordner, `${NR}_thumb.jpg`);
   await sharp({ create: { width: 600, height: 400, channels: 3, background: '#c33' } })
     .jpeg()
     .toFile(original);
@@ -74,21 +74,21 @@ test('if the preview is missing, the original comes before the CDN', async t => 
       `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}${p}`,
       { redirect: 'manual' },
     );
-    return { status: r.status, n: (await r.arrayBuffer()).byteLength, ort: r.headers.get('location') };
+    return { status: r.status, n: (await r.arrayBuffer()).byteLength, location: r.headers.get('location') };
   };
 
   const a = await hole(`/images/parts/${NR}_thumb.jpg`);
   assert.deepEqual([a.status, a.n], [200, fs.statSync(original).size], `geliefert: ${JSON.stringify(a)}`);
-  assert.ok(await bis(() => fs.existsSync(vorschau)), 'die fehlende Vorschau entsteht nicht');
+  assert.ok(await bis(() => fs.existsSync(preview)), 'die fehlende Vorschau entsteht nicht');
 
   const b = await hole(`/images/parts/${NR}_thumb.jpg`);
-  assert.deepEqual([b.status, b.n], [200, fs.statSync(vorschau).size], 'jetzt gilt die Vorschau');
+  assert.deepEqual([b.status, b.n], [200, fs.statSync(preview).size], 'jetzt gilt die Vorschau');
 
   fs.rmSync(original);
-  fs.rmSync(vorschau);
+  fs.rmSync(preview);
   const c = await hole(`/images/parts/${NR}_thumb.jpg`);
   assert.equal(c.status, 302, 'ohne Original führt der Weg zum Bild-Proxy');
-  assert.match(c.ort ?? '', /\/img-proxy\?url=.*zz-vorschau/);
+  assert.match(c.location ?? '', /\/img-proxy\?url=.*zz-vorschau/);
 
   const d = await hole(`/images/parts/gibtsnicht-${process.pid}_thumb.jpg`);
   assert.equal(d.status, 404, 'ohne Original und CDN-Adresse bleibt es bei 404');

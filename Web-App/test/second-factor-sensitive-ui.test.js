@@ -1,5 +1,5 @@
 /**
- * The UI asks for the code when the server reports zweiter_faktor_noetig for a sensitive
+ * The UI asks for the code when the server reports second_factor_required for a sensitive
  * change, and repeats the request with
  * `code` (withSecondFactor in public/js/admin.js). Checked on the mandatory change
  * of the start password, real bundle in jsdom.
@@ -17,13 +17,13 @@ const { openUi, warte, takt } = require('./helpers/ui');
 test('mandatory change with second factor asks for the code', async () => {
   const wechsel = [];
   const { w, d } = await openUi({
-    '/v1/auth/me': { loggedIn: true, user: { id: 1, username: 'anna', is_admin: false, mustChangePassword: true } },
-    '/v1/auth/change-password': (_url, o) => {
+    '/v2/auth/me': { loggedIn: true, user: { id: 1, username: 'anna', is_admin: false, mustChangePassword: true } },
+    '/v2/auth/change-password': (_url, o) => {
       const body = JSON.parse(o.body);
       wechsel.push(body);
       return body.code
         ? { success: true }
-        : { $status: 400, success: false, code: 'zweiter_faktor_noetig', error: 'Code fehlt' };
+        : { $status: 400, success: false, code: 'second_factor_required', error: 'Code fehlt' };
     },
   });
   try {

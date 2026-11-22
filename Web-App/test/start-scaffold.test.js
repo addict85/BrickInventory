@@ -82,8 +82,8 @@ test('Stein (blue): header blue, background blue-gray', () => {
   try {
     const kopf = w.getComputedStyle(w.document.querySelector('#start-skeleton .sg-header'));
     assert.equal(kopf.backgroundColor, 'rgb(61, 90, 128)', 'die Kopfkachel ist blau wie im Stein-Design');
-    const grund = w.getComputedStyle(w.document.querySelector('#start-skeleton'));
-    assert.equal(grund.getPropertyValue('--sg-bg').trim(), '#c9d5e2', 'der Grund ist blaugrau, nicht weiss');
+    const reason = w.getComputedStyle(w.document.querySelector('#start-skeleton'));
+    assert.equal(reason.getPropertyValue('--sg-bg').trim(), '#c9d5e2', 'der Grund ist blaugrau, nicht weiss');
   } finally {
     w.close();
   }

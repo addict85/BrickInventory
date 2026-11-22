@@ -627,12 +627,12 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
           await assert.rejects(app.query(sql), /permission denied|must be owner/, `${nutzer} darf: ${sql}`);
         // Write rows, advance sequences, create temporary objects: everything the app needs.
         // (the runtime role only partly writes users, see “only … writes credentials”.)
-        const { id: zeile } = (
+        const { id: row } = (
           await app.query(`INSERT INTO app_logs (level, message) VALUES ('info', 'laufzeitprobe') RETURNING id`)
         ).rows[0];
-        await app.query(`UPDATE app_logs SET message = 'L' WHERE id = $1`, [zeile]);
-        assert.equal((await app.query('SELECT message FROM app_logs WHERE id = $1', [zeile])).rows[0].message, 'L');
-        await app.query('DELETE FROM app_logs WHERE id = $1', [zeile]);
+        await app.query(`UPDATE app_logs SET message = 'L' WHERE id = $1`, [row]);
+        assert.equal((await app.query('SELECT message FROM app_logs WHERE id = $1', [row])).rows[0].message, 'L');
+        await app.query('DELETE FROM app_logs WHERE id = $1', [row]);
         await app.query('CREATE TEMP TABLE probe (x int)');
       });
   });
@@ -914,9 +914,9 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     const fsm = require('node:fs'),
       osm = require('node:os');
     const kopie = path.join(fsm.mkdtempSync(path.join(osm.tmpdir(), 'rolle-liste-')), 'app-role.sh');
-    const quelle = fsm.readFileSync(SCRIPT, 'utf8');
-    assert.match(quelle, /^users: id, username, /m);
-    fsm.writeFileSync(kopie, quelle.replace(/^(users: .*)$/m, '$1, neues_geheimnis'));
+    const source = fsm.readFileSync(SCRIPT, 'utf8');
+    assert.match(source, /^users: id, username, /m);
+    fsm.writeFileSync(kopie, source.replace(/^(users: .*)$/m, '$1, neues_geheimnis'));
     const mit = spawnSync('sh', [kopie], {
       encoding: 'utf8',
       env: {
@@ -1044,8 +1044,8 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     async tt => {
       const fsm = require('node:fs'),
         osm = require('node:os');
-      const ort = fsm.mkdtempSync(path.join(osm.tmpdir(), 'rollen-trennen-'));
-      tt.after(() => fsm.rmSync(ort, { recursive: true, force: true }));
+      const location = fsm.mkdtempSync(path.join(osm.tmpdir(), 'rollen-trennen-'));
+      tt.after(() => fsm.rmSync(location, { recursive: true, force: true }));
       await admin.query(`CREATE DATABASE ${id(migration)}`);
       const s = schemaAsAccount(url(migration));
       assert.equal(s.status, 0, s.stderr);
@@ -1055,18 +1055,18 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         c.query(`ALTER TABLE users OWNER TO ${id(ROLE)}; ALTER TABLE sets OWNER TO ${id(ROLE)}`),
       );
 
-      fsm.mkdirSync(path.join(ort, 'geheimnisse'), { mode: 0o700 });
+      fsm.mkdirSync(path.join(location, 'geheimnisse'), { mode: 0o700 });
       for (const [n, w] of [
         ['db_password', decodeURIComponent(BASIS.password)],
         ['db_app_password', PASSWORT],
         ['session_secret', 'x'.repeat(48)],
         ['pgweb_db_password', READ_PW],
       ])
-        fsm.writeFileSync(path.join(ort, 'geheimnisse', n), w);
-      fsm.copyFileSync(path.join(ROOT, 'compose.yaml'), path.join(ort, 'compose.yaml'));
-      const bin = path.join(ort, 'bin'),
-        log = path.join(ort, 'docker.log'),
-        g = path.join(ort, 'geheimnisse');
+        fsm.writeFileSync(path.join(location, 'geheimnisse', n), w);
+      fsm.copyFileSync(path.join(ROOT, 'compose.yaml'), path.join(location, 'compose.yaml'));
+      const bin = path.join(location, 'bin'),
+        log = path.join(location, 'docker.log'),
+        g = path.join(location, 'geheimnisse');
       fsm.mkdirSync(bin);
       fsm.writeFileSync(
         path.join(bin, 'docker'),
@@ -1087,7 +1087,7 @@ esac
       );
       const lauf = () =>
         spawnSync('sh', [path.join(ROOT, 'scripts', 'separate-roles.sh')], {
-          cwd: ort,
+          cwd: location,
           encoding: 'utf8',
           env: {
             PATH: `${bin}:${process.env.PATH}`,

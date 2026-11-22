@@ -23,7 +23,6 @@ export function createThrottle(a: ThrottleDependencies, inspect?: Inspect<Thrott
       hourlyState: k.counter.hourlyState,
       countHour: k.counter.countHour,
       claimApiBudget: k.apiBudget.claim,
-      clearApiBudget: k.apiBudget.clear,
     }),
     inspect,
   );

@@ -18,7 +18,7 @@ const { spawn } = require('node:child_process');
 const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'startpasswort-gleich-'));
 process.env.APP_ROOT = wurzel;
 const _req = require('./helpers/sources').buildAndRequire();
-const modul = require.resolve(path.join(__dirname, '..', 'dist', 'src', 'infra', 'startpasswort.js'));
+const modul = require.resolve(path.join(__dirname, '..', 'dist', 'src', 'infra', 'startPassword.js'));
 
 test.after(() => fs.rmSync(wurzel, { recursive: true, force: true }));
 
@@ -30,17 +30,17 @@ function schreiber(nr) {
       env: { ...process.env, APP_ROOT: wurzel },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
-    let fehler = '';
+    let error = '';
     k.stderr.on('data', d => {
-      fehler += d;
+      error += d;
     });
-    k.on('exit', code => fertig({ code, fehler }));
+    k.on('exit', code => fertig({ code, error }));
   });
 }
 
 test('all processes write the file', async () => {
   const results = await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(schreiber));
-  for (const e of results) assert.equal(e.code, 0, e.fehler.split('\n').find(z => z.includes('Error')) ?? e.fehler);
+  for (const e of results) assert.equal(e.code, 0, e.error.split('\n').find(z => z.includes('Error')) ?? e.error);
   const datei = _req('src/infra/startPassword.js').startPasswordFile();
   assert.match(fs.readFileSync(datei, 'utf8'), /^admin\np\d-\d+\n$/);
   const reste = fs.readdirSync(path.dirname(datei)).filter(n => n.startsWith('admin-startpasswort.txt.'));

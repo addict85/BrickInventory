@@ -8,24 +8,24 @@ import { fmtN } from './format.js';
 /**
  * The cards' shared basis from the server; without it (pnl failed) there's no P&L.
  * @typedef {{ valued: number, withoutMarket: number, withoutPurchase: number, costBasis: number, value: number, amount: number,
- *   gesamt?: number, withoutMarketCost?: number, withoutPurchaseValue?: number }} Basis
+ *   total?: number, withoutMarketCost?: number, withoutPurchaseValue?: number }} Basis
  * @param {Partial<import('../../frontend-types/contract').PnlTotals>} pt @param {number} missingPrice
  * @returns {Basis}
  */
 export function baseFrom(pt, missingPrice) {
   const z = (/** @type {unknown} */ v) => parseFloat(String(v)) || 0;
-  if (pt.basis_einstand == null)
+  if (pt.baseline_cost == null)
     return { valued: 0, withoutMarket: missingPrice, withoutPurchase: 0, costBasis: 0, value: 0, amount: 0 };
   return {
-    gesamt: pt.positionen || 0,
-    valued: pt.positionen_bewertet || 0,
-    withoutMarket: pt.positionen_ohne_marktpreis || 0,
-    withoutPurchase: pt.positionen_ohne_kaufpreis || 0,
-    costBasis: z(pt.basis_einstand),
-    value: z(pt.basis_marktwert),
-    amount: z(pt.basis_guv_betrag),
-    withoutMarketCost: z(pt.ohne_marktpreis_einstand),
-    withoutPurchaseValue: z(pt.ohne_kaufpreis_marktwert),
+    total: pt.positions || 0,
+    valued: pt.positions_valued || 0,
+    withoutMarket: pt.positions_without_market_price || 0,
+    withoutPurchase: pt.positions_without_purchase_price || 0,
+    costBasis: z(pt.baseline_cost),
+    value: z(pt.baseline_market_value),
+    amount: z(pt.baseline_pnl_amount),
+    withoutMarketCost: z(pt.cost_without_market_price),
+    withoutPurchaseValue: z(pt.market_value_without_purchase_price),
   };
 }
 
@@ -108,7 +108,7 @@ export function showMetrics({ basis, costAll, valueAll, guv, cur, foreignCurrenc
     row,
     // The server counts per item, the table shows one row per purchase and account; if the numbers
     // differ, the tooltip says why.
-    html`${ico('info')}<span>${basisSentence(tRaw('finance.basis.computed', { n: basis.valued, of: basis.gesamt }), rows > (basis.gesamt ?? 0))} ${parts.join(' · ')}</span>`,
+    html`${ico('info')}<span>${basisSentence(tRaw('finance.basis.computed', { n: basis.valued, of: basis.total }), rows > (basis.total ?? 0))} ${parts.join(' · ')}</span>`,
   );
 }
 

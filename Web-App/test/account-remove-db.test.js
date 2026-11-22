@@ -34,7 +34,7 @@ test('remove account', { concurrency: 1 }, async t => {
     ZIEL = `entf-ziel-${P}`;
   const weg = async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[VERW, ZIEL]]);
-    await db.run("DELETE FROM jobs WHERE type = 'konto_dateien'");
+    await db.run("DELETE FROM jobs WHERE type = 'account_files'");
   };
   await weg();
   const verw = (
@@ -51,13 +51,13 @@ test('remove account', { concurrency: 1 }, async t => {
       `entf-${uid}`,
       JSON.stringify({ userId: uid, cookie: {} }),
     ]);
-  const stand = async uid => ({
+  const state = async uid => ({
     konto: !!(await db.get('SELECT 1 FROM users WHERE id = $1', [uid])),
     sitzungen: (
       await db.get("SELECT COUNT(*)::int AS n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])
     ).n,
     protokoll: (
-      await db.get("SELECT COUNT(*)::int AS n FROM admin_log WHERE target_id = $1 AND action = 'konto_geloescht'", [
+      await db.get("SELECT COUNT(*)::int AS n FROM admin_log WHERE target_id = $1 AND action = 'account_deleted'", [
         uid,
       ])
     ).n,
@@ -80,7 +80,7 @@ test('remove account', { concurrency: 1 }, async t => {
     } finally {
       await db.exec('DROP TRIGGER entf_sperre ON user_sessions; DROP FUNCTION entf_sperre()');
     }
-    assert.deepEqual(await stand(ziel), { konto: true, sitzungen: 1, protokoll: 0 });
+    assert.deepEqual(await state(ziel), { konto: true, sitzungen: 1, protokoll: 0 });
     await db.run('DELETE FROM users WHERE id = $1', [ziel]);
     await db.run('DELETE FROM user_sessions WHERE sid = $1', [`entf-${ziel}`]);
   });
@@ -89,8 +89,8 @@ test('remove account', { concurrency: 1 }, async t => {
     const ziel = await neu();
     await sitzung(ziel);
     await removeAccount(ziel, verw);
-    assert.deepEqual(await stand(ziel), { konto: false, sitzungen: 0, protokoll: 1 });
-    const NICHT = { code: 'benutzer_nicht_gefunden_oder_eigenes' };
+    assert.deepEqual(await state(ziel), { konto: false, sitzungen: 0, protokoll: 1 });
+    const NICHT = { code: 'user_not_found_or_own' };
     await assert.rejects(removeAccount(ziel, verw), NICHT);
     await assert.rejects(removeAccount(verw, verw), NICHT, 'das eigene Konto nicht über den Verwalterweg');
   });
@@ -107,8 +107,8 @@ test('remove account', { concurrency: 1 }, async t => {
       fs.promises.rm = echt;
     }
     assert.equal(r, 'eingereiht');
-    const a = await db.get("SELECT payload, dedupe_key FROM jobs WHERE type = 'konto_dateien' AND dedupe_key = $1", [
-      'konto_dateien:987654',
+    const a = await db.get("SELECT payload, dedupe_key FROM jobs WHERE type = 'account_files' AND dedupe_key = $1", [
+      'account_files:987654',
     ]);
     assert.ok(a, 'kein Auftrag zum Wiederholen');
     assert.equal(a.payload.user_id, 987654);

@@ -49,7 +49,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
     assert.ok(await K.setResetTokenIfFree(uid, tokenDigest(token), 60, 15));
     await wechsel(uid);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
-    const r = await fetch(`${base}/api/v1/auth/reset-password`, {
+    const r = await fetch(`${base}/api/v2/auth/reset-password`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ token, password: 'Neu-Sicher-2026x' }),
@@ -79,9 +79,9 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
         }),
       ],
       [
-        [400, 'token_ungueltig'],
-        [400, 'token_ungueltig'],
-        [400, 'token_ungueltig'],
+        [400, 'token_invalid'],
+        [400, 'token_invalid'],
+        [400, 'token_invalid'],
       ],
     );
   });
@@ -101,7 +101,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
     assert.ok(await K.setResetTokenIfFree(uid, tokenDigest(token), 60, 15));
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const setze = password =>
-      fetch(`${base}/api/v1/auth/reset-password`, {
+      fetch(`${base}/api/v2/auth/reset-password`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token, password }),

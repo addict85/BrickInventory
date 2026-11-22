@@ -7,7 +7,7 @@ const LEER = z.object({});
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    katalog_nachzug: typeof LEER;
+    catalog_followup: typeof LEER;
   }
 }
 
@@ -15,7 +15,7 @@ declare module '../jobQueue/jobs' {
 export function partsJobKinds(k: PartsContext): Login[] {
   return [
     jobKind({
-      art: 'katalog_nachzug',
+      kind: 'catalog_followup',
       payload: LEER,
       ausfuehren: async () => void (await runCatalogFollowUp(k)),
       kontouebergreifend: 'Parts summary of all accounts',

@@ -10,5 +10,5 @@ export interface InventoryReadContract {
   figurErfassungen(konten?: Konten): string;
   anleitungen(konten?: Konten): string;
   mengeJoin(basis: string, alias?: string, konten?: Konten): string;
-  teilmengeJoin(basis: string, art: 'part' | 'fig', alias?: string, konten?: Konten): string;
+  teilmengeJoin(basis: string, kind: 'part' | 'fig', alias?: string, konten?: Konten): string;
 }

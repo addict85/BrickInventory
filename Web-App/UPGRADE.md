@@ -2522,3 +2522,56 @@ Daten, keine Bezeichner, und bleiben unverändert.
 - **Fehlerantworten** tragen neu `request_id` (gleich dem Kopf `X-Request-Id`); App und
   Oberfläche lesen weiter nur `code`.
 - Nichts von Hand zu tun; `docker compose up -d` spielt die Migration ein.
+
+## 72. API v2 auf Englisch, /api/v1 als Alias bis 30.06.2027 (Migration 0136)
+
+- **Neue Adresse `/api/v2`:** Felder, Enum-Werte, Pfade und Fehlercodes sind englisch
+  (`/admin/auftraege/:id/abbrechen` → `/admin/job-queue/:id/cancel`,
+  `/catalog/year-verteilung` → `/catalog/year-distribution`, `code: "nicht_gefunden"` →
+  `"not_found"`). Der Vertrag steht in `docs/openapi-v2.json`; die Weboberfläche spricht nur
+  noch v2.
+- **`/api/v1` bleibt** unverändert erreichbar: Der Server übersetzt Anfragen (Felder, Abfrage-
+  und Pfadwerte) nach v2 und Antworten, Ereignisse und Fehler zurück. `docs/openapi.json` und
+  `shared/app-schnittstelle.json` beschreiben weiter v1 und sind byte-gleich geblieben. Jede
+  v1-Antwort trägt `Deprecation: true`, `Sunset: Wed, 30 Jun 2027 00:00:00 GMT` und
+  `Link: </api/v2/…>; rel="successor-version"`. Nach dem 30.06.2027 fällt v1 weg; eigene
+  Skripte, Überwachung (`/api/v1/health/…`) und Reverse-Proxy-Regeln bis dahin auf v2
+  umstellen. Die Android-App läuft vorerst weiter über v1.
+- **Bilder:** `/api/v1/img-proxy` bleibt die Adresse des Bild-Proxys (gespeicherte
+  Bildadressen zeigen dorthin); sie wird nicht übersetzt und trägt keinen Deprecation-Kopf.
+- **Migration 0136** schreibt die gespeicherten Werte englisch: Auftragsstatus (`offen` →
+  `pending`, `laeuft` → `running`, `erledigt` → `done`, `fehler` → `error`, `abgebrochen` →
+  `cancelled`), Auftragsarten (`preise` → `prices`, `preise_nachladen` → `price_refresh`,
+  `bildbedarf` → `image_demand` …, auch in `job_pauses`, `job_exclusive_locks` und den
+  Schlüsseln `plan:…`), die Schlüssel in `jobs.payload/progress/result` und die Schritte der
+  Gerätefreigabe (`gutschein` → `voucher`, `verwaltung` → `admin`, `zweiter_faktor` →
+  `second_factor`). Die Tabellen sind während der Migration gesperrt; ein laufender Auftrag
+  heisst danach `running` mit demselben Halter und läuft weiter. Ein noch alter Prozess
+  schreibt deutsche Werte und wird von den neuen Prüfungen abgewiesen — `web` und `jobs`
+  deshalb zusammen aktualisieren (`docker compose up -d`).
+- **Eigene Werkzeuge**, die `jobs` direkt lesen (SQL-Abfragen auf `status = 'offen'`),
+  auf die neuen Werte umstellen.
+- Sonst nichts von Hand zu tun.
+
+## 73. API v2: restliche Werte englisch, `routes/api` (Migration 0137)
+
+- **Unter `/api/v2` englisch**, unter `/api/v1` unverändert (übersetzt): Kachelquelle
+  (`markt`/`kauf` → `market`/`purchase`), Alarmrichtung (`unter`/`ueber` → `below`/`above`),
+  QR-Kopplung (`offen`, `wartet` … → `open`, `waiting`, `confirmed`, `collected`, `rejected`,
+  `expired`), Teilereihenfolge (`farbe`/`menge` → `color`/`quantity`), angekündigte
+  Verwalteraktionen (`passwort` … → `password`, `second_factor`, `deactivate`, `revoke_role`,
+  `delete`), Nachtrag (`pending`/`done`), Rebrickable-Abbruch (`quota`, `no_key`, `failure`),
+  Proxy-Hinweis (`docker_network`, `single_address`), Teilcodes des Auftragsmonitors,
+  Sortierung `kauf_*` → `purchase_*`, Passkey-Zweck (`register`, `login`, `second_factor`),
+  Aktionen des Verwalterprotokolls (`konto_angelegt` → `account_created` …) und der
+  Einstellungsschlüssel `gutschein_land` → `voucher_country`. Merkliste-XML: Fehlerzahl
+  `failed`, Korrekturfeld `purchase_price`, Fortschritt `done` mit Phase `write`. Das letzte
+  Ereignis eines Stroms nach Zugangsende heisst unter v2 `access_ended`.
+- **Migration 0137** schreibt die gespeicherten Werte um (`admin_takeovers.type`,
+  `price_alerts.direction`, `webauthn_challenges.purpose`, `admin_log.action`,
+  `global_settings` und `kaufpreis` in wartenden Merkliste-Importen). Die Tabellen sind
+  dabei gesperrt; danach weisen die Prüfungen deutsche Werte ab — `web` und `jobs` zusammen
+  aktualisieren. Ältere Datensicherungen mit `gutschein_land` lassen sich weiter einlesen.
+- **Lesezeichen** der Sammlung mit `sortierung=kauf_desc` fallen auf die Standardsortierung
+  zurück.
+- Sonst nichts von Hand zu tun.

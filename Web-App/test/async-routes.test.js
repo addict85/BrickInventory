@@ -9,10 +9,10 @@ const assert = require('node:assert/strict');
 const express = require('express');
 const http = require('node:http');
 
-function probe(app, pfad) {
+function probe(app, path) {
   return new Promise(resolve => {
     const srv = app.listen(0, () => {
-      const req = http.get({ port: srv.address().port, path: pfad, timeout: 800 }, res => {
+      const req = http.get({ port: srv.address().port, path: path, timeout: 800 }, res => {
         res.resume();
         res.on('end', () => {
           srv.close();

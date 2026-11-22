@@ -52,8 +52,8 @@ test('a moved set takes the image paths of all its components along', { concurre
                   ON CONFLICT (fig_number) DO UPDATE SET image_local=EXCLUDED.image_local`,
       [FN, PATH_MINIFIG],
     );
-    await holdsPart(db, ofId, PN, { setNumber: SN, menge: 2, colorId: 4 });
-    await holdsMinifig(db, ofId, FN, { setNumber: SN, menge: 1 });
+    await holdsPart(db, ofId, PN, { setNumber: SN, quantity: 2, colorId: 4 });
+    await holdsMinifig(db, ofId, FN, { setNumber: SN, quantity: 1 });
 
     // Like the collection: in one transaction via its context; two foreign accounts only in the system frame.
     const { inSystemContext } = _req('src/infra/accountContext.js');

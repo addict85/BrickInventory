@@ -48,7 +48,8 @@ test('acquisitions of the sub-account: change and delete for all three element k
   });
   // Since an earlier round the entry routes only live here — one
   // address for web app AND app.
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
 
@@ -66,13 +67,13 @@ test('acquisitions of the sub-account: change and delete for all three element k
                   VALUES ($1,$2,10,'N',1)`,
       [subId, SN],
     );
-    await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // Quantity 0: the entry behind it carries it
+    await holdsPart(db, subId, PN, { quantity: 0, colorId: 4 }); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                   VALUES ($1,$2,4,5,'N',1)`,
       [subId, PN],
     );
-    await holdsMinifig(db, subId, FN, { menge: 0 }); // Quantity 0: the entry behind it carries it
+    await holdsMinifig(db, subId, FN, { quantity: 0 }); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                   VALUES ($1,$2,7,'N',1)`,
@@ -87,37 +88,37 @@ test('acquisitions of the sub-account: change and delete for all three element k
     [
       'Set-Erfassung ändern',
       'PUT',
-      async () => `/api/v1/sets/${SN}/acquisitions/${await acqId('set_acquisitions', 'set_number', SN)}`,
+      async () => `/api/v2/sets/${SN}/acquisitions/${await acqId('set_acquisitions', 'set_number', SN)}`,
       { purchase_price: 20 },
     ],
     [
       'Set-Erfassung löschen',
       'DELETE',
-      async () => `/api/v1/sets/${SN}/acquisitions/${await acqId('set_acquisitions', 'set_number', SN)}`,
+      async () => `/api/v2/sets/${SN}/acquisitions/${await acqId('set_acquisitions', 'set_number', SN)}`,
       null,
     ],
     [
       'Teil-Erfassung ändern',
       'PUT',
-      async () => `/api/v1/parts/${PN}/4/acquisitions/${await acqId('part_acquisitions', 'part_number', PN)}`,
+      async () => `/api/v2/parts/${PN}/4/acquisitions/${await acqId('part_acquisitions', 'part_number', PN)}`,
       { unit_price: 9 },
     ],
     [
       'Teil-Erfassung löschen',
       'DELETE',
-      async () => `/api/v1/parts/${PN}/4/acquisitions/${await acqId('part_acquisitions', 'part_number', PN)}`,
+      async () => `/api/v2/parts/${PN}/4/acquisitions/${await acqId('part_acquisitions', 'part_number', PN)}`,
       null,
     ],
     [
       'Figur-Erfassung ändern',
       'PUT',
-      async () => `/api/v1/minifigs/${FN}/acquisitions/${await acqId('minifig_acquisitions', 'fig_number', FN)}`,
+      async () => `/api/v2/minifigs/${FN}/acquisitions/${await acqId('minifig_acquisitions', 'fig_number', FN)}`,
       { unit_price: 9 },
     ],
     [
       'Figur-Erfassung löschen',
       'DELETE',
-      async () => `/api/v1/minifigs/${FN}/acquisitions/${await acqId('minifig_acquisitions', 'fig_number', FN)}`,
+      async () => `/api/v2/minifigs/${FN}/acquisitions/${await acqId('minifig_acquisitions', 'fig_number', FN)}`,
       null,
     ],
   ];
@@ -125,8 +126,8 @@ test('acquisitions of the sub-account: change and delete for all three element k
   try {
     for (const [name, methode, pathFn, body] of faelle) {
       await aufbauen();
-      const pfad = await pathFn();
-      const r = await fetch(`${base}${pfad}`, {
+      const path = await pathFn();
+      const r = await fetch(`${base}${path}`, {
         method: methode,
         headers: { 'content-type': 'application/json' },
         body: body ? JSON.stringify(body) : undefined,
@@ -143,7 +144,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
     // still reported success — the user saw “deleted", the row stayed.
     await aufbauen();
     const figId = await acqId('minifig_acquisitions', 'fig_number', FN);
-    await fetch(`${base}/api/v1/minifigs/${FN}/acquisitions/${figId}`, { method: 'DELETE' });
+    await fetch(`${base}/api/v2/minifigs/${FN}/acquisitions/${figId}`, { method: 'DELETE' });
     const rest = await db.get(`SELECT COUNT(*)::int AS c FROM minifig_acquisitions WHERE id=$1`, [figId]);
     assert.equal(rest.c, 0, 'die Erfassung muss nach dem Löschen wirklich weg sein');
   } finally {

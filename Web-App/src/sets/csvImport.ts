@@ -9,14 +9,14 @@ import * as repo from './repository/setDetail';
 import { attempts } from '../infra/result';
 import type { SetsContext } from './context';
 
-export interface ImportZeile {
+export interface ImportRow {
   sn: string;
   qty: number;
   purchasePrice: number | null;
   condition: string | null;
   acquiredAt: string | null;
-  zeile?: number;
-  fehler?: { code: 'csv_menge_ungueltig' | 'csv_keine_setnummer'; wert?: string };
+  row?: number;
+  error?: { code: 'csv_quantity_invalid' | 'csv_no_set_number'; wert?: string };
 }
 
 /** Turning "x" into a 1 and "-2" into a 2 would silently book something other than what is in the file. */
@@ -27,21 +27,21 @@ function csvMenge(raw: string): number | null {
 }
 
 /** Column names without case and BOM. */
-export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: number[] } {
-  let gelesen: ReturnType<typeof csvReadIn>;
+export function setCsvRows(text: string): { rows: ImportRow[]; uebersprungen: number[] } {
+  let parsed: ReturnType<typeof csvReadIn>;
   try {
-    gelesen = csvReadIn(text);
+    parsed = csvReadIn(text);
   } catch (e) {
-    failDomain('ungueltig', 'csv_parse_fehler', { grund: errorMessage(e) });
+    failDomain('ungueltig', 'csv_parse_error', { reason: errorMessage(e) });
   }
-  if (!gelesen.records.length) {
-    if (gelesen.uebersprungen.length)
-      failDomain('ungueltig', 'csv_keine_brauchbare_zeile', { zeilen: rowsList(gelesen.uebersprungen) });
-    failDomain('ungueltig', 'csv_keine_datenzeilen');
+  if (!parsed.records.length) {
+    if (parsed.uebersprungen.length)
+      failDomain('ungueltig', 'csv_no_usable_row', { zeilen: rowsList(parsed.uebersprungen) });
+    failDomain('ungueltig', 'csv_no_data_rows');
   }
-  const rows: ImportZeile[] = [];
-  for (const [i, raw] of gelesen.records.entries()) {
-    const zeile = gelesen.zeilen[i];
+  const rows: ImportRow[] = [];
+  for (const [i, raw] of parsed.records.entries()) {
+    const line = parsed.zeilen[i];
     const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(raw))
       row[
@@ -52,15 +52,15 @@ export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: 
       ] = String(defusingUndo(v) ?? '');
     const rawSn = row.set_number || row.setnummer || row.set || Object.values(row)[0];
     const sn = rawSn ? beforeThe(String(rawSn), ';').trim() : '';
-    const leer = { sn, qty: 0, purchasePrice: null, condition: null, acquiredAt: null, ...(zeile ? { zeile } : {}) };
+    const leer = { sn, qty: 0, purchasePrice: null, condition: null, acquiredAt: null, ...(line ? { row: line } : {}) };
     if (!sn) {
-      rows.push({ ...leer, fehler: { code: 'csv_keine_setnummer' } });
+      rows.push({ ...leer, error: { code: 'csv_no_set_number' } });
       continue;
     }
     const quantityRaw = String(row.quantity ?? row.anzahl ?? row.qty ?? row.menge ?? '');
     const qty = csvMenge(quantityRaw);
     if (qty === null) {
-      rows.push({ ...leer, fehler: { code: 'csv_menge_ungueltig', wert: quantityRaw.trim().slice(0, 20) } });
+      rows.push({ ...leer, error: { code: 'csv_quantity_invalid', wert: quantityRaw.trim().slice(0, 20) } });
       continue;
     }
     const rawPrice = row.purchase_price ?? row.kaufpreis ?? row.einkaufspreis ?? row.price ?? '';
@@ -71,21 +71,21 @@ export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: 
     rows.push({
       sn,
       qty,
-      ...(zeile ? { zeile } : {}),
+      ...(line ? { row: line } : {}),
       purchasePrice: priceValue !== null && !Number.isNaN(priceValue) ? priceValue : null,
       condition: ['N', 'U'].includes(state) ? state : null,
       // 05.03.2026 is the 5th of March, not the 3rd of May.
       acquiredAt: csvDatum(row.acquired_at || row.erfassungsdatum || row.datum),
     });
   }
-  return { rows, uebersprungen: gelesen.uebersprungen };
+  return { rows, uebersprungen: parsed.uebersprungen };
 }
 
 /** For existing sets the import increases the quantity, the single capture rejects it: the UI asks. */
-async function alreadyPresent(sk: SetsContext, userId: number, rows: ImportZeile[]): Promise<string[]> {
+async function alreadyPresent(sk: SetsContext, userId: number, rows: ImportRow[]): Promise<string[]> {
   const da = new Set((await repo.setsWithQuantity(sk.db, userId)).map(s => s.set_number));
   const hits = rows
-    .filter(r => !r.fehler)
+    .filter(r => !r.error)
     .map(r => normalizeSetNumber(r.sn))
     .filter(sn => da.has(sn));
   return [...new Set(hits)];
@@ -94,8 +94,8 @@ async function alreadyPresent(sk: SetsContext, userId: number, rows: ImportZeile
 /** A running import of the same account is aborted; `checkOnly` only reads. */
 export async function startSetCsvImport(sk: SetsContext, userId: number, text: string, checkOnly = false) {
   const { rows, uebersprungen } = setCsvRows(text);
-  const vorhanden = await alreadyPresent(sk, userId, rows);
-  if (checkOnly) return { total: rows.length, uebersprungen, vorhanden, gestartet: false };
+  const existing = await alreadyPresent(sk, userId, rows);
+  if (checkOnly) return { total: rows.length, uebersprungen, existing, started: false };
   const running = await sk.jobQueue.jobGet(userId);
   if (running && running.status === 'running') await sk.jobQueue.jobUpdate(userId, { status: 'cancelled' });
   const lauf = randomUUID();
@@ -118,7 +118,7 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
     throw e;
   }
   await sk.jobQueue.reportJobStatus(userId);
-  return { total: rows.length, uebersprungen, vorhanden, gestartet: true };
+  return { total: rows.length, uebersprungen, existing, started: true };
 }
 
 export async function cancelSetCsvImport(k: SetsContext, userId: number) {

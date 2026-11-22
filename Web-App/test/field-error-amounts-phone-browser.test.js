@@ -54,11 +54,11 @@ async function financesOffline(_t, a) {
     await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Fehlerzustand oben');
     const z = await b.auswerten(`({
       karten: document.getElementById('fin-sum').checkVisibility() ? 'sichtbar' : 'weg',
-      hinweise: document.querySelectorAll('#tab-finance .fval-hint').length,
+      hints: document.querySelectorAll('#tab-finance .fval-hint').length,
       erneut: [...document.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]')].filter(e => e.checkVisibility()).length,
       zeitraum: [...document.querySelectorAll('.period-choice .period-btn')].map(k => k.disabled) })`);
     assert.equal(z.karten, 'weg', 'Karten ohne Zahl');
-    assert.equal(z.hinweise, 0, '„Keine Verbindung“ in den Karten');
+    assert.equal(z.hints, 0, '„Keine Verbindung“ in den Karten');
     assert.equal(z.erneut, 1, 'genau ein „Erneut versuchen“');
     assert.deepEqual(z.zeitraum, [true, true, true, true], 'Zeitraumknöpfe bedienbar');
   } finally {
@@ -93,9 +93,9 @@ async function purchasePriceDialog(_t, a) {
       return s.getBoundingClientRect().width < noetig; }).map(s => s.selectedOptions[0].text); })()`);
   assert.deepEqual(gekuerzt, [], 'Auswahl gekürzt');
 
-  const feld = `document.querySelector('.acq-table tbody tr:first-child .acq-price')`;
+  const field = `document.querySelector('.acq-table tbody tr:first-child .acq-price')`;
   const eingeben = wert =>
-    b.auswerten(`(() => { const f = ${feld}; f.focus(); f.value = ${JSON.stringify(wert)};
+    b.auswerten(`(() => { const f = ${field}; f.focus(); f.value = ${JSON.stringify(wert)};
     f.dispatchEvent(new Event('input', { bubbles: true })); f.value = ${JSON.stringify(wert)}; f.blur(); return true; })()`);
   await eingeben('-5');
   await bis(`!!document.querySelector('.acq-table .field-error:not([hidden])')`, 'Meldung am Preis');
@@ -129,14 +129,14 @@ async function financesPhone(_t, a) {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="figs"] tbody tr')`, 'Finanzen mit Figuren', 200);
     await ruhig();
-    const zeile = name =>
+    const row = name =>
       b.auswerten(`(() => { const r = [...document.querySelectorAll('#fin-tbl tbody tr')].find(x => x.textContent.includes(${JSON.stringify(name)}));
       const sicht = e => !!e && e.checkVisibility() && e.getBoundingClientRect().width > 0;
       const u = r.querySelector('.fin-sub'), w = r.querySelector('.fin-value'), g = r.querySelector('.fin-guv');
       return { unter: sicht(u) ? u.innerText.replace(/\\s+/g, ' ').trim() : '', wert: w.innerText.replace(/\\s+/g, ' ').trim(), guv: sicht(g) ? g.innerText.trim() : null }; })()`);
-    const titanic = await zeile('Titanic');
+    const titanic = await row('Titanic');
     assert.match(titanic.unter, /Kaufpreis 679,99 €/, 'Set ohne Kaufpreis unter dem Namen');
-    const doc = await zeile('Doc Brown');
+    const doc = await row('Doc Brown');
     assert.match(doc.unter, /Kaufpreis 9,00 €/, 'Figur ohne Kaufpreis unter dem Namen');
     assert.equal(doc.wert, 'kein Marktpreis');
     assert.equal(doc.guv, null, 'zweiter Strich neben dem Wert');
@@ -188,7 +188,7 @@ async function momentsWithTag(_t, a) {
   const spaeter = new Date(morgen);
   spaeter.setDate(spaeter.getDate() + 2);
   for (const wann of [morgen, spaeter])
-    await db.run(`INSERT INTO jobs (type, due_at) VALUES ('konto_dateien', $1)`, [wann.toISOString()]);
+    await db.run(`INSERT INTO jobs (type, due_at) VALUES ('account_files', $1)`, [wann.toISOString()]);
   await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
   await bis(`/Dateien gelöschter Konten/.test(document.getElementById('tab-monitor').textContent)`, 'Aufträge');
   await b.auswerten(`document.querySelector('.mon-single')?.setAttribute('open', ''); true`);
@@ -275,9 +275,9 @@ async function passwordChange(_t, a) {
 }
 
 test('field errors, amounts, finances on the phone', { concurrency: 1, timeout: 300_000 }, async t => {
-  const a = await startApp(t, { name: `r20_pruefer_${process.pid}`, bestand: patternHousehold });
-  if (a.grund) {
-    t.skip(a.grund);
+  const a = await startApp(t, { name: `r20_pruefer_${process.pid}`, holding: patternHousehold });
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
   await a.ruhig();

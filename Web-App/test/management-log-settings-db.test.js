@@ -56,17 +56,17 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
   const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v2': 'routes/api/index.js' },
     t,
   });
   const speichere = rumpf =>
-    fetch(`${base}/api/v1/settings`, {
+    fetch(`${base}/api/v2/settings`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ admin_password: PASS, ...rumpf }),
     }).then(async r => [r.status, await r.json()]);
   const eigene = async () =>
-    (await (await fetch(`${base}/api/v1/admin/protokoll`)).json()).eintraege.filter(e => e.admin_id === uid);
+    (await (await fetch(`${base}/api/v2/admin/audit-log`)).json()).entries.filter(e => e.admin_id === uid);
   const GEHEIM = 'Rebrickable-Geheim-4711';
 
   await t.test('a change is recorded with the keys, not with the values', async () => {
@@ -78,7 +78,7 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
     assert.equal(status, 200, JSON.stringify(b));
     const e = await eigene();
     assert.equal(e.length, 1, JSON.stringify(e));
-    assert.equal(e[0].action, 'einstellungen_geaendert');
+    assert.equal(e[0].action, 'settings_changed');
     assert.deepEqual(e[0].details.split(', ').sort(), ['rebrickable_api_key', 'registration_enabled', 'smtp_host']);
     assert.ok(!JSON.stringify(e).includes(GEHEIM) && !JSON.stringify(e).includes('mail.neu.example'));
   });
@@ -95,7 +95,7 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
 
   await t.test('if an account value fails, global values and log stay as before', async () => {
     const [status, b] = await speichere({ smtp_host: 'mail.halb.example', language: 'xx' });
-    assert.deepEqual([status, b.code], [400, 'wert_ungueltig']);
+    assert.deepEqual([status, b.code], [400, 'value_invalid']);
     assert.equal(
       (await db.get(`SELECT value FROM global_settings WHERE key = 'smtp_host'`))?.value,
       'mail.neu.example',
@@ -105,7 +105,7 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
 
   await t.test('… also with an invalid currency that is checked before the transaction', async () => {
     const [status, b] = await speichere({ smtp_host: 'mail.halb.example', currency: 'XYZ' });
-    assert.deepEqual([status, b.code], [400, 'wert_ungueltig']);
+    assert.deepEqual([status, b.code], [400, 'value_invalid']);
     assert.equal(
       (await db.get(`SELECT value FROM global_settings WHERE key = 'smtp_host'`))?.value,
       'mail.neu.example',
@@ -116,12 +116,12 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
   await t.test('a valid currency applies together with the other account values', async () => {
     const [status, b] = await speichere({ currency: 'USD', language: 'en' });
     assert.equal(status, 200, JSON.stringify(b));
-    const werte = await db.all(
+    const values = await db.all(
       `SELECT key, value FROM user_settings WHERE user_id = $1 AND key IN ('currency', 'language') ORDER BY key`,
       [uid],
     );
     assert.deepEqual(
-      werte.map(w => `${w.key}=${w.value}`),
+      values.map(w => `${w.key}=${w.value}`),
       ['currency=USD', 'language=en'],
     );
   });

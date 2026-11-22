@@ -5,7 +5,7 @@
  * server error, cleanup).
  *
  * Counter-checks (measured 31.10.2026):
- *   A  app.use('/api/v1', idempotency) deleted in server.ts → red:
+ *   A  app.use('/api/v2', idempotency) deleted in server.ts → red:
  *      “repetition does not act twice" (quantity 4 instead of 3), no replay header
  *   B  in begin() the fingerprint comparison removed → red:
  *      “different content under the same key" (200 instead of 422)
@@ -87,11 +87,11 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  for (let i = 0; i < 240 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 240 && (await fetch(`http://127.0.0.1:${port}/api/v2/health`).catch(() => null)) === null; i++)
     await warte(250);
 
   const put = async (wer, key, body) => {
-    const r = await fetch(`http://127.0.0.1:${port}/api/v1/parts/3001id/5`, {
+    const r = await fetch(`http://127.0.0.1:${port}/api/v2/parts/3001id/5`, {
       method: 'PUT',
       body: JSON.stringify(body),
       headers: {
@@ -102,7 +102,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     });
     return { status: r.status, replay: r.headers.get('idempotent-replay'), body: await r.json() };
   };
-  const menge = async wer =>
+  const quantity = async wer =>
     Number(
       (
         await db.get(
@@ -117,26 +117,26 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.deepEqual(erst, { status: 200, replay: null, body: { success: true, quantity: 3 } }, log.slice(-2000));
     const nochmal = await put(a, 'k-1', { quantity_delta: 1 });
     assert.deepEqual(nochmal, { status: 200, replay: 'true', body: { success: true, quantity: 3 } });
-    assert.equal(await menge(a), 3);
+    assert.equal(await quantity(a), 3);
   });
 
   await t.test('the key applies per account', async () => {
     assert.deepEqual((await put(b, 'k-1', { quantity_delta: 1 })).body, { success: true, quantity: 3 });
-    assert.equal(await menge(b), 3);
+    assert.equal(await quantity(b), 3);
   });
 
   await t.test('different content under the same key is rejected', async () => {
     const r = await put(a, 'k-1', { quantity_delta: 5 });
     assert.equal(r.status, 422);
-    assert.equal(r.body.code, 'idempotenz_schluessel_anders');
-    assert.equal(await menge(a), 3);
+    assert.equal(r.body.code, 'idempotency_key_mismatch');
+    assert.equal(await quantity(a), 3);
   });
 
   await t.test('an invalid key is rejected, without a key every request acts', async () => {
     assert.equal((await put(a, 'mit leerzeichen', { quantity_delta: 1 })).status, 400);
     await put(a, null, { quantity_delta: 1 });
     await put(a, null, { quantity_delta: 1 });
-    assert.equal(await menge(a), 5);
+    assert.equal(await quantity(a), 5);
   });
 
   const dienst = _req('src/idempotency/service.js');

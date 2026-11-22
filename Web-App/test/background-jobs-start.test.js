@@ -64,22 +64,22 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
   runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
 
   const zeilen = await db.all(`SELECT type, dedupe_key, payload, EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek
-                                 FROM jobs WHERE status = 'offen'`);
+                                 FROM jobs WHERE status = 'pending'`);
   const plan = type => zeilen.find(z => z.dedupe_key === `plan:${type}`);
 
   await t.test('every scheduled kind has an appointment', () => {
-    for (const { art } of require('./helpers/sources')
+    for (const { kind } of require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
       .filter(a => a.zeitplan))
-      assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
+      assert.ok(plan(kind), `kein Termin für ${kind}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
     assert.ok(
       plan('csv_sync').in_sek <= 0 && plan('csv_sync').payload.onStart,
       'der Katalog wird beim Start sofort geprüft',
     );
-    assert.ok(plan('preise').in_sek <= 30, 'der Preis-Job läuft 30 s nach dem Start');
+    assert.ok(plan('prices').in_sek <= 30, 'der Preis-Job läuft 30 s nach dem Start');
     assert.ok(
-      zeilen.some(z => z.type === 'wechselkurse'),
+      zeilen.some(z => z.type === 'exchange_rates'),
       'kein Wechselkurs-Auftrag',
     );
   });
@@ -88,11 +88,11 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
     const { FOLLOWUP_RUNS } = _req('src/management/startFollowUpRuns.js');
     for (const schritt of Object.keys(FOLLOWUP_RUNS))
       assert.ok(
-        zeilen.some(z => z.dedupe_key === `nachlauf:${schritt}`),
+        zeilen.some(z => z.dedupe_key === `followup:${schritt}`),
         `Nachlauf ${schritt} fehlt`,
       );
     runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
-    const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE status = 'offen'
+    const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE status = 'pending'
                                     GROUP BY dedupe_key HAVING COUNT(*) > 1 LIMIT 1`);
     assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
   });

@@ -17,7 +17,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-function konfig() {
+function config() {
   const r = spawnSync(
     'docker',
     ['compose', '-f', path.join(ROOT, 'compose.yaml'), '--profile', 'tools', 'config', '--format', 'json'],
@@ -33,15 +33,15 @@ function konfig() {
       },
     },
   );
-  if (r.error || r.status !== 0) return { fehler: r.error?.message || r.stderr };
+  if (r.error || r.status !== 0) return { error: r.error?.message || r.stderr };
   return { j: JSON.parse(r.stdout) };
 }
 
 test('secrets only as files under /run/secrets', t => {
-  const { j, fehler } = konfig();
+  const { j, error } = config();
   if (!j) {
-    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${fehler}`);
-    t.skip(`no docker compose: ${fehler}`);
+    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${error}`);
+    t.skip(`no docker compose: ${error}`);
     return;
   }
   const dienste = Object.keys(j.services).sort();

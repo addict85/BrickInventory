@@ -23,7 +23,7 @@ const withPasskeys = w => {
 };
 
 async function mask(status) {
-  const o = await openUi({ '/v1/auth/registration-status': status }, { loggedIn: false, before: withPasskeys });
+  const o = await openUi({ '/v2/auth/registration-status': status }, { loggedIn: false, before: withPasskeys });
   await warte(() => o.aufrufe.some(a => a.url.includes('registration-status')));
   await warte(() => false, 100);
   const d = o.d;
@@ -38,7 +38,7 @@ async function mask(status) {
 }
 
 test('the server can do neither', async () => {
-  assert.deepEqual(await mask({ enabled: true, passkey: false, passwort_vergessen: false }), {
+  assert.deepEqual(await mask({ enabled: true, passkey: false, forgot_password: false }), {
     passkey: false,
     vergessen: false,
     registrieren: true,
@@ -47,7 +47,7 @@ test('the server can do neither', async () => {
 });
 
 test('the server can do both', async () => {
-  assert.deepEqual(await mask({ enabled: false, passkey: true, passwort_vergessen: true }), {
+  assert.deepEqual(await mask({ enabled: false, passkey: true, forgot_password: true }), {
     passkey: true,
     vergessen: true,
     registrieren: false,

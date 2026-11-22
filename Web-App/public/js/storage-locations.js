@@ -21,18 +21,18 @@ export async function loadLocationManagement() {
   // Both lists together: `locations` says what can be CHOSEN, `storage` what is actually IN there. Without
   // the second, nothing would show next to each location, and the refusal to delete ("something's still in
   // there") would come out of nowhere.
-  const [v, b] = await Promise.all([api('GET', '/v1/storage/locations'), api('GET', '/v1/storage?accounts=own')]);
+  const [v, b] = await Promise.all([api('GET', '/v2/storage/locations'), api('GET', '/v2/storage?accounts=own')]);
   if (!v?.success) return;
   // A new or renamed location shows up right away in the collection form's selects.
   loadLocations().catch(() => {});
-  const occupancy = new Map((b?.orte || []).map(o => [o.ort, o]));
-  const locations = v.orte || [];
+  const occupancy = new Map((b?.locations || []).map(o => [o.location, o]));
+  const locations = v.locations || [];
   if (!locations.length) {
     setHtml(el, html`<div data-style="color:var(--mut)">${tRaw('storage.empty')}</div>`);
     return;
   }
   // Feature request: being able to set a storage location as the default in settings, with a star icon.
-  const defaultId = v.vorgabe?.id ?? null;
+  const defaultId = v.preset?.id ?? null;
   // The grid sits on the list, and the rows are display:contents: that way every row shares the same column
   // widths, and the name field doesn't get squeezed narrow by the occupancy text next to it. minmax(0,1fr) so
   // a long name doesn't blow out the column; the divider line therefore sits on each cell.
@@ -47,15 +47,15 @@ export async function loadLocationManagement() {
         const how = occ
           ? [
               tRaw('storage.used.sets', { n: Number(occ.sets) || 0 }),
-              tRaw('storage.used.parts', { n: Number(occ.teile) || 0 }),
-              tRaw('storage.used.minifigs', { n: Number(occ.figuren) || 0 }),
+              tRaw('storage.used.parts', { n: Number(occ.parts) || 0 }),
+              tRaw('storage.used.minifigs', { n: Number(occ.minifigs) || 0 }),
             ]
               .filter(x => !x.startsWith('0 '))
               .join(', ')
           : tRaw('storage.unused');
         // Occupied: the server already refused the delete after the confirmation dialog. Disabled says so
         // beforehand, with the reason.
-        const occupied = !!occ && (Number(occ.sets) || 0) + (Number(occ.teile) || 0) + (Number(occ.figuren) || 0) > 0;
+        const occupied = !!occ && (Number(occ.sets) || 0) + (Number(occ.parts) || 0) + (Number(occ.minifigs) || 0) > 0;
         return html`<div data-style="display:contents">
       <span class="location-field" data-style="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${o.name}" aria-label="${tRaw('storage.rename', { name: o.name })}"
              data-change="renameLocation" data-arg="${o.id}" data-val="1" data-counter class="location-input" /></span>
@@ -81,11 +81,11 @@ async function createLocation() {
     fieldError('storage-new', tRaw('storage.name_missing'));
     return;
   }
-  const d = await api('POST', '/v1/storage/locations', { name });
+  const d = await api('POST', '/v2/storage/locations', { name });
   if (!d?.success) {
     responseError(
       d,
-      { lagerort_leer: 'storage-new', lagerort_zu_lang: 'storage-new', lagerort_doppelt: 'storage-new' },
+      { storage_empty: 'storage-new', storage_too_long: 'storage-new', storage_duplicate: 'storage-new' },
       tRaw('settings.error'),
     );
     return;
@@ -120,7 +120,7 @@ async function renameLocation(id, value) {
     await loadLocationManagement();
     return;
   }
-  const d = await api('PUT', `/v1/storage/locations/${encodeURIComponent(id)}`, { name });
+  const d = await api('PUT', `/v2/storage/locations/${encodeURIComponent(id)}`, { name });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
   } else toast(tRaw('storage.renamed', { name }), 'success');
@@ -137,7 +137,7 @@ async function renameLocation(id, value) {
  * @param {string} was
  */
 async function toggleLocationDefault(id, was) {
-  const d = await api('PUT', '/v1/storage/default', { id: String(was) === '1' ? null : parseInt(id, 10) });
+  const d = await api('PUT', '/v2/storage/default', { id: String(was) === '1' ? null : parseInt(id, 10) });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -158,7 +158,7 @@ async function deleteLocation(id, name) {
     title: tRaw('storage.delete_title'),
     text: `${name} — ${tRaw('storage.delete_text')}`,
     icon: 'location',
-    request: () => api('DELETE', `/v1/storage/locations/${encodeURIComponent(id)}`),
+    request: () => api('DELETE', `/v2/storage/locations/${encodeURIComponent(id)}`),
   });
   if (d) await loadLocationManagement();
 }

@@ -31,47 +31,47 @@ function sets(n) {
       name: i === 217 ? 'Seltene Burg' : `Set ${nr}`,
       quantity: 1,
       avg_price: wert,
-      wert_gesamt: wert,
+      value_total: wert,
       from_cache: true,
       is_fallback: false,
       no_price: false,
       mixed: false,
       purchase_price: 5 + (i % 7),
-      pnl_prozent: i % 13,
+      pnl_percent: i % 13,
       acquisitions: [],
     };
   });
 }
 
-async function openFinances(anzahl) {
-  const liste = sets(anzahl);
+async function openFinances(count) {
+  const liste = sets(count);
   const o = await openUi(
     {
-      '/v1/finance/valuation': {
+      '/v2/finance/valuation': {
         success: true,
         currency: 'EUR',
         condition: 'N',
         total_value: '1',
-        kaufpreise_fremde_waehrung: 0,
+        foreign_currency_purchases: 0,
         totals: { min: '0', avg: '1', max: '0', qty_avg: '1' },
         sets: liste,
       },
-      '/v1/finance/pnl': {
+      '/v2/finance/pnl': {
         success: true,
         currency: 'EUR',
         sets: [],
         totals: {
           purchase: '1',
           current: '1',
-          kaufpreise_fremde_waehrung: 0,
-          positionen: anzahl,
-          positionen_bewertet: anzahl,
-          positionen_ohne_marktpreis: 0,
-          positionen_ohne_kaufpreis: 0,
-          basis_einstand: '1',
-          basis_marktwert: '1',
-          basis_guv_betrag: '0',
-          pnl_prozent: 0,
+          foreign_currency_purchases: 0,
+          positions: count,
+          positions_valued: count,
+          positions_without_market_price: 0,
+          positions_without_purchase_price: 0,
+          baseline_cost: '1',
+          baseline_market_value: '1',
+          baseline_pnl_amount: '0',
+          pnl_percent: 0,
         },
       },
     },
@@ -125,10 +125,10 @@ test('block by block while scrolling', async () => {
 test('search over all positions', async () => {
   const o = await openFinances(250);
   try {
-    const feld = o.d.getElementById('fin-search');
-    assert.ok(feld.labels?.length || feld.getAttribute('aria-label'), 'Suchfeld ohne Namen');
-    feld.value = 'seltene';
-    feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
+    const field = o.d.getElementById('fin-search');
+    assert.ok(field.labels?.length || field.getAttribute('aria-label'), 'Suchfeld ohne Namen');
+    field.value = 'seltene';
+    field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
     assert.ok(await warte(() => zeilen(o).length === 1, 1500), `Zeilen: ${zeilen(o).length}`);
     assert.equal(zeilen(o)[0].dataset.arg, '10217-1', 'Treffer liegt hinter dem ersten Block');
     assert.equal(o.d.querySelector('#fin-tbl [data-click="finMehr"]'), null);

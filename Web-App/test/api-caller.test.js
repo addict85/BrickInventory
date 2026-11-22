@@ -9,7 +9,8 @@ const path = require('node:path');
 const { routerEinhaengungen } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
-const { appSchnittstelle } = require('./helpers/contract');
+const { appRoutes, appAddresses } = require('./helpers/contract');
+const _req = require('./helpers/sources').buildAndRequire();
 
 function ohneKommentare(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -28,10 +29,10 @@ function allRoutes() {
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
   for (const r of routerEinhaengungen()) out.push(...routesFrom(r.datei, r.mount));
-  const v1 = path.join(ROOT, 'routes/api_v1');
+  const v1 = path.join(ROOT, 'routes/api');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
-    out.push(...routesFrom(path.join(v1, f), '/api/v1'));
+    out.push(...routesFrom(path.join(v1, f), '/api/v2'));
   }
   return out;
 }
@@ -66,40 +67,40 @@ function clientSources() {
  */
 // Five entries disappeared here because the routes did
 const WITHOUT_CALLER = new Map([
-  ['GET /api/v1/health', 'Für Überwachung von aussen (Status, Details nur für Verwalter).'],
-  ['GET /api/v1/health/live', 'Lebenszeichen des Prozesses für eine Überwachung von aussen.'],
-  ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (node -e im Container).'],
+  ['GET /api/v2/health', 'Für Überwachung von aussen (Status, Details nur für Verwalter).'],
+  ['GET /api/v2/health/live', 'Lebenszeichen des Prozesses für eine Überwachung von aussen.'],
+  ['GET /api/v2/health/ready', 'Gesundheitsprüfung von compose.yaml (node -e im Container).'],
   // The token routes are missing here because their UI is now under
   // “Signed-in devices” and they thus have a caller.
   [
-    'POST /api/v1/admin/img-probe',
+    'POST /api/v2/admin/img-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, was der Bild-Proxy vom ' +
       'Ursprungsserver bekommt. Entstanden, weil Minifiguren-Bilder über den ' +
       'Proxy fehlschlugen, im Browser aber luden.',
   ],
   [
-    'POST /api/v1/admin/price-probe',
+    'POST /api/v2/admin/price-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, woher ein Preis stammt ' +
       '(Zustandswahl, Cache oder BrickLink-Antwort).',
   ],
   [
-    'GET /api/v1/admin/image-diag/:setNumber',
+    'GET /api/v2/admin/image-diag/:setNumber',
     'Diagnosewerkzeug, von Hand gerufen: reine Beobachtung des Bildzustands ' + 'eines Sets, ohne etwas nachzuladen.',
   ],
   [
-    'POST /api/v1/admin/forget-image-misses',
+    'POST /api/v2/admin/forget-image-misses',
     'Wartungsgriff, von Hand gerufen: nimmt gemerkte Bild-Fehlanzeigen zurück, ' +
       'damit der Nachlauf es erneut versucht.',
   ],
   [
-    'GET /api/v1/catalog/bricklink',
+    'GET /api/v2/catalog/bricklink',
     'Gebündelte Abfrage der BrickLink-Nummern aus dem lokalen Katalog-Cache. ' +
       'Gegen BrickLink selbst geht das nicht (deren API kennt nur einzelne ' +
       'Artikel und drosselt) — deshalb existiert die Route, benutzt wird sie ' +
       'noch nicht.',
   ],
   [
-    'POST /api/v1/auth/token-create',
+    'POST /api/v2/auth/token-create',
     'Stellt einen App-Token für eine bereits bestehende Anmeldung aus ' +
       '(Sitzung ODER Token). Die App holt ihren Token beim Anmelden, die Webapp ' +
       'über den QR-Weg (/auth/qr-token) — dieser dritte Weg wird derzeit von ' +
@@ -109,28 +110,29 @@ const WITHOUT_CALLER = new Map([
 
 test('every route has a caller or a registered reason', () => {
   const routen = allRoutes();
-  const quellen = clientSources();
-  assert.ok(quellen.length >= 20, `Nur ${quellen.length} Client-Dateien gefunden — Pfade veraltet?`);
+  const sources = clientSources();
+  assert.ok(sources.length >= 20, `Nur ${sources.length} Client-Dateien gefunden — Pfade veraltet?`);
   const text = [
-    ...quellen.map(p => fs.readFileSync(p, 'utf8')),
-    ...appSchnittstelle().routen.map(r => r.pfad),
-    ...appSchnittstelle().adressen,
+    ...sources.map(p => fs.readFileSync(p, 'utf8')),
+    // The app still calls /api/v1 (the alias): its paths count under their v2 name.
+    ...appRoutes(_req).map(r => r.path),
+    ...appAddresses(_req),
   ].join('\n');
 
   assert.ok(routen.length >= 120, `Nur ${routen.length} Routen gefunden — Muster veraltet?`);
 
   const ohne = [];
   let withCaller = 0;
-  for (const [verb, pfad] of routen) {
+  for (const [verb, path] of routen) {
     // Search up to the first placeholder: the client assembles the rest.
-    const stamm = pfad.split('/:')[0].replace(/\/+$/, '');
+    const stamm = path.split('/:')[0].replace(/\/+$/, '');
     if (!stamm) continue;
     const shapes = [stamm, stamm.slice(1), stamm.slice('/api'.length)].filter(Boolean);
     if (shapes.some(f => text.includes(f))) {
       withCaller++;
       continue;
     }
-    ohne.push(`${verb} ${pfad}`);
+    ohne.push(`${verb} ${path}`);
   }
 
   // Self-proof: if the pattern found nothing at all, `ohne` would be the whole list

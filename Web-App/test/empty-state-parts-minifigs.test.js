@@ -48,7 +48,7 @@ const SETTEIL = {
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ');
 const sichtbar = el => !!el && el.style.display !== 'none';
 
-async function teile(antworten) {
+async function parts(antworten) {
   const o = await openUi(antworten);
   await reiter(o.w, 'parts');
   await warte(() => !o.d.querySelector('#parts-main .loading, #parts-main .lade'), 3000);
@@ -57,7 +57,7 @@ async function teile(antworten) {
 }
 
 test('parts: manual ones there, from sets empty — no empty state', async () => {
-  const { w, d } = await teile({ '/v1/parts/manual': { success: true, parts: [ROT] } });
+  const { w, d } = await parts({ '/v2/parts/manual': { success: true, parts: [ROT] } });
   try {
     assert.equal(d.querySelectorAll('#manual-parts-list .man-tile').length, 1);
     assert.ok(sichtbar(d.getElementById('manual-parts-box')));
@@ -71,7 +71,7 @@ test('parts: manual ones there, from sets empty — no empty state', async () =>
 });
 
 test('parts: both empty — exactly one empty state, the empty box disappears', async () => {
-  const { w, d } = await teile({});
+  const { w, d } = await parts({});
   try {
     const leer = d.querySelectorAll('#tab-parts .empty-state');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
@@ -92,7 +92,7 @@ test('parts: both empty — exactly one empty state, the empty box disappears', 
 });
 
 test('parts: only from sets — no empty box for manual ones', async () => {
-  const { w, d } = await teile({ '/v1/parts': { success: true, parts: [SETTEIL], total: 1 } });
+  const { w, d } = await parts({ '/v2/parts': { success: true, parts: [SETTEIL], total: 1 } });
   try {
     assert.equal(d.querySelectorAll('#parts-main .part-card').length, 1);
     assert.equal(sichtbar(d.getElementById('manual-parts-box')), false);
@@ -103,7 +103,7 @@ test('parts: only from sets — no empty box for manual ones', async () => {
 });
 
 test('the color filter stands above the lists and acts on both lists', async () => {
-  const { w, d, aufrufe, ruhig } = await teile({ '/v1/parts/manual': { success: true, parts: [ROT, BLUE] } });
+  const { w, d, aufrufe, ruhig } = await parts({ '/v2/parts/manual': { success: true, parts: [ROT, BLUE] } });
   try {
     const wahl = d.getElementById('parts-color');
     assert.ok(sichtbar(wahl), 'Das Farbfeld ist verborgen, obwohl es zwei Farben gibt');
@@ -126,7 +126,7 @@ test('the color filter stands above the lists and acts on both lists', async () 
     const namen = [...d.querySelectorAll('#manual-parts-list .man-tile-name')].map(text);
     assert.deepEqual(namen, ['Brick 2 x 2'], 'Farbfilter wirkt auf beide Listen');
     assert.ok(
-      aufrufe.some(a => a.url.includes('/v1/parts?') && a.url.includes('color=Blue')),
+      aufrufe.some(a => a.url.includes('/v2/parts?') && a.url.includes('color=Blue')),
       'Die Teile aus Sets werden nicht nach der Farbe gefragt',
     );
   } finally {
@@ -134,7 +134,7 @@ test('the color filter stands above the lists and acts on both lists', async () 
   }
 });
 
-async function figuren(antworten) {
+async function minifigs(antworten) {
   const o = await openUi(antworten);
   await reiter(o.w, 'minifigs');
   await o.ruhig();
@@ -142,7 +142,7 @@ async function figuren(antworten) {
 }
 
 test('figures: manual ones there, from sets empty — no empty state', async () => {
-  const { w, d } = await figuren({ '/v1/minifigs/manual': { success: true, figs: [FIGUR] } });
+  const { w, d } = await minifigs({ '/v2/minifigs/manual': { success: true, figs: [FIGUR] } });
   try {
     assert.equal(d.querySelectorAll('#manual-figs-list .man-tile').length, 1);
     assert.ok(
@@ -155,7 +155,7 @@ test('figures: manual ones there, from sets empty — no empty state', async () 
 });
 
 test('figures: both empty — exactly one empty state', async () => {
-  const { w, d } = await figuren({});
+  const { w, d } = await minifigs({});
   try {
     const leer = d.querySelectorAll('#tab-minifigs .empty-state');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);

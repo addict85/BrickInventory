@@ -25,8 +25,8 @@ const { startApp } = require('./helpers/app-browser');
 test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async t => {
   const ANDERE = `rc_admin_${process.pid}`;
   const app = await startApp(t, { name: `rc_${process.pid}` });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db } = app;

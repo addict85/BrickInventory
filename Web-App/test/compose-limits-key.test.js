@@ -79,25 +79,25 @@ test('app and jobs only see the data key read-only', () => {
 });
 
 function sandbox() {
-  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'schluessel-'));
-  fs.mkdirSync(path.join(ort, 'schluessel'));
-  fs.mkdirSync(path.join(ort, 'data'));
+  const location = fs.mkdtempSync(path.join(os.tmpdir(), 'schluessel-'));
+  fs.mkdirSync(path.join(location, 'schluessel'));
+  fs.mkdirSync(path.join(location, 'data'));
   const lauf = () =>
     spawnSync('sh', [path.join(ROOT, 'create-keys.sh')], {
       encoding: 'utf8',
       env: {
         ...process.env,
-        SCHLUESSEL_ORDNER: path.join(ort, 'schluessel'),
-        ALTER_SCHLUESSEL: path.join(ort, 'data', '.datenschluessel'),
+        SCHLUESSEL_ORDNER: path.join(location, 'schluessel'),
+        ALTER_SCHLUESSEL: path.join(location, 'data', '.datenschluessel'),
         SCHLUESSEL_EIGNER: os.userInfo().username,
       },
     });
-  return { ort, lauf, datei: path.join(ort, 'schluessel', 'datenschluessel') };
+  return { location, lauf, datei: path.join(location, 'schluessel', 'datenschluessel') };
 }
 
 test('the key is created once, only the owner reads it', t => {
-  const { ort, lauf, datei } = sandbox();
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  const { location, lauf, datei } = sandbox();
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
   const r = lauf();
   assert.equal(r.status, 0, r.stderr);
   const erster = fs.readFileSync(datei, 'utf8');
@@ -110,9 +110,9 @@ test('the key is created once, only the owner reads it', t => {
 });
 
 test('an old key in data/ stays the only one', t => {
-  const { ort, lauf, datei } = sandbox();
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(ort, 'data', '.datenschluessel'), Buffer.alloc(32, 7).toString('base64'));
+  const { location, lauf, datei } = sandbox();
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(location, 'data', '.datenschluessel'), Buffer.alloc(32, 7).toString('base64'));
   const r = lauf();
   assert.equal(r.status, 0, r.stderr);
   assert.equal(fs.existsSync(datei), false, 'neben dem alten ein zweiter Schlüssel');

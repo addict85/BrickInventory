@@ -12,9 +12,9 @@
  *   C  PASSWORD_GRACE_PERIOD_MS set to one hour → red: “after the period expires”
  *   D  the refusal without a period removed in the route (empty password goes into
  *      the check) → red: “only once”, “after the period expires”, “without a period
- *      does not count in the brake”, “never with a token” (aktuelles_passwort_falsch)
+ *      does not count in the brake”, “never with a token” (current_password_wrong)
  *   E  consumeGracePeriod gives token accesses the period → red: “never with a token”
- *   F  (04.11.) in the route again `!zf.istAktiv(uid)` instead of zweiterFaktorPflicht(req)
+ *   F  (04.11.) in the route again `!zf.istAktiv(uid)` instead of secondFactorRequired(req)
  *      → red: “an ordinary account always names the password” (200 instead of 400)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -59,9 +59,9 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
 
   // The session is one object across all requests; the login writes into it.
   const sitzung = {};
-  const basis = routerServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t }).base;
+  const basis = routerServer(_req, { sitzung, routen: { '/api/v2/auth': 'routes/auth.js' }, t }).base;
   const ruf = async (weg, body, kopf = {}) => {
-    const r = await fetch(`${basis}/api/v1/auth${weg}`, {
+    const r = await fetch(`${basis}/api/v2/auth${weg}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...kopf },
       body: JSON.stringify(body),
@@ -70,10 +70,10 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
   };
   const anmelden = async (name = NAME) => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
-    const r = await ruf('/login', { username: name, password: PASS, ohne_token: true });
+    const r = await ruf('/login', { username: name, password: PASS, without_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
   };
-  const einrichten = (body = {}) => ruf('/zweiter-faktor/einrichten', body);
+  const einrichten = (body = {}) => ruf('/second-factor/setup', body);
 
   await t.test('after login without a password', async () => {
     await anmelden();
@@ -84,7 +84,7 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
 
   await t.test('only once', async () => {
     const r = await einrichten();
-    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'nur einmal');
+    assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], 'nur einmal');
     const mit = await einrichten({ password: PASS });
     assert.equal(mit.status, 200, 'mit Passwort weiter wie bisher');
   });
@@ -93,7 +93,7 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
     await anmelden();
     sitzung.passwordConfirmedAt = Date.now() - 6 * 60 * 1000;
     const r = await einrichten();
-    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'nach Ablauf der Frist');
+    assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], 'nach Ablauf der Frist');
   });
 
   await t.test('after the password change', async () => {
@@ -107,7 +107,7 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
   });
 
   await t.test('without a period does not count in the brake', async () => {
-    for (let i = 0; i < 8; i++) assert.equal((await einrichten()).body.code, 'aktuelles_passwort_erforderlich');
+    for (let i = 0; i < 8; i++) assert.equal((await einrichten()).body.code, 'current_password_required');
     const r = await einrichten({ password: PASS });
     assert.equal(r.status, 200, `ohne Frist zählt nicht in der Bremse: ${JSON.stringify(r.body)}`);
   });
@@ -117,8 +117,8 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
     const login = await ruf('/login', { username: NAME, password: PASS });
     assert.ok(login.body.token, JSON.stringify(login.body));
     assert.equal(sitzung.userId, undefined, 'Vorbedingung: keine Sitzung');
-    const r = await ruf('/zweiter-faktor/einrichten', {}, { authorization: `Bearer ${login.body.token}` });
-    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'mit Token nie');
+    const r = await ruf('/second-factor/setup', {}, { authorization: `Bearer ${login.body.token}` });
+    assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], 'mit Token nie');
   });
 
   await t.test('an ordinary account always names the password', async () => {
@@ -126,7 +126,7 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
     const r = await einrichten();
     assert.deepEqual(
       [r.status, r.body.code],
-      [400, 'aktuelles_passwort_erforderlich'],
+      [400, 'current_password_required'],
       'ein gewöhnliches Konto ohne Passwort',
     );
     assert.equal((await einrichten({ password: PASS })).status, 200, 'mit Passwort');

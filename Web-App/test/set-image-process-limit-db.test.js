@@ -91,7 +91,7 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
   const sets = path.join(wurzel, 'data', 'images', 'sets');
   const cache = path.join(wurzel, 'data', 'img_proxy_cache');
 
-  const bild = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#c33' } })
+  const image = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#c33' } })
     .jpeg()
     .toBuffer();
   /** @type {string[]} */
@@ -105,8 +105,8 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
         r.end();
         return;
       }
-      r.writeHead(200, { 'content-type': 'image/jpeg', 'content-length': bild.length });
-      r.end(bild);
+      r.writeHead(200, { 'content-type': 'image/jpeg', 'content-length': image.length });
+      r.end(image);
     })
     .listen(0, '127.0.0.1');
   await new Promise(r => cdn.once('listening', r));
@@ -191,7 +191,7 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
   // deletes the unused original and leaves the read preview standing.
   const { proxyCacheKey } = _req('src/images/images.js');
   fs.mkdirSync(cache, { recursive: true });
-  const previewInCache = await sharp(bild).resize(200, 200).jpeg().toBuffer();
+  const previewInCache = await sharp(image).resize(200, 200).jpeg().toBuffer();
   for (const sn of [ONLY_PREVIEW, LOCKED])
     fs.writeFileSync(path.join(cache, `${proxyCacheKey(imageAddress(sn))}_thumb.jpg`), previewInCache);
 
@@ -207,9 +207,9 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
   await t.test('fresh from the CDN: the web process stores the image and notes it', async () => {
     // A set outside the scope gets through, but lands neither in images/sets nor in the image demand.
     const fremd = await proxy(FREMD);
-    assert.deepEqual([fremd.status, fremd.bytes], [200, bild.length]);
+    assert.deepEqual([fremd.status, fremd.bytes], [200, image.length]);
     const r = await proxy(FRESH);
-    assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', bild.length]);
+    assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', image.length]);
     assert.ok(await bis(() => liegt(`${FRESH}.jpg`), 5_000), `${FRESH}.jpg fehlt\n${web.log.slice(-1500)}`);
     // The buffer goes into the database every 10 s.
     assert.ok(await bis(() => noted(FRESH), 15_000), `keine Notiz für ${FRESH}\n${web.log.slice(-1500)}`);
@@ -253,8 +253,8 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
       await bis(fertig, 60_000),
       `Dateien: ${fs.existsSync(sets) ? fs.readdirSync(sets).join(', ') : '(kein Ordner)'}\n${jobs.log.slice(-2000)}`,
     );
-    const vorschau = await sharp(path.join(sets, `${ONLY_PREVIEW}_thumb.jpg`)).metadata();
+    const preview = await sharp(path.join(sets, `${ONLY_PREVIEW}_thumb.jpg`)).metadata();
     // 400 × 300 fitted, not cropped (UX check 25, B1).
-    assert.deepEqual([vorschau.format, vorschau.width, vorschau.height], ['jpeg', 200, 150]);
+    assert.deepEqual([preview.format, preview.width, preview.height], ['jpeg', 200, 150]);
   });
 });

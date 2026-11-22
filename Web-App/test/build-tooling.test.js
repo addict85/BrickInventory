@@ -203,18 +203,18 @@ test('tsconfig has strictNullChecks on, and the CI checks the types as a step of
 test('the address of the test database has a fallback value everywhere', () => {
   const { ohneKommentare } = require('./helpers/sources');
   const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.js'));
-  let gelesen = 0;
+  let parsed = 0;
   const withoutFallback = [];
   for (const f of dateien) {
     const src = ohneKommentare(fs.readFileSync(path.join(__dirname, f), 'utf8'));
     for (const m of src.matchAll(/process\.env\.TEST_DATABASE_URL\s*(\|\|)?/g)) {
-      gelesen++;
+      parsed++;
       if (!m[1]) withoutFallback.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
     }
   }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
   // green without having checked anything.
-  assert.ok(gelesen >= 50, `Nur ${gelesen} Zugriffe auf TEST_DATABASE_URL gefunden — Muster veraltet?`);
+  assert.ok(parsed >= 50, `Nur ${parsed} Zugriffe auf TEST_DATABASE_URL gefunden — Muster veraltet?`);
   assert.deepEqual(
     withoutFallback,
     [],
@@ -274,8 +274,8 @@ test('both workflows report what was red', () => {
     assert.match(yml, /if:\s*failure\(\)/, `${datei}: kein Schritt, der im Fehlerfall laeuft`);
     // Both exits: something is red, or it is red without a test being red
     // (compile error, module does not load) — otherwise the diagnosis is silent exactly then.
-    const fehler = [...yml.matchAll(/::error title=/g)].length;
-    assert.ok(fehler >= 2, `${datei}: nur ${fehler} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
+    const error = [...yml.matchAll(/::error title=/g)].length;
+    assert.ok(error >= 2, `${datei}: nur ${error} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
     // And the reporter that the configured Node version really takes
     if (datei === 'web-ci.yml') {
       const assignment = (yml.match(/^\s*ROT_MUSTER=.*$/m) || [''])[0];
@@ -321,8 +321,8 @@ test('the security check says what it found', () => {
 
   assert.match(rumpf, /--json/, 'Der Schritt betrachtet nur den Rueckgabewert. Der sagt nicht, WAS los war');
   // Both exits: a finding AND no evaluable response.
-  const fehler = [...rumpf.matchAll(/::error title=/g)].length;
-  assert.ok(fehler >= 2, `nur ${fehler} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
+  const error = [...rumpf.matchAll(/::error title=/g)].length;
+  assert.ok(error >= 2, `nur ${error} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
   // And the silent exit: “no gap" is a result too.
   assert.match(
     rumpf,
@@ -347,8 +347,8 @@ test('npm audit: a finding from "moderate" makes the run red', t => {
   const stuecke = [...rumpf.matchAll(/node -e '\n([\s\S]*?)\n\s*'/g)].map(m => m[1]);
   const evaluation = stuecke.find(s => s.includes('process.env.BERICHT'));
   assert.ok(evaluation, 'die Auswertung des Berichts ist nicht zu finden');
-  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-'));
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  const location = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-'));
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
   const lauf = stufe => {
     const m = { info: 0, low: 0, moderate: 0, high: 0, critical: 0 };
     const vulnerabilities = {};
@@ -357,12 +357,12 @@ test('npm audit: a finding from "moderate" makes the run red', t => {
       vulnerabilities.probe = { severity: stufe, via: ['GHSA-probe'] };
     }
     fs.writeFileSync(
-      path.join(ort, 'audit.json'),
+      path.join(location, 'audit.json'),
       JSON.stringify({ metadata: { vulnerabilities: m }, vulnerabilities }),
     );
     return spawnSync(process.execPath, ['-e', evaluation], {
       encoding: 'utf8',
-      env: { ...process.env, BERICHT: path.join(ort, 'audit.json') },
+      env: { ...process.env, BERICHT: path.join(location, 'audit.json') },
     });
   };
   assert.equal(lauf(null).status, 0, 'ohne Befund rot');
@@ -568,11 +568,11 @@ test('orphaned .sql files disappear on the next build', async t => {
           .filter(f => f.endsWith('.sql'))
           .sort()
       : [];
-  const quelle = path.join(ROOT, 'db/migrations');
+  const source = path.join(ROOT, 'db/migrations');
   const gebaut = path.join(ziel, 'db/migrations');
 
   build();
-  const erwartet = sql(quelle);
+  const erwartet = sql(source);
   assert.ok(
     erwartet.length >= 20,
     `Nur ${erwartet.length} Migrationen in der Quelle gefunden — zu wenig; stimmt der Pfad noch? ` +

@@ -42,8 +42,8 @@ const accountNamed =
 
 test('email confirmation via button', { timeout: 180_000 }, async t => {
   const app = await startApp(t, { name: `bestaetigen_${process.pid}` });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const newLink = async uid => {
@@ -94,7 +94,7 @@ test('email confirmation via button', { timeout: 180_000 }, async t => {
       new RegExp(`als „bestaetigen_${process.pid}“`),
       'ein fremder Link nennt beide Konten',
     );
-    await app.b.auswerten(`fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => true)`);
+    await app.b.auswerten(`fetch('/api/v2/auth/logout', { method: 'POST' }).then(() => true)`);
     await app.b.tab('Page.navigate', { url: link.replace(/token=[0-9a-f]+/, 'token=falsch') });
     await app.bis(sichtbar('panel-verify'), 'Bestätigungsseite');
     await app.bis(`/ungültig/.test(document.getElementById('verify-err').textContent)`, 'Fehlertext bei falschem Link');

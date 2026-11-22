@@ -160,11 +160,13 @@ test('the parts list delivers description and storage location from the catalogs
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name,color_hex,image_url)
     VALUES ('3001',4,'Red','C91A09','http://cdn/3001r.png'),
            ('3002',1,'Blue','0055BF','http://cdn/3002b.png')`);
-  const ort = await db.get(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id`, [uid]);
+  const location = await db.get(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id`, [
+    uid,
+  ]);
   // Since migration 0038 the piece count stands in the set parts catalog, not on
   // the row — holdsPart() creates both.
-  await holdsPart(db, uid, '3001', { setNumber: '75192-1', menge: 6, colorId: 4, storageId: ort.id });
-  await holdsPart(db, uid, '3002', { setNumber: '75192-1', menge: 2, colorId: 1 });
+  await holdsPart(db, uid, '3001', { setNumber: '75192-1', quantity: 6, colorId: 4, storageId: location.id });
+  await holdsPart(db, uid, '3002', { setNumber: '75192-1', quantity: 2, colorId: 1 });
 
   const handlers = _req('src/parts/queries.js');
 
@@ -241,7 +243,7 @@ test('the figure list delivers name and image from minifigs_catalog', { concurre
   await holdsSet(db, uid, '75192-1', 3);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url)
     VALUES ('fig-000123','Chewbacca','http://cdn/chewie.png')`);
-  await holdsMinifig(db, uid, 'fig-000123', { setNumber: '75192-1', menge: 1 });
+  await holdsMinifig(db, uid, 'fig-000123', { setNumber: '75192-1', quantity: 1 });
 
   const handlers = _req('src/minifigs/queries.js');
   const liste = await handlers.readMinifigs(uid, {});

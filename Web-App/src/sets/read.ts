@@ -16,7 +16,7 @@ import type { SetsContext } from './context';
 export async function readSets(
   sk: SetsContext,
   userIdChoice: Sicht | Blickfeld,
-  query: Query<'GET /api/v1/sets'> = {},
+  query: Query<'GET /api/v2/sets'> = {},
 ) {
   const userId = await sk.household.scopeFrom(userIdChoice);
   // asIds(), so that older callers with a bare ID keep working.
@@ -137,7 +137,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
     ...withOwners,
     ...agg,
     bricklink,
-    preisvergleich_url: priceComparison,
+    price_comparison_url: priceComparison,
     image_local: resolveImageLocal(set.image_local),
     instructions: mergeInstructions(shared, uploaded),
   };

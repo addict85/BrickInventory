@@ -28,8 +28,8 @@ const SET = {
   purchase_price: 629,
   avg_price: 700,
   total_avg: '700',
-  wert_gesamt: 700,
-  acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 629, avg_price: 700, wert_gesamt: 700 }],
+  value_total: 700,
+  acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 629, avg_price: 700, value_total: 700 }],
 };
 const VALUATION = {
   success: true,
@@ -43,16 +43,16 @@ const PNL = {
   totals: {
     purchase: '829',
     sets_purchase: '629',
-    pnl_prozent: 11.3,
-    positionen: 2,
-    positionen_bewertet: 1,
-    positionen_ohne_marktpreis: 1,
-    positionen_ohne_kaufpreis: 0,
-    basis_einstand: '629',
-    basis_marktwert: '700',
-    basis_guv_betrag: '71',
-    ohne_marktpreis_einstand: '200',
-    ohne_kaufpreis_marktwert: '0',
+    pnl_percent: 11.3,
+    positions: 2,
+    positions_valued: 1,
+    positions_without_market_price: 1,
+    positions_without_purchase_price: 0,
+    baseline_cost: '629',
+    baseline_market_value: '700',
+    baseline_pnl_amount: '71',
+    cost_without_market_price: '200',
+    market_value_without_purchase_price: '0',
   },
 };
 
@@ -61,8 +61,8 @@ test('N1 purchase price tile: neutral while loading, the addition only with data
   let freigeben = null;
   let anhalten = false;
   const { w, d, ruhig } = await openUi({
-    '/v1/finance/valuation': () => (anhalten ? new Promise(r => (freigeben = () => r(VALUATION))) : VALUATION),
-    '/v1/finance/pnl': PNL,
+    '/v2/finance/valuation': () => (anhalten ? new Promise(r => (freigeben = () => r(VALUATION))) : VALUATION),
+    '/v2/finance/pnl': PNL,
   });
   try {
     const titel = () => text(d.getElementById('fin-cost-basis-title'));
@@ -86,9 +86,9 @@ test('N1 purchase price tile: neutral while loading, the addition only with data
 test('N2 finances error: own title, chips and search locked, free after success', async () => {
   let kaputt = true;
   const { w, d, ruhig } = await openUi({
-    '/v1/finance/valuation': () =>
-      kaputt ? { $status: 500, success: false, error: 'interner Fehler', code: 'interner_fehler' } : { ...VALUATION },
-    '/v1/finance/pnl': PNL,
+    '/v2/finance/valuation': () =>
+      kaputt ? { $status: 500, success: false, error: 'interner Fehler', code: 'internal_error' } : { ...VALUATION },
+    '/v2/finance/pnl': PNL,
   });
   try {
     const bedienbar = () =>
@@ -110,7 +110,7 @@ test('N2 finances error: own title, chips and search locked, free after success'
 
 test('N3 manually entered parts and minifigures: unit price with “je”', async () => {
   const { w, d, ruhig } = await openUi({
-    '/v1/parts/manual': {
+    '/v2/parts/manual': {
       success: true,
       parts: [
         {
@@ -125,7 +125,7 @@ test('N3 manually entered parts and minifigures: unit price with “je”', asyn
         },
       ],
     },
-    '/v1/minifigs/manual': {
+    '/v2/minifigs/manual': {
       success: true,
       figs: [
         { fig_number: 'fig-000123', fig_name: 'Chewbacca', quantity: 2, conditions: ['N'], avg_purchase_price: 4.5 },
@@ -149,18 +149,18 @@ test('N3 manually entered parts and minifigures: unit price with “je”', asyn
 test('N4 login: empty required fields report at the field', async t => {
   const { w, d, aufrufe } = await openUi(
     {
-      '/v1/auth/login': {
+      '/v2/auth/login': {
         $status: 401,
         success: false,
         error: 'Benutzername oder Passwort falsch',
-        code: 'anmeldedaten_ungueltig',
+        code: 'credentials_invalid',
       },
     },
     { loggedIn: false },
   );
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
-    const logins = () => aufrufe.filter(a => a.url.includes('/v1/auth/login')).length;
+    const logins = () => aufrufe.filter(a => a.url.includes('/v2/auth/login')).length;
     await t.test('both empty', async () => {
       d.getElementById('btn-login').click();
       await takt(30);
@@ -240,10 +240,10 @@ test('N5 account: jump bar to all sections', async () => {
 /** Log in; afterwards the collection answers with 401 as without a cookie. */
 async function signInWithoutCookie(sicher) {
   let angemeldet = false;
-  const withoutSession = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' };
+  const withoutSession = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' };
   const o = await openUi(
     {
-      '/v1/auth/login': () => {
+      '/v2/auth/login': () => {
         angemeldet = true;
         // Like an older server without keks_fehlt: the UI then concludes the missing HTTPS by itself.
         return {
@@ -252,8 +252,8 @@ async function signInWithoutCookie(sicher) {
           user: { id: 1, username: 'anna', is_admin: false },
         };
       },
-      '/v1/sets': () => (angemeldet ? withoutSession : { success: true, sets: [], count: 0, total: 0, themes: [] }),
-      '/v1/stats': () => (angemeldet ? withoutSession : { success: true, stats: {} }),
+      '/v2/sets': () => (angemeldet ? withoutSession : { success: true, sets: [], count: 0, total: 0, themes: [] }),
+      '/v2/stats': () => (angemeldet ? withoutSession : { success: true, stats: {} }),
     },
     {
       loggedIn: false,

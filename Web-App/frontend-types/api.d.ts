@@ -6,7 +6,7 @@ import type { Route, Strom } from '../frontend-types/contract';
 
 type WithoutQuery<P extends string> = P extends `${infer B}?${string}` ? B : P;
 type Exact<M, P, R = Route> = R extends { m: M; p: infer Q } ? (P extends Q ? R : never) : never;
-// `${pfad}${scopeQuery()}`: the query is appended at the end as ${string}.
+// `${path}${scopeQuery()}`: the query is appended at the end as ${string}.
 type WithAttachment<M, P, R = Route> = R extends { m: M; p: infer Q extends string }
   ? P extends `${Q}${string}`
     ? R
@@ -69,7 +69,7 @@ export type ApiData<M extends string, P extends string> = [Match<M, P>] extends 
     any
   : Match<M, P>['a'] | null;
 
-/** strom(): an event according to the contract; a path outside stays unknown. */
+/** stream(): an event according to the contract; a path outside stays unknown. */
 type StreamMatch<P extends string, S = Strom> = S extends { p: infer Q; e: infer E }
   ? WithoutQuery<P> extends Q
     ? E

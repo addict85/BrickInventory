@@ -93,8 +93,8 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
       '0',
       'Die Verbindung hat keine Zeitgrenze — dann prüft die Probe nichts',
     );
-    const angewandt = await runMigrations(client, { sichern: true });
-    assert.deepEqual(angewandt, [PROBE]);
+    const applied = await runMigrations(client, { sichern: true });
+    assert.deepEqual(applied, [PROBE]);
     const neu = (await backups()).filter(s => !vorher.has(s));
     assert.equal(neu.length, 1, 'keine Sicherung vor der Migration');
     const kopie = await db.get(`SELECT username FROM ${neu[0]}.users WHERE username = $1`, [NAME]);
@@ -111,11 +111,11 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
       'Die Haushaltsverknüpfung fehlt in der Sicherung',
     );
     // The copy carries no policy: without RLS the runtime role would read hashes and tokens of all accounts.
-    const offen = await db.all(
+    const open = await db.all(
       `SELECT relname FROM pg_class WHERE relnamespace = $1::regnamespace AND relkind = 'r' AND NOT relrowsecurity`,
       [neu[0]],
     );
-    assert.deepEqual(offen, [], 'Kopien ohne Zeilenschutz');
+    assert.deepEqual(open, [], 'Kopien ohne Zeilenschutz');
   });
 
   const SHORT = { fristMs: 200, versuche: 2 };
@@ -127,10 +127,10 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     const c2 = await db.pool.connect();
     await c2.query('BEGIN');
     await c2.query(`LOCK TABLE ${tabelle} IN ACCESS EXCLUSIVE MODE`);
-    let offen = true;
+    let open = true;
     const frei = async () => {
-      if (!offen) return;
-      offen = false;
+      if (!open) return;
+      open = false;
       clearTimeout(emergency);
       await c2.query('ROLLBACK');
       c2.release();

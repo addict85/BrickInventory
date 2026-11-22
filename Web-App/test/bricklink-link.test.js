@@ -79,16 +79,16 @@ test("the buy button takes the server's address and is never hidden", async () =
   const GEAR = 'https://www.bricklink.com/v2/catalog/catalogitem.page?G=5005358';
   const set = (nr, bricklink) => ({ set_number: nr, name: `Artikel ${nr}`, year: 2020, num_parts: 1, bricklink });
   const { w, d } = await openUi({
-    '/v1/catalog/sets': { success: true, total: 3, sets: [set('col001-1'), set('5005358-1'), set('99999-1')] },
-    '/v1/catalog/sets/col001-1': {
+    '/v2/catalog/sets': { success: true, total: 3, sets: [set('col001-1'), set('5005358-1'), set('99999-1')] },
+    '/v2/catalog/sets/col001-1': {
       success: true,
       set: set('col001-1', { url: SEARCH, exact: false, type: 'MINIFIG', number: 'col001' }),
     },
-    '/v1/catalog/sets/5005358-1': {
+    '/v2/catalog/sets/5005358-1': {
       success: true,
       set: set('5005358-1', { url: GEAR, exact: true, type: 'GEAR', number: '5005358' }),
     },
-    '/v1/catalog/sets/99999-1': { success: true, set: set('99999-1', null) },
+    '/v2/catalog/sets/99999-1': { success: true, set: set('99999-1', null) },
   });
   try {
     await reiter(w, 'catalog');

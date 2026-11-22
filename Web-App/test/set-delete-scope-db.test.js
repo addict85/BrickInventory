@@ -55,7 +55,8 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
       req.session = req.headers.authorization ? {} : { userId };
       next();
     });
-    app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+    app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
     return app;
   };
   const srvMain = appFor(mainId).listen(0);
@@ -74,11 +75,11 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
                   VALUES ($1,$2,10,'N',1)`,
       [besitzer, SN],
     );
-    await holdsPart(db, besitzer, '3001', { setNumber: SN, menge: 5, colorId: 4 });
+    await holdsPart(db, besitzer, '3001', { setNumber: SN, quantity: 5, colorId: 4 });
   };
-  const bestand = async besitzer => ({
+  const holding = async besitzer => ({
     set: !!(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2`, [besitzer, SN])),
-    teile: (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND set_number=$2`, [besitzer, SN])).c,
+    parts: (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND set_number=$2`, [besitzer, SN])).c,
     acq: (
       await db.get(`SELECT COUNT(*)::int c FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [besitzer, SN])
     ).c,
@@ -87,23 +88,23 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
   try {
     // 1. FORWARD: the main account deletes a set of the sub-account — and completely.
     // Without token and without session no access: the app path really checks the token.
-    const ohne = await fetch(`${baseMain}/api/v1/sets/${SN}`, {
+    const ohne = await fetch(`${baseMain}/api/v2/sets/${SN}`, {
       method: 'DELETE',
       headers: { authorization: 'Bearer falsch' },
     });
     assert.equal(ohne.status, 401, 'der App-Weg darf nicht über die Sitzung laufen');
     // One address, two credentials: session (web app) and token (app).
     const credential = (name, uid) => (name === 'Android' ? { authorization: `Bearer ${token[uid]}` } : {});
-    for (const [name, base, pfad] of [
-      ['Webapp', baseMain, `/api/v1/sets/${SN}`],
-      ['Android', baseMain, `/api/v1/sets/${SN}`],
+    for (const [name, base, path] of [
+      ['Webapp', baseMain, `/api/v2/sets/${SN}`],
+      ['Android', baseMain, `/api/v2/sets/${SN}`],
     ]) {
       await anlegen(subId);
-      const r = await fetch(`${base}${pfad}`, { method: 'DELETE', headers: credential(name, mainId) });
+      const r = await fetch(`${base}${path}`, { method: 'DELETE', headers: credential(name, mainId) });
       assert.equal(r.status, 200, `${name}: das Löschen darf nicht mehr in 404 enden`);
-      const b = await bestand(subId);
+      const b = await holding(subId);
       assert.equal(b.set, false, `${name}: das Set muss weg sein`);
-      assert.equal(b.teile, 0, `${name}: die Teile dürfen nicht als Waisen zurückbleiben`);
+      assert.equal(b.parts, 0, `${name}: die Teile dürfen nicht als Waisen zurückbleiben`);
       assert.equal(
         b.acq,
         0,
@@ -114,16 +115,16 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
 
     // 2. BACKWARD: the sub-account must NOT delete a set of the MAIN account.
     //    Exactly for that schreibbereich() stands there and not scopeIds().
-    for (const [name, pfad] of [
-      ['Webapp', `/api/v1/sets/${SN}`],
-      ['Android', `/api/v1/sets/${SN}`],
+    for (const [name, path] of [
+      ['Webapp', `/api/v2/sets/${SN}`],
+      ['Android', `/api/v2/sets/${SN}`],
     ]) {
       await anlegen(mainId);
-      const r = await fetch(`${baseSub}${pfad}`, { method: 'DELETE', headers: credential(name, subId) });
+      const r = await fetch(`${baseSub}${path}`, { method: 'DELETE', headers: credential(name, subId) });
       assert.equal(r.status, 404, `${name}: ein Unterkonto darf rückwärts nicht löschen`);
-      const b = await bestand(mainId);
+      const b = await holding(mainId);
       assert.equal(b.set, true, `${name}: das Set des Hauptkontos muss unangetastet bleiben`);
-      assert.equal(b.teile, 1, `${name}: auch die Teile bleiben`);
+      assert.equal(b.parts, 1, `${name}: auch die Teile bleiben`);
     }
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});

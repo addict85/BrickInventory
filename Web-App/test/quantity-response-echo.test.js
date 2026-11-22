@@ -3,7 +3,7 @@
  *
  * Counter-check (carried out): in sammlung.js `const echt = qty` set →
  * the web app substep turns red. Counter-check of 30.10.2026: in
- * routes/api_v1/sets.ts `...(r || {})` removed from the PUT response → red:
+ * routes/api/sets.ts `...(r || {})` removed from the PUT response → red:
  * “the route delivers the quantity” (undefined instead of 3). Counter-check of 08.11.2026:
  * in autosaveSet `const echt = qty` → red: “the web app takes
  * the quantity from the response” (field stays at 1). Counter-check of 12.11.2026 (the
@@ -39,7 +39,7 @@ test('the route delivers the quantity at all', { concurrency: 1 }, async t => {
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const setze = async quantity =>
     (
-      await fetch(`${base}/api/v1/sets/${SN}`, {
+      await fetch(`${base}/api/v2/sets/${SN}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantity }),
@@ -54,12 +54,12 @@ test('the web app takes the quantity from the response', async () => {
   // Afterwards the detail rereads the set; the server names the same quantity there.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };
   const { w, d, aufrufe } = await openUi({
-    '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
-    '/v1/sets/10294-1': (_url, o) => {
+    '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v2/sets/10294-1': (_url, o) => {
       if (o?.method === 'PUT') SET.quantity = 2;
       return o?.method === 'PUT' ? { success: true, quantity: 2 } : { success: true, set: { ...SET } };
     },
-    '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
+    '/v2/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
   try {
     assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));

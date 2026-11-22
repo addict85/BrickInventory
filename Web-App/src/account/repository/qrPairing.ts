@@ -1,21 +1,21 @@
 import type { DbInterface } from '../../../db/database';
 
-export type QrStand = 'offen' | 'wartet' | 'bestaetigt' | 'abgeholt' | 'abgelehnt' | 'abgelaufen';
+export type QrStand = 'open' | 'waiting' | 'confirmed' | 'collected' | 'rejected' | 'expired';
 
 export interface QrRow {
   id: number;
   user_id: number;
   token_days: number | null;
-  geraet: string | null;
+  device: string | null;
   ip_range: string | null;
   code_hash: string | null;
-  stand: QrStand;
+  state: QrStand;
 }
 
-const STAND = `CASE WHEN rejected_at IS NOT NULL THEN 'abgelehnt' WHEN picked_up_at IS NOT NULL THEN 'abgeholt'
-  WHEN expires_at <= NOW() THEN 'abgelaufen' WHEN confirmed_at IS NOT NULL THEN 'bestaetigt'
-  WHEN used_at IS NOT NULL THEN 'wartet' ELSE 'offen' END`;
-const COLUMNS = `id::int AS id, user_id, token_days, device AS geraet, ip_range, code_hash, ${STAND} AS stand`;
+const STAND = `CASE WHEN rejected_at IS NOT NULL THEN 'rejected' WHEN picked_up_at IS NOT NULL THEN 'collected'
+  WHEN expires_at <= NOW() THEN 'expired' WHEN confirmed_at IS NOT NULL THEN 'confirmed'
+  WHEN used_at IS NOT NULL THEN 'waiting' ELSE 'open' END`;
+const COLUMNS = `id::int AS id, user_id, token_days, device AS device, ip_range, code_hash, ${STAND} AS state`;
 
 export async function cleanQrPairingsOn(db: DbInterface): Promise<void> {
   await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
@@ -44,13 +44,13 @@ export async function createQrPairing(
 export function report(
   db: DbInterface,
   hash: string,
-  a: { abholung: string; codeHash: string; geraet: string; ipArea: string | null; fristS: number },
+  a: { pickup: string; codeHash: string; device: string; ipArea: string | null; fristS: number },
 ): Promise<QrRow | undefined> {
   return db.get<QrRow>(
     `UPDATE qr_login_tokens SET used_at = NOW(), pickup_code = $2, code_hash = $3, device = $4, ip_range = $5,
             expires_at = NOW() + make_interval(secs => $6)
       WHERE token = $1 AND used_at IS NULL AND expires_at > NOW() RETURNING ${COLUMNS}`,
-    [hash, a.abholung, a.codeHash, a.geraet, a.ipArea, a.fristS],
+    [hash, a.pickup, a.codeHash, a.device, a.ipArea, a.fristS],
   );
 }
 

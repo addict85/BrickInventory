@@ -8,10 +8,10 @@ export async function enqueueInstruction(
   o: { nurAusweichquelle?: boolean; now?: boolean } = {},
 ): Promise<string | null> {
   const n = withVersion(setNumber);
-  if (o.now) await k.jobQueue.wiedervorlage.now('anleitung', `anleitung:${n}`);
+  if (o.now) await k.jobQueue.wiedervorlage.now('instructions', `instructions:${n}`);
   return k.jobQueue.placeJobOne(
-    'anleitung',
+    'instructions',
     { set_number: n, ...(o.nurAusweichquelle ? { nur_ausweichquelle: true } : {}) },
-    { schluessel: `anleitung:${n}`, maxAttempts: 3 },
+    { schluessel: `instructions:${n}`, maxAttempts: 3 },
   );
 }

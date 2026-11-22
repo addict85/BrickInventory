@@ -38,7 +38,7 @@ interface StateComparison {
   market_price: number | null;
   purchase_price: number | null;
   pnl_pct: string | null;
-  pnl_prozent: number | null;
+  pnl_percent: number | null;
 }
 
 /** @param uid Scope: in the household the set often belongs to a sub-account; with
@@ -112,7 +112,7 @@ export async function priceHistorySet(
       market_price: market,
       purchase_price: base,
       pnl_pct: e == null ? null : e.toFixed(1),
-      pnl_prozent: e == null ? null : Number(e.toFixed(1)),
+      pnl_percent: e == null ? null : Number(e.toFixed(1)),
     };
   }
 
@@ -127,7 +127,7 @@ export async function priceHistorySet(
     history_used: historyUsed,
     current,
     pnl_pct: pnlPct,
-    pnl_prozent: pnlPct == null ? null : Number(pnlPct),
+    pnl_percent: pnlPct == null ? null : Number(pnlPct),
     purchase_price: hasCost ? purchasePrice : null,
     chart,
   };
@@ -139,7 +139,7 @@ export async function priceHistorySet(
 /** Only for conditions with an acquisition, otherwise the percentage would lack its basis. */
 export async function conditionRows(
   k: FinancesContext,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   uid: number | number[],
@@ -150,8 +150,8 @@ export async function conditionRows(
   const uids = asIds(uid);
   // DESC: since the figure history queries both numbers, there can be two rows
   // per condition, and `.find()` should take the newest.
-  const cacheRows = await k.priceHistory.cachePricesAfterKey(art, keySql, keyVals, currency);
-  const acqRows = await k.priceHistory.purchaseAveragesByKey(art, acqKeySql, acqKeyVals, uids, currency);
+  const cacheRows = await k.priceHistory.cachePricesAfterKey(kind, keySql, keyVals, currency);
+  const acqRows = await k.priceHistory.purchaseAveragesByKey(kind, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, StateComparison> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -164,7 +164,7 @@ export async function conditionRows(
       market_price: market,
       purchase_price: base,
       pnl_pct: e == null ? null : e.toFixed(1),
-      pnl_prozent: e == null ? null : Number(e.toFixed(1)),
+      pnl_percent: e == null ? null : Number(e.toFixed(1)),
     };
   }
   return out;
@@ -176,16 +176,16 @@ async function manualPriceHistory(
   k: FinancesContext,
   uid: number | number[],
   currency: string,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   acqKeySql: string = keySql,
   acqKeyVals: unknown[] = keyVals,
 ) {
   const [historyNew, historyUsed, by_condition] = await Promise.all([
-    k.priceHistory.manualSeries(art, keySql, keyVals, currency, 'N'),
-    k.priceHistory.manualSeries(art, keySql, keyVals, currency, 'U'),
-    conditionRows(k, art, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
+    k.priceHistory.manualSeries(kind, keySql, keyVals, currency, 'N'),
+    k.priceHistory.manualSeries(kind, keySql, keyVals, currency, 'U'),
+    conditionRows(k, kind, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Only conditions with an acquisition are drawn; the raw series stay complete.
   const states = statesForHistory(Object.keys(by_condition), ['N', 'U']);
@@ -257,7 +257,7 @@ async function priceNumbersForMinifig(
 
 /** @returns number of removed rows */
 export async function deleteOldPrices(k: FinancesContext): Promise<number> {
-  const days = k.konfig.priceHistoryDays;
+  const days = k.config.priceHistoryDays;
   if (days <= 0) return 0;
   const r = await k.priceHistory.deleteOldHistory(String(days));
   return r?.changes || 0;

@@ -168,7 +168,7 @@ test('the signature carries the administrator hint, the tile is gone', () => {
 test('with administrator rights (Administrator) follows, without only the name', async () => {
   // On the bundle in jsdom: log in as admin and as user, in English, and after saving the profile.
   const ich = u => ({
-    '/v1/auth/me': { ...ANMELDUNG['/v1/auth/me'], user: { ...ANMELDUNG['/v1/auth/me'].user, ...u } },
+    '/v2/auth/me': { ...ANMELDUNG['/v2/auth/me'], user: { ...ANMELDUNG['/v2/auth/me'].user, ...u } },
   });
   const name = async (antworten, opt) => {
     const o = await openUi(antworten, opt);
@@ -178,7 +178,7 @@ test('with administrator rights (Administrator) follows, without only the name',
   for (const [u, opt, soll] of [
     [{}, {}, 'anna (Administrator)'],
     [{ is_admin: false }, {}, 'anna'],
-    [{}, { sprache: 'en' }, 'anna (Administrator)'],
+    [{}, { language: 'en' }, 'anna (Administrator)'],
   ]) {
     const { w, d } = await name(ich(u), opt);
     try {
@@ -189,7 +189,7 @@ test('with administrator rights (Administrator) follows, without only the name',
   }
   // The profile page sets the name via the same rule — the hint stays after saving.
   const { w, d } = await name({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
+    '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
     await sicht(w, 'profile');

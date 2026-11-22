@@ -51,12 +51,12 @@ test('category from the summary', { concurrency: 1 }, async t => {
     [SN],
   );
   await holdsSet(db, U, SN, 2);
-  for (const [nr, farbe, menge] of [
+  for (const [nr, farbe, quantity] of [
     ['kz1', 5, 4],
     ['kz2', 5, 2],
     ['kz3', 1, 3],
   ])
-    await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, menge });
+    await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, quantity });
 
   const zeilen = r => r.parts.map(p => `${p.part_number}|${p.color_id}|${p.total_quantity}`).sort();
   const kategorien = l => l.map(k => `${k.category_name}|${k.label}|${k.total_quantity}`).sort();

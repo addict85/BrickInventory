@@ -30,19 +30,19 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbSour
  *  condition resolution") apply to the layer, not to the facade financeCalc.ts. */
 const finanzQuelle = () => {
   const ordner = path.join(ROOT, 'src/finances/calculation');
-  const teile = [serviceSource('src/finances/financeCalc.ts')];
+  const parts = [serviceSource('src/finances/financeCalc.ts')];
   for (const n of fs
     .readdirSync(ordner)
     .filter(x => x.endsWith('.ts'))
     .sort()) {
-    teile.push(serviceSource('src/finances/calculation/' + n));
+    parts.push(serviceSource('src/finances/calculation/' + n));
   }
   // Self-proof: if the helper did not find the modules, the rules would only check the
   // facade and be silently green.
-  if (teile.length < 4) {
-    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt src/finances/calculation/ noch da?`);
+  if (parts.length < 4) {
+    throw new Error(`finanzQuelle(): nur ${parts.length} Dateien gefunden — liegt src/finances/calculation/ noch da?`);
   }
-  return teile.join('\n');
+  return parts.join('\n');
 };
 
 /**
@@ -153,7 +153,7 @@ function areaPage(bereich) {
  *  itself, so that every path there counts. `ende()` stops again. */
 /** @param {any} [kontext] @returns {{ notes: [string, string][], ende: () => void }} */
 function imageNotes(kontext = testContext('images')) {
-  const puffer = kontext.faecher.slot('bildbedarf:puffer', () => new Map());
+  const puffer = kontext.faecher.slot('image_demand:puffer', () => new Map());
   /** @type {[string, string][]} */
   const notes = [];
   puffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
@@ -184,8 +184,8 @@ function testArea(bereich) {
       ],
       getOwnPropertyDescriptor: (_z, n) => {
         const d = testServices()[bereich];
-        const quelle = n in d ? d : testContext(bereich);
-        return n in quelle ? { value: quelle[n], enumerable: true, configurable: true, writable: true } : undefined;
+        const source = n in d ? d : testContext(bereich);
+        return n in source ? { value: source[n], enumerable: true, configurable: true, writable: true } : undefined;
       },
     },
   );
@@ -230,15 +230,15 @@ function buildAndRequire() {
     // The configuration that buildServices passes reads on access: a test that
     // changes a value with umgebung()/setConfig() also sees it in k.konfig.
     const K = require(path.join(ROOT, 'dist', 'src/infra/config.js'));
-    const konfig = {};
-    for (const n of Object.keys(K.konfig()))
-      Object.defineProperty(konfig, n, { enumerable: true, get: () => K.konfig()[n] });
+    const config = {};
+    for (const n of Object.keys(K.config()))
+      Object.defineProperty(config, n, { enumerable: true, get: () => K.config()[n] });
     const d = V().buildServices(testDb(), {
       bildwerk: _imageWorker,
-      quellen: _sources,
+      sources: _sources,
       contexts,
-      konfig,
-      uhr: testClock(),
+      config,
+      clock: testClock(),
     });
     return { d, contexts };
   };
@@ -258,16 +258,16 @@ const _withContext = new Map();
 const CONTEXT_FN =
   /^(?:export )?(?:async )?function (\w+)(?:<[^(]*>)?\(\s*kx?: \w+(?:Kontext|Context)\b|^(?:export )?const (\w+) = (?:async )?\(\s*kx?: \w+(?:Kontext|Context)\b/gm;
 /** The names of the context services of a source, also passed-on ones (export { a as b } [from './x']). */
-function contextNames(ts, tiefe = 0) {
-  const quelle = fs.existsSync(ts) ? fs.readFileSync(ts, 'utf8') : '';
-  const namen = new Set([...quelle.matchAll(CONTEXT_FN)].map(x => x[1] || x[2]));
-  if (tiefe < 2)
-    for (const i of quelle.matchAll(/^import \{([^}]*)\} from '(\.[^']+)';/gm)) {
-      const dort = contextNames(path.join(path.dirname(ts), `${i[2]}.ts`), tiefe + 1);
+function contextNames(ts, depth = 0) {
+  const source = fs.existsSync(ts) ? fs.readFileSync(ts, 'utf8') : '';
+  const namen = new Set([...source.matchAll(CONTEXT_FN)].map(x => x[1] || x[2]));
+  if (depth < 2)
+    for (const i of source.matchAll(/^import \{([^}]*)\} from '(\.[^']+)';/gm)) {
+      const dort = contextNames(path.join(path.dirname(ts), `${i[2]}.ts`), depth + 1);
       for (const n of i[1].split(',').map(x => x.trim())) if (dort.has(n)) namen.add(n);
     }
-  for (const e of quelle.matchAll(/^export \{([^}]*)\}(?: from '(\.[^']+)')?;/gm)) {
-    const quellNames = e[2] && tiefe < 2 ? contextNames(path.join(path.dirname(ts), `${e[2]}.ts`), tiefe + 1) : namen;
+  for (const e of source.matchAll(/^export \{([^}]*)\}(?: from '(\.[^']+)')?;/gm)) {
+    const quellNames = e[2] && depth < 2 ? contextNames(path.join(path.dirname(ts), `${e[2]}.ts`), depth + 1) : namen;
     for (const teil of e[1].split(',')) {
       const [a, b = a] = teil.trim().split(/\s+as\s+/);
       if (a && quellNames.has(a)) namen.add(b);
@@ -400,8 +400,8 @@ const _dataHandle = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _dataFa
 
 /** Switches environment variables (undefined deletes) and lets konfig() reread
  *  them: the server reads them once at startup (src/infra/config.ts). */
-function environment(werte) {
-  for (const [k, v] of Object.entries(werte)) {
+function environment(values) {
+  for (const [k, v] of Object.entries(values)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
   }
@@ -504,10 +504,10 @@ function adminSource() {
 /** The path on which a set is created or changes, including catalog work. */
 function setCoreSource() {
   return [
-    ['routes/api_v1/sets.ts'],
-    ['routes/api_v1/setsImport.ts'],
-    ['routes/api_v1/setsInstructions.ts'],
-    ['routes/api_v1/setsStorage.ts'],
+    ['routes/api/sets.ts'],
+    ['routes/api/setsImport.ts'],
+    ['routes/api/setsInstructions.ts'],
+    ['routes/api/setsStorage.ts'],
     ['src/sets/service.ts'],
     ['src/sets/content.ts'],
     ['src/sets/barcode.ts'],
@@ -550,7 +550,7 @@ function startSource() {
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'startup');
-  const teile = [
+  const parts = [
     'server.ts',
     'src/catalog/imageFollowUp.ts',
     'src/management/startFollowUpRuns.ts',
@@ -559,10 +559,10 @@ function startSource() {
   ].map(f => serviceSource(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(serviceSource('startup/' + f));
+      parts.push(serviceSource('startup/' + f));
     }
   }
-  return teile.join('\n');
+  return parts.join('\n');
 }
 
 /** The portfolio curve: orchestration, reconstruction and chart data. */
@@ -571,13 +571,13 @@ function portfolioSource() {
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'src/finances/portfolio');
-  const teile = [serviceSource('src/finances/portfolioHistory.ts')];
+  const parts = [serviceSource('src/finances/portfolioHistory.ts')];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(serviceSource('src/finances/portfolio/' + f));
+      parts.push(serviceSource('src/finances/portfolio/' + f));
     }
   }
-  return teile.join('\n');
+  return parts.join('\n');
 }
 
 /** The basic equipment of the frontend including the outsourced sections. */
@@ -658,9 +658,9 @@ function hatParameter(src, name, param, withDefaultNull = false) {
  * default values or line breaks: `checkParameter(src, 'attachOwners',
  * ['uids', 'rows'])`. A pattern over the whole head would break as soon as someone
  * tightens a type.
- * @param {string} [hinweis] addition for the error message
+ * @param {string} [hint] addition for the error message
  */
-function checkParameter(src, name, params, hinweis = '') {
+function checkParameter(src, name, params, hint = '') {
   const assert = require('node:assert/strict');
   const kopf = functionHeader(src, name);
   const innen = kopf.slice(kopf.indexOf('(') + 1, kopf.length - 1);
@@ -668,7 +668,7 @@ function checkParameter(src, name, params, hinweis = '') {
   let zuletzt = -1;
   for (const p of params) {
     const treffer = new RegExp(`\\b${p}\\b`).exec(innen.slice(zuletzt + 1));
-    assert.ok(treffer, `${name} nimmt '${p}' nicht (mehr) entgegen${hinweis ? ' — ' + hinweis : ''}: ${kopf}`);
+    assert.ok(treffer, `${name} nimmt '${p}' nicht (mehr) entgegen${hint ? ' — ' + hint : ''}: ${kopf}`);
     zuletzt = zuletzt + 1 + treffer.index;
   }
 }
@@ -676,8 +676,8 @@ function checkParameter(src, name, params, hinweis = '') {
 /**
  * Where which router hangs — READ from server.ts, not copied: a
  * check that copies the wiring does not check the wiring.
- * @returns [{ mount: '/api/v1/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
- *          without routes/api_v1/* — that is the index itself.
+ * @returns [{ mount: '/api/v2/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
+ *          without routes/api/* — that is the index itself.
  */
 /** @param {{ withoutParts?: boolean }} [o] withoutParts: only the mounted modules, not the files of an assembly */
 function routerEinhaengungen(o = {}) {
@@ -693,22 +693,22 @@ function routerEinhaengungen(o = {}) {
   // A router with a factory is mounted as `baueXRouter(d)`.
   for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)(?:\(\w+\))?\s*\)/g)) {
     const datei = fileJeName.get(m[2]);
-    if (!datei || datei.startsWith('routes/api_v1')) continue;
+    if (!datei || datei.startsWith('routes/api')) continue;
     out.push({
       mount: m[1].replace(/\/+$/, ''),
       datei: path.join(ROOT, datei + '.ts'),
       name: datei.replace(/^routes\//, ''),
     });
     // An assembly (routes/auth.ts) mounts its parts under the same address.
-    const teile = path.join(ROOT, datei);
-    if (!o.withoutParts && fs.existsSync(teile) && fs.statSync(teile).isDirectory())
+    const parts = path.join(ROOT, datei);
+    if (!o.withoutParts && fs.existsSync(parts) && fs.statSync(parts).isDirectory())
       for (const n of fs
-        .readdirSync(teile)
+        .readdirSync(parts)
         .filter(n => n.endsWith('.ts'))
         .sort())
         out.push({
           mount: m[1].replace(/\/+$/, ''),
-          datei: path.join(teile, n),
+          datei: path.join(parts, n),
           name: `${datei.replace(/^routes\//, '')}/${n.replace(/\.ts$/, '')}`,
         });
   }
@@ -733,35 +733,35 @@ function einhaengung(name) {
  * @param {string} [bis]   up to here (must occur if given), otherwise to the end
  * @param {string} [purpose]  what the section is needed for, for the message
  */
-function abschnitt(quelle, ab, bis, purpose = '') {
-  const i = String(quelle).indexOf(ab);
+function abschnitt(source, ab, bis, purpose = '') {
+  const i = String(source).indexOf(ab);
   if (i < 0)
     throw new Error(
       `Ankertext nicht gefunden${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
         'Der Ausschnitt waere leer, und Zusicherungen darauf pruefen nichts mehr.',
     );
-  if (bis === undefined) return String(quelle).slice(i);
-  const j = String(quelle).indexOf(bis, i);
+  if (bis === undefined) return String(source).slice(i);
+  const j = String(source).indexOf(bis, i);
   if (j < 0)
     throw new Error(`Endanker nicht gefunden${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
-  return String(quelle).slice(i, j);
+  return String(source).slice(i, j);
 }
 
 /**
  * Bring a path literal of the frontend into its SHAPE, once for all
  * checks. `[^}]*` would not get past a nested `${…}`.
  * A `${…}` is only a path segment if a `/` stands directly before it:
- *     `/v1/parts/${nr}/${farbe}`            → /v1/parts/:X/:X
- *     `/v1/minifigs/${nr}${owner ? …: ''}`  → /v1/minifigs/:X
+ *     `/v2/parts/${nr}/${farbe}`            → /v2/parts/:X/:X
+ *     `/v2/minifigs/${nr}${owner ? …: ''}`  → /v2/minifigs/:X
  * @param {string} [marke]   placeholder per segment — ':X' or ':x'
  */
 function pathForm(roh, marke = ':X') {
   let s = String(roh);
-  let vor = null;
+  let ago = null;
   // Innermost first until nothing matches anymore — so a nested expression
   // also disappears completely.
-  while (vor !== s) {
-    vor = s;
+  while (ago !== s) {
+    ago = s;
     s = s.replace(/\$\{[^{}]*\}/g, '\u0000');
   }
   let out = '';
@@ -789,7 +789,7 @@ function leseLiteral(src, i) {
   const anf = src[i];
   if (anf !== '`' && anf !== "'" && anf !== '"') return null;
   let j = i + 1,
-    tiefe = 0;
+    depth = 0;
   while (j < src.length) {
     const c = src[j];
     if (c === '\\') {
@@ -797,13 +797,13 @@ function leseLiteral(src, i) {
       continue;
     }
     if (anf === '`' && c === '$' && src[j + 1] === '{') {
-      tiefe++;
+      depth++;
       j += 2;
       continue;
     }
-    if (tiefe > 0) {
-      if (c === '{') tiefe++;
-      else if (c === '}') tiefe--;
+    if (depth > 0) {
+      if (c === '{') depth++;
+      else if (c === '}') depth--;
       // A literal in ${…} is read along so that it does not confuse the count.
       else if (c === '`' || c === "'" || c === '"') {
         const inner = leseLiteral(src, j);
@@ -823,7 +823,7 @@ function leseLiteral(src, i) {
 
 /**
  * The routes of a router file like a hit of `router.<verb>('<pfad>'`: [whole, verb, path
- * relative to `mount`]. Contract routers name the full path in the key (`endpoint('GET /api/v1/…'`).
+ * relative to `mount`]. Contract routers name the full path in the key (`endpoint('GET /api/v2/…'`).
  * @param {string} src @param {string} mount @returns {string[][]}
  */
 function routesFromSource(src, mount) {
@@ -840,22 +840,22 @@ function routesFromSource(src, mount) {
 /** The file list stands here so that test/api-inbox-db.test.js reads no
  *  variable path (test/eigenbruecken.test.js counts those). */
 function v1Routes() {
-  const gefunden = [];
+  const found = [];
   const lies = (datei, vorne) => {
     const s = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
-      gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
+      found.push([m[1].toUpperCase(), vorne + m[2]]);
     // Contract routers: the key names method and full path.
     for (const m of s.matchAll(/\.endpoint\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g))
-      gefunden.push([m[1], m[2]]);
+      found.push([m[1], m[2]]);
   };
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
-    lies(`routes/api_v1/${f}`, '/api/v1');
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api')).filter(f => f.endsWith('.ts')))
+    lies(`routes/api/${f}`, '/api/v2');
   // The routers mounted in server.ts (auth including parts, gesundheit).
-  for (const r of routerEinhaengungen().filter(r => r.mount.startsWith('/api/v1')))
+  for (const r of routerEinhaengungen().filter(r => r.mount.startsWith('/api/v2')))
     lies(path.relative(ROOT, r.datei), r.mount);
   lies('server.ts', '');
-  return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
+  return found.filter(([, p]) => p.startsWith('/api/v2'));
 }
 
 /** For checks that require a property everywhere instead of keeping
@@ -933,12 +933,12 @@ function frontendQuelle() {
 
 /** The login routes: routes/auth.ts assembles them from routes/auth/*.ts. */
 function loginSource() {
-  const teile = fs
+  const parts = fs
     .readdirSync(path.join(ROOT, 'routes', 'auth'))
     .filter(n => n.endsWith('.ts'))
     .sort();
   // The flows after the check have been in src/account/loginFlow.ts since 09.11.2026.
-  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`), 'src/account/loginFlow.ts']
+  return ['routes/auth.ts', ...parts.map(n => `routes/auth/${n}`), 'src/account/loginFlow.ts']
     .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))
     .join('\n');
 }

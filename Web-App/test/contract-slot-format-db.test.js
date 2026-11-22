@@ -33,8 +33,8 @@ test('the contract delivers the domain format to the route', { concurrency: 1 },
     await db.pool.end().catch(() => {});
   });
   const basis = testServer(_req, { sitzung: { userId: a }, t }).base;
-  const rufe = async (methode, pfad, rumpf) => {
-    const r = await fetch(`${basis}/api/v1${pfad}`, {
+  const rufe = async (methode, path, rumpf) => {
+    const r = await fetch(`${basis}/api/v2${path}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       ...(rumpf ? { body: JSON.stringify(rumpf) } : {}),

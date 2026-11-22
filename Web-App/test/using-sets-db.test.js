@@ -72,17 +72,17 @@ test('the list of using sets follows the viewport', async t => {
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('sw0001','Han Solo')`);
 
   // The same part in three sets — twice at the main account, once at the child.
-  await holdsPart(db, haupt, '3001', { setNumber: '75192-1', menge: 15, colorId: 4 });
-  await holdsPart(db, haupt, '3001', { setNumber: '10305-1', menge: 7, colorId: 4 });
-  await holdsPart(db, kind, '3001', { setNumber: '21058-1', menge: 3, colorId: 4 });
-  await holdsPart(db, haupt, '3001', { setNumber: '75192-1', menge: 99, colorId: 1 });
+  await holdsPart(db, haupt, '3001', { setNumber: '75192-1', quantity: 15, colorId: 4 });
+  await holdsPart(db, haupt, '3001', { setNumber: '10305-1', quantity: 7, colorId: 4 });
+  await holdsPart(db, kind, '3001', { setNumber: '21058-1', quantity: 3, colorId: 4 });
+  await holdsPart(db, haupt, '3001', { setNumber: '75192-1', quantity: 99, colorId: 1 });
 
   // Captured manually: NO set number. Must not show up.
-  await holdsPart(db, haupt, '3001', { menge: 42, colorId: 4 });
+  await holdsPart(db, haupt, '3001', { quantity: 42, colorId: 4 });
 
-  await holdsMinifig(db, haupt, 'sw0001', { setNumber: '75192-1', menge: 2 });
-  await holdsMinifig(db, kind, 'sw0001', { setNumber: '21058-1', menge: 1 });
-  await holdsMinifig(db, haupt, 'sw0001', { menge: 9 });
+  await holdsMinifig(db, haupt, 'sw0001', { setNumber: '75192-1', quantity: 2 });
+  await holdsMinifig(db, kind, 'sw0001', { setNumber: '21058-1', quantity: 1 });
+  await holdsMinifig(db, haupt, 'sw0001', { quantity: 9 });
 
   // ── Part, scope of the main account (household) ───────────────────────────
   const { item, sets: inHousehold } = await usingSets([haupt, kind], 'parts', {
@@ -145,9 +145,9 @@ test('the list of using sets follows the viewport', async t => {
   );
 
   // ── Figures: the same function, the same rules ─────────────────────────
-  const { item: figItem, sets: figuren } = await usingSets([haupt, kind], 'minifigs', { fig_number: 'sw0001' });
+  const { item: figItem, sets: minifigs } = await usingSets([haupt, kind], 'minifigs', { fig_number: 'sw0001' });
   assert.deepEqual(
-    figuren.map(s => [s.set_number, s.quantity]),
+    minifigs.map(s => [s.set_number, s.quantity]),
     [
       ['21058-1', 1],
       ['75192-1', 2],
@@ -160,7 +160,7 @@ test('the list of using sets follows the viewport', async t => {
   // A second query for name, color and image could say something different
   // than the list below it. Hence both are formed from one pass —
   // and hence both are checked here.
-  assert.equal(item.nummer, '3001');
+  assert.equal(item.number, '3001');
   assert.equal(item.name, 'Brick 2x4');
   assert.equal(item.color_name, 'Rot');
   assert.equal(
@@ -174,7 +174,7 @@ test('the list of using sets follows the viewport', async t => {
     'is_spare kommt als INTEGER; "0" ist in JavaScript WAHR — hier muss ein echter Wahrheitswert stehen',
   );
 
-  assert.equal(figItem.nummer, 'sw0001');
+  assert.equal(figItem.number, 'sw0001');
   assert.equal(figItem.name, 'Han Solo');
   assert.equal(
     figItem.color_name,
@@ -186,7 +186,7 @@ test('the list of using sets follows the viewport', async t => {
   // Self-proof: if the query were broken and delivered nothing at all, all the
   // deepEqual above would have run against empty lists — the first would have reported it.
   // This line additionally records that BOTH sides delivered something.
-  assert.ok(inHousehold.length >= 3 && figuren.length >= 2, 'Eine der beiden Abfragen hat nichts geliefert');
+  assert.ok(inHousehold.length >= 3 && minifigs.length >= 2, 'Eine der beiden Abfragen hat nichts geliefert');
 });
 
 test('a disallowed column is rejected', async t => {

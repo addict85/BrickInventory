@@ -71,20 +71,20 @@ test('header and tab bar stick together in every theme and connect to each other
   assert.ok(DESIGNS.length >= 5, `nur ${DESIGNS.length} Designs gefunden`);
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'haftung-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const fehler = [];
+  const error = [];
   for (const d of DESIGNS) {
     const { kopf, reiter, gerollt } = measure(bin, ordner, d);
     assert.ok(gerollt > 1000, `${d}: die Seite rollt nicht (${gerollt})`);
     const headerSticks = Math.round(kopf[0]) === 0,
       tabVisible = reiter[1] > 0;
     if (headerSticks !== tabVisible)
-      fehler.push(
+      error.push(
         `${d}: Kopfleiste ${headerSticks ? 'haftet' : 'rollt weg'}, Reiterleiste ${tabVisible ? 'haftet' : 'rollt weg'}`,
       );
     else if (headerSticks && Math.round(reiter[0]) !== Math.round(kopf[1]))
-      fehler.push(`${d}: Reiterleiste bei ${Math.round(reiter[0])}, Kopfleiste endet bei ${Math.round(kopf[1])}`);
+      error.push(`${d}: Reiterleiste bei ${Math.round(reiter[0])}, Kopfleiste endet bei ${Math.round(kopf[1])}`);
   }
-  assert.deepEqual(fehler, []);
+  assert.deepEqual(error, []);
   // The base styling pins both; without that the comparison above would check “scrolls away” twice.
   assert.equal(Math.round(measure(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
 });

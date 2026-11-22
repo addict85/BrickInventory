@@ -6,38 +6,38 @@ import { failDomain } from '../infra/errorTexts';
 import type { JobsContext } from './context';
 
 const HEARTBEAT_APPLIES_SEC = 120;
-const STATUS = ['offen', 'laeuft', 'fehler', 'abgebrochen', 'erledigt'] as const;
+const STATUS = ['pending', 'running', 'error', 'cancelled', 'done'] as const;
 
-function checkKind(k: JobsContext, art: string): JobKind {
-  if (!k.arten.fromValue(art)) failDomain('ungueltig', 'unbekannter_job');
-  return art as JobKind;
+function checkKind(k: JobsContext, kind: string): JobKind {
+  if (!k.arten.fromValue(kind)) failDomain('ungueltig', 'unknown_job');
+  return kind as JobKind;
 }
 
 /** Payloads stay outside: they carry whole lists. Without a filter only what
  * is still pending; the summary counts failed ones per kind. */
 export async function jobsInOverview(
   k: JobsContext,
-  filter: { status?: string | undefined; art?: string | undefined } = {},
+  filter: { status?: string | undefined; kind?: string | undefined } = {},
 ) {
-  const status = (filter.status ? filter.status.split(',') : ['offen', 'laeuft']).filter(s =>
+  const status = (filter.status ? filter.status.split(',') : ['pending', 'running']).filter(s =>
     (STATUS as readonly string[]).includes(s),
   );
-  const art = filter.art ? checkKind(k, filter.art) : null;
-  const [auftraege, zusammenfassung, pausen, lebenszeichen] = await Promise.all([
-    k.jobs.jobList(status, art),
+  const kind = filter.kind ? checkKind(k, filter.kind) : null;
+  const [jobs, summary, pauses, heartbeat] = await Promise.all([
+    k.jobs.jobList(status, kind),
     k.jobs.numbersJeKindAndStatus(),
     k.jobs.runningPauses(),
     k.runState.readState('jobs_lebenszeichen'),
   ]);
-  const alterSec = lebenszeichen ? Math.round((k.uhr.jetzt() - new Date(lebenszeichen).getTime()) / 1000) : null;
+  const alterSec = heartbeat ? Math.round((k.clock.now() - new Date(heartbeat).getTime()) / 1000) : null;
   return {
-    auftraege,
-    zusammenfassung,
-    pausen,
-    job_prozess: {
-      lebenszeichen,
-      alter_sekunden: alterSec,
-      laeuft: alterSec !== null && alterSec < HEARTBEAT_APPLIES_SEC,
+    jobs,
+    summary,
+    pauses,
+    job_process: {
+      heartbeat,
+      age_seconds: alterSec,
+      running: alterSec !== null && alterSec < HEARTBEAT_APPLIES_SEC,
     },
   };
 }
@@ -48,8 +48,8 @@ export async function queueCounts(k: JobsContext) {
     k.jobs.numbersJeKindAndStatus(),
     k.runState.readState('jobs_lebenszeichen'),
   ]);
-  const heartbeatAgeSec = heartbeat ? (k.uhr.jetzt() - new Date(heartbeat).getTime()) / 1000 : null;
-  return { counts: rows.map(r => ({ type: r.type, status: r.status, count: r.anzahl })), heartbeatAgeSec };
+  const heartbeatAgeSec = heartbeat ? (k.clock.now() - new Date(heartbeat).getTime()) / 1000 : null;
+  return { counts: rows.map(r => ({ type: r.type, status: r.status, count: r.count })), heartbeatAgeSec };
 }
 
 /** For a scheduled kind the next regular appointment is pending afterwards. */
@@ -57,26 +57,26 @@ export async function auftragAbbrechen(k: JobsContext, key: number) {
   // The response names the identifier as text like the overview (bigint).
   const id = String(key);
   const a = await abortAb(k, id);
-  if (!a) failDomain('konflikt', 'auftrag_nicht_aenderbar');
+  if (!a) failDomain('konflikt', 'job_not_changeable');
   await planeNext(k, a.type);
-  return { id, status: 'abgebrochen' };
+  return { id, status: 'cancelled' };
 }
 
 export async function retryJob(k: JobsContext, key: number) {
   const id = String(key);
-  if (!(await repeat(k, id))) failDomain('konflikt', 'auftrag_nicht_aenderbar');
-  return { id, status: 'offen' };
+  if (!(await repeat(k, id))) failDomain('konflikt', 'job_not_changeable');
+  return { id, status: 'pending' };
 }
 
 /** Scheduled appointments stay. */
 export async function emptyJobKind(k: JobsContext, kindRaw: string) {
-  const art = checkKind(k, kindRaw);
-  return { art, entfernt: await k.jobs.emptyKind(art) };
+  const kind = checkKind(k, kindRaw);
+  return { kind, removed: await k.jobs.emptyKind(kind) };
 }
 
 export async function jobKindNow(k: JobsContext, kindRaw: string) {
-  const art = checkKind(k, kindRaw);
-  await endPause(k, art);
-  const gestartet = hatSchedule(k, art) ? await pullPlanBefore(k, art) : (await pullBefore(k, art)) > 0;
-  return { art, gestartet };
+  const kind = checkKind(k, kindRaw);
+  await endPause(k, kind);
+  const started = hatSchedule(k, kind) ? await pullPlanBefore(k, kind) : (await pullBefore(k, kind)) > 0;
+  return { kind, started };
 }

@@ -77,15 +77,16 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     }),
   );
   app.use(
-    '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    '/api/v2',
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  /** @param {string} methode @param {string} pfad @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
-  const rufe = (methode, pfad, { body, cookie, token } = {}) =>
-    fetch(`http://127.0.0.1:${srv.address().port}/api/v1/auth${pfad}`, {
+  /** @param {string} methode @param {string} path @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
+  const rufe = (methode, path, { body, cookie, token } = {}) =>
+    fetch(`http://127.0.0.1:${srv.address().port}/api/v2/auth${path}`, {
       method: methode,
       body: body && JSON.stringify(body),
       headers: {
@@ -99,19 +100,19 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
       body: await r.json(),
     }));
   const anmelden = (name, body = {}) => rufe('POST', '/login', { body: { username: name, password: PASS, ...body } });
-  const schalte = (id, aktiv, pw = PASS) =>
-    rufe('PUT', `/users/${id}/aktiv`, {
+  const schalte = (id, active, pw = PASS) =>
+    rufe('PUT', `/users/${id}/active`, {
       cookie: chefKeks,
-      body: { is_active: aktiv, admin_password: pw, code: codes.shift() },
+      body: { is_active: active, admin_password: pw, code: codes.shift() },
     });
   const protokoll = async () =>
     (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [nutzer])).map(z => z.action);
 
-  const chefKeks = (await anmelden(CHEF, { ohne_token: true, code: codes.shift() })).cookie;
+  const chefKeks = (await anmelden(CHEF, { without_token: true, code: codes.shift() })).cookie;
   assert.match(chefKeks, /^bim\.sid=/);
 
   await t.test('token and session stop applying immediately', async () => {
-    const a = { ...(await anmelden(NUTZER)), cookie: (await anmelden(NUTZER, { ohne_token: true })).cookie };
+    const a = { ...(await anmelden(NUTZER)), cookie: (await anmelden(NUTZER, { without_token: true })).cookie };
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await rufe('GET', '/profile', { token: a.body.token })).status, 200);
     assert.equal((await rufe('GET', '/profile', { cookie: a.cookie })).status, 200);
@@ -127,11 +128,11 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     const a = await anmelden(NUTZER);
     const falsch = await rufe('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
     assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'gesperrt antwortet wie ein falsches Passwort');
-    assert.equal(a.body.code, 'anmeldedaten_ungueltig');
+    assert.equal(a.body.code, 'credentials_invalid');
     const liste = (await rufe('GET', '/users', { cookie: chefKeks })).body.users;
     assert.equal(liste.find(u => u.id === nutzer).is_active, false);
     assert.equal(liste.find(u => u.id === chef).is_active, true);
-    assert.deepEqual(await protokoll(), ['konto_deaktiviert']);
+    assert.deepEqual(await protokoll(), ['account_deactivated']);
   });
 
   await t.test('without the admin password nothing changes', async () => {
@@ -142,7 +143,7 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
 
   await t.test('not the own account', async () => {
     const r = await schalte(chef, false);
-    assert.deepEqual([r.status, r.body.code], [400, 'eigenes_konto_deaktivieren']);
+    assert.deepEqual([r.status, r.body.code], [400, 'deactivate_own_account']);
     assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [chef])).is_active, true);
   });
 
@@ -151,14 +152,14 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     const a = await anmelden(NUTZER);
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await rufe('GET', '/profile', { token: a.body.token })).status, 200);
-    assert.deepEqual(await protokoll(), ['konto_deaktiviert', 'konto_reaktiviert']);
+    assert.deepEqual(await protokoll(), ['account_deactivated', 'account_reactivated']);
   });
 
   await t.test('unconfirmed: the same refusal, new link without account information', async () => {
-    const adresse = `deakt_${process.pid}@example.org`;
+    const address = `deakt_${process.pid}@example.org`;
     await db.run('UPDATE users SET email = NULL, new_email = $2, registration_pending = true WHERE id = $1', [
       nutzer,
-      adresse,
+      address,
     ]);
     const a = await anmelden(NUTZER);
     const falsch = await rufe('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
@@ -167,9 +168,9 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
       [falsch.status, falsch.body],
       'unbestätigt antwortet wie ein falsches Passwort',
     );
-    const erneut = email => rufe('POST', '/bestaetigung-erneut', { body: { email } });
+    const erneut = email => rufe('POST', '/resend-confirmation', { body: { email } });
     const unbekannt = await erneut(`niemand_${process.pid}@example.org`);
-    const bekannt = await erneut(adresse.toUpperCase());
+    const bekannt = await erneut(address.toUpperCase());
     assert.deepEqual(
       [bekannt.status, bekannt.body],
       [unbekannt.status, unbekannt.body],
@@ -181,7 +182,7 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
       [nutzer],
     );
     assert.ok(z.new_email_token && z.frisch, 'kein neuer Link für das unbestätigte Konto');
-    await erneut(adresse);
+    await erneut(address);
     assert.equal(
       (await db.get('SELECT new_email_token FROM users WHERE id = $1', [nutzer])).new_email_token,
       z.new_email_token,

@@ -16,7 +16,7 @@ const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
-const SETTINGS = '/api/v1/settings';
+const SETTINGS = '/api/v2/settings';
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -48,7 +48,8 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     }),
   );
   app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/settings.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -70,7 +71,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     const telefon = await anmelden({ label: 'Pixel 8', never_expires: true });
     const tablet = await anmelden({ label: 'Tablet', never_expires: true });
     // Session and token come from separate logins: a token login creates no session.
-    const cookie = (await anmelden({ ohne_token: true })).cookie.split(';')[0];
+    const cookie = (await anmelden({ without_token: true })).cookie.split(';')[0];
 
     // ── 1. Via the SESSION (web app) ────────────────────────────────────────
     const perSession = await ruf(SETTINGS + '/tokens', { headers: { cookie } });
@@ -80,7 +81,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     // the client must send its token along. Exactly that is checked by the next
     // block; so nothing may be marked here yet.
     assert.equal(
-      perSession.body.tokens.filter(x => x.aktuell).length,
+      perSession.body.tokens.filter(x => x.current).length,
       0,
       'Ohne mitgeschickten Token ist keine Zeile als „dieses Gerät" erkennbar',
     );
@@ -88,7 +89,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     const withOwn = await ruf(SETTINGS + '/tokens', {
       headers: { cookie, authorization: `Bearer ${browser.body.token}` },
     });
-    const markiert = withOwn.body.tokens.filter(x => x.aktuell);
+    const markiert = withOwn.body.tokens.filter(x => x.current);
     assert.equal(markiert.length, 1, 'Genau eine Zeile ist „dieses Gerät"');
     assert.equal(markiert[0].label, 'webapp-session');
     // The token itself must NOT come out — only a piece of its hash.
@@ -103,12 +104,12 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     const perToken = await ruf(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${telefon.body.token}` } });
     assert.equal(perToken.status, 200, 'Die App muss ihre Zugänge sehen können');
     assert.equal(perToken.body.tokens.length, 3);
-    assert.equal(perToken.body.tokens.find(x => x.aktuell)?.label, 'Pixel 8');
+    assert.equal(perToken.body.tokens.find(x => x.current)?.label, 'Pixel 8');
     // And the lifetimes are in there correctly — the display depends on that.
     for (const label of ['Pixel 8', 'webapp-session']) {
-      const zeile = perToken.body.tokens.find(x => x.label === label);
-      assert.equal(zeile.never_expires, false, `${label}: kein Token laeuft mehr „nie" ab`);
-      assert.ok(zeile.expires_at, `${label}: ohne Datum hat die Anzeige nichts zu zeigen`);
+      const row = perToken.body.tokens.find(x => x.label === label);
+      assert.equal(row.never_expires, false, `${label}: kein Token laeuft mehr „nie" ab`);
+      assert.ok(row.expires_at, `${label}: ohne Datum hat die Anzeige nichts zu zeigen`);
     }
     // The phone's runs longer than the browser's — otherwise the
     // sliding period would be no relief but a tightening.

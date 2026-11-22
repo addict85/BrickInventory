@@ -37,8 +37,8 @@ const NUTZER = {
 
 async function oberflaeche() {
   const o = await openUi({
-    '/v1/auth/users': NUTZER,
-    '/v1/settings/tokens': { success: true, tokens: [{ token_id: 't1', label: 'Telefon', aktuell: false }] },
+    '/v2/auth/users': NUTZER,
+    '/v2/settings/tokens': { success: true, tokens: [{ token_id: 't1', label: 'Telefon', current: false }] },
   });
   o.inject = html => {
     const div = o.d.createElement('div');
@@ -69,7 +69,7 @@ test('injected markup triggers no dangerous action', async () => {
     );
 
     // loadGallery is harmless and registered: only the event matters here.
-    const galleryFetches = ab => aufrufe.slice(ab).filter(a => /\/v1\/sets(\?|$)/.test(a.url.replace(/^.*\/api/, '')));
+    const galleryFetches = ab => aufrufe.slice(ab).filter(a => /\/v2\/sets(\?|$)/.test(a.url.replace(/^.*\/api/, '')));
     let ab = aufrufe.length;
     inject('<div id="x3" data-mouseenter="loadGallery">x</div>');
     d.getElementById('x3').dispatchEvent(new w.MouseEvent('mouseenter'));
@@ -87,7 +87,7 @@ test('injected markup triggers no dangerous action', async () => {
     inject('<button id="x6" data-click="loadGallery">x</button>');
     d.getElementById('x6').click();
     await takt(50);
-    assert.ok(galleryFetches(ab).length > 0, 'Kontrolle: loadGallery per Klick ruft /v1/sets ab');
+    assert.ok(galleryFetches(ab).length > 0, 'Kontrolle: loadGallery per Klick ruft /v2/sets ab');
 
     let geoeffnet = 0;
     w.open = () => {
@@ -129,9 +129,9 @@ test('real buttons from template and markup keep working', async () => {
 test('every handler in the markup is in the list of its event', () => {
   // Structure: the lists in aktionen.js must cover the markup, otherwise
   // a real field would be dead. The test above checks the opposite direction.
-  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
+  const source = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const liste = typ => {
-    const m = quelle.match(new RegExp(`\\b${typ}: new Set\\(\\[([^\\]]*)\\]`));
+    const m = source.match(new RegExp(`\\b${typ}: new Set\\(\\[([^\\]]*)\\]`));
     assert.ok(m, `Liste für ${typ} nicht gefunden`);
     return new Set([...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
   };
@@ -160,9 +160,9 @@ test('every handler in the markup is in the list of its event', () => {
 
 test('every template with a dangerous action carries genuine()', () => {
   // Otherwise the button would be dead: the dispatcher rejects it.
-  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
+  const source = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const dangerous = new Set(
-    [...quelle.match(/DANGEROUS = new Set\(\[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(x => x[1]),
+    [...source.match(/DANGEROUS = new Set\(\[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(x => x[1]),
   );
   const ohne = [];
   let gesehen = 0;

@@ -30,8 +30,8 @@ const ENTER = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVi
 
 test('Enter confirms, first start with one password prompt', { timeout: 240_000 }, async t => {
   const app = await startApp(t, { name: `erst_v_${process.pid}` });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db } = app;
@@ -40,7 +40,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', text: '\r', ...ENTER });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...ENTER });
   };
-  const offen = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
+  const open = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
   const errorToasts = `[...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent)`;
 
   await t.test('Enter in the password field confirms', async () => {
@@ -49,14 +49,14 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await b.auswerten(
       `document.getElementById('prof-first').value = 'Erika'; document.getElementById('btn-sav-prof').click(); true`,
     );
-    await bis(`${offen('confirm-modal')} && document.activeElement?.id === 'cd-pw'`, 'Passwortdialog mit Fokus');
+    await bis(`${open('confirm-modal')} && document.activeElement?.id === 'cd-pw'`, 'Passwortdialog mit Fokus');
     await tap('app-Passwort-1');
     await enter();
     // With a second factor the code follows in the same dialog; it also goes with Enter.
     await bis(`document.activeElement?.id === 'cd-code'`, 'Enter im Passwortfeld bestätigt', 50);
     await tap(app.furtherCodes[0]);
     await enter();
-    await bis(`!(${offen('confirm-modal')})`, 'Enter im Codefeld des Dialogs bestätigt', 50);
+    await bis(`!(${open('confirm-modal')})`, 'Enter im Codefeld des Dialogs bestätigt', 50);
     for (
       let i = 0;
       i < 50 && (await db.get('SELECT first_name FROM users WHERE id = $1', [app.uid])).first_name !== 'Erika';
@@ -88,11 +88,11 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
       acceptLanguage: 'de-DE',
     });
     await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
-    await bis(`!window.__alt && ${offen('login-screen')}`, 'Anmeldemaske');
+    await bis(`!window.__alt && ${open('login-screen')}`, 'Anmeldemaske');
     await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
       document.getElementById('lp').value = ${JSON.stringify(START)};
       document.getElementById('btn-login').click(); true`);
-    await bis(offen('panel-required-change'), 'Pflichtwechsel', 300);
+    await bis(open('panel-required-change'), 'Pflichtwechsel', 300);
     const z =
       await b.auswerten(`({ altHidden: getComputedStyle(document.getElementById('required-alt-row')).display === 'none',
       fokus: document.activeElement?.id, regel: document.getElementById('required-rule').textContent,
@@ -110,14 +110,12 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await bis(`document.activeElement?.id === 'sf-start'`, 'Fokus auf „Einrichten“');
   });
 
-  let geheimnis = '';
+  let secret = '';
   await t.test('setup without a third password prompt', async () => {
     await b.auswerten(`document.getElementById('sf-start').click(); true`);
-    await bis(`!!document.querySelector('#sf-qr img') || ${offen('confirm-modal')}`, 'QR-Code oder Dialog');
-    assert.equal(await b.auswerten(offen('confirm-modal')), false, 'Einrichten ohne dritte Passwortabfrage');
-    geheimnis = await b.auswerten(
-      `document.querySelector('#sf-required-surface code').textContent.replace(/\\s+/g, '')`,
-    );
+    await bis(`!!document.querySelector('#sf-qr img') || ${open('confirm-modal')}`, 'QR-Code oder Dialog');
+    assert.equal(await b.auswerten(open('confirm-modal')), false, 'Einrichten ohne dritte Passwortabfrage');
+    secret = await b.auswerten(`document.querySelector('#sf-required-surface code').textContent.replace(/\\s+/g, '')`);
   });
 
   await t.test('QR image with name', async () => {
@@ -142,7 +140,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await b.auswerten(
       `document.getElementById('sf-code').value = ''; document.getElementById('sf-code').focus(); true`,
     );
-    await tap(zf.hotp(zf.fromBase32(geheimnis), zf.timeStep()));
+    await tap(zf.hotp(zf.fromBase32(secret), zf.timeStep()));
     await enter();
     await bis(`!!document.getElementById('sf-codes')`, 'Wiederherstellungscodes');
     assert.deepEqual(await b.auswerten(errorToasts), [], 'kein liegen gebliebener Fehler-Toast');

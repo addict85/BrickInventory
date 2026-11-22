@@ -41,14 +41,14 @@ test('parts metrics with individually captured parts', { concurrency: 1 }, async
     await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, $1) ON CONFLICT DO NOTHING`, [nr]);
   try {
     // Account A: only individual parts, four kinds in four colors.
-    for (const [i, nr] of TEILE.entries()) await holdsPart(db, UA, nr, { colorId: [1, 4, 15, 0][i], menge: 25 });
+    for (const [i, nr] of TEILE.entries()) await holdsPart(db, UA, nr, { colorId: [1, 4, 15, 0][i], quantity: 25 });
     // Account B: a set with ke1/color 1 (×3) and ke2/color 4 (×2), plus individually
     // ke1/color 1 (the same kind) and ke3/color 15 (new kind and color).
     await holdsSet(db, UB, SN, 1);
-    await holdsPart(db, UB, 'ke1', { setNumber: SN, colorId: 1, menge: 3 });
-    await holdsPart(db, UB, 'ke2', { setNumber: SN, colorId: 4, menge: 2 });
-    await holdsPart(db, UB, 'ke1', { colorId: 1, menge: 7 });
-    await holdsPart(db, UB, 'ke3', { colorId: 15, menge: 1 });
+    await holdsPart(db, UB, 'ke1', { setNumber: SN, colorId: 1, quantity: 3 });
+    await holdsPart(db, UB, 'ke2', { setNumber: SN, colorId: 4, quantity: 2 });
+    await holdsPart(db, UB, 'ke1', { colorId: 1, quantity: 7 });
+    await holdsPart(db, UB, 'ke3', { colorId: 15, quantity: 1 });
 
     await t.test('only individual parts: 4 kinds in 4 colors', async () => {
       const s = await H.partStatsQuery(UA);

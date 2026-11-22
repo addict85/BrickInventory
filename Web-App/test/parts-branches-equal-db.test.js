@@ -62,8 +62,8 @@ test('both paths of the parts list deliver the same types', async t => {
     await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
                   VALUES ('3001',5,'Rot'),('3002',1,'Blau')
                   ON CONFLICT (part_number,color_id) DO NOTHING`);
-    await holdsPart(db, U, '3001', { setNumber: 'Z-1', menge: 3, colorId: 5 });
-    await holdsPart(db, U, '3002', { setNumber: 'Z-1', menge: 1, colorId: 1 });
+    await holdsPart(db, U, '3001', { setNumber: 'Z-1', quantity: 3, colorId: 5 });
+    await holdsPart(db, U, '3002', { setNumber: 'Z-1', quantity: 1, colorId: 1 });
 
     const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
 
@@ -88,14 +88,14 @@ test('both paths of the parts list deliver the same types', async t => {
     const deviations = [];
     for (const [schluessel, links] of a) {
       const rechts = b.get(schluessel);
-      for (const feld of Object.keys(links)) {
-        if (!(feld in rechts)) continue; // only fields that BOTH carry
+      for (const field of Object.keys(links)) {
+        if (!(field in rechts)) continue; // only fields that BOTH carry
         // null on one side is not a type conflict: a field may be empty.
-        if (links[feld] === null || rechts[feld] === null) continue;
-        if (typ(links[feld]) !== typ(rechts[feld]))
+        if (links[field] === null || rechts[field] === null) continue;
+        if (typ(links[field]) !== typ(rechts[field]))
           deviations.push(
-            `${schluessel} ${feld}: live=${typ(links[feld])} (${JSON.stringify(links[feld])}), ` +
-              `Zusammenfassung=${typ(rechts[feld])} (${JSON.stringify(rechts[feld])})`,
+            `${schluessel} ${field}: live=${typ(links[field])} (${JSON.stringify(links[field])}), ` +
+              `Zusammenfassung=${typ(rechts[field])} (${JSON.stringify(rechts[field])})`,
           );
       }
     }

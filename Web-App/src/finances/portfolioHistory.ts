@@ -37,7 +37,7 @@ export async function portfolioHistory(
   idsChoice: Sicht | number[],
   period: string,
   db: unknown = k.db,
-  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.userValue,
+  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.settings.userValue,
 ) {
   const ids = await k.household.scopeFrom(idsChoice);
   // With the filter "sub-accounts" ids does not contain the asking account; the
@@ -49,7 +49,7 @@ export async function portfolioHistory(
   // One set, ONE row, even with two owners — otherwise it would enter the sum twice.
   const sets = await k.portfolioCurve.setsWithPurchaseTotal(uids);
   if (!sets.length) {
-    return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
+    return { currency, period, points: [], y_axis: [], period_change_pct: null, data_points: 0 };
   }
 
   const setNumbers = sets.map((s: { set_number: string }) => s.set_number);
@@ -82,7 +82,7 @@ export async function portfolioHistory(
   });
   let rawPoints = curve.rawPoints;
   monthResolution = curve.monthResolution;
-  const messpunkte = rawPoints.length;
+  const data_points = rawPoints.length;
 
   // The labeling must know the condensing, otherwise the first point would get
   // a month abbreviation and the last one would no longer be "today".
@@ -90,11 +90,11 @@ export async function portfolioHistory(
   if (condensed) rawPoints = onMonths(rawPoints);
   const downsampled = monthResolution || condensed;
 
-  const now = k.uhr.datum();
+  const now = k.clock.datum();
   if (rawPoints.length <= 1) rawPoints = withStartPoint(rawPoints, period, purchaseTotal, now);
 
   if (!rawPoints.length) {
-    return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
+    return { currency, period, points: [], y_axis: [], period_change_pct: null, data_points: 0 };
   }
 
   const { points, y_axis, period_change_pct, chart } = buildChartData(rawPoints, currency, downsampled, now);
@@ -105,7 +105,7 @@ export async function portfolioHistory(
     points,
     y_axis,
     period_change_pct,
-    messpunkte,
+    data_points,
     purchase_total: purchaseTotal.toFixed(2),
     chart,
   };

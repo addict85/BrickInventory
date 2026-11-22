@@ -49,13 +49,13 @@ function pause(): number {
 /** Per set of services instead of per batch, so that the first step of a follow-up batch
  * also keeps its distance. There is no waiting before the VERY FIRST step. */
 async function pauseBeforeWork(k: ImagesContext): Promise<void> {
-  const tick = k.faecher.slot('bildbedarf:letzteArbeit', () => ({ am: 0 }));
+  const tick = k.faecher.slot('image_demand:letzteArbeit', () => ({ am: 0 }));
   const expected = pause();
   if (tick.am) {
-    const seit = k.uhr.jetzt() - tick.am;
-    if (seit < expected) await wait(expected - seit);
+    const since = k.clock.now() - tick.am;
+    if (since < expected) await wait(expected - since);
   }
-  tick.am = k.uhr.jetzt();
+  tick.am = k.clock.now();
 }
 
 /** A failure is remembered, otherwise every unreadable file would cost a futile run
@@ -73,14 +73,14 @@ async function createPreview(k: ImagesContext, relPath: string, key: string): Pr
  * was taken. */
 export type StackResult = {
   geholt: number;
-  vorschau: number;
+  preview: number;
   uebersprungen: number;
-  gesamt: number;
+  total: number;
   /** Every path through the loop increments a counter, so that the sum adds up. */
   notLoaded: number;
   noPreview: number;
   knownMissing: number;
-  ohneNummer: number;
+  withoutNumber: number;
   setAside: number;
   /** The image is there, the entry in the catalog failed: the UI keeps going via the proxy. */
   withoutEntry?: number;
@@ -93,13 +93,13 @@ export type StackResult = {
 function emptyResult(): StackResult {
   return {
     geholt: 0,
-    vorschau: 0,
+    preview: 0,
     uebersprungen: 0,
-    gesamt: 0,
+    total: 0,
     notLoaded: 0,
     noPreview: 0,
     knownMissing: 0,
-    ohneNummer: 0,
+    withoutNumber: 0,
     setAside: 0,
     work: 0,
   };
@@ -107,21 +107,21 @@ function emptyResult(): StackResult {
 
 /** Only what is NOT zero — otherwise the one important number drowns in zeros. */
 export function message(e: StackResult): string {
-  const parts = [`${e.geholt} geladen`, `${e.vorschau} Vorschau erzeugt`, `${e.uebersprungen} bereits vorhanden`];
+  const parts = [`${e.geholt} geladen`, `${e.preview} Vorschau erzeugt`, `${e.uebersprungen} bereits vorhanden`];
   if (e.notLoaded) parts.push(`${e.notLoaded} Download fehlgeschlagen`);
   if (e.noPreview) parts.push(`${e.noPreview} Vorschau fehlgeschlagen`);
   if (e.knownMissing) parts.push(`${e.knownMissing} als fehlend bekannt`);
-  if (e.ohneNummer) parts.push(`${e.ohneNummer} ohne Setnummer`);
+  if (e.withoutNumber) parts.push(`${e.withoutNumber} ohne Setnummer`);
   if (e.setAside) parts.push(`${e.setAside} zurückgelegt`);
   if (e.withoutEntry) parts.push(`${e.withoutEntry} ohne Katalogeintrag`);
-  return `${e.gesamt} bearbeitet: ${parts.join(', ')}`;
+  return `${e.total} bearbeitet: ${parts.join(', ')}`;
 }
 
 /** In the database too, because the tile reads in another process. */
 export const lastRun: { zeit: number | null; ergebnis: StackResult | null } = { zeit: null, ergebnis: null };
 
 function rememberRun(k: ImagesContext, erg: StackResult): void {
-  lastRun.zeit = k.uhr.jetzt();
+  lastRun.zeit = k.clock.now();
   lastRun.ergebnis = erg;
 }
 
@@ -130,7 +130,7 @@ async function saveRun(k: ImagesContext, erg: StackResult): Promise<void> {
   // await: the next tick reads the state via ANOTHER process; without await the tile would report "not
   // run yet".
   await k.jobQueue
-    .setState(RUN_KEY, JSON.stringify({ zeit: k.uhr.jetzt(), ergebnis: erg }))
+    .setState(RUN_KEY, JSON.stringify({ zeit: k.clock.now(), ergebnis: erg }))
     .catch(e => reportError('bild-job:setzeZustand', e));
 }
 
@@ -152,7 +152,7 @@ async function onlyPreview(k: ImagesContext, setNumber: string, preview: string,
   await pauseBeforeWork(k);
   st.work++;
   if (await createPreview(k, `/images/sets/${setNumber}.jpg`, preview)) {
-    st.erg.vorschau++;
+    st.erg.preview++;
     return;
   }
   st.erg.noPreview++;
@@ -170,8 +170,8 @@ async function afterFailure(
   const status = info.status;
   // Throttling is NOT a negative result: the images exist, and stubbornly asking again extends the block.
   if (status === 403 || status === 429) {
-    const bis = new Date(k.uhr.jetzt() + THROTTLE_PAUSE_MS);
-    await k.jobQueue.pauseKind('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
+    const bis = new Date(k.clock.now() + THROTTLE_PAUSE_MS);
+    await k.jobQueue.pauseKind('image_demand', bis, `CDN drosselt (HTTP ${status})`);
     console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
     return true;
   }
@@ -191,8 +191,8 @@ async function afterFailure(
 
 async function workStack(k: ImagesContext): Promise<StackResult> {
   const erg = emptyResult();
-  const pause = await k.jobQueue.liesPause('bildbedarf');
-  if (pause && new Date(pause.until_at).getTime() > k.uhr.jetzt()) return erg; // CDN has throttled, see below
+  const pause = await k.jobQueue.liesPause('image_demand');
+  if (pause && new Date(pause.until_at).getTime() > k.clock.now()) return erg; // CDN has throttled, see below
   const rows = await takeImageRequests(k, NOTE_VALID_MS, BATCH);
   if (!rows.length) {
     rememberRun(k, erg);
@@ -203,7 +203,7 @@ async function workStack(k: ImagesContext): Promise<StackResult> {
   for (let idx = 0; idx < rows.length; idx++) {
     const r = rows[idx]!;
     if (!r.set_number) {
-      erg.ohneNummer++;
+      erg.withoutNumber++;
       continue;
     } // no storage location without a set number
 
@@ -261,10 +261,10 @@ async function workStack(k: ImagesContext): Promise<StackResult> {
     erg.geholt++;
   }
   // Rows put back are NOT processed.
-  erg.gesamt = rows.length - erg.setAside;
+  erg.total = rows.length - erg.setAside;
   erg.work = st.work;
   const { reasons, somethingToDo } = st;
-  // With few cases by name: with the set number, GET /api/v1/admin/image-diag/:setNumber answers the
+  // With few cases by name: with the set number, GET /api/v2/admin/image-diag/:setNumber answers the
   // question in one response.
   if (reasons.length && reasons.length <= 5) {
     (somethingToDo ? console.error : console.warn)(`[image-queue] ${reasons.join(' · ')}`);
@@ -278,20 +278,20 @@ async function workStack(k: ImagesContext): Promise<StackResult> {
 /** The abort depends on real work, not on touched notes. */
 async function tickPass(k: ImagesContext): Promise<StackResult> {
   const sum = emptyResult();
-  while (sum.gesamt < PASS_MAX_NOTES && sum.work < BATCH) {
+  while (sum.total < PASS_MAX_NOTES && sum.work < BATCH) {
     const e = await workStack(k);
     sum.geholt += e.geholt;
-    sum.vorschau += e.vorschau;
+    sum.preview += e.preview;
     sum.uebersprungen += e.uebersprungen;
-    sum.gesamt += e.gesamt;
+    sum.total += e.total;
     sum.work += e.work;
     sum.notLoaded += e.notLoaded;
     sum.noPreview += e.noPreview;
     sum.knownMissing += e.knownMissing;
-    sum.ohneNummer += e.ohneNummer;
+    sum.withoutNumber += e.withoutNumber;
     sum.setAside += e.setAside;
     if (e.withoutEntry) sum.withoutEntry = (sum.withoutEntry ?? 0) + e.withoutEntry;
-    if (!e.gesamt) break;
+    if (!e.total) break;
   }
   // Even a tick that found nothing is a sign of life for the tile.
   await saveRun(k, sum);
@@ -304,11 +304,11 @@ export async function processImageDemand(kx: ImagesContext, k: JobContext): Prom
   for (;;) {
     if (k.ended) throw new JobInterrupted();
     const e = await tickPass(kx);
-    if (e.gesamt || e.setAside) console.log(`[image-queue] ${message(e)}`);
-    const pause = await kx.jobQueue.liesPause('bildbedarf');
-    if (pause && new Date(pause.until_at).getTime() > kx.uhr.jetzt())
+    if (e.total || e.setAside) console.log(`[image-queue] ${message(e)}`);
+    const pause = await kx.jobQueue.liesPause('image_demand');
+    if (pause && new Date(pause.until_at).getTime() > kx.clock.now())
       throw new JobMove(new Date(pause.until_at), pause.reason ?? 'CDN drosselt');
-    if (!e.gesamt) return;
+    if (!e.total) return;
     if (!(await k.progress({ text: message(e) }))) return; // aborted
     await wait(TICK_MS);
   }

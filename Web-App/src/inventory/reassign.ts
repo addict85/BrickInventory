@@ -16,10 +16,10 @@ export async function manualEntryReassign(
   toId: number,
 ): Promise<{ quantity: number; merged: boolean; source_emptied: boolean }> {
   const acq = await repo.manualEntry(t.db, kind, acquisitionId, fromId, keyValues);
-  if (!acq) failDomain('nicht_gefunden', 'kaufpreis_nicht_gefunden');
+  if (!acq) failDomain('not_found', 'purchase_price_not_found');
 
   const src = await repo.manualRow(t.db, kind, fromId, keyValues);
-  if (!src) failDomain('nicht_gefunden', 'nicht_gefunden');
+  if (!src) failDomain('not_found', 'not_found');
 
   const movingQty = Math.max(1, parseInt(String(acq.quantity), 10) || 1);
   const remaining = Math.max(0, (await quantities.sumTheEntries(t.db, kind, fromId, keyValues)) - movingQty);

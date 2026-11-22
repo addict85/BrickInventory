@@ -25,7 +25,7 @@ function metric(id, key, n) {
 export async function loadStats() {
   // Metrics with the same account filter as the list: otherwise the whole household's total kept
   // showing under "mine only".
-  const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
+  const d = await api('GET', `/v2/stats${scopeQuery('gallery')}`);
   if (d.success && d.stats) {
     // The metrics show as tiles above the collection in every theme. Pieces, like parts and minifigs,
     // sit beside them; the number of distinct sets sits below.

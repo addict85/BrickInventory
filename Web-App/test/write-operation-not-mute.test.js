@@ -55,20 +55,20 @@ test('no silent catch on a write operation with user data', () => {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(call)) {
       // Up to the closing parenthesis of the call
-      let tiefe = 1,
+      let depth = 1,
         i = m.index + m[0].length;
-      while (i < src.length && tiefe > 0) {
+      while (i < src.length && depth > 0) {
         const c = src[i];
-        if (c === '(') tiefe++;
-        else if (c === ')') tiefe--;
+        if (c === '(') depth++;
+        else if (c === ')') depth--;
         i++;
       }
       const instruction = src.slice(m.index, i);
       if (!schreib.test(instruction)) continue;
       geprueft++;
       if (stillAfterwards.test(src.slice(i, i + 90))) {
-        const zeile = src.slice(0, m.index).split('\n').length;
-        violations.push(`${path.relative(ROOT, datei)}:${zeile}`);
+        const row = src.slice(0, m.index).split('\n').length;
+        violations.push(`${path.relative(ROOT, datei)}:${row}`);
       }
     }
   }

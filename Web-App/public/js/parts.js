@@ -34,7 +34,7 @@ import { addScopeParam, addLocationParam, scopeQuery } from './account-filter.js
 import { gallerySets, accountCurrency } from './state.js';
 import { manualQuery, manualTable, tablesView } from './minifigs.js';
 import { deleteRestorable } from './deletion.js';
-/** @typedef {import('../../frontend-types/contract').GET_api_v1_parts['parts'][number]} PartRow */
+/** @typedef {import('../../frontend-types/contract').GET_api_v2_parts['parts'][number]} PartRow */
 
 // ── PARTS ─────────────────────────────────────────────
 /** @type {import('../../frontend-types/contract').PartsFilterColor[]} */
@@ -70,7 +70,7 @@ async function loadPartsStats() {
     for (const id of fields) setHtml(G(id), rawHtml(VALUE_SKELETON));
     box?.setAttribute('aria-busy', 'true');
   }
-  const d = await api('GET', `/v1/parts/stats${scopeQuery('parts')}`);
+  const d = await api('GET', `/v2/parts/stats${scopeQuery('parts')}`);
   box?.removeAttribute('aria-busy');
   if (!d.success) {
     if (!G('ps-total').dataset.loaded) for (const id of fields) G(id).textContent = '—';
@@ -89,8 +89,8 @@ async function loadPartsStats() {
 
 async function loadPartsFilters() {
   const [cd, catd] = await Promise.all([
-    api('GET', `/v1/parts/colors${scopeQuery('parts')}`),
-    api('GET', `/v1/parts/categories${scopeQuery('parts')}`),
+    api('GET', `/v2/parts/colors${scopeQuery('parts')}`),
+    api('GET', `/v2/parts/categories${scopeQuery('parts')}`),
   ]);
   partsColors = cd.colors || [];
   partsCats = catd.categories || [];
@@ -244,7 +244,7 @@ function partsParams(page) {
   const spare = G('parts-spare').value;
   if (spare !== '') p.set('spare', spare);
   const order = G('parts-order').value;
-  if (order !== 'farbe') p.set('ordnung', order);
+  if (order !== 'color') p.set('order', order);
   // Manually captured parts have their own area at the top — here only set parts.
   p.set('exclude_manual', '1');
   // in_sets is opt-in on the server (costs about 155 ms and 2 MB at 380 sets). Only the table view has
@@ -282,7 +282,7 @@ async function loadPartsPage(isFirst) {
   _partsLoading = true;
   const page = _partsPage + 1;
 
-  const d = await partsGuard.whenCurrent(api('GET', `/v1/parts?${partsParams(page)}`));
+  const d = await partsGuard.whenCurrent(api('GET', `/v2/parts?${partsParams(page)}`));
   if (d === undefined) {
     _partsLoading = false;
     return;
@@ -360,7 +360,7 @@ function appendParts(parts) {
   const list = G('parts-main').querySelector('.parts-list');
   if (!list) return;
   // Ungrouped: the same grid without color tiles, the order comes from the server.
-  if (G('parts-order').value !== 'farbe') {
+  if (G('parts-order').value !== 'color') {
     insertHtml(list, 'beforeend', parts.map(partsCard));
     if (typeof observeLazyImages === 'function') observeLazyImages(list);
     return;
@@ -431,7 +431,7 @@ function sparePartBadge(p) {
   return p.is_spare ? html`<span class="spare-tag">${t('parts.spare_tag')}</span>` : '';
 }
 
-/** Alternative text of a part image: name and color, as they stand on the tile. */
+/** Alternative text of a part image: name and color, as they state on the tile. */
 
 /** @param {PartRow} p */
 function partsCard(p) {
@@ -545,7 +545,9 @@ G('parts-spare').addEventListener('change', loadPartsData);
 // The order is a preference, not a filter: it stays in the browser.
 const PARTS_ORDER_KEY = 'bim_parts_order';
 try {
-  const remembered = localStorage.getItem(PARTS_ORDER_KEY);
+  const stored = localStorage.getItem(PARTS_ORDER_KEY);
+  // Values remembered before API v2 named the order in German.
+  const remembered = stored === 'farbe' ? 'color' : stored === 'menge' ? 'quantity' : stored;
   if (remembered && [...G('parts-order').querySelectorAll('option')].some(o => o.value === remembered))
     G('parts-order').value = remembered;
 } catch (_) {
@@ -582,10 +584,10 @@ export function manualParts() {
 
 export async function loadManualParts() {
   const [d, v] = await Promise.all([
-    api('GET', `/v1/parts/manual${manualQuery('parts', 'parts-search')}`),
-    // The same filter as the list above: otherwise counter and quantity from one scope would stand next to
+    api('GET', `/v2/parts/manual${manualQuery('parts', 'parts-search')}`),
+    // The same filter as the list above: otherwise counter and quantity from one scope would state next to
     // a sum from another.
-    api('GET', `/v1/finance/parts-valuation${scopeQuery('parts')}`),
+    api('GET', `/v2/finance/parts-valuation${scopeQuery('parts')}`),
   ]);
   if (!d.success) return;
   manualPartsCache = d.parts || [];
@@ -658,7 +660,7 @@ export function renderManualParts() {
 export async function updateManualPart(partNumber, colorId, body, owner) {
   const d = await api(
     'PUT',
-    `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+    `/v2/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
     body,
   );
   if (d.success) {
@@ -682,7 +684,7 @@ export async function deleteManualPart(partNumber, colorId, owner) {
     request: () =>
       api(
         'DELETE',
-        `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+        `/v2/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
       ),
     message: tRaw('parts.deleted'),
     focus: `.man-tile[data-arg="part"][data-arg2="${CSS.escape(partNumber)}"][data-arg3="${colorId || 0}"]`,

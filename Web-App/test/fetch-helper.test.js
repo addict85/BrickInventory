@@ -38,7 +38,7 @@ const IMAGE = Buffer.alloc(600, 0xff);
 let port = 0;
 const gesehen = [];
 const server = https.createServer({ key, cert }, (req, res) => {
-  gesehen.push({ host: req.headers.host, pfad: req.url, auth: req.headers.authorization || null });
+  gesehen.push({ host: req.headers.host, path: req.url, auth: req.headers.authorization || null });
   const redirect = ziel => {
     res.writeHead(302, { Location: ziel });
     res.end();
@@ -100,12 +100,12 @@ test.after(() => {
   server.close();
 });
 
-async function grund(promise) {
+async function reason(promise) {
   try {
     await promise;
   } catch (e) {
     assert.ok(e instanceof FetchError, `kein AbrufFehler: ${e}`);
-    return e.grund;
+    return e.reason;
   }
   assert.fail('kein Fehler');
 }
@@ -124,19 +124,19 @@ test('a POST follows no redirect', async () => {
   const r = await holeHttps(`${basis()}/relativ`, opt({ methode: 'POST', rumpf: '{"a":1}' }));
   assert.equal(r.status, 302);
   assert.deepEqual(
-    gesehen.slice(vorher).map(g => g.pfad),
+    gesehen.slice(vorher).map(g => g.path),
     ['/relativ'],
   );
 });
 
 test('http redirect, missing and unreadable target are rejected', async () => {
-  for (const pfad of ['/http', '/ohne-ziel', '/kaputt'])
-    assert.equal(await grund(holeHttps(`${basis()}${pfad}`, opt())), 'umleitung', pfad);
+  for (const path of ['/http', '/ohne-ziel', '/kaputt'])
+    assert.equal(await reason(holeHttps(`${basis()}${path}`, opt())), 'umleitung', path);
 });
 
 test('a foreign host is rejected', async () => {
   const vorher = gesehen.length;
-  assert.equal(await grund(holeHttps(`${basis()}/fremd`, opt())), 'umleitung');
+  assert.equal(await reason(holeHttps(`${basis()}/fremd`, opt())), 'umleitung');
   assert.equal(
     gesehen.slice(vorher).filter(g => g.host.startsWith('example.org')).length,
     0,
@@ -146,15 +146,15 @@ test('a foreign host is rejected', async () => {
 
 test('a start address outside the list or without https does not go out', async () => {
   const vorher = gesehen.length;
-  assert.equal(await grund(holeHttps(`http://localhost:${port}/bild.jpg`, opt())), 'adresse');
-  assert.equal(await grund(holeHttps(`https://127.0.0.1:${port}/bild.jpg`, opt())), 'adresse');
-  assert.equal(await grund(holeHttps('kein url', opt())), 'adresse');
+  assert.equal(await reason(holeHttps(`http://localhost:${port}/bild.jpg`, opt())), 'adresse');
+  assert.equal(await reason(holeHttps(`https://127.0.0.1:${port}/bild.jpg`, opt())), 'adresse');
+  assert.equal(await reason(holeHttps('kein url', opt())), 'adresse');
   assert.equal(gesehen.length, vorher);
 });
 
 test('a redirect loop ends at the limit', async () => {
   const vorher = gesehen.length;
-  assert.equal(await grund(holeHttps(`${basis()}/schleife`, opt({ redirects: 3 }))), 'umleitung');
+  assert.equal(await reason(holeHttps(`${basis()}/schleife`, opt({ redirects: 3 }))), 'umleitung');
   assert.equal(gesehen.length - vorher, 4);
 });
 
@@ -167,28 +167,28 @@ test('Authorization does not stay on a host change', async () => {
     }),
   );
   assert.equal(JSON.parse(r.koerper.toString()).auth, null);
-  assert.equal(gesehen.find(g => g.pfad === '/wechsel').auth, 'key geheim', 'der erste Sprung trägt den Schlüssel');
+  assert.equal(gesehen.find(g => g.path === '/wechsel').auth, 'key geheim', 'der erste Sprung trägt den Schlüssel');
 });
 
 test('body above the limit, announced or without a length', async () => {
-  assert.equal(await grund(holeHttps(`${basis()}/gross-angesagt`, opt())), 'zu-gross');
+  assert.equal(await reason(holeHttps(`${basis()}/gross-angesagt`, opt())), 'zu-gross');
   assert.equal(
-    await grund(holeHttps(`${basis()}/gross-still`, opt())),
+    await reason(holeHttps(`${basis()}/gross-still`, opt())),
     'zu-gross',
     'Körper ohne Längenangabe über der Grenze',
   );
   const a = await openHttps(`${basis()}/gross-still`, opt());
-  const fehler = await new Promise(fertig => {
-    const s = a.strom();
+  const error = await new Promise(fertig => {
+    const s = a.stream();
     s.resume();
     s.on('error', fertig);
     s.on('end', () => fertig(null));
   });
-  assert.equal(fehler?.grund, 'zu-gross', 'der Strom endet nicht mit Fehler');
+  assert.equal(error?.reason, 'zu-gross', 'der Strom endet nicht mit Fehler');
 });
 
 test('a silent server runs into the timeout', async () => {
-  assert.equal(await grund(holeHttps(`${basis()}/still`, opt({ zeitlimitMs: 300 }))), 'zeitlimit');
+  assert.equal(await reason(holeHttps(`${basis()}/still`, opt({ zeitlimitMs: 300 }))), 'time_limit');
 });
 
 test('downloadSetImage survives every redirect', async t => {
@@ -202,8 +202,8 @@ test('downloadSetImage survives every redirect', async t => {
     https.globalAgent = echt;
     fs.rmSync(datei, { force: true });
   });
-  for (const pfad of ['/http', '/fremd', '/ohne-ziel', '/kaputt', '/schleife'])
-    assert.equal(await downloadSetImage(`https://cdn.rebrickable.com${pfad}`, nr), null, pfad);
+  for (const path of ['/http', '/fremd', '/ohne-ziel', '/kaputt', '/schleife'])
+    assert.equal(await downloadSetImage(`https://cdn.rebrickable.com${path}`, nr), null, path);
   assert.equal(fs.existsSync(datei), false);
   assert.equal(await downloadSetImage('https://cdn.rebrickable.com/relativ', nr), `/images/sets/${nr}.jpg`);
   assert.equal(fs.readFileSync(datei).length, IMAGE.length);

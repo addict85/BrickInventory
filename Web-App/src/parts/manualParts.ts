@@ -32,7 +32,7 @@ export async function manualPartPurchase(
     effectiveUnitPrice: r.unitPrice,
     effectivePurchasePrice: r.kaufpreis,
     erfassungsPreis: r.erfassungsPreis,
-    effectiveCondition: r.zustand,
+    effectiveCondition: r.condition,
     // null when there is nothing to flag.
     priceFromState: r.priceFromState,
     geschaetzt: r.geschaetzt,
@@ -42,12 +42,12 @@ export async function manualPartPurchase(
 /** One path for the webapp and the app, so purchase price and storage are handled the same everywhere. */
 export async function addManualPart(k: PartsContext, uid: number, rawBody: Record<string, unknown>) {
   // Without a given location, the account's default location applies (src/inventory/storageLocation.ts).
-  const ort = await k.inventory.locationService.locationForNewEntry(uid, rawBody?.storage);
+  const location = await k.inventory.locationService.locationForNewEntry(uid, rawBody?.storage);
   // The SAME conversion as in the body, on the same input — it cannot drift apart.
   const color = V0.colorId(rawBody?.color_id);
   const result = await addManualPartInternal(k, uid, rawBody);
-  if (ort && result?.part_number) {
-    await k.inventory.locationService.setLocation('part', [uid], [result.part_number, String(color)], ort);
+  if (location && result?.part_number) {
+    await k.inventory.locationService.setLocation('part', [uid], [result.part_number, String(color)], location);
   }
   return result;
 }
@@ -69,9 +69,9 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
 
   // Validated in this order: with several errors, the first one reports.
   const name = V.optionalText(rawBody?.part_name, 200);
-  const bild = V.optionalImageUrl(rawBody?.image_url);
-  const input = { name, kategorie: V.optionalText(rawBody?.category_name, 100), bild };
-  const { part_name, gefunden } = await partDescription(k, uid, part_number, color_id, input);
+  const image = V.optionalImageUrl(rawBody?.image_url);
+  const input = { name, kategorie: V.optionalText(rawBody?.category_name, 100), image };
+  const { part_name, found } = await partDescription(k, uid, part_number, color_id, input);
 
   // Only existence counts: the quantity adds up via a second acquisition.
   if (await manualPartExists(k, uid, part_number, color_id)) {
@@ -90,10 +90,10 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
   const rbColorCode = await k.manualParts.rbColorHex(color_id);
 
   // Description applies to ALL accounts (catalog), the stock to one.
-  await k.catalog.rememberPart(part_number, gefunden?.part_name, gefunden?.category_name);
+  await k.catalog.rememberPart(part_number, found?.part_name, found?.category_name);
   await k.catalog.rememberPart(part_number, input.name, input.kategorie, k.db, uid);
-  await k.catalog.rememberPartColor(part_number, color_id, null, rbColorCode, gefunden?.image_url);
-  await k.catalog.rememberPartColor(part_number, color_id, color_name, color_hex, input.bild, null, k.db, uid);
+  await k.catalog.rememberPartColor(part_number, color_id, null, rbColorCode, found?.image_url);
+  await k.catalog.rememberPartColor(part_number, color_id, color_name, color_hex, input.image, null, k.db, uid);
 
   // Price, condition and quantity live in the acquisition, not on the row.
   await k.inventory.manuell.createRow('part', uid, [part_number, color_id]);
@@ -117,18 +117,18 @@ async function partDescription(
   uid: number,
   part_number: string,
   color_id: number,
-  input: { name: string | null; kategorie: string | null; bild: string | null },
+  input: { name: string | null; kategorie: string | null; image: string | null },
 ) {
   let part_name = input.name;
-  let image_url = input.bild;
-  let gefunden: Awaited<ReturnType<Sources['lookupPart']>> | null = null;
-  if (part_name) return { part_name, gefunden };
+  let image_url = input.image;
+  let found: Awaited<ReturnType<Sources['lookupPart']>> | null = null;
+  if (part_name) return { part_name, found };
 
   const hasColor = color_id !== KEINE_FARBE;
   const local = await k.catalog.catalogPart(part_number, hasColor ? color_id : null, uid);
   if (local) {
     part_name = local.name;
-    image_url = image_url || local.bild;
+    image_url = image_url || local.image;
   }
 
   // `hatImage` instead of `image_url`: a local path would fail the URL check, but
@@ -137,13 +137,13 @@ async function partDescription(
     // Without Rebrickable, the part gets logged with whatever the catalog already knows.
     const fetch = await attempts(
       'parts:lookupPart',
-      k.externalSources.quellen.lookupPart(part_number, hasColor ? color_id : null),
+      k.externalSources.sources.lookupPart(part_number, hasColor ? color_id : null),
     );
-    gefunden = fetch.ok ? fetch.wert : null;
+    found = fetch.ok ? fetch.wert : null;
     // `||`: what the catalog already knew stays as-is.
-    if (gefunden) part_name = part_name || gefunden.part_name;
+    if (found) part_name = part_name || found.part_name;
   }
-  return { part_name, gefunden };
+  return { part_name, found };
 }
 
 /** An already-logged part: just another acquisition; without a condition, the stock's. */
@@ -180,16 +180,16 @@ export async function changeManualPart(
   partNumber: string,
   colorId: number,
   body: Record<string, unknown>,
-): Promise<{ quantity?: number; degradiert?: string[] }> {
+): Promise<{ quantity?: number; degraded?: string[] }> {
   const existing = await k.manualParts.manualPartWithCondition(uid, partNumber, colorId);
-  if (!existing) failDomain('nicht_gefunden', 'teil_nicht_manuell');
+  if (!existing) failDomain('not_found', 'part_not_manual');
 
   const out: { quantity?: number } = {};
   // If the market price for the new acquisition didn't arrive, `degradiert` says so.
   const ab = new Degradations();
   const wish = quantityRequest(body);
   if (wish) {
-    const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
+    const cond = await k.settings.conditionForPrice(undefined, existing.condition, uid);
     out.quantity = await k.inventory.adjustManualQuantity(
       'part',
       uid,
@@ -214,7 +214,7 @@ export async function changeManualPart(
     await k.inventory.setNewest('part', 'preis', unitPrice, uid, [partNumber, colorId]);
   }
   if (body.condition !== undefined && body.condition !== null) {
-    const cond = V0.zustand(body.condition);
+    const cond = V0.conditionOf(body.condition);
     await k.inventory.setNewest('part', 'zustand', cond, uid, [partNumber, colorId]);
   }
   return { ...out, ...ab.detail() };
@@ -254,7 +254,7 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
     if (!partNumber) continue;
     const colorId = V0.colorId(row.color_id ?? row['Farb-ID']);
     const colorName = row.color_name || row.Farbe || null;
-    const { menge: qty, preis: unitPrice, recordedAt: acquiredAt, zustand: rawCondition } = csvSharedFields(row);
+    const { quantity: qty, preis: unitPrice, recordedAt: acquiredAt, condition: rawCondition } = csvSharedFields(row);
 
     try {
       let partName = row.part_name || row.Name || null;
@@ -264,7 +264,7 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
       if (!partName) {
         const fetch = await attempts(
           'parts:import-lookupPart',
-          k.externalSources.quellen.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
+          k.externalSources.sources.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
         );
         const info = fetch.ok ? fetch.wert : null;
         if (info) {
@@ -284,7 +284,7 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
         price: erfassungsPreis,
         geschaetzt,
         condition: effectiveCondition || 'N',
-        createdAt: acquiredAt || k.uhr.datum().toISOString().slice(0, 10),
+        createdAt: acquiredAt || k.clock.datum().toISOString().slice(0, 10),
       };
 
       if (await manualPartExists(k, uid, partNumber, colorId)) {

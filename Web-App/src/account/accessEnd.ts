@@ -52,12 +52,12 @@ export async function withAccessEnd<T>(
 export async function endOther(
   k: AccountContext,
   uid: number,
-  o: { sitzung: string | null; token: string | null; zugaenge: boolean },
-): Promise<{ sitzungen: number; zugaenge: number; version: number }> {
+  o: { sitzung: string | null; token: string | null; accesses: boolean },
+): Promise<{ sitzungen: number; accesses: number; version: number }> {
   return withAccessEnd(k, uid, async t => {
-    const zugaenge = o.zugaenge ? await t.konten.deleteOtherAccesses(uid, o.token ? tokenDigest(o.token) : null) : 0;
+    const accesses = o.accesses ? await t.konten.deleteOtherAccesses(uid, o.token ? tokenDigest(o.token) : null) : 0;
     const version = await increaseSessionVersion(t, uid);
     const sitzungen = await t.konten.deleteOtherSessions(uid, o.sitzung ? sessionDigest(o.sitzung) : '');
-    return { sitzungen, zugaenge, version };
+    return { sitzungen, accesses, version };
   });
 }

@@ -91,9 +91,9 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
     ['part_acquisitions', ['user_id', 'part_number', 'color_id', 'quantity', 'unit_price', 'condition', 'created_at']],
     ['minifig_acquisitions', ['user_id', 'fig_number', 'quantity', 'unit_price', 'condition', 'created_at']],
   ]) {
-    const vorhanden = await columnsOf(tab);
+    const existing = await columnsOf(tab);
     for (const sp of spalten) {
-      assert.ok(vorhanden.includes(sp), `${tab}.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
+      assert.ok(existing.includes(sp), `${tab}.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
     }
   }
 });
@@ -123,8 +123,8 @@ test('the lists deliver price and condition from the newest acquisition', { conc
   // Only the stock rows, without quantity: the two acquisitions further down
   // carry it (migration 0038). holdsPart() with menge 0 therefore creates no
   // acquisition of its own — the daily rule would not allow a second one next to it.
-  await holdsPart(db, uid, '3002', { menge: 0, colorId: 1 });
-  await holdsMinifig(db, uid, 'fig-5', { menge: 0 });
+  await holdsPart(db, uid, '3002', { quantity: 0, colorId: 1 });
+  await holdsMinifig(db, uid, 'fig-5', { quantity: 0 });
 
   // TWO acquisitions, different days and conditions. The newer one is the one that
   // must be shown as „the price of this part" — the older one must not
@@ -145,9 +145,9 @@ test('the lists deliver price and condition from the newest acquisition', { conc
   const H = _req('src/parts/queries.js');
   const M = _req('src/minifigs/queries.js');
 
-  const teile = await H.manualPartsList([uid], uid);
-  const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3002');
-  assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(teile).slice(0, 300)}`);
+  const parts = await H.manualPartsList([uid], uid);
+  const teil = (Array.isArray(parts) ? parts : parts.parts || []).find(p => p.part_number === '3002');
+  assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(parts).slice(0, 300)}`);
   assert.equal(Number(teil.unit_price), 2.0, 'unit_price muss der Preis der NEUESTEN Erfassung sein');
   assert.equal(Number(teil.purchase_price), 2.0, 'purchase_price ist der Anzeigewert und darf nicht leer sein');
   assert.equal(teil.condition, 'U', 'Eine gebrauchte Erfassung macht das Teil gebraucht (conditionFromAcquisitions)');
@@ -168,7 +168,7 @@ test('the lists deliver price and condition from the newest acquisition', { conc
                 ON CONFLICT (part_number) DO NOTHING`);
   // quantity 0 for the stock row, the acquisition comes below with an
   // EXPLICITLY empty price — that is the statement of this case.
-  await holdsPart(db, uid, '3003', { menge: 0, colorId: 0 });
+  await holdsPart(db, uid, '3003', { quantity: 0, colorId: 0 });
   await db.run(
     `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
                 VALUES ($1,'3003',0,1,NULL,'N')`,

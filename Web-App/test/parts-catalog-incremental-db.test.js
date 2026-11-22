@@ -64,10 +64,10 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await holdsSet(db, a, SA, 1);
-  await holdsPart(db, a, X, { setNumber: SA, menge: 2, colorId: 4 });
-  await holdsPart(db, a, Z, { setNumber: SA, menge: 3, colorId: 4 });
+  await holdsPart(db, a, X, { setNumber: SA, quantity: 2, colorId: 4 });
+  await holdsPart(db, a, Z, { setNumber: SA, quantity: 3, colorId: 4 });
   await holdsSet(db, b, SB, 1);
-  await holdsPart(db, b, Y, { setNumber: SB, menge: 5, colorId: 1 });
+  await holdsPart(db, b, Y, { setNumber: SB, quantity: 5, colorId: 1 });
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'X alt'),($2,'Z'),($3,'Y')
                 ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name`,
@@ -130,7 +130,7 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
 
   await t.test('a new BrickLink mapping moves the group', async () => {
     // W and X share a BrickLink number; the group is named after W.
-    await holdsPart(db, a, W, { setNumber: SA, menge: 1, colorId: 4 });
+    await holdsPart(db, a, W, { setNumber: SA, quantity: 1, colorId: 4 });
     await als(a, () => PS.rebuildNow(a));
     await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, $3), ('part', $2, $3)`, [
       X,

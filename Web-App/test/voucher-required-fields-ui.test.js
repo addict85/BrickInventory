@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 const { openUi, sicht, warte } = require('./helpers/ui');
 
 test('voucher: both gaps at once, required marked', async () => {
-  const { w, d, aufrufe } = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } });
+  const { w, d, aufrufe } = await openUi({ '/v2/vouchers': { success: true, vouchers: [] } });
   try {
     await sicht(w, 'vouchers');
     for (const id of ['v-number', 'v-amount']) {
@@ -28,7 +28,7 @@ test('voucher: both gaps at once, required marked', async () => {
     }
     assert.equal(d.activeElement?.id, 'v-number', 'Fokus nicht im ersten leeren Feld');
     assert.equal(
-      aufrufe.some(a => a.method === 'POST' && a.url.includes('/v1/vouchers')),
+      aufrufe.some(a => a.method === 'POST' && a.url.includes('/v2/vouchers')),
       false,
       'leeres Formular ging an den Server',
     );

@@ -37,8 +37,8 @@ export function withoutBricklinkPrice(entry: CatalogEntry | null | undefined, no
   if (!(entry?.is_gear === true && entry?.bl_type === 'NONE')) return false;
   // Only for a while: a new set often appears in the BrickLink catalog only days
   // after its release.
-  const seit = entry.fetched_at ? new Date(entry.fetched_at).getTime() : NaN;
-  return Number.isFinite(seit) && now - seit < UNKNOWN_APPLIES_DAYS * 86_400_000;
+  const since = entry.fetched_at ? new Date(entry.fetched_at).getTime() : NaN;
+  return Number.isFinite(since) && now - since < UNKNOWN_APPLIES_DAYS * 86_400_000;
 }
 
 export const UNKNOWN_APPLIES_DAYS = 7;

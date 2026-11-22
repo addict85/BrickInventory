@@ -75,14 +75,14 @@ ${koerper.replace(/^<body[^>]*>/, '<body>')}
 window.addEventListener('load', () => document.fonts.ready.then(() => {
   const REITER = ${JSON.stringify(REITER)}, EINMAL = ${JSON.stringify(EINMAL)};
   const oben = s => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top) : null; };
-  const aus = { reiter: {}, einmal: {}, leisten: [], bestand: {} };
+  const aus = { reiter: {}, einmal: {}, leisten: [], holding: {} };
   for (const [n, sel] of Object.entries(REITER)) aus.reiter[n] = sel.map(s => [s, oben(s)]);
   for (const id of EINMAL) aus.einmal[id] = document.querySelectorAll('#' + id).length;
   for (const l of document.querySelectorAll('.filter-row'))
     aus.leisten.push(parseFloat(getComputedStyle(l).marginBottom) / parseFloat(getComputedStyle(document.documentElement).fontSize));
   const r = id => document.getElementById(id)?.getBoundingClientRect();
   const nr = r('pl-setnr'), b = r('btn-pl-stock'), lose = r('pl-stock-lose');
-  aus.bestand = { setnr: nr && [nr.top, nr.bottom], knopf: b && [b.top, b.bottom], lose: lose && [lose.top, lose.bottom] };
+  aus.holding = { setnr: nr && [nr.top, nr.bottom], knopf: b && [b.top, b.bottom], lose: lose && [lose.top, lose.bottom] };
   document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(aus) + 'ENDE';
 }));
 </script></body></html>`;
@@ -154,7 +154,7 @@ test('the filter bars keep distance to the list', t => {
 test('the own stock is on its own line in the parts list', t => {
   const e = gemessen(t);
   if (!e) return;
-  const { setnr, knopf, lose } = e.bestand;
+  const { setnr, knopf, lose } = e.holding;
   assert.ok(setnr && knopf && lose, 'Set-Nummer, Bestand-Knopf oder „nur lose“ fehlt');
   // The tool row carries flex-wrap:nowrap: one more button would push the rest out of view there.
   assert.ok(knopf[0] >= setnr[1], `der Bestand-Knopf (${knopf[0]}) steht in der Werkzeugzeile (bis ${setnr[1]})`);

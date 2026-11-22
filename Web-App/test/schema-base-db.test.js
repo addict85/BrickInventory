@@ -71,8 +71,8 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
     await db.initSchemaOnce();
     const konto = await db.get(`SELECT is_admin, is_active FROM users WHERE username = 'admin'`);
     assert.equal(Number(konto?.is_admin), 1, 'kein Administrator angelegt');
-    const vorgabe = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`);
-    assert.equal(vorgabe?.value, '4000', 'die Vorgabewerte fehlen');
+    const preset = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`);
+    assert.equal(preset?.value, '4000', 'die Vorgabewerte fehlen');
     const rb = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_rebrickable'`);
     assert.equal(rb?.value, '25000', 'das Rebrickable-Tageslimit einer Neuinstallation muss 25000 sein');
     const pk = await db.get(`SELECT a.attname FROM pg_index i
@@ -83,9 +83,9 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
       .readdirSync(path.join(ROOT, 'db/migrations'))
       .filter(f => f.endsWith('.sql'))
       .sort();
-    const angewandt = (await db.all('SELECT name FROM schema_migrations')).map(r => r.name);
+    const applied = (await db.all('SELECT name FROM schema_migrations')).map(r => r.name);
     assert.deepEqual(
-      dateien.filter(f => !angewandt.includes(f)),
+      dateien.filter(f => !applied.includes(f)),
       [],
       'nicht jede Migration gilt als angewandt',
     );
@@ -178,15 +178,15 @@ test('db/base.sql is generated, not written', { concurrency: 1, timeout: 180_000
   await t.test('db/base.sql is an unchanged image of the database it creates', async tt => {
     const sk = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
     const createdWith = Number((datei.match(/^-- Generated with pg_dump (\d+)\./m) || [])[1]);
-    let jetzt = null;
+    let now = null;
     try {
-      jetzt = sk.pgDumpVersion();
+      now = sk.pgDumpVersion();
     } catch {
       /* no pg_dump in the path */
     }
     // pg_dump writes differently per major version; it is only compared with the same one.
-    if (jetzt !== createdWith) {
-      tt.skip(`pg_dump ${jetzt ?? 'missing'}, the base was created with ${createdWith}`);
+    if (now !== createdWith) {
+      tt.skip(`pg_dump ${now ?? 'missing'}, the base was created with ${createdWith}`);
       return;
     }
     assert.equal(

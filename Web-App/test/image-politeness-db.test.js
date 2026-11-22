@@ -57,7 +57,7 @@ test('the image server is queried gently', { concurrency: 1 }, async t => {
   );
 
   try {
-    const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
+    const n = (await _req('src/images/imageDemandRun.js')._workStack()).total;
     const spacing = times.slice(1).map((z, i) => z - times[i]);
 
     await t.test('one after another, never concurrently', () => {
@@ -129,7 +129,7 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   );
   thumbTimes.length = 0;
   try {
-    const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
+    const n = (await _req('src/images/imageDemandRun.js')._workStack()).total;
     assert.equal(n, 10, `${n} Vorschauen statt 10 — Vorbedingung stimmt nicht`);
     const abst = thumbTimes.slice(1).map((z, i) => z - thumbTimes[i]);
     assert.ok(abst.length >= 5, `nur ${abst.length} Abstände`);

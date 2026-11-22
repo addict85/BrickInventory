@@ -26,17 +26,18 @@ import { rememberRequest } from '../src/http/rememberAccount';
 import { proxyTrust } from '../src/infra/proxyTrust';
 import { proxyHint } from '../src/http/proxyHint';
 import { onlyOwnOrigin, onlyOwnHost } from '../src/http/origin';
+import { apiV1Alias } from '../src/http/apiV1Alias';
 import { API_VERSION, API_MIN_APP, checkAppVersion } from '../src/http/apiVersion';
 import { PUBLIC_DIR } from '../src/infra/appPaths';
 import { sendStartPage } from '../src/profile/http/startPage';
 import { registerImgProxy } from '../routes/imgProxy';
-import { guardFor, readBody } from '../routes/api_v1/middleware';
+import { guardFor, readBody } from '../routes/api/middleware';
 import { stepProtectionAtInbox } from '../src/account/http/stepGuard';
 import { apiThrottle } from '../src/http/apiThrottle';
 import { httpMetrics, metricsEndpoint } from '../src/http/metrics';
 import { idempotency } from '../src/idempotency/http/middleware';
 import { buildDataFilesRouter } from '../routes/dataFiles';
-import { buildApiRouter } from '../routes/api_v1/index';
+import { buildApiRouter } from '../routes/api/index';
 import { buildAuthRouter } from '../routes/auth';
 import { buildCertificateRouter } from '../routes/certificate';
 import { buildCspReportRouter } from '../src/http/cspReport';
@@ -49,7 +50,7 @@ import type { Services } from './wiring';
 export interface AppIngredients {
   /** For the session store (user_sessions): the system role's pool; the runtime role does not read it. */
   pool: Pool;
-  konfig: AppConfig;
+  config: AppConfig;
   /** Checked in server.ts: a placeholder ends the startup there. */
   sitzungsGeheimnis: string;
   /** The routes get their services from here (startup/wiring.ts, buildServices). */
@@ -62,7 +63,7 @@ export interface AppIngredients {
 /** The sections are in the order of the middleware. */
 export function buildApp({
   pool,
-  konfig,
+  config,
   sitzungsGeheimnis,
   dienste,
   sessionStorage,
@@ -72,9 +73,9 @@ export function buildApp({
   app.disable('x-powered-by');
   // Before the first app.use: an /API/… would otherwise hit the same route, but no contract entry.
   app.set('case sensitive routing', true);
-  baselineProtection(app, konfig);
-  sessionRow(app, sessionStorage ?? sessionInPostgres(pool, sitzungsGeheimnis, konfig), dienste.account, konfig);
-  filesAndImages(app, dienste, konfig);
+  baselineProtection(app, config);
+  sessionRow(app, sessionStorage ?? sessionInPostgres(pool, sitzungsGeheimnis, config), dienste.account, config);
+  filesAndImages(app, dienste, config);
   apiRoutes(app, dienste);
   fallbacks(app, dienste.profile);
   return app;
@@ -132,6 +133,8 @@ function baselineProtection(app: express.Express, k: AppConfig): void {
     next();
   });
 
+  // Before everything that reads the path: from here on there is only /api/v2.
+  app.use(apiV1Alias);
   app.use(onlyOwnHost);
   // Before the origin check: browsers send CSP reports without a reliable origin.
   app.use(buildCspReportRouter());
@@ -238,10 +241,10 @@ function sessionRow(app: express.Express, speicher: RequestHandler, konto: Accou
   app.use(sessionMaxDuration(sessionDeadlines(k)));
 }
 
-function filesAndImages(app: express.Express, d: Services, konfig: AppConfig): void {
+function filesAndImages(app: express.Express, d: Services, config: AppConfig): void {
   app.use(buildDataFilesRouter(d));
   app.use(buildCertificateRouter());
-  app.use(buildWellKnownRouter(konfig));
+  app.use(buildWellKnownRouter(config));
   registerImgProxy(app, d);
 
   app.use(buildPagesRouter(d));
@@ -262,33 +265,33 @@ function filesAndImages(app: express.Express, d: Services, konfig: AppConfig): v
 
 function apiRoutes(app: express.Express, d: Services): void {
   const check = checkContract();
-  if (check) app.use('/api/v1', check);
+  if (check) app.use('/api/v2', check);
   // Express would find `/vouchers/1/klartext/` under `/vouchers/:id/klartext`; everything before it (throttle,
-  // step guard, Caddy) sees a different path. With `/` at the end the contract only knows `/api/v1/`.
+  // step guard, Caddy) sees a different path. With `/` at the end the contract only knows `/api/v2/`.
   app.use('/api', (req, res, next) =>
-    req.path !== '/v1/' && req.path.length > 1 && req.path.endsWith('/') ? unknownApiPath(req, res) : next(),
+    req.path !== '/v2/' && req.path.length > 1 && req.path.endsWith('/') ? unknownApiPath(req, res) : next(),
   );
-  // Before the entrance: asked before schema, migrations and /api/v1 routers are in place.
-  app.use('/api/v1', buildGesundheitRouter(d));
+  // Before the entrance: asked before schema, migrations and /api/v2 routers are in place.
+  app.use('/api/v2', buildGesundheitRouter(d));
   apiInbox(app, d);
-  app.use('/api/v1', buildApiRouter(d));
-  app.use('/api/v1/auth', buildAuthRouter(d));
+  app.use('/api/v2', buildApiRouter(d));
+  app.use('/api/v2/auth', buildAuthRouter(d));
 }
 
-/** The entrance in front of all /api/v1 routers. */
+/** The entrance in front of all /api/v2 routers. */
 function apiInbox(app: express.Express, d: Services): void {
   // ONE entrance: loginAtInbox requires a session or token for everything under
-  // /api/v1 except the explicitly public paths. The protection per route
+  // /api/v2 except the explicitly public paths. The protection per route
   // stays as a second line.
-  app.use('/api/v1', guardFor(d.account).loginAtInbox);
+  app.use('/api/v2', guardFor(d.account).loginAtInbox);
   // Then the budget per account, BEFORE the body: a rejected request should
   // no longer read its body (src/http/apiThrottle.ts).
-  app.use('/api/v1', apiThrottle(d.throttle));
+  app.use('/api/v2', apiThrottle(d.throttle));
   // Sensitive steps of an app token only after the device lock (src/account/http/stepGuard.ts).
-  app.use('/api/v1', stepProtectionAtInbox(d.account));
+  app.use('/api/v2', stepProtectionAtInbox(d.account));
   // Read bodies only after login: unauthenticated there are only 16 KB (readBody).
-  app.use('/api/v1', readBody);
-  app.use('/api/v1', idempotency(d.idempotency));
+  app.use('/api/v2', readBody);
+  app.use('/api/v2', idempotency(d.idempotency));
 }
 
 function fallbacks(app: express.Express, profile: ProfileServices): void {

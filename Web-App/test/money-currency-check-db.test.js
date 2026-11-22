@@ -39,10 +39,10 @@ test('money and currency checked in the database', { concurrency: 1 }, async t =
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_2`]]);
     await db.pool.end().catch(() => {});
   });
-  const record = (preis, waehrung) =>
+  const record = (preis, currency) =>
     db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, currency) VALUES ($1, '99901-1', 1, $2, $3)`,
-      [uid, preis, waehrung],
+      [uid, preis, currency],
     );
   const abgelehnt = async p => {
     try {

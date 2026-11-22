@@ -81,23 +81,24 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
       req.session.visit = 1;
       res.json({});
     });
-    app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+    app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+    app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     t.after(() => new Promise(r => srv.close(r)));
     const base = `http://127.0.0.1:${srv.address().port}`;
     const keks = r => (r.headers.get('set-cookie') || '').split(';')[0];
     const alt = keks(await fetch(`${base}/vorher`));
     assert.match(alt, /^connect\.sid=/, 'Vorbedingung: eine Sitzung vor der Anmeldung');
-    const login = await fetch(`${base}/api/v1/auth/login`, {
+    const login = await fetch(`${base}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: alt },
-      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+      body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
     });
     assert.equal(login.status, 200, await login.text());
     const neu = keks(login);
     assert.match(neu, /^connect\.sid=/, 'die Anmeldung setzt kein Cookie');
     assert.notEqual(neu, alt, 'die Sitzungs-ID von vor der Anmeldung gilt weiter');
-    const ich = async c => (await (await fetch(`${base}/api/v1/auth/me`, { headers: { cookie: c } })).json()).loggedIn;
+    const ich = async c => (await (await fetch(`${base}/api/v2/auth/me`, { headers: { cookie: c } })).json()).loggedIn;
     assert.equal(await ich(neu), true);
     assert.equal(await ich(alt), false, 'die alte ID ist angemeldet');
   });
@@ -113,7 +114,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
     const konto = require('./helpers/sources').testArea('account');
-    assert.equal((await b.loginAllowed(konto, IP, COUNTER))?.code, 'zu_viele_fehlversuche');
+    assert.equal((await b.loginAllowed(konto, IP, COUNTER))?.code, 'too_many_failed_attempts');
   });
 
   await t.test('login counter: without a database the memory throttles', async () => {
@@ -125,7 +126,11 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     try {
       assert.equal(await l.loginAllowed(IP, COUNTER), null, 'ein Datenbankfehler sperrt die Anmeldung');
       for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.loginFailed(IP, COUNTER);
-      assert.equal((await l.loginAllowed(IP, COUNTER))?.code, 'zu_viele_fehlversuche', 'ohne Datenbank keine Bremse');
+      assert.equal(
+        (await l.loginAllowed(IP, COUNTER))?.code,
+        'too_many_failed_attempts',
+        'ohne Datenbank keine Bremse',
+      );
     } finally {
       await db.run('ALTER TABLE rate_limit_attempts_weg RENAME TO rate_limit_attempts');
       console.warn = warn;
@@ -134,16 +139,16 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
 
   await t.test('a token only counts in the header, not in the address bar', async () => {
     const { base } = testServer(_req, { sitzung: {}, t });
-    const login = await fetch(`${base}/api/v1/auth/login`, {
+    const login = await fetch(`${base}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: NAME, password: PASS }),
     });
     const { token } = await login.json();
     assert.ok(token, 'Vorbedingung: ein Token');
-    assert.equal((await fetch(`${base}/api/v1/stats`, { headers: { authorization: `Bearer ${token}` } })).status, 200);
-    assert.equal((await fetch(`${base}/api/v1/stats?token=${token}`)).status, 401);
-    assert.equal((await fetch(`${base}/api/v1/stats?access_token=${token}`)).status, 401);
+    assert.equal((await fetch(`${base}/api/v2/stats`, { headers: { authorization: `Bearer ${token}` } })).status, 200);
+    assert.equal((await fetch(`${base}/api/v2/stats?token=${token}`)).status, 401);
+    assert.equal((await fetch(`${base}/api/v2/stats?access_token=${token}`)).status, 401);
   });
 
   await t.test('only an admin clears the price cache', async () => {
@@ -155,7 +160,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     const leeren = async (id, admin) => {
       const { base } = testServer(_req, { sitzung: { userId: id, isAdmin: !!admin }, t });
       return (
-        await fetch(`${base}/api/v1/admin/cache-clear`, {
+        await fetch(`${base}/api/v2/admin/cache-clear`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: '{}',
@@ -203,18 +208,18 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
       if (srv.exitCode === null) srv.kill('SIGKILL');
     });
     const basis = `http://127.0.0.1:${port}`;
-    assert.ok(await bis(async () => (await fetch(`${basis}/api/v1/health/live`).catch(() => null))?.ok, 60_000), log);
-    const login = await fetch(`${basis}/api/v1/auth/login`, {
+    assert.ok(await bis(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null))?.ok, 60_000), log);
+    const login = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+      body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
     });
     assert.equal(login.status, 200, `${await login.clone().text()}\n${log}`);
     const cookie = (login.headers.get('set-cookie') || '').split(';')[0];
-    const strom = await fetch(`${basis}/api/v1/sets/import/csv/stream`, { headers: { cookie } });
-    assert.equal(strom.status, 200, log);
-    assert.match(strom.headers.get('content-type') || '', /text\/event-stream/);
-    const lauf = strom.body
+    const stream = await fetch(`${basis}/api/v2/sets/import/csv/stream`, { headers: { cookie } });
+    assert.equal(stream.status, 200, log);
+    assert.match(stream.headers.get('content-type') || '', /text\/event-stream/);
+    const lauf = stream.body
       .getReader()
       .read()
       .catch(() => null);
@@ -233,17 +238,17 @@ test('minifigures and finances request preview images', async () => {
   // Full resolution at a display size of 36–100 px made the tiles visibly trickle in.
   const IMAGE = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
   const { w, d } = await openUi({
-    '/v1/minifigs': {
+    '/v2/minifigs': {
       success: true,
       total: 1,
       figs: [{ fig_number: 'fig-000123', fig_name: 'Chewbacca', source: 'set', total_quantity: 1, image_url: IMAGE }],
     },
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       condition: 'N',
       total_value: '1',
-      kaufpreise_fremde_waehrung: 0,
+      foreign_currency_purchases: 0,
       totals: { min: '0', avg: '1', max: '0', qty_avg: '1' },
       sets: [
         {
@@ -251,7 +256,7 @@ test('minifigures and finances request preview images', async () => {
           name: 'Titanic',
           quantity: 1,
           avg_price: 1,
-          wert_gesamt: 1,
+          value_total: 1,
           from_cache: true,
           is_fallback: false,
           no_price: false,

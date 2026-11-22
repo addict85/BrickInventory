@@ -59,17 +59,17 @@ let MAIN = 0,
  * a query over ALL accounts looks just like the right one. That came up while
  * thinking through the counter-checks — the case „user_id left out" would have …
  */
-const FOREIGN_ALARM = { sn: '31203-1', c: 'N', r: 'unter', s: 77, w: 'CHF' };
+const FOREIGN_ALARM = { sn: '31203-1', c: 'N', r: 'below', s: 77, w: 'CHF' };
 
 /**
  * Four alerts. The third sits on a set that the account does NOT own —
  * exactly the case that would have fallen out as a column on sets.csv.
  */
 const ALERTS = [
-  { sn: '75192-1', c: 'N', r: 'unter', s: 600, w: 'CHF', besitzt: true },
-  { sn: '75192-1', c: 'U', r: 'ueber', s: 420.5, w: 'CHF', besitzt: true },
-  { sn: '10179-1', c: 'N', r: 'unter', s: 1200, w: 'CHF', besitzt: false },
-  { sn: '21309-1', c: 'U', r: 'ueber', s: 24.9, w: 'CHF', besitzt: false },
+  { sn: '75192-1', c: 'N', r: 'below', s: 600, w: 'CHF', owns: true },
+  { sn: '75192-1', c: 'U', r: 'above', s: 420.5, w: 'CHF', owns: true },
+  { sn: '10179-1', c: 'N', r: 'below', s: 1200, w: 'CHF', owns: false },
+  { sn: '21309-1', c: 'U', r: 'above', s: 24.9, w: 'CHF', owns: false },
 ];
 
 async function setup(accountCurrency = 'CHF') {
@@ -105,7 +105,7 @@ async function setup(accountCurrency = 'CHF') {
   const gelegt = new Set();
   for (const a of ALERTS) {
     await catalogSet(db, a.sn, { name: a.sn });
-    if (a.besitzt && !gelegt.has(a.sn)) {
+    if (a.owns && !gelegt.has(a.sn)) {
       gelegt.add(a.sn);
       await db.run(
         `INSERT INTO sets (user_id,set_number) VALUES ($1,$2)
@@ -148,16 +148,16 @@ function csvRows(text) {
   return rest
     .filter(z => z.trim())
     .map(z => {
-      const werte = z.split(',').map(s => s.replace(/^"|"$/g, ''));
-      return Object.fromEntries(spalten.map((s, i) => [s, werte[i] ?? '']));
+      const values = z.split(',').map(s => s.replace(/^"|"$/g, ''));
+      return Object.fromEntries(spalten.map((s, i) => [s, values[i] ?? '']));
     });
 }
 
 /** The same CSV built from ALERTS — independent of the export (lesson from piece 1). */
-function csvFromAlerts(waehrung) {
+function csvFromAlerts(currency) {
   return (
     'set_number,condition,richtung,schwelle,currency_code\n' +
-    ALERTS.map(a => `${a.sn},${a.c},${a.r},${a.s},${waehrung ?? a.w}`).join('\n') +
+    ALERTS.map(a => `${a.sn},${a.c},${a.r},${a.s},${currency ?? a.w}`).join('\n') +
     '\n'
   );
 }
@@ -165,7 +165,7 @@ function csvFromAlerts(waehrung) {
 async function hochladen(base, text, name = 'preisalarme.csv') {
   const fd = new FormData();
   fd.append('file', new Blob([text], { type: 'text/csv' }), name);
-  const r = await fetch(`${base}/api/v1/alerts/import/csv`, { method: 'POST', body: fd });
+  const r = await fetch(`${base}/api/v2/alerts/import/csv`, { method: 'POST', body: fd });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
@@ -184,7 +184,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
   let csvText = '';
 
   await t.test('1. preisalarme.csv is in the ZIP, next to the four others', async () => {
-    const r = await fetch(`${srv.base}/api/v1/settings/export/data`);
+    const r = await fetch(`${srv.base}/api/v2/settings/export/data`);
     assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
     const buf = Buffer.from(await r.arrayBuffer());
     csvText = fromZip(buf, 'preisalarme.csv');
@@ -224,7 +224,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
         'ausloest — beim Wiedereinlesen landete er im eigenen Konto.',
     );
 
-    const withoutInventory = ALERTS.filter(a => !a.besitzt);
+    const withoutInventory = ALERTS.filter(a => !a.owns);
     assert.equal(withoutInventory.length, 2, 'Vorbedingung: zwei Alarme ohne Bestandszeile');
     for (const a of withoutInventory) {
       assert.ok(
@@ -260,11 +260,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     assert.equal(status, 200, `Der Import antwortete mit ${status}: ${JSON.stringify(body)}`);
     assert.equal(body.added, ALERTS.length, `${body.added} angelegt statt ${ALERTS.length}`);
     assert.equal(body.errors, 0, `${body.errors} Fehler: ${JSON.stringify(body.results)}`);
-    assert.equal(
-      body.waehrung_hinweis,
-      undefined,
-      'Es kam ein Währungshinweis, obwohl Datei und Konto beide CHF tragen',
-    );
+    assert.equal(body.currency_note, undefined, 'Es kam ein Währungshinweis, obwohl Datei und Konto beide CHF tragen');
 
     for (const a of ALERTS) {
       const z = await db.get(
@@ -311,17 +307,13 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
 
     // And the decisive point: it is NOT concealed.
     assert.ok(
-      body.waehrung_hinweis,
+      body.currency_note,
       'Kein Hinweis in der Antwort. Die Zahlen bedeuten jetzt etwas anderes als in der ' +
         'Datei („unter 600" in CHF statt in EUR) — stillschweigend die Zahl übernehmen UND ' +
         'die Währung wechseln ist die eine Sache, die hier niemand merken würde.',
     );
-    assert.match(
-      String(body.waehrung_hinweis),
-      /CHF/,
-      `Der Hinweis nennt die Zielwährung nicht: „${body.waehrung_hinweis}"`,
-    );
-    const markiert = (body.results || []).filter(x => x.waehrung_angepasst);
+    assert.match(String(body.currency_note), /CHF/, `Der Hinweis nennt die Zielwährung nicht: „${body.currency_note}"`);
+    const markiert = (body.results || []).filter(x => x.currency_adjusted);
     assert.equal(
       markiert.length,
       ALERTS.length,
@@ -379,7 +371,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     await db.run(
       `INSERT INTO price_alerts
                     (user_id,set_number,condition,direction,threshold,currency_code,triggered)
-                  VALUES ($1,'75192-1','N','unter',600,'CHF',TRUE)`,
+                  VALUES ($1,'75192-1','N','below',600,'CHF',TRUE)`,
       [MAIN],
     );
     assert.equal(
@@ -407,7 +399,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     // Recorded so that the decision is not later read as an omission:
     // this file goes to the importer of a FOREIGN company and
     // carries exactly two columns. A third one makes it unusable there.
-    const r = await fetch(`${srv.base}/api/v1/sets/export/rebrickable`);
+    const r = await fetch(`${srv.base}/api/v2/sets/export/rebrickable`);
     assert.equal(r.status, 200, `Der Rebrickable-Export antwortete mit ${r.status}`);
     const kopf = (await r.text()).replace(/^﻿/, '').split(/\r?\n/)[0];
     assert.equal(

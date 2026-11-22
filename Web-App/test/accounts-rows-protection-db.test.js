@@ -92,7 +92,7 @@ test('accounts only in the own household', { concurrency: 1, timeout: 120_000 },
     const haushalt = { ..._req('src/household/household.js'), ...S.testArea('household') };
     const { code } = await S.asAccount(fremd, () => haushalt.createInvitation(fremd));
     const { base } = testServer(_req, { sitzung: { userId: haupt, username: namen[0] }, t });
-    const r = await fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {
+    const r = await fetch(`${base}/api/v2/settings/household/redeem/check`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ code }),
@@ -103,7 +103,7 @@ test('accounts only in the own household', { concurrency: 1, timeout: 120_000 },
 
   await t.test('the household view names sub-accounts and separated accounts by name', async () => {
     const { base } = testServer(_req, { sitzung: { userId: haupt, username: namen[0] }, t });
-    const body = await (await fetch(`${base}/api/v1/settings/household`)).json();
+    const body = await (await fetch(`${base}/api/v2/settings/household`)).json();
     assert.deepEqual(
       [body.sub_accounts?.map(k => k.username), body.former_links?.map(k => k.username)],
       [[namen[1]], [namen[3]]],

@@ -78,14 +78,14 @@ test('the main account sees market price and history of a sub-account set', { co
 
   try {
     // 1. The actual finding: the price route must no longer give 404.
-    let r = await fetch(`${base}/api/v1/sets/${SET}/price`);
+    let r = await fetch(`${base}/api/v2/sets/${SET}/price`);
     assert.equal(r.status, 200, 'Preisroute muss das Haushalts-Set finden (vorher: 404 Set not found)');
     let j = await r.json();
     assert.equal(parseFloat(j.avg_price), 22.5, 'der CHF-Cache-Preis muss ankommen');
     assert.ok(!j.no_price, 'kein no_price — genau das war der leere Marktpreis in der App');
 
     // 2. History: chart points AND by_condition with the sub-account's purchase price.
-    r = await fetch(`${base}/api/v1/sets/${SET}/price-history`);
+    r = await fetch(`${base}/api/v2/sets/${SET}/price-history`);
     assert.equal(r.status, 200);
     j = await r.json();
     const punkte = (j.chart?.values || []).reduce((a, s) => a + (s.values || []).length, 0);

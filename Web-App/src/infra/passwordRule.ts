@@ -32,11 +32,11 @@ function common(): Set<string> {
 
 /** For every path that sets a password: the reason for rejection or null. */
 export function passwordLack(password: unknown, benutzername?: unknown): ErrorCode | null {
-  if (passwordToShort(password)) return 'passwort_zu_kurz';
+  if (passwordToShort(password)) return 'password_too_short';
   const p = String(password);
-  if (p.length > PASSWORD_MAX_CHARS) return 'passwort_zu_lang';
+  if (p.length > PASSWORD_MAX_CHARS) return 'password_too_long';
   const small = p.toLowerCase();
   if (common().has(small) || (typeof benutzername === 'string' && small === benutzername.toLowerCase()))
-    return 'passwort_zu_haeufig';
+    return 'password_too_common';
   return null;
 }

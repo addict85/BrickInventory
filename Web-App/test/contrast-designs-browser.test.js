@@ -67,14 +67,14 @@ function abschnitt(n) {
 
 function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
-  const teile = [];
+  const parts = [];
   for (const d of DESIGNS)
     for (const dunkel of d === 'werkbank' ? [true] : [false, true])
-      teile.push(
+      parts.push(
         `<section data-theme="${d}"${dunkel ? ' data-dark' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${abschnitt(`${d} ${dunkel ? 'dark' : 'hell'}`)}</div></section>`,
       );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
-<style>*{transition:none!important;animation:none!important}</style></head><body>${teile.join('\n')}
+<style>*{transition:none!important;animation:none!important}</style></head><body>${parts.join('\n')}
 <pre id="ergebnis"></pre>
 <script>
 function rgba(s){ const v=(s.match(/[\\d.]+/g)||[]).map(Number); return v.length<4?[...v,1]:v; }
@@ -120,10 +120,10 @@ test('contrast in all themes, light and dark', t => {
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
-  const werte = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
-  assert.equal(werte.length, 11 * 33, `${werte.length} Messungen — fehlt ein Design oder ein Baustein?`);
+  const values = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
+  assert.equal(values.length, 11 * 33, `${values.length} Messungen — fehlt ein Design oder ein Baustein?`);
   assert.deepEqual(
-    werte.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
+    values.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
     [],
   );
 });

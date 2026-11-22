@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { V1_ALERT_DIRECTIONS, V1_SUPPLEMENT, V1_SET_SORTS } from './v1Names';
+import { v1Keys, v1Values } from './v1';
 import { input, LARGEST_ID } from '../infra/validate';
 import { AccountName, type Route, time, whole, WITHOUT_BODY, IDENTIFIER, CONDITION, TEXT, query, Q } from './base';
 import {
@@ -18,9 +20,9 @@ export const AddSetResponse = z.looseObject({
   action: z.string(),
   set_number: z.string(),
   name: z.string().nullable().optional(),
-  katalog_offen: z.boolean().optional(),
-  /** ausstehend: created, a job is still fetching catalog, image or market price. */
-  ergaenzung: z.enum(['ausstehend', 'erledigt']).optional(),
+  catalog_pending: z.boolean().optional(),
+  /** pending: created, a job is still fetching catalog, image or market price. */
+  supplement: v1Values(z.enum(['pending', 'done']), V1_SUPPLEMENT).optional(),
   owner_user_id: z.number().int().optional(),
   is_self: z.boolean().optional(),
 });
@@ -36,7 +38,7 @@ export const BarcodeResponse = z.looseObject({
   image_url: z.string().nullable(),
   image_local: z.string().nullable(),
   source: z.string().nullable(),
-  unsicher: z.boolean(),
+  uncertain: z.boolean(),
 });
 
 export const Instruction = z.looseObject({
@@ -68,7 +70,7 @@ export const MoveSetResponse = z.looseObject({
 export const PriceAlert = z.looseObject({
   set_number: z.string(),
   condition: z.string(),
-  direction: z.string(),
+  direction: v1Values(z.string(), V1_ALERT_DIRECTIONS),
   threshold: z.number(),
   currency_code: z.string(),
   triggered: z.boolean(),
@@ -78,7 +80,7 @@ export const PriceAlert = z.looseObject({
   image_local: z.string().nullable().optional(),
   image_url: z.string().nullable().optional(),
   set_img_url: z.string().nullable().optional(),
-  besitzt: z.boolean(),
+  owns: z.boolean(),
 });
 
 export const PendingAlertsResponse = z.looseObject({
@@ -100,7 +102,7 @@ export const PriceAlertsResponse = z.looseObject({
 
 export const SetItem = z.looseObject({
   acq_count: z.number().int(),
-  letzter_kauf: time.nullable().optional(),
+  last_purchase: time.nullable().optional(),
   owner_ids: z.array(z.number().int()).optional(),
   id: z.number().int().optional(),
   storage_id: z.number().int().nullable().optional(),
@@ -123,11 +125,11 @@ export const SetItem = z.looseObject({
   owners: z.array(AccountName).optional(),
   max_purchase_price: z.number().nullable(),
   avg_purchase_price: z.number().nullable(),
-  kaufpreis_geschaetzt: z.boolean().nullable().optional(),
+  purchase_price_estimated: z.boolean().nullable().optional(),
   used_count: z.number().int(),
   instructions: z.array(Instruction),
   bricklink: BrickLinkRef.nullable().optional(),
-  preisvergleich_url: z.string().nullable().optional(),
+  price_comparison_url: z.string().nullable().optional(),
 });
 
 export const SetExistsResponse = z.looseObject({
@@ -149,7 +151,7 @@ export const SetInfoResponse = z.looseObject({
   success: z.boolean(),
   set_number: z.string(),
   name: z.string().nullable(),
-  im_katalog: z.boolean(),
+  in_catalog: z.boolean(),
 });
 
 export const SetResponse = z.looseObject({
@@ -166,14 +168,14 @@ export const SetsResponse = z.looseObject({
   themes: z.array(z.string()).optional(),
 });
 
-/** 202: loading happens in the job process (job `anleitung`); the list is the state before loading. */
+/** 202: loading happens in the job process (job `instructions`); the list is the state before loading. */
 export const InstructionsLoaded = z.looseObject({
   success: z.literal(true),
   count: whole,
   instructions: z.array(Instruction),
-  auftrag_id: z.string().nullable(),
+  job_id: z.string().nullable(),
 });
-export const PdfAuftrag = z.looseObject({ success: z.literal(true), jobId: z.string() });
+export const PdfJob = z.looseObject({ success: z.literal(true), jobId: z.string() });
 
 const textOrNull = (max: number) => z.string().max(max).nullish();
 /** The job draws every row and loads images: number and size are limited. */
@@ -213,20 +215,20 @@ export const PdfStand = z.looseObject({
 });
 
 /** The set import runs in the background; right away it is known how many rows and which sets already exist. */
-export const SetCsvImportGestartet = z.looseObject({
+export const SetCsvImportStarted = z.looseObject({
   success: z.boolean(),
   total: whole,
   /** false for `pruefen`: only counted, nothing started. */
-  gestartet: z.boolean(),
-  vorhanden: whole,
-  vorhanden_nummern: z.array(z.string()),
+  started: z.boolean(),
+  existing: whole,
+  existing_numbers: z.array(z.string()),
   skipped: whole.optional(),
   skipped_hint: z.string().optional(),
 });
 
 export const PartsLoaded = z.looseObject({ success: z.literal(true), count: whole });
 
-export const AnleitungHochgeladen = GenericResponse.extend({
+export const InstructionUploaded = GenericResponse.extend({
   instruction: z.looseObject({ url: z.string(), description: z.string().nullable(), local_path: z.string() }),
 });
 
@@ -234,9 +236,9 @@ export const AnleitungHochgeladen = GenericResponse.extend({
 export const QuantityChanged = GenericResponse.extend({
   /** null: written but not read back (see degradiert). */
   quantity: whole.nullable(),
-  papierkorb: z.number().int().optional(),
-  degradiert: DEGRADED,
-  entfallen: z
+  trash: z.number().int().optional(),
+  degraded: DEGRADED,
+  dropped: z
     .array(
       z.looseObject({
         id: whole,
@@ -271,87 +273,90 @@ const NewSet = z.strictObject({
     .optional(),
 });
 
-export const routen = {
-  'GET /api/v1/sets/info/:setNumber': { antwort: SetInfoResponse },
-  'GET /api/v1/sets': {
-    antwort: SetsResponse,
-    abfrage: query({
-      accounts: Q.konten,
+// v1 names of fields whose v2 name also exists unchanged elsewhere (v1.ts).
+v1Keys(SetCsvImportStarted, { started: 'gestartet' });
+
+export const routes = {
+  'GET /api/v2/sets/info/:setNumber': { response: SetInfoResponse },
+  'GET /api/v2/sets': {
+    response: SetsResponse,
+    query: query({
+      accounts: Q.accounts,
       search: Q.text(),
       theme: Q.text(),
-      sort: Q.text(40),
+      sort: v1Values(Q.text(40), V1_SET_SORTS),
       page: Q.number(),
       page_size: Q.number(),
       storage: Q.text(),
     }),
   },
-  'GET /api/v1/sets/:setNumber': { antwort: SetResponse, abfrage: query({ accounts: Q.konten }) },
-  'GET /api/v1/alerts/pending': {
-    klein: true,
-    antwort: PendingAlertsResponse,
-    abfrage: query({ since: Q.text(40) }),
+  'GET /api/v2/sets/:setNumber': { response: SetResponse, query: query({ accounts: Q.accounts }) },
+  'GET /api/v2/alerts/pending': {
+    small: true,
+    response: PendingAlertsResponse,
+    query: query({ since: Q.text(40) }),
   },
-  'GET /api/v1/alerts': { klein: true, antwort: PriceAlertsResponse },
-  'GET /api/v1/sets/:setNumber/alert': { klein: true, antwort: PriceAlertsResponse },
-  'GET /api/v1/sets/:setNumber/parts-list': { klein: true, antwort: SetPartsResponse },
-  'GET /api/v1/sets/:setNumber/minifigs-list': { klein: true, antwort: SetMinifigsResponse },
-  'GET /api/v1/sets/exists/:setNumber': { antwort: SetExistsResponse },
-  'GET /api/v1/sets/barcode/:barcode': { antwort: BarcodeResponse },
-  'POST /api/v1/sets/:setNumber/instructions/upload': {
-    antwort: AnleitungHochgeladen,
-    formular: true,
-    eingabe: z.strictObject({ description: TEXT(500).optional() }),
+  'GET /api/v2/alerts': { small: true, response: PriceAlertsResponse },
+  'GET /api/v2/sets/:setNumber/alert': { small: true, response: PriceAlertsResponse },
+  'GET /api/v2/sets/:setNumber/parts-list': { small: true, response: SetPartsResponse },
+  'GET /api/v2/sets/:setNumber/minifigs-list': { small: true, response: SetMinifigsResponse },
+  'GET /api/v2/sets/exists/:setNumber': { response: SetExistsResponse },
+  'GET /api/v2/sets/barcode/:barcode': { response: BarcodeResponse },
+  'POST /api/v2/sets/:setNumber/instructions/upload': {
+    response: InstructionUploaded,
+    form: true,
+    input: z.strictObject({ description: TEXT(500).optional() }),
   },
-  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': { eingabe: WITHOUT_BODY, antwort: GenericResponse },
-  'POST /api/v1/sets': { antwort: AddSetResponse, eingabe: NewSet },
-  'PUT /api/v1/sets/:setNumber': {
-    eingabe: z.strictObject({
+  'DELETE /api/v2/sets/:setNumber/instructions/:instrId': { input: WITHOUT_BODY, response: GenericResponse },
+  'POST /api/v2/sets': { response: AddSetResponse, input: NewSet },
+  'PUT /api/v2/sets/:setNumber': {
+    input: z.strictObject({
       quantity: input.quantityOrNothing(0, 100_000).optional(),
       quantity_delta: input.quantitiesDelta(),
       purchase_price: input.geld('Kaufpreis'),
       condition: CONDITION.nullable().optional(),
       owner_user_id: IDENTIFIER.nullable().optional(),
     }),
-    antwort: QuantityChanged,
+    response: QuantityChanged,
   },
-  'DELETE /api/v1/sets/:setNumber': {
-    eingabe: WITHOUT_BODY,
-    antwort: MovedToTrash,
-    abfrage: query({ accounts: Q.konten }),
+  'DELETE /api/v2/sets/:setNumber': {
+    input: WITHOUT_BODY,
+    response: MovedToTrash,
+    query: query({ accounts: Q.accounts }),
   },
-  'PUT /api/v1/sets/:setNumber/alert': {
-    eingabe: z.strictObject({
-      direction: z.enum(['unter', 'ueber']),
+  'PUT /api/v2/sets/:setNumber/alert': {
+    input: z.strictObject({
+      direction: v1Values(z.enum(['below', 'above']), V1_ALERT_DIRECTIONS),
       threshold: input.geld('Schwelle', { nullbar: false }),
       condition: CONDITION.optional(),
     }),
-    antwort: PriceAlertResponse,
+    response: PriceAlertResponse,
   },
-  'DELETE /api/v1/sets/:setNumber/alert': {
-    eingabe: WITHOUT_BODY,
-    antwort: PriceAlertResponse,
-    abfrage: query({ condition: z.enum(['N', 'U', 'n', 'u']) }),
+  'DELETE /api/v2/sets/:setNumber/alert': {
+    input: WITHOUT_BODY,
+    response: PriceAlertResponse,
+    query: query({ condition: z.enum(['N', 'U', 'n', 'u']) }),
   },
-  'POST /api/v1/sets/:sn/move': {
-    eingabe: z.strictObject({
+  'POST /api/v2/sets/:sn/move': {
+    input: z.strictObject({
       from_user_id: IDENTIFIER.nullable().optional(),
       to_user_id: IDENTIFIER,
       acquisition_ids: z.array(IDENTIFIER).max(10_000).nullable().optional(),
     }),
-    antwort: MoveSetResponse,
+    response: MoveSetResponse,
   },
-  'POST /api/v1/sets/import/csv': {
-    formular: true,
-    antwort: SetCsvImportGestartet,
-    abfrage: query({ pruefen: Q.schalter }),
+  'POST /api/v2/sets/import/csv': {
+    form: true,
+    response: SetCsvImportStarted,
+    query: query({ check: Q.toggle }),
   },
-  'POST /api/v1/alerts/import/csv': { formular: true, antwort: CsvImportResult },
-  'POST /api/v1/sets/:setNumber/instructions': { eingabe: WITHOUT_BODY, antwort: InstructionsLoaded },
-  'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag, eingabe: PdfInput },
-  'GET /api/v1/sets/partslist-pdf/status/:jobId': { antwort: PdfStand },
-  'GET /api/v1/sets/partslist-pdf/download/:jobId': { art: 'pdf' },
-  'GET /api/v1/sets/partslist-pdf/stream/:jobId': { art: 'strom', ereignis: PdfStand },
-  'POST /api/v1/sets/add-stream': { art: 'strom', eingabe: NewSet },
-  'GET /api/v1/sets/export/rebrickable': { art: 'csv' },
-  'POST /api/v1/sets/:setNumber/parts': { eingabe: WITHOUT_BODY, antwort: PartsLoaded },
+  'POST /api/v2/alerts/import/csv': { form: true, response: CsvImportResult },
+  'POST /api/v2/sets/:setNumber/instructions': { input: WITHOUT_BODY, response: InstructionsLoaded },
+  'POST /api/v2/sets/partslist-pdf': { response: PdfJob, input: PdfInput },
+  'GET /api/v2/sets/partslist-pdf/status/:jobId': { response: PdfStand },
+  'GET /api/v2/sets/partslist-pdf/download/:jobId': { kind: 'pdf' },
+  'GET /api/v2/sets/partslist-pdf/stream/:jobId': { kind: 'stream', event: PdfStand },
+  'POST /api/v2/sets/add-stream': { kind: 'stream', input: NewSet },
+  'GET /api/v2/sets/export/rebrickable': { kind: 'csv' },
+  'POST /api/v2/sets/:setNumber/parts': { input: WITHOUT_BODY, response: PartsLoaded },
 } satisfies Record<string, Route>;

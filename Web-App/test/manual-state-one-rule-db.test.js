@@ -53,13 +53,13 @@ test('manual parts and figures: list and valuation state the same condition', { 
                     VALUES ($1,4,'Rot') ON CONFLICT (part_number,color_id) DO NOTHING`,
         [f.nr],
       );
-      await holdsPart(db, uid, f.nr, { menge: 0, colorId: 4 }); // quantity 0: the acquisition behind it carries it
+      await holdsPart(db, uid, f.nr, { quantity: 0, colorId: 4 }); // quantity 0: the acquisition behind it carries it
       await db.run(
         `INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ($1,$2)
                     ON CONFLICT (fig_number) DO NOTHING`,
         ['fig' + f.nr, 'Figur ' + f.nr],
       );
-      await holdsMinifig(db, uid, 'fig' + f.nr, { menge: 0 }); // quantity 0: the acquisition behind it carries it
+      await holdsMinifig(db, uid, 'fig' + f.nr, { quantity: 0 }); // quantity 0: the acquisition behind it carries it
       // Different days, so that „the newest acquisition" is unambiguous.
       for (const [i, z] of f.acquisitions.entries()) {
         await db.run(
@@ -92,14 +92,14 @@ test('manual parts and figures: list and valuation state the same condition', { 
     ])
       assert.equal(l.length, faelle.length, `${was}: ${l.length} statt ${faelle.length} Einträgen`);
 
-    const zustand = (liste, schluessel, wert) => liste.find(x => x[schluessel] === wert)?.condition;
+    const condition = (liste, schluessel, wert) => liste.find(x => x[schluessel] === wert)?.condition;
 
     for (const f of faelle) {
       const beschreibung =
         `Teil ${f.nr} (` + (f.acquisitions.length ? `Erfassungen ${f.acquisitions.join('+')}` : 'ohne Erfassung') + ')';
 
-      const fromList = zustand(liste, 'part_number', f.nr);
-      const fromValuation = zustand(bewertung.parts, 'part_number', f.nr);
+      const fromList = condition(liste, 'part_number', f.nr);
+      const fromValuation = condition(bewertung.parts, 'part_number', f.nr);
       assert.equal(
         fromList,
         fromValuation,
@@ -109,8 +109,8 @@ test('manual parts and figures: list and valuation state the same condition', { 
       );
       assert.equal(fromList, f.erwartet, `${beschreibung}: erwartet ${f.erwartet}, bekommen ${fromList}`);
 
-      const figFromList = zustand(figList, 'fig_number', 'fig' + f.nr);
-      const figFromValuation = zustand(figValuation.figs, 'fig_number', 'fig' + f.nr);
+      const figFromList = condition(figList, 'fig_number', 'fig' + f.nr);
+      const figFromValuation = condition(figValuation.figs, 'fig_number', 'fig' + f.nr);
       assert.equal(
         figFromList,
         figFromValuation,
@@ -125,22 +125,22 @@ test('manual parts and figures: list and valuation state the same condition', { 
     // confusion from which the error above arose. Nobody read it
     // (looked up in both clients).
     assert.deepEqual(Object.keys(bewertung).sort(), [
+      'converted_purchase_prices',
       'currency',
-      'kaufpreise_fremde_waehrung',
-      'kaufpreise_umgerechnet',
+      'foreign_currency_purchases',
       'parts',
-      'preise_ausstehend',
+      'prices_pending',
       'total_value',
-      'wert_gesamt',
+      'value_total',
     ]);
     assert.deepEqual(Object.keys(figValuation).sort(), [
+      'converted_purchase_prices',
       'currency',
       'figs',
-      'kaufpreise_fremde_waehrung',
-      'kaufpreise_umgerechnet',
-      'preise_ausstehend',
+      'foreign_currency_purchases',
+      'prices_pending',
       'total_value',
-      'wert_gesamt',
+      'value_total',
     ]);
   } finally {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
@@ -152,9 +152,9 @@ test('the app fetches the manual pieces from their own address', () => {
   // What the app calls stands in shared/app-schnittstelle.json (generated from its source text).
   const gerufen = new Set(
     require('./helpers/contract')
-      .appSchnittstelle()
-      .routen.map(r => `${r.methode} ${r.pfad}`),
+      .appRoutes(_req)
+      .map(r => `${r.methode} ${r.path}`),
   );
-  assert.ok(gerufen.has('GET /api/v1/parts/manual'), 'Die App ruft /parts/manual nicht');
-  assert.ok(gerufen.has('GET /api/v1/minifigs/manual'), 'Die App ruft /minifigs/manual nicht');
+  assert.ok(gerufen.has('GET /api/v2/parts/manual'), 'Die App ruft /parts/manual nicht');
+  assert.ok(gerufen.has('GET /api/v2/minifigs/manual'), 'Die App ruft /minifigs/manual nicht');
 });

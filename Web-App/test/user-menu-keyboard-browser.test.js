@@ -22,9 +22,9 @@ const { patternCollection } = require('./helpers/inventory');
 const KEYS = { Enter: 13, Escape: 27, ArrowDown: 40, ArrowUp: 38, Home: 36, End: 35, Tab: 9 };
 
 test('user menu: keyboard following the menu pattern', { timeout: 120_000 }, async t => {
-  const app = await startApp(t, { name: `umenu_${process.pid}`, bestand: patternCollection });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `umenu_${process.pid}`, holding: patternCollection });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, ruhig } = app;
@@ -41,38 +41,38 @@ test('user menu: keyboard following the menu pattern', { timeout: 120_000 }, asy
   const fokus = () =>
     b.auswerten(`(() => { const a = document.activeElement;
     return a.id || a.getAttribute('data-arg') || a.className || a.tagName; })()`);
-  const offen = () =>
+  const open = () =>
     b.auswerten(`document.getElementById('umenu-pop').style.display !== 'none'
     && document.getElementById('btn-umenu').getAttribute('aria-expanded') === 'true'`);
-  const eintraege = await b.auswerten(`[...document.querySelectorAll('#umenu-pop [role=menuitem]')]
+  const entries = await b.auswerten(`[...document.querySelectorAll('#umenu-pop [role=menuitem]')]
     .filter(e => e.style.display !== 'none').map(e => e.id || e.getAttribute('data-arg'))`);
-  assert.ok(eintraege.length >= 8, `zu wenige Einträge: ${eintraege}`);
+  assert.ok(entries.length >= 8, `zu wenige Einträge: ${entries}`);
 
   await b.auswerten(`document.getElementById('btn-umenu').focus(); true`);
   await taste('Enter');
   await t.test('Enter opens and focuses the first entry', async () => {
-    assert.equal(await offen(), true);
-    assert.equal(await fokus(), eintraege[0]);
+    assert.equal(await open(), true);
+    assert.equal(await fokus(), entries[0]);
   });
   await t.test('arrow down moves, End and Home jump, arrow up wraps around', async () => {
     await taste('ArrowDown');
-    assert.equal(await fokus(), eintraege[1]);
+    assert.equal(await fokus(), entries[1]);
     await taste('End');
-    assert.equal(await fokus(), eintraege.at(-1));
+    assert.equal(await fokus(), entries.at(-1));
     await taste('Home');
-    assert.equal(await fokus(), eintraege[0]);
+    assert.equal(await fokus(), entries[0]);
     await taste('ArrowUp');
-    assert.equal(await fokus(), eintraege.at(-1));
+    assert.equal(await fokus(), entries.at(-1));
   });
   await t.test('Escape closes, focus back on the button', async () => {
     await taste('Escape');
-    assert.equal(await offen(), false);
+    assert.equal(await open(), false);
     assert.equal(await fokus(), 'btn-umenu');
   });
   await t.test('arrow up on the button opens with focus on the last entry', async () => {
     await taste('ArrowUp');
-    assert.equal(await offen(), true);
-    assert.equal(await fokus(), eintraege.at(-1));
+    assert.equal(await open(), true);
+    assert.equal(await fokus(), entries.at(-1));
     await taste('Escape');
   });
   await t.test('choosing focuses the heading of the view', async () => {
@@ -80,10 +80,10 @@ test('user menu: keyboard following the menu pattern', { timeout: 120_000 }, asy
     await taste('ArrowDown'); // the second entry, a view without a tab
     await taste('Enter');
     await ruhig();
-    assert.equal(await offen(), false);
+    assert.equal(await open(), false);
     assert.equal(
       await b.auswerten(`document.activeElement.classList.contains('ptitle')
-      && !!document.activeElement.closest('#tab-${eintraege[1]}')`),
+      && !!document.activeElement.closest('#tab-${entries[1]}')`),
       true,
       `Fokus auf ${await fokus()}`,
     );

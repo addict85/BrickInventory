@@ -101,7 +101,7 @@ export interface AppConfig {
   csvRowDeadlineMs: number;
   jobParallel: number;
   /** null: according to cores and cgroup quota (src/account/bcryptLimit.ts). */
-  bcryptArbeiter: number | null;
+  bcryptWorker: number | null;
   jobDeadlineSec: number;
   /** PEM; null: no own CA. */
   caCertificate: string | null;
@@ -476,7 +476,7 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
     imageFetchesJeMinute: integer(env, 'IMAGE_FETCHES_PER_MINUTE', 240, 1, 100_000, f),
     csvRowDeadlineMs: integer(env, 'CSV_ROW_DEADLINE_MS', 120_000, 1, 86_400_000, f),
     jobParallel: integer(env, 'JOB_PARALLEL', DEFAULT.jobParallel, 1, 64, f),
-    bcryptArbeiter: env.BCRYPT_WORKERS?.trim() ? integer(env, 'BCRYPT_WORKERS', 4, 1, 64, f) : null,
+    bcryptWorker: env.BCRYPT_WORKERS?.trim() ? integer(env, 'BCRYPT_WORKERS', 4, 1, 64, f) : null,
     jobDeadlineSec: integer(env, 'JOB_DEADLINE_SEC', DEFAULT.jobDeadlineSec, 1, 86_400, f),
     caCertificate: env.CA_CERTIFICATE?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
@@ -498,12 +498,12 @@ export function cookieSafe(k: AppConfig): boolean {
   return k.cookieSecure ?? (k.operation || k.hinterTls);
 }
 
-const K = processWide('konfig', () => ({ v: null as Readonly<AppConfig> | null }));
+const K = processWide('config', () => ({ v: null as Readonly<AppConfig> | null }));
 
 /** Read on the first call and frozen: konfig() is on the hot path
  * of every request, and production does not change its environment at runtime.
  * Whoever does (tests) says so explicitly with setKonfig/readKonfigNew. */
-export function konfig(): Readonly<AppConfig> {
+export function config(): Readonly<AppConfig> {
   K.v ??= Object.freeze(loadConfig(process.env));
   return K.v;
 }
@@ -511,7 +511,7 @@ export function konfig(): Readonly<AppConfig> {
 /** For tests: lay individual values over the read configuration; null lifts that. */
 export function setConfig(teil: Partial<AppConfig> | null): Readonly<AppConfig> {
   K.v = teil ? Object.freeze({ ...loadConfig(process.env), ...teil }) : null;
-  return konfig();
+  return config();
 }
 
 /** For tests and scripts that change process.env after startup. */
@@ -521,7 +521,7 @@ export function readConfigNew(): Readonly<AppConfig> {
 
 export function checkConfigOnStart(): AppConfig {
   try {
-    return konfig();
+    return config();
   } catch (e) {
     if (!(e instanceof ConfigError)) throw e;
     console.error(`❌ ${e.message}\n   Siehe .env.example.`);
@@ -545,11 +545,11 @@ export function databaseConnection(env: NodeJS.ProcessEnv = process.env) {
 
 /** The system role (BYPASSRLS) for work across account boundaries, otherwise null: with
  * a single role that owns the tables, row security does not apply. */
-export function systemConnection(env: NodeJS.ProcessEnv = process.env, art = 'PGSYSTEM') {
+export function systemConnection(env: NodeJS.ProcessEnv = process.env, kind = 'PGSYSTEM') {
   secretsFromFiles(env);
-  const user = env[`${art}_USER`]?.trim();
+  const user = env[`${kind}_USER`]?.trim();
   if (!user) return null;
-  const password = env[`${art}_PASSWORD`] ?? '';
+  const password = env[`${kind}_PASSWORD`] ?? '';
   const basis = databaseConnection(env);
   if (!('connectionString' in basis)) return { ...basis, user, password };
   const u = new URL(basis.connectionString);

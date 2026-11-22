@@ -34,20 +34,20 @@ export function deleteWithChoice(title, msg, choice) {
  * @param {Button} button
  */
 export function confirmDeleteWithPassword(title, msg, icon, button) {
-  if (!button?.button || !['bp', 'bd'].includes(button.art ?? ''))
+  if (!button?.button || !['bp', 'bd'].includes(button.kind ?? ''))
     throw new Error('confirmDeleteWithPassword: button text and kind are missing');
-  return openDialog(title, msg, icon, true, false, false, { feld: 'confirm.admin_password', ...button });
+  return openDialog(title, msg, icon, true, false, false, { field: 'confirm.admin_password', ...button });
 }
 
 /** With an active second factor the server requires the code for sensitive changes
- * (zweiter_faktor_noetig); then ask once and repeat with `code`.
+ * (second_factor_required); then ask once and repeat with `code`.
  * @template T
  * @param {(extra: { code?: string, passkey?: object }) => Promise<T>} call
  * @returns {Promise<T | null>} the response, or null if the dialog was cancelled */
 export async function withSecondFactor(call) {
   const d = await call({});
   const a = /** @type {{ code?: unknown, passkey?: unknown } | null | undefined} */ (d);
-  if (a?.code !== 'zweiter_faktor_noetig') return d;
+  if (a?.code !== 'second_factor_required') return d;
   const withPasskey = !!(a.passkey && fetchPasskey);
   const code = await openDialog(
     tRaw('sf.title'),
@@ -74,17 +74,17 @@ export async function questionCode(title, text) {
 /**
  * Main button of the question dialog: text, kind (bp blue, bd red), field label.
  * withCode: password and code in one dialog instead of two one after another.
- * @typedef {{ button?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean, choice?: { value: string, text: string }[], withCode?: boolean }} Button
+ * @typedef {{ button?: string, kind?: string, field?: string, values?: Record<string, unknown>, error?: boolean, choice?: { value: string, text: string }[], withCode?: boolean }} Button
  */
 /** A confirmation is not a deletion: button in the main color instead of red. @type {Button} */
-const CONFIRM = { button: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
+const CONFIRM = { button: 'common.confirm', kind: 'bp', field: 'settings.password.current' };
 
 /**
  * Confirm an account change with the own password — once when saving in the dialog instead of a field
  * "current password" per section, which looked like an error. With a wrong password the dialog asks again.
  * @param {string} title
  * @template T
- * @param {(passwort: string, extra: { code?: string, passkey?: object }) => Promise<T>} call
+ * @param {(password: string, extra: { code?: string, passkey?: object }) => Promise<T>} call
  * @param {string} [explanation] says what is being confirmed (instead of just "password please")
  * @param {Button} [button] main button; with `withCode` the same dialog asks for the code too
  */
@@ -98,9 +98,9 @@ export async function confirmWithPassword(title, call, explanation = tRaw('accou
     const code = storage.code.trim();
     const d = await withSecondFactor(z => call(pw, code && !z.code && !z.passkey ? { code } : z));
     const a = /** @type {{ code?: unknown, error?: string } | null} */ (d);
-    if (a?.code !== 'aktuelles_passwort_falsch' && a?.code !== 'aktuelles_passwort_erforderlich') return d;
+    if (a?.code !== 'current_password_wrong' && a?.code !== 'current_password_required') return d;
     text = a.error || explanation;
-    buttonKind = { ...buttonKind, fehler: true };
+    buttonKind = { ...buttonKind, error: true };
   }
   return null;
 }
@@ -111,10 +111,10 @@ export async function confirmWithPassword(title, call, explanation = tRaw('accou
  * @param {Record<string, unknown>} values
  */
 export async function saveSettings(title, values) {
-  const d = await api('POST', '/v1/settings', values);
-  if (d?.code !== 'aktuelles_passwort_erforderlich') return d;
+  const d = await api('POST', '/v2/settings', values);
+  if (d?.code !== 'current_password_required') return d;
   return confirmWithPassword(title, (admin_password, z) =>
-    api('POST', '/v1/settings', { ...values, admin_password, ...z }),
+    api('POST', '/v2/settings', { ...values, admin_password, ...z }),
   );
 }
 
@@ -166,13 +166,13 @@ function openDialog(
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
     const btnNo = G('cd-cancel');
-    const danger = (button?.art || 'bd') === 'bd';
-    btnYes.textContent = tRaw(button?.button || 'confirm.delete_btn', button?.werte);
+    const danger = (button?.kind || 'bd') === 'bd';
+    btnYes.textContent = tRaw(button?.button || 'confirm.delete_btn', button?.values);
     btnYes.classList.toggle('bd', danger);
     btnYes.classList.toggle('bp', !danger);
     G('cd-icon').classList.toggle('neutral', !danger);
-    G('cd-msg').classList.toggle('text-danger', !!button?.fehler);
-    G('cd-pw-label').textContent = tRaw(button?.feld || 'confirm.admin_password');
+    G('cd-msg').classList.toggle('text-danger', !!button?.error);
+    G('cd-pw-label').textContent = tRaw(button?.field || 'confirm.admin_password');
     const choiceField = G('cd-choice');
     choiceField.hidden = !button?.choice;
     setHtml(

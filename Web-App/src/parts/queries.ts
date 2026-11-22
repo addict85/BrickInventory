@@ -60,7 +60,7 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
   }
 
   // Fallback via runCatalogFollowUp-style lookups, only with a Rebrickable key.
-  const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
+  const rbKey = await k.settings.globalValue('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
       const items = await ab.orElse('rebrickable_teile', k.catalog.allSetParts(sn), []);
@@ -124,7 +124,7 @@ export async function tryPartsSummary(k: PartsContext, userId: Blickfeld, o: Rec
       groesse: size,
       versatz: (pg - 1) * size,
       mitSets: !!o.withSets,
-      ordnung: repo.partsOrder(o.ordnung),
+      order: repo.partsOrder(o.order),
     });
     return { parts: zeilen.map(partAsResponse), total, source: 'summary', page_size: size };
   } catch (e) {
@@ -158,7 +158,7 @@ export async function partsQuery(
       groesse,
       versatz,
       mitSets: withSets,
-      ordnung: repo.partsOrder(query.ordnung),
+      order: repo.partsOrder(query.order),
     }),
     filter.withoutManual ? Promise.resolve([]) : k.partsList.usedManualParts(uids),
   ]);
@@ -223,7 +223,7 @@ export async function blColorMapQuery(k: PartsContext) {
     for (const [id, blId] of chart) map[id] = blId;
     return { map, source: 'db' };
   }
-  const key = await k.externalSources.quellen.getRbKey();
+  const key = await k.externalSources.sources.getRbKey();
   if (!key) return { map: {}, source: 'empty' };
   // If the fetch breaks off, the table is incomplete; `degradiert` says so.
   const ab = new Degradations();
@@ -234,7 +234,7 @@ export async function blColorMapQuery(k: PartsContext) {
   while (hasNext) {
     const { status, body } = await ab.orElse(
       'rebrickable_farben',
-      k.externalSources.quellen.httpsGetRobust(
+      k.externalSources.sources.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
         { Authorization: `key ${key}` },
         15000,
@@ -294,7 +294,7 @@ export async function ownedQuantitiesQuery(
   k: PartsContext,
   scopeChoice: Sicht | ScopeInput,
   parts: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
-): Promise<Record<string, { gesamt: number; lose: number }>> {
+): Promise<Record<string, { total: number; loose: number }>> {
   const uids = await k.household.scopeFrom(scopeChoice);
   // Duplicate keys drop out: a list spanning several sets would otherwise ask
   // for the same part multiple times.
@@ -316,14 +316,14 @@ export async function ownedQuantitiesQuery(
 
   // Spare parts count TOO: they sit in the box and can be used
   // — "owned", not "needed" like on the shortage page.
-  const out: Record<string, { gesamt: number; lose: number }> = {};
+  const out: Record<string, { total: number; loose: number }> = {};
   for (const r of await k.partsList.ownedParts(uids, nums, colors))
-    out[`${r.part_number}|${r.color_id}`] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };
+    out[`${r.part_number}|${r.color_id}`] = { total: Number(r.total) || 0, loose: Number(r.loose) || 0 };
   // Minifigs count too: a parts list also names a set's figures.
   for (const r of await k.partsList.ownedMinifigs(uids, nums)) {
     const key = `${r.part_number}|0`;
     if (out[key]) continue;
-    out[key] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };
+    out[key] = { total: Number(r.total) || 0, loose: Number(r.loose) || 0 };
   }
   return out;
 }

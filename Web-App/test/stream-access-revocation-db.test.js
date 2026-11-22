@@ -5,7 +5,7 @@
  * in another process) on watchViaAccess() with a short tick.
  *
  * Counter-checks (measured 12.11.2026, each on its own):
- *   A  the call watchViaAccess() deleted in routes/api_v1/sets.ts → red:
+ *   A  the call watchViaAccess() deleted in routes/api/sets.ts → red:
  *      “token logged out: the stream ends”, „Sitzung abgemeldet …“, „alle Sitzungen …“
  *   B  in watchViaAccess() not listening to atAccessChange() → red: the
  *      first three cases (only the tick after 15 s would have ended the streams)
@@ -50,7 +50,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
 
   const app = _req('startup/app.js').buildApp({
     pool: db.systemPool,
-    konfig: _req('src/infra/config.js').konfig(),
+    config: _req('src/infra/config.js').config(),
     sitzungsGeheimnis: 's'.repeat(48),
     dienste: require('./helpers/sources').testServices(),
   });
@@ -67,12 +67,12 @@ test('streams end with their access', { concurrency: 1 }, async t => {
       body: JSON.stringify(rumpf ?? {}),
     });
   const sitzung = async () => {
-    const r = await post('/api/v1/auth/login', {}, { username: NAME, password: PASS, ohne_token: true });
+    const r = await post('/api/v2/auth/login', {}, { username: NAME, password: PASS, without_token: true });
     assert.equal(r.status, 200, await r.clone().text());
     return { cookie: (r.headers.get('set-cookie') ?? '').split(';')[0] };
   };
   const token = async () => {
-    const r = await post('/api/v1/auth/login', {}, { username: NAME, password: PASS });
+    const r = await post('/api/v2/auth/login', {}, { username: NAME, password: PASS });
     const j = await r.json();
     assert.ok(j.token, JSON.stringify(j));
     return { authorization: `Bearer ${j.token}` };
@@ -82,7 +82,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   const oeffne = async kopf => {
     const abbruch = new AbortController();
     t.after(() => abbruch.abort());
-    const r = await fetch(`${basis}/api/v1/sets/import/csv/stream`, { headers: kopf, signal: abbruch.signal });
+    const r = await fetch(`${basis}/api/v2/sets/import/csv/stream`, { headers: kopf, signal: abbruch.signal });
     if (r.status !== 200) assert.fail(`Strom: ${r.status} ${await r.text()}`);
     const s = { text: '', zu: false };
     (async () => {
@@ -100,14 +100,14 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   const endet = async (s, wie) => {
     await bis(() => s.zu, 3000).catch(() => {});
     assert.ok(s.zu, `${wie}: der Strom endet`);
-    assert.match(s.text, /event: zugang_beendet/, wie);
+    assert.match(s.text, /event: access_ended/, wie);
   };
 
   await t.test('token logged out: the stream ends', async () => {
     const kopf = await token();
     const s = await oeffne(kopf);
     const andere = await oeffne(await token());
-    assert.equal((await post('/api/v1/auth/logout', kopf)).status, 200);
+    assert.equal((await post('/api/v2/auth/logout', kopf)).status, 200);
     await endet(s, 'Token abgemeldet');
     assert.equal(await bis(() => andere.zu, 300), false, 'der Strom eines anderen, gültigen Tokens bleibt offen');
   });
@@ -115,7 +115,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   await t.test('session logged out: the stream ends', async () => {
     const kopf = await sitzung();
     const s = await oeffne(kopf);
-    assert.equal((await post('/api/v1/auth/logout', kopf)).status, 200);
+    assert.equal((await post('/api/v2/auth/logout', kopf)).status, 200);
     await endet(s, 'Sitzung abgemeldet');
   });
 

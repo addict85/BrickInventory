@@ -53,8 +53,8 @@ G('btn-maillink')?.addEventListener('click', async () => {
   const body = { token: open.token };
   const d =
     open.kind === 'cancel'
-      ? await api('POST', '/v1/auth/uebernahme-abbrechen', body)
-      : await api('POST', '/v1/auth/anmeldung-freigeben', body);
+      ? await api('POST', '/v2/auth/cancel-takeover', body)
+      : await api('POST', '/v2/auth/approve-login', body);
   btn.disabled = false;
   if (!d.success) {
     formError(err, d.error || tRaw('settings.error'));

@@ -29,17 +29,18 @@ const { setConfig } = _req('src/infra/config.js');
 
 /** A router with real contract keys that answers whatever the test wants. */
 function server(t, antworten) {
-  const router = vertragsRouter('/api/v1/auth');
-  router.endpoint('GET /api/v1/auth/registration-status', (_req, res) =>
+  const router = vertragsRouter('/api/v2/auth');
+  router.endpoint('GET /api/v2/auth/registration-status', (_req, res) =>
     res.status(antworten.status ?? 200).json(antworten.rumpf),
   );
-  router.endpoint('PUT /api/v1/auth/users/:id/admin', (_req, res) => res.json({ success: true }));
+  router.endpoint('PUT /api/v2/auth/users/:id/admin', (_req, res) => res.json({ success: true }));
   const app = express();
   app.use(express.json());
-  app.use('/api/v1/auth', router);
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2/auth', router);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  return `http://127.0.0.1:${portOf(srv)}/api/v1/auth`;
+  return `http://127.0.0.1:${portOf(srv)}/api/v2/auth`;
 }
 
 test('a deviating response becomes a 500', async t => {
@@ -47,7 +48,7 @@ test('a deviating response becomes a 500', async t => {
   const r = await fetch(`${basis}/registration-status`);
   assert.equal(r.status, 500);
   const j = await r.json();
-  assert.equal(j.code, 'vertrag_verletzt');
+  assert.equal(j.code, 'contract_violated');
   assert.match(j.deviations.join(), /Antwort enabled/);
 });
 

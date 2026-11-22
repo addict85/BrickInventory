@@ -22,7 +22,7 @@ import * as partsEnrichment from './repository/partsEnrichment';
 import type { Clock } from '../infra/clock';
 
 export interface CatalogDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
   faecher: Compartments;
   /** Clients, quota and throttles of this set of services (src/externalSources). */
@@ -30,11 +30,11 @@ export interface CatalogDependencies {
   /** At most two image fetches from the CDN at a time, one per set of services. */
   cdnDrossel: ConcurrentRateLimiter;
   images: ImagesServices;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   jobQueue: JobsServices;
   household: HouseholdServices;
   throttle: ThrottleServices;
-  lesevertrag: CatalogReadContract;
+  readContract: CatalogReadContract;
 }
 
 /** Instructions, BrickLink mapping and CSV catalog. */

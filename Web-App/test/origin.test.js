@@ -117,10 +117,10 @@ test('without APP_BASE_URL the host filter accepts no name, only loopback and IP
   const srv = app.listen(0, '127.0.0.1');
   t.after(() => new Promise(r => srv.close(r)));
   await new Promise(r => srv.once('listening', r));
-  const withHost = (host, pfad = '/api/v1/auth/me') =>
-    new Promise((fertig, fehler) => {
+  const withHost = (host, path = '/api/v2/auth/me') =>
+    new Promise((fertig, error) => {
       const r = http.request(
-        { host: '127.0.0.1', port: srv.address().port, path: pfad, setHost: false, headers: { host } },
+        { host: '127.0.0.1', port: srv.address().port, path: path, setHost: false, headers: { host } },
         res => {
           let text = '';
           res.on('data', d => {
@@ -129,16 +129,16 @@ test('without APP_BASE_URL the host filter accepts no name, only loopback and IP
           res.on('end', () => fertig({ status: res.statusCode, text }));
         },
       );
-      r.on('error', fehler);
+      r.on('error', error);
       r.end();
     });
   // A bent name (DNS rebinding) points to the same address but carries its name.
   const fremd = await withHost('boese.example');
   assert.equal(fremd.status, 421);
-  assert.equal(JSON.parse(fremd.text).code, 'fremder_host');
+  assert.equal(JSON.parse(fremd.text).code, 'foreign_host');
   assert.match(JSON.parse(fremd.text).error, /127\.0\.0\.1/, 'die Absage nennt die eigene Adresse');
   assert.equal((await withHost('nas.local:3000')).status, 421);
   for (const h of ['localhost:3000', '127.0.0.1', '192.168.1.20:3000', '[fe80::1]:8080'])
     assert.equal((await withHost(h)).status, 200, h);
-  assert.equal((await withHost('boese.example', '/api/v1/health')).status, 200, 'Gesundheit bleibt frei');
+  assert.equal((await withHost('boese.example', '/api/v2/health')).status, 200, 'Gesundheit bleibt frei');
 });

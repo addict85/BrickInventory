@@ -64,7 +64,7 @@ test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the fie
 });
 
 test('add set: hint in English', async () => {
-  const o = await openUi({}, { sprache: 'en', browserLanguage: 'en-GB' });
+  const o = await openUi({}, { language: 'en', browserLanguage: 'en-GB' });
   try {
     const r = await setErfassen(o, { qty: '0' });
     assert.equal(r.qtyError, 'The quantity must be a whole number from 1 to 10,000.');
@@ -94,13 +94,13 @@ test('add part and figure: invalid quantity and future date do not go out', asyn
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     const { d, aufrufe } = o;
-    for (const [art, nr, knopf, post] of [
+    for (const [kind, nr, knopf, post] of [
       ['part', 'ap', 'btn-add-part', '/parts'],
       ['fig', 'af', 'btn-add-fig', '/minifigs'],
     ]) {
-      d.querySelector(`[data-click="openCapture"][data-arg="${art}"]`).click();
+      d.querySelector(`[data-click="openCapture"][data-arg="${kind}"]`).click();
       await takt(10);
-      d.getElementById(nr + '-num-inline').value = art === 'part' ? '3001' : 'fig-001';
+      d.getElementById(nr + '-num-inline').value = kind === 'part' ? '3001' : 'fig-001';
       for (const [qty, datum, errorId] of [
         ['0', null, nr + '-qty-inline'],
         ['1', '2099-01-01', nr + '-date'],
@@ -113,9 +113,9 @@ test('add part and figure: invalid quantity and future date do not go out', asyn
         assert.equal(
           aufrufe.slice(vorher).filter(a => a.method === 'POST' && a.url.endsWith(post)).length,
           0,
-          `${art}: ${qty}/${datum} ging hinaus`,
+          `${kind}: ${qty}/${datum} ging hinaus`,
         );
-        assert.notEqual(errorAt(d, errorId), '', `${art}: kein Hinweis an ${errorId}`);
+        assert.notEqual(errorAt(d, errorId), '', `${kind}: kein Hinweis an ${errorId}`);
       }
     }
   } finally {
@@ -126,14 +126,14 @@ test('add part and figure: invalid quantity and future date do not go out', asyn
 async function purchasePriceDialog(puts) {
   const o = await openUi(
     {
-      '/v1/sets/10294-1/acquisitions': () => ({
+      '/v2/sets/10294-1/acquisitions': () => ({
         success: true,
         acquisitions: [
           { id: 7, quantity: 2, condition: 'N', purchase_price: 129.99, created_at: '2026-06-01T10:00:00Z' },
         ],
         totals: { quantity: 2, amount: 259.98 },
       }),
-      '/v1/sets/10294-1/acquisitions/7': (_url, opt) => {
+      '/v2/sets/10294-1/acquisitions/7': (_url, opt) => {
         puts.push(JSON.parse(opt.body));
         return { success: true };
       },
@@ -154,16 +154,16 @@ test('purchase price dialog: quantity and date report at the field, valid ones g
   const o = await purchasePriceDialog(puts);
   try {
     const { d, w } = o;
-    const menge = d.getElementById('acq-quantity-7');
+    const quantity = d.getElementById('acq-quantity-7');
     for (const roh of ['0', '', '-1', '10001']) {
-      menge.value = roh;
-      menge.dispatchEvent(new w.FocusEvent('blur'));
+      quantity.value = roh;
+      quantity.dispatchEvent(new w.FocusEvent('blur'));
       await takt(30);
       assert.equal(puts.length, 0, `Anzahl „${roh}“ ging hinaus`);
       assert.match(errorAt(d, 'acq-quantity-7'), /ganze Zahl/, `Anzahl „${roh}“ ohne Hinweis`);
     }
-    menge.value = '3';
-    menge.dispatchEvent(new w.FocusEvent('blur'));
+    quantity.value = '3';
+    quantity.dispatchEvent(new w.FocusEvent('blur'));
     await warte(() => puts.length);
     assert.deepEqual(puts[0], { quantity: 3 });
 

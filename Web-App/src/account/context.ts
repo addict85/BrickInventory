@@ -20,12 +20,12 @@ import type { FactorsServices } from '../factors';
 import type { Clock } from '../infra/clock';
 
 export interface AccountDependencies {
-  uhr: Clock;
-  konfig: Readonly<AppConfig>;
+  clock: Clock;
+  config: Readonly<AppConfig>;
   db: Db;
   /** State per access (token cache, session versions); createAccount creates them. */
   faecher: Compartments;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   jobQueue: JobsServices;
   household: HouseholdServices;
   mail: MailServices;

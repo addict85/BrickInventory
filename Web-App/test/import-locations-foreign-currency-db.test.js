@@ -2,7 +2,7 @@
  * Findings of UI review 16, as far as they lie on the server, on the real API:
  *   - Messages come as a code and in the requester's language (M2):
  *     empty CSV file, line errors in the import state, skipped lines.
- *   - Storage locations: /v1/storage/locations also delivers empty locations, /v1/storage …
+ *   - Storage locations: /v2/storage/locations also delivers empty locations, /v2/storage …
  *
  * Counter-checks (measured 05.11.2026, each alone):
  *   A  in sets/dienst.ts again `throw new Meldung('Keine Datenzeilen in der
@@ -52,23 +52,23 @@ test('import, storage locations, foreign currency and catalog on the server', {
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const hole = async (pfad, o = {}) => {
-    const r = await fetch(`${base}/api/v1${pfad}`, {
+  const hole = async (path, o = {}) => {
+    const r = await fetch(`${base}/api/v2${path}`, {
       ...o,
-      headers: { 'Accept-Language': o.sprache || 'de', ...o.headers },
+      headers: { 'Accept-Language': o.language || 'de', ...o.headers },
     });
     return { status: r.status, body: await r.json() };
   };
 
   await t.test('empty CSV file: English and with a code', async () => {
-    for (const [sprache, text] of [
+    for (const [language, text] of [
       ['en', 'The file has no data rows'],
       ['de', 'Keine Datenzeilen in der Datei'],
     ]) {
       const form = new FormData();
       form.append('file', new Blob(['set_number,quantity\n'], { type: 'text/csv' }), 'leer.csv');
-      const r = await hole('/sets/import/csv', { method: 'POST', body: form, sprache });
-      assert.deepEqual([r.status, r.body.code, r.body.error], [400, 'csv_keine_datenzeilen', text]);
+      const r = await hole('/sets/import/csv', { method: 'POST', body: form, language });
+      assert.deepEqual([r.status, r.body.code, r.body.error], [400, 'csv_no_data_rows', text]);
     }
   });
 
@@ -79,12 +79,12 @@ test('import, storage locations, foreign currency and catalog on the server', {
       [
         uid,
         JSON.stringify([
-          { set_number: 'foo', success: false, code: 'setnummer_ungueltig', error: 'Das ist keine Setnummer' },
-          { set_number: '10294-1', success: true, action: 'updated', menge: 1 },
+          { set_number: 'foo', success: false, code: 'set_number_invalid', error: 'Das ist keine Setnummer' },
+          { set_number: '10294-1', success: true, action: 'updated', quantity: 1 },
         ]),
       ],
     );
-    const en = await hole('/sets/import/csv/status', { sprache: 'en' });
+    const en = await hole('/sets/import/csv/status', { language: 'en' });
     assert.equal(en.body.results[0].error, 'That is not a set number (letters and digits, e.g. 10294).');
     assert.deepEqual([en.body.ok, en.body.err], [1, 1]);
     const de = await hole('/sets/import/csv/status');
@@ -101,10 +101,10 @@ test('import, storage locations, foreign currency and catalog on the server', {
     await holdsSet(db, uid, '10294-1', 1, { preis: 100 });
     await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1', [uid, belegt]);
     const vorrat = await hole('/storage/locations');
-    assert.deepEqual(vorrat.body.orte.map(o => o.name).sort(), ['Dachboden Kiste 3', 'Keller Regal A']);
+    assert.deepEqual(vorrat.body.locations.map(o => o.name).sort(), ['Dachboden Kiste 3', 'Keller Regal A']);
     const filter = await hole('/storage');
     assert.deepEqual(
-      filter.body.orte.map(o => o.ort),
+      filter.body.locations.map(o => o.location),
       ['Keller Regal A'],
     );
     assert.ok(leer > 0);
@@ -122,7 +122,7 @@ test('import, storage locations, foreign currency and catalog on the server', {
     const set = r.body.sets.find(s => s.set_number === '75313-1');
     assert.ok(set, JSON.stringify(r.body.sets.map(s => s.set_number)));
     const [a] = set.acquisitions;
-    assert.deepEqual([a.purchase_price, a.kaufpreis_original, a.kaufpreis_waehrung], [null, 99.99, 'USD']);
+    assert.deepEqual([a.purchase_price, a.original_purchase_price, a.purchase_currency], [null, 99.99, 'USD']);
   });
 
   await t.test("catalog: the sub-account's set is present", async () => {

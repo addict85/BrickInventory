@@ -11,17 +11,17 @@ const os = require('node:os');
 /** Collects the data stream of a document into a buffer. */
 function rendern(bauen) {
   const PDFDocument = require('pdfkit');
-  return new Promise((fertig, fehler) => {
+  return new Promise((fertig, error) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
-    const teile = [];
-    doc.on('data', c => teile.push(c));
-    doc.on('error', fehler);
-    doc.on('end', () => fertig(Buffer.concat(teile)));
+    const parts = [];
+    doc.on('data', c => parts.push(c));
+    doc.on('error', error);
+    doc.on('end', () => fertig(Buffer.concat(parts)));
     try {
       bauen(doc);
       doc.end();
     } catch (e) {
-      fehler(e);
+      error(e);
     }
   });
 }
@@ -33,7 +33,7 @@ function isValidPdf(b, wo) {
 }
 
 test('the parts list export draws a valid PDF', async () => {
-  // The same set of methods as in routes/api_v1/pdf.ts.
+  // The same set of methods as in routes/api/pdf.ts.
   const b = await rendern(doc => {
     doc.font('Helvetica-Bold').fontSize(16).text('Teileliste');
     doc.moveDown(0.5);

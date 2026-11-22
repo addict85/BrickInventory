@@ -37,19 +37,19 @@ const GUTSCHEIN = {
   pin: '4711',
   amount: 50,
   currency: 'CHF',
-  hat_pdf: false,
-  guthaben_geprueft_am: null,
+  has_pdf: false,
+  balance_checked_at: null,
 };
 
 test('vouchers: row and actions', async () => {
-  const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [GUTSCHEIN] } }, { before: withStyle });
+  const o = await openUi({ '/v2/vouchers': { success: true, vouchers: [GUTSCHEIN] } }, { before: withStyle });
   try {
     await sicht(o.w, 'vouchers');
     await warte(() => o.d.querySelector('.voucher-row'));
-    const zeile = o.d.querySelector('.voucher-row');
-    assert.match(zeile.querySelector('.voucher-nopdf').textContent.trim(), /^kein PDF$/);
-    const loeschen = zeile.querySelector('[data-click="deleteVoucher"]');
-    const bearbeiten = zeile.querySelector('[data-click="editVoucher"]');
+    const row = o.d.querySelector('.voucher-row');
+    assert.match(row.querySelector('.voucher-nopdf').textContent.trim(), /^kein PDF$/);
+    const loeschen = row.querySelector('[data-click="deleteVoucher"]');
+    const bearbeiten = row.querySelector('[data-click="editVoucher"]');
     // Both labeled (UI check 6, M7), delete marked as danger.
     assert.equal(loeschen.className, bearbeiten.className + ' v-btn-danger');
     assert.deepEqual([bearbeiten.textContent.trim(), loeschen.textContent.trim()], ['Bearbeiten', 'Löschen']);
@@ -60,14 +60,14 @@ test('vouchers: row and actions', async () => {
 });
 
 test('without vouchers: no sum, no “query all”, no export', async () => {
-  const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } }, { before: withStyle });
+  const o = await openUi({ '/v2/vouchers': { success: true, vouchers: [] } }, { before: withStyle });
   try {
     await sicht(o.w, 'vouchers');
     await warte(() => o.d.querySelector('.voucher-empty'));
-    const teile = [...o.d.querySelectorAll('[data-only-with-vouchers]')];
-    assert.equal(teile.length, 3);
+    const parts = [...o.d.querySelectorAll('[data-only-with-vouchers]')];
+    assert.equal(parts.length, 3);
     assert.deepEqual(
-      teile.map(e => zu(o.w, e)),
+      parts.map(e => zu(o.w, e)),
       [true, true, true],
     );
     assert.equal(zu(o.w, o.d.querySelector('[data-click="exportVouchers"]')), true);
@@ -78,7 +78,7 @@ test('without vouchers: no sum, no “query all”, no export', async () => {
 
 test('Rebrickable banner only in collection and catalog', async () => {
   const o = await openUi(
-    { '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } } },
+    { '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } } },
     { before: withStyle },
   );
   try {
@@ -113,7 +113,7 @@ test('QR area only with a code', async () => {
 
 test('no access for a normal account, administrator sees none of it', async () => {
   const normal = await openUi({
-    '/v1/auth/me': { loggedIn: true, user: { id: 2, username: 'bert', is_admin: false } },
+    '/v2/auth/me': { loggedIn: true, user: { id: 2, username: 'bert', is_admin: false } },
   });
   try {
     normal.d.querySelector('.ntab[data-tab="settings"]').click();
@@ -138,8 +138,8 @@ test('design: one sentence for the choice, Noppe and Hochglanz different', async
   const texte = {};
   for (const design of ['noppe', 'hochglanz', 'werkbank']) {
     const o = await openUi({
-      '/v1/settings/theme': { success: true, vorgabe: 'classic', eigenes: design, theme: design },
-      '/v1/auth/profile': {
+      '/v2/settings/theme': { success: true, preset: 'classic', own: design, theme: design },
+      '/v2/auth/profile': {
         success: true,
         user: { username: 'anna', email: 'anna@example.org', email_verified: true },
       },

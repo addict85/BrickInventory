@@ -32,8 +32,8 @@ const _req = S.buildAndRequire();
 const gesendet = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
-  mailAccountNotice: async (an, _name, art, o) => {
-    gesendet.push({ an, art, name: o.passkey });
+  mailAccountNotice: async (an, _name, kind, o) => {
+    gesendet.push({ an, kind, name: o.passkey });
     return { success: true };
   },
 });
@@ -72,7 +72,7 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
 
   const { base } = testServer(_req, { sitzung: {}, t });
   const ruf = async (methode, weg, token, body) => {
-    const r = await fetch(base + '/api/v1' + weg, {
+    const r = await fetch(base + '/api/v2' + weg, {
       method: methode,
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -84,10 +84,10 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     tokenCache.emptyTokenCache();
     return (await ruf('GET', '/settings/tokens', token)).status === 200;
   };
-  const hinweise = async (art, anzahl) => {
-    for (let i = 0; i < 60 && gesendet.filter(m => m.art === art).length < anzahl; i++)
+  const hints = async (kind, count) => {
+    for (let i = 0; i < 60 && gesendet.filter(m => m.kind === kind).length < count; i++)
       await new Promise(r => setTimeout(r, 25));
-    return gesendet.filter(m => m.art === art);
+    return gesendet.filter(m => m.kind === kind);
   };
 
   const eigen = await auth.createToken(uidA, 'Telefon', true);
@@ -122,8 +122,8 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     assert.deepEqual([r.status, r.body.deleted], [200, 1], JSON.stringify(r.body));
     assert.equal(await gilt(fremd), false);
     assert.equal(await gilt(eigen), true, 'der eigene ist mitgegangen');
-    assert.deepEqual(await hinweise('zugang_beendet', 1), [
-      { an: `${NAMEN[0]}@example.org`, art: 'zugang_beendet', name: 'Tablet' },
+    assert.deepEqual(await hints('access_ended', 1), [
+      { an: `${NAMEN[0]}@example.org`, kind: 'access_ended', name: 'Tablet' },
     ]);
   });
 
@@ -132,23 +132,19 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     const r = await ruf('DELETE', `/settings/tokens/${kennung(kurz)}`, kurz);
     assert.deepEqual([r.status, r.body.deleted], [200, 1], JSON.stringify(r.body));
     assert.equal(await gilt(kurz), false);
-    assert.equal(
-      (await hinweise('zugang_beendet', 2)).length,
-      1,
-      'das eigene Abmelden meldet sich als fremder Widerruf',
-    );
+    assert.equal((await hints('access_ended', 2)).length, 1, 'das eigene Abmelden meldet sich als fremder Widerruf');
   });
 
   await t.test('all others: one confirmed call, the own one stays', async () => {
     const x = await auth.createToken(uidA, 'X', true),
       y = await auth.createToken(uidA, 'Y', true);
-    const ohne = await ruf('POST', '/settings/sessions/andere-beenden', eigen, { zugaenge: true });
+    const ohne = await ruf('POST', '/settings/sessions/end-others', eigen, { accesses: true });
     assert.ok(ohne.status >= 400 && ohne.status < 500, JSON.stringify(ohne.body));
     assert.equal(await gilt(x), true, 'ohne Passwort beendet');
-    const r = await ruf('POST', '/settings/sessions/andere-beenden', eigen, { password: PASS, zugaenge: true });
+    const r = await ruf('POST', '/settings/sessions/end-others', eigen, { password: PASS, accesses: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(r.body.zugaenge, 2);
+    assert.equal(r.body.accesses, 2);
     assert.deepEqual([await gilt(x), await gilt(y), await gilt(eigen)], [false, false, true]);
-    assert.equal((await hinweise('zugaenge_beendet', 1)).length, 1);
+    assert.equal((await hints('zugaenge_beendet', 1)).length, 1);
   });
 });

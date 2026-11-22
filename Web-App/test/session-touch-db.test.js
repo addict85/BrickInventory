@@ -97,10 +97,10 @@ test('session: always read, written only every few minutes', async t => {
 
     // ── 3. And the expiry time really stands in the database ──────────────
     const sid = decodeURIComponent(keksA.split('=')[1]).slice(2).split('.')[0];
-    const zeile = await db.get('SELECT expire FROM user_sessions WHERE sid = $1', [sid]);
-    assert.ok(zeile?.expire, 'die Sitzungszeile muss eine Ablaufzeit tragen');
+    const row = await db.get('SELECT expire FROM user_sessions WHERE sid = $1', [sid]);
+    assert.ok(row?.expire, 'die Sitzungszeile muss eine Ablaufzeit tragen');
     assert.ok(
-      new Date(zeile.expire).getTime() > Date.now(),
+      new Date(row.expire).getTime() > Date.now(),
       'die Ablaufzeit muss in der Zukunft liegen — sonst ist die Sitzung sofort tot',
     );
 
@@ -124,9 +124,9 @@ test('session: always read, written only every few minutes', async t => {
     // A helper that nobody calls is the most expensive way of doing nothing —
     // and the assertions above would stay green, because they build their store
     // themselves.
-    const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
+    const source = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
     assert.match(
-      quelle,
+      source,
       /touchThrottle\(sessionStorage[,)]/,
       'startup/app.ts drosselt seinen Sitzungsspeicher nicht — dann zahlt die Webapp weiter zwei Abfragen je Anfrage',
     );

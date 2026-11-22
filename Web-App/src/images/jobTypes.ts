@@ -7,14 +7,14 @@ const LEER = z.object({});
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    bildbedarf: typeof LEER;
+    image_demand: typeof LEER;
   }
 }
 
 export function imagesJobTypes(k: ImagesContext): Login[] {
   return [
     jobKind({
-      art: 'bildbedarf',
+      kind: 'image_demand',
       payload: LEER,
       ausfuehren: (_n, l) => processImageDemand(k, l),
       exklusiv: true,

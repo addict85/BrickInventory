@@ -35,9 +35,9 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
   // When decreasing, the server removes acquisitions; reloading only when
   // increasing left deleted entries standing in the dialog.
   const { openUi, reiter } = require('./helpers/ui');
-  const zeile = (id, menge, tag) => ({
+  const row = (id, quantity, tag) => ({
     id,
-    quantity: menge,
+    quantity: quantity,
     purchase_price: 0.5,
     unit_price: 0.5,
     condition: 'N',
@@ -45,9 +45,9 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
     currency: 'EUR',
     user_id: 1,
   });
-  let erfassungen = [zeile(1, 1, '2026-10-01'), zeile(2, 1, '2026-10-02')];
+  let erfassungen = [row(1, 1, '2026-10-01'), row(2, 1, '2026-10-02')];
   const { w, d, warte, aufrufe } = await openUi({
-    '/v1/parts/manual': {
+    '/v2/parts/manual': {
       success: true,
       total: 1,
       page: 1,
@@ -56,8 +56,8 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
         { part_number: '3002', part_name: 'Stein 2 x 3', color_id: 5, color_name: 'Red', quantity: 2, user_id: 1 },
       ],
     },
-    '/v1/parts/3002/5/acquisitions': () => ({ success: true, acquisitions: erfassungen }),
-    '/v1/parts/3002/5': { success: true, quantity: 1 },
+    '/v2/parts/3002/5/acquisitions': () => ({ success: true, acquisitions: erfassungen }),
+    '/v2/parts/3002/5': { success: true, quantity: 1 },
   });
   t.after(() => w.close());
   await reiter(w, 'parts');
@@ -66,15 +66,15 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
   assert.ok(await warte(() => d.getElementById('man-det-qty')), 'Das Mengenfeld im Detail fehlt');
   const vorher = d.getElementById('man-acq-summary')?.textContent;
 
-  erfassungen = [zeile(1, 1, '2026-10-01')];
+  erfassungen = [row(1, 1, '2026-10-01')];
   const ab = aufrufe.length;
-  const feld = /** @type {HTMLInputElement} */ (d.getElementById('man-det-qty'));
-  feld.value = '1';
-  feld.dispatchEvent(new w.Event('change', { bubbles: true }));
+  const field = /** @type {HTMLInputElement} */ (d.getElementById('man-det-qty'));
+  field.value = '1';
+  field.dispatchEvent(new w.Event('change', { bubbles: true }));
   assert.ok(await warte(() => aufrufe.slice(ab).some(a => a.method === 'PUT')), 'Die Menge wird nicht gespeichert');
   assert.ok(
     await warte(() =>
-      aufrufe.slice(ab).some(a => a.method === 'GET' && a.url.includes('/v1/parts/3002/5/acquisitions')),
+      aufrufe.slice(ab).some(a => a.method === 'GET' && a.url.includes('/v2/parts/3002/5/acquisitions')),
     ),
     'Nach dem Verringern wird die Erfassungsliste nicht neu geholt',
   );
@@ -157,17 +157,17 @@ test('quantities and acquisitions of manual entries against the database', { con
 
   await t.test('the daily rule applies to all three kinds with their own key', async () => {
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, 'ma-1') ON CONFLICT DO NOTHING`, [uid]);
-    const record = (art, keys) => addPurchaseAtTag(art, uid, keys, { quantity: 1, price: 4, condition: 'N' });
-    for (const [art, keys] of [
+    const record = (kind, keys) => addPurchaseAtTag(kind, uid, keys, { quantity: 1, price: 4, condition: 'N' });
+    for (const [kind, keys] of [
       ['set', ['ma-1']],
       ['part', ['ma-tag', 5]],
       ['fig', ['ma-fig-tag']],
     ]) {
-      assert.deepEqual(await record(art, keys), { merged: false }, `${art}: die erste Erfassung des Tages`);
+      assert.deepEqual(await record(kind, keys), { merged: false }, `${kind}: die erste Erfassung des Tages`);
       assert.deepEqual(
-        await record(art, keys),
+        await record(kind, keys),
         { merged: true },
-        `${art}: der zweite Kauf desselben Tages stockt nicht auf`,
+        `${kind}: der zweite Kauf desselben Tages stockt nicht auf`,
       );
     }
     // Another color is another part, not a second purchase.
@@ -206,14 +206,14 @@ test('quantities and acquisitions of manual entries against the database', { con
         )
       ).t;
     const aendere = (id, body) =>
-      fetch(`${base}/api/v1/parts/ma-datum/5/acquisitions/${id}`, {
+      fetch(`${base}/api/v2/parts/ma-datum/5/acquisitions/${id}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       });
     const r = await aendere(frueher.id, { date: await tag(heute.id) });
     assert.equal(r.status, 409, 'Ein Datum, an dem derselbe Kauf schon steht, muss abgelehnt werden');
-    assert.equal((await r.json()).code, 'datum_belegt');
+    assert.equal((await r.json()).code, 'date_taken');
     assert.equal(
       (await aendere(frueher.id, { date: await tag(heute.id), condition: 'U' })).status,
       200,
@@ -230,7 +230,7 @@ test('quantities and acquisitions of manual entries against the database', { con
                   VALUES ($1, 'ma-weg', 5, 2, 3)`,
       [uid],
     );
-    const r = await fetch(`${base}/api/v1/parts/ma-weg/5`, { method: 'DELETE' });
+    const r = await fetch(`${base}/api/v2/parts/ma-weg/5`, { method: 'DELETE' });
     assert.equal(r.status, 200, await r.text());
     assert.deepEqual(await partRows('ma-weg'), [], 'Verwaiste Erfassungen zählen in den Finanzsummen weiter');
   });
@@ -258,16 +258,16 @@ test('quantities and acquisitions of manual entries against the database', { con
         [uid, preis, tag],
       );
     }
-    const teile = (await valueParts(uid, [uid])).parts;
-    const figuren = (await valueMinifigs(uid, [uid])).figs;
+    const parts = (await valueParts(uid, [uid])).parts;
+    const minifigs = (await valueMinifigs(uid, [uid])).figs;
     const preise = e => (e?.acquisitions ?? []).map(a => a.purchase_price).sort();
-    assert.deepEqual(preise(teile.find(p => p.part_number === 'ma-preis')), [2, 4], 'Teil: eine Zeile je Kaufpreis');
+    assert.deepEqual(preise(parts.find(p => p.part_number === 'ma-preis')), [2, 4], 'Teil: eine Zeile je Kaufpreis');
     assert.deepEqual(
-      preise(figuren.find(f => f.fig_number === 'ma-fig-preis')),
+      preise(minifigs.find(f => f.fig_number === 'ma-fig-preis')),
       [2, 4],
       'Figur: eine Zeile je Kaufpreis',
     );
-    assert.deepEqual(teile.find(p => p.part_number === 'ma-alt')?.acquisitions, [], 'Altbestand ohne Erfassung');
+    assert.deepEqual(parts.find(p => p.part_number === 'ma-alt')?.acquisitions, [], 'Altbestand ohne Erfassung');
   });
 });
 
@@ -280,9 +280,9 @@ test('the finances show one row per purchase price, the legacy data in one', asy
     purchase_price: preis,
     avg_price: 3,
     total_avg: '3.00',
-    wert_gesamt: 3,
+    value_total: 3,
     pnl_pct: null,
-    pnl_prozent: null,
+    pnl_percent: null,
   });
   const teil = (nr, acquisitions) => ({
     part_number: nr,
@@ -295,16 +295,16 @@ test('the finances show one row per purchase price, the legacy data in one', asy
     acquisitions,
     avg_price: 3,
     purchase_price: 3,
-    wert_gesamt: 3 * (acquisitions.length || 1),
+    value_total: 3 * (acquisitions.length || 1),
     total_value: '3.0000',
     display_value: '3.00',
   });
   const { w, d, warte } = await openUi({
-    '/v1/finance/parts-valuation': {
+    '/v2/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '9.00',
-      wert_gesamt: 9,
+      value_total: 9,
       parts: [teil('ma-zwei', [erfassung(1, 2), erfassung(2, 4)]), teil('ma-alt', [])],
     },
   });
@@ -322,8 +322,8 @@ test('no create path writes directly into an acquisition table', () => {
   for (const f of [
     'src/parts/manualParts.ts',
     'src/minifigs/manualMinifigs.ts',
-    'routes/api_v1/sets.ts',
-    'routes/api_v1/setsImport.ts',
+    'routes/api/sets.ts',
+    'routes/api/setsImport.ts',
     'src/sets/service.ts',
     'src/sets/content.ts',
   ]) {
@@ -335,11 +335,11 @@ test('no create path writes directly into an acquisition table', () => {
     );
   }
   for (const f of [
-    'routes/api_v1/sets.ts',
-    'routes/api_v1/setsImport.ts',
+    'routes/api/sets.ts',
+    'routes/api/setsImport.ts',
     'src/parts/manualParts.ts',
     'src/minifigs/manualMinifigs.ts',
-    'routes/api_v1/acquisitions.ts',
+    'routes/api/acquisitions.ts',
     'src/collection/acquisitions.ts',
   ]) {
     assert.doesNotMatch(
@@ -385,7 +385,7 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   );
   assert.match(
     fn,
-    /await bookEntry\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
+    /await bookEntry\(sk, \{\s*konto: userId,\s*setNumber,\s*quantity: delta,\s*kaufpreis: plan\.price,\s*condition: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
   // The price comes from priceForNewEntry() — extracted, because the

@@ -3,8 +3,9 @@
  * on shutdown, otherwise httpServer.close() waits for it. */
 import type { Request, Response } from 'express';
 import { registerSse } from '../../http/sseRegistry';
-import { SSE_ACCESS_ENDED, watchViaAccess } from './accessWatch';
+import { sseAccessEnded, watchViaAccess } from './accessWatch';
 import type { AccountServices } from '../area';
+import { lineToV1 } from '../../http/apiV1Alias';
 
 export interface Stream {
   sende(data: object): void;
@@ -49,7 +50,7 @@ export function openStream(konto: AccountServices, req: Request, res: Response, 
   };
   deregister.push(
     watchViaAccess(konto, req, () => {
-      res.write(SSE_ACCESS_ENDED);
+      res.write(sseAccessEnded(!!res.locals.apiV1));
       ende();
     }),
   );
@@ -60,7 +61,7 @@ export function openStream(konto: AccountServices, req: Request, res: Response, 
   req.on('close', ende);
   const sende = (data: object) => {
     if (zu || res.destroyed) return;
-    const json = JSON.stringify(data);
+    const json = JSON.stringify(lineToV1(res, data));
     if (o.onlyChanges && json === lastUsed) return;
     lastUsed = json;
     if (!res.write(`data: ${json}\n\n`) && o.backpressure) {

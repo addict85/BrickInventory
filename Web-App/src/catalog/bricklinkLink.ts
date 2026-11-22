@@ -86,14 +86,14 @@ export async function resolveViaInterface(k: CatalogContext, setNumber: string):
   const bare = bareNumber(setNumber);
 
   // Without access stay with the assumption, cache nothing.
-  if (!(await k.einstellungen.globalValue('bricklink_consumer_key'))) return toLink(n, null);
+  if (!(await k.settings.globalValue('bricklink_consumer_key'))) return toLink(n, null);
 
   const notFound = (e: unknown) =>
     [404, 400].includes((e as { detail?: { meta?: { code?: number } } } | null)?.detail?.meta?.code ?? 0);
 
   const probe = async (type: Exclude<BlType, 'NONE'>, no: string) => {
     try {
-      await k.externalSources.quellen.bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
+      await k.externalSources.sources.bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
       return true;
     } catch (e) {
       if (notFound(e)) return false;

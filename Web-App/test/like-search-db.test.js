@@ -45,10 +45,10 @@ test('search with % and _ only finds literal hits', { concurrency: 1 }, async t 
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
 
-  await holdsPart(db, uid, 'pr%z', { colorId: 1, menge: 1 });
-  await holdsPart(db, uid, 'przz', { colorId: 1, menge: 1 });
-  await holdsMinifig(db, uid, 'fig_9', { menge: 1 });
-  await holdsMinifig(db, uid, 'figx9', { menge: 1 });
+  await holdsPart(db, uid, 'pr%z', { colorId: 1, quantity: 1 });
+  await holdsPart(db, uid, 'przz', { colorId: 1, quantity: 1 });
+  await holdsMinifig(db, uid, 'fig_9', { quantity: 1 });
+  await holdsMinifig(db, uid, 'figx9', { quantity: 1 });
   await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('77701-1', '100% Stein', 2020), ('77702-1', 'Ganz Stein', 2020)
                 ON CONFLICT (set_num) DO NOTHING`);
   await catalogSet(db, '77701-1', { name: '100% Stein' });
@@ -57,10 +57,10 @@ test('search with % and _ only finds literal hits', { concurrency: 1 }, async t 
   await holdsSet(db, uid, '77702-1', 1);
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const hole = async pfad => {
-    const r = await fetch(base + '/api/v1' + pfad);
+  const hole = async path => {
+    const r = await fetch(base + '/api/v2' + path);
     const j = await r.json();
-    assert.equal(r.status, 200, `${pfad}: ${JSON.stringify(j)}`);
+    assert.equal(r.status, 200, `${path}: ${JSON.stringify(j)}`);
     return j;
   };
 

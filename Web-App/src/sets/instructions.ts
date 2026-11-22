@@ -41,20 +41,20 @@ export async function deleteInstruction(sk: SetsContext, uid: number, id: number
   if (!rest)
     await fs.promises
       .unlink(path.join(APP_ROOT, instr.local_path.slice(1)))
-      .catch(withoutMissingFile('anleitung:datei-loeschen'));
+      .catch(withoutMissingFile('instructions:datei-loeschen'));
 }
 
 /** The instructions are shared: only the admin may replace them (an empty
  * fetch would otherwise delete them for everyone). Others fetch what is missing, once per set and day. */
 export async function loadInstructionsNew(sk: SetsContext, uid: number, raw: string, admin: boolean) {
   const sn = normalizeSetNumber(raw);
-  if (!possibleSetNumber(sn)) failDomain('ungueltig', 'setnummer_ungueltig');
+  if (!possibleSetNumber(sn)) failDomain('ungueltig', 'set_number_invalid');
   if (admin) await sk.catalog.deleteInstructions(sn);
   else {
-    if (!(await findSetInScope(sk, uid, sn))) failDomain('nicht_gefunden', 'set_nicht_gefunden');
-    if ((await sk.catalog.instructionCount(sn)) > 0) failDomain('verboten', 'nur_admins');
+    if (!(await findSetInScope(sk, uid, sn))) failDomain('not_found', 'set_not_found');
+    if ((await sk.catalog.instructionCount(sn)) > 0) failDomain('verboten', 'admins_only');
     if (!(await sk.catalog.instructionNewLoadAllowed(sn)))
-      failDomain('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
+      failDomain('zu_viele', 'too_many_requests', { minutes: 24 * 60 });
   }
   const auftrag = await sk.catalog.enqueueInstruction(sn, { now: true });
   const instructions = mergeInstructions(await sk.catalog.instructionsToSet(sn), []);

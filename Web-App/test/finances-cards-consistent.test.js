@@ -53,15 +53,15 @@ const zeilen = [
 
 test('server: a gift counts, without market or purchase price not', () => {
   const b = baseTheMetrics(zeilen);
-  assert.equal(b.basis_marktwert, '1863.90');
-  assert.equal(b.basis_einstand, '1529.98');
-  assert.equal(b.basis_guv_betrag, '333.92');
+  assert.equal(b.baseline_market_value, '1863.90');
+  assert.equal(b.baseline_cost, '1529.98');
+  assert.equal(b.baseline_pnl_amount, '333.92');
   assert.deepEqual(
-    [b.positionen, b.positionen_bewertet, b.positionen_ohne_marktpreis, b.positionen_ohne_kaufpreis],
+    [b.positions, b.positions_valued, b.positions_without_market_price, b.positions_without_purchase_price],
     [11, 4, 6, 1],
   );
-  assert.equal(b.ohne_marktpreis_einstand, '438.96');
-  assert.equal(b.ohne_kaufpreis_marktwert, '45.00');
+  assert.equal(b.cost_without_market_price, '438.96');
+  assert.equal(b.market_value_without_purchase_price, '45.00');
   assert.equal(totalGuvPercent(zeilen), '21.8');
 });
 
@@ -74,13 +74,13 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
     quantity: 1,
     purchase_price: k,
     avg_price: m,
-    wert_gesamt: m,
+    value_total: m,
     acquisitions: [],
     ...(m ? {} : { error: 'kein Preis' }),
   }));
   const { w, d } = await openUi({
-    '/v1/finance/valuation': { success: true, currency: 'EUR', totals: { min: '0', avg: '1908.90', max: '0' }, sets },
-    '/v1/finance/parts-valuation': {
+    '/v2/finance/valuation': { success: true, currency: 'EUR', totals: { min: '0', avg: '1908.90', max: '0' }, sets },
+    '/v2/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
@@ -95,7 +95,7 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
         },
       ],
     },
-    '/v1/finance/minifigs-valuation': {
+    '/v2/finance/minifigs-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
@@ -110,16 +110,16 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
         },
       ],
     },
-    '/v1/finance/pnl': {
+    '/v2/finance/pnl': {
       success: true,
       currency: 'EUR',
       sets: [],
-      totals: { purchase: '1968.94', grand_total: '1908.90', pnl_prozent: Number(pct), pnl_pct: pct, ...b },
+      totals: { purchase: '1968.94', grand_total: '1908.90', pnl_percent: Number(pct), pnl_pct: pct, ...b },
     },
-    '/v1/finance/portfolio-history': {
+    '/v2/finance/portfolio-history': {
       success: true,
       currency: 'EUR',
-      messpunkte: 3,
+      data_points: 3,
       period_change_pct: 6.7,
       points: [
         { x_label: 'Sep', value: 1700 },

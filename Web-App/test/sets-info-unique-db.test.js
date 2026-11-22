@@ -1,7 +1,7 @@
 /**
- * The name lookup /sets/info/:setNumber stands in routes/api_v1/sets.ts before
+ * The name lookup /sets/info/:setNumber stands in routes/api/sets.ts before
  * /sets/:setNumber/…: otherwise a number that looks like a path word of the first lands there:
- * GET /api/v1/sets/info/price-history hit /sets/:setNumber/price-history with …
+ * GET /api/v2/sets/info/price-history hit /sets/:setNumber/price-history with …
  *
  * Counter-check (measured on 29.10.2026): the route /sets/info/:setNumber put behind
  * the routes /sets/:setNumber/… → red:
@@ -31,7 +31,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('the name lookup under /api/v1/sets is unambiguous', { concurrency: 1 }, async t => {
+test('the name lookup under /api/v2/sets is unambiguous', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `setinfo-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}-f`]]);
@@ -48,24 +48,24 @@ test('the name lookup under /api/v1/sets is unambiguous', { concurrency: 1 }, as
 
   try {
     await t.test('an ordinary number', async () => {
-      const r = await (await fetch(`${base}/api/v1/sets/info/${process.pid}-1`)).json();
+      const r = await (await fetch(`${base}/api/v2/sets/info/${process.pid}-1`)).json();
       assert.equal(r.name, 'Gewöhnlich');
     });
     await t.test('a path word as set number', async () => {
-      const r = await (await fetch(`${base}/api/v1/sets/info/price-history`)).json();
+      const r = await (await fetch(`${base}/api/v2/sets/info/price-history`)).json();
       assert.equal(r.set_number, 'price-history-1', JSON.stringify(r));
       assert.equal(r.name, 'Pfadwort');
     });
-    const info = async sn => (await fetch(`${base}/api/v1/sets/info/${sn}`)).json();
+    const info = async sn => (await fetch(`${base}/api/v2/sets/info/${sn}`)).json();
     await t.test('a foreign placeholder responds like a never entered number', async () => {
-      assert.deepEqual(await info(nie), { success: true, set_number: nie, name: nie, im_katalog: false });
-      assert.deepEqual(await info(fremd), { success: true, set_number: fremd, name: fremd, im_katalog: false });
+      assert.deepEqual(await info(nie), { success: true, set_number: nie, name: nie, in_catalog: false });
+      assert.deepEqual(await info(fremd), { success: true, set_number: fremd, name: fremd, in_catalog: false });
     });
     await t.test('an own placeholder and a catalog entry apply', async () => {
       const e = await info(eigen);
-      assert.deepEqual([e.name, e.im_katalog], [`Set ${eigen}`, true], 'ein eigener Platzhalter …');
+      assert.deepEqual([e.name, e.in_catalog], [`Set ${eigen}`, true], 'ein eigener Platzhalter …');
       const k = await info(`${process.pid}-1`);
-      assert.deepEqual([k.name, k.im_katalog, 'platzhalter' in k], ['Gewöhnlich', true, false], 'ein Katalogeintrag …');
+      assert.deepEqual([k.name, k.in_catalog, 'platzhalter' in k], ['Gewöhnlich', true, false], 'ein Katalogeintrag …');
     });
   } finally {
     await db.run('DELETE FROM sets WHERE set_number = ANY($1)', [nummern]);

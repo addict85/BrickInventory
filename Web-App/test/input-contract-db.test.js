@@ -11,7 +11,7 @@
  *   B  the query check removed in checkInput → red: “a
  *      repeated query value is 400”
  *   C  in checkInput the validators' own error ignored (always
- *      eingabe_ungueltig) → red: “the validators from validate.ts answer like the
+ *      input_invalid) → red: “the validators from validate.ts answer like the
  *      route”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -46,8 +46,8 @@ test('inputs against the contract', { concurrency: 1 }, async t => {
   });
   const codes = await adminWithFactor(_req, uid);
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
-  const sende = async (methode, pfad, rumpf) => {
-    const r = await fetch(base + pfad, {
+  const sende = async (methode, path, rumpf) => {
+    const r = await fetch(base + path, {
       method: methode,
       headers: { 'Content-Type': 'application/json' },
       body: rumpf === undefined ? undefined : JSON.stringify(rumpf),
@@ -57,21 +57,21 @@ test('inputs against the contract', { concurrency: 1 }, async t => {
   };
 
   await t.test('a list instead of a name is 400', async () => {
-    const r = await sende('POST', '/api/v1/auth/register', {
+    const r = await sende('POST', '/api/v2/auth/register', {
       username: ['abc'],
       email: 'a@b.ch',
       password: 'Lang-genug-1234',
     });
-    assert.deepEqual([r.status, r.code], [400, 'eingabe_ungueltig']);
+    assert.deepEqual([r.status, r.code], [400, 'input_invalid']);
     assert.match(r.error, /username/);
-    const kein = await sende('POST', '/api/v1/auth/login', { username: { $ne: 1 }, password: 'x' });
-    assert.deepEqual([kein.status, kein.code], [400, 'eingabe_ungueltig']);
+    const kein = await sende('POST', '/api/v2/auth/login', { username: { $ne: 1 }, password: 'x' });
+    assert.deepEqual([kein.status, kein.code], [400, 'input_invalid']);
   });
 
   await t.test('free text is limited', async () => {
-    const r = await sende('PUT', '/api/v1/auth/profile', { first_name: 'x'.repeat(101) });
-    assert.deepEqual([r.status, r.code], [400, 'eingabe_ungueltig']);
-    const ok = await sende('PUT', '/api/v1/auth/profile', {
+    const r = await sende('PUT', '/api/v2/auth/profile', { first_name: 'x'.repeat(101) });
+    assert.deepEqual([r.status, r.code], [400, 'input_invalid']);
+    const ok = await sende('PUT', '/api/v2/auth/profile', {
       first_name: 'Marco',
       last_name: null,
       password_current: PASS,
@@ -82,21 +82,21 @@ test('inputs against the contract', { concurrency: 1 }, async t => {
   });
 
   await t.test('a repeated query value is 400', async () => {
-    assert.equal((await sende('GET', '/api/v1/auth/profile?x=1')).status, 200);
-    const r = await sende('GET', '/api/v1/auth/profile?x=1&x=2');
-    assert.deepEqual([r.status, r.code], [400, 'eingabe_ungueltig']);
+    assert.equal((await sende('GET', '/api/v2/auth/profile?x=1')).status, 200);
+    const r = await sende('GET', '/api/v2/auth/profile?x=1&x=2');
+    assert.deepEqual([r.status, r.code], [400, 'input_invalid']);
   });
 
   await t.test('the validators from validate.ts answer like the route', async () => {
-    const r = await sende('PUT', `/api/v1/auth/users/${uid}/admin`, { is_admin: 'vielleicht' });
+    const r = await sende('PUT', `/api/v2/auth/users/${uid}/admin`, { is_admin: 'vielleicht' });
     assert.equal(r.status, 400);
-    assert.notEqual(r.code, 'eingabe_ungueltig');
+    assert.notEqual(r.code, 'input_invalid');
     assert.match(r.error, /is_admin/);
   });
 
   await t.test('without login it stays 401, not 400', async () => {
-    const { base: offen } = testServer(_req, { sitzung: {}, t });
-    const r = await fetch(`${offen}/api/v1/auth/profile`, {
+    const { base: open } = testServer(_req, { sitzung: {}, t });
+    const r = await fetch(`${open}/api/v2/auth/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ first_name: ['x'] }),

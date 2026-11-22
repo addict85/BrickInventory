@@ -18,7 +18,7 @@ let _brickColors = [];
 
 export async function loadBrickColors() {
   if (_brickColors.length) return _brickColors;
-  const d = await api('GET', '/v1/parts/brick-colors');
+  const d = await api('GET', '/v2/parts/brick-colors');
   if (d.success) {
     _brickColors = d.colors;
     renderColorDropdown();
@@ -71,7 +71,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
   btn.textContent = '…';
   res.style.color = 'var(--mut)';
   res.textContent = tRaw('adding.progress');
-  const d = await api('POST', '/v1/parts', {
+  const d = await api('POST', '/v2/parts', {
     part_number: num,
     color_id: colorId,
     color_name: colorName,
@@ -116,8 +116,8 @@ G('btn-add-part')?.addEventListener('click', async () => {
 // CSV import
 async function importPartsCsv() {
   const d = await uploadCsv({
-    feld: 'part-csv-file',
-    pfad: '/v1/parts/import/csv',
+    field: 'part-csv-file',
+    path: '/v2/parts/import/csv',
     show: l => csvImportStatus('part-csv-status', l ? 'running' : 'hide', tRaw('import.running')),
   });
   if (d) loadManualParts();

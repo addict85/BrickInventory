@@ -50,8 +50,8 @@ test('1. the start page is reachable even without a path', async () => {
     );
     // And the paths below still; otherwise one could calm the rule with
     // a pattern that ONLY matches the root.
-    for (const pfad of ['/start', '/tief/drin', '/reset-password']) {
-      assert.equal((await fetch(basis + pfad)).status, 200, `Das Muster ${muster} trifft ${pfad} nicht mehr`);
+    for (const path of ['/start', '/tief/drin', '/reset-password']) {
+      assert.equal((await fetch(basis + path)).status, 200, `Das Muster ${muster} trifft ${path} nicht mehr`);
     }
   } finally {
     await new Promise(r => srv.close(r));
@@ -86,7 +86,7 @@ test('2. req.body is always an object, even without a matching parser', async ()
   // explanation block above names `req.body` plenty, a mere indexOf
   // would thus be satisfied forever.
   // Since 04.11.2026 in readBody: the bodies are only read after login.
-  const code = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'routes', 'api_v1', 'middleware.ts'), 'utf8'));
+  const code = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'routes', 'api', 'middleware.ts'), 'utf8'));
   assert.match(
     code,
     /req\.body === undefined.*req\.body = \{\}/,

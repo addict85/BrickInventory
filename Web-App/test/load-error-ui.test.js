@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
-const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler', code: 'interner_fehler' };
+const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler', code: 'internal_error' };
 const TWO_SETS = {
   success: true,
   total: 2,
@@ -28,8 +28,8 @@ const TWO_SETS = {
 
 test('collection: a server error on the first load shows the reason and "try again"', async () => {
   /** @type {object} */
-  let antwort = SERVERFEHLER;
-  const { w, d } = await openUi({ '/v1/sets': () => antwort });
+  let response = SERVERFEHLER;
+  const { w, d } = await openUi({ '/v2/sets': () => response });
   try {
     await warte(() => d.querySelector('#gallery .error-state'));
     const box = d.querySelector('#gallery .error-state');
@@ -38,7 +38,7 @@ test('collection: a server error on the first load shows the reason and "try aga
     assert.doesNotMatch(d.getElementById('gallery').textContent, /Noch keine Sets/);
     const knopf = box.querySelector('button[data-click="loadGallery"]');
     assert.match(knopf.textContent, /Erneut versuchen/);
-    antwort = TWO_SETS;
+    response = TWO_SETS;
     knopf.click();
     await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'Erneut versuchen lädt nicht neu');
@@ -49,11 +49,11 @@ test('collection: a server error on the first load shows the reason and "try aga
 
 test('collection: if reloading fails, the old list stays', async () => {
   /** @type {object} */
-  let antwort = TWO_SETS;
-  const { w, d } = await openUi({ '/v1/sets': () => antwort });
+  let response = TWO_SETS;
+  const { w, d } = await openUi({ '/v2/sets': () => response });
   try {
     await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
-    antwort = SERVERFEHLER;
+    response = SERVERFEHLER;
     await reiter(w, 'gallery');
     await warte(() => d.querySelector('#toasts .toast.error'));
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'die alte Liste ist weg');
@@ -71,11 +71,11 @@ test('every list shows its load error with the same building block', async () =>
     throw new TypeError('Failed to fetch');
   };
   const { w, d } = await openUi({
-    '/v1/wanted': kaputt,
-    '/v1/parts': kaputt,
-    '/v1/minifigs': kaputt,
-    '/v1/catalog/sets': kaputt,
-    '/v1/finance/valuation': kaputt,
+    '/v2/wanted': kaputt,
+    '/v2/parts': kaputt,
+    '/v2/minifigs': kaputt,
+    '/v2/catalog/sets': kaputt,
+    '/v2/finance/valuation': kaputt,
   });
   try {
     for (const [tab, ziel] of [
@@ -101,7 +101,7 @@ test('every list shows its load error with the same building block', async () =>
 
 test('network error when capturing: "no connection to the server" instead of "Failed to fetch"', async () => {
   const { w, d } = await openUi({
-    '/v1/sets/add-stream': () => {
+    '/v2/sets/add-stream': () => {
       throw new TypeError('Failed to fetch');
     },
   });

@@ -66,19 +66,19 @@ test('the balance query posts to www.lego.com and returns cookies', async t => {
 });
 
 test('images from the CDNs: whole, as a stream, with the browser headers', async t => {
-  const bild = Buffer.alloc(300, 7);
+  const image = Buffer.alloc(300, 7);
   const stub = await httpsStub(t, (c, res) =>
     c.path === '/gross.jpg'
       ? reply(res, 200, Buffer.alloc(5000))
-      : reply(res, 200, bild, { 'content-type': 'image/jpeg' }),
+      : reply(res, 200, image, { 'content-type': 'image/jpeg' }),
   );
   const r = await fetchImage('https://cdn.rebrickable.com/media/sets/10294-1.jpg', { maxBytes: 1000 });
-  assert.deepEqual([r.status, r.koerper], [200, bild]);
+  assert.deepEqual([r.status, r.koerper], [200, image]);
   assert.equal(stub.calls[0].headers.referer, IMAGE_HEADERS.Referer);
   const s = await oeffneBild('https://images.brickset.com/sets/10294-1.jpg', { maxBytes: 1000, pool: true });
-  const teile = [];
-  for await (const d of s.strom()) teile.push(d);
-  assert.deepEqual(Buffer.concat(teile), bild);
+  const parts = [];
+  for await (const d of s.stream()) parts.push(d);
+  assert.deepEqual(Buffer.concat(parts), image);
   await assert.rejects(fetchImage('https://cdn.rebrickable.com/gross.jpg', { maxBytes: 1000 }), /über 1000 Byte/);
   await assert.rejects(fetchImage('https://bilder.example.org/x.jpg', { maxBytes: 1000 }), /nicht erlaubt/);
 });

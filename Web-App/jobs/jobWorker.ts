@@ -67,7 +67,7 @@ function progressChain(d: JobsServices, a: JobRow, ac: AbortController, deadline
   };
 }
 
-/** What no longer runs would otherwise stay on 'laeuft' until the deadline; the deadline also heals an error here. */
+/** What no longer runs would otherwise stay on 'running' until the deadline; the deadline also heals an error here. */
 async function backToTable(d: JobsServices, a: JobRow): Promise<void> {
   await d.giveBack(a).catch(logAndContinue('auftraege:zurückgeben'));
 }
@@ -142,18 +142,18 @@ async function afterError(
   e: unknown,
 ): Promise<void> {
   // After an abort the reason of the signal counts, not the exception it caused in the handler.
-  const grund: unknown = ac.signal.aborted ? ac.signal.reason : e;
-  if (grund instanceof JobLost) {
-    console.warn(`[auftraege] ${a.type} #${a.id}: ${grund.message}`);
+  const reason: unknown = ac.signal.aborted ? ac.signal.reason : e;
+  if (reason instanceof JobLost) {
+    console.warn(`[auftraege] ${a.type} #${a.id}: ${reason.message}`);
     return;
   }
-  if (grund instanceof JobInterrupted) {
+  if (reason instanceof JobInterrupted) {
     await d.giveBack(a);
     return;
   }
   if (e instanceof JobMove) {
-    if (await d.moved(a, e.bis, e.grund, e.counts)) {
-      if (payload) await d.inNamesOfJob(a, async () => b?.givenUp?.(payload, e.grund, a));
+    if (await d.moved(a, e.bis, e.reason, e.counts)) {
+      if (payload) await d.inNamesOfJob(a, async () => b?.givenUp?.(payload, e.reason, a));
       await followUpPlan(d, a);
     }
     return;
@@ -167,7 +167,7 @@ async function afterError(
 }
 
 /** On shutdown: interrupt all runs, wait for them briefly, and return whatever is
- * still running then — otherwise it would stay on 'laeuft' until the deadline. */
+ * still running then — otherwise it would stay on 'running' until the deadline. */
 async function interruptRunning(d: JobsServices, running: Map<string, Lauf>, waitMs: number): Promise<Lauf[]> {
   const all = [...running.values()];
   for (const l of all) if (!l.ac.signal.aborted) l.ac.abort(new JobInterrupted());
@@ -221,7 +221,7 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
 
   // The running round, so stoppe() can wait for a claim that
   // is currently in the database: it would otherwise arrive after shutdown and
-  // stay on 'laeuft' until its deadline expires.
+  // stay on 'running' until its deadline expires.
   let pumpLauf: Promise<void> = Promise.resolve();
 
   function pump(): Promise<void> {

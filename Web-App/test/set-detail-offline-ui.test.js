@@ -27,11 +27,11 @@ const SET = {
 
 test('offline: set detail from the loaded collection, details as pairs', async () => {
   const { w, d } = await openUi({
-    '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
-    '/v1/sets/21318-1': () => {
+    '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] },
+    '/v2/sets/21318-1': () => {
       throw new TypeError('Failed to fetch');
     },
-    '/v1/sets/21318-1/acquisitions': () => {
+    '/v2/sets/21318-1/acquisitions': () => {
       throw new TypeError('Failed to fetch');
     },
   });
@@ -67,16 +67,16 @@ test('household: every quantity an output with the account in the name', async (
     ],
   };
   const { w, d } = await openUi({
-    '/v1/sets/household-members': {
+    '/v2/sets/household-members': {
       success: true,
       members: [
-        { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-        { id: 2, username: 'lena', is_self: false, tiefe: 1 },
+        { id: 1, username: 'anna', is_self: true, depth: 0 },
+        { id: 2, username: 'lena', is_self: false, depth: 1 },
       ],
     },
-    '/v1/sets': { success: true, sets: [geteilt], total: 1, themes: [] },
-    '/v1/sets/21318-1': { success: true, set: geteilt },
-    '/v1/sets/21318-1/acquisitions': {
+    '/v2/sets': { success: true, sets: [geteilt], total: 1, themes: [] },
+    '/v2/sets/21318-1': { success: true, set: geteilt },
+    '/v2/sets/21318-1/acquisitions': {
       success: true,
       acquisitions: [
         { id: 1, set_number: '21318-1', quantity: 1, condition: 'N', owner_user_id: 1 },

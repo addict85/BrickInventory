@@ -26,7 +26,7 @@ export async function waitForStartup() {
   if (button) button.onclick = () => retryNow();
   while (true) {
     try {
-      const r = await apiRaw('GET', '/v1/startup-status?_=' + Date.now(), {
+      const r = await apiRaw('GET', '/v2/startup-status?_=' + Date.now(), {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' },
       });
@@ -114,10 +114,10 @@ export function showOffline(on, o = {}) {
 }
 
 /** The session check, with Retry-After: api() does not pass the response headers through.
- * @returns {Promise<{ d: import('../../frontend-types/api').ApiResponse<'GET', '/v1/auth/me'>, waitSec: number }>} */
+ * @returns {Promise<{ d: import('../../frontend-types/api').ApiResponse<'GET', '/v2/auth/me'>, waitSec: number }>} */
 export async function checkSession() {
   try {
-    const r = await apiRaw('GET', '/v1/auth/me', { cache: 'no-store' });
+    const r = await apiRaw('GET', '/v2/auth/me', { cache: 'no-store' });
     let d = null;
     try {
       d = await r.json();

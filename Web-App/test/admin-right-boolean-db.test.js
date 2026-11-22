@@ -38,7 +38,7 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
   });
 
   await t.test('requireToken passes a boolean on', async () => {
-    const { requireToken } = _req('routes/api_v1/middleware.js').guardFor(
+    const { requireToken } = _req('routes/api/middleware.js').guardFor(
       require('./helpers/sources').testServices().account,
     );
     for (const [token, soll] of [
@@ -46,8 +46,8 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
       [app, false],
     ]) {
       const req = { method: 'GET', path: '/x', headers: { authorization: `Bearer ${token}` }, ip: '127.0.0.1' };
-      await new Promise((weiter, fehler) => {
-        const res = { status: () => res, json: r => fehler(new Error(JSON.stringify(r))), setHeader: () => {} };
+      await new Promise((weiter, error) => {
+        const res = { status: () => res, json: r => error(new Error(JSON.stringify(r))), setHeader: () => {} };
         requireToken(req, res, weiter);
       });
       assert.equal(req.apiUser.is_admin, soll);

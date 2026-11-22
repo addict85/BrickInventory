@@ -31,11 +31,11 @@ function stripModuleSyntax(src) {
 const { openUi } = require('./helpers/ui');
 
 const SETS = { success: true, sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1 }], count: 1, total: 1 };
-const setsCalls = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;
+const setsCalls = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v2\/sets\?/.test(a.url)).length;
 const kachel = d => d.querySelector('#gallery [data-price-for="10294-1"]')?.closest('[data-click="openModal"], .sc');
 
 test('the startup loads the gallery once, and the same language rebuilds nothing', async () => {
-  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
+  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v2/sets': SETS });
   try {
     assert.ok(await warte(() => kachel(d)));
     await ruhig();
@@ -53,7 +53,7 @@ test('the startup loads the gallery once, and the same language rebuilds nothing
 });
 
 test('a real language change redraws the gallery without reloading it', async () => {
-  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
+  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v2/sets': SETS });
   try {
     assert.ok(await warte(() => kachel(d)));
     await ruhig();
@@ -75,7 +75,7 @@ test('refreshing leaves the tiles standing until the new response is there', asy
   const spaeter = new Promise(r => {
     los = r;
   });
-  const { w, d, warte } = await openUi({ '/v1/sets': () => (++n === 1 ? SETS : spaeter.then(() => SETS)) });
+  const { w, d, warte } = await openUi({ '/v2/sets': () => (++n === 1 ? SETS : spaeter.then(() => SETS)) });
   try {
     assert.ok(await warte(() => kachel(d)));
     d.getElementById('gsort').value = 'name_asc';

@@ -5,9 +5,9 @@ import type { SettingsServices } from '../settings';
 import type { Clock } from '../infra/clock';
 
 export interface MailDependencies {
-  uhr: Clock;
-  konfig: Readonly<AppConfig>;
-  einstellungen: SettingsServices;
+  clock: Clock;
+  config: Readonly<AppConfig>;
+  settings: SettingsServices;
 }
 
 export type MailContext = MailDependencies;

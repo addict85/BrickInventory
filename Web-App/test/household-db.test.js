@@ -48,7 +48,8 @@ async function startApi() {
   });
   // Since an earlier round the entry routes only live in the shared
   // factory — one address for web app AND app.
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }
@@ -69,7 +70,7 @@ async function moveSet(actor, sn, fromId, toId, acquisitionIds) {
   const ids =
     acquisitionIds ??
     (await db.all('SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [fromId, sn])).map(r => r.id);
-  const r = await fetch(`${_base}/api/v1/sets/${sn}/move`, {
+  const r = await fetch(`${_base}/api/v2/sets/${sn}/move`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ from_user_id: fromId, to_user_id: toId, acquisition_ids: ids }),
@@ -163,14 +164,14 @@ test('household against a real database', async t => {
     // Other currency → rejection, and the code stays usable.
     await db.run(`UPDATE user_settings SET value='EUR' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
     // On the CODE instead of the German sentence: only the response builds the sentence.
-    await assert.rejects(household.redeemInvitation(U.kindA, inv.code), { code: 'waehrung_ungleich' });
+    await assert.rejects(household.redeemInvitation(U.kindA, inv.code), { code: 'currency_mismatch' });
 
     await db.run(`UPDATE user_settings SET value='CHF' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
     const ok = await household.redeemInvitation(U.kindA, inv.code);
     assert.equal(ok.linked_to.id, U.eltern);
 
     // A second redemption of the same code must fail.
-    await assert.rejects(household.redeemInvitation(U.kindB, inv.code), { code: /einladungscode/ });
+    await assert.rejects(household.redeemInvitation(U.kindB, inv.code), { code: /invite_code/ });
 
     const inv2 = await household.createInvitation(U.eltern);
     assert.ok((await household.redeemInvitation(U.kindB, inv2.code)).linked_to);
@@ -224,14 +225,14 @@ test('household against a real database', async t => {
 
   await t.test('the storage locations of a sub-account follow the right, not the view filter', async () => {
     _actingAs = U.kindA;
-    const neu = await fetch(`${_base}/api/v1/storage/locations`, {
+    const neu = await fetch(`${_base}/api/v2/storage/locations`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Kiste kindA' }),
     });
     assert.equal(neu.status, 200, await neu.text());
     const namen = async accounts =>
-      (await apiGet(U.eltern, `/api/v1/storage/locations?owner=${U.kindA}&accounts=${accounts}`)).body.orte.map(
+      (await apiGet(U.eltern, `/api/v2/storage/locations?owner=${U.kindA}&accounts=${accounts}`)).body.locations.map(
         o => o.name,
       );
     assert.deepEqual(await namen('all'), ['Kiste kindA']);
@@ -241,7 +242,7 @@ test('household against a real database', async t => {
       'Die Galerie auf „nur eigene“ leert die Auswahl beim Set des Kindes nicht',
     );
     assert.deepEqual(
-      (await apiGet(U.eltern, `/api/v1/storage/locations?owner=${U.enkel}`)).body.orte,
+      (await apiGet(U.eltern, `/api/v2/storage/locations?owner=${U.enkel}`)).body.locations,
       [],
       'Ohne Recht keine Orte, auch nicht über eine Kette',
     );
@@ -262,7 +263,7 @@ test('household against a real database', async t => {
 
     // The same link a second time yields an understandable refusal.
     const nochmal = (await household.createInvitation(U.eltern)).code;
-    await assert.rejects(household.redeemInvitation(U.enkel, nochmal), { code: 'konto_bereits_verknuepft' });
+    await assert.rejects(household.redeemInvitation(U.enkel, nochmal), { code: 'account_already_linked' });
 
     // Unlinking from ONE parent account leaves the other in place.
     await household.unlinkAccounts(U.enkel, null, U.eltern);
@@ -282,7 +283,7 @@ test('household against a real database', async t => {
     // kindA is a sub-account of eltern. If eltern accepted an invitation from kindA,
     // both could write at the other.
     const inv = await household.createInvitation(U.kindA);
-    await assert.rejects(household.redeemInvitation(U.eltern, inv.code), { code: 'verknuepfung_erzeugt_kreis' });
+    await assert.rejects(household.redeemInvitation(U.eltern, inv.code), { code: 'link_creates_cycle' });
     // The code is free again after the refusal.
     // The refusal did not use up the code.
     await household.redeemInvitation(U.fremd, inv.code);
@@ -304,7 +305,7 @@ test('household against a real database', async t => {
       [['enkel', 'kindA']],
       'eltern muss erfahren, dass enkel nicht mehr sichtbar ist und über wen es lief',
     );
-    assert.ok(!st.blickfeld.some(m => m.username === 'enkel'));
+    assert.ok(!st.view.some(m => m.username === 'enkel'));
     assert.deepEqual(
       (await household.householdStatus(U.kindA)).former_links,
       [],
@@ -368,10 +369,10 @@ test('household against a real database', async t => {
   await t.test('moving takes parts, minifigures and instructions along', async () => {
     // Create contents for kindA's set — plus a manually entered part
     // that explicitly must NOT move along.
-    await holdsPart(db, U.kindA, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
-    await holdsPart(db, U.kindA, '3002', { setNumber: '75192-1', menge: 5, colorId: 1 });
-    await holdsPart(db, U.kindA, '9999', { menge: 3, colorId: 0 });
-    await holdsMinifig(db, U.kindA, 'sw0001', { setNumber: '75192-1', menge: 2 });
+    await holdsPart(db, U.kindA, '3001', { setNumber: '75192-1', quantity: 10, colorId: 4 });
+    await holdsPart(db, U.kindA, '3002', { setNumber: '75192-1', quantity: 5, colorId: 1 });
+    await holdsPart(db, U.kindA, '9999', { quantity: 3, colorId: 0 });
+    await holdsMinifig(db, U.kindA, 'sw0001', { setNumber: '75192-1', quantity: 2 });
     await db.run(`INSERT INTO instructions (user_id,set_number,url) VALUES ($1,'75192-1','http://x/1.pdf')`, [U.kindA]);
 
     const r = await moveSet(U.eltern, '75192-1', U.kindA, U.kindB);
@@ -444,11 +445,11 @@ test('household against a real database', async t => {
       // of this test is unchanged: every endpoint answers in EVERY
       // account filter, and the currency comes from the asking account.
       for (const ep of [
-        '/api/v1/finance/valuation',
-        '/api/v1/finance/parts-valuation',
-        '/api/v1/finance/minifigs-valuation',
-        '/api/v1/finance/pnl',
-        '/api/v1/finance/portfolio-history?period=month',
+        '/api/v2/finance/valuation',
+        '/api/v2/finance/parts-valuation',
+        '/api/v2/finance/minifigs-valuation',
+        '/api/v2/finance/pnl',
+        '/api/v2/finance/portfolio-history?period=month',
       ]) {
         const path = ep.includes('?') ? ep + q.replace('?', '&') : ep + q;
         const r = await apiGet(U.eltern, path);
@@ -459,7 +460,7 @@ test('household against a real database', async t => {
     // And the currency ALWAYS comes from the asking account, even if it does not
     // occur in the ID list at all (accounts=subs).
     await db.run(`UPDATE user_settings SET value='SEK' WHERE user_id=$1 AND key='currency'`, [U.eltern]);
-    const subs = await apiGet(U.eltern, '/api/v1/finance/valuation?accounts=subs');
+    const subs = await apiGet(U.eltern, '/api/v2/finance/valuation?accounts=subs');
     assert.equal(subs.body.currency, 'SEK', 'Die Währung kam aus einem Unterkonto statt vom fragenden Konto');
     await db.run(`UPDATE user_settings SET value='CHF' WHERE user_id=$1 AND key='currency'`, [U.eltern]);
   });
@@ -484,8 +485,8 @@ test('household against a real database', async t => {
     // Here ONE row moves — the source keeps the rest including parts.
     await giveSet(U.kindA, '21318-1', 1, 200, 'N', '2026-01-05');
     await giveSet(U.kindA, '21318-1', 1, 240, 'N', '2026-02-05');
-    await holdsPart(db, U.kindA, '3020', { setNumber: '21318-1', menge: 4, colorId: 2 });
-    await holdsMinifig(db, U.kindA, 'fig-tree', { setNumber: '21318-1', menge: 1 });
+    await holdsPart(db, U.kindA, '3020', { setNumber: '21318-1', quantity: 4, colorId: 2 });
+    await holdsMinifig(db, U.kindA, 'fig-tree', { setNumber: '21318-1', quantity: 1 });
     await db.run(
       `INSERT INTO instructions (user_id,set_number,url)
                   VALUES ($1,'21318-1','http://x/tree.pdf')`,
@@ -500,7 +501,7 @@ test('household against a real database', async t => {
     assert.equal(acqs.length, 2);
 
     _actingAs = U.eltern;
-    const r = await fetch(`${_base}/api/v1/sets/21318-1/acquisitions/${acqs[0].id}`, {
+    const r = await fetch(`${_base}/api/v2/sets/21318-1/acquisitions/${acqs[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ owner_user_id: U.eltern, from_user_id: U.kindA }),
@@ -529,11 +530,11 @@ test('household against a real database', async t => {
     const inBoth = async table => {
       const n = async uid =>
         (await db.get(`SELECT COUNT(*)::int AS n FROM ${table} WHERE user_id=$1 AND set_number='21318-1'`, [uid])).n;
-      return { quelle: await n(U.kindA), ziel: await n(U.eltern) };
+      return { source: await n(U.kindA), ziel: await n(U.eltern) };
     };
     for (const table of ['sets', 'parts', 'minifigs', 'instructions']) {
       const r = await inBoth(table);
-      assert.equal(r.quelle, 1, `${table}: Quelle verlor den Eintrag trotz verbleibendem Exemplar`);
+      assert.equal(r.source, 1, `${table}: Quelle verlor den Eintrag trotz verbleibendem Exemplar`);
       assert.equal(r.ziel, 1, `${table}: Ziel bekam keinen Eintrag`);
     }
     // And EXACTLY once per account — duplicate rows were counted twice by the
@@ -551,7 +552,7 @@ test('household against a real database', async t => {
       U.kindA,
     ]);
     _actingAs = U.kindA;
-    const r = await fetch(`${_base}/api/v1/sets/21318-1/acquisitions/${acq.id}`, {
+    const r = await fetch(`${_base}/api/v2/sets/21318-1/acquisitions/${acq.id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ owner_user_id: U.kindB, from_user_id: U.kindA }),
@@ -567,7 +568,7 @@ test('household against a real database', async t => {
     // EXACTLY the old web app request: viewer (eltern) as from_user_id,
     // although the row belongs to kindB. Must arrive anyway now.
     _actingAs = U.eltern;
-    const r = await fetch(`${_base}/api/v1/sets/31120-1/acquisitions/${acq.id}`, {
+    const r = await fetch(`${_base}/api/v2/sets/31120-1/acquisitions/${acq.id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ owner_user_id: U.eltern, from_user_id: U.eltern }),
@@ -581,7 +582,7 @@ test('household against a real database', async t => {
     // The direction check stays: the row now belongs to eltern — kindB may
     // NOT fetch it back, not even with a brazenly matching from_user_id.
     _actingAs = U.kindB;
-    const zurueck = await fetch(`${_base}/api/v1/sets/31120-1/acquisitions/${acq.id}`, {
+    const zurueck = await fetch(`${_base}/api/v2/sets/31120-1/acquisitions/${acq.id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ owner_user_id: U.kindB, from_user_id: U.eltern }),
@@ -621,10 +622,10 @@ test('household against a real database', async t => {
 
     // Manually entered parts and minifigures hang on their own endpoints —
     // it was reported that the filter does not apply there.
-    await holdsPart(db, U.kindA, 'm-A', { menge: 1, colorId: 0 });
-    await holdsPart(db, U.kindB, 'm-B', { menge: 1, colorId: 0 });
-    await holdsMinifig(db, U.kindA, 'mf-A', { menge: 1 });
-    await holdsMinifig(db, U.kindB, 'mf-B', { menge: 1 });
+    await holdsPart(db, U.kindA, 'm-A', { quantity: 1, colorId: 0 });
+    await holdsPart(db, U.kindB, 'm-B', { quantity: 1, colorId: 0 });
+    await holdsMinifig(db, U.kindA, 'mf-A', { quantity: 1 });
+    await holdsMinifig(db, U.kindB, 'mf-B', { quantity: 1 });
 
     const nummern = rows => rows.map(r => r.part_number ?? r.fig_number);
     const nurA = nummern(await handlers.manualPartsList(await household.scopeIds(U.eltern, U.kindA)));
@@ -645,23 +646,23 @@ test('household against a real database', async t => {
     // with 400 — the rule does not depend on the UI but on the
     // server: a client that bypasses it gets no exception.
     _actingAs = U.eltern;
-    const r = await fetch(`${_base}/api/v1/sets/10290-1/move`, {
+    const r = await fetch(`${_base}/api/v2/sets/10290-1/move`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ from_user_id: U.kindA, to_user_id: U.eltern }),
     });
     assert.equal(r.status, 400, 'Verschieben ohne Kaufpreise war erlaubt');
     const body = await r.json();
-    assert.equal(body.code, 'kaufpreise_angeben');
+    assert.equal(body.code, 'purchase_prices_required');
   });
 
   await t.test('writing into a foreign account — the direction decides', async () => {
     // Why this check stands here
 
     /** Create via the v1 factory, with a chosen target account. */
-    async function anlegen(actor, pfad, koerper) {
+    async function anlegen(actor, path, koerper) {
       _actingAs = actor;
-      const r = await fetch(_base + pfad, {
+      const r = await fetch(_base + path, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(koerper),
@@ -675,14 +676,14 @@ test('household against a real database', async t => {
     const faelle = [
       {
         name: 'Teile',
-        pfad: '/api/v1/parts',
+        path: '/api/v2/parts',
         koerper: { part_number: '99991', color_id: 4, quantity: 1 },
         tabelle: 'parts',
         wo: `part_number='99991'`,
       },
       {
         name: 'Minifiguren',
-        pfad: '/api/v1/minifigs',
+        path: '/api/v2/minifigs',
         koerper: { fig_number: 'zz9999', quantity: 1 },
         tabelle: 'minifigs',
         wo: `fig_number='zz9999'`,
@@ -694,7 +695,7 @@ test('household against a real database', async t => {
 
     for (const f of faelle) {
       // 1. Main account → own sub-account: allowed, and it lands THERE.
-      const hin = await anlegen(U.eltern, f.pfad, { ...f.koerper, owner_user_id: U.kindA });
+      const hin = await anlegen(U.eltern, f.path, { ...f.koerper, owner_user_id: U.kindA });
       assert.equal(hin.status, 200, `${f.name}: Hauptkonto durfte nicht ins eigene Unterkonto schreiben`);
       assert.equal(await zaehle(f.tabelle, f.wo, U.kindA), 1, `${f.name}: gelandet ist es nicht beim gewählten Konto`);
       assert.equal(
@@ -705,15 +706,15 @@ test('household against a real database', async t => {
 
       // 2. Sub-account → sibling account: forbidden. “Is in the view"
       //    does NOT suffice — kindA and kindB do not even see each other.
-      const quer = await anlegen(U.kindA, f.pfad, { ...f.koerper, owner_user_id: U.kindB });
+      const quer = await anlegen(U.kindA, f.path, { ...f.koerper, owner_user_id: U.kindB });
       assert.equal(quer.status, 403, `${f.name}: Unterkonto schrieb ins Geschwisterkonto`);
 
       // 3. Sub-account → main account: forbidden. The direction is ONE.
-      const rueck = await anlegen(U.kindA, f.pfad, { ...f.koerper, owner_user_id: U.eltern });
+      const rueck = await anlegen(U.kindA, f.path, { ...f.koerper, owner_user_id: U.eltern });
       assert.equal(rueck.status, 403, `${f.name}: Unterkonto schrieb ins Hauptkonto`);
 
       // 4. Account from outside the household: forbidden.
-      const fremd = await anlegen(U.fremd, f.pfad, { ...f.koerper, owner_user_id: U.eltern });
+      const fremd = await anlegen(U.fremd, f.path, { ...f.koerper, owner_user_id: U.eltern });
       assert.equal(fremd.status, 403, `${f.name}: ein fremdes Konto schrieb in den Haushalt`);
 
       // 5. And in NONE of the three rejected cases may something silently be created —
@@ -735,7 +736,7 @@ test('household against a real database', async t => {
 
     // Without input it stays with the own account — the normal case must not
     // change through the check.
-    const ohne = await anlegen(U.kindA, '/api/v1/parts', { part_number: '99992', color_id: 4, quantity: 1 });
+    const ohne = await anlegen(U.kindA, '/api/v2/parts', { part_number: '99992', color_id: 4, quantity: 1 });
     assert.equal(ohne.status, 200);
     assert.equal(
       await zaehle('parts', `part_number='99992'`, U.kindA),

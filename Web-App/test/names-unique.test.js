@@ -47,7 +47,7 @@ test('a function name means one thing', () => {
   assert.ok(dateien.length >= 60, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   const wo = new Map();
-  let gefunden = 0;
+  let found = 0;
   for (const f of dateien) {
     const code = fs
       .readFileSync(f, 'utf8')
@@ -56,18 +56,18 @@ test('a function name means one thing', () => {
     const rel = path.relative(ROOT, f);
     // Generic functions too (`function all<T = any>(`).
     for (const m of code.matchAll(/^(?:export )?(?:async )?function (\w+)(?:<[^>(]*>)?\(/gm)) {
-      gefunden++;
+      found++;
       if (!wo.has(m[1])) wo.set(m[1], new Set());
       wo.get(m[1]).add(rel);
     }
   }
   // Self-proof: if the search found hardly any functions, the rule would be vacuously true.
-  assert.ok(gefunden >= 300, `Nur ${gefunden} Funktionen gefunden — die Suche greift nicht mehr`);
+  assert.ok(found >= 300, `Nur ${found} Funktionen gefunden — die Suche greift nicht mehr`);
 
   const doppelt = [];
   const gebraucht = new Set();
-  for (const [name, orte] of wo) {
-    if (orte.size < 2) continue;
+  for (const [name, locations] of wo) {
+    if (locations.size < 2) continue;
     // An allowed name is not skipped but BOOKED: only that way it
     // becomes noticeable when it has long stood in only one place and the
     // entry describes nothing any more. A dead entry looks like a
@@ -76,7 +76,7 @@ test('a function name means one thing', () => {
       gebraucht.add(name);
       continue;
     }
-    doppelt.push(`${name}: ${[...orte].sort().join(', ')}`);
+    doppelt.push(`${name}: ${[...locations].sort().join(', ')}`);
   }
   const veraltet = [...ALLOWED.keys()].filter(k => !gebraucht.has(k)).sort();
   assert.deepEqual(

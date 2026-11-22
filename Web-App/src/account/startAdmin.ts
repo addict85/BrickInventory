@@ -12,7 +12,7 @@ export async function createStartAdmin(k: AccountContext): Promise<void> {
     if (!(await k.startVerwalter.openStartPassword())) removeStartPassword();
     return;
   }
-  const envPassword = k.konfig.adminPassword;
+  const envPassword = k.config.adminPassword;
   const mangel = envPassword !== '' ? passwordLack(envPassword, 'admin') : null;
   if (mangel)
     console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); es gilt ein zufälliges Startpasswort.`);

@@ -62,11 +62,11 @@ function starte(env, ms = 8000) {
     srv.stderr.on('data', d => {
       log += d;
     });
-    const uhr = setTimeout(() => {
+    const clock = setTimeout(() => {
       srv.kill('SIGKILL');
     }, ms);
     srv.on('exit', code => {
-      clearTimeout(uhr);
+      clearTimeout(clock);
       fertig({ code, log });
     });
   });
@@ -95,8 +95,8 @@ test('without NODE_ENV no public session secret', { timeout: 30_000 }, async () 
     DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x',
     APP_BASE_URL: 'https://lego.example.org',
   };
-  for (const geheimnis of [undefined, 'brickinventory-manager-dev-secret']) {
-    const { code, log } = await starte({ ...ohne, SESSION_SECRET: geheimnis });
+  for (const secret of [undefined, 'brickinventory-manager-dev-secret']) {
+    const { code, log } = await starte({ ...ohne, SESSION_SECRET: secret });
     assert.equal(code, 1, log.slice(-400));
     assert.match(log, /SESSION_SECRET .*Start verweigert/);
   }
@@ -109,13 +109,13 @@ test('without NODE_ENV no public session secret', { timeout: 30_000 }, async () 
 
 test('example value and too short session secret: startup refused', { timeout: 30_000 }, async () => {
   const env = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
-  for (const [geheimnis, grund] of /** @type {[string, RegExp][]} */ ([
+  for (const [secret, reason] of /** @type {[string, RegExp][]} */ ([
     ['change-me-to-a-long-random-string', /Beispielwert/],
     ['nur-31-zeichen-lang-1234567890x', /zu kurz \(nötig sind mindestens 32 Zeichen/],
   ])) {
-    const { code, log } = await starte({ ...env, SESSION_SECRET: geheimnis });
+    const { code, log } = await starte({ ...env, SESSION_SECRET: secret });
     assert.equal(code, 1, log.slice(-400));
-    assert.match(log, grund);
+    assert.match(log, reason);
   }
 });
 

@@ -33,7 +33,7 @@ test('idempotency: the deadline follows the longest request', { concurrency: 1 }
     await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [`idem_${process.pid}`])
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
-  const abdruck = dienst.fingerprint('POST', '/api/v1/sets', { set_number: '10294-1' });
+  const abdruck = dienst.fingerprint('POST', '/api/v2/sets', { set_number: '10294-1' });
   assert.deepEqual(await dienst.begin(uid, 'k1', abdruck), { kind: 'new' });
   // The clock of the first request 130 s back: it still runs (up to 300 s allowed).
   await db.run(`UPDATE idempotency SET created_at = NOW() - INTERVAL '130 seconds' WHERE user_id = $1`, [uid]);

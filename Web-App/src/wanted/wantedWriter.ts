@@ -7,27 +7,27 @@ import type { Resolution, Confidence } from './wantedResolution';
 /** Image and name travel along, because the preview shows them like the parts list. */
 export interface ItemResult {
   blId: string;
-  art: WantedArt;
-  blFarbe: number | null;
-  menge: number;
-  zustand: string | null;
+  kind: WantedArt;
+  blColor: number | null;
+  quantity: number;
+  condition: string | null;
   /** Per piece; it is in the report because the preview shows it as editable. */
-  maxPreis: number | null;
+  maxPrice: number | null;
   rbId: string | null;
-  rbFarbe: number | null;
-  sicherheit: Confidence | null;
-  ausgang: 'angelegt' | 'aufgestockt' | 'offen' | 'fehler';
-  grund?: string;
+  rbColor: number | null;
+  confidence: Confidence | null;
+  outcome: 'created' | 'topped_up' | 'open' | 'error';
+  reason?: string;
   /** Identifier instead of a sentence, so that the UI renders it in the viewer's language. */
-  grundCode?: 'nummer_unbekannt' | 'farbe_unbekannt';
+  reasonCode?: 'nummer_unbekannt' | 'farbe_unbekannt';
   /** Description from the catalog — empty if it does not know the number. */
   name?: string | null;
-  bild?: string | null;
+  image?: string | null;
   /** Name and image found under the BL number, not via a mapping — the
    * UI must mark that. */
-  nameGeraten?: boolean;
-  farbName?: string | null;
-  farbHex?: string | null;
+  nameGuessed?: boolean;
+  colorName?: string | null;
+  colorHex?: string | null;
 }
 
 /** As an interface: the route plugs in the real functions, a test counters. */
@@ -37,7 +37,7 @@ export interface Creator {
   set: (
     uid: number,
     setNumber: string,
-    menge: number,
+    quantity: number,
     condition: string | null,
     purchasePrice: number | null,
   ) => Promise<unknown>;
@@ -47,7 +47,7 @@ export interface WriteOptions {
   creator?: Creator;
   /** Passed in, so that this function stays write-free except for the creator. */
   rememberNumber?: (
-    art: WantedArt,
+    kind: WantedArt,
     rbId: string,
     blId: string,
     source: 'korrigiert' | 'rebrickable',
@@ -58,29 +58,29 @@ export interface WriteOptions {
 export function reportRow(a: Resolution): ItemResult {
   // A color that cannot be mapped is not invented: color_id 0 is black at
   // Rebrickable, not "no color".
-  const grund =
+  const reason =
     a.rbId === null
       ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
-      : a.farbeOffen
-        ? `BrickLink-Farbe ${a.posten.blFarbe} ist im Katalog keiner Rebrickable-Farbe zugeordnet`
+      : a.colorPending
+        ? `BrickLink-Farbe ${a.items.blColor} ist im Katalog keiner Rebrickable-Farbe zugeordnet`
         : undefined;
-  const grundCode: ItemResult['grundCode'] =
-    a.rbId === null ? 'nummer_unbekannt' : a.farbeOffen ? 'farbe_unbekannt' : undefined;
+  const reasonCode: ItemResult['reasonCode'] =
+    a.rbId === null ? 'nummer_unbekannt' : a.colorPending ? 'farbe_unbekannt' : undefined;
   return {
-    blId: a.posten.blId,
-    art: a.posten.art,
-    blFarbe: a.posten.blFarbe,
-    menge: a.posten.menge,
-    zustand: a.posten.zustand ?? null,
-    maxPreis: a.posten.maxPreis ?? null,
+    blId: a.items.blId,
+    kind: a.items.kind,
+    blColor: a.items.blColor,
+    quantity: a.items.quantity,
+    condition: a.items.condition ?? null,
+    maxPrice: a.items.maxPrice ?? null,
     rbId: a.rbId,
-    rbFarbe: a.rbFarbe,
-    sicherheit: a.sicherheit,
-    ausgang: a.rbId === null ? 'offen' : 'angelegt',
-    ...(grund ? { grund } : {}),
-    ...(grundCode ? { grundCode } : {}),
-    farbName: a.rbFarbName,
-    farbHex: a.rbFarbHex,
+    rbColor: a.rbColor,
+    confidence: a.confidence,
+    outcome: a.rbId === null ? 'open' : 'created',
+    ...(reason ? { reason } : {}),
+    ...(reasonCode ? { reasonCode } : {}),
+    colorName: a.rbFarbName,
+    colorHex: a.rbFarbHex,
   };
 }
 
@@ -90,42 +90,42 @@ export async function writeItem(
   a: Resolution,
   rbId: string,
   opt: WriteOptions,
-): Promise<'angelegt' | 'aufgestockt'> {
+): Promise<'created' | 'topped_up'> {
   if (!opt.creator) throw new Error('Kein Anleger übergeben — siehe Anleger');
   let feedback: unknown;
-  if (a.posten.art === 'part') {
+  if (a.items.kind === 'part') {
     // The color name travels along: the parts list reads it from the row; without it
     // it does not fall back to the catalog.
     feedback = await opt.creator.teil(uid, {
       part_number: rbId,
-      color_id: a.rbFarbe ?? 0,
+      color_id: a.rbColor ?? 0,
       ...(a.rbFarbName ? { color_name: a.rbFarbName } : {}),
       ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
-      quantity: a.posten.menge,
-      condition: a.posten.zustand ?? undefined,
+      quantity: a.items.quantity,
+      condition: a.items.condition ?? undefined,
       // `undefined` instead of `null`: the creators distinguish "nothing specified"
       // (market price) from an explicit zero.
-      ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
+      ...(a.items.maxPrice !== null ? { unit_price: a.items.maxPrice } : {}),
     });
-  } else if (a.posten.art === 'fig') {
+  } else if (a.items.kind === 'fig') {
     feedback = await opt.creator.minifig(uid, {
       fig_number: rbId,
-      quantity: a.posten.menge,
-      condition: a.posten.zustand ?? undefined,
-      ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
+      quantity: a.items.quantity,
+      condition: a.items.condition ?? undefined,
+      ...(a.items.maxPrice !== null ? { unit_price: a.items.maxPrice } : {}),
     });
   } else {
-    feedback = await opt.creator.set(uid, rbId, a.posten.menge, a.posten.zustand, a.posten.maxPreis);
+    feedback = await opt.creator.set(uid, rbId, a.items.quantity, a.items.condition, a.items.maxPrice);
   }
   // 'rebrickable' is remembered too: blTeilZuRb checks every hit against the
   // searched BL number; it is a mapping, not a guess.
-  if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.rememberNumber) {
+  if ((a.confidence === 'korrigiert' || a.confidence === 'rebrickable') && opt.rememberNumber) {
     // A failure does not abort the import: the item is already in the inventory.
     await opt
-      .rememberNumber(a.posten.art, rbId, a.posten.blId, a.sicherheit)
+      .rememberNumber(a.items.kind, rbId, a.items.blId, a.confidence)
       .catch(logAndContinue('wanted:nummer-merken'));
   }
   // The creator knows whether created or topped up; without the question a
   // second import would count everything as created.
-  return (feedback as { action?: string } | null | undefined)?.action !== 'updated' ? 'angelegt' : 'aufgestockt';
+  return (feedback as { action?: string } | null | undefined)?.action !== 'updated' ? 'created' : 'topped_up';
 }

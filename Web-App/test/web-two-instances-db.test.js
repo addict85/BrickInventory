@@ -36,10 +36,10 @@ const dbModule = require(path.join(ROOT, 'dist', 'db', 'database.js'));
 function instance(t, uid) {
   const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
   const clock = _req('src/infra/clock.js').settableClock();
-  const dienste = _req('startup/wiring.js').buildServices(db, { uhr: clock });
+  const dienste = _req('startup/wiring.js').buildServices(db, { clock: clock });
   const app = _req('startup/app.js').buildApp({
     pool: db.systemWebPool,
-    konfig: _req('src/infra/config.js').konfig(),
+    config: _req('src/infra/config.js').config(),
     sitzungsGeheimnis: 'zwei-instanzen-geheimnis-lang-genug',
     dienste,
     sessionStorage: (req, _res, next) => {
@@ -73,8 +73,8 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
 
   await t.test('both instances draw on one budget', async () => {
     await clear();
-    const ra = await a.get('/api/v1/sets');
-    const rb = await b.get('/api/v1/sets');
+    const ra = await a.get('/api/v2/sets');
+    const rb = await b.get('/api/v2/sets');
     assert.deepEqual([remaining(ra), remaining(rb)], [BUDGET - 1, BUDGET - 2]);
   });
 
@@ -93,9 +93,9 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
         nowMs: now,
       }),
     );
-    const r = await b.get('/api/v1/sets');
+    const r = await b.get('/api/v2/sets');
     assert.equal(r.status, 429);
-    assert.equal((await r.json()).code, 'zu_viele_anfragen');
+    assert.equal((await r.json()).code, 'too_many_requests');
     assert.ok(Number(r.headers.get('retry-after')) >= 1);
   });
 
@@ -154,11 +154,11 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
 
   await t.test('after 60 s it no longer applies (set clock instead of waiting)', async () => {
     const ticket = await ticketOn(a);
-    b.clock.vor(61_000);
+    b.clock.ago(61_000);
     assert.equal(await redeem(b, eins, ticket), false);
     // The cleanup in the system frame removes what nobody redeemed.
     await ticketOn(a);
-    a.clock.vor(61_000);
+    a.clock.ago(61_000);
     const { inSystemContext } = _req('src/infra/accountContext.js');
     assert.equal(await inSystemContext('Test', () => a.dienste.vouchers.cleanupTickets()), 1);
   });
@@ -198,7 +198,7 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
         if (srv.exitCode === null) srv.kill('SIGKILL');
       });
       return {
-        lebt: async () => (await fetch(`http://127.0.0.1:${port}/api/v1/health/live`).catch(() => null))?.ok === true,
+        lebt: async () => (await fetch(`http://127.0.0.1:${port}/api/v2/health/live`).catch(() => null))?.ok === true,
         log: () => log,
       };
     };

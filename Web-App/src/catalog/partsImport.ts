@@ -74,28 +74,28 @@ export async function setTeileMerken(k: CatalogContext, n: string, zeilen: SetPa
 /** If an image is missing, the image job loads it later. */
 export async function enqueueSetPartImages(k: CatalogContext, n: string, zeilen: SetPartRow[]) {
   if (zeilen.some(z => z.imageUrl && !z.imageLocal))
-    await k.jobQueue.placeJobOne('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxAttempts: 3 });
+    await k.jobQueue.placeJobOne('images', { set_number: n }, { schluessel: `images:${n}`, maxAttempts: 3 });
 }
 
 function fetchPage(k: CatalogContext, url: string, rbKey: string): Promise<{ status: number; body: string }> {
-  return k.externalSources.quellen.rebrickableRaw(url, rbKey);
+  return k.externalSources.sources.rebrickableRaw(url, rbKey);
 }
 
 /** An empty bl_id means "looked up" and does not trigger a second reload. */
 export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
-  const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
+  const rbKey = await k.settings.globalValue('rebrickable_api_key');
   if (!rbKey) return;
   const missing = await k.setContent.partsWithoutBlMapping();
   if (!missing.length) return;
 
-  const stand = (n: number) =>
+  const state = (n: number) =>
     lauf.progress?.({
-      erledigt: n,
-      gesamt: missing.length,
+      done: n,
+      total: missing.length,
       schritt: 'BrickLink IDs nachladen',
       text: `${Math.min(n, missing.length)} / ${missing.length}`,
     });
-  await stand(0);
+  await state(0);
   const BATCH = 500;
   let serverErrors = 0;
   for (let i = 0; i < missing.length; i += BATCH) {
@@ -128,7 +128,7 @@ export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
       continue;
     }
     const batchDone = i + BATCH;
-    await stand(batchDone);
+    await state(batchDone);
     for (const part of data?.results || []) {
       const blIds = part.external_ids?.BrickLink;
       const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0]! : part.part_num;

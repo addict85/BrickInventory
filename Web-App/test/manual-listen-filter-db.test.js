@@ -81,23 +81,23 @@ test('search text and storage location also hit the manually captured lists', { 
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES ('part','3002','9999')`);
   await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3')`, [UID]);
   const ORT = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
-  await holdsPart(db, UID, '3001', { colorId: 4, menge: 10, storageId: ORT });
-  await holdsPart(db, UID, '3002', { colorId: 4, menge: 5 });
-  await holdsPart(db, UID, '3003', { colorId: 4, menge: 1 });
+  await holdsPart(db, UID, '3001', { colorId: 4, quantity: 10, storageId: ORT });
+  await holdsPart(db, UID, '3002', { colorId: 4, quantity: 5 });
+  await holdsPart(db, UID, '3003', { colorId: 4, quantity: 1 });
   // A set part with the same number: it must NEVER show up in this list,
   // not even as a search hit.
-  await holdsPart(db, UID, '3001', { setNumber: '10497-1', colorId: 7, menge: 2 });
+  await holdsPart(db, UID, '3001', { setNumber: '10497-1', colorId: 7, quantity: 2 });
 
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES
                   ('fig-000123','Chewbacca'), ('fig-000456','Luke Skywalker')`);
-  await holdsMinifig(db, UID, 'fig-000123', { menge: 1 });
-  await holdsMinifig(db, UID, 'fig-000456', { menge: 2 });
+  await holdsMinifig(db, UID, 'fig-000123', { quantity: 1 });
+  await holdsMinifig(db, UID, 'fig-000456', { quantity: 2 });
 
-  const teile = _req('src/parts/queries.js');
-  const figuren = _req('src/minifigs/queries.js');
-  const nummern = async opt => (await teile.manualPartsList([UID], UID, opt)).map(p => String(p.part_number)).sort();
+  const parts = _req('src/parts/queries.js');
+  const minifigs = _req('src/minifigs/queries.js');
+  const nummern = async opt => (await parts.manualPartsList([UID], UID, opt)).map(p => String(p.part_number)).sort();
   const figNumbers = async opt =>
-    (await figuren.readManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
+    (await minifigs.readManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
 
   await t.test('without search text everything is there', async () => {
     assert.deepEqual(
@@ -172,7 +172,7 @@ test('search text and storage location also hit the manually captured lists', { 
   });
 
   await t.test('the set part stays out, even as a search hit', async () => {
-    const alle = await teile.manualPartsList([UID], UID, { search: '3001' });
+    const alle = await parts.manualPartsList([UID], UID, { search: '3001' });
     assert.deepEqual(
       alle.map(p => p.color_id),
       [4],
@@ -195,7 +195,7 @@ test('search text and storage location also hit the manually captured lists', { 
     // them together: before, the live path of the set parts did NOT know the
     // BrickLink number, the precomputed summary next to it did
     // — the same search found something different depending on the path.
-    const d = await teile.partsQuery([UID], { search: '9999' });
+    const d = await parts.partsQuery([UID], { search: '9999' });
     assert.deepEqual(
       d.parts.map(p => String(p.part_number)),
       ['9999'],

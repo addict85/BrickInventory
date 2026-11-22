@@ -27,12 +27,12 @@ const FIELD =
 test('errors at the field, toasts at the view', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `feld_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Keller'), ($1, 'Vitrine')`, [uid]);
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig } = app;

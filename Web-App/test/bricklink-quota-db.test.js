@@ -34,9 +34,9 @@ https.get = (url, _opts, cb) => {
   const u = new URL(url);
   aufrufe.push(u.pathname + u.search);
   const req = new EventEmitter();
-  const art = u.searchParams.get('guide_type');
+  const kind = u.searchParams.get('guide_type');
   const data =
-    art === 'stock'
+    kind === 'stock'
       ? { avg_price: '12.50', qty_avg_price: '12.00', min_price: '10', max_price: '15', total_quantity: '3' }
       : { avg_price: '0', qty_avg_price: '0', min_price: '0', max_price: '0', total_quantity: '0' };
   setImmediate(() => {

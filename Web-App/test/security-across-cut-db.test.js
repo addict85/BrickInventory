@@ -11,7 +11,7 @@
  *      taken address responds like a new one”
  *   C  handleRouteError() also outputs e.message in production → red: “a
  *      server error in production names no internals”
- *   D  /register again answers 409 benutzername_vergeben for a taken username
+ *   D  /register again answers 409 username_taken for a taken username
  *      → red: “a taken name responds like a
  *      new one” (measured 01.11.2026)
  *   E  in server.ts again `res.status(404).json({ success: false, error:
@@ -109,17 +109,17 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
     await warte(250);
 
   await t.test('every response carries the security headers', async () => {
-    for (const pfad of ['/', '/api/v1/health/live', '/api/v1/gibt-es-nicht']) {
-      const r = await fetch(basis + pfad);
+    for (const path of ['/', '/api/v2/health/live', '/api/v2/gibt-es-nicht']) {
+      const r = await fetch(basis + path);
       await r.arrayBuffer();
       const k = n => r.headers.get(n);
-      assert.equal(k('x-powered-by'), null, pfad);
-      assert.match(k('content-security-policy'), /script-src 'self';/, pfad);
-      assert.doesNotMatch(k('content-security-policy'), /unsafe-inline|unsafe-eval/, pfad);
+      assert.equal(k('x-powered-by'), null, path);
+      assert.match(k('content-security-policy'), /script-src 'self';/, path);
+      assert.doesNotMatch(k('content-security-policy'), /unsafe-inline|unsafe-eval/, path);
       assert.deepEqual(
         [
           k('cross-origin-opener-policy'),
@@ -129,9 +129,9 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
           k('x-frame-options'),
         ],
         ['same-origin', 'same-origin', 'same-origin', 'nosniff', 'SAMEORIGIN'],
-        pfad,
+        path,
       );
-      assert.match(k('permissions-policy'), /camera=\(\).*geolocation=\(\)/, pfad);
+      assert.match(k('permissions-policy'), /camera=\(\).*geolocation=\(\)/, path);
       // Images only from the own server (image proxy), the PDF.js worker covered, no foreign host.
       const csp = Object.fromEntries(
         k('content-security-policy')
@@ -141,9 +141,9 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
       assert.deepEqual(
         [csp['script-src'], csp['img-src'], csp['worker-src']],
         ["'self'", "'self' data: blob:", "'self' blob:"],
-        pfad,
+        path,
       );
-      assert.doesNotMatch(k('content-security-policy'), /https?:/, pfad);
+      assert.doesNotMatch(k('content-security-policy'), /https?:/, path);
     }
   });
 
@@ -165,29 +165,29 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('double slashes hit the same route, not the page', async () => {
-    for (const pfad of [
-      '//api/v1/health/live',
+    for (const path of [
+      '//api/v2/health/live',
       '/api//v1/health/live?x=1',
       '//api/v1/img-proxy?url=https%3A%2F%2Fcdn.rebrickable.com%2Fa.jpg',
     ]) {
-      const r = await fetch(basis + pfad);
+      const r = await fetch(basis + path);
       await r.arrayBuffer();
-      assert.match(r.headers.get('content-type') ?? '', /application\/json/, `${pfad}: ${r.status}`);
+      assert.match(r.headers.get('content-type') ?? '', /application\/json/, `${path}: ${r.status}`);
     }
   });
 
   await t.test('an unknown API path responds in the form of every error response', async () => {
     const r = await fetch(`${basis}/api/gibt-es-nicht`, { headers: { 'accept-language': 'en' } });
     const { request_id, ...rumpf } = await r.json();
-    assert.deepEqual([r.status, rumpf], [404, { success: false, code: 'nicht_gefunden', error: 'Not found' }]);
+    assert.deepEqual([r.status, rumpf], [404, { success: false, code: 'not_found', error: 'Not found' }]);
     assert.equal(request_id, r.headers.get('x-request-id'));
   });
 
   await t.test('the session cookie is httpOnly and SameSite=Strict', async () => {
-    const r = await fetch(`${basis}/api/v1/auth/login`, {
+    const r = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+      body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
     });
     assert.equal(r.status, 200, await r.text());
     const keks = r.headers.get('set-cookie');
@@ -198,7 +198,7 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
   await t.test('a taken address responds like a new one', async () => {
     const { base } = testServer(_req, { t });
     const register = (username, email) =>
-      fetch(`${base}/api/v1/auth/register`, {
+      fetch(`${base}/api/v2/auth/register`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }),
@@ -218,7 +218,7 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
     const { base } = testServer(_req, { t });
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%'");
     const register = (username, email) =>
-      fetch(`${base}/api/v1/auth/register`, {
+      fetch(`${base}/api/v2/auth/register`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }),
@@ -248,6 +248,6 @@ test('a server error in production names no internals', () => {
   }).toString();
   assert.deepEqual(JSON.parse(aus), [
     500,
-    { success: false, code: 'interner_fehler', error: 'Interner Fehler — Einzelheiten stehen im Protokoll.' },
+    { success: false, code: 'internal_error', error: 'Interner Fehler — Einzelheiten stehen im Protokoll.' },
   ]);
 });

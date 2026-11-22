@@ -34,10 +34,10 @@ test('image proxy delivers existing set images from images/sets', async t => {
   fs.mkdirSync(cacheDir, { recursive: true });
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   /** @type {string[]} */
-  const angelegt = [];
+  const created = [];
   const put = (/** @type {string} */ datei, /** @type {Buffer} */ inhalt) => {
     fs.writeFileSync(datei, inhalt);
-    angelegt.push(datei);
+    created.push(datei);
   };
 
   const app = express();
@@ -49,7 +49,7 @@ test('image proxy delivers existing set images from images/sets', async t => {
   t.after(() => {
     server.close();
     ende();
-    for (const f of angelegt) fs.rmSync(f, { force: true });
+    for (const f of created) fs.rmSync(f, { force: true });
   });
   const hole = async (/** @type {string} */ anfrage) => {
     notes.length = 0;

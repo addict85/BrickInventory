@@ -1,5 +1,5 @@
 /** A file of its own, so a test can mount the real handlers. */
-import { guardFor } from './api_v1/middleware';
+import { guardFor } from './api/middleware';
 import { pathSegments } from '../src/http/httpResponse';
 import express, { type Request, type Response } from 'express';
 import path from 'node:path';
@@ -9,7 +9,7 @@ import { safeDataPath } from '../src/infra/dataPath';
 import { signedInUserId } from '../src/account/http/login';
 import type { Services } from '../src/services';
 
-type WildcardRequest = Request<{ pfad: string[] }>;
+type WildcardRequest = Request<{ path: string[] }>;
 
 /** Foreign uploads (only the first bytes checked) thus never run under the app's
  * origin; the own viewer loads via fetch and needs no inline display. */

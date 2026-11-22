@@ -32,11 +32,11 @@ test("topping up without a condition follows the user's default", { concurrency:
     await setUserSetting(uid, 'user_default_condition', 'U');
 
     // ISOLATE the top-up path
-    await holdsSet(db, uid, SET, 1, { zustand: 'N' });
+    await holdsSet(db, uid, SET, 1, { condition: 'N' });
 
     // Acquisition WITHOUT a condition. Pass the price along so that no network call
     // is needed; this is not about the price.
-    await acquireSet({ requester: uid, setNumber: SET, menge: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
+    await acquireSet({ requester: uid, setNumber: SET, quantity: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
 
     const zeilen = await db.all(
       `SELECT id, quantity, condition FROM set_acquisitions

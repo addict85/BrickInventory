@@ -73,7 +73,7 @@ test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
   const alarm = uid =>
     db.run(
       `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
-                                  VALUES ($1, '75192-1', 'N', 'unter', 500, 'EUR')`,
+                                  VALUES ($1, '75192-1', 'N', 'below', 500, 'EUR')`,
       [uid],
     );
   const merk = async uid =>
@@ -97,7 +97,7 @@ test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
 
   await t.test('move without error takes wishlist item and alert along', async () => {
     const r = await W.moveWantedItem(U.von, '75192-1', 'N', U.zu);
-    assert.deepEqual(r, { verschoben: true, zusammengefuehrt: false });
+    assert.deepEqual(r, { moved: true, merged: false });
     assert.equal(await merk(U.zu), 1);
     assert.equal(await alarme(U.zu), 1);
     assert.equal(await alarme(U.von), 0);
@@ -110,7 +110,7 @@ test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
     await alarm(U.zu);
     await db.run(`UPDATE price_alerts SET threshold = 123 WHERE user_id=$1`, [U.zu]);
     const r = await W.moveWantedItem(U.von, '75192-1', 'N', U.zu);
-    assert.equal(r.verschoben, true);
+    assert.equal(r.moved, true);
     const zeilen = await db.all(`SELECT user_id, threshold::float AS s FROM price_alerts`);
     assert.deepEqual(zeilen, [{ user_id: U.zu, s: 123 }]);
   });

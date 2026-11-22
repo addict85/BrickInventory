@@ -11,7 +11,7 @@ import { receiveResponse, showConnection } from './connection.js';
  * apply to uploads, downloads and streams too. Only throws on a network error or abort; the caller checks
  * the status.
  * @param {string} method
- * @param {string} path  without `/api`, e.g. `/v1/sets`
+ * @param {string} path  without `/api`, e.g. `/v2/sets`
  * @param {{ body?: FormData | object | null, signal?: AbortSignal, headers?: Record<string, string>, cache?: RequestCache }} [o]
  * @returns {Promise<Response>}
  */
@@ -106,20 +106,20 @@ export async function api(method, path, body, o = {}) {
   }
   if (data && typeof data === 'object') data.status = res.status;
   if (method === 'GET' && res.ok && data?.success !== false) inCache(path, data);
-  if (res.status === 401 && data?.error && !/^\/v1\/auth\/(me|login)/.test(path))
+  if (res.status === 401 && data?.error && !/^\/v2\/auth\/(me|login)/.test(path))
     rememberSessionEnd(String(data.error));
-  if (res.status === 403 && data?.code === 'passwort_wechsel_noetig') emit('passwordChangeRequired');
-  if (res.status === 403 && data?.code === 'zweiter_faktor_pflicht') emit('zweiterFaktorPflicht');
+  if (res.status === 403 && data?.code === 'password_change_required') emit('passwordChangeRequired');
+  if (res.status === 403 && data?.code === 'second_factor_mandatory') emit('secondFactorRequired');
   return /** @type {import('../../frontend-types/api').ApiResponse<M, P>} */ (/** @type {unknown} */ (data));
 }
 
 /**
  * An event stream of the own API: EventSource with the session cookie, every event as an object according to the
  * contract (`Stream` in frontend-types/contract.d.ts). Without EventSource null; then the caller polls.
- * If the stream breaks off, it is closed, and `fehler` decides about the fallback.
+ * If the stream breaks off, it is closed, and `error` decides about the fallback.
  * @template {string} P
- * @param {P} path  without `/api`, e.g. `/v1/sets/import/csv/stream`
- * @param {{ event: (e: import('../../frontend-types/api').StreamEvent<P>) => void, fehler: () => void }} o
+ * @param {P} path  without `/api`, e.g. `/v2/sets/import/csv/stream`
+ * @param {{ event: (e: import('../../frontend-types/api').StreamEvent<P>) => void, error: () => void }} o
  * @returns {{ close: () => void } | null}
  */
 export function stream(path, o) {
@@ -128,7 +128,7 @@ export function stream(path, o) {
   try {
     es = new EventSource('/api' + path, { withCredentials: true });
   } catch (e) {
-    console.warn('[strom]', path, e);
+    console.warn('[stream]', path, e);
     return null;
   }
   const source = es;
@@ -137,14 +137,14 @@ export function stream(path, o) {
     try {
       e = JSON.parse(m.data);
     } catch (_) {
-      console.warn('[strom]', path, 'event is not JSON');
+      console.warn('[stream]', path, 'event is not JSON');
       return;
     }
     o.event(e);
   };
   source.onerror = () => {
     source.close();
-    o.fehler();
+    o.error();
   };
   return { close: () => source.close() };
 }
@@ -169,7 +169,7 @@ export function errorMessage(e) {
 // this tab, gone on logout (emptyCache).
 const ZS = 'bim_api:';
 
-const ZS_PATHS = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
+const ZS_PATHS = /^\/v2\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
 
 /** @param {string} path @param {unknown} data */
 function inCache(path, data) {

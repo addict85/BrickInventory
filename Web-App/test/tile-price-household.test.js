@@ -27,8 +27,8 @@ test('several owners: the tile price is weighted by quantity', () => {
     ],
     '75192-1',
   );
-  assert.equal(k.kachel_pnl_pct, 142.9, '(600+100)/2 = 350 gegen 850 — nicht die zuletzt gelesene Zeile');
-  assert.equal(k.kachel_preis, 850, 'Der Marktpreis ist in beiden Zeilen derselbe');
+  assert.equal(k.tile_pnl_pct, 142.9, '(600+100)/2 = 350 gegen 850 — nicht die zuletzt gelesene Zeile');
+  assert.equal(k.tile_price, 850, 'Der Marktpreis ist in beiden Zeilen derselbe');
 });
 
 test('several owners with entered purchase prices: unchanged', () => {
@@ -39,7 +39,7 @@ test('several owners with entered purchase prices: unchanged', () => {
     ],
     '75192-1',
   );
-  assert.equal(k.kachel_pnl_pct, 142.9);
+  assert.equal(k.tile_pnl_pct, 142.9);
 });
 
 test('different quantities weigh differently', () => {
@@ -51,7 +51,7 @@ test('different quantities weigh differently', () => {
     ],
     '6346-1',
   );
-  assert.equal(k.kachel_pnl_pct, 100, 'Gewichtet 200 gegen 400; ein einfacher Mittelwert ergäbe 33,3 %');
+  assert.equal(k.tile_pnl_pct, 100, 'Gewichtet 200 gegen 400; ein einfacher Mittelwert ergäbe 33,3 %');
 });
 
 test('one row: the server value stays', () => {
@@ -68,7 +68,7 @@ test('one row: the server value stays', () => {
     ],
     '21318-1',
   );
-  assert.equal(k.kachel_pnl_pct, 77.7, 'Bei einer Zeile wird nicht neu gerechnet — sonst stünde hier 5614,3 %');
+  assert.equal(k.tile_pnl_pct, 77.7, 'Bei einer Zeile wird nicht neu gerechnet — sonst stünde hier 5614,3 %');
 });
 
 test('without purchase price and without market price there is no percentage and no amount', () => {
@@ -79,7 +79,7 @@ test('without purchase price and without market price there is no percentage and
     ],
     '10290-1',
   );
-  assert.deepEqual(k, { kachel_preis: null, kachel_pnl_pct: null, kachel_quelle: null });
+  assert.deepEqual(k, { tile_price: null, tile_pnl_pct: null, tile_source: null });
 });
 
 test('the web takes over the server values', () => {
@@ -94,12 +94,12 @@ test('the web takes over the server values', () => {
   new Function('pnl', 'pnlBySet', 'setPnlBySet', src.slice(von, bis))(
     {
       sets: [
-        { set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3, kachel_quelle: 'kauf' },
-        { set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3, kachel_quelle: 'kauf' },
+        { set_number: 'A-1', current_price: 99, tile_price: 10.5, tile_pnl_pct: 12.3, tile_source: 'purchase' },
+        { set_number: 'A-1', current_price: 99, tile_price: 10.5, tile_pnl_pct: 12.3, tile_source: 'purchase' },
       ],
     },
     pnlBySet,
     () => {},
   );
-  assert.deepEqual(pnlBySet, { 'A-1': { price: 10.5, pnl_pct: 12.3, quelle: 'kauf' } });
+  assert.deepEqual(pnlBySet, { 'A-1': { price: 10.5, pnl_pct: 12.3, source: 'purchase' } });
 });

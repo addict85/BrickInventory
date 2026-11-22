@@ -47,7 +47,7 @@ test('idempotency: admin responses only for the admin role', { concurrency: 1 },
 
   const schluessel = `rolle-${process.pid}-${Date.now()}`;
   const senden = (base, kopf = {}) =>
-    fetch(`${base}/api/v1/admin/default-condition`, {
+    fetch(`${base}/api/v2/admin/default-condition`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': schluessel, ...kopf },
       body: JSON.stringify({ condition: 'U' }),
@@ -63,5 +63,5 @@ test('idempotency: admin responses only for the admin role', { concurrency: 1 },
   const app = await senden(ohne.base, { Authorization: `Bearer ${appToken}` });
   assert.notEqual(app.headers.get('idempotent-replay'), 'true', 'ein App-Token bekommt die Verwalter-Antwort nicht');
   assert.equal(app.status, 422, 'ein App-Token bekommt die Verwalter-Antwort nicht');
-  assert.equal((await app.json()).code, 'idempotenz_schluessel_anders');
+  assert.equal((await app.json()).code, 'idempotency_key_mismatch');
 });

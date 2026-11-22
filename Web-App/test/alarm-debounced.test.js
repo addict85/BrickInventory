@@ -70,7 +70,7 @@ function fenster() {
       ok: true,
       status: 200,
       headers: { get: () => 'application/json' },
-      json: async () => ({ success: true, alerts: [], orte: [], alert: { condition: 'N', triggered: false } }),
+      json: async () => ({ success: true, alerts: [], locations: [], alert: { condition: 'N', triggered: false } }),
     };
   };
   w.eval(BUNDLE);
@@ -79,9 +79,9 @@ function fenster() {
   d.innerHTML = alarmMarkup('10179-1');
   w.document.body.appendChild(d);
   // schliesse(): WITHOUT it the check hangs. startApp() in the bundle
-  // polls /api/v1/startup-status every second, and this timer
+  // polls /api/v2/startup-status every second, and this timer
   // keeps the Node process alive long after the test is done.
-  return { w, rufe, meldungen, feld: w.document.getElementById('m-alert-val'), schliesse: () => w.close() };
+  return { w, rufe, meldungen, field: w.document.getElementById('m-alert-val'), schliesse: () => w.close() };
 }
 
 const { warte } = require('./helpers/time');
@@ -89,8 +89,8 @@ const { warte } = require('./helpers/time');
 /** “249.90" character by character, with [takt] ms between the keystrokes. */
 async function tap(f, takt, text = '249.90') {
   for (let i = 1; i <= text.length; i++) {
-    f.feld.value = text.slice(0, i);
-    f.feld.dispatchEvent(new f.w.Event('input', { bubbles: true }));
+    f.field.value = text.slice(0, i);
+    f.field.dispatchEvent(new f.w.Event('input', { bubbles: true }));
     await warte(takt);
   }
   await warte(REST * 2);
@@ -136,7 +136,7 @@ test('the response does NOT write back into the field', async () => {
   // reload would turn it back into “249.9" and eat the character.
   const f = fenster();
   await tap(f, 40);
-  assert.equal(f.feld.value, '249.90', 'Das Feld wurde überschrieben');
+  assert.equal(f.field.value, '249.90', 'Das Feld wurde überschrieben');
   assert.deepEqual(
     f.rufe.filter(r => r.startsWith('GET')),
     [],
@@ -149,8 +149,8 @@ test('a cleared field deletes', async () => {
   // The natural gesture to get rid of an alert. A separate button next to it
   // would be a second path for the same intent.
   const f = fenster();
-  f.feld.value = '';
-  f.feld.dispatchEvent(new f.w.Event('input', { bubbles: true }));
+  f.field.value = '';
+  f.field.dispatchEvent(new f.w.Event('input', { bubbles: true }));
   await warte(REST * 2);
   assert.equal(f.rufe.length, 1, `Anfragen: ${f.rufe.join(' | ')}`);
   assert.match(f.rufe[0], /^DELETE .*\/alert\?condition=N$/, `Ein leeres Feld löschte nicht: ${f.rufe[0]}`);

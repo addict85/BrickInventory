@@ -16,18 +16,18 @@ const ICON = { set: 'set', teil: 'part', figur: 'minifig' };
 
 /**
  * Identical sets of two accounts looked the same; account and quantity distinguish them, also in the buttons' names.
- * @param {import('../../frontend-types/contract').PapierkorbEintrag} e
+ * @param {import('../../frontend-types/contract').TrashEntry} e
  * @param {Map<number, string>} accounts name per account, empty without a household
  */
 function row(e, accounts) {
-  const deadline = fmtDate(e.endgueltig_am);
+  const deadline = fmtDate(e.purge_at);
   const account = accounts.get(e.user_id);
-  const was = [e.number, e.label, tRaw('trash.quantity', { n: e.anzahl }), account].filter(Boolean).join(' · ');
+  const was = [e.number, e.label, tRaw('trash.quantity', { n: e.count }), account].filter(Boolean).join(' · ');
   return html`<div class="pk-row" data-pk-id="${e.id}">
     <span aria-hidden="true">${ico(ICON[e.type] || 'delete')}</span>
     <span class="pk-name"><span class="pk-nr">${e.number}</span>
       ${e.label ? html`${' · '}${e.label}` : ''}
-      <span>${' · '}${tRaw('trash.quantity', { n: e.anzahl })}</span>
+      <span>${' · '}${tRaw('trash.quantity', { n: e.count })}</span>
       ${account ? html`<span>${' · '}${account}</span>` : ''}</span>
     <span class="pk-deadline">${tRaw('trash.until', { date: deadline })}</span>
     <button class="btn bs btn-sm" data-click="restoreFromTrash" data-arg="${e.id}" aria-label="${tRaw('trash.restore_was', { was })}">${tRaw('trash.restore')}</button>
@@ -37,7 +37,7 @@ function row(e, accounts) {
 
 /** Name per account, only in the household: with one account the name would be the same on every row. */
 async function accountsNames() {
-  const d = await api('GET', '/v1/sets/household-members');
+  const d = await api('GET', '/v2/sets/household-members');
   const m = d?.success ? d.members : [];
   return new Map(
     m.length > 1 ? m.map(k => [k.id, k.is_self ? `${k.username} ${tRaw('household.ich')}` : k.username]) : [],
@@ -51,13 +51,13 @@ export async function loadTrash(focusAfter) {
   const before = focusAfter
     ? [...list.querySelectorAll('.pk-row')].findIndex(z => z.getAttribute('data-pk-id') === focusAfter)
     : -1;
-  const [d, accounts] = await Promise.all([api('GET', '/v1/papierkorb'), accountsNames()]);
+  const [d, accounts] = await Promise.all([api('GET', '/v2/trash'), accountsNames()]);
   const empty = G('trash-empty');
   if (!d?.success) {
     setHtml(list, html`<div class="voucher-empty">${tRaw('trash.load_error')}</div>`);
     return;
   }
-  const entries = d.eintraege || [];
+  const entries = d.entries || [];
   setHtml(
     list,
     entries.length
@@ -81,7 +81,7 @@ function loadInventoryNew() {
 /** @param {(number | string)[]} ids */
 async function restore(ids) {
   for (const id of ids) {
-    const d = await api('POST', `/v1/papierkorb/${id}/wiederherstellen`);
+    const d = await api('POST', `/v2/trash/${id}/restore`);
     if (!d?.success) {
       toast(d?.error || tRaw('settings.error'), 'error');
       return false;
@@ -106,10 +106,10 @@ export async function restoreFromTrash(id) {
 export async function deleteFromTrashPermanently(id) {
   const password = await confirmDeleteWithPassword(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'delete', {
     button: 'confirm.btn.permanently_delete',
-    art: 'bd',
+    kind: 'bd',
   });
   if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', `/v1/papierkorb/${id}`, { password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', `/v2/trash/${id}`, { password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -121,10 +121,10 @@ export async function deleteFromTrashPermanently(id) {
 export async function emptyTrash() {
   const password = await confirmDeleteWithPassword(tRaw('trash.clear'), tRaw('trash.clear_confirm'), 'delete', {
     button: 'confirm.btn.trash_empty',
-    art: 'bd',
+    kind: 'bd',
   });
   if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', '/v1/papierkorb', { password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', '/v2/trash', { password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -154,12 +154,12 @@ function focusIfDa(sel) {
 /**
  * The success message after deleting, with "undo".
  * @param {string} message
- * @param {{papierkorb?: number[]}} response the response of the DELETE
+ * @param {{trash?: number[]}} response the response of the DELETE
  * @param {() => unknown} [after] what to redraw afterwards, e.g. the open set detail
  * @param {string} [focus] selector of the entry that gets the focus after restoring
  */
 export function deletedWithUndo(message, response, after, focus) {
-  const ids = response?.papierkorb || [];
+  const ids = response?.trash || [];
   const el = toast(
     message,
     'success',

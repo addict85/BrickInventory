@@ -33,16 +33,16 @@ const SET = {
   quantity: 1,
   conditions: ['N'],
   avg_purchase_price: 199.99,
-  letzter_kauf: '2026-06-01T10:00:00Z',
+  last_purchase: '2026-06-01T10:00:00Z',
   added_at: '2026-11-01T10:00:00Z',
   instructions: [],
 };
 
 test('voucher number: separators off first, then groups of four; without a PDF it is in the text', async () => {
   const { w, d } = await openUi({
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 1, number: '6123-4567-8901', pin: '4711', amount: 50, currency: 'EUR', hat_pdf: false }],
+      vouchers: [{ id: 1, number: '6123-4567-8901', pin: '4711', amount: 50, currency: 'EUR', has_pdf: false }],
     },
   });
   try {
@@ -58,11 +58,11 @@ test('voucher number: separators off first, then groups of four; without a PDF i
 test('login error is read aloud (role=alert) and stays', async () => {
   const { w, d } = await openUi(
     {
-      '/v1/auth/login': {
+      '/v2/auth/login': {
         $status: 401,
         success: false,
         error: 'Benutzername oder Passwort falsch',
-        code: 'anmeldedaten_ungueltig',
+        code: 'credentials_invalid',
       },
     },
     { loggedIn: false },
@@ -83,9 +83,9 @@ test('login error is read aloud (role=alert) and stays', async () => {
 test('period and filter of the finances report their state (aria-pressed)', async () => {
   // Two measurement points: without history the period buttons are locked.
   const { w, d } = await openUi({
-    '/v1/finance/portfolio-history': {
+    '/v2/finance/portfolio-history': {
       success: true,
-      messpunkte: 2,
+      data_points: 2,
       points: [
         { x_label: '1.10.', value: 100 },
         { x_label: '1.11.', value: 110 },
@@ -122,7 +122,7 @@ test('period and filter of the finances report their state (aria-pressed)', asyn
 
 test('part count: collection and parts tab show the same sum with breakdown', async () => {
   const { w, d } = await openUi({
-    '/v1/stats': {
+    '/v2/stats': {
       success: true,
       stats: {
         total_sets: 4,
@@ -133,7 +133,7 @@ test('part count: collection and parts tab show the same sum with breakdown', as
         total_instructions: 0,
       },
     },
-    '/v1/parts/stats': {
+    '/v2/parts/stats': {
       success: true,
       stats: { total_parts: 144, manual_parts: 250, unique_parts: 3, unique_colors: 4 },
     },
@@ -151,19 +151,19 @@ test('part count: collection and parts tab show the same sum with breakdown', as
 });
 
 test('price on the tile is labeled, condition and date named (de and en)', async () => {
-  for (const [sprache, art, zustand, gekauft, unbekannt] of [
+  for (const [language, kind, condition, gekauft, unbekannt] of [
     ['de', 'Kaufpreis', 'Neuware', 'Gekauft', 'Unbekannt'],
     ['en', 'Purchase price', 'New', 'Bought', 'Unknown'],
   ]) {
     const { w, d } = await openUi(
-      { '/v1/sets': { success: true, sets: [SET], total: 1, themes: ['Ideas'] } },
-      { sprache },
+      { '/v2/sets': { success: true, sets: [SET], total: 1, themes: ['Ideas'] } },
+      { language },
     );
     try {
       await warte(() => d.querySelector('#gallery .sc'));
       const kachel = d.querySelector('#gallery .sc');
-      assert.equal(text(kachel.querySelector('.price-badge .price-kind')), art);
-      assert.match(text(kachel.querySelector('.cond-new')), new RegExp(`: ${zustand}$`));
+      assert.equal(text(kachel.querySelector('.price-badge .price-kind')), kind);
+      assert.match(text(kachel.querySelector('.cond-new')), new RegExp(`: ${condition}$`));
       assert.match(text(kachel.querySelector('.tile-date')), new RegExp(`^${gekauft} `));
       assert.equal(text(kachel.querySelector('.sname')), unbekannt);
     } finally {
@@ -177,8 +177,8 @@ test('offline: the chart says “not available” with reason and button instead
     throw new TypeError('Failed to fetch');
   };
   const { w, d } = await openUi({
-    '/v1/finance/valuation': netzweg,
-    '/v1/finance/portfolio-history': netzweg,
+    '/v2/finance/valuation': netzweg,
+    '/v2/finance/portfolio-history': netzweg,
   });
   try {
     await reiter(w, 'finance');
@@ -205,8 +205,8 @@ test('offline: the key figure cards of the finances drop, the period buttons are
   };
   {
     const { w, d } = await openUi({
-      '/v1/finance/valuation': netzweg,
-      '/v1/finance/portfolio-history': netzweg,
+      '/v2/finance/valuation': netzweg,
+      '/v2/finance/portfolio-history': netzweg,
     });
     try {
       await reiter(w, 'finance');
@@ -223,7 +223,7 @@ test('offline: the key figure cards of the finances drop, the period buttons are
     }
   }
   const { w, d } = await openUi({
-    '/v1/finance/valuation': { $status: 500, success: false, error: 'kaputt', code: 'intern' },
+    '/v2/finance/valuation': { $status: 500, success: false, error: 'kaputt', code: 'intern' },
   });
   try {
     await reiter(w, 'finance');
@@ -238,14 +238,14 @@ test('parts search without results: “No results for …” with a button that 
   const { w, d } = await openUi({});
   try {
     await reiter(w, 'parts');
-    const feld = d.getElementById('parts-search');
-    feld.value = 'xyz';
-    feld.dispatchEvent(new w.Event('input', { bubbles: true }));
+    const field = d.getElementById('parts-search');
+    field.value = 'xyz';
+    field.dispatchEvent(new w.Event('input', { bubbles: true }));
     await warte(() => /xyz/.test(text(d.querySelector('#tab-parts .empty-state'))), 3000);
     assert.equal(text(d.querySelector('#tab-parts .empty-state h2')), 'Keine Treffer für „xyz“');
     d.querySelector('#tab-parts .empty-state [data-click="resetFilter"]').click();
     await warte(() => text(d.querySelector('#tab-parts .empty-state h2')) === 'Noch keine Teile', 3000);
-    assert.equal(feld.value, '');
+    assert.equal(field.value, '');
   } finally {
     w.close();
   }
@@ -254,19 +254,19 @@ test('parts search without results: “No results for …” with a button that 
 test('background jobs: technical error as a sentence, details expandable', async () => {
   const roh = 'getaddrinfo ENOTFOUND rebrickable.com';
   const { w, d } = await openUi({
-    '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
-    '/v1/admin/auftraege': {
+    '/v2/admin/job-status': { success: true, job: { running: false } },
+    '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
+    '/v2/admin/job-queue': {
       success: true,
-      zusammenfassung: [{ type: 'anleitung', status: 'fehler', anzahl: 1 }],
-      job_prozess: { laeuft: true },
-      pausen: [],
-      bildbedarf: 0,
-      auftraege: [
+      summary: [{ type: 'instructions', status: 'error', count: 1 }],
+      job_process: { running: true },
+      pauses: [],
+      image_demand: 0,
+      jobs: [
         {
           id: '7',
-          type: 'anleitung',
-          status: 'fehler',
+          type: 'instructions',
+          status: 'error',
           set_number: '10294-1',
           error_message: roh,
           attempts: 3,
@@ -288,31 +288,31 @@ test('background jobs: technical error as a sentence, details expandable', async
 
 test('background jobs: a postponed job waits, an aborted one has not failed', async () => {
   const bis = new Date(Date.now() + 3 * 3600_000).toISOString();
-  const zeile = (id, mehr) => ({
+  const row = (id, mehr) => ({
     id,
-    type: 'preise_nachladen',
+    type: 'price_refresh',
     set_number: null,
     attempts: 3,
     max_attempts: 5,
     due_at: bis,
-    geplant: false,
+    scheduled: false,
     waiting: false,
     progress: null,
     ...mehr,
   });
   const { w, d } = await openUi({
-    '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
-    '/v1/admin/auftraege': {
+    '/v2/admin/job-status': { success: true, job: { running: false } },
+    '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
+    '/v2/admin/job-queue': {
       success: true,
-      zusammenfassung: [{ type: 'preise_nachladen', status: 'offen', anzahl: 2 }],
-      job_prozess: { laeuft: true },
-      pausen: [],
-      bildbedarf: 0,
-      auftraege: [
-        zeile('1', { status: 'offen', waiting: true, error_message: 'BrickLink-Tageskontingent erschöpft' }),
-        zeile('2', { status: 'offen', error_message: 'getaddrinfo ENOTFOUND api.bricklink.com' }),
-        zeile('3', { status: 'abgebrochen', error_message: 'abgebrochen', due_at: null }),
+      summary: [{ type: 'price_refresh', status: 'pending', count: 2 }],
+      job_process: { running: true },
+      pauses: [],
+      image_demand: 0,
+      jobs: [
+        row('1', { status: 'pending', waiting: true, error_message: 'BrickLink-Tageskontingent erschöpft' }),
+        row('2', { status: 'pending', error_message: 'getaddrinfo ENOTFOUND api.bricklink.com' }),
+        row('3', { status: 'cancelled', error_message: 'cancelled', due_at: null }),
       ],
     },
   });

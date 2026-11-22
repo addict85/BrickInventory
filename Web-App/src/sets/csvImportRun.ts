@@ -15,9 +15,9 @@ const CsvRowSchema = z.object({
   condition: z.string().nullable(),
   acquiredAt: z.string().nullable(),
   // Line of the file and, if it already failed while reading, why: the result then names it in its place.
-  zeile: z.number().int().optional(),
-  fehler: z
-    .object({ code: z.enum(['csv_menge_ungueltig', 'csv_keine_setnummer']), wert: z.string().optional() })
+  row: z.number().int().optional(),
+  error: z
+    .object({ code: z.enum(['csv_quantity_invalid', 'csv_no_set_number']), wert: z.string().optional() })
     .optional(),
 });
 /** Part of the kind 'csv_import', which the collection registers (src/collection/jobKinds.ts). */
@@ -30,16 +30,16 @@ export type CsvPayload = z.output<typeof SetCsvPayload>;
 export type CsvRow = CsvPayload['rows'][number];
 
 async function importRow(sk: SetsContext, z: CsvRow, userId: number): Promise<ImportResult> {
-  const wo = z.zeile ? { zeile: z.zeile } : {};
-  if (z.fehler) {
-    const vars = z.fehler.wert !== undefined ? { wert: z.fehler.wert } : undefined;
+  const wo = z.row ? { row: z.row } : {};
+  if (z.error) {
+    const vars = z.error.wert !== undefined ? { wert: z.error.wert } : undefined;
     return {
       set_number: z.sn,
       ...wo,
       success: false,
-      code: z.fehler.code,
+      code: z.error.code,
       ...(vars ? { vars } : {}),
-      error: errorText(z.fehler.code, 'de', vars),
+      error: errorText(z.error.code, 'de', vars),
     };
   }
   return { ...(await bookRow(sk, z, userId)), ...wo };
@@ -54,30 +54,29 @@ async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<Impo
       acquireSet(sk, {
         requester: userId,
         setNumber: z.sn,
-        menge: z.qty,
+        quantity: z.qty,
         kaufpreis: z.purchasePrice,
-        zustand: z.condition,
+        condition: z.condition,
         recordedAt: z.acquiredAt,
         ifPresent: 'aufstocken',
         nacharbeit: 'csv',
       }),
       new Promise<never>((_, rej) => {
-        alarm = setTimeout(() => rej(new Error('Timeout')), sk.konfig.csvRowDeadlineMs);
+        alarm = setTimeout(() => rej(new Error('Timeout')), sk.config.csvRowDeadlineMs);
       }),
     ]).finally(() => clearTimeout(alarm));
     return {
       set_number: z.sn,
       success: true,
       action: r.action,
-      menge: z.qty,
-      ...(r.action === 'added' && r.katalog_offen ? { katalog_offen: true } : {}),
+      quantity: z.qty,
+      ...(r.action === 'added' && r.catalog_pending ? { catalog_pending: true } : {}),
     };
   } catch (e) {
     const msg = errorMessage(e) || 'Unbekannter Fehler';
     const isWarning = msg.includes('Timeout');
     console[isWarning ? 'warn' : 'error'](`CSV: ${z.sn} ${isWarning ? 'WARNING' : 'FAILED'}: ${msg}`);
-    const code: ErrorCode | undefined =
-      e instanceof DomainError ? e.code : isWarning ? 'import_zeitueberschreitung' : undefined;
+    const code: ErrorCode | undefined = e instanceof DomainError ? e.code : isWarning ? 'import_timeout' : undefined;
     return {
       set_number: z.sn,
       success: false,
@@ -92,19 +91,19 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
   const userId = Number(n.user_id),
     lauf = String(n.lauf),
     rows = n.rows ?? [];
-  const stand = await sk.jobQueue.setImportFort(userId, lauf);
-  if (!stand) return;
-  const results = stand.results;
+  const state = await sk.jobQueue.setImportFort(userId, lauf);
+  if (!state) return;
+  const results = state.results;
   const write = () =>
     sk.jobQueue.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
 
-  if (stand.current && results.length < rows.length) {
+  if (state.current && results.length < rows.length) {
     results.push({
       set_number: rows[results.length]!.sn,
       success: false,
       isWarning: true,
-      code: 'import_zeile_unterbrochen',
-      error: errorText('import_zeile_unterbrochen', 'de'),
+      code: 'import_row_interrupted',
+      error: errorText('import_row_interrupted', 'de'),
     });
     if (!(await write())) return;
   }

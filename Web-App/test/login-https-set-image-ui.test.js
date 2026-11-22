@@ -17,21 +17,21 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const COOKIE_MISSING = /^Anmeldung erfolgreich, aber der Browser hat das Sitzungs-Cookie nicht gespeichert\./;
-const WITHOUT_SESSION = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' };
+const WITHOUT_SESSION = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' };
 
 /** @param {{ sicher: boolean, url?: string, login: object, danach?: object }} f */
 async function anmelden(f) {
   let angemeldet = false;
   const o = await openUi(
     {
-      '/v1/auth/login': () => {
+      '/v2/auth/login': () => {
         angemeldet = true;
         return f.login;
       },
       ...(f.danach
         ? {
-            '/v1/sets': () => (angemeldet ? f.danach : { success: true, sets: [], count: 0, total: 0, themes: [] }),
-            '/v1/stats': () => (angemeldet ? f.danach : { success: true, stats: {} }),
+            '/v2/sets': () => (angemeldet ? f.danach : { success: true, sets: [], count: 0, total: 0, themes: [] }),
+            '/v2/stats': () => (angemeldet ? f.danach : { success: true, stats: {} }),
           }
         : {}),
     },
@@ -54,7 +54,7 @@ test('M1 login without a set session cookie', async t => {
     const { w, d, aufrufe } = await anmelden({
       sicher: true,
       url: 'https://localhost/',
-      login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, keks_fehlt: true },
+      login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, cookie_missing: true },
     });
     try {
       assert.match(text(d.getElementById('login-hint')), COOKIE_MISSING);
@@ -62,8 +62,8 @@ test('M1 login without a set session cookie', async t => {
       assert.equal(d.getElementById('login-screen').style.display, 'flex');
       assert.equal(d.getElementById('lu').value, 'anna', 'Name bleibt stehen');
       assert.equal(d.getElementById('lp').value, '', 'Passwort bleibt nicht stehen');
-      const nachher = aufrufe.slice(aufrufe.findIndex(a => a.url.includes('/v1/auth/login')));
-      assert.equal(nachher.filter(a => a.url.includes('/v1/sets')).length, 0, 'Sammlung ohne Sitzung gefragt');
+      const nachher = aufrufe.slice(aufrufe.findIndex(a => a.url.includes('/v2/auth/login')));
+      assert.equal(nachher.filter(a => a.url.includes('/v2/sets')).length, 0, 'Sammlung ohne Sitzung gefragt');
     } finally {
       w.close();
     }
@@ -71,7 +71,7 @@ test('M1 login without a set session cookie', async t => {
   await t.test('server confirms the cookie (keks_fehlt: false): a 401 means expired', async () => {
     const { w, d } = await anmelden({
       sicher: true,
-      login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, keks_fehlt: false },
+      login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, cookie_missing: false },
       danach: WITHOUT_SESSION,
     });
     try {
@@ -124,9 +124,9 @@ test('N1 hint without HTTPS already on the login page', async t => {
 test('N3 finance error: period, chips and search gone, back after success', async () => {
   let kaputt = true;
   const { w, d, ruhig } = await openUi({
-    '/v1/finance/valuation': () =>
+    '/v2/finance/valuation': () =>
       kaputt
-        ? { $status: 500, success: false, error: 'interner Fehler', code: 'interner_fehler' }
+        ? { $status: 500, success: false, error: 'interner Fehler', code: 'internal_error' }
         : {
             success: true,
             currency: 'EUR',
@@ -153,29 +153,29 @@ test('N3 finance error: period, chips and search gone, back after success', asyn
 test('N7 set image in the detail: a real button, operable with an image', async () => {
   const IMAGE = '/images/sets/10300-1.jpg';
   const { w, d } = await openUi({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       total: 1,
       themes: [],
       sets: [{ set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1, image_local: IMAGE }],
     },
-    '/v1/sets/10300-1': {
+    '/v2/sets/10300-1': {
       success: true,
       set: { set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1, image_local: IMAGE },
     },
-    '/v1/sets/10300-1/acquisitions': { success: true, acquisitions: [] },
+    '/v2/sets/10300-1/acquisitions': { success: true, acquisitions: [] },
   });
   try {
-    const bild = d.getElementById('m-img');
-    const knopf = bild.parentElement;
+    const image = d.getElementById('m-img');
+    const knopf = image.parentElement;
     assert.equal(knopf.tagName, 'BUTTON');
     assert.equal(knopf.getAttribute('aria-label'), 'Bild vergrössern');
-    assert.equal(bild.getAttribute('alt'), '', 'das Bild trägt keinen zweiten Namen');
+    assert.equal(image.getAttribute('alt'), '', 'das Bild trägt keinen zweiten Namen');
     assert.equal(knopf.disabled, true, 'ohne Bild gesperrt');
     await reiter(w, 'gallery');
     await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    await warte(() => /10300-1\.jpg/.test(bild.getAttribute('src') || ''));
+    await warte(() => /10300-1\.jpg/.test(image.getAttribute('src') || ''));
     assert.equal(knopf.disabled, false, 'mit Bild bedienbar');
     assert.equal(knopf.hasAttribute('aria-hidden'), false);
     knopf.click();

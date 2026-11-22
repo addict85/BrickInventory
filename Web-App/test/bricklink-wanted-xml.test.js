@@ -157,13 +157,13 @@ test('8. measured in bytes, not in characters', async () => {
   // only with umlauts, i.e. exactly in Marco's language.
   const { buildWantedXmlPieces } = await modul();
   const grenze = 20000;
-  const posten = Array.from({ length: 400 }, (_, i) => ({
+  const items = Array.from({ length: 400 }, (_, i) => ({
     type: 'P',
     part: `grösser-türkis-weiss-${i}`,
     color: 4,
     qty: 1,
   }));
-  const stuecke = buildWantedXmlPieces(posten, grenze);
+  const stuecke = buildWantedXmlPieces(items, grenze);
   assert.ok(stuecke.length > 1, 'Vorbedingung: es muss geschnitten werden');
   for (const [i, s] of stuecke.entries())
     assert.ok(

@@ -48,7 +48,7 @@ function loadedImages(w) {
 }
 
 test('loaded images are marked as loaded immediately, also in the list', async () => {
-  const { w, d, warte } = await openUi({ '/v1/sets': SETS }, { before: loadedImages });
+  const { w, d, warte } = await openUi({ '/v2/sets': SETS }, { before: loadedImages });
   try {
     assert.ok(await warte(() => d.querySelectorAll('#gallery img').length === 2));
     const notLoaded = () => [...d.querySelectorAll('#gallery img')].filter(i => !i.classList.contains('loaded'));
@@ -75,20 +75,20 @@ test('prices go into the existing tile; an empty container is hidden', async () 
   });
   const { w, d, warte, ruhig } = await openUi(
     {
-      '/v1/sets': SETS,
-      '/v1/finance/pnl': () =>
+      '/v2/sets': SETS,
+      '/v2/finance/pnl': () =>
         preise.then(() => ({
           success: true,
           currency: 'EUR',
-          sets: [{ set_number: '10294-1', quantity: 1, kachel_preis: 679.99, kachel_quelle: 'markt' }],
-          totals: { purchase: '0', current: '679.99', kaufpreise_fremde_waehrung: 0 },
+          sets: [{ set_number: '10294-1', quantity: 1, tile_price: 679.99, tile_source: 'market' }],
+          totals: { purchase: '0', current: '679.99', foreign_currency_purchases: 0 },
         })),
     },
     { before: loadedImages },
   );
   try {
     assert.ok(await warte(() => d.querySelector('#gallery [data-price-for="10294-1"]')));
-    const bild = d.querySelector('#gallery img');
+    const image = d.querySelector('#gallery img');
     const titanic = d.querySelector('#gallery [data-price-for="10294-1"]');
     const treehouse = d.querySelector('#gallery [data-price-for="21318-1"]');
     assert.equal(titanic.hidden, true, 'vor dem Preis verborgen');
@@ -96,7 +96,7 @@ test('prices go into the existing tile; an empty container is hidden', async () 
     priceLos();
     assert.ok(await warte(() => /679/.test(d.querySelector('#gallery [data-price-for="10294-1"]')?.textContent || '')));
     await ruhig();
-    assert.equal(d.querySelector('#gallery img'), bild, 'die Kachelwand wurde neu gebaut');
+    assert.equal(d.querySelector('#gallery img'), image, 'die Kachelwand wurde neu gebaut');
     assert.equal(d.querySelector('#gallery [data-price-for="10294-1"]'), titanic);
     assert.equal(titanic.hidden, false);
     assert.equal(treehouse.hidden, true, 'ohne Preis bleibt der Container verborgen');

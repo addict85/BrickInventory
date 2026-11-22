@@ -14,9 +14,9 @@ import type { ForeignSourcesServices } from '../externalSources';
 import type { Clock } from '../infra/clock';
 
 export interface MinifigsDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   household: HouseholdServices;
   catalog: CatalogServices;
   finances: FinancesServices;

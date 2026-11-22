@@ -59,13 +59,13 @@ test('catalog reconciliation without network', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const vorher = (await db.get(`SELECT value FROM run_state WHERE key='rb_csv_last_sync'`))?.value ?? null;
   await db.run(`DELETE FROM run_state WHERE key IN ('rb_csv_last_sync','startup_status')`);
-  const zustand = _req('src/jobQueue/startState.js');
-  await zustand.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
+  const condition = _req('src/jobQueue/startState.js');
+  await condition.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   try {
     await t.test('without network the server is ready anyway', async () => {
       await assert.rejects(_req('src/catalog/csvSync.js').run(), 'der Auftrag soll den Fehler sehen und wiederholen');
-      const stand = await zustand.currentStartState();
-      assert.equal(stand.ready, true, JSON.stringify(stand));
+      const state = await condition.currentStartState();
+      assert.equal(state.ready, true, JSON.stringify(state));
       const gespeichert = JSON.parse((await db.get(`SELECT value FROM run_state WHERE key='startup_status'`)).value);
       assert.equal(gespeichert.ready, true, 'die anderen Worker lesen den Stand aus der Datenbank');
     });

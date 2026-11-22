@@ -28,7 +28,7 @@ function klick(o, daten) {
   o.d.body.append(k);
   k.click();
 }
-const schreibt = (o, pfad) => o.aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith(pfad));
+const schreibt = (o, path) => o.aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith(path));
 const choose = (o, id, wert) => {
   const s = o.d.getElementById(id);
   s.value = wert;
@@ -38,7 +38,7 @@ const choose = (o, id, wert) => {
 
 test("web app: in the set detail choose from the owner's stock or type a new one", async () => {
   const o = await openUi({
-    [`/v1/sets/${SN}`]: {
+    [`/v2/sets/${SN}`]: {
       success: true,
       set: {
         set_number: SN,
@@ -50,16 +50,16 @@ test("web app: in the set detail choose from the owner's stock or type a new one
         owners: [{ id: 7, username: 'ben' }],
       },
     },
-    '/v1/storage/locations': u => ({
+    '/v2/storage/locations': u => ({
       success: true,
-      orte: /owner=7/.test(u)
+      locations: /owner=7/.test(u)
         ? [
             { id: 1, name: 'Keller' },
             { id: 2, name: 'Regal A' },
           ]
         : [],
     }),
-    [`/v1/sets/${SN}/storage`]: { success: true },
+    [`/v2/sets/${SN}/storage`]: { success: true },
   });
   try {
     klick(o, { click: 'openModal', arg: SN });
@@ -68,13 +68,13 @@ test("web app: in the set detail choose from the owner's stock or type a new one
       'der Vorrat des Besitzers fehlt in der Auswahl',
     );
     assert.ok(
-      o.aufrufe.some(a => /\/v1\/storage\/locations\?owner=7$/.test(a.url)),
+      o.aufrufe.some(a => /\/v2\/storage\/locations\?owner=7$/.test(a.url)),
       'nicht nach der Liste des Besitzers gefragt',
     );
     assert.equal(o.d.getElementById('m-storage-sel').value, 'Keller');
     choose(o, 'm-storage-sel', 'Regal A');
-    assert.ok(await warte(() => schreibt(o, `/v1/sets/${SN}/storage`).length === 1), 'die Wahl speichert nicht');
-    assert.deepEqual(JSON.parse(schreibt(o, `/v1/sets/${SN}/storage`)[0].body), { storage: 'Regal A' });
+    assert.ok(await warte(() => schreibt(o, `/v2/sets/${SN}/storage`).length === 1), 'die Wahl speichert nicht');
+    assert.deepEqual(JSON.parse(schreibt(o, `/v2/sets/${SN}/storage`)[0].body), { storage: 'Regal A' });
     const auswahl = o.d.getElementById('m-storage-sel');
     auswahl.selectedIndex = [...auswahl.options].findIndex(x => x.dataset.new === '1');
     assert.ok(auswahl.selectedIndex > 0, 'kein Eintrag „neuer Ort“');
@@ -88,14 +88,14 @@ test("web app: in the set detail choose from the owner's stock or type a new one
 
 test('web app: the part has the field and saves, the figure does not', async () => {
   const o = await openUi({
-    '/v1/parts/3001/5/sets': {
+    '/v2/parts/3001/5/sets': {
       success: true,
       item: { name: 'Stein', color_name: 'Red', total_quantity: 2, owner_ids: [1], storage: null },
       sets: [],
     },
-    '/v1/minifigs/sw0001/sets': { success: true, item: { name: 'Figur', total_quantity: 1 }, sets: [] },
-    '/v1/storage/locations': { success: true, orte: [{ id: 3, name: 'Kiste 3' }] },
-    '/v1/parts/3001/5/storage': { success: true },
+    '/v2/minifigs/sw0001/sets': { success: true, item: { name: 'Figur', total_quantity: 1 }, sets: [] },
+    '/v2/storage/locations': { success: true, locations: [{ id: 3, name: 'Kiste 3' }] },
+    '/v2/parts/3001/5/storage': { success: true },
   });
   try {
     klick(o, { click: 'openSetItemDetail', arg: 'part', arg2: '3001', arg3: '5' });
@@ -105,7 +105,7 @@ test('web app: the part has the field and saves, the figure does not', async () 
     );
     choose(o, 'setitem-storage-sel', 'Kiste 3');
     assert.ok(
-      await warte(() => schreibt(o, '/v1/parts/3001/5/storage').length === 1),
+      await warte(() => schreibt(o, '/v2/parts/3001/5/storage').length === 1),
       'Teil: die Wahl speichert nicht',
     );
     o.d.getElementById('setitem-modal').classList.remove('open');
@@ -120,7 +120,7 @@ test('web app: the part has the field and saves, the figure does not', async () 
 
 test('web app: the filter stands next to the account filter and goes to the server', async () => {
   const o = await openUi({
-    '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 1, teile: 0, figuren: 0 }] },
+    '/v2/storage': { success: true, locations: [{ location: 'Regal A', sets: 1, parts: 0, minifigs: 0 }] },
   });
   try {
     await o.ruhig();
@@ -136,7 +136,7 @@ test('web app: the filter stands next to the account filter and goes to the serv
     );
     choose(o, 'storage-gallery', 'Regal A');
     assert.ok(
-      await warte(() => o.aufrufe.some(a => /\/v1\/sets\?.*storage=Regal(\+|%20)A/.test(a.url))),
+      await warte(() => o.aufrufe.some(a => /\/v2\/sets\?.*storage=Regal(\+|%20)A/.test(a.url))),
       'der Filter geht nicht an den Server',
     );
   } finally {
@@ -156,7 +156,7 @@ test('the length limit is the same in server, error text and web app', async () 
     e => e instanceof Error && e.message.includes(`höchstens ${max} Zeichen`),
   );
   const o = await openUi({
-    [`/v1/sets/${SN}`]: {
+    [`/v2/sets/${SN}`]: {
       success: true,
       set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['N'], instructions: [] },
     },

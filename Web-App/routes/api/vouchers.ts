@@ -18,29 +18,29 @@ function forOuter(z: VoucherRow) {
     ...masked(z),
     amount: Number(z.amount),
     currency: z.currency,
-    hat_pdf: !!z.pdf_path,
+    has_pdf: !!z.pdf_path,
     created_at: z.created_at,
     updated_at: z.updated_at,
     // NULL goes along too: a balance never checked should differ from one that was.
-    guthaben_geprueft_am: z.guthaben_geprueft_am,
+    balance_checked_at: z.balance_checked_at,
   };
 }
 
 /** `wartenSek` goes along, after that the frontend paces itself. */
-function locked(grund: string, wartenSek: number): never {
-  const min = Math.ceil(wartenSek / 60);
+function locked(reason: string, waitSeconds: number): never {
+  const min = Math.ceil(waitSeconds / 60);
   const [code, vars]: [ErrorCode, Record<string, number>] =
-    grund === 'konto'
-      ? ['zu_viele_anfragen', { minuten: min }]
-      : grund === 'botschutz'
-        ? ['guthaben_botschutz', { min }]
-        : ['guthaben_abstand', { sek: GAP_SEC, warten: wartenSek }];
-  throw new DomainError('zu_viele', code, vars, { grund, wartenSek });
+    reason === 'konto'
+      ? ['too_many_requests', { minutes: min }]
+      : reason === 'botschutz'
+        ? ['balance_bot_protection', { min }]
+        : ['balance_interval', { sek: GAP_SEC, warten: waitSeconds }];
+  throw new DomainError('zu_viele', code, vars, { reason, waitSeconds });
 }
 
 export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
   const { requireToken } = guardFor(d.account);
-  const router = contractRouter('/api/v1');
+  const router = contractRouter('/api/v2');
 
   /** PDF only: only text is read out, a photo the server could not read anyway. */
   const upload = multer({
@@ -50,49 +50,49 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
     fileFilter: (_req, file, cb) => {
       // Literal comparison: no inherited table value to be fooled by.
       if (file.mimetype === 'application/pdf') cb(null, true);
-      else cb(fileError('falscher_typ', 'nur_pdf'));
+      else cb(fileError('falscher_typ', 'pdf_only'));
     },
   });
 
-  router.endpoint('GET /api/v1/vouchers', requireToken, async req => {
-    const { eintraege, ...page } = pageFrom(await d.vouchers.voucherList(req.apiUser.user_id), req.abfrage);
-    return { vouchers: eintraege.map(forOuter), ...page };
+  router.endpoint('GET /api/v2/vouchers', requireToken, async req => {
+    const { entries, ...page } = pageFrom(await d.vouchers.voucherList(req.apiUser.user_id), req.queryArgs);
+    return { vouchers: entries.map(forOuter), ...page };
   });
 
-  router.endpoint('POST /api/v1/vouchers', requireToken, async req => {
-    return { voucher: forOuter(await d.vouchers.createVoucher(req.apiUser.user_id, req.eingabe)) };
+  router.endpoint('POST /api/v2/vouchers', requireToken, async req => {
+    return { voucher: forOuter(await d.vouchers.createVoucher(req.apiUser.user_id, req.input)) };
   });
 
   router.endpoint(
-    'POST /api/v1/vouchers/pdf',
+    'POST /api/v2/vouchers/pdf',
     requireToken,
     accountGate('voucherPdf'),
     async (req: express.Request, _res: express.Response, next: express.NextFunction) => {
       if (!(await totalSufficesFor(Number(req.headers['content-length']) || 0)))
-        failDomain('speicher_voll', 'upload_gesamt_voll', { mb: uploadTotalMb() });
+        failDomain('speicher_voll', 'upload_total_full', { mb: uploadTotalMb() });
       next();
     },
     upload.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'keine_datei');
-      const r = await d.vouchers.voucherFromPdf(req.apiUser.user_id, req.file.buffer, req.eingabe);
+      if (!req.file) failDomain('ungueltig', 'no_file');
+      const r = await d.vouchers.voucherFromPdf(req.apiUser.user_id, req.file.buffer, req.input);
       // Its own block so the frontend can tell from one field which case happened.
-      if (r.art === 'stapel') return { mehrere: r.bericht };
-      return { voucher: forOuter(r.zeile), gelesen: readAs(r.gelesen) };
+      if (r.kind === 'stapel') return { multiple: r.bericht };
+      return { voucher: forOuter(r.row), parsed: readAs(r.parsed) };
     },
   );
 
   // The batch paths BEFORE the :id paths: otherwise `:id` would catch the word "export".
 
-  router.endpoint('POST /api/v1/vouchers/export/pdf-freigabe', requireToken, async (req, res) => {
-    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    return { ticket: await d.vouchers.releaseExport(req.apiUser.user_id), gueltig_sek: TICKET_SEC };
+  router.endpoint('POST /api/v2/vouchers/export/pdf-grant', requireToken, async (req, res) => {
+    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
+    return { ticket: await d.vouchers.releaseExport(req.apiUser.user_id), valid_seconds: TICKET_SEC };
   });
 
-  router.endpoint('GET /api/v1/vouchers/export/pdf', requireToken, async (req, res) => {
+  router.endpoint('GET /api/v2/vouchers/export/pdf', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
-    if (!(await d.vouchers.redeemTicket(req.abfrage.ticket, uid, 'export')))
-      failDomain('verboten', 'pdf_freigabe_noetig');
+    if (!(await d.vouchers.redeemTicket(req.queryArgs.ticket, uid, 'export')))
+      failDomain('verboten', 'pdf_grant_required');
     const { pdf, results } = await d.vouchers.exportVouchers(uid);
     const tag = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/pdf');
@@ -103,41 +103,41 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
     res.end(pdf);
   });
 
-  router.endpoint('PUT /api/v1/vouchers/:id', requireToken, async req => {
-    const id = req.pfad.id;
-    return { voucher: forOuter(await d.vouchers.changeVoucher(req.apiUser.user_id, id, req.eingabe)) };
+  router.endpoint('PUT /api/v2/vouchers/:id', requireToken, async req => {
+    const id = req.pathArgs.id;
+    return { voucher: forOuter(await d.vouchers.changeVoucher(req.apiUser.user_id, id, req.input)) };
   });
 
   // Final and cash: with confirmation, like emptying the trash.
-  router.endpoint('DELETE /api/v1/vouchers/:id', requireToken, async (req, res) => {
-    const id = req.pfad.id;
-    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+  router.endpoint('DELETE /api/v2/vouchers/:id', requireToken, async (req, res) => {
+    const id = req.pathArgs.id;
+    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
     await d.vouchers.deleteVoucher(req.apiUser.user_id, id);
     return {};
   });
 
-  router.endpoint('POST /api/v1/vouchers/:id/klartext', requireToken, async (req, res) => {
-    const id = req.pfad.id;
-    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+  router.endpoint('POST /api/v2/vouchers/:id/plaintext', requireToken, async (req, res) => {
+    const id = req.pathArgs.id;
+    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
     const z = await d.vouchers.voucherPlaintext(req.apiUser.user_id, id);
     return { id: z.id, number: z.number, pin: z.pin };
   });
 
-  router.endpoint('POST /api/v1/vouchers/:id/pdf-freigabe', requireToken, async (req, res) => {
-    const id = req.pfad.id;
-    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, id), gueltig_sek: TICKET_SEC };
+  router.endpoint('POST /api/v2/vouchers/:id/pdf-grant', requireToken, async (req, res) => {
+    const id = req.pathArgs.id;
+    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
+    return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, id), valid_seconds: TICKET_SEC };
   });
 
-  router.endpoint('GET /api/v1/vouchers/:id/pdf', requireToken, async (req, res) => {
-    const id = req.pfad.id;
-    if (!(await d.vouchers.redeemTicket(req.abfrage.ticket, req.apiUser.user_id, String(id))))
-      failDomain('verboten', 'pdf_freigabe_noetig');
+  router.endpoint('GET /api/v2/vouchers/:id/pdf', requireToken, async (req, res) => {
+    const id = req.pathArgs.id;
+    if (!(await d.vouchers.redeemTicket(req.queryArgs.ticket, req.apiUser.user_id, String(id))))
+      failDomain('verboten', 'pdf_grant_required');
     const pdf = await d.vouchers.voucherPdf(req.apiUser.user_id, id);
     res.type('application/pdf');
     // Without the card number: file names end up in download lists and logs.
-    const art = (req.abfrage.download ?? false) ? 'attachment' : 'inline';
-    res.setHeader('Content-Disposition', `${art}; filename="gutschein-${id}.pdf"`);
+    const kind = (req.queryArgs.download ?? false) ? 'attachment' : 'inline';
+    res.setHeader('Content-Disposition', `${kind}; filename="gutschein-${id}.pdf"`);
     // A voucher belongs in no shared cache.
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('Content-Security-Policy', FOREIGN_FILE_CSP);
@@ -145,15 +145,15 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
   });
 
   // No batch route: at most one fetch every 30s across ALL users, that would hide them.
-  router.endpoint('POST /api/v1/vouchers/:id/guthaben', requireToken, async req => {
-    const id = req.pfad.id;
+  router.endpoint('POST /api/v2/vouchers/:id/balance', requireToken, async req => {
+    const id = req.pathArgs.id;
     const r = await d.vouchers.checkBalance(req.apiUser.user_id, id);
-    if (r.art === 'gesperrt') locked(r.grund, r.wartenSek);
+    if (r.kind === 'gesperrt') locked(r.reason, r.waitSeconds);
     return {
-      voucher: forOuter(r.zeile),
-      angezeigt: r.angezeigt,
+      voucher: forOuter(r.row),
+      displayed: r.displayed,
       // A silently changed currency would be a changed total without a hint.
-      waehrung_geaendert: r.currencyChanged,
+      currency_changed: r.currencyChanged,
     };
   });
   return router;

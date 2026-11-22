@@ -42,7 +42,7 @@ const PL = require('@cantoo/pdf-lib');
 const TTF = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
 
 /** A voucher PDF as LEGO writes it: the sentence, the number, the PIN. */
-function buildVoucher(amountText, nummer, pin, schrift) {
+function buildVoucher(amountText, number, pin, schrift) {
   return new Promise(fertig => {
     const d = new PDFKit({ size: 'A4' });
     const stuecke = [];
@@ -50,7 +50,7 @@ function buildVoucher(amountText, nummer, pin, schrift) {
     d.on('end', () => fertig(Buffer.concat(stuecke)));
     if (schrift) d.font(schrift);
     d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${amountText} CHF:`, 60, 100);
-    d.fontSize(12).text(nummer, 60, 140).text(`PIN: ${pin}`, 60, 170);
+    d.fontSize(12).text(number, 60, 140).text(`PIN: ${pin}`, 60, 170);
     d.end();
   });
 }
@@ -60,7 +60,7 @@ function buildVoucher(amountText, nummer, pin, schrift) {
  * encoding. Only this way can the font barrier be checked — pdfkit does not build
  * anything like that.
  */
-async function buildWithEncoding(unsicher) {
+async function buildWithEncoding(uncertain) {
   const doc = await PL.PDFDocument.create();
   const seite = doc.addPage([595, 842]);
   const ctx = doc.context;
@@ -70,7 +70,7 @@ async function buildWithEncoding(unsicher) {
     BaseFont: 'Sonderbar',
     FirstChar: 32,
     LastChar: 255,
-    ...(unsicher
+    ...(uncertain
       ? {
           Encoding: ctx.obj({
             Type: 'Encoding',
@@ -95,8 +95,8 @@ async function buildWithEncoding(unsicher) {
     'BT /F9 14 Tf 60 740 Td (Ihre LEGO-Geschenkkarte im Wert von 400 CHF:) Tj ET\n' +
     'BT /F1 12 Tf 60 700 Td (5045076374450011166) Tj ET\n' +
     'BT /F1 12 Tf 60 680 Td (PIN: 5225) Tj ET\n';
-  const strom = PL.PDFRawStream.of(ctx.obj({ Length: inhalt.length }), Buffer.from(inhalt, 'latin1'));
-  seite.node.set(PL.PDFName.of('Contents'), ctx.register(strom));
+  const stream = PL.PDFRawStream.of(ctx.obj({ Length: inhalt.length }), Buffer.from(inhalt, 'latin1'));
+  seite.node.set(PL.PDFName.of('Contents'), ctx.register(stream));
   return Buffer.from(await doc.save());
 }
 
@@ -114,7 +114,7 @@ test('1. the amount is replaced in the original — three notations', async () =
     const original = await buildVoucher(geschrieben, NR, '5225', null);
     const vorher = valuesFromPdf(original);
     const r = await replaceAmount(original, neu);
-    assert.ok(r.data, `„${geschrieben}" → ${neu} wurde abgelehnt: ${r.grund}`);
+    assert.ok(r.data, `„${geschrieben}" → ${neu} wurde abgelehnt: ${r.reason}`);
     const nachher = valuesFromPdf(r.data);
     assert.equal(nachher.amount, neu, `Aus „${geschrieben}" wurde ${nachher.amount} statt ${neu}`);
     assert.equal(nachher.number, vorher.number, 'Die Kartennummer hat sich verändert');
@@ -128,7 +128,7 @@ test('2. an already correct amount stays untouched', async () => {
   // even if there is nothing to change.
   const original = await buildVoucher('400', NR, '5225', null);
   const r = await replaceAmount(original, 400);
-  assert.ok(r.data, `Abgelehnt, obwohl nichts zu tun war: ${r.grund}`);
+  assert.ok(r.data, `Abgelehnt, obwohl nichts zu tun war: ${r.reason}`);
   assert.equal(r.hits, 0, `${r.hits} Operatoren geändert, erwartet 0`);
   assert.equal(r.data, original, 'Es kam ein neues PDF zurück statt des Originals');
 });
@@ -143,16 +143,16 @@ test('3. a PDF without a readable amount is rejected, not guessed', async () => 
   const r = await replaceAmount(original, 250);
   assert.equal(r.data, null, 'Es wurde etwas ersetzt, obwohl kein Betrag zu finden war');
   assert.match(
-    String(r.grund),
+    String(r.reason),
     /No amount/,
-    `Der Grund lautet „${r.grund}" — er soll sagen, dass nichts zu finden war`,
+    `Der Grund lautet „${r.reason}" — er soll sagen, dass nichts zu finden war`,
   );
 });
 
 test('4. writing and reading the marker is reversible', () => {
-  const w = { nummer: NR, pin: '5225', betrag: 249.5, waehrung: 'CHF' };
-  const gelesen = readMark(markText(w));
-  assert.deepEqual(gelesen, { number: NR, pin: '5225', amount: 249.5, currency: 'CHF' });
+  const w = { number: NR, pin: '5225', betrag: 249.5, currency: 'CHF' };
+  const parsed = readMark(markText(w));
+  assert.deepEqual(parsed, { number: NR, pin: '5225', amount: 249.5, currency: 'CHF' });
   // A line that is no marker must not produce one — otherwise the
   // import would find a voucher in every text.
   assert.equal(readMark('Ihre LEGO-Geschenkkarte im Wert von 400 CHF:'), null);
@@ -182,11 +182,11 @@ test('5. three vouchers become ONE PDF and all come back', async () => {
 
   assert.equal((await PL.PDFDocument.load(pdf)).getPageCount(), 3, 'Es sind nicht drei Seiten geworden');
   assert.deepEqual(
-    results.map(b => b.art),
+    results.map(b => b.kind),
     ['ersetzt', 'unveraendert', 'erzeugt'],
-    `Die Befunde lauten ${JSON.stringify(results.map(b => b.art))}`,
+    `Die Befunde lauten ${JSON.stringify(results.map(b => b.kind))}`,
   );
-  assert.ok(results[1].grund, 'Zum unveränderten Gutschein steht kein Grund dabei');
+  assert.ok(results[1].reason, 'Zum unveränderten Gutschein steht kein Grund dabei');
 
   // ── The round trip ───────────────────────────────────────────────────────
   const zurueck = await readPageByPage(pdf);
@@ -210,20 +210,20 @@ test('6. a font with its own encoding is NOT touched', async () => {
   // The most important case. Both PDFs are identical except for the encoding
   // of the amount font, and in BOTH the reader reads 400.
   const sicher = await buildWithEncoding(false);
-  const unsicher = await buildWithEncoding(true);
+  const uncertain = await buildWithEncoding(true);
   assert.equal(valuesFromPdf(sicher).amount, 400, 'Vorbedingung: WinAnsi ist lesbar');
   assert.equal(
-    valuesFromPdf(unsicher).amount,
+    valuesFromPdf(uncertain).amount,
     400,
     'Vorbedingung: auch mit eigener Kodierung liest der Leser den Betrag — ' +
       'genau deshalb reicht eine Nachprüfung über den Text NICHT',
   );
 
   const a = await replaceAmount(sicher, 250);
-  assert.ok(a.data, `WinAnsi wurde abgelehnt: ${a.grund}`);
+  assert.ok(a.data, `WinAnsi wurde abgelehnt: ${a.reason}`);
   assert.equal(valuesFromPdf(a.data).amount, 250);
 
-  const b = await replaceAmount(unsicher, 250);
+  const b = await replaceAmount(uncertain, 250);
   assert.equal(
     b.data,
     null,
@@ -232,7 +232,7 @@ test('6. a font with its own encoding is NOT touched', async () => {
       'Text würde das melden.',
   );
   assert.ok(b.rejected >= 1, `abgelehnt=${b.rejected}, erwartet mindestens 1`);
-  assert.match(String(b.grund), /own encoding/, `Der Grund lautet „${b.grund}"`);
+  assert.match(String(b.reason), /own encoding/, `Der Grund lautet „${b.reason}"`);
 });
 
 test('7. a foreign PDF without a marker is guessed page by page', async () => {
@@ -297,9 +297,9 @@ test('9. the verification catches a replacement that hits the card number', asyn
     assert.equal(nachher.amount, 250);
   } else {
     assert.match(
-      String(r.grund),
+      String(r.reason),
       /Number|PIN|amount/i,
-      `Abgelehnt mit „${r.grund}" — der Grund soll sagen, was nicht stimmte`,
+      `Abgelehnt mit „${r.reason}" — der Grund soll sagen, was nicht stimmte`,
     );
   }
 });

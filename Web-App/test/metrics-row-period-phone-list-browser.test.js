@@ -33,9 +33,9 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
   concurrency: 1,
   timeout: 420_000,
 }, async t => {
-  const app = await startApp(t, { name: `r28_${process.pid}`, bestand: patternHousehold });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `r28_${process.pid}`, holding: patternHousehold });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, ruhig, port } = app;
@@ -69,7 +69,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     await groesse(b, 390, 844, true);
     await zu('#/finanzen');
     b.listener.push(intercept);
-    await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/stats*', requestStage: 'Request' }] });
+    await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v2/stats*', requestStage: 'Request' }] });
     try {
       await zu('#/sammlung');
       await bis(`document.getElementById('bstat-sets').textContent.trim() === '1'`, 'Kennzahlen aus der Antwort');
@@ -86,7 +86,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
         punkte: k.map(e => getComputedStyle(e, '::after').content).filter(c => c.includes('·')).length,
         oben: [...new Set(k.map(e => Math.round(e.getBoundingClientRect().top)))],
         unten: Math.max(...k.map(e => e.getBoundingClientRect().bottom)),
-        hinweis: h.checkVisibility() ? h.textContent.trim() : '',
+        hint: h.checkVisibility() ? h.textContent.trim() : '',
         hintTop: h.getBoundingClientRect().top,
         visibleBelowRows: k.filter(e => e.querySelector('.bstat-s')?.checkVisibility()).length,
       };
@@ -95,7 +95,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     assert.equal(m.punkte, 2, 'Trenner zwischen drei Kennzahlen');
     assert.equal(m.oben.length, 1, `Kennzahlen auf mehreren Zeilen: ${m.oben}`);
     assert.equal(m.visibleBelowRows, 0);
-    assert.equal(m.hinweis, 'Teileliste für das Set fehlt noch');
+    assert.equal(m.hint, 'Teileliste für das Set fehlt noch');
     assert.ok(m.hintTop >= m.unten, 'Erklärsatz unter der ganzen Leiste');
   });
 
@@ -138,13 +138,13 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     await b.auswerten(`${knopf}.click(); true`);
     await ruhig();
     await bis(`!!document.querySelector('#parts-main .part-card')`, 'Teile als Liste');
-    const zeile = await hoehe();
+    const row = await hoehe();
     const breit =
       await b.auswerten(`(() => { const r = document.querySelector('#parts-main .part-card').getBoundingClientRect();
       return { breite: Math.round(r.width), seite: document.documentElement.scrollWidth > innerWidth,
         gedrueckt: ${knopf}.getAttribute('aria-pressed') }; })()`);
     assert.ok(karte > 120, `Karte nur ${karte} px hoch`);
-    assert.ok(zeile <= 72, `Listenzeile ${zeile} px hoch`);
+    assert.ok(row <= 72, `Listenzeile ${row} px hoch`);
     assert.ok(breit.breite > 300, `Zeile nicht über die Breite: ${breit.breite} px`);
     assert.equal(breit.seite, false, 'Seite breiter als das Fenster');
     assert.equal(breit.gedrueckt, 'true');

@@ -88,11 +88,11 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
   });
   const nacharbeit = uid =>
     db.all(
-      `SELECT payload->>'set_number' AS sn, payload->>'art' AS type FROM jobs
-      WHERE type = 'nacharbeit' AND user_id = $1 ORDER BY id`,
+      `SELECT payload->>'set_number' AS sn, payload->>'kind' AS type FROM jobs
+      WHERE type = 'rework' AND user_id = $1 ORDER BY id`,
       [uid],
     );
-  const stand = () => db.get('SELECT status, done, results, current FROM import_status WHERE user_id=$1', [a]);
+  const state = () => db.get('SELECT status, done, results, current FROM import_status WHERE user_id=$1', [a]);
   const booked = (uid, nummern) =>
     db
       .all('SELECT set_number FROM sets WHERE user_id = $1 AND set_number = ANY($2) ORDER BY set_number', [
@@ -102,11 +102,11 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       .then(z => z.map(x => x.set_number));
   const untilDone = async () => {
     for (let i = 0; i < 200; i++) {
-      const s = await stand();
+      const s = await state();
       if (s?.status === 'done') return s;
       await warte(25);
     }
-    return stand();
+    return state();
   };
 
   try {
@@ -126,14 +126,14 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
         }),
       );
       await placeJobOne('csv_import', { user_id: a, lauf, rows }, { userId: a });
-      for (let i = 0; i < 100 && (await stand())?.current !== '76001-1'; i++) await warte(20);
-      assert.equal((await stand())?.current, '76001-1', 'der Import steckt im ersten Set');
+      for (let i = 0; i < 100 && (await state())?.current !== '76001-1'; i++) await warte(20);
+      assert.equal((await state())?.current, '76001-1', 'der Import steckt im ersten Set');
 
       const SN = `7${process.pid % 10000}-1`;
       const r = await asAccount(b, () =>
         require('./helpers/sources')
           .areaPage('sets')
-          .acquireSet({ requester: b, setNumber: SN, menge: 1, kaufpreis: 10, zustand: 'N' }),
+          .acquireSet({ requester: b, setNumber: SN, quantity: 1, kaufpreis: 10, condition: 'N' }),
       );
       assert.equal(r.action, 'added');
       assert.deepEqual(await nacharbeit(b), [{ sn: SN, type: 'ergaenzen' }]);
@@ -173,7 +173,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       );
       await db.run(
         `INSERT INTO jobs (type, payload, user_id, status, attempts, deadline_at)
-                    VALUES ('csv_import', $1, $2, 'laeuft', 1, NOW() - INTERVAL '1 minute')`,
+                    VALUES ('csv_import', $1, $2, 'running', 1, NOW() - INTERVAL '1 minute')`,
         [JSON.stringify({ user_id: a, lauf, rows }), a],
       );
       const s = await untilDone();

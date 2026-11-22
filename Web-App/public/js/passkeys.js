@@ -25,7 +25,7 @@ const toText = (/** @type {ArrayBuffer} */ buffer) => {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 /**
- * The server's options as JSON: buffers sit there as Base64url. The contract (PasskeyOptionen) leaves their
+ * The server's options as JSON: buffers sit there as Base64url. The contract (PasskeyOptions) leaves their
  * fields open; those are WebAuthn's.
  * @typedef {{ id: string, type?: string, transports?: string[] }} IdJson
  * @typedef {{ challenge: string, user?: { id: string, name: string, displayName: string },
@@ -69,12 +69,12 @@ async function createPasskey(o) {
  * @param {string} purpose
  */
 async function getAssertion(purpose) {
-  const o = await api('POST', '/v1/auth/passkey/anmelden/optionen', { zweck: purpose });
+  const o = await api('POST', '/v2/auth/passkey/login/options', { purpose: purpose });
   if (!o?.success) {
     toast(o?.error || tRaw('settings.error'), 'error');
     return null;
   }
-  const p = /** @type {OptionsJson} */ (o.optionen);
+  const p = /** @type {OptionsJson} */ (o.options);
   /** @type {PublicKeyCredential} */
   let c;
   try {
@@ -112,7 +112,7 @@ async function getAssertion(purpose) {
 export async function passkeyLogin() {
   const answer = await getAssertion('login');
   if (!answer) return;
-  const d = await api('POST', '/v1/auth/passkey/anmelden', { antwort: answer });
+  const d = await api('POST', '/v2/auth/passkey/login', { response: answer });
   if (!d?.success) {
     G('lerr').textContent = d?.error || tRaw('settings.error');
     G('lerr').style.display = 'block';
@@ -125,12 +125,12 @@ export async function passkeyLogin() {
 
 /** Second factor: passkey instead of a code, together with the name and password entered above. */
 export async function passkeySecondFactor() {
-  const passkey = await getAssertion('zweiter_faktor');
+  const passkey = await getAssertion('second_factor');
   if (!passkey) return;
-  const d = await api('POST', '/v1/auth/login', {
+  const d = await api('POST', '/v2/auth/login', {
     username: G('lu').value,
     password: G('lp').value,
-    ohne_token: true,
+    without_token: true,
     passkey,
   });
   if (!d?.success) {
@@ -143,9 +143,9 @@ export async function passkeySecondFactor() {
 }
 
 /** Without the cookie, reloading would only bring back the mask, with no reason given; the notice stays put.
- * @param {{ keks_fehlt?: boolean }} d */
+ * @param {{ cookie_missing?: boolean }} d */
 function cookieMissing(d) {
-  if (!d.keks_fehlt) return false;
+  if (!d.cookie_missing) return false;
   const h = G('login-hint');
   h.textContent = tRaw('auth.cookie_missing');
   h.hidden = false;
@@ -159,7 +159,7 @@ const area = () => G('pk-surface');
 export async function loadPasskeys() {
   const f = area();
   if (!f) return;
-  const [d, sf] = await Promise.all([api('GET', '/v1/auth/passkeys'), api('GET', '/v1/auth/zweiter-faktor')]);
+  const [d, sf] = await Promise.all([api('GET', '/v2/auth/passkeys'), api('GET', '/v2/auth/second-factor')]);
   if (!d?.success || !Array.isArray(d.passkeys)) {
     setHtml(f, html`<div class="voucher-empty">${tRaw('settings.error')}</div>`);
     return;
@@ -173,14 +173,14 @@ export async function loadPasskeys() {
           <td><button class="btn bd btn-sm" data-click="deletePasskey"${genuine()} data-arg="${p.id}" data-arg2="${p.name || ''}" aria-label="${tRaw('common.delete')}">${ico('delete')}</button></td></tr>`,
         )}</tbody></table></div>`
     : html`<p class="hint-paragraph">${tRaw('pk.none')}</p>`;
-  const addForm = !d.verfuegbar
+  const addForm = !d.available
     ? html`<p class="text-small hint-warning">${tRaw(loggedInAccount?.isAdmin ? 'pk.without_domain_admin' : 'pk.without_domain')}</p>`
     : !passkeysPossible()
       ? html`<p class="text-small hint-warning">${tRaw('pk.browser')}</p>`
       : html`<form class="sform space-top-075" data-submit="pk-new" data-style="max-width:420px">
         <div class="fg"><label for="pk-name">${tRaw('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
         <div class="fg"><label for="pk-pw">${tRaw('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
-        ${sf?.aktiv ? html`<div class="fg"><label for="pk-code">${tRaw('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
+        ${sf?.active ? html`<div class="fg"><label for="pk-code">${tRaw('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
         <div><button type="button" class="btn bp btn-sm" id="pk-new" data-click="addPasskey"${genuine()}>${tRaw('pk.add')}</button></div>
       </form>`;
   setHtml(f, html`${list}${addForm}`);
@@ -188,7 +188,7 @@ export async function loadPasskeys() {
 
 export async function addPasskey() {
   // With a second factor active, the server also demands the code.
-  const o = await api('POST', '/v1/auth/passkey/registrieren/optionen', {
+  const o = await api('POST', '/v2/auth/passkey/register/options', {
     password: G('pk-pw')?.value || '',
     ...(G('pk-code') ? { code: G('pk-code').value.trim() } : {}),
   });
@@ -200,13 +200,13 @@ export async function addPasskey() {
   let answer;
   try {
     answer = await createPasskey(
-      /** @type {OptionsJson & { user: { id: string, name: string, displayName: string } }} */ (o.optionen),
+      /** @type {OptionsJson & { user: { id: string, name: string, displayName: string } }} */ (o.options),
     );
   } catch {
     toast(tRaw('pk.cancelled'), 'info');
     return;
   }
-  const d = await api('POST', '/v1/auth/passkey/registrieren', { antwort: answer, name: G('pk-name')?.value || '' });
+  const d = await api('POST', '/v2/auth/passkey/register', { response: answer, name: G('pk-name')?.value || '' });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -221,11 +221,11 @@ export async function deletePasskey(id, name) {
     tRaw('pk.delete_title'),
     tRaw('pk.delete_text', { name: name || '—' }),
     'key',
-    { button: 'confirm.btn.remove', art: 'bd' },
+    { button: 'confirm.btn.remove', kind: 'bd' },
   );
   if (password === null) return;
   const d = await withSecondFactor(z =>
-    api('DELETE', `/v1/auth/passkeys/${encodeURIComponent(id)}`, { password, ...z }),
+    api('DELETE', `/v2/auth/passkeys/${encodeURIComponent(id)}`, { password, ...z }),
   );
   if (!d) return;
   if (!d?.success) {
@@ -240,7 +240,7 @@ export async function deletePasskey(id, name) {
 {
   const k = G('btn-passkey');
   if (k) k.hidden = !passkeysPossible();
-  if (passkeysPossible()) fetchSetPasskey(() => getAssertion('zweiter_faktor'));
+  if (passkeysPossible()) fetchSetPasskey(() => getAssertion('second_factor'));
 }
 
 // Names below are registry-exposed (index.html/connection.js) — kept unchanged.

@@ -1,18 +1,18 @@
 /**
  * Administrator rights require a second factor: an administrator without TOTP and
  * without passkey only gets as far as setting it up after login (403
- * zweiter_faktor_pflicht), login and /auth/me tell the UI.
+ * second_factor_mandatory), login and /auth/me tell the UI.
  * An ordinary account and an app token (scope `app`) of an administrator are …
  *
  * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
- *   A  in loginAtInbox the check zweiterFaktorPflicht deleted → red:
+ *   A  in loginAtInbox the check secondFactorRequired deleted → red:
  *      “without second factor only its setup”, “… app token …” (the full
  *      token gets through) and “a passkey suffices”
  *   B  /zweiter-faktor/einrichten deleted from TO_SETUP → red:
  *      “… setup works, then everything”
- *   C  zweiterFaktorPflicht() also counts passkeys (hatPasskeys) → red: “a
+ *   C  secondFactorRequired() also counts passkeys (hatPasskeys) → red: “a
  *      passkey alone does not suffice”
- *   D  in signedInResponses `zweiterFaktorPflicht` always false → red:
+ *   D  in signedInResponses `secondFactorRequired` always false → red:
  *      “login and /auth/me name the obligation”
  *
  * REQUIRE_DB=1.
@@ -48,16 +48,17 @@ function server(t, sitzung, token) {
     next();
   });
   app.use(
-    '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    '/api/v2',
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   // Like startup/app.ts: an error path behind everything, also behind the entrance.
   app.use(_req('src/http/httpResponse.js').errorResponse);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const base = `http://localhost:${portOf(srv)}/api/v1`;
+  const base = `http://localhost:${portOf(srv)}/api/v2`;
   return async (methode, weg, body) => {
     const r = await fetch(base + weg, {
       method: methode,
@@ -108,17 +109,17 @@ test('second factor for admins', { concurrency: 1 }, async t => {
     const anonym = server(t, {});
     const voll = await anonym('POST', '/auth/login', { username: NAMEN[0], password: PASS, scope: 'voll' });
     assert.equal(voll.status, 200, JSON.stringify(voll.body));
-    assert.equal(voll.body.user.zweiterFaktorPflicht, true);
+    assert.equal(voll.body.user.secondFactorRequired, true);
     const app = await anonym('POST', '/auth/login', { username: NAMEN[0], password: PASS });
-    assert.equal(app.body.user.zweiterFaktorPflicht, false, 'ein App-Token trägt keine Verwalterrechte');
-    assert.equal((await alsChef('GET', '/auth/me')).body.user.zweiterFaktorPflicht, true);
+    assert.equal(app.body.user.secondFactorRequired, false, 'ein App-Token trägt keine Verwalterrechte');
+    assert.equal((await alsChef('GET', '/auth/me')).body.user.secondFactorRequired, true);
   });
 
   await t.test('without a second factor only its setup', async () => {
     const r = await alsChef('GET', '/settings');
-    assert.deepEqual([r.status, r.body.code], [403, 'zweiter_faktor_pflicht']);
+    assert.deepEqual([r.status, r.body.code], [403, 'second_factor_mandatory']);
     assert.equal((await alsChef('GET', '/auth/users')).status, 403);
-    assert.equal((await alsChef('GET', '/auth/zweiter-faktor')).status, 200);
+    assert.equal((await alsChef('GET', '/auth/second-factor')).status, 200);
   });
 
   await t.test('an ordinary account and an app token are not affected', async () => {
@@ -134,13 +135,13 @@ test('second factor for admins', { concurrency: 1 }, async t => {
   });
 
   await t.test('… the setup works, afterwards everything', async () => {
-    const e = await alsChef('POST', '/auth/zweiter-faktor/einrichten', { password: PASS });
+    const e = await alsChef('POST', '/auth/second-factor/setup', { password: PASS });
     assert.equal(e.status, 200, JSON.stringify(e.body));
-    const code = zf.hotp(zf.fromBase32(e.body.geheimnis), zf.timeStep());
-    const b = await alsChef('POST', '/auth/zweiter-faktor/bestaetigen', { code });
+    const code = zf.hotp(zf.fromBase32(e.body.secret), zf.timeStep());
+    const b = await alsChef('POST', '/auth/second-factor/confirm', { code });
     assert.equal(b.status, 200, JSON.stringify(b.body));
     assert.equal((await alsChef('GET', '/settings')).status, 200);
-    assert.equal((await alsChef('GET', '/auth/me')).body.user.zweiterFaktorPflicht, false);
+    assert.equal((await alsChef('GET', '/auth/me')).body.user.secondFactorRequired, false);
   });
 
   await t.test('a passkey alone is not enough', async () => {

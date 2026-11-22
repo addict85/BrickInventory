@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { logAndContinue, reportError } from '../src/infra/error';
-import { konfig } from '../src/infra/config';
+import { config } from '../src/infra/config';
 import { startJobWorker } from '../jobs/startJobs';
 import { FOLLOWUP_RUNS, type FollowUpStep } from '../src/management';
 import type { Services } from './wiring';
@@ -16,7 +16,7 @@ const STILL_AT_MOST_MS = 2 * HEARTBEAT_MS;
 /** What startJobs starts and stopJobs ends again; the entry point holds it. */
 export interface JobsLauf {
   worker: { lastRound(): number; stop(): Promise<void> } | null;
-  lebenszeichen: NodeJS.Timeout | null;
+  heartbeat: NodeJS.Timeout | null;
 }
 
 /** Only a worker that completes its rounds counts as alive: an interval
@@ -38,30 +38,30 @@ export async function startJobs(d: Services): Promise<JobsLauf> {
   await d.jobQueue.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   await d.jobQueue.planeAll();
   await d.jobQueue.pullPlanBefore('csv_sync', 0, { onStart: true });
-  await d.jobQueue.pullPlanBefore('aufraeumen', 0);
-  await d.jobQueue.pullPlanBefore('preise', 30);
-  await d.jobQueue.pullPlanBefore('bild_nachlauf', 30);
-  await d.jobQueue.pullPlanBefore('aufraeumen_taeglich', 60);
-  await d.jobQueue.pullPlanBefore('widerrufsliste', 0);
+  await d.jobQueue.pullPlanBefore('cleanup', 0);
+  await d.jobQueue.pullPlanBefore('prices', 30);
+  await d.jobQueue.pullPlanBefore('image_followup', 30);
+  await d.jobQueue.pullPlanBefore('cleanup_daily', 60);
+  await d.jobQueue.pullPlanBefore('revocation_list', 0);
   for (const [schritt, { afterSeconds }] of Object.entries(FOLLOWUP_RUNS) as [FollowUpStep, { afterSeconds: number }][])
     await d.jobQueue.placeJobOne(
-      'nachlauf',
+      'followup',
       { schritt },
-      { schluessel: `nachlauf:${schritt}`, afterSeconds, maxAttempts: 3 },
+      { schluessel: `followup:${schritt}`, afterSeconds, maxAttempts: 3 },
     );
   if (await d.images.openImageDemand()) await d.images.imageDemandKick();
   await d.finances.scheduleRateFetch();
-  const worker = startJobWorker(d, { parallel: konfig().jobParallel, deadlineSec: konfig().jobDeadlineSec });
+  const worker = startJobWorker(d, { parallel: config().jobParallel, deadlineSec: config().jobDeadlineSec });
   void renewHeartbeat(d, worker);
-  const lebenszeichen = setInterval(() => renewHeartbeat(d, worker), HEARTBEAT_MS);
-  lebenszeichen.unref();
-  return { worker, lebenszeichen };
+  const heartbeat = setInterval(() => renewHeartbeat(d, worker), HEARTBEAT_MS);
+  heartbeat.unref();
+  return { worker, heartbeat };
 }
 
 /** On shutdown: finish running jobs or return them. */
 export async function stopJobs(d: Services, lauf: JobsLauf): Promise<void> {
-  if (lauf.lebenszeichen) clearInterval(lauf.lebenszeichen);
-  lauf.lebenszeichen = null;
+  if (lauf.heartbeat) clearInterval(lauf.heartbeat);
+  lauf.heartbeat = null;
   const worker = lauf.worker;
   lauf.worker = null;
   await worker?.stop().catch(logAndContinue('shutdown:auftraege'));

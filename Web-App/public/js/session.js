@@ -37,7 +37,7 @@ export function startApp() {
 }
 
 subscribe('passwordChangeRequired', () => showRequiredSwitch());
-subscribe('zweiterFaktorPflicht', () => showSecondRequired());
+subscribe('secondFactorRequired', () => showSecondRequired());
 
 /** Account of the expired session: if another one logs in, the page reloads instead of showing its state. */
 let _expiredAccount = /** @type {number | null} */ (null);
@@ -46,18 +46,18 @@ let _expiredAccount = /** @type {number | null} */ (null);
  * back to the login with "session expired" — as in the Android app.
  */
 subscribe('sessionEnded', path => {
-  if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
+  if (path.startsWith('/v2/auth/me') || path.startsWith('/v2/auth/login')) return;
   if (!loggedInAccount) return; // was never logged in — nothing to end
   _expiredAccount = loggedInAccount.id;
   setAccount(null);
   // Already without a session right after login, on a page without HTTPS: the Secure cookie is missing.
   // "Expired" sent the operator into a loop of repeated logins.
   const withoutCookie = Date.now() - _signedInUm < 60_000 && !_cookieSet && withoutHttps();
-  showLogin({ abgelaufen: true, hinweis: withoutCookie ? tRaw('auth.cookie_missing') : undefined });
+  showLogin({ expired: true, hint: withoutCookie ? tRaw('auth.cookie_missing') : undefined });
 });
 /** Time of the last login via the form (for the case above). */
 let _signedInUm = 0;
-/** The server has confirmed that it set the cookie (keks_fehlt: false); then a 401 is real. */
+/** The server has confirmed that it set the cookie (cookie_missing: false); then a 401 is real. */
 let _cookieSet = false;
 /** http://localhost counts as a secure context for the browser, but carries no Secure cookie from the server. */
 const withoutHttps = () => window.isSecureContext === false || location.protocol === 'http:';
@@ -79,7 +79,7 @@ let _verifySignedIn = false;
 /**
  * @param {string} name
  * @param {boolean} [focus] After a click on a switch link: the link disappears with its field, and
- *   without a new target the focus would stand on BODY — keyboard and screen reader would start at the top again.
+ *   without a new target the focus would state on BODY — keyboard and screen reader would start at the top again.
  */
 function showPanel(name, focus = false) {
   ['login', 'register', 'forgot', 'reset', 'verify', 'maillink', 'required-change', 'second-factor-required'].forEach(
@@ -98,7 +98,7 @@ function showPanel(name, focus = false) {
   /** @type {HTMLElement | undefined} */ (field)?.focus();
 }
 
-// With the start password the server only allows the change (403 passwort_wechsel_noetig); the application would
+// With the start password the server only allows the change (403 password_change_required); the application would
 // otherwise come up with nothing but errors.
 
 function showRequiredSwitch() {
@@ -114,7 +114,7 @@ function showRequiredSwitch() {
   G('required-alt-row').hidden = !!just;
   G(just ? 'required-new' : 'required-alt').focus();
 }
-// Admin without a second factor: the server only allows its setup (403 zweiter_faktor_pflicht);
+// Admin without a second factor: the server only allows its setup (403 second_factor_mandatory);
 // js/second-factor.js draws it into the field.
 function showSecondRequired() {
   G('login-screen').style.display = 'flex';
@@ -128,7 +128,7 @@ function requiredLogout() {
 }
 function openApp() {
   if (loggedInAccount?.mustChangePassword) showRequiredSwitch();
-  else if (loggedInAccount?.zweiterFaktorPflicht) showSecondRequired();
+  else if (loggedInAccount?.secondFactorRequired) showSecondRequired();
   else showApp();
 }
 G('btn-required')?.addEventListener('click', async () => {
@@ -146,12 +146,12 @@ G('btn-required')?.addEventListener('click', async () => {
     return;
   }
   const d = await withSecondFactor(z =>
-    api('POST', '/v1/auth/change-password', { current: alt, newPassword: newValue, ...z }),
+    api('POST', '/v2/auth/change-password', { current: alt, newPassword: newValue, ...z }),
   );
   if (!d) return;
   if (!d.success) {
     // If the password taken along is wrong, the field must come back.
-    const altWrong = d.code === 'aktuelles_passwort_falsch';
+    const altWrong = d.code === 'current_password_wrong';
     if (altWrong) G('required-alt-row').hidden = false;
     formError(err, d.error || tRaw('settings.error'), [altWrong ? 'required-alt' : 'required-new']);
     return;
@@ -224,7 +224,7 @@ G('btn-register')?.addEventListener('click', async () => {
   }
   const btn = G('btn-register');
   const free = buttonBusy(btn);
-  const d = await api('POST', '/v1/auth/register', {
+  const d = await api('POST', '/v2/auth/register', {
     username: u,
     email: e,
     first_name: G('reg-first').value.trim() || null,
@@ -252,7 +252,7 @@ G('btn-forgot')?.addEventListener('click', async () => {
   }
   const btn = G('btn-forgot');
   const free = buttonBusy(btn);
-  const d = await api('POST', '/v1/auth/forgot-password', { email });
+  const d = await api('POST', '/v2/auth/forgot-password', { email });
   free();
   if (d && d.success === false) {
     formError(err, d.error || tRaw('common.network_error'), ['forgot-email']);
@@ -267,7 +267,7 @@ G('btn-verify')?.addEventListener('click', async () => {
     btn = G('btn-verify');
   formError(err, '');
   btn.disabled = true;
-  const d = await api('POST', '/v1/auth/email-bestaetigen', { token: _verifyToken });
+  const d = await api('POST', '/v2/auth/confirm-email', { token: _verifyToken });
   btn.disabled = false;
   if (!d.success) {
     formError(err, d.error || tRaw('settings.error'));
@@ -314,7 +314,7 @@ G('btn-reset')?.addEventListener('click', async () => {
   const btn = G('btn-reset');
   btn.disabled = true;
   btn.textContent = tRaw('reset.saving');
-  const d = await api('POST', '/v1/auth/reset-password', { token: _resetToken, password: p });
+  const d = await api('POST', '/v2/auth/reset-password', { token: _resetToken, password: p });
   btn.disabled = false;
   btn.textContent = tRaw('reset.button');
   if (d.success) {
@@ -376,8 +376,8 @@ async function showConfirmationTarget(loggedIn) {
     btn = G('btn-verify');
   if (!el || !btn) return;
   btn.disabled = true;
-  const v = await api('POST', '/v1/auth/email-bestaetigen/vorschau', { token: _verifyToken });
-  const p = loggedIn ? await api('GET', '/v1/auth/profile') : null;
+  const v = await api('POST', '/v2/auth/confirm-email/preview', { token: _verifyToken });
+  const p = loggedIn ? await api('GET', '/v2/auth/profile') : null;
   const u = p?.success ? p.user : null;
   if (!v?.success) {
     formError(G('verify-err'), v?.error || tRaw('settings.error'));
@@ -427,7 +427,7 @@ async function confirmedSignedIn() {
   toast(_verifyEmail ? tRaw('verify.confirmed', { email: _verifyEmail }) : tRaw('verify.confirmed_short'), 'success');
 }
 /**
- * @param {{ abgelaufen?: boolean, hinweis?: string }} [o] abgelaufen: the name stays, so that
+ * @param {{ expired?: boolean, hint?: string }} [o] expired: the name stays, so that
  *   one can log in again right away; password and code never — otherwise a press on "log in"
  *   would be enough for the next person at the device.
  */
@@ -443,11 +443,11 @@ function showLogin(o = {}) {
     k?.setAttribute('aria-pressed', 'false');
     k?.querySelector('use')?.setAttribute('href', '#i-eye');
   }
-  if (!o.abgelaufen) G('lu').value = '';
+  if (!o.expired) G('lu').value = '';
   const hint = G('login-hint');
   if (hint) {
-    hint.hidden = !o.abgelaufen;
-    hint.textContent = o.abgelaufen ? o.hinweis || tRaw('auth.session_expired') : '';
+    hint.hidden = !o.expired;
+    hint.textContent = o.expired ? o.hint || tRaw('auth.session_expired') : '';
   }
   formError(G('lerr'), '');
   // The progress bar belongs to js/progress.js — that is also where it says what "reset" means for it
@@ -492,14 +492,14 @@ async function checkRegistrationEnabled() {
   // Only stands again once the most recent answer is entered (browser tests wait for it).
   delete G('login-screen').dataset.loginMethods;
   try {
-    const d = await api('GET', '/v1/auth/registration-status');
+    const d = await api('GET', '/v2/auth/registration-status');
     if (run !== _loginMethodsRun || d.success === false) return;
     const wrap = G('link-register-wrap');
     if (wrap) wrap.style.display = d.enabled ? '' : 'none';
     // Only offer methods the server supports; if the information is missing (older server), everything stays as it was.
     if (d.passkey === false && G('btn-passkey')) G('btn-passkey').hidden = true;
-    if (G('link-forgot')) G('link-forgot').hidden = d.passwort_vergessen === false;
-    if (G('forgot-admin')) G('forgot-admin').hidden = d.passwort_vergessen !== false;
+    if (G('link-forgot')) G('link-forgot').hidden = d.forgot_password === false;
+    if (G('forgot-admin')) G('forgot-admin').hidden = d.forgot_password !== false;
     G('login-screen').dataset.loginMethods = 'loaded';
   } catch (_) {}
 }
@@ -529,7 +529,7 @@ function showApp() {
   setLangValue(localStorage.getItem('bim_lang') || LANG);
   applyLang(LANG, false);
   // Load settings — also picks up server-stored language preference
-  const settings = api('GET', '/v1/settings/raw').then(d => {
+  const settings = api('GET', '/v2/settings/raw').then(d => {
     if (d.success && d.settings) {
       setSettingsSnapshot(d.settings);
       setAccountCurrency(d.settings.currency || 'EUR');
@@ -584,7 +584,7 @@ function showApp() {
   }
   // Without a Rebrickable key the collection opens anyway: a jump into the settings on every
   // login takes the admin's start page away. A banner points it out once per session. First the
-  // settings, then amounts: otherwise the prices would briefly stand in the default currency and then jump
+  // settings, then amounts: otherwise the prices would briefly state in the default currency and then jump
   // (UI check 6, N12).
   const bandDecided = settings
     .catch(() => {})
@@ -631,15 +631,15 @@ async function doLogin() {
   const b = G('btn-login');
   const free = buttonBusy(b);
   const code = G('lc').value.trim();
-  const d = await api('POST', '/v1/auth/login', {
+  const d = await api('POST', '/v2/auth/login', {
     username: G('lu').value,
     password: G('lp').value,
-    ohne_token: true,
+    without_token: true,
     ...(code ? { code } : {}),
   });
   free();
   // Second factor required: show the code field and continue there.
-  if (d.zweiter_faktor) {
+  if (d.second_factor) {
     G('lc-row').style.display = '';
     G('lc').value = '';
     // The focus jumps into the new field; without the sentence one would not know whether the password was right.
@@ -653,9 +653,9 @@ async function doLogin() {
   G('lc-row').style.display = 'none';
   G('lc').value = '';
   G('lc-status').textContent = '';
-  if (d.success && d.keks_fehlt) {
+  if (d.success && d.cookie_missing) {
     // The server did not set the cookie at all: opening the app would mean "expired" again right away.
-    showLogin({ abgelaufen: true, hinweis: tRaw('auth.cookie_missing') });
+    showLogin({ expired: true, hint: tRaw('auth.cookie_missing') });
     return;
   }
   if (d.success) {
@@ -672,13 +672,13 @@ async function doLogin() {
     formError(G('lerr'), '');
     G('login-hint').hidden = true;
     _signedInUm = Date.now();
-    _cookieSet = d.keks_fehlt === false;
+    _cookieSet = d.cookie_missing === false;
     openApp();
   } else {
     const err = d.error || tRaw('settings.error');
     // Both filled (see above): usually the password is wrong, so go there.
     formError(G('lerr'), err, ['lp', 'lu']);
-    if (d.unverified || d.code === 'email_nicht_bestaetigt') {
+    if (d.unverified || d.code === 'email_not_confirmed') {
       setHtml(
         G('lerr'),
         html`${err}${html` <a href="#" data-click="resendConfirmation" data-style="color:var(--b600)">`}${tRaw('auth.resend_mail')}${html`</a>`}`,
@@ -691,7 +691,7 @@ G('btn-logout').onclick = async () => {
   const _wt = sessionStorage.getItem('webToken');
   // Logged out first: running requests that now end with 401 do not report "session expired".
   setAccount(null);
-  await apiRaw('POST', '/v1/auth/logout', {
+  await apiRaw('POST', '/v2/auth/logout', {
     headers: _wt ? { Authorization: 'Bearer ' + _wt } : {},
   }).catch(() => {});
   sessionStorage.removeItem('webToken');
@@ -711,7 +711,7 @@ async function resendConfirmation() {
     G('lu').focus();
     return;
   }
-  const d = await api('POST', '/v1/auth/bestaetigung-erneut', { email });
+  const d = await api('POST', '/v2/auth/resend-confirmation', { email });
   toast(d.message || d.error || tRaw('settings.error'), d.success ? 'success' : 'error');
 }
 /**

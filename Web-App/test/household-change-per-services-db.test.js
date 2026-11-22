@@ -25,8 +25,8 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
   const db = testData();
   const { buildServices } = _req('startup/wiring.js');
   // Two accesses like two processes (web and jobs).
-  const zugaenge = [createDb(dbConfigFromEnvironment()), createDb(dbConfigFromEnvironment())];
-  const [a, b] = zugaenge.map(z => buildServices(z));
+  const accesses = [createDb(dbConfigFromEnvironment()), createDb(dbConfigFromEnvironment())];
+  const [a, b] = accesses.map(z => buildServices(z));
   const namen = [`hhd_h_${process.pid}`, `hhd_u_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
@@ -34,7 +34,7 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
-    for (const z of zugaenge) {
+    for (const z of accesses) {
       await z.notification.close();
       await z.pool.end();
     }
@@ -52,11 +52,11 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
   await t.test('another set learns about the change via NOTIFY', async () => {
     await b.household.listenOnChanges();
     // Under the account's row security: the runtime role does not see foreign links (0121).
-    const blickfeld = () => asAccount(ids[0], () => b.household.scopeIds(ids[0]));
-    assert.deepEqual(await blickfeld(), [ids[0]]);
+    const view = () => asAccount(ids[0], () => b.household.scopeIds(ids[0]));
+    assert.deepEqual(await view(), [ids[0]]);
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [ids[0], ids[1]]);
     a.household.reportHouseholdChange();
-    const neu = async () => (await blickfeld()).length === 2;
+    const neu = async () => (await view()).length === 2;
     assert.ok(await bis(neu, 3000), 'altes Blickfeld: die Änderung kam nicht an');
   });
 });

@@ -47,14 +47,14 @@ function satz(contexts = undefined) {
 }
 
 /** The clients of the external sources are not a service but its content; they count as one. */
-const GANZ = new Set(['quellen', 'drossel']);
+const GANZ = new Set(['sources', 'drossel']);
 
 /** Every service as `bereich.name` or `bereich.teil.name`. */
-function leaves(x, vor) {
+function leaves(x, ago) {
   return Object.entries(/** @type {Record<string, unknown>} */ (x)).flatMap(([n, v]) => {
     if (n === 'over') return [];
     const teil = v && typeof v === 'object' && !GANZ.has(n) && Object.values(v).some(w => typeof w === 'function');
-    return teil ? leaves(v, `${vor}.${n}`) : [`${vor}.${n}`];
+    return teil ? leaves(v, `${ago}.${n}`) : [`${ago}.${n}`];
   });
 }
 
@@ -85,7 +85,7 @@ const JE_AREA = {
 };
 
 /** Source text outside the tests, without comments, per file (path from ROOT). */
-function quellen() {
+function sources() {
   const aus = new Map();
   (function lauf(d) {
     for (const n of fs.readdirSync(d)) {
@@ -131,7 +131,7 @@ test('service keys become fewer, never more, and each has a caller', () => {
   assert.deepEqual(gleich, [], 'Dienst heisst wie ein Teil des Kontexts');
 
   // Called via the set (`d.account.…`, `k.konto.…`) or named in Pick<…>; the factory of the area does not count.
-  const q = quellen();
+  const q = sources();
   const ohne = schluessel.filter(s => {
     const name = s.split('.').at(-1);
     const muster = new RegExp(`[.?]\\s*${name}\\b|['"]${name}['"]`);
@@ -203,7 +203,7 @@ test('no service key passes a repository through raw', () => {
   /** @type {Record<string, any>} */
   const contexts = {};
   const d = satz(contexts);
-  const q = quellen();
+  const q = sources();
   const roh = new Set();
   for (const [b, x] of Object.entries(d)) {
     const leavesOfArea = leaves(x, b);

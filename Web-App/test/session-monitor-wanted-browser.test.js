@@ -176,7 +176,7 @@ async function clearWithoutNumber(_t, a) {
   const { b, bis } = a;
   const aus = await intercept(b, [
     {
-      contains: '/api/v1/admin/cache-stats',
+      contains: '/api/v2/admin/cache-stats',
       tun: id => respond(b, id, 503, { success: false, error: 'Server ausgelastet' }),
     },
   ]);
@@ -193,14 +193,14 @@ async function clearWithoutNumber(_t, a) {
 }
 
 /** First offline into the error state, then slowly on the network: during the new attempt the skeleton stands there. */
-async function newAfterError(b, bis, tab, ziel, pfad) {
+async function newAfterError(b, bis, tab, ziel, path) {
   await b.auswerten(CACHE_CLEAR);
   await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETWORK });
   let aus = async () => {};
   try {
     await reiter(b, tab);
     await bis(`!!document.querySelector('${ziel} .error-state')`, `${tab}: Fehlerzustand`);
-    aus = await intercept(b, [{ contains: pfad, tun: spaeter(b, 3000) }]);
+    aus = await intercept(b, [{ contains: path, tun: spaeter(b, 3000) }]);
   } finally {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
@@ -218,8 +218,8 @@ async function newAfterError(b, bis, tab, ziel, pfad) {
 }
 
 async function reloadAfterError(_t, a) {
-  await newAfterError(a.b, a.bis, 'wanted', '#mk-list', '/api/v1/wanted?');
-  await newAfterError(a.b, a.bis, 'minifigs', '#figs-list', '/api/v1/minifigs?');
+  await newAfterError(a.b, a.bis, 'wanted', '#mk-list', '/api/v2/wanted?');
+  await newAfterError(a.b, a.bis, 'minifigs', '#figs-list', '/api/v2/minifigs?');
 }
 
 async function wantedItemDetail(_t, a) {
@@ -253,19 +253,19 @@ async function createUser(_t, a) {
   const setze = (id, wert) =>
     b.auswerten(`(() => { const f = document.getElementById('${id}'); f.value = ${JSON.stringify(wert)};
       f.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
-  const stand = `(() => { const r = id => document.getElementById(id).getBoundingClientRect();
+  const state = `(() => { const r = id => document.getElementById(id).getBoundingClientRect();
     const sicht = id => !!document.getElementById(id)?.checkVisibility();
     const zeile = document.querySelector('.user-new').getBoundingClientRect();
     return { nameError: sicht('nu-n-error') ? ${text('#nu-n-error')} : '', pwError: sicht('nu-p-error') ? ${text('#nu-p-error')} : '',
       nameRule: sicht('nu-n-rule'), pwRule: sicht('nu-p-rule'),
       oben: [r('nu-n').top, r('nu-p').top].map(Math.round), hook: (r('nu-a').top + r('nu-a').bottom) / 2,
-      feld: [r('nu-n').top, r('nu-n').bottom], zeile: zeile.width,
+      field: [r('nu-n').top, r('nu-n').bottom], zeile: zeile.width,
       breiten: ['nu-p', 'nu-a'].map(id => document.getElementById(id).closest('.fg').getBoundingClientRect().width) }; })()`;
   await setze('nu-n', '');
   await setze('nu-p', '');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
   await bis(`!!document.getElementById('nu-p-error')?.checkVisibility()`, 'Meldungen');
-  let s = await b.auswerten(stand);
+  let s = await b.auswerten(state);
   assert.equal(s.nameError, 'Bitte einen Benutzernamen eintragen.');
   assert.equal(s.pwError, 'Bitte ein Passwort eintragen.', 'nur eine Meldung auf einmal');
   assert.deepEqual([s.nameRule, s.pwRule], [false, false], 'Regel und Meldung zugleich');
@@ -275,15 +275,15 @@ async function createUser(_t, a) {
   await setze('nu-n', 'a b');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
   await bis(`!!document.getElementById('nu-n-error')?.checkVisibility()`, 'Meldung am Namen');
-  s = await b.auswerten(stand);
+  s = await b.auswerten(state);
   assert.equal(s.pwError, '');
   assert.equal(s.pwRule, true, 'Passwortregel fehlt');
   assert.equal(s.oben[0], s.oben[1], `Eingabefelder versetzt: ${s.oben}`);
-  assert.ok(s.hook > s.feld[0] && s.hook < s.feld[1], `Häkchen ${s.hook} neben Feld ${s.feld}`);
+  assert.ok(s.hook > s.field[0] && s.hook < s.field[1], `Häkchen ${s.hook} neben Feld ${s.field}`);
   try {
     await groesse(b, 390, 844);
     await bis(`innerWidth === 390`, 'Telefonbreite');
-    s = await b.auswerten(stand);
+    s = await b.auswerten(state);
     for (const w of s.breiten) assert.ok(w >= s.zeile - 1, `${w} px von ${s.zeile} px`);
   } finally {
     await setze('nu-n', '');
@@ -312,15 +312,15 @@ async function designImmediately(_t, a) {
 
 async function hintergrundarbeiten(_t, a) {
   const { b, bis, ruhig, db } = a;
-  await db.run(`DELETE FROM jobs WHERE type = 'wechselkurse'`);
+  await db.run(`DELETE FROM jobs WHERE type = 'exchange_rates'`);
   await db.run(
-    `INSERT INTO jobs (type, dedupe_key, due_at) VALUES ('wechselkurse', 'plan:wechselkurse', NOW() + interval '5 hours')`,
+    `INSERT INTO jobs (type, dedupe_key, due_at) VALUES ('exchange_rates', 'plan:exchange_rates', NOW() + interval '5 hours')`,
   );
   await db.run(`INSERT INTO jobs (type, attempts, max_attempts, error_message, due_at)
-                VALUES ('wechselkurse', 3, 6, 'ECONNRESET', NOW() + interval '1 hour')`);
+                VALUES ('exchange_rates', 3, 6, 'ECONNRESET', NOW() + interval '1 hour')`);
   const fetches = [];
   const zaehler = d => {
-    if (d.method === 'Network.requestWillBeSent' && d.params.request.url.includes('/api/v1/admin/jobs'))
+    if (d.method === 'Network.requestWillBeSent' && d.params.request.url.includes('/api/v2/admin/jobs'))
       fetches.push(Date.now());
   };
   b.listener.push(zaehler);
@@ -361,7 +361,7 @@ async function sessionUnresolved(_t, a) {
   let type = '429';
   const aus = await intercept(b, [
     {
-      contains: '/api/v1/auth/me',
+      contains: '/api/v2/auth/me',
       tun: id =>
         type === '429'
           ? respond(
@@ -370,7 +370,7 @@ async function sessionUnresolved(_t, a) {
               429,
               {
                 success: false,
-                code: 'zu_viele_anfragen',
+                code: 'too_many_requests',
                 error: 'Zu viele Anfragen — bitte in 1 Min. erneut versuchen',
               },
               [{ name: 'Retry-After', value: '40' }],
@@ -413,9 +413,9 @@ async function sessionUnresolved(_t, a) {
 }
 
 test('session, monitor, error catching, wishlist', { concurrency: 1, timeout: 400_000 }, async t => {
-  const a = await startApp(t, { name: `r21_pruefer_${process.pid}`, bestand: patternHousehold });
-  if (a.grund) {
-    t.skip(a.grund);
+  const a = await startApp(t, { name: `r21_pruefer_${process.pid}`, holding: patternHousehold });
+  if (a.reason) {
+    t.skip(a.reason);
     return;
   }
   await a.ruhig();

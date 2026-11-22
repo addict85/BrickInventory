@@ -151,9 +151,9 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     // no longer carries the field (the column is gone); the purchase price
     // is delivered by the two aggregates from the acquisitions. Without this change
     // the loop checked a missing field and reported `NaN !== 49.9`.
-    for (const feld of ['avg_purchase_price', 'max_purchase_price']) {
-      const wert = Number(satz[feld]);
-      assert.equal(wert, 49.9, `${feld} = ${satz[feld]} — genau dieser Gleitkomma-Schwanz ging bisher an den Client`);
+    for (const field of ['avg_purchase_price', 'max_purchase_price']) {
+      const wert = Number(satz[field]);
+      assert.equal(wert, 49.9, `${field} = ${satz[field]} — genau dieser Gleitkomma-Schwanz ging bisher an den Client`);
       // And the value survives the way through JSON in the same form.
       assert.equal(JSON.parse(JSON.stringify({ v: wert })).v, 49.9);
     }
@@ -165,14 +165,13 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     // in hundreds of places, and a price of 0 would be true as
     // "0.0000" in every if query.
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    const zeile = await db.get(
-      `SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number='99002-1'`,
-      [uid],
-    );
+    const row = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number='99002-1'`, [
+      uid,
+    ]);
     assert.equal(
-      typeof zeile.purchase_price,
+      typeof row.purchase_price,
       'number',
-      `purchase_price kommt als ${typeof zeile.purchase_price} — der Typ-Parser fehlt`,
+      `purchase_price kommt als ${typeof row.purchase_price} — der Typ-Parser fehlt`,
     );
   });
 

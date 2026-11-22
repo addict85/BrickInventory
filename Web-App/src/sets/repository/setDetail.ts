@@ -9,9 +9,9 @@ import { setMasterJoin, SET } from '../../../db/catalogView';
 export function setMaster(db: DbInterface, setNumber: string) {
   return db.get<SetMaster>(
     `SELECT ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme,
-           ${SET.teile} AS pieces, c.minifigs, c.image_url, c.image_local,
+           ${SET.parts} AS pieces, c.minifigs, c.image_url, c.image_local,
            ${SET.name} = 'Set ' || rs.set_num AND ${SET.jahr} IS NULL AND ${SET.thema} IS NULL
-             AND ${SET.teile} IS NULL AS platzhalter
+             AND ${SET.parts} IS NULL AS platzhalter
       FROM (SELECT $1::text AS nr) x
       ${setMasterJoin('x.nr')}
       LEFT JOIN set_catalog c ON c.set_number = x.nr
@@ -23,7 +23,7 @@ export function setMaster(db: DbInterface, setNumber: string) {
 export function setCatalog(db: DbInterface, setNumber: string) {
   return db.get<SetMaster>(
     `SELECT ${SET.name} AS name, c.image_local, c.image_url, ${SET.jahr} AS year,
-           ${SET.teile} AS pieces, ${SET.thema} AS theme, c.minifigs
+           ${SET.parts} AS pieces, ${SET.thema} AS theme, c.minifigs
       FROM rb_sets rs LEFT JOIN rb_themes rt ON rt.id = rs.theme_id
       LEFT JOIN set_catalog c ON c.set_number = rs.set_num
      WHERE rs.set_num = $1`,

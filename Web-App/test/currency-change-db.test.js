@@ -23,14 +23,14 @@ const db = testData();
 test('a real currency change triggers the price job, a no-op save does not', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
-  // What is observed is the date of the scheduled job 'preise'.
+  // What is observed is the date of the scheduled job 'prices'.
   const Z = _req('src/jobQueue/schedule.js');
-  await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
-  await Z.planeNext('preise');
+  await db.run(`DELETE FROM jobs WHERE type = 'prices'`);
+  await Z.planeNext('prices');
   const spaeter = () =>
-    db.run(`UPDATE jobs SET due_at = NOW() + INTERVAL '1 hour' WHERE type = 'preise' AND status = 'offen'`);
+    db.run(`UPDATE jobs SET due_at = NOW() + INTERVAL '1 hour' WHERE type = 'prices' AND status = 'pending'`);
   const faellig = async () =>
-    (await db.get(`SELECT due_at <= NOW() AS jetzt FROM jobs WHERE type = 'preise' AND status = 'offen'`))?.jetzt ===
+    (await db.get(`SELECT due_at <= NOW() AS now FROM jobs WHERE type = 'prices' AND status = 'pending'`))?.now ===
     true;
   const waitOnRun = async () => {
     for (let i = 0; i < 40; i++) {
@@ -55,7 +55,7 @@ test('a real currency change triggers the price job, a no-op save does not', { c
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: USERNAME, isAdmin: false }, t });
 
   const postWeb = body =>
-    fetch(`${base}/api/v1/settings`, {
+    fetch(`${base}/api/v2/settings`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -80,7 +80,7 @@ test('a real currency change triggers the price job, a no-op save does not', { c
     assert.equal(await faellig(), false, 'ein Speichern OHNE Währungsänderung darf keinen Lauf kosten');
 
     // 3) Parity: the same rule on the v1 route.
-    r = await fetch(`${base}/api/v1/settings`, {
+    r = await fetch(`${base}/api/v2/settings`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ currency: 'EUR' }),
@@ -88,7 +88,7 @@ test('a real currency change triggers the price job, a no-op save does not', { c
     assert.equal(r.status, 200, `v1-Settings-Route antwortete ${r.status}`);
     assert.ok(await waitOnRun(), 'CHF → EUR über /api/v1 muss den Preis-Job ebenfalls anstossen');
   } finally {
-    await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'prices'`);
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});

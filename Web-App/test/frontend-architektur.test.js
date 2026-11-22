@@ -7,7 +7,7 @@
  *   B  in konten-orte.js `import('./einstellungen.js')` added → red: the
  *      dynamic edge closes a cycle and counts along
  *   C  in einstellungen.js the alert import again via
- *      `fetch('/api/v1/alerts/import/csv', …)` → red: “no fetch past the
+ *      `fetch('/api/v2/alerts/import/csv', …)` → red: “no fetch past the
  *      shell” with file and line
  *   D  in monitor.js again `export let _monitorTimer` → red: “shared
  *      state only in zustand.js”
@@ -62,8 +62,8 @@ function graph() {
     // for the type check, so they count as edges.
     for (const [datei, ziele] of g) {
       if (!datei.startsWith('js/')) continue;
-      const quelle = fs.readFileSync(`${path.join(ROOT, 'public')}/${datei}`, 'utf8');
-      for (const [, ziel] of quelle.matchAll(/\bimport\(\s*['"](\.{1,2}\/[^'"]+\.js)['"]\s*\)/g)) {
+      const source = fs.readFileSync(`${path.join(ROOT, 'public')}/${datei}`, 'utf8');
+      for (const [, ziel] of source.matchAll(/\bimport\(\s*['"](\.{1,2}\/[^'"]+\.js)['"]\s*\)/g)) {
         const k = kurz(path.join('public', path.dirname(datei), ziel));
         if (g.has(k) && !ziele.includes(k)) ziele.push(k);
       }

@@ -7,8 +7,8 @@ type PriceRow = { avg_price: string | null; qty_avg_price: string | null; condit
 
 /** Only real prices above zero. */
 export function setPriceFromCache(db: DbInterface, setNumber: string, condition: string, currency: string) {
-  return db.get<{ marktpreis: string }>(
-    `SELECT ${marketPriceSql()} AS marktpreis FROM price_cache
+  return db.get<{ market_price: string }>(
+    `SELECT ${marketPriceSql()} AS market_price FROM price_cache
        WHERE set_number=$1 AND condition IN ('N','U') AND currency_code=$3 AND ${marketPriceSql()} IS NOT NULL
        ORDER BY (condition = $2) DESC LIMIT 1`,
     [setNumber, condition, currency],
@@ -57,15 +57,15 @@ export function partsPricesFromCache(db: DbInterface, numbers: string[], currenc
 export async function estimatedMinifigsPrices(db: DbInterface, minifigs: string[], currency: string, ttlHours: number) {
   const from = new Map<string, { preis: number; abdeckung: number | null }>();
   if (!minifigs.length) return from;
-  const rows = await db.all<{ fig_number: string; condition: string; marktpreis: string; coverage: string | null }>(
-    `SELECT fig_number, condition, ${marketPriceSql()} AS marktpreis, coverage FROM minifig_price_cache
+  const rows = await db.all<{ fig_number: string; condition: string; market_price: string; coverage: string | null }>(
+    `SELECT fig_number, condition, ${marketPriceSql()} AS market_price, coverage FROM minifig_price_cache
       WHERE fig_number = ANY($1) AND currency_code = $2 AND estimated AND ${marketPriceSql()} IS NOT NULL
         AND fetched_at > NOW() - make_interval(hours => $3)`,
     [[...new Set(minifigs)], currency, ttlHours],
   );
   for (const z of rows)
     from.set(`${z.fig_number}|${z.condition}`, {
-      preis: Number(z.marktpreis),
+      preis: Number(z.market_price),
       abdeckung: z.coverage == null ? null : Number(z.coverage),
     });
   return from;
@@ -78,8 +78,8 @@ export function estimatedMinifigsPrice(
   currency: string,
   ttlHours: number,
 ) {
-  return db.get<{ marktpreis: string | null; coverage: string | null }>(
-    `SELECT ${marketPriceSql()} AS marktpreis, coverage FROM minifig_price_cache
+  return db.get<{ market_price: string | null; coverage: string | null }>(
+    `SELECT ${marketPriceSql()} AS market_price, coverage FROM minifig_price_cache
         WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND estimated
           AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, condition, currency, ttlHours],

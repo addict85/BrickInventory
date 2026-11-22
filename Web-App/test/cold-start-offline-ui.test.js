@@ -15,27 +15,27 @@ const assert = require('node:assert/strict');
 const { openUi, warte, takt } = require('./helpers/ui');
 
 test('without server: hint and try again', async () => {
-  const stand = { weg: true };
+  const state = { weg: true };
   const o = await openUi(
     {
-      '/v1/startup-status': () => {
-        if (stand.weg) throw new TypeError('Failed to fetch');
+      '/v2/startup-status': () => {
+        if (state.weg) throw new TypeError('Failed to fetch');
         return { ready: true };
       },
-      '/v1/auth/me': { loggedIn: false },
+      '/v2/auth/me': { loggedIn: false },
     },
     { loggedIn: false, browserLanguage: 'de-DE' },
   );
   try {
-    const hinweis = o.d.getElementById('start-offline');
-    assert.ok(hinweis.hidden, 'nicht gleich beim ersten Fehlschlag');
-    assert.ok(await warte(() => !hinweis.hidden, 8000), 'nach 8 s kein Hinweis');
-    assert.match(hinweis.textContent, /nicht erreichbar/);
-    assert.equal(hinweis.getAttribute('role'), 'alert');
+    const hint = o.d.getElementById('start-offline');
+    assert.ok(hint.hidden, 'nicht gleich beim ersten Fehlschlag');
+    assert.ok(await warte(() => !hint.hidden, 8000), 'nach 8 s kein Hinweis');
+    assert.match(hint.textContent, /nicht erreichbar/);
+    assert.equal(hint.getAttribute('role'), 'alert');
     const knopf = o.d.getElementById('start-again');
     assert.match(knopf.textContent, /Erneut versuchen/);
 
-    stand.weg = false;
+    state.weg = false;
     const vorher = o.aufrufe.length;
     knopf.click();
     // The normal tick after an error is two seconds; the button must be faster.
@@ -44,7 +44,7 @@ test('without server: hint and try again', async () => {
       'Knopf holt den Start nicht sofort nach',
     );
     assert.ok(o.aufrufe.length > vorher);
-    assert.ok(hinweis.hidden, 'Hinweis bleibt nach dem Start stehen');
+    assert.ok(hint.hidden, 'Hinweis bleibt nach dem Start stehen');
     await takt(10);
   } finally {
     o.w.close();

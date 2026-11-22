@@ -34,9 +34,9 @@ export async function changeProfile(
   if (nameNew || newEmail) {
     // Every availability check reveals whether an account exists; registration hides that.
     const zuOft = await accountThrottled(k, 'profil-vergabe', user.id, 10, 60 * 60 * 1000);
-    if (zuOft) failDomain('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
+    if (zuOft) failDomain('zu_viele', 'too_many_requests', { minutes: zuOft.waitMin });
     if (nameNew && e.username && (await k.konten.nameTaken(e.username, user.id)))
-      failDomain('ungueltig', 'benutzername_vergeben');
+      failDomain('ungueltig', 'username_taken');
   }
   const fields: Record<string, unknown> = {};
   if (e.first_name !== undefined) fields.first_name = e.first_name || null;
@@ -51,7 +51,7 @@ export async function changeProfile(
   }
   const email = String(e.email);
   const token = crypto.randomBytes(32).toString('hex');
-  await k.konten.rememberEmailNew(user.id, email, tokenDigest(token), new Date(k.uhr.jetzt() + 24 * 60 * 60 * 1000));
+  await k.konten.rememberEmailNew(user.id, email, tokenDigest(token), new Date(k.clock.now() + 24 * 60 * 60 * 1000));
   await save();
   return { emailChanged: true, emailSent: await addressMails(k, user, email, token) };
 }
@@ -65,7 +65,7 @@ async function addressMails(k: AccountContext, user: Account, email: string, tok
       valueOr(
         await attempts(
           'anmeldung:sprache',
-          inSystemContext('adressmail', () => k.einstellungen.userValue(uid, 'language', 'de')),
+          inSystemContext('adressmail', () => k.settings.userValue(uid, 'language', 'de')),
         ),
         'de',
       ),

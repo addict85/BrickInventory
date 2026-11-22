@@ -90,12 +90,12 @@ export interface CatalogSet {
 }
 const SET_COLUMNS = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb.num_parts,
             c.image_url, c.image_local,
-            (b.set_number IS NOT NULL) AS owned, COALESCE(b.menge, 0)::int AS owned_quantity`;
+            (b.set_number IS NOT NULL) AS owned, COALESCE(b.quantity, 0)::int AS owned_quantity`;
 const IMAGE_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
 /** Ownership via the scope ($1) as in wishlist and collection; one row per set, quantities summed. */
 const ownershipJoin = (
   l: CatalogReadContract,
-) => `LEFT JOIN (SELECT s.set_number, SUM(${quantityFrom('sm', 0)})::int AS menge
+) => `LEFT JOIN (SELECT s.set_number, SUM(${quantityFrom('sm', 0)})::int AS quantity
                     FROM ${l.setBestand('= ANY($1)')} s ${l.mengeJoin('s', 'sm', '= ANY($1)')}
                    GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
 

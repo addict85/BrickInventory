@@ -78,7 +78,7 @@ window.addEventListener('resize', redrawCurve);
  * just smaller.
  * @param {boolean} offline @param {{ networkError?: boolean, status?: number, error?: unknown } | null | undefined} d */
 function chartUnavailable(offline, d) {
-  const { grund: reason, details } = offline ? { grund: tRaw('api.unreachable') } : clearerReason(d);
+  const { reason, details } = offline ? { reason: tRaw('api.unreachable') } : clearerReason(d);
   return html`${html`<div class="empty empty-state small error-state" role="status"><div class="empty-ico">${ico('warning')}</div>`}${html`<h2>${tRaw('chart.unavailable')}</h2><p>${reason}</p>`}${details ? html`<details class="error-details"><summary>${tRaw('list.details')}</summary><code>${details}</code></details>` : ''}${html`<button type="button" class="btn bs" data-reading data-click="loadPortfolioChart">${ico('refresh')}<span>${tRaw('list.again')}</span></button></div>`}`;
 }
 
@@ -89,7 +89,7 @@ export async function loadPortfolioChart() {
 
   const d = await api(
     'GET',
-    `/v1/finance/portfolio-history?period=${_chartPeriod}${scopeMode('finance') !== 'all' ? '&accounts=' + scopeMode('finance') : ''}`,
+    `/v2/finance/portfolio-history?period=${_chartPeriod}${scopeMode('finance') !== 'all' ? '&accounts=' + scopeMode('finance') : ''}`,
   );
   if (!d.success) {
     if (d.status === 401) return;
@@ -101,12 +101,12 @@ export async function loadPortfolioChart() {
     return;
   }
   // Fewer than two real data points is not a history: the server then adds an artificial starting value,
-  // and the line would claim no movement. The contract (PortfolioHistoryResponse) doesn't name messpunkte
+  // and the line would claim no movement. The contract (PortfolioHistoryResponse) doesn't name data_points
   // and chart; the server sends them anyway.
-  const untyped = /** @type {{ messpunkte?: number, chart?: { values?: { values?: { x: string }[] }[] } }} */ (
+  const untyped = /** @type {{ data_points?: number, chart?: { values?: { values?: { x: string }[] }[] } }} */ (
     /** @type {unknown} */ (d)
   );
-  const dataPoints = untyped.messpunkte ?? d.points?.length ?? 0;
+  const dataPoints = untyped.data_points ?? d.points?.length ?? 0;
   _lastCurve = null;
   // With no history at all ("Max" empty) there is no period to choose from.
   const fullyEmpty = (!d.points?.length || dataPoints < 2) && _chartPeriod === 'max';

@@ -84,14 +84,14 @@ async function cdp(wsUrl) {
     ws.onerror = f;
   });
   let n = 0;
-  const offen = new Map();
+  const open = new Map();
   const ereignisse = [];
   const listener = [];
   ws.onmessage = m => {
     const d = JSON.parse(m.data);
-    if (d.id && offen.has(d.id)) {
-      const { r, f } = offen.get(d.id);
-      offen.delete(d.id);
+    if (d.id && open.has(d.id)) {
+      const { r, f } = open.get(d.id);
+      open.delete(d.id);
       d.error ? f(new Error(d.error.message)) : r(d.result);
     } else if (d.method) {
       ereignisse.push(d);
@@ -101,7 +101,7 @@ async function cdp(wsUrl) {
   const senden = (method, params = {}, sessionId) =>
     new Promise((r, f) => {
       const id = ++n;
-      offen.set(id, { r, f });
+      open.set(id, { r, f });
       ws.send(JSON.stringify({ id, method, params, sessionId }));
     });
   const { targetId } = await senden('Target.createTarget', { url: 'about:blank' });
@@ -119,20 +119,20 @@ async function cdp(wsUrl) {
  * @param t        test context (for t.after)
  * @param {object} [opt] options:
  * @param [opt.name] account name
- * @param [opt.bestand] async (db, uid) => {} creates test data
+ * @param [opt.holding] async (db, uid) => {} creates test data
  * @param [opt.telefon] true: 390 × 844, mobile
  * @param [opt.movement] true: prefers-reduced-motion no-preference (otherwise reduce)
- * @param [opt.sprache] language of the account (default de)
+ * @param [opt.language] language of the account (default de)
  * @param [opt.locale] locale of the browser (default de-DE)
  * @param [opt.allDesigns] true: load all design stylesheets. The page only loads the active one; whoever sets data-theme
  *        themselves would otherwise see the others without styling.
- * @param [opt.intercept] [{ muster, contains, antwort?, delay? }]: requests
+ * @param [opt.intercept] [{ muster, contains, response?, delay? }]: requests
  *        whose URL matches the CDP pattern and contains `contains` get
  *        `antwort` as JSON (without `antwort` the real one), `delay` ms later
  */
 async function startApp(t, opt = {}) {
   const bin = chrome();
-  if (!bin) return { grund: 'kein Chrome gefunden' };
+  if (!bin) return { reason: 'kein Chrome gefunden' };
   const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   process.env.DATABASE_URL = URL_DB;
   const _req = require('./sources').buildAndRequire();
@@ -143,7 +143,7 @@ async function startApp(t, opt = {}) {
   } catch (e) {
     if (process.env.REQUIRE_DB === '1')
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    return { grund: 'Test-DB nicht erreichbar' };
+    return { reason: 'Test-DB nicht erreichbar' };
   }
   const c = await db.pool.connect();
   try {
@@ -163,13 +163,13 @@ async function startApp(t, opt = {}) {
   ).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [
     uid,
-    opt.sprache || 'de',
+    opt.language || 'de',
   ]);
   // Without this value the setup wizard would open above an empty collection and
   // every test would have to wait for it first; whoever checks it deletes the value in `bestand`.
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')
                 ON CONFLICT (key) DO UPDATE SET value = '1'`);
-  if (opt.bestand) await opt.bestand(db, uid);
+  if (opt.holding) await opt.holding(db, uid);
   // Administrators without a code generator would only get as far as setting it up; login
   // happens with a recovery code in the code field.
   const verwalter = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
@@ -209,7 +209,7 @@ async function startApp(t, opt = {}) {
     if (!/EADDRINUSE/.test(server.log())) break;
     server.p.kill('SIGKILL');
   }
-  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++)
+  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/`).catch(() => null)) === null; i++)
     await warte(250);
 
   // Chrome creates a Unix socket under TMPDIR (at most 107 characters); with a long
@@ -260,13 +260,13 @@ async function startApp(t, opt = {}) {
   await b.tab('Page.enable');
   // Every 401 from the start: if the UI later throws back to the login,
   // the test thereby names the request that ended the session.
-  const abgewiesen = [];
+  const rejected = [];
   await b.tab('Network.enable');
   // Running fetch/XHR requests for ruhig(); images do not count, they depend on the CDN.
   const laufend = new Set();
   b.listener.push(d => {
     if (d.method === 'Network.responseReceived' && d.params.response.status === 401)
-      abgewiesen.push(d.params.response.url.replace(/^https?:\/\/[^/]+/, ''));
+      rejected.push(d.params.response.url.replace(/^https?:\/\/[^/]+/, ''));
     if (d.method === 'Network.requestWillBeSent' && ['Fetch', 'XHR'].includes(d.params.type))
       laufend.add(d.params.requestId);
     if (d.method === 'Network.loadingFinished' || d.method === 'Network.loadingFailed')
@@ -284,7 +284,7 @@ async function startApp(t, opt = {}) {
         return;
       }
       // Without a response only delay: the real response, but later.
-      if (!a.antwort) {
+      if (!a.response) {
         setTimeout(
           () => b.tab('Fetch.continueRequest', { requestId: d.params.requestId }).catch(() => {}),
           a.delay || 0,
@@ -298,7 +298,7 @@ async function startApp(t, opt = {}) {
               requestId: d.params.requestId,
               responseCode: 200,
               responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
-              body: Buffer.from(JSON.stringify(a.antwort)).toString('base64'),
+              body: Buffer.from(JSON.stringify(a.response)).toString('base64'),
             })
             .catch(() => {}),
         a.delay || 0,
@@ -318,15 +318,15 @@ async function startApp(t, opt = {}) {
       if (await b.auswerten(ausdruck).catch(() => false)) return;
       await warte(100);
     }
-    const zustand = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
-    const s401 = abgewiesen.length ? `\n401 auf: ${abgewiesen.join(', ')}` : '';
+    const condition = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
+    const s401 = rejected.length ? `\n401 auf: ${rejected.join(', ')}` : '';
     // Exceptions of the page (say Trusted Types): without them a CI run only shows the timeout.
     const exceptions = b.ereignisse
       .filter(e => e.method === 'Runtime.exceptionThrown')
       .slice(-5)
       .map(e => e.params.exceptionDetails.exception?.description ?? e.params.exceptionDetails.text);
     const sFrom = exceptions.length ? `\nAusnahmen der Seite:\n${exceptions.join('\n')}` : '';
-    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}${sFrom}\nServer:\n${server.log().slice(-3000)}`);
+    throw new Error(`Zeitüberschreitung: ${was} — ${condition}${s401}${sFrom}\nServer:\n${server.log().slice(-3000)}`);
   };
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
@@ -365,7 +365,7 @@ async function startApp(t, opt = {}) {
     for (let still = 0; still < 2 && Date.now() < ende; await warte(50)) still = laufend.size ? 0 : still + 1;
     await b.auswerten('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))');
   };
-  return { b, bis, warte, ruhig, port, uid, db, abgewiesen, furtherCodes };
+  return { b, bis, warte, ruhig, port, uid, db, rejected, furtherCodes };
 }
 
 module.exports = { startApp, warte, chrome };

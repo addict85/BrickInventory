@@ -56,9 +56,9 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
 
   const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
 
-  const detail = async () => (await (await fetch(`${base}/api/v1/sets/${SN}`)).json()).set;
+  const detail = async () => (await (await fetch(`${base}/api/v2/sets/${SN}`)).json()).set;
   const setzen = async n => {
-    const r = await fetch(`${base}/api/v1/sets/${SN}`, {
+    const r = await fetch(`${base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ quantity: n }),
@@ -66,7 +66,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     return { status: r.status, body: await r.json() };
   };
   // From the acquisitions (migration 0036 deleted sets.quantity).
-  const menge = async uid => await quantityOf(db, uid, SN);
+  const quantity = async uid => await quantityOf(db, uid, SN);
 
   try {
     await t.test('the detail shows the quantity of all accounts', async () => {
@@ -81,8 +81,8 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     await t.test('increasing creates in the OWN account, with market price', async () => {
       const r = await setzen(2);
       assert.equal(r.status, 200);
-      assert.equal(await menge(mainId), 1, 'die Differenz gehört dem eigenen Konto');
-      assert.equal(await menge(subId), 1, 'der fremde Bestand bleibt unberührt');
+      assert.equal(await quantity(mainId), 1, 'die Differenz gehört dem eigenen Konto');
+      assert.equal(await quantity(subId), 1, 'der fremde Bestand bleibt unberührt');
       const acq = await db.get(
         `SELECT quantity, purchase_price, condition FROM set_acquisitions
           WHERE user_id=$1 AND set_number=$2`,
@@ -109,13 +109,13 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
       ]);
       assert.equal(zeilen.length, 1, `${zeilen.length} Erfassungen — die Tagesregel greift nicht`);
       assert.equal(zeilen[0].quantity, 3);
-      assert.equal(await menge(mainId), 3);
+      assert.equal(await quantity(mainId), 3);
     });
 
     await t.test('decreasing takes the own copies first', async () => {
       await setzen(1);
-      assert.equal(await menge(mainId), 0, 'die eigenen Exemplare gehen zuerst');
-      assert.equal(await menge(subId), 1, 'das fremde bleibt');
+      assert.equal(await quantity(mainId), 0, 'die eigenen Exemplare gehen zuerst');
+      assert.equal(await quantity(subId), 1, 'das fremde bleibt');
       // If nothing remains, the own row disappears entirely.
       const eigene = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [mainId, SN]);
       assert.equal(eigene.c, 0, 'eine eigene Zeile mit Menge 0 bleibt zurück');
@@ -126,7 +126,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
       // them away, the server caps — and says in the response what
       // actually applies.
       const r = await setzen(0);
-      assert.equal(await menge(subId), 1, 'das fremde Exemplar wurde weggenommen');
+      assert.equal(await quantity(subId), 1, 'das fremde Exemplar wurde weggenommen');
       assert.equal(r.body.quantity, 1, 'die Antwort muss die WIRKLICHE Menge nennen, nicht die gesendete');
     });
   } finally {

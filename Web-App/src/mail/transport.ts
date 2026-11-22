@@ -9,7 +9,7 @@ import addressparser from 'nodemailer/lib/addressparser';
 import { emailValid } from '../infra/validate';
 import { errorMessage } from '../infra/error';
 import { resolveOn, mailServerAddress } from '../infra/targetAddress';
-const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
+const setting = (k: MailContext, key: string) => k.settings.globalValue(key, '');
 
 function normalizeFingerprint(value: unknown): string {
   return String(value ?? '')
@@ -143,7 +143,7 @@ export async function sendMail(
 ) {
   if (!isSingleRecipient(to)) {
     console.warn(
-      `📧 Empfänger abgelehnt (${maskAddress(to, k.konfig.mailConsoleWithToken)}): keine einzelne reine Adresse`,
+      `📧 Empfänger abgelehnt (${maskAddress(to, k.config.mailConsoleWithToken)}): keine einzelne reine Adresse`,
     );
     return { success: false, error: 'empfaenger_ungueltig', mode: 'smtp' };
   }
@@ -152,15 +152,15 @@ export async function sendMail(
     transporter = await getTransporter(k);
   } catch (e) {
     // Exception: the response carries the failure (success: false); smtpErrorText gives the text without credentials.
-    console.error(`📧 SMTP Fehler (${maskAddress(to, k.konfig.mailConsoleWithToken)}):`, smtpErrorText(e).text);
+    console.error(`📧 SMTP Fehler (${maskAddress(to, k.config.mailConsoleWithToken)}):`, smtpErrorText(e).text);
     return { success: false, error: smtpErrorText(e).text, mode: 'smtp' };
   }
   const from = await getFrom(k);
   if (!transporter) {
-    const link = linkForConsole(realLink, k.konfig.mailConsoleWithToken ? '1' : undefined);
+    const link = linkForConsole(realLink, k.config.mailConsoleWithToken ? '1' : undefined);
     console.log('\n══════════════════════════════════════════════════');
     console.log('📧  E-Mail (SMTP nicht konfiguriert):');
-    console.log(`    An:      ${maskAddress(to, k.konfig.mailConsoleWithToken)}`);
+    console.log(`    An:      ${maskAddress(to, k.config.mailConsoleWithToken)}`);
     console.log(`    Betreff: ${subject}`);
     if (link) console.log(`    Link:    ${link}`);
     console.log('══════════════════════════════════════════════════\n');
@@ -176,11 +176,11 @@ export async function sendMail(
       html,
       ...(sender ? { envelope: { from: sender, to: [to] } } : {}),
     });
-    console.log(`📧 E-Mail gesendet an ${maskAddress(to, k.konfig.mailConsoleWithToken)}: ${info.messageId}`);
+    console.log(`📧 E-Mail gesendet an ${maskAddress(to, k.config.mailConsoleWithToken)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
     const { text } = smtpErrorText(e);
-    console.error(`📧 SMTP Fehler (${maskAddress(to, k.konfig.mailConsoleWithToken)}):`, text);
+    console.error(`📧 SMTP Fehler (${maskAddress(to, k.config.mailConsoleWithToken)}):`, text);
     return { success: false, error: text, mode: 'smtp' };
   }
 }
@@ -189,13 +189,13 @@ export async function testSmtp(k: MailContext) {
   try {
     const transporter = await getTransporter(k);
     // A code instead of a sentence: testSmtp() does not know who is asking.
-    if (!transporter) return { success: false as const, code: 'smtp_nicht_konfiguriert' as const };
+    if (!transporter) return { success: false as const, code: 'smtp_not_configured' as const };
     await transporter.verify();
     return { success: true as const, message: 'SMTP-Verbindung erfolgreich' };
   } catch (e) {
     const { text, certificate } = smtpErrorText(e);
     return certificate
-      ? { success: false as const, code: 'smtp_zertifikat' as const, vars: { grund: errorMessage(e) } }
-      : { success: false as const, code: 'smtp_fehler' as const, vars: { grund: text } };
+      ? { success: false as const, code: 'smtp_certificate' as const, vars: { reason: errorMessage(e) } }
+      : { success: false as const, code: 'smtp_error' as const, vars: { reason: text } };
   }
 }

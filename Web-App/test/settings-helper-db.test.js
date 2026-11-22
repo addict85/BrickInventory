@@ -45,7 +45,7 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
     T = 'smtp_from';
   const alle = [A, B, T];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [alle]);
-  const bestand = async () => (await db.get(`SELECT COUNT(*)::int AS c FROM global_settings`)).c;
+  const holding = async () => (await db.get(`SELECT COUNT(*)::int AS c FROM global_settings`)).c;
 
   try {
     // 1. There and back — including the conversion into a string.
@@ -56,7 +56,7 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
     assert.equal(await getGlobalSetting(`gibt_es_nicht_${process.pid}`, 'ersatz'), 'ersatz');
     await assert.rejects(
       setGlobalSetting(`gibt_es_nicht_${process.pid}`, 'x'),
-      { code: 'wert_ungueltig' },
+      { code: 'value_invalid' },
       'ein Schlüssel ohne Regel wird nicht geschrieben',
     );
 
@@ -77,12 +77,12 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
     // 4. The dangerous case: no key named. The table carries the
     //    registration lock, the API limits and the BrickLink credentials —
     //    an accidental emptying could not be undone.
-    const zahl = await bestand();
+    const zahl = await holding();
     assert.ok(zahl > 0, 'für diese Probe muss die Tabelle etwas enthalten');
     await deleteGlobalValues();
-    assert.equal(await bestand(), zahl, 'ein Aufruf ohne Schlüssel darf NICHTS löschen');
+    assert.equal(await holding(), zahl, 'ein Aufruf ohne Schlüssel darf NICHTS löschen');
     await deleteGlobalValues(...[]);
-    assert.equal(await bestand(), zahl, 'auch ein leeres Array darf NICHTS löschen');
+    assert.equal(await holding(), zahl, 'auch ein leeres Array darf NICHTS löschen');
   } finally {
     await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [alle]).catch(() => {});
     for (const z of vorher)

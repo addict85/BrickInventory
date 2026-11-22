@@ -1,5 +1,5 @@
 /** Managing passkeys in the own account; logging in with them happens in routes/auth.ts. */
-import { guardFor } from '../api_v1/middleware';
+import { guardFor } from '../api/middleware';
 import { perSession, signedInUserId, confirmWithFactor } from '../../src/account/http/login';
 import { contractRouter } from '../../src/http/contractRouter';
 import { devicesNameValid } from '../../src/account';
@@ -13,41 +13,41 @@ const passkeyName = (raw: unknown) =>
 
 export function buildPasskeyRouter(d: Pick<Services, 'account' | 'factors'>) {
   const { requireLoginOrToken } = guardFor(d.account);
-  const router = contractRouter('/api/v1/auth');
+  const router = contractRouter('/api/v2/auth');
 
-  router.endpoint('GET /api/v1/auth/passkeys', requireLoginOrToken, async req => {
-    return { verfuegbar: !!relyingParty(), passkeys: await d.factors.accountPasskeys(signedInUserId(req)) };
+  router.endpoint('GET /api/v2/auth/passkeys', requireLoginOrToken, async req => {
+    return { available: !!relyingParty(), passkeys: await d.factors.accountPasskeys(signedInUserId(req)) };
   });
 
   // A new login method requires password and browser session: a captured
   // session or a token alone must not mint a permanent access.
-  router.endpoint('POST /api/v1/auth/passkey/registrieren/optionen', requireLoginOrToken, async (req, res) => {
-    if (!perSession(req)) failDomain('verboten', 'nur_mit_sitzung');
+  router.endpoint('POST /api/v2/auth/passkey/register/options', requireLoginOrToken, async (req, res) => {
+    if (!perSession(req)) failDomain('verboten', 'session_only');
     const uid = signedInUserId(req);
-    if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
     const konto = await d.account.accountShortOf(uid);
-    const optionen = await d.factors.registrationOptions(uid, konto?.username ?? String(uid));
-    if (!optionen) failDomain('nicht_verfuegbar', 'passkey_ohne_domain');
-    return { optionen };
+    const options = await d.factors.registrationOptions(uid, konto?.username ?? String(uid));
+    if (!options) failDomain('nicht_verfuegbar', 'passkey_without_domain');
+    return { options };
   });
 
-  router.endpoint('POST /api/v1/auth/passkey/registrieren', requireLoginOrToken, async req => {
-    if (!perSession(req)) failDomain('verboten', 'nur_mit_sitzung');
-    if (!devicesNameValid(req.eingabe.name)) failDomain('ungueltig', 'geraetename_ungueltig');
+  router.endpoint('POST /api/v2/auth/passkey/register', requireLoginOrToken, async req => {
+    if (!perSession(req)) failDomain('verboten', 'session_only');
+    if (!devicesNameValid(req.input.name)) failDomain('ungueltig', 'device_name_invalid');
     const fresh = await d.factors.verifyRegistration(
       signedInUserId(req),
-      req.eingabe.antwort,
-      passkeyName(req.eingabe.name),
+      req.input.response,
+      passkeyName(req.input.name),
     );
-    if (!fresh) failDomain('ungueltig', 'passkey_ungueltig');
+    if (!fresh) failDomain('ungueltig', 'passkey_invalid');
     d.account.hintInBackground(signedInUserId(req), 'passkey_neu', fresh.name);
     return { passkey: fresh };
   });
 
-  router.endpoint('DELETE /api/v1/auth/passkeys/:id', requireLoginOrToken, async (req, res) => {
+  router.endpoint('DELETE /api/v2/auth/passkeys/:id', requireLoginOrToken, async (req, res) => {
     const uid = signedInUserId(req);
-    const id = req.pfad.id;
-    if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
+    const id = req.pathArgs.id;
+    if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
     return { deleted: (await d.factors.deletePasskey(uid, id)) ? 1 : 0 };
   });
   return router;

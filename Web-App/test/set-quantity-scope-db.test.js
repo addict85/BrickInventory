@@ -69,7 +69,7 @@ test('a quantity increase on the sub-account set lands in the own account', { co
   };
 
   try {
-    const ohne = await fetch(`${app.base}/api/v1/sets/${SN}`, {
+    const ohne = await fetch(`${app.base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ quantity: 3 }),
@@ -82,7 +82,7 @@ test('a quantity increase on the sub-account set lands in the own account', { co
     ];
     for (const [name, base, credential] of wege) {
       await aufbauen();
-      const r = await fetch(`${base}/api/v1/sets/${SN}`, {
+      const r = await fetch(`${base}/api/v2/sets/${SN}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', ...credential },
         body: JSON.stringify({ quantity: 3 }),
@@ -103,8 +103,8 @@ test('a quantity increase on the sub-account set lands in the own account', { co
       const onViewer = await quantityOf(db, mainId, SN);
       assert.equal(onViewer, 2, `${name}: die Differenz (3 − 1) muss im eigenen Konto liegen`);
 
-      const gesamt = await quantityOf(db, [subId, mainId], SN);
-      assert.equal(gesamt, 3, `${name}: die Gesamtmenge muss der Eingabe entsprechen`);
+      const total = await quantityOf(db, [subId, mainId], SN);
+      assert.equal(total, 3, `${name}: die Gesamtmenge muss der Eingabe entsprechen`);
 
       // And the acquisitions follow — in the own account, with a price.
       const acq = await db.get(

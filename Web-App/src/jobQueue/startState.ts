@@ -13,12 +13,12 @@ export interface StartState {
 
 /** Per set of services: the job process writes, the web process re-reads until ready. */
 const remembered = (k: JobsContext) =>
-  k.faecher.slot<{ stand: StartState }>('startZustand', () => ({
-    stand: { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 },
+  k.faecher.slot<{ state: StartState }>('startZustand', () => ({
+    state: { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 },
   }));
 
 export async function reportStartState(k: JobsContext, s: StartState): Promise<void> {
-  remembered(k).stand = s;
+  remembered(k).state = s;
   await k.runState.setState('startup_status', JSON.stringify(s)).catch(logAndContinue('start:zustand schreiben'));
 }
 
@@ -36,13 +36,13 @@ export function publicStartState(s: StartState, signedIn = false): Omit<StartSta
 /** Ready stays ready — that is why re-reading ends afterwards. */
 export async function currentStartState(k: JobsContext): Promise<StartState> {
   const g = remembered(k);
-  if (g.stand.ready) return g.stand;
+  if (g.state.ready) return g.state;
   try {
     const raw = await k.runState.readState('startup_status');
-    if (raw) g.stand = JSON.parse(raw) as StartState;
+    if (raw) g.state = JSON.parse(raw) as StartState;
   } catch (e) {
     // Exception: the health path then shows the last known state instead of an error.
     reportError('start:zustand lesen', e);
   }
-  return g.stand;
+  return g.state;
 }

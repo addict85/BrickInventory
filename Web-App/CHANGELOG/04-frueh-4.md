@@ -584,7 +584,7 @@ als „Neu" geführt wird.
 **Ursache — dieselbe Zeile wie beim Webapp-Graphen, zweimal:**
 
 ```
-routes/api_v1/sets.ts
+routes/api/sets.ts
   /sets/:setNumber/price          → fetchPrice(sn, DEFAULT_PRICE_CONDITION, …)
   /sets/:setNumber/price-history  → const condition = DEFAULT_PRICE_CONDITION;
 ```
@@ -605,7 +605,7 @@ deshalb jetzt `resolveSetCondition(uid, setNumber)` in `utils/financeCalc.ts`
 als **einzige** Zustandsauflösung für Aufrufer, die nicht schon einen
 batch-geladenen Datensatz mit `acq_count`/`used_count` in der Hand haben:
 
-- `routes/api_v1/sets.ts` — beide Android-Routen (`/price`, `/price-history`)
+- `routes/api/sets.ts` — beide Android-Routen (`/price`, `/price-history`)
 - `routes/finance.ts` — die Webapp-Verlaufsroute (ersetzt die Inline-Fassung
   aus der letzten Runde)
 

@@ -14,13 +14,14 @@ const JOB_FRESH_MS = 3 * 60_000;
 type Tile = Record<string, unknown>;
 
 /** The subtitle as codes: the tile is created without a request, the UI translates. `sub` stays for the app. */
-type SubPart = { code: string; werte?: Record<string, number | string>; vor?: 'bestand' };
+type SubPart = { code: string; values?: Record<string, number | string>; ago?: 'holding' };
 
-const part = (code: string, werte?: Record<string, number | string>): SubPart => (werte ? { code, werte } : { code });
+const part = (code: string, values?: Record<string, number | string>): SubPart =>
+  values ? { code, values } : { code };
 
 type Tiles = Record<string, Tile>;
 
-const count = (ab: Degradations, p: Promise<number>, ort: string) => ab.orElse(ort, p, 0);
+const count = (ab: Degradations, p: Promise<number>, location: string) => ab.orElse(location, p, 0);
 
 /** A JSON state from laufzustand; a damaged one counts as none. */
 async function readRunState<T>(k: ManagementContext, ab: Degradations, key: string): Promise<T | null> {
@@ -32,34 +33,34 @@ async function readRunState<T>(k: ManagementContext, ab: Degradations, key: stri
   }
 }
 
-function blIdsTile(alt: Tile, mapped: number, gesamt: number): Tile | null {
-  if (gesamt <= 0) return null;
+function blIdsTile(alt: Tile, mapped: number, total: number): Tile | null {
+  if (total <= 0) return null;
   return {
     ...alt,
-    status: mapped < gesamt ? (alt.status === 'running' ? 'running' : 'idle') : 'done',
+    status: mapped < total ? (alt.status === 'running' ? 'running' : 'idle') : 'done',
     progress: mapped,
-    total: gesamt,
-    sub: mapped < gesamt ? `${mapped} / ${gesamt} gemappt` : `Alle ${gesamt} gemappt`,
-    sub_teile: [mapped < gesamt ? part('teil_gemappt', { n: mapped, gesamt }) : part('all_mapped', { n: gesamt })],
+    total: total,
+    sub: mapped < total ? `${mapped} / ${total} gemappt` : `Alle ${total} gemappt`,
+    sub_parts: [mapped < total ? part('part_mapped', { n: mapped, total }) : part('all_mapped', { n: total })],
   };
 }
 
 /** Counted once: open, done and failed from the same query. */
 async function instructionJobs(k: ManagementContext, ab: Degradations) {
-  const z = await ab.orElse('anleitungen', k.jobQueue.countKind('anleitung'), null);
-  return { offen: z ? z.offen + z.laeuft : 0, erledigt: z?.erledigt ?? 0, fehler: z?.fehler ?? 0 };
+  const z = await ab.orElse('anleitungen', k.jobQueue.countKind('instructions'), null);
+  return { open: z ? z.pending + z.running : 0, done: z?.done ?? 0, error: z?.error ?? 0 };
 }
 
-function instructionsTile(alt: Tile, a: { offen: number; erledigt: number; fehler: number }): Tile | null {
-  const gesamt = a.offen + a.erledigt + a.fehler;
-  if (gesamt <= 0) return null;
+function instructionsTile(alt: Tile, a: { open: number; done: number; error: number }): Tile | null {
+  const total = a.open + a.done + a.error;
+  if (total <= 0) return null;
   return {
     ...alt,
-    status: a.offen > 0 ? 'running' : 'done',
-    progress: a.erledigt,
-    total: gesamt,
-    sub: a.offen > 0 ? `${a.offen} ausstehend` : 'Alle erledigt',
-    sub_teile: [a.offen > 0 ? part('ausstehend', { n: a.offen }) : part('all_done')],
+    status: a.open > 0 ? 'running' : 'done',
+    progress: a.done,
+    total: total,
+    sub: a.open > 0 ? `${a.open} ausstehend` : 'Alle erledigt',
+    sub_parts: [a.open > 0 ? part('pending', { n: a.open }) : part('all_done')],
   };
 }
 
@@ -80,19 +81,19 @@ async function bricksetTile(k: ManagementContext, ab: Degradations): Promise<Til
         : faellig > 0
           ? `${faellig} Sets bereit zum Retry, ${wartend - faellig} warten`
           : `${wartend} Sets warten auf morgen`,
-    sub_teile: [
+    sub_parts: [
       wartend === 0
-        ? part('keine_ausstehenden')
+        ? part('none_pending')
         : faellig > 0
           ? part('retry_ready', { n: faellig, w: wartend - faellig })
-          : part('warten_morgen', { n: wartend }),
+          : part('wait_tomorrow', { n: wartend }),
     ],
   };
 }
 
 /** "running" means: has done something RECENTLY (timestamp of the state). */
 const isFresh = (k: ManagementContext, time: unknown) =>
-  typeof time === 'number' && k.uhr.jetzt() - time < JOB_FRESH_MS;
+  typeof time === 'number' && k.clock.now() - time < JOB_FRESH_MS;
 
 /** Inventory, reloading and catalog in ONE tile, otherwise it would report "all cached"
  * while the background job is reloading. */
@@ -112,13 +113,13 @@ async function redownloadState(k: ManagementContext, ab: Degradations) {
     ab,
     'imgredl_status',
   );
-  const laeuft = reDl?.running === true && (typeof reDl.at !== 'number' || isFresh(k, reDl.at));
-  const sub = !laeuft
+  const running = reDl?.running === true && (typeof reDl.at !== 'number' || isFresh(k, reDl.at));
+  const sub = !running
     ? null
     : reDl?.phase === 'scanning'
       ? '↻ suche fehlende Bilder…'
       : `↻ ${reDl?.done || 0}/${reDl?.total || 0} fehlende neu geladen`;
-  return { reDl, laeuft, sub };
+  return { reDl, running, sub };
 }
 
 async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> {
@@ -133,10 +134,10 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
   const open = openParts + setMinifigs + inventoryMinifigs;
   const job = await ab.orElse('bilder', tile(k, 'imgDl'), null);
   const active = await imagesInProgress(k, ab, open);
-  const { reDl, laeuft: reDlRunning, sub: reDlSub } = await redownloadState(k, ab);
+  const { reDl, running: reDlRunning, sub: reDlSub } = await redownloadState(k, ab);
   // "running" means: has recently done something, according to the database.
   const lastRun = await readRunState<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
-  const sinceRun = lastRun?.zeit ? k.uhr.jetzt() - lastRun.zeit : null;
+  const sinceRun = lastRun?.zeit ? k.clock.now() - lastRun.zeit : null;
   const jobRunning = isFresh(k, lastRun?.zeit);
   const catalogSub =
     openCatalog > 0
@@ -157,23 +158,23 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
   const parts: SubPart[] = [
     {
       ...(active > 0
-        ? part('bilder_laden', { n: active })
+        ? part('images_loading', { n: active })
         : open > 0
-          ? part('bilder_offen', { n: open })
+          ? part('images_open', { n: open })
           : part('imgs_cached', { n: finished })),
-      ...(openCatalog > 0 ? { vor: 'bestand' as const } : {}),
+      ...(openCatalog > 0 ? { ago: 'holding' as const } : {}),
     },
   ];
   if (openCatalog > 0) {
-    parts.push(part('katalog_warteschlange', { n: openCatalog }));
+    parts.push(part('catalog_queue', { n: openCatalog }));
     if (!jobRunning)
-      parts.push(sinceRun === null ? part('job_nie') : part('kein_durchgang', { min: Math.round(sinceRun / 60_000) }));
+      parts.push(sinceRun === null ? part('never_ran') : part('no_run', { min: Math.round(sinceRun / 60_000) }));
   }
   if (reDlRunning)
     parts.push(
       reDl?.phase === 'scanning'
-        ? part('neu_suche')
-        : part('neu_geladen', { n: reDl?.done || 0, gesamt: reDl?.total || 0 }),
+        ? part('new_search')
+        : part('reloaded', { n: reDl?.done || 0, total: reDl?.total || 0 }),
     );
   return {
     label: '📥 Bild-Download (CDN)',
@@ -184,7 +185,7 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
           ? 'idle'
           : 'done',
     sub: reDlSub ? `${basisSub} · ${reDlSub}` : basisSub,
-    sub_teile: parts,
+    sub_parts: parts,
     // With the queue, otherwise the bar would stand at 100 % while images are pending.
     progress: finished,
     total: finished + open + openCatalog,
@@ -223,11 +224,11 @@ function pdfTile(): Tile {
         : finished > 0
           ? `${finished} PDF(s) bereit zum Download`
           : 'Keine aktiven Jobs',
-    sub_teile: [
+    sub_parts: [
       inProgress > 0
-        ? part('pdf_laufend', { n: inProgress })
+        ? part('pdf_running', { n: inProgress })
         : finished > 0
-          ? part('pdf_bereit', { n: finished })
+          ? part('pdf_ready', { n: finished })
           : part('no_active'),
     ],
   };
@@ -271,7 +272,7 @@ export async function jobMonitor(k: ManagementContext) {
     jobs,
     schedules: await schedules(k),
     db: {
-      instrQueue: { pending: anleitungen.offen, done: anleitungen.erledigt, failed: anleitungen.fehler },
+      instrQueue: { pending: anleitungen.open, done: anleitungen.done, failed: anleitungen.error },
       blMapping: { mapped: mapped, total: blTotal },
       csvCache: { parts: rbParts, inventoryParts: rbInventory, lastSync: lastSync || null },
     },

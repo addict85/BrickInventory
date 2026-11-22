@@ -30,11 +30,11 @@ function pdfJobReadFor(d: Pick<Services, 'jobQueue' | 'catalog' | 'account'>, id
   return d.catalog.pdf.lies(id, userId);
 }
 /** The inflection is a placeholder in the table, not here. */
-function runningInflection(anzahl: number, language: string) {
+function runningInflection(count: number, language: string) {
   const en = language === 'en',
-    one = anzahl === 1;
+    one = count === 1;
   return {
-    anzahl,
+    count,
     laufenVerb: one ? (en ? 'is' : 'läuft') : en ? 'are' : 'laufen',
     auftragWort: one ? (en ? 'job' : 'Auftrag') : en ? 'jobs' : 'Aufträge',
   };
@@ -84,24 +84,24 @@ function deliverAndCleanOn(
 
 export function buildPdfRouter(d: Pick<Services, 'jobQueue' | 'catalog' | 'account'>) {
   const { requireToken } = guardFor(d.account);
-  const router = contractRouter('/api/v1');
+  const router = contractRouter('/api/v2');
 
-  router.endpoint('POST /api/v1/sets/partslist-pdf', requireToken, async req => {
+  router.endpoint('POST /api/v2/sets/partslist-pdf', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    const { sets = [], parts = [] } = req.eingabe;
-    if (!parts.length) failDomain('ungueltig', 'keine_teile');
+    const { sets = [], parts = [] } = req.input;
+    if (!parts.length) failDomain('ungueltig', 'no_parts');
 
     const r = await d.catalog.pdf.start(uid, sets, parts);
     if ('laufend' in r) {
-      failDomain('zu_viele', 'pdf_auftrag_laeuft', runningInflection(r.laufend, responseLanguage(req)));
+      failDomain('zu_viele', 'pdf_job_running', runningInflection(r.laufend, responseLanguage(req)));
     }
 
     return { jobId: r.jobId };
   });
 
-  router.endpoint('GET /api/v1/sets/partslist-pdf/status/:jobId', requireToken, async req => {
-    const job = await pdfJobReadFor(d, req.pfad.jobId, req.apiUser.user_id);
-    if (!job) notFound('job_nicht_gefunden');
+  router.endpoint('GET /api/v2/sets/partslist-pdf/status/:jobId', requireToken, async req => {
+    const job = await pdfJobReadFor(d, req.pathArgs.jobId, req.apiUser.user_id);
+    if (!job) notFound('job_not_found');
     return {
       status: job.status,
       error: job.error || null,
@@ -112,13 +112,13 @@ export function buildPdfRouter(d: Pick<Services, 'jobQueue' | 'catalog' | 'accou
 
   // SSE instead of polling; the stream only sends on change.
   router.endpoint(
-    'GET /api/v1/sets/partslist-pdf/stream/:jobId',
+    'GET /api/v2/sets/partslist-pdf/stream/:jobId',
     requireToken,
-    accountGate('strom'),
+    accountGate('stream'),
     async (req, res) => {
-      const jobId = req.pfad.jobId;
+      const jobId = req.pathArgs.jobId;
       const initial = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
-      if (!initial) notFound('job_nicht_gefunden');
+      if (!initial) notFound('job_not_found');
       const stream = openStream(d.account, req, res, { onlyChanges: true });
       stream.sende(streamStatus(initial));
       if (finished(initial.status)) stream.ende();
@@ -126,8 +126,8 @@ export function buildPdfRouter(d: Pick<Services, 'jobQueue' | 'catalog' | 'accou
     },
   );
 
-  router.endpoint('GET /api/v1/sets/partslist-pdf/download/:jobId', requireToken, async (req, res) => {
-    const jobId = req.pfad.jobId;
+  router.endpoint('GET /api/v2/sets/partslist-pdf/download/:jobId', requireToken, async (req, res) => {
+    const jobId = req.pathArgs.jobId;
     const pdfPath = await d.catalog.pdf.finishedFile(jobId, req.apiUser.user_id);
     deliverAndCleanOn(d, req, res, jobId, req.apiUser.user_id, pdfPath);
   });

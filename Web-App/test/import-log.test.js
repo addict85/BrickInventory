@@ -21,14 +21,14 @@ const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources')
 const PROGRESS = 'public/js/progress.js';
 
 test('only ONE version builds the line for the import log', () => {
-  const quellen = fs
+  const sources = fs
     .readdirSync(path.join(ROOT, 'public', 'js'))
     .filter(n => n.endsWith('.js') && n !== 'app.bundle.js')
     .map(n => ['public/js/' + n, ohneKommentare(lies('public/js/' + n))]);
   // Self-proof: if the search found hardly any files, the rule would be vacuously true.
-  assert.ok(quellen.length >= 20, `Nur ${quellen.length} Oberflächen-Dateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(sources.length >= 20, `Nur ${sources.length} Oberflächen-Dateien gefunden — die Suche greift nicht mehr`);
 
-  const definiert = quellen.filter(([, js]) => /function logRow\s*\(/.test(js));
+  const definiert = sources.filter(([, js]) => /function logRow\s*\(/.test(js));
   assert.deepEqual(
     definiert.map(([n]) => n),
     [PROGRESS],
@@ -42,11 +42,11 @@ test('the progress text does not talk about sets', () => {
   // The same bar carries sets, parts and minifigures; checked on the loaded dictionaries.
   const { de, en } = require('./helpers/sources').loadTranslations();
   assert.equal(de['csv.sets_progress'] ?? en['csv.sets_progress'], undefined, 'der alte Schlüssel ist zurück');
-  for (const [sprache, text] of [
+  for (const [language, text] of [
     ['de', de['csv.items_progress']],
     ['en', en['csv.items_progress']],
   ]) {
-    assert.ok(text, `csv.items_progress fehlt (${sprache})`);
-    assert.doesNotMatch(text, /sets?\b/i, `${sprache}: „${text}“ nennt Sets`);
+    assert.ok(text, `csv.items_progress fehlt (${language})`);
+    assert.doesNotMatch(text, /sets?\b/i, `${language}: „${text}“ nennt Sets`);
   }
 });

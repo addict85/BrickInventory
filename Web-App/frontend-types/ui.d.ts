@@ -57,7 +57,7 @@ interface PdfDocument {
 }
 interface PdfJs {
   GlobalWorkerOptions: { workerSrc: string };
-  getDocument(quelle: object): { promise: Promise<PdfDocument>; destroy(): void };
+  getDocument(source: object): { promise: Promise<PdfDocument>; destroy(): void };
 }
 declare module '/vendor/pdfjs/*' {
   export const GlobalWorkerOptions: PdfJs['GlobalWorkerOptions'];
@@ -66,7 +66,7 @@ declare module '/vendor/pdfjs/*' {
 
 // qrcode.js from public/vendor, loaded as a classic script.
 declare const QRCode: {
-  new (target: HTMLElement, optionen: Record<string, unknown>): unknown;
+  new (target: HTMLElement, options: Record<string, unknown>): unknown;
   CorrectLevel: Record<'L' | 'M' | 'Q' | 'H', number>;
 };
 declare const __ALLOWED_STYLES__: string[];

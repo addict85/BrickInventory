@@ -85,7 +85,7 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
   await starte();
 
   await t.test('every account column has a foreign key', async () => {
-    const offen = await db.all(
+    const open = await db.all(
       `
       SELECT c.table_name || '.' || c.column_name AS spalte
         FROM information_schema.columns c
@@ -101,7 +101,7 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
       [KONTOSPALTEN],
     );
     assert.deepEqual(
-      offen.map(r => r.spalte).filter(s => !WITHOUT_KEY.has(s)),
+      open.map(r => r.spalte).filter(s => !WITHOUT_KEY.has(s)),
       [],
     );
     const alle = await db.get(

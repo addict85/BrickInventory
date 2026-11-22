@@ -37,7 +37,7 @@ const pause = () => new Promise(r => setTimeout(r, 10));
 /** Own images get their preview anew, in the proxy cache the old one is only deleted; throttled.
  * @returns how many previews were replaced, or null if it already ran once */
 export async function fitTailoredPreviews(
-  k: Pick<ImagesContext, 'jobQueue' | 'uhr'>,
+  k: Pick<ImagesContext, 'jobQueue' | 'clock'>,
   local: { web: string; datei: string }[],
   proxyFolder = path.join(APP_ROOT, 'data', 'img_proxy_cache'),
 ): Promise<number | null> {
@@ -61,7 +61,7 @@ export async function fitTailoredPreviews(
     await fs.promises.rm(preview, { force: true });
     replaced++;
   }
-  await k.jobQueue.setState(FITTED_MARKER, k.uhr.datum().toISOString());
+  await k.jobQueue.setState(FITTED_MARKER, k.clock.datum().toISOString());
   if (replaced) console.log(`  🖼️  ${replaced} zugeschnittene Vorschauen neu eingepasst`);
   return replaced;
 }

@@ -31,8 +31,8 @@ function serverSources() {
  * progress reporter in the wrong place.
  */
 function argumente(text) {
-  const teile = [];
-  let tiefe = 0,
+  const parts = [];
+  let depth = 0,
     act = '',
     str = null;
   for (let i = 0; i < text.length; i++) {
@@ -47,22 +47,22 @@ function argumente(text) {
       act += c;
       continue;
     }
-    if ('([{'.includes(c)) tiefe++;
-    if (')]}'.includes(c)) tiefe--;
-    if (c === ',' && tiefe === 0) {
-      teile.push(act.trim());
+    if ('([{'.includes(c)) depth++;
+    if (')]}'.includes(c)) depth--;
+    if (c === ',' && depth === 0) {
+      parts.push(act.trim());
       act = '';
       continue;
     }
     act += c;
   }
-  if (act.trim()) teile.push(act.trim());
-  return teile;
+  if (act.trim()) parts.push(act.trim());
+  return parts;
 }
 
 /** Cuts out the parenthesis contents of the call from `start`. */
 function bracketContent(src, start) {
-  let tiefe = 0,
+  let depth = 0,
     str = null;
   for (let i = start; i < src.length; i++) {
     const c = src[i];
@@ -74,10 +74,10 @@ function bracketContent(src, start) {
       str = c;
       continue;
     }
-    if (c === '(') tiefe++;
+    if (c === '(') depth++;
     else if (c === ')') {
-      tiefe--;
-      if (tiefe === 0) return src.slice(start + 1, i);
+      depth--;
+      if (depth === 0) return src.slice(start + 1, i);
     }
   }
   return null;
@@ -92,8 +92,8 @@ function bracketContent(src, start) {
  * body of this function count as reachable.
  */
 function reachableSteps() {
-  const quellen = serverSources();
-  const alles = quellen.map(([, s]) => s).join('\n');
+  const sources = serverSources();
+  const alles = sources.map(([, s]) => s).join('\n');
   const erreichbar = new Set();
 
   // Steps that a route writes directly into its own stream are always
@@ -106,7 +106,7 @@ function reachableSteps() {
     erreichbar.add(m[2]);
   }
 
-  for (const [datei, src] of quellen) {
+  for (const [datei, src] of sources) {
     for (const m of src.matchAll(/(?:async\s+)?function\s+(\w+)\s*\(/g)) {
       const name = m[1];
       const params = bracketContent(src, m.index + m[0].length - 1);
@@ -121,7 +121,7 @@ function reachableSteps() {
 
       // Does any caller pass something other than null?
       let lebt = false;
-      for (const [, s2] of quellen) {
+      for (const [, s2] of sources) {
         for (const c of s2.matchAll(new RegExp(`\\b${name}\\s*\\(`, 'g'))) {
           if (/function\s*$/.test(s2.slice(0, c.index))) continue; // the declaration itself
           const args = bracketContent(s2, c.index + c[0].length - 1);
@@ -189,26 +189,26 @@ test('after the last event no item hangs on “active”', () => {
   // ── Sending order, as the capture stream produces it ───────────────
   // The route reports before and after supplementing itself; in between fetchCatalog() reports.
   const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-  const route = require('./helpers/sources').kompakt(lies('routes/api_v1/setsImport.ts'));
+  const route = require('./helpers/sources').kompakt(lies('routes/api/setsImport.ts'));
   // The route and its helper supplementInStream (before the router factory).
-  const strom =
+  const stream =
     route.slice(
-      route.indexOf("router.endpoint('POST /api/v1/sets/add-stream'"),
-      route.indexOf("router.endpoint('POST /api/v1/sets/:setNumber/parts'"),
+      route.indexOf("router.endpoint('POST /api/v2/sets/add-stream'"),
+      route.indexOf("router.endpoint('POST /api/v2/sets/:setNumber/parts'"),
     ) +
     route.slice(
       route.indexOf('async function supplementInStream('),
       route.indexOf('export function buildSetsImportRouter'),
     );
-  assert.ok(strom.includes('setSupplement('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
+  assert.ok(stream.includes('setSupplement('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
   const erfassen = lies('src/sets/addSet.ts');
   const katalog = erfassen.slice(
     erfassen.indexOf('async function fetchCatalog('),
     erfassen.indexOf('export async function setSupplement('),
   );
-  const schritte = t => [...t.matchAll(/step\s*:\s*'([^']+)'/g)].map(m => m[1]);
-  const [vor, nach] = strom.split('setSupplement(');
-  const sequence = [...schritte(vor), ...schritte(katalog), ...schritte(nach)];
+  const steps = t => [...t.matchAll(/step\s*:\s*'([^']+)'/g)].map(m => m[1]);
+  const [ago, nach] = stream.split('setSupplement(');
+  const sequence = [...steps(ago), ...steps(katalog), ...steps(nach)];
   assert.ok(sequence.length >= 4, `der Strom meldet nur ${sequence.length} Schritte — Anker stimmt nicht mehr`);
 
   // ── Switching logic, as handleSseEvent() executes it ───────────────────────
@@ -222,12 +222,12 @@ test('after the last event no item hangs on “active”', () => {
   }
 
   // ── Playing through ─────────────────────────────────────────────────────────
-  const zustand = {};
+  const condition = {};
   for (const ereignis of sequence) {
-    for (const [punkt, wert] of wirkung[ereignis] || []) zustand[punkt] = wert;
+    for (const [punkt, wert] of wirkung[ereignis] || []) condition[punkt] = wert;
   }
 
-  const haengt = Object.entries(zustand)
+  const haengt = Object.entries(condition)
     .filter(([, w]) => w === 'active')
     .map(([k]) => k);
   assert.deepEqual(
@@ -242,7 +242,7 @@ test('after the last event no item hangs on “active”', () => {
   // And every point that EXISTS in the dialog must also be reached by the flow.
   const gezeigt = [...html.matchAll(/class="prog-step" id="ps-([a-z-]+)"/g)].map(m => m[1]);
   assert.ok(gezeigt.length >= 2, `nur ${gezeigt.length} Punkte im Dialog — Anker stimmt nicht mehr`);
-  const neverTouched = gezeigt.filter(g => !(g in zustand));
+  const neverTouched = gezeigt.filter(g => !(g in condition));
   assert.deepEqual(
     neverTouched,
     [],

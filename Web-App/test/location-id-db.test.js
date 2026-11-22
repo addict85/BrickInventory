@@ -70,7 +70,7 @@ test('storage location as an ID against a real database', async t => {
   };
   const writable = await household.writeScope(UID);
 
-  const estrich = (await L.createStorage(UID, 'Estrich')).ort;
+  const estrich = (await L.createStorage(UID, 'Estrich')).location;
 
   await t.test('a different spelling lands in the EXISTING place', async () => {
     // The core. „estrich" is typed, the stock holds „Estrich" — and the
@@ -84,11 +84,11 @@ test('storage location as an ID against a real database', async t => {
       'Estrich',
       'Das Set trägt eine eigene Schreibweise — dann ist es nicht derselbe Ort',
     );
-    const orte = (await L.locationsOf([UID])).map(o => o.name);
+    const locations = (await L.locationsOf([UID])).map(o => o.name);
     assert.deepEqual(
-      orte,
+      locations,
       ['Estrich'],
-      `Der Vorrat hat ${orte.length} Einträge: ${orte} — „estrich" hat einen zweiten angelegt`,
+      `Der Vorrat hat ${locations.length} Einträge: ${locations} — „estrich" hat einen zweiten angelegt`,
     );
     const id = (await db.get('SELECT storage_id FROM sets WHERE user_id=$1 AND set_number=$2', [UID, '10179-1']))
       .storage_id;
@@ -113,7 +113,7 @@ test('storage location as an ID against a real database', async t => {
     // a name that the selection list no longer knew.
     await assert.rejects(
       () => L.deleteStorage(UID, estrich.id),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
+      (/** @type {any} */ e) => String(e.code) === 'storage_in_use',
       'Ein belegter Ort liess sich loeschen',
     );
     assert.deepEqual(

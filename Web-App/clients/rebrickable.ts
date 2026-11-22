@@ -145,7 +145,7 @@ export async function rebrickableRaw(url: string, rbKey: string): Promise<{ stat
 /** No further request can succeed; loops over many numbers abort. */
 export class RebrickableLocked extends Error {
   constructor(
-    readonly grund: 'kontingent' | 'kein_schluessel',
+    readonly reason: 'quota' | 'no_key',
     text: string,
   ) {
     super(text);
@@ -159,15 +159,12 @@ async function rbGet<T extends z.ZodType>(
   params: Record<string, string | number> = {},
 ): Promise<z.output<T> | null> {
   const key = await getRbKey(kl);
-  if (!key) throw new RebrickableLocked('kein_schluessel', 'Rebrickable API Key nicht konfiguriert.');
+  if (!key) throw new RebrickableLocked('no_key', 'Rebrickable API Key nicht konfiguriert.');
   await kl.zugang.drossel.foreground.waitForSlot();
   if (!(await dailyQuotaFree(kl))) {
     // The number from the shared counter, so the text follows the limit.
     const { limit } = await kl.zugang.quotaStatus('rebrickable');
-    throw new RebrickableLocked(
-      'kontingent',
-      `Rebrickable Tageslimit erreicht (${limit}/Tag). Versuche es morgen wieder.`,
-    );
+    throw new RebrickableLocked('quota', `Rebrickable Tageslimit erreicht (${limit}/Tag). Versuche es morgen wieder.`);
   }
   const qs = new URLSearchParams({ page_size: '500', ...params }).toString();
   const { status, body } = await httpsGetRobust(kl, `${BASE}${apiPath}?${qs}`, { Authorization: `key ${key}` }, 45000);
@@ -192,7 +189,7 @@ async function holeSet(kl: Rb, number: string) {
 
 /** The part list page by page. `verweigert`: Rebrickable answered 403 (set unknown or no
  * access) — the caller should notice that. */
-async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; verweigert: boolean }> {
+async function fetchSetParts(kl: Rb, n: string): Promise<{ parts: RbSetTeil[]; verweigert: boolean }> {
   const key = await getRbKey(kl);
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
   const allParts: RbSetTeil[] = [];
@@ -215,7 +212,7 @@ async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; v
     }
     if (status === 403) {
       console.log(`  Parts HTTP 403 for ${n} — set not found or access denied, skipping`);
-      return { teile: allParts, verweigert: true };
+      return { parts: allParts, verweigert: true };
     }
     if (status === 404) break;
     if (status !== 200) {
@@ -236,7 +233,7 @@ async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; v
       console.error(`  Parts page ${pages}: next zeigt auf einen fremden Host, ${n} bleibt unvollständig`);
     if (url) await sleep(500);
   }
-  return { teile: allParts, verweigert: false };
+  return { parts: allParts, verweigert: false };
 }
 
 async function scrapeInstructions(kl: Rb, setNumber: string) {
@@ -294,7 +291,7 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
     return false;
   }
   try {
-    await pipeline(reply.strom(), fs.createWriteStream(destPath));
+    await pipeline(reply.stream(), fs.createWriteStream(destPath));
   } catch (e) {
     console.warn(`[download] Abgebrochen: ${errorMessage(e)}`);
     await fs.promises.rm(destPath, { force: true });
@@ -481,13 +478,13 @@ async function blPartToRb(kl: Rb, blId: string): Promise<string | null> {
   if (direct && carriesBlNumber(direct, blId)) return String(direct.part_num);
 
   // Path 2: the filter, with a cross-check.
-  if (kl.filterWirkungslos) return null;
+  if (kl.filterIneffective) return null;
   const filtered = await rbGet(kl, '/lego/parts/', rbPage(RbTeil), { bricklink_id: blId, page_size: 20 });
   if (!filtered) return null;
   // More than a thousand hits for ONE number cannot be what the filter
   // meant — then it was ignored.
   if (Number(filtered.count) > 1000) {
-    kl.filterWirkungslos = true;
+    kl.filterIneffective = true;
     return null;
   }
   for (const t of filtered.results ?? []) {
@@ -498,7 +495,7 @@ async function blPartToRb(kl: Rb, blId: string): Promise<string | null> {
 
 /** Whether the filter has meanwhile been recognized as ineffective — for the report. */
 function blFilterIneffective(kl: Rb): boolean {
-  return kl.filterWirkungslos;
+  return kl.filterIneffective;
 }
 
 /** A small request with the stored key — for the test button of the setup. */
@@ -512,12 +509,12 @@ interface Rb {
   themen: Map<number | string, string | null>;
   farben: { id: number; name: string; hex: string | null }[] | null;
   /** The answer concerns the service, not the number; only a new client asks again. */
-  filterWirkungslos: boolean;
+  filterIneffective: boolean;
 }
 
 /** One client per access: what it remembers applies only to it, not to the process. */
 export function createRebrickable(zugang: ClientsAccess) {
-  const r: Rb = { zugang, themen: new Map(), farben: null, filterWirkungslos: false };
+  const r: Rb = { zugang, themen: new Map(), farben: null, filterIneffective: false };
   const bound =
     <A extends unknown[], E>(f: (r: Rb, ...a: A) => E) =>
     (...a: A) =>

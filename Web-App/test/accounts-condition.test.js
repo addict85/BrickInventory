@@ -14,13 +14,13 @@ const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 
 const sicht = _req('db/inventoryView.js');
-const menge = _req('db/stockQuantity.js');
+const quantity = _req('db/stockQuantity.js');
 
 test('placeholders go through, at the right column', () => {
   assert.match(sicht.setBestand('= ANY($1)'), /FROM sets WHERE user_id = ANY\(\$1\)\)$/);
   assert.match(sicht.merkliste('= $2'), /FROM wanted WHERE user_id = \$2\)$/);
-  assert.match(menge.mengeJoin('s', 'sm', '= ANY($3)'), /WHERE a\.user_id = ANY\(\$3\)/);
-  assert.match(menge.teilmengeJoin('p', 'part', 'tm', '= $1'), /WHERE x\.user_id = \$1/);
+  assert.match(quantity.mengeJoin('s', 'sm', '= ANY($3)'), /WHERE a\.user_id = ANY\(\$3\)/);
+  assert.match(quantity.teilmengeJoin('p', 'part', 'tm', '= $1'), /WHERE x\.user_id = \$1/);
   // Without a condition all accounts apply.
   assert.doesNotMatch(sicht.setBestand(), /WHERE/);
 });
@@ -30,7 +30,7 @@ test('a value in the text throws', () => {
   for (const k of boese) {
     assert.throws(() => sicht.setBestand(k), /Kontobedingung/, `setBestand(${k})`);
     assert.throws(() => sicht.countedSets(k), /Kontobedingung/, `countedSets(${k})`);
-    assert.throws(() => menge.mengeJoin('s', 'sm', k), /Kontobedingung/, `mengeJoin(${k})`);
-    assert.throws(() => menge.teilmengeJoin('p', 'fig', 'tm', k), /Kontobedingung/, `teilmengeJoin(${k})`);
+    assert.throws(() => quantity.mengeJoin('s', 'sm', k), /Kontobedingung/, `mengeJoin(${k})`);
+    assert.throws(() => quantity.teilmengeJoin('p', 'fig', 'tm', k), /Kontobedingung/, `teilmengeJoin(${k})`);
   }
 });

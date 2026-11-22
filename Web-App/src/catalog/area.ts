@@ -30,10 +30,10 @@ export function createCatalog(
   a: Omit<CatalogDependencies, 'faecher' | 'cdnDrossel'>,
   inspect?: Inspect<CatalogContext>,
 ) {
-  const cdnDrossel = new ConcurrentRateLimiter(2, 1000, a.uhr);
+  const cdnDrossel = new ConcurrentRateLimiter(2, 1000, a.clock);
   const d = buildArea(
     { ...a, cdnDrossel, faecher: new Compartments() },
-    (db: Db) => access(db, a.lesevertrag),
+    (db: Db) => access(db, a.readContract),
     catalogServices,
     inspect,
   );

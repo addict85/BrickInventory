@@ -46,8 +46,8 @@ const dateien = _req('src/vouchers/voucherFiles.js');
 const { keySwitch } = _req('startup/database.js');
 
 /** Switch keys, like a restart with a different environment. */
-function schluessel(aktuell, previous) {
-  environment({ DATA_KEY: aktuell });
+function schluessel(current, previous) {
+  environment({ DATA_KEY: current });
   if (previous) environment({ DATA_KEY_ALT: previous });
   else environment({ DATA_KEY_ALT: undefined });
   G._forgetKey();

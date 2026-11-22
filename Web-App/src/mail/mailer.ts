@@ -1,11 +1,11 @@
 // Sending mail is a tool, not a route.
 
 import type { MailContext } from './context';
-import { basisUrl, hintWithoutBaseUrl } from '../infra/baseUrl';
+import { baseUrl, hintWithoutBaseUrl } from '../infra/baseUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailTheme } from './template';
 import { sendMail, testSmtp } from './transport';
 import { failDomain } from '../infra/errorTexts';
-const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
+const setting = (k: MailContext, key: string) => k.settings.globalValue(key, '');
 
 // Re-exported so callers and tests keep a single address.
 export { MAIL_THEMES, mailTheme, emailTemplate } from './template';
@@ -269,7 +269,7 @@ export async function mailReady(
 ): Promise<boolean> {
   const value = async (n: 'smtp_host' | 'smtp_user') =>
     incoming[n] !== undefined ? String(incoming[n] ?? '') : await setting(k, n);
-  return !!basisUrl() && !!(await value('smtp_host')) && !!(await value('smtp_user'));
+  return !!baseUrl() && !!(await value('smtp_host')) && !!(await value('smtp_user'));
 }
 
 export type AccountNotice =
@@ -278,8 +278,8 @@ export type AccountNotice =
   | 'passwort_zurueckgesetzt'
   | 'token_neu'
   | 'qr_zugang_neu'
-  | 'zweiter_faktor_entfernt'
-  | 'verwalter_ernannt'
+  | 'second_factor_removed'
+  | 'admin_appointed'
   | 'verwaltung_faktor_entfernt'
   | 'token_wiederverwendet'
   | 'passwort_durch_verwalter'
@@ -288,12 +288,12 @@ export type AccountNotice =
   | 'zweiter_faktor_abgeschaltet'
   | 'anmeldung_gebremst'
   | 'anmeldung_tagesgrenze'
-  | 'zweiter_faktor_gesperrt'
+  | 'second_factor_locked'
   | 'bestaetigung_gebremst'
-  | 'einstellungen_geaendert'
-  | 'zugang_beendet'
+  | 'settings_changed'
+  | 'access_ended'
   | 'zugaenge_beendet'
-  | 'uebernahme_angekuendigt'
+  | 'takeover_announced'
   | 'verwaltung_uebernahme_angekuendigt'
   | 'verwaltung_uebernahme_abgebrochen'
   | 'alte_codes_ablauf'
@@ -304,7 +304,7 @@ export type AccountNotice =
 /** No secrets; a link only for cancelling or releasing, sent to the account itself. `haushalt` names the accounts that see
  * this collection: an intruder could have added themselves there. */
 /** What "forgot password" ended besides the password. */
-export type ResetSideEffects = { haushalt: string[]; einladungen: number; adresse: string | null };
+export type ResetSideEffects = { haushalt: string[]; einladungen: number; address: string | null };
 
 /** The one sentence about what happened to the account. */
 type NoticeDetails = {
@@ -317,18 +317,18 @@ type NoticeDetails = {
   /** Plain text of a link (cancelling an announcement, releasing a sign-in); only to the target. */
   abbruch?: string | undefined;
   freigabe?: string | undefined;
-  adresse?: string | undefined;
+  address?: string | undefined;
 };
 
 /** What an administrator wants to change on another account, and from when (UTC, without the server's locale). */
 function takeover(o: NoticeDetails, en: boolean): { was: string; bis: string } {
   const kinds = (o.was ?? '').split(', ');
   const sentence: Record<string, [string, string]> = {
-    passwort: ['ein neues Passwort setzen', 'set a new password'],
-    zweiter_faktor: ['den zweiten Faktor entfernen', 'remove the second factor'],
-    deaktivieren: ['das Konto deaktivieren', 'deactivate the account'],
-    rolle_entziehen: ['die Administratorrechte entziehen', 'revoke the administrator rights'],
-    loeschen: ['das Konto löschen', 'delete the account'],
+    password: ['ein neues Passwort setzen', 'set a new password'],
+    second_factor: ['den zweiten Faktor entfernen', 'remove the second factor'],
+    deactivate: ['das Konto deaktivieren', 'deactivate the account'],
+    revoke_role: ['die Administratorrechte entziehen', 'revoke the administrator rights'],
+    delete: ['das Konto löschen', 'delete the account'],
   };
   const was = kinds.map(a => (sentence[a] ?? ['', ''])[en ? 1 : 0]).join(en ? ' and ' : ' und ');
   return { was, bis: o.bis ? `${o.bis.slice(0, 16).replace('T', ' ')} UTC` : '' };
@@ -344,11 +344,11 @@ function sideEffectsSentence(g: ResetSideEffects | undefined, en: boolean): stri
         ? `the link to ${g.haushalt.map(n => `“${n}”`).join(', ')} (these accounts could see your collection)`
         : `die Verknüpfung mit ${g.haushalt.map(n => `„${n}“`).join(', ')} (diese Konten sahen deine Sammlung)`,
     );
-  if (g.adresse)
+  if (g.address)
     parts.push(
       en
-        ? `the pending change of your email address to ${g.adresse}`
-        : `die ausstehende Änderung deiner E-Mail-Adresse auf ${g.adresse}`,
+        ? `the pending change of your email address to ${g.address}`
+        : `die ausstehende Änderung deiner E-Mail-Adresse auf ${g.address}`,
     );
   if (g.einladungen)
     parts.push(en ? `${g.einladungen} open household invitation(s)` : `${g.einladungen} offene Haushaltseinladung(en)`);
@@ -359,7 +359,7 @@ function sideEffectsSentence(g: ResetSideEffects | undefined, en: boolean): stri
 function takeoverSentences(o: NoticeDetails, en: boolean) {
   const u = takeover(o, en);
   return {
-    uebernahme_angekuendigt: en
+    takeover_announced: en
       ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough) or open the link below; the change is then dropped. If you asked for it yourself, you need not do anything.`
       : `der Administrator „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt) oder öffne den Link unten; dann entfällt die Änderung. Hast du selbst darum gebeten, musst du nichts tun.`,
     verwaltung_uebernahme_angekuendigt: en
@@ -375,8 +375,8 @@ function takeoverSentences(o: NoticeDetails, en: boolean) {
       ? `the change to the administrator account “${o.konto ?? ''}” announced by “${o.durch ?? ''}” took effect: ${u.was}.`
       : `die von „${o.durch ?? ''}“ angekündigte Änderung am Administratorkonto „${o.konto ?? ''}“ ist wirksam: ${u.was}.`,
     anmeldung_freigeben: en
-      ? `your account reached the limit of failed sign-in attempts. Signing in with the password from a new place (address ${o.adresse ?? '?'}) is blocked for now. If that was you, open the link below: it allows signing in from that address again. If not, ignore this email.`
-      : `für dein Konto ist die Grenze der Fehlversuche erreicht. Mit dem Passwort ist die Anmeldung von einem neuen Ort (Adresse ${o.adresse ?? '?'}) vorerst gesperrt. Warst du das, öffne den Link unten: Er schaltet die Anmeldung von dieser Adresse wieder frei. Sonst ignoriere diese Mail.`,
+      ? `your account reached the limit of failed sign-in attempts. Signing in with the password from a new place (address ${o.address ?? '?'}) is blocked for now. If that was you, open the link below: it allows signing in from that address again. If not, ignore this email.`
+      : `für dein Konto ist die Grenze der Fehlversuche erreicht. Mit dem Passwort ist die Anmeldung von einem neuen Ort (Adresse ${o.address ?? '?'}) vorerst gesperrt. Warst du das, öffne den Link unten: Er schaltet die Anmeldung von dieser Adresse wieder frei. Sonst ignoriere diese Mail.`,
     alte_codes_ablauf: en
       ? `you signed in with a recovery code from before 1 November 2026. Codes of that kind are only accepted until ${u.bis}. Create new recovery codes under Menu → Account → Two-factor authentication.`
       : `du hast dich mit einem Wiederherstellungscode von vor dem 01.11.2026 angemeldet. Codes dieser Art gelten nur noch bis ${u.bis}. Erzeuge unter Menü → Konto → Zweiter Faktor neue Wiederherstellungscodes.`,
@@ -401,10 +401,10 @@ function noticeSentence(kind: AccountNotice, o: NoticeDetails, en: boolean): str
     qr_zugang_neu: en
       ? 'a QR code to sign in the app was created for your account.'
       : 'für dein Konto wurde ein QR-Code zur Anmeldung der App erzeugt.',
-    zweiter_faktor_entfernt: en
+    second_factor_removed: en
       ? `the administrator “${o.durch ?? ''}” removed the second factor of your account.`
       : `der Administrator „${o.durch ?? ''}“ hat den zweiten Faktor deines Kontos entfernt.`,
-    verwalter_ernannt: en
+    admin_appointed: en
       ? `“${o.durch ?? ''}” made the account “${o.konto ?? ''}” an administrator.`
       : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Administrator gemacht.`,
     verwaltung_faktor_entfernt: en
@@ -428,16 +428,16 @@ function noticeSentence(kind: AccountNotice, o: NoticeDetails, en: boolean): str
     anmeldung_tagesgrenze: en
       ? 'there were 50 failed sign-in attempts for your account within 24 hours. For now, signing in with the password only works together with the second factor; a passkey or “Forgot password” work as before. Change your password if it may be known.'
       : 'für dein Konto gab es 50 fehlgeschlagene Anmeldeversuche in 24 Stunden. Mit dem Passwort geht die Anmeldung vorerst nur zusammen mit dem zweiten Faktor; Passkey und „Passwort vergessen“ gehen wie bisher. Ändere dein Passwort, falls es bekannt sein könnte.',
-    zweiter_faktor_gesperrt: en
+    second_factor_locked: en
       ? 'someone entered the right password for your account but many wrong codes of the second factor. For up to 24 hours, sign-in only works with a recovery code or a passkey. Change your password: it is probably known.'
       : 'für dein Konto wurde das richtige Passwort, aber vielfach ein falscher Code des zweiten Faktors eingegeben. Bis zu 24 Stunden geht die Anmeldung nur mit einem Wiederherstellungscode oder Passkey. Ändere dein Passwort: Es ist vermutlich bekannt.',
     bestaetigung_gebremst: en
       ? 'in a signed-in session or app of your account, the password or code was entered wrongly several times when confirming; further attempts are slowed down for now.'
       : 'in einer angemeldeten Sitzung oder App deines Kontos wurde beim Bestätigen mehrmals ein falsches Passwort oder ein falscher Code eingegeben; weitere Versuche werden vorerst gebremst.',
-    einstellungen_geaendert: en
+    settings_changed: en
       ? `“${o.durch ?? ''}” changed security-relevant settings: ${o.konto ?? ''}.`
       : `„${o.durch ?? ''}“ hat sicherheitsrelevante Einstellungen geändert: ${o.konto ?? ''}.`,
-    zugang_beendet: en
+    access_ended: en
       ? `the app token “${o.passkey ?? ''}” of your account was signed out from another device.`
       : `der App-Zugang „${o.passkey ?? ''}“ deines Kontos wurde von einem anderen Gerät aus abgemeldet.`,
     zugaenge_beendet: en
@@ -472,7 +472,7 @@ export async function sendAccountNoticeMail(
     ? 'If this was not you, reset your password via “Forgot password”, check Menu → Account and Menu → Household — or ask the administrator.'
     : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Menü → Konto und Menü → Haushalt — oder wende dich an den Administrator.';
   const hello = en ? 'Hello' : 'Hallo';
-  const base = basisUrl();
+  const base = baseUrl();
   const link =
     base && o.abbruch
       ? {
@@ -554,7 +554,7 @@ export interface AlertMailData {
   /** If missing, the mail shows the number. */
   setName?: string | null;
   condition: string;
-  direction: 'unter' | 'ueber';
+  direction: 'below' | 'above';
   threshold: number;
   price: number;
   currency: string;
@@ -589,12 +589,12 @@ export async function buildAlertMail(
   const de = d.lang !== 'en';
   const money = (n: number) => `${d.currency} ${n.toFixed(2)}`;
   const condition = d.condition === 'U' ? (de ? 'gebraucht' : 'used') : de ? 'neu' : 'new';
-  const direction = d.direction === 'unter' ? (de ? 'unter' : 'below') : de ? 'über' : 'above';
+  const direction = d.direction === 'below' ? (de ? 'unter' : 'below') : de ? 'über' : 'above';
   const title = d.setName || d.setNumber;
 
   // The link is OPTIONAL: the price run has no request; without APP_BASE_URL
   // the mail goes out without a button instead of pointing at a guessed host.
-  const base = basisUrl();
+  const base = baseUrl();
   if (!base)
     hintWithoutBaseUrl(
       'mailer',

@@ -108,12 +108,12 @@ async function werkbank(rebuild) {
   // explicitly released — this way the case can be built in which
   // zooming happens during a running render.
   const openRender = [];
-  const optionen = [];
+  const options = [];
   const backgrounds = [];
   let anhalten = false;
   w.pdfjsLib = {
     getDocument(o) {
-      optionen.push(o);
+      options.push(o);
       return {
         promise: Promise.resolve({
           numPages: SEITEN,
@@ -163,7 +163,7 @@ async function werkbank(rebuild) {
     warte,
     beobachtet,
     openRender,
-    optionen,
+    options,
     backgrounds,
     set anhalten(v) {
       anhalten = v;
@@ -185,9 +185,9 @@ async function werkbank(rebuild) {
 // → red.
 test('PDF.js loads without eval and without scripts in the PDF', async () => {
   const b = await werkbank();
-  assert.equal(b.optionen.length, 1);
-  assert.equal(b.optionen[0].isEvalSupported, false);
-  assert.equal(b.optionen[0].enableScripting, false);
+  assert.equal(b.options.length, 1);
+  assert.equal(b.options[0].isEvalSupported, false);
+  assert.equal(b.options[0].enableScripting, false);
 });
 
 test('zoom in the PDF viewer', async t => {
@@ -405,10 +405,10 @@ test('zoom in the PDF viewer', async t => {
 // → red „Platzhalter ist gedämpft“; `background: '#fff'` deleted from render() → red „Seite bleibt weiss“.
 test('placeholder is dimmed, the rendered page stays white', async () => {
   const b = await werkbank();
-  const grund = b.platzhalter()[0].style.background;
+  const reason = b.platzhalter()[0].style.background;
   assert.ok(
-    grund && !/^(#fff|#ffffff|white|rgb\(255, ?255, ?255\))$/i.test(grund),
-    `Platzhalter ist gedämpft (${grund})`,
+    reason && !/^(#fff|#ffffff|white|rgb\(255, ?255, ?255\))$/i.test(reason),
+    `Platzhalter ist gedämpft (${reason})`,
   );
   assert.ok(b.backgrounds.length > 0, 'es wurde gerendert');
   assert.ok(

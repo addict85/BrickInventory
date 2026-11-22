@@ -9,8 +9,8 @@
 
 /** @param {string} vorlage */
 function rollen(vorlage) {
-  /** @param {string} art */
-  const r = art => ({ name: `${vorlage}_rolle_${art}`, passwort: `test-${vorlage}-${art}` });
+  /** @param {string} kind */
+  const r = kind => ({ name: `${vorlage}_rolle_${kind}`, passwort: `test-${vorlage}-${kind}` });
   return { eigen: r('eigen'), app: r('app'), system: r('system'), systemweb: r('systemweb'), lesen: r('read') };
 }
 
@@ -23,9 +23,9 @@ function asRole(url, rolle) {
 }
 
 /** Does the file still run as superuser? The marker stands in the head of the test file
- * (ratchet in test/roles-separation-db.test.js). @param {string} quelle */
-const asSuperuser = quelle => /^\s*(\*|\/\/)\s*@superuser\b/m.test(quelle);
-/** Does the file call services in the system context (helpers/system-frame.js)? @param {string} quelle */
-const inSystemFrame = quelle => /^require\('\.\/helpers\/systemrahmen'\);/m.test(quelle);
+ * (ratchet in test/roles-separation-db.test.js). @param {string} source */
+const asSuperuser = source => /^\s*(\*|\/\/)\s*@superuser\b/m.test(source);
+/** Does the file call services in the system context (helpers/system-frame.js)? @param {string} source */
+const inSystemFrame = source => /^require\('\.\/helpers\/systemrahmen'\);/m.test(source);
 
 module.exports = { rollen, asRole, asSuperuser, inSystemFrame };

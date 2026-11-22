@@ -22,8 +22,8 @@ export const NEW_JOB = signal(repo.JOB_CHANNEL);
 /** A status change wakes the status streams; the payload names the key. */
 export const JOB_STATUS = signal(repo.JOB_STATUS_CHANNEL);
 
-export function wakeWorker(k: JobsContext, art: string): Promise<void> {
-  return NEW_JOB.report(k.db.notification, art);
+export function wakeWorker(k: JobsContext, kind: string): Promise<void> {
+  return NEW_JOB.report(k.db.notification, kind);
 }
 
 async function reportStatus(k: JobsContext, z: { s: string } | undefined): Promise<void> {
@@ -37,12 +37,12 @@ export function waitTimeSec(attempt: number): number {
 
 export async function placeJobOne<A extends JobKind>(
   k: JobsContext,
-  art: A,
+  kind: A,
   payload: PayloadInput<A>,
   o: Enqueue = {},
 ): Promise<string | null> {
-  const id = await k.jobs.addJobOne(art, k.arten.check(art, payload), o);
-  await wakeWorker(k, art);
+  const id = await k.jobs.addJobOne(kind, k.arten.check(kind, payload), o);
+  await wakeWorker(k, kind);
   return id;
 }
 
@@ -50,12 +50,12 @@ export async function placeJobOne<A extends JobKind>(
  * without a system frame, row security checks that user_id belongs to the household. */
 export async function placeOwnJobOne<A extends JobKind>(
   k: JobsContext,
-  art: A,
+  kind: A,
   payload: PayloadInput<A>,
   o: Enqueue & { userId: number },
 ): Promise<string | null> {
-  const id = await k.jobs.addOwnJobOne(art, k.arten.check(art, payload), o);
-  await wakeWorker(k, art);
+  const id = await k.jobs.addOwnJobOne(kind, k.arten.check(kind, payload), o);
+  await wakeWorker(k, kind);
   return id;
 }
 
@@ -63,25 +63,25 @@ export async function placeOwnJobOne<A extends JobKind>(
  * its own: every report extends instead of creating a second job. */
 export async function supplementListenJob<A extends JobKind>(
   k: JobsContext,
-  art: A,
+  kind: A,
   payload: PayloadInput<A>,
   o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
-  const n = k.arten.check(art, payload);
-  const id = await k.jobs.enqueueList(art, n as object, o);
-  await wakeWorker(k, art);
+  const n = k.arten.check(kind, payload);
+  const id = await k.jobs.enqueueList(kind, n as object, o);
+  await wakeWorker(k, kind);
   return id;
 }
 
-/** Also counts as a sign of life. erledigt and gesamt are counts (contract
+/** Also counts as a sign of life. done and total are counts (contract
  * and app: integer); a fraction like 5.532 of 8 steps showed up as "5.532 / 8". */
 export async function setProgress(kx: JobsContext, a: Claim, f: Progress, deadlineSec: number): Promise<boolean> {
-  const stand: Progress = { ...f };
-  for (const k of ['erledigt', 'gesamt'] as const) {
+  const state: Progress = { ...f };
+  for (const k of ['done', 'total'] as const) {
     const x = f[k];
-    if (typeof x === 'number' && Number.isFinite(x)) stand[k] = Math.floor(x);
+    if (typeof x === 'number' && Number.isFinite(x)) state[k] = Math.floor(x);
   }
-  const z = await kx.jobs.writeProgress(a, stand, deadlineSec);
+  const z = await kx.jobs.writeProgress(a, state, deadlineSec);
   await reportStatus(kx, z);
   return !!z;
 }
@@ -92,7 +92,7 @@ export async function done(k: JobsContext, a: Claim & Pick<JobRow, 'type'>): Pro
   return !!z;
 }
 
-/** @returns true if it was the last attempt and the job is now 'fehler' */
+/** @returns true if it was the last attempt and the job is now 'error' */
 export async function failed(k: JobsContext, a: JobRow, error: string, immediatelyFinal = false): Promise<boolean> {
   const final = immediatelyFinal || a.attempts >= a.max_attempts;
   const z = await k.jobs.setFailed(a, final, error, waitTimeSec(a.attempts));
@@ -101,17 +101,17 @@ export async function failed(k: JobsContext, a: JobRow, error: string, immediate
 }
 
 /** E.g. after throttling by the remote side.
- * @returns true if the attempt counted and it was the last one (then 'fehler') */
-export async function moved(k: JobsContext, a: JobRow, bis: Date, grund: string, counts: boolean): Promise<boolean> {
+ * @returns true if the attempt counted and it was the last one (then 'error') */
+export async function moved(k: JobsContext, a: JobRow, bis: Date, reason: string, counts: boolean): Promise<boolean> {
   const final = counts && a.attempts >= a.max_attempts;
-  const z = await k.jobs.setMoved(a, final, bis, grund, counts);
+  const z = await k.jobs.setMoved(a, final, bis, reason, counts);
   await reportStatus(k, z);
   return final && !!z;
 }
 
-export async function endPause(k: JobsContext, art: JobKind): Promise<void> {
-  await k.jobs.deletePause(art);
-  await wakeWorker(k, art);
+export async function endPause(k: JobsContext, kind: JobKind): Promise<void> {
+  await k.jobs.deletePause(kind);
+  await wakeWorker(k, kind);
 }
 
 /** A running one stops at its next sign of life. */
@@ -127,16 +127,16 @@ export async function repeat(k: JobsContext, id: string): Promise<boolean> {
   return ja;
 }
 
-export async function pullBefore(k: JobsContext, art: JobKind, key?: string): Promise<number> {
-  const n = await k.jobs.makeDue(art, key);
-  if (n > 0) await wakeWorker(k, art);
+export async function pullBefore(k: JobsContext, kind: JobKind, key?: string): Promise<number> {
+  const n = await k.jobs.makeDue(kind, key);
+  if (n > 0) await wakeWorker(k, kind);
   return n;
 }
 
 /** Every status with a number, even 0. */
-export async function countKind(k: JobsContext, art: JobKind): Promise<Record<JobStatus, number>> {
-  const from = { offen: 0, laeuft: 0, erledigt: 0, fehler: 0, abgebrochen: 0 };
-  for (const z of await k.jobs.statusNumbers(art)) from[z.status] = z.n;
+export async function countKind(k: JobsContext, kind: JobKind): Promise<Record<JobStatus, number>> {
+  const from = { pending: 0, running: 0, done: 0, error: 0, cancelled: 0 };
+  for (const z of await k.jobs.statusNumbers(kind)) from[z.status] = z.n;
   return from;
 }
 
@@ -156,8 +156,8 @@ export async function inNamesOfJob<T>(
 /** A job without an account: in the system frame only if its kind is registered as
  * cross-account (Anmeldung.kontouebergreifend), otherwise without account and without system frame. */
 export function inJobFrame<T>(k: JobsContext, a: Pick<JobRow, 'type'>, f: () => Promise<T>): Promise<T> {
-  const grund = k.arten.fromValue(a.type)?.kontouebergreifend;
-  return grund ? inSystemContext(`auftrag ${a.type}: ${grund}`, f) : asRequest({}, f);
+  const reason = k.arten.fromValue(a.type)?.kontouebergreifend;
+  return reason ? inSystemContext(`auftrag ${a.type}: ${reason}`, f) : asRequest({}, f);
 }
 
 /** Wakes on every status change of a job, also from the job process; returns the unsubscribe. */

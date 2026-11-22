@@ -149,17 +149,17 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
                 ON CONFLICT (fig_number) DO NOTHING`);
   // Stock row AND entry in one — since migration 0038 the item count
   // is only there.
-  await holdsPart(db, uid, '3070b', { menge: 5, colorId: 0, preis: 1.0 });
-  await holdsMinifig(db, uid, 'fig-9', { menge: 2, preis: 5.0 });
+  await holdsPart(db, uid, '3070b', { quantity: 5, colorId: 0, preis: 1.0 });
+  await holdsMinifig(db, uid, 'fig-9', { quantity: 2, preis: 5.0 });
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
   const H = _req('src/parts/queries.js');
   const M = _req('src/minifigs/queries.js');
 
-  const teile = await H.manualPartsList([uid], uid);
-  const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3070b');
-  assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(teile).slice(0, 300)}`);
+  const parts = await H.manualPartsList([uid], uid);
+  const teil = (Array.isArray(parts) ? parts : parts.parts || []).find(p => p.part_number === '3070b');
+  assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(parts).slice(0, 300)}`);
   assert.equal(
     teil.bl_part_number,
     '3070',
@@ -286,20 +286,20 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
     'ALTER TABLE parts ADD COLUMN IF NOT EXISTS bl_part_number TEXT',
     'SELECT bl_part_num FROM rb_bl_mapping WHERE part_num=$1',
   ];
-  for (const zeile of proben) {
+  for (const row of proben) {
     assert.ok(
-      muster.some(([, m]) => m.test(zeile)),
-      `Kein Muster greift auf seine eigene Probe: ${zeile.slice(0, 60)}`,
+      muster.some(([, m]) => m.test(row)),
+      `Kein Muster greift auf seine eigene Probe: ${row.slice(0, 60)}`,
     );
   }
   // And the opposite direction: what is allowed must NOT match.
-  for (const zeile of [
+  for (const row of [
     'INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2))',
     'INSERT INTO parts_summary (user_id, part_key, bl_part_number) SELECT 1,2,3',
     'UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2',
   ]) {
     for (const [was, m] of muster) {
-      assert.ok(!m.test(zeile), `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.slice(0, 70)}`);
+      assert.ok(!m.test(row), `Das Muster „${was}" meldet eine erlaubte Zeile: ${row.slice(0, 70)}`);
     }
   }
 });

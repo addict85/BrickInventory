@@ -26,8 +26,8 @@ const fetches = [];
 /** Price per guide_type; if one is missing, BrickLink delivers 0. */
 let preise = {};
 testSources(null, {
-  bricklinkRequest: async (_method, pfad, params) => {
-    fetches.push({ pfad, ...params });
+  bricklinkRequest: async (_method, path, params) => {
+    fetches.push({ path, ...params });
     const p = String(preise[params.guide_type] ?? 0);
     return { avg_price: p, qty_avg_price: p, min_price: p, max_price: p, total_quantity: p === '0' ? '0' : '3' };
   },
@@ -82,7 +82,7 @@ test('BrickLink price guide', { concurrency: 1 }, async t => {
       fetches.slice(0, 2).map(a => a.guide_type),
       ['sold', 'stock'],
     );
-    assert.match(fetches[0].pfad, new RegExp(`/items/part/${TEIL}/price`));
+    assert.match(fetches[0].path, new RegExp(`/items/part/${TEIL}/price`));
 
     fetches.length = 0;
     const figur = await fetchMinifigPrice(FIGUR, 'N', 'EUR', 24);

@@ -38,7 +38,7 @@ async function put(name, alpha) {
     .toFile(datei);
   return {
     web: `/images/sets/${name}.png`,
-    vorschau: path.join(ordner, `${name}_thumb.jpg`),
+    preview: path.join(ordner, `${name}_thumb.jpg`),
     weg: () => {
       fs.rmSync(datei, { force: true });
       fs.rmSync(path.join(ordner, `${name}_thumb.jpg`), { force: true });
@@ -59,7 +59,7 @@ test('sharp: transparent stays PNG with alpha, 200 × 133', async () => {
   const b = await put(`zz-sharp-${process.pid}`, 0);
   try {
     assert.equal(await previewFrom(b.web), b.web.replace('.png', '_thumb.jpg'));
-    await checkPreview(b.vorschau, true);
+    await checkPreview(b.preview, true);
   } finally {
     b.weg();
   }
@@ -69,7 +69,7 @@ test('sharp: opaque with alpha channel becomes JPEG, 200 × 133', async () => {
   const b = await put(`zz-deckend-${process.pid}`, 1);
   try {
     assert.equal(await previewFrom(b.web), b.web.replace('.png', '_thumb.jpg'));
-    await checkPreview(b.vorschau, false);
+    await checkPreview(b.preview, false);
   } finally {
     b.weg();
   }
@@ -96,7 +96,7 @@ test('without sharp Jimp computes the same preview', async () => {
       console.warn = warn;
     }
     try {
-      await checkPreview(b.vorschau, transparent);
+      await checkPreview(b.preview, transparent);
       assert.ok(
         warnings.some(w => /sharp nicht verfügbar.*Jimp/.test(w)),
         warnings.join('\n'),

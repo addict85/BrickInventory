@@ -31,14 +31,14 @@ const { startApp, warte } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
 test('metrics, charts, messages', { timeout: 280_000 }, async t => {
-  const app = await startApp(t, { name: `r11_${process.pid}`, bestand: patternCollection, allDesigns: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `r11_${process.pid}`, holding: patternCollection, allDesigns: true });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const { b, bis, db } = app;
-  const geh = async pfad => {
-    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+  const geh = async path => {
+    await b.auswerten(`location.hash = '#/${path}'; true`);
     await warte(300);
   };
 

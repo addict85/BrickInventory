@@ -47,11 +47,11 @@ function starte(env, ms = 20000) {
     srv.stderr.on('data', d => {
       log += d;
     });
-    const uhr = setTimeout(() => {
+    const clock = setTimeout(() => {
       srv.kill('SIGKILL');
     }, ms);
     srv.on('exit', code => {
-      clearTimeout(uhr);
+      clearTimeout(clock);
       fertig({ code, log });
     });
   });
