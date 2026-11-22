@@ -142,7 +142,7 @@ ausgesperrt.
 Wer ohne TLS betreiben will (etwa zum Ausprobieren auf `localhost`), nimmt in
 `compose.yaml` beim Dienst `app` die Zeilen `ports:` ein und setzt in `.env`
 `COOKIE_SECURE=0` und `APP_BASE_URL=http://…`. Passwort, Sitzung und App-Token
-gehen dann lesbar durchs Netz; „Unbegrenzt“ beim QR-Code und Passkeys gibt es
+gehen dann lesbar durchs Netz; Passkeys gibt es
 dann nicht. Browser erreichen den Server dann nur unter dem Namen aus
 `APP_BASE_URL` (oder `localhost`); ein anderer Name oder die blosse IP-Adresse
 bekommt 421 (UPGRADE.md, Abschnitt 35).
@@ -412,7 +412,8 @@ der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
 | `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Mit `NODE_ENV=production` verweigert der Server damit den Start. |
 | `BRICK_HOST` | Name oder IP-Adresse des Servers für Caddy (Pflicht mit `compose.yaml`). Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Passkeys brauchen einen Namen, keine IP-Adresse. |
 | `CA_ZERTIFIKAT` | Pfad zum Wurzelzertifikat der internen CA (setzt `compose.yaml`). Daraus kommen `/ca.crt` und der Fingerabdruck `fp` im QR-Code. |
-| `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein Gerätezugang (Token) verfällt (Vorgabe `90`, mindestens `1`). Jede Nutzung schiebt die Frist nach; geschrieben wird höchstens einmal je Tag. Ohne Ablauf gibt es nur die Wahl „Unbegrenzt“ beim QR-Code, nur über HTTPS und mit Rotation. |
+| `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein Gerätezugang (Token) verfällt (Vorgabe `90`, mindestens `1`). Jede Nutzung schiebt die Frist nach; geschrieben wird höchstens einmal je Tag. Daneben endet jeder Zugang spätestens nach `TOKEN_MAX_DAYS`. |
+| `TOKEN_MAX_DAYS` | Höchstdauer eines Gerätezugangs ab der Anmeldung in Tagen (Vorgabe `90`, `1` bis `365`). Der Tausch (Rotation) verlängert sie nicht; danach meldet sich die App neu an. Einen Zugang ohne Ablauf gibt es nicht. |
 | `SESSION_IDLE_MINUTES` | Minuten ohne Betrieb, nach denen eine **Webapp-Sitzung** abgemeldet wird (Vorgabe `240`, also vier Stunden). Betrifft nur den Browser — die Android-App kommt mit Bearer-Token und ohne Cookie, für sie gilt `TOKEN_IDLE_DAYS`. Die Frist GLEITET: Solange jemand arbeitet, läuft sie nicht ab; sie zählt ab der letzten Anfrage. `0` schaltet die Frist **nicht** ab. |
 | `SESSION_MAX_HOURS` | Stunden ab der Anmeldung, nach denen eine **Webapp-Sitzung** endet, auch wenn sie benutzt wird (Vorgabe `168`, eine Woche). Anders als `SESSION_IDLE_MINUTES` gleitet diese Frist nicht. Ein ungültiger Wert fällt mit einer Logzeile auf die Vorgabe zurück. |
 | `SESSION_ADMIN_IDLE_MINUTES`, `SESSION_ADMIN_MAX_HOURS` | Kürzere Fristen für **Verwaltersitzungen** im Browser: Leerlauf in Minuten (Vorgabe `30`) und Höchstdauer ab der Anmeldung in Stunden (Vorgabe `12`). Höchstens so lang wie `SESSION_IDLE_MINUTES` bzw. `SESSION_MAX_HOURS`. Jede Anfrage der offenen Seite zählt als Betrieb. |

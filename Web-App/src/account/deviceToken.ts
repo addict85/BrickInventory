@@ -189,18 +189,15 @@ export function escapeLike(s: unknown): string {
   return String(s ?? '').replace(/([%_\\])/g, '\\$1');
 }
 
-/** 0, because null already means "nothing chosen, sliding deadline" and both travel with the
- * nonce in one field. */
-export const UNLIMITED = 0;
-
-/** "unlimited" is not the default: it removes the only automatic
- * rip cord for a lost device. */
+/** Choices of the QR dialog; above TOKEN_MAX_DAYS they are cut to it (tokenDays). There is no
+ * "unlimited" any more, it removed the only automatic rip cord for a lost device: the old
+ * choice is still accepted from older pages and means the bound. */
 const TOKEN_RUNTIMES: Record<string, number> = {
   '1m': 30,
   '2m': 60,
   '6m': 180,
   '12m': 365,
-  unbegrenzt: UNLIMITED,
+  unbegrenzt: 0,
 };
 
 /** The choices the QR dialog may offer. */
@@ -223,9 +220,16 @@ export interface TokenOptions {
  * The access unused for the longest time falls. */
 export const ACCESSES_AT_MOST = 50;
 
+/** The fixed end, in days from now: never beyond TOKEN_MAX_DAYS; nothing chosen (null, 0 from an
+ * old QR code) is that bound. Every access thus ends, whatever a client asks for. */
+export function tokenDays(k: Pick<AccountContext, 'konfig'>, fixedDays: number | null): number {
+  const max = k.konfig.tokenMaxDays;
+  return fixedDays && fixedDays > 0 ? Math.min(fixedDays, max) : max;
+}
+
 /** @param dauerhaft  true = device access with sliding deadline; false = seven fixed
  *                   days — use by an attacker should not extend it.
- * @param fixedDays  `UNLIMITED` (0) = without expiry, only via HTTPS and with mandatory rotation. */
+ * @param fixedDays  the wished end in days (tokenDays() bounds it). */
 export async function createToken(
   k: AccountContext,
   userId: number,
@@ -242,9 +246,9 @@ export async function createToken(
     label,
     scope: o.scope === 'voll' ? 'voll' : 'app',
     bereich: ipArea(o.ip),
-    art: !dauerhaft ? 'kurz' : fixedDays === UNLIMITED ? 'unbegrenzt' : 'gleitend',
+    art: dauerhaft ? 'gleitend' : 'kurz',
     idleDays: k.konfig.tokenIdleDays,
-    fixedDays: fixedDays && fixedDays > 0 ? fixedDays : null,
+    fixedDays: tokenDays(k, fixedDays),
   });
   if (await k.zugaenge.capTokens(userId, hash, ACCESSES_AT_MOST - 1)) emptyTokenCache(k);
   return token;
@@ -329,6 +333,9 @@ export async function tokensCleanup(k: AccountContext) {
     if (!r.ok) ohne.push(was);
     return r.ok ? r.wert : 0;
   };
+  // Safety net beside migration 0126: a row without a fixed end gets one.
+  const g = await schritt('ohne Ende', () => k.zugaenge.boundUnlimited(k.konfig.tokenMaxDays));
+  if (g) console.log(`[tokens] ${g} Token ohne festes Ende auf ${k.konfig.tokenMaxDays} Tage begrenzt`);
   const m = await schritt('Altzeilen nachziehen', () => k.zugaenge.pullAltzeilenAfter(k.konfig.tokenIdleDays));
   if (m)
     console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenIdleDays} Tagen gesetzt`);

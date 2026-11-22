@@ -2,9 +2,6 @@
 import { tokenDigest, type TokenScope } from './deviceToken';
 import type { AccountContext } from './context';
 
-/** Fixed upper bound from login; the swap inherits it (putSuccessorAn), the app then logs out. */
-export const APP_MAX_DURATION_DAYS = 180;
-
 /** The label appears in the device list; without a limit it could hold arbitrarily long lines. */
 const LABEL_MAX = 100;
 

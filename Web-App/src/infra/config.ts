@@ -61,6 +61,8 @@ export interface Konfig {
   sitzungVerwalterLeerlaufMin: number;
   sitzungVerwalterHoechstStd: number;
   tokenIdleDays: number;
+  /** Upper bound of a device access from login on; the swap inherits it, then the app signs in again. */
+  tokenMaxDays: number;
   rolle: Rolle;
   /** For a hint at startup. */
   veraltet: string[];
@@ -147,6 +149,7 @@ export const VARIABLES = [
   'SESSION_ADMIN_IDLE_MINUTES',
   'SESSION_ADMIN_MAX_HOURS',
   'TOKEN_IDLE_DAYS',
+  'TOKEN_MAX_DAYS',
   'ROLLE',
   'DATABASE_URL',
   'PGHOST',
@@ -377,6 +380,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     cookieSecure: schalter(env, 'COOKIE_SECURE', f),
     ...sitzungsKonfig(env, f),
     tokenIdleDays: ganzzahl(env, 'TOKEN_IDLE_DAYS', 90, 1, 36_500, f),
+    tokenMaxDays: ganzzahl(env, 'TOKEN_MAX_DAYS', 90, 1, 365, f),
     rolle: roleFrom(env, f),
     veraltet: STALE.filter(n => env[n]?.trim()),
     pgPoolMax,
