@@ -39,7 +39,7 @@ const SILENT_CATCHES = [
 ];
 
 /**
- * Count hits — in the CODE, not in the explanations above it. With `marke`
+ * Count hits — in the CODE, not in the explanations above it. With `brand`
  * `/**\/` stays at every comment place: a catch whose body names its
  * why is not silent, even if Biome puts the comment on its own line.
  */
@@ -394,7 +394,7 @@ test('any in all forms, unknown parameters and success in services become fewer,
 
   // The same kind of count: the route sets the envelope of the response, a service
   // delivers the domain object. Left are row statuses in import reports, mail sending and the import progress (a stream format).
-  // Counter-check (11.11.2026): in auftragAbbrechen() again `success: true` → red.
+  // Counter-check (11.11.2026): in cancelJob() again `success: true` → red.
   const SUCCESS_LIMIT = 7;
   const success = zaehle([/\bsuccess:\s*true\b/g], f =>
     /^src[\\/](?!contract[\\/]|http[\\/])/.test(path.relative(WEB, f)),
@@ -550,13 +550,13 @@ function pureSourceTextTests() {
 }
 
 test('import edges between views become fewer, never more', () => {
-  // Views notify each other via events.js; what several share is a building block (BAUSTEINE).
+  // Views notify each other via events.js; what several share is a building block (BUILDING_BLOCKS).
   // Counter-check (15.11.2026): `import { loadGallery } from './sammlung.js';` back in lagerorte.js
   // → red (51 instead of 50).
-  const { KERN, BAUSTEINE } = require('../scripts/build-frontend');
+  const { CORE, BUILDING_BLOCKS } = require('../scripts/build-frontend');
   const LIMIT = 50;
   const JS = path.join(WEB, 'public', 'js');
-  const layer = new Set([...KERN, ...BAUSTEINE]);
+  const layer = new Set([...CORE, ...BUILDING_BLOCKS]);
   const views = fs.readdirSync(JS).filter(n => isAppModule(n) && !layer.has(n));
   assert.ok(views.length > 30, `nur ${views.length} Ansichten — greift die Suche noch?`);
   const kanten = views.flatMap(n =>
@@ -664,12 +664,12 @@ function declaredNames(/** @type {string} */ a) {
   return m ? [m[1]] : [];
 }
 
-/** @returns {{ n: number, alle: number, faelle: string[] }} cases that read and execute nothing */
+/** @returns {{ n: number, all: number, faelle: string[] }} cases that read and execute nothing */
 function sourceTextCasesIn(/** @type {string} */ roh, /** @type {Map<string, boolean>} */ helper) {
   const s = require('./helpers/sources').ohneKommentare(roh);
   const fuehrt = new Set(),
     liest = new Set();
-  /** @type {{ namen: string[], text: string }[]} */
+  /** @type {{ names: string[], text: string }[]} */
   const dekl = [];
   for (const a of instructions(s)) {
     const namen = declaredNames(a);
@@ -716,7 +716,7 @@ function sourceTextCasesIn(/** @type {string} */ roh, /** @type {Map<string, boo
       faelle.push(z[i].trim());
     }
   }
-  return { n, alle, faelle };
+  return { n, all: alle, faelle };
 }
 
 function sourceTextCases() {
@@ -726,9 +726,9 @@ function sourceTextCases() {
   for (const name of fs.readdirSync(__dirname).filter(x => x.endsWith('.test.js'))) {
     const r = sourceTextCasesIn(fs.readFileSync(path.join(__dirname, name), 'utf8'), helper);
     n += r.n;
-    alle += r.alle;
+    alle += r.all;
   }
-  return { n, alle };
+  return { n, all: alle };
 }
 
 test('test cases that only read source text become fewer, never more', () => {
@@ -768,7 +768,7 @@ test('test cases that only read source text become fewer, never more', () => {
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
   const LIMIT = 382;
-  const { n, alle } = sourceTextCases();
+  const { n, all: alle } = sourceTextCases();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
     n <= LIMIT,
@@ -929,7 +929,7 @@ test('fixed waits in tests become fewer, never more', () => {
 });
 
 /**
- * Inline styles in index.html. A data-stil="…" (styles.js sets it as an
+ * Inline styles in index.html. A data-style="…" (styles.js sets it as an
  * inline style) overrides every theme and every phone rule;
  * the same things therefore looked different in two places. Counted are
  * attributes outside of comments. display:none stays allowed: the
@@ -940,7 +940,7 @@ test('inline styles in index.html become fewer, never more', () => {
   const html = require('./helpers/sources').withoutHtmlComments(
     fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'),
   );
-  const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
+  const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-style="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');
   const ist = stile.filter(s => s !== 'display:none').length;
   assert.ok(
@@ -1159,7 +1159,7 @@ function uisCode() {
   return raus;
 }
 
-test('markup only gets into the page via setzeHtml()/fuegeHtmlEin()', () => {
+test('markup only gets into the page via setHtml()/fuegeHtmlEin()', () => {
   // Only the two helpers in dom.js write markup; the log window (monitor.js) builds its own
   // document via document.write. Counter-check: in sammlung.js `grid.innerHTML = ''` → red with location.
   const ALLOWED = ['dom.js', 'dom.js', 'monitor.js'];
@@ -1169,7 +1169,7 @@ test('markup only gets into the page via setzeHtml()/fuegeHtmlEin()', () => {
   assert.deepEqual(
     roh.map(x => x.ort.split(':')[0]).sort(),
     ALLOWED,
-    `Markup an setzeHtml() vorbei:\n${roh.map(x => x.ort).join('\n')}`,
+    `Markup an setHtml() vorbei:\n${roh.map(x => x.ort).join('\n')}`,
   );
 });
 
@@ -1588,4 +1588,109 @@ test('paths named in test comments exist', () => {
   }
   assert.ok(n > 400, `nur ${n} Pfade gefunden — greift die Suche noch?`);
   assert.deepEqual(fehlt, [], 'Pfad auf die heutige Datei ändern; Geschichte gehört in den Commit');
+});
+
+// ── Language: no German names in the UI code ─────────────────────────────────────────────
+// A fixed ban, not a count: identifiers, class names, IDs, data attributes, i18n keys and comments
+// under public/ are English. Exempt are only texts users read (locale values, HTML text, colour words
+// in i18n.js) and names the frontend does not own, listed here per group with their reason.
+const NOT_OURS = {
+  /** Fields and values of the API that the contract (contract.d.ts, openapi.json) does not list. */
+  API_VALUES: [
+    'kauf_asc',
+    'kauf_desc',
+    'voll',
+    'abstand',
+    'konto',
+    'unveraendert',
+    'X-Gutschein-Befunde',
+    'abdeckung',
+    'fortschritt',
+    'fertig',
+    'kaufpreis',
+    'richtung',
+    'schwelle',
+  ],
+  /** Codes the server sends in monitor and log entries; the UI maps them to texts. */
+  SERVER_CODES: [
+    'teil_gemappt',
+    'keine_ausstehenden',
+    'warten_morgen',
+    'bilder_laden',
+    'bilder_neu_laden',
+    'bilder_offen',
+    'katalog_warteschlange',
+    'katalog_nachzug',
+    'kein_durchgang',
+    'neu_suche',
+    'neu_geladen',
+    'pdf_laufend',
+    'pdf_bereit',
+    'nacharbeit',
+    'bilder',
+    'anleitung',
+    'nachlauf',
+    'preise',
+    'preise_nachladen',
+    'bild_nachlauf',
+    'aufraeumen',
+    'aufraeumen_taeglich',
+    'konto_dateien',
+    'passwort_gesetzt',
+    'verwalter_ernannt',
+    'verwalter_entzogen',
+    'konto_reaktiviert',
+    'konto_freigeschaltet',
+    'gutschein_klartext',
+    'gutschein_pdf',
+    'gutschein_export',
+    'zuordnung',
+    'gleich_vermerkt',
+    'korrigiert',
+  ],
+  /** German server texts the job monitor recognises until the server sends codes for them. */
+  SERVER_TEXTS: ['Alle', 'Bilder', 'Keine', 'bereit', 'zum', 'aktualisiert', 'Starte'],
+  /** Classes whose suffix is a job status from the server (mon-${status}). */
+  STATUS_CLASSES: ['mon-fehler'],
+  /** Markers the server looks for in index.html (src/profile/indexHtml.ts). */
+  SERVER_MARKERS: ['start-fuss'],
+  /** Addresses in the browser bar (#/sammlung?suche=…): bookmarks keep working. */
+  ADDRESSES: [
+    'sammlung',
+    'minifiguren',
+    'finanzen',
+    'katalog',
+    'hintergrund',
+    'einstellungen',
+    'gutscheine',
+    'alarme',
+    'lagerorte',
+    'haushalt',
+    'daten',
+    'benutzer',
+    'konfiguration',
+    'suche',
+    'sortierung',
+    'von',
+    'kategorie',
+    'merkliste',
+    'ersatz',
+  ],
+  /** Old device settings that theme-boot.js moves to their English keys once. */
+  OLD_STORAGE: ['bim_rb_hinweis_weg', 'bim_scope_merkliste', 'bim_einst_abschnitt', 'bim_dunkel', 'immer'],
+  /** File name users get when saving an instruction without a name of its own. */
+  USER_TEXT: ['anleitung.pdf'],
+  /** A constant of the Android app that a comment names; the app's own rename is its business. */
+  ANDROID_NAMES: ['Alarmeingabe.RUHE_MS'],
+};
+
+test('no German names in the UI code', () => {
+  // Counter-check (22.11.2026): `.fehler-hinweis` in styles.css and `let knopfLeiste` in public/js/dom.js
+  // → red with both places; 'kein_durchgang' taken out of SERVER_CODES → red (monitor.js).
+  const { germanNames, contractNames, germanWords } = require('./helpers/german-names');
+  assert.deepEqual(germanWords('fehlerZustand'), ['fehler', 'zustand'], 'die Wortliste greift nicht');
+  assert.deepEqual(germanWords('errorState'), []);
+  const allowed = new Set([...contractNames(), ...Object.values(NOT_OURS).flat()]);
+  assert.ok(allowed.has('kachel_preis'), 'der Vertrag liefert keine Namen — greift die Suche noch?');
+  assert.deepEqual(germanNames(allowed), [], 'deutsche Namen im Code der Oberfläche: auf Englisch umbenennen');
 });
