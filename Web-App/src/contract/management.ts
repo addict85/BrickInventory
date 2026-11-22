@@ -1,8 +1,10 @@
 import { z } from 'zod';
+import { v1Keys, v1Values } from './v1';
+import { V1_JOB_KINDS, V1_JOB_STATUS } from './v1Names';
 import { type Route, time, whole, WITHOUT_BODY, TEXT, JA_NO, query, Q, PAGE, PAGES_DETAIL } from './base';
-import { GenericAdminResponse, ImportZeile } from './shared';
+import { GenericAdminResponse, ImportRow } from './shared';
 
-export { ImportZeile };
+export { ImportRow };
 import { GLOBAL_RULES } from './globalRules';
 
 export const ApiLimits = z.looseObject({
@@ -17,15 +19,19 @@ export const ApiLimitsResponse = z.looseObject({
 });
 
 export const JobProgress = z.looseObject({
-  erledigt: z.number().int().nullable().optional(),
-  gesamt: z.number().int().nullable().optional(),
+  done: z.number().int().nullable().optional(),
+  total: z.number().int().nullable().optional(),
   text: z.string().nullable().optional(),
 });
 
+/** Stored job kinds and status are English since migration 0136; v1 shows the former values. */
+const jobKind = () => v1Values(z.string(), V1_JOB_KINDS);
+const jobStatus = () => v1Values(z.string(), V1_JOB_STATUS);
+
 export const Job = z.looseObject({
   id: z.string(),
-  type: z.string(),
-  status: z.string(),
+  type: jobKind(),
+  status: jobStatus(),
   attempts: z.number().int(),
   max_attempts: z.number().int(),
   due_at: time.nullable(),
@@ -35,55 +41,55 @@ export const Job = z.looseObject({
   updated_at: time.nullable(),
   progress: JobProgress.nullable(),
   error_message: z.string().nullable(),
-  geplant: z.boolean(),
+  scheduled: z.boolean(),
   /** Postponed (quota, throttling): waits until due_at, `error_message` names the reason. */
   waiting: z.boolean(),
   set_number: z.string().nullable(),
 });
 
 export const JobCounter = z.looseObject({
-  type: z.string(),
-  status: z.string(),
-  anzahl: z.number().int(),
+  type: jobKind(),
+  status: jobStatus(),
+  count: z.number().int(),
 });
 
 export const JobPause = z.looseObject({
-  type: z.string(),
+  type: jobKind(),
   until_at: time.nullable(),
   reason: z.string().nullable(),
 });
 
 export const JobProcess = z.looseObject({
-  lebenszeichen: z.string().nullable(),
-  alter_sekunden: z.number().int().nullable(),
-  laeuft: z.boolean(),
+  heartbeat: z.string().nullable(),
+  age_seconds: z.number().int().nullable(),
+  running: z.boolean(),
 });
 
-export const AuftraegeResponse = z.looseObject({
+export const JobQueueResponse = z.looseObject({
   success: z.boolean(),
-  auftraege: z.array(Job),
-  zusammenfassung: z.array(JobCounter),
-  pausen: z.array(JobPause),
-  bildbedarf: z.number().int(),
-  job_prozess: JobProcess,
+  jobs: z.array(Job),
+  summary: z.array(JobCounter),
+  pauses: z.array(JobPause),
+  image_demand: z.number().int(),
+  job_process: JobProcess,
 });
 
 export const JobChange = z.looseObject({
   success: z.boolean(),
   id: z.string(),
-  status: z.string(),
+  status: jobStatus(),
 });
 
 export const JobKindDrain = z.looseObject({
   success: z.boolean(),
-  art: z.string(),
-  entfernt: z.number().int(),
+  kind: jobKind(),
+  removed: z.number().int(),
 });
 
 export const JobKindStart = z.looseObject({
   success: z.boolean(),
-  art: z.string(),
-  gestartet: z.boolean(),
+  kind: jobKind(),
+  started: z.boolean(),
 });
 
 export const BricksetQueueEntry = z.looseObject({
@@ -124,7 +130,7 @@ export const CacheStatsResponse = z.looseObject({
   price_stale: z.number().int(),
   rate_limits: RateLimits.nullable(),
   /** Parts of the response that carry only substitute values after an error. */
-  degradiert: z.array(z.string()).optional(),
+  degraded: z.array(z.string()).optional(),
 });
 
 export const CacheTtlResponse = z.looseObject({
@@ -134,7 +140,7 @@ export const CacheTtlResponse = z.looseObject({
 
 export const CsvImportStatus = z.looseObject({
   code: z.string().nullable().optional(),
-  results: z.array(ImportZeile).optional(),
+  results: z.array(ImportRow).optional(),
   success: z.boolean(),
   status: z.string().optional(),
   total: z.number().int().optional(),
@@ -144,7 +150,7 @@ export const CsvImportStatus = z.looseObject({
   warn: z.number().int().optional(),
   err: z.number().int().optional(),
   error: z.string().nullable(),
-  beendet_am: time.optional(),
+  finished_at: time.optional(),
 });
 
 export const JobSchedule = z.looseObject({
@@ -163,12 +169,12 @@ export const JobStatus = z.looseObject({
   progress: z.number().int(),
   total: z.number().int(),
   sub: z.string().nullable().optional(),
-  sub_teile: z
+  sub_parts: z
     .array(
       z.object({
         code: z.string(),
-        werte: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
-        vor: z.literal('bestand').optional(),
+        values: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+        ago: z.literal('bestand').optional(),
       }),
     )
     .optional(),
@@ -179,11 +185,11 @@ export const JobsResponse = z.looseObject({
   success: z.boolean(),
   jobs: z.record(z.string(), JobStatus),
   schedules: z.record(z.string(), JobSchedule),
-  degradiert: z.array(z.string()).optional(),
-  proxy_hinweis: z
+  degraded: z.array(z.string()).optional(),
+  proxy_hint: z
     .object({
-      art: z.enum(['gateway', 'docker_netz', 'eine_adresse']),
-      vars: z.object({ ip: z.string(), minuten: whole.optional(), anzahl: whole.optional() }),
+      kind: z.enum(['gateway', 'docker_netz', 'eine_adresse']),
+      vars: z.object({ ip: z.string(), minutes: whole.optional(), count: whole.optional() }),
     })
     .nullable()
     .optional(),
@@ -220,26 +226,26 @@ export const PriceJobState = z.looseObject({
 /** The admin shows the entries raw; their fields are the columns of app_logs. */
 export const LogEntries = z.looseObject({
   success: z.literal(true),
-  eintraege: z.array(z.record(z.string(), z.unknown())),
+  entries: z.array(z.record(z.string(), z.unknown())),
 });
 export const ImageDiagnosis = z.looseObject({
   success: z.literal(true),
   set_number: z.string(),
-  hinweise: z.array(z.string()),
-  datenbank: z.looseObject({
-    anzahl_konten: whole,
+  hints: z.array(z.string()),
+  database: z.looseObject({
+    account_count: whole,
     image_local: z.string().nullable(),
     image_url: z.string().nullable(),
-    katalog_bild: z.string().nullable(),
+    catalog_image: z.string().nullable(),
   }),
-  lokal: z.looseObject({
-    original: z.looseObject({ vorhanden: z.boolean(), bytes: whole, geaendert: time.nullable().optional() }),
-    vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: whole, geaendert: time.nullable().optional() }),
+  local: z.looseObject({
+    original: z.looseObject({ existing: z.boolean(), bytes: whole, changed: time.nullable().optional() }),
+    preview: z.looseObject({ existing: z.boolean(), bytes: whole, changed: time.nullable().optional() }),
   }),
-  proxy: z.looseObject({ gecacht: z.boolean(), adresse: z.string().nullable().optional() }),
-  merker: z.looseObject({ seit: time.nullable(), grund: z.string().nullable() }).nullable(),
+  proxy: z.looseObject({ cached: z.boolean(), address: z.string().nullable().optional() }),
+  marker: z.looseObject({ since: time.nullable(), reason: z.string().nullable() }).nullable(),
 });
-export const ImageMarkerForgotten = z.looseObject({ success: z.literal(true), entfernt: whole, hinweis: z.string() });
+export const ImageMarkerForgotten = z.looseObject({ success: z.literal(true), removed: whole, hint: z.string() });
 
 /** Diagnostics for the admin: the UI shows their fields raw. */
 export const Diagnose = z.record(z.string(), z.unknown());
@@ -251,95 +257,110 @@ export const Endpoints = z.looseObject({
 });
 
 /** The admin's bulk responses with what the individual route says about it. */
-export const VerwaltungMeldung = GenericAdminResponse.extend({ message: z.string() });
+export const AdminMessage = GenericAdminResponse.extend({ message: z.string() });
 /** Instructions re-queued; without missing ones, `message` says why none. */
-export const AnleitungenEingereiht = GenericAdminResponse.extend({ enqueued: whole, message: z.string().optional() });
-export const KatalogBilderEingereiht = GenericAdminResponse.extend({
+export const InstructionsEnqueued = GenericAdminResponse.extend({ enqueued: whole, message: z.string().optional() });
+export const CatalogImagesEnqueued = GenericAdminResponse.extend({
   queued: whole,
   pending: whole,
   skipped: whole,
-  verworfen: whole,
-  dauer_minuten: whole,
+  discarded: whole,
+  duration_minutes: whole,
 });
-export const VerwaltungGestartet = GenericAdminResponse.extend({ started: z.boolean() });
-export const VerwaltungSet = GenericAdminResponse.extend({ set_number: z.string() });
-export const VerwaltungTtl = GenericAdminResponse.extend({ ttl: z.union([z.string(), whole]) });
-export const VerwaltungZustand = GenericAdminResponse.extend({ condition: z.string().nullable() });
-export const VerwaltungDesign = GenericAdminResponse.extend({ theme: z.string() });
+export const AdminStarted = GenericAdminResponse.extend({ started: z.boolean() });
+export const AdminSet = GenericAdminResponse.extend({ set_number: z.string() });
+export const AdminTtl = GenericAdminResponse.extend({ ttl: z.union([z.string(), whole]) });
+export const AdminCondition = GenericAdminResponse.extend({ condition: z.string().nullable() });
+export const AdminTheme = GenericAdminResponse.extend({ theme: z.string() });
 
-export const routen = {
+// v1 names of fields whose v2 name also exists unchanged elsewhere (v1.ts).
+v1Keys(JobProgress, { done: 'erledigt', total: 'gesamt' });
+v1Keys(JobCounter, { count: 'anzahl' });
+v1Keys(JobProcess, { running: 'laeuft' });
+v1Keys(JobQueueResponse, { jobs: 'auftraege' });
+v1Keys(JobKindDrain, { removed: 'entfernt' });
+v1Keys(JobKindStart, { started: 'gestartet' });
+v1Keys(JobStatus.shape.sub_parts.unwrap().element, { values: 'werte' });
+v1Keys(JobsResponse.shape.proxy_hint.unwrap().unwrap().shape.vars, { minutes: 'minuten', count: 'anzahl' });
+v1Keys(LogEntries, { entries: 'eintraege' });
+v1Keys(ImageDiagnosis.shape.local.shape.original, { changed: 'geaendert' });
+v1Keys(ImageDiagnosis.shape.local.shape.preview, { changed: 'geaendert' });
+v1Keys(ImageDiagnosis.shape.marker.unwrap(), { since: 'seit', reason: 'grund' });
+v1Keys(ImageMarkerForgotten, { removed: 'entfernt' });
+
+export const routes = {
   // The rows of a running import: as many as the one file has.
-  'GET /api/v1/sets/import/csv/status': { klein: true, antwort: CsvImportStatus },
-  'GET /api/v1/sets/import/csv/stream': {
-    art: 'strom',
-    ereignis: CsvImportStatus,
-    abfrage: query({ sprache: Q.text(2) }),
+  'GET /api/v2/sets/import/csv/status': { small: true, response: CsvImportStatus },
+  'GET /api/v2/sets/import/csv/stream': {
+    kind: 'stream',
+    event: CsvImportStatus,
+    query: v1Keys(query({ language: Q.text(2) }), { language: 'sprache' }),
   },
-  'GET /api/v1/admin/logs': { klein: true, antwort: LogResponse, abfrage: query({ minutes: Q.number() }) },
-  'GET /api/v1/admin/jobs': { antwort: JobsResponse, klein: true },
-  'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse, abfrage: query(PAGE) },
-  'GET /api/v1/admin/cache-stats': { antwort: CacheStatsResponse, klein: true },
-  'GET /api/v1/admin/cache-ttl': { antwort: CacheTtlResponse },
-  'GET /api/v1/admin/api-limits': { antwort: ApiLimitsResponse },
-  'GET /api/v1/admin/auftraege': {
-    klein: true,
-    antwort: AuftraegeResponse,
-    abfrage: query({ status: Q.text(20), art: Q.text(40) }),
+  'GET /api/v2/admin/logs': { small: true, response: LogResponse, query: query({ minutes: Q.number() }) },
+  'GET /api/v2/admin/jobs': { response: JobsResponse, small: true },
+  'GET /api/v2/admin/brickset-queue': { response: BricksetQueueResponse, query: query(PAGE) },
+  'GET /api/v2/admin/cache-stats': { response: CacheStatsResponse, small: true },
+  'GET /api/v2/admin/cache-ttl': { response: CacheTtlResponse },
+  'GET /api/v2/admin/api-limits': { response: ApiLimitsResponse },
+  'GET /api/v2/admin/job-queue': {
+    small: true,
+    response: JobQueueResponse,
+    query: query({ status: v1Values(Q.text(20), V1_JOB_STATUS), kind: v1Values(Q.text(40), V1_JOB_KINDS) }),
   },
-  'POST /api/v1/sets/import/csv/cancel': { eingabe: WITHOUT_BODY, antwort: GenericAdminResponse },
-  'POST /api/v1/admin/job-schedule': {
-    eingabe: z.strictObject({
+  'POST /api/v2/sets/import/csv/cancel': { input: WITHOUT_BODY, response: GenericAdminResponse },
+  'POST /api/v2/admin/job-schedule': {
+    input: z.strictObject({
       name: TEXT(40),
       time: TEXT(5).nullable().optional(),
       minutes: GLOBAL_RULES.price_job_interval_minutes.nullable().optional(),
     }),
-    antwort: GenericAdminResponse,
+    response: GenericAdminResponse,
   },
-  'POST /api/v1/admin/catalog-images': {
-    eingabe: z.strictObject({ alle_erneut: JA_NO.optional() }),
-    antwort: KatalogBilderEingereiht,
+  'POST /api/v2/admin/catalog-images': {
+    input: z.strictObject({ all_again: JA_NO.optional() }),
+    response: CatalogImagesEnqueued,
   },
-  'POST /api/v1/admin/brickset-queue/:setNumber/retry': { eingabe: WITHOUT_BODY, antwort: VerwaltungSet },
-  'DELETE /api/v1/admin/brickset-queue/:setNumber': { eingabe: WITHOUT_BODY, antwort: VerwaltungSet },
-  'POST /api/v1/admin/cache-ttl': {
-    eingabe: z.strictObject({ ttl: GLOBAL_RULES.price_cache_ttl }),
-    antwort: VerwaltungTtl,
+  'POST /api/v2/admin/brickset-queue/:setNumber/retry': { input: WITHOUT_BODY, response: AdminSet },
+  'DELETE /api/v2/admin/brickset-queue/:setNumber': { input: WITHOUT_BODY, response: AdminSet },
+  'POST /api/v2/admin/cache-ttl': {
+    input: z.strictObject({ ttl: GLOBAL_RULES.price_cache_ttl }),
+    response: AdminTtl,
   },
-  'POST /api/v1/admin/cache-clear': {
-    eingabe: z.strictObject({ all: JA_NO.optional() }),
-    antwort: VerwaltungMeldung,
+  'POST /api/v2/admin/cache-clear': {
+    input: z.strictObject({ all: JA_NO.optional() }),
+    response: AdminMessage,
   },
-  'PUT /api/v1/admin/api-limits': {
-    eingabe: z.strictObject({
+  'PUT /api/v2/admin/api-limits': {
+    input: z.strictObject({
       rebrickable: GLOBAL_RULES.api_limit_rebrickable.optional(),
       bricklink: GLOBAL_RULES.api_limit_bricklink.optional(),
       brickset: GLOBAL_RULES.api_limit_brickset.optional(),
     }),
-    antwort: GenericAdminResponse,
+    response: GenericAdminResponse,
   },
-  'POST /api/v1/admin/redownload-missing-images': { eingabe: WITHOUT_BODY, antwort: VerwaltungGestartet },
-  'POST /api/v1/admin/auftraege/:id/abbrechen': { eingabe: WITHOUT_BODY, antwort: JobChange },
-  'POST /api/v1/admin/auftraege/:id/wiederholen': { eingabe: WITHOUT_BODY, antwort: JobChange },
-  'POST /api/v1/admin/auftraege/art/:art/jetzt': { eingabe: WITHOUT_BODY, antwort: JobKindStart },
-  'DELETE /api/v1/admin/auftraege/art/:art': { eingabe: WITHOUT_BODY, antwort: JobKindDrain },
-  'POST /api/v1/admin/trigger-csv-sync': { eingabe: WITHOUT_BODY, antwort: VerwaltungMeldung },
-  'POST /api/v1/admin/reimport-instructions': { eingabe: WITHOUT_BODY, antwort: AnleitungenEingereiht },
-  'POST /api/v1/admin/trigger-price-job': { eingabe: WITHOUT_BODY, antwort: VerwaltungGestartet },
-  'POST /api/v1/admin/default-condition': {
-    eingabe: z.strictObject({ condition: GLOBAL_RULES.default_price_condition }),
-    antwort: VerwaltungZustand,
+  'POST /api/v2/admin/redownload-missing-images': { input: WITHOUT_BODY, response: AdminStarted },
+  'POST /api/v2/admin/job-queue/:id/cancel': { input: WITHOUT_BODY, response: JobChange },
+  'POST /api/v2/admin/job-queue/:id/retry': { input: WITHOUT_BODY, response: JobChange },
+  'POST /api/v2/admin/job-queue/kind/:kind/now': { input: WITHOUT_BODY, response: JobKindStart },
+  'DELETE /api/v2/admin/job-queue/kind/:kind': { input: WITHOUT_BODY, response: JobKindDrain },
+  'POST /api/v2/admin/trigger-csv-sync': { input: WITHOUT_BODY, response: AdminMessage },
+  'POST /api/v2/admin/reimport-instructions': { input: WITHOUT_BODY, response: InstructionsEnqueued },
+  'POST /api/v2/admin/trigger-price-job': { input: WITHOUT_BODY, response: AdminStarted },
+  'POST /api/v2/admin/default-condition': {
+    input: z.strictObject({ condition: GLOBAL_RULES.default_price_condition }),
+    response: AdminCondition,
   },
-  'GET /api/v1/admin/job-status': { antwort: PriceJobState },
-  'GET /api/v1/admin/protokoll': { klein: true, antwort: LogEntries },
-  'GET /api/v1/admin/image-diag/:setNumber': { klein: true, antwort: ImageDiagnosis },
-  'POST /api/v1/admin/forget-image-misses': {
-    eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NO.optional() }),
-    antwort: ImageMarkerForgotten,
+  'GET /api/v2/admin/job-status': { response: PriceJobState },
+  'GET /api/v2/admin/audit-log': { small: true, response: LogEntries },
+  'GET /api/v2/admin/image-diag/:setNumber': { small: true, response: ImageDiagnosis },
+  'POST /api/v2/admin/forget-image-misses': {
+    input: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NO.optional() }),
+    response: ImageMarkerForgotten,
   },
-  'POST /api/v1/admin/img-probe': { antwort: Diagnose, eingabe: z.strictObject({ url: TEXT(2048).optional() }) },
-  'POST /api/v1/admin/price-probe': {
-    antwort: Diagnose,
-    eingabe: z.strictObject({ set: TEXT(64).optional(), live: z.boolean().optional() }),
+  'POST /api/v2/admin/img-probe': { response: Diagnose, input: z.strictObject({ url: TEXT(2048).optional() }) },
+  'POST /api/v2/admin/price-probe': {
+    response: Diagnose,
+    input: z.strictObject({ set: TEXT(64).optional(), live: z.boolean().optional() }),
   },
-  'GET /api/v1/': { antwort: Endpoints },
+  'GET /api/v2/': { response: Endpoints },
 } satisfies Record<string, Route>;

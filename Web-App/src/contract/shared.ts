@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { v1Keys } from './v1';
 import { AccountName, time, outdated, PERCENT_TEXT } from './base';
 
 export const ComponentHeader = z.looseObject({
-  nummer: z.string(),
+  number: z.string(),
   name: z.string().nullable().optional(),
   color_id: z.number().int().nullable().optional(),
   color_name: z.string().nullable().optional(),
@@ -25,24 +26,24 @@ export const BrickLinkRef = z.looseObject({
 });
 
 /** A row in an import's report; which fields it carries depends on the source. */
-export const ImportZeile = z.looseObject({
+export const ImportRow = z.looseObject({
   set_number: z.string().optional(),
-  zeile: z.number().int().optional(),
+  row: z.number().int().optional(),
   success: z.boolean().optional(),
   action: z.string().optional(),
   isWarning: z.boolean().optional(),
   error: z.string().nullable().optional(),
   code: z.string().optional(),
-  menge: z.number().int().optional(),
-  katalog_offen: z.boolean().optional(),
+  quantity: z.number().int().optional(),
+  catalog_pending: z.boolean().optional(),
   part_number: z.string().optional(),
   fig_number: z.string().optional(),
   fig_name: z.string().nullable().optional(),
   condition: z.string().optional(),
   vars: z.record(z.string(), z.unknown()).optional(),
-  waehrung_angepasst: z.boolean().optional(),
-  waehrung_datei: z.string().optional(),
-  waehrung_konto: z.string().optional(),
+  currency_adjusted: z.boolean().optional(),
+  file_currency: z.string().optional(),
+  account_currency: z.string().optional(),
 });
 
 export const CsvImportResult = z.looseObject({
@@ -51,10 +52,10 @@ export const CsvImportResult = z.looseObject({
   added: z.number().int(),
   updated: z.number().int(),
   errors: z.number().int(),
-  results: z.array(ImportZeile),
+  results: z.array(ImportRow),
   skipped: z.number().int().optional(),
   skipped_hint: z.string().optional(),
-  waehrung_hinweis: z.string().nullable().optional(),
+  currency_note: z.string().nullable().optional(),
 });
 
 export const ValuationAcquisition = z.looseObject({
@@ -64,12 +65,12 @@ export const ValuationAcquisition = z.looseObject({
   purchase_price: z.number().nullable(),
   avg_price: z.number().nullable(),
   total_avg: z.string().nullable(),
-  wert_gesamt: z.number().nullable(),
+  value_total: z.number().nullable(),
   pnl_pct: PERCENT_TEXT,
-  pnl_prozent: z.number().nullable(),
+  pnl_percent: z.number().nullable(),
   created_at: time.nullable(),
-  kaufpreis_original: z.number().optional(),
-  kaufpreis_waehrung: z.string().optional(),
+  original_purchase_price: z.number().optional(),
+  purchase_currency: z.string().optional(),
   price_estimated: z.boolean().optional(),
 });
 
@@ -88,16 +89,16 @@ const PIECE = {
 };
 const VALUED = {
   /** The price details are missing without an acquisition (no condition to value); ausstehend only while one is missing. */
-  ausstehend: z.boolean().optional(),
+  pending: z.boolean().optional(),
   from_cache: z.boolean().optional(),
   max_price: z.number().nullable().optional(),
   min_price: z.number().nullable().optional(),
   qty_avg_price: outdated(z.number().nullable(), 'avg_price'),
   pnl_pct: PERCENT_TEXT,
-  pnl_prozent: z.number().nullable(),
-  display_value: outdated(z.string().nullable(), 'wert_gesamt'),
-  total_value: outdated(z.string(), 'wert_gesamt'),
-  wert_gesamt: z.number().nullable(),
+  pnl_percent: z.number().nullable(),
+  display_value: outdated(z.string().nullable(), 'value_total'),
+  total_value: outdated(z.string(), 'value_total'),
+  value_total: z.number().nullable(),
   acquisitions: z.array(ValuationAcquisition),
 };
 /** The inventory (manual lists): counters, storage location; the detail loads the purchases via /acquisitions. */
@@ -126,7 +127,7 @@ const TEIL = {
 };
 
 export const FigValuationItem = z.looseObject({ ...PIECE, ...MINIFIG, ...VALUED });
-export const ManuelleFigur = z.looseObject({
+export const ManualMinifig = z.looseObject({
   ...PIECE,
   ...MINIFIG,
   ...IN_INVENTORY,
@@ -167,10 +168,10 @@ export const AcquisitionReply = GenericResponse.extend({
   source_emptied: z.boolean().optional(),
   quantity: z.number().int().nullable().optional(),
   /** Parts of the response that carry only substitute values after an error (e.g. `kaufpreis`). */
-  degradiert: z.array(z.string()).optional(),
+  degraded: z.array(z.string()).optional(),
 });
 
-export const StueckGeaendert = GenericResponse.extend({ quantity: z.number().int().optional() });
+export const PieceChanged = GenericResponse.extend({ quantity: z.number().int().optional() });
 
 export const Minifig = z.looseObject({
   id: z.number().int().nullable(),
@@ -246,7 +247,7 @@ export const Part = z.looseObject({
 export const SetTeil = z.looseObject({ ...PART_IN_LIST, bl_color_id: z.number().int().nullable() });
 
 export const PartValuationItem = z.looseObject({ ...PIECE, ...TEIL, ...VALUED });
-export const ManuellesTeil = z.looseObject({
+export const ManualPart = z.looseObject({
   ...PIECE,
   ...TEIL,
   ...IN_INVENTORY,
@@ -262,7 +263,7 @@ export const PartsResponse = z.looseObject({
   page: z.number().int(),
   page_size: z.number().int(),
   parts: z.array(Part),
-  degradiert: DEGRADED,
+  degraded: DEGRADED,
 });
 
 export const SetPartsResponse = z.looseObject({
@@ -291,4 +292,8 @@ export const UsingSetsResponse = z.looseObject({
 });
 
 /** Deleting moves into the trash; the identifiers bring it back. */
-export const MovedToTrash = GenericResponse.extend({ papierkorb: z.array(z.number().int()) });
+export const MovedToTrash = GenericResponse.extend({ trash: z.array(z.number().int()) });
+
+// v1 names of fields whose v2 name also exists unchanged elsewhere (v1.ts).
+v1Keys(ImportRow, { quantity: 'menge' });
+v1Keys(ComponentHeader, { number: 'nummer' });

@@ -4,14 +4,14 @@ import { input } from '../infra/validate';
 import {
   CsvImportResult,
   DEGRADED,
-  ManuelleFigur,
-  StueckGeaendert,
+  ManualMinifig,
+  PieceChanged,
   MinifigsResponse,
   UsingSetsResponse,
   MovedToTrash,
 } from './shared';
 
-export { ManuelleFigur, StueckGeaendert };
+export { ManualMinifig, PieceChanged };
 
 export const AddMinifigResponse = z.looseObject({
   success: z.boolean(),
@@ -25,8 +25,8 @@ export const ManualFigsResponse = z.looseObject({
   success: z.boolean(),
   ...PAGES_DETAIL,
   /** The list carries no acquisitions; the detail view loads them via /acquisitions. */
-  figs: z.array(ManuelleFigur),
-  degradiert: DEGRADED,
+  figs: z.array(ManualMinifig),
+  degraded: DEGRADED,
 });
 
 export const MinifigStats = z.looseObject({
@@ -48,11 +48,11 @@ export const MinifigParts = z.looseObject({
   parts: z.array(z.record(z.string(), z.unknown())),
 });
 
-export const routen = {
-  'GET /api/v1/minifigs': {
-    antwort: MinifigsResponse,
-    abfrage: query({
-      accounts: Q.konten,
+export const routes = {
+  'GET /api/v2/minifigs': {
+    response: MinifigsResponse,
+    query: query({
+      accounts: Q.accounts,
       search: Q.text(),
       source: Q.text(20),
       set_number: Q.text(64),
@@ -60,19 +60,19 @@ export const routen = {
       page_size: Q.number(),
     }),
   },
-  'GET /api/v1/minifigs/:figNumber/sets': {
-    klein: true,
-    antwort: UsingSetsResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/minifigs/:figNumber/sets': {
+    small: true,
+    response: UsingSetsResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/minifigs/manual': {
-    antwort: ManualFigsResponse,
-    abfrage: query({ accounts: Q.konten, search: Q.text(), ...PAGE }),
+  'GET /api/v2/minifigs/manual': {
+    response: ManualFigsResponse,
+    query: query({ accounts: Q.accounts, search: Q.text(), ...PAGE }),
   },
-  'GET /api/v1/minifigs/stats': { antwort: MinifigStatsResponse, abfrage: query({ accounts: Q.konten }) },
-  'POST /api/v1/minifigs': {
-    antwort: AddMinifigResponse,
-    eingabe: z.strictObject({
+  'GET /api/v2/minifigs/stats': { response: MinifigStatsResponse, query: query({ accounts: Q.accounts }) },
+  'POST /api/v2/minifigs': {
+    response: AddMinifigResponse,
+    input: z.strictObject({
       fig_number: input.itemNumber('fig_number'),
       quantity: input.pieceCount(),
       condition: input.condition(),
@@ -85,22 +85,22 @@ export const routen = {
       acquired_at: TEXT(40).nullable().optional(),
     }),
   },
-  'PUT /api/v1/minifigs/:figNumber': {
-    abfrage: query({ owner: Q.konto }),
-    eingabe: z.strictObject({
+  'PUT /api/v2/minifigs/:figNumber': {
+    query: query({ owner: Q.account }),
+    input: z.strictObject({
       quantity: input.quantityOrNothing(0, 100_000).optional(),
       quantity_delta: input.quantitiesDelta(),
       unit_price: input.geld('Stückpreis'),
       condition: CONDITION.nullable().optional(),
       bl_fig_number: TEXT(40).nullable().optional(),
     }),
-    antwort: StueckGeaendert,
+    response: PieceChanged,
   },
-  'DELETE /api/v1/minifigs/:figNumber': {
-    eingabe: WITHOUT_BODY,
-    antwort: MovedToTrash,
-    abfrage: query({ owner: Q.konto }),
+  'DELETE /api/v2/minifigs/:figNumber': {
+    input: WITHOUT_BODY,
+    response: MovedToTrash,
+    query: query({ owner: Q.account }),
   },
-  'POST /api/v1/minifigs/import/csv': { formular: true, antwort: CsvImportResult },
-  'GET /api/v1/minifigs/:figNumber/parts': { klein: true, antwort: MinifigParts },
+  'POST /api/v2/minifigs/import/csv': { form: true, response: CsvImportResult },
+  'GET /api/v2/minifigs/:figNumber/parts': { small: true, response: MinifigParts },
 } satisfies Record<string, Route>;

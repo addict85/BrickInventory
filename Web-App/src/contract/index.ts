@@ -3,98 +3,98 @@
  * routes (src/http/contractRouter.ts) and the response checks in the tests. */
 import type { z } from 'zod';
 import type { Wire, Route } from './base';
-import * as bestand from './inventory';
-import * as einstellungen from './settings';
-import * as figuren from './minifigs';
-import * as finanzen from './finances';
-import * as geraet from './device';
-import * as gutscheine from './vouchers';
-import * as haushalt from './household';
-import * as katalog from './catalog';
-import * as konto from './account';
-import * as merkliste from './wanted';
+import * as inventory from './inventory';
+import * as settings from './settings';
+import * as minifigs from './minifigs';
+import * as finances from './finances';
+import * as device from './device';
+import * as vouchers from './vouchers';
+import * as household from './household';
+import * as catalog from './catalog';
+import * as account from './account';
+import * as wanted from './wanted';
 import * as sets from './sets';
-import * as teile from './parts';
-import * as verwaltung from './management';
+import * as parts from './parts';
+import * as management from './management';
 
 export const AREAS = {
-  bestand,
-  einstellungen,
-  figuren,
-  finanzen,
-  geraet,
-  gutscheine,
-  haushalt,
-  katalog,
-  konto,
-  merkliste,
+  inventory,
+  settings,
+  minifigs,
+  finances,
+  device,
+  vouchers,
+  household,
+  catalog,
+  account,
+  wanted,
   sets,
-  teile,
-  verwaltung,
+  parts,
+  management,
 };
 
 export const CONTRACT = {
-  ...bestand.routen,
-  ...einstellungen.routen,
-  ...figuren.routen,
-  ...finanzen.routen,
-  ...geraet.routen,
-  ...gutscheine.routen,
-  ...haushalt.routen,
-  ...katalog.routen,
-  ...konto.routen,
-  ...merkliste.routen,
-  ...sets.routen,
-  ...teile.routen,
-  ...verwaltung.routen,
+  ...inventory.routes,
+  ...settings.routes,
+  ...minifigs.routes,
+  ...finances.routes,
+  ...device.routes,
+  ...vouchers.routes,
+  ...household.routes,
+  ...catalog.routes,
+  ...account.routes,
+  ...wanted.routes,
+  ...sets.routes,
+  ...parts.routes,
+  ...management.routes,
 };
 
 export type Key = keyof typeof CONTRACT;
-type Body<K extends Key> = (typeof CONTRACT)[K] extends { antwort: infer S extends z.ZodType }
+type Body<K extends Key> = (typeof CONTRACT)[K] extends { response: infer S extends z.ZodType }
   ? Wire<z.output<S>>
   : never;
 /** The body of a route, for services that compose it entirely. */
 export type ResponseBody<K extends Key> = Body<K>;
 
-type Teil<K extends Key, F extends 'eingabe' | 'abfrage'> = (typeof CONTRACT)[K] extends {
+type Part<K extends Key, F extends 'input' | 'query'> = (typeof CONTRACT)[K] extends {
   [P in F]: infer S extends z.ZodType;
 }
   ? z.output<S>
   : Record<never, never>;
 /** The checked body (checkInput); empty without a schema. */
-export type Input<K extends Key> = Teil<K, 'eingabe'>;
+export type Input<K extends Key> = Part<K, 'input'>;
 /** The checked query; empty without a schema, reading there is a translation error. */
-export type Query<K extends Key> = Teil<K, 'abfrage'>;
+export type Query<K extends Key> = Part<K, 'query'>;
 
 export function routeFor(key: string): Route | undefined {
   return Object.hasOwn(CONTRACT, key) ? (CONTRACT as Record<string, Route>)[key] : undefined;
 }
 
 /** Literal segments before placeholders, as Express handles these paths. */
-const MUSTER = Object.entries(CONTRACT as Record<string, Route>)
+const PATTERNS = Object.entries(CONTRACT as Record<string, Route>)
   .map(([k, route]) => {
-    const [methode, path] = k.split(' ') as [string, string];
-    const teile = path.split('/');
-    return { schluessel: k as Key, methode, teile, route, offen: teile.filter(t => t.startsWith(':')).length };
+    const [method, path] = k.split(' ') as [string, string];
+    const parts = path.split('/');
+    return { key: k as Key, method, parts, route, open: parts.filter(t => t.startsWith(':')).length };
   })
-  .sort((a, b) => a.offen - b.offen);
+  .sort((a, b) => a.open - b.open);
 
-function patternForRequest(methode: string, path: string) {
-  const teile = path.replace(/\/+$/, '').split('/');
-  return MUSTER.find(
+function patternForRequest(method: string, path: string) {
+  const parts = path.replace(/\/+$/, '').split('/');
+  return PATTERNS.find(
     m =>
-      m.methode === methode &&
-      m.teile.length === teile.length &&
-      m.teile.every((t, i) => t === teile[i] || (t.startsWith(':') && teile[i] !== '')),
+      m.method === method &&
+      m.parts.length === parts.length &&
+      m.parts.every((t, i) => t === parts[i] || (t.startsWith(':') && parts[i] !== '')),
   );
 }
 
 /** The contract route for a request, before Express has matched it. */
-export function routeForRequest(methode: string, path: string): Route | undefined {
-  return patternForRequest(methode, path)?.route;
+export function routeForRequest(method: string, path: string): Route | undefined {
+  return patternForRequest(method, path)?.route;
 }
 
 /** Its key: whoever classifies routes by it names them the way the translator checks them. */
-export function keyForRequest(methode: string, path: string): Key | undefined {
-  return patternForRequest(methode, path)?.schluessel;
+export function keyForRequest(method: string, path: string): Key | undefined {
+  return patternForRequest(method, path)?.key;
 }

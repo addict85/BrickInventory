@@ -2,10 +2,10 @@
 'use strict';
 
 /**
- * Writes frontend-types/contract.d.ts from docs/openapi.json: the response
+ * Writes frontend-types/contract.d.ts from docs/openapi-v2.json (API v2): the response
  * of every route as a TypeScript type, so that tsc checks the UI's api() calls
  * against the contract. The file is checked in;
- * test/contract-frontend-types.test.js checks that it matches openapi.json.
+ * test/contract-frontend-types.test.js checks that it matches openapi-v2.json.
  *
  *   npm run contract:frontend
  */
@@ -13,7 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = path.join(ROOT, 'docs', 'openapi.json');
+const QUELLE = path.join(ROOT, 'docs', 'openapi-v2.json');
 const ZIEL = path.join(ROOT, 'frontend-types', 'contract.d.ts');
 
 const NAME = /^[A-Za-z_$][\w$]*$/;
@@ -80,17 +80,17 @@ function create(doc) {
     '/** Per route: method, path (placeholders as ${string}) and response on success. */',
     'export type Route =',
   );
-  const routen = [];
+  const routes = [];
   for (const [path, ops] of Object.entries(doc.paths || {})) {
     const muster = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
     for (const [method, op] of Object.entries(/** @type {Record<string, any>} */ (ops))) {
       const schema = op.responses?.['200']?.content?.['application/json']?.schema;
       if (!schema) continue;
       const p = muster.includes('${') ? '`' + muster + '`' : `'${muster}'`;
-      routen.push(`  | { m: '${method.toUpperCase()}'; p: ${p}; a: ${type(schema, '  ')} }`);
+      routes.push(`  | { m: '${method.toUpperCase()}'; p: ${p}; a: ${type(schema, '  ')} }`);
     }
   }
-  from.push(...routen.map((z, i) => (i === routen.length - 1 ? z + ';' : z)), '');
+  from.push(...routes.map((z, i) => (i === routes.length - 1 ? z + ';' : z)), '');
   const streams = [];
   for (const [path, ops] of Object.entries(doc.paths || {})) {
     const schema = ops.get?.responses?.['200']?.content?.['text/event-stream']?.schema;

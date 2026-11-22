@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { v1Keys } from './v1';
 import { type Route, AccountName, time, query, Q, outdated, PERCENT_TEXT, PAGE, PAGES_DETAIL } from './base';
 import { FigValuationItem, PartValuationItem, ValuationAcquisition } from './shared';
 
@@ -18,7 +19,7 @@ export const ConditionValuation = z.looseObject({
   market_price: z.number().nullable(),
   purchase_price: z.number().nullable(),
   pnl_pct: PERCENT_TEXT,
-  pnl_prozent: z.number().nullable(),
+  pnl_percent: z.number().nullable(),
 });
 
 export const DashboardStats = z.looseObject({
@@ -36,51 +37,51 @@ export const DashboardStats = z.looseObject({
 });
 
 export const FigsValuationResponse = z.looseObject({
-  kaufpreise_umgerechnet: z.number().int(),
+  converted_purchase_prices: z.number().int(),
   success: z.boolean(),
   ...PAGES_DETAIL,
   currency: z.string(),
   figs: z.array(FigValuationItem),
-  total_value: outdated(z.string(), 'wert_gesamt'),
-  wert_gesamt: z.number().nullable(),
-  preise_ausstehend: z.number().int(),
-  kaufpreise_fremde_waehrung: z.number().int(),
+  total_value: outdated(z.string(), 'value_total'),
+  value_total: z.number().nullable(),
+  prices_pending: z.number().int(),
+  foreign_currency_purchases: z.number().int(),
 });
 
 export const PartsValuationResponse = z.looseObject({
-  kaufpreise_umgerechnet: z.number().int(),
+  converted_purchase_prices: z.number().int(),
   success: z.boolean(),
   ...PAGES_DETAIL,
   currency: z.string(),
   parts: z.array(PartValuationItem),
-  total_value: outdated(z.string(), 'wert_gesamt'),
-  wert_gesamt: z.number().nullable(),
-  preise_ausstehend: z.number().int(),
-  kaufpreise_fremde_waehrung: z.number().int(),
+  total_value: outdated(z.string(), 'value_total'),
+  value_total: z.number().nullable(),
+  prices_pending: z.number().int(),
+  foreign_currency_purchases: z.number().int(),
 });
 
 export const PnlTotals = z.looseObject({
-  kaufpreise_umgerechnet: z.number().int(),
+  converted_purchase_prices: z.number().int(),
   pnl_current: z.union([z.string(), z.number()]).nullable(),
   pnl_purchase: z.union([z.string(), z.number()]).nullable(),
   purchase: z.string(),
   current: z.string(),
   pnl_pct: PERCENT_TEXT,
-  pnl_prozent: z.number().nullable(),
-  kaufpreise_fremde_waehrung: z.number().int(),
+  pnl_percent: z.number().nullable(),
+  foreign_currency_purchases: z.number().int(),
   sets_purchase: z.string(),
   parts_purchase: z.string(),
   figs_purchase: z.string(),
   grand_total: z.string(),
-  positionen: z.number().int().optional(),
-  positionen_bewertet: z.number().int().optional(),
-  positionen_ohne_marktpreis: z.number().int().optional(),
-  positionen_ohne_kaufpreis: z.number().int().optional(),
-  basis_einstand: z.string().optional(),
-  basis_marktwert: z.string().optional(),
-  basis_guv_betrag: z.string().optional(),
-  ohne_marktpreis_einstand: z.string().optional(),
-  ohne_kaufpreis_marktwert: z.string().optional(),
+  positions: z.number().int().optional(),
+  positions_valued: z.number().int().optional(),
+  positions_without_market_price: z.number().int().optional(),
+  positions_without_purchase_price: z.number().int().optional(),
+  baseline_cost: z.string().optional(),
+  baseline_market_value: z.string().optional(),
+  baseline_pnl_amount: z.string().optional(),
+  cost_without_market_price: z.string().optional(),
+  market_value_without_purchase_price: z.string().optional(),
 });
 
 export const PnlSetRow = z.looseObject({
@@ -97,13 +98,13 @@ export const PnlSetRow = z.looseObject({
   current_price: z.number().nullable(),
   baseline_price: z.number().nullable(),
   pnl_pct: PERCENT_TEXT,
-  baseline_pnl_pct: outdated(z.string().nullable().optional(), 'baseline_pnl_prozent'),
-  pnl_betrag: z.number().nullable(),
-  pnl_prozent: z.number().nullable(),
-  baseline_pnl_prozent: z.number().nullable(),
-  kachel_preis: z.number().nullable().optional(),
-  kachel_pnl_pct: z.number().nullable().optional(),
-  kachel_quelle: z.enum(['markt', 'kauf']).nullable().optional(),
+  baseline_pnl_pct: outdated(z.string().nullable().optional(), 'baseline_pnl_percent'),
+  pnl_amount: z.number().nullable(),
+  pnl_percent: z.number().nullable(),
+  baseline_pnl_percent: z.number().nullable(),
+  tile_price: z.number().nullable().optional(),
+  tile_pnl_pct: z.number().nullable().optional(),
+  tile_source: z.enum(['markt', 'kauf']).nullable().optional(),
 });
 
 export const PnlResponse = z.looseObject({
@@ -137,7 +138,7 @@ export const PriceChartData = z.looseObject({
 
 export const PortfolioHistoryResponse = z.looseObject({
   chart: PriceChartData.optional(),
-  messpunkte: z.number().int().nullable(),
+  data_points: z.number().int().nullable(),
   success: z.boolean(),
   currency: z.string(),
   period: z.string(),
@@ -168,7 +169,7 @@ export const PriceHistoryResponse = z.looseObject({
   by_condition: PriceByCondition,
   chart: PriceChartData,
   pnl_pct: PERCENT_TEXT,
-  pnl_prozent: z.number().nullable().optional(),
+  pnl_percent: z.number().nullable().optional(),
   purchase_price: z.number().nullable().optional(),
 });
 
@@ -199,7 +200,7 @@ export const Totals = z.looseObject({
 });
 
 export const ValuationSet = z.looseObject({
-  bl_unbekannt: z.boolean(),
+  bl_unknown: z.boolean(),
   condition: z.string(),
   conditions: z.array(z.string()),
   error_code: z.string().nullable().optional(),
@@ -217,10 +218,10 @@ export const ValuationSet = z.looseObject({
   max_price: z.number().nullable(),
   qty_avg_price: z.number().nullable(),
   total_qty_avg: z.string().nullable(),
-  preis_ausstehend: z.boolean(),
+  price_pending: z.boolean(),
   total_avg: z.string().nullable(),
-  wert_gesamt: z.number().nullable(),
-  pnl_prozent: z.number().nullable(),
+  value_total: z.number().nullable(),
+  pnl_percent: z.number().nullable(),
   purchase_price: z.number().nullable(),
   from_cache: z.boolean(),
   is_fallback: z.boolean(),
@@ -234,62 +235,66 @@ export const ValuationSet = z.looseObject({
 });
 
 export const ValuationResponse = z.looseObject({
-  kaufpreise_umgerechnet: z.number().int(),
+  converted_purchase_prices: z.number().int(),
   guide_type: z.string(),
   ttl_hours: z.union([z.string(), z.number()]).nullable(),
   success: z.boolean(),
   ...PAGES_DETAIL,
-  total_value: outdated(z.string(), 'wert_gesamt'),
-  wert_gesamt: z.number().nullable(),
-  preise_ausstehend: z.number().int(),
+  total_value: outdated(z.string(), 'value_total'),
+  value_total: z.number().nullable(),
+  prices_pending: z.number().int(),
   currency: z.string(),
   condition: z.string(),
-  ttl_stunden: z.number().int(),
-  kaufpreise_fremde_waehrung: z.number().int(),
+  cache_ttl_hours: z.number().int(),
+  foreign_currency_purchases: z.number().int(),
   sets: z.array(ValuationSet),
   totals: Totals,
 });
 
-export const routen = {
-  'GET /api/v1/sets/:setNumber/price': {
-    antwort: SetPriceResponse,
-    abfrage: query({
-      accounts: Q.konten,
+// v1 names of fields whose v2 name also exists unchanged elsewhere (v1.ts).
+v1Keys(FigsValuationResponse.shape.figs.element, { pending: 'ausstehend' });
+v1Keys(PartsValuationResponse.shape.parts.element, { pending: 'ausstehend' });
+
+export const routes = {
+  'GET /api/v2/sets/:setNumber/price': {
+    response: SetPriceResponse,
+    query: query({
+      accounts: Q.accounts,
       currency: Q.text(8).meta({
         deprecated: true,
         description: 'not evaluated: the account currency applies',
       }),
     }),
   },
-  'GET /api/v1/sets/:setNumber/price-history': {
-    klein: true,
-    antwort: PriceHistoryResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/sets/:setNumber/price-history': {
+    small: true,
+    response: PriceHistoryResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/parts/:partNumber/:colorId/price-history': {
-    klein: true,
-    antwort: PriceHistoryResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/parts/:partNumber/:colorId/price-history': {
+    small: true,
+    response: PriceHistoryResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/minifigs/:figNumber/price-history': {
-    klein: true,
-    antwort: PriceHistoryResponse,
-    abfrage: query({ accounts: Q.konten }),
+  'GET /api/v2/minifigs/:figNumber/price-history': {
+    small: true,
+    response: PriceHistoryResponse,
+    query: query({ accounts: Q.accounts }),
   },
-  'GET /api/v1/finance/parts-valuation': {
-    antwort: PartsValuationResponse,
-    abfrage: query({ accounts: Q.konten, ...PAGE }),
+  'GET /api/v2/finance/parts-valuation': {
+    response: PartsValuationResponse,
+    query: query({ accounts: Q.accounts, ...PAGE }),
   },
-  'GET /api/v1/finance/minifigs-valuation': {
-    antwort: FigsValuationResponse,
-    abfrage: query({ accounts: Q.konten, ...PAGE }),
+  'GET /api/v2/finance/minifigs-valuation': {
+    response: FigsValuationResponse,
+    query: query({ accounts: Q.accounts, ...PAGE }),
   },
-  'GET /api/v1/finance/pnl': { antwort: PnlResponse, abfrage: query({ accounts: Q.konten, ...PAGE }) },
-  'GET /api/v1/finance/valuation': { antwort: ValuationResponse, abfrage: query({ accounts: Q.konten, ...PAGE }) },
-  'GET /api/v1/finance/portfolio-history': {
-    klein: true,
-    antwort: PortfolioHistoryResponse,
-    abfrage: query({ accounts: Q.konten, period: Q.text(20) }),
+  'GET /api/v2/finance/pnl': { response: PnlResponse, query: query({ accounts: Q.accounts, ...PAGE }) },
+  'GET /api/v2/finance/valuation': { response: ValuationResponse, query: query({ accounts: Q.accounts, ...PAGE }) },
+  'GET /api/v2/finance/portfolio-history': {
+    small: true,
+    response: PortfolioHistoryResponse,
+    query: query({ accounts: Q.accounts, period: Q.text(20) }),
   },
-  'GET /api/v1/stats': { antwort: StatsResponse, abfrage: query({ accounts: Q.konten }) },
+  'GET /api/v2/stats': { response: StatsResponse, query: query({ accounts: Q.accounts }) },
 } satisfies Record<string, Route>;

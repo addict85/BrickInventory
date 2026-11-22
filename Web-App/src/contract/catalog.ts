@@ -34,7 +34,7 @@ export const CatalogSetDetail = z.looseObject({
   owned: z.boolean(),
   owned_quantity: z.number().int(),
   bricklink: BrickLinkRef.nullable(),
-  preisvergleich_url: z.string().nullable(),
+  price_comparison_url: z.string().nullable(),
 });
 
 export const CatalogSetDetailResponse = z.looseObject({
@@ -77,11 +77,11 @@ export const CatalogYearDistributionResponse = z.looseObject({
 /** BrickLink references per set number of the request. */
 export const BricklinkLinks = z.looseObject({ success: z.literal(true), links: z.record(z.string(), z.unknown()) });
 
-export const routen = {
-  'GET /api/v1/catalog/meta': { klein: true, antwort: CatalogMetaResponse },
-  'GET /api/v1/catalog/sets': {
-    antwort: CatalogSetsResponse,
-    abfrage: query({
+export const routes = {
+  'GET /api/v2/catalog/meta': { small: true, response: CatalogMetaResponse },
+  'GET /api/v2/catalog/sets': {
+    response: CatalogSetsResponse,
+    query: query({
       q: Q.text(),
       theme_id: Q.numberOrEmpty,
       year_from: Q.numberOrEmpty,
@@ -91,11 +91,11 @@ export const routen = {
       limit: outdated(Q.number(), 'page_size'),
     }),
   },
-  'GET /api/v1/catalog/sets/:setNumber': { antwort: CatalogSetDetailResponse },
-  'GET /api/v1/catalog/year-verteilung': {
-    klein: true,
-    antwort: CatalogYearDistributionResponse,
-    abfrage: query({ q: Q.text(), theme_id: Q.numberOrEmpty, sort: Q.text(40) }),
+  'GET /api/v2/catalog/sets/:setNumber': { response: CatalogSetDetailResponse },
+  'GET /api/v2/catalog/year-distribution': {
+    small: true,
+    response: CatalogYearDistributionResponse,
+    query: query({ q: Q.text(), theme_id: Q.numberOrEmpty, sort: Q.text(40) }),
   },
-  'GET /api/v1/catalog/bricklink': { antwort: BricklinkLinks, abfrage: query({ sets: Q.text(4000) }) },
+  'GET /api/v2/catalog/bricklink': { response: BricklinkLinks, query: query({ sets: Q.text(4000) }) },
 } satisfies Record<string, Route>;

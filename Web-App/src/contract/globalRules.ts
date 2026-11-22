@@ -6,7 +6,7 @@ import { failDomain, type ErrorCode } from '../infra/errorTexts';
 export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 /** A global value is stored as text, even if it comes as a number. */
-const wert = (valid: (v: string) => boolean, json: Record<string, unknown>, code: ErrorCode = 'wert_ungueltig') =>
+const wert = (valid: (v: string) => boolean, json: Record<string, unknown>, code: ErrorCode = 'value_invalid') =>
   input.rule((v): string => {
     if ((typeof v !== 'string' && typeof v !== 'number') || !valid(String(v))) failDomain('ungueltig', code);
     return String(v);
@@ -39,9 +39,9 @@ export const GLOBAL_RULES = {
   rebrickable_api_key: text(200),
   price_job_interval_minutes: integer(5, 10_080),
   price_cache_ttl: selection(['12', '24', '168']),
-  api_limit_rebrickable: integer(1, 100_000, 'tageslimit_bereich'),
-  api_limit_bricklink: integer(1, 100_000, 'tageslimit_bereich'),
-  api_limit_brickset: integer(1, 100_000, 'tageslimit_bereich'),
+  api_limit_rebrickable: integer(1, 100_000, 'daily_limit_area'),
+  api_limit_bricklink: integer(1, 100_000, 'daily_limit_area'),
+  api_limit_brickset: integer(1, 100_000, 'daily_limit_area'),
   registration_enabled: JA_NO_VALUE,
   smtp_secure: JA_NO_VALUE,
   einrichtung_erledigt: JA_NO_VALUE,
@@ -69,9 +69,9 @@ export const GLOBAL_RULES = {
     },
     { type: 'string', maxLength: 20_000 },
   ),
-  default_price_condition: selection(['N', 'U'], 'zustand_n_oder_u'),
+  default_price_condition: selection(['N', 'U'], 'condition_n_or_u'),
   gutschein_land: wert(v => v === '' || /^[A-Z]{2}$/.test(v), { type: 'string', pattern: '^([A-Z]{2})?$' }),
-  app_theme: selection(DESIGNS, 'design_ungueltig'),
+  app_theme: selection(DESIGNS, 'theme_invalid'),
   job_time_brickset_retry: TIME_OF_DAY,
   job_time_csv_sync: TIME_OF_DAY,
 } as const;
