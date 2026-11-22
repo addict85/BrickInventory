@@ -64,13 +64,13 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
         const b = document.getElementById('btn-info'); b.focus();
         const grund = getComputedStyle(document.body).backgroundColor.match(/\\d+/g).slice(0, 3).map(Number);
         return { heights: k.map(x => Math.round(x.getBoundingClientRect().height)), ring: getComputedStyle(b).outlineWidth,
-          hell: grund.reduce((s, x) => s + x, 0) / 3, stufen: [...document.querySelectorAll('.lvbtn')].map(x => x.textContent.trim()) }; })()`),
+          hell: grund.reduce((s, x) => s + x, 0) / 3, levels: [...document.querySelectorAll('.lvbtn')].map(x => x.textContent.trim()) }; })()`),
       );
       assert.ok(Math.min(...m.heights) >= 24, `Knöpfe ${m.heights.join(', ')} px`);
       assert.equal(m.ring, '3px');
       assert.ok(dunkel ? m.hell < 80 : m.hell > 200, `Grund ${m.hell} bei dunkel=${dunkel}`);
       assert.deepEqual(
-        m.stufen.map(s => s.replace(/^\W+\s*/, '')),
+        m.levels.map(s => s.replace(/^\W+\s*/, '')),
         ['Hinweise', 'Warnungen', 'Fehler'],
       );
       await b.auswerten(`document.getElementById('lv-rahmen').remove(); true`);

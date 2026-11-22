@@ -14,7 +14,7 @@
  *   E  (02.11.) the class group-active no longer set in markGroup
  *      → red: “parts and minifigures findable in the bar” (aria-current);
  *      (29.10.) `.ntab.ntab-collection{display:none}` removed from styles.css
- *      → red: on the computer two navigations again (teile: true)
+ *      → red: on the computer two navigations again (parts: true)
  *   F  (29.10.; 30.10. with color heading across the full width) .parts-list
  *      without display:grid → red: “parts: one grid, filters as a sheet” (breit:
  *      12); class filterleiste on the
@@ -215,18 +215,18 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
       b.auswerten(`(() => {
       const sichtbar = [...document.querySelectorAll('#global-settings-grid > .ssec')].filter(s => s.getClientRects().length > 0);
       const nav = document.querySelector('.settings-nav').getBoundingClientRect();
-      return { sichtbar: sichtbar.map(s => s.id), aktuell: document.querySelector('.settings-nav a[aria-current="page"]')?.dataset.arg,
+      return { sichtbar: sichtbar.map(s => s.id), current: document.querySelector('.settings-nav a[aria-current="page"]')?.dataset.arg,
                navRows: new Set([...document.querySelectorAll('.settings-nav a')].map(a => Math.round(a.getBoundingClientRect().top))).size,
                navHoehe: Math.round(nav.height), pagesWidth: document.documentElement.scrollWidth }; })()`);
     const vorher = await state();
     assert.equal(vorher.sichtbar.length, 1, `sichtbar: ${vorher.sichtbar}`);
-    assert.equal(vorher.aktuell, vorher.sichtbar[0]);
+    assert.equal(vorher.current, vorher.sichtbar[0]);
     assert.equal(vorher.navRows, 1, 'am Telefon steht die Leiste in einer Zeile');
     assert.ok(vorher.pagesWidth <= 390, `Seite ${vorher.pagesWidth} px breit`);
     await b.auswerten(`document.querySelector('.settings-nav a[data-arg="settings-smtp"]').click(); true`);
     await ruhig();
     const nachher = await state();
-    assert.deepEqual([nachher.sichtbar, nachher.aktuell], [['settings-smtp'], 'settings-smtp']);
+    assert.deepEqual([nachher.sichtbar, nachher.current], [['settings-smtp'], 'settings-smtp']);
     assert.equal(await b.auswerten(`localStorage.getItem('bim_settings_section')`), 'settings-smtp');
   });
 
@@ -235,11 +235,11 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await b.auswerten(`document.querySelector('#tab-gallery .collection-choice [data-arg="parts"]').click(); true`);
     await ruhig();
     const telefon = await b.auswerten(`(() => { const s = document.querySelector('.ntab[data-tab="gallery"]');
-      return { text: s.innerText.trim(), aktuell: s.getAttribute('aria-current'),
+      return { text: s.innerText.trim(), current: s.getAttribute('aria-current'),
                partsVisible: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
     // The place is always called „Sammlung“; which view is open is told by the toggle at the top.
     assert.equal(telefon.text, 'Sammlung', 'Der erste Platz der Leiste wechselt seinen Namen');
-    assert.equal(telefon.aktuell, 'page');
+    assert.equal(telefon.current, 'page');
     assert.equal(telefon.partsVisible, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
     // On the computer ONE navigation: „Sammlung“ in the bar, sets/parts/
     // minifigures only in the toggle on the page (before, both).
@@ -252,13 +252,13 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await bis('innerWidth === 1280', 'Fensterbreite');
     await ruhig();
     const calculator = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
-      return { teile: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
+      return { parts: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
                toggle: document.querySelector('#tab-parts .collection-choice').getClientRects().length > 0,
                collectionActive: r('gallery').classList.contains('group-active') }; })()`);
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await bis('innerWidth === 390', 'Fensterbreite');
     await ruhig();
-    assert.deepEqual(calculator, { teile: false, figuren: false, toggle: true, collectionActive: true });
+    assert.deepEqual(calculator, { parts: false, figuren: false, toggle: true, collectionActive: true });
     await reiter('gallery');
     assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
   });

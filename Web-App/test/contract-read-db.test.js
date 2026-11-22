@@ -31,7 +31,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerEinhaengungen, testData } = require('./helpers/sources');
 const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
-const { contractTo, appRoutes } = require('./helpers/contract');
+const { contractTo, appRoutes, APP_KEYS } = require('./helpers/contract');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -285,7 +285,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
       status.push(`${r.path}: kein Wert für einen Platzhalter`);
       continue;
     }
-    const anfrage = [...r.abfrage.filter(q => q.required).map(q => `${q.name}=60`), EXTRA.get(r.path)]
+    const anfrage = [...r.abfrage.filter(q => q[APP_KEYS.required]).map(q => `${q.name}=60`), EXTRA.get(r.path)]
       .filter(Boolean)
       .join('&');
     const response = await fetch(basis + path + (anfrage ? '?' + anfrage : ''));

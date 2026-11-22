@@ -210,10 +210,10 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       const tabelle = document.getElementById('users-tbl').innerText;
       return { wartet: /wartet auf Bestätigung/.test(zeile.textContent), knopf: !!zeile.querySelector('[data-click="unlockAccount"]'),
         verwalter: /Administrator/.test(tabelle), admin: /\\bAdmin\\b/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
-        hinweis: document.getElementById('reg-mail-hint').textContent }; })()`);
+        hint: document.getElementById('reg-mail-hint').textContent }; })()`);
     assert.deepEqual(
-      { ...z, hinweis: /E-Mail-Versand/.test(z.hinweis) },
-      { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hinweis: true },
+      { ...z, hint: /E-Mail-Versand/.test(z.hint) },
+      { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hint: true },
     );
     assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Administrator\\)`));
     await b.auswerten(
@@ -280,14 +280,14 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     );
     const z =
       await b.auswerten(`({ haupt: document.getElementById('btn-verify').classList.contains('bp'), zurueck: ${text('#link-verify-to-login')},
-      formular: { titel: ${text('#panel-register h1')}, pflicht: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
+      formular: { titel: ${text('#panel-register h1')}, required: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
         regel: document.getElementById(document.getElementById('reg-pass').getAttribute('aria-describedby'))?.textContent } })`);
     assert.deepEqual(z, {
       haupt: true,
       zurueck: '← Zurück zur Sammlung',
       formular: {
         titel: 'Registrieren',
-        pflicht: true,
+        required: true,
         regel: 'Mindestens 12 Zeichen, kein häufig verwendetes Passwort.',
       },
     });

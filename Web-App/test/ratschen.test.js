@@ -272,7 +272,7 @@ test('the compatibility path to the database and module-wide state become fewer,
     console.log(`  ℹ modulweiter Zustand: ${condition} (Schranke ${STATE_LIMIT}) — Schranke nachziehen`);
   routesMatchContexts();
   bindingWithoutNamesAndProxy();
-  konfigNurAmStart();
+  configOnlyAtStart();
 });
 
 /** Paths around the contexts are forbidden (formerly a ratchet). */
@@ -319,26 +319,27 @@ function routesMatchContexts() {
   assert.deepEqual(facades, [], 'Dienste eines anderen Bereichs kommen über d oder den Kontext, nicht als Import');
 }
 
-/** The startup reads konfig(); domain areas, routes and jobs get the configuration handed in. */
-function konfigNurAmStart() {
-  // buildServices passes it as k.konfig, the startup as a parameter. Left are helpers of the process
+/** The startup reads config(); domain areas, routes and jobs get the configuration handed in. */
+function configOnlyAtStart() {
+  // buildServices passes it as k.config, the startup as a parameter. Left are helpers of the process
   // (src/infra, src/http, db/) and the bcrypt pool built at load time; their number only sinks.
-  // Counter-checks (14.11.2026): `const _k = konfig();` in src/sets/read.ts → red (domain area);
-  // the same in src/http/csvResponse.ts → red (14 of 13).
-  const LIMIT = 13;
+  // Counter-checks (14.11.2026): `const _k = config();` in src/sets/read.ts → red (domain area);
+  // the same in src/http/csvResponse.ts → red (14 of 13). The search named the German konfig() and
+  // so found nothing; since 22.11.2026 it looks for config(): `config()` in src/sets/content.ts → red.
+  const LIMIT = 12;
   const EXCEPTION = ['src/account/bcryptLimit.ts'];
   const ohne = require('./helpers/sources').ohneKommentare;
   const rel = f => path.relative(WEB, f).split(path.sep).join('/');
   const lesend = sources()
     .map(rel)
     .filter(r => !/^(startup\/|server\.ts$|src\/infra\/config\.ts$)/.test(r))
-    .filter(r => /\bkonfig\(\)/.test(ohne(fs.readFileSync(path.join(WEB, r), 'utf8'))));
-  assert.ok(lesend.length > 0, 'keine Leser von konfig() gefunden — greift die Suche noch?');
+    .filter(r => /\bconfig\(\)/.test(ohne(fs.readFileSync(path.join(WEB, r), 'utf8'))));
+  assert.ok(lesend.length > 0, 'keine Leser von config() gefunden — greift die Suche noch?');
   const fach = lesend.filter(r => !/^(src\/infra|src\/http|db)\//.test(r) && !EXCEPTION.includes(r));
-  assert.deepEqual(fach, [], 'Fachbereiche, Routen und Jobs nehmen k.konfig oder einen Parameter');
-  assert.ok(lesend.length <= LIMIT, `${lesend.length} Dateien lesen konfig(), erlaubt sind ${LIMIT}`);
+  assert.deepEqual(fach, [], 'Fachbereiche, Routen und Jobs nehmen k.config oder einen Parameter');
+  assert.ok(lesend.length <= LIMIT, `${lesend.length} Dateien lesen config(), erlaubt sind ${LIMIT}`);
   if (lesend.length < LIMIT)
-    console.log(`  ℹ konfig()-Leser: ${lesend.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
+    console.log(`  ℹ config()-Leser: ${lesend.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 }
 
 /** Areas bind without names and proxy; AsyncLocalStorage only in the call frame. */
@@ -516,19 +517,20 @@ test('raw req.body and req.query in routes become fewer, never more', () => {
 });
 
 test('write targets in routes become fewer, never more', () => {
-  // schreibziel() checks in the household for whom is written; better the
+  // writeTarget() checks in the household for whom is written; better the
   // service takes the wish itself.
-  // Counter-check (05.11.2026): limit set to 16 → red.
+  // Counter-check (05.11.2026): limit set to 16 → red. It searched the German schreibziel(); since
+  // 22.11.2026 writeTarget(): limit 12 → red (13 calls).
   const LIMIT = 13;
   let ist = 0;
   for (const f of sources().filter(f => /[\\/]routes[\\/]/.test(f)))
     ist += (
       require('./helpers/sources')
         .ohneKommentare(fs.readFileSync(f, 'utf8'))
-        .match(/\bschreibziel\(/g) || []
+        .match(/\bwriteTarget\(/g) || []
     ).length;
-  assert.ok(ist <= LIMIT, `${ist}-mal schreibziel() in routes/, erlaubt sind ${LIMIT}`);
-  if (ist < LIMIT) console.log(`  ℹ schreibziel() in Routen: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
+  assert.ok(ist <= LIMIT, `${ist}-mal writeTarget() in routes/, erlaubt sind ${LIMIT}`);
+  if (ist < LIMIT) console.log(`  ℹ writeTarget() in Routen: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
 /**
@@ -770,7 +772,7 @@ test('test cases that only read source text become fewer, never more', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const LIMIT = 382;
+  const LIMIT = 375;
   const { n, all: alle } = sourceTextCases();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
@@ -1621,7 +1623,7 @@ test('German identifiers become fewer, never more (server and tests separately; 
     test: files(__dirname),
   };
   // Distinct names per area; the goal for "server" is 0.
-  const LIMITS = { server: 537, test: 1335 };
+  const LIMITS = { server: 530, test: 1331 };
   for (const [area, list] of Object.entries(AREAS)) {
     const found = new Set();
     for (const f of list) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) found.add(id);

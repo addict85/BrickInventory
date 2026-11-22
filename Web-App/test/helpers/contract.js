@@ -25,7 +25,7 @@ function contractTo(_req, methode, path) {
 /**
  * What the Android app needs from the server (shared/app-schnittstelle.json, generated from its
  * source text): routes with query and body fields, plus the response fields it reads.
- * @returns {{ routen: { methode: string, pfad: string, typ: string | null, abfrage: { name: string, required: boolean }[], rumpf: string | null, rumpffelder: string[] }[], adressen: string[], antwortfelder: string[], modelle: Record<string, { felder: string[], required: string[] }> }}
+ * @returns {{ routen: { methode: string, pfad: string, typ: string | null, abfrage: { name: string, pflicht: boolean }[], rumpf: string | null, rumpffelder: string[] }[], adressen: string[], antwortfelder: string[], modelle: Record<string, { felder: string[], pflicht: string[] }> }}
  */
 function appSchnittstelle() {
   const datei = require('node:path').join(__dirname, '..', '..', '..', 'shared', 'app-schnittstelle.json');
@@ -51,4 +51,7 @@ function appAddresses(_req) {
   return appSchnittstelle().adressen.map(a => (a.startsWith('/api/v1/') ? v2PathOf('GET', a).path : a));
 }
 
-module.exports = { contractTo, uniform, appSchnittstelle, appRoutes, appAddresses };
+/** Keys of shared/app-schnittstelle.json that its generator names in German (the file stays v1). */
+const APP_KEYS = { required: 'pflicht', withoutToken: 'ohne_token' };
+
+module.exports = { contractTo, uniform, appSchnittstelle, appRoutes, appAddresses, APP_KEYS };

@@ -86,7 +86,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
         punkte: k.map(e => getComputedStyle(e, '::after').content).filter(c => c.includes('·')).length,
         oben: [...new Set(k.map(e => Math.round(e.getBoundingClientRect().top)))],
         unten: Math.max(...k.map(e => e.getBoundingClientRect().bottom)),
-        hinweis: h.checkVisibility() ? h.textContent.trim() : '',
+        hint: h.checkVisibility() ? h.textContent.trim() : '',
         hintTop: h.getBoundingClientRect().top,
         visibleBelowRows: k.filter(e => e.querySelector('.bstat-s')?.checkVisibility()).length,
       };
@@ -95,7 +95,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     assert.equal(m.punkte, 2, 'Trenner zwischen drei Kennzahlen');
     assert.equal(m.oben.length, 1, `Kennzahlen auf mehreren Zeilen: ${m.oben}`);
     assert.equal(m.visibleBelowRows, 0);
-    assert.equal(m.hinweis, 'Teileliste für das Set fehlt noch');
+    assert.equal(m.hint, 'Teileliste für das Set fehlt noch');
     assert.ok(m.hintTop >= m.unten, 'Erklärsatz unter der ganzen Leiste');
   });
 

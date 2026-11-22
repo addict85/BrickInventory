@@ -43,7 +43,8 @@ const v2Of = (/** @type {string} */ r) => {
   const [m, p] = r.split(' ');
   return `${m} ${v2PathOf(m, p).path}`;
 };
-const signInScreenRoutes = () => new Set((APP.ohne_token ?? []).map(r => ohnePraefix(v2Of(r))));
+const signInScreenRoutes = () =>
+  new Set((APP[require('./helpers/contract').APP_KEYS.withoutToken] ?? []).map(r => ohnePraefix(v2Of(r))));
 
 /** Open, but not from the sign-in screen; each with the reason. */
 const EXCEPTIONS = {

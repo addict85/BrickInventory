@@ -477,11 +477,11 @@ async function bauliste(_t, a) {
     ]) {
       await groesse(b, breite, telefon);
       await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
-      const m = await b.auswerten(`({ feld: document.getElementById('pl-setnr').getBoundingClientRect().width,
+      const m = await b.auswerten(`({ field: document.getElementById('pl-setnr').getBoundingClientRect().width,
         karte: document.querySelector('#tab-partslist .ph').getBoundingClientRect().width })`);
       if (telefon)
-        assert.ok(m.feld >= m.karte - 1, `${breite} px: Feld nicht über die ganze Breite: ${JSON.stringify(m)}`);
-      else assert.ok(m.feld >= 480, `${breite} px: Feld für mehrere Setnummern zu schmal: ${JSON.stringify(m)}`);
+        assert.ok(m.field >= m.karte - 1, `${breite} px: Feld nicht über die ganze Breite: ${JSON.stringify(m)}`);
+      else assert.ok(m.field >= 480, `${breite} px: Feld für mehrere Setnummern zu schmal: ${JSON.stringify(m)}`);
     }
   } finally {
     await groesse(b, 1280, false);

@@ -174,9 +174,14 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     // model (shared/app-schnittstelle.json, generated from its source text).
     const model = require('./helpers/contract').appSchnittstelle().modelle.AddSetResponse;
     assert.ok(model && model.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
-    const zeilen = model.felder.map(name => ({ name, required: model.required.includes(name) }));
+    const zeilen = model.felder.map(name => ({
+      name,
+      required: model[require('./helpers/contract').APP_KEYS.required].includes(name),
+    }));
 
-    const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)]);
+    // The app reads API v1: what arrives counts under its v1 name.
+    const { v1Field } = _req('src/contract/v1.js');
+    const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)].map(k => v1Field(undefined, k)));
     const requiredAndMissing = zeilen.filter(f => f.required && !geliefert.has(f.name)).map(f => f.name);
     assert.deepEqual(
       requiredAndMissing,

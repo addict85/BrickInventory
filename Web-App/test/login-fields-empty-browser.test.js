@@ -17,7 +17,7 @@ const { patternCollection } = require('./helpers/inventory');
 
 const felder = `({ lu: document.getElementById('lu').value, lp: document.getElementById('lp').value,
   lc: document.getElementById('lc').value, mask: getComputedStyle(document.getElementById('login-screen')).display,
-  hinweis: document.getElementById('login-hint').hidden ? '' : document.getElementById('login-hint').textContent,
+  hint: document.getElementById('login-hint').hidden ? '' : document.getElementById('login-hint').textContent,
   fehler: [...document.querySelectorAll('#toasts .toast.error')].map(t => t.textContent) })`;
 
 test('login fields after the session expired and after logout', { timeout: 180_000 }, async t => {
@@ -40,7 +40,7 @@ test('login fields after the session expired and after logout', { timeout: 180_0
     const f = await app.b.auswerten(felder);
     assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
     assert.match(f.lu, /^ablauf_/, 'der Name bleibt zum schnellen Wiederanmelden');
-    assert.match(f.hinweis, /Sitzung abgelaufen/);
+    assert.match(f.hint, /Sitzung abgelaufen/);
     assert.deepEqual(f.fehler, [], 'Fehler-Toast neben dem Hinweis');
   });
 
@@ -62,6 +62,6 @@ test('login fields after the session expired and after logout', { timeout: 180_0
     assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
     assert.equal(f.lc, '', 'der Code steht noch im Feld');
     assert.equal(f.lu, '', 'der Name steht noch im Feld');
-    assert.equal(f.hinweis, '', 'nach eigenem Abmelden kein Ablauf-Hinweis');
+    assert.equal(f.hint, '', 'nach eigenem Abmelden kein Ablauf-Hinweis');
   });
 });

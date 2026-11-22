@@ -54,11 +54,11 @@ async function financesOffline(_t, a) {
     await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Fehlerzustand oben');
     const z = await b.auswerten(`({
       karten: document.getElementById('fin-sum').checkVisibility() ? 'sichtbar' : 'weg',
-      hinweise: document.querySelectorAll('#tab-finance .fval-hint').length,
+      hints: document.querySelectorAll('#tab-finance .fval-hint').length,
       erneut: [...document.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]')].filter(e => e.checkVisibility()).length,
       zeitraum: [...document.querySelectorAll('.period-choice .period-btn')].map(k => k.disabled) })`);
     assert.equal(z.karten, 'weg', 'Karten ohne Zahl');
-    assert.equal(z.hinweise, 0, '„Keine Verbindung“ in den Karten');
+    assert.equal(z.hints, 0, '„Keine Verbindung“ in den Karten');
     assert.equal(z.erneut, 1, 'genau ein „Erneut versuchen“');
     assert.deepEqual(z.zeitraum, [true, true, true, true], 'Zeitraumknöpfe bedienbar');
   } finally {

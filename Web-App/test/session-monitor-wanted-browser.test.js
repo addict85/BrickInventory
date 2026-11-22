@@ -259,7 +259,7 @@ async function createUser(_t, a) {
     return { nameError: sicht('nu-n-error') ? ${text('#nu-n-error')} : '', pwError: sicht('nu-p-error') ? ${text('#nu-p-error')} : '',
       nameRule: sicht('nu-n-rule'), pwRule: sicht('nu-p-rule'),
       oben: [r('nu-n').top, r('nu-p').top].map(Math.round), hook: (r('nu-a').top + r('nu-a').bottom) / 2,
-      feld: [r('nu-n').top, r('nu-n').bottom], zeile: zeile.width,
+      field: [r('nu-n').top, r('nu-n').bottom], zeile: zeile.width,
       breiten: ['nu-p', 'nu-a'].map(id => document.getElementById(id).closest('.fg').getBoundingClientRect().width) }; })()`;
   await setze('nu-n', '');
   await setze('nu-p', '');
@@ -279,7 +279,7 @@ async function createUser(_t, a) {
   assert.equal(s.pwError, '');
   assert.equal(s.pwRule, true, 'Passwortregel fehlt');
   assert.equal(s.oben[0], s.oben[1], `Eingabefelder versetzt: ${s.oben}`);
-  assert.ok(s.hook > s.feld[0] && s.hook < s.feld[1], `Häkchen ${s.hook} neben Feld ${s.feld}`);
+  assert.ok(s.hook > s.field[0] && s.hook < s.field[1], `Häkchen ${s.hook} neben Feld ${s.field}`);
   try {
     await groesse(b, 390, 844);
     await bis(`innerWidth === 390`, 'Telefonbreite');
