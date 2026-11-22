@@ -1,5 +1,7 @@
 /**
  * Every key the UI calls also stands in the dictionary.
+ *
+ * Counter-check: `t('zz.missing.key')` appended to public/js/catalog.js → red “every called i18n key is in the dictionary”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

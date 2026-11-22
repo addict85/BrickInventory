@@ -1,5 +1,7 @@
 /**
  * Price alert against a real database.
+ *
+ * Counter-check: in src/finances/priceAlert.ts an already triggered alert reports again → red “the TRANSITION is reported, not the state”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

@@ -2,6 +2,8 @@
  * The CSV export gives one line per entry — and needs ONE query for it.
  *
  * @superuser (ratchet in test/roles-separation-db.test.js)
+ *
+ * Counter-check: the sets CSV query (src/sets/repository/sets.ts) ordered by created_at DESC → red “sets export: one row per acquisition, without an acquisition the set row”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

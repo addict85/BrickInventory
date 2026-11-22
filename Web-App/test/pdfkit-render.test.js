@@ -1,6 +1,8 @@
 /**
  * pdfkit actually produces a valid PDF — with exactly the API that this
  * application uses.
+ *
+ * Counter-check: the JPEG replaced by the PNG in the test document → red “images are embedded — JPEG and PNG”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

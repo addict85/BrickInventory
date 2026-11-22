@@ -1,6 +1,8 @@
 /**
  * Portfolio curve: does the SQL version compute the same as an independent
  * JavaScript version of the same rule?
+ *
+ * Counter-check: deleteOldPrices() (src/finances/priceHistory.ts) also deletes with 0 days → red “PRICE_HISTORY_KEEP_DAYS=0 switches cleanup off”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

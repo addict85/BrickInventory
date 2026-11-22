@@ -1,5 +1,7 @@
 /**
  * Functions without callers.
+ *
+ * Counter-check: a function without caller appended to src/sets/service.ts → red “no function without a single caller”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

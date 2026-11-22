@@ -1,5 +1,7 @@
 /**
  * Manually captured parts and figures carry their market price along.
+ *
+ * Counter-check: in src/minifigs/queries.ts avg_price fixed to null → red “manual lists carry the market price from the cache”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

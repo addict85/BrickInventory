@@ -1,5 +1,7 @@
 /**
  * Every API path of the frontend hits a route of the server.
+ *
+ * Counter-check: `api('GET', '/v2/zz-nowhere')` appended to public/js/catalog.js → red “every API path of the frontend hits a route”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

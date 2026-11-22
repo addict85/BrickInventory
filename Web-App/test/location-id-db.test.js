@@ -1,5 +1,7 @@
 /**
  * The storage location on the stock is an ID — and what that saves.
+ *
+ * Counter-check: setLocation() (src/inventory/setStorageLocation.ts) returns 0 for null instead of clearing → red “clearing sets the ID to NULL”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

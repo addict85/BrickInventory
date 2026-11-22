@@ -1,5 +1,7 @@
 /**
  * Which sets use this part / this figure?
+ *
+ * Counter-check: usingSets() (src/inventory/shared.ts) delivers set_name null → red “the list of using sets follows the viewport”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

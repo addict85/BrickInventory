@@ -1,5 +1,7 @@
 /**
  * The estimated minifigure market price is cached.
+ *
+ * Counter-check: in src/finances/marketPrice.ts the cached estimate is never used → red “a fresh cache entry replaces the recomputation”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

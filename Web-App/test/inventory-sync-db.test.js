@@ -1,5 +1,7 @@
 /**
  * “Can I build this?" — the comparison between parts list and own stock.
+ *
+ * Counter-check: in src/parts/queries.ts loose taken from total → red “counts per part AND color, not per part number”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

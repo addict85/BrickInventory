@@ -1,3 +1,6 @@
+/**
+ * Counter-check: var(--brick-0) in public/themes/noppe.css replaced → red “the lid colors come from the SAME source”.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

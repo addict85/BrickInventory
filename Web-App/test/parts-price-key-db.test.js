@@ -1,5 +1,7 @@
 /**
  * The parts price cache has ONE key space.
+ *
+ * Counter-check: priceHistoryPart() (src/finances/priceHistory.ts) looks only under the own number → red “part prices are under ONE number”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

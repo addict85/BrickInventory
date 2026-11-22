@@ -3,6 +3,8 @@
  * (Android app) must deliver the same for the same route. Duplicate routes
  * no longer exist; what is checked is that no route depends on only one kind
  * of credential.
+ *
+ * Counter-check: in routes/api/finance.ts total_value taken from totals.avg instead of totals.qty_avg → red “v1 valuation: total_value is an alias of totals.qty_avg”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,5 +1,7 @@
 /**
  * The index of the fix history and the parts in CHANGELOG/ must match.
+ *
+ * Counter-check: a file name in the table of CHANGELOG-fixes.md misspelled → red “every part is in the index and vice versa”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

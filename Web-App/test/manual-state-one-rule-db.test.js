@@ -1,5 +1,7 @@
 /**
  * A manually captured piece has ONE condition — no matter who asks for it.
+ *
+ * Counter-check: conditionFromAcquisitions() (src/inventory/shared.ts) always returns 'N' → red “manual parts and figures: list and valuation state the same condition”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

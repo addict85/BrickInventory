@@ -1,6 +1,8 @@
 /**
  * A color value from the database goes through escHex() before it gets into a
  * style attribute.
+ *
+ * Counter-check: in public/js/init.js grp.color_hex interpolated without escHex → red “color values only get into the markup via escHex”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,6 +1,8 @@
 /**
  * The intermediate dialog when capturing a set only shows steps the
  * browser actually waits for.
+ *
+ * Counter-check: in public/js/progress.js setStep('metazz', …) → red “every addressed ps identifier also exists in the dialog”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

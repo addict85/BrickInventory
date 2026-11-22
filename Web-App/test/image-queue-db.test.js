@@ -1,5 +1,7 @@
 /**
  * Images are stored locally in the BACKGROUND — the request computes nothing.
+ *
+ * Counter-check: in src/management/jobMonitor.ts queue fixed to 0 → red “the tile "image download (CDN)" shows the catalog queue”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

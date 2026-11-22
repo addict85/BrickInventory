@@ -1,5 +1,7 @@
 /**
  * The parts list has TWO paths — they must deliver the same types.
+ *
+ * Counter-check: the summary branch in src/parts/queries.ts delivers color_name as an array → red “both paths of the parts list deliver the same types”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

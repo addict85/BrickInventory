@@ -1,5 +1,7 @@
 /**
  * Where a client draws an owner badge, the response must carry it.
+ *
+ * Counter-check: attachOwners() (src/household/household.ts) returns rows with user_id without owners → red “every list with a badge in the client carries it in the response too”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

@@ -1,3 +1,6 @@
+/**
+ * Counter-check: fromUs() in public/js/error-capture.js always returns true → red “an extension triggers no error with us”.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

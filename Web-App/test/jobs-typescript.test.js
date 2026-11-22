@@ -1,5 +1,7 @@
 /**
  * jobs/ to TypeScript (item 10).
+ *
+ * Counter-check: `module.exports = {}` appended to jobs/startJobs.ts → red “named exports instead of module.exports”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

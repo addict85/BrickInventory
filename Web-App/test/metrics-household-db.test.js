@@ -1,5 +1,7 @@
 /**
  * The number above the gallery must match what stands below it.
+ *
+ * Counter-check: in src/inventory/repository/metrics.ts total_quantity counts distinct set numbers → red “header and gallery count the same sets”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

@@ -27,6 +27,8 @@
  * test measures what the job DOES and reads the tile state from a SECOND PROCESS.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
+ *
+ * Counter-check: in src/images/imageDemandRun.ts the skipped counter no longer counts → red “a tick clears finished notes instead of ten every twenty seconds”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

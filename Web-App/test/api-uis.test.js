@@ -1,5 +1,7 @@
 /**
  * ONE address, one implementation — and only ONE UI left.
+ *
+ * Counter-check: the health check in compose.yaml pointed at /api/v2/health/bereit → red “the health check from compose.yaml points to a real address”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

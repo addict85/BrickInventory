@@ -1,5 +1,7 @@
 /**
  * Color filter and category filter count the same scope.
+ *
+ * Counter-check: in routes/api/parts.ts the colour list only for the own account → red “color and category list see the same inventory in the household”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

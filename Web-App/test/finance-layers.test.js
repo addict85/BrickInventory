@@ -1,3 +1,6 @@
+/**
+ * Counter-check: `import './valuation'` at the top of src/finances/calculation/condition.ts → red “no layer reaches upwards”.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

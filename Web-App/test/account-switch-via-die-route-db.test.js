@@ -1,5 +1,7 @@
 /**
  * The account switch of an entry — via the ROUTE, not via a pattern.
+ *
+ * Counter-check: in src/collection/acquisitions.ts the write target replaced by the source account (`const to = from`) → red “set: the acquisition AND the inventory row are with the child afterwards”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

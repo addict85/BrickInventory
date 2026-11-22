@@ -1,5 +1,7 @@
 /**
  * Daily limit for Rebrickable API calls.
+ *
+ * Counter-check: REBRICKABLE_DEFAULT_DAILY in src/externalSources/apiQuota.ts set to 4000 → red “default daily limit is 25000 — in ONE place”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

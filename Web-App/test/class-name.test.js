@@ -1,5 +1,7 @@
 /**
  * Every class name does something — it styles or it is a handle.
+ *
+ * Counter-check: an unstyled class added to the first class attribute of index.html → red “every class name styles something or is a handle”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,5 +1,7 @@
 /**
  * After moving a set EVERY component in the target account has its image.
+ *
+ * Counter-check: in src/sets/setMove.ts copyContents() skipped → red “a moved set takes the image paths of all its components along”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

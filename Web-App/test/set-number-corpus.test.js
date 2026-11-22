@@ -5,6 +5,8 @@
  *
  * Self-proof via minimum numbers: if the reading did not apply, the
  * loops would be empty and the test green without having checked anything.
+ *
+ * Counter-check: the rationale of the first case in shared/setnummer-korpus.json renamed → red “every corpus case has a rationale”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

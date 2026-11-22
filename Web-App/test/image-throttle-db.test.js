@@ -1,5 +1,7 @@
 /**
  * A throttling of the CDN is NOT a miss marker.
+ *
+ * Counter-check: in src/images/imageDemandRun.ts the set-aside part of the message dropped → red “403 locks out no image and loses no note”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

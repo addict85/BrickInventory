@@ -1,5 +1,7 @@
 /**
  * A NEWLY created set is answered the same in both capture routes.
+ *
+ * Counter-check: an extra field in the done event of routes/api/setsImport.ts → red “a newly created set is answered the same in both routes”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

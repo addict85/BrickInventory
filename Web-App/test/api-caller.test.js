@@ -1,5 +1,7 @@
 /**
  * Every route has someone who calls it — or a registered reason.
+ *
+ * Counter-check: the entry for GET /api/v2/health/live removed from WITHOUT_CALLER → red “every route has a caller or a registered reason”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

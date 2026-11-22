@@ -1,5 +1,7 @@
 /**
  * Frontend tests for public/js/catalog.js in jsdom (devDependency).
+ *
+ * Counter-check: in public/js/catalog.js the year_from parameter no longer set → red “catalog frontend: page blocks, year filter, own scroll bar”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

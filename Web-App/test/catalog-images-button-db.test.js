@@ -1,5 +1,7 @@
 /**
  * Button “fetch catalog images" and the preview for it.
+ *
+ * Counter-check: in src/management/service.ts skipped counts all candidates → red “the button queues, without known negative results”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

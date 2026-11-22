@@ -3,6 +3,8 @@
  * here. The test parses the route files; if a new endpoint appears that is
  * missing here, the suite turns red — so no API can be added unchecked/undocu-
  * mented anymore. Conversely, orphaned entries report removed routes.
+ *
+ * Counter-check: the classification of GET /api/v2/sets/:setNumber removed → red “every API endpoint is classified”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

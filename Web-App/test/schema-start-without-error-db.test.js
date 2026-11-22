@@ -1,3 +1,6 @@
+/**
+ * Counter-check: a failing query with logAndContinue at the start of initSchema() (db/schemaStart.ts) → red “the schema start reports no swallowed error”.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

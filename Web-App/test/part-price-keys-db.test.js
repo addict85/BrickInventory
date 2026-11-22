@@ -1,5 +1,7 @@
 /**
  * The market price of a manually captured part reaches the detail window.
+ *
+ * Counter-check: priceHistoryPart() (src/finances/priceHistory.ts) looks up prices under the user's colour id → red “prices are under the BrickLink number, acquisitions under the Rebrickable number”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

@@ -1,5 +1,7 @@
 /**
  * `global_settings` is touched via src/settings/settings.ts.
+ *
+ * Counter-check: a direct SELECT on global_settings appended to src/sets/service.ts → red “no new direct access to global_settings”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

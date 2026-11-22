@@ -1,5 +1,7 @@
 /**
  * The STOCK of storage locations — against a real database.
+ *
+ * Counter-check: renameStorage() (src/inventory/storageLocation.ts) no longer writes the name → red “renaming takes the assignments along”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

@@ -1,6 +1,8 @@
 /**
  * No test excerpt on which ONLY negating assertions stand may be
  * cut unsecured.
+ *
+ * Counter-check: a snippet checked only with doesNotMatch appended to a test file → red “no snippet with only negative assertions is unsecured”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

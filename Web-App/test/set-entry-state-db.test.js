@@ -1,5 +1,7 @@
 /**
  * When topping up a set, price and noted condition must match TOGETHER.
+ *
+ * Counter-check: userDefaultCondition() (src/settings/settings.ts) ignores a stored 'U' → red “topping up without a condition follows the user's default”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

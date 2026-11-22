@@ -1,5 +1,7 @@
 /**
  * Five wirings that were previously only asserted as text patterns.
+ *
+ * Counter-check: PASSWORD_MIN_CHARS in src/infra/passwordRule.ts set to 8 → red “3. a too short password is rejected”.
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');

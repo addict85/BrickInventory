@@ -1,5 +1,7 @@
 /**
  * The storage location DEFAULT against a real database.
+ *
+ * Counter-check: defaultOf() (src/inventory/storageLocation.ts) returns null when the row exists → red “without a star there is no default”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

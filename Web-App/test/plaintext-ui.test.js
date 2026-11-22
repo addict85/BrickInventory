@@ -1,5 +1,7 @@
 /**
  * No fixed text in a place that the user reads.
+ *
+ * Counter-check: a fixed German text assigned to textContent in public/js/catalog.js → red “no fixed text in textContent, placeholder, title, toast, confirm or alert”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

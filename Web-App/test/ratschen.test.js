@@ -588,7 +588,7 @@ test('test files are named after their function, not after a review round', () =
 });
 
 test('pure source-text tests become fewer, never more', () => {
-  const LIMIT = 34;
+  const LIMIT = 32;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = pureSourceTextTests();
@@ -781,7 +781,7 @@ test('test cases that only read source text become fewer, never more', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const LIMIT = 375;
+  const LIMIT = 372;
   const { n, all: alle, readers } = sourceTextCases();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
@@ -799,7 +799,7 @@ function behaviorChecksReadingSource(/** @type {string[]} */ readers) {
   // Counter-checks: an entry of STRUCTURE_FILES removed → red (count above the limit); an entry naming
   // a file without a reading case → red „without a reading case“.
   const { STRUCTURE_FILES, STRUCTURE_CHECKS } = require('./helpers/structure-checks');
-  const LIMIT = 84;
+  const LIMIT = 81;
   assert.equal(caseName("test('a b', () => {"), 'a b', 'self-proof of the case name');
   const behavior = readers.filter(r => !(r.split(': ')[0] in STRUCTURE_FILES) && !(r in STRUCTURE_CHECKS));
   assert.ok(
@@ -1565,18 +1565,14 @@ test('long comments in tests, scripts and index.html become fewer, never more', 
   }
 });
 
-test('test files without a counter-check become fewer, never more', () => {
-  // Every test names its counter-check in the header (CLAUDE.md); the older ones without
-  // get it added when touched.
-  // Counter-check (05.11.2026): „Gegenproben“ renamed in lint-ratchet.test.js → red (112).
-  const LIMIT = 70;
+test('every test file names its counter-check', () => {
+  // A test that was never red is unproven (CLAUDE.md); a fixed ban since every file names one.
+  // Counter-check: the counter-check line removed from the header of asset-version.test.js → red with that file.
   const ohne = fs
     .readdirSync(__dirname)
     .filter(n => n.endsWith('.test.js'))
     .filter(n => !/Gegenprobe|counter-check/i.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
-  assert.ok(ohne.length <= LIMIT, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${LIMIT}`);
-  if (ohne.length < LIMIT)
-    console.log(`  ℹ Testdateien ohne Gegenprobe: ${ohne.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
+  assert.deepEqual(ohne, [], 'test files without a counter-check: run one, see it red, name it in the header');
 });
 
 test('paths named in test comments exist', () => {

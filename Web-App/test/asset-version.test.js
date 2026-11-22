@@ -1,5 +1,7 @@
 /**
  * Every versioned reference in index.html carries the version from package.json.
+ *
+ * Counter-check: the ?v= of tokens.css in index.html set to an older version → red “all ?v= references in index.html carry the version from package.json”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

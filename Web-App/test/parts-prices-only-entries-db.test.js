@@ -2,6 +2,8 @@
  * Since db/base.sql the state BEFORE this migration no longer exists: the
  * cases on bolt, addendum and intermediate state are dropped. What is checked is
  * the final state and the read paths.
+ *
+ * Counter-check: conditionFromAcquisitions() (src/inventory/shared.ts) always returns 'N' → red “the lists deliver price and condition from the newest acquisition”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

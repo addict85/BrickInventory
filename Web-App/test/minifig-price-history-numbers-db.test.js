@@ -1,6 +1,8 @@
 /**
  * The price history of a minifigure also finds its prices under the
  * BrickLink number.
+ *
+ * Counter-check: priceHistoryMinifig() (src/finances/priceHistory.ts) looks only under the own number → red “the figure price history finds the prices under the BrickLink number”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

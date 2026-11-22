@@ -1,5 +1,7 @@
 /**
  * Delete an entry → price and condition of the RESPONSE are determined ANEW.
+ *
+ * Counter-check: in deleteAcquisition() (src/collection/acquisitions.ts) the removal of the entry skipped → red “deleting an acquisition redetermines price and condition of the parent row”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

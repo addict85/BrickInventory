@@ -2,6 +2,8 @@
  * Since db/base.sql the state BEFORE this migration no longer exists: the
  * cases on bolt, addendum and intermediate state are dropped. What is checked is
  * the final state and the read paths.
+ *
+ * Counter-check: a condition column added to sets in db/base.sql → red “after the complete schema setup sets has no purchase price and no condition”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

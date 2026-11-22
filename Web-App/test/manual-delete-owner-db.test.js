@@ -1,5 +1,7 @@
 /**
  * The trash can deletes the card that was clicked on.
+ *
+ * Counter-check: in routes/api/minifigs.ts DELETE ignores ?owner and takes the own account → red “the trash hits the clicked card, not the own one”.
  */
 const test = require('node:test');
 const { after } = require('node:test');

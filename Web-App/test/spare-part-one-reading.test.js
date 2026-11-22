@@ -1,5 +1,7 @@
 /**
  * What a spare part is is decided by ONE place.
+ *
+ * Counter-check: `r.is_spare === 't'` appended to src/sets/service.ts → red “the spellings are enumerated in only one place”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

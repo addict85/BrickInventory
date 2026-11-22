@@ -1,6 +1,8 @@
 /**
  * Frontend modules: does a file call a name that ANOTHER module
  * declares without importing it?
+ *
+ * Counter-check: a call of queueCatalogImages() without import appended to public/js/catalog.js → red “every frontend module imports what it calls”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,5 +1,7 @@
 /**
  * Image requests occupy NO database connection.
+ *
+ * Counter-check: in src/images/http/imageProxy.ts the CDN 404 no longer answered with the placeholder → red “the browser may remember a 404”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

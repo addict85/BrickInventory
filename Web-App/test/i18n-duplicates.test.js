@@ -1,5 +1,7 @@
 /**
  * Duplicate translation keys.
+ *
+ * Counter-check: 'login.submit' a second time in public/locales/de.js → red “no duplicate keys in i18n (de)”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

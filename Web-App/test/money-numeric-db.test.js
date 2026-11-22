@@ -1,5 +1,7 @@
 /**
  * Money amounts: exact instead of „almost".
+ *
+ * Counter-check: db/migrate.ts skips migration 0007 → red “the migration catches up an old database”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

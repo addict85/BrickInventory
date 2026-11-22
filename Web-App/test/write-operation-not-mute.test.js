@@ -1,5 +1,7 @@
 /**
  * A swallowed WRITE operation on user data.
+ *
+ * Counter-check: `db.run('DELETE FROM sets').catch(() => {})` appended to src/sets/service.ts → red “no silent catch on a write operation with user data”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
