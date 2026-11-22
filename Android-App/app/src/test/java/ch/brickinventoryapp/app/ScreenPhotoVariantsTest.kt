@@ -88,6 +88,8 @@ import ch.brickinventoryapp.collection.ui.screens.GalleryAndDetail
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
+import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonActions
+import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonUiState
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
@@ -872,7 +874,7 @@ class ScreenPhotoVariantsTest {
     @Test fun comparisonFont200() = comparisonPhoto("vergleich-schrift200", 2f)
 
     private fun comparisonPhoto(name: String, font: Float) {
-        show(name, font = font) { ComparisonScreen() }
+        show(name, font = font) { ComparisonScreen(ComparisonUiState(), NoComparison) }
         pause()
         photo(name)
     }
@@ -1660,3 +1662,14 @@ class ScreenPhotoVariantsTest {
 
 /** A fixed point in time for images that show a date (5.11.2026, 23:33 UTC). */
 private const val FIXED_TIME = 1_793_921_600_000L
+
+/** The photo shows the empty page; nothing on it is pressed. */
+private object NoComparison : ComparisonActions {
+    override fun setSearch(raw: String) = Unit
+    override fun clearSearch() = Unit
+    override fun openScanner() = Unit
+    override fun closeScanner() = Unit
+    override fun scanned(barcode: String) = Unit
+    override fun search() = Unit
+    override fun queryOpened() = Unit
+}

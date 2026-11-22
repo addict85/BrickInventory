@@ -15,7 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.collection.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.collection.ui.screens.BarcodeScannerScreen
-import ch.brickinventoryapp.collection.ui.screens.ComparisonScreen
+import ch.brickinventoryapp.collection.ui.screens.ComparisonRoute
 import ch.brickinventoryapp.collection.ui.screens.GalleryAndDetail
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.GalleryUndoRoute
@@ -63,7 +63,7 @@ fun NavGraphBuilder.collectionGraph(navigation: CollectionNavigation) {
     scannerTarget(navigation)
     composable<CollectionTarget.Comparison> {
         navigation.Tab(stringResource(R.string.nav_comparison)) {
-            ComparisonScreen()
+            ComparisonRoute()
         }
     }
 }

@@ -67,7 +67,7 @@ internal fun pagesDimensions(widthPx: Int, widthPt: Int, heightPt: Int): PagesDi
 internal typealias PagesRenderer = suspend (PdfSource, Int, Int) -> Bitmap?
 
 /** A page as an image; the ViewModel only passes the source through and knows no Bitmap. */
-fun interface PdfPagesSource {
+internal fun interface PdfPagesSource {
     suspend fun page(source: PdfSource, index: Int, widthPx: Int): Bitmap?
 }
 

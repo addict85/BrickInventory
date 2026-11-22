@@ -8,7 +8,7 @@ import ch.brickinventoryapp.model.file.FileRef
  * What the set detail triggers. The screen knows only this interface;
  * that way it can be shown with a fixed state, without Hilt and server.
  */
-interface SetDetailActions {
+internal interface SetDetailActions {
     /** Fetch everything anew; loading happens on creation, not from the screen. */
     fun refresh()
     fun setPriceAlert(setNumber: String, direction: AlarmDirection, raw: String, condition: Condition)

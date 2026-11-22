@@ -503,7 +503,7 @@ class SourceRatchetTest {
     fun `the public surface of the areas does not grow`() {
         // An area shows the app routes and destinations; what only it needs itself is internal.
         // Much is still public because graphs and UI tests live in app.
-        val LIMIT_AREAS = 142
+        val LIMIT_AREAS = 135
         val module = Sources.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratchet("öffentliche Deklarationen der Bereiche", LIMIT_AREAS, public(module, 100),

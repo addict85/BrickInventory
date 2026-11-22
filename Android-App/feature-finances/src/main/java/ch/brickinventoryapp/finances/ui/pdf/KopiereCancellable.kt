@@ -6,7 +6,7 @@ import java.io.InputStream
 import java.io.OutputStream
 
 /** Writes a loaded PDF to a destination, off the main thread (PdfViewerViewModel). */
-fun interface PdfWriter {
+internal fun interface PdfWriter {
     suspend fun write(source: PdfSource, target: OutputStream)
 }
 

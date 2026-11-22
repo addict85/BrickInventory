@@ -30,7 +30,7 @@ import javax.inject.Inject
  * in memory would be lost entirely. Only leaving closes the source.
  */
 @HiltViewModel
-class PdfViewerViewModel @Inject constructor(
+internal class PdfViewerViewModel @Inject constructor(
     private val loader: PdfLoader,
     /** Renders the pages for the screen; only passed through here. */
     val pages: PdfPagesSource,

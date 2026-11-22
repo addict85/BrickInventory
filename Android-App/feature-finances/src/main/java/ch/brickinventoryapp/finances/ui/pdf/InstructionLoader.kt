@@ -22,7 +22,7 @@ import java.io.File
 import javax.inject.Inject
 
 /** Loads a PDF for the viewer; [open] gets the source before it comes back. */
-interface PdfLoader {
+internal interface PdfLoader {
     suspend fun load(pdfUrl: String, open: PdfHolder, onUiState: (PdfLoadState) -> Unit): Pair<PdfSource, Int>
 }
 
