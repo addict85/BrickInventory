@@ -25,6 +25,36 @@ function quellwurzeln() {
     .filter(p => fs.existsSync(p));
 }
 
+/**
+ * What the sign-in screen calls before there is a token, as "METHOD /api/v1/…":
+ * AnmeldungViewModel → its `konto.x(…)` → the `api.y(…)` in KontoRepositoryImpl.x → AccountApi.y.
+ * The server opens exactly these at its entrance (PUBLIC_ROUTES, test/public-entrance-db).
+ */
+function ohneToken() {
+  const lies = (/** @type {string} */ ...teile) => fs.readFileSync(path.join(ANDROID, ...teile), 'utf8');
+  const KT = ['src', 'main', 'java', 'ch', 'brickinventoryapp'];
+  const api = new Map();
+  for (const m of fs.readFileSync(path.join(API, 'AccountApi.kt'), 'utf8').matchAll(
+    /@(GET|POST|PUT|DELETE)\("(api\/v1[^"]+)"\)[\s\S]*?fun (\w+)\(/g,
+  ))
+    api.set(m[3], `${m[1]} /${m[2]}`);
+  const repo = new Map(
+    lies('core-data', ...KT, 'data', 'repository', 'KontoRepositoryImpl.kt')
+      .split(/\n\s*override (?:suspend )?fun /)
+      .slice(1)
+      .map(t => [t.match(/^(\w+)/)?.[1] ?? '', [...t.matchAll(/\bapi\.(\w+)\(/g)].map(m => m[1])]),
+  );
+  const vm = lies('feature-login', ...KT, 'login', 'ui', 'viewmodel', 'AnmeldungViewModel.kt');
+  const routen = new Set();
+  for (const [, name] of vm.matchAll(/\bkonto\.(\w+)\(/g))
+    for (const a of repo.get(name ?? '') ?? []) {
+      const r = api.get(a ?? '');
+      if (!r) throw new Error(`${name} → api.${a} ohne Adresse in AccountApi.kt`);
+      routen.add(r);
+    }
+  return [...routen].sort();
+}
+
 function schnittstelle() {
   const modelle = kotlinModelle(quellwurzeln());
   const routen = [
@@ -63,6 +93,7 @@ function schnittstelle() {
     hinweis: 'Erzeugt von Android-App/tools/contract/app-interface.js aus dem Quelltext der App; nicht von Hand ändern.',
     routen,
     adressen: [...adressen].sort(),
+    ohne_token: ohneToken(),
     antwortfelder: [...felder].sort(),
     modelle: Object.fromEntries(
       [...modelle]

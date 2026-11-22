@@ -1,9 +1,8 @@
 /**
- * What is open without login at the entrance (PUBLIC_ROUTES in routes/api_v1/middleware.ts)
- * is exactly what the app calls before it has a token, what Caddy buffers as a
- * sign-in path, plus a named list of exceptions. The app's "No" on the QR
- * screen (POST /auth/qr-login/verwerfen) came without session and token and ended at the
- * entrance with 401; the existing QR test ran its whole server with a session.
+ * Open without login at the entrance (PUBLIC_ROUTES, routes/api_v1/middleware.ts) is exactly
+ * what the app calls before it has a token (`ohne_token` in shared/app-schnittstelle.json),
+ * plus named exceptions; Caddy buffers each open POST as a sign-in path. The app's "No" on
+ * the QR screen (POST /auth/qr-login/verwerfen) comes without session and token.
  *
  * Counter-checks (measured 22.11.2026, each on its own):
  *   A  'POST /auth/qr-login/verwerfen' removed from PUBLIC_ROUTES → red: “the app's No
@@ -31,43 +30,14 @@ const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const WEB = path.join(__dirname, '..');
-const ANDROID = path.join(WEB, '..', 'Android-App');
-const KT = 'src/main/java/ch/brickinventoryapp';
 const { PUBLIC_ROUTES, isPublicRoute } = _req('routes/api_v1/middleware.js');
+/** What the app needs from the server, generated from its source (Android-App/tools/contract). */
+const APP = JSON.parse(fs.readFileSync(path.join(WEB, '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
+const ohnePraefix = (/** @type {string} */ r) => r.replace(' /api/v1/', ' /');
 
-/** Retrofit methods of AccountApi: name → "METHOD /path" below /api/v1. */
-function accountApi() {
-  const src = fs.readFileSync(path.join(ANDROID, 'core-data', KT, 'data/api/AccountApi.kt'), 'utf8');
-  const map = new Map();
-  for (const m of src.matchAll(/@(GET|POST|PUT|DELETE)\("api\/v1([^"]+)"\)[\s\S]*?fun (\w+)\(/g))
-    map.set(m[3], `${m[1]} ${m[2]}`);
-  return map;
-}
-
-/** Repository method → the AccountApi methods its body calls. */
-function repositoryCalls() {
-  const src = fs.readFileSync(path.join(ANDROID, 'core-data', KT, 'data/repository/KontoRepositoryImpl.kt'), 'utf8');
-  const teile = src.split(/\n\s*override (?:suspend )?fun /).slice(1);
-  return new Map(teile.map(t => [t.match(/^(\w+)/)?.[1] ?? '', [...t.matchAll(/\bapi\.(\w+)\(/g)].map(m => m[1])]));
-}
-
-/** What the sign-in screen (before there is a token) calls on the server. */
-function signInScreenRoutes() {
-  const vm = fs.readFileSync(
-    path.join(ANDROID, 'feature-login', KT, 'login/ui/viewmodel/AnmeldungViewModel.kt'),
-    'utf8',
-  );
-  const api = accountApi();
-  const repo = repositoryCalls();
-  const routen = new Set();
-  for (const [, name] of vm.matchAll(/\bkonto\.(\w+)\(/g))
-    for (const a of repo.get(name) ?? []) {
-      const r = api.get(a);
-      assert.ok(r, `${name} → api.${a} ohne Adresse in AccountApi.kt`);
-      routen.add(r);
-    }
-  return routen;
-}
+/** What the sign-in screen calls before there is a token (the generator follows
+ * AnmeldungViewModel → KontoRepositoryImpl → AccountApi). */
+const signInScreenRoutes = () => new Set((APP.ohne_token ?? []).map(ohnePraefix));
 
 /** Open, but not from the sign-in screen; each with the reason. */
 const EXCEPTIONS = {
@@ -99,11 +69,9 @@ test("the app's sign-in screen calls only open routes, and every open route is n
     [...new Set([...screen, ...Object.keys(EXCEPTIONS)])].sort(),
     'offen = Anmeldung der App + benannte Ausnahmen',
   );
-  // The app interface (shared/app-schnittstelle.json) knows the exceptions marked `app`.
+  // The exceptions marked `app` are routes the app really calls.
   const app = new Set(
-    JSON.parse(fs.readFileSync(path.join(WEB, '..', 'shared', 'app-schnittstelle.json'), 'utf8')).routen.map(
-      (/** @type {{ methode: string, pfad: string }} */ r) => `${r.methode} ${r.pfad.replace(/^\/api\/v1/, '')}`,
-    ),
+    APP.routen.map((/** @type {{ methode: string, pfad: string }} */ r) => ohnePraefix(`${r.methode} ${r.pfad}`)),
   );
   for (const [r, wer] of Object.entries(EXCEPTIONS))
     if (wer === 'app') assert.ok(app.has(r), `${r} ruft die App nicht`);
