@@ -76,6 +76,8 @@ data class PartsUiState(
     val partsStats: PartsMetricsView? = null,
     /** All colors for the entry dialog. */
     val partsColors: List<ColorView> = emptyList(),
+    /** Key figures, filter lists and colors: if one fails, the list stays and the page offers a retry. */
+    val extrasFetch: Load<Unit> = Load.Data(Unit),
 )
 
 /** The figures tab: a state of its own, so that paging through the parts does not redraw it. */
@@ -86,6 +88,8 @@ data class MinifigsUiState(
     /** Key figures of the tiles — from the server, not from the (filtered) list. */
     val minifigStats: MinifigsMetricsView = MinifigsMetricsView(),
     val minifigsFetch: Load<Unit> = Load.Data(Unit),
+    /** The key figures alone; their failure leaves the list as is. */
+    val metricsFetch: Load<Unit> = Load.Data(Unit),
     val minifigsOfflineStatus: Long? = null,
     /** The search happens on the server before grouping; a second search in the screen would hit different things. */
     val minifigsQuery: String = "",

@@ -25,6 +25,7 @@ import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.state.ui.errorClass
 import ch.brickinventoryapp.state.ui.errorMessage
+import ch.brickinventoryapp.state.ui.loadError
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
 import ch.brickinventoryapp.state.ui.viewmodel.Observed
@@ -261,7 +262,7 @@ class WantedListViewModel @Inject constructor(
         }
     }
 
-    /** Catalog data, prices and history of a wishlist item — each on its own; whatever is missing stays empty. */
+    /** Catalog data, prices and history of a wishlist item — each on its own; what fails is in `fetch`, the rest shows. */
     override fun wantedItemDetailOf(setNumber: String): StateFlow<WantedItemDetailUiState> =
         Observed(wantedItemDetailState) { loadWantedItemDetail(setNumber) }
 
@@ -270,12 +271,17 @@ class WantedListViewModel @Inject constructor(
             _wantedItemDetailState.value = WantedItemDetailUiState(setNumber = setNumber, fetch = Load.Loads)
             if (wantedState.value.wantedItem.isEmpty()) loadWanted()
             loadPriceAlarms(setNumber)
-            val catalog = (catalogRepo.getCatalogSetDetail(setNumber) as? Outcome.Success)?.data
+            var failure: Load.Failure? = null
+            fun <T> taken(r: Outcome<T>): T? = when (r) {
+                is Outcome.Success -> r.data
+                is Outcome.Failure -> null.also { if (failure == null) failure = loadError(r) }
+            }
+            val catalog = taken(catalogRepo.getCatalogSetDetail(setNumber))
             _wantedItemDetailState.update { it.copy(catalog = catalog) }
-            val prices = (wantedList.getWantedItemPrices(setNumber) as? Outcome.Success)?.data
+            val prices = taken(wantedList.getWantedItemPrices(setNumber))
             _wantedItemDetailState.update { it.copy(prices = prices) }
-            val history = (finances.getSetPriceHistory(setNumber) as? Outcome.Success)?.data
-            _wantedItemDetailState.update { it.copy(history = history, fetch = Load.Data(Unit)) }
+            val history = taken(finances.getSetPriceHistory(setNumber))
+            _wantedItemDetailState.update { it.copy(history = history, fetch = failure ?: Load.Data(Unit)) }
         }
     }
 

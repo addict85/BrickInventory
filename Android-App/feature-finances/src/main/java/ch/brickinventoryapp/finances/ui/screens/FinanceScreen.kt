@@ -42,6 +42,7 @@ import ch.brickinventoryapp.ui.components.CrossLink
 import ch.brickinventoryapp.ui.components.EmptySymbol
 import ch.brickinventoryapp.ui.components.LabelAndValue
 import ch.brickinventoryapp.ui.components.LoadState
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
 import ch.brickinventoryapp.ui.components.largeFont
 import ch.brickinventoryapp.ui.components.quantity
 import ch.brickinventoryapp.ui.components.readAloudAs
@@ -194,6 +195,7 @@ internal fun FinanceScreen(
                 }
             }
             financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+            if (financeState.extrasLoad is Load.Failure) item { PartialLoadFailed(financeState.extrasLoad, actions::loadValuation) }
             item {
                 // Without a market value there is no trend, as on the web: the history would then carry only
                 // purchase prices, and „+0.0 %“ next to „—“ would claim no movement.

@@ -54,6 +54,8 @@ data class MonitoringUiState(
     val defaultState: Condition = Condition.NEW,
     /** The theme the admin sets for everyone — not the account's own. */
     val defaultDesign: Design? = null,
+    /** Cache numbers, limits, cache duration and defaults: a failure keeps the last values and offers a retry. */
+    val settingsFetch: Load<Unit> = Load.Data(Unit),
     /** The server said `only_admins`: the poll loop stops instead of being rejected again every 5 s. */
     val accessRevoked: Boolean = false,
 )
@@ -316,18 +318,21 @@ class MonitoringViewModel @Inject constructor(
      * the order of the state changes would become unpredictable.
      */
     internal suspend fun loadCacheAndLimits() {
-        (admin.getCacheStats() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(cacheStats = r.data) }
-        }
-        (admin.getApiLimits() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(apiLimits = r.data) }
-        }
-        (admin.getCacheTtl() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(cacheTtl = r.data) }
-        }
-        (account.getDefaultCondition() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(defaultState = r.data) }
-        }
+        _state.update { it.copy(settingsFetch = Load.Data(Unit)) }
+        setting(admin.getCacheStats()) { s, d -> s.copy(cacheStats = d) }
+        setting(admin.getApiLimits()) { s, d -> s.copy(apiLimits = d) }
+        setting(admin.getCacheTtl()) { s, d -> s.copy(cacheTtl = d) }
+        setting(account.getDefaultCondition()) { s, d -> s.copy(defaultState = d) }
+    }
+
+    /** All settings of the page again, after one of them failed. */
+    fun reloadSettings() {
+        viewModelScope.launch { loadCacheAndLimits(); loadDesignDefault() }
+    }
+
+    private fun <T> setting(r: Outcome<T>, take: (MonitoringUiState, T) -> MonitoringUiState) = when (r) {
+        is Outcome.Success -> _state.update { take(it, r.data) }
+        is Outcome.Failure -> _state.update { it.copy(settingsFetch = loadError(r)) }
     }
 
     internal suspend fun setCacheDuration(hours: Int): Outcome<Unit> {
@@ -365,9 +370,7 @@ class MonitoringViewModel @Inject constructor(
      * yet; there, the effective theme was also the default.
      */
     internal suspend fun loadDesignDefault() {
-        (account.getAppTheme() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(defaultDesign = r.data.default ?: r.data.effective) }
-        }
+        setting(account.getAppTheme()) { s, d -> s.copy(defaultDesign = d.default ?: d.effective) }
     }
 
     /**
@@ -384,9 +387,7 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun setLimits(rebrickable: Int, bricklink: Int, brickset: Int): Outcome<Unit> {
         val r = admin.setApiLimits(rebrickable, bricklink, brickset)
         if (r is Outcome.Success) {
-            (admin.getApiLimits() as? Outcome.Success)?.let { l ->
-                _state.update { it.copy(apiLimits = l.data) }
-            }
+            setting(admin.getApiLimits()) { s, d -> s.copy(apiLimits = d) }
         }
         return r
     }

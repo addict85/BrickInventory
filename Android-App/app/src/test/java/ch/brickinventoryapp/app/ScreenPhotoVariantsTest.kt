@@ -1665,7 +1665,7 @@ private const val FIXED_TIME = 1_793_921_600_000L
 
 /** The photo shows the empty page; nothing on it is pressed. */
 private object NoComparison : ComparisonActions {
-    override fun setSearch(raw: String) = Unit
+    override fun setSearch(text: String) = Unit
     override fun clearSearch() = Unit
     override fun openScanner() = Unit
     override fun closeScanner() = Unit

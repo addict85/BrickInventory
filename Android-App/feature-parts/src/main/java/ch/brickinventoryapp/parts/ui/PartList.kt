@@ -8,7 +8,6 @@ import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartialKey
 import ch.brickinventoryapp.model.util.IMG_PROXY
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.parts.ui.screens.comparePartNumbers
 import ch.brickinventoryapp.parts.ui.screens.plColorCollator
 import dagger.Binds
@@ -33,29 +32,28 @@ internal class PartList @Inject constructor(
     private val partsRepo: PartsRepository,
 ) : PartListsSource {
     /** Name and rows of a set; identical parts (Rebrickable number + color) merged. */
-    override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
-        return catchUnlessCancelled {
-            // The CSV endpoints are not tied to the account and work for any set.
-            val partsResult = catalog.getSetPartsList(setNumber)
-            val figsResult  = catalog.getSetMinifigsList(setNumber)
-            // The name comes from the catalog (/sets/info), not from one's own
-            // stock: one is entering exactly the sets into the parts list that one does not have.
-            val setName = (catalog.getSetInfo(setNumber) as? Outcome.Success)
-                ?.data?.takeIf { it.isNotBlank() } ?: setNumber
-            // Merged by the Rebrickable number, because the stock
-            // (withInventory) is queried by it. Several Rebrickable parts often
-            // share one BrickLink number; merging by that one made an existing
-            // part count as missing. The BrickLink number is still what is shown.
-            val deduped = mutableMapOf<String, PlPart>()
-            if (partsResult is Outcome.Success) {
-                for (p in partsResult.data) combineTogether(deduped, "${p.partNumber}|${p.colorId}", partRow(p, serverUrl))
-            }
-            // Figures as a whole, not broken down into their parts — as in the web app.
-            if (figsResult is Outcome.Success) {
-                for (f in figsResult.data) combineTogether(deduped, "fig:${f.figNumber}", minifigRow(f, serverUrl))
-            }
-            Pair(setName, deduped.values.toList())
-        }.getOrElse { Pair(setNumber, listOf()) }
+    override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Outcome<Pair<String, List<PlPart>>> {
+        // The CSV endpoints are not tied to the account and work for any set.
+        val parts = when (val r = catalog.getSetPartsList(setNumber)) {
+            is Outcome.Success -> r.data
+            is Outcome.Failure -> return r
+        }
+        val figures = when (val r = catalog.getSetMinifigsList(setNumber)) {
+            is Outcome.Success -> r.data
+            is Outcome.Failure -> return r
+        }
+        // The name comes from the catalog (/sets/info), not from one's own stock: one enters
+        // exactly the sets one does not have. Without it the number stands in; the list is complete.
+        val setName = when (val r = catalog.getSetInfo(setNumber)) {
+            is Outcome.Success -> r.data?.takeIf { it.isNotBlank() } ?: setNumber
+            is Outcome.Failure -> setNumber
+        }
+        // Merged by the Rebrickable number, because the stock (withInventory) is queried by it;
+        // several Rebrickable parts often share one BrickLink number. Figures as a whole, as in the web app.
+        val deduped = mutableMapOf<String, PlPart>()
+        for (p in parts) combineTogether(deduped, "${p.partNumber}|${p.colorId}", partRow(p, serverUrl))
+        for (f in figures) combineTogether(deduped, "fig:${f.figNumber}", minifigRow(f, serverUrl))
+        return Outcome.Success(Pair(setName, deduped.values.toList()))
     }
 
     /** File a row under [key]; if it already exists, only its quantity is added. */
@@ -126,7 +124,10 @@ internal class PartList @Inject constructor(
         // The view comes from this screen, not from the parts tab's account
         // filter. `null` means "all accounts".
         val response = partsRepo.getOwnedParts(request, if (withSubAccounts) null else AccountSelection.Own)
-        val stock = (response as? Outcome.Success)?.data ?: return null
+        val stock = when (response) {
+            is Outcome.Success -> response.data
+            is Outcome.Failure -> return null
+        }
         return parts.map { p ->
             val entry = stock[PartialKey(p.partNumber, p.colorId)]
             p.copy(present = if (entry == null) 0 else if (onlyLose) entry.lose else entry.total)

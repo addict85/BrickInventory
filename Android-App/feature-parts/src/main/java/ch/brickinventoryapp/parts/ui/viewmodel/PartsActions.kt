@@ -35,6 +35,8 @@ internal interface WithSetItem : SetItemActions, FilterChoice {
 internal interface PartsActions : SetItemActions {
     fun loadParts(page: Int = 1, debounce: Boolean = false)
     fun loadPartsColors()
+    /** Key figures, filter lists and colors again, after one of them failed. */
+    fun retryExtras()
     fun setPartsQuery(q: String)
     fun setPartsSpare(value: SparePartChoice)
     fun setPartsView(value: ListView)
@@ -59,6 +61,7 @@ internal interface PartsActions : SetItemActions {
 
 internal interface FiguresActions : SetItemActions {
     fun loadMinifigs(debounce: Boolean = false)
+    fun retryMetrics()
     fun setMinifigsQuery(q: String)
     fun setMinifigsView(value: ListView)
     fun setScope(view: ScopeFilter.View, value: String)

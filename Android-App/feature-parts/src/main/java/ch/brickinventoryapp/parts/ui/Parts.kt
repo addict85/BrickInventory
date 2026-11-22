@@ -141,10 +141,12 @@ internal class Parts(
         loadMetrics()
     }
 
-    /** Key figures are an extra: a failure leaves the list as is. */
+    /** Key figures are an extra: a failure leaves the list as is and offers a retry. */
     suspend fun loadMetrics() {
-        (source.partsMetrics() as? Outcome.Success)
-            ?.let { s -> _state.update { it.copy(partsStats = s.data) } }
+        when (val r = source.partsMetrics()) {
+            is Outcome.Success -> _state.update { it.copy(partsStats = r.data) }
+            is Outcome.Failure -> _state.update { it.copy(extrasFetch = loadError(r)) }
+        }
     }
 
     /**
@@ -162,24 +164,32 @@ internal class Parts(
     }
 
     /**
-     * The filters' color and category list. Silent on errors: a missing
-     * filter is no reason to hold back the list or interrupt it.
+     * The filters' color and category list. A missing filter is no reason to hold back
+     * the list: it stays, and [PartsUiState.extrasFetch] offers the retry.
      */
     fun loadFilter() {
         scope.launch {
-            (source.filterColors() as? Outcome.Success)?.data
-                ?.let { d -> _state.update { it.copy(partsFilterColors = d) } }
-            (source.categories() as? Outcome.Success)?.data
-                ?.let { d -> _state.update { it.copy(partsCategories = d) } }
+            extra(source.filterColors()) { s, d -> s.copy(partsFilterColors = d) }
+            extra(source.categories()) { s, d -> s.copy(partsCategories = d) }
         }
     }
 
     /** Color choice in the entry dialog; if it is missing, one types the color ID. */
     fun loadColors() {
-        scope.launch {
-            (source.allColors() as? Outcome.Success)?.data
-                ?.let { d -> _state.update { it.copy(partsColors = d) } }
-        }
+        scope.launch { extra(source.allColors()) { s, d -> s.copy(partsColors = d) } }
+    }
+
+    /** Key figures, filters and colors again, after one of them failed. */
+    fun reloadExtras() {
+        _state.update { it.copy(extrasFetch = Load.Data(Unit)) }
+        scope.launch { loadMetrics() }
+        loadFilter()
+        loadColors()
+    }
+
+    private fun <T> extra(r: Outcome<T>, take: (PartsUiState, T) -> PartsUiState) = when (r) {
+        is Outcome.Success -> _state.update { take(it, r.data) }
+        is Outcome.Failure -> _state.update { it.copy(extrasFetch = loadError(r)) }
     }
 
     /** Take over a remembered filter, without loading. */
@@ -204,8 +214,10 @@ internal class Figures(
     private val sequence = ListOrder(scope, _uiState, reportError, suchPause)
 
     suspend fun loadMetrics() {
-        (lists.metrics() as? Outcome.Success)
-            ?.let { r -> _uiState.update { it.copy(minifigStats = r.data) } }
+        when (val r = lists.metrics()) {
+            is Outcome.Success -> _uiState.update { it.copy(minifigStats = r.data, metricsFetch = Load.Data(Unit)) }
+            is Outcome.Failure -> _uiState.update { it.copy(metricsFetch = loadError(r)) }
+        }
     }
 
     /**

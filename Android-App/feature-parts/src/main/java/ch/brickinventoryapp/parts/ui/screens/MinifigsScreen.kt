@@ -47,6 +47,7 @@ import ch.brickinventoryapp.ui.components.LocalOpenDetail
 import ch.brickinventoryapp.ui.components.Moved
 import ch.brickinventoryapp.ui.components.NoHitsHint
 import ch.brickinventoryapp.ui.components.OfflineHint
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
 import ch.brickinventoryapp.ui.components.ReadableColumns
 import ch.brickinventoryapp.ui.components.SkeletonRaster
 import ch.brickinventoryapp.ui.components.SortMenu
@@ -191,6 +192,11 @@ internal fun MinifigsScreen(
                     // numbers mean the whole collection, even during a search.
                     if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { MinifigsMetrics(minifigStats) }
+                    }
+                    if (partsState.metricsFetch is Load.Failure) {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "figs-metrics-failed") {
+                            PartialLoadFailed(partsState.metricsFetch, actions::retryMetrics)
+                        }
                     }
                     // Manual figures as a grid section — one continuous
                     // scroll list instead of a fixed block above the grid (see PartsScreen).

@@ -126,6 +126,7 @@ class MinifigsViewModel @Inject constructor(
     }
 
     override fun loadMinifigs(debounce: Boolean) = list.load(debounced = debounce)
+    override fun retryMetrics() { viewModelScope.launch { list.loadMetrics() } }
 
     override fun setMinifigsQuery(q: String) { wanted[F_SEARCH] = q; list.setSearch(q) }
     override fun setMinifigsView(value: ListView) { wanted[F_VIEW] = value; list.setView(value) }

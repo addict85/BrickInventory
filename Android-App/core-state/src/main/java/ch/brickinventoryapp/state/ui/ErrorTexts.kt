@@ -68,6 +68,12 @@ fun <T> Outcome<T>.loadAs(): Load<T> = when (this) {
     is Outcome.Failure -> loadError(this)
 }
 
+/** Only whether a side fetch worked, for a `…Fetch` field next to the data it fills. */
+fun Outcome<*>.fetched(): Load<Unit> = when (this) {
+    is Outcome.Success -> Load.Data(Unit, state)
+    is Outcome.Failure -> loadError(this)
+}
+
 /**
  * Append the technical cause — but only where the string alone says nothing.
  */

@@ -29,6 +29,7 @@ import ch.brickinventoryapp.shared.ui.PriceChart
 import ch.brickinventoryapp.shared.ui.PriceLoadsRow
 import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
 import ch.brickinventoryapp.ui.components.ProductImage
 import ch.brickinventoryapp.ui.components.SectionTitle
 import ch.brickinventoryapp.ui.components.WithTooltip
@@ -217,6 +218,7 @@ internal fun WantedItemDetailScreen(
                             Spacer(Modifier.height(Spacing.small))
                             PriceLoadsRow()
                         }
+                        PartialLoadFailed(detail.fetch, { actions.loadWantedItemDetail(wantedItem.setNumber) })
                     }
                 }
             }

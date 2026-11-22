@@ -8,6 +8,7 @@ import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.ColorPicker
 import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
@@ -57,6 +58,8 @@ import org.junit.Test
  *      `@Query("search")` changed to `@Query("search")` → each red “search text and
  *      storage location also reach the manually entered …” (timeout
  *      "manuelle Teile" or "manuelle Figuren")
+ *   H  in Parts.loadMetrics the failure branch left empty → red “a failed key-figure fetch keeps
+ *      the list and offers a retry” (extrasFetch stays Data)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartsViewModelTest {
@@ -93,6 +96,22 @@ class PartsViewModelTest {
         t.cleanUp()
         Dispatchers.resetMain()
         paths.server.shutdown()
+    }
+
+    @Test
+    fun `a failed key-figure fetch keeps the list and offers a retry`() {
+        paths.codes["/api/v1/parts/stats"] = 500
+        val vm = vm()
+        vm.loadParts()
+        assertTrue("Liste geladen", vm.partsState.value.parts.isNotEmpty())
+        assertTrue("Fehler im Zustand", vm.partsState.value.extrasFetch is Load.Failure)
+
+        paths.codes.remove("/api/v1/parts/stats")
+        paths.responses["/api/v1/parts/stats"] = """{"success":true,"stats":{"unique_parts":1,"unique_colors":1,"total_parts":4}}"""
+        val asked = paths.requestsTo("GET /api/v1/parts/stats").size
+        vm.retryExtras()
+        assertEquals("die Kennzahlen erneut gefragt", asked + 1, paths.requestsTo("GET /api/v1/parts/stats").size)
+        assertTrue("Kennzahlen da", vm.partsState.value.partsStats != null)
     }
 
     @Test

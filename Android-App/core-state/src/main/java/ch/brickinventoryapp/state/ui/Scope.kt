@@ -7,6 +7,7 @@ import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.accountOptions
+import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.session.FilterSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,12 +99,15 @@ class ScopeService @Inject constructor(
      * without a visible filter explaining it.
      */
     override suspend fun loadMembers() {
-        val r = household.getHouseholdMembers() as? Outcome.Success ?: return
-        val members = r.data
+        val members = when (val r = household.getHouseholdMembers()) {
+            is Outcome.Success -> r.data
+            is Outcome.Failure -> return _accounts.update { it.copy(membersFetch = loadError(r)) }
+        }
         val allowed = accountOptions(members, "", "").map { it.first }
         _accounts.update { st ->
             st.copy(
                 householdMembers = members,
+                membersFetch = Load.Data(Unit),
                 scopeModes = st.scopeModes.mapValues { (_, v) ->
                     if (allowed.isEmpty() || v in allowed) v else ScopeFilter.ALL
                 },
@@ -113,16 +117,18 @@ class ScopeService @Inject constructor(
 
     /** The occupied locations in the gallery's Blickfeld — they feed the storage filter. */
     override suspend fun fetchStorageLocations() {
-        val r = parts.getLocations(accountFor(ScopeFilter.View.GALLERY))
-        val locations = (r as? Outcome.Success)?.data ?: return
-        _storage.update { it.copy(locations = locations) }
+        when (val r = parts.getLocations(accountFor(ScopeFilter.View.GALLERY))) {
+            is Outcome.Success -> _storage.update { it.copy(locations = r.data, locationsFetch = Load.Data(Unit)) }
+            is Outcome.Failure -> _storage.update { it.copy(locationsFetch = loadError(r)) }
+        }
     }
 
     /** The stock of a set's owners — suggestions for the storage-location field. */
     override suspend fun loadStock(owner: List<Int>) {
-        val r = parts.getLocationStock(owner)
-        val locations = (r as? Outcome.Success)?.data ?: return
-        _storage.update { it.copy(stock = locations) }
+        when (val r = parts.getLocationStock(owner)) {
+            is Outcome.Success -> _storage.update { it.copy(stock = r.data, locationsFetch = Load.Data(Unit)) }
+            is Outcome.Failure -> _storage.update { it.copy(locationsFetch = loadError(r)) }
+        }
     }
 
     /** One's own locations including the default — for capture and management; what the store then has is shown. */

@@ -91,6 +91,7 @@ internal fun MonitoringRoute(
             cacheDuration = mon::saveCacheDuration,
             cacheClear = mon::cacheClear,
             limits = mon::saveLimits,
+            retry = mon::reloadSettings,
         )
     }
     MonitoringScreen(

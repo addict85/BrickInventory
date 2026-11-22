@@ -16,12 +16,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonActions
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonUiState
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.comparisonUrl
 import ch.brickinventoryapp.network.util.externalAddress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.HintText
@@ -107,7 +107,7 @@ private fun ComparisonSearchField(text: String, actions: ComparisonActions, sear
         // This is where you type set numbers and barcodes, not names — hence the
         // numeric keyboard. The filter belongs with it: a connected keyboard, the
         // clipboard and some on-screen keyboards deliver letters regardless.
-        onValueChange = actions::setSearch,
+        onValueChange = { actions.setSearch(NumericInput.setNumber(it)) },
         placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
         leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(withFont(20.dp))) },
         trailingIcon = {
@@ -124,6 +124,10 @@ private fun ComparisonSearchField(text: String, actions: ComparisonActions, sear
         keyboardActions = KeyboardActions(onSearch = { search() })
     )
 }
+
+/** The address of the search at toppreise.ch; the query is encoded, a `#` or `&` would change the address. */
+private fun comparisonUrl(query: String): String =
+    "https://www.toppreise.ch/produktsuche".toUri().buildUpon().appendQueryParameter("q", query).build().toString()
 
 @Composable
 private fun ScannedBarcode(barcode: String) {

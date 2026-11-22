@@ -1,9 +1,7 @@
 package ch.brickinventoryapp.collection.ui.viewmodel
 
-import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.ui.util.NumericInput
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import java.io.Serializable
@@ -32,7 +30,7 @@ data class ComparisonUiState(
 
 /** What the comparison page triggers; the screen knows only this interface. */
 interface ComparisonActions {
-    fun setSearch(raw: String)
+    fun setSearch(text: String)
     fun clearSearch()
     fun openScanner()
     fun closeScanner()
@@ -51,8 +49,8 @@ internal class ComparisonViewModel @Inject constructor(private val saved: SavedS
         saved[KEY] = f(state.value)
     }
 
-    override fun setSearch(raw: String) = update {
-        val text = NumericInput.setNumber(raw)
+    /** [text] comes filtered from the field (digits and hyphen); typing replaces a scanned code. */
+    override fun setSearch(text: String) = update {
         it.copy(searchText = text, scannedBarcode = if (text.isNotBlank()) null else it.scannedBarcode)
     }
 
@@ -74,7 +72,3 @@ internal class ComparisonViewModel @Inject constructor(private val saved: SavedS
         const val KEY = "comparison"
     }
 }
-
-/** The address of the search at toppreise.ch; the query is encoded, a `#` or `&` would change the address. */
-internal fun comparisonUrl(query: String): String =
-    Uri.parse("https://www.toppreise.ch/produktsuche").buildUpon().appendQueryParameter("q", query).build().toString()

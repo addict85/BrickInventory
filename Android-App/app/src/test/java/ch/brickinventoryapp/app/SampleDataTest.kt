@@ -324,7 +324,7 @@ object Examples {
         /** The build list without network: [resolve] delivers name and parts per set number. */
         fun buildList(resolve: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
             t.track(PartListViewModel(t.session, t.hints, object : PartListsSource {
-                override suspend fun resolveSetOn(setNumber: String, serverUrl: String) = resolve(setNumber)
+                override suspend fun resolveSetOn(setNumber: String, serverUrl: String) = Outcome.Success(resolve(setNumber))
                 override suspend fun withInventory(parts: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = parts
                 override fun sorted(parts: Collection<PlPart>) = parts.toList()
             }, object : PartListsExport {

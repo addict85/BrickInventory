@@ -113,9 +113,13 @@ class WidgetWorker @AssistedInject constructor(
             CollectionWidget().updateAll(ctx)
             return true
         }
-        val pnl = (finances.getPnl() as? Outcome.Success)?.data
-        val history = (finances.getPortfolioHistory("week") as? Outcome.Success)?.data
-        widgetNumbers(pnl, history, System.currentTimeMillis())?.let { WidgetStore.write(ctx, it) }
+        val pnl = finances.getPnl()
+        val history = finances.getPortfolioHistory("week")
+        // Both failed: keep the last numbers and let WorkManager try again; one alone is enough to show.
+        if (pnl is Outcome.Failure && history is Outcome.Failure) return false
+        val pnlData = when (pnl) { is Outcome.Success -> pnl.data; is Outcome.Failure -> null }
+        val historyData = when (history) { is Outcome.Success -> history.data; is Outcome.Failure -> null }
+        widgetNumbers(pnlData, historyData, System.currentTimeMillis())?.let { WidgetStore.write(ctx, it) }
         CollectionWidget().updateAll(ctx)
         return true
     }

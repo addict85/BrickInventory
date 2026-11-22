@@ -53,6 +53,7 @@ import ch.brickinventoryapp.ui.components.LocalOpenDetail
 import ch.brickinventoryapp.ui.components.Moved
 import ch.brickinventoryapp.ui.components.NoHitsHint
 import ch.brickinventoryapp.ui.components.OfflineHint
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
 import ch.brickinventoryapp.ui.components.ReadableColumns
 import ch.brickinventoryapp.ui.components.SkeletonRaster
 import ch.brickinventoryapp.ui.components.SortMenu
@@ -252,6 +253,11 @@ internal fun PartsScreen(
                 ) {
                     if (stats != null) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { PartsMetrics(stats) }
+                    }
+                    if (partsState.extrasFetch is Load.Failure) {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "parts-extras-failed") {
+                            PartialLoadFailed(partsState.extrasFetch, actions::retryExtras)
+                        }
                     }
                     // Manually entered parts as a grid section instead of in a FlowRow above the grid:
                     // this way everything scrolls as one list, not just the set part.

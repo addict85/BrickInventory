@@ -92,10 +92,10 @@ class PartListViewModelTest {
         val asked = mutableListOf<String>()
         var brake: CompletableDeferred<Unit>? = null
         var stock: List<PlPart>? = null
-        override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
+        override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Outcome<Pair<String, List<PlPart>>> {
             asked += setNumber
             brake?.await()
-            return "Name $setNumber" to parts[setNumber].orEmpty()
+            return Outcome.Success("Name $setNumber" to parts[setNumber].orEmpty())
         }
         override suspend fun withInventory(parts: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = stock
         override fun sorted(parts: Collection<PlPart>) = parts.sortedBy { it.partNumber }

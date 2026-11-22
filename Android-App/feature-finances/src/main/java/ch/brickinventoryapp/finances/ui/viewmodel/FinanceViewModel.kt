@@ -98,13 +98,16 @@ class FinanceViewModel @Inject constructor(
                     messages.show(messages.messageForSnackbar(r))
                 }
             }
-            (finances.getPartsValuation(account) as? Outcome.Success)
-                ?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
-            (finances.getMinifigsValuation(account) as? Outcome.Success)
-                ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
-            (finances.getPnl(account) as? Outcome.Success)
-                ?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
+            _financeState.update { it.copy(extrasLoad = Load.Data(Unit)) }
+            extra(finances.getPartsValuation(account)) { s, d -> s.copy(partsValuation = d) }
+            extra(finances.getMinifigsValuation(account)) { s, d -> s.copy(figsValuation = d) }
+            extra(finances.getPnl(account)) { s, d -> s.copy(pnl = d) }
         }
+    }
+
+    private fun <T> extra(r: Outcome<T>, take: (FinanceUiState, T) -> FinanceUiState) = when (r) {
+        is Outcome.Success -> _financeState.update { take(it, r.data) }
+        is Outcome.Failure -> _financeState.update { it.copy(extrasLoad = loadError(r)) }
     }
 
     /** Fetch the history for the chosen period anew. */

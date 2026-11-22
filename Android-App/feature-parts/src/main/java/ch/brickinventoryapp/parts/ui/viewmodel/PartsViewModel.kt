@@ -170,6 +170,7 @@ class PartsViewModel @Inject constructor(
     override fun loadParts(page: Int, debounce: Boolean) = parts.load(page = page, debounced = debounce)
     fun loadPartsFilters() = parts.loadFilter()
     override fun loadPartsColors() = parts.loadColors()
+    override fun retryExtras() = parts.reloadExtras()
 
     private fun filter(change: (PartsFilter) -> PartsFilter) = parts.setFilter(change(parts.state.value.filter))
     override fun setPartsQuery(q: String) = filter { it.copy(search = q) }

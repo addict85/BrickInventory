@@ -264,7 +264,11 @@ class VoucherViewModel @Inject constructor(
                         number = s.number, pin = s.pin, amount = s.amount.replace(',', '.'),
                         currency = s.currency,
                     )
-                    val g = (r as? Outcome.Success)?.data as? VoucherStorage.Incomplete
+                    // A failure goes to handleResponse below like every other answer.
+                    val g = when (r) {
+                        is Outcome.Success -> r.data as? VoucherStorage.Incomplete
+                        is Outcome.Failure -> null
+                    }
                     if (g != null) {
                         // 422: what the server could read goes into the form —
                         // the user fills in the rest and sends the same file.

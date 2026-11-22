@@ -27,6 +27,8 @@ data class FinanceUiState(
      * other displays. Without the error the tab showed „keine Preisdaten“.
      */
     val valuationLoad: Load<Unit> = Load.Data(Unit),
+    /** Parts, figures and P&L next to the sets: a failure leaves the sets and offers a retry. */
+    val extrasLoad: Load<Unit> = Load.Data(Unit),
     val history: Load<Unit> = Load.Data(Unit),
     val historyPeriodChangePct: Double? = null,
     /**

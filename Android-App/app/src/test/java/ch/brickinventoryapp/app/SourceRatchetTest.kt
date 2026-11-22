@@ -29,6 +29,8 @@ import java.io.File
  *   detekt-baseline-waechst    upper limit one below the entries → red “the detekt baseline …”
  *   detekt-baseline-fremde-regel  a MagicNumber entry → red, the same test
  *   start-schluckt-abbruch     makes “no broad catch …” red
+ *   (local) `(lists.metrics() as? Outcome.Success)?.let { … }` back in Parts.kt → red “no load
+ *                              result is dropped silently” [Parts.kt:…]
  *   runcatching-um-suspend     BrickInventoryApp takes over the old token in runCatching again
  *                              → red “no runCatching swallows …”
  *   runcatching-um-suspend-lambda  Offlineablage calls the suspend source (a field of type
@@ -538,6 +540,20 @@ class SourceRatchetTest {
         val without = Regex("""\bString\.format\(\s*(?!Locale|appNumberLocale|locale\b|java\.util\.Locale)""")
         val places = mainCode().filter { (_, text) -> without.containsMatchIn(text) }.map { it.first.name }
         assertEquals("String.format ohne Locale in $places", emptyList<String>(), places)
+    }
+
+    @Test
+    fun `no load result is dropped silently`() {
+        // `as? Outcome.Success` turns a failure into null: the page then shows nothing instead of an
+        // error. A result goes through `when` (or loadAs/fetched), so its failure reaches the UI state.
+        val dropped = Regex("""\bas\?\s*Outcome\.Success\b""")
+        assertTrue("Das Muster erkennt die alte Form nicht mehr",
+            dropped.containsMatchIn("(source.partsMetrics() as? Outcome.Success)?.let { }"))
+        val places = mainCode().flatMap { (f, text) ->
+            dropped.findAll(text).map { "${f.name}:${text.substring(0, it.range.first).count { c -> c == '\n' } + 1}" }.toList()
+        }
+        assertEquals("Ladefehler still verworfen (as? Outcome.Success); exhaustiv mit when behandeln",
+            emptyList<String>(), places)
     }
 
     /** The arguments of a call up to the matching bracket; [on] points to the opening one. */

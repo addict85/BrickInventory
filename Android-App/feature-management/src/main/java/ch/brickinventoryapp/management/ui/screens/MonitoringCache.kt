@@ -20,6 +20,7 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionToggle
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.SectionTitle
 import ch.brickinventoryapp.ui.components.SelectionField
@@ -42,6 +43,8 @@ class CacheEvents(
     val cacheDuration: (Int) -> Unit,
     val cacheClear: (Boolean) -> Unit,
     val limits: (rebrickable: Int, bricklink: Int, brickset: Int) -> Unit,
+    /** Fetch numbers and settings again after a failure. */
+    val retry: () -> Unit = {},
 )
 
 @Composable
@@ -90,6 +93,7 @@ private fun CacheCard(
             SectionTitle(stringResource(R.string.monitoring_price_cache))
 
             cacheStats?.let { cs -> CacheNumbers(cs) }
+            PartialLoadFailed(monState.settingsFetch, events.retry)
 
             // Default condition (Neu/Gebraucht)
             DefaultStateRow(defaultCondition, events.defaultState)
