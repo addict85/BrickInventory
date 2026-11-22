@@ -64,7 +64,7 @@ test('the search finds the sources at all', () => {
   // below count ZERO — and zero is smaller than any limit. They would
   // then be green forever without ever looking at anything again.
   const n = sources().length;
-  assert.ok(n >= 80, `Nur ${n} TypeScript-Quellen gefunden — greift die Suche noch?`);
+  assert.ok(n >= 80, `only ${n} TypeScript sources found — does the search still apply?`);
 });
 
 test('silent catches (server, only reported, UI) become fewer, never more', () => {
@@ -81,10 +81,10 @@ test('silent catches (server, only reported, UI) become fewer, never more', () =
   const ist = zaehle(SILENT_CATCHES, undefined, true);
   assert.ok(
     ist <= LIMIT,
-    `${ist} stille Faenge, erlaubt sind ${LIMIT}. Ein neuer \`catch {}\` ` +
-      'verschluckt einen Fehler und laeuft weiter — im Betrieb sieht man dann ' +
-      'ein Verhalten ohne Ursache. Entweder den Fehler behandeln, oder ihn ' +
-      'wenigstens melden (reportError aus src/infra/errorTexts).',
+    `${ist} silent catches, allowed are ${LIMIT}. A new \`catch {}\` ` +
+      'swallows an error and carries on — in operation one then sees ' +
+      'behaviour without a cause. Either handle the error or at least ' +
+      'report it (reportError from src/infra/errorTexts).',
   );
   if (ist < LIMIT) {
     console.log(`  ℹ stille Faenge: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
@@ -109,19 +109,19 @@ test('“report and continue” becomes fewer, never more; src/sets does without
   for (const [name, limit] of Object.entries(LIMITS)) {
     const muster = [new RegExp(`\\b${name}\\(`, 'g')];
     const ist = zaehle(muster);
-    assert.ok(ist > AT_LEAST[name], `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
-    assert.ok(ist <= limit, `${ist}-mal ${name}, erlaubt sind ${limit}`);
+    assert.ok(ist > AT_LEAST[name], `only ${ist} times ${name} found — does the search still apply?`);
+    assert.ok(ist <= limit, `${ist} times ${name}, allowed are ${limit}`);
     if (ist < limit) console.log(`  ℹ ${name}: ${ist} (Schranke ${limit}) — Schranke nachziehen`);
     const aussen = OUTSIDE_CATALOG[name];
     if (aussen === undefined) continue;
     const n = zaehle(muster, f => !inCatalog(f));
-    assert.ok(n > 0 && n < ist, `ausserhalb src/catalog ${n} von ${ist} — greift die Trennung noch?`);
-    assert.ok(n <= aussen, `${n}-mal ${name} ausserhalb src/catalog, erlaubt sind ${aussen}`);
+    assert.ok(n > 0 && n < ist, `outside src/catalog ${n} of ${ist} — does the split still apply?`);
+    assert.ok(n <= aussen, `${n} times ${name} outside src/catalog, allowed are ${aussen}`);
     if (n < aussen) console.log(`  ℹ ${name} ausserhalb src/catalog: ${n} (Schranke ${aussen}) — Schranke nachziehen`);
   }
   const muster = /\b(?:logAndContinue|reportAndDeliver)\(/;
   const sets = sources().filter(f => /[\\/]src[\\/]sets[\\/]/.test(f));
-  assert.ok(sets.length > 10, 'src/sets nicht gefunden');
+  assert.ok(sets.length > 10, 'src/sets not found');
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   assert.deepEqual(
     sets.filter(f => muster.test(ohneKommentare(fs.readFileSync(f, 'utf8')))).map(f => path.relative(WEB, f)),
@@ -163,14 +163,14 @@ function onlyReportedCatches() {
       .filter(onlyReported)
       .map(x => ({ ...x, wo: `${path.relative(WEB, f)}:${x.row}` })),
   );
-  assert.ok(treffer.length > 20, `nur ${treffer.length} gemeldete Fänge gefunden — greift die Suche noch?`);
-  assert.ok(treffer.length <= LIMIT, `${treffer.length} Fänge melden nur und laufen weiter, erlaubt sind ${LIMIT}`);
+  assert.ok(treffer.length > 20, `only ${treffer.length} reported catches found — does the search still apply?`);
+  assert.ok(treffer.length <= LIMIT, `${treffer.length} catches only report and carry on, allowed are ${LIMIT}`);
   if (treffer.length < LIMIT)
     console.log(`  ℹ nur gemeldete Fänge: ${treffer.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
   assert.deepEqual(
     treffer.filter(x => /\bconsole\./.test(x.rumpf) && !/Ausnahme:|Exception:/.test(x.roh)).map(x => x.wo),
     [],
-    'ohne Ausnahme: direkt in die Konsole statt reportError',
+    'without „Ausnahme:“: straight to the console instead of reportError',
   );
 }
 
@@ -189,8 +189,8 @@ function silentCatchesTheUi() {
   assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
   assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { showError(e); }'), 0);
   const ist = oberflaeche().reduce((n, f) => n + catches(fs.readFileSync(f, 'utf8')).filter(stillImBrowser).length, 0);
-  assert.ok(ist > 30, `nur ${ist} stille Fänge in public/js — greift die Suche noch?`);
-  assert.ok(ist <= LIMIT, `${ist} stille Fänge in public/js, erlaubt sind ${LIMIT}`);
+  assert.ok(ist > 30, `only ${ist} silent catches in public/js — does the search still apply?`);
+  assert.ok(ist <= LIMIT, `${ist} silent catches in public/js, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ stille Fänge der Oberfläche: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 }
 
@@ -240,8 +240,8 @@ test('the compatibility path to the database and module-wide state become fewer,
   const withTypes = sources().filter(f =>
     /^import type \{[^}]*\} from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8')),
   ).length;
-  assert.ok(withTypes > 20, `nur ${withTypes} Typimporte aus db/database gefunden — greift die Suche noch?`);
-  assert.ok(ist <= LIMIT, `${ist} Dateien nehmen den Prozesszugang aus db/database, erlaubt sind ${LIMIT}`);
+  assert.ok(withTypes > 20, `only ${withTypes} type imports from db/database found — does the search still apply?`);
+  assert.ok(ist <= LIMIT, `${ist} files take the process access from db/database, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 
   // Module-wide state (let and empty-created Map/Set/WeakMap/WeakSet): all accesses of a process
@@ -266,7 +266,7 @@ test('the compatibility path to the database and module-wide state become fewer,
   const condition = sources().reduce((n, f) => n + countState(fs.readFileSync(f, 'utf8')), 0);
   assert.ok(
     condition > 0 && condition <= STATE_LIMIT,
-    `${condition}-mal modulweiter Zustand, erlaubt sind ${STATE_LIMIT}`,
+    `${condition} times module-wide state, allowed are ${STATE_LIMIT}`,
   );
   if (condition < STATE_LIMIT)
     console.log(`  ℹ modulweiter Zustand: ${condition} (Schranke ${STATE_LIMIT}) — Schranke nachziehen`);
@@ -290,11 +290,11 @@ function routesMatchContexts() {
   assert.deepEqual(
     fetcher.map(f => path.relative(WEB, f)),
     [],
-    'Dienste kommen über den Kontext oder als Parameter, nicht vom Prozess',
+    'services come via the context or as a parameter, not from the process',
   );
   const factoryFile = b => ['bereich.ts', 'area.ts'].map(f => path.join(src, b, f)).find(p => fs.existsSync(p));
   const areaList = fs.readdirSync(src).filter(b => factoryFile(b));
-  assert.ok(areaList.length >= 15, `nur ${areaList.length} Bereiche gefunden — greift die Suche noch?`);
+  assert.ok(areaList.length >= 15, `only ${areaList.length} areas found — does the search still apply?`);
   // What an area binds as a service no index.ts may additionally export as a value.
   const dienste = new Map(
     areaList.map(b => {
@@ -304,7 +304,7 @@ function routesMatchContexts() {
       return [b, n];
     }),
   );
-  assert.ok(dienste.get('sets').has('readSets'), 'die Dienste der Bereiche werden nicht mehr gefunden');
+  assert.ok(dienste.get('sets').has('readSets'), 'the services of the areas are no longer found');
   const facades = [];
   for (const f of sources()) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
@@ -316,7 +316,7 @@ function routesMatchContexts() {
           facades.push(`${path.relative(WEB, f)}: ${x}`);
     }
   }
-  assert.deepEqual(facades, [], 'Dienste eines anderen Bereichs kommen über d oder den Kontext, nicht als Import');
+  assert.deepEqual(facades, [], 'services of another area come via d or the context, not as an import');
 }
 
 /** The startup reads config(); domain areas, routes and jobs get the configuration handed in. */
@@ -334,10 +334,10 @@ function configOnlyAtStart() {
     .map(rel)
     .filter(r => !/^(startup\/|server\.ts$|src\/infra\/config\.ts$)/.test(r))
     .filter(r => /\bconfig\(\)/.test(ohne(fs.readFileSync(path.join(WEB, r), 'utf8'))));
-  assert.ok(readsOnly.length > 0, 'keine Leser von config() gefunden — greift die Suche noch?');
+  assert.ok(readsOnly.length > 0, 'no readers of config() found — does the search still apply?');
   const domainArea = readsOnly.filter(r => !/^(src\/infra|src\/http|db)\//.test(r) && !EXCEPTION.includes(r));
-  assert.deepEqual(domainArea, [], 'Fachbereiche, Routen und Jobs nehmen k.config oder einen Parameter');
-  assert.ok(readsOnly.length <= LIMIT, `${readsOnly.length} Dateien lesen config(), erlaubt sind ${LIMIT}`);
+  assert.deepEqual(domainArea, [], 'domain areas, routes and jobs take k.config or a parameter');
+  assert.ok(readsOnly.length <= LIMIT, `${readsOnly.length} files read config(), allowed are ${LIMIT}`);
   if (readsOnly.length < LIMIT)
     console.log(`  ℹ config()-Leser: ${readsOnly.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 }
@@ -357,19 +357,22 @@ function bindingWithoutNamesAndProxy() {
       .filter(f => /\bnew Proxy\b/.test(text(f)))
       .map(rel),
     [],
-    'kein Proxy im Server',
+    'no Proxy in the server',
   );
   const NAMEN = /\bbinde\w*\(|\[\s*'\w+'(?:\s*,\s*'\w+')+\s*,?\s*\]/;
   assert.ok(NAMEN.test("bindeZugang(k, m, ['a', 'b'])") && NAMEN.test("x(k, ['a', 'b'])"), 'Selbstbeweis Namensliste');
   const factories = sources().filter(f => /[\\/]src[\\/]\w+[\\/](bereich|kontext|area|context)\.ts$/.test(f));
-  assert.ok(factories.length >= 30, `nur ${factories.length} Fabriken und Kontexte gefunden — greift die Suche noch?`);
-  assert.deepEqual(factories.filter(f => NAMEN.test(text(f))).map(rel), [], 'Bindung über Namen statt mit()');
+  assert.ok(
+    factories.length >= 30,
+    `only ${factories.length} factories and contexts found — does the search still apply?`,
+  );
+  assert.deepEqual(factories.filter(f => NAMEN.test(text(f))).map(rel), [], 'binding by names instead of „mit()“');
   assert.deepEqual(
     sources()
       .filter(f => /\bAsyncLocalStorage\b/.test(text(f)))
       .map(rel),
     ['src/infra/accountContext.ts'],
-    'Ein Kanal über den Aufrufpfad: der Aufrufrahmen (docs/architecture.md)',
+    'one channel along the call path: the call frame (docs/architecture.md)',
   );
 }
 
@@ -378,9 +381,9 @@ test('any becomes fewer, never more', () => {
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(
     ist <= LIMIT,
-    `${ist}-mal \`any\`, erlaubt sind ${LIMIT}. Jedes davon schaltet den ` +
-      'Typpruefer fuer diesen Ausdruck ab — in einem Baum, der sonst auf ' +
-      'noImplicitAny mit leerer Ausnahmeliste steht.',
+    `${ist} times \`any\`, allowed are ${LIMIT}. Each of them switches the ` +
+      'type checker off for that expression — in a tree that otherwise runs ' +
+      'noImplicitAny with an empty exception list.',
   );
   if (ist < LIMIT) {
     console.log(`  ℹ any: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
@@ -393,7 +396,7 @@ test('any in all forms, unknown parameters and success in services become fewer,
   // Counter-check (05.11.2026): getSetting again `fallback?: any` without overloads → red.
   const LIMIT = 8;
   const ist = zaehle([/\bany\b/g]);
-  assert.ok(ist <= LIMIT, `${ist}-mal any, erlaubt sind ${LIMIT}`);
+  assert.ok(ist <= LIMIT, `${ist} times any, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 
   // The same kind of count: the route sets the envelope of the response, a service
@@ -405,7 +408,7 @@ test('any in all forms, unknown parameters and success in services become fewer,
   );
   assert.ok(
     success <= SUCCESS_LIMIT,
-    `${success}-mal success: true in src/ (ohne contract/, http/), erlaubt sind ${SUCCESS_LIMIT}`,
+    `${success} times success: true in src/ (without contract/, http/), allowed are ${SUCCESS_LIMIT}`,
   );
   if (success < SUCCESS_LIMIT)
     console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_LIMIT}) — Schranke nachziehen`);
@@ -416,7 +419,7 @@ test('any in all forms, unknown parameters and success in services become fewer,
   const inRoutes = zaehle([/\bsuccess:\s*true\b/g], f => /^routes[\\/]/.test(path.relative(WEB, f)));
   assert.ok(
     inRoutes > 0 && inRoutes <= ROUTES_LIMIT,
-    `${inRoutes}-mal success: true in routes/, erlaubt sind ${ROUTES_LIMIT}`,
+    `${inRoutes} times success: true in routes/, allowed are ${ROUTES_LIMIT}`,
   );
   if (inRoutes < ROUTES_LIMIT)
     console.log(`  ℹ success in Routen: ${inRoutes} (Schranke ${ROUTES_LIMIT}) — Schranke nachziehen`);
@@ -424,7 +427,7 @@ test('any in all forms, unknown parameters and success in services become fewer,
   // domain types (Zustand, string). Exempt are the checkers for raw values
   // (src/contract, src/infra, src/http) and error parameters.
   // Counter-check (11.11.2026): `condition: unknown` back in deleteAlarmOfSets → red (75).
-  const LIMIT_UNKNOWN = 63;
+  const LIMIT_UNKNOWN = 61;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
     ('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length,
@@ -435,10 +438,10 @@ test('any in all forms, unknown parameters and success in services become fewer,
   const unbekannt = sources()
     .filter(f => /[\\/]src[\\/]/.test(f) && !RAW.test(f))
     .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(MUSTER) || []).length, 0);
-  assert.ok(unbekannt > 20, `nur ${unbekannt} unknown-Parameter gefunden — greift die Suche noch?`);
+  assert.ok(unbekannt > 20, `only ${unbekannt} unknown parameters found — does the search still apply?`);
   assert.ok(
     unbekannt <= LIMIT_UNKNOWN,
-    `${unbekannt} Parameter vom Typ unknown in Diensten, erlaubt sind ${LIMIT_UNKNOWN}`,
+    `${unbekannt} parameters of type unknown in services, allowed are ${LIMIT_UNKNOWN}`,
   );
   if (unbekannt < LIMIT_UNKNOWN)
     console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${LIMIT_UNKNOWN}) — Schranke nachziehen`);
@@ -457,7 +460,7 @@ test('direct clock calls in domain areas become fewer, never more', () => {
   const domainArea = (/** @type {string} */ f) =>
     /^(src[\\/](?!infra|http|vertrag)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
   const ist = zaehle([CLOCK], domainArea);
-  assert.ok(ist <= LIMIT, `${ist} direkte Uhr-Aufrufe in Fachbereichen und Jobs, erlaubt sind ${LIMIT}`);
+  assert.ok(ist <= LIMIT, `${ist} direct clock calls in domain areas and jobs, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ Uhr-Aufrufe: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -483,7 +486,7 @@ test('database rows are unknown without a type argument', () => {
   assert.equal(
     (source.match(/\b(?:all|get)\s*(?::\s*)?<T = unknown>/g) || []).length,
     6,
-    'all/get in Schnittstelle, Pool und Transaktion',
+    'all/get in interface, pool and transaction',
   );
   assert.doesNotMatch(source, /<T = any>|lastID/);
 });
@@ -495,7 +498,7 @@ test('untyped database queries become fewer, never more', () => {
   // (15.11.2026) in auftraege.ts writeProgress again `db.get(` without a type → red (4 of 3).
   const LIMIT = 3;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
-  assert.ok(ist <= LIMIT, `${ist} ungetypte db.get/all, erlaubt sind ${LIMIT}`);
+  assert.ok(ist <= LIMIT, `${ist} untyped db.get/all, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -512,7 +515,7 @@ test('raw req.body and req.query in routes become fewer, never more', () => {
         .ohneKommentare(fs.readFileSync(f, 'utf8'))
         .match(/\breq\.(?:body|query)\b/g) || []
     ).length;
-  assert.ok(ist <= LIMIT, `${ist}-mal req.body/req.query in routes/, erlaubt sind ${LIMIT}`);
+  assert.ok(ist <= LIMIT, `${ist} times req.body/req.query in routes/, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ req.body/req.query in Routen: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -529,7 +532,7 @@ test('write targets in routes become fewer, never more', () => {
         .ohneKommentare(fs.readFileSync(f, 'utf8'))
         .match(/\bwriteTarget\(/g) || []
     ).length;
-  assert.ok(ist <= LIMIT, `${ist}-mal writeTarget() in routes/, erlaubt sind ${LIMIT}`);
+  assert.ok(ist <= LIMIT, `${ist} times writeTarget() in routes/, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ writeTarget() in Routen: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -563,14 +566,14 @@ test('import edges between views become fewer, never more', () => {
   const JS = path.join(WEB, 'public', 'js');
   const layer = new Set([...CORE, ...BUILDING_BLOCKS]);
   const views = fs.readdirSync(JS).filter(n => isAppModule(n) && !layer.has(n));
-  assert.ok(views.length > 30, `nur ${views.length} Ansichten — greift die Suche noch?`);
+  assert.ok(views.length > 30, `only ${views.length} views — does the search still apply?`);
   const kanten = views.flatMap(n =>
     [...fs.readFileSync(path.join(JS, n), 'utf8').matchAll(/^\s*import\s[^;]*?from\s+'\.\/([\w-]+\.js)'/gms)]
       .map(m => m[1])
       .filter(z => views.includes(z))
       .map(z => `${n} → ${z}`),
   );
-  assert.ok(kanten.length <= LIMIT, `${kanten.length} Importkanten zwischen Ansichten, erlaubt ${LIMIT}`);
+  assert.ok(kanten.length <= LIMIT, `${kanten.length} import edges between views, allowed ${LIMIT}`);
   if (kanten.length < LIMIT)
     console.log(`  ℹ Kanten zwischen Ansichten: ${kanten.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
@@ -590,13 +593,13 @@ test('test files are named after their function, not after a review round', () =
 test('pure source-text tests become fewer, never more', () => {
   const LIMIT = 32;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
-  assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
+  assert.ok(alle >= 300, `only ${alle} test files found — does the search still apply?`);
   const ist = pureSourceTextTests();
   assert.ok(
     ist.length <= LIMIT,
-    `${ist.length} Testdateien lesen nur Quelltext, erlaubt sind ${LIMIT}. ` +
-      'Prüft der neue Test Verhalten, soll er den Code ausführen (buildAndRequire, ' +
-      'testServer) statt per Regex nachzusehen, ob eine Zeile dasteht.',
+    `${ist.length} test files only read source text, allowed are ${LIMIT}. ` +
+      'If the new test checks behaviour, it should run the code (buildAndRequire, ' +
+      'testServer) instead of looking by regex whether a line is there.',
   );
   if (ist.length < LIMIT) {
     console.log(`  ℹ reine Quelltext-Tests: ${ist.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
@@ -779,15 +782,15 @@ test('test cases that only read source text become fewer, never more', () => {
   assert.deepEqual(
     sourceTextCasesIn(probe, helper).faelle,
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
-    'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
+    'self-proof: a mere await runs nothing, a function of the file and a built module do',
   );
-  const LIMIT = 370;
+  const LIMIT = 363;
   const { n, all: alle, readers } = sourceTextCases();
-  assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
+  assert.ok(alle > 1500, `only ${alle} test cases found — does the search still apply?`);
   assert.ok(
     n <= LIMIT,
-    `${n} Testfälle lesen nur Quelltext, erlaubt sind ${LIMIT}. ` +
-      'Verhalten gehört in einen Test, der den Code ausführt (jsdom, buildAndRequire, testServer).',
+    `${n} test cases only read source text, allowed are ${LIMIT}. ` +
+      'Behaviour belongs in a test that runs the code (jsdom, buildAndRequire, testServer).',
   );
   if (n < LIMIT) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${LIMIT}) — Schranke nachziehen`);
   behaviorChecksReadingSource(readers);
@@ -799,7 +802,7 @@ function behaviorChecksReadingSource(/** @type {string[]} */ readers) {
   // Counter-checks: an entry of STRUCTURE_FILES removed → red (count above the limit); an entry naming
   // a file without a reading case → red „without a reading case“.
   const { STRUCTURE_FILES, STRUCTURE_CHECKS } = require('./helpers/structure-checks');
-  const LIMIT = 75;
+  const LIMIT = 68;
   assert.equal(caseName("test('a b', () => {"), 'a b', 'self-proof of the case name');
   const behavior = readers.filter(r => !(r.split(': ')[0] in STRUCTURE_FILES) && !(r in STRUCTURE_CHECKS));
   assert.ok(
@@ -842,23 +845,23 @@ test('tests use the real setup: no DB facade, substitute paths become fewer', ()
   // helpers/server.js; +1 each compared to counting only the test files); counter-check:
   // `Module._load = l;` in helpers/time.js → red (12 instead of 11).
   assert.ok(USES_FACADE.test("const db = _req('db/database.js');") && !USES_FACADE.test('accessOrSkip(t)'));
-  assert.ok(!USES_FACADE.test("const { createDb } = _req('db/database.js');"), 'Exporte bleiben erlaubt');
+  assert.ok(!USES_FACADE.test("const { createDb } = _req('db/database.js');"), 'exports stay allowed');
   assert.ok(FALLBACKS['biegen Module um'].muster.test('Module.prototype.require = function () {}'));
   const q = require('./helpers/sources');
   const tests = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js');
   const helper = fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n));
-  assert.ok(tests.length > 500, `nur ${tests.length} Testdateien — greift die Suche noch?`);
+  assert.ok(tests.length > 500, `only ${tests.length} test files — does the search still apply?`);
   const lies = (/** @type {string} */ n) => q.ohneKommentare(fs.readFileSync(path.join(__dirname, n), 'utf8'));
   assert.deepEqual(
     [...tests, ...helper].filter(n => USES_FACADE.test(lies(n))),
     [],
-    'Testdaten über testData(), Code unter Test über testAccess()',
+    'test data via testData(), code under test via testAccess()',
   );
   // The helpers too: a bending in test/helpers/ would hit every file that loads it.
   for (const [was, { muster, limit }] of Object.entries(FALLBACKS)) {
     const ist = [...tests, ...helper].filter(n => muster.test(lies(n))).length;
-    assert.ok(ist > 0, `keine Datei ${was} — greift das Muster noch? Dann Schranke und Eintrag entfernen`);
-    assert.ok(ist <= limit, `${ist} Testdateien ${was}, erlaubt sind ${limit}`);
+    assert.ok(ist > 0, `no file ${was} — does the pattern still apply? Then remove limit and entry`);
+    assert.ok(ist <= limit, `${ist} test files ${was}, allowed are ${limit}`);
     if (ist < limit) console.log(`  ℹ ${ist} Testdateien ${was} (Schranke ${limit}) — Schranke nachziehen`);
   }
 });
@@ -875,17 +878,17 @@ test('web tests do not read Android source code', () => {
   // test/helpers/contract.js → red (names helpers/contract.js).
   const LIMIT = 0;
   for (const probe of ["path.join(ROOT, '..', 'Android-App', 'x')", "'Theme.kt'", "require('./helpers/android')"])
-    assert.ok(READS_ANDROID.test(probe), `das Muster greift nicht mehr: ${probe}`);
+    assert.ok(READS_ANDROID.test(probe), `the pattern no longer applies: ${probe}`);
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js'),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n)),
   ];
-  assert.ok(dateien.length > 500, `nur ${dateien.length} Dateien — greift die Suche noch?`);
+  assert.ok(dateien.length > 500, `only ${dateien.length} files — does the search still apply?`);
   const readsOnly = dateien.filter(n => READS_ANDROID.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
   assert.ok(
     readsOnly.length <= LIMIT,
-    `${readsOnly.length} Web-Testdateien lesen Android-Quellen, erlaubt sind ${LIMIT}: ${readsOnly.join(', ')}. ` +
-      'Den Server gegen shared/app-schnittstelle.json prüfen; was nur die App betrifft, gehört in die Android-Suite.',
+    `${readsOnly.length} web test files read Android sources, allowed are ${LIMIT}: ${readsOnly.join(', ')}. ` +
+      'Check the server against shared/app-schnittstelle.json; what only concerns the app belongs in the Android suite.',
   );
 });
 
@@ -952,7 +955,7 @@ test('fixed waits in tests become fewer, never more', () => {
         'await new Promise(r =>\n  setTimeout(r, 1500),\n);',
     ),
     2,
-    'Selbstbeweis: die Pause nach einer Anweisung und die umbrochene zählen, Schleifen und kurze nicht',
+    'self-proof: the pause after a statement and the wrapped one count, loops and short ones do not',
   );
   const OWN = /^\s*const (warte|takt|sleep|schlafe)\s*=/;
   let ist = 0;
@@ -962,8 +965,8 @@ test('fixed waits in tests become fewer, never more', () => {
     ist += fixedWaitTimes(text);
     if (text.split('\n').some(z => OWN.test(z))) eigene.push(n);
   }
-  assert.deepEqual(eigene, [], 'eigene Warte-Helfer: test/helpers/time.js benutzen');
-  assert.ok(ist <= LIMIT, `${ist} feste Wartezeiten ab 100 ms, erlaubt sind ${LIMIT}`);
+  assert.deepEqual(eigene, [], 'own wait helpers: use test/helpers/time.js');
+  assert.ok(ist <= LIMIT, `${ist} fixed waits of 100 ms or more, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ feste Wartezeiten: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -980,12 +983,12 @@ test('inline styles in index.html become fewer, never more', () => {
     fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'),
   );
   const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-style="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
-  assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');
+  assert.ok(stile.length > 50, 'no inline styles found — does the search still apply?');
   const ist = stile.filter(s => s !== 'display:none').length;
   assert.ok(
     ist <= LIMIT,
-    `${ist} Inline-Stile (ohne display:none) in index.html, erlaubt sind ${LIMIT}. ` +
-      'Gestaltung gehört in styles.css; dort sieht sie jedes Design und mobile.css.',
+    `${ist} inline styles (without display:none) in index.html, allowed are ${LIMIT}. ` +
+      'Styling belongs in styles.css; there every design and mobile.css see it.',
   );
   if (ist < LIMIT) console.log(`  ℹ Inline-Stile: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
@@ -1017,7 +1020,7 @@ test('no reference to “Nachtrag N” under Web-App/', () => {
         treffer.push(`${path.relative(WEB, p)}: ${m}`);
     }
   })(WEB);
-  assert.ok(dateien > 800, `nur ${dateien} Dateien durchsucht — greift die Suche noch?`);
+  assert.ok(dateien > 800, `only ${dateien} files searched — does the search still apply?`);
   assert.deepEqual(treffer, []);
 });
 
@@ -1051,9 +1054,9 @@ test('the comment share in the server sinks, never rises', () => {
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) comment++;
     }
   }
-  assert.ok(zeilen > 10000, `nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+  assert.ok(zeilen > 10000, `only ${zeilen} lines found — does the search still apply?`);
   const anteil = Math.round((1000 * comment) / zeilen) / 10;
-  assert.ok(anteil <= LIMIT, `${anteil} % Kommentarzeilen, erlaubt sind ${LIMIT} %`);
+  assert.ok(anteil <= LIMIT, `${anteil} % comment lines, allowed are ${LIMIT} %`);
   if (anteil < LIMIT - 0.5) console.log(`  ℹ Kommentaranteil: ${anteil} % (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -1087,9 +1090,9 @@ test('the comment share of the UI sinks, never rises', () => {
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) comment++;
     }
   }
-  assert.ok(zeilen > 8000, `nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+  assert.ok(zeilen > 8000, `only ${zeilen} lines found — does the search still apply?`);
   const anteil = Math.round((1000 * comment) / zeilen) / 10;
-  assert.ok(anteil <= LIMIT, `${anteil} % Kommentarzeilen in der Oberfläche, erlaubt sind ${LIMIT} %`);
+  assert.ok(anteil <= LIMIT, `${anteil} % comment lines in the UI, allowed are ${LIMIT} %`);
   if (anteil < LIMIT - 0.5)
     console.log(`  ℹ Kommentaranteil Oberfläche: ${anteil} % (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
@@ -1103,7 +1106,7 @@ test('any in the UI type annotations becomes fewer, never more', () => {
   for (const f of oberflaeche())
     for (const z of fs.readFileSync(f, 'utf8').split('\n'))
       if (z.includes('@') && (z.includes('/**') || z.trim().startsWith('*'))) ist += (z.match(/\bany\b/g) || []).length;
-  assert.ok(ist <= LIMIT, `${ist}-mal any in Typangaben der Oberfläche, erlaubt sind ${LIMIT}`);
+  assert.ok(ist <= LIMIT, `${ist} times any in type annotations of the UI, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ any in der Oberfläche: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -1134,8 +1137,8 @@ test('no UI comment has more than five lines of prose', () => {
       i = j;
     }
   }
-  assert.ok(blockList > 300, `nur ${blockList} Kommentarblöcke gefunden — greift die Suche noch?`);
-  assert.deepEqual(lang, [], 'Lange Begründung: Warum in den Code (höchstens fünf Zeilen), Geschichte in den Commit');
+  assert.ok(blockList > 300, `only ${blockList} comment blocks found — does the search still apply?`);
+  assert.deepEqual(lang, [], 'long rationale: the why in the code (five lines at most), the history in the commit');
 });
 
 /** Functions with their length (declaration up to the closing bracket of the same indentation). */
@@ -1166,19 +1169,19 @@ test('UI functions over 100 and over 80 lines become fewer, never more', () => {
     'public/js/minifigs.js renderFigs',
   ];
   const alle = functionLengths();
-  assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
+  assert.ok(alle.length > 500, `only ${alle.length} functions found — does the search still apply?`);
   const over100 = alle.filter(x => x.zeilen > 100).map(x => x.location.replace(/:\d+ /, ' '));
   assert.deepEqual(
     over100.filter(x => !KNOWN_100.includes(x)),
     [],
-    'Eine Funktion über 100 Zeilen: in benannte Teile zerlegen',
+    'a function over 100 lines: split it into named parts',
   );
   if (over100.length < KNOWN_100.length)
     console.log(`  ℹ Funktionen über 100 Zeilen: ${over100.join(', ')} — KNOWN_100 nachziehen`);
   const over80 = alle.filter(x => x.zeilen > 80);
   assert.ok(
     over80.length <= LIMIT_80,
-    `${over80.length} Funktionen über 80 Zeilen, erlaubt sind ${LIMIT_80}:\n${over80.map(x => x.location).join('\n')}`,
+    `${over80.length} functions over 80 lines, allowed are ${LIMIT_80}:\n${over80.map(x => x.location).join('\n')}`,
   );
   if (over80.length < LIMIT_80)
     console.log(`  ℹ Funktionen über 80 Zeilen: ${over80.length} (Schranke ${LIMIT_80}) — Schranke nachziehen`);
@@ -1249,12 +1252,12 @@ test('rawHtml() becomes fewer, never more; no template with ${…} and no .join(
       ),
     );
   const ist = argList.length;
-  assert.ok(ist > 0, 'kein rawHtml() gefunden — greift die Suche noch?');
+  assert.ok(ist > 0, 'no rawHtml() found — does the search still apply?');
   const vorlage = argList.filter(x => /^\s*`[^`]*\$\{/.test(x.a));
   assert.deepEqual(
     vorlage.map(x => `${x.f}: ${x.a.slice(0, 60)}`),
     [],
-    'rawHtml() mit Template und ${…}: html`` nehmen',
+    'rawHtml() with a template and ${…}: use html``',
   );
   const connected = argList.filter(x => /\.join\(/.test(x.a));
   assert.deepEqual(
@@ -1262,7 +1265,7 @@ test('rawHtml() becomes fewer, never more; no template with ${…} and no .join(
     [],
     'rawHtml(… .join()): joinHtml() nehmen',
   );
-  assert.ok(ist <= LIMIT, `${ist}-mal rawHtml(), erlaubt sind ${LIMIT}`);
+  assert.ok(ist <= LIMIT, `${ist} times rawHtml(), allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ rawHtml(): ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -1275,13 +1278,13 @@ test('no UI file over 1000 lines, the big ones become smaller', () => {
     f: path.relative(WEB, f),
     n: fs.readFileSync(f, 'utf8').split('\n').length,
   }));
-  assert.ok(lengths.length > 40, `nur ${lengths.length} Dateien gefunden — greift die Suche noch?`);
+  assert.ok(lengths.length > 40, `only ${lengths.length} files found — does the search still apply?`);
   const over1000 = lengths.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);
-  assert.deepEqual(over1000, [], 'Eine Datei über 1000 Zeilen: nach Themen teilen');
+  assert.deepEqual(over1000, [], 'a file over 1000 lines: split it by topic');
   const largest = Math.max(...lengths.map(x => x.n));
   const over600 = lengths.filter(x => x.n > 600).length;
-  assert.ok(largest <= LIMIT_LARGEST, `grösste Datei ${largest} Zeilen, erlaubt sind ${LIMIT_LARGEST}`);
-  assert.ok(over600 <= LIMIT_VIA_600, `${over600} Dateien über 600 Zeilen, erlaubt sind ${LIMIT_VIA_600}`);
+  assert.ok(largest <= LIMIT_LARGEST, `largest file ${largest} lines, allowed are ${LIMIT_LARGEST}`);
+  assert.ok(over600 <= LIMIT_VIA_600, `${over600} files over 600 lines, allowed are ${LIMIT_VIA_600}`);
   if (largest < LIMIT_LARGEST || over600 < LIMIT_VIA_600)
     console.log(`  ℹ Dateigrösse Oberfläche: grösste ${largest}, über 600: ${over600} — Schranke nachziehen`);
 });
@@ -1326,24 +1329,24 @@ test('server functions over 80/150 lines become fewer, never more', () => {
   // its handlers keep counting individually.
   const noFactory = x => !/ build\w*Router$/.test(x.location);
   const oben = topLevelLengths(dateien).filter(noFactory);
-  assert.ok(oben.length > 1500, `nur ${oben.length} Top-Level-Funktionen gefunden — greift die Suche noch?`);
+  assert.ok(oben.length > 1500, `only ${oben.length} top-level functions found — does the search still apply?`);
   const from100 = oben.filter(x => x.zeilen >= 100).map(x => x.location);
   assert.deepEqual(
     from100.filter(x => !KNOWN_100.includes(x)),
     [],
-    'ab 100 Zeilen: in benannte Teile zerlegen',
+    'from 100 lines: split into named parts',
   );
   if (from100.length < KNOWN_100.length) console.log(`  ℹ ab 100 Zeilen: ${from100.join(', ')} — KNOWN_100 nachziehen`);
   const alle = functionLengths(dateien).filter(noFactory);
-  assert.ok(alle.length > 1000, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
+  assert.ok(alle.length > 1000, `only ${alle.length} functions found — does the search still apply?`);
   const ueber = n => alle.filter(x => x.zeilen > n);
   assert.ok(
     ueber(150).length <= LIMIT_150,
-    `über 150 Zeilen:\n${ueber(150)
+    `over 150 lines:\n${ueber(150)
       .map(x => x.location)
       .join('\n')}`,
   );
-  assert.ok(ueber(80).length <= LIMIT_80, `${ueber(80).length} über 80 Zeilen, erlaubt sind ${LIMIT_80}`);
+  assert.ok(ueber(80).length <= LIMIT_80, `${ueber(80).length} over 80 lines, allowed are ${LIMIT_80}`);
   if (ueber(80).length < LIMIT_80)
     console.log(`  ℹ Server-Funktionen über 80 Zeilen: ${ueber(80).length} — Schranke nachziehen`);
 });
@@ -1374,7 +1377,7 @@ test('the comment share in db/, clients/ and scripts/ sinks, never rises', () =>
         }
       }
     })(path.join(WEB, ordner));
-    assert.ok(zeilen > 500, `${ordner}: nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+    assert.ok(zeilen > 500, `${ordner}: only ${zeilen} lines found — does the search still apply?`);
     const anteil = Math.round((1000 * comment) / zeilen) / 10;
     if (anteil > limit) toMuch.push(`${ordner}: ${anteil} % (erlaubt ${limit} %)`);
     else if (anteil < limit - 0.5)
@@ -1410,8 +1413,8 @@ test('history in test comments becomes fewer, never more', () => {
       if ((t.startsWith('//') || t.startsWith('*')) && MARKE.test(t)) ist++;
     }
   // Self-proof without a real occurrence: the limit has reached 0.
-  assert.ok(MARKE.test('* Gemessen am 7.11.') && MARKE.test('// Measured on 7.11.'), 'greift die Suche noch?');
-  assert.ok(ist <= LIMIT, `${ist} Kommentarzeilen mit Geschichte in den Tests, erlaubt sind ${LIMIT}`);
+  assert.ok(MARKE.test('* Gemessen am 7.11.') && MARKE.test('// Measured on 7.11.'), 'does the search still apply?');
+  assert.ok(ist <= LIMIT, `${ist} comment lines with history in the tests, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ Geschichte in Testkommentaren: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
@@ -1441,9 +1444,9 @@ test('the comment share of the tests sinks, never rises', () => {
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) comment++;
     }
   }
-  assert.ok(zeilen > 20000, `nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+  assert.ok(zeilen > 20000, `only ${zeilen} lines found — does the search still apply?`);
   const anteil = Math.round((1000 * comment) / zeilen) / 10;
-  assert.ok(anteil <= LIMIT, `${anteil} % Kommentarzeilen in den Tests, erlaubt sind ${LIMIT} %`);
+  assert.ok(anteil <= LIMIT, `${anteil} % comment lines in the tests, allowed are ${LIMIT} %`);
   if (anteil < LIMIT - 0.5)
     console.log(`  ℹ Kommentaranteil Tests: ${anteil} % (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
@@ -1456,7 +1459,7 @@ test('no reference to the former rationale archive', () => {
   assert.equal(
     fs.existsSync(path.join(WEB, 'docs', 'begruendungen')),
     false,
-    'docs/begruendungen/ gehört nicht in den Baum',
+    'docs/begruendungen/ does not belong in the tree',
   );
   const r = require('node:child_process').spawnSync(
     process.execPath,
@@ -1466,7 +1469,7 @@ test('no reference to the former rationale archive', () => {
   assert.equal(
     r.status,
     0,
-    `Verweise ins frühere Archiv — \`node scripts/remove-rationales.js\` entfernt sie:\n${r.stdout}${r.stderr}`,
+    `references into the former archive — \`node scripts/remove-rationales.js\` removes them:\n${r.stdout}${r.stderr}`,
   );
 });
 
@@ -1496,10 +1499,10 @@ test('the comment share of the operations files sinks, never rises', () => {
   }
   assert.ok(
     dateien.length >= 6 && zeilen > 1000,
-    `nur ${dateien.length} Dateien, ${zeilen} Zeilen — greift die Suche noch?`,
+    `only ${dateien.length} files, ${zeilen} lines — does the search still apply?`,
   );
   const anteil = Math.round((1000 * comment) / zeilen) / 10;
-  assert.ok(anteil <= LIMIT, `${anteil} % Kommentarzeilen in den Betriebsdateien, erlaubt sind ${LIMIT} %`);
+  assert.ok(anteil <= LIMIT, `${anteil} % comment lines in the operations files, allowed are ${LIMIT} %`);
   if (anteil < LIMIT - 0.5)
     console.log(`  ℹ Kommentaranteil Betrieb: ${anteil} % (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
@@ -1558,9 +1561,9 @@ test('long comments in tests, scripts and index.html become fewer, never more', 
     scripts: zaehle(js(path.join(WEB, 'scripts'))),
     indexHtml: html,
   };
-  assert.ok(ist.tests > 0 && ist.indexHtml > 0, 'nichts gefunden — greift die Suche noch?');
+  assert.ok(ist.tests > 0 && ist.indexHtml > 0, 'nothing found — does the search still apply?');
   for (const [k, s] of Object.entries(LIMIT)) {
-    assert.ok(ist[k] <= s, `${k}: ${ist[k]}, erlaubt sind ${s}`);
+    assert.ok(ist[k] <= s, `${k}: ${ist[k]}, allowed are ${s}`);
     if (ist[k] < s) console.log(`  ℹ lange Kommentare ${k}: ${ist[k]} (Schranke ${s}) — Schranke nachziehen`);
   }
 });
@@ -1622,8 +1625,8 @@ test('paths named in test comments exist', () => {
         }
       });
   }
-  assert.ok(n > 400, `nur ${n} Pfade gefunden — greift die Suche noch?`);
-  assert.deepEqual(fehlt, [], 'Pfad auf die heutige Datei ändern; Geschichte gehört in den Commit');
+  assert.ok(n > 400, `only ${n} paths found — does the search still apply?`);
+  assert.deepEqual(fehlt, [], "change the path to today's file; history belongs in the commit");
 });
 
 // ---- Language of the code: German identifiers per area ---------------------
@@ -1634,7 +1637,7 @@ test('German identifiers become fewer, never more (server and tests separately; 
   const { germanIdentifiers, isGerman } = require('./helpers/german-identifiers');
   assert.ok(isGerman('backInDieTable') && isGerman('preiseNachladen') && isGerman('ladeAn'), 'Stichprobe deutsch');
   assert.ok(!isGerman('importStatus') && !isGerman('jobKinds') && !isGerman('settable'), 'Stichprobe englisch');
-  assert.equal(germanIdentifiers("const x = 'Fehler'; // Fehler").size, 0, 'Texte und Kommentare zählen nicht');
+  assert.equal(germanIdentifiers("const x = 'Fehler'; // Fehler").size, 0, 'texts and comments do not count');
   const SKIP = new Set(['node_modules', 'dist', 'coverage', 'data', 'vendor', '.git']);
   const files = (/** @type {string} */ d, /** @type {string[]} */ out = []) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -1658,7 +1661,7 @@ test('German identifiers become fewer, never more (server and tests separately; 
     const found = new Set();
     for (const f of list) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) found.add(id);
     const limit = LIMITS[/** @type {keyof typeof LIMITS} */ (area)];
-    assert.ok(found.size <= limit, `${found.size} deutsche Bezeichner in ${area}, erlaubt sind ${limit}`);
+    assert.ok(found.size <= limit, `${found.size} German identifiers in ${area}, allowed are ${limit}`);
     if (found.size < limit)
       console.log(`  ℹ deutsche Bezeichner ${area}: ${found.size} (Schranke ${limit}) — Schranke nachziehen`);
   }
@@ -1666,12 +1669,12 @@ test('German identifiers become fewer, never more (server and tests separately; 
 
 test('German assertion messages become fewer, never more', () => {
   // Tests speak English (CLAUDE.md), as on Android; texts users read stay German and count only outside „…“.
-  // Counter-check: `assert.ok(1, 'Die Liste fehlt')` added to app-scrollbar.test.js → red (5680 of 5679).
+  // Counter-check: `assert.ok(1, 'Die Liste fehlt')` added to app-scrollbar.test.js → red (5568 of 5567).
   const { messages, isGermanMessage, germanMessages } = require('./helpers/assert-messages');
-  assert.ok(messages("assert.ok(x, 'Die Liste fehlt')").some(isGermanMessage), 'self-proof: a German message');
+  assert.ok(messages(`assert${'.'}ok(x, 'Die Liste fehlt')`).some(isGermanMessage), 'self-proof: a German message');
   assert.ok(!isGermanMessage("'the list is missing'"), 'self-proof: an English message');
   assert.deepEqual(messages("assert.equal(title, 'Galerie')"), [], 'an expected value is no message');
-  const LIMIT = 5679;
+  const LIMIT = 5567;
   const found = germanMessages(__dirname);
   assert.ok(found.length <= LIMIT, `${found.length} German assertion messages, allowed are ${LIMIT}`);
   if (found.length < LIMIT)
@@ -1755,9 +1758,9 @@ test('no German names in the UI code', () => {
   // Counter-check (22.11.2026): `.fehler-hinweis` in styles.css and `let knopfLeiste` in public/js/dom.js
   // → red with both places; 'korrigiert' taken out of SERVER_CODES → red (wanted-xml.js).
   const { germanNames, contractNames, germanWords } = require('./helpers/german-names');
-  assert.deepEqual(germanWords('fehlerZustand'), ['fehler', 'zustand'], 'die Wortliste greift nicht');
+  assert.deepEqual(germanWords('fehlerZustand'), ['fehler', 'zustand'], 'the word list does not apply');
   assert.deepEqual(germanWords('errorState'), []);
   const allowed = new Set([...contractNames(), ...Object.values(NOT_OURS).flat()]);
-  assert.ok(allowed.has('tile_price'), 'der Vertrag liefert keine Namen — greift die Suche noch?');
-  assert.deepEqual(germanNames(allowed), [], 'deutsche Namen im Code der Oberfläche: auf Englisch umbenennen');
+  assert.ok(allowed.has('tile_price'), 'the contract delivers no names — does the search still apply?');
+  assert.deepEqual(germanNames(allowed), [], 'German names in the UI code: rename them to English');
 });

@@ -1,3 +1,14 @@
+/**
+ * The container start (data-permissions.sh, docker-entrypoint.sh) runs with stubbed commands.
+ *
+ * Counter-checks, each in data-permissions.sh: the first message removed → red “the startup says what it
+ * does”; repair also in the clean case → red “the owner change does not run on every start”; default
+ * `always` instead of `auto` → red “whoever needs it differently can set it”; `mkdir` without su-exec → red
+ * “the service creates the created directories itself, not root”; the marker check replaced by `false` →
+ * red “a normal start does not even go through the files”; `|| true` removed from setzeMarke() → red
+ * “the marker aborts no startup”; `-h` removed from the chown of /app/data → red “chown as root follows
+ * no symlink”.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -5,147 +16,120 @@ const path = require('node:path');
 
 // What root does to ./data is in data-permissions.sh (its own service before app and jobs).
 const ep = fs.readFileSync(path.join(__dirname, '..', 'data-permissions.sh'), 'utf8');
-const entry = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8');
 
 /**
- * The container start is not silent, and it does not work in vain.
+ * Runs data-permissions.sh (or, as root, docker-entrypoint.sh) with /app replaced by a temporary
+ * directory and stubs for id, chown, find, mkdir and su-exec. Stubs and the script write into one
+ * log, so the order of messages and work is visible.
+ * @param {{ env?: Record<string, string>, marker?: string, root?: boolean, findHit?: string, failSu?: boolean }} o
  */
+function runPermissions(o = {}) {
+  const os = require('node:os');
+  const { spawnSync } = require('node:child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-perm-'));
+  try {
+    const app = path.join(dir, 'app');
+    const bin = path.join(dir, 'bin');
+    const log = path.join(dir, 'log');
+    fs.mkdirSync(path.join(app, 'data'), { recursive: true });
+    fs.mkdirSync(path.join(app, 'schluessel'), { recursive: true });
+    fs.mkdirSync(bin);
+    if (o.marker !== undefined) fs.writeFileSync(path.join(app, 'data', '.eigentuemer'), o.marker);
+    const stub = (name, body) =>
+      fs.writeFileSync(path.join(bin, name), `#!/bin/sh\necho "+ ${name} $*" >> '${log}'\n${body}\n`, { mode: 0o755 });
+    stub('id', o.root ? 'echo 0' : 'echo 4242');
+    stub('chown', '');
+    stub('mkdir', '');
+    stub('find', `case "$*" in *-print*) printf '%s' "$FIND_HIT";; esac`);
+    stub('su-exec', o.failSu ? 'exit 1' : '');
+    const script = name =>
+      fs.writeFileSync(
+        path.join(app, name),
+        fs.readFileSync(path.join(__dirname, '..', name), 'utf8').replaceAll('/app', app),
+      );
+    script('data-permissions.sh');
+    script('docker-entrypoint.sh');
+    const r = spawnSync(
+      'sh',
+      ['-c', `sh '${path.join(app, o.root ? 'docker-entrypoint.sh' : 'data-permissions.sh')}' >> '${log}' 2>&1`],
+      {
+        env: { PATH: `${bin}:/usr/bin:/bin`, FIND_HIT: o.findHit ?? '', ...o.env },
+        encoding: 'utf8',
+      },
+    );
+    const lines = fs.readFileSync(log, 'utf8').replaceAll(app, '/app').split('\n').filter(Boolean);
+    return { status: r.status, lines, calls: lines.filter(z => z.startsWith('+ ')) };
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+const repairs = (/** @type {string[]} */ calls) => calls.filter(z => /^\+ find .*-exec chown/.test(z));
+const searches = (/** @type {string[]} */ calls) => calls.filter(z => /^\+ find .*-print -quit/.test(z));
 
 test('the startup says what it does', () => {
-  // The actual damage was not the waiting time but the silence: one
-  // cannot tell whether something is working or hanging.
-  const zeilen = [...ep.matchAll(/^echo "\[daten-rechte\]/gm)].length;
-  assert.ok(
-    zeilen >= 2,
-    `Nur ${zeilen} Ausgabe(n) im Entrypoint. Ohne sie beginnt jeder Start mit ` + 'einer unbestimmten Zeit Schweigen.',
-  );
-  const firstOutput = ep.indexOf('echo "[daten-rechte]');
-  const firstWork = ep.indexOf('mkdir -p');
-  assert.ok(
-    firstOutput > 0 && firstOutput < firstWork,
-    'Die erste Ausgabe steht hinter der ersten Arbeit — dann schweigt der Start ' +
-      'wieder genau so lange, wie die Arbeit dauert.',
-  );
+  // The damage was not the waiting time but the silence: one cannot tell working from hanging.
+  const { status, lines } = runPermissions();
+  assert.equal(status, 0, lines.join('\n'));
+  assert.match(lines[0], /^\[daten-rechte\]/, `the start begins with work instead of a message:\n${lines.join('\n')}`);
+  assert.ok(lines.filter(z => z.startsWith('[daten-rechte]')).length >= 2, 'the start says too little');
+  assert.match(lines.at(-1), /^\[daten-rechte\] fertig/, 'the end of the start is not announced');
 });
 
 test('the owner change does not run on every start', () => {
-  // ── The rule ─────────────────────────────────────────────────────────────
-  // `chown -R` over the data directory is a REPAIR STEP. It may
-  // occur, but never unconditionally: every inode change is on an SD card
-  // or a network drive a separate write, and data/images/ fills
-  // up with every set, part and minifigure image.
-  const recursively = [...ep.matchAll(/^\s*(chown -R |find \/app\/data -xdev ! -uid "\$ZIEL_UID" -exec chown )/gm)];
-  assert.ok(
-    recursively.length > 0,
-    'Der Reparaturschritt fehlt ganz — ein frisch ' + 'eingehaengter Datentraeger waere dann nie zu retten',
-  );
-  for (const m of recursively) {
-    // Indented, i.e. in a function or a branch; at the start of the line
-    // it would run over all images at EVERY start.
-    assert.match(m[0], /^\s+/, 'Der Reparaturschritt steht unbedingt am Zeilenanfang.');
-  }
-  // The search stops at the FIRST hit: in the normal case one pass without
-  // a single write.
-  assert.match(
-    ep,
-    /find \/app\/data -xdev ! -uid "\$ZIEL_UID" -print -quit/,
-    'Die Vorabsuche fehlt oder laeuft ohne -quit durch — dann kostet sie den ' +
-      'ganzen Baum, statt beim ersten Fund abzubrechen',
-  );
+  // The recursive chown is a repair step: every inode change is a write on an SD card.
+  const clean = runPermissions();
+  assert.equal(clean.status, 0);
+  assert.equal(searches(clean.calls).length, 1, 'without a marker the start must look first, once');
+  assert.deepEqual(repairs(clean.calls), [], 'the repair step runs although nothing is foreign');
+  const foreign = runPermissions({ findHit: '/app/data/images/x.jpg' });
+  assert.equal(repairs(foreign.calls).length, 1, 'a foreign owner is found but not repaired');
 });
 
 test('whoever needs it differently can set it', () => {
-  // `never` for mounts on which chown has no effect (SMB/CIFS with
-  // fixed uid); `always` in case the search ever misses something.
-  for (const wert of ['never', 'always']) {
-    assert.ok(ep.includes(`  ${wert})`), `BRICKINV_CHOWN=${wert} gibt es nicht mehr`);
-  }
-  assert.match(
-    ep,
-    /\$\{BRICKINV_CHOWN:-auto\}/,
-    'Die Vorgabe ist nicht mehr "auto" — dann entscheidet der Zufall der ' + 'Umgebung, ob ein Start Minuten kostet',
-  );
+  const never = runPermissions({ env: { BRICKINV_CHOWN: 'never' }, findHit: '/app/data/x' });
+  assert.deepEqual([...searches(never.calls), ...repairs(never.calls)], [], 'never still searches or repairs');
+  const always = runPermissions({ env: { BRICKINV_CHOWN: 'always' }, marker: '4242' });
+  assert.equal(repairs(always.calls).length, 1, 'always does not force the repair');
+  const auto = runPermissions({ marker: '4242', findHit: '/app/data/x' });
+  assert.deepEqual(repairs(auto.calls), [], 'without BRICKINV_CHOWN the default is not auto');
 });
 
-// Counter-check (measured 02.11.2026): `su-exec brickinv` before mkdir deleted → red.
 test('the service creates the created directories itself, not root', () => {
-  // That way they belong to it even after BRICKINV_CHOWN=never, and a symlink of the
-  // service under /app/data does not lead a mkdir by root outside.
-  const code = ep
-    .split('\n')
-    .filter(z => !z.trimStart().startsWith('#'))
-    .join('\n');
+  // That way they belong to it even after BRICKINV_CHOWN=never, and a symlink does not lead root outside.
+  const { calls } = runPermissions({ env: { BRICKINV_CHOWN: 'never' } });
   assert.deepEqual(
-    [...code.matchAll(/^.*\bmkdir\b.*$/gm)].map(m => m[0].trim()),
-    ['su-exec brickinv mkdir -p \\'],
+    calls.filter(z => /^\+ mkdir/.test(z)),
+    [],
+    'root creates directories itself',
   );
-  const flat = code.slice(code.indexOf('su-exec brickinv mkdir -p'));
-  for (const ordner of [
-    '/app/data',
-    '/app/data/instructions',
-    '/app/data/uploads',
-    '/app/data/images/sets',
-    '/app/data/images/parts',
-    '/app/data/images/minifigs',
-  ]) {
-    assert.ok(
-      flat.slice(0, 400).includes(ordner),
-      `${ordner} wird nicht mehr unbedingt gesetzt — nach BRICKINV_CHOWN=never ` +
-        'koennte der Dienst dort nicht schreiben',
-    );
-  }
+  const made = calls.find(z => z.startsWith('+ su-exec brickinv mkdir -p')) ?? '';
+  for (const d of ['instructions', 'uploads', 'images/sets', 'images/parts', 'images/minifigs'])
+    assert.ok(made.split(' ').includes(`/app/data/${d}`), `/app/data/${d} is not created by the service: ${made}`);
 });
 
 test('a normal start does not even go through the files', () => {
-  // Marco's follow-up question
-  assert.match(
-    ep,
-    /MARKE=\/app\/data\/\.\w+/,
-    'Die Marke fehlt — dann laeuft bei JEDEM Start die Suche ueber den ganzen ' +
-      'Datenbestand, auch wenn nichts zu tun ist',
-  );
-  // It must be read BEFORE the search, otherwise it saves nothing.
-  const readBrand = ep.indexOf('cat "$MARKE"');
-  const sought = ep.indexOf('find /app/data -xdev ! -uid "$ZIEL_UID" -print');
-  assert.ok(
-    readBrand > 0 && readBrand < sought,
-    'Die Marke wird erst nach der Suche gelesen. Dann ist die Suche schon ' + 'gelaufen, und die Marke spart nichts.',
-  );
-  // And it must carry the UID, not merely exist: a change of the UID
-  // is exactly the case for which the repair step exists.
-  assert.match(
-    ep,
-    /= "\$ZIEL_UID"/,
-    'Die Marke wird nicht gegen die Ziel-UID geprueft — nach einem Wechsel der ' +
-      'UID bliebe der Bestand dann fremd, und der Dienst koennte nicht schreiben',
-  );
+  // The marker carries the UID: with it no search at all; after a UID change the search runs again.
+  assert.deepEqual(searches(runPermissions({ marker: '4242' }).calls), [], 'the marker saves nothing');
+  assert.equal(searches(runPermissions({ marker: '1000' }).calls).length, 1, 'a marker of another UID is trusted');
 });
 
 test('the marker aborts no startup', () => {
-  // A read-only mounted volume cannot hold it. With
-  // `set -e` that would otherwise be the end of the start — because of a shortcut.
-  const fn = ep.slice(ep.indexOf('setzeMarke() {'), ep.indexOf('case "${BRICKINV_CHOWN'));
-  assert.match(
-    fn,
-    /\|\| true/,
-    'setzeMarke() faengt den Fehlschlag nicht ab. Auf einem nur lesbaren ' +
-      'Datentraeger bricht `set -e` damit den ganzen Start ab.',
-  );
+  // On a read-only volume the marker cannot be written; with `set -e` that must not end the start.
+  const { status, lines } = runPermissions({ failSu: true });
+  assert.equal(status, 0, `a failed marker ends the start:\n${lines.join('\n')}`);
+  assert.match(lines.at(-1), /fertig/);
 });
 
-// Counter-check (measured on 28.10.2026): `-h` removed from the marker's chown → red.
 test('chown as root follows no symlink', () => {
-  // /app/data belongs to the service. Without -h root would rewrite the TARGET of a
-  // symlink placed there — a file outside, say /etc/passwd.
-  const code = `${ep}\n${entry}`
-    .split('\n')
-    .filter(z => !z.trimStart().startsWith('#'))
-    .join('\n');
-  const aufrufe = [...code.matchAll(/\bchown\b[^\n]*/g)].map(m => m[0]);
-  assert.ok(aufrufe.length >= 3, `nur ${aufrufe.length} chown gefunden`);
+  // Without -h root would rewrite the TARGET of a symlink placed in /app/data, say /etc/passwd.
+  const { status, calls } = runPermissions({ root: true, findHit: '/app/data/x' });
+  assert.equal(status, 0);
+  const chowns = calls.filter(z => /^\+ chown|-exec chown/.test(z));
+  assert.ok(chowns.length >= 3, `only ${chowns.length} chown calls ran:\n${calls.join('\n')}`);
   assert.deepEqual(
-    aufrufe.filter(z => !/\bchown (-R )?-h\b/.test(z)),
+    chowns.filter(z => !/chown -h /.test(z)),
     [],
+    'chown without -h',
   );
 });
 

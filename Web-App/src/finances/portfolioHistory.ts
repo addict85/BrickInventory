@@ -36,7 +36,7 @@ export async function portfolioHistory(
   viewerId: number,
   idsChoice: Sicht | number[],
   period: string,
-  db: unknown = k.db,
+  db: FinancesContext['db'] = k.db,
   getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.settings.userValue,
 ) {
   const ids = await k.household.scopeFrom(idsChoice);
@@ -54,7 +54,7 @@ export async function portfolioHistory(
 
   const setNumbers = sets.map((s: { set_number: string }) => s.set_number);
   const setQty = Object.fromEntries(sets.map(s => [s.set_number, s.quantity || 1]));
-  const placeholders = setNumbers.map((_: unknown, i: number) => `$${i + 3}`).join(',');
+  const placeholders = setNumbers.map((_: string, i: number) => `$${i + 3}`).join(',');
   const purchaseTotal = sets.reduce((s: number, r) => s + (Number(r.purchase_price) || 0) * (r.quantity || 1), 0);
 
   let dateFilter = '';

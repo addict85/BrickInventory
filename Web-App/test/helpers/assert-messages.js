@@ -110,7 +110,7 @@ function germanMessages(dir) {
   );
   const found = [];
   for (const f of files)
-    for (const msg of messages(fs.readFileSync(f, 'utf8')))
+    for (const msg of messages(require('./sources').ohneKommentare(fs.readFileSync(f, 'utf8'))))
       if (isGermanMessage(msg)) found.push(`${path.relative(dir, f)}: ${msg.slice(0, 80)}`);
   return found;
 }
