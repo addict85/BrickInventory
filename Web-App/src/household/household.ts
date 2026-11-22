@@ -99,7 +99,7 @@ export async function mayWriteFor(k: HouseholdContext, actorId: number, ownerId:
   return repo.isLinked(k.db, actor, owner);
 }
 
-/** Fresh, for the same reason as darfSchreibenFuer. */
+/** Fresh, for the same reason as mayWriteFor. */
 export async function writeScope(k: HouseholdContext, uid: number): Promise<number[]> {
   const id = parseInt(String(uid), 10);
   checkRequester(id);
@@ -283,7 +283,7 @@ export async function writeAreaFrom(k: HouseholdContext, v: Writer | number[]): 
 }
 
 /** Main accounts see the files of their sub-accounts, not the other way round. Freshly
- * asked like darfSchreibenFuer: an unlinked sub-account should not stay readable until
+ * asked like mayWriteFor: an unlinked sub-account should not stay readable until
  * the memory expires in case the notification fails to arrive. */
 export async function seesAccount(k: HouseholdContext, userRow: number, owner: number): Promise<boolean> {
   checkRequester(userRow);

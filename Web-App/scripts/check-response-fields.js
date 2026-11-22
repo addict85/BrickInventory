@@ -129,7 +129,7 @@ for (const [rel, s] of texts) {
     });
   // A route under routes/ returns the body; the contract router puts it into the envelope.
   // Helper functions stand before the first endpoint; counting starts from there.
-  const ab = s.indexOf('.endpunkt(');
+  const ab = s.indexOf('.endpoint(');
   const own =
     rel.startsWith(`routes${path.sep}`) && ab >= 0
       ? new Set([...responseKey(s.slice(0, ab)), ...responseKey(s.slice(ab), /res\.json\(\s*\{|return\s*\{/g)])

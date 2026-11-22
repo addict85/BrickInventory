@@ -135,7 +135,7 @@ test('after the currency change the household card is redrawn', async () => {
     }),
   });
   try {
-    await sicht(w, 'profil');
+    await sicht(w, 'profile');
     const karte = () => d.getElementById('household-state').textContent;
     assert.ok(await warte(() => /Währung: EUR/.test(karte())), `Karte vorher: ${karte()}`);
     const feld = d.getElementById('s-cur');

@@ -2,7 +2,7 @@
  * Household against a REAL database.
  *
  * Counter-checks for the household with several parent accounts (measured on 28.10.):
- *   A  darfSchreibenFuer() again over all descendants → red: “rights only apply
+ *   A  mayWriteFor() again over all descendants → red: “rights only apply
  *      along a direct link"
  *   B  the check for a reverse link removed → red:
  *      “linking mutually is rejected"

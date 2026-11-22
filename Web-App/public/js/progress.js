@@ -15,7 +15,7 @@ import { loggedInAccount } from './state.js';
 let _gibTimer = null; // Polling fallback timer (only if SSE fails)
 /**
  * An entry in an import's result. The contract does not name `results` (CsvImportStatus is open); this is how
- * src/sets/csvImportLauf.ts writes it.
+ * src/sets/csvImportRun.ts writes it.
  * @typedef {{ set_number?: string, zeile?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportResult
  * @typedef {import('../../frontend-types/contract').CsvImportStatus & { results?: ImportResult[] }} ImportStatus
  */

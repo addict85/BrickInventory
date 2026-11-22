@@ -7,7 +7,7 @@
  * Counter-checks (measured 08.11.2026, each reverted):
  *   A  createInvitation stores the code instead of its hash → red “the
  *      invitation code is only stored as a hash …”
- *   B  darfSchreibenFuer asks householdOf() instead of the link → red
+ *   B  mayWriteFor asks householdOf() instead of the link → red
  *      “write rights never come from memory”
  */
 const test = require('node:test');
@@ -75,7 +75,7 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
       ids,
       'Vorbedingung: das Unterkonto ist gemerkt',
     );
-    assert.equal(await als(ids[0], () => hh.darfSchreibenFuer(ids[0], ids[1])), true);
+    assert.equal(await als(ids[0], () => hh.mayWriteFor(ids[0], ids[1])), true);
     // Unlinked from outside without this process hearing of it.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1', [ids[0]]);
     assert.deepEqual(
@@ -84,16 +84,16 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
       'Vorbedingung: das Gedächtnis ist noch alt',
     );
     assert.equal(
-      await als(ids[0], () => hh.darfSchreibenFuer(ids[0], ids[1])),
+      await als(ids[0], () => hh.mayWriteFor(ids[0], ids[1])),
       false,
-      'darfSchreibenFuer entscheidet nach dem gemerkten Blickfeld',
+      'mayWriteFor entscheidet nach dem gemerkten Blickfeld',
     );
     assert.deepEqual(
-      await als(ids[0], () => hh.schreibbereich(ids[0])),
+      await als(ids[0], () => hh.writeScope(ids[0])),
       [ids[0]],
       'schreibbereich entscheidet nach dem gemerkten Blickfeld',
     );
-    assert.equal(await als(ids[1], () => hh.darfSchreibenFuer(ids[1], ids[1])), true, 'Eigene Daten immer');
+    assert.equal(await als(ids[1], () => hh.mayWriteFor(ids[1], ids[1])), true, 'Eigene Daten immer');
   });
 });
 
@@ -205,7 +205,7 @@ test('manual parts and minifigures carry the owner', () => {
   // Checked on the parameters, not on the wording: one day tightening `rows: any[]`
   // to `rows: Row[]` is an improvement and must not appear here as an
   // error (see checkParameter() in the helper).
-  checkParameter(h, 'besitzerAnhaengen', ['uids', 'rows']);
+  checkParameter(h, 'attachOwners', ['uids', 'rows']);
   assert.match(
     h,
     /if \(uids\.length < 2 \|\| !rows\?\.length\) return rows;/,
@@ -222,7 +222,7 @@ test('manual parts and minifigures carry the owner', () => {
   );
 
   const fc = kompakt(require('./helpers/sources').finanzQuelle());
-  const uses = (fc.match(/await (?:kx?\.household\.)?besitzerAnhaengen\(uids,/g) || []).length;
+  const uses = (fc.match(/await (?:kx?\.household\.)?attachOwners\(uids,/g) || []).length;
   // Since UI review 12 also the sets: every row is the stock of one account.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });
@@ -400,7 +400,7 @@ test('manual parts and minifigures also move via the purchase price', () => {
   assert.ok(src.includes('t.inventory.manualEntryReassign(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,
-    /if \(to === null\) fachfehler\('verboten', 'kein_schreibrecht'\)/,
+    /if \(to === null\) failDomain\('verboten', 'kein_schreibrecht'\)/,
     `${f}: ohne Schreibrecht muss 403 kommen`,
   );
 });

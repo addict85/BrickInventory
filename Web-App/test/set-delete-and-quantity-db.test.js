@@ -56,7 +56,7 @@ test('deleting asks at most once', () => {
 test('the quantity multiplication is in all places', () => {
   const h = ohneKommentare(require('./helpers/sources').handlerQuelle());
   // Parts and minifigures of a set count PER COPY times the set count.
-  const stellen = (h.match(/mengeAus\('sm', ?1\)/g) || []).length;
+  const stellen = (h.match(/quantityFrom\('sm', ?1\)/g) || []).length;
   assert.ok(
     stellen >= 3,
     `nur ${stellen} Stellen multiplizieren mit der Setanzahl — erwartet werden ` +
@@ -67,7 +67,7 @@ test('the quantity multiplication is in all places', () => {
   // green with a multiplication that aborts at runtime.
   assert.ok(
     (h.match(/mengeJoin\(/g) || []).length >= 3,
-    'Zu wenige JOIN-Quellen: mengeAus() liest `sm.menge`, und den Alias hängt ' + 'erst mengeJoin() an',
+    'Zu wenige JOIN-Quellen: quantityFrom() liest `sm.menge`, und den Alias hängt ' + 'erst mengeJoin() an',
   );
 
   // That the summary follows a quantity change is checked by

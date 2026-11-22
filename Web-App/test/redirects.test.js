@@ -168,7 +168,7 @@ test('outbound requests only go through src/infra/fetch.ts', () => {
   assert.deepEqual(fremd, [], 'eigener Abrufweg an Hostliste, Umleitungs- und Grössengrenze vorbei');
   assert.match(
     ohneKommentare(read('src/infra/fetch.ts')),
-    /nextRedirect\(u, r\.headers\?\.location, kopf, o\.hosts\)/,
+    /nextRedirect\(u, r\.headers\?\.location, header, o\.hosts\)/,
     'der Helfer prüft die Umleitungsziele nicht gegen die Hostliste',
   );
   assert.match(

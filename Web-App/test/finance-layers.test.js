@@ -90,7 +90,7 @@ test('scope is explained in one place', () => {
         lauf(p);
       } else if (n.endsWith('.ts')) {
         const s = fs.readFileSync(p, 'utf8');
-        if (/^\s*(export )?type Blickfeld\w* =/m.test(s)) {
+        if (/^\s*(export )?type Scope\w* =/m.test(s)) {
           treffer.push(path.relative(wurzel, p).split(path.sep).join('/'));
         }
       }
@@ -99,7 +99,7 @@ test('scope is explained in one place', () => {
   assert.deepEqual(
     treffer,
     ['src/household/rules.ts'],
-    'Der Typ Blickfeld wird an mehr als einer Stelle erklaert. Er gehoert dort ' +
+    'Der Typ Scope wird an mehr als einer Stelle erklaert. Er gehoert dort ' +
       'hin, wo asIds() steht — sonst driften die Fassungen auseinander, und eine ' +
       'Signatur sagt nicht mehr, ob sie vor oder nach der Normalisierung steht.',
   );

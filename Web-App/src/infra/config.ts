@@ -401,23 +401,25 @@ function sessionConfig(env: Environment, f: string[]) {
 }
 
 /** A data key is 32 bytes as base64; anything else is reported, not shortened. */
-function dataKey(env: Environment, name: string, hint: string, f: string[]): string {
+function checkedDataKey(env: Environment, name: string, hint: string, f: string[]): string {
   const v = env[name]?.trim() || '';
   if (v && Buffer.from(v, 'base64').length !== 32) f.push(`${name} muss 32 Byte als base64 sein (${hint})`);
   return v;
 }
 
 export function loadConfig(raw: Environment = process.env): AppConfig {
+  // Files first and on `raw` itself: X_FILE leaves the caller's environment, so a second
+  // call (or a later reader of process.env) does not see both X and X_FILE.
+  const f: string[] = secretsFromFiles(raw);
   const env = withRenamedVariables(raw);
-  const f: string[] = secretsFromFiles(env);
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
 
   const basis = env.APP_BASE_URL?.trim().replace(/\/+$/, '') || null;
   if (basis && !/^https?:\/\/[^/\s]+/i.test(basis))
     f.push(`APP_BASE_URL="${env.APP_BASE_URL}" ist keine http(s)-Adresse`);
 
-  const datenSchluessel = dataKey(env, 'DATA_KEY', 'openssl rand -base64 32', f);
-  const dataKeyAlt = dataKey(env, 'DATA_KEY_ALT', 'der vorige DATA_KEY', f);
+  const datenSchluessel = checkedDataKey(env, 'DATA_KEY', 'openssl rand -base64 32', f);
+  const dataKeyAlt = checkedDataKey(env, 'DATA_KEY_ALT', 'der vorige DATA_KEY', f);
 
   const zone = zoneFrom(env, f);
 
