@@ -19,6 +19,8 @@
  *      a sandbox” (both paths, header missing)
  *   F  (08.11.) seesAccount reads via scopeIds (memory) again → red:
  *      “an unlinked sub-account is no longer readable immediately” (200 instead of 404)
+ *   G  (22.11.) no-store set inside the handler again (after the guards) → red:
+ *      “without login, and no answer goes into a cache” (the 401 without the header)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -155,7 +157,10 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
     assert.equal((await hole(H, `/data/uploads/${U}/a.pdf`)).status, 404);
   });
 
-  await t.test('without login', async () => {
-    assert.equal((await hole(undefined, `/data/uploads/${H}/a.pdf`)).status, 401);
+  await t.test('without login, and no answer goes into a cache', async () => {
+    const ohne = await hole(undefined, `/data/uploads/${H}/a.pdf`);
+    assert.equal(ohne.status, 401);
+    for (const r of [ohne, await hole(F, `/data/uploads/${H}/a.pdf`), await hole(H, `/data/uploads/${H}/a.pdf`)])
+      assert.equal(r.kopf.get('cache-control'), 'private, no-store', `${r.status}`);
   });
 });
