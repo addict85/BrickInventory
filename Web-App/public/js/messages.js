@@ -24,6 +24,22 @@ function startDeadline(el) {
  * hint in the login card; toast() therefore leaves it out. */
 const _messagesTheExpiredSession = new Set();
 
+/**
+ * Read a message aloud through one of two fixed live regions: status politely, errors at once. The
+ * toasts themselves are not live: a region that appears together with its text is often not announced,
+ * and an alert nested in a polite region is announced twice or not at all.
+ * @param {string} text @param {boolean} fehler
+ */
+function announce(text, fehler) {
+  const region = G(fehler ? 'ansage-fehler' : 'ansage-status');
+  if (!region) return;
+  // Emptied first: the same text again (a second identical error) is otherwise not read.
+  region.textContent = '';
+  setTimeout(() => {
+    region.textContent = text;
+  }, 50);
+}
+
 /** @param {{text: string, fn: () => unknown, bleibt?: boolean}} [aktion] button in the message, e.g. "undo";
  *  `bleibt` keeps it across a view switch (discardToasts).
  * @param {string} [details] expandable cause below the message
@@ -51,13 +67,13 @@ export function toast(msg, type = 'info', aktion, details) {
     zahl.textContent = `×${stand.anzahl}`;
     zahl.hidden = false;
     startDeadline(/** @type {HTMLElement} */ (gleich));
+    announce(String(msg ?? ''), type === 'error');
     return /** @type {HTMLElement} */ (gleich);
   }
   // A success settles older errors: they would otherwise stay next to the confirmation.
   if (type === 'success') for (const alt of [...c.children]) if (alt.classList.contains('error')) alt.remove();
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  if (type === 'error') el.setAttribute('role', 'alert');
   // textContent instead of innerHTML: msg regularly contains server error messages and set/part numbers from
   // Nutzereingaben.
   const icon = document.createElement('span');
@@ -111,6 +127,7 @@ export function toast(msg, type = 'info', aktion, details) {
     el.append(zu);
   }
   c.appendChild(el);
+  announce(aktion ? `${String(msg ?? '')} — ${aktion.text}` : String(msg ?? ''), type === 'error');
   _toastStand.set(el, { schluessel, anzahl: 1, frist: null, duration: bleibt ? 0 : (TOAST_DURATION[type] ?? 4500) });
   startDeadline(el);
   // As long as the mouse or focus is on it, the deadline does not run.

@@ -101,7 +101,12 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
     });
 
     await t.test(`${breite} px: confirm`, async () => {
-      await b.auswerten(`document.querySelector('#gallery .delbtn').click(); true`);
+      // Deleting a purchase is irreversible and still asks (js/deletion.js); a set goes without a question.
+      await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
+      await bis(`!!document.querySelector('#set-modal.open [data-click="openAcqModal"]')`, 'Set-Detail');
+      await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
+      await bis(`!!document.querySelector('#acq-modal [data-click="acqDelete"]')`, 'Kaufpreise');
+      await b.auswerten(`document.querySelector('#acq-modal [data-click="acqDelete"]').click(); true`);
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Bestätigungsdialog');
       await ruhig();
       assert.deepEqual(await b.auswerten(MEASURE('#confirm-modal .modal')), []);

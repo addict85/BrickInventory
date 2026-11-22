@@ -12,7 +12,7 @@ import { toast } from './messages.js';
 import { deleteManualFig, loadManualFigsTable, manualMinifigs, updateManualFig } from './minifigs.js';
 import { loggedInAccount } from './state.js';
 import { locationBlock, loadLocationSelection } from './detail-fields.js';
-import { confirmDelete } from './confirm-prompt.js';
+import { deleteFinal } from './deletion.js';
 import { acqSummary, renderManAcqSummary, summaryMan } from './purchase-price-display.js';
 import { chartWidth, priceChartSVG, renderMarketRows } from './charts.js';
 import { deleteManualPart, loadManualParts, manualParts, updateManualPart } from './parts.js';
@@ -558,7 +558,6 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
  * @param {string} acqId
  */
 async function manAcqDelete(type, id, colorId, acqId) {
-  if (!(await confirmDelete(tRaw('acq.delete_title'), tRaw('acq.delete_text'), 'loeschen'))) return;
   const delUrl =
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
@@ -567,11 +566,13 @@ async function manAcqDelete(type, id, colorId, acqId) {
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
       : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
-  const d = await api('DELETE', delUrl);
-  if (!d.success) {
-    toast(tRaw('settings.error'), 'error');
-    return;
-  }
+  const d = await deleteFinal({
+    title: tRaw('acq.delete_title'),
+    text: tRaw('acq.delete_text'),
+    icon: 'loeschen',
+    request: () => api('DELETE', delUrl),
+  });
+  if (!d) return;
   // Update the quantity field in the detail dialog
   const qEl = G('man-det-qty');
   if (qEl && d.new_quantity !== undefined) qEl.value = d.new_quantity;

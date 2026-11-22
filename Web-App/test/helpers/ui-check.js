@@ -111,7 +111,15 @@ const VIEWS = [
   ['Teil-Detail', [reiter('parts'), klick('.man-tile[data-click="openManDetail"]')]],
   ['Teil aus Set', [reiter('parts'), klick('.part-card[data-click="openSetItemDetail"]')]],
   ['Merkposten-Detail', [reiter('wanted'), klick('.mk-zeile[data-click="oeffneMerkpostenDetail"]')]],
-  ['Löschen bestätigen', [reiter('parts'), klick('.man-tile .delbtn')]],
+  [
+    'Löschen bestätigen',
+    [
+      reiter('gallery'),
+      klick('#gallery [data-click="openModal"]'),
+      klick('#set-modal [data-click="openAcqModal"]'),
+      klick('#acq-modal [data-click="acqDelete"]'),
+    ],
+  ],
   // A toast with a button and the build list with chips, among them one the catalog does not know.
   ['Toast mit Aktion', [reiter('gallery'), `location.hash = '#/sammlung/set/99999-9'; true`]],
   [
@@ -224,7 +232,7 @@ const BAR = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisi
 
 /**
  * All views at 320 px (or `breite`) and 200 % font, in all six designs light
- * and dark. `modus` 'browser' enlarges like the browser setting
+ * and dark. Above 640 px the page counts as a desktop (24 px tap targets, no phone emulation). `modus` 'browser' enlarges like the browser setting
  * (Page.setFontSizes), 'seite' sets the page's base font to 200 %,
  * 'schmal' measures 320 px at normal font in English.
  */
@@ -242,11 +250,12 @@ function checkLargeFont(modus, breite = 320) {
       return;
     }
     const { b } = app;
+    const mobil = breite <= 640;
     await b.tab('Emulation.setDeviceMetricsOverride', {
       width: breite,
-      height: 640,
+      height: mobil ? 640 : 900,
       deviceScaleFactor: 1,
-      mobile: true,
+      mobile: mobil,
     });
     await warte(1000);
     await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
@@ -278,7 +287,7 @@ function checkLargeFont(modus, breite = 320) {
           );
           await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
           const wo = `${design} ${dunkel ? 'dunkel' : 'hell'}`;
-          for (const f of [...(await b.auswerten(LAYOUT(true))), ...(await b.auswerten(BAR))])
+          for (const f of [...(await b.auswerten(LAYOUT(mobil))), ...(await b.auswerten(BAR))])
             if (GROSS.test(f) || (modus === 'schmal' && f.startsWith('Auswahl'))) funde.push(`${wo}: ${f}`);
         }
       await t.test(ansicht, () => assert.deepEqual(funde, []));

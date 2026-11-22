@@ -18,6 +18,8 @@
  *      id”
  *   F  click lock again only for summary → red: “index.html and templates”
  *      (the delete cross of the tile opens the delete prompt offline)
+ *   G  (22.11.2026) SERVED again without [data-change], [data-input] → red: “index.html and
+ *      templates” (autosave fields such as the alert threshold stay free offline)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -254,10 +256,24 @@ test('index.html and templates: exactly the writing ones locked offline', async 
     ])
       assert.ok(namen.has(n), `${n} kommt in den gezeichneten Knöpfen nicht vor`);
     assert.ok([...namen].filter(n => !s.has(n)).length > 40, 'zu wenig lesende Knöpfe gezeichnet');
+    // A field that saves on change counts like a writing button, whatever its data-click does.
+    const writes = k => ['data-click', 'data-change', 'data-input'].some(a => s.has(k.getAttribute(a)));
     const falsch = knoepfe
-      .filter(k => gesperrt(k) !== s.has(k.getAttribute('data-click')))
+      .filter(k => gesperrt(k) !== writes(k))
       .map(k => `${k.getAttribute('data-click')}${k.id ? '#' + k.id : ''}: ${gesperrt(k) ? 'gesperrt' : 'frei'}`);
     assert.deepEqual(falsch, []);
+    // Autosave fields (alert threshold and the like) are locked as well, reading filters stay free.
+    const felder = [
+      ...d.querySelectorAll('input:not([type=file])[data-change], select[data-change], input[data-input]'),
+    ].filter(k => !vorher.has(k) && !k.closest('#login-screen'));
+    const schreibende = felder.filter(k => s.has(k.getAttribute('data-change') || k.getAttribute('data-input')));
+    assert.ok(schreibende.length > 0, 'kein speicherndes Feld gezeichnet');
+    assert.deepEqual(
+      felder
+        .filter(k => k.disabled !== schreibende.includes(k))
+        .map(k => `${k.id || k.getAttribute('data-change')}: ${k.disabled ? 'gesperrt' : 'frei'}`),
+      [],
+    );
     // The delete cross of the tile is a <span> without disabled: the click must trigger nothing.
     const beforeCalls = aufrufe.length;
     await reiter(w, 'gallery');

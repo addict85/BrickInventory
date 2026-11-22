@@ -7,7 +7,7 @@ import { fmtN, readAmount, amountForField } from './format.js';
 import { feldFehler } from './form.js';
 import { toast } from './messages.js';
 import { uploadCsv } from './components.js';
-import { confirmDelete } from './confirm-prompt.js';
+import { deleteRestorable } from './deletion.js';
 import { gallerySets } from './state.js';
 import { esc, html, rawHtml } from './escaping.js';
 // Settings, price alerts section: overview, change threshold, delete, CSV import.
@@ -142,38 +142,27 @@ async function aendereAlarmSchwelle(key, value) {
  * @param {string} setNumber
  */
 async function loescheAlarm(key, setNumber) {
-  // Same confirmation dialog as everywhere else (confirm-prompt.js) instead of the browser's, followed by "undo".
-  if (!(await confirmDelete(tRaw('alerts.delete_title'), tRaw('alerts.confirm_delete', { set: setNumber }), 'alarm')))
-    return;
+  // Restorable: the undo writes the old threshold back, so no question before (js/deletion.js).
   const { setNumber: sn, condition } = alarmKey(key);
   const before = (await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`))?.alerts?.find(
     a => a.condition === condition,
   );
-  const d = await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${encodeURIComponent(condition)}`);
-  if (!d?.success) {
-    toast(d?.error || tRaw('settings.error'), 'error');
-    await ladeAlarmUebersicht();
-    return;
-  }
-  toast(
-    tRaw('alerts.deleted', { set: setNumber }),
-    'success',
-    before
-      ? {
-          text: tRaw('trash.undo'),
-          bleibt: true,
-          fn: async () => {
-            const r = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
-              direction: before.direction === 'ueber' ? 'ueber' : 'unter',
-              threshold: Number(before.threshold),
-              condition,
-            });
-            if (!r?.success) toast(r?.error || tRaw('settings.error'), 'error');
-            await ladeAlarmUebersicht();
-          },
+  await deleteRestorable({
+    request: () => api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${encodeURIComponent(condition)}`),
+    message: tRaw('alerts.deleted', { set: setNumber }),
+    undo: before
+      ? async () => {
+          const r = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
+            direction: before.direction === 'ueber' ? 'ueber' : 'unter',
+            threshold: Number(before.threshold),
+            condition,
+          });
+          if (!r?.success) toast(r?.error || tRaw('settings.error'), 'error');
+          return !!r?.success;
         }
       : undefined,
-  );
+    after: ladeAlarmUebersicht,
+  });
   await ladeAlarmUebersicht();
 }
 

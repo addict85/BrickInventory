@@ -6,7 +6,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { responseError, feldFehler } from './form.js';
 import { toast } from './messages.js';
 import { html } from './escaping.js';
-import { confirmDelete } from './confirm-prompt.js';
+import { deleteFinal } from './deletion.js';
 import { loadLocationDefault } from './account-locations.js';
 import { loadLocations } from './detail-fields.js';
 // Settings, storage locations section: the pool of locations the detail fields pick from; create, rename,
@@ -154,14 +154,13 @@ async function schalteLagerortVorgabe(id, was) {
  * @param {string} name
  */
 async function loescheLagerort(id, name) {
-  if (!(await confirmDelete(tRaw('storage.delete_title'), `${name} — ${tRaw('storage.delete_text')}`, 'lagerort')))
-    return;
-  const d = await api('DELETE', `/v1/storage/locations/${encodeURIComponent(id)}`);
-  if (!d?.success) {
-    toast(d?.error || tRaw('settings.error'), 'error');
-    return;
-  }
-  await ladeLagerortVerwaltung();
+  const d = await deleteFinal({
+    title: tRaw('storage.delete_title'),
+    text: `${name} — ${tRaw('storage.delete_text')}`,
+    icon: 'lagerort',
+    request: () => api('DELETE', `/v1/storage/locations/${encodeURIComponent(id)}`),
+  });
+  if (d) await ladeLagerortVerwaltung();
 }
 
 // Names below are registry-exposed (index.html/connection.js/tests) — kept unchanged.

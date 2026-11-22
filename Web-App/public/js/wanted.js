@@ -8,6 +8,7 @@ import { emptyState, reportHits, ico, G, TRASH_ICON_SVG, knopfBesetzt, resetButt
 import { fmtDatum, fmtN, readAmount } from './format.js';
 import { setnummerFieldValid, amountFromField, quantityFromField } from './form.js';
 import { toast } from './messages.js';
+import { deleteRestorable } from './deletion.js';
 import { detailRow, kachelName, listLoadError, skeletonRows, uploadCsv } from './components.js';
 import { addScopeParam } from './account-filter.js';
 import { accountCurrency } from './state.js';
@@ -272,26 +273,18 @@ export async function merkpostenLoeschen(arg) {
   const { set_number, condition, owner_user_id } = parseKey(arg);
   if (!set_number) return;
   const p = new URLSearchParams({ owner_user_id: String(owner_user_id) });
-  const d = await api('DELETE', `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`);
-  if (!d?.success) {
-    toast(d?.error || tRaw('settings.error'), 'error');
-    return;
-  }
   // Undo recreates the item; besides number, condition and owner it has nothing of its own.
-  toast(tRaw('wanted.deleted'), 'success', {
-    text: tRaw('trash.undo'),
-    bleibt: true,
-    fn: async () => {
+  const d = await deleteRestorable({
+    request: () => api('DELETE', `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`),
+    message: tRaw('wanted.deleted'),
+    undo: async () => {
       const r = await api('POST', '/v1/wanted', { set_number, condition, owner_user_id });
-      if (!r?.success) {
-        toast(r?.error || tRaw('settings.error'), 'error');
-        return;
-      }
-      toast(tRaw('trash.restored'), 'success');
-      await ladeMerkliste();
+      if (!r?.success) toast(r?.error || tRaw('settings.error'), 'error');
+      return !!r?.success;
     },
+    after: ladeMerkliste,
   });
-  await ladeMerkliste();
+  if (d) await ladeMerkliste();
 }
 
 /**

@@ -405,9 +405,7 @@ async function rueckgaengig(_t, a) {
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'Sammlung');
   await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc[data-arg="75192-1"]'); k.focus();
     k.querySelector('.delbtn').click(); return true; })()`);
-  await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage');
-  await a.ruhig(2000);
-  await b.auswerten(`document.getElementById('cd-confirm').click(); true`);
+  // Restorable: no question (js/deletion.js).
   await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'gelöscht');
   await a.ruhig();
   await b.auswerten(

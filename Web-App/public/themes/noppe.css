@@ -140,9 +140,7 @@
 [data-theme="noppe"] header,[data-theme="hochglanz"] header,
 [data-theme="noppe"] header a,[data-theme="hochglanz"] header a,
 [data-theme="noppe"] header .brand,[data-theme="hochglanz"] header .brand,
-[data-theme="noppe"] header .logo .marke span,[data-theme="hochglanz"] header .logo .marke span,
-[data-theme="noppe"] header .hs .v,[data-theme="hochglanz"] header .hs .v,
-[data-theme="noppe"] header .hs .l,[data-theme="hochglanz"] header .hs .l{color:#fff}
+[data-theme="noppe"] header .logo .marke span,[data-theme="hochglanz"] header .logo .marke span{color:#fff}
 
 [data-theme="noppe"] nav,[data-theme="hochglanz"] nav{
   background:var(--b600);border-bottom:3px solid var(--ink);
@@ -167,7 +165,7 @@
 
 /* ── Flaechen ───────────────────────────────────────────────────────────── */
 [data-theme="noppe"] .card,[data-theme="hochglanz"] .card,
-[data-theme="noppe"] .modal-content,[data-theme="hochglanz"] .modal-content{
+[data-theme="noppe"] .modal,[data-theme="hochglanz"] .modal{
   background:var(--sur);border:2.5px solid var(--ink);box-shadow:0 4px 0 var(--ink);
 }
 

@@ -4,7 +4,7 @@
  *   - Set detail: “abc” as alert threshold is an error at the field, not a
  *     silent deletion; a set only present as used preselects “used”,
  *     and the field names the currency.
- *   - Price alerts: deleting asks in its own dialog and offers undo.
+ *   - Price alerts: deleting goes without a question and offers undo (restorable, js/deletion.js).
  *   - Storage locations: occupied locations cannot be deleted (with reason), renaming
  *     reports success, an empty name an error; from ten characters before the
  *     limit the field counts along.
@@ -16,8 +16,10 @@
  * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
  *   A  in sendAlarm the line with feldFehler removed → red: “alert in the
  *      set detail” (DELETE instead of error message)
- *   B  in loescheAlarm again confirm() → red: “delete alert with dialog
- *      and undo”
+ *   B  in loescheAlarm again confirm() → red: “delete alert without question,
+ *      with undo”
+ *   B2 (22.11.2026, rule of js/deletion.js) loescheAlarm again with confirmDelete before →
+ *      red: “delete alert without question, with undo” (question opened)
  *   C  in lagerorte `belegt ? ' disabled'` removed → red: “storage locations”
  *   D  in the counter listener (formular) return immediately → red: “storage locations”
  *   E  in ladeGutscheine again one sum over all currencies → red:
@@ -65,7 +67,7 @@ test('alert in the set detail', async () => {
   }
 });
 
-test('delete alert with dialog and undo', async () => {
+test('delete alert without question, with undo', async () => {
   const alarm = {
     set_number: SN,
     name: 'Burg',
@@ -90,13 +92,9 @@ test('delete alert with dialog and undo', async () => {
     await sicht(o.w, 'alarme');
     await warte(() => o.d.querySelector('#alerts-list [data-click="loescheAlarm"]'));
     o.d.querySelector('#alerts-list [data-click="loescheAlarm"]').click();
-    assert.ok(
-      await warte(() => o.d.getElementById('confirm-modal').style.display === 'flex', 1500),
-      'kein eigener Dialog',
-    );
-    assert.equal(browserConfirm, 0);
-    o.d.getElementById('cd-confirm').click();
     assert.ok(await warte(() => loeschen(o, `/sets/${SN}/alert`).length === 1));
+    assert.equal(browserConfirm, 0);
+    assert.notEqual(o.d.getElementById('confirm-modal').style.display, 'flex', 'Rückfrage vor Wiederherstellbarem');
     const rueck = await warte(
       () => [...o.d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)),
       1500,

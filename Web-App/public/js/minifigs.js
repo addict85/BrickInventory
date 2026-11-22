@@ -32,10 +32,9 @@ import { fmtDatum, fmtN } from './format.js';
 import { amountFromField, quantityFromField, purchaseDateValid } from './form.js';
 import { toast } from './messages.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './account-filter.js';
-import { deletedWithUndo } from './trash.js';
+import { deleteRestorable } from './deletion.js';
 import { accountCurrency } from './state.js';
 import { emptyLocationField, selectedOwner, selectedStorage } from './account-locations.js';
-import { confirmDelete } from './confirm-prompt.js';
 
 // ── MINIFIGUREN ──────────────────────────────────────────────────────────────
 /**
@@ -315,26 +314,19 @@ export function renderFigs(list, target) {
 
 /** @param {string} figNumber @param {number|string} [owner] see deleteManualPart */
 export async function deleteManualFig(figNumber, owner) {
-  if (!(await confirmDelete(tRaw('figs.delete.title'), tRaw('gallery.delete.text', { name: figNumber }), 'figur')))
-    return false;
-  const d = await api(
-    'DELETE',
-    `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
-  );
-  if (d.success) {
-    deletedWithUndo(
-      tRaw('figs.deleted'),
-      d,
-      undefined,
-      `.man-tile[data-arg="fig"][data-arg2="${CSS.escape(figNumber)}"]`,
-    );
-    loadMinifigs();
-    loadManualFigsTable();
-    return true;
-  } else {
-    toast(d.error || t('settings.error'), 'error');
-    return false;
-  }
+  const d = await deleteRestorable({
+    request: () =>
+      api(
+        'DELETE',
+        `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+      ),
+    message: tRaw('figs.deleted'),
+    focus: `.man-tile[data-arg="fig"][data-arg2="${CSS.escape(figNumber)}"]`,
+  });
+  if (!d) return false;
+  loadMinifigs();
+  loadManualFigsTable();
+  return true;
 }
 
 /** @type {ManuelleFigur[]} */

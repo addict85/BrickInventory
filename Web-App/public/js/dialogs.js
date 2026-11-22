@@ -80,11 +80,33 @@ export function onDialogChange(fn) {
   _listeners.push(fn);
 }
 
+// Messages and their buttons ("undo") stay reachable above an open dialog.
+const NEVER_INERT = '#toasts, #ansage-status, #ansage-fehler';
+
+/**
+ * Everything beside the topmost open dialog is inert: aria-modal alone does not stop a screen reader's
+ * virtual cursor or a mouse click from reaching the page behind. Only what this module set is lifted again.
+ */
+function updateInert() {
+  const top = topDialog();
+  for (const el of /** @type {HTMLElement[]} */ ([...document.body.children])) {
+    const should = !!top && el !== top && !el.matches(NEVER_INERT) && el.tagName !== 'SCRIPT';
+    if (should && !el.hasAttribute('inert')) {
+      el.setAttribute('inert', '');
+      el.dataset.dialogInert = '';
+    } else if (!should && el.hasAttribute('data-dialog-inert')) {
+      el.removeAttribute('inert');
+      delete el.dataset.dialogInert;
+    }
+  }
+}
+
 /** @param {HTMLElement} dialog */
 function stateChanged(dialog) {
   const open = isOpen(dialog);
   if (open === _wasOpen.get(dialog)) return;
   _wasOpen.set(dialog, open);
+  updateInert();
   for (const h of _listeners) h(dialog, open);
   if (open) {
     const active = document.activeElement;

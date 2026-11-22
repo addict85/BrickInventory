@@ -7,6 +7,8 @@
  *      name” (set-modal)
  *   B  role="alert" for error messages removed → red: “messages are
  *      announced”
+ * Counter-check (22.11.2026): announce() always into #ansage-status → red: “messages are
+ *   announced” (error text not in the alert region)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,15 +37,21 @@ test('every dialog has a name', async () => {
   }
 });
 
-test('messages are announced', async () => {
+test('messages are announced: status politely, errors assertively', async () => {
   const { w, d } = await openUi();
   try {
-    const container = d.getElementById('toasts');
-    assert.equal(container.getAttribute('aria-live'), 'polite');
+    const status = d.getElementById('ansage-status');
+    const fehler = d.getElementById('ansage-fehler');
+    assert.equal(status.getAttribute('aria-live'), 'polite');
+    assert.equal(fehler.getAttribute('role'), 'alert');
+    // The toast list itself is no live region any more: nested in it, an alert was announced twice.
+    assert.equal(d.getElementById('toasts').closest('[aria-live], [role="status"], [role="alert"]'), null);
     // An import without a file reports an error.
     d.getElementById('csv-file').dispatchEvent(new w.Event('change', { bubbles: true }));
-    await warte(() => container.querySelector('.toast.error'));
-    assert.equal(container.querySelector('.toast.error').getAttribute('role'), 'alert');
+    await warte(() => d.getElementById('toasts').querySelector('.toast.error'));
+    const text = d.getElementById('toasts').querySelector('.toast.error .toast-text').textContent;
+    await warte(() => fehler.textContent === text);
+    assert.notEqual(status.textContent, text, 'error also read in the polite region');
   } finally {
     w.close();
   }

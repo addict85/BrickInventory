@@ -351,10 +351,10 @@ async function startgeruest(_t, a) {
 async function loeschen(_t, a, name) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="21318-1"]')`, 'Sammlung');
-  const loesche = async nr => {
+  const loesche = async (nr, frage = true) => {
     await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc[data-arg="${nr}"]'); k.focus();
       k.querySelector('.delbtn').click(); return true; })()`);
-    await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage');
+    if (frage) await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage');
     await a.ruhig(3000);
   };
   await loesche('21318-1');
@@ -381,9 +381,14 @@ async function loeschen(_t, a, name) {
 
   const reihe = await b.auswerten(`[...document.querySelectorAll('#gallery .sc')].map(k => k.dataset.arg)`);
   const nr = reihe[1];
-  await loesche(nr);
-  await b.auswerten(`document.getElementById('cd-confirm').click(); true`);
+  // Only the own copy: restorable, so no question (js/deletion.js), the toast offers undo.
+  await loesche(nr, false);
   await bis(`!document.querySelector('#gallery .sc[data-arg="${nr}"]')`, 'Set gelöscht');
+  assert.notEqual(
+    await b.auswerten(`document.getElementById('confirm-modal').style.display`),
+    'flex',
+    'Rückfrage vor dem eigenen Set',
+  );
   await a.ruhig();
   assert.equal(await b.auswerten(aktiv), `DIV ${reihe[2]}`, 'Fokus nach dem Löschen nicht auf der nächsten Karte');
   await b.auswerten(

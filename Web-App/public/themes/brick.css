@@ -90,7 +90,6 @@
   filter:hue-rotate(200deg) saturate(.55) brightness(1.05);
 }
 [data-theme="brick"] header .ubadge{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.8)}
-[data-theme="brick"] header .abadge{background:var(--brick-petrol);color:#fff}
 /* ── Hier stand eine Regel fuer #btn-logout, und sie war der Fehler ────────
 
    Marcos Befund, dreimal gemeldet: „Beim Logout-Eintrag fehlt der Text."
@@ -187,8 +186,7 @@
 
 /* ── Panels/Karten etwas klobiger ────────────────────────────────────────── */
 [data-theme="brick"] .card,[data-theme="brick"] .fstat,
-[data-theme="brick"] .ssec,[data-theme="brick"] .bereich-karte,
-[data-theme="brick"] .gctrl{border-width:1.5px;border-radius:14px}
+[data-theme="brick"] .ssec{border-width:1.5px;border-radius:14px}
 
 /* ── Set-Karten: blauer Noppen-„Deckel" über dem Bild + Badges ──────────── */
 /* ── Warum die Kachel oben offen ist ─────────────────────────────────────────
@@ -270,24 +268,6 @@
 [data-theme="brick"] .bstat-petrol{background:var(--brick-petrol)}
 [data-theme="brick"] .bstat-light{background:var(--brick-slate-lt);color:#20303f}
 
-/* ── Katalog: Von-Bis-Jahres-Slider im Stein-Look ────────────────────────── */
-/* Schiene wie die Grundplatten-Ränder, Füllung in Slate-Blau */
-[data-theme="brick"] .dual-track{background:#d4dde7;height:6px;top:10px;border-radius:3px}
-[data-theme="brick"] .dual-fill{background:var(--b600);height:6px;border-radius:3px}
-/* Griffe als Noppen: Stud-Glanzpunkt oben links + „Bauhöhe" (Schatten unten) */
-[data-theme="brick"] .dual-range input[type=range]::-webkit-slider-thumb{
-  width:18px;height:18px;margin-top:4px;
-  background:radial-gradient(circle at 35% 32%, rgba(255,255,255,.55) 3.5px, transparent 4.5px), var(--b600);
-  border:2px solid #fff;
-  box-shadow:0 2px 0 var(--b700), 0 1px 3px rgba(45,71,99,.28);
-}
-[data-theme="brick"] .dual-range input[type=range]::-moz-range-thumb{
-  width:14px;height:14px;
-  background:radial-gradient(circle at 35% 32%, rgba(255,255,255,.55) 3px, transparent 4px), var(--b600);
-  border:2px solid #fff;
-  box-shadow:0 2px 0 var(--b700), 0 1px 3px rgba(45,71,99,.28);
-}
-/* Badge + Reset-Chip erben bereits das themable .qbadge (Slate-Blau) */
 
 /* ── Login- und Startup-Screen ───────────────────────────────────────────────
    Beide Screens laufen VOR dem Login und wurden vom Design bisher gar nicht

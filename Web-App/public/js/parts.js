@@ -32,9 +32,8 @@ import { fmtBig, fmtN } from './format.js';
 import { toast } from './messages.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './account-filter.js';
 import { gallerySets, accountCurrency } from './state.js';
-import { confirmDelete } from './confirm-prompt.js';
 import { manualQuery, manualTable, tablesView } from './minifigs.js';
-import { deletedWithUndo } from './trash.js';
+import { deleteRestorable } from './deletion.js';
 /** @typedef {import('../../frontend-types/contract').GET_api_v1_parts['parts'][number]} PartRow */
 
 // ── PARTS ─────────────────────────────────────────────
@@ -679,25 +678,18 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
  *   "success". Reasoning and measurement in src/household/household.ts.
  */
 export async function deleteManualPart(partNumber, colorId, owner) {
-  if (!(await confirmDelete(tRaw('parts.delete.title'), tRaw('gallery.delete.text', { name: partNumber }), 'teil')))
-    return false;
-  const d = await api(
-    'DELETE',
-    `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
-  );
-  if (d.success) {
-    deletedWithUndo(
-      tRaw('parts.deleted'),
-      d,
-      undefined,
-      `.man-tile[data-arg="part"][data-arg2="${CSS.escape(partNumber)}"][data-arg3="${colorId || 0}"]`,
-    );
-    loadManualParts();
-    return true;
-  } else {
-    toast(d.error || t('settings.error'), 'error');
-    return false;
-  }
+  const d = await deleteRestorable({
+    request: () =>
+      api(
+        'DELETE',
+        `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+      ),
+    message: tRaw('parts.deleted'),
+    focus: `.man-tile[data-arg="part"][data-arg2="${CSS.escape(partNumber)}"][data-arg3="${colorId || 0}"]`,
+  });
+  if (!d) return false;
+  loadManualParts();
+  return true;
 }
 
 subscribe('bestandGeaendert', () => {

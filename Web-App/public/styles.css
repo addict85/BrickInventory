@@ -113,10 +113,6 @@
     .sprunglink:focus{transform:none}
     main:focus{outline:none}
     .hright{display:flex;align-items:center;gap:16px}
-    .hstats{display:flex;gap:14px}
-    .hs{display:flex;flex-direction:column;align-items:center;line-height:1.2}
-    .hs .v{font-variant-numeric:tabular-nums;font-size:var(--fs-3);font-weight:500;color:var(--b600)}
-    .hs .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
     /* ── Die Bedienelemente der Kopfleiste sind gleich hoch ──────────────
 
        Marcos Vorgabe vom 17.10.: „Der Abmeldebutton sollte gleich gross wie
@@ -243,7 +239,6 @@
     .ubadge-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     .ubadge-striche{flex:0 0 auto;font-size:var(--fs-3);line-height:1;opacity:.75}
     .ubadge-knopf[aria-expanded="true"] .ubadge-striche{opacity:1}
-    .abadge{background:var(--a100);color:var(--a-schrift);padding:2px 7px;border-radius:999px;font-weight:600;font-size:var(--fs-0);display:inline-flex;align-items:center}
 
     nav{background:var(--sur);border-bottom:1px solid var(--bdr);display:flex;padding:0 1rem;overflow-x:auto;position:sticky;top:var(--kopf-h);z-index:99;scrollbar-width:none;-ms-overflow-style:none}
     nav::-webkit-scrollbar{display:none}
@@ -441,9 +436,6 @@
     .csv-log-line.ok{color:var(--g700)}.csv-log-line.er{color:var(--r700)}.csv-log-line.warn{color:var(--txt);border-left:3px solid var(--a500);padding-left:6px}
 
     /* GALLERY */
-    .add2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem}
-    @media(max-width:700px){.add2{grid-template-columns:1fr}}
-    .gctrl{display:flex;gap:10px;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap}
     .si{flex:1;min-width:180px}
     .vtgl{display:flex;background:var(--s100);border:1px solid var(--bedienrand);border-radius:8px;padding:3px;gap:2px}
     .vb{padding:3px 8px;cursor:pointer;background:none;border:2px solid transparent;color:var(--mut);font-size:var(--fs-4);border-radius:6px;transition:all .15s}
@@ -463,7 +455,6 @@
     /* Platzhalter in der Grauschrift des Designs: Das Browsergrau hielt im Dunkeln keine 4,5:1. */
     ::placeholder{color:var(--mut);opacity:1;font-style:italic}
     [data-dunkel]{color-scheme:dark;--farbpunkt-rand:rgba(255,255,255,.55)}
-    .sci .ni{font-size:var(--fs-8)}
     .scb{padding:11px}
     /* [hidden] muss display:flex schlagen — die Preis-Zeile ist jetzt immer im
        Markup (stabiler Anker für updateGalleryPrices) und nur leer ausgeblendet. */
@@ -494,7 +485,6 @@
     .smeta > div{flex:0 0 auto}
     .qbadge{background:var(--b100);color:var(--b700);font-weight:700;font-size:var(--fs-0);padding:2px 7px;border-radius:999px}
     .ibadge{background:var(--g100);color:var(--g700);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
-    .pbadge{background:var(--p100);color:var(--p600);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
     .ca{position:absolute;top:6px;right:6px;opacity:0;transition:opacity .15s}
     /* Manuelle Teile- und Figuren-Kacheln verhalten sich wie Set-Kacheln:
        Der Löschknopf erscheint erst beim Überfahren. Vorher hatten nur
@@ -603,7 +593,6 @@
     .host-port .fg{min-width:0}
     /* Aktionen der Benutzertabelle: Symbol und Wort. */
     .nutzer-aktionen{display:flex;gap:5px;flex-wrap:wrap}
-    .fcur{font-size:var(--fs-1);color:var(--mut);margin-left:3px}
     .fsub{font-size:var(--fs-1);color:var(--mut);margin-top:4px}
     .fsub:empty{display:none}
     /* Grundlage der drei Karten: was gerechnet ist und was nicht. */
@@ -624,7 +613,6 @@
 
     /* PARTS */
     /* Ein Bereich mit eigener Überschrift, z. B. die manuell erfassten Teile. */
-    .bereich-karte{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
     .bereich-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem;overflow-wrap:anywhere;hyphens:auto;min-width:0}
     /* Rand aus einem Token: Ein schwarzer Punkt auf dunklem Grund braucht einen hellen Ring. */
     .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid var(--farbpunkt-rand);flex-shrink:0}
@@ -638,9 +626,6 @@
     .bstat-hinweis{display:none}
     .bstat .bstat-v{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:700;line-height:1.2;margin-top:2px;color:var(--txt)}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
-    .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
-    .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--preis,var(--b600))}
-    .pstat .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
     .parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,8.125rem),1fr));gap:.85rem}
     .part-card{background:var(--sur);border:1.5px solid var(--bdr);border-radius:8px;padding:.85rem;text-align:center;box-shadow:var(--sh0);transition:border-color .15s}
     @media (hover:hover){.part-card:hover{border-color:var(--b300)}}
@@ -649,7 +634,6 @@
     img[loading=lazy]{opacity:0;transition:opacity .25s ease}
     img[loading=lazy].loaded{opacity:1}
     /* Placeholder shimmer for images not yet loaded */
-    .img-ph{background:linear-gradient(90deg,var(--s100) 25%,var(--s50) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
     .skelett{cursor:default;pointer-events:none;box-shadow:none}
     .sc.skelett{padding:12px}
@@ -693,9 +677,6 @@
     .group-hd > .ico{width:18px;height:18px;flex:none;color:var(--mut)}
     .group-title{font-size:var(--fs-3);font-weight:700;color:var(--txt);margin:0;hyphens:manual;overflow-wrap:normal}
     .group-sub{font-size:var(--fs-2);color:var(--s600)}
-    .no-parts{text-align:center;padding:3rem;color:var(--mut)}
-    .no-parts .icon{font-size:var(--fs-8);margin-bottom:.75rem}
-    .no-parts h3{font-weight:700;color:var(--txt);margin-bottom:.3rem}
 
     /* SETTINGS */
     .sgrid2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
@@ -813,10 +794,24 @@
     /* Wenig Höhe für die Schrift (320 px bei 200 %, Querformat): Kopf und Fuss rollen mit, fest liessen sie dem
        Inhalt ein Drittel. Gemessen in der Schrift des Dialogs, deshalb ein Container statt @media. */
     .ovl{container:ovl / size}
-    @container ovl (max-height: 30em){ .mhd,.mfooter{position:static} }
+    @container ovl (max-height: 30em){ .mhd,.mfooter{position:static}
+      /* With large font a scroll box inside the scrolling dialog leaves a few lines of table: the dialog scrolls alone. */
+      #wanted-xml-tabelle{max-height:none!important}
+      /* A label wider than the dialog wraps instead of leaving the frame; the phone has its own rules. */
+      @media (min-width:641px){ .modal .btn{white-space:normal;max-width:100%} } }
     .il{margin-top:1rem}
-    .ii{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s50);border:1px solid var(--bdr);border-radius:7px;margin-bottom:5px;font-size:var(--fs-2)}
-    .ii a{color:var(--b600);font-weight:600;text-decoration:none;flex:1}
+    .ii{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:4px 6px 4px 10px;background:var(--s50);border:1px solid var(--bdr);border-radius:7px;margin-bottom:5px;font-size:var(--fs-2)}
+    /* Link and delete button are tap targets: 24 px here, 44 px in mobile.css. */
+    .ii a{color:var(--b600);font-weight:600;text-decoration:none;flex:1 1 10rem;min-height:24px;display:inline-flex;align-items:center;gap:4px}
+    .ii-art{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-0);font-weight:600;padding:2px 8px;border-radius:999px;color:var(--txt);border:1px solid var(--bdr)}
+    .ii-art-manual{background:var(--p100)}.ii-art-local{background:var(--b100)}.ii-art-external{background:var(--g100)}
+    .ii-art .ico{width:.875rem;height:.875rem}
+    .ii-weg{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;color:var(--mut);min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+    .ii-weg .ico{width:16px;height:16px}
+    @media (hover:hover){.ii-weg:hover{border-color:var(--bdr);color:var(--txt)}}
+    .neuer-tab{display:inline-flex;align-items:center}.neuer-tab .ico{width:.8em;height:.8em;margin-left:.25em}
+    /* In a button the marker is a flex item of its own: it may wrap, or it would widen the narrowest button. */
+    .btn:has(> .neuer-tab){flex-wrap:wrap}
     @media (hover:hover){.ii a:hover{text-decoration:underline}}
 
     /* TOAST */
@@ -848,8 +843,6 @@
        Verlust zeigt die G&V-Spalte. */
     .price-cell{font-variant-numeric:tabular-nums;color:var(--txt);font-size:var(--fs-2)}
     .price-total{font-variant-numeric:tabular-nums;color:var(--preis,var(--b700));font-weight:600}
-    .lv{display:inline-flex;align-items:center;background:var(--g100);color:var(--g700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
-    .lc{display:inline-flex;align-items:center;background:var(--b100);color:var(--b700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     /* Preisstatus in der Finanztabelle: Haken = Preis da, Warndreieck = keiner.
        cursor:help zeigt an, dass ein Tooltip dranhängt — sonst probiert das
        niemand aus. */
@@ -868,7 +861,9 @@
     .rollen-zelle{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
     .rolle-chip{align-items:center;gap:4px;max-width:100%}
     /* Bei 320 px und 200 % ist „Administrator“ breiter als die Karte: Dann bricht das Wort, statt zu ragen. */
-    .rolle-wort{min-width:0;overflow-wrap:anywhere;hyphens:auto}
+    /* break-word and no hyphenation: in the desktop table the column keeps the whole word (it scrolls in .tw);
+       only where nothing scrolls, in the card, does the word break. */
+    .rolle-wort{min-width:0;overflow-wrap:break-word}
     .rolle-chip:has(> .chip-weg){padding-right:2px}
     .chip-weg{background:none;border:none;cursor:pointer;color:inherit;padding:0;margin:-4px 0;display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;border-radius:999px}
     @media (hover:hover){.chip-weg:hover{background:color-mix(in srgb,currentColor 15%,transparent)}}
@@ -1027,8 +1022,6 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
     .papierkorb-liste{display:flex;flex-direction:column;gap:4px}
     .ew-schritt{display:none}
     .ew-schritt.aktiv{display:block}
-    .ew-quelle{display:flex;flex-direction:column;gap:.4rem;align-items:flex-start;border-top:1px solid var(--bdr);padding-top:.75rem;margin-top:.75rem}
-    .ew-quelle .fg,.ew-quelle .sgrid2{width:100%}
     .pk-zeile{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.45rem .6rem;border:1px solid var(--bdr);border-radius:8px;font-size:var(--fs-3)}
     .pk-zeile .pk-name{flex:1 1 14rem;min-width:0}
     .pk-zeile .pk-nr{font-weight:600}
@@ -1038,7 +1031,7 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
     .voucher-num-row{display:flex;align-items:center;gap:.35rem}
 
     /* ── Symbole an ihren Plätzen (Emoji abgelöst am 27.10.) ─────────────── */
-    .empty .icon .ico,.no-parts .icon .ico,.leer-ico .ico{width:2.75rem;height:2.75rem;color:var(--s400);stroke-width:1.6}
+    .empty .icon .ico,.leer-ico .ico{width:2.75rem;height:2.75rem;color:var(--s400);stroke-width:1.6}
     .leer-ico{margin-bottom:.5rem}
     #cd-icon .ico{width:2.75rem;height:2.75rem;color:var(--r500);stroke-width:1.6}
     #cd-icon.neutral .ico{color:var(--b600)}
@@ -1062,7 +1055,7 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
     .bild-40{width:40px;height:40px;object-fit:contain;background:var(--s50);border-radius:4px}
     .bild-44{width:44px;height:44px;object-fit:contain;flex-shrink:0;border-radius:6px;background:var(--s100)}
     .bild-56{width:56px;height:56px;object-fit:contain;border-radius:6px;background:var(--bg)}
-    .ibadge .ico,.lc .ico,.lv .ico{width:.875rem;height:.875rem}
+    .ibadge .ico{width:.875rem;height:.875rem}
     .btn .ico{width:1rem;height:1rem}
     /* Knöpfe und Felder in der Textschrift und mit ihrem Wortabstand — der Browser setzt
        für sie beides zurück (Arial, word-spacing:normal). */
@@ -1082,7 +1075,6 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
    Regeln liegen; wo eine Grundregel Element und Attribut nennt
    (input[type=text], .fg select), nennen diese es auch. */
 .zeile{display:flex}
-.zeile-inline{display:inline-flex;align-items:center;gap:6px}
 .mittig{align-items:center}
 .unten{align-items:flex-end}
 .umbruch{flex-wrap:wrap}
@@ -1099,7 +1091,6 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
 .oben-buendig{align-self:flex-start}
 .unten-buendig{align-self:end}
 .fest{white-space:nowrap;flex-shrink:0}
-.fest-breite{flex-shrink:0}
 .block{display:block}
 /* Grundbreite = Inhalt: Bei flex:1 bekamen beide Knöpfe dieselbe Breite, und „Auf BrickLink kaufen“ stiess an den Rand. */
 .knopf-fuellend{flex:1 1 auto;min-width:0;white-space:normal;justify-content:center}
@@ -1114,7 +1105,6 @@ input[type="checkbox"]{width:24px;height:24px;margin:0;flex:none;accent-color:va
 /* Ein Fehler am Feld ist auch ohne Vorleser sichtbar: roter Rand, doppelt. */
 :root input[aria-invalid="true"],:root select[aria-invalid="true"],:root textarea[aria-invalid="true"]{border-color:var(--r700);box-shadow:0 0 0 1px var(--r700)}
 /* Set-Ansicht: „Teile neu importieren“ steht neben der Teilezahl. */
-.teile-neu{margin-left:6px}
 /* Ohne Verbindung kein Löschen auf der Kachel (siehe schreibenSperren). */
 html[data-offline] .delbtn{display:none}
 html[data-offline] summary[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
@@ -1135,12 +1125,10 @@ input.suchfeld{width:220px}
 .max-420{max-width:420px}.max-440{max-width:440px}.max-480{max-width:480px}.max-520{max-width:520px}
 .max-560{max-width:560px}.max-620{max-width:620px}.max-720{max-width:720px}.max-780{max-width:780px}
 .ohne-rand{margin:0}
-.innen-1,.card.innen-1{padding:1rem}
 .schrift-1,.btn.schrift-1{font-size:var(--fs-1)}.schrift-2,.btn.schrift-2{font-size:var(--fs-2)}.schrift-3,.btn.schrift-3{font-size:var(--fs-3)}
 .text-klein{font-size:var(--fs-1);color:var(--mut)}
 .text-mittel{font-size:var(--fs-2);color:var(--mut)}
 .text-3-mut{font-size:var(--fs-3);color:var(--mut)}
-.text-fett-3{font-weight:600;font-size:var(--fs-3)}
 .farbe-mut{color:var(--mut)}
 .farbe-primaer{color:var(--b600)}
 .wert-primaer{font-weight:700;color:var(--preis,var(--b600))}
@@ -1152,7 +1140,6 @@ input.suchfeld{width:220px}
 .mehr-menue > summary::-webkit-details-marker{display:none}
 .mehr-liste{display:flex;gap:8px;flex-wrap:wrap}
 .merk-kasten{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
-.merk-kasten-titel{margin:0;font-size:var(--fs-4);font-weight:700}
 /* Mittig: Am Telefon ist die Zeile 44 px hoch (Tippziel); oben angeschlagen blieb zugeklappt darunter Leerraum. */
 .merk-kasten-kopf{list-style:none;cursor:pointer;border-radius:6px;display:flex;align-items:center}
 .merk-kasten-kopf > .stit{flex:1 1 auto}
@@ -1202,11 +1189,8 @@ input.suchfeld{width:220px}
 .zeiger{cursor:pointer}
 /* Bis js/styles.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */
 [data-stil*="display:none"]{display:none}
-.durchlaessig{display:contents}
 .ohne-rand{margin:0}
 /* Passwortabfragen: QR-Code für die App und Verwalteraktionen */
-.passwort-zeile{display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)}
-.passwort-zeile input{font-size:var(--fs-2);padding:4px 8px}
 .bestaetigung-passwort{margin:0 0 1.25rem;text-align:left}
 .cd-wahl{border:0;padding:0;margin:0 0 1.25rem;text-align:left;display:grid;gap:.25rem}
 .cd-wahl[hidden]{display:none}
@@ -1225,7 +1209,6 @@ input.suchfeld{width:220px}
    schwebenden Knopf, und unter ihm. */
 .ladepunkt{min-height:1px}
 .hinweis-absatz{font-size:var(--fs-2);color:var(--mut);margin:0 0 .5rem 0}
-.etikett-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.35rem}
 .trenner-oben{border-top:1px solid var(--bdr);padding-top:1.1rem}
 /* Karten untereinander stossen nicht aneinander. */
 .tab > .ssec + .ssec{margin-top:var(--sp-4)}
@@ -1244,7 +1227,6 @@ h1.login-unterzeile{font-size:inherit;margin-top:0}
 .erfolg-box{padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:var(--fs-3);margin-bottom:.75rem}
 .csv-status{font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px}
 select.auswahl-kompakt,.fg select.auswahl-kompakt{padding:.45rem .7rem;border:1px solid var(--feldrand);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)}
-select.auswahl-mini,.fg select.auswahl-mini{font-size:var(--fs-1);padding:3px 6px;border:1px solid var(--feldrand);border-radius:6px;background:var(--sur)}
 /* ── Verweise ────────────────────────────────────────────────────────────────
    Ohne eigene Regel standen Links in Browserblau (#0000EE) — auch im
    Dunkelmodus. Knöpfe als Link (.btn) behalten ihre Farbe. */
@@ -1286,7 +1268,6 @@ html[data-offline] #rb-hinweis{display:none}
 body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-catalog).active)) #rb-hinweis{display:none}
 .loading.klein{padding:1rem;font-size:var(--fs-2);gap:6px}
 .loading.klein .spin{width:18px;height:18px;border-width:2px}
-.diagramm-fehler{display:block;padding:.5rem;color:var(--r700);font-size:var(--fs-2)}
 .skelett-wert{display:inline-block;width:7.5em;max-width:100%;height:.9em;margin:0;vertical-align:middle}
 
 /* ── Kleine Bausteine, die vorher als Inline-Stil in den Vorlagen standen ── */
@@ -1301,8 +1282,8 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 .dt-fin td{padding-left:8px;padding-right:8px}
 .dt-fin :is(.fin-datum,.zahl,.fin-guv,.pnl-geschenk){white-space:nowrap}
 .fin-jahr{color:var(--mut);font-size:var(--fs-1);font-variant-numeric:tabular-nums}
-.sp-40{width:40px}.sp-55{width:55px}.sp-60{width:60px}.sp-70{width:70px}.sp-80{width:80px}.sp-90{width:90px}
-.sp-100{width:100px}.sp-110{width:110px}.sp-235{width:235px}.sp-325{width:325px}.sp-380{width:380px}
+.sp-55{width:55px}.sp-60{width:60px}.sp-70{width:70px}.sp-90{width:90px}
+.sp-100{width:100px}.sp-110{width:110px}.sp-235{width:235px}.sp-325{width:325px}
 /* Köpfe brechen nicht um; die Spalten sind dafür breit genug (Kurzform G/V). */
 .dt-fin th{white-space:nowrap;padding-left:8px;padding-right:8px}
 .acq-legende{font-size:var(--fs-0);color:var(--mut);margin-top:2px}
@@ -1367,7 +1348,6 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 #tab-profil .ssec,#tab-gutscheine .ssec,#tab-lagerorte .ssec,#tab-alarme .ssec,#tab-haushalt .ssec,#tab-app .ssec{max-width:52rem}
 .profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:.75rem 1rem}
 .profil-raster .fg{min-width:0}
-.profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr))}
 #tab-profil .btn{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4)}
 .email-status{font-size:var(--fs-1);margin-left:4px}
 .email-ok{color:var(--g700)}
@@ -1376,7 +1356,6 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 /* Vorher Inline-Stile in index.html (data-stil) — als Klassen sieht sie jedes Design. */
 .balken-fuellung{height:100%;background:var(--b600);border-radius:999px;width:0%;transition:width .4s ease}
 .logo-bild{display:block;flex-shrink:0}
-.nicht-schrumpfen{flex-shrink:0}
 .nur-inhalt{display:contents}
 .diagramm-karte{background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
 .diagramm-kopf{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.75rem}
@@ -1446,10 +1425,10 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 .balken-flach{height:6px}
 
 /* Abstände zuletzt: Sie ergänzen die Klassen davor (z. B. .hinweis-absatz.abstand-u-075). */
-.abstand-o-2{margin-top:2px}.abstand-o-3{margin-top:3px}.abstand-o-4{margin-top:4px}.abstand-o-8{margin-top:8px}
+.abstand-o-2{margin-top:2px}.abstand-o-3{margin-top:3px}.abstand-o-8{margin-top:8px}
 .abstand-o-05{margin-top:.5rem}.abstand-o-06{margin-top:.6rem}.abstand-o-075{margin-top:.75rem}.abstand-o-minus4{margin-top:-4px}
 .abstand-u-1px{margin-bottom:1px}.abstand-u-4{margin-bottom:4px}.abstand-u-035{margin-bottom:.35rem}.abstand-u-05{margin-bottom:.5rem}
-.abstand-u-06{margin-bottom:.6rem}.abstand-u-075{margin-bottom:.75rem}.abstand-u-1{margin-bottom:1rem}.abstand-u-125{margin-bottom:1.25rem}
+.abstand-u-075{margin-bottom:.75rem}.abstand-u-1{margin-bottom:1rem}.abstand-u-125{margin-bottom:1.25rem}
 .ohne-abstand-u{margin-bottom:0}
 
 /* Ohne Überfahren (Touch, auch mit Stift) kein Papierkorb auf jeder Kachel: dauerhaft sichtbar war er auf

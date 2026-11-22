@@ -81,8 +81,6 @@ test('focus and toast after restoring in the trash', async () => {
   try {
     await warte(() => d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn'));
     d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn').click();
-    await warte(() => d.getElementById('confirm-modal').style.display === 'flex');
-    d.getElementById('cd-confirm').click();
     assert.ok(await warte(() => d.querySelector('#toasts [data-papierkorb="7"] .toast-aktion')), 'Rückgängig');
     await sicht(w, 'daten');
     await warte(() => d.querySelectorAll('#papierkorb-liste .pk-zeile').length === 2);

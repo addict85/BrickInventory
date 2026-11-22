@@ -69,6 +69,7 @@ import './balance.js';
 import './wanted-xml.js';
 import './bricklink-xml.js';
 import './trash.js';
+import './deletion.js';
 import './second-factor.js';
 import './setup.js';
 import './passkeys.js';

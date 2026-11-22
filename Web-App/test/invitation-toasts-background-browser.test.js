@@ -149,15 +149,19 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     // Only once the collection has finished loading: a later rebuild would replace the
     // focused card, and Delete would go to the body of the page.
     await ruhig();
-    const z = await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc'); k.focus();
+    // An own set (not shared with the sub-account): restorable, so Del deletes at once and offers undo.
+    const z =
+      await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc[data-arg="75192-1"]'); k.focus();
       return { taste: k.getAttribute('aria-keyshortcuts'), cross: k.querySelector('.delbtn').getAttribute('aria-hidden'),
         fokus: document.activeElement === k }; })()`);
     assert.deepEqual(z, { taste: 'Delete', cross: 'true', fokus: true });
     for (const type of ['rawKeyDown', 'keyUp'])
       await b.tab('Input.dispatchKeyEvent', { type, key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
-    await bis(offen, 'Löschdialog');
-    assert.match(await b.auswerten(text('#cd-title')), /löschen/i);
-    await zu();
+    await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'gelöscht');
+    assert.equal(await b.auswerten(offen), false, 'Rückfrage vor Wiederherstellbarem');
+    await b.auswerten(`[...document.querySelectorAll('#toasts .toast-aktion')].at(-1).click(); true`);
+    await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'zurückgeholt');
+    await ruhig();
   });
 
   await t.test('gift as a badge', async () => {
