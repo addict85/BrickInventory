@@ -138,7 +138,7 @@ test('a foreign account sees and changes no data of another via any route', {
     next();
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   for (const r of S.routerEinhaengungen())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);

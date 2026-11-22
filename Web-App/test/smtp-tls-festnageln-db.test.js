@@ -203,7 +203,7 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
     await setze({ smtp_port: a.port, smtp_insecure_tls: '1' });
     const { base } = routerServer(_req, {
       sitzung: { userId: uid, isAdmin: true },
-      routen: { '/api/v2': 'routes/api_v1/settings.js' },
+      routen: { '/api/v2': 'routes/api/settings.js' },
       t,
     });
     const speichere = body =>

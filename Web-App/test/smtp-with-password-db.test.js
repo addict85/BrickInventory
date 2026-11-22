@@ -86,7 +86,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   });
   const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v2': 'routes/api_v1/settings.js' },
+    routen: { '/api/v2': 'routes/api/settings.js' },
     t,
   });
   const speichern = body =>

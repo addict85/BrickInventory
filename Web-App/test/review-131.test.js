@@ -246,7 +246,7 @@ test('the CSV progress stream survives back pressure on the first write', async 
     next();
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   const error = [];
   app.use((e, _req2, res, _next) => {
     error.push(e);

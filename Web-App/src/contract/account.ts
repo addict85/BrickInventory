@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { v1Keys } from './v1';
+import { V1_TAKEOVER_KINDS, V1_QR_STATES, V1_PASSKEY_PURPOSES } from './v1Names';
+import { v1Keys, v1Values } from './v1';
 import { input } from '../infra/validate';
 import { type Route, time, Success, whole, confirmed, WITHOUT_BODY, TEXT } from './base';
 import { GenericResponse } from './shared';
@@ -159,7 +160,7 @@ export const AccountInList = z.looseObject({
   awaiting_confirmation: z.boolean(),
   announced: z.array(
     z.looseObject({
-      type: z.enum(['passwort', 'zweiter_faktor', 'deaktivieren', 'rolle_entziehen', 'loeschen']),
+      type: v1Values(z.enum(['password', 'second_factor', 'deactivate', 'revoke_role', 'delete']), V1_TAKEOVER_KINDS),
       effective_at: z.string(),
     }),
   ),
@@ -243,7 +244,7 @@ export const QrPickup = LoginResponse.omit({ cookie_missing: true }).extend({
 });
 export const QrPairingState = z.looseObject({
   success: z.literal(true),
-  state: z.enum(['offen', 'wartet', 'bestaetigt', 'abgeholt', 'abgelehnt', 'abgelaufen']),
+  state: v1Values(z.enum(['open', 'waiting', 'confirmed', 'collected', 'rejected', 'expired']), V1_QR_STATES),
   device: z.string().nullable(),
   ip_range: z.string().nullable(),
 });
@@ -422,7 +423,7 @@ export const routes = {
     input: z.strictObject({ name: txtLeer(100), response: z.record(z.string(), z.unknown()).nullable().optional() }),
   },
   'POST /api/v2/auth/passkey/login/options': {
-    input: z.strictObject({ purpose: TEXT(40).optional() }),
+    input: z.strictObject({ purpose: v1Values(TEXT(40), V1_PASSKEY_PURPOSES).optional() }),
     response: PasskeyOptions,
   },
   'POST /api/v2/auth/passkey/login': {

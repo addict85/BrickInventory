@@ -15,7 +15,7 @@ export const COLUMNS_SORT = /** @type {Record<string, [string, string]>} */ ({
   name: ['name_asc', 'name_desc'],
   year: ['year_desc', 'year_asc'],
   qty: ['qty_desc', 'qty_asc'],
-  kauf: ['kauf_desc', 'kauf_asc'],
+  purchase: ['purchase_desc', 'purchase_asc'],
 });
 /** @param {string} field @param {string} text */
 function sortHead(field, text) {
@@ -26,7 +26,7 @@ function sortHead(field, text) {
 
 /** @param {Tile[]} list */
 export function setsTable(list) {
-  return html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.collection')}"><thead><tr><th>${tRaw('col.image_th')}</th>${sortHead('num', tRaw('col.nr'))}${sortHead('name', tRaw('col.name'))}${sortHead('year', tRaw('detail.year'))}<th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th>${sortHead('qty', tRaw('detail.qty'))}${sortHead('kauf', tRaw('gallery.card.bought'))}<th class="number">${tRaw('finance.col.purchase')}</th><th class="number">${tRaw('finance.stat.value')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('common.actions')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`;
+  return html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.collection')}"><thead><tr><th>${tRaw('col.image_th')}</th>${sortHead('num', tRaw('col.nr'))}${sortHead('name', tRaw('col.name'))}${sortHead('year', tRaw('detail.year'))}<th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th>${sortHead('qty', tRaw('detail.qty'))}${sortHead('purchase', tRaw('gallery.card.bought'))}<th class="number">${tRaw('finance.col.purchase')}</th><th class="number">${tRaw('finance.stat.value')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('common.actions')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`;
 }
 
 /** Amount for the whole quantity, with the unit price underneath: as in Finances. @param {number} unit @param {number} qty */
@@ -49,7 +49,7 @@ function purchaseCell(s) {
 /** Market value of the quantity with the trend against the purchase price; the price arrives later
  * (updateGalleryPrices). @param {Tile} s */
 export function valueCell(s) {
-  if (!s._price || s._source !== 'markt') return html`<span class="text-mut">—</span>`;
+  if (!s._price || s._source !== 'market') return html`<span class="text-mut">—</span>`;
   const buy = s.avg_purchase_price ?? s.max_purchase_price;
   const pnl = isGift(buy) ? '' : pnlBadge(s._pnl_pct, buy);
   const qty = s.quantity || 1;

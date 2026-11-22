@@ -504,10 +504,10 @@ function adminSource() {
 /** The path on which a set is created or changes, including catalog work. */
 function setCoreSource() {
   return [
-    ['routes/api_v1/sets.ts'],
-    ['routes/api_v1/setsImport.ts'],
-    ['routes/api_v1/setsInstructions.ts'],
-    ['routes/api_v1/setsStorage.ts'],
+    ['routes/api/sets.ts'],
+    ['routes/api/setsImport.ts'],
+    ['routes/api/setsInstructions.ts'],
+    ['routes/api/setsStorage.ts'],
     ['src/sets/service.ts'],
     ['src/sets/content.ts'],
     ['src/sets/barcode.ts'],
@@ -677,7 +677,7 @@ function checkParameter(src, name, params, hint = '') {
  * Where which router hangs — READ from server.ts, not copied: a
  * check that copies the wiring does not check the wiring.
  * @returns [{ mount: '/api/v2/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
- *          without routes/api_v1/* — that is the index itself.
+ *          without routes/api/* — that is the index itself.
  */
 /** @param {{ withoutParts?: boolean }} [o] withoutParts: only the mounted modules, not the files of an assembly */
 function routerEinhaengungen(o = {}) {
@@ -693,7 +693,7 @@ function routerEinhaengungen(o = {}) {
   // A router with a factory is mounted as `baueXRouter(d)`.
   for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)(?:\(\w+\))?\s*\)/g)) {
     const datei = fileJeName.get(m[2]);
-    if (!datei || datei.startsWith('routes/api_v1')) continue;
+    if (!datei || datei.startsWith('routes/api')) continue;
     out.push({
       mount: m[1].replace(/\/+$/, ''),
       datei: path.join(ROOT, datei + '.ts'),
@@ -849,8 +849,8 @@ function v1Routes() {
     for (const m of s.matchAll(/\.endpoint\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g))
       found.push([m[1], m[2]]);
   };
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
-    lies(`routes/api_v1/${f}`, '/api/v2');
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api')).filter(f => f.endsWith('.ts')))
+    lies(`routes/api/${f}`, '/api/v2');
   // The routers mounted in server.ts (auth including parts, gesundheit).
   for (const r of routerEinhaengungen().filter(r => r.mount.startsWith('/api/v2')))
     lies(path.relative(ROOT, r.datei), r.mount);

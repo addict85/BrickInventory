@@ -84,7 +84,7 @@ const CONFIRM = { button: 'common.confirm', kind: 'bp', field: 'settings.passwor
  * "current password" per section, which looked like an error. With a wrong password the dialog asks again.
  * @param {string} title
  * @template T
- * @param {(passwort: string, extra: { code?: string, passkey?: object }) => Promise<T>} call
+ * @param {(password: string, extra: { code?: string, passkey?: object }) => Promise<T>} call
  * @param {string} [explanation] says what is being confirmed (instead of just "password please")
  * @param {Button} [button] main button; with `withCode` the same dialog asks for the code too
  */

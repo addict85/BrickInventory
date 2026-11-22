@@ -170,7 +170,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
   );
   app.use(
     '/api/v2',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
@@ -280,7 +280,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
       username: 'pk_anna',
       password: PASS,
       without_token: true,
-      passkey: bert.anmelden(await options('zweiter_faktor')),
+      passkey: bert.anmelden(await options('second_factor')),
     });
     assert.equal(fremd.status, 401, 'Der Passkey eines anderen Kontos öffnet nichts');
 
@@ -288,7 +288,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
       username: 'pk_anna',
       password: PASS,
       without_token: true,
-      passkey: anna.anmelden(await options('zweiter_faktor'), { uv: false }),
+      passkey: anna.anmelden(await options('second_factor'), { uv: false }),
     });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
   });
@@ -321,7 +321,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
       username: 'pk_anna',
       password: PASS,
       without_token: true,
-      passkey: anna.anmelden(await options('zweiter_faktor'), { origin: appOrigin(APP_HASH) }),
+      passkey: anna.anmelden(await options('second_factor'), { origin: appOrigin(APP_HASH) }),
     });
     assert.equal(zweiter.status, 200, 'Auch als zweiter Faktor gilt die App');
   });
@@ -429,7 +429,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     const falsch = [
       ['erfunden', b64u(crypto.randomBytes(55))],
       ['verändert', b64u(b)],
-      ['zweiter Faktor', await options('zweiter_faktor')],
+      ['zweiter Faktor', await options('second_factor')],
     ];
     const status = [];
     for (const [, c] of falsch) status.push((await ruf('/passkey/login', { response: carl.anmelden(c) })).status);
@@ -449,15 +449,15 @@ test('Passkeys', { concurrency: 1 }, async t => {
         [N, purpose],
       );
     const count = async () => (await db.get('SELECT count(*)::int AS n FROM webauthn_challenges')).n;
-    await fill('anmelden');
-    await fill('zweiter_faktor');
-    for (const purpose of ['anmelden', 'zweiter_faktor'])
+    await fill('login');
+    await fill('second_factor');
+    for (const purpose of ['login', 'second_factor'])
       assert.equal((await ruf('/passkey/login/options', { purpose })).status, 200, purpose);
     assert.equal(await count(), 2 * N, 'die Anmeldeoptionen haben eine Zeile angelegt');
     const c = await sitzung('pk_bert');
     const reg = () => ruf('/passkey/register/options', { password: PASS }, c);
     assert.equal((await reg()).status, 200, 'volle Anmeldetöpfe sperren das Registrieren');
-    await fill('registrieren');
+    await fill('register');
     const r = await reg();
     assert.deepEqual([r.status, r.body?.code], [503, 'server_busy']);
     assert.equal(

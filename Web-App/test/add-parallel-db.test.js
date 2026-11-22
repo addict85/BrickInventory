@@ -222,9 +222,9 @@ test('all three import paths report skipped rows', () => {
   // go via csvRowsFromRequest() and csvImportReport() in
   // src/infra/csvExport.ts. Per path, route, service and job count together.
   for (const [rel, dienst] of [
-    ['routes/api_v1/setsImport.ts', 'src/sets/csvImport.ts'],
-    ['routes/api_v1/parts.ts', 'src/parts/manualParts.ts'],
-    ['routes/api_v1/minifigs.ts', 'src/minifigs/manualMinifigs.ts'],
+    ['routes/api/setsImport.ts', 'src/sets/csvImport.ts'],
+    ['routes/api/parts.ts', 'src/parts/manualParts.ts'],
+    ['routes/api/minifigs.ts', 'src/minifigs/manualMinifigs.ts'],
   ]) {
     const src = ohneKommentare(
       fs.readFileSync(path.join(ROOT, rel), 'utf8') +
@@ -286,7 +286,7 @@ test('the parts list delivers what it reports', () => {
   );
 
   // The response reports the ACTUAL page size, not the requested one.
-  const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/parts.ts'), 'utf8'));
+  const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api/parts.ts'), 'utf8'));
   const response = v1.slice(
     v1.indexOf("router.endpoint('GET /api/v2/parts'"),
     v1.indexOf("router.endpoint('GET /api/v2/parts/brick-colors'"),

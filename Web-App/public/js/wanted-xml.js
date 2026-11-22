@@ -23,14 +23,14 @@ import { loadBrickColors } from './part-add.js';
  * @typedef {import('../../frontend-types/contract').WantedXmlResult & { items: Item[],
  *   aborted?: boolean, colorPending?: number, foreignTypes?: Record<string, number>,
  *   corrections?: { rejected?: unknown[] },
- *   rebrickable?: { asked: number, found: number, aborted?: 'kontingent' | 'kein_schluessel' | 'stoerung' } | null,
+ *   rebrickable?: { asked: number, found: number, aborted?: 'quota' | 'no_key' | 'failure' } | null,
  *   levels?: Record<string, number>, defaultCondition?: string | null }} Report
  */
 /** Why the Rebrickable stage ended early; the remaining items stayed open. */
 const RB_CANCEL_REASON = /** @type {const} */ ({
-  kontingent: 'wanted.rb_stopped_quota',
-  kein_schluessel: 'wanted.rb_stopped_key',
-  stoerung: 'wanted.rb_stopped_error',
+  quota: 'wanted.rb_stopped_quota',
+  no_key: 'wanted.rb_stopped_key',
+  failure: 'wanted.rb_stopped_error',
 });
 /**
  * The chosen file stays in memory until import: the second step sends it again together with the
@@ -129,7 +129,7 @@ async function read(write) {
 /**
  * Set or hide the progress bar. It distinguishes two phases (asking Rebrickable, writing), with a line
  * underneath — a bar with no label would leave open what you're waiting for.
- * @param {{phase:string,fertig:number,total:number}|null} state
+ * @param {{phase:string,done:number,total:number}|null} state
  *   null hides it (before the first run, after the last).
  */
 function drawProgress(state) {
@@ -139,7 +139,7 @@ function drawProgress(state) {
     box.style.display = 'none';
     return;
   }
-  const share = Math.max(0, Math.min(100, Math.round((state.fertig / state.total) * 100)));
+  const share = Math.max(0, Math.min(100, Math.round((state.done / state.total) * 100)));
   box.style.display = '';
   const bar = G('wanted-xml-bar');
   if (bar) bar.style.width = share + '%';
@@ -150,7 +150,7 @@ function drawProgress(state) {
     // tRaw, not t: the target is textContent, and t() escapes for HTML — the escaping would show up as
     // literal characters (test/frontend-escaping.test.js).
     txt.textContent = tRaw(state.phase === 'rebrickable' ? 'wanted.progress_rb' : 'wanted.progress_write', {
-      done: state.fertig,
+      done: state.done,
       total: state.total,
     });
   }
@@ -329,7 +329,7 @@ function row(p, i) {
   // wrong in an English table (seen exactly that way on the running server). If the code is missing (for
   // outcome 'error' the exception message is there instead), the sentence stays as is.
   const reason = p.reasonCode
-    ? t(`wanted.reason_${p.reasonCode}`, { farbe: p.blColor })
+    ? t(`wanted.reason_${p.reasonCode}`, { color: p.blColor })
     : p.reason
       ? esc(p.reason)
       : '';
@@ -358,7 +358,7 @@ function row(p, i) {
        value="${value}" ${rawHtml(extra)}
        data-width-px="${width}"
        data-style="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--field-border);border-radius:5px;text-align:right" />`;
-  const quantityCell = field('menge', correction.quantity ?? p.quantity, 'type="number" min="1" step="1"');
+  const quantityCell = field('quantity', correction.quantity ?? p.quantity, 'type="number" min="1" step="1"');
   // The price per unit. Empty means "none" — then import fetches the market price, like MAXPRICE=-1 in
   // the file.
   const priceValue = correction.kaufpreis !== undefined ? (correction.kaufpreis ?? '') : (p.maxPrice ?? '');
@@ -489,7 +489,7 @@ function wantedCorrectionValue() {
   const k = { ..._corrections.get(i) };
   const raw = el.value.trim();
 
-  if (name === 'menge') {
+  if (name === 'quantity') {
     const m = parseInt(raw, 10);
     // Don't send anything unusable: the server would reject the whole correction, and the color next to it
     // would be lost too. The field shows the current value again instead.

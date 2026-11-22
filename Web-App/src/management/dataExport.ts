@@ -75,7 +75,7 @@ const GLOBAL_IMPORT = [
   'api_limit_brickset',
   'registration_enabled',
   'default_price_condition',
-  'gutschein_land',
+  'voucher_country',
   ...DAILY_JOBS.map(j => `job_time_${j.name}`),
 ].filter(k => !isSensitive(k));
 const ACCOUNT_IMPORT = ['currency', 'user_default_condition'];
@@ -86,7 +86,12 @@ export async function importConfig(kx: ManagementContext, uid: number, admin: bo
   const read = jsonOrNull(file.toString('utf-8'));
   const checked = read ? ConfigExport.safeParse(read.wert) : null;
   if (!checked?.success) failDomain('ungueltig', 'json_invalid');
-  const { global, user_settings: konto } = checked.data;
+  const { global: raw, user_settings: konto } = checked.data;
+  // Exports before migration 0137 name the voucher country in German.
+  const global =
+    raw && 'gutschein_land' in raw && !('voucher_country' in raw)
+      ? { ...raw, voucher_country: raw.gutschein_land }
+      : raw;
   let imported = 0;
   const smtpSkipped = global ? Object.keys(global).filter(isSensitive) : [];
   if (global && admin) {
@@ -101,12 +106,7 @@ export async function importConfig(kx: ManagementContext, uid: number, admin: bo
       imported++;
     }
     if (changed.length)
-      await kx.account.verwalter.rememberAdminAction(
-        uid,
-        uid,
-        'einstellungen_geaendert',
-        `Import: ${changed.join(', ')}`,
-      );
+      await kx.account.verwalter.rememberAdminAction(uid, uid, 'settings_changed', `Import: ${changed.join(', ')}`);
   }
   // Central place: an imported currency change triggers the price job.
   for (const key of ACCOUNT_IMPORT.filter(k => konto?.[k] !== undefined)) {

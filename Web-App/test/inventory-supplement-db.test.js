@@ -94,7 +94,7 @@ test('the inventory lookup lives in only one place', () => {
     for (const m of code.matchAll(/FROM rb_inventories[\s\S]{0,200}?LIMIT 1/g))
       stellen.push(path.relative(ROOT, f) + (m ? '' : ''));
   }
-  // Counter-check: the old SELECT in routes/api_v1/catalog.ts reinserted
+  // Counter-check: the old SELECT in routes/api/catalog.ts reinserted
   // → red.
   assert.deepEqual(
     stellen,

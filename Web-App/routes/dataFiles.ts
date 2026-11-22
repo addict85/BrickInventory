@@ -1,5 +1,5 @@
 /** A file of its own, so a test can mount the real handlers. */
-import { guardFor } from './api_v1/middleware';
+import { guardFor } from './api/middleware';
 import { pathSegments } from '../src/http/httpResponse';
 import express, { type Request, type Response } from 'express';
 import path from 'node:path';

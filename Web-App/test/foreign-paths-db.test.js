@@ -86,7 +86,7 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
   const { base } = routerServer(_req, {
     sitzung: { userId: 1 },
     apiNutzer: { user_id: 1, is_admin: 0 },
-    routen: { '/api/v2': 'routes/api_v1/index.js' },
+    routen: { '/api/v2': 'routes/api/index.js' },
     t,
   });
   let geprueft = 0;

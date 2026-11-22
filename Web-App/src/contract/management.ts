@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { v1Keys, v1Values } from './v1';
-import { V1_JOB_KINDS, V1_JOB_STATUS } from './v1Names';
+import { V1_JOB_KINDS, V1_JOB_STATUS, V1_MONITOR_CODES, V1_PROXY_HINTS, V1_ADMIN_ACTIONS } from './v1Names';
 import { type Route, time, whole, WITHOUT_BODY, TEXT, JA_NO, query, Q, PAGE, PAGES_DETAIL } from './base';
 import { GenericAdminResponse, ImportRow } from './shared';
 
@@ -172,9 +172,9 @@ export const JobStatus = z.looseObject({
   sub_parts: z
     .array(
       z.object({
-        code: z.string(),
+        code: v1Values(z.string(), V1_MONITOR_CODES),
         values: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
-        ago: z.literal('bestand').optional(),
+        ago: v1Values(z.literal('holding'), V1_MONITOR_CODES).optional(),
       }),
     )
     .optional(),
@@ -188,7 +188,7 @@ export const JobsResponse = z.looseObject({
   degraded: z.array(z.string()).optional(),
   proxy_hint: z
     .object({
-      kind: z.enum(['gateway', 'docker_netz', 'eine_adresse']),
+      kind: v1Values(z.enum(['gateway', 'docker_network', 'single_address']), V1_PROXY_HINTS),
       vars: z.object({ ip: z.string(), minutes: whole.optional(), count: whole.optional() }),
     })
     .nullable()
@@ -226,7 +226,7 @@ export const PriceJobState = z.looseObject({
 /** The admin shows the entries raw; their fields are the columns of app_logs. */
 export const LogEntries = z.looseObject({
   success: z.literal(true),
-  entries: z.array(z.record(z.string(), z.unknown())),
+  entries: z.array(z.record(z.string(), v1Values(z.unknown(), V1_ADMIN_ACTIONS))),
 });
 export const ImageDiagnosis = z.looseObject({
   success: z.literal(true),

@@ -19,7 +19,7 @@ export async function removeAccount(k: AccountContext, target: number, through: 
   const remove = () =>
     k.transact(async t => {
       // Before deleting: afterwards the name for the log can no longer be determined.
-      if (through !== null && fremd) await t.protokoll.logEntry(through, target, 'konto_geloescht');
+      if (through !== null && fremd) await t.protokoll.logEntry(through, target, 'account_deleted');
       const route =
         through === null ? await t.konten.deleteOwnAccount(target) : await t.konten.deleteAccount(target, through);
       if (route === repo.LAST_ADMIN || (!route && through === null)) failDomain('konflikt', 'last_admin');

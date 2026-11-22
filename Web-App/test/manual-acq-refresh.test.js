@@ -322,8 +322,8 @@ test('no create path writes directly into an acquisition table', () => {
   for (const f of [
     'src/parts/manualParts.ts',
     'src/minifigs/manualMinifigs.ts',
-    'routes/api_v1/sets.ts',
-    'routes/api_v1/setsImport.ts',
+    'routes/api/sets.ts',
+    'routes/api/setsImport.ts',
     'src/sets/service.ts',
     'src/sets/content.ts',
   ]) {
@@ -335,11 +335,11 @@ test('no create path writes directly into an acquisition table', () => {
     );
   }
   for (const f of [
-    'routes/api_v1/sets.ts',
-    'routes/api_v1/setsImport.ts',
+    'routes/api/sets.ts',
+    'routes/api/setsImport.ts',
     'src/parts/manualParts.ts',
     'src/minifigs/manualMinifigs.ts',
-    'routes/api_v1/acquisitions.ts',
+    'routes/api/acquisitions.ts',
     'src/collection/acquisitions.ts',
   ]) {
     assert.doesNotMatch(

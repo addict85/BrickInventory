@@ -108,7 +108,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     res.json({ ok: true });
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
@@ -420,7 +420,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     // Counter-check (measured on 28.10.2026): the refusal at `!istPdf` removed in
-    // routes/api_v1/vouchers.ts → red (200, file stored).
+    // routes/api/vouchers.ts → red (200, file stored).
     await t.test('reported as PDF but not one: rejected even with typed-in values', async () => {
       const form = new FormData();
       form.append(

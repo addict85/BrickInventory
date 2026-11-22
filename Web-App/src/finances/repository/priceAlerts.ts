@@ -36,7 +36,7 @@ export function writeAlarm(
   userId: number,
   setNumber: string,
   condition: string,
-  direction: 'unter' | 'ueber',
+  direction: 'below' | 'above',
   threshold: number,
   currency: string,
 ) {

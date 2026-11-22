@@ -244,7 +244,7 @@ function partsParams(page) {
   const spare = G('parts-spare').value;
   if (spare !== '') p.set('spare', spare);
   const order = G('parts-order').value;
-  if (order !== 'farbe') p.set('order', order);
+  if (order !== 'color') p.set('order', order);
   // Manually captured parts have their own area at the top — here only set parts.
   p.set('exclude_manual', '1');
   // in_sets is opt-in on the server (costs about 155 ms and 2 MB at 380 sets). Only the table view has
@@ -360,7 +360,7 @@ function appendParts(parts) {
   const list = G('parts-main').querySelector('.parts-list');
   if (!list) return;
   // Ungrouped: the same grid without color tiles, the order comes from the server.
-  if (G('parts-order').value !== 'farbe') {
+  if (G('parts-order').value !== 'color') {
     insertHtml(list, 'beforeend', parts.map(partsCard));
     if (typeof observeLazyImages === 'function') observeLazyImages(list);
     return;
@@ -545,7 +545,9 @@ G('parts-spare').addEventListener('change', loadPartsData);
 // The order is a preference, not a filter: it stays in the browser.
 const PARTS_ORDER_KEY = 'bim_parts_order';
 try {
-  const remembered = localStorage.getItem(PARTS_ORDER_KEY);
+  const stored = localStorage.getItem(PARTS_ORDER_KEY);
+  // Values remembered before API v2 named the order in German.
+  const remembered = stored === 'farbe' ? 'color' : stored === 'menge' ? 'quantity' : stored;
   if (remembered && [...G('parts-order').querySelectorAll('option')].some(o => o.value === remembered))
     G('parts-order').value = remembered;
 } catch (_) {

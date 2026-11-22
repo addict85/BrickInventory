@@ -135,8 +135,8 @@ const SET_SORTS = {
   year_desc: 's.year DESC NULLS LAST',
   year_asc: 's.year ASC NULLS LAST',
   // The table sorts by the column "bought": the last purchase, as tile and row show it.
-  kauf_desc: 'a.last_purchase DESC NULLS LAST, s.added_at DESC',
-  kauf_asc: 'a.last_purchase ASC NULLS LAST, s.added_at DESC',
+  purchase_desc: 'a.last_purchase DESC NULLS LAST, s.added_at DESC',
+  purchase_asc: 'a.last_purchase ASC NULLS LAST, s.added_at DESC',
   price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
   price_asc: 'COALESCE(a.max_purchase_price, 0) ASC',
   // quantity comes from the subquery; added_at orders equal quantities deterministically.

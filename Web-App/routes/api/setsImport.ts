@@ -28,12 +28,12 @@ async function supplementInStream(
     .then(
       k => {
         send({ step: 'done_meta', set: r.set_number });
-        send({ step: 'done', ...result, name: k.name ?? r.name, catalog_pending: !k.name, supplement: 'erledigt' });
+        send({ step: 'done', ...result, name: k.name ?? r.name, catalog_pending: !k.name, supplement: 'done' });
       },
       (f: unknown) => {
         if (f instanceof StreamClosed) return;
         publicError(f, 'sets:add-stream', req);
-        send({ step: 'done', ...result, name: r.name, catalog_pending: true, supplement: 'ausstehend' });
+        send({ step: 'done', ...result, name: r.name, catalog_pending: true, supplement: 'pending' });
       },
     );
   stream.ende();

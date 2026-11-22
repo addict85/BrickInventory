@@ -31,13 +31,13 @@ import { API_VERSION, API_MIN_APP, checkAppVersion } from '../src/http/apiVersio
 import { PUBLIC_DIR } from '../src/infra/appPaths';
 import { sendStartPage } from '../src/profile/http/startPage';
 import { registerImgProxy } from '../routes/imgProxy';
-import { guardFor, readBody } from '../routes/api_v1/middleware';
+import { guardFor, readBody } from '../routes/api/middleware';
 import { stepProtectionAtInbox } from '../src/account/http/stepGuard';
 import { apiThrottle } from '../src/http/apiThrottle';
 import { httpMetrics, metricsEndpoint } from '../src/http/metrics';
 import { idempotency } from '../src/idempotency/http/middleware';
 import { buildDataFilesRouter } from '../routes/dataFiles';
-import { buildApiRouter } from '../routes/api_v1/index';
+import { buildApiRouter } from '../routes/api/index';
 import { buildAuthRouter } from '../routes/auth';
 import { buildCertificateRouter } from '../routes/certificate';
 import { buildCspReportRouter } from '../src/http/cspReport';

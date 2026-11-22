@@ -58,10 +58,10 @@ test('start password: change it first, then everything else', { concurrency: 1 }
   );
   app.use(
     '/api/v2',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   // Like startup/app.ts: an error path behind everything, also behind the entrance.
   app.use(_req('src/http/httpResponse.js').errorResponse);

@@ -215,7 +215,7 @@ export function weightedPurchase(rows: AcquisitionValueRow[]): number | null {
 export interface TileValue {
   tile_price: number | null;
   tile_pnl_pct: number | null;
-  tile_source: 'markt' | 'kauf' | null;
+  tile_source: 'market' | 'purchase' | null;
 }
 
 export interface TileSource {
@@ -258,10 +258,10 @@ export function tileValues(rows: TileSource[]): Map<string, TileValue> {
       pct = e == null ? null : Math.round(e * 10) / 10;
     }
     const purchase = weighted('purchase_price');
-    const source = market > 0 ? 'markt' : purchase != null ? 'kauf' : null;
+    const source = market > 0 ? 'market' : purchase != null ? 'purchase' : null;
     from.set(nr, {
       tile_price:
-        source === 'markt'
+        source === 'market'
           ? aufRappen(inTenThousandths(market) ?? 0)
           : purchase != null
             ? aufRappen(inTenThousandths(purchase) ?? 0)

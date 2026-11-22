@@ -90,7 +90,7 @@ export async function groupedMinifigs(
     -- Over the primary key, so at most one row per match.
     ${minifigViewJoin('m.user_id', 'm.fig_number')}
     -- The latest acquisition per minifig — same ordering as latestSql in
-    -- routes/api_v1/acquisitions.ts, so "latest price" and "latest
+    -- routes/api/acquisitions.ts, so "latest price" and "latest
     -- acquisition" mean the same thing.
     LEFT JOIN LATERAL (
       SELECT a.unit_price

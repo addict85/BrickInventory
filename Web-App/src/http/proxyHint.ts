@@ -7,8 +7,8 @@ import { proxyTrust, withoutV4Shell, inDockerNetwork, isDockerGateway } from '..
 export const EINE_ADDRESS = { anfragen: 300, ms: 60 * 60_000 };
 
 export type ProxyStand =
-  | { kind: 'gateway' | 'docker_netz'; vars: { ip: string } }
-  | { kind: 'eine_adresse'; vars: { ip: string; minutes: number; count: number } };
+  | { kind: 'gateway' | 'docker_network'; vars: { ip: string } }
+  | { kind: 'single_address'; vars: { ip: string; minutes: number; count: number } };
 /** The admin rarely reads the log; background jobs shows the hint of the hint giver,
  * which startup/app.ts stores in app.locals (GET /admin/jobs). */
 export function proxyHintStatus(app: Application): ProxyStand | null {
@@ -44,7 +44,7 @@ export function proxyHint(
     if (!warned && req.headers['x-forwarded-for'] && inDockerNetwork(fromValue) && !trusted(fromValue, 0)) {
       warned = true;
       const ip = withoutV4Shell(fromValue);
-      state = { kind: isDockerGateway(fromValue) ? 'gateway' : 'docker_netz', vars: { ip } };
+      state = { kind: isDockerGateway(fromValue) ? 'gateway' : 'docker_network', vars: { ip } };
       warn(
         isDockerGateway(fromValue)
           ? `⚠️ [sicherheit] X-Forwarded-For kommt über das Docker-Gateway ${ip} und wird verworfen. Über das Gateway ` +
@@ -88,7 +88,7 @@ function onlyClientAddress(
     const minutes = Math.floor((clock() - since) / 60_000);
     if (count < EINE_ADDRESS.anfragen || clock() - since < EINE_ADDRESS.ms) return;
     finished = true;
-    remember({ kind: 'eine_adresse', vars: { ip: withoutV4Shell(ip), minutes, count } });
+    remember({ kind: 'single_address', vars: { ip: withoutV4Shell(ip), minutes, count } });
     warn(
       `⚠️ [sicherheit] Seit ${minutes} Minuten kommen alle ${count} Anfragen über den Proxy mit derselben ` +
         `Client-Adresse ${withoutV4Shell(ip)}. Steht vor Caddy ein weiterer Proxy (z. B. Nginx Proxy Manager), ` +

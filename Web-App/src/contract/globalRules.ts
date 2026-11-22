@@ -70,7 +70,7 @@ export const GLOBAL_RULES = {
     { type: 'string', maxLength: 20_000 },
   ),
   default_price_condition: selection(['N', 'U'], 'condition_n_or_u'),
-  gutschein_land: wert(v => v === '' || /^[A-Z]{2}$/.test(v), { type: 'string', pattern: '^([A-Z]{2})?$' }),
+  voucher_country: wert(v => v === '' || /^[A-Z]{2}$/.test(v), { type: 'string', pattern: '^([A-Z]{2})?$' }),
   app_theme: selection(DESIGNS, 'theme_invalid'),
   job_time_brickset_retry: TIME_OF_DAY,
   job_time_csv_sync: TIME_OF_DAY,

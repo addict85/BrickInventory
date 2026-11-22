@@ -3,7 +3,7 @@
 import express from 'express';
 import { sendStartPage, tokenToFragment } from '../src/profile/http/startPage';
 import { deliverImage } from '../src/images/http/imageDelivery';
-import { guardFor } from './api_v1/middleware';
+import { guardFor } from './api/middleware';
 import type { Services } from '../src/services';
 
 export function buildPagesRouter(d: Pick<Services, 'account' | 'profile' | 'images'>) {

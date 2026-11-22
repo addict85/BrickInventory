@@ -145,7 +145,7 @@ export async function rebrickableRaw(url: string, rbKey: string): Promise<{ stat
 /** No further request can succeed; loops over many numbers abort. */
 export class RebrickableLocked extends Error {
   constructor(
-    readonly reason: 'kontingent' | 'kein_schluessel',
+    readonly reason: 'quota' | 'no_key',
     text: string,
   ) {
     super(text);
@@ -159,15 +159,12 @@ async function rbGet<T extends z.ZodType>(
   params: Record<string, string | number> = {},
 ): Promise<z.output<T> | null> {
   const key = await getRbKey(kl);
-  if (!key) throw new RebrickableLocked('kein_schluessel', 'Rebrickable API Key nicht konfiguriert.');
+  if (!key) throw new RebrickableLocked('no_key', 'Rebrickable API Key nicht konfiguriert.');
   await kl.zugang.drossel.foreground.waitForSlot();
   if (!(await dailyQuotaFree(kl))) {
     // The number from the shared counter, so the text follows the limit.
     const { limit } = await kl.zugang.quotaStatus('rebrickable');
-    throw new RebrickableLocked(
-      'kontingent',
-      `Rebrickable Tageslimit erreicht (${limit}/Tag). Versuche es morgen wieder.`,
-    );
+    throw new RebrickableLocked('quota', `Rebrickable Tageslimit erreicht (${limit}/Tag). Versuche es morgen wieder.`);
   }
   const qs = new URLSearchParams({ page_size: '500', ...params }).toString();
   const { status, body } = await httpsGetRobust(kl, `${BASE}${apiPath}?${qs}`, { Authorization: `key ${key}` }, 45000);

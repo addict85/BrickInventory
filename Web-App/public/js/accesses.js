@@ -37,18 +37,18 @@ async function checkPairing() {
   const d = await api('GET', `/v2/auth/qr-pairing/${k.id}`);
   if (!d.success || _pairing !== k) return;
   const device = d.device || '—';
-  if (d.state === 'wartet') {
+  if (d.state === 'waiting') {
     // The code is used up; otherwise only an image would remain that opens nothing anymore.
     G('qr-code').replaceChildren();
     if (G('qr-pairing').hidden || G('qr-pairing-field').hidden)
       showPairing(tRaw('qr.pairing_question', { device: device, network: d.ip_range || '—' }), true);
-  } else if (d.state === 'bestaetigt') showPairing(tRaw('qr.pairing_confirmed', { device: device }), false);
-  else if (d.state === 'abgeholt') {
+  } else if (d.state === 'confirmed') showPairing(tRaw('qr.pairing_confirmed', { device: device }), false);
+  else if (d.state === 'collected') {
     endPairing();
     G('qr-code').replaceChildren();
     showPairing(tRaw('qr.pairing_done', { device: device }), false);
     loadTokens();
-  } else if (d.state === 'abgelehnt' || d.state === 'abgelaufen') {
+  } else if (d.state === 'rejected' || d.state === 'expired') {
     endPairing();
     G('qr-code').replaceChildren();
     showPairing(tRaw('qr.pairing_rejected'), false);

@@ -45,7 +45,7 @@ test('settings: validation of the values and export per role', { concurrency: 1 
       next();
     });
     app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/settings.js'));
     return app.listen(0);
   };
   const nutzer = appFor(false),

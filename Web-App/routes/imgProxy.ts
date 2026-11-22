@@ -2,7 +2,7 @@
  * is stored in database rows and installed apps. */
 import type { Express, Request, Response } from 'express';
 import { passThroughImage, setNumberFromImageAddress } from '../src/images/http/imageProxy';
-import { guardFor } from './api_v1/middleware';
+import { guardFor } from './api/middleware';
 import { IMG_PROXY_PATH, IMG_PROXY_PATH_LEGACY } from '../src/images';
 import type { Services } from '../src/services';
 

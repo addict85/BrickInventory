@@ -49,7 +49,7 @@ async function startApi() {
   // Since an earlier round the entry routes only live in the shared
   // factory — one address for web app AND app.
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }

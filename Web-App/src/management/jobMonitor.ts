@@ -14,7 +14,7 @@ const JOB_FRESH_MS = 3 * 60_000;
 type Tile = Record<string, unknown>;
 
 /** The subtitle as codes: the tile is created without a request, the UI translates. `sub` stays for the app. */
-type SubPart = { code: string; values?: Record<string, number | string>; ago?: 'bestand' };
+type SubPart = { code: string; values?: Record<string, number | string>; ago?: 'holding' };
 
 const part = (code: string, values?: Record<string, number | string>): SubPart =>
   values ? { code, values } : { code };
@@ -41,7 +41,7 @@ function blIdsTile(alt: Tile, mapped: number, total: number): Tile | null {
     progress: mapped,
     total: total,
     sub: mapped < total ? `${mapped} / ${total} gemappt` : `Alle ${total} gemappt`,
-    sub_parts: [mapped < total ? part('teil_gemappt', { n: mapped, total }) : part('all_mapped', { n: total })],
+    sub_parts: [mapped < total ? part('part_mapped', { n: mapped, total }) : part('all_mapped', { n: total })],
   };
 }
 
@@ -60,7 +60,7 @@ function instructionsTile(alt: Tile, a: { open: number; done: number; error: num
     progress: a.done,
     total: total,
     sub: a.open > 0 ? `${a.open} ausstehend` : 'Alle erledigt',
-    sub_parts: [a.open > 0 ? part('ausstehend', { n: a.open }) : part('all_done')],
+    sub_parts: [a.open > 0 ? part('pending', { n: a.open }) : part('all_done')],
   };
 }
 
@@ -83,10 +83,10 @@ async function bricksetTile(k: ManagementContext, ab: Degradations): Promise<Til
           : `${wartend} Sets warten auf morgen`,
     sub_parts: [
       wartend === 0
-        ? part('keine_ausstehenden')
+        ? part('none_pending')
         : faellig > 0
           ? part('retry_ready', { n: faellig, w: wartend - faellig })
-          : part('warten_morgen', { n: wartend }),
+          : part('wait_tomorrow', { n: wartend }),
     ],
   };
 }
@@ -158,23 +158,23 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
   const parts: SubPart[] = [
     {
       ...(active > 0
-        ? part('bilder_laden', { n: active })
+        ? part('images_loading', { n: active })
         : open > 0
-          ? part('bilder_offen', { n: open })
+          ? part('images_open', { n: open })
           : part('imgs_cached', { n: finished })),
-      ...(openCatalog > 0 ? { ago: 'bestand' as const } : {}),
+      ...(openCatalog > 0 ? { ago: 'holding' as const } : {}),
     },
   ];
   if (openCatalog > 0) {
-    parts.push(part('katalog_warteschlange', { n: openCatalog }));
+    parts.push(part('catalog_queue', { n: openCatalog }));
     if (!jobRunning)
-      parts.push(sinceRun === null ? part('job_nie') : part('kein_durchgang', { min: Math.round(sinceRun / 60_000) }));
+      parts.push(sinceRun === null ? part('never_ran') : part('no_run', { min: Math.round(sinceRun / 60_000) }));
   }
   if (reDlRunning)
     parts.push(
       reDl?.phase === 'scanning'
-        ? part('neu_suche')
-        : part('neu_geladen', { n: reDl?.done || 0, total: reDl?.total || 0 }),
+        ? part('new_search')
+        : part('reloaded', { n: reDl?.done || 0, total: reDl?.total || 0 }),
     );
   return {
     label: '📥 Bild-Download (CDN)',
@@ -226,9 +226,9 @@ function pdfTile(): Tile {
           : 'Keine aktiven Jobs',
     sub_parts: [
       inProgress > 0
-        ? part('pdf_laufend', { n: inProgress })
+        ? part('pdf_running', { n: inProgress })
         : finished > 0
-          ? part('pdf_bereit', { n: finished })
+          ? part('pdf_ready', { n: finished })
           : part('no_active'),
     ],
   };

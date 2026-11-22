@@ -77,7 +77,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   // As in operation the body is read by the server's parser, not the router.
   app.use(express.json({ limit: '4mb' })); // like server.ts for this route
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/pdf.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/pdf.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 

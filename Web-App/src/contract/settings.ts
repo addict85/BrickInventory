@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { V1_SETTING_KEYS } from './v1Names';
 import { v1Keys, v1Values } from './v1';
 import { AdminCondition, AdminTheme } from './management';
 import { type Route, Success, whole, time, confirmed, WITHOUT_BODY, TEXT, CONDITION, SETTINGS, SIMPLE } from './base';
@@ -27,7 +28,7 @@ export const GLOBAL_SETTINGS = [
   'smtp_tls_fingerprint',
   'smtp_tls_ca',
   'default_price_condition',
-  'gutschein_land',
+  'voucher_country',
 ] as const;
 export const ACCOUNT_SETTINGS = ['currency', 'language', 'user_default_condition'] as const;
 type Setting = (typeof GLOBAL_SETTINGS)[number] | (typeof ACCOUNT_SETTINGS)[number];
@@ -107,7 +108,7 @@ export const SetupState = z.looseObject({
 /** The settings as text, as they are stored; secrets masked. */
 export const RawSettings = z.looseObject({
   success: z.literal(true),
-  settings: z.record(z.string(), z.string()),
+  settings: z.record(v1Values(z.string(), V1_SETTING_KEYS), z.string()),
 });
 export const TlsStand = z.looseObject({
   success: z.literal(true),
@@ -123,7 +124,7 @@ export const Backup = z.looseObject({
   version: z.string(),
   exported_at: time,
   exported_by: z.string().nullable(),
-  global: z.record(z.string(), z.string()),
+  global: z.record(v1Values(z.string(), V1_SETTING_KEYS), z.string()),
   user_settings: z.record(z.string(), z.string()),
 });
 /** The import file: what the export writes, older versions included. Values are checked by GLOBAL_RULES. */

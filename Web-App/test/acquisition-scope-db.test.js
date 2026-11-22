@@ -55,7 +55,7 @@ test('the main account can change the purchase price of a sub-account acquisitio
       next();
     });
     app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
     return app;
   };
 

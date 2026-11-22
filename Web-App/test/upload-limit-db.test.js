@@ -182,7 +182,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
 // full run before 'close' and got 429. Here without network so that it does not depend on the timing.
 test('the slot is free as soon as the response is handed over', () => {
   const { EventEmitter } = require('node:events');
-  const { accountGate: kontoSchranke } = _req('routes/api_v1/middleware.js');
+  const { accountGate: kontoSchranke } = _req('routes/api/middleware.js');
   const limit = kontoSchranke('voucherPdf');
   const anfrage = () => {
     const res = Object.assign(new EventEmitter(), {

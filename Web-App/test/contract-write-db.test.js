@@ -3,7 +3,7 @@
  * contract (src/contract/): response and, where the contract names one, the input.
  *
  * Counter-checks (measured on 27.10.):
- *   A  in routes/api_v1/sets.ts PUT /storage/default with `success: null` →
+ *   A  in routes/api/sets.ts PUT /storage/default with `success: null` →
  *      red (31.10.2026): “every step answers with 200” (500 contract_violated,
  *      response success) and “every writing route is checked …”
  *   B  a step removed from STEPS (PUT /api/v2/vouchers/{id}) → red:
@@ -206,7 +206,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     next();
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   for (const r of routerEinhaengungen())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);

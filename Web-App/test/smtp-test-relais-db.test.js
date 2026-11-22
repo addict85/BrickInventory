@@ -53,7 +53,7 @@ test('SMTP test only to the own address or with password', { concurrency: 1 }, a
   });
   const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v2': 'routes/api_v1/settings.js' },
+    routen: { '/api/v2': 'routes/api/settings.js' },
     t,
   });
   const probe = body =>

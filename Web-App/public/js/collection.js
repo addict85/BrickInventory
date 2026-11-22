@@ -336,7 +336,7 @@ export function updateGalleryPrices() {
 function priceLine(s) {
   const buy = s.avg_purchase_price ?? s.max_purchase_price;
   // The server says where tile_price comes from: without a market price it is the purchase price.
-  const market = !!s._price && (s._source ? s._source === 'markt' : true);
+  const market = !!s._price && (s._source ? s._source === 'market' : true);
   const buyAmount = buy != null ? fmtMoney(buy, accountCurrency) : s._price ? fmtMoney(s._price, accountCurrency) : '';
   const amount = market
     ? fmtN(s._price, accountCurrency)

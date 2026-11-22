@@ -6,7 +6,7 @@
  * Counter-checks (measured on 11.11.2026):
  *   A  in apiInbox() `readBody` placed before `loginAtInbox` → red:
  *      “unauthenticated: 401 before the body” (413 instead of 401, the body was read)
- *   B  in routes/api_v1/middleware.ts the limit for unauthenticated set to 256kb → red:
+ *   B  in routes/api/middleware.ts the limit for unauthenticated set to 256kb → red:
  *      “unauthenticated: more than 16 KB is too much”
  *   C  in apiInbox() `loginAtInbox` not mounted → red:
  *      “unauthenticated: 401 before the body” (the route answered itself)

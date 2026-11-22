@@ -21,13 +21,13 @@ const strip = s =>
 /** All source files that could write paths. */
 const SOURCES = [
   'server.ts',
-  'routes/api_v1/parts.ts',
-  'routes/api_v1/sets.ts',
-  'routes/api_v1/setsInstructions.ts',
+  'routes/api/parts.ts',
+  'routes/api/sets.ts',
+  'routes/api/setsInstructions.ts',
   'src/sets/service.ts',
   'src/sets/instructions.ts',
   'src/images/thumbs.ts',
-  'routes/api_v1/pdf.ts',
+  'routes/api/pdf.ts',
   'src/catalog/partsEnrichment.ts',
   'src/catalog/catalogSync.ts',
 ];

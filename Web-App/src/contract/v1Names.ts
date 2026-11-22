@@ -282,6 +282,7 @@ export const V1_FIELDS: Readonly<Record<string, string>> = {
   united: 'vereint',
   valid_seconds: 'gueltig_sek',
   valid_until: 'gueltig_bis',
+  voucher_country: 'gutschein_land',
   value_total: 'wert_gesamt',
   validity: 'gueltigkeit',
   view: 'blickfeld',
@@ -557,3 +558,97 @@ export const V1_JOB_KINDS: Readonly<Record<string, string>> = {
   account_files: 'konto_dateien',
   price_refresh: 'preise_nachladen',
 };
+
+/** Announced admin actions on an account (admin_takeovers.type, migration 0137). */
+export const V1_TAKEOVER_KINDS: Readonly<Record<string, string>> = {
+  password: 'passwort',
+  second_factor: 'zweiter_faktor',
+  deactivate: 'deaktivieren',
+  revoke_role: 'rolle_entziehen',
+  delete: 'loeschen',
+};
+
+/** State of a QR pairing (computed). */
+export const V1_QR_STATES: Readonly<Record<string, string>> = {
+  open: 'offen',
+  waiting: 'wartet',
+  confirmed: 'bestaetigt',
+  collected: 'abgeholt',
+  rejected: 'abgelehnt',
+  expired: 'abgelaufen',
+};
+
+/** Direction of a price alert (price_alerts.direction, migration 0137). */
+export const V1_ALERT_DIRECTIONS: Readonly<Record<string, string>> = { below: 'unter', above: 'ueber' };
+
+/** Where the amount of a tile comes from. */
+export const V1_TILE_SOURCES: Readonly<Record<string, string>> = { market: 'markt', purchase: 'kauf' };
+
+/** Order of the parts list. */
+export const V1_PARTS_ORDER: Readonly<Record<string, string>> = { color: 'farbe', quantity: 'menge' };
+
+/** State of the background supplement after adding a set. */
+export const V1_SUPPLEMENT: Readonly<Record<string, string>> = { pending: 'ausstehend', done: 'erledigt' };
+
+/** Why the proxy hint appears. */
+export const V1_PROXY_HINTS: Readonly<Record<string, string>> = {
+  docker_network: 'docker_netz',
+  single_address: 'eine_adresse',
+};
+
+/** Why the Rebrickable stage of the wanted-list import ended early. */
+export const V1_RB_ABORTS: Readonly<Record<string, string>> = {
+  quota: 'kontingent',
+  no_key: 'kein_schluessel',
+  failure: 'stoerung',
+};
+
+/** Codes of the job monitor's sub lines; `holding` marks the catalogue queue. */
+export const V1_MONITOR_CODES: Readonly<Record<string, string>> = {
+  pending: 'ausstehend',
+  images_loading: 'bilder_laden',
+  images_open: 'bilder_offen',
+  never_ran: 'job_nie',
+  catalog_queue: 'katalog_warteschlange',
+  no_run: 'kein_durchgang',
+  none_pending: 'keine_ausstehenden',
+  reloaded: 'neu_geladen',
+  new_search: 'neu_suche',
+  pdf_ready: 'pdf_bereit',
+  pdf_running: 'pdf_laufend',
+  part_mapped: 'teil_gemappt',
+  wait_tomorrow: 'warten_morgen',
+  holding: 'bestand',
+};
+
+/** Actions of the admin log (admin_log.action, migration 0137). */
+export const V1_ADMIN_ACTIONS: Readonly<Record<string, string>> = {
+  account_created: 'konto_angelegt',
+  password_set: 'passwort_gesetzt',
+  second_factor_removed: 'zweiter_faktor_entfernt',
+  admin_appointed: 'verwalter_ernannt',
+  admin_revoked: 'verwalter_entzogen',
+  account_deleted: 'konto_geloescht',
+  account_deactivated: 'konto_deaktiviert',
+  account_reactivated: 'konto_reaktiviert',
+  account_unlocked: 'konto_freigeschaltet',
+  settings_changed: 'einstellungen_geaendert',
+  voucher_plaintext: 'gutschein_klartext',
+  voucher_pdf: 'gutschein_pdf',
+  voucher_export: 'gutschein_export',
+  takeover_announced: 'uebernahme_angekuendigt',
+  takeover_cancelled: 'uebernahme_abgebrochen',
+};
+
+/** Setting keys (global_settings.key, migration 0137) that v1 names differently. */
+export const V1_SETTING_KEYS: Readonly<Record<string, string>> = { voucher_country: 'gutschein_land' };
+
+/** Purposes of a passkey challenge (webauthn_challenges.purpose, migration 0137). */
+export const V1_PASSKEY_PURPOSES: Readonly<Record<string, string>> = {
+  register: 'registrieren',
+  login: 'anmelden',
+  second_factor: 'zweiter_faktor',
+};
+
+/** Sort orders of the set list that v1 names in German. */
+export const V1_SET_SORTS: Readonly<Record<string, string>> = { purchase_desc: 'kauf_desc', purchase_asc: 'kauf_asc' };

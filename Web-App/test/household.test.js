@@ -102,9 +102,9 @@ test('web app and app get the same endpoints', () => {
   // /api/v1; the web app calls the same address (requireToken takes both
   // credentials). Previously this check spanned TWO files and required
   // that both offer everything — the weaker version of the same statement.
-  const src = read('routes/api_v1/settings.ts');
+  const src = read('routes/api/settings.ts');
   for (const fn of ['householdStatus', 'createInvitation', 'joinHousehold', 'unlinkAccounts']) {
-    assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
+    assert.ok(src.includes(fn), `routes/api/settings.ts: ${fn} fehlt`);
   }
   // And the second version must not come back: every household route exactly once.
   for (const path of [
@@ -113,7 +113,7 @@ test('web app and app get the same endpoints', () => {
     "/api/v2/settings/household/redeem'",
     "/api/v2/settings/household/unlink'",
   ])
-    assert.equal(src.split(path).length - 1, 1, `${path} steht nicht genau einmal in routes/api_v1/settings.ts`);
+    assert.equal(src.split(path).length - 1, 1, `${path} steht nicht genau einmal in routes/api/settings.ts`);
   // No own rule in the route — they are in src/household/household.ts.
   assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
 });
@@ -172,7 +172,7 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
   );
 
   // The switch of the whole set has lived in the v1 factory since an earlier round.
-  const src = read('routes/api_v1/sets.ts');
+  const src = read('routes/api/sets.ts');
   // This is a PATTERN rule: it catches a deleted line. That the
   // lock really applies — on (source account, set) and not on the
   // target account or a fixed key — runs in
@@ -186,7 +186,7 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
   assert.ok(kompakt(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
   // The whole set and single purchase prices run through THE SAME implementation — the
   // partial case is no special path but the general case with a selection.
-  const acq = read('routes/api_v1/acquisitions.ts');
+  const acq = read('routes/api/acquisitions.ts');
   const calls =
     (mv.match(/setEntriesReassign\(t, sn/g) || []).length + (acq.match(/setEntriesReassign\(t, sn/g) || []).length;
   assert.ok(

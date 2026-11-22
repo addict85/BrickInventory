@@ -41,7 +41,7 @@
 (anmeldung) {
 	@anmeldung {
 		method POST
-		# Every POST that is open without login (PUBLIC_ROUTES in routes/api_v1/middleware.ts), v1 alias and v2.
+		# Every POST that is open without login (PUBLIC_ROUTES in routes/api/middleware.ts), v1 alias and v2.
 		path /api/v1/auth/login /api/v1/auth/logout /api/v1/auth/register /api/v1/auth/forgot-password /api/v1/auth/reset-password /api/v1/auth/bestaetigung-erneut /api/v1/auth/email-bestaetigen /api/v1/auth/email-bestaetigen/vorschau /api/v1/auth/qr-login /api/v1/auth/qr-login/abholen /api/v1/auth/qr-login/verwerfen /api/v1/auth/token-rotieren /api/v1/auth/uebernahme-abbrechen /api/v1/auth/anmeldung-freigeben /api/v1/auth/passkey/anmelden /api/v1/auth/passkey/anmelden/optionen /api/v2/auth/login /api/v2/auth/logout /api/v2/auth/register /api/v2/auth/forgot-password /api/v2/auth/reset-password /api/v2/auth/resend-confirmation /api/v2/auth/confirm-email /api/v2/auth/confirm-email/preview /api/v2/auth/qr-login /api/v2/auth/qr-login/collect /api/v2/auth/qr-login/discard /api/v2/auth/rotate-token /api/v2/auth/cancel-takeover /api/v2/auth/approve-login /api/v2/auth/passkey/login /api/v2/auth/passkey/login/options
 	}
 	handle @anmeldung {

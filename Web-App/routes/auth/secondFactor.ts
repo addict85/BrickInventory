@@ -1,7 +1,7 @@
 /** The own second factor (src/factors/secondFactor.ts). Setting up and
  * turning off require the password: whoever only captures an open session
  * must neither lock out the account nor dismantle the protection. */
-import { guardFor } from '../api_v1/middleware';
+import { guardFor } from '../api/middleware';
 import {
   signedInUserId,
   confirmCode,

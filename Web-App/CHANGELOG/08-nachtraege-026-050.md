@@ -770,7 +770,7 @@ einmal Strg+F5 — der Browser hält sonst die alte, abgebrochene Antwort fest.
 Meldung Not found." Sein Server-Log nannte beide Stellen:
 
     routes/sets.js:1225             404: Error: Not found
-    routes/api_v1/acquisitions.js   404: Error: Erfassung nicht gefunden
+    routes/api/acquisitions.js   404: Error: Erfassung nicht gefunden
 
 **Ursache.** Beide Wege suchten die Zeile mit `WHERE id=$1 AND user_id=$2` und
 der EIGENEN Betrachter-ID. Im Haushalt gehört die Erfassung aber oft einem

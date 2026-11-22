@@ -144,7 +144,7 @@ async function addSet() {
             // Background jobs are still running: refresh every tab periodically
             setLastImportAt(Date.now());
             // If the stream couldn't fill in name and image, a job catches up after a minute.
-            for (const delay of [3000, 8000, 15000, 25000, ...(ev.supplement === 'ausstehend' ? [70000, 120000] : [])])
+            for (const delay of [3000, 8000, 15000, 25000, ...(ev.supplement === 'pending' ? [70000, 120000] : [])])
               setTimeout(() => {
                 const tab = activeTab();
                 emit(tab === 'parts' || tab === 'minifigs' ? 'stockChanged' : 'collectionLoad');

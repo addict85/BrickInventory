@@ -7,7 +7,7 @@
  *      → red: “within the window only the first call computes”
  *   B  both responses remembered under the same key (verwalter ignored)
  *      → red: “administrator and public response are separate”
- *   C  ipThrottle removed from routes/api_v1/setup.ts
+ *   C  ipThrottle removed from routes/api/setup.ts
  *      → red: “the address is throttled”
  *   D  onGlobalChange(...) removed (14.11.2026: k.einstellungen.onGlobalChange in the compartment)
  *      → red: “a written value applies immediately”

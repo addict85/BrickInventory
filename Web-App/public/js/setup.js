@@ -9,11 +9,11 @@ import { openCapture, clearerReason } from './components.js';
 import { withSecondFactor, saveSettings } from './confirm-prompt.js';
 import { html } from './escaping.js';
 
-// ═══ First-run setup wizard (server: routes/api_v1/settings.ts /settings/einrichtung) ═
+// ═══ First-run setup wizard (server: routes/api/settings.ts /settings/einrichtung) ═
 // Admins only, and only while something is still missing. "Later" just closes it — the wizard comes back
 // on the next login, until it is completed.
 
-/** The steps of this pass; "passwort" only while the start password still applies. */
+/** The steps of this pass; "password" only while the start password still applies. */
 /** @type {string[]} */
 let _steps = [];
 let _now = 0;
@@ -87,7 +87,7 @@ export async function checkSetup() {
     const total = s ? (s.total_sets || 0) + (s.total_parts || 0) + (s.total_minifigs || 0) : 0;
     if (total > 0) return;
   }
-  _steps = [...(d.change_password ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'first-set'];
+  _steps = [...(d.change_password ? ['password'] : []), 'rebrickable', 'bricklink', 'brickset', 'first-set'];
   _now = 0;
   _saved = Object.fromEntries(Object.entries(d.sources || {}).map(([q, ok]) => [q, !!ok]));
   for (const [q, ok] of Object.entries(_saved)) setStatus(q, ok ? true : null);

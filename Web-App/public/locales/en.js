@@ -940,7 +940,7 @@ window.I18N_EN = {
   'wanted.col_rb_id': 'Enter a Rebrickable no.',
   'wanted.col_set_color': 'Set a colour',
   'wanted.reason_number_unknown': 'No Rebrickable number is known for this BrickLink number',
-  'wanted.reason_color_unknown': 'BrickLink colour {farbe} is not mapped to any Rebrickable colour in the catalogue',
+  'wanted.reason_color_unknown': 'BrickLink colour {color} is not mapped to any Rebrickable colour in the catalogue',
   'wanted.out_created': 'will be added',
   'wanted.out_created_done': 'added',
   'wanted.out_topped_up': 'topped up',

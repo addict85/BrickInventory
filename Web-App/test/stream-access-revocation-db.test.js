@@ -5,7 +5,7 @@
  * in another process) on watchViaAccess() with a short tick.
  *
  * Counter-checks (measured 12.11.2026, each on its own):
- *   A  the call watchViaAccess() deleted in routes/api_v1/sets.ts → red:
+ *   A  the call watchViaAccess() deleted in routes/api/sets.ts → red:
  *      “token logged out: the stream ends”, „Sitzung abgemeldet …“, „alle Sitzungen …“
  *   B  in watchViaAccess() not listening to atAccessChange() → red: the
  *      first three cases (only the tick after 15 s would have ended the streams)

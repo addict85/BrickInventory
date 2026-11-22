@@ -43,10 +43,10 @@ test('exchange of the same token', { concurrency: 1 }, async t => {
   app.use(express.json());
   app.use(
     '/api/v2',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${srv.address().port}`;

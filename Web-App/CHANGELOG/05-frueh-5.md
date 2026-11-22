@@ -98,8 +98,8 @@ Servers, nicht nur Bilder. Ich habe alle Fundstellen durchsucht und `family:
 | `routes/brickset.ts` | Brickset API | 1 |
 | `routes/parts.ts` | Rebrickable API | 2 |
 | `routes/bricklink.ts` | BrickLink API | 1 |
-| `routes/api_v1/admin.ts` | Diagnose-Sonde (img-probe) | 2 |
-| `routes/api_v1/sets.ts` | Rebrickable + UPCitemdb (Barcode) | 2 |
+| `routes/api/admin.ts` | Diagnose-Sonde (img-probe) | 2 |
+| `routes/api/sets.ts` | Rebrickable + UPCitemdb (Barcode) | 2 |
 
 18 Fundstellen insgesamt. Auch die Diagnose-Sonde selbst ist jetzt korrigiert
 — sie hätte sonst weiterhin ein irreführendes Bild geliefert, da sie nicht
@@ -840,7 +840,7 @@ weder Marktpreis je Zustand noch ein Diagramm; es fehlte nicht die Aufteilung,
 sondern die Zeile überhaupt.
 
 **Erst zusammengeführt, dann ausgeliefert.** Die Logik stand vollständig in
-`routes/finance.ts`. Sie einfach ein zweites Mal nach `routes/api_v1/` zu
+`routes/finance.ts`. Sie einfach ein zweites Mal nach `routes/api/` zu
 kopieren wäre genau das Muster, an dem der Set-Verlauf schon einmal
 auseinandergelaufen ist (zwei Fassungen, unterschiedliche Zustandsauflösung,
 „−32 %" bei unverändertem Preis). Sie liegt jetzt in `utils/priceHistory.ts`
@@ -1301,7 +1301,7 @@ gerechnet werden). Sie fallen auseinander, sobald der Kontofilter auf
 `getPortfolioHistory()`.
 
 **Fund 2 — der API-Paritätstest war seit hardened-59 tot.** Er lud
-`routes/api_v1/index.js` aus dem Quellordner; das Kompilat liegt seither unter
+`routes/api/index.js` aus dem Quellordner; das Kompilat liegt seither unter
 `dist/`. Ergebnis `MODULE_NOT_FOUND` — unbemerkt, weil die ganze Suite ohne
 Postgres übersprungen wird.
 

@@ -1,14 +1,14 @@
 /**
- * The routers under /api/v1 (routes/api_v1/index.ts) may hang in any order:
+ * The routers under /api/v1 (routes/api/index.ts) may hang in any order:
  * no path pattern and no middleware with a path of one router hits a route
  * of another. Checked on the built routers, not on the source text.
  *
  * Counter-checks (measured 14.11.2026):
- *   A  in routes/api_v1/setsStorage.ts before the first route additionally
+ *   A  in routes/api/setsStorage.ts before the first route additionally
  *      `router.get('/sets/:setNumber', …)` → red “no pattern hits …”
  *   B  in settings.ts `router.use('/settings', requireLogin)` → `router.use('/', requireLogin)`
  *      → red “no middleware with a path …” (hits the routes of all later routers)
- *   C  `router.use(errorResponse)` back in routes/api_v1/parts.ts → red “the error path is attached
+ *   C  `router.use(errorResponse)` back in routes/api/parts.ts → red “the error path is attached
  *      by the app, not by a router”; a second `app.use(errorResponse)` in startup/app.ts
  *      → red (2 instead of 1)
  */
@@ -20,7 +20,7 @@ const _req = q.buildAndRequire();
 
 /** Per mounted router: its routes and its middleware with a path, also from subrouters. */
 function holding() {
-  const api = _req('routes/api_v1/index.js').buildApiRouter(q.testServices());
+  const api = _req('routes/api/index.js').buildApiRouter(q.testServices());
   /** @param {any} r */
   const collect = (r, aus = { routen: [], prefilters: [] }) => {
     for (const l of r.stack) {

@@ -1,5 +1,5 @@
 /** Logging in by QR code; the app picks up its token once the web session confirms (src/account/qrPairing.ts). */
-import { guardFor } from '../api_v1/middleware';
+import { guardFor } from '../api/middleware';
 import { signedInUserId, ipThrottle, confirmWithFactor, perSession } from '../../src/account/http/login';
 import { contractRouter } from '../../src/http/contractRouter';
 import { assertLoginAllowed, devicesNameContentValid, reportLogin, QR_TTL_MS } from '../../src/account';
@@ -71,7 +71,7 @@ export function buildQrRouter(d: Pick<Services, 'account'>) {
         uid => signInMay(d, uid),
         req.input.preview === true,
       );
-      if (a.state === 'wartet') return { waiting: true } as const;
+      if (a.state === 'waiting') return { waiting: true } as const;
       const user = await d.account.accountShortOf(a.uid);
       if (!user) failDomain('not_signed_in', 'token_invalid');
       if (a.state === 'bereit') return { waiting: false, preview: true, username: user.username } as const;

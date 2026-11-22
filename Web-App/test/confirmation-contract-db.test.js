@@ -14,14 +14,14 @@
  *      adminConfirmed() → red: “every password input carries the marker"
  *   D  in confirmWithFactor the check for the marker removed → red:
  *      “without marker no confirmation"
- *   E  in routes/api_v1/trash.ts an own bcrypt.compare( → red:
+ *   E  in routes/api/trash.ts an own bcrypt.compare( → red:
  *      “no second path to password comparison"
  *   F  (05.11.2026) in NurCode (konto.ts) `password: txtLeer(…)` instead of
  *      `z.null()` → red: “every password input carries the marker"
  *   G  (09.11.2026) DELETE /settings/tokens/:tokenId again with
  *      `eingabe: WITHOUT_BODY` instead of bestaetigt() → red: “the mandatory routes
  *      carry the marker"
- *   H  (15.11.2026) in routes/api_v1/trash.ts `import { verify } from
+ *   H  (15.11.2026) in routes/api/trash.ts `import { verify } from
  *      '@node-rs/argon2'` → red: “no second path to password comparison"
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.

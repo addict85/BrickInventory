@@ -67,7 +67,7 @@ test('a changed limit applies immediately in ALL workers', () => {
   // worker that handled the request. The others kept running with the old value
   // until a restart, and at startup
   // loadDailyLimitsFromDb() had to copy the value into every process.
-  const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
+  const admin = fs.readFileSync(path.join(ROOT, 'routes/api/admin.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(admin, /setMax\(/, 'setMax() erreicht nur den eigenen Prozess');
   // Comments out before the span is measured: the explanatory block in
   // limitTheSource is longer than any reasonable character window, and a
@@ -230,11 +230,11 @@ test('jobs with an external quota have a cross-process lock', () => {
   // The manual kick lies only under /api/v2/admin/trigger-price-job, the
   // web app calls the same address: with two paths one can lose the `await`
   // without it standing out.
-  const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'routes/api/admin.ts'), 'utf8');
   assert.match(
     route,
     /await d\.management\.runPriceJobNow\(\)/,
-    'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"',
+    'routes/api/admin.ts: ohne await meldet die Route ein Promise als „gestartet"',
   );
 
   // The namespace comes from the shared list.

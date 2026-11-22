@@ -125,7 +125,7 @@ export async function passkeyLogin() {
 
 /** Second factor: passkey instead of a code, together with the name and password entered above. */
 export async function passkeySecondFactor() {
-  const passkey = await getAssertion('zweiter_faktor');
+  const passkey = await getAssertion('second_factor');
   if (!passkey) return;
   const d = await api('POST', '/v2/auth/login', {
     username: G('lu').value,
@@ -240,7 +240,7 @@ export async function deletePasskey(id, name) {
 {
   const k = G('btn-passkey');
   if (k) k.hidden = !passkeysPossible();
-  if (passkeysPossible()) fetchSetPasskey(() => getAssertion('zweiter_faktor'));
+  if (passkeysPossible()) fetchSetPasskey(() => getAssertion('second_factor'));
 }
 
 // Names below are registry-exposed (index.html/connection.js) — kept unchanged.

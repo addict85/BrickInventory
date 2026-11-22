@@ -58,11 +58,11 @@ function role(u) {
 }
 /** @type {Record<string, () => string>} */
 const ANNOUNCED = {
-  passwort: () => tRaw('users.announced.password'),
+  password: () => tRaw('users.announced.password'),
   second_factor: () => tRaw('users.announced.second_factor'),
-  deaktivieren: () => tRaw('users.announced.deactivate'),
-  rolle_entziehen: () => tRaw('users.announced.role_revoke'),
-  loeschen: () => tRaw('users.announced.delete'),
+  deactivate: () => tRaw('users.announced.deactivate'),
+  revoke_role: () => tRaw('users.announced.role_revoke'),
+  delete: () => tRaw('users.announced.delete'),
 };
 /**
  * What is announced on an administrator account (24 h): the other administrators should see
@@ -86,21 +86,21 @@ const reportResult = (d, immediate) =>
 // the dictionary check (i18n-calls.test.js) finds it.
 /** @type {Record<string, () => string>} */
 const ACTIONS = {
-  konto_angelegt: () => tRaw('users.action.account_created'),
-  einstellungen_geaendert: () => tRaw('users.action.settings_changed'),
-  passwort_gesetzt: () => tRaw('users.action.password_set'),
-  zweiter_faktor_entfernt: () => tRaw('users.action.second_factor_removed'),
-  verwalter_ernannt: () => tRaw('users.action.admin_appointed'),
-  verwalter_entzogen: () => tRaw('users.action.admin_revoked'),
-  konto_geloescht: () => tRaw('users.action.account_deleted'),
+  account_created: () => tRaw('users.action.account_created'),
+  settings_changed: () => tRaw('users.action.settings_changed'),
+  password_set: () => tRaw('users.action.password_set'),
+  second_factor_removed: () => tRaw('users.action.second_factor_removed'),
+  admin_appointed: () => tRaw('users.action.admin_appointed'),
+  admin_revoked: () => tRaw('users.action.admin_revoked'),
+  account_deleted: () => tRaw('users.action.account_deleted'),
   account_deactivated: () => tRaw('users.action.account_deactivated'),
-  konto_reaktiviert: () => tRaw('users.action.account_reactivated'),
-  konto_freigeschaltet: () => tRaw('users.action.account_unlocked'),
-  gutschein_klartext: () => tRaw('users.action.voucher_plain_text'),
-  gutschein_pdf: () => tRaw('users.action.voucher_pdf'),
-  gutschein_export: () => tRaw('users.action.voucher_export'),
-  uebernahme_angekuendigt: () => tRaw('users.action.takeover_announced'),
-  uebernahme_abgebrochen: () => tRaw('users.action.takeover_cancelled'),
+  account_reactivated: () => tRaw('users.action.account_reactivated'),
+  account_unlocked: () => tRaw('users.action.account_unlocked'),
+  voucher_plaintext: () => tRaw('users.action.voucher_plain_text'),
+  voucher_pdf: () => tRaw('users.action.voucher_pdf'),
+  voucher_export: () => tRaw('users.action.voucher_export'),
+  takeover_announced: () => tRaw('users.action.takeover_announced'),
+  takeover_cancelled: () => tRaw('users.action.takeover_cancelled'),
 };
 /** Who changed what on which other account — the most recent entries. */
 async function loadLog() {

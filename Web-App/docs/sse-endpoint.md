@@ -1,7 +1,7 @@
 # SSE-Endpoint für den CSV-Import-Fortschritt
 
 **Status: serverseitig implementiert.** Der Endpoint existiert jetzt im
-Backend (`routes/api_v1/sets.ts`, Bus in `src/sets/csvImport.ts`) und wird von der Android-App sowie der Webapp
+Backend (`routes/api/sets.ts`, Bus in `src/sets/csvImport.ts`) und wird von der Android-App sowie der Webapp
 genutzt. Diese Datei dokumentiert das Zusammenspiel.
 
 ## Endpoint
@@ -24,7 +24,7 @@ bestehende `/status`-Endpoint:
 Sobald `status` nicht mehr `running`/`pending` ist (`done`/`cancelled`/`error`),
 sendet der Server ein letztes Event und schließt den Stream.
 
-## Serverseitige Funktionsweise (routes/api_v1/sets.ts)
+## Serverseitige Funktionsweise (routes/api/sets.ts)
 
 - Ein prozessweiter `EventEmitter` (`csvImportBus`) wird vom Import-Worker
   nach jedem `jobUpdate` gefeuert (`emitJobStatus(userId)`).

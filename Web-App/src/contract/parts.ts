@@ -1,6 +1,7 @@
 import { WITHOUT_BODY, CONDITION, IDENTIFIER, TEXT, query, Q, PAGE, PAGES_DETAIL, type Route } from './base';
 import { z } from 'zod';
-import { v1Keys } from './v1';
+import { V1_PARTS_ORDER } from './v1Names';
+import { v1Keys, v1Values } from './v1';
 import { input } from '../infra/validate';
 import {
   CsvImportResult,
@@ -121,7 +122,7 @@ export const routes = {
       spare: z.enum(['0', '1', '']),
       with_sets: Q.toggle,
       storage: Q.text(),
-      order: z.enum(['farbe', 'name', 'menge']),
+      order: v1Values(z.enum(['color', 'name', 'quantity']), V1_PARTS_ORDER),
     }),
   },
   'GET /api/v2/parts/:partNumber/:colorId/sets': {

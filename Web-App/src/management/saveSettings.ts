@@ -49,8 +49,7 @@ async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput)
     if (String(e[key]) !== String((await kx.settings.globalValue(key)) ?? '')) changed.push(key);
     await kx.settings.setGlobalValue(key, e[key]);
   }
-  if (changed.length)
-    await kx.account.verwalter.rememberAdminAction(uid, uid, 'einstellungen_geaendert', changed.join(', '));
+  if (changed.length) await kx.account.verwalter.rememberAdminAction(uid, uid, 'settings_changed', changed.join(', '));
   // Whoever saved the mail form has seen the hint about the old exception.
   if (GLOBAL_SETTINGS.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.settings.deleteGlobalValues('smtp_insecure_tls');
@@ -96,7 +95,7 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   // Only after the COMMIT: a cache would otherwise still read the old value.
   await kx.settings.notifyGlobalChange();
   if (sensitive.some(k => !k.startsWith('smtp_')))
-    kx.account.adminHintInBackground('einstellungen_geaendert', { konto: sensitive.join(', '), durch: o.name });
+    kx.account.adminHintInBackground('settings_changed', { konto: sensitive.join(', '), durch: o.name });
   if (bricksetAlt !== null) await bricksetLimitSet(kx, bricksetAlt, parseInt(String(e.api_limit_brickset), 10));
   return true;
 }

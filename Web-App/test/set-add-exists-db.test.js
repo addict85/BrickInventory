@@ -1,7 +1,7 @@
 /**
  * A set that already stands in the scope is NOT increased when capturing.
  *
- * Counter-check (carried out): the findSetInScope branch removed from routes/api_v1/sets.ts
+ * Counter-check (carried out): the findSetInScope branch removed from routes/api/sets.ts
  * → the first substep turns red (quantity 1 → 2).
  * Counter-check (15.11.2026): in setPresent() (src/sets/addSet.ts) the number returned without
  * normalizeSetNumber → red „exists: false, set_number“ (without -1).

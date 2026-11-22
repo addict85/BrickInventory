@@ -152,9 +152,7 @@ test('the connection pool is wide enough', async () => {
 });
 
 test('the diagnostic endpoints are present', () => {
-  const route = require('./helpers/sources').kompakt(
-    fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8'),
-  );
+  const route = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api/admin.ts'), 'utf8'));
   assert.match(route, /router\.endpoint\('POST \/api\/v2\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
   assert.match(route, /router\.endpoint\('POST \/api\/v2\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // The fetches themselves stand in the administration's service (routes do not call into the network).

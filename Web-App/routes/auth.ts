@@ -1,5 +1,5 @@
 /** Login, token and profile under /api/v2/auth; the sub-routers from routes/auth/ hang behind it. */
-import { guardFor } from './api_v1/middleware';
+import { guardFor } from './api/middleware';
 import { cookieStaysFrom, sessionCookieName, sessionCookieOptions } from '../src/http/sessionCookie';
 import { reportError } from '../src/infra/error';
 import {
@@ -281,7 +281,7 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     'POST /api/v2/auth/passkey/login/options',
     ipThrottle(d.account, 'passkey-optionen', 60, 60 * 60 * 1000),
     async req => {
-      const purpose = req.input.purpose === 'zweiter_faktor' ? 'zweiter_faktor' : 'anmelden';
+      const purpose = req.input.purpose === 'second_factor' ? 'second_factor' : 'login';
       const options = await d.factors.authenticationOptions(purpose);
       if (!options) failDomain('nicht_verfuegbar', 'passkey_without_domain');
       return { options };
@@ -294,7 +294,7 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     ipThrottle(d.account, 'passkey-anmelden', 30, 60 * 60 * 1000),
     async (req, res) => {
       if (!devicesNameContentValid(req.input.label)) failDomain('ungueltig', 'device_name_invalid');
-      const uid = await d.factors.verifyAuthentication(req.input.response, 'anmelden');
+      const uid = await d.factors.verifyAuthentication(req.input.response, 'login');
       if (!uid) failDomain('not_signed_in', 'passkey_invalid');
       const user = await d.account.accountFullOf(uid);
       if (!user) failDomain('not_signed_in', 'passkey_invalid');

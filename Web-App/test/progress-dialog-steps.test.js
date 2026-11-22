@@ -189,7 +189,7 @@ test('after the last event no item hangs on “active”', () => {
   // ── Sending order, as the capture stream produces it ───────────────
   // The route reports before and after supplementing itself; in between fetchCatalog() reports.
   const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-  const route = require('./helpers/sources').kompakt(lies('routes/api_v1/setsImport.ts'));
+  const route = require('./helpers/sources').kompakt(lies('routes/api/setsImport.ts'));
   // The route and its helper supplementInStream (before the router factory).
   const stream =
     route.slice(

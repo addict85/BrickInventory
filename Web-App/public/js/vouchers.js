@@ -92,7 +92,7 @@ const COUNTRY_CURRENCY = {
 /** @type {Record<string, string>} */
 export const COUNTRY_TO_CURRENCY = { CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' };
 export function countryCurrency() {
-  const country = G('voucher-country')?.value || settingsSnapshot?.gutschein_land || '';
+  const country = G('voucher-country')?.value || settingsSnapshot?.voucher_country || '';
   return COUNTRY_CURRENCY[country] || accountCurrency;
 }
 
@@ -174,7 +174,7 @@ export async function loadVouchers() {
   _vouchers = d.vouchers || [];
   const countryField = G('voucher-country');
   if (countryField)
-    countryField.value = settingsSnapshot?.gutschein_land || COUNTRY_TO_CURRENCY[accountCurrency] || 'de-CH';
+    countryField.value = settingsSnapshot?.voucher_country || COUNTRY_TO_CURRENCY[accountCurrency] || 'de-CH';
   showCountryCurrency();
   const cur = G('v-currency');
   if (cur && !_edited && !G('v-amount')?.value) cur.value = countryCurrency();
@@ -570,8 +570,8 @@ async function exportVouchers() {
 export async function saveVoucherCountry() {
   const field = el('voucher-country');
   if (!field) return;
-  const d = await api('POST', '/v2/settings', { gutschein_land: field.value });
-  if (d?.success && settingsSnapshot) settingsSnapshot.gutschein_land = G('voucher-country')?.value;
+  const d = await api('POST', '/v2/settings', { voucher_country: field.value });
+  if (d?.success && settingsSnapshot) settingsSnapshot.voucher_country = G('voucher-country')?.value;
   if (!_edited) {
     const cur = G('v-currency');
     if (cur) cur.value = countryCurrency();

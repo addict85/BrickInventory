@@ -4,21 +4,21 @@
 import type { DbInterface } from '../../../db/database';
 
 export type AdminAction =
-  | 'konto_angelegt'
-  | 'passwort_gesetzt'
-  | 'zweiter_faktor_entfernt'
-  | 'verwalter_ernannt'
-  | 'verwalter_entzogen'
-  | 'konto_geloescht'
+  | 'account_created'
+  | 'password_set'
+  | 'second_factor_removed'
+  | 'admin_appointed'
+  | 'admin_revoked'
+  | 'account_deleted'
   | 'account_deactivated'
-  | 'konto_reaktiviert'
-  | 'konto_freigeschaltet'
-  | 'einstellungen_geaendert'
-  | 'gutschein_klartext'
-  | 'gutschein_pdf'
-  | 'gutschein_export'
-  | 'uebernahme_angekuendigt'
-  | 'uebernahme_abgebrochen';
+  | 'account_reactivated'
+  | 'account_unlocked'
+  | 'settings_changed'
+  | 'voucher_plaintext'
+  | 'voucher_pdf'
+  | 'voucher_export'
+  | 'takeover_announced'
+  | 'takeover_cancelled';
 
 /** Call before deleting — afterwards the name can no longer be determined. */
 export async function logEntry(

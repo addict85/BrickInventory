@@ -349,7 +349,7 @@ Postgres 16 (422 Tests, 0 Fehler) und drei Laufproben.
 ### 20. Jeder Neustart wartete acht Sekunden und meldete einen Fehlschlag
 
 `utils/sseRegistry.ts` (neu), `server.ts`, `routes/sets.ts`,
-`routes/api_v1/pdf.ts`
+`routes/api/pdf.ts`
 
 `shutdown()` wartete auf `httpServer.close()`. Dessen Rückruf kommt erst, wenn
 die **letzte** Verbindung weg ist — und ein SSE-Strom geht von sich aus nie weg:
@@ -691,7 +691,7 @@ Worker.
 ### Drei APIs, zwei Zählweisen — jetzt eine
 
 `utils/rateLimiter.ts`, `utils/financeCalc.ts`, `routes/rebrickable.ts`,
-`routes/parts.ts`, `routes/api_v1/admin.ts`, `jobs/*`, `server.ts`
+`routes/parts.ts`, `routes/api/admin.ts`, `jobs/*`, `server.ts`
 
 BrickLink und Brickset zählten ihre Tagesaufrufe über
 `checkAndIncrementRateLimit()` — eine Transaktion mit `SELECT … FOR UPDATE`,
@@ -753,7 +753,7 @@ Prozess.
 
 ### Vierte Instanz desselben Musters
 
-`jobs/priceJob.ts`, `routes/finance.ts`, `routes/api_v1/admin.ts`
+`jobs/priceJob.ts`, `routes/finance.ts`, `routes/api/admin.ts`
 
 Der Schutz gegen Doppelläufe war `state.running` — eine Variable im Speicher
 EINES Prozesses. Geplant läuft der Job nur im Primary-Worker
@@ -988,7 +988,7 @@ Zweitfassung nachbaute — und mehr: CSV zuerst, Tageskontingent über
 
 ### 2. Die Bestellnummern-Suche der App
 
-`routes/api_v1/sets.ts` holte `getSetByItemNumber` aus `routes/brickset.ts` —
+`routes/api/sets.ts` holte `getSetByItemNumber` aus `routes/brickset.ts` —
 die Funktion dort heisst `getSetByBarcode` und wurde nirgends verwendet. Eine
 gescannte 5–8-stellige Nummer, die nicht im `catalog_cache` liegt, endete
 deshalb im 500er statt in der Rebrickable-Rückfallebene zwei Zeilen darunter.
@@ -1590,7 +1590,7 @@ Jetzt:
 
 Die SET-Liste. Ein erster Anlauf gab ihr dieselbe Grenze — falsch: Die App
 blättert die Galerie nicht (`BrickApiService.getSets` kennt keinen
-page-Parameter, so auch in `routes/api_v1/sets.ts` vermerkt). Eine Grenze hätte
+page-Parameter, so auch in `routes/api/sets.ts` vermerkt). Eine Grenze hätte
 ihr ab dem Grenzwert stillschweigend Sets unterschlagen, also genau den Fehler
 erzeugt, der oben behoben wurde. Aufgefallen ist es an einem bestehenden Test,
 der die unbegrenzte Set-Liste festhält.

@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { v1Keys } from './v1';
+import { V1_TILE_SOURCES } from './v1Names';
+import { v1Keys, v1Values } from './v1';
 import { type Route, AccountName, time, query, Q, outdated, PERCENT_TEXT, PAGE, PAGES_DETAIL } from './base';
 import { FigValuationItem, PartValuationItem, ValuationAcquisition } from './shared';
 
@@ -104,7 +105,9 @@ export const PnlSetRow = z.looseObject({
   baseline_pnl_percent: z.number().nullable(),
   tile_price: z.number().nullable().optional(),
   tile_pnl_pct: z.number().nullable().optional(),
-  tile_source: z.enum(['markt', 'kauf']).nullable().optional(),
+  tile_source: v1Values(z.enum(['market', 'purchase']), V1_TILE_SOURCES)
+    .nullable()
+    .optional(),
 });
 
 export const PnlResponse = z.looseObject({

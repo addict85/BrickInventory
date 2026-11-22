@@ -64,7 +64,7 @@ export async function loadAlertOverview() {
     el,
     alerts.map(a => {
       const condition = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
-      const direction = a.direction === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
+      const direction = a.direction === 'below' ? tRaw('alerts.below') : tRaw('alerts.above');
       // The key is (set, condition) — both are needed, otherwise changing one hits the wrong one of a
       // set's two possible alerts.
       const key = `${a.set_number}|${a.condition}`;
@@ -131,7 +131,7 @@ async function changeAlertThreshold(key, value) {
   }
   const { setNumber, condition } = alertKey(key);
   // Written via the EXISTING route on the set — the overview gets no write path of its own (see
-  // routes/api_v1/sets.ts).
+  // routes/api/sets.ts).
   const d = await api('PUT', `/v2/sets/${encodeURIComponent(setNumber)}/alert`, { condition, threshold });
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
   await loadAlertOverview();
@@ -153,7 +153,7 @@ async function deleteAlert(key, setNumber) {
     undo: before
       ? async () => {
           const r = await api('PUT', `/v2/sets/${encodeURIComponent(sn)}/alert`, {
-            direction: before.direction === 'ueber' ? 'ueber' : 'unter',
+            direction: before.direction === 'above' ? 'above' : 'below',
             threshold: Number(before.threshold),
             condition,
           });

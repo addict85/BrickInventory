@@ -49,7 +49,7 @@ test('acquisitions of the sub-account: change and delete for all three element k
   // Since an earlier round the entry routes only live here — one
   // address for web app AND app.
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
 

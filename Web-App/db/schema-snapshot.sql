@@ -57,11 +57,11 @@ CREATE TABLE admin_takeovers (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   effective_at timestamp with time zone NOT NULL,
   cancel_hash text,
-  CONSTRAINT admin_takeovers_check CHECK (((type = 'passwort'::text) = (password_hash IS NOT NULL))),
+  CONSTRAINT admin_takeovers_check CHECK (((type = 'password'::text) = (password_hash IS NOT NULL))),
   CONSTRAINT admin_takeovers_initiator_id_fkey FOREIGN KEY (initiated_by) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT admin_takeovers_pkey PRIMARY KEY (target_id, type),
   CONSTRAINT admin_takeovers_target_id_fkey FOREIGN KEY (target_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT admin_takeovers_type_check CHECK ((type = ANY (ARRAY['passwort'::text, 'zweiter_faktor'::text, 'deaktivieren'::text, 'rolle_entziehen'::text, 'loeschen'::text])))
+  CONSTRAINT admin_takeovers_type_check CHECK ((type = ANY (ARRAY['password'::text, 'second_factor'::text, 'deactivate'::text, 'revoke_role'::text, 'delete'::text])))
 );
 CREATE UNIQUE INDEX idx_admin_takeovers_cancel ON admin_takeovers USING btree (cancel_hash);
 CREATE INDEX idx_admin_takeovers_initiator ON admin_takeovers USING btree (initiated_by);
@@ -726,7 +726,7 @@ CREATE TABLE price_alerts (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT price_alerts_condition CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text]))),
   CONSTRAINT price_alerts_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
-  CONSTRAINT price_alerts_direction CHECK ((direction = ANY (ARRAY['unter'::text, 'ueber'::text]))),
+  CONSTRAINT price_alerts_direction CHECK ((direction = ANY (ARRAY['below'::text, 'above'::text]))),
   CONSTRAINT price_alerts_pkey PRIMARY KEY (user_id, set_number, condition),
   CONSTRAINT price_alerts_set_number_with_version CHECK ((set_number ~ '-[0-9]+$'::text)),
   CONSTRAINT price_alerts_threshold CHECK ((threshold > (0)::numeric)),
@@ -1210,7 +1210,7 @@ CREATE TABLE webauthn_challenges (
   purpose text NOT NULL,
   expires_at timestamp with time zone NOT NULL,
   CONSTRAINT webauthn_challenges_pkey PRIMARY KEY (challenge),
-  CONSTRAINT webauthn_challenges_purpose_check CHECK ((purpose = ANY (ARRAY['registrieren'::text, 'anmelden'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT webauthn_challenges_purpose_check CHECK ((purpose = ANY (ARRAY['register'::text, 'login'::text, 'second_factor'::text]))),
   CONSTRAINT webauthn_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_webauthn_challenges_account ON webauthn_challenges USING btree (user_id);

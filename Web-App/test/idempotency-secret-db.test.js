@@ -92,7 +92,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
   app.use('/api/v2', idempotency(require('./helpers/sources').testServices().idempotency));
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const post = (path, key, body, methode = 'POST') =>

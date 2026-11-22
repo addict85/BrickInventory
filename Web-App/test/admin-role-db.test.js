@@ -48,7 +48,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
   const { base, srv } = routerServer(_req, {
     sitzung: { userId: adminId, username: ADMIN, isAdmin: true },
     apiNutzer: { user_id: adminId, is_admin: 1 },
-    routen: { [AUTH]: 'routes/auth.js', '/api/v2': 'routes/api_v1/index.js' },
+    routen: { [AUTH]: 'routes/auth.js', '/api/v2': 'routes/api/index.js' },
     t,
   });
 

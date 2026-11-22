@@ -109,7 +109,7 @@ test('accounts can only narrow the delete scope, never widen it', () => {
   // A view parameter that can OPEN something would be an access path instead of
   // a safeguard. The service therefore intersects with schreibbereich(); the
   // route only passes the view on (behavior: scope-services-db.test.js).
-  const src = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
+  const src = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api/sets.ts'), 'utf8'));
   const i = src.indexOf("router.endpoint('DELETE /api/v2/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
   assert.match(src.slice(i, i + 900), /deleteSetFor\(viewOf\(req\)/, 'Die Route löscht nicht über den Dienst');

@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { v1Keys } from './v1';
+import { V1_ALERT_DIRECTIONS, V1_SUPPLEMENT, V1_SET_SORTS } from './v1Names';
+import { v1Keys, v1Values } from './v1';
 import { input, LARGEST_ID } from '../infra/validate';
 import { AccountName, type Route, time, whole, WITHOUT_BODY, IDENTIFIER, CONDITION, TEXT, query, Q } from './base';
 import {
@@ -21,7 +22,7 @@ export const AddSetResponse = z.looseObject({
   name: z.string().nullable().optional(),
   catalog_pending: z.boolean().optional(),
   /** pending: created, a job is still fetching catalog, image or market price. */
-  supplement: z.enum(['ausstehend', 'erledigt']).optional(),
+  supplement: v1Values(z.enum(['pending', 'done']), V1_SUPPLEMENT).optional(),
   owner_user_id: z.number().int().optional(),
   is_self: z.boolean().optional(),
 });
@@ -69,7 +70,7 @@ export const MoveSetResponse = z.looseObject({
 export const PriceAlert = z.looseObject({
   set_number: z.string(),
   condition: z.string(),
-  direction: z.string(),
+  direction: v1Values(z.string(), V1_ALERT_DIRECTIONS),
   threshold: z.number(),
   currency_code: z.string(),
   triggered: z.boolean(),
@@ -283,7 +284,7 @@ export const routes = {
       accounts: Q.accounts,
       search: Q.text(),
       theme: Q.text(),
-      sort: Q.text(40),
+      sort: v1Values(Q.text(40), V1_SET_SORTS),
       page: Q.number(),
       page_size: Q.number(),
       storage: Q.text(),
@@ -325,7 +326,7 @@ export const routes = {
   },
   'PUT /api/v2/sets/:setNumber/alert': {
     input: z.strictObject({
-      direction: z.enum(['unter', 'ueber']),
+      direction: v1Values(z.enum(['below', 'above']), V1_ALERT_DIRECTIONS),
       threshold: input.geld('Schwelle', { nullbar: false }),
       condition: CONDITION.optional(),
     }),

@@ -69,7 +69,7 @@ test('the parts list names the parts with both numbers', { concurrency: 1 }, asy
     next();
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   const srv = app.listen(0);
   t.after(async () => {
     srv.close();

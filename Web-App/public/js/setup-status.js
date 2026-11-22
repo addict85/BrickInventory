@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { G } from './dom.js';
 import { toast } from './messages.js';
 
-// ═══ Setup status (server: routes/api_v1/setup.ts) ═
+// ═══ Setup status (server: routes/api/setup.ts) ═
 // The login page checks with this what is still missing before the first account, and
 // explains installing the root certificate. The response carries only flags and the public
 // certificate (src/profile/setupStatus.ts) — no accounts, no keys.

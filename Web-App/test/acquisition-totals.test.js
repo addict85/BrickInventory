@@ -8,7 +8,7 @@
  * for missing prices → the edge case substep turns red. And an
  * inserted `acqs.reduce(...)` in admin.js → the rule substep.
  * Counter-check of 30.10.2026: `totals` removed from the parts response in
- * routes/api_v1/acquisitions.ts → red: “parts” in the route substep.
+ * routes/api/acquisitions.ts → red: “parts” in the route substep.
  * Since 05.11.2026 `amount` is missing without a known price (money has a type);
  * measured: the route without the omission → red: “minifigs” (amount: null
  * violates the contract, the response has no entries).

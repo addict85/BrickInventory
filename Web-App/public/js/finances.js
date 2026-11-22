@@ -184,10 +184,10 @@ function pmTableHead() {
 }
 
 /** Section of manually recorded parts or minifigs; empty without entries.
- * @param {{ kind: string, title: string, symbol: string, rows: string, count: number, kauf: number, value: number, cur: string }} o */
+ * @param {{ kind: string, title: string, symbol: string, rows: string, count: number, purchase: number, value: number, cur: string }} o */
 function manualSection(o) {
   if (!o.count) return '';
-  const foot = html`<tfoot><tr><td colspan="4" class="fin-footer-l">${tRaw('finance.sum')}</td>${totalCells(o.kauf, o.value, o.cur)}<td colspan="2"></td></tr></tfoot>`;
+  const foot = html`<tfoot><tr><td colspan="4" class="fin-footer-l">${tRaw('finance.sum')}</td>${totalCells(o.purchase, o.value, o.cur)}<td colspan="2"></td></tr></tfoot>`;
   return html`
     <div class="tw space-top-125" data-fin-kind="${o.kind}" tabindex="0" role="region" aria-label="${o.title}">
       <h2 class="ctitle fin-section">${ico(o.symbol)} ${rawHtml(o.title)}</h2>
@@ -427,7 +427,7 @@ function purchaseAmount(unit, qty, cur, acq) {
 function priceHeads(sortable = false) {
   const short = (/** @type {string} */ long, /** @type {string} */ shortTxt) =>
     html`<th class="number" title="${tRaw(long)}"${sortState('guv', sortable)}>${sortButton('guv', sortable, html`<span aria-hidden="true">${rawHtml(shortTxt)}</span><span class="vh">${tRaw(long)}</span>`)}</th>`;
-  return html`${html`<th class="number"${sortState('kauf', sortable)}>${sortButton('kauf', sortable, tRaw('finance.col.purchase'))}</th>`}${html`<th class="number"${sortState('value', sortable)}>${sortButton('value', sortable, tRaw('finance.grand.value'))}</th>`}${short('finance.total_pnl', tRaw('finance.pnl_short'))}`;
+  return html`${html`<th class="number"${sortState('purchase', sortable)}>${sortButton('purchase', sortable, tRaw('finance.col.purchase'))}</th>`}${html`<th class="number"${sortState('value', sortable)}>${sortButton('value', sortable, tRaw('finance.grand.value'))}</th>`}${short('finance.total_pnl', tRaw('finance.pnl_short'))}`;
 }
 
 // ── Many items: search, sort, in blocks ──────────────────────────
@@ -457,7 +457,7 @@ function sortButton(field, on, content) {
 function sortValue(s) {
   const f = _finSort.field;
   if (f === 'name') return String(s.name || s.set_number).toLocaleLowerCase();
-  if (f === 'kauf') return (Number(s.purchase_price) || 0) * (s.quantity || 1);
+  if (f === 'purchase') return (Number(s.purchase_price) || 0) * (s.quantity || 1);
   if (f === 'value') return Number(s.value_total) || 0;
   return Number(s.pnl_percent ?? -Infinity);
 }
@@ -521,7 +521,7 @@ function renderFinanceTables() {
         symbol: 'part',
         rows: partsRows,
         count: parts.length,
-        kauf: st.purchase.parts,
+        purchase: st.purchase.parts,
         value: st.value.parts,
         cur: st.cur,
       },
@@ -531,7 +531,7 @@ function renderFinanceTables() {
       symbol: 'minifig',
       rows: figsRows,
       count: figs.length,
-      kauf: st.purchase.figs,
+      purchase: st.purchase.figs,
       value: st.value.figs,
       cur: st.cur,
     })}${more}${totalsTable(st.purchase, st.value, st.cur, st.basis)}`,

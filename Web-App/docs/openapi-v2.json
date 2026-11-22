@@ -6750,9 +6750,9 @@
             "schema": {
               "type": "string",
               "enum": [
-                "farbe",
+                "color",
                 "name",
-                "menge"
+                "quantity"
               ]
             }
           }
@@ -9081,8 +9081,8 @@
                   "direction": {
                     "type": "string",
                     "enum": [
-                      "unter",
-                      "ueber"
+                      "below",
+                      "above"
                     ]
                   },
                   "threshold": {
@@ -10862,7 +10862,7 @@
                       "null"
                     ]
                   },
-                  "gutschein_land": {
+                  "voucher_country": {
                     "type": [
                       "string",
                       "number",
@@ -14440,11 +14440,11 @@
                 "type": {
                   "type": "string",
                   "enum": [
-                    "passwort",
-                    "zweiter_faktor",
-                    "deaktivieren",
-                    "rolle_entziehen",
-                    "loeschen"
+                    "password",
+                    "second_factor",
+                    "deactivate",
+                    "revoke_role",
+                    "delete"
                   ]
                 },
                 "effective_at": {
@@ -14711,8 +14711,8 @@
           "supplement": {
             "type": "string",
             "enum": [
-              "ausstehend",
-              "erledigt"
+              "pending",
+              "done"
             ]
           },
           "owner_user_id": {
@@ -18850,8 +18850,8 @@
                     "type": "string",
                     "enum": [
                       "gateway",
-                      "docker_netz",
-                      "eine_adresse"
+                      "docker_network",
+                      "single_address"
                     ]
                   },
                   "vars": {
@@ -18973,7 +18973,7 @@
                 },
                 "ago": {
                   "type": "string",
-                  "const": "bestand"
+                  "const": "holding"
                 }
               },
               "required": [
@@ -21147,8 +21147,8 @@
               {
                 "type": "string",
                 "enum": [
-                  "markt",
-                  "kauf"
+                  "market",
+                  "purchase"
                 ]
               },
               {
@@ -22008,12 +22008,12 @@
           "state": {
             "type": "string",
             "enum": [
-              "offen",
-              "wartet",
-              "bestaetigt",
-              "abgeholt",
-              "abgelehnt",
-              "abgelaufen"
+              "open",
+              "waiting",
+              "confirmed",
+              "collected",
+              "rejected",
+              "expired"
             ]
           },
           "device": {
@@ -25365,9 +25365,9 @@
               "aborted": {
                 "type": "string",
                 "enum": [
-                  "kontingent",
-                  "kein_schluessel",
-                  "stoerung"
+                  "quota",
+                  "no_key",
+                  "failure"
                 ]
               }
             },

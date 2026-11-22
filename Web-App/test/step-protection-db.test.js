@@ -21,7 +21,7 @@
  *      without attestation applies until the cutoff date …”
  *   H  in qrNonceThe() `from_qr` deleted and newNonce() always new → red: “an access
  *      from QR pairing …”
- *   I  in routes/api_v1/settings.ts POST /settings without freigegeben() → red:
+ *   I  in routes/api/settings.ts POST /settings without freigegeben() → red:
  *      “every administrator path …” (POST /settings without approval 200); the same per
  *      path for smtp-test, einrichtung and quelle-testen with `requireToken`
  *      instead of `requireAdmin`, for import and instructions without freigegeben()

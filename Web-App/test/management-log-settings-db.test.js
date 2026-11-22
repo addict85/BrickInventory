@@ -56,7 +56,7 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
   const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v2': 'routes/api_v1/index.js' },
+    routen: { '/api/v2': 'routes/api/index.js' },
     t,
   });
   const speichere = rumpf =>

@@ -7,7 +7,7 @@
  *   B  path deleted from PUBLIC                    → red: 401 instead of 200
  *   C  users row taken into the response            → red: „keine Adressen, keine Namen“
  *   D  BrickLink/Rebrickable check removed in setupStatus.ts → red: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
- *   E  in routes/api_v1/setup.ts `verwalter: true` fixed (07.11.2026)
+ *   E  in routes/api/setup.ts `verwalter: true` fixed (07.11.2026)
  *      → red: „ohne Verwalter verrät der Stand kein Startpasswort“
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -95,7 +95,7 @@ test('setup state without login', { concurrency: 1 }, async t => {
 test('the entry lets only the state through without a session', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const app = express();
-  const mw = _req('routes/api_v1/middleware.js');
+  const mw = _req('routes/api/middleware.js');
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
   app.use('/api/v2', mw.guardFor(require('./helpers/sources').testServices().account).loginAtInbox);
   app.use('/api/v2', (req, res) => res.json({ success: true, path: req.path }));

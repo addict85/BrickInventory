@@ -48,7 +48,7 @@ export async function reportDevice(
 }
 
 export type Pickup =
-  | { state: 'wartet' }
+  | { state: 'waiting' }
   | { state: 'bereit'; uid: number }
   | { state: 'fertig'; token: string; uid: number; keyNonce: string | null };
 
@@ -65,9 +65,9 @@ export async function fetchQrToken(
   preview = false,
 ): Promise<Pickup> {
   const z = await rowTo(k, pickup);
-  if (z?.state === 'wartet') return { state: 'wartet' };
-  if (z?.state === 'abgelehnt') failDomain('verboten', 'qr_rejected');
-  if (z?.state !== 'bestaetigt' || !(await may(z.user_id))) failDomain('not_signed_in', 'token_invalid');
+  if (z?.state === 'waiting') return { state: 'waiting' };
+  if (z?.state === 'rejected') failDomain('verboten', 'qr_rejected');
+  if (z?.state !== 'confirmed' || !(await may(z.user_id))) failDomain('not_signed_in', 'token_invalid');
   if (preview) return { state: 'bereit', uid: z.user_id };
   if (!(await k.qrPairing.markPickedUp(z.id))) failDomain('not_signed_in', 'token_invalid');
   const token = await createToken(k, z.user_id, z.device ?? 'qr-login', true, z.token_days ?? null, {
@@ -81,7 +81,7 @@ export async function fetchQrToken(
 /** The app's no after the preview: the pairing is rejected afterwards, a token is never created. */
 export async function discardPickup(k: AccountContext, pickup: string | null | undefined): Promise<boolean> {
   const z = await rowTo(k, pickup);
-  if (z?.state !== 'bestaetigt' && z?.state !== 'wartet') return false;
+  if (z?.state !== 'confirmed' && z?.state !== 'waiting') return false;
   await k.qrPairing.markRejected(z.id);
   return true;
 }
@@ -106,7 +106,7 @@ export async function confirmPairing(
 ): Promise<void> {
   const z = await k.qrPairing.qrPairingOfAccount(pairing, uid);
   if (!z) failDomain('not_found', 'not_found');
-  if (z.state !== 'wartet') failDomain('konflikt', 'qr_not_pending');
+  if (z.state !== 'waiting') failDomain('konflikt', 'qr_not_pending');
   if (!codeFits(z.code_hash, code)) {
     if ((await k.qrPairing.countQrFailedAttempt(z.id)) < QR_FAILED_ATTEMPTS) failDomain('ungueltig', 'qr_code_wrong');
     await k.qrPairing.markRejected(z.id);

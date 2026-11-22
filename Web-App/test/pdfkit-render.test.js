@@ -33,7 +33,7 @@ function isValidPdf(b, wo) {
 }
 
 test('the parts list export draws a valid PDF', async () => {
-  // The same set of methods as in routes/api_v1/pdf.ts.
+  // The same set of methods as in routes/api/pdf.ts.
   const b = await rendern(doc => {
     doc.font('Helvetica-Bold').fontSize(16).text('Teileliste');
     doc.moveDown(0.5);

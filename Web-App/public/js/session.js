@@ -53,7 +53,7 @@ subscribe('sessionEnded', path => {
   // Already without a session right after login, on a page without HTTPS: the Secure cookie is missing.
   // "Expired" sent the operator into a loop of repeated logins.
   const withoutCookie = Date.now() - _signedInUm < 60_000 && !_cookieSet && withoutHttps();
-  showLogin({ abgelaufen: true, hint: withoutCookie ? tRaw('auth.cookie_missing') : undefined });
+  showLogin({ expired: true, hint: withoutCookie ? tRaw('auth.cookie_missing') : undefined });
 });
 /** Time of the last login via the form (for the case above). */
 let _signedInUm = 0;
@@ -427,7 +427,7 @@ async function confirmedSignedIn() {
   toast(_verifyEmail ? tRaw('verify.confirmed', { email: _verifyEmail }) : tRaw('verify.confirmed_short'), 'success');
 }
 /**
- * @param {{ abgelaufen?: boolean, hint?: string }} [o] abgelaufen: the name stays, so that
+ * @param {{ expired?: boolean, hint?: string }} [o] expired: the name stays, so that
  *   one can log in again right away; password and code never — otherwise a press on "log in"
  *   would be enough for the next person at the device.
  */
@@ -443,11 +443,11 @@ function showLogin(o = {}) {
     k?.setAttribute('aria-pressed', 'false');
     k?.querySelector('use')?.setAttribute('href', '#i-eye');
   }
-  if (!o.abgelaufen) G('lu').value = '';
+  if (!o.expired) G('lu').value = '';
   const hint = G('login-hint');
   if (hint) {
-    hint.hidden = !o.abgelaufen;
-    hint.textContent = o.abgelaufen ? o.hint || tRaw('auth.session_expired') : '';
+    hint.hidden = !o.expired;
+    hint.textContent = o.expired ? o.hint || tRaw('auth.session_expired') : '';
   }
   formError(G('lerr'), '');
   // The progress bar belongs to js/progress.js — that is also where it says what "reset" means for it
@@ -655,7 +655,7 @@ async function doLogin() {
   G('lc-status').textContent = '';
   if (d.success && d.cookie_missing) {
     // The server did not set the cookie at all: opening the app would mean "expired" again right away.
-    showLogin({ abgelaufen: true, hint: tRaw('auth.cookie_missing') });
+    showLogin({ expired: true, hint: tRaw('auth.cookie_missing') });
     return;
   }
   if (d.success) {

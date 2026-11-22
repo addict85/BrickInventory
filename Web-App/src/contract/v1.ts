@@ -140,7 +140,8 @@ export function translate(schema: z.ZodType | undefined, value: unknown, to: Dir
   if (typeof value !== 'object') return value;
   if (d.type === 'record') {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) out[k] = translate(d.valueType as z.ZodType, v, to);
+    const key = unwrap(d.keyType as z.ZodType);
+    for (const [k, v] of Object.entries(value)) out[mapValue(key, k, to)] = translate(d.valueType as z.ZodType, v, to);
     return out;
   }
   const objects = d.type === 'object' ? [s] : objectOptions(d);

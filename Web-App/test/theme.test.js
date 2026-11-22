@@ -9,7 +9,7 @@
  *      “a server-set value applies …” (fetch despite a server value)
  *   C  konto.js: applyTheme() returns null instead of __bimApplyTheme →
  *      red “applyTheme runs via the boot helper”
- *   D  routes/api_v1/settingsGlobal.ts: forgetTheme() removed in the admin save
+ *   D  routes/api/settingsGlobal.ts: forgetTheme() removed in the admin save
  *      → red “the server sets data-theme itself …” (brick instead of noppe)
  *   Deleted „GET /api/settings/theme ist ohne Login erreichbar“: covered by
  *   design-per-account-db.test.js; route put behind requireLogin → red there

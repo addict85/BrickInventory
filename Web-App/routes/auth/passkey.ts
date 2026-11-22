@@ -1,5 +1,5 @@
 /** Managing passkeys in the own account; logging in with them happens in routes/auth.ts. */
-import { guardFor } from '../api_v1/middleware';
+import { guardFor } from '../api/middleware';
 import { perSession, signedInUserId, confirmWithFactor } from '../../src/account/http/login';
 import { contractRouter } from '../../src/http/contractRouter';
 import { devicesNameValid } from '../../src/account';

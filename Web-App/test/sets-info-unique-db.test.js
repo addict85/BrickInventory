@@ -1,5 +1,5 @@
 /**
- * The name lookup /sets/info/:setNumber stands in routes/api_v1/sets.ts before
+ * The name lookup /sets/info/:setNumber stands in routes/api/sets.ts before
  * /sets/:setNumber/…: otherwise a number that looks like a path word of the first lands there:
  * GET /api/v2/sets/info/price-history hit /sets/:setNumber/price-history with …
  *

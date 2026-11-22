@@ -278,8 +278,8 @@ export type AccountNotice =
   | 'passwort_zurueckgesetzt'
   | 'token_neu'
   | 'qr_zugang_neu'
-  | 'zweiter_faktor_entfernt'
-  | 'verwalter_ernannt'
+  | 'second_factor_removed'
+  | 'admin_appointed'
   | 'verwaltung_faktor_entfernt'
   | 'token_wiederverwendet'
   | 'passwort_durch_verwalter'
@@ -290,10 +290,10 @@ export type AccountNotice =
   | 'anmeldung_tagesgrenze'
   | 'second_factor_locked'
   | 'bestaetigung_gebremst'
-  | 'einstellungen_geaendert'
+  | 'settings_changed'
   | 'access_ended'
   | 'zugaenge_beendet'
-  | 'uebernahme_angekuendigt'
+  | 'takeover_announced'
   | 'verwaltung_uebernahme_angekuendigt'
   | 'verwaltung_uebernahme_abgebrochen'
   | 'alte_codes_ablauf'
@@ -359,7 +359,7 @@ function sideEffectsSentence(g: ResetSideEffects | undefined, en: boolean): stri
 function takeoverSentences(o: NoticeDetails, en: boolean) {
   const u = takeover(o, en);
   return {
-    uebernahme_angekuendigt: en
+    takeover_announced: en
       ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough) or open the link below; the change is then dropped. If you asked for it yourself, you need not do anything.`
       : `der Administrator „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt) oder öffne den Link unten; dann entfällt die Änderung. Hast du selbst darum gebeten, musst du nichts tun.`,
     verwaltung_uebernahme_angekuendigt: en
@@ -401,10 +401,10 @@ function noticeSentence(kind: AccountNotice, o: NoticeDetails, en: boolean): str
     qr_zugang_neu: en
       ? 'a QR code to sign in the app was created for your account.'
       : 'für dein Konto wurde ein QR-Code zur Anmeldung der App erzeugt.',
-    zweiter_faktor_entfernt: en
+    second_factor_removed: en
       ? `the administrator “${o.durch ?? ''}” removed the second factor of your account.`
       : `der Administrator „${o.durch ?? ''}“ hat den zweiten Faktor deines Kontos entfernt.`,
-    verwalter_ernannt: en
+    admin_appointed: en
       ? `“${o.durch ?? ''}” made the account “${o.konto ?? ''}” an administrator.`
       : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Administrator gemacht.`,
     verwaltung_faktor_entfernt: en
@@ -434,7 +434,7 @@ function noticeSentence(kind: AccountNotice, o: NoticeDetails, en: boolean): str
     bestaetigung_gebremst: en
       ? 'in a signed-in session or app of your account, the password or code was entered wrongly several times when confirming; further attempts are slowed down for now.'
       : 'in einer angemeldeten Sitzung oder App deines Kontos wurde beim Bestätigen mehrmals ein falsches Passwort oder ein falscher Code eingegeben; weitere Versuche werden vorerst gebremst.',
-    einstellungen_geaendert: en
+    settings_changed: en
       ? `“${o.durch ?? ''}” changed security-relevant settings: ${o.konto ?? ''}.`
       : `„${o.durch ?? ''}“ hat sicherheitsrelevante Einstellungen geändert: ${o.konto ?? ''}.`,
     access_ended: en
@@ -554,7 +554,7 @@ export interface AlertMailData {
   /** If missing, the mail shows the number. */
   setName?: string | null;
   condition: string;
-  direction: 'unter' | 'ueber';
+  direction: 'below' | 'above';
   threshold: number;
   price: number;
   currency: string;
@@ -589,7 +589,7 @@ export async function buildAlertMail(
   const de = d.lang !== 'en';
   const money = (n: number) => `${d.currency} ${n.toFixed(2)}`;
   const condition = d.condition === 'U' ? (de ? 'gebraucht' : 'used') : de ? 'neu' : 'new';
-  const direction = d.direction === 'unter' ? (de ? 'unter' : 'below') : de ? 'über' : 'above';
+  const direction = d.direction === 'below' ? (de ? 'unter' : 'below') : de ? 'über' : 'above';
   const title = d.setName || d.setNumber;
 
   // The link is OPTIONAL: the price run has no request; without APP_BASE_URL

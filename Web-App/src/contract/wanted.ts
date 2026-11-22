@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { V1_ALERT_DIRECTIONS, V1_RB_ABORTS } from './v1Names';
 import { v1Keys, v1Values } from './v1';
 import { input } from '../infra/validate';
 import {
@@ -30,7 +31,7 @@ export const CurrentByCondition = z.looseObject({
 });
 
 export const WantedItemAlert = z.looseObject({
-  direction: z.string(),
+  direction: v1Values(z.string(), V1_ALERT_DIRECTIONS),
   threshold: z.number(),
   triggered: z.boolean(),
 });
@@ -130,7 +131,7 @@ export const WantedXmlResult = z.looseObject({
       asked: whole,
       found: whole,
       filterIneffective: z.boolean(),
-      aborted: z.enum(['kontingent', 'kein_schluessel', 'stoerung']).optional(),
+      aborted: v1Values(z.enum(['quota', 'no_key', 'failure']), V1_RB_ABORTS).optional(),
     })
     .optional(),
 });

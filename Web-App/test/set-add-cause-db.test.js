@@ -6,7 +6,7 @@
  * Sammlung“ and leads to the set with a button.
  *
  * Counter-checks (measured 04.11.2026, each on its own):
- *   A  in routes/api_v1/catalog.ts always 'set_not_in_catalog' → red:
+ *   A  in routes/api/catalog.ts always 'set_not_in_catalog' → red:
  *      “server: empty catalog” (code set_not_in_catalog)
  *   B  the query of the own collection removed in setUnbekannt() → red:
  *      “UI: set already in the collection” (message „unbekannt“)

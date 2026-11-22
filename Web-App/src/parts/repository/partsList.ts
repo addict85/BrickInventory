@@ -18,15 +18,15 @@ export interface PartsFilter {
   withoutManual?: boolean;
 }
 
-export type PartsOrder = 'farbe' | 'name' | 'menge';
+export type PartsOrder = 'color' | 'name' | 'quantity';
 /** Fixed list, because the value goes into the query as SQL. */
 export function partsOrder(wert: unknown): PartsOrder {
-  return wert === 'name' || wert === 'menge' ? wert : 'farbe';
+  return wert === 'name' || wert === 'quantity' ? wert : 'color';
 }
 /** The last key makes the pages stable. */
 function orderSql(o: PartsOrder, sp: { farbe: string; name: string; quantity: string; number: string }): string {
   if (o === 'name') return `${sp.name} ASC, ${sp.farbe} ASC, ${sp.number} ASC`;
-  if (o === 'menge') return `${sp.quantity} DESC, ${sp.name} ASC, ${sp.number} ASC`;
+  if (o === 'quantity') return `${sp.quantity} DESC, ${sp.name} ASC, ${sp.number} ASC`;
   return `${sp.farbe} ASC, ${sp.name} ASC`;
 }
 

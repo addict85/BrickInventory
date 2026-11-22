@@ -68,7 +68,7 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
   const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     t,
-    routen: { '/api/v2/auth': 'routes/auth.js', '/api/v2': 'routes/api_v1/settings.js' },
+    routen: { '/api/v2/auth': 'routes/auth.js', '/api/v2': 'routes/api/settings.js' },
   });
   const rufe = (methode, path, body) =>
     fetch(`${base}/api/v2${path}`, {

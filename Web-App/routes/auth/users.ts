@@ -1,6 +1,6 @@
 /** User management for administrators: every change requires the administrator's password and
  * second factor and is logged. */
-import { guardFor } from '../api_v1/middleware';
+import { guardFor } from '../api/middleware';
 import { userId, signedInUserId, confirmWithFactor, userName } from '../../src/account/http/login';
 import { passwordLack } from '../../src/infra/passwordRule';
 import { contractRouter } from '../../src/http/contractRouter';
@@ -33,7 +33,7 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
     if ((await d.account.addAccount(admin, username, password, asAdmin)) === null)
       failDomain('konflikt', 'username_taken');
     if (asAdmin)
-      d.account.adminHintInBackground('verwalter_ernannt', {
+      d.account.adminHintInBackground('admin_appointed', {
         konto: String(username),
         durch: userName(req) ?? '',
       });
@@ -50,7 +50,7 @@ export function buildUserRouter(d: Pick<Services, 'account'>) {
     const r = await d.account.verwalter.setAdminRole(signedInUserId(req), targetId, expected);
     if (r.effectiveAb) return { effective_at: r.effectiveAb.toISOString() };
     if (r.changed && expected)
-      d.account.adminHintInBackground('verwalter_ernannt', {
+      d.account.adminHintInBackground('admin_appointed', {
         konto: (await d.account.accountShortOf(targetId))?.username ?? String(targetId),
         durch: userName(req) ?? '',
       });

@@ -9,7 +9,7 @@
  *   • a second router under /api/v2/auth in server.ts
  *     (`app.use('/api/v2/auth', zertifikatRouter)`) → “one router per mount point” red.
  *   • `router.get('/settings/theme', …)` a second time in
- *     routes/api_v1/settings.ts → “every route exactly once” red.
+ *     routes/api/settings.ts → “every route exactly once” red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +37,7 @@ function routen(router, praefix = '') {
 
 /** Router mounts in startup/app.ts: path → router module. */
 function einhaengungen() {
-  const v1 = { mount: '/api/v2', datei: path.join(ROOT, 'routes/api_v1/index.ts'), name: 'api_v1/index' };
+  const v1 = { mount: '/api/v2', datei: path.join(ROOT, 'routes/api/index.ts'), name: 'api/index' };
   // The parts of routes/auth.ts are already in its stack.
   return [v1, ...routerEinhaengungen({ withoutParts: true })];
 }

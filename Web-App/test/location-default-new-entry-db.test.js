@@ -106,7 +106,7 @@ test('the storage location default applies to every new capture', { concurrency:
     )?.name ?? null;
 
   await t.test('a part without a place gets the default', async () => {
-    // Exactly like this the wanted import calls (routes/api_v1/wanted.ts, `creator`):
+    // Exactly like this the wanted import calls (routes/api/wanted.ts, `creator`):
     // number, color, quantity, condition — no storage.
     await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(await locationOfPart('3001'), 'Kiste 7');

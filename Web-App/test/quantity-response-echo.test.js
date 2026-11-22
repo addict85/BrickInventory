@@ -3,7 +3,7 @@
  *
  * Counter-check (carried out): in sammlung.js `const echt = qty` set →
  * the web app substep turns red. Counter-check of 30.10.2026: in
- * routes/api_v1/sets.ts `...(r || {})` removed from the PUT response → red:
+ * routes/api/sets.ts `...(r || {})` removed from the PUT response → red:
  * “the route delivers the quantity” (undefined instead of 3). Counter-check of 08.11.2026:
  * in autosaveSet `const echt = qty` → red: “the web app takes
  * the quantity from the response” (field stays at 1). Counter-check of 12.11.2026 (the

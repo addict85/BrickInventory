@@ -1,5 +1,5 @@
 /**
- * Open without login at the entrance (PUBLIC_ROUTES, routes/api_v1/middleware.ts) is exactly
+ * Open without login at the entrance (PUBLIC_ROUTES, routes/api/middleware.ts) is exactly
  * what the app calls before it has a token (`ohne_token` in shared/app-schnittstelle.json),
  * plus named exceptions; Caddy buffers each open POST as a sign-in path. The app's "No" on
  * the QR screen (POST /auth/qr-login/verwerfen) comes without session and token.
@@ -30,7 +30,7 @@ const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const WEB = path.join(__dirname, '..');
-const { PUBLIC_ROUTES, isPublicRoute } = _req('routes/api_v1/middleware.js');
+const { PUBLIC_ROUTES, isPublicRoute } = _req('routes/api/middleware.js');
 /** What the app needs from the server, generated from its source (Android-App/tools/contract). */
 const APP = JSON.parse(fs.readFileSync(path.join(WEB, '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
 const ohnePraefix = (/** @type {string} */ r) => r.replace(' /api/v2/', ' /');

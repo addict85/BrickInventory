@@ -86,7 +86,7 @@ test('2. req.body is always an object, even without a matching parser', async ()
   // explanation block above names `req.body` plenty, a mere indexOf
   // would thus be satisfied forever.
   // Since 04.11.2026 in readBody: the bodies are only read after login.
-  const code = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'routes', 'api_v1', 'middleware.ts'), 'utf8'));
+  const code = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'routes', 'api', 'middleware.ts'), 'utf8'));
   assert.match(
     code,
     /req\.body === undefined.*req\.body = \{\}/,

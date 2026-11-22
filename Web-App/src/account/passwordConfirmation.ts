@@ -97,7 +97,7 @@ export async function checkConfirmation(
         'faktor',
         uid,
         zugang,
-        async () => (await k.factors.verifyAuthentication(factor.passkey, 'zweiter_faktor', uid)) === uid,
+        async () => (await k.factors.verifyAuthentication(factor.passkey, 'second_factor', uid)) === uid,
         'passkey_invalid',
       );
 }

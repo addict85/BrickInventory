@@ -467,7 +467,7 @@ function applySettings(s) {
   // entry, regardless of what is saved.
   _set(
     'voucher-country',
-    s.gutschein_land || /** @type {Record<string, string>} */ (COUNTRY_TO_CURRENCY)[accountCurrency] || 'de-CH',
+    s.voucher_country || /** @type {Record<string, string>} */ (COUNTRY_TO_CURRENCY)[accountCurrency] || 'de-CH',
   );
   if (loggedInAccount?.isAdmin) {
     _set('bl-ck', s.bricklink_consumer_key || '');

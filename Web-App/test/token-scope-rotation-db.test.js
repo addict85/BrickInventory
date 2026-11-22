@@ -1,7 +1,7 @@
 /**
  * Tokens: scope, sliding expiry, rotation, a fixed end for every token,
  * device list and the migration of existing tokens — against a real
- * database and the login path as in the server (entrance, api_v1, settings, auth).
+ * database and the login path as in the server (entrance, routes/api, settings, auth).
  *
  * Counter-checks (measured on 30.10.2026):
  *   A  the scope not respected in checkToken() (is_admin = konto_is_admin) →
@@ -94,11 +94,11 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
   );
   app.use(
     '/api/v2',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/settings.js'));
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;

@@ -9,7 +9,7 @@ import * as repo from './repository/priceAlerts';
 import { attempts } from '../infra/result';
 import type { FinancesContext } from './context';
 
-export type Direction = 'unter' | 'ueber';
+export type Direction = 'below' | 'above';
 
 export interface PriceAlert {
   set_number: string;
@@ -38,9 +38,17 @@ export interface AlarmInput {
   condition?: string | undefined;
 }
 
+/** Exports before API v2 wrote the direction in German. */
+const csvDirection = (raw: unknown) => {
+  const r = String(raw ?? '')
+    .trim()
+    .toLowerCase();
+  return r === 'unter' ? 'below' : r === 'ueber' ? 'above' : r;
+};
+
 function checkInput(direction: string, threshold: AlarmInput['threshold'], condition: string | undefined) {
   const r = String(direction ?? '');
-  if (r !== 'unter' && r !== 'ueber') failDomain('ungueltig', 'alert_direction_invalid');
+  if (r !== 'below' && r !== 'above') failDomain('ungueltig', 'alert_direction_invalid');
   const s = Number(threshold);
   // Number.isFinite also catches NaN from an empty input; `> 0` alone
   // would report two different errors the same way.
@@ -133,7 +141,7 @@ export async function triggeredSince(k: FinancesContext, userId: number, since: 
 /** A function of its own: the only place where "below" and "above" mean
  * something — and where a sign error arises. That way it is testable. */
 export function crosses(direction: Direction, price: number, threshold: number): boolean {
-  return direction === 'unter' ? price < threshold : price > threshold;
+  return direction === 'below' ? price < threshold : price > threshold;
 }
 
 /** The TRANSITION is reported, not the state. Sending comes as a parameter
@@ -238,9 +246,7 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
     try {
       const alarm = await setAlert(k, uid, sn, currency, {
         // Both the new English header and an older export's German one are accepted on import.
-        direction: String(row.direction || row.richtung || row.Richtung || '')
-          .trim()
-          .toLowerCase(),
+        direction: csvDirection(row.direction || row.richtung || row.Richtung),
         threshold: String(row.threshold || row.schwelle || row.Schwelle || '')
           .trim()
           .replace(',', '.'),

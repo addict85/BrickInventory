@@ -6,7 +6,7 @@
  * Counter-checks (measured 13.11.2026, each on its own):
  *   A  `remember(…)` deleted in onlyClientAddress() → red: “after the
  *      hint in the log it is in the response” (null)
- *   B  `proxy_hinweis` deleted from the response in routes/api_v1/admin.ts →
+ *   B  `proxy_hinweis` deleted from the response in routes/api/admin.ts →
  *      red: “without a hint: null” and “after the hint …” (undefined)
  *   C  startup/app.ts does not put the hint provider into app.locals → red: “the
  *      app puts its hint provider where …”

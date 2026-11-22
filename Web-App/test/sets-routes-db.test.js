@@ -1,5 +1,5 @@
 /**
- * The set routes (routes/api_v1/sets.ts) against a REAL database.
+ * The set routes (routes/api/sets.ts) against a REAL database.
  *
  * ── Counter-checks (carried out) ──────────────────────────────────────────────
  * See the individual checks — each names the intervention with which it turned
@@ -62,7 +62,7 @@ async function startApi() {
     next();
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }

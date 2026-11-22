@@ -71,7 +71,7 @@ function row(w) {
   const alert = w.alarm
     ? html`<span class="mk-tag">
          ${ico(w.alarm.triggered ? 'alert' : 'clock')}
-         ${tRaw(w.alarm.direction === 'ueber' ? 'detail.alert_above' : 'detail.alert_below')}
+         ${tRaw(w.alarm.direction === 'above' ? 'detail.alert_above' : 'detail.alert_below')}
          ${fmtN(Number(w.alarm.threshold), accountCurrency)}
        </span>`
     : '';
@@ -233,8 +233,8 @@ export async function catalogToWanted() {
     const alert =
       threshold != null && threshold > 0
         ? await api('PUT', `/v2/sets/${encodeURIComponent(sn)}/alert`, {
-            richtung: G('cat-m-alert-dir')?.value || 'unter',
-            schwelle: threshold,
+            direction: G('cat-m-alert-dir')?.value || 'below',
+            threshold: threshold,
             condition,
           })
         : null;

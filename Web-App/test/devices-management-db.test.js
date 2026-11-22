@@ -49,7 +49,7 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
   );
   app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/settings.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 

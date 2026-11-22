@@ -95,7 +95,7 @@ export type SetRecorded =
       set_number: string;
       name: string;
       catalog_pending: boolean;
-      supplement: 'ausstehend';
+      supplement: 'pending';
       besitzer: number;
     };
 
@@ -156,7 +156,7 @@ export async function acquireSet(sk: SetsContext, e: NewSet): Promise<SetRecorde
       set_number: sn,
       name: catalog?.name ?? `Set ${sn}`,
       catalog_pending: !catalog || catalog.platzhalter,
-      supplement: 'ausstehend' as const,
+      supplement: 'pending' as const,
       besitzer,
     };
   });

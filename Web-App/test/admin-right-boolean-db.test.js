@@ -38,7 +38,7 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
   });
 
   await t.test('requireToken passes a boolean on', async () => {
-    const { requireToken } = _req('routes/api_v1/middleware.js').guardFor(
+    const { requireToken } = _req('routes/api/middleware.js').guardFor(
       require('./helpers/sources').testServices().account,
     );
     for (const [token, soll] of [

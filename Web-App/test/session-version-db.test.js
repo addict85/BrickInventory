@@ -10,7 +10,7 @@
  *      Verwaltersitzung gilt nicht mehr" and „das andere Fenster bleibt draussen"
  *   B  increaseSessionVersion() removed in endAllSessions (src/account/accessEnd.ts) → red:
  *      „die zurückgeschriebene Verwaltersitzung gilt nicht mehr"
- *   C  in routes/api_v1/settings.ts the new version not written into the own
+ *   C  in routes/api/settings.ts the new version not written into the own
  *      session → red: „das eigene Fenster bleibt angemeldet"
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -77,10 +77,10 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
   );
   app.use(
     '/api/v2',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;

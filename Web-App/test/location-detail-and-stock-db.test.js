@@ -196,7 +196,7 @@ test('storage location: detail and stock against a real database', async t => {
 
 /**
  * The storage location filter of the set list, checked via the ROUTE. Counter-check: `storage` removed from
- * the passing-on in routes/api_v1/sets.ts → red („2 Sets statt 1“); without a filter
+ * the passing-on in routes/api/sets.ts → red („2 Sets statt 1“); without a filter
  * both sets come (otherwise an empty list would pass too).
  */
 test("the lists' storage location filter works via the route", async t => {

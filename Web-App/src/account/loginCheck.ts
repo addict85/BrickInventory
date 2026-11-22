@@ -178,7 +178,7 @@ export async function checkCredentials(
     }
     const onlyFallbackPath = !withPasskey && (await factorCodeLocked(k, user.id));
     const gilt = withPasskey
-      ? (await k.factors.verifyAuthentication(passkeyResponse, 'zweiter_faktor', user.id)) === user.id
+      ? (await k.factors.verifyAuthentication(passkeyResponse, 'second_factor', user.id)) === user.id
       : await k.factors.checkCode(user.id, code, !onlyFallbackPath);
     if (!gilt) {
       await failedAttempt(k, 'second_factor_wrong', ip, name, user.id);

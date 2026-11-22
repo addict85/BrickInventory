@@ -125,7 +125,7 @@ test("guide_type is 'sold' everywhere, not 'stock'", () => {
   for (const f of [
     'clients/bricklink.ts',
     'src/catalog/bricklinkPrices.ts',
-    'routes/api_v1/sets.ts',
+    'routes/api/sets.ts',
     'src/finances/financeCalc.ts',
     'src/finances/priceRun.ts',
   ]) {
@@ -386,7 +386,7 @@ test('the history endpoints deliver finished chart data', () => {
   const uses = (ph.match(/buildChart\(/g) || []).length;
   assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in src/finances/priceHistory.ts`);
   // Also where the history routes stand: an adapter builds no chart data.
-  const v1fin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/finance.ts'), 'utf8');
+  const v1fin = fs.readFileSync(path.join(ROOT, 'routes/api/finance.ts'), 'utf8');
   assert.doesNotMatch(
     v1fin,
     /buildChart\(/,

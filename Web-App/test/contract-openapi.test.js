@@ -41,7 +41,7 @@ function routesOf(router, basis) {
   return aus;
 }
 const EXPRESS = [
-  ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'), '/api/v2'),
+  ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'), '/api/v2'),
   ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/auth.js'), '/api/v2/auth'),
   // Directly in server.ts: they answer before the routers are in place.
   'GET /api/v2/startup-status',

@@ -94,7 +94,7 @@ export async function resolveLocalOn(
 }
 
 /** Rebrickable is the only direct path from BL to RB numbers. */
-export type RebrickableAbort = 'kontingent' | 'kein_schluessel' | 'stoerung';
+export type RebrickableAbort = 'quota' | 'no_key' | 'failure';
 /** Two phases, because the Rebrickable fetches take much longer. */
 export type WantedProgress = {
   phase: 'rebrickable' | 'schreiben';
@@ -135,7 +135,7 @@ export async function resolveViaRebrickableOn(
       rbId = await k.externalSources.sources.blPartToRb(a.items.blId);
     } catch (e) {
       if (!(e instanceof RebrickableLocked)) reportError('wanted:rebrickable', e);
-      const aborted = e instanceof RebrickableLocked ? e.reason : 'stoerung';
+      const aborted = e instanceof RebrickableLocked ? e.reason : 'failure';
       return {
         auf: result,
         asked,

@@ -80,17 +80,14 @@ const EXEMPT = new Map([
 
 function leserouten() {
   const source = ['settings.ts', 'settingsGlobal.ts']
-    .map(f => require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'routes/api_v1', f), 'utf8'))
+    .map(f => require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'routes/api', f), 'utf8'))
     .join('\n')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
   const found = [...source.matchAll(/router\.endpoint\(\s*'GET \/api\/v2\/settings([^']*)'/g)].map(m => m[1] || '/');
   // Self-proof: if the pattern did not apply, the list would be empty and the test
   // green without having looked at a single route.
-  assert.ok(
-    found.length >= 4,
-    `Nur ${found.length} GET-Routen in routes/api_v1/settings.ts gefunden — Muster veraltet?`,
-  );
+  assert.ok(found.length >= 4, `Nur ${found.length} GET-Routen in routes/api/settings.ts gefunden — Muster veraltet?`);
   const veraltet = [...EXEMPT.keys()].filter(p => !found.includes(p));
   assert.deepEqual(veraltet, [], 'Diese Ausnahmen beschreiben keine Route mehr — streichen: ' + veraltet.join(', '));
   return found.filter(p => !EXEMPT.has(p)).map(p => '/api/v2/settings' + (p === '/' ? '' : p));
@@ -132,7 +129,7 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
       next();
     });
     app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/settings.js'));
     return app;
   };
   const srvUser = appFor(false).listen(0);

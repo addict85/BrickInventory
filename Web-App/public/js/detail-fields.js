@@ -72,8 +72,8 @@ export function alertBlock(sn, prefix = 'm', state = 'N') {
         <option value="U"${state === 'U' ? ' selected' : ''}>${tRaw('common.condition_used')}</option>
       </select>
       <select id="${p}-alert-dir" class="alert-field" aria-label="${tRaw('detail.alert')}" data-change="saveAlert" data-arg="${sn}">
-        <option value="unter">${tRaw('detail.alert_below')}</option>
-        <option value="ueber">${tRaw('detail.alert_above')}</option>
+        <option value="below">${tRaw('detail.alert_below')}</option>
+        <option value="above">${tRaw('detail.alert_above')}</option>
       </select>
       <label class="alert-price" for="${p}-alert-val"><span class="alert-price-title">${tRaw('detail.alert_price_ph')}</span>
       <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alert-field" aria-label="${tRaw('detail.alert_price')} (${accountCurrency})"
@@ -214,7 +214,7 @@ export async function loadAlert(sn) {
   if (choice && all.length && !all.some(x => x.condition === alertState()))
     choice.value = all[0]?.condition === 'U' ? 'U' : 'N';
   const a = all.find(x => x.condition === alertState());
-  dir.value = a?.direction || 'unter';
+  dir.value = a?.direction || 'below';
   val.value = a ? amountForField(a.threshold) : '';
   showAlertMarker(a);
 }
@@ -348,7 +348,7 @@ export async function showOpenAlerts() {
   const sub = tRaw('detail.alert_below'),
     via = tRaw('detail.alert_above');
   for (const a of d.alerts || []) {
-    const direction = a.direction === 'unter' ? sub : via;
+    const direction = a.direction === 'below' ? sub : via;
     // Amounts as everywhere in the UI ("712,40 €"), in the alert's currency.
     const threshold = fmtN(a.threshold, a.currency_code);
     const txt =

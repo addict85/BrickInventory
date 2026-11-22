@@ -32,7 +32,7 @@ type Transports = NonNullable<WebAuthnCredential['transports']>;
 const transports = (s: string | null): { transports?: Transports } =>
   s ? { transports: s.split(',') as Transports } : {};
 
-export type PasskeyPurpose = 'registrieren' | 'anmelden' | 'zweiter_faktor';
+export type PasskeyPurpose = 'register' | 'login' | 'second_factor';
 
 /** The browser dialog runs for at most this long. */
 const CHALLENGE_MS = 5 * 60 * 1000;
@@ -53,7 +53,7 @@ const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
  * instead of a table that grows without bound. */
 export const MAX_OPEN_CHALLENGES = 5000;
 
-const PURPOSES: readonly PasskeyPurpose[] = ['registrieren', 'anmelden', 'zweiter_faktor'];
+const PURPOSES: readonly PasskeyPurpose[] = ['register', 'login', 'second_factor'];
 const signature = (content: Buffer) =>
   Buffer.from(searchValue('passkey-challenge', content.toString('base64url')), 'hex');
 
@@ -130,7 +130,7 @@ export async function registrationOptions(k: FactorsContext, uid: number, name: 
     authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
     excludeCredentials: present.map(v => ({ id: v.credential_id, ...transports(v.transports) })),
   });
-  await rememberChallenge(k, options.challenge, 'registrieren', uid);
+  await rememberChallenge(k, options.challenge, 'register', uid);
   return options;
 }
 
@@ -143,7 +143,7 @@ export async function verifyRegistration(
   const rp = relyingParty();
   const reply = asResponse<RegistrationResponseJSON>(raw);
   if (!rp || !reply) return null;
-  const challenge = await resolveChallenge(k, reply.response.clientDataJSON, 'registrieren', uid);
+  const challenge = await resolveChallenge(k, reply.response.clientDataJSON, 'register', uid);
   if (!challenge) return null;
   const v = await verifyRegistrationResponse({
     response: reply,
@@ -164,14 +164,14 @@ export async function verifyRegistration(
   );
 }
 
-export async function authenticationOptions(k: FactorsContext, purpose: 'anmelden' | 'zweiter_faktor') {
+export async function authenticationOptions(k: FactorsContext, purpose: 'login' | 'second_factor') {
   const rp = relyingParty();
   if (!rp) return null;
   // Empty allowCredentials: the browser offers the discoverable passkeys without
   // the server revealing which account has which.
   return generateAuthenticationOptions({
     rpID: rp.rpID,
-    userVerification: purpose === 'anmelden' ? 'required' : 'preferred',
+    userVerification: purpose === 'login' ? 'required' : 'preferred',
     challenge: signedChallenge(purpose, k.clock.now() + CHALLENGE_MS),
   });
 }
@@ -182,7 +182,7 @@ export async function authenticationOptions(k: FactorsContext, purpose: 'anmelde
 export async function verifyAuthentication(
   kx: FactorsContext,
   raw: unknown,
-  purpose: 'anmelden' | 'zweiter_faktor',
+  purpose: 'login' | 'second_factor',
   uid: number | null = null,
 ): Promise<number | null> {
   const rp = relyingParty();
@@ -210,7 +210,7 @@ export async function verifyAuthentication(
       counter: Number(k.sign_count),
       ...transports(k.transports),
     },
-    requireUserVerification: purpose === 'anmelden',
+    requireUserVerification: purpose === 'login',
   }).catch(rejected);
   if (!v?.verified) return null;
   // Only recorded after a valid signature: a repeat of the same response finds it.

@@ -222,7 +222,7 @@ export async function deleteVoucher(k: VoucherContext, uid: number, id: number):
 
 export async function voucherPlaintext(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
   const z = await existing(k, uid, id);
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_klartext', masked(z).number);
+  await k.account.verwalter.rememberAdminAction(uid, uid, 'voucher_plaintext', masked(z).number);
   return z;
 }
 
@@ -230,14 +230,14 @@ export async function voucherPlaintext(k: VoucherContext, uid: number, id: numbe
 export async function releasePdf(k: VoucherContext, uid: number, id: number): Promise<string> {
   const z = await existing(k, uid, id);
   if (!z.pdf_path) failDomain('not_found', 'not_found');
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_pdf', masked(z).number);
+  await k.account.verwalter.rememberAdminAction(uid, uid, 'voucher_pdf', masked(z).number);
   return issueTicket(k, uid, String(id));
 }
 
 export async function releaseExport(k: VoucherContext, uid: number): Promise<string> {
   const n = (await voucherList(k, uid)).length;
   if (!n) failDomain('not_found', 'no_vouchers');
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_export', `${n}`);
+  await k.account.verwalter.rememberAdminAction(uid, uid, 'voucher_export', `${n}`);
   return issueTicket(k, uid, 'export');
 }
 
@@ -277,7 +277,7 @@ export async function checkBalance(k: VoucherContext, uid: number, id: number): 
   const old = await existing(k, uid, id);
   if (!old.pin) failDomain('ungueltig', 'balance_pin_missing');
   const country = String(
-    (await k.settings.globalValue('gutschein_land', '')) ||
+    (await k.settings.globalValue('voucher_country', '')) ||
       countryForCurrency(await k.settings.userValue(uid, 'currency', 'EUR')),
   );
   if (!countryAllowed(country)) failDomain('ungueltig', 'balance_country_invalid');

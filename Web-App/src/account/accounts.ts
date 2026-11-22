@@ -108,7 +108,7 @@ export async function setForeignPassword(
   return withAccessEnd(k, uid, async t => {
     if (!(await t.konten.setPasswordHash(uid, hash))) return false;
     await endAccesses(t, uid);
-    if (through !== null) await rememberAdminAction(t, through, uid, 'passwort_gesetzt');
+    if (through !== null) await rememberAdminAction(t, through, uid, 'password_set');
     return true;
   });
 }
@@ -188,8 +188,8 @@ export async function addAccount(
     if (await t.konten.nameTaken(username, 0)) return null;
     const fresh = await t.konten.addAccountOne(username, hash, asAdmin);
     if (fresh === null) return null;
-    await rememberAdminAction(t, admin, fresh, 'konto_angelegt');
-    if (asAdmin) await rememberAdminAction(t, admin, fresh, 'verwalter_ernannt');
+    await rememberAdminAction(t, admin, fresh, 'account_created');
+    if (asAdmin) await rememberAdminAction(t, admin, fresh, 'admin_appointed');
     return fresh;
   }).catch(asDuplicate('username_taken'));
 }

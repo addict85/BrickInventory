@@ -108,10 +108,10 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   app.use(_req('routes/certificate.js').buildCertificateRouter());
   app.use(
     '/api/v2',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
+    _req('routes/api/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/settings.js'));
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;

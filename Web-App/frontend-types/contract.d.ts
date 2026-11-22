@@ -16,7 +16,7 @@ export type AccountInList = {
   second_factor: boolean;
   awaiting_confirmation: boolean;
   announced: Array<{
-    type: 'passwort' | 'zweiter_faktor' | 'deaktivieren' | 'rolle_entziehen' | 'loeschen';
+    type: 'password' | 'second_factor' | 'deactivate' | 'revoke_role' | 'delete';
     effective_at: string;
     [feld: string]: unknown;
   }>;
@@ -78,7 +78,7 @@ export type AddSetResponse = {
   set_number: string;
   name?: string | null;
   catalog_pending?: boolean;
-  supplement?: 'ausstehend' | 'erledigt';
+  supplement?: 'pending' | 'done';
   owner_user_id?: number;
   is_self?: boolean;
   [feld: string]: unknown;
@@ -1107,7 +1107,7 @@ export type JobsResponse = {
   schedules: Record<string, JobSchedule>;
   degraded?: string[];
   proxy_hint?: {
-    kind: 'gateway' | 'docker_netz' | 'eine_adresse';
+    kind: 'gateway' | 'docker_network' | 'single_address';
     vars: {
       ip: string;
       minutes?: number;
@@ -1129,7 +1129,7 @@ export type JobStatus = {
   sub_parts?: Array<{
     code: string;
     values?: Record<string, string | number>;
-    ago?: 'bestand';
+    ago?: 'holding';
   }>;
   [feld: string]: unknown;
 };
@@ -1550,7 +1550,7 @@ export type PnlSetRow = {
   baseline_pnl_percent: number | null;
   tile_price?: number | null;
   tile_pnl_pct?: number | null;
-  tile_source?: 'markt' | 'kauf' | null;
+  tile_source?: 'market' | 'purchase' | null;
   [feld: string]: unknown;
 };
 export type PnlTotals = {
@@ -1741,7 +1741,7 @@ export type QrMessage = {
 };
 export type QrPairingState = {
   success: true;
-  state: 'offen' | 'wartet' | 'bestaetigt' | 'abgeholt' | 'abgelehnt' | 'abgelaufen';
+  state: 'open' | 'waiting' | 'confirmed' | 'collected' | 'rejected' | 'expired';
   device: string | null;
   ip_range: string | null;
   [feld: string]: unknown;
@@ -2448,7 +2448,7 @@ export type WantedXmlResult = {
     asked: number;
     found: number;
     filterIneffective: boolean;
-    aborted?: 'kontingent' | 'kein_schluessel' | 'stoerung';
+    aborted?: 'quota' | 'no_key' | 'failure';
     [feld: string]: unknown;
   };
   [feld: string]: unknown;

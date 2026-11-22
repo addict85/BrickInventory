@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 
-export type TakeoverKind = 'passwort' | 'zweiter_faktor' | 'deaktivieren' | 'rolle_entziehen' | 'loeschen';
+export type TakeoverKind = 'password' | 'second_factor' | 'deactivate' | 'revoke_role' | 'delete';
 export interface Takeover {
   target_id: number;
   type: TakeoverKind;
@@ -29,7 +29,7 @@ export async function scheduleTermination(
 export async function adminOrJustBeen(db: DbInterface, target: number, hours: number): Promise<boolean> {
   const r = await db.get<{ ja: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND is_admin)
-         OR EXISTS (SELECT 1 FROM admin_log WHERE target_id = $1 AND action = 'verwalter_entzogen'
+         OR EXISTS (SELECT 1 FROM admin_log WHERE target_id = $1 AND action = 'admin_revoked'
                      AND occurred_at > NOW() - make_interval(hours => $2)) AS ja`,
     [target, hours],
   );
@@ -43,10 +43,10 @@ export async function takeDue(db: DbInterface): Promise<{ gilt: Takeover[]; disc
     `WITH weg AS (DELETE FROM admin_takeovers WHERE effective_at <= NOW() RETURNING *)
      SELECT w.target_id, w.type, w.initiated_by, w.password_hash,
        EXISTS (SELECT 1 FROM users d WHERE d.id = w.initiated_by AND d.is_admin AND d.is_active)
-       AND (w.type NOT IN ('passwort', 'zweiter_faktor') OR NOT (
+       AND (w.type NOT IN ('password', 'second_factor') OR NOT (
          EXISTS (SELECT 1 FROM admin_log p WHERE p.target_id = w.target_id
                    AND p.action = 'account_deactivated' AND p.occurred_at >= w.created_at)
-         OR EXISTS (SELECT 1 FROM weg x WHERE x.target_id = w.target_id AND x.type = 'deaktivieren'))) AS gilt
+         OR EXISTS (SELECT 1 FROM weg x WHERE x.target_id = w.target_id AND x.type = 'deactivate'))) AS gilt
        FROM weg w`,
   );
   return { gilt: route.filter(z => z.gilt), discarded: route.filter(z => !z.gilt).length };

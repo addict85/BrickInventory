@@ -211,7 +211,7 @@ export class WrongMounted extends Error {
   }
 }
 
-/** Checks inputs in production and responses in tests, even without being mounted in routes/api_v1/index.ts. */
+/** Checks inputs in production and responses in tests, even without being mounted in routes/api/index.ts. */
 export function contractRouter<P extends string>(praefix: P, o: { largeIds?: boolean } = {}): ContractRouter<P> {
   // As in the contract: a different spelling is a different route (404), not the same one without an entry.
   const router = express.Router({ caseSensitive: true });

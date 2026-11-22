@@ -8,7 +8,7 @@
  * every price fails, as in the test environment.
  *
  * Counter-checks (measured 05.11.2026, each on its own):
- *   A  in routes/api_v1/finance.ts `sets: uebersetzt(…)` removed → red:
+ *   A  in routes/api/finance.ts `sets: uebersetzt(…)` removed → red:
  *      “price errors in English” (German text)
  *   B  in fetchPrice (src/finances/calculation/prices.ts) again throw new
  *      Error(`… — kein BrickLink-Preis gefunden`) → red: “price errors in

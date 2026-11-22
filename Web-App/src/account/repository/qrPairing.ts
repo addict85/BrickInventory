@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 
-export type QrStand = 'offen' | 'wartet' | 'bestaetigt' | 'abgeholt' | 'abgelehnt' | 'abgelaufen';
+export type QrStand = 'open' | 'waiting' | 'confirmed' | 'collected' | 'rejected' | 'expired';
 
 export interface QrRow {
   id: number;
@@ -12,9 +12,9 @@ export interface QrRow {
   state: QrStand;
 }
 
-const STAND = `CASE WHEN rejected_at IS NOT NULL THEN 'abgelehnt' WHEN picked_up_at IS NOT NULL THEN 'abgeholt'
-  WHEN expires_at <= NOW() THEN 'abgelaufen' WHEN confirmed_at IS NOT NULL THEN 'bestaetigt'
-  WHEN used_at IS NOT NULL THEN 'wartet' ELSE 'offen' END`;
+const STAND = `CASE WHEN rejected_at IS NOT NULL THEN 'rejected' WHEN picked_up_at IS NOT NULL THEN 'collected'
+  WHEN expires_at <= NOW() THEN 'expired' WHEN confirmed_at IS NOT NULL THEN 'confirmed'
+  WHEN used_at IS NOT NULL THEN 'waiting' ELSE 'open' END`;
 const COLUMNS = `id::int AS id, user_id, token_days, device AS device, ip_range, code_hash, ${STAND} AS state`;
 
 export async function cleanQrPairingsOn(db: DbInterface): Promise<void> {

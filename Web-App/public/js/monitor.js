@@ -120,24 +120,24 @@ function openLogViewer() {
 /** One spelled-out key per server code: that way test/i18n-calls.test.js checks that it exists. */
 /** @type {Record<string, (w?: Record<string, string | number>) => string>} */
 const SUB_TEXTS = {
-  teil_gemappt: w => tRaw('monitor.sub.part_mapped', w),
+  part_mapped: w => tRaw('monitor.sub.part_mapped', w),
   // At 0 the plural form said "all 0 …".
   all_mapped: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.nichts_to_assign' : 'monitor.sub.all_mapped', w),
   pending: w => tRaw('monitor.sub.pending', w),
   all_done: w => tRaw('monitor.sub.all_done', w),
-  keine_ausstehenden: w => tRaw('monitor.sub.none_pending', w),
+  none_pending: w => tRaw('monitor.sub.none_pending', w),
   retry_ready: w => tRaw('monitor.sub.retry_ready', w),
-  warten_morgen: w => tRaw('monitor.sub.wait_morgen', w),
-  bilder_laden: w => tRaw('monitor.sub.images_load', w),
-  bilder_offen: w => tRaw('monitor.sub.images_open', w),
+  wait_tomorrow: w => tRaw('monitor.sub.wait_morgen', w),
+  images_loading: w => tRaw('monitor.sub.images_load', w),
+  images_open: w => tRaw('monitor.sub.images_open', w),
   imgs_cached: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.none_images' : 'monitor.sub.imgs_cached', w),
-  katalog_warteschlange: w => tRaw('monitor.sub.catalog_warteschlange', w),
-  job_nie: w => tRaw('monitor.sub.job_nie', w),
-  kein_durchgang: w => tRaw('monitor.sub.no_run', w),
-  neu_suche: w => tRaw('monitor.sub.new_search', w),
-  neu_geladen: w => tRaw('monitor.sub.new_loaded', w),
-  pdf_laufend: w => tRaw('monitor.sub.pdf_running', w),
-  pdf_bereit: w => tRaw('monitor.sub.pdf_ready', w),
+  catalog_queue: w => tRaw('monitor.sub.catalog_warteschlange', w),
+  never_ran: w => tRaw('monitor.sub.job_nie', w),
+  no_run: w => tRaw('monitor.sub.no_run', w),
+  new_search: w => tRaw('monitor.sub.new_search', w),
+  reloaded: w => tRaw('monitor.sub.new_loaded', w),
+  pdf_running: w => tRaw('monitor.sub.pdf_running', w),
+  pdf_ready: w => tRaw('monitor.sub.pdf_ready', w),
   no_active: w => tRaw('monitor.sub.no_active', w),
   holding: w => tRaw('monitor.sub.stock', w),
 };
@@ -290,8 +290,8 @@ const serviceName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
 /** Fixed keys instead of composed ones (test/i18n-calls.test.js); text as in the log (src/http/proxyHint.ts). */
 const PROXY_HINT = {
   gateway: 'monitor.proxy.gateway',
-  docker_netz: 'monitor.proxy.docker_network',
-  eine_adresse: 'monitor.proxy.one_address',
+  docker_network: 'monitor.proxy.docker_network',
+  single_address: 'monitor.proxy.one_address',
 };
 
 export async function loadMonitor() {

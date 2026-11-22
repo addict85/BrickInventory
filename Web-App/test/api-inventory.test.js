@@ -27,9 +27,9 @@ function inventory() {
   // copied list silently goes stale. See routerEinhaengungen().
   for (const r of routerEinhaengungen())
     for (const [m, p] of scan(r.datei, r.mount)) eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')))
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
-      for (const [m, p] of scan(path.join(ROOT, 'routes/api_v1', f), '/api/v2')) eps.add(`${m} /api/v2${p}`);
+      for (const [m, p] of scan(path.join(ROOT, 'routes/api', f), '/api/v2')) eps.add(`${m} /api/v2${p}`);
   return eps;
 }
 

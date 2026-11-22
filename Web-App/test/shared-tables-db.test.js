@@ -5,7 +5,7 @@
  * source text (a new place on a catalog table must be registered here …
  *
  * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
- *   A  routes/api_v1/wanted.ts: rememberNumber always writes rememberBlNumber →
+ *   A  routes/api/wanted.ts: rememberNumber always writes rememberBlNumber →
  *      red: “input of an account lands in no shared table”
  *      (bl_mapping carries the marker)
  *   B  rememberMinifig() in src/catalog/catalogMaintenance.ts without the branch for `von` →

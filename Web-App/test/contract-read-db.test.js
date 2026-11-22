@@ -265,7 +265,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     next();
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   for (const r of routerEinhaengungen())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);

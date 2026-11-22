@@ -56,7 +56,7 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
       next();
     });
     app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
-    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+    app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
     return app;
   };
   const srvMain = appFor(mainId).listen(0);

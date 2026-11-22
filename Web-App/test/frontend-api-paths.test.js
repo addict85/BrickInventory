@@ -12,11 +12,11 @@ const ROOT = path.join(__dirname, '..');
 /** All routes of the server as [METHOD, full path]. */
 function routen() {
   const raus = new Set();
-  // The mount points from server.ts (helpers/sources.js), without api_v1.
+  // The mount points from server.ts (helpers/sources.js), without routes/api.
   for (const r of require('./helpers/sources').routerEinhaengungen()) collect(`routes/${r.name}`, r.mount);
-  // api_v1 is included via index.ts — read the files directly.
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1'))) {
-    if (f.endsWith('.ts')) collect(`routes/api_v1/${f.replace(/\.ts$/, '')}`, '/api/v2');
+  // routes/api is included via index.ts — read the files directly.
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api'))) {
+    if (f.endsWith('.ts')) collect(`routes/api/${f.replace(/\.ts$/, '')}`, '/api/v2');
   }
   // And the few that hang directly in server.ts (startup-status, health …).
   const srv = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');

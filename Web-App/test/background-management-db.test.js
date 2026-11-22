@@ -1,5 +1,5 @@
 /**
- * The background jobs in the administration (routes/api_v1/admin.ts,
+ * The background jobs in the administration (routes/api/admin.ts,
  * src/management/background.ts) via the real route: job list, cancel,
  * retry, clear, now — and the old addresses (brickset-queue,
  * job-status, job-schedule, trigger-price-job) keep delivering their fields.

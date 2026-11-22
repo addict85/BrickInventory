@@ -410,7 +410,7 @@ test('any in all forms, unknown parameters and success in services become fewer,
     console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_LIMIT}) — Schranke nachziehen`);
   // Routes return their result, the contract router (endpunkt) sets the envelope. Left are
   // streams, callbacks after logout and whole responses of the login.
-  // Counter-check (14.11.2026): in routes/api_v1/sets.ts `return { set }` as `res.json({ success: true, set })` → red (11).
+  // Counter-check (14.11.2026): in routes/api/sets.ts `return { set }` as `res.json({ success: true, set })` → red (11).
   const ROUTES_LIMIT = 10;
   const inRoutes = zaehle([/\bsuccess:\s*true\b/g], f => /^routes[\\/]/.test(path.relative(WEB, f)));
   assert.ok(
@@ -502,7 +502,7 @@ test('raw req.body and req.query in routes become fewer, never more', () => {
   // A route reads req.eingabe and req.abfrage: checked and typed from the
   // contract. Left are the middleware before the check, the image proxy (without
   // contract) and routes/auth/registration.ts.
-  // Counter-check (05.11.2026): a `req.body.storage` back in routes/api_v1/sets.ts → red.
+  // Counter-check (05.11.2026): a `req.body.storage` back in routes/api/sets.ts → red.
   const LIMIT = 4;
   let ist = 0;
   for (const f of sources().filter(f => /[\\/]routes[\\/]/.test(f)))
@@ -1638,36 +1638,11 @@ test('German identifiers become fewer, never more (server and tests separately; 
 // in i18n.js) and names the frontend does not own, listed here per group with their reason.
 const NOT_OURS = {
   /** Fields and values of the API that the contract (contract.d.ts, openapi.json) does not list. */
-  API_VALUES: [
-    'kauf_asc',
-    'kauf_desc',
-    'voll',
-    'abstand',
-    'konto',
-    'unveraendert',
-    'X-Gutschein-Befunde',
-    'abdeckung',
-    'fortschritt',
-    'fertig',
-    'kaufpreis',
-    'richtung',
-    'schwelle',
-  ],
+  API_VALUES: ['voll', 'abstand', 'konto', 'unveraendert', 'X-Gutschein-Befunde', 'abdeckung', 'kaufpreis'],
   /** Codes the server sends in monitor and log entries; the UI maps them to texts. */
   SERVER_CODES: [
-    'teil_gemappt',
-    'keine_ausstehenden',
-    'warten_morgen',
-    'bilder_laden',
     'images_reload',
-    'bilder_offen',
-    'katalog_warteschlange',
     'catalog_followup',
-    'kein_durchgang',
-    'neu_suche',
-    'neu_geladen',
-    'pdf_laufend',
-    'pdf_bereit',
     'rework',
     'images',
     'instructions',
@@ -1678,29 +1653,12 @@ const NOT_OURS = {
     'cleanup',
     'cleanup_daily',
     'account_files',
-    'passwort_gesetzt',
-    'verwalter_ernannt',
-    'verwalter_entzogen',
-    'konto_reaktiviert',
-    'konto_freigeschaltet',
-    'gutschein_klartext',
-    'gutschein_pdf',
-    'gutschein_export',
     'zuordnung',
     'gleich_vermerkt',
     'korrigiert',
-    'bestand',
-    // Actions of the admin log (admin_log.action, stored values).
-    'konto_angelegt',
-    'einstellungen_geaendert',
-    'zweiter_faktor_entfernt',
-    'konto_geloescht',
-    'konto_deaktiviert',
-    'uebernahme_angekuendigt',
-    'uebernahme_abgebrochen',
   ],
   /** German server texts the job monitor recognises until the server sends codes for them. */
-  SERVER_TEXTS: ['Alle', 'Bilder', 'Keine', 'bereit', 'zum', 'aktualisiert', 'Starte', 'gecacht', 'Fehler'],
+  SERVER_TEXTS: ['Alle', 'Bilder', 'Keine', 'bereit', 'zum', 'aktualisiert', 'Starte', 'gecacht', 'Fehler', 'erledigt'],
   /** Classes whose suffix is a job status from the server (mon-${status}). */
   STATUS_CLASSES: ['mon-fehler'],
   /** Addresses in the browser bar (#/sammlung?suche=…): bookmarks keep working. */
@@ -1727,6 +1685,7 @@ const NOT_OURS = {
     'teile',
     'zustand',
     'ordnung',
+    'farbe',
   ],
   /** Old device settings that theme-boot.js moves to their English keys once. */
   OLD_STORAGE: [
@@ -1736,6 +1695,9 @@ const NOT_OURS = {
     'bim_dunkel',
     'immer',
     'bim_teile_ordnung',
+    // Values of bim_teile_ordnung before the order became English; parts.js reads them once more.
+    'farbe',
+    'menge',
   ],
   /** File name users get when saving an instruction without a name of its own. */
   USER_TEXT: ['anleitung.pdf'],
@@ -1745,7 +1707,7 @@ const NOT_OURS = {
 
 test('no German names in the UI code', () => {
   // Counter-check (22.11.2026): `.fehler-hinweis` in styles.css and `let knopfLeiste` in public/js/dom.js
-  // → red with both places; 'kein_durchgang' taken out of SERVER_CODES → red (monitor.js).
+  // → red with both places; 'korrigiert' taken out of SERVER_CODES → red (wanted-xml.js).
   const { germanNames, contractNames, germanWords } = require('./helpers/german-names');
   assert.deepEqual(germanWords('fehlerZustand'), ['fehler', 'zustand'], 'die Wortliste greift nicht');
   assert.deepEqual(germanWords('errorState'), []);

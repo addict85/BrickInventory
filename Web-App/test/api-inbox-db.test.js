@@ -7,7 +7,7 @@
  *
  * Counter-checks (measured on 28.10.2026):
  *   A  loginAtInbox not mounted in server.ts and requireToken removed from
- *      GET /stats (routes/api_v1/misc.ts) → red: “only the
+ *      GET /stats (routes/api/misc.ts) → red: “only the
  *      public paths answer without login” (GET /api/v2/stats open)
  *      and “a wrong token does not get in”. With the entrance but
  *      without the protection on /stats everything stays green — that is the purpose.

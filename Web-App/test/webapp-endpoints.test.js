@@ -40,7 +40,7 @@ function serverRoutes() {
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
   for (const r of routerEinhaengungen()) collect(r.datei, r.mount);
-  const v1 = path.join(ROOT, 'routes/api_v1');
+  const v1 = path.join(ROOT, 'routes/api');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     collect(path.join(v1, f), '/api/v2');

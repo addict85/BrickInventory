@@ -51,7 +51,7 @@ function collectTsFiles() {
   for (const dir of SRC_DIRS) {
     const abs = path.join(ROOT, dir);
     if (!fs.existsSync(abs)) continue;
-    // recursively, so that subfolders like routes/api_v1/ are included
+    // recursively, so that subfolders like routes/api/ are included
     walkTs(abs, files);
   }
   return files;
