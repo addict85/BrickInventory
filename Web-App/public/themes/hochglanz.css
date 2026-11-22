@@ -64,7 +64,7 @@
 [data-theme="hochglanz"][data-dunkel] header,[data-theme="hochglanz"][data-dunkel] nav{background-color:#15181e}
 [data-theme="hochglanz"] header::before{background-color:var(--b500)}
 [data-theme="hochglanz"] nav .ntab{color:#fff}
-[data-theme="hochglanz"] .card,[data-theme="hochglanz"] .sc,[data-theme="hochglanz"] .modal-content{border-radius:20px}
+[data-theme="hochglanz"] .card,[data-theme="hochglanz"] .sc,[data-theme="hochglanz"] .modal{border-radius:20px}
 [data-theme="hochglanz"] .btn{border-radius:999px}
 
 /* ── Kopf- und Reiterleiste: Woelbung plus Querstreifen ──────────────────── */
@@ -91,7 +91,7 @@
 /* ── Die Kachel: Lacksaum, gewoelbter Deckel, Spiegel darunter ───────────── */
 [data-theme="hochglanz"] .card,
 [data-theme="hochglanz"] .sc,
-[data-theme="hochglanz"] .modal-content{
+[data-theme="hochglanz"] .modal{
   box-shadow:
     0 4px 0 var(--ink),
     0 10px 16px -8px rgba(22,26,33,.35),

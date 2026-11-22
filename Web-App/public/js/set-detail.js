@@ -7,7 +7,7 @@ import { accountCurrency, loggedInAccount, gallerySets, openSet, setOpenSet } fr
 import { escJs, esc, html, safeUrl, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { fullUrl, setDialogbild, PLACEHOLDER_SET } from './images.js';
-import { G, ico, activeTab, setzeHtml } from './dom.js';
+import { G, ico, activeTab, setzeHtml, newTabHint } from './dom.js';
 import { fmtDatum, fmtGeld } from './format.js';
 import { meldeAmFeld, toast, discardToasts } from './messages.js';
 import { deletedWithUndo } from './trash.js';
@@ -20,7 +20,7 @@ import {
   setAlarmField,
   setQuantitiesField,
 } from './detail-fields.js';
-import { confirmDelete } from './confirm-prompt.js';
+import { deleteFinal } from './deletion.js';
 import { delSet, reimportParts } from './collection.js';
 import { detailRow, accountDisplay, orStroke, skeletonRows, oeffneErfassen } from './components.js';
 import { chartWidth, priceChartSVG, renderMarketRows } from './charts.js';
@@ -295,11 +295,14 @@ export function renderInstructions(instr, sn) {
       // Local files (PDF/image) open in the in-app viewer; external URLs open in a new tab.
       const link = isLocal
         ? html`<a href="${safeUrl(href)}" data-click="openPdfViewerLink" data-arg="${href}" data-arg2="${i.description || ''}" data-stil="cursor:pointer">${rawHtml(label)}</a>`
-        : html`<a href="${safeUrl(href)}" target="_blank" rel="noopener">${rawHtml(label)}</a>`;
+        : html`<a href="${safeUrl(href)}" target="_blank" rel="noopener">${rawHtml(label)}${newTabHint()}</a>`;
+      // The kind as text, not only as colour or icon: “manual” can be deleted, the other two cannot.
+      const kind = isUpload ? 'manual' : isLocal ? 'local' : 'external';
+      const badgeIco = isUpload ? 'datei' : isLocal ? 'speichern' : 'globus';
       return html`<div class="ii" id="instr-${i.id}">
       ${link}
-      ${isUpload ? html`<span class="lv" data-stil="background:var(--p100);color:var(--p600)">${tRaw('instr.badge_manual')}</span>` : isLocal ? html`<span class="lc">${ico('speichern')}</span>` : html`<span class="lv">${ico('globus')}</span>`}
-      ${isUpload ? html`<button data-click="delInstr"${echt()} data-arg="${sn}" data-arg2="${i.id}" title="${tRaw('instr.delete_tooltip')}" data-stil="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${tRaw('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
+      <span class="ii-art ii-art-${kind}">${ico(badgeIco)}<span>${tRaw(`instr.badge_${kind}`)}</span></span>
+      ${isUpload ? html`<button type="button" class="ii-weg" data-click="delInstr"${echt()} data-arg="${sn}" data-arg2="${i.id}" title="${tRaw('instr.delete_tooltip')}" aria-label="${tRaw('instr.delete_tooltip')}">${ico('loeschen')}</button>` : ''}
     </div>`;
     })
     .join('');
@@ -334,12 +337,15 @@ export function renderInstructions(instr, sn) {
 
 /** @param {string} sn @param {string} instrId */
 async function delInstr(sn, instrId) {
-  if (!(await confirmDelete(tRaw('instr.delete_title'), tRaw('instr.delete_text'), 'datei'))) return;
-  const d = await api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`);
-  if (d.success) {
-    toast(tRaw('instr.deleted'), 'success');
-    openModal(sn);
-  } else toast(d.error || t('settings.error'), 'error');
+  const d = await deleteFinal({
+    title: tRaw('instr.delete_title'),
+    text: tRaw('instr.delete_text'),
+    icon: 'datei',
+    request: () => api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`),
+  });
+  if (!d) return;
+  toast(tRaw('instr.deleted'), 'success');
+  openModal(sn);
 }
 
 /**

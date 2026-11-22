@@ -96,7 +96,7 @@
 [data-theme="werkbank"] .sc{border-top:3px solid var(--messing)}
 [data-theme="werkbank"] .card,
 [data-theme="werkbank"] .sc,
-[data-theme="werkbank"] .modal-content{
+[data-theme="werkbank"] .modal{
   background:var(--sur);border-color:var(--bdr);
 }
 /* Das Bildfeld dunkler als die Karte: Ein Set-Foto mit weissem Rand steht

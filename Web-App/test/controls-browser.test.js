@@ -26,13 +26,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { patternCollection } = require('./helpers/inventory');
+const { patternHousehold } = require('./helpers/inventory');
 const { LAYOUT } = require('./helpers/layout-measurement');
 
 const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 
 test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, async t => {
-  const app = await startApp(t, { name: `bedien_${process.pid}`, bestand: patternCollection, allDesigns: true });
+  const app = await startApp(t, { name: `bedien_${process.pid}`, bestand: patternHousehold, allDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -52,7 +52,9 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
       `(() => { const a = document.activeElement; return a.id || a.tagName.toLowerCase() + '.' + a.className; })()`,
     );
 
-  await b.auswerten(`document.querySelector('#gallery .sc[data-click="openModal"]').click(); true`);
+  // Shared with the sub-account: deleting asks which copy, the own set alone would go without a question.
+  await bis(`!!document.querySelector('#gallery .sc[data-arg="21318-1"]')`, 'Tree House');
+  await b.auswerten(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
   await bis(
     `document.getElementById('set-modal').classList.contains('open') && !!document.getElementById('m-det').querySelector('.dr')`,
     'Set-Ansicht',

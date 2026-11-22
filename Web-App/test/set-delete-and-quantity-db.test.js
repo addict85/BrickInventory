@@ -1,5 +1,6 @@
 /**
- * Deleting a set: ONE prompt, and everything belonging to it goes along.
+ * Deleting a set: at most ONE prompt (only the account choice in a household; the own set goes at
+ * once with undo, js/deletion.js), and everything belonging to it goes along.
  * Changing the set count: parts and minifigures follow.
  *
  * Counter-checks (carried out): prompt in the btn-md handler built in again →
@@ -23,7 +24,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 
-test('deleting asks exactly once', () => {
+test('deleting asks at most once', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/collection.js'), 'utf8'));
   const detail = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
 
@@ -38,15 +39,14 @@ test('deleting asks exactly once', () => {
   );
   assert.match(handler, /await delSet\(/, 'Er muss über delSet() gehen');
 
-  // …and delSet asks exactly once: via deletionChoice(), depending on the household with or without account choice
-  // (UX check 23, M1; the behavior is checked by sign-out-delete-contrast-browser).
+  // …and delSet asks at most once: only the account choice of a household; the own set is restorable.
   const fn = src.slice(
     src.indexOf('async function deletionChoice'),
     src.indexOf('export async function reimportParts'),
   );
-  assert.equal((fn.match(/confirmDelete\(/g) || []).length, 1, 'delSet() muss GENAU EINE Rückfrage stellen');
+  assert.equal((fn.match(/confirmDelete\(/g) || []).length, 0, 'das eigene Set ist wiederherstellbar: keine Rückfrage');
   assert.equal((fn.match(/deleteWithChoice\(/g) || []).length, 1, 'im Haushalt genau eine Rückfrage mit Wahl');
-  assert.match(fn, /if \(!foreign\)\s*return \(await confirmDelete\(/, 'die beiden Rückfragen schliessen sich aus');
+  assert.match(fn, /if \(!foreign\)\s*return '';/, 'ohne fremde Besitzer keine Wahl');
   // And the prompt must be able to cancel without anything being deleted.
   assert.match(fn, /\) return false;/, 'Ein „Abbrechen" muss vor dem DELETE herausspringen');
   // loadGallery() loads the metrics along; the parts and minifigures of the set are gone too.

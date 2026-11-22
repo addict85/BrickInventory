@@ -33,8 +33,7 @@
   main:not(#login-screen) { padding: 1rem; }
 
   /* Zweispaltige Bereiche zusammenklappen */
-  .sgrid2,
-  .add2          { grid-template-columns: 1fr; gap: 1rem; }
+  .sgrid2         { grid-template-columns: 1fr; gap: 1rem; }
 
   .fgrid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem; }
 }
@@ -53,8 +52,7 @@
     min-height: 52px;
     gap: .5rem;
   }
-  header .logo span,
-  .brand-sub          { display: none; }      /* Wortmarke kürzen */
+  header .logo span   { display: none; }      /* Wortmarke kürzen */
   header .logo .kopf-sicht:not([hidden]) { display: block; }
   /* Mit Seitenname nur Logo und Name: Beide Wörter zusammen wären abgeschnitten.
      Solange die Überschrift selbst zu sehen ist, steht dort die Marke. */
@@ -96,7 +94,6 @@
   :is(.filterleiste, .filterzeile) > .vtgl { display: none; }
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
-  .hstats             { display: none; }
   /* Kopfzeile: Name und Importleiste geben nach, das Benutzermenü nie. */
   header .logo        { min-width: 0; flex: 0 1 auto; }
   header .logo .marke, header .logo .kopf-sicht { min-width: 0; white-space: normal; overflow: visible;
@@ -161,11 +158,11 @@
   .fval        { white-space: nowrap; font-size: clamp(1.05rem, 5.4vw, var(--fs-6)); }
 
   /* ─ Formularzeilen ──────────────────────────────────────────────────── */
-  .frow, .gctrl, .sform {
+  .frow, .sform {
     flex-wrap: wrap;
     gap: .5rem;
   }
-  .frow > *, .gctrl > * { min-width: 0; }
+  .frow > * { min-width: 0; }
   /* Formularfelder zu zweit je Zeile, das erste und der Knopf über die volle
      Breite. Die max-width aus den Inline-Styles passt nur auf den Desktop. */
   .frow > .fg         { flex: 1 1 calc(50% - .25rem); max-width: none !important; }
@@ -181,7 +178,7 @@
      und Beschriftungen: Dort rutschte der Text unter sein Häkchen. */
   main [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label),
   .modal [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label),
-  main :is(.zeile, .zeile-inline):not(label), .modal :is(.zeile, .zeile-inline):not(label) { flex-wrap: wrap; }
+  main .zeile:not(label), .modal .zeile:not(label) { flex-wrap: wrap; }
 
   /* Detailzeilen: Beschriftung oben, Bedienelemente darunter, wenn es eng wird */
   .dr                 { flex-wrap: wrap; gap: .35rem .75rem; }
@@ -201,7 +198,6 @@
   .alarm-zeile .alarm-preis > input { flex: 1 1 auto; }
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
-  .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
   /* Bei grosser Schrift bricht eine lange Beschriftung um, statt über den Rand zu ragen. */
   .btn { white-space: normal; text-align: center; }
   input, select, textarea, .btn {
@@ -241,6 +237,8 @@
      Schlüsseln in Einstellungen und Einrichtung. */
   .ca { top: 4px; right: 4px; z-index: 2; }
   .delbtn { width: 44px; height: 44px; }
+  .ii a, .ii-weg { min-height: 44px; }
+  .ii-weg { min-width: 44px; }
   /* Tabellenzeilen, die einen Dialog öffnen (Sets eines Teils), sind Tippziele. */
   tr[tabindex="0"] > td { height: 44px; }
   /* Platz für den 44-px-Knopf, damit er weder Bild noch Preis verdeckt. */
@@ -431,7 +429,6 @@
   }
   .llogo       { margin-bottom: 1.4rem; }
   .llogo .llogo-name    { font-size: var(--fs-5); }
-  .lc          { gap: .7rem; }
   #startup-screen > div { width: 100%; max-width: 420px; }
 }
 
@@ -450,9 +447,10 @@
      Die Namen bleiben lesbar (Symbole allein erklären „Bauliste“ und „Katalog“ nicht). */
   .ntab { flex: 0 0 33.333%; padding: 2px; min-height: 44px; gap: 0; justify-content: center; }
   .ntab .ico { display: none; }
-  /* Etwas kleiner als die übrige Schrift: „Sammlung“ passt so ganz in ein Drittel. */
-  .ntab .tab-label { font-size: calc(var(--fs-0) * .8); line-height: 1.15; white-space: normal; overflow: visible;
-                     text-overflow: clip; overflow-wrap: anywhere; text-align: center; }
+  /* A little smaller than the rest, but never below 12 px: what then does not fit into a third
+     wraps into a second line instead of becoming unreadably small. */
+  .ntab .tab-label { font-size: max(12px, calc(var(--fs-0) * .8)); line-height: 1.15; white-space: normal; overflow: visible;
+                     text-overflow: clip; overflow-wrap: anywhere; hyphens: auto; text-align: center; }
 }
 
 

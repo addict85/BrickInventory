@@ -337,6 +337,27 @@ function writeI18n(el) {
   } else el.textContent = val;
 }
 
+/** Append (or retranslate) the new-tab marker of a static link. @param {HTMLElement} a */
+function markNewTab(a) {
+  let hint = a.querySelector(':scope > .neuer-tab');
+  if (!hint) {
+    hint = document.createElement('span');
+    hint.className = 'neuer-tab';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'ico');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#i-extern');
+    svg.appendChild(use);
+    const text = document.createElement('span');
+    text.className = 'vh';
+    hint.append(svg, text);
+    a.appendChild(hint);
+  }
+  const text = hint.querySelector('.vh');
+  if (text) text.textContent = tRaw('common.new_tab');
+}
+
 /**
  * Apply the language and rewrite all statically translated places.
  * @param {string} lang 'de' or 'en'
@@ -367,6 +388,10 @@ export function applyLang(lang, persist) {
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n-aria]')).forEach(el => {
     el.setAttribute('aria-label', tRaw(el.dataset.i18nAria ?? ''));
   });
+
+  // Static links into a new tab get the same marker as rendered ones (newTabHint in js/dom.js);
+  // the pass runs after data-i18n because that replaces the link's children.
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('a[target="_blank"]')).forEach(markNewTab);
 
   // Re-render nav tab labels
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ntab[data-i18n-tab]')).forEach(el => {

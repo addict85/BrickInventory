@@ -59,6 +59,14 @@ export function ico(name) {
 }
 
 /**
+ * Marker for a link that opens in a new tab: seen as an icon, heard as text. Without it a screen reader
+ * user only notices the new tab after the back button stops working.
+ */
+export function newTabHint() {
+  return html`<span class="neuer-tab">${ico('extern')}<span class="vh">${tRaw('common.new_tab')}</span></span>`;
+}
+
+/**
  * Periodic queries rest in hidden tabs: each counts against the account's budget (src/http/apiThrottle.ts),
  * even if nobody is looking. `fn` runs immediately or the next time the tab becomes visible.
  * @param {() => unknown} fn

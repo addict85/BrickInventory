@@ -33,7 +33,7 @@ function levelsButton(stufe, zeichen, an) {
 function openLogViewer() {
   const win = window.open('', '_blank', 'width=1200,height=750,resizable=yes,scrollbars=yes');
   if (!win) {
-    alert(tRaw('popup.blocked'));
+    toast(tRaw('popup.blocked'), 'error');
     return;
   }
   const base = window.location.origin;

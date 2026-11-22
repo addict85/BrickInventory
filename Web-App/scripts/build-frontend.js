@@ -78,6 +78,7 @@ const BAUSTEINE = [
   'detail-fields.js',
   'account-locations.js',
   'trash.js',
+  'deletion.js',
   'metrics.js',
   // The panel for links from mails before login; the login mask (session.js) shows it.
   'mail-link.js',

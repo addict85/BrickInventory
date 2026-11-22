@@ -10,6 +10,8 @@
  *      typecheck:frontend red (SicheresHtml is not a string); forced with
  *      String(t(…)) → red: “delete dialog names the set name
  *      literally” (it said „A &amp; B &lt;C&gt;“)
+ *   A2 (22.11.2026, delete without question) users.deleted with t() and String() in delSet →
+ *      red: “delete message names the set name literally”
  *   B  in haushalt.js again { via: esc(a.via) } → red: “former
  *      link names the path literally” („Tom &amp;amp; Jerry“ in the source)
  *   C  in monitor.js the pause again with esc(p.art) → red: “pause names
@@ -21,7 +23,7 @@ const { openUi, warte, sicht, reiter } = require('./helpers/ui');
 
 const NAME = 'A & B <C>';
 
-test('delete dialog names the set name literally', async () => {
+test('delete message names the set name literally', async () => {
   const { w, d } = await openUi({
     '/v1/sets': {
       success: true,
@@ -33,10 +35,11 @@ test('delete dialog names the set name literally', async () => {
   try {
     assert.ok(await warte(() => d.querySelector('#gallery .delbtn[data-click="delSetStop"]')), 'Kachel mit Papierkorb');
     d.querySelector('#gallery .delbtn[data-click="delSetStop"]').click();
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Rückfrage offen');
-    const text = d.getElementById('cd-msg').textContent;
-    assert.ok(text.includes(NAME), `Rückfrage: ${text}`);
-    assert.ok(!text.includes('&amp;'), `Rückfrage maskiert doppelt: ${text}`);
+    // The own set goes without a question (js/deletion.js); the name stands in the toast instead.
+    assert.ok(await warte(() => d.querySelector('#toasts .toast.success .toast-text')), 'keine Meldung');
+    const text = d.querySelector('#toasts .toast.success .toast-text').textContent;
+    assert.ok(text.includes(NAME), `Meldung: ${text}`);
+    assert.ok(!text.includes('&amp;'), `Meldung maskiert doppelt: ${text}`);
   } finally {
     w.close();
   }

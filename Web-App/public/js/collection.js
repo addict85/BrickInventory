@@ -33,7 +33,7 @@ import {
 import { fmtDatum, fmtGeld, fmtN, isGift } from './format.js';
 import { toast } from './messages.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './account-filter.js';
-import { deletedWithUndo } from './trash.js';
+import { deleteRestorable } from './deletion.js';
 import {
   accountCurrency,
   loggedInAccount,
@@ -43,7 +43,7 @@ import {
   pnlBySet,
   setPnlBySet,
 } from './state.js';
-import { confirmDelete, deleteWithChoice } from './confirm-prompt.js';
+import { deleteWithChoice } from './confirm-prompt.js';
 import { COLUMNS_SORT, setsTabelle, tableRow, valueCell } from './sets-table.js';
 import { loadStats } from './metrics.js';
 /** @typedef {import('./state.js').Tile} Tile */
@@ -454,15 +454,16 @@ G('gs').addEventListener('input', () => {
 G('gsort').addEventListener('change', () => loadGallery());
 
 /**
- * The one confirmation before deleting. If the set belongs to several accounts, it names accounts and
- * quantities and lets you choose: otherwise the other account's copy was silently deleted too.
+ * Which copies to delete. The own set goes without a question (the toast offers "undo"); if the set also
+ * belongs to other accounts, it names accounts and quantities and lets you choose: otherwise the other
+ * account's copy was silently deleted too.
  * @param {string} sn @param {string} name @param {Tile | null | undefined} set
  * @returns {Promise<string | null>} '' for all accounts, an account id, or null if cancelled
  */
 async function deletionChoice(sn, name, set) {
   const title = tRaw('gallery.delete.title');
   const foreign = (set?.owners || []).some(o => o.id !== loggedInAccount?.id);
-  if (!foreign) return (await confirmDelete(title, tRaw('gallery.delete.name_parts', { name }))) ? '' : null;
+  if (!foreign) return '';
   const ad = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/acquisitions`);
   const accounts = (set?.owners || []).map(o => ({
     ...o,
@@ -483,7 +484,7 @@ async function deletionChoice(sn, name, set) {
 }
 
 /**
- * Delete a set, with exactly ONE confirmation here, at the one place that deletes.
+ * Delete a set: the one place that deletes one, restorable through the trash.
  * @returns {Promise<boolean>} true if it was really deleted
  * @param {string} sn
  */
@@ -493,19 +494,14 @@ export async function delSet(sn) {
   const name = known?.name || sn;
   const account = await deletionChoice(sn, name, known);
   if (account === null) return false;
-  const d = await api('DELETE', `/v1/sets/${sn}${account ? `?accounts=${account}` : ''}`);
-  if (!d.success) {
-    toast(d.error, 'error');
-    return false;
-  }
   const owner = (known?.owners || []).find(o => String(o.id) === account);
   const nr = CSS.escape(sn);
-  deletedWithUndo(
-    `${tRaw('users.deleted', { name })}${owner ? ` · ${accountDisplay(owner)}` : ''}`,
-    d,
-    undefined,
-    `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .zeile-oeffnen`,
-  );
+  const d = await deleteRestorable({
+    request: () => api('DELETE', `/v1/sets/${sn}${account ? `?accounts=${account}` : ''}`),
+    message: `${tRaw('users.deleted', { name })}${owner ? ` · ${accountDisplay(owner)}` : ''}`,
+    focus: `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .zeile-oeffnen`,
+  });
+  if (!d) return false;
   loadGallery();
   emit('teileLaden');
   return true;

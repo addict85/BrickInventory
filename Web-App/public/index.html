@@ -120,6 +120,7 @@
   <symbol id="i-ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
   <symbol id="i-fehler" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol>
+  <symbol id="i-extern" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
   <symbol id="i-schloss" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
   <symbol id="i-globus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
@@ -516,7 +517,8 @@
     <!-- ══ KATALOG ══ -->
     <div class="tab" id="tab-catalog">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="catalog"><span class="ptitle-icon"></span><span data-i18n="catalog.title">Katalog</span></h1>
+        <div><h1 class="ptitle" data-tab-title="catalog"><span class="ptitle-icon"></span><span data-i18n="catalog.title">Katalog</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.catalog">Alle bekannten Sets — suchen, ansehen und auf die Merkliste setzen.</p></div>
       </div>
       <!-- Suche/Filter unter dem Titel — analog Galerie, Teile, Minifiguren … -->
       <div class="filterleiste filterzeile">
@@ -550,7 +552,8 @@
     <!-- ══ TEILE ══ -->
     <div class="tab" id="tab-wanted">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="wanted"><span class="ptitle-icon"></span><span data-i18n="wanted.title">Merkliste</span></h1>
+        <div><h1 class="ptitle" data-tab-title="wanted"><span class="ptitle-icon"></span><span data-i18n="wanted.title">Merkliste</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.wanted">Sets, die du kaufen möchtest — mit Marktpreis und Preisalarm.</p></div>
       </div>
 
       <!-- Erfassen „analog den Sets": dieselben Felder in derselben Reihenfolge … -->
@@ -731,7 +734,8 @@
     <!-- ══ FINANZEN ══ -->
     <div class="tab" id="tab-finance">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Finanzen</span></h1>
+        <div><h1 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Finanzen</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.finance">Was deine Sammlung gekostet hat und was sie heute wert ist.</p></div>
         <!-- margin-left:auto: … -->
         <select id="scope-finance" class="scope-select rechts-buendig" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="finance" data-stil="display:none"></select>
       </div>
@@ -782,14 +786,14 @@
         <button class="period-btn" aria-pressed="false" data-art="figs"  data-click="finFilter" data-arg="figs"  data-i18n="finance.filter.minifigs">Minifiguren</button>
       </div>
       <div class="fin-suche-zeile"><input type="search" class="si suchfeld" id="fin-suche" placeholder="Positionen suchen…" aria-label="Positionen suchen" data-i18n="finance.suche" data-i18n-attr="placeholder" data-i18n-aria="finance.suche" data-input="finSuchen" autocomplete="off" /></div>
-      <div id="fin-tbl"><div class="empty"><div class="icon"><svg class="ico" aria-hidden="true"><use href="#i-finanzen"/></svg></div><h2 data-i18n="finance.not_loaded">Preise noch nicht geladen</h2><p>Klicke auf «Preise laden»</p></div></div>
+      <div id="fin-tbl"><div class="empty"><div class="icon"><svg class="ico" aria-hidden="true"><use href="#i-finanzen"/></svg></div><h2 data-i18n="finance.not_loaded">Preise noch nicht geladen</h2><p data-i18n="finance.not_loaded_text">Die Preise werden geladen, sobald dieser Reiter offen ist.</p></div></div>
     </div>
 
     <!-- ══ TEILELISTE ══ -->
     <div class="tab" id="tab-partslist">
       <div class="ph spalte-05">
-        <h1 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Bauliste</span></h1>
-        <p class="ptitle-unter" data-i18n="pl.subtitle">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</p>
+        <div><h1 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Bauliste</span></h1>
+        <p class="ptitle-unter" data-i18n="pl.subtitle">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</p></div>
         <div class="pl-leiste">
           <div class="pl-feld">
             <label for="pl-setnr" data-i18n="pl.feld_setnr">Setnummern (mehrere mit Komma trennen)</label>
@@ -1019,7 +1023,8 @@
 
     <!-- ══ PROFIL (Menue) ══ -->
     <div class="tab" id="tab-profil">
-      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg></span><span data-i18n="settings.group.profile">Konto</span></h1></div>
+      <div class="ph"><div><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg></span><span data-i18n="settings.group.profile">Konto</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.profil">Darstellung, Profil und Anmeldung deines Kontos.</p></div></div>
 
       <!-- ── KONTO (Profil) ───────────────────────────────────────────────── -->
       <div class="konto-nav" role="navigation" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
@@ -1140,7 +1145,8 @@
 
     <!-- ══ GUTSCHEINE (Menue) ══ -->
     <div class="tab" id="tab-gutscheine">
-      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg></span><span data-i18n="vouchers.group">Gutscheine</span></h1></div>
+      <div class="ph"><div><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg></span><span data-i18n="vouchers.group">Gutscheine</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.gutscheine">Gutscheine und Guthaben, die du beim Kauf einsetzen kannst.</p></div></div>
 
       <!-- ── GUTSCHEINE ───────────────────────────────────────────────────── -->
       <!-- Marcos Vorgabe: „Im Eigenen Profil sollen Lego-Gutscheine mit … -->
@@ -1249,7 +1255,8 @@
 
     <!-- ══ PREISALARME (Menue) ══ -->
     <div class="tab" id="tab-alarme">
-      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg></span><span data-i18n="alerts.group">Preisalarme</span></h1></div>
+      <div class="ph"><div><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg></span><span data-i18n="alerts.group">Preisalarme</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.alarme">Du wirst benachrichtigt, sobald ein Preis die Schwelle kreuzt.</p></div></div>
 
       <!-- Alle Preisalarme an einem Ort; im Set-Detail sieht man nur den eines Sets. -->
       <div class="ssec abstand-u-125" id="alerts-card">
@@ -1288,7 +1295,8 @@
 
     <!-- ══ LAGERORTE (Menue) ══ -->
     <div class="tab" id="tab-lagerorte">
-      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-lagerort"/></svg></span><span data-i18n="storage.group">Lagerorte</span></h1></div>
+      <div class="ph"><div><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-lagerort"/></svg></span><span data-i18n="storage.group">Lagerorte</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.lagerorte">Wo deine Sets, Teile und Minifiguren liegen.</p></div></div>
 
       <!-- ── LAGERORTE: DER VORRAT, AUS DEM GEWÄHLT WIRD ─────────────────── -->
 
@@ -1324,7 +1332,8 @@
 
     <!-- ══ HAUSHALT (Menue) ══ -->
     <div class="tab" id="tab-haushalt">
-      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg></span><span data-i18n="household.group">Haushalt</span></h1></div>
+      <div class="ph"><div><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg></span><span data-i18n="household.group">Haushalt</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.haushalt">Die Sammlung mit anderen Konten teilen.</p></div></div>
 
       <!-- ── HAUSHALT: KONTEN VERKNÜPFEN ─────────────────────────────────── -->
 
@@ -1382,7 +1391,8 @@
 
     <!-- ══ DATEN (Menue) ══ -->
     <div class="tab" id="tab-daten">
-      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg></span><span data-i18n="settings.data_export">Daten und Papierkorb</span></h1></div>
+      <div class="ph"><div><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg></span><span data-i18n="settings.data_export">Daten und Papierkorb</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.daten">Daten sichern und einlesen, Gelöschtes wiederherstellen.</p></div></div>
 
       <!-- Daten exportieren: für alle Nutzer sichtbar -->
 
@@ -1424,7 +1434,8 @@
 
     <!-- ══ ANDROID-APP (Menue) ══ -->
     <div class="tab" id="tab-app">
-      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-app"/></svg></span><span data-i18n="menu.app">Android-App</span></h1></div>
+      <div class="ph"><div><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-app"/></svg></span><span data-i18n="menu.app">Android-App</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.app">Die Android-App herunterladen und mit deinem Konto verbinden.</p></div></div>
 
       <!-- QR-Code für die Android-App -->
 
@@ -1454,12 +1465,9 @@
           <div class="fg">
             <label for="qr-validity" data-i18n="qr.validity_label">Zugang gültig für</label>
             <select id="qr-validity">
-              <option value="" data-i18n="qr.validity_default">Standard (6 Monate, 90 Tage ungenutzt)</option>
+              <option value="" data-i18n="qr.validity_default">Standard (bis zur Höchstdauer des Servers)</option>
               <option value="1m" data-i18n="qr.validity_1m">1 Monat</option>
               <option value="2m" data-i18n="qr.validity_2m">2 Monate</option>
-              <option value="6m" data-i18n="qr.validity_6m">6 Monate</option>
-              <option value="12m" data-i18n="qr.validity_12m">12 Monate</option>
-              <option value="unbegrenzt" data-i18n="qr.validity_unlimited">Unbegrenzt (nur HTTPS, mit Rotation)</option>
             </select>
           </div>
           <div class="fg">
@@ -1511,7 +1519,8 @@
     <!-- MONITOR TAB -->
     <div class="tab" id="tab-monitor">
       <div class="ph zeile mittig verteilt umbruch luecke-05">
-        <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hinter­grund­arbeiten</span></h1>
+        <div><h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hinter­grund­arbeiten</span></h1>
+        <p class="ptitle-unter" data-i18n="page.sub.monitor">Was im Hintergrund läuft: Abgleiche, Preise und Bilder.</p></div>
         <button class="btn bs btn-sm schrift-2" data-click="openLogViewer" data-i18n="monitor.logs_btn" data-ico="liste">Protokoll anzeigen</button>
       </div>
       <!-- Hidden stubs so existing JS references don't break -->
@@ -2029,7 +2038,9 @@
 </div>
 
 <!-- Vorleser hören jede Meldung; Fehler unterbrechen (role="alert" am Eintrag). -->
-<div id="toasts" role="status" aria-live="polite"></div>
+<div id="toasts"></div>
+<div id="ansage-status" class="vh" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="ansage-fehler" class="vh" role="alert" aria-atomic="true"></div>
 
 <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim … -->
   <script src="/locales/de.js?v=2026.10.27.1901" data-i18n-locale></script>

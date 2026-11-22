@@ -9,7 +9,7 @@ import { amountFromField, quantityFromField, purchaseDateValid } from './form.js
 import { toast } from './messages.js';
 import { accountCurrency, loggedInAccount, openSet } from './state.js';
 import { closeModal, setQuantitiesField } from './detail-fields.js';
-import { confirmDelete } from './confirm-prompt.js';
+import { deleteFinal } from './deletion.js';
 import { acqSummary, sumsText, convertedText, summary } from './purchase-price-display.js';
 export { erfassungsPreis, renderAcquisitionSummary } from './purchase-price-display.js';
 import { renderMarketRows } from './charts.js';
@@ -286,12 +286,13 @@ async function acqSave(sn, id, field, value) {
  * @param {string} id
  */
 async function acqDelete(sn, id) {
-  if (!(await confirmDelete(tRaw('acq.delete_title'), tRaw('acq.delete_text'), 'loeschen'))) return;
-  const d = await api('DELETE', `/v1/sets/${sn}/acquisitions/${id}`);
-  if (!d.success) {
-    toast(tRaw('settings.error'), 'error');
-    return;
-  }
+  const d = await deleteFinal({
+    title: tRaw('acq.delete_title'),
+    text: tRaw('acq.delete_text'),
+    icon: 'loeschen',
+    request: () => api('DELETE', `/v1/sets/${sn}/acquisitions/${id}`),
+  });
+  if (!d) return;
   // update openSet and the quantity field in the set detail
   if (openSet?.set_number === sn) {
     openSet.quantity = /** @type {number} */ (d.new_quantity);

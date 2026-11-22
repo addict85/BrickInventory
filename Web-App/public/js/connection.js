@@ -47,7 +47,8 @@ export function showConnection(erreichbar) {
 // writing controls are locked and name the banner as the reason via aria-describedby. Whether a button
 // writes is decided by its action, not by its name: a word in the name missed handlers like revokeToken.
 // Every registered action is in exactly one of the two lists (test/offline-rating-ui.test.js).
-const SERVED = 'button, input[type=file], .import-menue > summary, [data-click]';
+// Fields that save on change (autosave) count as well: offline their input would be lost without a word.
+const SERVED = 'button, input[type=file], .import-menue > summary, [data-click], [data-change], [data-input]';
 
 /**
  * Handlers that change server state via POST/PUT/PATCH/DELETE (also via another handler), plus the
@@ -289,7 +290,7 @@ const NOT_LOCK = '#login-screen, .toast';
 function schreibt(k) {
   if (k.closest(NOT_LOCK)) return false;
   if (k.matches(ALWAYS_WRITING)) return true;
-  return WRITING_ACTIONS.has(k.getAttribute('data-click') || '');
+  return ['data-click', 'data-change', 'data-input'].some(a => WRITING_ACTIONS.has(k.getAttribute(a) || ''));
 }
 
 /** @type {MutationObserver|null} */
@@ -312,10 +313,15 @@ function sperreIn(wurzel) {
 
 /**
  * @param {Element} k
- * @returns {k is HTMLButtonElement | HTMLInputElement}
+ * @returns {k is HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement}
  */
 function knowsDisabled(k) {
-  return k instanceof HTMLButtonElement || k instanceof HTMLInputElement;
+  return (
+    k instanceof HTMLButtonElement ||
+    k instanceof HTMLInputElement ||
+    k instanceof HTMLSelectElement ||
+    k instanceof HTMLTextAreaElement
+  );
 }
 
 // <summary> and the tiles' delete cross (<span>) know no disabled: click and keyboard would otherwise still
