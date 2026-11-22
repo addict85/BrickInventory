@@ -89,4 +89,6 @@ internal val structureChecks: Map<String, String> = mapOf(
     "SelfUpdateTest.kt: no field promises a check that does not exist" to "the field name the signing workflow writes",
     "ListFilterInStateTest.kt: no loader takes a list filter as a parameter" to "ban",
     "ListFilterInStateTest.kt: no search in the screen over a loaded list" to "ban",
+    "OcrSetNumberTest.kt: text recognition runs ONLY when adding, not in the price comparison" to
+        "which call sites switch it on; the camera with ML Kit cannot run under Robolectric, ScanDeciderTest runs the switch",
 )

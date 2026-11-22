@@ -30,49 +30,9 @@ import org.junit.Test
  *
  * ── Counter-checks ─────────────────────
  *
- * Two interventions in a throwaway branch, one per test method, both anchors
- * checked for uniqueness beforehand:
- *
- *   a) `keyboardOptions` removed from the quantity field in the catalog detail, the
- *      `NumericInput.quantity()` filter deliberately left in place.
- *   b) in the price comparison `NumericInput.setNumber(it)` → `it`, the keyboard
- *      deliberately left in place — so that really only the filter is missing.
- *
- * MEASURED (506 tests completed, 3 failed):
- *
- *   NumberPadTest > whoever filters numbers also shows the number pad
- *   NumberPadTest > the price comparison takes digits and hyphen
- *   NumericInputTest   > no number field stands without a keyboard choice
- *
- * I had expected TWO. The third was no chance hit but the
- * actual find of the counter-check: the rule already existed, since 22.09.,
- * in NumericInputTest — I had written it a second time without
- * noticing. One intervention, two red tests: that is exactly what a duplicate rule
- * looks like.
- *
- * Resolved: the older, weaker version is removed (the note in
- * its place in NumericInputTest says why this one is the stricter);
- * its line number report has been taken over here.
- *
- * ── Re-run with three isolated interventions ──────────────
- *
- * Afterwards ONE intervention per rule, to really show the mapping and
- * not merely claim it. MEASURED (506 tests completed, 3 failed):
- *
- *   keyboard gone in the catalog detail, filter stays
- *     → whoever filters numbers also shows the number pad
- *   filter gone at the alert threshold, keyboard stays
- *     → whoever shows the number pad also filters
- *   ImeAction.Search → Done in the price comparison
- *     → the price comparison takes digits and hyphen
- *
- * Three interventions, three red tests, each exactly one — and NumericInputTest
- * is silent about it now. Thus the duplication is not only cleared away, but
- * its disappearance is measured too.
- *
- * What that says about the counter-check: here it did not prove that the
- * rule applies — that too —, but that it was one too many. Without it
- * two versions of the same rule would have stayed side by side.
+ *   keyboard gone in the catalog detail, filter stays → red “whoever filters numbers also shows …”
+ *   filter gone at the alert threshold, keyboard stays → red “whoever shows the number pad also filters”
+ *   The price comparison's field is rendered in ComparisonSearchFieldTest (feature-collection).
  */
 class NumberPadTest {
 
@@ -182,46 +142,6 @@ class NumberPadTest {
             "These fields show the number keyboard but let everything in:\n  " +
                 error.joinToString("\n  ") +
                 "\nThe keyboard choice is a request, not a guarantee — the filter is missing."
-        }
-    }
-
-    /**
-     * The price comparison in particular.
-     *
-     * It did not stand here by chance: the field was a free-text search, and the
-     * swap was intended. If the filter is back on free text, the
-     * decision is silently taken back.
-     *
-     * ── Why this is not a third version of the same rule ──────────────────────
-     *
-     * The two rules above say something CONDITIONALLY: if a field is a
-     * number field, it needs both halves. If one takes filter
-     * AND keyboard from this field at once, it falls out of both loops and neither of the
-     * two turns red — it is then simply no longer a number field.
-     *
-     * This rule says something UNCONDITIONALLY: this one field IS a number field,
-     * because that has been decided. No rule can know that
-     * that recognizes fields only by their construction — the same gap that
-     * NumericInputTest already closes with „every set number field takes filter and number pad“
-     * .
-     *
-     * Plus the search key, which nobody else says anything about.
-     */
-    @Test
-    fun `the price comparison takes digits and hyphen`() {
-        val s = Sources.withoutComments(Sources.read("collection/ui/screens/ComparisonScreen.kt"))
-        assert(s.contains("NumericInput.setNumber(")) {
-            "The search field no longer filters to digits and hyphen."
-        }
-        assert(s.contains("NumericInput.integerKeyboard(")) {
-            "The search field no longer shows the number keyboard — exactly that is what " +
-                "Marco asked for on 28.09."
-        }
-        // The search key MUST stay: the field triggers the search via
-        // ImeAction.Search, and without it there would be no way to trigger it
-        // except the button next to it.
-        assert(s.contains("ImeAction.Search")) {
-            "The keyboard's search key is gone."
         }
     }
 }

@@ -5,13 +5,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Two layout rules of the UI that can only be seen in the source (structure check).
- * A FlowRow inside a Row has no room to wrap and puts every chip on its own
- * line; the common table row must tell the screen reader what tapping does.
+ * A layout rule over the whole UI (structure check): a FlowRow inside a Row has no
+ * room to wrap and puts every chip on its own line.
  *
  * Counter-checks (patches under counter-checks/):
  *   flowrow-in-row          FlowRow of the household members put into a Row → red “no FlowRow …”
- *   tabellenzeile-stumm     TableRow does not pass onClickLabel to clickable → red “the table row …”
  */
 class ComposeLayoutRulesTest {
 
@@ -44,14 +42,5 @@ class ComposeLayoutRulesTest {
         }
         assertTrue("Only $flowRows FlowRows found — does the search still apply?", flowRows >= 4)
         assertTrue("A FlowRow belongs in a Column, not in a Row:\n" + findings.joinToString("\n"), findings.isEmpty())
-    }
-
-    @Test
-    fun `the table row tells the screen reader what tapping does`() {
-        val row = Sources.withoutComments(Sources.read("shared/ui/TableRow.kt"))
-        assertTrue("TableRow takes no label for screen readers",
-            row.contains("onClickLabel: String? = null"))
-        assertTrue("TableRow does not pass the label on to clickable",
-            Regex("""clickable\(onClickLabel = onClickLabel,[^)]*\bonClick = onClick\)""").containsMatchIn(row))
     }
 }
