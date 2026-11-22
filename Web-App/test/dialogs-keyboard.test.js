@@ -52,7 +52,7 @@ test('every dialog has exactly one close button for Escape', async () => {
   const w = await fenster();
   try {
     const ovl = [...w.document.querySelectorAll('.ovl')];
-    assert.ok(ovl.length >= 12, `nur ${ovl.length} Dialoge gefunden — Markup umgebaut?`);
+    assert.ok(ovl.length >= 12, `only ${ovl.length} dialogs found — markup rebuilt?`);
     const error = [];
     for (const el of ovl) {
       if (el.getAttribute('role') !== 'dialog') error.push(`#${el.id}: role="dialog" fehlt`);
@@ -74,12 +74,12 @@ test('Escape closes, and the focus returns', async () => {
     trigger.focus();
     modal.classList.add('open');
     await takt();
-    assert.ok(modal.contains(d.activeElement), 'Der Fokus springt nicht in den Dialog');
+    assert.ok(modal.contains(d.activeElement), 'The focus does not jump into the dialog');
 
     taste(w, 'Escape');
     await takt();
-    assert.equal(modal.classList.contains('open'), false, 'Escape schliesst den Dialog nicht');
-    assert.equal(d.activeElement, trigger, 'Fokus kehrt nicht zurück');
+    assert.equal(modal.classList.contains('open'), false, 'Escape does not close the dialog');
+    assert.equal(d.activeElement, trigger, 'Focus does not return');
   } finally {
     w.close();
   }
@@ -97,12 +97,12 @@ test('Escape only closes the topmost — the question above the detail', async (
       frage.style.display = 'none';
     };
     await takt();
-    assert.equal(d.activeElement, d.getElementById('cd-cancel'), 'Erstfokus der Rückfrage ist „Abbrechen"');
+    assert.equal(d.activeElement, d.getElementById('cd-cancel'), 'Initial focus of the confirmation is „Abbrechen“');
 
     taste(w, 'Escape');
     await takt();
-    assert.equal(frage.style.display, 'none', 'Die Rückfrage bleibt offen');
-    assert.ok(set.classList.contains('open'), 'Der Detail-Dialog darunter wurde mitgeschlossen');
+    assert.equal(frage.style.display, 'none', 'The confirmation stays open');
+    assert.ok(set.classList.contains('open'), 'The detail dialog below was closed along with it');
   } finally {
     w.close();
   }
@@ -119,12 +119,12 @@ test('Tab stays in the dialog', async () => {
       ja = d.getElementById('cd-confirm');
     ja.focus();
     taste(w, 'Tab');
-    assert.equal(d.activeElement, ab, 'Tab verlässt den Dialog nach dem letzten Knopf');
+    assert.equal(d.activeElement, ab, 'Tab leaves the dialog after the last button');
     taste(w, 'Tab', true);
-    assert.equal(d.activeElement, ja, 'Umschalt+Tab verlässt den Dialog vor dem ersten Knopf');
+    assert.equal(d.activeElement, ja, 'Shift+Tab leaves the dialog before the first button');
     d.getElementById('btn-add').focus();
     taste(w, 'Tab');
-    assert.ok(frage.contains(d.activeElement), 'Tab von ausserhalb holt den Fokus nicht zurück');
+    assert.ok(frage.contains(d.activeElement), 'Tab from outside does not bring the focus back');
   } finally {
     w.close();
   }
@@ -144,11 +144,14 @@ test('Escape in an input field first only leaves the field', async () => {
     field.focus();
     taste(w, 'Escape');
     await takt();
-    assert.ok(modal.classList.contains('open'), 'Escape im Feld schliesst den Dialog — die Korrekturen wären weg');
-    assert.notEqual(d.activeElement, field, 'Der Fokus bleibt im Feld');
+    assert.ok(
+      modal.classList.contains('open'),
+      'Escape in the field closes the dialog — the corrections would be gone',
+    );
+    assert.notEqual(d.activeElement, field, 'The focus stays in the field');
     taste(w, 'Escape');
     await takt();
-    assert.equal(modal.classList.contains('open'), false, 'Das zweite Escape schliesst nicht');
+    assert.equal(modal.classList.contains('open'), false, 'The second Escape does not close');
   } finally {
     w.close();
   }
@@ -163,10 +166,10 @@ test('Escape closes on the first press, even if the focus is in a field', async 
       modal = d.getElementById('add-set-modal');
     modal.classList.add('open');
     await takt();
-    assert.equal(d.activeElement?.id, 'add-num', 'Der Erstfokus liegt nicht auf der Set-Nummer');
+    assert.equal(d.activeElement?.id, 'add-num', 'The initial focus is not on the set number');
     taste(w, 'Escape');
     await takt();
-    assert.equal(modal.classList.contains('open'), false, 'Das erste Escape schliesst nicht');
+    assert.equal(modal.classList.contains('open'), false, 'The first Escape does not close');
   } finally {
     w.close();
   }

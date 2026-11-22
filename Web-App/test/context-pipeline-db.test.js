@@ -84,7 +84,7 @@ test('context per query in the pipeline', { concurrency: 1 }, async t => {
   await t.test('after a request with an account the next one without an account sees nothing', async () => {
     assert.deepEqual(ids(await als(A, allSets)), [A]);
     assert.deepEqual(await allSets(), []);
-    assert.ok(!(await account_())?.k, 'die Verbindung trägt kein Konto weiter');
+    assert.ok(!(await account_())?.k, 'the connection carries no account along');
   });
 
   await t.test('after a failed query with an account no context remains on the connection', async () => {
@@ -97,14 +97,14 @@ test('context per query in the pipeline', { concurrency: 1 }, async t => {
       /row-level security/,
     );
     assert.deepEqual(await allSets(), []);
-    assert.deepEqual(ids(await als(B, allSets)), [B], 'die Verbindung ist danach benutzbar');
+    assert.deepEqual(ids(await als(B, allSets)), [B], 'the connection is usable afterwards');
     assert.equal((await eigen.get(`SELECT count(*)::int AS n FROM sets WHERE set_number = '10002-1'`)).n, 0);
   });
 
   await t.test('alternately and concurrently: every request only sees its account', async () => {
     const wer = Array.from({ length: 30 }, (_, i) => [A, B, null][i % 3]);
     const gesehen = await Promise.all(wer.map(u => (u ? als(u, allSets) : allSets())));
-    for (const [i, zeilen] of gesehen.entries()) assert.deepEqual(ids(zeilen), wer[i] ? [wer[i]] : [], `Anfrage ${i}`);
+    for (const [i, zeilen] of gesehen.entries()) assert.deepEqual(ids(zeilen), wer[i] ? [wer[i]] : [], `Request ${i}`);
   });
 
   await t.test('one round trip for a query with an account', async () => {

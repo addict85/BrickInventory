@@ -55,7 +55,7 @@ test('account switches and unique address', { concurrency: 1 }, async t => {
         (/** @type {any} */ e) => e.code === '23505',
       );
       assert.ok(await put('h', 'email', [null]));
-      assert.ok(await put('i', 'email', [null]), 'ohne Adresse dürfen es mehrere sein');
+      assert.ok(await put('i', 'email', [null]), 'without an address there may be several');
     });
   } finally {
     await leeren();

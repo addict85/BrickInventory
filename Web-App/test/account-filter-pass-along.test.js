@@ -50,7 +50,7 @@ test('every fetch behind the account filter passes the account filter along', as
       const filter = d.getElementById(`scope-${ansicht}`);
       assert.ok(
         [...filter.options].some(o => o.value === '2'),
-        `${ansicht}: kein Unterkonto im Filter`,
+        `${ansicht}: no sub-account in the filter`,
       );
       const ab = aufrufe.length;
       filter.value = '2';
@@ -65,12 +65,12 @@ test('every fetch behind the account filter passes the account filter along', as
       assert.deepEqual(
         pfade.filter(p => !geholt.has(p)),
         [],
-        `${ansicht}: nicht neu geladen`,
+        `${ansicht}: not reloaded`,
       );
       assert.deepEqual(
         neu.filter(u => u.searchParams.get('accounts') !== '2').map(u => u.pathname + u.search),
         [],
-        `${ansicht}: ohne Kontofilter geholt`,
+        `${ansicht}: fetched without account filter`,
       );
     }
   } finally {

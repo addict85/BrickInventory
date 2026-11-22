@@ -68,9 +68,9 @@ test("the data export delivers an unpackable ZIP with the account's data", {
   assert.deepEqual(
     dateien,
     ['merkliste.csv', 'minifiguren.csv', 'preisalarme.csv', 'sets.csv', 'teile.csv'],
-    'alle fünf Dateien',
+    'all five files',
   );
   const parts = fs.readFileSync(path.join(dir, 'teile.csv'), 'utf8');
-  assert.ok(parts.startsWith('﻿'), 'BOM fehlt');
+  assert.ok(parts.startsWith('﻿'), 'BOM is missing');
   assert.match(parts, /3001zip/);
 });

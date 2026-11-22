@@ -83,7 +83,7 @@ test('storage location default against a real database', async t => {
     const n = (
       await db.get(`SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`, [U.ich, L.DEFAULT_KEY])
     ).c;
-    assert.equal(n, 1, `${n} Zeilen fuer die Vorgabe — es darf genau eine geben`);
+    assert.equal(n, 1, `${n} rows for the default — there may be exactly one`);
     await L.setDefault(U.ich, estrich.id);
   });
 
@@ -95,13 +95,9 @@ test('storage location default against a real database', async t => {
     await assert.rejects(
       () => L.setDefault(U.ich, fremd.id),
       (/** @type {any} */ e) => String(e.code) === 'storage_unknown',
-      'Ein fremder Ort liess sich als eigene Vorgabe setzen',
+      'A foreign location could be set as the own default',
     );
-    assert.equal(
-      (await L.defaultOf(U.ich))?.name,
-      'Estrich',
-      'Die abgelehnte Zuweisung hat die bestehende Vorgabe veraendert',
-    );
+    assert.equal((await L.defaultOf(U.ich))?.name, 'Estrich', 'The rejected assignment changed the existing default');
   });
 
   await t.test('RENAME: the default stays and has a new name', async () => {
@@ -110,12 +106,11 @@ test('storage location default against a real database', async t => {
     // the ID is stored. With the name this would be red.
     await L.renameStorage(U.ich, estrich.id, 'Dachboden');
     const v = await L.defaultOf(U.ich);
-    assert.equal(v?.id, estrich.id, 'Die Vorgabe zeigt nach dem Umbenennen ins Leere');
+    assert.equal(v?.id, estrich.id, 'The default points into nothing after the rename');
     assert.equal(
       v?.name,
       'Dachboden',
-      'Die Vorgabe traegt noch den alten Namen — dann steht beim Erfassen ein ' +
-        'Ort, den die Auswahlliste nicht mehr kennt',
+      'The default still carries the old name — then capture shows a ' + 'location the selection list no longer knows',
     );
     await L.renameStorage(U.ich, estrich.id, 'Estrich');
   });
@@ -130,9 +125,9 @@ test('storage location default against a real database', async t => {
     assert.equal(
       await L.defaultOf(U.ich),
       null,
-      'Nach dem Loeschen des Ortes meldet die Vorgabe noch etwas — sie heilt ' +
-        'sich also nicht selbst, und die Oberflaeche waehlt einen Ort vor, den ' +
-        'es nicht gibt',
+      'After deleting the location the default still reports something — so it ' +
+        'does not heal itself, and the UI preselects a location that ' +
+        'does not exist',
     );
     // The orphaned row in user_settings may stay: it is silent (the
     // JOIN finds nothing) and is overwritten with the next star. Cleaning
@@ -142,8 +137,8 @@ test('storage location default against a real database', async t => {
     assert.equal(
       rest,
       String(kiste.id),
-      'Erwartet war die stumme, verwaiste Zeile — steht dort etwas anderes, ' +
-        'stimmt die Begruendung in src/inventory/storageLocation.ts nicht mehr',
+      'Expected was the silent, orphaned row — if something else is there, ' +
+        'the reasoning in src/inventory/storageLocation.ts is no longer correct',
     );
   });
 
@@ -151,11 +146,11 @@ test('storage location default against a real database', async t => {
     await L.setDefault(U.ich, cellar.id);
     assert.equal((await L.defaultOf(U.ich))?.name, 'Keller');
     assert.equal(await L.setDefault(U.ich, null), null);
-    assert.equal(await L.defaultOf(U.ich), null, 'Der Stern liess sich nicht loeschen');
+    assert.equal(await L.defaultOf(U.ich), null, 'The star could not be deleted');
     const n = (
       await db.get(`SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`, [U.ich, L.DEFAULT_KEY])
     ).c;
-    assert.equal(n, 0, 'Die Einstellung steht noch da');
+    assert.equal(n, 0, 'The setting is still there');
   });
 
   await db.pool.end().catch(() => {});

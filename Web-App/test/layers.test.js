@@ -75,7 +75,7 @@ test('no domain layer imports from routes/ — except the named cases', () => {
   const dateien = innerFiles();
   // Self-proof: if the search finds no files, the check below would be
   // silently green. MEASURED there are over sixty.
-  assert.ok(dateien.length > 40, `Nur ${dateien.length} Dateien in den inneren Schichten gefunden — Ordner umbenannt?`);
+  assert.ok(dateien.length > 40, `Only ${dateien.length} files found in the inner layers — folder renamed?`);
 
   const neu = [];
   for (const d of dateien)
@@ -86,9 +86,9 @@ test('no domain layer imports from routes/ — except the named cases', () => {
   assert.deepEqual(
     neu,
     [],
-    'Neue Abhaengigkeit von einer Fachdatei auf eine ROUTE. Die Funktion gehoert ' +
-      'in die Schicht, die sie braucht — sonst zieht jeder Nutzer den HTTP-Apparat ' +
-      'mit. Kommt sie nicht anders unter, gehoert sie oben in EXCEPTIONS, mit Grund.',
+    'New dependency from a domain file on a ROUTE. The function belongs ' +
+      'in the layer that needs it — otherwise every user pulls in the HTTP machinery ' +
+      'too. If it cannot be placed otherwise, it belongs in EXCEPTIONS above, with a reason.',
   );
 });
 
@@ -98,7 +98,7 @@ test('a v1 route imports no other route file', () => {
   // Counter-check (28.10.2026): require('../parts') in wanted.ts → red.
   const ordner = path.join(ROOT, 'routes/api');
   const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.ts'));
-  assert.ok(dateien.length > 10, `nur ${dateien.length} v1-Dateien gefunden`);
+  assert.ok(dateien.length > 10, `only ${dateien.length} v1 files found`);
   const treffer = [];
   for (const f of dateien)
     for (const ziel of importList(`routes/api/${f}`).filter(z => /^\.\.\/[^.]/.test(z)))
@@ -120,7 +120,7 @@ test('no route imports another route file', () => {
     }
   };
   lauf('routes');
-  assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
+  assert.ok(dateien.length > 15, `only ${dateien.length} route files found`);
   const treffer = [];
   for (const d of dateien.filter(d => d !== 'routes/api/index.ts'))
     for (const ziel of importList(d).filter(z => z.startsWith('.'))) {
@@ -199,7 +199,7 @@ test('jobs/ executes jobs, the work of a job lives in src/', () => {
   // lines); `import { STAPEL } from '../src/images/imageDemand'` in jobs/jobWorker.ts → red.
   const KERN = 'jobs/jobWorker.ts';
   const dateien = tsBelow('jobs');
-  assert.ok(dateien.includes(KERN) && dateien.includes('jobs/startJobs.ts'), 'Worker oder Bearbeitertabelle fehlt');
+  assert.ok(dateien.includes(KERN) && dateien.includes('jobs/startJobs.ts'), 'Worker or handler table is missing');
   assert.deepEqual(
     dateien.flatMap(d =>
       importList(d)
@@ -212,13 +212,13 @@ test('jobs/ executes jobs, the work of a job lives in src/', () => {
   const fremd = resolvedImports(KERN).filter(
     z => z.startsWith('src/') && !['jobQueue', 'infra'].includes(areaOf(`${z}/`)),
   );
-  assert.deepEqual(fremd, [], 'Der Worker kennt keine Fachbereiche, nur Aufträge');
+  assert.deepEqual(fremd, [], 'The worker knows no domains, only jobs');
   const zuLang = dateien.filter(d => d !== KERN && codeRows(d) > 80).map(d => `${d} (${codeRows(d)})`);
-  assert.deepEqual(zuLang, [], 'Ein Bearbeiter ruft einen Dienst; seine Arbeit gehört nach src/<bereich>/');
+  assert.deepEqual(zuLang, [], 'A handler calls a service; its work belongs in src/<domain>/');
   const LIMIT = 326;
   const summe = dateien.reduce((n, d) => n + codeRows(d), 0);
-  assert.ok(summe <= LIMIT, `${summe} Codezeilen in jobs/, erlaubt sind ${LIMIT}`);
-  if (summe < LIMIT) console.log(`  ℹ Codezeilen in jobs/: ${summe} (Schranke ${LIMIT}) — Schranke nachziehen`);
+  assert.ok(summe <= LIMIT, `${summe} lines of code in jobs/, ${LIMIT} are allowed`);
+  if (summe < LIMIT) console.log(`  ℹ lines of code in jobs/: ${summe} (limit ${LIMIT}) — tighten the limit`);
 });
 
 test('db/ imports nothing from jobs/', () => {
@@ -252,7 +252,7 @@ test('no route executes SQL or imports from db/', () => {
   // in routes/api/catalog.ts → red, both hits (29.10.2026);
   // `import { withInventoryLock } from '../../db/txLock'` in api/sets.ts → rot (05.11.2026).
   const dateien = routesFiles();
-  assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
+  assert.ok(dateien.length > 15, `only ${dateien.length} route files found`);
   const treffer = [];
   for (const d of dateien) {
     for (const m of sourceText(d).matchAll(/\b(?:db|tx)\.(?:get|all|run|exec|transaction|pool)\b/g))
@@ -311,7 +311,7 @@ test('startup/ and routes/ know each other in only one direction, router factori
     }
   };
   ['routes', 'jobs'].forEach(lauf);
-  assert.ok(dateien.length > 20, `nur ${dateien.length} Dateien in routes/ und jobs/ — greift die Suche noch?`);
+  assert.ok(dateien.length > 20, `only ${dateien.length} files in routes/ and jobs/ — does the search still match?`);
   const zuStartup = dateien.flatMap(d =>
     importList(d)
       .filter(z => /(^|\/)startup\//.test(z))
@@ -325,7 +325,7 @@ test('startup/ and routes/ know each other in only one direction, router factori
       typ: m[2].trim(),
     })),
   );
-  assert.ok(factories.length >= 23, `nur ${factories.length} Routerfabriken gefunden — greift die Suche noch?`);
+  assert.ok(factories.length >= 23, `only ${factories.length} router factories found — does the search still match?`);
   assert.deepEqual(
     factories.filter(f => !f.typ.startsWith('Pick<')).map(f => f.name),
     [],
@@ -380,7 +380,7 @@ test('the exception list stays honest — every entry still has a case', () => {
   for (const d of innerFiles()) for (const ziel of afterOuter(d)) alive.add(`${d} -> ${ziel}`);
 
   const tot = [...EXCEPTIONS].filter(a => !alive.has(a));
-  assert.deepEqual(tot, [], 'Diese Ausnahmen treffen auf nichts mehr zu — bitte aus der Liste streichen');
+  assert.deepEqual(tot, [], 'These exceptions no longer apply to anything — please remove them from the list');
 });
 
 test('nothing lies in routes/ that is not a route', () => {
@@ -394,7 +394,7 @@ test('nothing lies in routes/ that is not a route', () => {
   assert.deepEqual(
     Object.keys(allowedWithoutRouter).filter(d => !fs.existsSync(path.join(ROOT, 'routes', d))),
     [],
-    'allowedWithoutRouter nennt Dateien, die es nicht mehr gibt',
+    'allowedWithoutRouter names files that no longer exist',
   );
   const dateien = [];
   const lauf = rel => {
@@ -405,7 +405,7 @@ test('nothing lies in routes/ that is not a route', () => {
     }
   };
   lauf('routes');
-  assert.ok(dateien.length > 5, `Nur ${dateien.length} Routendateien — Ordner umbenannt?`);
+  assert.ok(dateien.length > 5, `Only ${dateien.length} route files — folder renamed?`);
 
   const withoutRoute = dateien.filter(d => {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
@@ -415,9 +415,9 @@ test('nothing lies in routes/ that is not a route', () => {
   assert.deepEqual(
     withoutRoute,
     [],
-    'Diese Datei liegt in routes/, definiert aber keine Route. Entweder sie gehoert ' +
-      'nach src/<bereich>/, oder ihr Grund gehoert nach allowedWithoutRouter — die stille Variante ' +
-      'hat schon einmal neun Importe in die falsche Richtung erzeugt.',
+    'This file is in routes/ but defines no route. Either it belongs ' +
+      'in src/<domain>/, or its reason belongs in allowedWithoutRouter — the silent variant ' +
+      'already produced nine imports in the wrong direction once.',
   );
 });
 
@@ -473,13 +473,13 @@ test('SQL only lives in repositories and in db/', () => {
   // src/household/household.ts → rot; `'SELECT 1'` in src/management/cleanup.ts → rot;
   // (05.11.2026) the EXISTS fragment back to src/finances/priceAlert.ts → red.
   const dateien = tsBelow('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
-  assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
+  assert.ok(dateien.length > 150, `only ${dateien.length} files found`);
   assert.deepEqual(
     dateien.filter(d => !isRepository(d) && hatSql(d)),
     [],
-    'SQL gehört in das Repository des Bereichs (src/<bereich>/repository…).',
+    'SQL belongs in the repository of the domain (src/<domain>/repository…).',
   );
-  assert.ok(tsBelow('src').filter(isRepository).every(hatSql), 'ein Repository ohne SQL ist keines');
+  assert.ok(tsBelow('src').filter(isRepository).every(hatSql), 'a repository without SQL is not one');
   // The clause search must work in the repositories, otherwise it would see nothing outside either.
   assert.ok(
     tsBelow('src')
@@ -536,7 +536,7 @@ test('outside of repository/ and db/ nobody queries the database', () => {
       for (const n of namen) if (!DB_OUTSIDE.has(n)) treffer.push(`${d}: ${n}`);
     }
   }
-  assert.ok(gesehen > 20, `nur ${gesehen} Importe von db/database gefunden — greift die Suche noch?`);
+  assert.ok(gesehen > 20, `only ${gesehen} imports of db/database found — does the search still match?`);
   assert.deepEqual(treffer, []);
   workUnitAtCallLocation();
 });
@@ -565,7 +565,7 @@ test('routes, jobs and clients import no repositories', () => {
   }
   assert.ok(
     CALL.test('await kontoBereich().accounts.accountShort(1)') && tsBelow('routes').length > 15,
-    'Selbstbeweis: das Muster findet einen Aufruf, und es gibt Routen',
+    'Self-proof: the pattern finds a call, and there are routes',
   );
   assert.deepEqual(treffer, []);
   routesOnlyViaFactory();
@@ -599,7 +599,7 @@ function routesWithoutSlotFlow() {
         ][i],
       ),
     ),
-    'Selbstbeweis: jedes Muster findet sein Beispiel',
+    'Self-proof: every pattern finds its example',
   );
   const treffer = [];
   for (const d of tsBelow('routes'))
@@ -628,7 +628,7 @@ function routesOnlyViaFactory() {
   // Counter-check (13.11.2026): `import { readParts } from '../../src/parts'` in
   // routes/api/parts.ts → rot „routes/api/parts.ts: parts.partsList“.
   const dienste = boundServices();
-  assert.ok(dienste.get('parts')?.has('readParts') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
+  assert.ok(dienste.get('parts')?.has('readParts') && dienste.size >= 14, 'Self-proof: bound services found');
   const treffer = [];
   for (const d of tsBelow('routes')) {
     if (d === 'routes/api/middleware.ts') continue;
@@ -684,7 +684,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
   // '../konto/repository/konten'` in src/household/household.ts → red.
   const treffer = [];
   const dateien = tsBelow('src');
-  assert.ok(dateien.filter(isRepository).length >= 10, 'zu wenige Repositories gefunden');
+  assert.ok(dateien.filter(isRepository).length >= 10, 'too few repositories found');
   for (const d of dateien)
     for (const z of resolvedImports(d)) if (isRepository(z) && areaOf(z) !== areaOf(d)) treffer.push(`${d} -> ${z}`);
   assert.deepEqual(treffer, []);
@@ -717,7 +717,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
   // in routes/auth/users.ts → rot.
   assert.deepEqual(depth(tsBelow('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
   const indizes = tsBelow('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
-  assert.ok(indizes.length >= 15, `nur ${indizes.length} index.ts gefunden`);
+  assert.ok(indizes.length >= 15, `only ${indizes.length} index.ts found`);
   indexWithoutAccess(indizes);
 });
 
@@ -766,17 +766,17 @@ function indexWithoutAccess(indizes) {
   // src/catalog/index.ts → rot (src/catalog.catalogStatus); `export { vorschauErzeugenAus } from './thumbs'`
   // in src/images/index.ts → red (asynchronous).
   const alle = indizes.filter(i => !/^src\/(?:infra|contract|http)\//.test(i)).flatMap(valueExports);
-  assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
+  assert.ok(alle.length > 50, `only ${alle.length} value exports found — does the search still match?`);
   assert.ok(
     alle.some(x => x.name === 'src/household.asIds' && !x.zugang) &&
       declaration('src/sets/read', 'readSets')?.zugang &&
       declaration('src/images/thumbs', 'previewFrom')?.zugang,
-    'Selbstbeweis: asIds ist rein, setsLesen (Kontext) und vorschauErzeugenAus (asynchron) haben Zugang',
+    'Self-proof: asIds is pure, setsLesen (context) and vorschauErzeugenAus (async) have access',
   );
   assert.deepEqual(
     alle.filter(x => x.zugang).map(x => x.name),
     [],
-    'Über den Kontext reichen (Dienst des Bereichs), nicht als Import',
+    'Pass it via the context (service of the domain), not as an import',
   );
 }
 
@@ -804,7 +804,7 @@ test('routes do not resolve accounts — the services do that', () => {
   const RESOLUTION =
     /\b(?:scopeIds|schreibbereich|writeTargetOrNull|scopeKind|darfSchreibenFuer|asIds|storageAccounts|scopeFrom|writeAreaFrom)\s*\(/;
   const dateien = tsBelow('routes');
-  assert.ok(dateien.length > 15, 'zu wenige Routendateien gefunden');
+  assert.ok(dateien.length > 15, 'too few route files found');
   assert.deepEqual(
     dateien.filter(d => RESOLUTION.test(sourceText(d))),
     [],
@@ -826,8 +826,8 @@ test("only src/http, the areas' HTTP sides and the routes know Express", () => {
     .filter(d => areaOf(d) !== 'http' && !isHttp(d) && d !== 'startup/app.ts')
     .filter(usesExpress);
   assert.deepEqual(treffer, []);
-  assert.ok(tsBelow('src/http').filter(usesExpress).length >= 8, 'die Suche findet Express in src/http nicht mehr');
-  assert.ok(tsBelow('src').some(isHttp), 'keine HTTP-Seite unter src/<bereich>/http/ gefunden');
+  assert.ok(tsBelow('src/http').filter(usesExpress).length >= 8, 'the search no longer finds Express in src/http');
+  assert.ok(tsBelow('src').some(isHttp), 'no HTTP side found under src/<domain>/http/');
 
   // Services answer with an error kind, not with an HTTP status; clients/
   // itself speaks HTTP outward. Counter-check (10.11.2026): in
@@ -855,7 +855,7 @@ test('only routes, server and HTTP sides import an HTTP side or src/http', () =>
   // in src/account/deviceToken.ts → red; `import { setKey } from '../sets/dienst'` in
   // src/http/httpResponse.ts → rot.
   const http = tsBelow('src').filter(d => areaOf(d) === 'http');
-  assert.ok(http.length >= 8, `nur ${http.length} Dateien unter src/http`);
+  assert.ok(http.length >= 8, `only ${http.length} files under src/http`);
   const nachHttp = z => areaOf(z) === 'http';
   const hinein = tsBelow('src', 'jobs', 'clients', 'db')
     .filter(d => !nachHttp(d) && !isHttp(d))
@@ -914,10 +914,10 @@ test("routes catch no errors — the router's error path answers", () => {
       conversions.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTES));
-  assert.deepEqual(Object.fromEntries(sendIt), Object.fromEntries(SEND_ERROR_IN_ROUTES), 'sendError in Routen');
+  assert.deepEqual(Object.fromEntries(sendIt), Object.fromEntries(SEND_ERROR_IN_ROUTES), 'sendError in routes');
   // The contract delivers the domain format (z.transform); a route does not convert afterwards.
-  assert.deepEqual(conversions, [], 'Umwandlungen geprüfter Eingaben in Routen');
-  assert.deepEqual(rejections, [], 'Route übersetzt eine Absage des Dienstes');
+  assert.deepEqual(conversions, [], 'Conversions of validated input in routes');
+  assert.deepEqual(rejections, [], 'Route translates a refusal of the service');
 });
 
 // ── Ranking of the scopes ───────────────────────────────────────────────────
@@ -994,14 +994,14 @@ test('every area only imports areas of lower levels', () => {
   assert.deepEqual(
     translatorEdges("a.ts\n   Imported via './a' from file 'b.ts'\nc.ts\n   Matched by include pattern"),
     [{ d: 'b.ts', ziel: 'a.ts' }],
-    'Selbstbeweis: die Ausgabe von --explainFiles wird gelesen',
+    'Self-proof: the output of --explainFiles is read',
   );
   // A higher scope listens to an event of the lower one; late binding would bypass the levels.
-  assert.doesNotMatch(sourceText('startup/wiring.ts'), /\bd\(\)\.\w+/, 'späte Bindung in der Verdrahtung');
+  assert.doesNotMatch(sourceText('startup/wiring.ts'), /\bd\(\)\.\w+/, 'late binding in the wiring');
   const kanten = areaEdges();
-  assert.ok(kanten.length > 500, `nur ${kanten.length} Kanten gefunden — greift die Suche noch?`);
+  assert.ok(kanten.length > 500, `only ${kanten.length} edges found — does the search still match?`);
   const withoutLevel = [...new Set(kanten.flatMap(k => [k.von, k.nach]))].filter(b => !levelOf.has(b));
-  assert.deepEqual(withoutLevel, [], 'Bereich ohne Stufe: in LEVELS eintragen');
+  assert.deepEqual(withoutLevel, [], 'Domain without a level: add it to LEVELS');
   const falsch = kanten
     .filter(k => levelOf.get(k.nach) >= levelOf.get(k.von))
     .map(k => `${k.d} -> ${k.ziel} (${k.von} → ${k.nach})`);
@@ -1021,7 +1021,7 @@ test('clients are only reached via src/externalSources/sources.ts', () => {
   assert.deepEqual(treffer, []);
   assert.ok(
     kanten.some(k => k.d === 'src/externalSources/sources.ts' && k.nach === 'clients'),
-    'quellen.ts holt keinen Klienten mehr?',
+    '„quellen.ts“ no longer fetches a client?',
   );
 });
 
@@ -1032,7 +1032,7 @@ test('docs/architecture.md names the order of the areas like LEVELS', () => {
   const levels = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
     [...m[2].matchAll(/`([^`]+)`/g)].map(b => b[1]),
   );
-  assert.ok(levels.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
+  assert.ok(levels.length > 5, 'The ranking table cannot be found');
   assert.deepEqual(levels, LEVELS);
 });
 
@@ -1117,9 +1117,9 @@ test('docs/architecture.md names only what exists', () => {
       if (s.includes('/') ? !pathExists(s) : !namen.has(s)) fehlt.push(s);
     } else for (const w of s.match(/[A-Za-z_$][\w$]*/g) ?? []) if (!present(w)) fehlt.push(w);
   }
-  assert.ok(spans.length > 300, `nur ${spans.length} Namen in Backticks — greift die Suche noch?`);
-  assert.ok(namen.has('jobWorker.ts') && woerter.has('buildServices'), 'Selbstbeweis: Dateien und Code gefunden');
-  assert.deepEqual([...new Set(fehlt)], [], 'in docs/architecture.md genannt, im Code nicht vorhanden');
+  assert.ok(spans.length > 300, `only ${spans.length} names in backticks — does the search still match?`);
+  assert.ok(namen.has('jobWorker.ts') && woerter.has('buildServices'), 'Self-proof: files and code found');
+  assert.deepEqual([...new Set(fehlt)], [], 'named in docs/architecture.md, not present in the code');
 });
 
 test('the queue knows no domain areas and payload shapes, events go via ereignis.ts', () => {
@@ -1134,17 +1134,17 @@ test('the queue knows no domain areas and payload shapes, events go via ereignis
 
   const dateien = tsBelow('src/jobQueue');
   const shapes = dateien.filter(d => /\bz\.(?:object|enum|array|union|discriminatedUnion)\(/.test(sourceText(d)));
-  assert.deepEqual(shapes, [], 'Nutzlastform in src/jobQueue: in den Bereich, der die Art anmeldet');
+  assert.deepEqual(shapes, [], 'Payload shape in src/jobQueue: into the domain that registers the kind');
 
   // The kinds stand where the scopes register their payload (declare module … JobPayloads).
   const arten = tsBelow('src')
     .flatMap(d => [...sourceText(d).matchAll(/interface JobPayloads \{([^}]*)\}/g)])
     .flatMap(m => [...m[1].matchAll(/^\s*(\w+):/gm)].map(a => a[1]));
-  assert.ok(arten.length > 15, `nur ${arten.length} angemeldete Arten gefunden — greift die Suche noch?`);
+  assert.ok(arten.length > 15, `only ${arten.length} registered kinds found — does the search still match?`);
   const literals = dateien.flatMap(d =>
     [...sourceText(d).matchAll(/['"`](\w+)['"`]/g)].filter(m => arten.includes(m[1])).map(m => `${d}: ${m[1]}`),
   );
-  assert.deepEqual(literals, [], 'src/jobQueue nennt eine Auftragsart');
+  assert.deepEqual(literals, [], 'src/jobQueue names a job kind');
 
   // Events go via src/infra/event.ts, not via own listeners.
   // Counter-checks (15.11.2026): in src/settings/userSetting.ts again
@@ -1155,8 +1155,8 @@ test('the queue knows no domain areas and payload shapes, events go via ereignis
   const alle = tsBelow('src', 'routes', 'jobs').filter(d => d !== EREIGNIS);
   const treffer = muster =>
     alle.flatMap(d => [...sourceText(d).matchAll(muster)].map(m => `${d}: ${m[0].replace(/\s+/g, ' ')}`));
-  assert.ok(/new Set<Listener<A>>/.test(sourceText(EREIGNIS)), 'Selbstbeweis: die Horcher stehen in ereignis.ts');
+  assert.ok(/new Set<Listener<A>>/.test(sourceText(EREIGNIS)), 'Self-proof: the listeners are in „ereignis.ts“');
   assert.deepEqual(treffer(/new Set<\s*(?:\(|\w*(?:Horcher|Listener)\b)/g), [], 'eigene Horcher: ereignis() nehmen');
   assert.deepEqual(treffer(/\bbenachrichtigung\s*\.\s*(?:listen|unlisten|notify)\(/g), [], 'NOTIFY von Hand');
-  assert.deepEqual(treffer(/\bnew EventEmitter\b/g), [], 'eigener Ereignisbus');
+  assert.deepEqual(treffer(/\bnew EventEmitter\b/g), [], 'own event bus');
 });

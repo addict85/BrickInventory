@@ -47,7 +47,7 @@ test('without a price the amount is null — not 0', () => {
   // null can the UI show the dash without guessing itself;
   // with 0 every view would have to make the same interpretation again.
   const t = acquisitionTotals([{ quantity: 2 }, { quantity: 1, purchase_price: null }]);
-  assert.equal(t.quantity, 3, 'die Stücke sind da, auch ohne Preis');
+  assert.equal(t.quantity, 3, 'the pieces are there, even without a price');
   assert.equal(t.amount, null);
   assert.equal(t.priced_rows, 0);
 });
@@ -62,8 +62,8 @@ test('a row with price 0 is captured and yields 0', () => {
 
 test('mixed: rows with and without price', () => {
   const t = acquisitionTotals([{ quantity: 2, purchase_price: 10 }, { quantity: 5 }]);
-  assert.equal(t.quantity, 7, 'die preislose Zeile zählt bei der MENGE mit');
-  assert.equal(t.amount, 20, 'beim BETRAG nicht — sie hat keinen');
+  assert.equal(t.quantity, 7, 'the row without price counts towards the QUANTITY');
+  assert.equal(t.amount, 20, 'not towards the AMOUNT — it has none');
 });
 
 test('the amount is rounded to two places', () => {
@@ -129,7 +129,7 @@ test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t
     ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', without_rate: 0 }],
   ])) {
     const r = await (await fetch(`${base}/api/v2/${path}`)).json();
-    assert.equal(r.acquisitions?.length > 0, true, `${kind}: keine Erfassungen in der Antwort`);
+    assert.equal(r.acquisitions?.length > 0, true, `${kind}: no acquisitions in the response`);
     assert.deepEqual(r.totals, erwartet, kind);
   }
 });
@@ -158,9 +158,9 @@ test('no UI computes the sum again', async () => {
   }).then(async o => {
     assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
     o.d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => o.d.querySelector('[data-click="openAcqModal"]')), 'Kein Knopf zu den Kaufpreisen');
+    assert.ok(await warte(() => o.d.querySelector('[data-click="openAcqModal"]')), 'No button to the purchase prices');
     o.d.querySelector('[data-click="openAcqModal"]').click();
-    assert.ok(await warte(() => o.d.getElementById('acq-total-price')), 'Keine Summenzeile');
+    assert.ok(await warte(() => o.d.getElementById('acq-total-price')), 'No totals row');
     return o;
   });
   try {

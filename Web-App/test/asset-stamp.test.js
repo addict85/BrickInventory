@@ -42,15 +42,15 @@ test('a changed file gets a new address', () => {
   const dir = build('.a{color:red}');
   try {
     const vorher = stampFrom(stempleAssets(HTML, dir));
-    assert.ok(vorher && vorher !== 'alt', `Kein Stempel gesetzt: ${vorher}`);
+    assert.ok(vorher && vorher !== 'alt', `No stamp set: ${vorher}`);
 
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}');
     const nachher = stampFrom(stempleAssets(HTML, dir));
     assert.notEqual(
       nachher,
       vorher,
-      'Nach dem Ändern steht dieselbe Adresse da — dann behält jeder Browser ' +
-        'seine alte Kopie, bis zu sieben Tage lang. Genau das war Marcos Befund.',
+      'After the change the same address is there — then every browser keeps ' +
+        'its old copy for up to seven days. That was exactly Marco’s finding.',
     );
 
     // And the case that justifies the SIZE in the stamp: same mtime,
@@ -61,8 +61,8 @@ test('a changed file gets a new address', () => {
     assert.notEqual(
       stampFrom(stempleAssets(HTML, dir)),
       nachher,
-      'Bei gleicher Änderungszeit, aber anderer Grösse bleibt die Adresse ' +
-        'gleich — dann fehlt die Grösse im Stempel.',
+      'With the same modification time but a different size the address stays ' +
+        'the same — then the size is missing in the stamp.',
     );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -83,8 +83,8 @@ test('an unchanged file keeps its address', async () => {
     assert.equal(
       a,
       b,
-      'Zwei Aufrufe liefern verschiedene Adressen, obwohl sich nichts geändert ' +
-        'hat — dann lädt der Browser bei jedem Aufruf alles neu.',
+      'Two calls deliver different addresses although nothing has changed ' +
+        '— then the browser reloads everything on every call.',
     );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -97,9 +97,9 @@ test('a missing file leaves the existing value in place', () => {
     assert.equal(
       stempleAssets(HTML, dir),
       HTML,
-      'Für eine Datei, die es nicht gibt, wurde etwas gestempelt — eine ' +
-        'fehlende Datei ist ein anderes Problem und darf die Adressen der ' +
-        'übrigen nicht verwackeln.',
+      'Something was stamped for a file that does not exist — a ' +
+        'missing file is a different problem and must not shake the addresses of the ' +
+        'others.',
     );
     assert.equal(fileStamp(path.join(dir, 'gibtsnicht.css')), null);
   } finally {
@@ -111,7 +111,7 @@ test('a reference without ?v= stays untouched', () => {
   const dir = build('.a{}');
   try {
     const roh = '<link href="/a.css"><script src="/b.js"></script>';
-    assert.equal(stempleAssets(roh, dir), roh, 'Ein bewusst unversionierter Verweis wurde angefasst.');
+    assert.equal(stempleAssets(roh, dir), roh, 'A deliberately unversioned reference was touched.');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

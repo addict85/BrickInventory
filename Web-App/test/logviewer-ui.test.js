@@ -70,10 +70,10 @@ test('loads with the session cookie and only shows the chosen levels, escaped', 
     assert.equal(aufrufe.length, 1);
     assert.match(aufrufe[0].url, /\/api\/v2\/admin\/logs\?minutes=15$/);
     assert.equal(aufrufe[0].credentials, 'same-origin');
-    assert.equal(aufrufe[0].headers.Authorization, undefined, 'kein Token mehr');
+    assert.equal(aufrufe[0].headers.Authorization, undefined, 'no token anymore');
     const zeilen = d.querySelectorAll('#log-wrap .ll');
-    assert.equal(zeilen.length, 2, 'info ist zu Beginn ausgeblendet');
-    assert.match(zeilen[0].innerHTML, /&lt;b&gt;kaputt/, 'Meldungstext wird maskiert');
+    assert.equal(zeilen.length, 2, 'info is hidden at the start');
+    assert.match(zeilen[0].innerHTML, /&lt;b&gt;kaputt/, 'Message text is escaped');
     assert.equal(d.getElementById('status').textContent, '2 / 3 Einträge');
   } finally {
     w.close();
@@ -85,7 +85,7 @@ test('switch on level info and filter the search', async () => {
   try {
     await takt(10);
     d.getElementById('btn-info').click();
-    assert.equal(d.querySelectorAll('#log-wrap .ll').length, 3, 'Stufe info zuschalten');
+    assert.equal(d.querySelectorAll('#log-wrap .ll').length, 3, 'Switch on level info');
     const suche = d.getElementById('search');
     suche.value = 'start fertig';
     suche.dispatchEvent(new w.Event('input'));
@@ -101,8 +101,8 @@ test('a foreign name stays ineffective', async () => {
   try {
     await takt(10);
     d.getElementById('fremd').click();
-    assert.equal(alarm(), 0, 'data-click="alert" darf window.alert nicht erreichen');
-    assert.equal(typeof w.loadLogs, 'undefined', 'Die Handler sollen nicht global sein');
+    assert.equal(alarm(), 0, 'data-click="alert" must not reach window.alert');
+    assert.equal(typeof w.loadLogs, 'undefined', 'The handlers should not be global');
   } finally {
     w.close();
   }
@@ -115,12 +115,12 @@ test('level translated, stack trace collapsed, the search expands it', async () 
     const stapel = [...d.querySelectorAll('#log-wrap .ll')].find(z => z.textContent.includes('Abbruch'));
     assert.equal(stapel.querySelector('.lv').textContent, 'Error');
     const auf = stapel.querySelector('details');
-    assert.ok(auf && !auf.open, 'Stacktrace nicht eingeklappt');
+    assert.ok(auf && !auf.open, 'Stack trace not collapsed');
     assert.match(auf.querySelector('summary').textContent, /^Abbruch \(2 weitere Zeilen\)$/);
     const suche = d.getElementById('search');
     suche.value = 'b.js';
     suche.dispatchEvent(new w.Event('input'));
-    assert.equal(d.querySelector('#log-wrap details')?.open, true, 'Treffer im Stacktrace bleibt verborgen');
+    assert.equal(d.querySelector('#log-wrap details')?.open, true, 'Match in the stack trace stays hidden');
   } finally {
     w.close();
   }

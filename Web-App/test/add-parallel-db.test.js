@@ -62,8 +62,12 @@ test('capturing under load', { concurrency: 1 }, async t => {
     );
 
     const s = await state('70001-1');
-    assert.equal(s.quantity, 10, `Menge ${s.quantity} statt 10 — Erfassungen sind verloren gegangen`);
-    assert.equal(s.zeilen, 1, `${s.zeilen} Tageszeilen statt einer — die Regel „ein Kaufpreis je Tag" ist verletzt`);
+    assert.equal(s.quantity, 10, `Quantity ${s.quantity} instead of 10 — acquisitions got lost`);
+    assert.equal(
+      s.zeilen,
+      1,
+      `${s.zeilen} day rows instead of one — the rule „one purchase price per day“ is violated`,
+    );
   });
 
   await t.test('the index does not even allow a second daily row', async () => {
@@ -83,7 +87,7 @@ test('capturing under load', { concurrency: 1 }, async t => {
           [uid],
         ),
       /duplicate key|unique/i,
-      'Eine zweite Erfassung desselben Tages war möglich — der Index fehlt',
+      'A second acquisition on the same day was possible — the index is missing',
     );
   });
 
@@ -126,7 +130,7 @@ test('capturing under load', { concurrency: 1 }, async t => {
       [uid],
     );
     const s = await state('70002-1');
-    assert.equal(s.zeilen, 2, 'Der Index darf nur den GLEICHEN Tag verhindern');
+    assert.equal(s.zeilen, 2, 'The index may only prevent the SAME day');
   });
 
   await db.pool.end().catch(() => {});
@@ -136,9 +140,9 @@ test('quantities and prices are checked', () => {
   const V = _req('src/infra/validate.js');
 
   // Quantity: 1 to 10 000, everything else is caught.
-  assert.equal(V.acquisitionQuantity(-5), 1, 'negative Menge kam durch');
+  assert.equal(V.acquisitionQuantity(-5), 1, 'negative quantity got through');
   assert.equal(V.acquisitionQuantity(0), 1);
-  assert.equal(V.acquisitionQuantity(999999999), 10000, 'unplausible Menge kam durch');
+  assert.equal(V.acquisitionQuantity(999999999), 10000, 'implausible quantity got through');
   assert.equal(V.acquisitionQuantity('3'), 3);
   assert.equal(V.acquisitionQuantity(undefined), 1);
 
@@ -146,15 +150,15 @@ test('quantities and prices are checked', () => {
   const { moneyInput } = _req('src/infra/money.js');
   assert.equal(moneyInput('', 'Preis'), null);
   assert.equal(moneyInput(null, 'Preis'), null);
-  assert.equal(moneyInput('49,90', 'Preis'), 49.9, 'Komma als Dezimaltrenner');
-  assert.equal(moneyInput(0, 'Preis'), 0, '0 ist ein gültiger Preis, kein fehlender');
+  assert.equal(moneyInput('49,90', 'Preis'), 49.9, 'comma as decimal separator');
+  assert.equal(moneyInput(0, 'Preis'), 0, '0 is a valid price, not a missing one');
   assert.throws(
     () => moneyInput(-20, 'Preis'),
     /negativ/,
-    'ein negativer Kaufpreis senkt stillschweigend den Gesamtwert der Sammlung',
+    'a negative purchase price silently lowers the total value of the collection',
   );
   assert.throws(() => moneyInput(5_000_000, 'Preis'), /unplausibel/);
-  assert.throws(() => moneyInput('abc', 'Preis'), /Ungültiger Betrag/, 'Text ist kein Preis, auch kein fehlender');
+  assert.throws(() => moneyInput('abc', 'Preis'), /Ungültiger Betrag/, 'Text is not a price, not even a missing one');
 });
 
 test('all capture paths use the same check', () => {
@@ -184,8 +188,8 @@ test('all capture paths use the same check', () => {
   const kern = sets.slice(start, start + 10 + nextOne);
   const sperre = kern.indexOf('repo.addLockSet(');
   const placeList = [...kern.matchAll(/bookEntry\(/g)].map(m => m.index);
-  assert.ok(placeList.length >= 2, `nur ${placeList.length} Erfassungs-Schreibstellen gefunden`);
-  assert.ok(sperre > 0 && placeList.every(i => i > sperre), 'nicht jede Schreibstelle läuft unter der Sperre');
+  assert.ok(placeList.length >= 2, `only ${placeList.length} acquisition write sites found`);
+  assert.ok(sperre > 0 && placeList.every(i => i > sperre), 'not every write site runs under the lock');
 });
 
 test('a broken CSV entry does not topple the whole file', () => {
@@ -195,9 +199,9 @@ test('a broken CSV entry does not topple the whole file', () => {
   // line 3 has one column instead of three.
   const kaputt = 'set_number,quantity,purchase_price\n10280,1,20\nMÜLL;;;\n75192,2,30\n';
   const r = csvReadIn(kaputt);
-  assert.equal(r.records.length, 3, 'brauchbare Zeilen gingen verloren — vorher brach der ganze Import ab');
+  assert.equal(r.records.length, 3, 'usable rows got lost — previously the whole import aborted');
   assert.equal(r.records[0].set_number, '10280');
-  assert.equal(r.records[2].set_number, '75192', 'die Zeile NACH dem Fehler fehlt');
+  assert.equal(r.records[2].set_number, '75192', 'the row AFTER the error is missing');
 
   // Semicolon files are still recognized.
   const semi = csvReadIn('set_number;quantity\n10280;2\n');
@@ -207,9 +211,9 @@ test('a broken CSV entry does not topple the whole file', () => {
   // Really empty lines count as skipped and are named.
   const leer = csvReadIn('set_number,quantity\n10280,1\n,\n');
   assert.equal(leer.records.length, 1);
-  assert.deepEqual(leer.uebersprungen, [3], 'Zeilennummer wie im Editor, 1-basiert mit Kopfzeile');
+  assert.deepEqual(leer.uebersprungen, [3], 'Row number as in the editor, 1-based including the header row');
   assert.match(skippedHint(leer.uebersprungen), /1 Zeile\(n\) übersprungen \(Zeile 3\)/);
-  assert.equal(skippedHint([]), null, 'ohne Übersprungene kein Hinweis');
+  assert.equal(skippedHint([]), null, 'no hint without skipped rows');
 });
 
 test('all three import paths report skipped rows', () => {
@@ -247,13 +251,13 @@ test('all three import paths report skipped rows', () => {
   assert.match(
     geteilt,
     /function csvImportReport[\s\S]*?skipped_hint/,
-    'csvImportReport() meldet die übersprungenen Zeilen nicht mehr',
+    'csvImportReport() no longer reports the skipped rows',
   );
   // And the UI shows the hint too.
   // Sets in the gallery, parts/minifigures/wishlist/alerts via uploadCsv().
   for (const rel of ['public/js/set-csv-import.js', 'public/js/components.js']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-    assert.match(src, /skipped_hint/, `${rel}: Hinweis kommt an, wird aber nicht gezeigt`);
+    assert.match(src, /skipped_hint/, `${rel}: the hint arrives but is not shown`);
   }
 });
 
@@ -264,11 +268,8 @@ test('the parts list delivers what it reports', () => {
   const H = require('./helpers/sources').handlerModule(_req);
 
   // The parts list of ONE set may deliver more than a normal page
-  assert.ok(
-    H.SET_PARTS_MAX_PAGE_SIZE > H.MAX_PAGE_SIZE,
-    'Ein einzelnes Set braucht eine höhere Grenze als die allgemeine Liste',
-  );
-  assert.ok(H.SET_PARTS_MAX_PAGE_SIZE >= 5000, 'Grosse Sets haben mehrere tausend Teilezeilen');
+  assert.ok(H.SET_PARTS_MAX_PAGE_SIZE > H.MAX_PAGE_SIZE, 'A single set needs a higher limit than the general list');
+  assert.ok(H.SET_PARTS_MAX_PAGE_SIZE >= 5000, 'Large sets have several thousand part rows');
 
   const src = ohneKommentare(require('./helpers/sources').handlerQuelle());
   // Both query paths (summary and live) must know the same limit
@@ -277,12 +278,12 @@ test('the parts list delivers what it reports', () => {
   assert.equal(
     (src.match(/SET_PARTS_MAX_PAGE_SIZE/g) || []).length >= 3,
     true,
-    'Die Set-Grenze gilt nicht auf beiden Abfragewegen',
+    'The set limit does not apply on both query paths',
   );
   assert.equal(
     (src.match(/UNPAGED_LIMIT/g) || []).length >= 3,
     true,
-    'Die Grenze für Aufrufe ohne page_size gilt nicht auf beiden Wegen',
+    'The limit for calls without page_size does not apply on both paths',
   );
 
   // The response reports the ACTUAL page size, not the requested one.
@@ -298,7 +299,7 @@ test('the parts list delivers what it reports', () => {
   assert.match(
     response,
     /\.\.\.result/,
-    'Die Antwort übernimmt das Ergebnis von partsQuery nicht mehr — dann fehlt page_size ganz',
+    'The response no longer takes over the result of partsQuery — then page_size is missing entirely',
   );
   assert.doesNotMatch(
     response,

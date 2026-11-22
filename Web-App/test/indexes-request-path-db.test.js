@@ -60,7 +60,7 @@ test('request path: the three indexes exist and the planner can take them', asyn
     assert.deepEqual(
       da,
       [...EXPECTED].sort(),
-      `db/database.ts legt nicht alle erwarteten Indizes an — gefunden: ${da.join(', ') || '(keine)'}`,
+      `db/database.ts does not create all expected indexes — found: ${da.join(', ') || '(none)'}`,
     );
 
     // COUNTER-CHECK: the query must not simply confirm everything.
@@ -68,7 +68,7 @@ test('request path: the three indexes exist and the planner can take them', asyn
       'public',
       ['idx_gibt_es_nicht'],
     ]);
-    assert.equal(invented.length, 0, 'Gegenprobe: die Index-Abfrage meldet auch erfundene Namen als vorhanden');
+    assert.equal(invented.length, 0, 'Counter-check: the index query also reports invented names as present');
 
     // ── 2. The planner can take them ───────────────────────────────────────
     //
@@ -91,7 +91,7 @@ test('request path: the three indexes exist and the planner can take them', asyn
     assert.match(
       blPlan,
       /Index (Only )?Scan.* on bl_mapping/,
-      `Die BrickLink-Nachschlage laeuft nicht ueber einen Index:\n${blPlan}`,
+      `The BrickLink lookup does not run via an index:\n${blPlan}`,
     );
 
     const minifigPlan = await plan(`SELECT set_number FROM set_minifigs_catalog WHERE fig_number = 'x' LIMIT 1`);
@@ -108,7 +108,7 @@ test('request path: the three indexes exist and the planner can take them', asyn
     assert.match(
       withoutIndex,
       /Seq Scan on bl_mapping/,
-      `Gegenprobe: auch ohne Index kam kein Tabellenscan:\n${withoutIndex}`,
+      `Counter-check: even without an index there was no table scan:\n${withoutIndex}`,
     );
   } finally {
     await db.pool.end().catch(() => {});

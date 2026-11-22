@@ -130,16 +130,16 @@ async function finanzen(opt) {
 test('without market prices: cost basis at the top and in the sums, a hint instead of "—"', async () => {
   const { w, d } = await finanzen({ withPrice: false });
   try {
-    assert.match(zahl(text(d.getElementById('fin-cost-basis'))), /1097\.93/, 'Einstand fehlt oben');
+    assert.match(zahl(text(d.getElementById('fin-cost-basis'))), /1097\.93/, 'Cost basis missing at the top');
     assert.equal(text(d.getElementById('fin-value')), 'Marktpreis fehlt für 4 Positionen');
     // The G&L tile stays (the row does not jump) and says what is missing.
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none', 'G&V-Kachel verschwindet');
     assert.equal(text(d.getElementById('fin-total-pnl')), '—');
     assert.equal(text(d.getElementById('fin-pnl-sub')), 'Braucht Kauf- und Marktpreise');
     const setsFuss = d.querySelector('[data-fin-kind="sets"] tfoot');
-    assert.match(zahl(text(setsFuss)), /1028\.00/, 'Die Summenzeile der Sets zeigt den Einstand nicht');
+    assert.match(zahl(text(setsFuss)), /1028\.00/, 'The totals row of the sets does not show the cost basis');
     const summe = d.querySelector('.dt-sum tfoot');
-    assert.match(zahl(text(summe)), /1097\.93/, 'Die Gesamtsumme zeigt den Einstand nicht');
+    assert.match(zahl(text(summe)), /1097\.93/, 'The grand total does not show the cost basis');
   } finally {
     w.close();
   }
@@ -157,7 +157,7 @@ test('with market prices: total value and P&L', async () => {
     assert.match(
       zahl(text(d.getElementById('fin-pnl-sub'))),
       /^\+[^0-9]*71\.00[^0-9]*$/,
-      `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`,
+      `Amount does not match the percentage: ${text(d.getElementById('fin-pnl-sub'))}`,
     );
     assert.match(text(d.getElementById('fin-pnl-sub')), /zum Kaufpreis/);
   } finally {

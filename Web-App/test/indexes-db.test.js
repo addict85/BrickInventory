@@ -39,7 +39,7 @@ test('indexes', { concurrency: 1 }, async t => {
   try {
     await t.test('no index is the start of another', async () => {
       const alle = await db.all(`WITH ix AS (${INDEXES}) SELECT COUNT(*)::int AS n FROM ix`);
-      assert.ok(alle[0].n > 100, `nur ${alle[0].n} Indizes gefunden — greift die Abfrage?`);
+      assert.ok(alle[0].n > 100, `only ${alle[0].n} indexes found — does the query still work?`);
       const double = await db.all(`
         WITH ix AS (${INDEXES})
         SELECT a.tabelle || ': ' || a.name || ' (Anfang von ' || b.name || ')' AS d

@@ -34,7 +34,7 @@ test('concurrent requests write into separate temp files', () => {
   assert.match(
     SERVER,
     /const tmpFile = `\$\{cacheFile\}\.tmp-\$\{process\.pid\}-\$\{randomUUID\(\)\}`/,
-    'Der Temp-Name braucht einen eigenen Teil je Anfrage',
+    'The temp name needs its own part per request',
   );
 });
 
@@ -51,7 +51,7 @@ test('only complete files get into the cache', () => {
   assert.match(
     SERVER,
     /if \(!enc && expected > 0 && st\.size !== expected\)/,
-    'Vor dem Umbenennen muss die Grösse geprüft werden',
+    'The size must be checked before renaming',
   );
 });
 
@@ -65,13 +65,13 @@ test('the cache stream hangs in front of the client stream', () => {
   const blk = CODE.slice(start, CODE.indexOf('body.pipe(res);', start) + 20);
   const iCache = blk.indexOf('intoCache(d, body'),
     iClient = blk.indexOf('body.pipe(res)');
-  assert.ok(iCache > 0 && iClient > iCache, 'intoCache(body …) muss vor body.pipe(res) stehen');
+  assert.ok(iCache > 0 && iClient > iCache, 'intoCache(body …) must come before body.pipe(res)');
   const cache = CODE.slice(CODE.indexOf('function intoCache('), CODE.indexOf('body.pipe(ws)'));
-  assert.ok(cache.length > 0 && CODE.indexOf('function intoCache(') > 0, 'body.pipe(ws) steht nicht in intoCache()');
+  assert.ok(cache.length > 0 && CODE.indexOf('function intoCache(') > 0, 'body.pipe(ws) is not in intoCache()');
   assert.doesNotMatch(
     blk.slice(0, iCache) + cache,
     /await /,
-    'Zwischen Antwortbeginn und Cache-Stream darf kein await liegen',
+    'There must be no await between the start of the response and the cache stream',
   );
 });
 
@@ -80,26 +80,26 @@ test('compressed responses are decompressed, not passed on', () => {
   // yields a white area in the browser — with status 200 and matching
   // length, i.e. without any hint in the log. Unpacking also makes the
   // stored file a real image, independent of everything before.
-  assert.match(SERVER, /'Accept-Encoding': 'identity'/, 'Unkomprimiert anfordern ist die erste Verteidigungslinie');
+  assert.match(SERVER, /'Accept-Encoding': 'identity'/, 'Requesting uncompressed is the first line of defense');
   const idents = (SERVER.match(/'Accept-Encoding': 'identity'/g) || []).length;
-  assert.equal(idents, 2, 'Beide Kopfzeilen-Sätze müssen identity anfordern');
+  assert.equal(idents, 2, 'Both header sets must request identity');
 
-  assert.match(SERVER, /enc === 'gzip' \? zlib\.createGunzip\(\)/, 'gzip wird nicht entpackt');
-  assert.match(SERVER, /enc === 'br' \? zlib\.createBrotliDecompress\(\)/, 'brotli wird nicht entpackt');
+  assert.match(SERVER, /enc === 'gzip' \? zlib\.createGunzip\(\)/, 'gzip is not unpacked');
+  assert.match(SERVER, /enc === 'br' \? zlib\.createBrotliDecompress\(\)/, 'brotli is not unpacked');
   assert.match(
     SERVER,
     /res\.removeHeader\('Content-Length'\)/,
-    'Nach dem Entpacken stimmt die angekündigte Länge nicht mehr',
+    'After unpacking the announced length is no longer correct',
   );
 
   // Both targets must get the UNPACKED stream
-  assert.match(SERVER, /body\.pipe\(ws\)/, 'Der Cache bekommt nicht den entpackten Strom');
-  assert.match(SERVER, /body\.pipe\(res\)/, 'Der Client bekommt nicht den entpackten Strom');
+  assert.match(SERVER, /body\.pipe\(ws\)/, 'The cache does not get the unpacked stream');
+  assert.match(SERVER, /body\.pipe\(res\)/, 'The client does not get the unpacked stream');
 
   // Preview and disk cache share one place (bildCacheAuslieferung.ts;
   // behavior: img-cache-serve.test.js), plus the CDN fetch.
   const lengths = (SERVER.match(/res\.setHeader\('Content-Length'/g) || []).length;
-  assert.ok(lengths >= 2, `Nur ${lengths} von zwei Stellen setzen Content-Length (Cache, CDN-Abruf)`);
+  assert.ok(lengths >= 2, `Only ${lengths} of two places set Content-Length (cache, CDN fetch)`);
 });
 
 test('aborted client requests release the CDN connection', () => {
@@ -117,7 +117,7 @@ test('aborted client requests release the CDN connection', () => {
   assert.match(
     SERVER,
     /if \(res\.writableFinished \|\| !res\.destroyed\) return;/,
-    'res.destroyed ist der belastbare Hinweis auf einen echten Abbruch',
+    'res.destroyed is the reliable sign of a real abort',
   );
   assert.match(
     SERVER,
@@ -127,7 +127,7 @@ test('aborted client requests release the CDN connection', () => {
   assert.match(
     SERVER,
     /r\.(?:verwerfen|discard)\(\);\s*r = await openCdn\(HEADER_SETS\[1\]\)/,
-    'Beim Rückfall ohne Referer muss die erste Antwort freigegeben werden',
+    'On the fallback without a referer the first response must be released',
   );
 });
 
@@ -144,11 +144,11 @@ test('the connection pool is wide enough', async () => {
     await oeffneBild(url, { maxBytes: 1000 }).catch(() => {});
   });
   const agent = withPool?.options.agent;
-  assert.ok(agent, 'der Proxy-Abruf nimmt den Pool nicht');
-  assert.ok(agent.maxSockets >= 32, `maxSockets ${agent.maxSockets} ist zu eng — Einzelabrufe warten spürbar`);
-  assert.equal(agent.keepAlive, true, 'Wiederverwendung spart den TLS-Handshake');
-  assert.equal(withoutPool?.options.agent, undefined, 'ein Einzelabruf hält keine Verbindung offen');
-  assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
+  assert.ok(agent, 'the proxy fetch does not take the pool');
+  assert.ok(agent.maxSockets >= 32, `maxSockets ${agent.maxSockets} is too tight — single fetches wait noticeably`);
+  assert.equal(agent.keepAlive, true, 'Reuse saves the TLS handshake');
+  assert.equal(withoutPool?.options.agent, undefined, 'a single fetch keeps no connection open');
+  assert.match(SERVER, /pool: true/, 'the proxy does not take the pool');
 });
 
 test('the diagnostic endpoints are present', () => {
@@ -160,9 +160,9 @@ test('the diagnostic endpoints are present', () => {
   assert.match(
     admin,
     /content_encoding: k\['content-encoding'\]/,
-    'Die Probe muss zeigen, ob das CDN komprimiert liefert',
+    'The probe must show whether the CDN delivers compressed',
   );
-  assert.match(admin, /proxy_failures: failures/, 'Die Zähler gehören in die Antwort');
+  assert.match(admin, /proxy_failures: failures/, 'The counters belong in the response');
 });
 
 test('broken responses are not nailed into the browser for a day', () => {
@@ -189,8 +189,8 @@ test('broken responses are not nailed into the browser for a day', () => {
 
   // The cache paths deliver checked content and may last longer — but with ETag,
   // so that the browser can revalidate cheaply.
-  assert.match(SERVER, /`"c-\$\{cst\.size\}-\$\{Math\.floor\(cst\.mtimeMs\)\}"`/, 'ETag für den Plattencache fehlt');
-  assert.match(SERVER, /`"t-\$\{tst\.size\}-\$\{Math\.floor\(tst\.mtimeMs\)\}"`/, 'ETag für die Vorschau fehlt');
+  assert.match(SERVER, /`"c-\$\{cst\.size\}-\$\{Math\.floor\(cst\.mtimeMs\)\}"`/, 'ETag for the disk cache is missing');
+  assert.match(SERVER, /`"t-\$\{tst\.size\}-\$\{Math\.floor\(tst\.mtimeMs\)\}"`/, 'ETag for the preview is missing');
 });
 
 test('minifigure images are stored locally like set images', () => {
@@ -206,14 +206,14 @@ test('minifigure images are stored locally like set images', () => {
   assert.doesNotMatch(
     SERVER,
     /FROM minifigs\s+WHERE source='manual' AND image_url IS NOT NULL AND image_local IS NULL/,
-    'Die Beschränkung auf manuelle Figuren muss weg sein',
+    'The restriction to manual minifigs must be gone',
   );
   // But only minifigures someone OWNS: the catalog also knows minifigures from
   // set parts lists nobody has — those need no local image.
   assert.match(
     SERVER,
     /EXISTS \(SELECT 1 FROM \$\{l\.figurBestand\(\)\} m WHERE m\.fig_number = mc\.fig_number\)/,
-    'Der Lauf darf nicht Bilder von Figuren holen, die niemand besitzt',
+    'The run must not fetch images of minifigs nobody owns',
   );
 
   // One file per number, shared across all users — and since migration 0034
@@ -226,10 +226,10 @@ test('minifigure images are stored locally like set images', () => {
 
   // Progress in the existing job, no second entry in monitoring
   assert.match(SERVER, /const tick = async \(\) => \{/, 'Fortschrittszähler fehlt');
-  assert.match(SERVER, /text: `\$\{done\} \/ \$\{total\} geladen`/, 'Zwischenstand fehlt');
+  assert.match(SERVER, /text: `\$\{done\} \/ \$\{total\} geladen`/, 'Intermediate state is missing');
   const mon = fs.readFileSync(path.join(ROOT, 'src/management/tiles.ts'), 'utf8');
   const figJobs = (mon.match(/^\s{2}\w+:\s*\{/gm) || []).filter(l => /fig|minifig/i.test(l));
-  assert.deepEqual(figJobs, [], 'Es darf kein eigener Job dafür entstehen — imgDl deckt es ab');
+  assert.deepEqual(figJobs, [], 'No separate job may be created for it — imgDl covers it');
 
   // And the open amount in monitoring must count it. The query stands
   // in the service of the administration routes; the route calls it for the tile.
@@ -237,20 +237,20 @@ test('minifigure images are stored locally like set images', () => {
   assert.match(
     route,
     /management\.holdingMinifigImagesOpen\(\)/,
-    'Die Job-Übersicht muss die Figurenbilder des Bestands abfragen',
+    'The job overview must query the minifig images of the stock',
   );
   const admin = fs.readFileSync(path.join(ROOT, 'src/management/repository/management.ts'), 'utf8');
   assert.match(
     admin,
     /COUNT\(\*\)::int AS c FROM minifigs_catalog mc/,
-    'Die Minifiguren des Bestands fehlen in der offenen Menge',
+    'The minifigs of the stock are missing in the open set',
   );
   // The same amount as the background run — otherwise monitoring shows a
   // number that does not fit the progress.
   assert.match(
     admin,
     /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
-    'Die offene Menge und der Hintergrundlauf müssen dieselbe Menge meinen',
+    'The open set and the background run must mean the same set',
   );
 });
 
@@ -261,7 +261,7 @@ test('the cache cleanup run is a scheduled job', () => {
   assert.match(
     SERVER,
     /export async function cleanImageCacheOn/,
-    'Der Lauf muss von aussen startbar sein, statt beim Registrieren loszulaufen',
+    'The run must be startable from outside instead of starting on registration',
   );
   const reg = abschnitt(
     SERVER,
@@ -269,7 +269,7 @@ test('the cache cleanup run is a scheduled job', () => {
     'export async function cleanImageCacheOn',
     'Registrierung ohne tagesweites Intervall',
   );
-  assert.doesNotMatch(reg, /setInterval/, 'Kein eigenes Intervall im Teil, den der Web-Prozess ausführt');
+  assert.doesNotMatch(reg, /setInterval/, 'No own interval in the part the web process runs');
   const plan = require('./helpers/sources').ohneKommentare(
     fs.readFileSync(path.join(ROOT, 'src/management/cleanup.ts'), 'utf8'),
   );

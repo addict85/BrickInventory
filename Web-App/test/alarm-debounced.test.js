@@ -33,7 +33,7 @@ function alarmMarkup(sn) {
   // a UI that does not exist like that.
   const i = ADMIN.indexOf('<select id="${p}-alert-cond"');
   const j = ADMIN.indexOf('id="${p}-alert-state"');
-  assert.ok(i > 0 && j > i, 'Das Alarm-Markup steht nicht mehr, wo erwartet');
+  assert.ok(i > 0 && j > i, 'The alert markup is no longer where expected');
   const roh = ADMIN.slice(i, ADMIN.indexOf('</span>', j) + 7);
   return (
     roh
@@ -99,33 +99,29 @@ async function tap(f, takt, text = '249.90') {
 test('typing saves — and the quiet period turns it into ONE request', async () => {
   const schnell = fenster();
   await tap(schnell, 40);
-  assert.deepEqual(schnell.meldungen, [], 'Es gab Meldungen in der Konsole');
+  assert.deepEqual(schnell.meldungen, [], 'There were messages in the console');
 
   // 1. It is saved at all — that was Marco's finding.
-  assert.ok(schnell.callIt.length >= 1, 'Tippen hat gar nichts ausgelöst — genau der gemeldete Fehler');
+  assert.ok(schnell.callIt.length >= 1, 'Typing triggered nothing at all — exactly the reported bug');
 
   // 2. And only once, not per character.
   const langsam = fenster();
   await tap(langsam, REST + 200);
   assert.ok(
     langsam.callIt.length > schnell.callIt.length,
-    `Die Ruhezeit ändert nichts: schnell ${schnell.callIt.length}, langsam ` +
-      `${langsam.callIt.length}. Ohne diesen Abstand misst der Prüfstand nur sich selbst.`,
+    `The debounce time changes nothing: fast ${schnell.callIt.length}, slow ` +
+      `${langsam.callIt.length}. Without this gap the test bench only measures itself.`,
   );
   assert.equal(
     schnell.callIt.length,
     1,
-    `Schnelles Tippen ergab ${schnell.callIt.length} Anfragen: ${schnell.callIt.join(' | ')}`,
+    `Fast typing produced ${schnell.callIt.length} requests: ${schnell.callIt.join(' | ')}`,
   );
 
   // 3. The last number wins — not the intermediate states “2" or “24".
   //    Exactly those would have remained without idle time, and a threshold at 2
   //    reports immediately.
-  assert.match(
-    schnell.callIt[0],
-    /^PUT .*\/sets\/10179-1\/alert$/,
-    `Gespeichert wurde nicht per PUT: ${schnell.callIt[0]}`,
-  );
+  assert.match(schnell.callIt[0], /^PUT .*\/sets\/10179-1\/alert$/, `Not saved via PUT: ${schnell.callIt[0]}`);
   schnell.schliesse();
   langsam.schliesse();
 });
@@ -136,11 +132,11 @@ test('the response does NOT write back into the field', async () => {
   // reload would turn it back into “249.9" and eat the character.
   const f = fenster();
   await tap(f, 40);
-  assert.equal(f.field.value, '249.90', 'Das Feld wurde überschrieben');
+  assert.equal(f.field.value, '249.90', 'The field was overwritten');
   assert.deepEqual(
     f.callIt.filter(r => r.startsWith('GET')),
     [],
-    'Nach dem Speichern wurde der Alarm neu geladen — das fasst das Feld an',
+    'After saving, the alert was reloaded — that touches the field',
   );
   f.schliesse();
 });
@@ -152,7 +148,7 @@ test('a cleared field deletes', async () => {
   f.field.value = '';
   f.field.dispatchEvent(new f.w.Event('input', { bubbles: true }));
   await warte(REST * 2);
-  assert.equal(f.callIt.length, 1, `Anfragen: ${f.callIt.join(' | ')}`);
-  assert.match(f.callIt[0], /^DELETE .*\/alert\?condition=N$/, `Ein leeres Feld löschte nicht: ${f.callIt[0]}`);
+  assert.equal(f.callIt.length, 1, `Requests: ${f.callIt.join(' | ')}`);
+  assert.match(f.callIt[0], /^DELETE .*\/alert\?condition=N$/, `An empty field did not delete: ${f.callIt[0]}`);
   f.schliesse();
 });

@@ -668,7 +668,7 @@ function checkParameter(src, name, params, hint = '') {
   let zuletzt = -1;
   for (const p of params) {
     const treffer = new RegExp(`\\b${p}\\b`).exec(innen.slice(zuletzt + 1));
-    assert.ok(treffer, `${name} nimmt '${p}' nicht (mehr) entgegen${hint ? ' — ' + hint : ''}: ${kopf}`);
+    assert.ok(treffer, `${name} no longer accepts '${p}'${hint ? ' — ' + hint : ''}: ${kopf}`);
     zuletzt = zuletzt + 1 + treffer.index;
   }
 }

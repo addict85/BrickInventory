@@ -62,20 +62,20 @@ test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
   await t.test("QR access: one-time, without password material, with the server's duration", async () => {
     const qr = await callFn('POST', '/qr-token', { password: PASS });
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
-    assert.equal(qr.body.expires_in, 300, 'Die Oberfläche zählt von dieser Dauer herunter');
-    assert.doesNotMatch(JSON.stringify(qr.body), /\$2[aby]\$/, 'Ein bcrypt-Hash im QR-Code ist offline knackbar');
+    assert.equal(qr.body.expires_in, 300, 'The UI counts down from this duration');
+    assert.doesNotMatch(JSON.stringify(qr.body), /\$2[aby]\$/, 'A bcrypt hash in the QR code can be cracked offline');
     const erst = await pairQr((p, body) => callFn('POST', p, body), qr.body);
     assert.equal(erst.status, 200, JSON.stringify(erst.body));
     assert.equal(erst.body.userId, uid);
     const zweit = await callFn('POST', '/qr-login', { token: qr.body.token });
-    assert.equal(zweit.status, 401, 'Derselbe Code öffnet das Konto ein zweites Mal');
+    assert.equal(zweit.status, 401, 'The same code opens the account a second time');
   });
 
   await t.test('profile: username by the same rule and regardless of case', async () => {
     const ungueltig = await callFn('PUT', '/profile', { username: 'a b', password_current: PASS });
     assert.deepEqual([ungueltig.status, ungueltig.body.code], [400, 'username_invalid']);
     const mail = await callFn('PUT', '/profile', { username: 'x@example.org', password_current: PASS });
-    assert.equal(mail.status, 400, 'Eine E-Mail-Adresse als Benutzername — der Login sucht beides');
+    assert.equal(mail.status, 400, 'An e-mail address as user name — the sign-in searches both');
     const vergeben = await callFn('PUT', '/profile', { username: NEIGHBOR.toLowerCase(), password_current: PASS });
     assert.deepEqual([vergeben.status, vergeben.body.code], [400, 'username_taken']);
     assert.equal((await db.get('SELECT username FROM users WHERE id = $1', [uid])).username, NAME);

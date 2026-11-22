@@ -45,10 +45,10 @@ const CALL = /\bt(?:Raw)?\(\s*'([a-z0-9_.]+)'|\bt(?:Raw)?\(\s*"([a-z0-9_.]+)"|da
 test('every called i18n key is in the dictionary', () => {
   const { de, en } = loadTranslations();
   const existing = new Set([...Object.keys(de), ...Object.keys(en)]);
-  assert.ok(existing.size >= 400, `Nur ${existing.size} Schlüssel geladen — Pfad oder Format veraltet?`);
+  assert.ok(existing.size >= 400, `Only ${existing.size} keys loaded — path or format outdated?`);
 
   const dateien = oberflaeche();
-  assert.ok(dateien.length >= 15, `Nur ${dateien.length} Quelldateien gefunden`);
+  assert.ok(dateien.length >= 15, `Only ${dateien.length} source files found`);
 
   const gerufen = new Map();
   for (const [rel, src] of dateien)
@@ -58,17 +58,17 @@ test('every called i18n key is in the dictionary', () => {
     }
   // Self-proof: if the pattern no longer matches, the set would be empty and the
   // test green without having checked anything. MEASURED there are 542.
-  assert.ok(gerufen.size >= 300, `Nur ${gerufen.size} Aufrufstellen gefunden — Muster veraltet?`);
+  assert.ok(gerufen.size >= 300, `Only ${gerufen.size} call sites found — pattern outdated?`);
 
   // Composed keys (`t('monitor.job.' + k)`) end in a dot.
   const prefixes = [...gerufen.keys()].filter(k => k.endsWith('.'));
   assert.equal(
     prefixes.length,
     1,
-    `${prefixes.length} zusammengesetzte Schlüssel (${prefixes.join(', ')}) — erwartet ` +
-      'wird genau einer (monitor.job.). Ein zweiter braucht dieselbe eigene ' +
-      'Absicherung wie er: Das Ergebnis gegen den Schlüssel prüfen und auf etwas ' +
-      'anderes zurückfallen.',
+    `${prefixes.length} composed keys (${prefixes.join(', ')}) — expected ` +
+      'is exactly one (monitor.job.). A second one needs the same safeguard ' +
+      'as it: check the result against the key and fall back to something ' +
+      'else.',
   );
 
   const absent = [...gerufen]
@@ -78,10 +78,10 @@ test('every called i18n key is in the dictionary', () => {
   assert.deepEqual(
     absent,
     [],
-    'Diese Schlüssel ruft die Oberfläche, aber es gibt sie nicht:\n  ' +
+    'The UI calls these keys, but they do not exist:\n  ' +
       absent.join('\n  ') +
-      '\nt() gibt dann den Schlüssel selbst aus — im Text sichtbar, im aria-label ' +
-      'liest ihn der Bildschirmleser vor.',
+      '\nt() then outputs the key itself — visible in the text, in the aria-label ' +
+      'the screen reader reads it aloud.',
   );
 });
 
@@ -101,14 +101,14 @@ test('every data-i18n form is also evaluated by applyLang', () => {
   );
   assert.ok(
     erlaubt.size >= 3,
-    `Nur ${erlaubt.size} Formen in i18n.js gefunden (${[...erlaubt].join(', ')}) — Muster veraltet?`,
+    `Only ${erlaubt.size} forms found in i18n.js (${[...erlaubt].join(', ')}) — pattern outdated?`,
   );
 
   const benutzt = new Map();
   for (const [rel, src] of oberflaeche())
     for (const m of src.matchAll(/\b(data-i18n[a-z-]*)\s*=/g)) if (!benutzt.has(m[1])) benutzt.set(m[1], rel);
   // MEASURED there are four forms, 386 occurrences.
-  assert.ok(benutzt.size >= 2, `Nur ${benutzt.size} data-i18n-Formen im Markup gefunden`);
+  assert.ok(benutzt.size >= 2, `Only ${benutzt.size} data-i18n forms found in the markup`);
 
   const ineffective = [...benutzt]
     .filter(([f]) => !erlaubt.has(f))
@@ -117,10 +117,10 @@ test('every data-i18n form is also evaluated by applyLang', () => {
   assert.deepEqual(
     ineffective,
     [],
-    'Diese data-i18n-Formen wertet applyLang() nicht aus:\n  ' +
+    'applyLang() does not evaluate these data-i18n forms:\n  ' +
       ineffective.join('\n  ') +
-      `\nAusgewertet werden nur: ${[...erlaubt].sort().join(', ')}. Ein Attribut, das ` +
-      'keine davon ist, sieht nach Übersetzung aus und lässt den Text stehen, wie er ' +
-      'im Quelltext steht — in jeder Sprache.',
+      `\nOnly these are evaluated: ${[...erlaubt].sort().join(', ')}. An attribute that ` +
+      'is none of them looks like a translation and leaves the text as it ' +
+      'is in the source — in every language.',
   );
 });

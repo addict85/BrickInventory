@@ -84,10 +84,10 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
       // The actual finding: "false" as a string MUST revoke.
       let e = await revoke(url, 'PUT', 'false');
       assert.equal(e.status, 200, `${name}: "false" sollte angenommen werden`);
-      assert.equal(e.adminAfterwards, 0, `${name}: "false" als Text muss die Rechte ENTZIEHEN`);
+      assert.equal(e.adminAfterwards, 0, `${name}: "false" as text must REVOKE the rights`);
 
       e = await revoke(url, 'PUT', '0');
-      assert.equal(e.adminAfterwards, 0, `${name}: "0" als Text muss die Rechte entziehen`);
+      assert.equal(e.adminAfterwards, 0, `${name}: "0" as text must revoke the rights`);
 
       // Real booleans as before.
       e = await revoke(url, 'PUT', false);
@@ -98,8 +98,8 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
 
       // Unreadable input is rejected instead of silently doing the opposite.
       e = await revoke(url, 'PUT', 'vielleicht');
-      assert.equal(e.status, 400, `${name}: unlesbarer Wert muss 400 geben`);
-      assert.equal(e.adminAfterwards, 1, `${name}: bei 400 darf sich nichts geändert haben`);
+      assert.equal(e.status, 400, `${name}: an unreadable value must give 400`);
+      assert.equal(e.adminAfterwards, 1, `${name}: on 400 nothing may have changed`);
     }
 
     // The self-protection must also apply with "false" as text. Previously it was
@@ -110,7 +110,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ is_admin: 'false', admin_password: ADMIN_PW }),
     });
-    assert.equal(r.status, 400, 'die eigene Admin-Rolle darf auch mit "false" nicht entfernt werden');
+    assert.equal(r.status, 400, 'the own admin role must not be removed, not even with "false"');
     assert.equal((await db.get(`SELECT is_admin FROM users WHERE id=$1`, [adminId])).is_admin, true);
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1, $2)`, [ADMIN, ZIEL]).catch(() => {});

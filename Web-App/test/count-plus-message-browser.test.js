@@ -45,7 +45,7 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
   await b.auswerten(`document.querySelector('#set-modal [data-click="mQtyInc"]').click(); true`);
   await bis(
     `[...document.querySelectorAll('#toasts .toast')].some(x => /angelegt/.test(x.textContent))`,
-    'Toast nach „+“',
+    'Toast after „+“',
   );
 
   await t.test('toast names the estimated price', async () => {
@@ -59,10 +59,10 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
       `SELECT price_estimated, purchase_price FROM set_acquisitions WHERE user_id=$1 ORDER BY id DESC LIMIT 1`,
       [uid],
     );
-    assert.equal(row.price_estimated, true, 'Testdaten: der Server schätzt den Preis');
+    assert.equal(row.price_estimated, true, 'Test data: the server estimates the price');
   });
   await t.test('the purchase price list explains ≈', async () => {
-    await bis(`/≈/.test(document.getElementById('m-acq-summary')?.textContent || '')`, 'geschätzte Zeile');
+    await bis(`/≈/.test(document.getElementById('m-acq-summary')?.textContent || '')`, 'estimated row');
     const legende = await b.auswerten(`document.querySelector('#m-acq-summary .acq-legend')?.textContent || ''`);
     assert.match(legende, /≈ geschätzt/);
   });
@@ -70,7 +70,7 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
     const da = await b.auswerten(
       `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].find(x => x.textContent === 'Ändern'); k?.click(); return !!k; })()`,
     );
-    assert.ok(da, 'Knopf „Ändern“ fehlt');
+    assert.ok(da, 'Button „Ändern“ is missing');
     await bis(`document.getElementById('acq-modal')?.classList.contains('open')`, 'Kaufpreis-Dialog');
   });
 });

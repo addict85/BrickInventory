@@ -28,8 +28,8 @@ test('without server: hint and try again', async () => {
   );
   try {
     const hint = o.d.getElementById('start-offline');
-    assert.ok(hint.hidden, 'nicht gleich beim ersten Fehlschlag');
-    assert.ok(await warte(() => !hint.hidden, 8000), 'nach 8 s kein Hinweis');
+    assert.ok(hint.hidden, 'not right at the first failure');
+    assert.ok(await warte(() => !hint.hidden, 8000), 'no hint after 8 s');
     assert.match(hint.textContent, /nicht erreichbar/);
     assert.equal(hint.getAttribute('role'), 'alert');
     const knopf = o.d.getElementById('start-again');
@@ -41,10 +41,10 @@ test('without server: hint and try again', async () => {
     // The normal tick after an error is two seconds; the button must be faster.
     assert.ok(
       await warte(() => o.d.getElementById('login-screen').style.display === 'flex', 500),
-      'Knopf holt den Start nicht sofort nach',
+      'Button does not catch up on the startup immediately',
     );
     assert.ok(o.aufrufe.length > vorher);
-    assert.ok(hint.hidden, 'Hinweis bleibt nach dem Start stehen');
+    assert.ok(hint.hidden, 'Hint stays after the startup');
     await takt(10);
   } finally {
     o.w.close();

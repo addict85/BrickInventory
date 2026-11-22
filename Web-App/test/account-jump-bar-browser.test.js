@@ -60,29 +60,29 @@ test('N5 jump bar in the account', { timeout: 240_000 }, async t => {
           features: [{ name: 'prefers-color-scheme', value: dunkel ? 'dark' : 'light' }],
         });
         await app.b.auswerten(`location.hash = '#/konto'; true`);
-        await app.bis(`document.getElementById('tab-profile').classList.contains('active')`, 'Konto offen');
+        await app.bis(`document.getElementById('tab-profile').classList.contains('active')`, 'Account open');
         await app.ruhig();
         const m = await app.b.auswerten(MASS);
         // Since round 27 it sticks below the header (sticky); fixed like the main navigation stays wrong.
-        assert.equal(m.situation, 'sticky', 'Leiste klebt fest wie die Hauptnavigation');
-        assert.ok(m.belowTitle, 'Leiste steht nicht unter dem Titel');
-        assert.equal(m.zeilen, 1, 'Leiste bricht um');
-        assert.ok(m.linkHeight >= 40, `Links zu klein: ${m.linkHeight} px`);
-        assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
+        assert.equal(m.situation, 'sticky', 'Bar sticks like the main navigation');
+        assert.ok(m.belowTitle, 'Bar is not below the title');
+        assert.equal(m.zeilen, 1, 'Bar wraps');
+        assert.ok(m.linkHeight >= 40, `Links too small: ${m.linkHeight} px`);
+        assert.equal(m.pageWider, false, 'Page wider than the window');
         assert.equal(m.rollt, telefon, telefon ? 'rollt am Telefon nicht' : 'rollt am Rechner');
-        assert.notEqual(m.farbe, m.reason, 'Linkfarbe gleich dem Grund');
+        assert.notEqual(m.farbe, m.reason, 'Link color equals the background');
         for (const ziel of ['account-t-danger', 'account-t-profile']) {
           await app.b.auswerten(`document.querySelector('.account-nav a[data-arg="${ziel}"]').click(); true`);
           await app.ruhig(500);
           const situation =
             await app.b.auswerten(`(() => { const r = document.getElementById('${ziel}').getBoundingClientRect();
             return { oben: r.top, unten: r.bottom, h: innerHeight, fokus: document.activeElement.id, hash: location.hash }; })()`);
-          assert.equal(situation.fokus, ziel, `${ziel}: Fokus`);
+          assert.equal(situation.fokus, ziel, `${ziel}: focus`);
           assert.ok(
             situation.oben >= 0 && situation.unten <= situation.h,
-            `${ziel}: nicht im Bild (${situation.oben}–${situation.unten})`,
+            `${ziel}: not in view (${situation.oben}–${situation.unten})`,
           );
-          assert.equal(situation.hash, '#/konto', `${ziel}: Adresse verändert`);
+          assert.equal(situation.hash, '#/konto', `${ziel}: address changed`);
         }
         await app.b.auswerten(`scrollTo(0, 0); true`);
       });

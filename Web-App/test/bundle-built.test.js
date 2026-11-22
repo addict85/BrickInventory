@@ -23,11 +23,11 @@ const ROOT = path.join(__dirname, '..');
 const git = (...args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
 const imGit = git('rev-parse', '--is-inside-work-tree').stdout.trim() === 'true';
 
-test('the bundle is not checked in and is ignored by git', { skip: !imGit && 'kein git-Arbeitsbaum' }, () => {
+test('the bundle is not checked in and is ignored by git', { skip: !imGit && 'no git working tree' }, () => {
   const rel = path.posix.join('public', OUT_REL);
-  assert.equal(git('ls-files', '--', rel).stdout.trim(), '', `${rel} ist eingecheckt`);
+  assert.equal(git('ls-files', '--', rel).stdout.trim(), '', `${rel} is checked in`);
   for (const name of [rel, `${rel}.map`, `${rel}.123.tmp`]) {
-    assert.equal(git('check-ignore', '-q', '--', name).status, 0, `${name} wird von git ignoriert`);
+    assert.equal(git('check-ignore', '-q', '--', name).status, 0, `${name} is ignored by git`);
   }
 });
 
@@ -36,20 +36,20 @@ test('a missing or outdated bundle is built, a fresh one is not touched', { time
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const ziel = path.join(dir, 'app.bundle.js');
 
-  assert.equal(placeBundleSafe(ziel), true, 'fehlendes Bündel wird gebaut');
+  assert.equal(placeBundleSafe(ziel), true, 'a missing bundle is built');
   const groesse = fs.statSync(ziel).size;
-  assert.ok(groesse > 100_000, `nur ${groesse} Byte gebaut — greift der Bau noch?`);
-  assert.equal(spawnSync(process.execPath, ['--check', ziel]).status, 0, 'das gebaute Bündel ist gültiges JavaScript');
-  assert.deepEqual(fs.readdirSync(dir), ['app.bundle.js'], 'keine Zwischendatei bleibt liegen');
+  assert.ok(groesse > 100_000, `only ${groesse} bytes built — does the build still work?`);
+  assert.equal(spawnSync(process.execPath, ['--check', ziel]).status, 0, 'the built bundle is valid JavaScript');
+  assert.deepEqual(fs.readdirSync(dir), ['app.bundle.js'], 'no intermediate file is left behind');
 
   const mtime = fs.statSync(ziel).mtimeMs;
-  assert.equal(placeBundleSafe(ziel), false, 'frisches Bündel bleibt unberührt');
+  assert.equal(placeBundleSafe(ziel), false, 'a fresh bundle stays untouched');
   assert.equal(fs.statSync(ziel).mtimeMs, mtime);
 
   // A second file never checked before: writing after checking the same file is a file system race.
   const alt = path.join(dir, 'alt.bundle.js');
   fs.writeFileSync(alt, 'veraltet');
   fs.utimesSync(alt, 1, 1);
-  assert.equal(placeBundleSafe(alt), true, 'veraltetes Bündel wird neu gebaut');
-  assert.equal(fs.statSync(alt).size, groesse, 'und entspricht dem frischen Bau');
+  assert.equal(placeBundleSafe(alt), true, 'an outdated bundle is rebuilt');
+  assert.equal(fs.statSync(alt).size, groesse, 'and matches the fresh build');
 });

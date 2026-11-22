@@ -55,7 +55,7 @@ test('routes with BrickLink or third-party fetches cost more than reading', () =
   assert.ok(COST.preis > COST.abruf);
   // The price route must not drain the shared quota with the whole budget.
   const n = Math.floor(BUDGET / COST.preis);
-  assert.ok(n * 4 <= 150, `${n} Anfragen je Fenster = bis zu ${n * 4} BrickLink-Aufrufe`);
+  assert.ok(n * 4 <= 150, `${n} requests per window = up to ${n * 4} BrickLink calls`);
 });
 
 test('the route answers 429 with Retry-After and error code', async t => {

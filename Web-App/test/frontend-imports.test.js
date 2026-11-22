@@ -67,7 +67,7 @@ test('every frontend module imports what it calls', () => {
     // logviewer.js runs in its own popup window without a module system and brings
     // its helpers along itself — it shares no namespace with the rest.
     .filter(f => f !== 'logviewer.js');
-  assert.ok(dateien.length > 8, `nur ${dateien.length} Frontend-Module gefunden`);
+  assert.ok(dateien.length > 8, `only ${dateien.length} frontend modules found`);
 
   const sources = new Map();
   for (const f of dateien) sources.set(f, ohneKommentare(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
@@ -93,5 +93,5 @@ test('every frontend module imports what it calls', () => {
     }
   }
 
-  assert.deepEqual(absent, [], `Aufrufe über Modulgrenzen ohne Import:\n  ${absent.join('\n  ')}`);
+  assert.deepEqual(absent, [], `Calls across module boundaries without an import:\n  ${absent.join('\n  ')}`);
 });

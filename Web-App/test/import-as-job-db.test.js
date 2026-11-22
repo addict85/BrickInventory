@@ -72,7 +72,7 @@ test('import as a job', { concurrency: 1 }, async t => {
   await t.test('with a worker the result comes', async tt => {
     importWorker(tt, _req);
     const r = await importAsTask(uid, 'teile_csv', { text: csv('mit1') });
-    assert.equal(r.success, undefined, 'die Hülle der Antwort setzt die Route, nicht der Dienst');
+    assert.equal(r.success, undefined, 'the envelope of the response is set by the route, not the service');
     assert.equal(r.total, 1);
     assert.equal(r.added + r.updated, 1, JSON.stringify(r));
     assert.ok(await db.get("SELECT 1 FROM parts WHERE user_id = $1 AND part_number = 'mit1'", [uid]));
@@ -81,7 +81,7 @@ test('import as a job', { concurrency: 1 }, async t => {
       ORDER BY id DESC LIMIT 1`,
       [uid],
     );
-    assert.deepEqual(a, { status: 'done', result: null }, 'gelesen ist gelesen');
+    assert.deepEqual(a, { status: 'done', result: null }, 'read is read');
   });
 
   await t.test('a domain error arrives with a code', async tt => {

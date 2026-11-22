@@ -106,7 +106,7 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
       email: `o'brien.gut_${P}@example.org`,
       password: 'Langes-Passwort-42',
     });
-    assert.equal(gut.status, 200, 'eine gewöhnliche Adresse mit Apostroph geht weiter');
+    assert.equal(gut.status, 200, 'an ordinary address with an apostrophe goes through');
   });
 
   await t.test('forgot password and confirmation only accept plain addresses', async () => {
@@ -131,7 +131,7 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
       const r = await mailer.sendMail({ to, subject: 'Probe', text: 'x' });
       assert.equal(r.success, false, to);
     }
-    assert.deepEqual(gesendet, [], 'an eine unreine Adresse wurde versandt');
+    assert.deepEqual(gesendet, [], 'mail was sent to an impure address');
   });
 
   await t.test('the envelope names exactly the one address', async () => {
@@ -163,7 +163,7 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
     }
     assert.ok(ids.includes(alt) && !ids.includes(uid), JSON.stringify(ids));
     assert.match(zeilen.join('\n'), new RegExp(`IDs [0-9, ]*\\b${alt}\\b`));
-    assert.doesNotMatch(zeilen.join('\n'), /opfer@/, 'die Meldung nennt keine Adresse');
+    assert.doesNotMatch(zeilen.join('\n'), /opfer@/, 'the message names no address');
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [alt])).email, 'x1<opfer@example.org>');
   });
 });

@@ -106,8 +106,7 @@ function move(base, sn, acqIds, limitMs = 10000) {
         () =>
           ab(
             new Error(
-              `Die Verschiebung von ${sn} war nach ${limitMs} ms nicht fertig — ` +
-                'sie hängt an einer Sperre, die sie nicht nehmen dürfte',
+              `The move of ${sn} was not done after ${limitMs} ms — ` + 'it hangs on a lock it should not take',
             ),
           ),
         limitMs,
@@ -173,8 +172,8 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
       assert.equal(
         await lockRows(userId, scopeKey, true),
         1,
-        `Vorbedingung: der Halter hat die Sperre (${userId}, ${scopeKey}) nicht bekommen — ` +
-          'dann sagt dieser Fall nichts über die Route',
+        `Precondition: the holder did not get the lock (${userId}, ${scopeKey}) — ` +
+          'then this case says nothing about the route',
       );
       return await fn(() => halter.query('COMMIT'));
     } finally {
@@ -188,7 +187,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
 
   await t.test('A. lock on (source account, set) — the move waits', async () => {
     const acq = await acquisitionIds(MAIN, SN_A);
-    assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_A}`);
+    assert.equal(acq.length, 1, `Precondition: an acquisition for ${SN_A}`);
 
     await withLock(MAIN, SN_A, async freigeben => {
       const v = move(srv.base, SN_A, acq);
@@ -219,15 +218,14 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
       assert.equal(
         r.status,
         200,
-        `Nach dem Freigeben kam ${r.status} statt 200 — die Verschiebung lief in die ` +
-          'Sperre und kam nicht wieder heraus',
+        `After releasing came ${r.status} instead of 200 — the move ran into the ` + 'lock and did not come out again',
       );
       assert.equal(
         (await db.get(`SELECT COUNT(*)::int c FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [KIND, SN_A]))
           .c,
         1,
-        'Die Antwort war 200, aber beim Kind liegt keine Erfassung — dann hat die ' +
-          'Verschiebung nur quittiert, nicht verschoben',
+        'The response was 200, but there is no acquisition at the child — then the ' +
+          'move only acknowledged, it did not move',
       );
     });
   });
@@ -239,7 +237,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
     // Without B all moves of an account would queue up one after another, even
     // the completely uninvolved ones, and nothing would say so.
     const acq = await acquisitionIds(MAIN, SN_B);
-    assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_B}`);
+    assert.equal(acq.length, 1, `Precondition: an acquisition for ${SN_B}`);
 
     await withLock(MAIN, SN_A, async () => {
       const v = move(srv.base, SN_B, acq);
@@ -247,14 +245,14 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
       assert.equal(
         r.status,
         200,
-        `Die Verschiebung von ${SN_B} kam mit ${r.status} zurück, während die Sperre auf ` +
-          `(${MAIN}, ${SN_A}) lag — ein anderes Set darf davon nicht betroffen sein`,
+        `The move of ${SN_B} came back with ${r.status} while the lock was on ` +
+          `(${MAIN}, ${SN_A}) — another set must not be affected by it`,
       );
       assert.equal(
         await lockRows(MAIN, SN_A, false),
         0,
-        `Es stand ein Warter auf (${MAIN}, ${SN_A}) — dann sperrt die Route auf dem ` +
-          'Konto und nicht auf (Konto, Set), und zwei fremde Sets blockieren sich',
+        `There was a waiter on (${MAIN}, ${SN_A}) — then the route locks on the ` +
+          'account and not on (account, set), and two unrelated sets block each other',
       );
     });
   });
@@ -265,7 +263,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
     // deleted. MEASURED: if `toId` stands in the route, A AND this case turn
     // red. And on its own this case catches a lock on BOTH accounts: also …
     const acq = await acquisitionIds(MAIN, SN_C);
-    assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_C}`);
+    assert.equal(acq.length, 1, `Precondition: an acquisition for ${SN_C}`);
 
     await withLock(KIND, SN_C, async () => {
       const v = move(srv.base, SN_C, acq);
@@ -273,13 +271,13 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
       assert.equal(
         r.status,
         200,
-        `Die Verschiebung kam mit ${r.status} zurück, während die Sperre auf dem ZIELkonto ` +
-          `(${KIND}, ${SN_C}) lag. Die Route sperrt dann über das falsche Konto.`,
+        `The move came back with ${r.status} while the lock was on the TARGET account ` +
+          `(${KIND}, ${SN_C}). The route then locks via the wrong account.`,
       );
       assert.equal(
         await lockRows(KIND, SN_C, false),
         0,
-        `Es stand ein Warter auf (${KIND}, ${SN_C}) — die Route sperrt über das Zielkonto`,
+        `There was a waiter on (${KIND}, ${SN_C}) — the route locks via the target account`,
       );
     });
   });

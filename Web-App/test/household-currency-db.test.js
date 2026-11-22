@@ -74,7 +74,7 @@ test('household currency', { concurrency: 1 }, async t => {
     assert.deepEqual(
       (await currencies()).slice(0, 4),
       ['CHF', 'CHF', 'CHF', 'EUR'],
-      'Eltern, Kind und Enkel müssen dieselbe Währung tragen; das fremde Konto bleibt',
+      'Parent, child and grandchild must carry the same currency; the foreign account stays',
     );
   });
 
@@ -89,7 +89,7 @@ test('household currency', { concurrency: 1 }, async t => {
     assert.deepEqual(
       (await currencies()).slice(0, 4),
       ['CHF', 'CHF', 'CHF', 'EUR'],
-      'derselbe Wert bleibt erlaubt und ändert nichts',
+      'the same value stays allowed and changes nothing',
     );
   });
 
@@ -105,15 +105,15 @@ test('household currency', { concurrency: 1 }, async t => {
       setUserSetting(ids[4], 'currency', 'CHF'),
       (/** @type {any} */ e) => e.code === 'currency_shared_sub_account' && e.kind === 'konflikt',
     );
-    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'ein geteiltes Unterkonto …');
+    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'a shared sub-account …');
     await setUserSetting(ids[6], 'currency', 'EUR');
-    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'derselbe Wert geht durch');
+    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'the same value goes through');
     await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [ids[6], ids[5]]);
     await setUserSetting(ids[4], 'currency', 'CHF');
     assert.deepEqual(
       (await currencies()).slice(4),
       ['CHF', 'CHF', 'EUR', 'CHF'],
-      'nach dem Lösen: carl, dora, cleo; erik bleibt',
+      'after unlinking: carl, dora, cleo; erik stays',
     );
   });
 
@@ -125,6 +125,6 @@ test('household currency', { concurrency: 1 }, async t => {
       (/** @type {any} */ e) => e.code === 'too_many_requests' && e.kind === 'zu_viele',
     );
     await setUserSetting(ids[3], 'currency', 'SEK');
-    assert.equal((await currencies())[3], 'SEK', 'ein unveränderter Wert zählt nicht und geht durch');
+    assert.equal((await currencies())[3], 'SEK', 'an unchanged value does not count and goes through');
   });
 });

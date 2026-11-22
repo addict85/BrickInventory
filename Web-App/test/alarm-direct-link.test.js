@@ -21,7 +21,7 @@ test('4. and the web app redeems it', async () => {
   try {
     assert.ok(
       await warte(() => aufrufe.some(a => a.url.includes('/v2/sets/10294-1'))),
-      'Die Webapp liest ?set= nicht — der Knopf in der Mail öffnet nur die Startseite.',
+      'The web app does not read ?set= — the button in the mail only opens the start page.',
     );
     assert.ok(
       await warte(
@@ -29,10 +29,10 @@ test('4. and the web app redeems it', async () => {
           d.getElementById('set-modal').classList.contains('open') &&
           d.getElementById('m-tit').textContent.includes('Titanic'),
       ),
-      'Das Set-Detail öffnet sich nicht.',
+      'The set detail does not open.',
     );
     // Otherwise an F5 tears the detail open again.
-    assert.equal(w.location.search, '', 'Die Adresse wird nicht bereinigt');
+    assert.equal(w.location.search, '', 'The address is not cleaned up');
   } finally {
     w.close();
   }

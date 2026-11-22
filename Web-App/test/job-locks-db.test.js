@@ -24,7 +24,7 @@ async function dbReachable() {
 async function holdAs(fremder, ns) {
   const client = await db.pool.connect();
   const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [ns]);
-  assert.equal(rows[0].ok, true, `${fremder}: Sperre ${ns} war schon belegt`);
+  assert.equal(rows[0].ok, true, `${fremder}: lock ${ns} was already taken`);
   return async () => {
     await client.query('SELECT pg_advisory_unlock($1, 0)', [ns]).catch(() => {});
     client.release();
@@ -57,7 +57,7 @@ test('job locks work across process boundaries', async t => {
     const enrich = _req('src/catalog/partsEnrichment.js');
     // Counter-check: without a foreign lock it runs through (empty catalog → 0 missing).
     const frei = await enrich.redownloadMissingImages();
-    assert.equal(frei.alreadyRunning, undefined, 'Lauf wurde ohne fremde Sperre abgewiesen');
+    assert.equal(frei.alreadyRunning, undefined, 'Run was rejected without a foreign lock');
 
     const freigeben = await holdAs('zweiter Worker', REDOWNLOAD_LOCK);
     try {
@@ -65,7 +65,7 @@ test('job locks work across process boundaries', async t => {
       assert.equal(
         gesperrt.alreadyRunning,
         true,
-        'zweiter Lauf gestartet — dieselben Bilder würden doppelt vom CDN geladen',
+        'second run started — the same images would be loaded twice from the CDN',
       );
     } finally {
       await freigeben();

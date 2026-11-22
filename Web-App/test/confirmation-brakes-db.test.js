@@ -112,7 +112,7 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
     );
     assert.equal((await passkeyDelete('100004')).code, 'second_factor_wrong');
     const sixth = await passkeyDelete(richtig());
-    assert.equal(sixth.status, 429, `das Passwort setzt den Codezähler zurück: ${JSON.stringify(sixth)}`);
+    assert.equal(sixth.status, 429, `the password resets the code counter: ${JSON.stringify(sixth)}`);
   });
 
   await t.test('a correct code resets it', async () => {
@@ -130,13 +130,13 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
     assert.equal(
       (await callFn('POST', '/api/v2/settings/sessions/end-others', { password: PASS }, kopf)).status,
       429,
-      'Vorbedingung: die fremde Sitzung ist gesperrt',
+      'Precondition: the foreign session is locked',
     );
     const eigen = { 'x-sitzung': 'karl-eigen', 'x-konto': String(karl) };
     assert.equal(
       (await callFn('POST', '/api/v2/settings/sessions/end-others', { password: PASS }, eigen)).status,
       200,
-      'eine fremde Sitzung sperrt die Notbremsen',
+      'a foreign session locks the emergency brakes',
     );
     const wechsel = await callFn(
       'POST',
@@ -144,19 +144,15 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
       { current: PASS, newPassword: 'Neues-Passwort-77' },
       eigen,
     );
-    assert.equal(wechsel.status, 200, `eine fremde Sitzung sperrt die Notbremsen: ${JSON.stringify(wechsel)}`);
+    assert.equal(wechsel.status, 200, `a foreign session locks the emergency brakes: ${JSON.stringify(wechsel)}`);
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [karl, await bcrypt.hash(PASS, 4)]);
   });
 
   await t.test('wrong codes of a foreign session do not lock out the owner', async () => {
     await leeren();
     for (let i = 0; i < 5; i++) await passkeyDelete(String(300000 + i), A);
-    assert.equal((await passkeyDelete(richtig(), A)).status, 429, 'Vorbedingung: Angreifer gesperrt');
-    assert.equal(
-      (await passkeyDelete(richtig(), O)).status,
-      200,
-      'falsche Codes einer fremden Sitzung sperren den Inhaber',
-    );
+    assert.equal((await passkeyDelete(richtig(), A)).status, 429, 'Precondition: attacker locked');
+    assert.equal((await passkeyDelete(richtig(), O)).status, 200, 'wrong codes of a foreign session lock the owner');
   });
 
   await t.test('swapping the token does not reset the brake', async () => {
@@ -171,11 +167,11 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
     );
     const r = await fetch(`${base}/api/v2/auth/rotate-token`, { method: 'POST', headers: mit(token) });
     const neu = (await r.json()).token;
-    assert.ok(neu, 'Vorbedingung: getauscht');
+    assert.ok(neu, 'Precondition: rotated');
     assert.equal(
       (await callFn('DELETE', '/api/v2/inventory', { password: PASS }, mit(neu))).status,
       429,
-      'der Tausch des Tokens setzt die Bremse zurück',
+      'rotating the token resets the brake',
     );
   });
 });

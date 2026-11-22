@@ -39,7 +39,7 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
   // Adding asks no network; the held lock per set number makes a line slow.
   testSources(t, {
     holeSet: async () => {
-      throw new Error('Netz beim Erfassen');
+      throw new Error('Network during capture');
     },
   });
   const { lockUntilToEnd } = _req('db/txLock.js');
@@ -104,27 +104,27 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
       letGo();
       await ende;
       await warte(300);
-      assert.deepEqual(await booked('70001'), ['70001-1'], 'genau eine Buchung, kein zweiter Versuch');
-      assert.equal(a.results[0].isWarning, true, 'die Zeile endet als Warnung');
+      assert.deepEqual(await booked('70001'), ['70001-1'], 'exactly one booking, no second attempt');
+      assert.equal(a.results[0].isWarning, true, 'the row ends as a warning');
     });
 
     await t.test('a superseded run stops', async () => {
       const { ende: lockEnd } = await hold('71002-1');
       await importIt(['71001-1', '71002-1', '71003-1', '71004-1', '71005-1']);
-      assert.ok(await bis(async () => (await booked('71')).length > 0), 'der erste Lauf bucht schon');
+      assert.ok(await bis(async () => (await booked('71')).length > 0), 'the first run already books');
       await importIt(['72001-1']);
       const a = await untilDone();
       letGo();
       await lockEnd;
       await warte(700);
       const alte = await booked('71');
-      assert.ok(alte.length <= 2, `der alte Lauf buchte weiter: ${alte.join(', ')}`);
+      assert.ok(alte.length <= 2, `the old run kept booking: ${alte.join(', ')}`);
       const ende = await auftrag();
       assert.equal(ende.status, 'done');
       assert.deepEqual(
         ende.results.map(r => r.set_number),
         ['72001-1'],
-        'die Zeile gehört dem neuen Lauf',
+        'the row belongs to the new run',
       );
       assert.equal(a.done, 1);
     });

@@ -109,14 +109,14 @@ test('block by block while scrolling', async () => {
   const o = await openFinances(250);
   try {
     assert.equal(zeilen(o).length, 100);
-    assert.equal(o.d.querySelector('#fin-tbl [data-click="finMehr"]'), null, 'der Weitere-Knopf ist weg');
-    assert.ok(inSicht(o), 'keine Markierung am Tabellenende');
+    assert.equal(o.d.querySelector('#fin-tbl [data-click="finMehr"]'), null, 'the more button is gone');
+    assert.ok(inSicht(o), 'no marker at the end of the table');
     await takt(10);
     assert.equal(zeilen(o).length, 200);
     assert.ok(inSicht(o));
     await takt(10);
     assert.equal(zeilen(o).length, 250);
-    assert.equal(o.d.getElementById('fin-sentinel'), null, 'am Ende keine Markierung mehr');
+    assert.equal(o.d.getElementById('fin-sentinel'), null, 'no marker anymore at the end');
   } finally {
     o.w.close();
   }
@@ -126,11 +126,11 @@ test('search over all positions', async () => {
   const o = await openFinances(250);
   try {
     const field = o.d.getElementById('fin-search');
-    assert.ok(field.labels?.length || field.getAttribute('aria-label'), 'Suchfeld ohne Namen');
+    assert.ok(field.labels?.length || field.getAttribute('aria-label'), 'Search field without a name');
     field.value = 'seltene';
     field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
-    assert.ok(await warte(() => zeilen(o).length === 1, 1500), `Zeilen: ${zeilen(o).length}`);
-    assert.equal(zeilen(o)[0].dataset.arg, '10217-1', 'Treffer liegt hinter dem ersten Block');
+    assert.ok(await warte(() => zeilen(o).length === 1, 1500), `Rows: ${zeilen(o).length}`);
+    assert.equal(zeilen(o)[0].dataset.arg, '10217-1', 'Match is behind the first block');
     assert.equal(o.d.querySelector('#fin-tbl [data-click="finMehr"]'), null);
   } finally {
     o.w.close();
@@ -141,13 +141,13 @@ test('sort headers with aria-sort', async () => {
   const o = await openFinances(30);
   try {
     const headers = [...o.d.querySelectorAll('#fin-tbl [data-fin-kind="sets"] th[aria-sort]')];
-    assert.ok(headers.length >= 3, `sortierbare Köpfe: ${headers.length}`);
+    assert.ok(headers.length >= 3, `sortable headers: ${headers.length}`);
     const knopf = () => o.d.querySelector('#fin-tbl [data-click="finSort"][data-arg="value"]');
     knopf().click();
     await takt(10);
     assert.equal(knopf().closest('th').getAttribute('aria-sort'), 'descending');
-    assert.equal(zeilen(o)[0].dataset.arg, '10029-1', 'höchster Wert zuerst');
-    assert.equal(o.d.activeElement, knopf(), 'Fokus bleibt auf dem Kopf');
+    assert.equal(zeilen(o)[0].dataset.arg, '10029-1', 'highest value first');
+    assert.equal(o.d.activeElement, knopf(), 'Focus stays on the header');
     knopf().click();
     await takt(10);
     assert.equal(knopf().closest('th').getAttribute('aria-sort'), 'ascending');
@@ -161,7 +161,7 @@ test('legend shows symbols', async () => {
   const o = await openFinances(3);
   try {
     const legende = o.d.querySelector('#fin-tbl .fin-legend');
-    assert.ok(legende, 'Legende fehlt');
+    assert.ok(legende, 'Legend is missing');
     assert.doesNotMatch(legende.textContent, /<span/);
     assert.equal(legende.querySelectorAll('.legend-char').length, 3);
   } finally {

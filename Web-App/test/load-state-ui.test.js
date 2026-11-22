@@ -39,11 +39,11 @@ test('set detail opens immediately with a placeholder', async () => {
   });
   try {
     await detail(o);
-    assert.equal(o.d.getElementById('set-modal').classList.contains('open'), true, 'Dialog vor der Antwort zu');
-    assert.ok(o.d.querySelector('#m-det .skeleton-list[aria-busy="true"]'), 'kein Platzhalter');
+    assert.equal(o.d.getElementById('set-modal').classList.contains('open'), true, 'Dialog closed before the response');
+    assert.ok(o.d.querySelector('#m-det .skeleton-list[aria-busy="true"]'), 'no placeholder');
     assert.equal(o.d.getElementById('m-tit').textContent, '10294-1');
     await warte(() => o.d.getElementById('m-tit').textContent === 'Titanic');
-    assert.equal(o.d.querySelector('#m-det .skeleton-list'), null, 'Platzhalter blieb stehen');
+    assert.equal(o.d.querySelector('#m-det .skeleton-list'), null, 'Placeholder stayed');
   } finally {
     o.w.close();
   }
@@ -57,7 +57,7 @@ test('set detail: closed stays closed', async () => {
   try {
     await detail(o);
     o.d.getElementById('set-modal').classList.remove('open');
-    assert.ok(await o.ruhig(), 'die Antwort kam nicht');
+    assert.ok(await o.ruhig(), 'the response did not come');
     assert.equal(o.d.getElementById('set-modal').classList.contains('open'), false);
   } finally {
     o.w.close();
@@ -72,7 +72,7 @@ test('wishlist shows placeholder rows until the list is there', async () => {
   const o = await openUi({ '/v2/wanted': spaeter(liste) });
   try {
     await reiter(o.w, 'wanted');
-    assert.ok(o.d.querySelector('#mk-list .skeleton-list[aria-busy="true"]'), 'keine Platzhalter');
+    assert.ok(o.d.querySelector('#mk-list .skeleton-list[aria-busy="true"]'), 'no placeholders');
     await warte(() => o.d.querySelector('#mk-list .mk-row'));
     assert.equal(o.d.querySelector('#mk-list .skeleton-list'), null);
   } finally {

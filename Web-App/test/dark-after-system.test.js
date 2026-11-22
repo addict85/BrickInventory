@@ -47,7 +47,7 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
 test('without a choice the device follows the system', () => {
   const { w, thema, dunkel } = fenster({ dunkel: true });
   assert.equal(thema(), 'classic');
-  assert.equal(dunkel(), true, 'Vorgabe ist „system“, das dunkle System wurde übergangen');
+  assert.equal(dunkel(), true, 'Default is „system“, the dark system was ignored');
   assert.equal(w.__bimDarkValue(), 'system');
 });
 
@@ -59,9 +59,9 @@ test('with the choice "server" the theme stays light — even with a dark system
 
 test('with the choice "system": dark with a dark system, and it follows the change', () => {
   const { w, thema, dunkel, systemSwitch } = fenster({ wahl: 'system', dunkel: true });
-  assert.equal(dunkel(), true, 'bleibt hell, obwohl das System dunkel ist');
-  assert.equal(thema(), 'classic', 'das Design bleibt — dunkel ist eine Variante, kein anderes Design');
-  assert.equal(w.localStorage.getItem('bim_theme'), 'classic', 'Cache: gemerkt wird das Design des Servers');
+  assert.equal(dunkel(), true, 'stays light although the system is dark');
+  assert.equal(thema(), 'classic', 'the design stays — dark is a variant, not a different design');
+  assert.equal(w.localStorage.getItem('bim_theme'), 'classic', 'Cache: the server design is remembered');
   systemSwitch(false);
   assert.equal(dunkel(), false);
   systemSwitch(true);

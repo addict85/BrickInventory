@@ -43,8 +43,8 @@ test('DE and EN have identical key sets', () => {
   const enKeys = Object.keys(en).sort();
   const onlyDe = deKeys.filter(k => !(k in en));
   const onlyEn = enKeys.filter(k => !(k in de));
-  assert.deepEqual(onlyDe, [], `Nur in DE vorhanden: ${onlyDe.join(', ')}`);
-  assert.deepEqual(onlyEn, [], `Nur in EN vorhanden: ${onlyEn.join(', ')}`);
+  assert.deepEqual(onlyDe, [], `Only present in DE: ${onlyDe.join(', ')}`);
+  assert.deepEqual(onlyEn, [], `Only present in EN: ${onlyEn.join(', ')}`);
 });
 
 test('placeholders match between DE and EN', () => {
@@ -54,7 +54,7 @@ test('placeholders match between DE and EN', () => {
     assert.deepEqual(
       placeholders(de[k]),
       placeholders(en[k]),
-      `Platzhalter weichen ab bei "${k}": DE=${de[k]}  EN=${en[k]}`,
+      `Placeholders differ at "${k}": DE=${de[k]}  EN=${en[k]}`,
     );
   }
 });
@@ -108,24 +108,24 @@ test('no text stands untranslated in both languages', () => {
   ]);
 
   const { de, en } = loadTranslations();
-  assert.ok(Object.keys(en).length > 400, `Zu wenige Texte geladen (${Object.keys(en).length}) — Helfer kaputt?`);
+  assert.ok(Object.keys(en).length > 400, `Too few texts loaded (${Object.keys(en).length}) — helper broken?`);
 
   const gleich = Object.keys(en).filter(k => k in de && de[k] === en[k]);
   const untranslated = gleich.filter(k => !intendedEqual.has(k)).sort();
   assert.deepEqual(
     untranslated,
     [],
-    'Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr wahrscheinlich ' +
-      'beim Anlegen kopiert und nicht übersetzt:\n  ' +
+    'These texts are identical in German and English — very likely ' +
+      'copied on creation and not translated:\n  ' +
       untranslated.map(k => `${k} = "${en[k]}"`).join('\n  ') +
-      '\nIst er wirklich in beiden Sprachen gleich, gehört er in `gewolltGleich`.',
+      '\nIf it really is the same in both languages, it belongs in `gewolltGleich`.',
   );
 
   const veraltet = [...intendedEqual].filter(k => !gleich.includes(k)).sort();
   assert.deepEqual(
     veraltet,
     [],
-    `Diese Einträge in \`gewolltGleich\` stimmen nicht mehr: ${veraltet.join(', ')} — raus damit.`,
+    `These entries in \`gewolltGleich\` are no longer correct: ${veraltet.join(', ')} — remove them.`,
   );
   checkTerms(de, en);
 });
@@ -136,10 +136,10 @@ function checkTerms(de, en) {
     Object.entries(w)
       .filter(([, v]) => r.test(v))
       .map(([k, v]) => `${k} = ${v}`);
-  assert.deepEqual(fund(en, /\be-mail/i), [], 'EN schreibt email');
-  assert.deepEqual(fund(de, /CSV Import/), [], 'DE schreibt CSV-Import');
+  assert.deepEqual(fund(en, /\be-mail/i), [], 'EN writes email');
+  assert.deepEqual(fund(de, /CSV Import/), [], 'DE writes CSV-Import');
   // An account is called Konto; the role is called “Standard”, no longer “Benutzer”.
-  assert.deepEqual(fund(de, /\bBenutzer(?!name)/), [], 'Konto statt Benutzer');
+  assert.deepEqual(fund(de, /\bBenutzer(?!name)/), [], '„Konto“ instead of „Benutzer“');
 }
 
 test('the roles are called Standard and Administrator, also in server error texts', () => {
@@ -149,7 +149,7 @@ test('the roles are called Standard and Administrator, also in server error text
   assert.equal(en['users.role.user'], 'Standard');
   assert.equal(en['users.role.admin'], 'Administrator');
   const { ERRORS } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
-  assert.match(ERRORS.last_admin.de, /Administrator/, 'Server-Fehlertext ohne Rollennamen — Code umbenannt?');
+  assert.match(ERRORS.last_admin.de, /Administrator/, 'Server error text without role names — code renamed?');
   const serverDe = Object.fromEntries(Object.entries(ERRORS).map(([k, v]) => [`fehler.${k}`, v.de]));
   const serverEn = Object.fromEntries(Object.entries(ERRORS).map(([k, v]) => [`fehler.${k}`, v.en]));
   const alt = [
@@ -169,7 +169,7 @@ test('catalog keys present', () => {
     'catalog.buy_bricklink',
     'catalog.add_to_gallery',
   ]) {
-    assert.ok(k in de, `Schlüssel fehlt: ${k}`);
+    assert.ok(k in de, `Key is missing: ${k}`);
   }
 });
 
@@ -181,7 +181,7 @@ test('the trash in the brick theme has a white background from the start, not on
   // whole .ca container is already governed by .sc:hover .ca in styles.css).
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'themes', 'brick.css'), 'utf8');
   const fn = src.slice(src.indexOf('[data-theme="brick"] .sc .delbtn{'), src.indexOf('[data-theme="brick"] .qbadge'));
-  assert.doesNotMatch(fn, /rgba\(255,255,255,\.22\)/, 'Der schwache Ruhezustand darf nicht mehr vorkommen');
+  assert.doesNotMatch(fn, /rgba\(255,255,255,\.22\)/, 'The weak idle state must no longer occur');
   assert.match(
     fn,
     /\[data-theme="brick"\] \.sc \.delbtn\{\s*background:#fff;/,
@@ -233,11 +233,11 @@ test('color names: displayed in German, stored and filtered in English', async (
       assert.equal(
         d.querySelector('#parts-main .group-title').textContent.trim(),
         sichtbar,
-        `${language}: Gruppenüberschrift`,
+        `${language}: group heading`,
       );
-      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${language}: Kachel`);
+      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${language}: tile`);
       const filter = [...d.querySelectorAll('#parts-color option')].find(o => o.value === GRAY);
-      assert.ok(filter, 'Der Filterwert bleibt englisch');
+      assert.ok(filter, 'The filter value stays English');
       assert.match(filter.textContent, new RegExp(`^${sichtbar} `), `${language}: Filterbeschriftung`);
     } finally {
       w.close();

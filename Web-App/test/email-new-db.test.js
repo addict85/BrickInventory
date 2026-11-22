@@ -147,7 +147,7 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
       new_email: addr('opfer'),
       reset_token: null,
     });
-    assert.ok(linkTo(addr('opfer')), 'der Link geht an die neue Adresse');
+    assert.ok(linkTo(addr('opfer')), 'the link goes to the new address');
     assert.deepEqual(
       post.filter(m => m.kind === 'hinweis'),
       [{ an: addr('alt'), kind: 'hinweis', neu: addr('opfer') }],
@@ -162,7 +162,7 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
     assert.deepEqual(
       await konto('opfer'),
       { id: (await konto('opfer')).id, email: null, new_email: addr('opfer') },
-      'der Inhaber bekommt ein Konto, die Adresse bis zum Link nur ausstehend',
+      'the owner gets an account, the address only pending until the link',
     );
     assert.equal((await carol()).email, addr('alt'));
   });
@@ -171,14 +171,14 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
     for (const email of [addr('opfer'), addr('alt')])
       assert.equal((await callFn('POST', '/forgot-password', { email })).status, 200);
     const opfer = await db.get('SELECT reset_token FROM users WHERE username = $1', [`opfer_${P}`]);
-    assert.equal(opfer.reset_token, null, 'Rücksetzlink über eine unbestätigte Adresse');
+    assert.equal(opfer.reset_token, null, 'Reset link via an unconfirmed address');
     // Counterpart: via the confirmed address one is created, otherwise the case checks nothing.
     assert.notEqual((await carol()).reset_token, null);
   });
 
   await t.test('it is checked again when redeeming', async () => {
     const opfer = await callFn('POST', '/confirm-email', { token: linkTo(addr('opfer'), 'registrierung') });
-    assert.equal(opfer.status, 200, 'die erste Bestätigung gewinnt');
+    assert.equal(opfer.status, 200, 'the first confirmation wins');
     assert.equal((await konto('opfer')).email, addr('opfer'));
     const r = await callFn('POST', '/confirm-email', { token: linkTo(addr('opfer')) });
     assert.deepEqual([r.status, r.body.code], [400, 'email_taken'], JSON.stringify(r.body));
@@ -205,14 +205,10 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
     assert.deepEqual(await konto('ziel'), { id: (await konto('ziel')).id, email: null, new_email: addr('ziel') });
     assert.ok(
       !post.some(m => m.an === addr('ziel') && m.kind === 'versuch'),
-      'eine unbestätigte Registrierung gilt als Inhaber',
+      'an unconfirmed registration counts as owner',
     );
     const login = await anmelden('mallory2');
-    assert.deepEqual(
-      [login.status, login.body.code],
-      [401, 'credentials_invalid'],
-      'eine offene Registrierung meldet sich an',
-    );
+    assert.deepEqual([login.status, login.body.code], [401, 'credentials_invalid'], 'an open registration signs in');
     assert.equal(
       (await callFn('POST', '/confirm-email', { token: linkTo(addr('ziel'), 'registrierung') })).status,
       200,
@@ -222,7 +218,7 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
     await unlinkBrakes();
     const spaeter = await register('mallory3', addr('ziel'));
     assert.equal(spaeter.status, 200);
-    assert.equal(await konto('mallory3'), undefined, 'nach der Bestätigung ist die Adresse vergeben');
+    assert.equal(await konto('mallory3'), undefined, 'after the confirmation the address is taken');
     assert.equal(post.filter(m => m.an === addr('ziel') && m.kind === 'versuch').length, 1);
   });
 
@@ -241,7 +237,7 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
     );
     assert.equal((await register('doppel', addr('allein'))).status, 200);
     await db.run("UPDATE users SET new_email_until = NOW() + INTERVAL '1 hour' WHERE username LIKE $1", [`%_${P}`]);
-    assert.deepEqual(await erneut(addr('allein')), [], 'bei zwei offenen Registrierungen ginge ein fremder Link mit');
+    assert.deepEqual(await erneut(addr('allein')), [], 'with two open registrations a foreign link would go along');
   });
 
   await t.test('before redeeming the link only names its account', async () => {
@@ -252,19 +248,19 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
     assert.deepEqual(
       [fremd.multiple, eigen.multiple],
       [false, true],
-      'bei mehreren offenen Registrierungen trägt die Mail den Hinweis',
+      'with several open registrations the mail carries the hint',
     );
     const preview = token => callFn('POST', '/confirm-email/preview', { token });
     const v = await preview(fremd.token);
     assert.deepEqual(
       [v.status, v.body],
       [200, { success: true, username: `mallory4_${P}` }],
-      'die Vorschau nennt nur den Benutzernamen',
+      'the preview names only the user name',
     );
     assert.deepEqual(
       await konto('mallory4'),
       { id: (await konto('mallory4')).id, email: null, new_email: addr('zwei') },
-      'die Vorschau löst nicht ein',
+      'the preview does not redeem',
     );
     for (const falsch of ['falsch', '', undefined]) {
       const r = await preview(falsch);
@@ -274,10 +270,10 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
     assert.deepEqual(
       [login.status, login.body.token],
       [401, undefined],
-      'vor der Bestätigung keine Anmeldung, also auch kein zweiter Faktor',
+      'no sign-in before the confirmation, so no second factor either',
     );
     assert.equal((await callFn('POST', '/confirm-email', { token: eigen.token })).status, 200);
-    assert.equal((await preview(eigen.token)).status, 400, 'ein eingelöster Link nennt nichts mehr');
+    assert.equal((await preview(eigen.token)).status, 400, 'a redeemed link names nothing anymore');
   });
 
   await t.test('migrations 0096 and 0097 make the legacy data pending, startup reports it', async () => {
@@ -336,7 +332,7 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
         bis: false,
         verification_token: null,
       });
-      assert.equal(z[ids.open].email, addr('offen'), 'eine offene Registrierung behält ihre Adresse');
+      assert.equal(z[ids.open].email, addr('offen'), 'an open registration keeps its address');
       assert.equal(z[ids.fest].email, addr('fest'));
     } finally {
       await c.query('ROLLBACK');

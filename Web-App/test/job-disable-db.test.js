@@ -84,6 +84,6 @@ test('switching off during a claim', async t => {
   await warte(300);
 
   const z = await db.get('SELECT status FROM jobs WHERE id = $1', [id]);
-  assert.equal(started, false, 'nach stoppe() läuft kein Bearbeiter mehr an');
-  assert.notEqual(z.status, 'running', 'der Auftrag bleibt nicht belegt');
+  assert.equal(started, false, 'after stoppe() no handler starts anymore');
+  assert.notEqual(z.status, 'running', 'the job does not stay claimed');
 });

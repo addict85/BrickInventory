@@ -87,7 +87,7 @@ test('admin tools reveal no owners', { concurrency: 1 }, async t => {
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));
     const entryRow = body.jobs.find(a => a.id === String(auftrag));
-    assert.ok(entryRow, 'Vorbedingung: der Auftrag steht in der Liste');
+    assert.ok(entryRow, 'Precondition: the job is in the list');
     assert.equal(entryRow.set_number, SN);
     assert.equal(containsKey(body, 'user_id'), false, JSON.stringify(entryRow));
   });

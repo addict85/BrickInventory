@@ -54,14 +54,14 @@ test('idempotency: admin responses only for the admin role', { concurrency: 1 },
     });
 
   const erst = await sendIt(verwalter.base);
-  assert.equal(erst.status, 200, 'die Verwalter-Anfrage selbst geht durch');
+  assert.equal(erst.status, 200, 'the admin request itself goes through');
   assert.equal((await erst.json()).condition, 'U');
 
   const nochmal = await sendIt(verwalter.base);
-  assert.equal(nochmal.headers.get('idempotent-replay'), 'true', 'dieselbe Rolle bekommt die Wiederholung');
+  assert.equal(nochmal.headers.get('idempotent-replay'), 'true', 'the same role gets the replay');
 
   const app = await sendIt(ohne.base, { Authorization: `Bearer ${appToken}` });
-  assert.notEqual(app.headers.get('idempotent-replay'), 'true', 'ein App-Token bekommt die Verwalter-Antwort nicht');
-  assert.equal(app.status, 422, 'ein App-Token bekommt die Verwalter-Antwort nicht');
+  assert.notEqual(app.headers.get('idempotent-replay'), 'true', 'an app token does not get the admin response');
+  assert.equal(app.status, 422, 'an app token does not get the admin response');
   assert.equal((await app.json()).code, 'idempotency_key_mismatch');
 });

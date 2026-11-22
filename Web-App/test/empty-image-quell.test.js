@@ -65,7 +65,7 @@ test('at startup and in the gallery no image has an empty src', async () => {
   });
   try {
     assert.ok(await warte(() => d.querySelector('#gallery img')));
-    assert.ok(d.querySelectorAll('img').length >= 5, 'greift die Suche noch?');
+    assert.ok(d.querySelectorAll('img').length >= 5, 'does the search still match?');
     assert.deepEqual(leer, []);
   } finally {
     w.close();
@@ -99,7 +99,7 @@ test('a load error retries without an empty src', async () => {
     img.dispatchEvent(new w.Event('error'));
     assert.equal(img.dataset.retried, '1');
     // The retry removes the address after one second and sets it anew.
-    assert.ok(await warte(() => wechsel >= 2, 3000), 'kein Wiederholversuch');
+    assert.ok(await warte(() => wechsel >= 2, 3000), 'no retry');
     assert.equal(img.src, vorher);
     assert.deepEqual(leer, []);
   } finally {

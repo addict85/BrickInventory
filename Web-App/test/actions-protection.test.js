@@ -56,7 +56,7 @@ test('injected markup triggers no dangerous action', async () => {
     inject('<button id="x1" data-click="openRpw" data-arg="2">x</button>');
     d.getElementById('x1').click();
     await takt(20);
-    assert.equal(openPwDialog(), false, 'eingeschleuster Knopf öffnet den Passwort-Dialog');
+    assert.equal(openPwDialog(), false, 'injected button opens the password dialog');
 
     const vorher = aufrufe.length;
     inject('<button id="x2" data-click="revokeOtherTokens">x</button>');
@@ -65,7 +65,7 @@ test('injected markup triggers no dangerous action', async () => {
     assert.deepEqual(
       aufrufe.slice(vorher).filter(a => a.url.includes('/tokens')),
       [],
-      'eingeschleuster Knopf ruft die Token-Liste ab',
+      'injected button fetches the token list',
     );
 
     // loadGallery is harmless and registered: only the event matters here.
@@ -74,13 +74,13 @@ test('injected markup triggers no dangerous action', async () => {
     inject('<div id="x3" data-mouseenter="loadGallery">x</div>');
     d.getElementById('x3').dispatchEvent(new w.MouseEvent('mouseenter'));
     await takt(50);
-    assert.deepEqual(galleryFetches(ab), [], 'Überfahren löst aus');
+    assert.deepEqual(galleryFetches(ab), [], 'hovering triggers');
 
     ab = aufrufe.length;
     inject('<input id="x4" data-change="loadGallery">');
     d.getElementById('x4').dispatchEvent(new w.Event('change', { bubbles: true }));
     await takt(50);
-    assert.deepEqual(galleryFetches(ab), [], 'change mit fremdem Handler');
+    assert.deepEqual(galleryFetches(ab), [], 'change with a foreign handler');
 
     // Control: the same handler via click runs — otherwise the two above prove nothing.
     ab = aufrufe.length;
@@ -97,7 +97,7 @@ test('injected markup triggers no dangerous action', async () => {
     inject('<button id="x5" data-click="open" data-arg="https://example.org/">x</button>');
     d.getElementById('x5').click();
     await takt(20);
-    assert.equal(opened, 0, 'window.open über data-click erreichbar');
+    assert.equal(opened, 0, 'window.open reachable via data-click');
   } finally {
     w.close();
   }
@@ -108,10 +108,10 @@ test('real buttons from template and markup keep working', async () => {
   try {
     d.querySelector('.umenu-item[data-arg="settings"]').click();
     const knopf = () => d.querySelector('#users-tbl [data-click="openRpw"][data-arg="2"]');
-    assert.ok(await warte(() => knopf()), 'Benutzerliste nicht gezeichnet');
+    assert.ok(await warte(() => knopf()), 'user list not drawn');
     knopf().click();
     await takt(20);
-    assert.equal(openPwDialog(), true, 'echter Knopf der Benutzerliste wirkt');
+    assert.equal(openPwDialog(), true, 'real button of the user list works');
     assert.equal(d.getElementById('rpw-uid').value, '2');
 
     const vorher = aufrufe.length;
@@ -119,7 +119,7 @@ test('real buttons from template and markup keep working', async () => {
     await takt(50);
     assert.ok(
       aufrufe.slice(vorher).some(a => a.url.includes('/tokens')),
-      'statischer Knopf aus index.html wirkt',
+      'static button from index.html works',
     );
   } finally {
     w.close();
@@ -132,7 +132,7 @@ test('every handler in the markup is in the list of its event', () => {
   const source = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const liste = typ => {
     const m = source.match(new RegExp(`\\b${typ}: new Set\\(\\[([^\\]]*)\\]`));
-    assert.ok(m, `Liste für ${typ} nicht gefunden`);
+    assert.ok(m, `List for ${typ} not found`);
     return new Set([...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
   };
   const dateien = [
@@ -154,7 +154,7 @@ test('every handler in the markup is in the list of its event', () => {
         if (!erlaubt.has(m[1]) && !LOG_WINDOW.has(m[1])) fehlt.push(`${path.basename(f)}: data-${typ}="${m[1]}"`);
       }
   }
-  assert.ok(gesehen > 40, `nur ${gesehen} Treffer — greift die Suche noch?`);
+  assert.ok(gesehen > 40, `only ${gesehen} matches — does the search still match?`);
   assert.deepEqual(fehlt, []);
 });
 
@@ -174,6 +174,6 @@ test('every template with a dangerous action carries genuine()', () => {
         gesehen++;
         if (!m[2]) ohne.push(`${f}: ${m[1]}`);
       }
-  assert.ok(gesehen > 15, `nur ${gesehen} Treffer — greift die Suche noch?`);
+  assert.ok(gesehen > 15, `only ${gesehen} matches — does the search still match?`);
   assert.deepEqual(ohne, []);
 });

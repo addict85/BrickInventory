@@ -80,9 +80,9 @@ test('job table', { concurrency: 1 }, async t => {
         },
         { deadlineSec: 60 },
       );
-      assert.equal(await w.processOne(), false, 'vor Ablauf der Frist gehört er noch dem anderen');
+      assert.equal(await w.processOne(), false, 'before the deadline expires it still belongs to the other one');
       // The dead process's deadline expires; then the second one takes it.
-      assert.ok(await bis(() => w.processOne(), 5000), 'nach Ablauf der Frist übernimmt der Worker');
+      assert.ok(await bis(() => w.processOne(), 5000), 'after the deadline expires the worker takes over');
       assert.deepEqual(done, [1]);
       assert.equal((await row(id)).status, 'done');
       assert.equal((await row(id)).attempts, 2);
@@ -106,9 +106,9 @@ test('job table', { concurrency: 1 }, async t => {
       const id = await A.placeJobOne(ART, { marke: MARKE }, { maxAttempts: 3 });
       assert.equal(await w.processOne(), true);
       const afterError = await row(id);
-      assert.equal(afterError.status, 'pending', 'ein Fehler wird wiederholt');
+      assert.equal(afterError.status, 'pending', 'an error is retried');
       assert.equal(afterError.error_message, 'Quelle weg');
-      assert.equal(afterError.spaeter, true, 'mit Wartezeit, nicht sofort');
+      assert.equal(afterError.spaeter, true, 'with a waiting time, not immediately');
       assert.equal(await w.processOne(), false);
       await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id]);
       assert.equal(await w.processOne(), true);
@@ -119,7 +119,7 @@ test('job table', { concurrency: 1 }, async t => {
       await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id2]);
       await w.processOne();
       assert.equal((await row(id2)).status, 'error');
-      assert.deepEqual(abandoned, ['Quelle weg'], 'aufgegeben genau einmal, nach dem letzten Versuch');
+      assert.deepEqual(abandoned, ['Quelle weg'], 'given up exactly once, after the last attempt');
     });
 
     await t.test('the same key is open only once', async () => {
@@ -164,7 +164,7 @@ test('job table', { concurrency: 1 }, async t => {
       await w1.stop(0);
       await w2.stop(0);
       const doppelt = runs.filter((n, i) => runs.indexOf(n) !== i);
-      assert.deepEqual(doppelt, [], 'Aufträge doppelt ausgeführt');
+      assert.deepEqual(doppelt, [], 'Jobs executed twice');
       assert.equal(new Set(runs).size, N);
     });
     await t.test('a paused kind waits, an exclusive one runs alone', async () => {
@@ -173,7 +173,7 @@ test('job table', { concurrency: 1 }, async t => {
       for (let i = 0; i < 3; i++) await A.placeJobOne(EX, { marke: MARKE, n: i });
       await db.run('DELETE FROM job_pauses WHERE type = $1', [EX]);
       await A.pauseKind(EX, new Date(Date.now() + 60_000), 'Test');
-      assert.equal(await A.claimJob([EX], 60, 'x', [EX]), null, 'trotz Pause belegt');
+      assert.equal(await A.claimJob([EX], 60, 'x', [EX]), null, 'claimed despite the pause');
       await A.endPause(EX);
       let simultaneous = 0,
         hoechstens = 0;
@@ -198,7 +198,7 @@ test('job table', { concurrency: 1 }, async t => {
         await warte(25);
       }
       await w.stop(0);
-      assert.equal(hoechstens, 1, `${hoechstens} exklusive Aufträge liefen gleichzeitig`);
+      assert.equal(hoechstens, 1, `${hoechstens} exclusive jobs ran at the same time`);
       await db.run('DELETE FROM jobs WHERE type = $1', [EX]);
     });
 
@@ -223,7 +223,7 @@ test('job table', { concurrency: 1 }, async t => {
         await w.processOne();
       }
       z = await row(id);
-      assert.deepEqual([z.status, z.attempts], ['error', 2], 'gezählte Verschiebungen enden nach max_attempts');
+      assert.deepEqual([z.status, z.attempts], ['error', 2], 'counted postponements end after max_attempts');
     });
 
     await t.test('an aborted job stays aborted', async () => {
@@ -251,13 +251,13 @@ test('job table', { concurrency: 1 }, async t => {
       const id = await A.placeJobOne(ART, { marke: MARKE });
       const lauf = w.processOne();
       await started_at;
-      assert.ok(await A.abortAb(id), 'ein laufender Auftrag lässt sich abbrechen');
+      assert.ok(await A.abortAb(id), 'a running job can be cancelled');
       aborted();
       await lauf;
-      assert.equal(lebt, false, 'der Bearbeiter erfährt vom Abbruch');
+      assert.equal(lebt, false, 'the handler learns about the cancellation');
       assert.equal((await row(id)).status, 'cancelled');
       assert.equal(await A.repeat(id), true);
-      assert.equal((await row(id)).status, 'pending', 'wiederholen stellt ihn neu ein');
+      assert.equal((await row(id)).status, 'pending', 'retrying schedules it anew');
     });
 
     await t.test('after a scheduled run the next one is pending', async () => {
@@ -266,8 +266,8 @@ test('job table', { concurrency: 1 }, async t => {
       await Z.planeAll();
       await Z.planeAll();
       const plans = await db.all(`SELECT due_at FROM jobs WHERE dedupe_key = 'plan:cleanup' AND status = 'pending'`);
-      assert.equal(plans.length, 1, 'planeAll legt je Art genau einen Termin an');
-      assert.ok(new Date(plans[0].due_at) > new Date(Date.now() + 55 * 60_000), 'stündlich heisst in einer Stunde');
+      assert.equal(plans.length, 1, 'planeAll creates exactly one schedule per kind');
+      assert.ok(new Date(plans[0].due_at) > new Date(Date.now() + 55 * 60_000), 'hourly means in one hour');
       assert.equal(await Z.pullPlanBefore('cleanup'), true);
       let lief = 0;
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
@@ -283,7 +283,7 @@ test('job table', { concurrency: 1 }, async t => {
       assert.deepEqual(
         danach.map(z => z.status),
         ['done', 'pending'],
-        'kein Folgetermin eingetragen',
+        'no follow-up schedule entered',
       );
       assert.ok(new Date(danach[1].due_at) > new Date(Date.now() + 55 * 60_000));
       await db.run(`DELETE FROM jobs WHERE type = 'cleanup'`);

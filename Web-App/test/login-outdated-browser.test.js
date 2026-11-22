@@ -36,6 +36,6 @@ test('a late startup response "not logged in" does not end the fresh login', {
   const state = await app.b.auswerten(`({
     app: getComputedStyle(document.getElementById('app')).display,
     mask: getComputedStyle(document.getElementById('login-screen')).display })`);
-  assert.notEqual(state.app, 'none', 'die App bleibt sichtbar');
-  assert.equal(state.mask, 'none', 'die Anmeldemaske bleibt verborgen');
+  assert.notEqual(state.app, 'none', 'the app stays visible');
+  assert.equal(state.mask, 'none', 'the sign-in form stays hidden');
 });

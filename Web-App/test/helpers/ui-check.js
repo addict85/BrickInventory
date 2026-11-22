@@ -206,7 +206,7 @@ function checkUi(design, device) {
       const funde = [];
       // If the login mask is shown, the rest only measures it; then better name the cause.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
-        assert.fail(`Sitzung vor „${ansicht}“ verloren; 401 auf: ${app.rejected.join(', ') || 'none'}`);
+        assert.fail(`Session lost before „${ansicht}“; 401 on: ${app.rejected.join(', ') || 'none'}`);
       await b.auswerten(CLOSE);
       await b.auswerten(
         `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.removeAttribute('data-dark'); true`,

@@ -45,7 +45,7 @@ const GUT = ['Pixel 8 Pro', 'Android App', 'Galaxy S10.1', 'iPad (Küche)', 'Fir
 test('device names: the rule', () => {
   for (const n of BOESE) assert.equal(devicesNameValid(n), false, JSON.stringify(n));
   for (const n of GUT) assert.equal(devicesNameValid(n), true, JSON.stringify(n));
-  assert.equal(devicesNameValid(undefined), true, 'ohne Namen gilt die Vorgabe');
+  assert.equal(devicesNameValid(undefined), true, 'without a name the default applies');
 });
 
 test('device names on all three paths', { concurrency: 1 }, async t => {

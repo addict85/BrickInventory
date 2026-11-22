@@ -47,7 +47,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
   // Adding asks no network; provided only so that a return to it would show.
   testSources(t, {
     holeSet: async () => {
-      throw new Error('Netz beim Erfassen');
+      throw new Error('Network during capture');
     },
   });
   const { lockUntilToEnd } = _req('db/txLock.js');
@@ -127,7 +127,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       );
       await placeJobOne('csv_import', { user_id: a, lauf, rows }, { userId: a });
       for (let i = 0; i < 100 && (await state())?.current !== '76001-1'; i++) await warte(20);
-      assert.equal((await state())?.current, '76001-1', 'der Import steckt im ersten Set');
+      assert.equal((await state())?.current, '76001-1', 'the import is stuck in the first set');
 
       const SN = `7${process.pid % 10000}-1`;
       const r = await asAccount(b, () =>
@@ -144,7 +144,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       assert.deepEqual(
         await nacharbeit(a),
         [{ sn: '76001-1', type: 'csv' }],
-        'der Import stellt seine Nacharbeit selbst ein',
+        'the import schedules its follow-up work itself',
       );
     });
 
@@ -178,7 +178,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       );
       const s = await untilDone();
       assert.equal(s.status, 'done');
-      assert.deepEqual(await booked(a, [r1, r2, r3]), [r3], 'r1 ist fertig, r2 ungewiss — gebucht wird nur r3');
+      assert.deepEqual(await booked(a, [r1, r2, r3]), [r3], 'r1 is done, r2 uncertain — only r3 is booked');
       assert.deepEqual(
         s.results.map(z => [z.set_number, z.success, !!z.isWarning]),
         [

@@ -76,7 +76,7 @@ test('nested values on writing routes', { concurrency: 1 }, async t => {
     assert.equal(
       (await sende('POST', '/api/v2/storage/locations', { name: 'Kiste 1' })).status,
       200,
-      'Testdaten: ein Text geht',
+      'Test data: a text works',
     );
   });
 
@@ -89,7 +89,7 @@ test('nested values on writing routes', { concurrency: 1 }, async t => {
 
   await t.test('every writing route rejects an object in one of its fields', async () => {
     const routen = Object.entries(CONTRACT).filter(([k, r]) => !k.startsWith('GET ') && !r.form);
-    assert.ok(routen.length >= 100, `nur ${routen.length} schreibende Routen`);
+    assert.ok(routen.length >= 100, `only ${routen.length} writing routes`);
     const durch = [];
     for (const [k, r] of routen) {
       const [methode, path] = k.split(' ');

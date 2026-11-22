@@ -228,7 +228,7 @@ test('a foreign account sees and changes no data of another via any route', {
   };
   const vorher = await holding();
   const rowsOfVictim = Object.values(vorher).reduce((n, z) => n + z.length, 0);
-  assert.ok(rowsOfVictim >= 15, `nur ${rowsOfVictim} Zeilen des Opfers angelegt`);
+  assert.ok(rowsOfVictim >= 15, `only ${rowsOfVictim} rows of the victim created`);
 
   // ── Values of the victim for path, query and body ───────────────────────
   const idFor = p =>
@@ -334,13 +334,10 @@ test('a foreign account sees and changes no data of another via any route', {
 
   await t.test('every route was called', () => {
     const routen = new Set(gerufen.map(g => g.split(' ').slice(0, 2).join(' ')));
-    assert.ok(routen.size >= 180, `nur ${routen.size} Routen gerufen`);
+    assert.ok(routen.size >= 180, `only ${routen.size} routes called`);
     // Without a reached check the whole thing proves nothing: a good share must get through the input check.
     const durch = gerufen.filter(g => !/ (400|0)$/.test(g)).length;
-    assert.ok(
-      durch >= gerufen.length / 2,
-      `nur ${durch} von ${gerufen.length} Aufrufen kamen an der Eingabeprüfung vorbei`,
-    );
+    assert.ok(durch >= gerufen.length / 2, `only ${durch} of ${gerufen.length} calls got past the input validation`);
   });
 
   await t.test("no response contains the victim's data", () => assert.deepEqual(leaks, []));

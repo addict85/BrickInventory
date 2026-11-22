@@ -97,7 +97,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     assert.deepEqual(
       { starts, ...z },
       { starts: 1, status: 'done', attempts: 1 },
-      'ein Auftrag ohne eigenes Lebenszeichen läuft genau einmal',
+      'a job without its own heartbeat runs exactly once',
     );
   });
 
@@ -117,18 +117,18 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
       assert.equal(
         await A.claimJob(['csv_sync'], 60, 'B', ['csv_sync']),
         null,
-        'B belegt, solange A noch nicht festgeschrieben hat',
+        'B claims while A has not committed yet',
       );
       await a.query('COMMIT');
     } finally {
       a.release();
     }
-    assert.equal(await A.claimJob(['csv_sync'], 60, 'B', ['csv_sync']), null, 'B belegt nach dem Festschreiben von A');
+    assert.equal(await A.claimJob(['csv_sync'], 60, 'B', ['csv_sync']), null, 'B claims after A has committed');
     const laufend = await db.all("SELECT locked_by FROM jobs WHERE type = 'csv_sync' AND status = 'running'");
     assert.deepEqual(
       laufend.map(z => z.locked_by),
       ['A'],
-      'die zweite Verbindung belegt keinen zweiten csv_sync',
+      'the second connection does not claim a second csv_sync',
     );
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
   });
@@ -146,13 +146,13 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     w.starte();
     t.after(() => w.stop(0));
     await bis(() => w.running() > 0);
-    assert.equal(w.running(), 1, 'der Abgleich läuft');
-    assert.ok(await bis(() => downloadRunning), 'der Download hat begonnen');
+    assert.equal(w.running(), 1, 'the sync is running');
+    assert.ok(await bis(() => downloadRunning), 'the download has started');
     const start = Date.now();
     assert.ok(await A.abortAb(id));
     await bis(() => w.running() === 0);
     const duration = Date.now() - start;
-    assert.ok(duration <= 2000, `Abbruch eines csv_sync im Download dauerte ${duration} ms`);
+    assert.ok(duration <= 2000, `Aborting a csv_sync during the download took ${duration} ms`);
     assert.equal((await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status, 'cancelled');
   });
 });

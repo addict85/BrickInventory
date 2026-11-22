@@ -59,7 +59,7 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
       // writing runs on a timer; triggered by hand here.
       await IQ._writeBuffer();
       const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
-      assert.equal(n, 25, `${n} Notizen statt 25`);
+      assert.equal(n, 25, `${n} notes instead of 25`);
     });
 
     await t.test('the job works in batches, not everything at once', async () => {
@@ -68,22 +68,19 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
       // The batch size stands in the source (: raised from 5 to 20
       // after the CPU causes were fixed). The test reads it …
       const stapel = IQ.BATCH;
-      assert.ok(stapel > 0, 'STAPEL nicht auffindbar');
+      assert.ok(stapel > 0, '„STAPEL“ not found');
       const vorher = geladen;
       const n1 = (await IQ._workStack()).total;
-      assert.ok(
-        n1 > 0 && n1 <= stapel,
-        `${n1} Bilder in einem Durchgang bei STAPEL=${stapel} — die Begrenzung greift nicht`,
-      );
-      assert.ok(n1 < 25, 'Der ganze Rückstau wurde in einem Rutsch gerechnet');
-      assert.equal(geladen - vorher, n1, 'es wurden mehr Bilder geholt als abgearbeitet');
-      assert.equal(shrunk, geladen, 'zu jedem geholten Bild gehört eine Vorschau');
+      assert.ok(n1 > 0 && n1 <= stapel, `${n1} images in one pass at „STAPEL“ = ${stapel} — the limit does not apply`);
+      assert.ok(n1 < 25, 'The whole backlog was computed in one go');
+      assert.equal(geladen - vorher, n1, 'more images were fetched than processed');
+      assert.equal(shrunk, geladen, 'every fetched image has a preview');
     });
 
     await t.test('at the end no note remains', async () => {
       for (let i = 0; i < 5; i++) await IQ._workStack();
       const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
-      assert.equal(n, 0, `${n} Notizen übrig`);
+      assert.equal(n, 0, `${n} notes left`);
     });
   } finally {
     await weg();
@@ -116,18 +113,18 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
   try {
     await db.run(`DELETE FROM image_wanted`);
     const leer = await kachel();
-    assert.ok(leer, 'Die Kachel fehlt in der Antwort');
+    assert.ok(leer, 'The tile is missing in the response');
     assert.equal(leer.queue, 0);
-    assert.doesNotMatch(leer.sub, /Katalog/, 'Ohne Warteschlange soll die Kachel nicht von Katalogbildern reden');
+    assert.doesNotMatch(leer.sub, /Katalog/, 'Without a queue the tile should not talk about catalog images');
 
     await db.run(`INSERT INTO image_wanted (url,set_number)
                   SELECT 'https://x/'||g||'.jpg', 'KA'||g FROM generate_series(1,137) g`);
     const voll = await kachel();
-    assert.equal(voll.queue, 137, 'Die Warteschlange wird nicht gezählt');
-    assert.match(voll.sub, /137 Katalog-Bilder in Warteschlange/, 'Die Zahl steht nicht im Text der Kachel');
+    assert.equal(voll.queue, 137, 'The queue is not counted');
+    assert.match(voll.sub, /137 Katalog-Bilder in Warteschlange/, 'The number is not in the text of the tile');
     // “stock" must stand next to it — otherwise one does not know what the
     // OTHER number refers to.
-    assert.match(voll.sub, /Bestand:/, 'Ohne diese Beschriftung sind die beiden Zahlen nicht auseinanderzuhalten');
+    assert.match(voll.sub, /Bestand:/, 'Without this label the two numbers cannot be told apart');
     // “running" now means: has done something recently
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
     await db.run(`DELETE FROM run_state WHERE key='imgredl_status'`);
@@ -136,21 +133,17 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
       .catch(() => {});
     _req('src/images/imageDemandRun.js').lastRun.zeit = null;
     const withoutRun = await kachel();
-    assert.equal(withoutRun.status, 'idle', 'Ohne Durchgang darf die Kachel keinen Betrieb melden');
-    assert.match(
-      withoutRun.sub,
-      /Job noch nicht gelaufen/,
-      'Die Kachel verschweigt, dass der Job noch nicht gelaufen ist',
-    );
+    assert.equal(withoutRun.status, 'idle', 'Without a pass the tile must not report activity');
+    assert.match(withoutRun.sub, /Job noch nicht gelaufen/, 'The tile hides that the job has not run yet');
 
     // And after a pass it reports operation. What is meant is the TICK —
     // there the state is stored for the other worker processes.
     await _req('src/images/imageDemandRun.js')._tickPass();
     const nachLauf = await kachel();
-    assert.equal(nachLauf.status, 'running', 'Nach einem Durchgang muss die Kachel Betrieb melden');
-    assert.ok(nachLauf.queueLastRun, 'Der Zeitpunkt des letzten Durchgangs fehlt');
+    assert.equal(nachLauf.status, 'running', 'After a pass the tile must report activity');
+    assert.ok(nachLauf.queueLastRun, 'The time of the last pass is missing');
     // And the bar must not stand at 100 % while something is still pending.
-    assert.ok(voll.total >= 137, `total=${voll.total} enthält die Warteschlange nicht`);
+    assert.ok(voll.total >= 137, `total=${voll.total} does not contain the queue`);
 
     // A STUCK “running" is not operation
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
@@ -161,7 +154,7 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
     assert.notEqual(
       (await kachel()).status,
       'running',
-      'Vorbedingung verletzt: Ohne Nachlauf darf hier kein Betrieb stehen',
+      'Precondition violated: without a follow-up there must be no activity here',
     );
 
     const redl = async at =>
@@ -173,15 +166,15 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
 
     await redl(Date.now());
     const frisch = await kachel();
-    assert.equal(frisch.status, 'running', 'Ein FRISCHER Nachlauf muss weiterhin als Betrieb gelten');
+    assert.equal(frisch.status, 'running', 'A FRESH follow-up must still count as activity');
 
     await redl(Date.now() - 10 * 60_000);
     const alt = await kachel();
     assert.notEqual(
       alt.status,
       'running',
-      'Ein zehn Minuten alter Stand gilt noch als Betrieb — dann bleibt die ' +
-        'Kachel nach einem abgebrochenen Lauf für immer auf „läuft" stehen.',
+      'A ten-minute-old state still counts as activity — then the ' +
+        'tile stays on „läuft“ forever after an aborted run.',
     );
     await db.run(`DELETE FROM run_state WHERE key='imgredl_status'`);
   } finally {
@@ -209,18 +202,18 @@ test('the job also reports pure skips', () => {
     work: 0,
   };
   const text = meldung(onlySkipped);
-  assert.match(text, /10 bearbeitet/, 'Ein Durchgang mit lauter Übersprüngen nennt seine Zahl nicht');
+  assert.match(text, /10 bearbeitet/, 'A pass with nothing but skips does not name its number');
   assert.match(
     text,
     /10 bereits vorhanden/,
-    'Die Meldung nennt die Übersprünge nicht — dann weiss man nicht, ob der ' + 'Job arbeitet oder nur leerläuft',
+    'The message does not name the skips — then one does not know whether the ' + 'job is working or only idling',
   );
 
   // And the tick must not conceal them: the condition before the output
   // must not depend on any number that is zero for pure skips.
   const q = fs.readFileSync(path.join(ROOT, 'src/images/imageDemandRun.ts'), 'utf8');
   const i = q.indexOf('async function processImageDemand');
-  assert.ok(i > 0, 'Kein Takt');
+  assert.ok(i > 0, 'No tick');
   const fn = q.slice(i, q.indexOf('\n}\n', i)).replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(
     fn,
@@ -230,16 +223,15 @@ test('the job also reports pure skips', () => {
   assert.match(
     fn,
     /message\(e\)/,
-    'Der Takt baut den Text selbst zusammen — dann laufen Meldung und Zähler ' +
-      'auseinander, sobald ein Zähler dazukommt',
+    'The tick assembles the text itself — then message and counters ' + 'drift apart as soon as a counter is added',
   );
 });
 
 test('the image tables come from a MIGRATION, not from initSchema', () => {
   // Marco's finding
   const mig = fs.readFileSync(path.join(ROOT, 'db/migrations/0009-bild-tabellen.sql'), 'utf8');
-  assert.match(mig, /CREATE TABLE IF NOT EXISTS image_wanted/, 'image_wanted fehlt in der Migration');
-  assert.match(mig, /CREATE TABLE IF NOT EXISTS image_misses/, 'image_misses fehlt in der Migration');
+  assert.match(mig, /CREATE TABLE IF NOT EXISTS image_wanted/, 'image_wanted is missing in the migration');
+  assert.match(mig, /CREATE TABLE IF NOT EXISTS image_misses/, 'image_misses is missing in the migration');
 
   // And NO longer elsewhere — two places that create the same thing drift
   // apart at some point.
@@ -252,7 +244,7 @@ test('the image tables come from a MIGRATION, not from initSchema', () => {
     assert.doesNotMatch(
       src,
       /CREATE TABLE IF NOT EXISTS image_(wanted|misses)/,
-      `${datei} legt die Tabelle ebenfalls an — das gehört nur in die Migration`,
+      `${datei} also creates the table — that belongs only in the migration`,
     );
   }
 
@@ -263,7 +255,7 @@ test('the image tables come from a MIGRATION, not from initSchema', () => {
   const schema = preparation.indexOf('await db.initSchemaOnce()');
   assert.ok(
     schema > 0 && preparation.indexOf('await d.images.startNone()') > schema,
-    'setUpImageGaps() läuft vor den Migrationen — dann fehlt die Tabelle noch',
+    'setUpImageGaps() runs before the migrations — then the table is still missing',
   );
 });
 
@@ -290,7 +282,7 @@ test('the buffer is written away in EVERY worker process', () => {
   assert.match(
     dbInit,
     /\bd\.images\.startImageDemand\(\)/,
-    'startImageDemand() wird nicht beim Aufbau der Datenbank aufgerufen',
+    'startImageDemand() is not called when setting up the database',
   );
 
   // Processing only happens in the job process: test/web-and-jobs-db.test.js checks that on the real server.
@@ -306,13 +298,13 @@ test('the request no longer computes anything, it only takes notes', () => {
   assert.match(
     px,
     /if \(createMay\) queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\); else note\(\);/,
-    'Im gen=0-Fall wird weiter sofort verkleinert statt notiert',
+    'In the gen=0 case it still downscales immediately instead of noting',
   );
   // And the note needs the set number — without it the job does not know where to.
-  assert.match(px, /const setNumber = setNumberFromImageAddress\(/, 'Die Setnummer wird nicht aus der Adresse gelesen');
+  assert.match(px, /const setNumber = setNumberFromImageAddress\(/, 'The set number is not read from the address');
   assert.equal(
     _req('routes/imgProxy.js').setNumberFromImageAddress('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),
     '10294-1',
-    'Die Setnummer wird nicht aus der Adresse gelesen',
+    'The set number is not read from the address',
   );
 });

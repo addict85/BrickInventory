@@ -104,7 +104,7 @@ test('HTML instead of JSON: one line with the start of the body', async t => {
     .bricklinkRequest('GET', PRICE)
     .catch(x => x);
   assert.match(e.message, /^BrickLink non-JSON \(HTTP 500\): <!DOCTYPE html>/);
-  assert.doesNotMatch(e.message, /[\r\n]/, 'ein Zeilenumbruch im Text fälschte eine Protokollzeile');
+  assert.doesNotMatch(e.message, /[\r\n]/, 'a line break in the text forged a log line');
 });
 
 test('a hanging BrickLink ends at the deadline', async t => {

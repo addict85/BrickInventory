@@ -129,8 +129,8 @@ test('the storage location default applies to every new capture', { concurrency:
     assert.equal(
       await locationForNewEntry(UID, null),
       'Kiste 7',
-      'null kommt aus einem fehlenden Vorgabewert der Signatur und heisst ' +
-        'dasselbe wie undefined: niemand hat etwas gesagt',
+      'null comes from a missing default value of the signature and means ' +
+        'the same as undefined: nobody said anything',
     );
   });
 
@@ -144,9 +144,9 @@ test('the storage location default applies to every new capture', { concurrency:
     assert.equal(
       await locationOfPart('3003'),
       null,
-      'Das sendet ein Formular, in dem die vorbefuellte Vorgabe weggeraeumt ' +
-        'wurde (selectedStorage in sammlung.js). Sie wieder einzusetzen waere ' +
-        'ein Ort, den niemand wegbekommt',
+      'A form sends this when the prefilled default was cleared away ' +
+        '(selectedStorage in „sammlung.js“). Putting it back would be ' +
+        'a location nobody can get rid of',
     );
   });
 
@@ -155,7 +155,7 @@ test('the storage location default applies to every new capture', { concurrency:
     assert.equal(
       await locationForNewEntry(UID, undefined),
       null,
-      'defaultOf() liest ueber einen JOIN auf den Vorrat — die Vorgabe heilt sich selbst',
+      'defaultOf() reads via a JOIN on the stock — the default heals itself',
     );
     await addManualPart(UID, { part_number: '3004', color_id: 4, quantity: 1 });
     assert.equal(await locationOfPart('3004'), null);

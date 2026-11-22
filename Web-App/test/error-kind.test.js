@@ -60,7 +60,7 @@ const thrown = fn => {
   } catch (e) {
     return e;
   }
-  throw new Error('nichts geworfen');
+  throw new Error('nothing thrown');
 };
 
 test('every kind yields its status', () => {
@@ -128,7 +128,7 @@ function dienste() {
 
 test('only src/http maps kinds to status, no service names a status', () => {
   const liste = dienste();
-  assert.ok(liste.length > 200, `nur ${liste.length} Dienste gefunden — greift die Suche noch?`);
+  assert.ok(liste.length > 200, `only ${liste.length} services found — does the search still match?`);
   const treffer = liste.filter(d => /from '[./]+\/http\/fehlerArt'/.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
   assert.deepEqual(treffer, []);
 

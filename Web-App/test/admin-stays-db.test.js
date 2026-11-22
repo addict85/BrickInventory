@@ -73,8 +73,8 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
       const [x, y] = await reset();
       const r = await Promise.all([call(x, y), call(y, x)]);
       const abgelehnt = r.filter(e => e === LAST).length;
-      assert.equal(abgelehnt, 1, `Runde ${i}: ${JSON.stringify(r)}`);
-      assert.equal(await activeAdmin(), 1, `Runde ${i}: kein aktiver Verwalter mehr`);
+      assert.equal(abgelehnt, 1, `Round ${i}: ${JSON.stringify(r)}`);
+      assert.equal(await activeAdmin(), 1, `Round ${i}: no active admin left`);
     }
   };
 
@@ -87,7 +87,7 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
     await assert.rejects(
       K.deleteAccount(x, y),
       /nur in einer Transaktion/,
-      'ohne Transaktion schützte die Sperre nichts',
+      'without a transaction the lock protected nothing',
     );
     assert.equal(await activeAdmin(), 1);
     // Another administrator may leave again, the role of non-administrators is free.
@@ -112,8 +112,8 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
     for (let i = 0; i < ROUNDS; i++) {
       const [x, y] = await reset();
       const r = await Promise.all([alsWert(K.setzeVerwalterRolle(x, false)), alsWert(K.setzeAktiv(y, false))]);
-      assert.equal(r.filter(e => e === LAST).length, 1, `Runde ${i}: ${JSON.stringify(r)}`);
-      assert.equal(await activeAdmin(), 1, `Runde ${i}`);
+      assert.equal(r.filter(e => e === LAST).length, 1, `Round ${i}: ${JSON.stringify(r)}`);
+      assert.equal(await activeAdmin(), 1, `Round ${i}`);
     }
   });
 });

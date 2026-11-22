@@ -77,7 +77,7 @@ test('inputs against the contract', { concurrency: 1 }, async t => {
       password_current: PASS,
       code: codes.shift(),
     });
-    assert.equal(ok.status, 200, `gültige Eingabe abgewiesen: ${ok.code}`);
+    assert.equal(ok.status, 200, `valid input rejected: ${ok.code}`);
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Marco');
   });
 

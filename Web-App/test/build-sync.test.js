@@ -50,15 +50,19 @@ test('web app: asks the endpoint in Rebrickable notation, distinguishes loose an
     d.querySelector('[data-click="plAddSet"]').click();
     await warte(() => d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
     d.getElementById('btn-pl-gen').click();
-    assert.ok(await warte(() => d.querySelector('.pl-have-input'), 3000), 'keine Bauliste');
+    assert.ok(await warte(() => d.querySelector('.pl-have-input'), 3000), 'no build list');
     const field = () => d.querySelector('.pl-have-input').value;
 
     d.getElementById('btn-pl-stock').click();
     assert.ok(await warte(() => anfragen.length === 1 && field() === '5'), `alles: ${field()}`);
     // With the BrickLink number the server would find nothing — and “not found” looks like “don't have it”.
     assert.deepEqual(anfragen[0].parts, [{ part_number: '3001', color_id: 4 }]);
-    assert.match(anfragen[0].url, /\/api\/v2\/parts\/owned\?accounts=own$/, 'ohne Haken zählt der Haushalt mit');
-    assert.doesNotMatch(d.getElementById('pl-status').textContent, /\bpl\./, 'Statustext ohne Übersetzung');
+    assert.match(
+      anfragen[0].url,
+      /\/api\/v2\/parts\/owned\?accounts=own$/,
+      'without the checkmark the household counts too',
+    );
+    assert.doesNotMatch(d.getElementById('pl-status').textContent, /\bpl\./, 'Status text without translation');
 
     const loose = d.getElementById('pl-stock-lose');
     loose.checked = true;
@@ -68,8 +72,8 @@ test('web app: asks the endpoint in Rebrickable notation, distinguishes loose an
     const subs = d.getElementById('pl-stock-subs');
     subs.checked = true;
     subs.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => anfragen.length === 3), 'mit Unterkonten nicht neu gefragt');
-    assert.match(anfragen[2].url, /\/api\/v2\/parts\/owned$/, 'mit Unterkonten trotzdem nur das eigene Konto');
+    assert.ok(await warte(() => anfragen.length === 3), 'not asked again with sub-accounts');
+    assert.match(anfragen[2].url, /\/api\/v2\/parts\/owned$/, 'with sub-accounts still only the own account');
   } finally {
     w.close();
   }
@@ -90,7 +94,7 @@ test('both languages are maintained', () => {
       'pl.owned_none',
       'pl.owned_filled',
     ]) {
-      assert.ok(s.includes(`'${k}'`), `${datei}: ${k} fehlt`);
+      assert.ok(s.includes(`'${k}'`), `${datei}: ${k} is missing`);
     }
   }
 });

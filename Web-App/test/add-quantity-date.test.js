@@ -45,8 +45,8 @@ test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the fie
   try {
     for (const roh of ['0', '', '1.5', '-3', '99999', '10001', 'abc']) {
       const r = await setAcquire(o, { qty: roh });
-      assert.equal(r.gesendet, null, `„${roh}“ ging an den Server`);
-      assert.match(r.qtyError, /ganze Zahl von 1 bis 10\.000/, `„${roh}“: kein Hinweis am Feld`);
+      assert.equal(r.gesendet, null, `„${roh}“ went to the server`);
+      assert.match(r.qtyError, /ganze Zahl von 1 bis 10\.000/, `„${roh}“: no hint at the field`);
       assert.equal(o.d.getElementById('add-qty').getAttribute('aria-invalid'), 'true');
     }
     for (const [roh, soll] of [
@@ -55,7 +55,7 @@ test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the fie
       ['10000', 10000],
     ]) {
       const r = await setAcquire(o, { qty: roh });
-      assert.equal(r.qtyError, '', `„${roh}“ gemeldet`);
+      assert.equal(r.qtyError, '', `„${roh}“ reported`);
       assert.equal(r.gesendet?.quantity, soll);
     }
   } finally {
@@ -77,11 +77,11 @@ test('add set: "bought on" not in the future', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     const r = await setAcquire(o, { qty: '1', datum: '2099-01-01' });
-    assert.equal(r.gesendet, null, 'Zukunftsdatum ging an den Server');
+    assert.equal(r.gesendet, null, 'Future date went to the server');
     assert.match(r.dateError, /Zukunft/);
     const todayDate = new Date();
     const iso = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
-    assert.equal(o.d.getElementById('add-date').max, iso, 'max steht nicht auf heute');
+    assert.equal(o.d.getElementById('add-date').max, iso, 'max is not set to today');
     const ok = await setAcquire(o, { qty: '1', datum: iso });
     assert.equal(ok.dateError, '');
     assert.equal(ok.gesendet?.date, iso);
@@ -115,7 +115,7 @@ test('add part and figure: invalid quantity and future date do not go out', asyn
           0,
           `${kind}: ${qty}/${datum} ging hinaus`,
         );
-        assert.notEqual(errorAt(d, errorId), '', `${kind}: kein Hinweis an ${errorId}`);
+        assert.notEqual(errorAt(d, errorId), '', `${kind}: no hint at ${errorId}`);
       }
     }
   } finally {
@@ -159,8 +159,8 @@ test('purchase price dialog: quantity and date report at the field, valid ones g
       quantity.value = roh;
       quantity.dispatchEvent(new w.FocusEvent('blur'));
       await takt(30);
-      assert.equal(puts.length, 0, `Anzahl „${roh}“ ging hinaus`);
-      assert.match(errorAt(d, 'acq-quantity-7'), /ganze Zahl/, `Anzahl „${roh}“ ohne Hinweis`);
+      assert.equal(puts.length, 0, `Quantity „${roh}“ went out`);
+      assert.match(errorAt(d, 'acq-quantity-7'), /ganze Zahl/, `Quantity „${roh}“ without a hint`);
     }
     quantity.value = '3';
     quantity.dispatchEvent(new w.FocusEvent('blur'));
@@ -171,7 +171,7 @@ test('purchase price dialog: quantity and date report at the field, valid ones g
     await o.ruhig();
     puts.length = 0;
     const datum = d.getElementById('acq-date-field-7');
-    assert.ok(datum.max, 'Datumsfeld ohne max');
+    assert.ok(datum.max, 'Date field without max');
     datum.value = '2099-01-01';
     datum.dispatchEvent(new w.Event('change', { bubbles: true }));
     await takt(30);

@@ -69,7 +69,7 @@ async function finanzen() {
   await reiter(o.w, 'finance');
   assert.ok(
     await warte(() => o.d.querySelectorAll('#fin-tbl [data-fin-kind]').length === 3),
-    'nicht alle drei Abschnitte da',
+    'not all three sections there',
   );
   o.sichtbar = () =>
     [...o.d.querySelectorAll('#fin-tbl [data-fin-kind]')]
@@ -98,10 +98,10 @@ test('web app: empty means all, the filter accumulates and survives redrawing', 
     o.chip('parts');
     assert.deepEqual(o.sichtbar(), ['parts']);
     o.chip('figs');
-    assert.deepEqual(o.sichtbar(), ['parts', 'figs'], 'ein zweiter Chip ersetzt die Auswahl, statt sie zu häufen');
+    assert.deepEqual(o.sichtbar(), ['parts', 'figs'], 'a second chip replaces the selection instead of piling it up');
     assert.equal(o.d.querySelector('#fin-filter [data-arg="figs"]').getAttribute('aria-pressed'), 'true');
     o.chip('parts');
-    assert.deepEqual(o.sichtbar(), ['figs'], 'ein zweiter Klick nimmt die Art nicht wieder heraus');
+    assert.deepEqual(o.sichtbar(), ['figs'], 'a second click does not take the kind out again');
     // The search redraws the table: the old section is replaced.
     const vorher = o.d.querySelector('#fin-tbl [data-fin-kind="figs"]');
     const field = o.d.getElementById('fin-search');
@@ -109,11 +109,11 @@ test('web app: empty means all, the filter accumulates and survives redrawing', 
     field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
     assert.ok(
       await warte(() => !vorher.isConnected && o.d.querySelectorAll('#fin-tbl [data-fin-kind]').length === 3, 1500),
-      'nicht neu gezeichnet',
+      'not redrawn',
     );
     assert.deepEqual(o.sichtbar(), ['figs']);
     o.chip('figs');
-    assert.deepEqual(o.sichtbar(), ['sets', 'parts', 'figs'], 'keine Auswahl heisst alle');
+    assert.deepEqual(o.sichtbar(), ['sets', 'parts', 'figs'], 'no selection means all');
     assert.equal(o.d.querySelector('#fin-filter [data-arg="all"]').getAttribute('aria-pressed'), 'true');
   } finally {
     o.w.close();

@@ -104,10 +104,10 @@ async function reason(promise) {
   try {
     await promise;
   } catch (e) {
-    assert.ok(e instanceof FetchError, `kein AbrufFehler: ${e}`);
+    assert.ok(e instanceof FetchError, `no AbrufFehler: ${e}`);
     return e.reason;
   }
-  assert.fail('kein Fehler');
+  assert.fail('no error');
 }
 
 test('a relative redirect is resolved against the starting address', async () => {
@@ -140,7 +140,7 @@ test('a foreign host is rejected', async () => {
   assert.equal(
     gesehen.slice(vorher).filter(g => g.host.startsWith('example.org')).length,
     0,
-    'fremder Host wurde abgerufen',
+    'foreign host was fetched',
   );
 });
 
@@ -167,7 +167,7 @@ test('Authorization does not stay on a host change', async () => {
     }),
   );
   assert.equal(JSON.parse(r.koerper.toString()).auth, null);
-  assert.equal(gesehen.find(g => g.path === '/wechsel').auth, 'key geheim', 'der erste Sprung trägt den Schlüssel');
+  assert.equal(gesehen.find(g => g.path === '/wechsel').auth, 'key geheim', 'the first hop carries the key');
 });
 
 test('body above the limit, announced or without a length', async () => {
@@ -175,7 +175,7 @@ test('body above the limit, announced or without a length', async () => {
   assert.equal(
     await reason(holeHttps(`${basis()}/gross-still`, opt())),
     'zu-gross',
-    'Körper ohne Längenangabe über der Grenze',
+    'Body without length header above the limit',
   );
   const a = await openHttps(`${basis()}/gross-still`, opt());
   const error = await new Promise(fertig => {
@@ -184,7 +184,7 @@ test('body above the limit, announced or without a length', async () => {
     s.on('error', fertig);
     s.on('end', () => fertig(null));
   });
-  assert.equal(error?.reason, 'zu-gross', 'der Strom endet nicht mit Fehler');
+  assert.equal(error?.reason, 'zu-gross', 'the stream does not end with an error');
 });
 
 test('a silent server runs into the timeout', async () => {

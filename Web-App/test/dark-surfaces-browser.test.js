@@ -104,7 +104,7 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
     const collect = async wo => {
       // If the login mask is shown, the rest would measure only it; then name the cause.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
-        assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.rejected.join(', ') || 'none'}`);
+        assert.fail(`Session lost before „${design}: ${wo}“; 401 on: ${app.rejected.join(', ') || 'none'}`);
       const r = await b.auswerten(MEASUREMENT);
       for (const x of r.surfaces) funde.surfaces.add(`${wo}: ${x}`);
       for (const x of r.texte) funde.texte.add(`${wo}: ${x}`);
@@ -128,7 +128,7 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
     await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
-    await bis(`document.getElementById('m-tit').textContent.length > 0`, 'Set-Detail offen');
+    await bis(`document.getElementById('m-tit').textContent.length > 0`, 'Set detail open');
     await ruhig();
     await collect('Set-Detail');
     await b.auswerten(`document.querySelector('.ovl.open .mx, .ovl.open [data-click="closeModal"]')?.click(); true`);

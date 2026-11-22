@@ -310,17 +310,17 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
 
   await t.test('every route answers', () => assert.deepEqual(status, []));
   await t.test('this many routes checked', () =>
-    assert.ok(geprueft >= MIN_CHECKED, `nur ${geprueft} Routen geprüft, erwartet mindestens ${MIN_CHECKED}`),
+    assert.ok(geprueft >= MIN_CHECKED, `only ${geprueft} routes checked, expected at least ${MIN_CHECKED}`),
   );
   await t.test('matches the contract', () => assert.deepEqual(deviations, []));
   await t.test('no list is unnoticeably empty', () =>
     assert.deepEqual(
       leer.filter(l => !EMPTY_ALLOWED.has(l)),
       [],
-      'Eine leere Liste prüft kein einziges Feld',
+      'An empty list checks not a single field',
     ),
   );
-  t.diagnostic(`geprüft: ${geprueft}`);
+  t.diagnostic(`checked: ${geprueft}`);
 
   // Every route with page_size: page 2 of size 1 is empty, total still counts
   // the whole list, and without page_size everything comes.
@@ -346,7 +346,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     if (zweite.total !== ganz.total) pagesError.push(`${p}: total ${zweite.total} statt ${ganz.total}`);
   }
   await t.test('long lists page', () => {
-    assert.ok(paged.length >= 10, `nur ${paged.length} geblätterte Routen gefunden`);
+    assert.ok(paged.length >= 10, `only ${paged.length} paged routes found`);
     assert.deepEqual(pagesError, []);
   });
 });

@@ -84,12 +84,12 @@ test('header of the collection: the same and without a jump', { concurrency: 1, 
     await t.test(`${name}: loading without a jump`, async () => {
       await b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
       await b.tab('Page.reload');
-      await bis(`!!window.__kopf && ${fertig}`, `${name} geladen`, 300);
+      await bis(`!!window.__kopf && ${fertig}`, `${name} loaded`, 300);
       await ruhig(4000);
       const bilder = await b.auswerten('window.__kopf');
-      assert.ok(bilder.length >= 1, 'kein Bild aufgezeichnet');
-      assert.deepEqual(bilder, [bilder.at(-1)], 'der Kopf veränderte sich nach dem ersten Bild');
-      assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'Band fehlt');
+      assert.ok(bilder.length >= 1, 'no frame recorded');
+      assert.deepEqual(bilder, [bilder.at(-1)], 'the header changed after the first frame');
+      assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'Band is missing');
       endState[name] = bilder.at(-1);
     });
   }

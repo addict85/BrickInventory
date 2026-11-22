@@ -74,11 +74,11 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     abruf.extern = false;
     abruf.error_message = null;
     await Q.loadInstruction({ set_number: '10001-1' });
-    assert.equal(await pause(), null, 'ohne fremden Abruf keine Pause');
+    assert.equal(await pause(), null, 'no pause without a foreign fetch');
     abruf.extern = true;
     await Q.loadInstruction({ set_number: '10002-1' });
     const s = await inSec();
-    assert.ok(s >= 13 && s <= 15, `nach einem echten Abruf ${s} s Abstand statt 15`);
+    assert.ok(s >= 13 && s <= 15, `after a real fetch ${s} s gap instead of 15`);
   });
 
   await t.test('the Cloudflare ladder climbs and ends the next day', async () => {
@@ -95,11 +95,11 @@ test('instructions as a job', { concurrency: 1 }, async t => {
       [5, 10, 15, 20],
     );
     const morgen = Q.nextTag(new Date());
-    assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'nach der vierten Sperre until_at morgen');
+    assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'after the fourth lock until_at tomorrow');
     abruf.error_message = null;
     abruf.extern = false;
     await Q.loadInstruction({ set_number: '10003-1' });
-    assert.equal(await pause(), null, 'ein Erfolg setzt die Leiter zurück');
+    assert.equal(await pause(), null, 'a success resets the ladder');
   });
 
   await t.test('if another process holds the lock, nothing is fetched', async () => {
@@ -110,13 +110,13 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     const vorher = abruf.aufrufe;
     try {
       await assert.rejects(Q.loadInstruction({ set_number: '10004-1' }), e => e instanceof JobMove);
-      assert.equal(abruf.aufrufe, vorher, 'trotz fremder Sperre abgerufen');
+      assert.equal(abruf.aufrufe, vorher, 'fetched despite a foreign lock');
     } finally {
       await fremd.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
       fremd.release();
     }
     await Q.loadInstruction({ set_number: '10004-1' });
-    assert.equal(abruf.aufrufe, vorher + 1, 'Gegenprobe: ohne fremde Sperre wird abgerufen');
+    assert.equal(abruf.aufrufe, vorher + 1, 'Counter-check: without a foreign lock it is fetched');
   });
 
   await t.test('a set is open only once', async () => {
@@ -125,6 +125,6 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     await E.enqueueInstruction('10005');
     await E.enqueueInstruction('10005-1');
     const z = await require('./helpers/sources').testServices().jobQueue.countKind('instructions');
-    assert.equal(z.pending + z.running, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
+    assert.equal(z.pending + z.running, 1, 'the same set (with and without version) queued twice');
   });
 });

@@ -98,15 +98,15 @@ test('proxyTrust: whom X-Forwarded-For is believed', () => {
   };
   // Without a setting only loopback: outside of Docker 172.16/12 is a network like any other.
   for (const eigen of ['127.0.0.1', '127.8.9.10', '::1', '::ffff:127.0.0.1'])
-    assert.equal(vertraut(undefined, eigen), true, `${eigen} ist der eigene Proxy`);
+    assert.equal(vertraut(undefined, eigen), true, `${eigen} is the own proxy`);
   for (const netz of ['172.18.0.2', '172.31.255.1', 'fd00::5'])
-    assert.equal(vertraut(undefined, netz), false, `ohne TRUST_PROXY dem Docker-Netz vertraut: ${netz}`);
+    assert.equal(vertraut(undefined, netz), false, `trusted the Docker network without TRUST_PROXY: ${netz}`);
   // A fixed proxy address in the Compose network: exactly this one, not its neighbors
   // and not the gateway through which clients come in themselves.
-  assert.equal(vertraut('172.28.73.10', '172.28.73.10'), true, 'der eingetragene Proxy');
-  assert.equal(vertraut('172.28.73.10', '::ffff:172.28.73.10'), true, 'auch in der IPv6-Hülle');
+  assert.equal(vertraut('172.28.73.10', '172.28.73.10'), true, 'the configured proxy');
+  assert.equal(vertraut('172.28.73.10', '::ffff:172.28.73.10'), true, 'also in the IPv6 wrapper');
   for (const neighbor of ['172.28.73.11', '172.28.73.1', '172.18.0.2', '127.0.0.1'])
-    assert.equal(vertraut('172.28.73.10', neighbor), false, `nicht eingetragen und doch vertraut: ${neighbor}`);
+    assert.equal(vertraut('172.28.73.10', neighbor), false, `not configured and still trusted: ${neighbor}`);
   // Whole networks, hop counts and blank checks refuse the start.
   for (const falsch of [
     'docker',
@@ -132,17 +132,17 @@ test('proxyTrust: whom X-Forwarded-For is believed', () => {
   ]);
   // A network above eight addresses only when confirmed, and even then at most /16 or /64.
   for (const wide of ['192.168.1.0/24', '172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
-    assert.throws(() => proxyTrust(wide), /PROXY_NETWORK_CONFIRMED=1/, `ohne Bestätigung angenommen: ${wide}`);
+    assert.throws(() => proxyTrust(wide), /PROXY_NETWORK_CONFIRMED=1/, `accepted without confirmation: ${wide}`);
     assert.deepEqual(proxyTrust(wide, true), [wide]);
   }
   for (const toWide of ['172.16.0.0/12', 'fd00::/48'])
-    assert.throws(() => proxyTrust(toWide, true), /TRUST_PROXY enthält/, `bestätigt angenommen: ${toWide}`);
+    assert.throws(() => proxyTrust(toWide, true), /TRUST_PROXY enthält/, `accepted with confirmation: ${toWide}`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
-    assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
+    assert.equal(vertraut(undefined, fremd), false, `public address trusted: ${fremd}`);
   // Computers in the home network do not state their address themselves.
   for (const lan of ['192.168.1.10', '10.1.2.3', '169.254.1.1'])
-    assert.equal(vertraut(undefined, lan), false, `Heimnetz-Rechner vertraut: ${lan}`);
-  assert.equal(vertraut('192.168.1.5', '192.168.1.5'), true, 'ein Proxy im Heimnetz lässt sich nennen');
+    assert.equal(vertraut(undefined, lan), false, `home network machine trusted: ${lan}`);
+  assert.equal(vertraut('192.168.1.5', '192.168.1.5'), true, 'a proxy in the home network can be named');
   assert.equal(vertraut('false', '127.0.0.1'), false);
   assert.equal(vertraut('203.0.113.5', '203.0.113.5'), true);
   assert.equal(vertraut('203.0.113.5', '127.0.0.1'), false);
@@ -167,12 +167,12 @@ test('lock per username applies across all addresses', { concurrency: 1 }, async
 
   // Per address: after MAX_ATTEMPTS it is over for this address.
   for (let i = 0; i < MAX_ATTEMPTS; i++) assert.equal(await anmelden('falsch', '198.51.100.1'), 401);
-  assert.equal(await anmelden(PASS, '198.51.100.1'), 429, 'keine Sperre je Adresse');
+  assert.equal(await anmelden(PASS, '198.51.100.1'), 429, 'no lock per address');
   // Per account: from MAX_ATTEMPTS failed attempts on every other address waits too.
   assert.equal(
     await anmelden(PASS, '198.51.100.2'),
     429,
-    'mit wechselnden Adressen unbegrenzt raten — der Zähler je Konto fehlt',
+    'guessing without limit with changing addresses — the counter per account is missing',
   );
   // Once the wait time is over, it continues — and it doubles.
   const zurueck = sek =>
@@ -183,15 +183,15 @@ test('lock per username applies across all addresses', { concurrency: 1 }, async
   assert.equal(waitTimeSeconds(MAX_ATTEMPTS), 1);
   assert.equal(waitTimeSeconds(MAX_ATTEMPTS + 1), 2);
   await zurueck(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
-  assert.equal(await anmelden('falsch', '198.51.100.3'), 401, 'nach Ablauf der Wartezeit darf es weitergehen');
+  assert.equal(await anmelden('falsch', '198.51.100.3'), 401, 'after the waiting time it may go on');
   await zurueck(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
-  assert.equal(await anmelden(PASS, '198.51.100.4'), 429, 'die Wartezeit wächst nicht');
+  assert.equal(await anmelden(PASS, '198.51.100.4'), 429, 'the waiting time does not grow');
 
   // After the wait time the right password counts and clears the counter.
   await zurueck(waitTimeSeconds(MAX_ATTEMPTS + 1) + 0.5);
   assert.equal(await anmelden(PASS, '198.51.100.5'), 200);
   const rest = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [accountKey()]);
-  assert.equal(rest, undefined, 'erfolgreiche Anmeldung leert den Zähler je Konto nicht');
+  assert.equal(rest, undefined, 'a successful sign-in does not clear the counter per account');
 });
 
 test('the lock per name does not lock out the owner', { concurrency: 1 }, async t => {
@@ -212,24 +212,16 @@ test('the lock per name does not lock out the owner', { concurrency: 1 }, async 
       })
     ).status;
 
-  assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'Vorbedingung: der Inhaber war schon einmal da');
+  assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'Precondition: the owner has been there before');
   // An attacker distributes his failed attempts — across name AND email.
   for (let i = 0; i < MAX_ATTEMPTS; i++)
     assert.equal(
       await anmelden('falsch', `203.0.113.${i + 1}`, i % 2 ? `${NAME}@example.org` : NAME),
       401,
-      `Versuch ${i + 1}`,
+      `Attempt ${i + 1}`,
     );
-  assert.equal(
-    await anmelden(PASS, '203.0.113.200'),
-    429,
-    'eine unbekannte Adresse wartet — Name und E-Mail zählen gemeinsam',
-  );
-  assert.equal(
-    await anmelden(PASS, '198.51.100.7'),
-    200,
-    'der Inhaber kommt von seiner bekannten Adresse weiter herein',
-  );
+  assert.equal(await anmelden(PASS, '203.0.113.200'), 429, 'an unknown address waits — name and e-mail count together');
+  assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'the owner still gets in from the known address');
 });
 
 test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -291,12 +283,12 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
   assert.equal(
     (await fetch(`http://127.0.0.1:${port}/api/v2/`)).headers.get('x-powered-by'),
     null,
-    'Der Server verrät X-Powered-By',
+    'The server reveals X-Powered-By',
   );
 
   // Changing X-Forwarded-For, but the same sender: without trust everything
   // counts on 127.0.0.1, the lock kicks in after MAX_ATTEMPTS.
   for (let i = 0; i < MAX_ATTEMPTS; i++)
     assert.equal(await anmelden('falsch', `198.51.100.${i + 1}`), 401, log.slice(-1500));
-  assert.equal(await anmelden(PASS, '198.51.100.99'), 429, 'TRUST_PROXY=false wird nicht beachtet');
+  assert.equal(await anmelden(PASS, '198.51.100.99'), 429, 'TRUST_PROXY=false is not respected');
 });

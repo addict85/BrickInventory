@@ -63,14 +63,14 @@ test('a hopeless preview is only attempted ONCE', { concurrency: 1 }, async t =>
     assert.equal(
       thumbAttempts.n,
       1,
-      `${thumbAttempts.n} Versuche in drei Durchgängen — eine Vorschau, die nicht ` +
-        'gelingen kann, darf nur einmal Rechenzeit kosten',
+      `${thumbAttempts.n} attempts in three passes — a preview that cannot ` +
+        'succeed may cost computing time only once',
     );
     await IM._writeBuffer();
     const gemerkt = (
       await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key LIKE $1`, ['thumb:%' + P + '%'])
     ).c;
-    assert.equal(gemerkt, 1, 'Der Fehlschlag wurde nicht dauerhaft gemerkt');
+    assert.equal(gemerkt, 1, 'The failure was not remembered permanently');
   } finally {
     fsm.rmSync(datei, { force: true });
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
@@ -114,33 +114,30 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
       await fill();
       const IQ = _req('src/images/imageDemandRun.js');
       const e = await IQ._workStack();
-      assert.equal(versuche, 1, `${versuche} Versuche — nach der ersten Drosselung muss der Stapel abbrechen`);
+      assert.equal(versuche, 1, `${versuche} attempts — after the first throttling the batch must abort`);
 
       // Put back is NOT processed
       assert.equal(
         e.total,
         0,
-        `${e.total} als bearbeitet gemeldet, obwohl der Stapel vor der ersten ` +
-          'Zeile abbrach und alles zurückgelegt wurde',
+        `${e.total} reported as processed although the batch aborted before the first ` +
+          'row and everything was put back',
       );
       assert.equal(
         e.setAside,
         10,
-        'Die zurückgelegten Notizen tauchen in keinem Zähler auf — dann ist ' +
-          'aus der Meldung nicht zu erkennen, dass gedrosselt wurde',
+        'The notes put back appear in no counter — then ' + 'the message does not show that throttling happened',
       );
-      assert.match(IQ.message(e), /zurückgelegt/, 'Die Meldung verschweigt die Drosselung');
+      assert.match(IQ.message(e), /zurückgelegt/, 'The message hides the throttling');
       assert.equal(
         await open(),
         10,
-        'Notizen sind verlorengegangen. Der Stapel wird mit DELETE … RETURNING ' +
-          'geholt — beim Abbruch muss der GANZE Rest zurückgelegt werden.',
+        'Notes got lost. The batch is fetched with DELETE … RETURNING ' + '— on abort the WHOLE rest must be put back.',
       );
       assert.equal(
         await gemerkt(),
         0,
-        'Eine Drosselung wurde als „Bild fehlt" gemerkt — dann sperrt der Ansturm ' +
-          'genau die Bilder aus, die es gibt',
+        'A throttling was remembered as „Bild fehlt“ — then the rush locks out ' + 'exactly the images that exist',
       );
     });
 
@@ -151,7 +148,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
       assert.equal(
         versuche,
         vorher,
-        'Es wurde weiter gefragt — stures Weiterfragen ist genau das Verhalten, ' + 'das eine Sperre verlängert',
+        'It kept asking — stubbornly asking again is exactly the behavior ' + 'that prolongs a block',
       );
     });
 
@@ -164,8 +161,8 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
       await fill();
       await IQ._workStack();
       await _req('src/images/imageMisses.js')._writeBuffer();
-      assert.equal(versuche, 10, `${versuche} Versuche — bei 404 läuft der Stapel durch`);
-      assert.equal(await gemerkt(), 10, 'Fehlende Bilder werden nicht gemerkt — dann fragt der Job sie ewig neu');
+      assert.equal(versuche, 10, `${versuche} attempts — on 404 the batch runs through`);
+      assert.equal(await gemerkt(), 10, 'Missing images are not remembered — then the job asks for them again forever');
     });
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});

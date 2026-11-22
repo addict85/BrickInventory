@@ -75,7 +75,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
       assert.deepEqual(
         j.parts.map((/** @type {any} */ p) => p.part_number),
         [TEIL],
-        'die Liste bleibt',
+        'the list stays',
       );
       assert.equal(j.parts[0].avg_price, null);
       assert.deepEqual(j.degraded, ['marktpreise']);
@@ -88,7 +88,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
     assert.equal(
       await getGlobalSetting(`fehlt_${process.pid}`, '24'),
       '24',
-      'Vorbedingung: Vorgabe für „nicht gesetzt“',
+      'Precondition: default for „nicht gesetzt“',
     );
     const zurueck = await weg('global_settings');
     try {

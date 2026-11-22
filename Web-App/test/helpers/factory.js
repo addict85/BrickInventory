@@ -13,7 +13,7 @@ const PASSWORD = 'Fabrik-Passwort-2026';
  * @param {string} name @param {{ verwalter?: boolean }} [o] @returns {Promise<number>} */
 async function konto(name, o = {}) {
   const id = await testServices().account.addAccount(null, name, PASSWORD, !!o.verwalter);
-  if (id === null) throw new Error(`Konto „${name}“ gibt es schon`);
+  if (id === null) throw new Error(`Account „${name}“ already exists`);
   return id;
 }
 
@@ -22,9 +22,9 @@ async function konto(name, o = {}) {
 async function subAccount(haupt, unter) {
   const h = testServices().household;
   const e = await h.createInvitation(haupt);
-  if (!e.code) throw new Error(`Einladung abgewiesen: ${e.error}`);
+  if (!e.code) throw new Error(`Invitation rejected: ${e.error}`);
   const r = await h.redeemInvitation(unter, e.code);
-  if (r?.error) throw new Error(`Einlösen abgewiesen: ${r.error}`);
+  if (r?.error) throw new Error(`Redeeming rejected: ${r.error}`);
 }
 
 /** A set with one entry via sets.acquireSet, booked at the account `besitzer`.

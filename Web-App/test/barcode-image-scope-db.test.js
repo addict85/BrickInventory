@@ -46,7 +46,7 @@ test('barcode hit and local image', { concurrency: 1 }, async t => {
 
   await t.test('the hit names the local image', async () => {
     const r = await setToBarcode(SN);
-    assert.equal(r?.set_number, SN, 'der Treffer fehlt — die Prüfung darunter bewiese nichts');
+    assert.equal(r?.set_number, SN, 'the match is missing — the check below would prove nothing');
     assert.match(String(r?.image_local), new RegExp(SN));
   });
 });

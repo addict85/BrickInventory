@@ -58,7 +58,7 @@ function measure(bin, ordner, design) {
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, `${design}: kein Ergebnis`);
+  assert.ok(m, `${design}: no result`);
   return JSON.parse(m[1].replace(/&quot;/g, '"'));
 }
 
@@ -68,13 +68,13 @@ test('header and tab bar stick together in every theme and connect to each other
     t.skip('no Chrome found');
     return;
   }
-  assert.ok(DESIGNS.length >= 5, `nur ${DESIGNS.length} Designs gefunden`);
+  assert.ok(DESIGNS.length >= 5, `only ${DESIGNS.length} designs found`);
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'haftung-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const error = [];
   for (const d of DESIGNS) {
     const { kopf, reiter, gerollt } = measure(bin, ordner, d);
-    assert.ok(gerollt > 1000, `${d}: die Seite rollt nicht (${gerollt})`);
+    assert.ok(gerollt > 1000, `${d}: the page does not scroll (${gerollt})`);
     const headerSticks = Math.round(kopf[0]) === 0,
       tabVisible = reiter[1] > 0;
     if (headerSticks !== tabVisible)
@@ -86,5 +86,5 @@ test('header and tab bar stick together in every theme and connect to each other
   }
   assert.deepEqual(error, []);
   // The base styling pins both; without that the comparison above would check “scrolls away” twice.
-  assert.equal(Math.round(measure(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
+  assert.equal(Math.round(measure(bin, ordner, 'classic').kopf[0]), 0, 'classic: the header bar does not stick');
 });

@@ -84,13 +84,13 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       assert.equal(
         d.queued,
         8,
-        `${d.queued} eingereiht statt 8 — draussen bleiben Sets mit BESTÄTIGTER ` +
-          'Fehlanzeige UND solche, die Bild samt Vorschau schon lokal haben',
+        `${d.queued} queued instead of 8 — left out are sets with a CONFIRMED ` +
+          'miss AND those that already have the image and preview locally',
       );
       assert.equal(
         d.skipped,
         1,
-        `skipped=${d.skipped} statt 1 — die Rückmeldung soll nennen, wie viele ` + 'schon fertig waren',
+        `skipped=${d.skipped} instead of 1 — the feedback should say how many ` + 'were already done',
       );
 
       // “Can you adapt the logic so that it deletes the image_misses and
@@ -100,22 +100,22 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       assert.equal(
         d.discarded,
         1,
-        `verworfen=${d.discarded} statt 1 — genau die Fehlanzeige ohne Grund ` + 'gehört zurückgenommen',
+        `discarded=${d.discarded} instead of 1 — exactly the miss without a reason ` + 'should be taken back',
       );
       assert.equal(
         (await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key = $1`, [`set:${P}_3`])).c,
         1,
-        'Der bestätigte 404 wurde mitgelöscht. Für alte Sets hat der CDN meist ' +
-          'kein Bild — die alle erneut zu holen wäre ein halber Tag reiner ' +
-          '404-Verkehr, und beim nächsten Klick wieder.',
+        'The confirmed 404 was deleted too. For old sets the CDN usually has ' +
+          'no image — fetching all of them again would be half a day of pure ' +
+          '404 traffic, and again on the next click.',
       );
       assert.equal(
         (await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key = $1`, [`set:${P}_4`])).c,
         0,
-        'Die grundlose Fehlanzeige steht noch — dann bleibt das Bild weitere ' +
-          'sieben Tage aus, obwohl nie etwas an ihm war',
+        'The miss without a reason is still there — then the image stays away for another ' +
+          'seven days although nothing was ever wrong with it',
       );
-      assert.ok(d.duration_minutes >= 0, 'Die Dauerabschätzung fehlt');
+      assert.ok(d.duration_minutes >= 0, 'The duration estimate is missing');
     });
 
     await t.test('a second click does not requeue anything finished', async () => {
@@ -138,8 +138,8 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       }
       try {
         const d = await (await fetch(`${base}/api/v2/admin/catalog-images`, { method: 'POST' })).json();
-        assert.equal(d.queued, 0, `${d.queued} eingereiht, obwohl alles fertig ist — genau Marcos Befund`);
-        assert.equal(d.pending, 0, 'Die Warteschlange darf leer bleiben');
+        assert.equal(d.queued, 0, `${d.queued} queued although everything is done — exactly Marco’s finding`);
+        assert.equal(d.pending, 0, 'The queue may stay empty');
       } finally {
         for (const f of extra) fs.rmSync(f, { force: true });
         // Bring the queue back into its initial state — the
@@ -156,24 +156,17 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       // breakdown instead of a bare number — otherwise the job was silent
       // exactly when it only skips.
       for (let i = 0; i < 3; i++) n += (await IQ._workStack()).total;
-      assert.equal(
-        geladen,
-        7,
-        `${geladen} Downloads statt 7 — bereits vorhandene Bilder dürfen nicht ` + 'erneut geholt werden',
-      );
-      assert.ok(n >= 8, `nur ${n} Aufträge abgearbeitet`);
+      assert.equal(geladen, 7, `${geladen} downloads instead of 7 — existing images must not ` + 'be fetched again');
+      assert.ok(n >= 8, `only ${n} jobs processed`);
     });
 
     await t.test('missing previews are caught up, existing ones are not', async () => {
       // Marco's second question. For images stored before the background job,
       // the preview may be missing.
-      assert.ok(shrunk.includes(`/images/sets/${P}_1.jpg`), 'Das vorhandene Bild ohne Vorschau bekommt keine');
-      assert.ok(
-        !shrunk.includes(`/images/sets/${P}_2.jpg`),
-        'Für ein Bild mit vorhandener Vorschau wird erneut gerechnet',
-      );
+      assert.ok(shrunk.includes(`/images/sets/${P}_1.jpg`), 'The existing image without a preview does not get one');
+      assert.ok(!shrunk.includes(`/images/sets/${P}_2.jpg`), 'An image with an existing preview is computed again');
       // And every freshly fetched image gets one.
-      assert.equal(shrunk.length, geladen + 1, `${shrunk.length} Vorschauen bei ${geladen} Downloads + 1 nachgeholter`);
+      assert.equal(shrunk.length, geladen + 1, `${shrunk.length} previews for ${geladen} downloads + 1 caught up`);
     });
 
     // ── LAST, because this substep changes the stage ───────────────
@@ -197,7 +190,7 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
       assert.equal(
         (await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key = $1`, [`set:${P}_3`])).c,
         0,
-        'Mit alle_erneut muss auch der bestätigte 404 zurückgenommen werden',
+        'With alle_erneut the confirmed 404 must be taken back too',
       );
     });
   } finally {
@@ -214,27 +207,23 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
 test('the button is wired in the tile', () => {
   // Without registration a click does nothing — and that only shows on the device.
   const core = require('./helpers/sources').coreSource();
-  assert.match(core, /data-click="queueCatalogImages"/, 'Der Knopf fehlt in der Kachel');
+  assert.match(core, /data-click="queueCatalogImages"/, 'The button is missing in the tile');
   const admin = require('./helpers/sources').adminSource();
-  assert.match(admin, /export async function queueCatalogImages/, 'Kein Klick-Handler');
+  assert.match(admin, /export async function queueCatalogImages/, 'No click handler');
   assert.match(admin, /^\s+queueCatalogImages,$/m, 'Der Handler ist nicht in der Aktions-Liste registriert');
   for (const loc of ['de', 'en']) {
     const l = fs.readFileSync(path.join(ROOT, 'public', 'locales', `${loc}.js`), 'utf8');
-    assert.match(l, /'monitor\.catalog_images':/, `Beschriftung fehlt in ${loc}`);
-    assert.match(l, /'monitor\.catalog_images_queued':/, `Rückmeldung fehlt in ${loc}`);
+    assert.match(l, /'monitor\.catalog_images':/, `Label missing in ${loc}`);
+    assert.match(l, /'monitor\.catalog_images_queued':/, `Feedback missing in ${loc}`);
     // Second version for the case that something was already present: without it
     // “0 images in the queue" would look like a failure although
     // it is the best of all messages.
-    assert.match(l, /'monitor\.catalog_images_queued_skipped':/, `Rückmeldung für „schon vorhanden" fehlt in ${loc}`);
+    assert.match(l, /'monitor\.catalog_images_queued_skipped':/, `Feedback for „schon vorhanden“ missing in ${loc}`);
     // The button now takes back miss markers and estimates the
     // duration. Without both numbers it would stay unclear why images are suddenly
     // pending again that last counted as missing — and whether that takes minutes or
     // hours.
-    assert.match(
-      l,
-      /'monitor\.catalog_images_retried':/,
-      `Rückmeldung für zurückgenommene Fehlanzeigen fehlt in ${loc}`,
-    );
-    assert.match(l, /'monitor\.catalog_images_eta':/, `Dauerabschätzung fehlt in ${loc}`);
+    assert.match(l, /'monitor\.catalog_images_retried':/, `Feedback for taken-back misses missing in ${loc}`);
+    assert.match(l, /'monitor\.catalog_images_eta':/, `Duration estimate missing in ${loc}`);
   }
 });

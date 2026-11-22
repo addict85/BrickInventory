@@ -50,17 +50,14 @@ test('the follow-up run creates missing previews — also for set images', { con
     const { redownloadMissingImages } = _req('src/catalog/partsEnrichment.js');
     const r = await redownloadMissingImages();
 
-    assert.ok(r && typeof r.thumbs === 'number', 'der Lauf muss melden, wie viele Vorschauen er erzeugt hat');
+    assert.ok(r && typeof r.thumbs === 'number', 'the run must report how many previews it created');
     assert.ok(
       r.thumbs >= 1,
-      'die fehlende Vorschau des SET-Bildes wurde nicht erzeugt — vermutlich lässt ' +
-        '_fsPathFromLocal() wieder alles ausser /images/parts/ fallen',
+      'the missing preview of the SET image was not created — probably ' +
+        '_fsPathFromLocal() again drops everything except /images/parts/',
     );
-    assert.ok(fs.existsSync(preview), 'die Vorschau-Datei fehlt');
-    assert.ok(
-      fs.statSync(preview).size < fs.statSync(original).size,
-      'die Vorschau muss kleiner sein als das Original',
-    );
+    assert.ok(fs.existsSync(preview), 'the preview file is missing');
+    assert.ok(fs.statSync(preview).size < fs.statSync(original).size, 'the preview must be smaller than the original');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]).catch(() => {});
@@ -78,10 +75,10 @@ test('the path resolver knows all three image kinds', () => {
     .join('\n');
   const fn = src.slice(src.indexOf('function _fsPathFromLocal'));
   for (const kind of ['/images/parts/', '/images/minifigs/', '/images/sets/']) {
-    assert.ok(fn.includes(kind), `_fsPathFromLocal kennt ${kind} nicht — diese Bilder fallen still aus dem Lauf`);
+    assert.ok(fn.includes(kind), `_fsPathFromLocal does not know ${kind} — these images silently drop out of the run`);
   }
   // The protection against path tricks must stay: the value comes from the database.
-  assert.ok(/includes\('\.\.'\)/.test(fn), 'die Prüfung auf .. fehlt');
+  assert.ok(/includes\('\.\.'\)/.test(fn), 'the check for .. is missing');
 });
 
 test('both preview generators report failures', () => {
@@ -92,8 +89,8 @@ test('both preview generators report failures', () => {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.ok(
       muster.test(src),
-      `${datei}: ein Fehlschlag der Vorschau-Erzeugung bleibt still. Genau das hat den ` +
-        '.tmp-Fehler aus einer früheren Runde sieben Nachträge lang verdeckt',
+      `${datei}: a failure of the preview generation stays silent. That is exactly what ` +
+        'hid the .tmp bug from an earlier round for seven addenda',
     );
   }
 });

@@ -16,7 +16,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'),
 /** Cut out the body of a dialog by its id. */
 function dialog(id) {
   const ab = html.indexOf(`id="${id}"`);
-  assert.ok(ab > 0, `Dialog #${id} nicht gefunden — Markup umgebaut?`);
+  assert.ok(ab > 0, `Dialog #${id} not found — markup rebuilt?`);
   // Up to the next dialog start; the last one reaches to the end of the file.
   const naechster = html.indexOf('<div class="ovl"', ab);
   return html.slice(ab, naechster > 0 ? naechster : html.length);
@@ -35,16 +35,16 @@ test('the trash is the same size in every detail dialog', () => {
     const row = dialog(modal)
       .split('\n')
       .find(z => z.includes(`id="${knopf}"`));
-    assert.ok(row, `${name}: der Papierkorb #${knopf} fehlt`);
+    assert.ok(row, `${name}: the trash button #${knopf} is missing`);
     const klassen = /class="([^"]*)"/.exec(row)?.[1] ?? '';
     assert.ok(
       klassen.includes('btn') && klassen.includes('bd'),
-      `${name}: #${knopf} traegt nicht mehr „btn bd" (${klassen})`,
+      `${name}: #${knopf} no longer carries „btn bd“ (${klassen})`,
     );
     assert.ok(
       !klassen.includes('btn-sm'),
-      `${name}: #${knopf} traegt „btn-sm" und ist damit kleiner als in den ` +
-        'anderen Detail-Dialogen — genau Marcos Befund.',
+      `${name}: #${knopf} carries „btn-sm“ and is therefore smaller than in the ` +
+        'other detail dialogs — exactly Marco’s finding.',
     );
   }
 });
@@ -57,7 +57,7 @@ test('the set detail no longer shows purchase addresses', () => {
   for (const id of ['m-bricklink', 'm-vergleich']) {
     assert.ok(
       !set.includes(`id="${id}"`),
-      `Das Set-Detail zeigt wieder #${id}. Marcos Vorgabe: dort keine Kaufadressen.`,
+      `The set detail shows #${id} again. Marco’s requirement: no purchase addresses there.`,
     );
   }
   // And the opposite direction, so that the test does not turn green by deleting:
@@ -67,7 +67,10 @@ test('the set detail no longer shows purchase addresses', () => {
     ['mk-detail-modal', 'mk-m-bricklink'],
     ['mk-detail-modal', 'mk-m-comparison'],
   ]) {
-    assert.ok(dialog(modal).includes(`id="${id}"`), `#${id} fehlt in #${modal} — dort gehoert die Adresse hin.`);
+    assert.ok(
+      dialog(modal).includes(`id="${id}"`),
+      `#${id} is missing in #${modal} — that is where the address belongs.`,
+    );
   }
 });
 
@@ -76,11 +79,8 @@ test('the part/figure dialog has no second way out', () => {
   // the same handle a second time.
   const man = dialog('man-detail-modal');
   const fuss = man.slice(man.indexOf('class="mfooter"'));
-  assert.ok(
-    !fuss.includes('acq.back'),
-    'Der „Zurueck"-Knopf steht wieder in der Fusszeile des Teile-/Figuren-Dialogs.',
-  );
-  assert.ok(man.includes('data-click="closeManDetail"'), 'Ohne ✕ im Kopf waere der Dialog jetzt eine Sackgasse.');
+  assert.ok(!fuss.includes('acq.back'), 'The „Zurueck“ button is back in the footer of the part/minifig dialog.');
+  assert.ok(man.includes('data-click="closeManDetail"'), 'Without ✕ in the header the dialog would now be a dead end.');
 });
 
 /**
@@ -100,7 +100,7 @@ test('title and footer bar stick — and can do so', () => {
   const dialoge = [...html.matchAll(/<div class="ovl"[^>]*id="([\w-]+)"/g)].map(m => m[1]);
   assert.ok(
     dialoge.length >= 8,
-    `Nur ${dialoge.length} Dialoge gefunden — Muster veraltet? Ohne Fund prueft der Rest nichts.`,
+    `Only ${dialoge.length} dialogs found — pattern outdated? Without a match the rest checks nothing.`,
   );
 
   let withBar = 0;
@@ -111,19 +111,19 @@ test('title and footer bar stick — and can do so', () => {
     // Between `<div class="modal…">` and `<div class="mhd">` no further
     // opening <div> may stand.
     const abModal = rumpf.search(/<div class="modal/);
-    assert.ok(abModal >= 0, `#${id}: kein .modal gefunden`);
+    assert.ok(abModal >= 0, `#${id}: no .modal found`);
     const untilHeader = rumpf.slice(abModal, rumpf.indexOf('<div class="mhd"'));
     const between = (untilHeader.match(/<div\b/g) || []).length - 1; // subtract the .modal itself
     assert.equal(
       between,
       0,
-      `#${id}: zwischen .modal und .mhd liegen ${between} weitere <div>. ` +
-        `position:sticky wirkt nur gegen den naechsten ROLLBEREICH, und das ist .modal ` +
-        `(overflow-y:auto). Mit einem Element dazwischen hoert die Titelleiste ` +
-        `stillschweigend auf zu kleben — kein Fehler, keine Warnung.`,
+      `#${id}: between .modal and .mhd there are ${between} more <div>. ` +
+        `position:sticky only works against the nearest SCROLL CONTAINER, and that is .modal ` +
+        `(overflow-y:auto). With an element in between the title bar ` +
+        `silently stops sticking — no error, no warning.`,
     );
   }
-  assert.ok(withBar >= 6, `Nur ${withBar} Dialoge mit Titelleiste — zu wenig, da stimmt das Muster nicht mehr.`);
+  assert.ok(withBar >= 6, `Only ${withBar} dialogs with a title bar — too few, the pattern no longer fits.`);
 
   // ── 2. The rules themselves ───────────────────────────────────────────────
   //
@@ -135,24 +135,24 @@ test('title and footer bar stick — and can do so', () => {
   const css = withoutCssComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8'));
   const regel = wahl => {
     const ab = css.indexOf(wahl + '{');
-    assert.ok(ab > 0, `${wahl} nicht mehr in styles.css gefunden`);
+    assert.ok(ab > 0, `${wahl} no longer found in styles.css`);
     return css.slice(ab, css.indexOf('}', ab));
   };
 
   const kopf = regel('.mhd'),
     fuss = regel('.mfooter');
-  assert.match(kopf, /position:sticky/, 'Die Titelleiste klebt nicht mehr.');
-  assert.match(fuss, /position:sticky/, 'Die Fussleiste klebt nicht mehr.');
+  assert.match(kopf, /position:sticky/, 'The title bar no longer sticks.');
+  assert.match(fuss, /position:sticky/, 'The footer bar no longer sticks.');
   assert.match(
     kopf,
     /top:calc\(var\(--modal-pady\) \* -1\)/,
-    'Der Versatz der Titelleiste ist nicht mehr die negative Polsterung. Mit top:0 ' +
-      'bleibt sie um genau diese Polsterung zu tief stehen — in Chromium gemessen: 28px.',
+    'The offset of the title bar is no longer the negative padding. With top:0 ' +
+      'it stays too low by exactly this padding — measured in Chromium: 28px.',
   );
   assert.match(
     fuss,
     /bottom:calc\(var\(--modal-padb\) \* -1\)/,
-    'Der Versatz der Fussleiste ist nicht mehr die negative Polsterung.',
+    'The offset of the footer bar is no longer the negative padding.',
   );
   // Full width: without the negative side margins a strip remains left and right
   // through which the content visibly scrolls past.
@@ -163,24 +163,24 @@ test('title and footer bar stick — and can do so', () => {
     assert.match(
       r,
       /calc\(var\(--modal-padx\) \* -1\)/,
-      `${name}: kein negativer Seitenrand — dann geht sie nicht ueber die volle Breite.`,
+      `${name}: no negative side margin — then it does not span the full width.`,
     );
   // Opaque, otherwise the content shines through.
   for (const [name, r] of [
     ['Titelleiste', kopf],
     ['Fussleiste', fuss],
   ])
-    assert.match(r, /background:var\(--sur\)/, `${name}: kein eigener Hintergrund.`);
+    assert.match(r, /background:var\(--sur\)/, `${name}: no background of its own.`);
   // The divider is SHAPE, not color — Marco has a red-green deficiency.
-  assert.match(kopf, /border-bottom:1px solid/, 'Der Titelleiste fehlt die Trennlinie.');
-  assert.match(fuss, /border-top:1px solid/, 'Der Fussleiste fehlt die Trennlinie.');
+  assert.match(kopf, /border-bottom:1px solid/, 'The title bar lacks the divider line.');
+  assert.match(fuss, /border-top:1px solid/, 'The footer bar lacks the divider line.');
 
   const modal = regel('.modal');
   for (const v of ['--modal-padx', '--modal-pady', '--modal-padb'])
     assert.ok(
       modal.includes(v + ':'),
-      `.modal setzt ${v} nicht mehr. Die Leisten rechnen damit ihre negativen Raender; ` +
-        `ohne die Variable faellt calc() aus und die Leisten sitzen falsch.`,
+      `.modal no longer sets ${v}. The bars compute their negative margins with it; ` +
+        `without the variable calc() fails and the bars sit wrongly.`,
     );
 
   // ── 3. The phone version must not turn back the padding ───────────────────
@@ -188,14 +188,14 @@ test('title and footer bar stick — and can do so', () => {
   assert.doesNotMatch(
     mobileView,
     /\.mhd\s*\{[^}]*position:\s*sticky/,
-    'mobile.css setzt .mhd wieder selbst auf sticky. Diese Regel gab es dort schon ' +
-      'einmal — mit top:0 und eigener Polsterung, wodurch die Leiste zu tief stand. ' +
-      'Die Regel steht jetzt in styles.css fuer alle Breiten.',
+    'mobile.css sets .mhd to sticky by itself again. This rule existed there ' +
+      'once before — with top:0 and its own padding, which made the bar sit too low. ' +
+      'The rule now lives in styles.css for all widths.',
   );
   assert.match(
     mobileView,
     /--modal-padx:/,
-    'Die Handyfassung setzt ihre Polsterung nicht ueber die Variablen — dann sind die ' +
-      'Leisten dort um die Differenz zu breit.',
+    'The phone version does not set its padding via the variables — then the ' +
+      'bars there are too wide by the difference.',
   );
 });

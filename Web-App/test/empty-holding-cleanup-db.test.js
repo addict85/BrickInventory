@@ -70,7 +70,7 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
   try {
     const liste = await (await fetch(`${base}/api/v2/sets/${ROUTE}/acquisitions`)).json();
     const acqId = liste.acquisitions?.[0]?.id;
-    assert.ok(acqId, 'Vorbedingung: es gibt eine Erfassung');
+    assert.ok(acqId, 'Precondition: there is an acquisition');
     const r = await fetch(`${base}/api/v2/sets/${ROUTE}/acquisitions/${acqId}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     assert.equal((await r.json()).new_quantity, 0);
@@ -81,19 +81,19 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       assert.deepEqual(
         nummern,
         [STAYS],
-        `Galerie zeigt noch: ${nummern.join(', ')} — ein Set mit Menge 0 ist ein Geistereintrag`,
+        `Gallery still shows: ${nummern.join(', ')} — a set with quantity 0 is a ghost entry`,
       );
-      assert.equal(g.total, 1, 'die Gesamtzahl zählt es noch mit');
+      assert.equal(g.total, 1, 'the total count still includes it');
     });
 
     await t.test('the statistics no longer count it', async () => {
       const st = await H.getStats([uid]);
-      assert.equal(st.total_sets, 1, `Sets=${st.total_sets} statt 1`);
+      assert.equal(st.total_sets, 1, `Sets=${st.total_sets} instead of 1`);
       assert.equal(st.total_quantity, 1);
       // The set's parts and minifigures must have gone along — otherwise they would stand
       // without a set in the parts list and sums.
-      assert.equal(st.total_parts, 10, `Teile=${st.total_parts} — die des gelöschten Sets zählen mit`);
-      assert.equal(st.total_minifigs, 1, `Minifiguren=${st.total_minifigs} — dito`);
+      assert.equal(st.total_parts, 10, `Parts=${st.total_parts} — those of the deleted set are counted`);
+      assert.equal(st.total_minifigs, 1, `Minifigs=${st.total_minifigs} — likewise`);
     });
 
     await t.test('the valuation no longer includes it', async () => {
@@ -101,11 +101,11 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       // deleted set contributed 20 CHF to the portfolio.
       const val = await FC.valueSets(uid, [uid]);
       const nummern = (val.sets || []).map(s => s.set_number);
-      assert.deepEqual(nummern, [STAYS], `Bewertung enthält noch: ${nummern.join(', ')}`);
+      assert.deepEqual(nummern, [STAYS], `Valuation still contains: ${nummern.join(', ')}`);
       assert.equal(
         parseFloat(val.totals.avg),
         20,
-        `Summe ${val.totals.avg} statt 20.00 — ein Set ohne Bestand wird mitbewertet`,
+        `Total ${val.totals.avg} instead of 20.00 — a set without stock is valued too`,
       );
     });
 
@@ -117,7 +117,7 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
         ['set_acquisitions', 'set_number'],
       ]) {
         const n = (await db.get(`SELECT COUNT(*)::int c FROM ${tab} WHERE ${spalte}=$1`, [ROUTE])).c;
-        assert.equal(n, 0, `${tab}: ${n} Zeile(n) übrig`);
+        assert.equal(n, 0, `${tab}: ${n} row(s) left`);
       }
     });
 
@@ -126,8 +126,8 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       // an entry took the whole stock along.
       // Two questions, two tables (migration 0036): does the stock row still
       // stand, and how many copies do the entries say? Previously …
-      assert.ok(await haltRow(db, uid, STAYS), 'das andere Set wurde mitgelöscht');
-      assert.equal(await quantityOf(db, uid, STAYS), 1, 'das andere Set hat seine Erfassung verloren');
+      assert.ok(await haltRow(db, uid, STAYS), 'the other set was deleted along with it');
+      assert.equal(await quantityOf(db, uid, STAYS), 1, 'the other set lost its acquisition');
       assert.equal((await db.get(`SELECT COUNT(*)::int c FROM parts WHERE set_number=$1`, [STAYS])).c, 1);
     });
 
@@ -143,7 +143,7 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
       const l = await (await fetch(`${base}/api/v2/sets/${STAYS}/acquisitions`)).json();
       const erste = l.acquisitions[0].id;
       await fetch(`${base}/api/v2/sets/${STAYS}/acquisitions/${erste}`, { method: 'DELETE' });
-      assert.ok(await haltRow(db, uid, STAYS), 'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
+      assert.ok(await haltRow(db, uid, STAYS), 'the set was deleted although an acquisition is still left');
       const quantity = await quantityOf(db, uid, STAYS);
       assert.ok(quantity > 0, `Menge ${quantity}`);
     });

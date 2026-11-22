@@ -125,14 +125,17 @@ test('error messages do not move neighbors', { concurrency: 1, timeout: 300_000 
         await ruhig();
         const ago = await b.auswerten(SITUATION(f.field));
         await b.auswerten(`(() => { ${f.trigger} return true; })()`);
-        await bis(`!document.getElementById(${JSON.stringify(f.field + '-error')})?.hidden`, `${f.name}: Meldung`);
+        await bis(`!document.getElementById(${JSON.stringify(f.field + '-error')})?.hidden`, `${f.name}: message`);
         await ruhig();
         const nach = await b.auswerten(SITUATION(f.field));
-        assert.ok(nach.meldung, 'Meldung sichtbar');
-        assert.ok(nach.meldung.y >= nach.field.u - 1, `Meldung unter dem Feld (${nach.meldung.y} < ${nach.field.u})`);
-        assert.ok(nach.meldung.x <= nach.field.x + 1, `Meldung beginnt am Feld (${nach.meldung.x} > ${nach.field.x})`);
+        assert.ok(nach.meldung, 'Message visible');
+        assert.ok(nach.meldung.y >= nach.field.u - 1, `Message below the field (${nach.meldung.y} < ${nach.field.u})`);
+        assert.ok(
+          nach.meldung.x <= nach.field.x + 1,
+          `Message starts at the field (${nach.meldung.x} > ${nach.field.x})`,
+        );
         // Directly below, not below the whole form: at most one element row (60 px) in between.
-        assert.ok(nach.meldung.y - nach.field.u < 60, `Meldung ${nach.meldung.y - nach.field.u} px unter dem Feld`);
+        assert.ok(nach.meldung.y - nach.field.u < 60, `Message ${nach.meldung.y - nach.field.u} px below the field`);
         assert.equal(nach.parts.length, ago.parts.length);
         const moved = ago.parts
           .map((a, i) => ({ a, z: nach.parts[i] }))

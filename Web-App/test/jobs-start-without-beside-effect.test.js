@@ -25,5 +25,5 @@ test('the catalog reconciliation gets the import process', async () => {
   await editor(d).csv_sync.ausfuehren({ onStart: true }, {});
   const workerPath = aufrufe[0]?.[3];
   assert.match(String(workerPath), /[\\/]jobs[\\/]csvImportWorker\.js$/);
-  assert.ok(fs.existsSync(workerPath), `${path} fehlt`);
+  assert.ok(fs.existsSync(workerPath), `${path} is missing`);
 });

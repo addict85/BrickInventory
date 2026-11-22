@@ -67,7 +67,7 @@ test('catalog reconciliation without network', { concurrency: 1 }, async t => {
       const state = await condition.currentStartState();
       assert.equal(state.ready, true, JSON.stringify(state));
       const gespeichert = JSON.parse((await db.get(`SELECT value FROM run_state WHERE key='startup_status'`)).value);
-      assert.equal(gespeichert.ready, true, 'die anderen Worker lesen den Stand aus der Datenbank');
+      assert.equal(gespeichert.ready, true, 'the other workers read the state from the database');
     });
     await t.test('the temporary file does not stay behind after a failure', async () => {
       const tmp = path.join(_req('src/infra/appPaths.js').DATA_DIR, 'colors.csv.tmp');
@@ -77,7 +77,7 @@ test('catalog reconciliation without network', { concurrency: 1 }, async t => {
       } finally {
         tempFile = false;
       }
-      assert.equal(fs.existsSync(tmp), false, `${tmp} liegt noch da`);
+      assert.equal(fs.existsSync(tmp), false, `${tmp} is still there`);
     });
   } finally {
     if (vorher !== null)

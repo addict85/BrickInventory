@@ -48,12 +48,12 @@ test('gallery: first page with page and page_size, the follow-up page is appende
     assert.equal(p1.get('page'), '1');
     assert.equal(p1.get('page_size'), '60');
     assert.equal(p2.get('page'), '2');
-    assert.equal(kachel(), firstTile, 'die erste Seite wurde neu gebaut statt ergänzt');
+    assert.equal(kachel(), firstTile, 'the first page was rebuilt instead of extended');
     assert.equal(d.querySelectorAll('#gallery .sgrid > *').length, 61);
     assert.ok(
       d.getElementById('gallery-sentinel') &&
         !d.getElementById('gallery').contains(d.getElementById('gallery-sentinel')),
-      'der Sentinel liegt neben #gallery',
+      'the sentinel is next to #gallery',
     );
   } finally {
     w.close();
@@ -106,7 +106,7 @@ test('gallery: shows what the server delivers without filtering or sorting itsel
     d.getElementById('gs').dispatchEvent(new w.Event('input'));
     assert.ok(await warte(() => /Zebra/.test(d.getElementById('gallery').textContent)));
     const text = d.getElementById('gallery').textContent;
-    assert.ok(text.indexOf('Zebra') < text.indexOf('Affe'), 'Reihenfolge des Servers');
+    assert.ok(text.indexOf('Zebra') < text.indexOf('Affe'), 'Order of the server');
   } finally {
     w.close();
   }
@@ -149,7 +149,7 @@ test('parts list: a color group runs across the page boundary', async () => {
     await reiter(w, 'parts');
     assert.ok(await warte(() => /Grün 1/.test(d.getElementById('parts-main').textContent)));
     const gruppen = [...d.querySelectorAll('#parts-main .parts-group')];
-    assert.equal(gruppen.length, 3, 'Blau, Rot, Grün — Rot nur einmal');
+    assert.equal(gruppen.length, 3, 'Blue, red, green — red only once');
     const rot = gruppen[1];
     assert.equal(rot.querySelectorAll('.part-card').length, 2);
     assert.equal(rot.dataset.count, '2');
@@ -178,12 +178,12 @@ test('parts list: search loads both lists, spare part and view changes rebuild',
     d.getElementById('parts-view').value = 'table';
     d.getElementById('parts-view').dispatchEvent(new w.Event('change'));
     assert.ok(await warte(() => callsTo(aufrufe, '/v2/parts').length === 4));
-    assert.equal(callsTo(aufrufe, '/v2/parts').at(-1).get('with_sets'), '1', 'in_sets nur in der Tabelle');
+    assert.equal(callsTo(aufrufe, '/v2/parts').at(-1).get('with_sets'), '1', 'in_sets only in the table');
     assert.ok(await warte(() => d.querySelector('#parts-main table')));
     assert.ok(
       d.getElementById('parts-sentinel') &&
         !d.getElementById('parts-main').contains(d.getElementById('parts-sentinel')),
-      'der Sentinel liegt neben #parts-main und überlebt den Neuaufbau',
+      'the sentinel is next to #parts-main and survives the rebuild',
     );
   } finally {
     w.close();
@@ -249,10 +249,10 @@ test('minifigures: the follow-up page is appended, not rebuilt', async () => {
       '#figs-list :is(.parts-grid, .man-grid, .figs-grid, .sgrid) > *, #figs-list .dt tbody tr',
     );
     assert.ok(await warte(() => /sw9999/.test(d.getElementById('figs-list').textContent)));
-    assert.ok(firstNode && d.getElementById('figs-list').contains(firstNode), 'die erste Seite wurde neu gebaut');
+    assert.ok(firstNode && d.getElementById('figs-list').contains(firstNode), 'the first page was rebuilt');
     assert.ok(
       !d.getElementById('figs-list').contains(d.getElementById('figs-sentinel')),
-      'der Sentinel liegt neben der Liste',
+      'the sentinel is next to the list',
     );
   } finally {
     w.close();

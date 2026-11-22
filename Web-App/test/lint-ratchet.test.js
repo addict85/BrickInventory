@@ -61,7 +61,7 @@ for (const kind of ['lint', 'format']) {
     const ist = Number(/\] (\d+) /.exec(r.aus)?.[1]);
     assert.ok(ist >= 0 && ist <= LIMITS[kind], r.aus);
     // Leeway for cleanups in parallel branches; more means: tighten the limit.
-    assert.ok(LIMITS[kind] - ist <= 50, `Schranke ${LIMITS[kind]}, gezählt ${ist}: nachziehen`);
+    assert.ok(LIMITS[kind] - ist <= 50, `Limit ${LIMITS[kind]}, counted ${ist}: tighten it`);
   });
 
   test(`${kind}: counts the findings of a sample tree`, () => {

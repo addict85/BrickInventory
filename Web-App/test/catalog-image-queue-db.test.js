@@ -51,8 +51,8 @@ test('the catalog list triggers no image work at all', { concurrency: 1 }, async
     assert.equal(
       kicked,
       0,
-      `${kicked} Bild-Aufträge aus der LISTE. Sie darf gar keine mehr ` +
-        'auslösen — jeder Aufruf von hier läuft an allen Drosselungen vorbei.',
+      `${kicked} image jobs from the LIST. It must not trigger any ` +
+        'anymore — every call from here bypasses all throttling.',
     );
   } finally {
     await db.run(`DELETE FROM rb_sets WHERE set_num LIKE 'BQ%'`).catch(() => {});

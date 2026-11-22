@@ -85,7 +85,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
       assert.equal(
         (await db.get('SELECT day::text AS tag FROM set_acquisitions WHERE id=$1', [id])).tag,
         '2026-02-02',
-        'der Trigger rechnet den Tag neu, in Zürich',
+        'the trigger recomputes the day, in Zurich',
       );
     });
   } finally {

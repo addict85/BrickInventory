@@ -746,5 +746,5 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       [],
     );
   });
-  t.diagnostic(`geprüft: ${gelaufen.size} von ${routen.length}`);
+  t.diagnostic(`checked: ${gelaufen.size} of ${routen.length}`);
 });

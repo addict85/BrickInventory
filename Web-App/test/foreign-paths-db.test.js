@@ -33,7 +33,7 @@ test('pathSegment', () => {
   const { pathSegment, numbersList } = _req('src/infra/foreignAddresses.js');
   assert.equal(pathSegment('10294-1'), '10294-1');
   assert.equal(pathSegment('x/../y?z'), 'x%2F..%2Fy%3Fz');
-  for (const p of ['', '.', '..', '...']) assert.throws(() => pathSegment(p), /Pfadsegment/, `„${p}“ geht durch`);
+  for (const p of ['', '.', '..', '...']) assert.throws(() => pathSegment(p), /Pfadsegment/, `„${p}“ gets through`);
   assert.equal(numbersList(['3001', 'a&b=c', '3,4']), '3001,a%26b%3Dc,3%2C4');
 });
 
@@ -93,16 +93,16 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
   const { fetchSetParts } = require('./helpers/sources').testServices().externalSources.sources;
   for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
     const r = await fetch(`${base}/api/v2/sets/${roh}/parts-list`);
-    assert.equal(r.status, 400, `${roh}: kommt am Eingang durch`);
+    assert.equal(r.status, 400, `${roh}: gets through at the entrance`);
     abgerufen.length = 0;
     await fetchSetParts(decodeURIComponent(roh));
     const api = abgerufen.filter(u => u.includes('/api/v3/'));
     for (const u of api) {
       geprueft++;
       const p = new URL(u);
-      assert.match(p.pathname, /^\/api\/v3\/lego\/sets\/[^/]+\/parts\/$/, `${roh}: ${u} verlässt das Pfadsegment`);
+      assert.match(p.pathname, /^\/api\/v3\/lego\/sets\/[^/]+\/parts\/$/, `${roh}: ${u} leaves the path segment`);
       assert.deepEqual([...p.searchParams.keys()].sort(), ['inc_part_details', 'page_size'], `${roh}: ${u}`);
     }
   }
-  assert.ok(geprueft >= 2, `nur ${geprueft} Abrufe gesehen — dann prüft die Schleife nichts`);
+  assert.ok(geprueft >= 2, `only ${geprueft} fetches seen — then the loop checks nothing`);
 });

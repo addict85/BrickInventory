@@ -98,17 +98,17 @@ test('a cleared purchase price is filled from the market price — web app AND a
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ purchase_price: '' }), // field cleared
       });
-      assert.equal(r.status, 200, `${name}: das Leeren muss angenommen werden`);
+      assert.equal(r.status, 200, `${name}: the clearing must be accepted`);
 
       const acq = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [id]);
       assert.ok(
         acq.purchase_price !== null,
-        `${name}: der Kaufpreis blieb LEER — er muss aus dem Marktpreis gefüllt werden`,
+        `${name}: the purchase price stayed EMPTY — it must be filled from the market price`,
       );
       assert.equal(
         Number(acq.purchase_price),
         12.55,
-        `${name}: es muss der NEU-Preis sein (12.55), nicht der Gebraucht-Preis der ` + 'Erfassung daneben (7.30)',
+        `${name}: it must be the NEW price (12.55), not the used price of the ` + 'acquisition next to it (7.30)',
       );
 
       // And the tile at the top — that is where Marco's dash was. Since
@@ -122,7 +122,7 @@ test('a cleared purchase price is filled from the market price — web app AND a
       assert.equal(
         kachel.avg_purchase_price,
         9.925,
-        `${name}: die Kachel muss den gefüllten Preis mitrechnen, keinen Strich zeigen`,
+        `${name}: the tile must include the filled price, not show a dash`,
       );
       results[name] = Number(acq.purchase_price);
     }
@@ -131,8 +131,8 @@ test('a cleared purchase price is filled from the market price — web app AND a
     assert.equal(
       results.Webapp,
       results.Android,
-      `Die beiden Clients füllen verschiedene Preise ein (Webapp ${results.Webapp}, ` +
-        `Android ${results.Android}) — die Regel existiert dann wieder zweimal`,
+      `The two clients fill in different prices (web app ${results.Webapp}, ` +
+        `Android ${results.Android}) — the rule then exists twice again`,
     );
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});

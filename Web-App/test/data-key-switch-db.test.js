@@ -110,7 +110,7 @@ test('rotate the data key', { concurrency: 1 }, async t => {
     pdf: '%PDF-1.4 Gutschein',
     searchFits: true,
   };
-  assert.deepEqual(await readEverything(), KLAR, 'Vorbedingung: A liest alles');
+  assert.deepEqual(await readEverything(), KLAR, 'Precondition: A reads everything');
 
   // ── start with B and the previous A ──────────────────────────────────────
   schluessel(B, A);
@@ -129,7 +129,7 @@ test('rotate the data key', { concurrency: 1 }, async t => {
   await t.test('B alone reads everything, the search value of the number matches B', async () => {
     schluessel(B, null);
     assert.deepEqual(await readEverything(), KLAR);
-    assert.ok(geschrieben >= 4, `nur ${geschrieben} Werte neu geschrieben`);
+    assert.ok(geschrieben >= 4, `only ${geschrieben} values rewritten`);
   });
 
   await t.test('A alone reads nothing any more', async () => {

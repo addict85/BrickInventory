@@ -265,10 +265,10 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   });
   await t.test('all kinds of identifiers are covered', () => {
     assert.deepEqual([...geprueft].sort(), ['acqId', 'id', 'instrId', 'jobId', 'tokenId']);
-    assert.ok(routen.length >= 30, `nur ${routen.length} Routen mit Kennung`);
+    assert.ok(routen.length >= 30, `only ${routen.length} routes with an ID`);
     assert.ok(
       routen.some(([, p]) => p === '/data/uploads/*pfad'),
-      'die Dateien ausserhalb des Vertrags fehlen',
+      'the files outside the contract are missing',
     );
   });
   await t.test('never a 2xx, always 403 or 404', () => assert.deepEqual(deviating, []));

@@ -42,7 +42,7 @@ test('gallery: a late response of an old search is discarded', async () => {
     assert.ok(await warte(() => /NEU-Set/.test(d.getElementById('gallery').textContent)));
     alt.los({ success: true, sets: [set('10294-1', 'ALT-Set')], count: 1, total: 1 });
     await warte(() => /ALT-Set/.test(d.getElementById('gallery').textContent), 300);
-    assert.ok(aufrufe.filter(a => a.url.includes('/v2/sets?')).length >= 2, 'beide Anfragen liefen');
+    assert.ok(aufrufe.filter(a => a.url.includes('/v2/sets?')).length >= 2, 'both requests ran');
     assert.match(d.getElementById('gallery').textContent, /NEU-Set/);
     assert.doesNotMatch(d.getElementById('gallery').textContent, /ALT-Set/);
   } finally {

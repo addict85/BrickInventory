@@ -117,11 +117,11 @@ test('change email', { concurrency: 1 }, async t => {
     const r = await profileData({ email: `${NAME}@neu.example`, password_current: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.emailChanged, true);
-    assert.equal(await address(), `${NAME}@alt.example`, 'die neue gilt erst nach dem Link (email-neu-db)');
+    assert.equal(await address(), `${NAME}@alt.example`, 'the new one only applies after the link (email-neu-db)');
     assert.deepEqual(
       gesendet,
       [{ an: `${NAME}@alt.example`, name: NAME, neu: `${NAME}@neu.example` }],
-      'Die bisherige Adresse muss erfahren, dass das Konto eine neue hat',
+      'The previous address must learn that the account has a new one',
     );
   });
 
@@ -154,7 +154,7 @@ test('change email', { concurrency: 1 }, async t => {
       const r = await profileData({ email: `${NAME}@drei.example`, password_current: PASS });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.emailSent, false);
-      assert.deepEqual(bestaetigt, [], 'ohne feste Adresse darf kein Link verschickt werden');
+      assert.deepEqual(bestaetigt, [], 'without a fixed address no link may be sent');
       environment({ APP_BASE_URL: 'https://lego.example.org/' });
       await profileData({ email: `${NAME}@vier.example`, password_current: PASS });
       assert.deepEqual(bestaetigt, ['https://lego.example.org']);
@@ -177,7 +177,7 @@ test('change email', { concurrency: 1 }, async t => {
       versuche.length = 0;
       const frei = await profileData({ email: `${NAME}@frei.example`, password_current: PASS });
       const vergeben = await profileData({ email: belegt.toUpperCase(), password_current: PASS });
-      assert.deepEqual(vergeben, frei, 'Status und Felder gleich');
+      assert.deepEqual(vergeben, frei, 'Status and fields equal');
       assert.deepEqual(frei, { status: 200, body: { success: true, emailChanged: true, emailSent: true } });
       // The owner of the taken address gets a hint instead of a link.
       assert.deepEqual(versuche, [

@@ -122,7 +122,7 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
     assert.deepEqual(
       r.body,
       { ready: false, step: null, progress: 2.37, total: 8, sub: null },
-      'anonym nur der Fortschritt',
+      'anonymously only the progress',
     );
   });
 
@@ -163,6 +163,6 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
       if (r.status === 200) break;
       await warte(250);
     }
-    assert.equal(r.status, 200, 'ready erholt sich nicht');
+    assert.equal(r.status, 200, 'ready does not recover');
   });
 });

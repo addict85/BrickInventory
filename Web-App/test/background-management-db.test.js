@@ -84,7 +84,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   // A postponed (quota) and an aborted job next to the failed one.
   const moved = await A.placeJobOne('instructions', { set_number: '44444-1' });
   const receipt = await A.claimJob(['instructions'], 60);
-  assert.equal(receipt.id, moved, 'der verschobene Auftrag sollte als erster belegt werden');
+  assert.equal(receipt.id, moved, 'the postponed job should have been claimed first');
   await A.moved(receipt, new Date(Date.now() + 3_600_000), 'Tageskontingent erschöpft', false);
   const aborted = await A.placeJobOne('followup', { schritt: 'vorschauen' });
   await A.abortAb(aborted);
@@ -105,19 +105,19 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     assert.deepEqual(
       jobs.filter(a => a.id === kaputt || a.id === aborted),
       [],
-      'beendete Aufträge stehen in der Liste der einzelnen',
+      'finished jobs are in the list of single jobs',
     );
     assert.deepEqual([...new Set(jobs.map(a => a.status))].sort(), ['pending']);
     const w = jobs.find(a => a.id === moved);
     assert.deepEqual([w?.status, w?.waiting, w?.error_message], ['pending', true, 'Tageskontingent erschöpft']);
-    assert.equal(jobs.find(a => a.set_number === '11111-1')?.waiting, false, 'ein gewöhnlicher waiting nicht');
+    assert.equal(jobs.find(a => a.set_number === '11111-1')?.waiting, false, 'an ordinary waiting one is not');
     assert.ok(summary.some(z => z.type === 'followup' && z.status === 'error' && z.count === 1));
     assert.equal(job_process.running, true);
     const f = (await callIt('GET', '/admin/job-queue?status=error')).body.jobs.find(a => a.id === kaputt);
     assert.deepEqual(
       [f?.status, f?.error_message, f?.waiting],
       ['error', 'Quelle weg', false],
-      'mit Filter bleibt er abrufbar',
+      'with a filter it remains retrievable',
     );
   });
 
@@ -133,7 +133,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     );
     assert.ok(
       jobs.some(a => a.type === 'prices' && a.scheduled === true),
-      'geplante Läufe fehlen',
+      'scheduled runs are missing',
     );
     assert.ok(summary.some(z => z.type === 'instructions' && z.status === 'pending' && z.count === 2));
     assert.equal((await callIt('GET', '/admin/job-queue?kind=gibtsnicht')).status, 400);
@@ -145,7 +145,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     assert.equal(
       (await callIt('POST', `/admin/job-queue/${kaputt}/retry`)).status,
       409,
-      'ein offener lässt sich nicht wiederholen',
+      'an open one cannot be retried',
     );
   });
 
@@ -153,7 +153,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     const p = await plan('image_followup');
     assert.equal((await callIt('POST', `/admin/job-queue/${p.id}/cancel`)).status, 200);
     const neu = await plan('image_followup');
-    assert.ok(neu && neu.id !== p.id, 'kein neuer Termin nach dem Abbruch');
+    assert.ok(neu && neu.id !== p.id, 'no new schedule after the cancellation');
   });
 
   await t.test('clearing discards waiting ones, not the schedule', async () => {
@@ -161,8 +161,8 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     assert.deepEqual([r.status, r.body.removed], [200, 2]);
     await A.placeJobOne('prices', {}, {});
     const r2 = await callIt('DELETE', '/admin/job-queue/kind/prices');
-    assert.equal(r2.body.removed, 1, 'der einzelne Preis-Auftrag ist weg');
-    assert.ok(await plan('prices'), 'der geplante Preis-Lauf wurde mit geleert');
+    assert.equal(r2.body.removed, 1, 'the single price job is gone');
+    assert.ok(await plan('prices'), 'the scheduled price run was cleared along with it');
   });
 
   await t.test('now brings the scheduled run forward', async () => {
@@ -175,7 +175,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     const r = await callIt('POST', '/admin/job-schedule', { name: 'priceJob', minutes: 600 });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const in_min = (new Date((await plan('prices')).due_at).getTime() - Date.now()) / 60_000;
-    assert.ok(in_min > 590 && in_min <= 600, `Termin in ${Math.round(in_min)} min statt 600`);
+    assert.ok(in_min > 590 && in_min <= 600, `Schedule in ${Math.round(in_min)} min instead of 600`);
     const state = await callIt('GET', '/admin/job-status');
     assert.equal(state.body.job.running, false);
     assert.equal(new Date(state.body.job.nextRun).getTime(), new Date((await plan('prices')).due_at).getTime());

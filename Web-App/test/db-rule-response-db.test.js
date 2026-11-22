@@ -39,7 +39,7 @@ test('rule violations of the database become 4xx with a code', async t => {
   assert.deepEqual(await hole('check_violation'), { status: 400, code: 'value_invalid' }, 'CHECK-Verletzung …');
   assert.deepEqual(await hole('not_null_violation'), { status: 400, code: 'value_invalid' }, 'NOT NULL …');
   assert.deepEqual(await hole('unique_violation'), { status: 409, code: 'already_exists' }, 'UNIQUE …');
-  assert.deepEqual(await hole('foreign_key_violation'), { status: 409, code: 'reference_missing' }, 'Fremdschlüssel …');
+  assert.deepEqual(await hole('foreign_key_violation'), { status: 409, code: 'reference_missing' }, 'Foreign key …');
   // A real server error stays one.
   assert.equal((await hole('division_by_zero')).status, 500);
 });

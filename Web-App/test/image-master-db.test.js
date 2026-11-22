@@ -66,11 +66,11 @@ test('image address via the file name stem', { concurrency: 1 }, async t => {
         'idx_minifigs_catalog_image_master',
         'idx_set_catalog_image_master',
       ])
-        assert.ok(plan.includes(ix), `${ix} fehlt im Plan:\n${plan}`);
+        assert.ok(plan.includes(ix), `${ix} is missing in the plan:\n${plan}`);
       // Not only scanned but searched via the stem: without a search key
       // the planner would read the partial index fully with Seq Scan switched off.
       const sought = plan.match(/Index Cond: \(regexp_replace\(regexp_replace\(image_local/g) || [];
-      assert.equal(sought.length, 3, `nicht jede Tabelle sucht über den Stamm:\n${plan}`);
+      assert.equal(sought.length, 3, `not every table searches via the master:\n${plan}`);
     });
   } finally {
     await db.run('DELETE FROM part_color_catalog WHERE part_number=$1', [P]);

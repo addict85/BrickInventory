@@ -53,8 +53,8 @@ test('range requests to an instruction', async t => {
     assert.equal(
       r.status,
       416,
-      'Genau Marcos Befund: Die Datei ist da, der Bereich ist es nicht. 404 ' +
-        'behauptet das Gegenteil und schickt jede Fehlersuche in die Irre.',
+      'Exactly Marco’s finding: the file is there, the area is not. 404 ' +
+        'claims the opposite and sends every debugging session astray.',
     );
     // The length is the information with which a client can correct
     // itself — it must accompany the 416.

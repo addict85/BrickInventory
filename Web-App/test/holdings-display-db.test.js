@@ -76,12 +76,12 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
   try {
     await t.test('the chart only shows the conditions in the inventory', async () => {
       const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
-      assert.deepEqual(Object.keys(ph.by_condition), ['U'], 'Vorbedingung: nur „gebraucht" ist erfasst');
+      assert.deepEqual(Object.keys(ph.by_condition), ['U'], 'Precondition: only „gebraucht“ is recorded');
       assert.deepEqual(
         ph.chart.values.map(v => v.name),
         ['U'],
-        'Das Diagramm führt eine Reihe für einen Zustand, der nicht im Bestand liegt — ' +
-          'die Legende zeigt dann „Neu" für ein Set, das es nur gebraucht gibt',
+        'The chart carries a series for a condition that is not in the stock — ' +
+          'the legend then shows „Neu“ for a set that only exists used',
       );
     });
 
@@ -92,8 +92,8 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       // the same question, one below the other.
       const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
       const values = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
-      assert.ok(values.length, 'keine Diagrammwerte');
-      assert.equal(Math.max(...values), 3.94, `Der Höchstwert stammt aus dem falschen Zustand: ${Math.max(...values)}`);
+      assert.ok(values.length, 'no chart values');
+      assert.equal(Math.max(...values), 3.94, `The maximum comes from the wrong condition: ${Math.max(...values)}`);
       assert.equal(Math.min(...values), 3.94);
     });
 
@@ -107,7 +107,7 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       assert.equal(
         ph.chart.values.length,
         1,
-        'Ohne Erfassung muss der Zustand des Bestandes übrig bleiben, nicht nichts',
+        'Without an acquisition the condition of the holding must remain, not nothing',
       );
       await db.run(
         `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
@@ -119,14 +119,14 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     await t.test('an account with quantity 0 no longer stands as an owner', async () => {
       const r = await readSets([mainId, subId], {});
       const row = r.sets.find(s => s.set_number === SN);
-      assert.ok(row, 'das Set fehlt in der Galerie');
-      assert.equal(row.quantity, 1, 'die Menge des Haushalts ist die Summe');
+      assert.ok(row, 'the set is missing in the gallery');
+      assert.equal(row.quantity, 1, 'the household quantity is the sum');
       const namen = (row.owners || []).map(o => o.username);
       assert.deepEqual(
         namen,
         [SUB],
-        `Besitzer-Label falsch: ${namen.join(',')} — ein Konto, dessen Kaufpreis gelöscht ` +
-          'wurde, hält kein Exemplar mehr',
+        `Owner label wrong: ${namen.join(',')} — an account whose purchase price was deleted ` +
+          'no longer holds a copy',
       );
     });
 
@@ -137,7 +137,7 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       await record(db, mainId, SN, 2);
       const r = await readSets([mainId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
-      assert.deepEqual(namen, [MAIN, SUB].sort(), 'beide Konten halten jetzt Exemplare');
+      assert.deepEqual(namen, [MAIN, SUB].sort(), 'both accounts now hold copies');
     });
   } finally {
     await aufraeumen();

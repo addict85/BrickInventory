@@ -63,7 +63,7 @@ test('parts: manual ones there, from sets empty — no empty state', async () =>
     assert.ok(sichtbar(d.getElementById('manual-parts-box')));
     assert.ok(
       !text(d.getElementById('tab-parts')).includes('Noch keine Teile'),
-      'Unter einer Liste mit Einträgen steht „Noch keine Teile"',
+      'Below a list with entries there is „Noch keine Teile“',
     );
   } finally {
     w.close();
@@ -74,11 +74,11 @@ test('parts: both empty — exactly one empty state, the empty box disappears', 
   const { w, d } = await parts({});
   try {
     const leer = d.querySelectorAll('#tab-parts .empty-state');
-    assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
+    assert.equal(leer.length, 1, `${leer.length} empty states`);
     assert.ok(text(leer[0]).includes('Noch keine Teile'));
     assert.ok(
       d.querySelector('#tab-parts .capture-bar [data-click="openCapture"][data-arg="part"]'),
-      'Die Leiste bietet das Erfassen an',
+      'The bar offers adding',
     );
     // The same icon as the “parts" tab — not a puzzle piece.
     assert.equal(
@@ -106,10 +106,10 @@ test('the color filter stands above the lists and acts on both lists', async () 
   const { w, d, aufrufe, ruhig } = await parts({ '/v2/parts/manual': { success: true, parts: [ROT, BLUE] } });
   try {
     const wahl = d.getElementById('parts-color');
-    assert.ok(sichtbar(wahl), 'Das Farbfeld ist verborgen, obwohl es zwei Farben gibt');
+    assert.ok(sichtbar(wahl), 'The color field is hidden although there are two colors');
     assert.ok(
       wahl.compareDocumentPosition(d.getElementById('manual-parts-box')) & w.Node.DOCUMENT_POSITION_FOLLOWING,
-      'Der Farbfilter steht nicht über den Listen',
+      'The color filter is not above the lists',
     );
     // The value stays English (that is how it is in the data), the label is translated.
     assert.deepEqual(
@@ -124,10 +124,10 @@ test('the color filter stands above the lists and acts on both lists', async () 
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
     await ruhig();
     const namen = [...d.querySelectorAll('#manual-parts-list .man-tile-name')].map(text);
-    assert.deepEqual(namen, ['Brick 2 x 2'], 'Farbfilter wirkt auf beide Listen');
+    assert.deepEqual(namen, ['Brick 2 x 2'], 'Color filter applies to both lists');
     assert.ok(
       aufrufe.some(a => a.url.includes('/v2/parts?') && a.url.includes('color=Blue')),
-      'Die Teile aus Sets werden nicht nach der Farbe gefragt',
+      'The parts from sets are not asked for the color',
     );
   } finally {
     w.close();
@@ -147,7 +147,7 @@ test('figures: manual ones there, from sets empty — no empty state', async () 
     assert.equal(d.querySelectorAll('#manual-figs-list .man-tile').length, 1);
     assert.ok(
       !text(d.getElementById('tab-minifigs')).includes('Noch keine Minifiguren'),
-      'Unter einer Liste mit Einträgen steht „Noch keine Minifiguren"',
+      'Below a list with entries there is „Noch keine Minifiguren“',
     );
   } finally {
     w.close();
@@ -158,7 +158,7 @@ test('figures: both empty — exactly one empty state', async () => {
   const { w, d } = await minifigs({});
   try {
     const leer = d.querySelectorAll('#tab-minifigs .empty-state');
-    assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
+    assert.equal(leer.length, 1, `${leer.length} empty states`);
     assert.ok(text(leer[0]).includes('Noch keine Minifiguren'));
     assert.equal(sichtbar(d.getElementById('manual-figs-box')), false);
   } finally {

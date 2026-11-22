@@ -51,10 +51,10 @@ test('price alert mail: the button and its absence', async t => {
     assert.match(
       m.html,
       /https:\/\/lego\.example\.test\/\?set=10179-1/,
-      `Der Link fehlt oder ist falsch zusammengesetzt:\n${m.html.slice(0, 400)}`,
+      `The link is missing or assembled wrongly:\n${m.html.slice(0, 400)}`,
     );
-    assert.match(m.html, /Set ansehen/, 'Der Knopf trägt keine Beschriftung.');
-    assert.match(m.html, /class="btn-link"/, 'Der Link steht nicht als Knopf da.');
+    assert.match(m.html, /Set ansehen/, 'The button carries no label.');
+    assert.match(m.html, /class="btn-link"/, 'The link is not shown as a button.');
   });
 
   await t.test('2. without APP_BASE_URL no guessed link — and a hint', async () => {
@@ -68,10 +68,10 @@ test('price alert mail: the button and its absence', async t => {
       m = await mailer.buildAlertMail(DATA);
     });
 
-    assert.ok(!/\?set=/.test(m.html), 'Ohne bekannte Adresse steht trotzdem ein Link in der Mail.');
-    assert.ok(!/Set ansehen/.test(m.html), 'Der Knopf ist da, kann aber nirgends hinfuehren.');
+    assert.ok(!/\?set=/.test(m.html), 'Without a known address there is still a link in the mail.');
+    assert.ok(!/Set ansehen/.test(m.html), 'The button is there but cannot lead anywhere.');
     // The rest of the mail stays complete — only the button is missing.
-    assert.match(m.html, /Marktpreis/, 'Ohne Basis-URL fehlt auf einmal die halbe Mail.');
+    assert.match(m.html, /Marktpreis/, 'Without a base URL suddenly half of the mail is missing.');
     assert.match(m.subject, /10179-1/);
 
     // Exactly that was missing: Marco saw a missing button, the operator saw
@@ -79,7 +79,7 @@ test('price alert mail: the button and its absence', async t => {
     // ago — with the same means.
     assert.ok(
       collected.some(z => z.includes('APP_BASE_URL')),
-      `Kein Hinweis im Protokoll. Gesammelt: ${JSON.stringify(collected)}`,
+      `No hint in the log. Collected: ${JSON.stringify(collected)}`,
     );
   });
 
@@ -93,7 +93,7 @@ test('price alert mail: the button and its absence', async t => {
       for (let i = 0; i < 3; i++) await mailer.buildAlertMail(DATA);
     });
     const treffer = collected.filter(z => z.includes('APP_BASE_URL')).length;
-    assert.equal(treffer, 0, `Der Hinweis wiederholt sich (${treffer}-mal bei drei Mails).`);
+    assert.equal(treffer, 0, `The hint repeats (${treffer} times for three mails).`);
   });
 
   // Marco's finding from 25.09.: the tiles bumped into each other
@@ -106,19 +106,15 @@ test('price alert mail: the button and its absence', async t => {
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     const m = await mailer.buildAlertMail(DATA);
     const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
-    assert.equal(
-      breiten.length,
-      3,
-      `Erwartet: zwei Kacheln und ein Abstand, alle in Prozent. Gefunden: ${breiten.length}.`,
-    );
+    assert.equal(breiten.length, 3, `Expected: two tiles and a gap, all in percent. Found: ${breiten.length}.`);
     const [links, center, rechts] = breiten;
     assert.equal(
       links + center + rechts,
       100,
-      `Die Breiten ergeben ${links + center + rechts} % — der Klient muss dann etwas stauchen.`,
+      `The widths add up to ${links + center + rechts} % — the client then has to squeeze something.`,
     );
-    assert.equal(links, rechts, 'Die beiden Kacheln sind unterschiedlich breit.');
-    assert.ok(center > 0, 'In der Mitte steht kein Abstand.');
+    assert.equal(links, rechts, 'The two tiles have different widths.');
+    assert.ok(center > 0, 'There is no gap in the middle.');
   });
 
   if (vorher === undefined) environment({ APP_BASE_URL: undefined });

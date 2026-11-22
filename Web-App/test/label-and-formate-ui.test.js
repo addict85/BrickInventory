@@ -174,7 +174,7 @@ test('recovery codes: saved and as a file', async () => {
     assert.ok(await warte(() => o.d.getElementById('sf-saved')));
     assert.match(o.d.getElementById('sf-saved').textContent, /gesichert/);
     const datei = o.d.querySelector('[data-click="saveRecoveryCodes"]');
-    assert.ok(datei, 'kein Knopf „Als Datei speichern“');
+    assert.ok(datei, 'no button „Als Datei speichern“');
     let geladen = '';
     o.w.HTMLAnchorElement.prototype.click = function () {
       geladen = this.download;

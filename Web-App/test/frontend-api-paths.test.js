@@ -59,7 +59,7 @@ function normalize(roh) {
 }
 
 test('every API path of the frontend hits a route', () => {
-  assert.ok(ROUTES.length > 100, `nur ${ROUTES.length} Routen gefunden — das Muster greift nicht mehr`);
+  assert.ok(ROUTES.length > 100, `only ${ROUTES.length} routes found — the pattern no longer matches`);
 
   // First path segments the server knows under /api.
   const segmentList = new Set(ROUTES.map(([, rp]) => rp.replace(/^\//, '').split('/')[1]).filter(Boolean));
@@ -113,14 +113,14 @@ test('every API path of the frontend hits a route', () => {
   // when extending: i18n.js is included.
   assert.ok(
     dateien.some(([f]) => f === 'i18n.js'),
-    'public/i18n.js wird nicht gelesen — genau die Luecke, die am 25.09. einen 404 durchliess.',
+    'public/i18n.js is not read — exactly the gap that let a 404 through on 25.09.',
   );
 
   assert.deepEqual(
     error,
     [],
-    'Frontend-Pfade ohne Route:\n  ' +
+    'Frontend paths without a route:\n  ' +
       error.join('\n  ') +
-      '\nSolche Aufrufe scheitern still, wenn ein .catch() daran hängt.',
+      '\nSuch calls fail silently when a .catch() is attached.',
   );
 });

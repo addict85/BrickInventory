@@ -107,18 +107,18 @@ test('image sources come from the catalog, not from the client', { concurrency: 
     const parts = fromClient();
     await imagesFromCatalog(parts);
     assert.equal(parts[0].image_url, GUT);
-    assert.equal(parts[0].image_local, null, 'der lokale Pfad des Clients bleibt stehen');
-    assert.equal(parts[1].image_url, null, 'eine eingetippte Adresse wird für alle abgelegt');
-    assert.equal(parts[2].image_url, null, 'ohne Katalogzeile bleibt die Adresse des Clients');
+    assert.equal(parts[0].image_local, null, 'the local path of the client stays');
+    assert.equal(parts[1].image_url, null, 'a typed-in address is stored for everyone');
+    assert.equal(parts[2].image_url, null, 'without a catalog row the client address stays');
     assert.equal(parts[2].image_local, null);
   });
 
   await t.test('only the verified catalog address is fetched', async () => {
     const abgerufen = intercept(t);
     await createPdf({ job_id: jobId, user_id: 1, sets: [], parts: fromClient() });
-    assert.ok(abgerufen.includes(GUT), `die Katalogadresse wird nicht abgerufen: ${abgerufen}`);
-    assert.ok(!abgerufen.includes(BOESE), 'die Bildadresse des Clients wird abgerufen');
-    assert.ok(!abgerufen.includes(TAPPED), 'eine eingetippte Adresse wird für alle abgelegt');
+    assert.ok(abgerufen.includes(GUT), `the catalog address is not fetched: ${abgerufen}`);
+    assert.ok(!abgerufen.includes(BOESE), 'the image address of the client is fetched');
+    assert.ok(!abgerufen.includes(TAPPED), 'a typed-in address is stored for everyone');
   });
 });
 
@@ -132,5 +132,5 @@ test('set number only from a plain Rebrickable set address', () => {
     'https://images.brickset.com/media/sets/10294-1.jpg',
     'https://cdn.rebrickable.com/media/sets/...jpg',
   ])
-    assert.equal(sn(fremd), null, `${fremd} ergibt eine Setnummer`);
+    assert.equal(sn(fremd), null, `${fremd} results in a set number`);
 });

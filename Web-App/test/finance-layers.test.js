@@ -31,9 +31,9 @@ test('the layers are complete', () => {
   assert.deepEqual(
     da,
     [...SCHICHTEN].sort(),
-    'Die Dateien unter src/finances/calculation/ stimmen nicht mehr mit der Schichtung ' +
-      'ueberein. Kommt eine dazu, gehoert sie an ihren Platz in SCHICHTEN — ' +
-      'sonst prueft hier niemand ihre Richtung.',
+    'The files under src/finances/calculation/ no longer match the layering. ' +
+      'If one is added, it belongs in its place in „SCHICHTEN“ — ' +
+      'otherwise nobody checks its direction here.',
   );
 });
 
@@ -52,13 +52,13 @@ test('no layer reaches upwards', () => {
   });
   // Self-proof: MEASURED there are several edges. If the search found none,
   // the assertion below would be silently green.
-  assert.ok(kanten >= 4, `Nur ${kanten} Abhaengigkeiten zwischen den Schichten gefunden — greift die Suche noch?`);
+  assert.ok(kanten >= 4, `Only ${kanten} dependencies between the layers found — does the search still match?`);
   assert.deepEqual(
     error,
     [],
-    'Ein Griff nach oben schliesst den Kreis. Node laedt im Kreis ein halb ' +
-      'fertiges Modul aus — das faellt nicht beim Uebersetzen auf, sondern zur ' +
-      'Laufzeit und nur manchmal.',
+    'A reach upwards closes the cycle. In a cycle Node loads a half ' +
+      'finished module — that does not show up when compiling but at ' +
+      'runtime and only sometimes.',
   );
 });
 
@@ -73,11 +73,11 @@ test('the facade only passes through', () => {
     .join('\n')
     .trim();
   const zeilen = withoutComment.split('\n').filter(z => z.trim()).length;
-  assert.ok(zeilen <= 29, `Die Fassade hat ${zeilen} Zeilen Code. Sie soll nur weiterreichen.`);
+  assert.ok(zeilen <= 29, `The facade has ${zeilen} lines of code. It should only pass things on.`);
   assert.ok(
     !/\bfunction\b|\bdb\./.test(withoutComment),
-    'In der Fassade steht wieder Logik. Sie gehoert in die Schicht, zu der sie ' +
-      'passt — dafuer gibt es src/finances/calculation/.',
+    'There is logic in the facade again. It belongs in the layer it ' +
+      'fits — that is what src/finances/calculation/ is for.',
   );
 });
 
@@ -102,8 +102,8 @@ test('scope is explained in one place', () => {
   assert.deepEqual(
     treffer,
     ['src/household/rules.ts'],
-    'Der Typ Scope wird an mehr als einer Stelle erklaert. Er gehoert dort ' +
-      'hin, wo asIds() steht — sonst driften die Fassungen auseinander, und eine ' +
-      'Signatur sagt nicht mehr, ob sie vor oder nach der Normalisierung steht.',
+    'The type Scope is declared in more than one place. It belongs ' +
+      'where asIds() is — otherwise the versions drift apart, and a ' +
+      'signature no longer says whether it is before or after the normalization.',
   );
 });

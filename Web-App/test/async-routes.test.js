@@ -36,11 +36,11 @@ function app() {
   const a = express();
   const r = express.Router();
   r.get('/boom', async () => {
-    throw new Error('kaputt');
+    throw new Error('broken');
   });
   const m = express.Router();
   m.use(async () => {
-    throw new Error('auch kaputt');
+    throw new Error('also broken');
   });
   a.use('/api', r);
   a.use('/mw', m);

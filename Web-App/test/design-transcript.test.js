@@ -26,15 +26,15 @@ test('the generated stylesheet matches shared/design-tokens.json', () => {
   assert.equal(
     fs.readFileSync(TARGET_CSS, 'utf8'),
     buildCss(DATA),
-    'public/tokens.css weicht von shared/design-tokens.json ab. Entweder wurde die Datei von Hand ' +
-      'geaendert — dann gehoert der Wert in die JSON —, oder es fehlt ein Lauf von "npm run design:tokens".',
+    'public/tokens.css differs from shared/design-tokens.json. Either the file was changed by hand ' +
+      '— then the value belongs in the JSON — or a run of "npm run design:tokens" is missing.',
   );
 });
 
 test('no handwritten stylesheet redefines a generated token', () => {
   // An own --b600 in styles.css would win (loaded later); the app would keep following the source.
   const erzeugt = new Set(Object.values(DATA.designs).flatMap(t => Object.keys(t).map(cssToken)));
-  assert.ok(erzeugt.size >= 10, `Nur ${erzeugt.size} erzeugte Tokens — greift die Suche noch?`);
+  assert.ok(erzeugt.size >= 10, `Only ${erzeugt.size} generated tokens — does the search still match?`);
 
   const doppelt = [];
   for (const datei of [CSS_BASIS, CSS_BRICK, CSS_MOBILE]) {
@@ -51,10 +51,7 @@ test('no handwritten stylesheet redefines a generated token', () => {
   assert.deepEqual(
     doppelt,
     [],
-    'Diese Tokens werden erzeugt UND von Hand gesetzt:\n  ' +
-      doppelt.join('\n  ') +
-      '\nDamit gilt im Web der handgeschriebene Wert und in der App der erzeugte. ' +
-      'Der Wert gehoert nach shared/design-tokens.json.',
+    `These tokens are generated AND set by hand:\n  ${doppelt.join('\n  ')}\nThen the handwritten value applies on the web and the generated one in the app. The value belongs in shared/design-tokens.json.`,
   );
 });
 
@@ -65,15 +62,15 @@ test('index.html loads the generated tokens', () => {
   const place = html.indexOf('/tokens.css');
   assert.ok(
     place > 0,
-    'index.html laedt /tokens.css nicht — im Web fehlt dann ' +
-      'jede gemeinsame Farbe, ohne dass irgendwo ein Fehler erscheint.',
+    'index.html does not load /tokens.css — then the web lacks ' +
+      'every shared color, without an error appearing anywhere.',
   );
   // And BEFORE styles.css: the tokens are the foundation, everything else builds
   // on them. (For resolving var() the order would not matter —
   // for the human reading the file it does.)
   assert.ok(
     place < html.indexOf('/styles.css'),
-    'tokens.css wird nach styles.css geladen — die Grundlage gehoert nach oben.',
+    'tokens.css is loaded after styles.css — the foundation belongs at the top.',
   );
 });
 
@@ -95,7 +92,7 @@ test('without the Android app the generator only writes the web CSS', () => {
     const r = spawnSync(process.execPath, [script], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     assert.equal(fs.readFileSync(path.join(tmp, 'Web-App', 'public', 'tokens.css'), 'utf8'), buildCss(DATA));
-    assert.deepEqual(fs.readdirSync(tmp).sort(), ['Web-App', 'shared'], 'der Erzeuger legt den Android-Ordner an');
+    assert.deepEqual(fs.readdirSync(tmp).sort(), ['Web-App', 'shared'], 'the generator creates the Android folder');
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

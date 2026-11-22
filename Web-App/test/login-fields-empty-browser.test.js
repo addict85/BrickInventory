@@ -29,19 +29,23 @@ test('login fields after the session expired and after logout', { timeout: 180_0
   const mask = `getComputedStyle(document.getElementById('login-screen')).display !== 'none'`;
 
   await t.test('session expired: name stays, password gone, exactly one message', async () => {
-    assert.notEqual(await app.b.auswerten(`document.getElementById('lp').value`), '', 'Vorbedingung: Passwort im Feld');
+    assert.notEqual(
+      await app.b.auswerten(`document.getElementById('lp').value`),
+      '',
+      'Precondition: password in the field',
+    );
     await app.db.run(`DELETE FROM user_sessions`);
     // Two views in the same beat: the collection reloads while the parts already get 401.
     await app.b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click();
       document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-    await app.bis(mask, 'Anmeldemaske nach 401');
+    await app.bis(mask, 'Sign-in form after 401');
     // The second 401 is answered too and its hint drawn.
     await app.ruhig();
     const f = await app.b.auswerten(felder);
-    assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
-    assert.match(f.lu, /^ablauf_/, 'der Name bleibt zum schnellen Wiederanmelden');
+    assert.equal(f.lp, '', 'the password is still in the field');
+    assert.match(f.lu, /^ablauf_/, 'the name stays for a quick sign-in again');
     assert.match(f.hint, /Sitzung abgelaufen/);
-    assert.deepEqual(f.fehler, [], 'Fehler-Toast neben dem Hinweis');
+    assert.deepEqual(f.fehler, [], 'Error toast next to the hint');
   });
 
   await t.test('logout clears name, password and code', async () => {
@@ -49,19 +53,19 @@ test('login fields after the session expired and after logout', { timeout: 180_0
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1';
       document.getElementById('lc').value = ${JSON.stringify(app.furtherCodes[0])};
       document.getElementById('btn-login').click(); true`);
-    await app.bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'wieder angemeldet', 300);
+    await app.bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'signed in again', 300);
     assert.equal(
       await app.b.auswerten(`document.getElementById('login-hint').hidden`),
       true,
-      'Hinweis verschwindet mit der Anmeldung',
+      'Hint disappears with the sign-in',
     );
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('lc').value = '123456';
       window.__alt = true; document.getElementById('btn-logout').click(); true`);
     await app.bis(`!window.__alt && ${mask}`, 'Anmeldemaske');
     const f = await app.b.auswerten(felder);
-    assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
-    assert.equal(f.lc, '', 'der Code steht noch im Feld');
-    assert.equal(f.lu, '', 'der Name steht noch im Feld');
-    assert.equal(f.hint, '', 'nach eigenem Abmelden kein Ablauf-Hinweis');
+    assert.equal(f.lp, '', 'the password is still in the field');
+    assert.equal(f.lc, '', 'the code is still in the field');
+    assert.equal(f.lu, '', 'the name is still in the field');
+    assert.equal(f.hint, '', 'no expiry hint after signing out oneself');
   });
 });

@@ -58,12 +58,12 @@ test('M1 login without a set session cookie', async t => {
     });
     try {
       assert.match(text(d.getElementById('login-hint')), COOKIE_MISSING);
-      assert.equal(d.getElementById('app').style.display, 'none', 'App geöffnet');
+      assert.equal(d.getElementById('app').style.display, 'none', 'App opened');
       assert.equal(d.getElementById('login-screen').style.display, 'flex');
-      assert.equal(d.getElementById('lu').value, 'anna', 'Name bleibt stehen');
-      assert.equal(d.getElementById('lp').value, '', 'Passwort bleibt nicht stehen');
+      assert.equal(d.getElementById('lu').value, 'anna', 'Name stays');
+      assert.equal(d.getElementById('lp').value, '', 'Password does not stay');
       const nachher = aufrufe.slice(aufrufe.findIndex(a => a.url.includes('/v2/auth/login')));
-      assert.equal(nachher.filter(a => a.url.includes('/v2/sets')).length, 0, 'Sammlung ohne Sitzung gefragt');
+      assert.equal(nachher.filter(a => a.url.includes('/v2/sets')).length, 0, 'Collection requested without a session');
     } finally {
       w.close();
     }
@@ -139,12 +139,12 @@ test('N3 finance error: period, chips and search gone, back after success', asyn
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#portfolio-chart .error-state'));
     await ruhig();
-    assert.equal(tab.classList.contains('finances-error'), true, 'im Fehlerfall');
+    assert.equal(tab.classList.contains('finances-error'), true, 'on error');
     kaputt = false;
     d.querySelector('#portfolio-chart .error-state button[data-click]').click();
     await warte(() => d.querySelector('#fin-tbl table'));
     await ruhig();
-    assert.equal(tab.classList.contains('finances-error'), false, 'nach Erfolg');
+    assert.equal(tab.classList.contains('finances-error'), false, 'after success');
   } finally {
     w.close();
   }
@@ -170,13 +170,13 @@ test('N7 set image in the detail: a real button, operable with an image', async 
     const knopf = image.parentElement;
     assert.equal(knopf.tagName, 'BUTTON');
     assert.equal(knopf.getAttribute('aria-label'), 'Bild vergrössern');
-    assert.equal(image.getAttribute('alt'), '', 'das Bild trägt keinen zweiten Namen');
-    assert.equal(knopf.disabled, true, 'ohne Bild gesperrt');
+    assert.equal(image.getAttribute('alt'), '', 'the image carries no second name');
+    assert.equal(knopf.disabled, true, 'disabled without an image');
     await reiter(w, 'gallery');
     await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
     await warte(() => /10300-1\.jpg/.test(image.getAttribute('src') || ''));
-    assert.equal(knopf.disabled, false, 'mit Bild bedienbar');
+    assert.equal(knopf.disabled, false, 'usable with an image');
     assert.equal(knopf.hasAttribute('aria-hidden'), false);
     knopf.click();
     await warte(() => d.getElementById('lightbox-img').getAttribute('src'));

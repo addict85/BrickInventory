@@ -115,11 +115,11 @@ test('gift in tile, table and detail', async () => {
       text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.sbadges')),
       /Geschenk/,
     );
-    assert.doesNotMatch(kachel, /%|Geschenk/, `Kachel: ${kachel}`);
+    assert.doesNotMatch(kachel, /%|Geschenk/, `Tile: ${kachel}`);
     assert.match(
       text(d.querySelector('[data-price-for="21318-1"]')),
       /[−-]6[.,]9/,
-      'das andere Set behält sein Prozent',
+      'the other set keeps its percentage',
     );
 
     await reiter(w, 'finance');
@@ -132,8 +132,12 @@ test('gift in tile, table and detail', async () => {
     d.querySelector('#gallery [data-click="openModal"]').click();
     await warte(() => text(d.getElementById('m-market-rows')).includes('Geschenk'));
     // Since UX review 24 (N6) also in the purchase price row “gift” instead of “0,00 €”.
-    assert.match(text(d.getElementById('m-acq-summary')), /Geschenk/, 'Kaufpreis im Detail');
-    assert.doesNotMatch(zahl(text(d.getElementById('m-acq-summary'))), /0\.00/, 'Kaufpreis im Detail als Betrag');
+    assert.match(text(d.getElementById('m-acq-summary')), /Geschenk/, 'Purchase price in the detail');
+    assert.doesNotMatch(
+      zahl(text(d.getElementById('m-acq-summary'))),
+      /0\.00/,
+      'Purchase price in the detail as an amount',
+    );
     assert.match(d.getElementById('m-img').getAttribute('src'), /set-placeholder\.svg$/);
   } finally {
     w.close();
@@ -144,7 +148,8 @@ test('set without image: the same cube as in the tile', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const cube = html.match(/<symbol id="i-set"[^>]*>(.*?)<\/symbol>/)[1];
   const image = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'), 'utf8');
-  for (const path of cube.match(/d="[^"]+"/g)) assert.ok(image.includes(path), `${path} fehlt im Platzhalterbild`);
+  for (const path of cube.match(/d="[^"]+"/g))
+    assert.ok(image.includes(path), `${path} is missing in the placeholder image`);
 });
 
 test('menu page: no tab marked, name in the header', async () => {
@@ -159,7 +164,7 @@ test('menu page: no tab marked, name in the header', async () => {
     assert.equal(text(d.getElementById('header-view')), 'Konto');
     assert.match(d.title, /^Konto – /);
     await reiter(w, 'finance');
-    assert.equal(d.getElementById('header-view').hidden, true, 'Name bleibt nach dem Reiterwechsel stehen');
+    assert.equal(d.getElementById('header-view').hidden, true, 'Name stays after the tab switch');
     assert.equal(d.querySelector('.ntab[aria-current="page"]')?.dataset.tab, 'finance');
     assert.match(d.title, /^Finanzen – /);
   } finally {
@@ -182,7 +187,7 @@ test('import as one menu', async () => {
       assert.equal(menue.querySelectorAll('.import-toggle > :not([hidden])').length, 3, `${tab}: drei Importwege`);
       menue.open = true;
       d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      assert.equal(menue.open, false, `${tab}: Escape schliesst das Menü`);
+      assert.equal(menue.open, false, `${tab}: Escape closes the menu`);
     }
   } finally {
     w.close();
@@ -224,10 +229,10 @@ test('value chart: currency, cost basis, axis break, crosshair via keyboard', as
     const axisLine = [...svg.querySelectorAll('text[text-anchor="end"]')]
       .filter(t => +t.getAttribute('x') < 90)
       .map(text);
-    assert.ok(axisLine.length >= 3 && axisLine.every(t => /€|EUR/.test(t)), `Achse: ${axisLine.join(' | ')}`);
+    assert.ok(axisLine.length >= 3 && axisLine.every(t => /€|EUR/.test(t)), `Axis: ${axisLine.join(' | ')}`);
     assert.match(zahl(text(svg.querySelector('.cost-basis-line'))), /^Kaufpreisgesamt(EUR)?1568\.98(€)?$/);
     assert.equal(svg.querySelector('.cost-basis-line line').getAttribute('stroke-dasharray'), '6 4');
-    assert.ok(svg.querySelector('.axis-break'), 'die Achse beginnt nicht bei 0 und zeigt das nicht');
+    assert.ok(svg.querySelector('.axis-break'), 'the axis does not start at 0 and does not show that');
     assert.match(svg.getAttribute('aria-label'), /beginnt bei \D*1\D?500[.,]00/);
     svg.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     const fk = svg.querySelector('.crosshair');
@@ -256,7 +261,7 @@ test('period without history', async () => {
     await takt(50);
     assert.ok(
       d.querySelector('#fin-filter [data-kind=""]').classList.contains('active'),
-      'der Chip „Alle“ verlor seine Wahl',
+      'the chip „Alle“ lost its selection',
     );
   } finally {
     w.close();

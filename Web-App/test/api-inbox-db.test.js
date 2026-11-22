@@ -96,7 +96,7 @@ test('entrance to /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
     await warte(250);
 
   const alle = v1Routes();
-  assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);
+  assert.ok(alle.length > 150, `only ${alle.length} routes found — does the search still match?`);
   const open = new Set();
   for (const [m, p] of alle) {
     const url = p.replace(/:[A-Za-z_]+\??/g, '1').replace(/\*[a-z]+/g, 'a');

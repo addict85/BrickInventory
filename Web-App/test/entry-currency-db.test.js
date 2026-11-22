@@ -63,7 +63,7 @@ test('purchase prices in a foreign currency and estimated ones', { concurrency: 
     const v = await hole('finance/valuation');
     const set = v.sets.find(s => s.set_number === SN);
     const finanzen = set.acquisitions.reduce((s, a) => s + a.purchase_price * a.quantity, 0);
-    assert.equal(Math.round(finanzen * 100) / 100, r.totals.amount, 'gleicher Betrag wie in den Finanzen');
+    assert.equal(Math.round(finanzen * 100) / 100, r.totals.amount, 'same amount as in the finances');
   });
 
   await t.test('without a rate not included but counted', async () => {

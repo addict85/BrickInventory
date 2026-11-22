@@ -83,11 +83,11 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
 
   await t.test('Set', () => {
     const z = pnl.sets.find(s => s.set_number === SET);
-    assert.equal(z.purchase_price, 0, 'bekannt und 0, nicht null');
+    assert.equal(z.purchase_price, 0, 'known and 0, not null');
     assert.equal(z.pnl_pct, null);
     assert.equal(z.pnl_percent, null);
     assert.equal(z.baseline_pnl_pct, null);
-    assert.equal(z.pnl_amount, 240, 'der Betrag ist der Marktwert: 2 × 120');
+    assert.equal(z.pnl_amount, 240, 'the amount is the market value: 2 × 120');
     assert.equal(z.pnl_abs, '240.00');
   });
 

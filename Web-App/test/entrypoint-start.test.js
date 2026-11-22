@@ -154,7 +154,7 @@ test('the repair step follows no symlink and stays on the volume', t => {
     mode: 0o755,
   });
   const fn = ep.slice(ep.indexOf('berichtige() {'), ep.indexOf('setzeMarke() {')).replaceAll('/app/data', daten);
-  assert.match(fn, /find \S+ -xdev /, 'find bleibt nicht im Datenträger');
+  assert.match(fn, /find \S+ -xdev /, 'find does not stay in the volume');
   const r = spawnSync('sh', ['-c', `${fn}\nberichtige`], {
     env: { PATH: `${bin}:${process.env.PATH}`, ZIEL_UID: '424242' },
     encoding: 'utf8',
@@ -162,8 +162,8 @@ test('the repair step follows no symlink and stays on the volume', t => {
   assert.equal(r.status, 0, r.stderr);
   const changed = fs.readFileSync(protokoll, 'utf8').split('\n').filter(Boolean);
   assert.ok(changed.includes(path.join(daten, 'images', 'bild.jpg')), changed.join('\n'));
-  assert.ok(changed.includes(path.join(daten, 'verweis')), 'der Symlink selbst gehört dem Dienst');
-  assert.equal(changed.filter(z => z.startsWith(aussen)).length, 0, 'root ändert eine Datei hinter dem Symlink');
+  assert.ok(changed.includes(path.join(daten, 'verweis')), 'the symlink itself belongs to the service');
+  assert.equal(changed.filter(z => z.startsWith(aussen)).length, 0, 'root changes a file behind the symlink');
   assert.ok(changed.includes('-h'));
 });
 
@@ -241,11 +241,11 @@ test('started as brickinv the entrypoint goes directly to the server without a r
     encoding: 'utf8',
     env: { PATH: `${bin}:/usr/bin:/bin`, ROLE: 'web' },
   });
-  assert.equal(r.status, 0, `ohne root kein Weg über daten-rechte und su-exec: ${r.stderr}`);
+  assert.equal(r.status, 0, `without root no path via daten-rechte and su-exec: ${r.stderr}`);
   assert.match(
     r.stdout,
     /^umask=0077 node dist\/server\.js$/m,
-    `der Server legt Dateien für andere lesbar an: ${r.stdout}`,
+    `the server creates files readable by others: ${r.stdout}`,
   );
-  assert.doesNotMatch(r.stdout + r.stderr, /daten-rechte|Datenverzeichnisse/, 'als brickinv läuft kein root-Schritt');
+  assert.doesNotMatch(r.stdout + r.stderr, /daten-rechte|Datenverzeichnisse/, 'as brickinv no root step runs');
 });

@@ -63,7 +63,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     // the same shelf. Two entries for it would be a trap in the
     // selection list, not a choice.
     const b = await L.createStorage(U.grandparent, 'regal a');
-    assert.equal(b.was_new, false, '„regal a" wurde als zweiter Ort angelegt');
+    assert.equal(b.was_new, false, '„regal a“ was created as a second location');
     assert.equal(b.location.id, a.location.id);
     // And the original name stays — the first spelling wins.
     assert.equal(b.location.name, 'Regal A');
@@ -74,7 +74,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
       await assert.rejects(
         () => L.createStorage(U.grandparent, roh),
         (/** @type {any} */ e) => String(e.code) === 'storage_empty',
-        `${JSON.stringify(roh)} wurde angenommen`,
+        `${JSON.stringify(roh)} was accepted`,
       );
     }
     await assert.rejects(
@@ -105,7 +105,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     assert.deepEqual(
       (await L.locationsOf([U.grandparent, U.enkel])).map(o => o.name),
       ['Kinderzimmer', 'Regal A'],
-      'sortiert ohne Rücksicht auf Gross-/Kleinschreibung',
+      'sorted without regard to upper/lower case',
     );
   });
 
@@ -117,7 +117,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     assert.equal(await L.setLocation('set', [U.enkel], ['10179-1'], 'Unterm Bett'), 1);
     assert.ok(
       (await L.locationsOf([U.enkel])).some(o => o.name === 'Unterm Bett'),
-      'Der frisch getippte Ort fehlt im Vorrat',
+      'The freshly typed location is missing in the stock',
     );
   });
 
@@ -129,7 +129,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     assert.equal(
       (await L.locationsOf([U.grandparent])).length,
       vorher,
-      'Ein Fehlversuch hat einen Ort im Vorrat hinterlassen',
+      'A failed attempt left a location in the stock',
     );
   });
 
@@ -147,7 +147,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
         WHERE t.set_number = $1`,
       ['10179-1'],
     );
-    assert.equal(amSet.storage, 'Kiste 3', 'Das Set steht noch im alten Ort — das Umbenennen war ein Verlieren');
+    assert.equal(amSet.storage, 'Kiste 3', 'The set is still in the old location — the rename was a loss');
     assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'Kiste 3'));
   });
 
@@ -156,7 +156,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     await assert.rejects(
       () => L.renameStorage(U.enkel, location.id, 'kinderzimmer'),
       (/** @type {any} */ e) => String(e.code) === 'storage_duplicate',
-      'Zwei Orte mit demselben Namen wären eine Falle in der Auswahlliste',
+      'Two locations with the same name would be a trap in the selection list',
     );
     // Its own name onto itself is fine, on the other hand — otherwise
     // „Kiste 3" could not be corrected to „KISTE 3".
@@ -181,7 +181,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     await assert.rejects(
       () => L.deleteStorage(U.enkel, belegt.id),
       (/** @type {any} */ e) => String(e.code) === 'storage_in_use',
-      'Ein belegter Ort liess sich löschen — die Zuordnung wäre ohne Weg zurück weg',
+      'An occupied location could be deleted — the assignment would be gone with no way back',
     );
 
     const leer = (await L.locationsOf([U.enkel])).find(o => o.name === 'Kinderzimmer');
@@ -200,7 +200,7 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     await assert.rejects(
       () => db.run('UPDATE sets SET storage_id = $1 WHERE set_number = $2', [frei, '10179-1']),
       (/** @type {any} */ e) => /foreign key|verletzt|violates/i.test(String(e?.message || e)),
-      'Ein Set liess sich auf einen Ort setzen, den es im Vorrat nicht gibt',
+      'A set could be put in a location that does not exist in the stock',
     );
   });
 

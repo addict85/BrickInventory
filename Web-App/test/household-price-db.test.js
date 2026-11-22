@@ -79,19 +79,19 @@ test('the main account sees market price and history of a sub-account set', { co
   try {
     // 1. The actual finding: the price route must no longer give 404.
     let r = await fetch(`${base}/api/v2/sets/${SET}/price`);
-    assert.equal(r.status, 200, 'Preisroute muss das Haushalts-Set finden (vorher: 404 Set not found)');
+    assert.equal(r.status, 200, 'The price route must find the household set (previously: 404 Set not found)');
     let j = await r.json();
-    assert.equal(parseFloat(j.avg_price), 22.5, 'der CHF-Cache-Preis muss ankommen');
-    assert.ok(!j.no_price, 'kein no_price — genau das war der leere Marktpreis in der App');
+    assert.equal(parseFloat(j.avg_price), 22.5, 'the CHF cache price must arrive');
+    assert.ok(!j.no_price, 'no no_price — that was exactly the empty market price in the app');
 
     // 2. History: chart points AND by_condition with the sub-account's purchase price.
     r = await fetch(`${base}/api/v2/sets/${SET}/price-history`);
     assert.equal(r.status, 200);
     j = await r.json();
     const punkte = (j.chart?.values || []).reduce((a, s) => a + (s.values || []).length, 0);
-    assert.ok(punkte >= 10, `der Chart braucht die Verlaufspunkte (bekommen: ${punkte})`);
-    assert.ok(j.by_condition?.U, 'by_condition.U muss existieren — die Erfassung des Unterkontos zählt');
-    assert.equal(parseFloat(j.by_condition.U.purchase_price), 18.2, 'Kaufpreis des Unterkontos');
+    assert.ok(punkte >= 10, `the chart needs the history points (got: ${punkte})`);
+    assert.ok(j.by_condition?.U, 'by_condition.U must exist — the acquisition of the sub-account counts');
+    assert.equal(parseFloat(j.by_condition.U.purchase_price), 18.2, 'Purchase price of the sub-account');
     assert.equal(parseFloat(j.by_condition.U.market_price), 22.5);
 
     // 3. The same logic on the web app path (shared helper).
@@ -102,7 +102,7 @@ test('the main account sees market price and history of a sub-account set', { co
     }
     if (r.status === 200) {
       j = await r.json();
-      assert.ok(j.by_condition?.U, 'auch die Webapp-Route liefert by_condition.U für das Haushalts-Set');
+      assert.ok(j.by_condition?.U, 'the web app route also delivers by_condition.U for the household set');
     }
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});

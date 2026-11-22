@@ -69,7 +69,7 @@ test('trimming works completely or not at all', { concurrency: 1 }, async t => {
     assert.deepEqual(await acqList(), [3, 2], 'Vorbedingung');
     // 5 → 1: the newer one (2) gone, shorten the older one by 2 — there the trigger applies.
     await assert.rejects(changeManualPart(uid, TEIL, 5, { quantity: 1 }), /erzwungener Fehler/);
-    assert.deepEqual(await acqList(), [3, 2], 'Die neuere Erfassung ist weg, die ältere nicht gekürzt');
+    assert.deepEqual(await acqList(), [3, 2], 'The newer acquisition is gone, the older one not shortened');
   });
 
   await t.test('without errors trimming happens', async () => {

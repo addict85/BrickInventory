@@ -42,13 +42,13 @@ test('an open server after the last test ends the file red and is named', () => 
     "test('lässt einen Server offen', () => { require('node:net').createServer().listen(0); });",
     { TEST_AUSLAUF_MS: '500' },
   );
-  assert.equal(r.error, undefined, `das Kind endete nicht: ${r.error}`);
+  assert.equal(r.error, undefined, `the child did not end: ${r.error}`);
   assert.equal(r.status, 1, r.text);
   assert.match(
     r.text,
     /\[auslauf\] server\.test\.js: 0\.5 s nach dem letzten Test nicht beendet — offen: .*TCPServerWrap/,
   );
-  assert.match(r.text, /^ok 1 - lässt einen Server offen/m, 'der Test selbst bleibt grün');
+  assert.match(r.text, /^ok 1 - lässt einen Server offen/m, 'the test itself stays green');
 });
 
 test('a hanging t.after hits the deadline of the whole file', () => {
@@ -57,7 +57,7 @@ test('a hanging t.after hits the deadline of the whole file', () => {
     "test('t.after hängt', (t) => { t.after(() => new Promise(() => { setInterval(() => {}, 1000); })); });",
     { TEST_AUSLAUF_MS: '60000', TEST_DATEI_FRIST_MS: '1500' },
   );
-  assert.equal(r.error, undefined, `das Kind endete nicht: ${r.error}`);
+  assert.equal(r.error, undefined, `the child did not end: ${r.error}`);
   assert.equal(r.status, 1, r.text);
   assert.match(r.text, /\[auslauf\] haken\.test\.js: nach 1\.5 s nicht fertig/);
 });
@@ -69,5 +69,5 @@ test('a clean file ends immediately and green', () => {
   });
   assert.equal(r.status, 0, r.text);
   assert.doesNotMatch(r.text, /\[auslauf\]/);
-  assert.ok(r.ms < 20_000, `wartete ${r.ms} ms auf die Frist`);
+  assert.ok(r.ms < 20_000, `waited ${r.ms} ms for the deadline`);
 });
