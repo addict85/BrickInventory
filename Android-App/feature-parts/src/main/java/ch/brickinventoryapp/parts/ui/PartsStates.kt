@@ -1,28 +1,28 @@
 package ch.brickinventoryapp.parts.ui
 
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
-import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.domain.ComponentHeaderView
-import ch.brickinventoryapp.model.domain.ColorView
-import ch.brickinventoryapp.model.domain.FigureView
-import ch.brickinventoryapp.model.domain.FigureOrder
-import ch.brickinventoryapp.model.domain.MinifigsMetricsView
-import ch.brickinventoryapp.model.domain.FilterColorView
 import ch.brickinventoryapp.model.domain.CategoryView
+import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.domain.ColorView
+import ch.brickinventoryapp.model.domain.ComponentHeaderView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.FigureOrder
+import ch.brickinventoryapp.model.domain.FigureView
+import ch.brickinventoryapp.model.domain.FilterColorView
+import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
-import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
+import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
 import ch.brickinventoryapp.model.domain.UsingSetView
-import ch.brickinventoryapp.model.data.SparePartChoice
+import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
 import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
 import java.io.Serializable
 
 /**

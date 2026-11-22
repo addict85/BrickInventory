@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.SetFilesRepository
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

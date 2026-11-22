@@ -2,10 +2,10 @@ package ch.brickinventoryapp.shared
 
 import ch.brickinventoryapp.contract.ChartPoint
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.shared.ui.chartSummary
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import ch.brickinventoryapp.shared.ui.chartSummary
 
 /**
  * The summary that PortfolioChart reads out as contentDescription.

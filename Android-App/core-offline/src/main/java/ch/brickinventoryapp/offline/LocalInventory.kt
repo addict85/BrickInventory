@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.local.StockKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged

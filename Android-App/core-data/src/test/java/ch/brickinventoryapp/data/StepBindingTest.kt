@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.api.DeviceApi
 import ch.brickinventoryapp.data.repository.StepBindingImpl
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.step.KeyNonce
 import ch.brickinventoryapp.model.step.StepAction
 import ch.brickinventoryapp.model.step.StepResponse

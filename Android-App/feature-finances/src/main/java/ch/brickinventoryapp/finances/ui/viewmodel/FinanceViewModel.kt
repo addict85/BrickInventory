@@ -1,16 +1,22 @@
 package ch.brickinventoryapp.finances.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.Load
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinancesRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.finances.ui.FinanceUiState
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
+import ch.brickinventoryapp.state.ui.viewmodel.Messages
+import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,12 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
-import ch.brickinventoryapp.state.ui.viewmodel.Messages
-import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 
 /**
  * The finance tab: valuation of sets, parts and figures, profit and

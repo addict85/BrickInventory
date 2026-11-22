@@ -1,83 +1,80 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import java.time.Instant
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.domain.Condition
-
-/**
- * The set detail page's sections. Extensions on LazyListScope, not
- * Composables, because they enter items into the page's LazyColumn; the
- * content inside them are Composables.
- */
-
-import ch.brickinventoryapp.model.domain.PurchaseView
-import ch.brickinventoryapp.model.domain.PriceHistoryView
-import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.domain.SetPriceView
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.saveable.rememberSaveable
-import coil3.ImageLoader
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailActions
-import ch.brickinventoryapp.state.ui.StorageUiState
-import ch.brickinventoryapp.collection.ui.SetDetailUiState
-import kotlinx.coroutines.CoroutineScope
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.runtime.mutableIntStateOf
-import kotlinx.coroutines.launch
-import androidx.compose.material.icons.filled.*
-import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.collection.ui.ALARM_STATE_DEFAULT
-import ch.brickinventoryapp.ui.components.CrossLink
-import ch.brickinventoryapp.ui.components.ErrorHint
-import ch.brickinventoryapp.ui.components.SharedImage
-import ch.brickinventoryapp.ui.components.QuantitiesButton
-import ch.brickinventoryapp.ui.components.WithTooltip
-import ch.brickinventoryapp.ui.components.ProductImage
-import ch.brickinventoryapp.ui.components.SegmentChoice
-import ch.brickinventoryapp.ui.components.movementReduced
-import ch.brickinventoryapp.ui.components.largeFont
-import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.collection.ui.SetDetailUiState
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailActions
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PriceAlertView
-import ch.brickinventoryapp.ui.util.fmtInput
-import ch.brickinventoryapp.ui.util.fmtInt
-import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.model.domain.PriceHistoryView
+import ch.brickinventoryapp.model.domain.PurchaseView
+import ch.brickinventoryapp.model.domain.SetPriceView
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.AcquisitionSummarySection
 import ch.brickinventoryapp.shared.ui.DetailRow2
-import ch.brickinventoryapp.shared.ui.MetricsSeries
 import ch.brickinventoryapp.shared.ui.LocationField
 import ch.brickinventoryapp.shared.ui.MarketPriceByCondition
-import ch.brickinventoryapp.shared.ui.PriceLoadsRow
+import ch.brickinventoryapp.shared.ui.MetricsSeries
 import ch.brickinventoryapp.shared.ui.PriceChart
+import ch.brickinventoryapp.shared.ui.PriceLoadsRow
 import ch.brickinventoryapp.shared.ui.SectionCard
 import ch.brickinventoryapp.shared.ui.StatChipV2
 import ch.brickinventoryapp.shared.ui.ValueTiles
+import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.components.CrossLink
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.QuantitiesButton
+import ch.brickinventoryapp.ui.components.SegmentChoice
+import ch.brickinventoryapp.ui.components.SharedImage
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
+import ch.brickinventoryapp.ui.util.fmtInput
+import ch.brickinventoryapp.ui.util.fmtInt
+import ch.brickinventoryapp.ui.util.fmtMoney
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import java.time.Instant
+
+// The set detail page's sections. Extensions on LazyListScope, not
+// Composables, because they enter items into the page's LazyColumn; the
+// content inside them are Composables.
 
 /**
  * Market price per condition and history. The big price row no longer lives here: market,

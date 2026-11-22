@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.services
 
-import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.services.service.followStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.flow

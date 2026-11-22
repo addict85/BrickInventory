@@ -2,8 +2,8 @@ package ch.brickinventoryapp.finances.ui
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -11,16 +11,16 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.finances.ui.screens.PdfViewerRoute
 import ch.brickinventoryapp.finances.ui.screens.VoucherPdfProtection
 import ch.brickinventoryapp.finances.ui.screens.VouchersRoute
-import ch.brickinventoryapp.finances.ui.screens.PdfViewerRoute
 import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
 import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.navigation.AreaEnvironment
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
-import ch.brickinventoryapp.navigation.AreaEnvironment
 
 /** What finances need from the app: set and individual item belong to other areas. */
 interface FinancesNavigation : AreaEnvironment {

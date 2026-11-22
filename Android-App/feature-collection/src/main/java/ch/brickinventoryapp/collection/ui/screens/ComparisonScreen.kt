@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import androidx.core.net.toUri
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
@@ -15,19 +13,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import ch.brickinventoryapp.ui.util.NumericInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import ch.brickinventoryapp.network.util.externalAddress
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.components.HintText
-import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.ScanButton
 import ch.brickinventoryapp.ui.components.StateHint
+import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.network.util.externalAddress
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.util.openExtern
 
 @Composable

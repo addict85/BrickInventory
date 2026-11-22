@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.catalog
 
 import ch.brickinventoryapp.catalog.ui.CatalogYearMath
-import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.catalog.ui.viewmodel.VIEWPORT_REST_MS
 import ch.brickinventoryapp.catalog.ui.viewmodel.ViewportLoader
+import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -13,7 +14,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * One drag on the year bar fetches ONE page, not a hundred.

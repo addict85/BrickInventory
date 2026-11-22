@@ -1,29 +1,29 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.contract.FigsValuationResponse
 import ch.brickinventoryapp.contract.Gutschein
 import ch.brickinventoryapp.contract.PartsValuationResponse
 import ch.brickinventoryapp.contract.PnlResponse
 import ch.brickinventoryapp.contract.PnlTotals
-import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.ValuationResponse
-import ch.brickinventoryapp.finances.ui.minifigRows
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.finances.ui.FinanceRow
+import ch.brickinventoryapp.finances.ui.financeHeader
 import ch.brickinventoryapp.finances.ui.financeTotals
 import ch.brickinventoryapp.finances.ui.foreignPurchasePrices
-import ch.brickinventoryapp.finances.ui.voucherSum
-import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.finances.ui.minifigRows
 import ch.brickinventoryapp.finances.ui.partRows
+import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.finances.ui.voucherSum
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.math.BigDecimal
-import ch.brickinventoryapp.finances.ui.FinanceRow
-import ch.brickinventoryapp.finances.ui.financeHeader
 
 /**
  * The finances page shows the server's number fields (wert_gesamt,

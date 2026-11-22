@@ -133,7 +133,10 @@ formatting:
   SpacingBetweenDeclarationsWithAnnotations:
     active: false
   ImportOrdering:
-    active: false
+    # IntelliJ's order (`*,java.**,javax.**,kotlin.**,^`): one fixed order keeps
+    # import blocks out of merge conflicts; `-PdetektAutoCorrect` sorts them.
+    active: true
+    layout: '*,java.**,javax.**,kotlin.**,^'
   NoWildcardImports:
     active: false
   Filename:

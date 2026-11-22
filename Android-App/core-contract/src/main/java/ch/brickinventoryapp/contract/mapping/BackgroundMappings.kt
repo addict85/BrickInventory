@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.contract.mapping
 
-import ch.brickinventoryapp.contract.Auftrag
 import ch.brickinventoryapp.contract.AuftraegeResponse
-import ch.brickinventoryapp.model.domain.JobView
-import ch.brickinventoryapp.model.domain.JobStatus
-import ch.brickinventoryapp.model.domain.JobPauseView
+import ch.brickinventoryapp.contract.Auftrag
 import ch.brickinventoryapp.model.domain.BackgroundView
+import ch.brickinventoryapp.model.domain.JobPauseView
+import ch.brickinventoryapp.model.domain.JobStatus
+import ch.brickinventoryapp.model.domain.JobView
 
 fun Auftrag.asView() = JobView(
     id = id, kind = type, status = JobStatus.from(status),

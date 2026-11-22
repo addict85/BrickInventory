@@ -1,15 +1,14 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.ValuationView
-import ch.brickinventoryapp.model.domain.FiguresValuationView
-import ch.brickinventoryapp.model.domain.ProfitView
-import ch.brickinventoryapp.model.domain.MetricsView
-import ch.brickinventoryapp.model.domain.PriceHistoryView
-import ch.brickinventoryapp.model.domain.SetPriceView
-import ch.brickinventoryapp.model.domain.PartsValuationView
-import ch.brickinventoryapp.model.domain.ValueHistoryView
-
 import ch.brickinventoryapp.model.domain.AccountSelection
+import ch.brickinventoryapp.model.domain.FiguresValuationView
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.model.domain.PartsValuationView
+import ch.brickinventoryapp.model.domain.PriceHistoryView
+import ch.brickinventoryapp.model.domain.ProfitView
+import ch.brickinventoryapp.model.domain.SetPriceView
+import ch.brickinventoryapp.model.domain.ValuationView
+import ch.brickinventoryapp.model.domain.ValueHistoryView
 /**
  * Prices, valuation, history and profit/loss.
  * An interface so that ViewModels and tests do not depend on the implementation with

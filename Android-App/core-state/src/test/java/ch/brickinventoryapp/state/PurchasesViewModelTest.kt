@@ -1,21 +1,24 @@
 package ch.brickinventoryapp.state
 
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.offline.Slots
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testFinancesRepository
+import ch.brickinventoryapp.testing.testMinifigsRepository
+import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.testing.text
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -26,9 +29,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
 
 /**
  * The purchases ViewModel (sets, manual parts and figures), run against

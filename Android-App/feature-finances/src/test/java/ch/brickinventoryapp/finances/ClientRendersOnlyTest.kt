@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.contract.PartsValuationResponse
 import ch.brickinventoryapp.contract.PnlResponse
 import ch.brickinventoryapp.contract.PnlTotals
 import ch.brickinventoryapp.contract.ValuationResponse
+import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.finances.ui.financeTotals
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import java.math.BigDecimal
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * The app does not recompute any money amounts — it shows what the server delivers.

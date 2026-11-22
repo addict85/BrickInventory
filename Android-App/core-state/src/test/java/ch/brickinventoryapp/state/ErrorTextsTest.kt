@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.state
 
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.state.ui.errorTextArgument
 import ch.brickinventoryapp.state.ui.errorClass
+import ch.brickinventoryapp.state.ui.errorTextArgument
 import ch.brickinventoryapp.state.ui.errorTextId
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.Outcome
 
 /**
  * Every error cause gets its own string — run, not read.

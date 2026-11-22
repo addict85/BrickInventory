@@ -1,23 +1,26 @@
 package ch.brickinventoryapp.state.ui.viewmodel
 
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.domain.asMoney
-import java.time.LocalDate
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.domain.Condition
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.model.domain.NO_COLOR
-import ch.brickinventoryapp.model.domain.PurchaseCorrection
 import ch.brickinventoryapp.data.repository.FinancesRepository
 import ch.brickinventoryapp.data.repository.HouseholdRepository
+import ch.brickinventoryapp.data.repository.MinifigsRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.PartsRepository
-import ch.brickinventoryapp.data.repository.MinifigsRepository
-import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.StockReconciliation
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.NO_COLOR
+import ch.brickinventoryapp.model.domain.PurchaseCorrection
+import ch.brickinventoryapp.model.domain.asMoney
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.state.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.state.ui.loadError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -26,11 +29,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
-import ch.brickinventoryapp.resources.R
-import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.session.Session
 
 /**
  * The purchases of an entry — set, manual part or manual figure:

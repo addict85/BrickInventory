@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.collection.ui.Gallery
 import ch.brickinventoryapp.collection.ui.GalleryDisplay
 import ch.brickinventoryapp.collection.ui.GalleryUiState
 import ch.brickinventoryapp.collection.ui.galleryDisplay
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.errorMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job

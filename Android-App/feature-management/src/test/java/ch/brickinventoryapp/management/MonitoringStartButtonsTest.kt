@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.management
 
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.resources.R
@@ -8,8 +10,6 @@ import ch.brickinventoryapp.testing.PathServer
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.testManagementRepository
 import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

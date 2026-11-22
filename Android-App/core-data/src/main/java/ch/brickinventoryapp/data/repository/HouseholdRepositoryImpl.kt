@@ -1,22 +1,21 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.local.asSummary
-import ch.brickinventoryapp.model.domain.PurchaseChange
-import ch.brickinventoryapp.model.domain.PurchaseCorrection
-import ch.brickinventoryapp.model.domain.InvitationView
-import ch.brickinventoryapp.model.domain.HouseholdStatusView
-import ch.brickinventoryapp.model.domain.PurchasesView
-import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.offline.OfflineStore.FollowUp
-import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.contract.AcquisitionsResponse
 import ch.brickinventoryapp.contract.GenericResponse
-import ch.brickinventoryapp.contract.changeForSet
 import ch.brickinventoryapp.contract.changeForPiece
+import ch.brickinventoryapp.contract.changeForSet
 import ch.brickinventoryapp.contract.mapping.asView
-
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.data.api.HouseholdApi
+import ch.brickinventoryapp.data.local.asSummary
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.HouseholdStatusView
+import ch.brickinventoryapp.model.domain.InvitationView
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.PurchaseChange
+import ch.brickinventoryapp.model.domain.PurchaseCorrection
+import ch.brickinventoryapp.model.domain.PurchasesView
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.OfflineStore.FollowUp
 import javax.inject.Inject
 import javax.inject.Singleton
 

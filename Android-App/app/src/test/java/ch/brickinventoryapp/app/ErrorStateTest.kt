@@ -1,29 +1,32 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.errorKind
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testVouchersRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
+import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
+import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.errorKind
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.testing.NumbersTexts
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testCatalogRepository
+import ch.brickinventoryapp.testing.testFinancesRepository
+import ch.brickinventoryapp.testing.testHouseholdRepository
+import ch.brickinventoryapp.testing.testMinifigsRepository
+import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.testing.testVouchersRepository
 import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.loadingIndicator
-import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
-import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -32,12 +35,9 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Before
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * Loading, error, empty and no hit are different states — and every

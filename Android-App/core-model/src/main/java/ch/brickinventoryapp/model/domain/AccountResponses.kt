@@ -1,8 +1,7 @@
 package ch.brickinventoryapp.model.domain
 
-import java.time.Instant
-
 import ch.brickinventoryapp.model.ui.theme.Design
+import java.time.Instant
 
 // What the account repository delivers, in domain values: the areas read no field of the
 // wire format, and a rename on the server breaks only the mapping in core-data.

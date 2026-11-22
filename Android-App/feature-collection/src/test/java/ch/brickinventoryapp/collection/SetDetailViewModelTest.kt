@@ -1,28 +1,30 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.domain.SetTotals
+import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.errorKind
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.offline.OfflineStore.FollowUp
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.ui.ErrorClass
-import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.contract.SetItem
-import ch.brickinventoryapp.offline.Slots
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetTotals
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.errorKind
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.offline.OfflineStore.FollowUp
+import ch.brickinventoryapp.offline.Slots
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testFinancesRepository
+import ch.brickinventoryapp.testing.testHouseholdRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -32,8 +34,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The set detail ViewModel, run against a PathServer without network.

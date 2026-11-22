@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.testing.Sources
+import ch.brickinventoryapp.testing.testManagementRepository
+import ch.brickinventoryapp.testing.withRepo
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.withRepo
 
 /**
  * While the server starts, the app shows the progress — no error. The first

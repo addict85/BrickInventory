@@ -1,8 +1,5 @@
 package ch.brickinventoryapp.management.ui.screens
 
-import ch.brickinventoryapp.model.domain.BricksetEntryView
-import ch.brickinventoryapp.model.domain.ScheduleView
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -12,17 +9,20 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
-import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringActions
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.model.domain.BricksetEntryView
+import ch.brickinventoryapp.model.domain.ScheduleView
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
 
 /**
  * The sections of the monitoring page below the job list — whole functions

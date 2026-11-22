@@ -1,11 +1,12 @@
 package ch.brickinventoryapp.update
 
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_BASE
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_ROOT
-import ch.brickinventoryapp.update.util.descriptionKey
 import ch.brickinventoryapp.update.util.checkedDescription
-import ch.brickinventoryapp.update.util.isAllowedApkAddress
 import ch.brickinventoryapp.update.util.checksumFits
+import ch.brickinventoryapp.update.util.descriptionKey
+import ch.brickinventoryapp.update.util.isAllowedApkAddress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -13,14 +14,13 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.Signature
-import java.util.Base64
-import java.security.KeyFactory
-import java.security.spec.X509EncodedKeySpec
 import java.security.cert.CertificateFactory
-import ch.brickinventoryapp.testing.Sources
+import java.security.spec.X509EncodedKeySpec
+import java.util.Base64
 
 /**
  * The self-updater's version description is signed with its own

@@ -1,14 +1,16 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.TrustStore
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.session.StoreAccountValues
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
 import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
-import ch.brickinventoryapp.security.CertificateUnresolved
-import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.testing.StorageSessionStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -24,8 +26,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.StorageSessionStore
-import ch.brickinventoryapp.session.StoreAccountValues
 
 /**
  * AppearanceViewModel and TrustViewModel put to the test, with in-memory stores

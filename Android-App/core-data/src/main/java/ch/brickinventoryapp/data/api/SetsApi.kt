@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.contract.AddSetRequest
 import ch.brickinventoryapp.contract.AddSetResponse
 import ch.brickinventoryapp.contract.BarcodeResponse
+import ch.brickinventoryapp.contract.CsvImportStatus
 import ch.brickinventoryapp.contract.GenericAdminResponse
 import ch.brickinventoryapp.contract.GenericResponse
 import ch.brickinventoryapp.contract.LagerortRequest
@@ -27,6 +28,8 @@ import ch.brickinventoryapp.contract.PendingAlertsResponse
 import ch.brickinventoryapp.contract.PreisalarmRequest
 import ch.brickinventoryapp.contract.PreisalarmResponse
 import ch.brickinventoryapp.contract.PreisalarmeResponse
+import ch.brickinventoryapp.contract.SetExistsResponse
+import ch.brickinventoryapp.contract.SetInfoResponse
 import ch.brickinventoryapp.contract.SetResponse
 import ch.brickinventoryapp.contract.SetsResponse
 import ch.brickinventoryapp.contract.UpdateQuantityRequest
@@ -40,9 +43,6 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.contract.CsvImportStatus
-import ch.brickinventoryapp.contract.SetExistsResponse
-import ch.brickinventoryapp.contract.SetInfoResponse
 
 /**
  * Sets, instructions, price alerts, storage location per set, wishlist, PDF export and

@@ -1,25 +1,25 @@
 package ch.brickinventoryapp.collection.ui
 
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.domain.MetricsView
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.local.Local
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.ui.LoadingIndicator
+import ch.brickinventoryapp.ui.loadingIndicator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.LoadingIndicator
-import ch.brickinventoryapp.ui.loadingIndicator
 
 /**
  * The gallery's state and how it changes — in ONE place.

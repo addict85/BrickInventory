@@ -1,12 +1,20 @@
 package ch.brickinventoryapp.login
 
-import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.data.LoginStore
-import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.login.ui.qrAddressInvalid
 import ch.brickinventoryapp.login.ui.qrSwitchesServer
 import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.SessionFake
+import ch.brickinventoryapp.testing.StorageStore
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.testing.testHouseholdRepository
+import ch.brickinventoryapp.testing.testPartsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -19,15 +27,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.state.ui.Scope
 import java.util.Collections
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.StorageStore
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The QR dialog is the only hurdle against a planted code. Checked

@@ -3,13 +3,13 @@ package ch.brickinventoryapp.offline
 import ch.brickinventoryapp.model.domain.AccountView
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
-import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.PriceAlertView
-import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.domain.QuantityChange
+import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.domain.StockLocationView
-import ch.brickinventoryapp.offline.OfflineStore.FollowUp
+import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.offline.OfflineStore.Effect
+import ch.brickinventoryapp.offline.OfflineStore.FollowUp
 
 /**
  * How an edit changes the local list before the server has seen

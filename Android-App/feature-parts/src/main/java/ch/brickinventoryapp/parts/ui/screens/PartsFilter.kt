@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.parts.ui.screens
 
-import ch.brickinventoryapp.ui.components.SelectionChip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,8 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.components.SelectionChip
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtInt
 
 /**

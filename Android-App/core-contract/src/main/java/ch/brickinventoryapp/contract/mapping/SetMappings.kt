@@ -5,11 +5,11 @@ import ch.brickinventoryapp.contract.Instruction
 import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.MerkpostenAlarm
 import ch.brickinventoryapp.contract.SetItem
-import ch.brickinventoryapp.model.domain.InstructionView
 import ch.brickinventoryapp.model.domain.BrickLinkView
+import ch.brickinventoryapp.model.domain.InstructionView
+import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.domain.WantedItemAlarmView
 import ch.brickinventoryapp.model.domain.WantedItemView
-import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.model.domain.asMoneyRequired
 import ch.brickinventoryapp.model.util.parseInstant

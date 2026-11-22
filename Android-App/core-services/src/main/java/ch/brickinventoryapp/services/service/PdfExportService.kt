@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.services.service
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -11,6 +10,16 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import ch.brickinventoryapp.data.di.Scopes
+import ch.brickinventoryapp.data.onlyUnlocked
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.errorTextToCode
+import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.data.service.partListsSelection
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.model.domain.PdfProgress
+import ch.brickinventoryapp.model.domain.PdfStep
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.resources.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -19,15 +28,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.data.onlyUnlocked
-import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.errorTextToCode
-import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.data.service.partListsSelection
-import ch.brickinventoryapp.model.domain.PdfProgress
-import ch.brickinventoryapp.model.domain.PdfStep
 
 /**
  * Foreground service for the parts list's PDF export: it keeps the process awake

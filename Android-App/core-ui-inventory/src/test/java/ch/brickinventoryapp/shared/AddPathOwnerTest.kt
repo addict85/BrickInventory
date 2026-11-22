@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.shared
 
-import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.Condition
-import org.junit.Assert.assertEquals
 import ch.brickinventoryapp.model.domain.MemberView
-import org.junit.Test
-import java.io.File
-import ch.brickinventoryapp.testing.Sources
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.shared.ui.EntryValues
 import ch.brickinventoryapp.shared.ui.entryValues
+import ch.brickinventoryapp.testing.Sources
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import java.io.File
 
 /**
  * Every capture path lets you choose the owner — including the barcode scanner.

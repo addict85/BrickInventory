@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.StartStateView
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.model.domain.StartStateView
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

@@ -4,10 +4,10 @@ import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetItem
 import ch.brickinventoryapp.contract.CatalogTheme
 import ch.brickinventoryapp.contract.JahrAnzahl
-import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogThemeView
+import ch.brickinventoryapp.model.domain.YearCountView
 
 fun CatalogSetItem.asView() = CatalogSetView(
     setNumber = setNumber,

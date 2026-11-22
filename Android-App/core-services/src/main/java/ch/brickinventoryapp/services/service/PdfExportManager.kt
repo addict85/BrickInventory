@@ -4,14 +4,14 @@ import android.content.Context
 import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.SetFilesRepository
-import ch.brickinventoryapp.model.domain.PartListJob
-import ch.brickinventoryapp.data.service.PdfJobStream
 import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.data.service.PdfJobStream
 import ch.brickinventoryapp.data.util.PartListVault
+import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfJobStatus
-import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
+import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job

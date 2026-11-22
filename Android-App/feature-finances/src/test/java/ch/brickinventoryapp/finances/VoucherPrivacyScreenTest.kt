@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.finances
 
+import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherExportAddress
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
-import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * The number and PIN of vouchers do not appear in screenshots and not

@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
-import ch.brickinventoryapp.ui.theme.windowSurface
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,20 +16,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.security.CertificateUnresolved
-import ch.brickinventoryapp.security.fingerprintStart
-import ch.brickinventoryapp.security.fingerprintReadable
-import ch.brickinventoryapp.ui.components.OverlayGuard
-import ch.brickinventoryapp.ui.components.FingerprintField
-import ch.brickinventoryapp.security.Transcript
 import androidx.compose.ui.window.DialogProperties
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.security.Transcript
+import ch.brickinventoryapp.security.fingerprintReadable
+import ch.brickinventoryapp.security.fingerprintStart
+import ch.brickinventoryapp.ui.components.FingerprintField
+import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.windowSurface
 
 /**
  * The question about a certificate that the app does not accept by itself. The fingerprint

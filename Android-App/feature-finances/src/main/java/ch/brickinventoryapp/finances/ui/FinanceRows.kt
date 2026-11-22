@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.finances.ui
 
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.domain.ValuationView
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.ValuationSetView
-import ch.brickinventoryapp.model.domain.ValuationPurchaseView
 import ch.brickinventoryapp.model.domain.FiguresValuationView
-import ch.brickinventoryapp.model.domain.ProfitView
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PartsValuationView
+import ch.brickinventoryapp.model.domain.ProfitView
+import ch.brickinventoryapp.model.domain.ValuationPurchaseView
+import ch.brickinventoryapp.model.domain.ValuationSetView
+import ch.brickinventoryapp.model.domain.ValuationView
 import java.math.BigDecimal
 
 /**

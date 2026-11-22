@@ -5,43 +5,43 @@ package ch.brickinventoryapp.collection.ui.screens
  * no periodic refocusing, which would keep making the camera re-measure.
  */
 
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
-import androidx.compose.foundation.background
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FlashlightOff
-import androidx.compose.material.icons.filled.FlashlightOn
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.foundation.BorderStroke
-import ch.brickinventoryapp.ui.components.withFont
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.Spacing
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.WithTooltip
-import ch.brickinventoryapp.ui.screens.CameraPermissionHint
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.screens.CameraOverlay
+import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.screens.cameraBind
 import ch.brickinventoryapp.ui.screens.cameraPreview
 import ch.brickinventoryapp.ui.screens.rememberCameraPermission
 import ch.brickinventoryapp.ui.screens.tapToFocus
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 
 @Composable
 fun BarcodeScannerScreen(

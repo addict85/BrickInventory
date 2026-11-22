@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.app
 
-import java.time.LocalDate
+import ch.brickinventoryapp.buildlogic.edges.ModuleEdge
+import ch.brickinventoryapp.buildlogic.edges.ModuleEdges
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.buildlogic.edges.ModuleEdge
-import ch.brickinventoryapp.buildlogic.edges.ModuleEdges
-import ch.brickinventoryapp.testing.Sources
+import java.time.LocalDate
 
 /**
  * The module boundaries, read from settings.gradle.kts and the build.gradle.kts:

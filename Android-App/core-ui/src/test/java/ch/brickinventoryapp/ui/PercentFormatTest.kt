@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.ui.util.fmtPercent
 import org.junit.After
@@ -8,7 +9,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.text.NumberFormat
 import java.util.Locale
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Percentages come from fmtPercent(): one decimal place, sign when ≠ 0,

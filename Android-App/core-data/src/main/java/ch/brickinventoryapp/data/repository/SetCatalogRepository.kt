@@ -1,12 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.BarcodeView
-import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.contract.mapping.asView
-
 import ch.brickinventoryapp.data.api.SetsApi
+import ch.brickinventoryapp.model.domain.BarcodeView
 import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.PartView
+import ch.brickinventoryapp.model.domain.SetView
 import javax.inject.Inject
 import javax.inject.Singleton
 

@@ -1,26 +1,26 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import ch.brickinventoryapp.model.domain.Condition
-import androidx.compose.runtime.LaunchedEffect
-import ch.brickinventoryapp.model.domain.WantedItemView
-import ch.brickinventoryapp.model.domain.MemberView
 import androidx.compose.foundation.layout.*
-import ch.brickinventoryapp.ui.components.announce
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.components.AddDialog
-import ch.brickinventoryapp.shared.ui.StorageLocationEntry
-import ch.brickinventoryapp.shared.ui.OwnerPicker
 import ch.brickinventoryapp.shared.ui.ConditionRow
+import ch.brickinventoryapp.shared.ui.OwnerPicker
+import ch.brickinventoryapp.shared.ui.StorageLocationEntry
+import ch.brickinventoryapp.ui.components.AddDialog
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
 
 /**
  * Quantity, purchase price and condition before taking over — no default is

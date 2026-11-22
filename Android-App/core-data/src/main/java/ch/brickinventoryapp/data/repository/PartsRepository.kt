@@ -1,27 +1,27 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.CategoryChoice
-import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.Recorded
-import ch.brickinventoryapp.model.domain.AccountSelection
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.domain.NO_COLOR
-import ch.brickinventoryapp.model.domain.ColorView
-import ch.brickinventoryapp.model.domain.FilterColorView
-import ch.brickinventoryapp.model.domain.CategoryView
-import ch.brickinventoryapp.model.domain.LocationView
-import ch.brickinventoryapp.model.domain.LocationEntryView
-import ch.brickinventoryapp.model.domain.ManualPartView
-import ch.brickinventoryapp.model.domain.PartView
-import ch.brickinventoryapp.model.domain.PartInventory
-import ch.brickinventoryapp.model.domain.PartsMetricsView
-import ch.brickinventoryapp.model.domain.PartialKey
-import ch.brickinventoryapp.model.domain.UsageView
-import ch.brickinventoryapp.model.domain.StockLocationView
-import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.model.data.SparePartChoice
+import ch.brickinventoryapp.model.domain.AccountSelection
+import ch.brickinventoryapp.model.domain.CategoryChoice
+import ch.brickinventoryapp.model.domain.CategoryView
+import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.domain.ColorView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.FilterColorView
+import ch.brickinventoryapp.model.domain.LocationEntryView
+import ch.brickinventoryapp.model.domain.LocationView
+import ch.brickinventoryapp.model.domain.ManualPartView
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.NO_COLOR
+import ch.brickinventoryapp.model.domain.PartInventory
+import ch.brickinventoryapp.model.domain.PartView
+import ch.brickinventoryapp.model.domain.PartialKey
+import ch.brickinventoryapp.model.domain.PartsMetricsView
+import ch.brickinventoryapp.model.domain.Recorded
+import ch.brickinventoryapp.model.domain.StockLocationView
+import ch.brickinventoryapp.model.domain.UsageView
+import ch.brickinventoryapp.model.local.Local
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Parts: stock, manually added parts, colors, storage locations.

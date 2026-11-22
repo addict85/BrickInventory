@@ -1,13 +1,16 @@
 package ch.brickinventoryapp.account
 
+import ch.brickinventoryapp.account.ui.DesignChoice
+import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import ch.brickinventoryapp.account.ui.DesignChoice
-import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.session.loadSettings
-import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.SessionFake
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testAccountRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -15,12 +18,9 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Before
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The design applies per account: /settings/theme delivers, with a token, the effective

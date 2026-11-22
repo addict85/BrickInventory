@@ -7,10 +7,10 @@ import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.session.SessionRepository
-import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.TestServices
 import ch.brickinventoryapp.state.ui.AppViewModel
 import ch.brickinventoryapp.state.ui.OutboxNotifier
+import ch.brickinventoryapp.testing.FakeApi
+import ch.brickinventoryapp.testing.TestServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

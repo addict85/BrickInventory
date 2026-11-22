@@ -1,11 +1,5 @@
 package ch.brickinventoryapp.account.ui.screens
 
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.ui.components.charByChar
-import ch.brickinventoryapp.ui.components.readAloudAs
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,8 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -44,29 +38,35 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
+import ch.brickinventoryapp.model.step.StepAction
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.util.otpauthAddress
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.BrandsHeader
+import ch.brickinventoryapp.ui.components.ErrorRow
+import ch.brickinventoryapp.ui.components.ExplainText
+import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.LoginCard
 import ch.brickinventoryapp.ui.components.LoginTitle
-import ch.brickinventoryapp.ui.components.ErrorRow
-import ch.brickinventoryapp.ui.components.LocalStepGuard
-import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.ui.components.forTarget
-import ch.brickinventoryapp.ui.components.PasswordField
-import ch.brickinventoryapp.ui.components.BrandsHeader
-import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.components.PasswordField
+import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.components.charByChar
+import ch.brickinventoryapp.ui.components.forTarget
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.centeredUntil
-import ch.brickinventoryapp.ui.util.SecretClipboard
 import ch.brickinventoryapp.ui.util.LocalSdkLevel
-import ch.brickinventoryapp.ui.util.secretCopyable
 import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.model.util.otpauthAddress
-import ch.brickinventoryapp.ui.components.ExplainText
+import ch.brickinventoryapp.ui.util.SecretClipboard
+import ch.brickinventoryapp.ui.util.secretCopyable
 
 /**
  * Admin rights without a second factor: the server rejects almost every

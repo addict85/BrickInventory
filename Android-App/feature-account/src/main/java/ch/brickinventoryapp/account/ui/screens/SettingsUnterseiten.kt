@@ -1,25 +1,25 @@
 package ch.brickinventoryapp.account.ui.screens
 
-import ch.brickinventoryapp.ui.components.UndoMessage
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.resources.R
-import coil3.ImageLoader
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.DevicesSettingsViewModel
-import ch.brickinventoryapp.account.ui.AlarmOverviewUiState
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import ch.brickinventoryapp.ui.components.OverlayGuard
-import ch.brickinventoryapp.ui.theme.ReadingWidth
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.account.ui.AlarmOverviewUiState
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.viewmodel.DevicesSettingsViewModel
+import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.Subpage
+import ch.brickinventoryapp.ui.components.UndoMessage
+import ch.brickinventoryapp.ui.theme.ReadingWidth
+import coil3.ImageLoader
 
 /**
  * The settings' subpages: one page per category with a title and

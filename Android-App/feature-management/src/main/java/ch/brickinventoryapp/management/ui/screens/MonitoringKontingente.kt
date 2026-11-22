@@ -1,9 +1,5 @@
 package ch.brickinventoryapp.management.ui.screens
 
-import ch.brickinventoryapp.model.domain.QuotaView
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.theme.AppCard
-import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,17 +8,21 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.model.domain.QuotasView
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.model.domain.QuotaView
+import ch.brickinventoryapp.model.domain.QuotasView
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.SectionTitle
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.AppCard
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
 
 /** The daily quotas with the editing state of their limits. */
 @Composable

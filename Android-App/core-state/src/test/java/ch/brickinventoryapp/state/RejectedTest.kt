@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.state
 
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import ch.brickinventoryapp.network.util.followUpMay
 import ch.brickinventoryapp.network.util.reportsTheSessionLayer
-import org.junit.Test
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * After signing in, no „invalid or expired token“ may remain —

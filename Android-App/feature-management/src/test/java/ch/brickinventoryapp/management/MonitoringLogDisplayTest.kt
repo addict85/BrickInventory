@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.management
 
-import java.time.Instant
-import ch.brickinventoryapp.model.ui.theme.Design
+import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
@@ -13,18 +12,18 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.data.PrewarmNetwork
-import ch.brickinventoryapp.model.domain.LogRowView
-import ch.brickinventoryapp.model.util.fmtClockTime
-import ch.brickinventoryapp.ui.util.appNumberLocale
-import android.text.format.DateFormat
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.screens.CacheEvents
 import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
 import ch.brickinventoryapp.management.ui.screens.MonitoringState
 import ch.brickinventoryapp.management.ui.viewmodel.BackgroundUiState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.model.domain.LogRowView
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.util.fmtClockTime
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.ui.util.appNumberLocale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -32,6 +31,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Instant
 
 /**
  * Monitoring's server log shows the time for every row, like the

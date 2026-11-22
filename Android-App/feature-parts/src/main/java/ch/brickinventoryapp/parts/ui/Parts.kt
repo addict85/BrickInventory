@@ -1,29 +1,29 @@
 package ch.brickinventoryapp.parts.ui
 
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.local.Local
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.CategoryView
 import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.FigureView
-import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.FilterColorView
-import ch.brickinventoryapp.model.domain.CategoryView
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
+import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
+import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.state.ui.loadError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.model.ui.ListView
 
 /** The fetches next to the parts list: key figures and filter values; the caller sets the view. */
 internal interface PartsSource {

@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.parts.ui.screens
 
-import ch.brickinventoryapp.ui.theme.colorFromHex
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,13 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
 import ch.brickinventoryapp.model.ui.colorName
 import ch.brickinventoryapp.model.ui.withoutNoColor
-import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.colorFromHex
 
 /**
  * Choose the color of a manually entered part — for correcting it if it

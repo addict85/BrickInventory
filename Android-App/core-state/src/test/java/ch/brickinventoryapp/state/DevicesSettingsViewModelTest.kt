@@ -1,32 +1,32 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.ui.Message
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.CoroutineScope
-import org.junit.Assert.assertTrue
-import ch.brickinventoryapp.security.StoreCipher
-import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.AlarmPlanner
 import ch.brickinventoryapp.data.DevicesSettings
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.data.cache.PreviewMemory
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.state.ui.viewmodel.DevicesSettingsViewModel
+import ch.brickinventoryapp.testing.text
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.nio.file.Files
-import ch.brickinventoryapp.testing.text
 
 /**
  * The alert switch and the warm-up networks write via the ViewModel: the wish

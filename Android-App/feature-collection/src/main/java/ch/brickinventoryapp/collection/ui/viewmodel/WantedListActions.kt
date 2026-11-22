@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.collection.ui.viewmodel
 
-import kotlinx.coroutines.flow.StateFlow
 import ch.brickinventoryapp.collection.ui.WantedItemDetailUiState
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.WantedSort
+import kotlinx.coroutines.flow.StateFlow
 
 /** What the wishlist and wishlist-item detail trigger; the screens know only this interface. */
 internal interface WantedListActions {

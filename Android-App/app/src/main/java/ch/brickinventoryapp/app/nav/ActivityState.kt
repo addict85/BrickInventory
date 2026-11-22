@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.app.nav
 
-import ch.brickinventoryapp.state.ui.AppViewModel
-import ch.brickinventoryapp.app.csv.CsvImportViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.app.csv.CsvImportViewModel
+import ch.brickinventoryapp.state.ui.AppViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
 import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
 
 /**

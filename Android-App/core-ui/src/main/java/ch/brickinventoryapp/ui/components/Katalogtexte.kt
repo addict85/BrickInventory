@@ -6,12 +6,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.intl.LocaleList
-import ch.brickinventoryapp.model.ui.ColorGerman
 import ch.brickinventoryapp.model.ui.CategoryGerman
+import ch.brickinventoryapp.model.ui.ColorGerman
+import ch.brickinventoryapp.resources.R
 
 /** Is the UI in German? Rebrickable's catalog data never is. */
 @Composable

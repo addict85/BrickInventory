@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.util.numbersLocale
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.util.fmtAmount
 import ch.brickinventoryapp.ui.util.fmtInput
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
-import ch.brickinventoryapp.model.util.numbersLocale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import java.util.Locale
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Numbers and amounts come from ONE version — and it follows the app language.

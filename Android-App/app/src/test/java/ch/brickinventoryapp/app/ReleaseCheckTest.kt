@@ -3,10 +3,10 @@ package ch.brickinventoryapp.app
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import java.util.concurrent.TimeUnit
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.util.Base64
+import java.util.concurrent.TimeUnit
 
 /**
  * The checks before publishing (tools/release-check.py),

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.ui.graphics.Color
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.accentSurfaces
 import ch.brickinventoryapp.ui.theme.colorScheme
 import ch.brickinventoryapp.ui.theme.hasDarkVersion

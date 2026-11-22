@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.testing.testTrustCipher
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.security.UnlockVault
 import ch.brickinventoryapp.security.TokenEncryption
-import ch.brickinventoryapp.security.VaultFinding
 import ch.brickinventoryapp.security.TrustCipher
+import ch.brickinventoryapp.security.UnlockVault
+import ch.brickinventoryapp.security.VaultFinding
+import ch.brickinventoryapp.testing.testTrustCipher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

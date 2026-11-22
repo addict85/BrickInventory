@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Screen state survives rotation and process death.

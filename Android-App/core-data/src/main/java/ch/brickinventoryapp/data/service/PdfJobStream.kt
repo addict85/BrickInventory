@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.service
 
+import ch.brickinventoryapp.contract.PdfAuftragStand
 import ch.brickinventoryapp.data.SseEvent
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.sseStream
-import ch.brickinventoryapp.contract.PdfAuftragStand
-import ch.brickinventoryapp.model.domain.PdfJobStatus
 import ch.brickinventoryapp.data.repository.asStatus
+import ch.brickinventoryapp.data.sseStream
+import ch.brickinventoryapp.model.domain.PdfJobStatus
 import ch.brickinventoryapp.network.data.api.ErrorBody
 import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
 import ch.brickinventoryapp.network.util.AppLog

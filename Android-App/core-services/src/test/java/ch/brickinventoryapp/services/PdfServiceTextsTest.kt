@@ -2,11 +2,11 @@ package ch.brickinventoryapp.services
 
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.services.service.errorText
-import ch.brickinventoryapp.services.service.progressText
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.services.service.errorText
+import ch.brickinventoryapp.services.service.progressText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

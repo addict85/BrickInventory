@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.update
 
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_BASE
 import ch.brickinventoryapp.update.util.isAllowedApkAddress
 import ch.brickinventoryapp.update.util.isNew
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * The app updates itself — and does it carefully.

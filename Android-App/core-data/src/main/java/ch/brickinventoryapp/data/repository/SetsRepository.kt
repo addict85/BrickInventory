@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetRecorded
-import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.domain.SetSort
-import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.local.Local
 import kotlinx.coroutines.flow.Flow
 

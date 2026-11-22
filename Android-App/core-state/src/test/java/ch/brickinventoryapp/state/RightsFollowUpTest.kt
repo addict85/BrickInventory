@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.session.followUpRights
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testAccountRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * After a 403 `only_admins` the session catches up on its admin right from

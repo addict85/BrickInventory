@@ -1,30 +1,30 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.domain.CategoryChoice
-import ch.brickinventoryapp.session.WarmUp
-import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.MinifigsRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.PartsRepository
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.AccountView
-import ch.brickinventoryapp.data.repository.AccountView.ServerView
-import ch.brickinventoryapp.model.data.SparePartChoice
-import ch.brickinventoryapp.model.local.Local
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.data.Credentials
 import ch.brickinventoryapp.data.cache.PreviewPrewarmer
+import ch.brickinventoryapp.data.repository.AccountView
+import ch.brickinventoryapp.data.repository.AccountView.ServerView
+import ch.brickinventoryapp.data.repository.MinifigsRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.PartsRepository
+import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.data.SparePartChoice
+import ch.brickinventoryapp.model.domain.CategoryChoice
+import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.local.Local
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.model.util.resolveThumbUrl
+import ch.brickinventoryapp.session.WarmUp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
  * The addresses of all tiles in the own collection, for warming up — from the same

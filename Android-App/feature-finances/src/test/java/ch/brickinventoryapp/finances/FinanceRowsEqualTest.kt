@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.ValuationPurchaseView
-import ch.brickinventoryapp.model.domain.ManualMinifigView
-import ch.brickinventoryapp.model.domain.ManualPartView
 import ch.brickinventoryapp.finances.ui.minifigRows
 import ch.brickinventoryapp.finances.ui.partRows
+import ch.brickinventoryapp.model.domain.ManualMinifigView
+import ch.brickinventoryapp.model.domain.ManualPartView
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.ValuationPurchaseView
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

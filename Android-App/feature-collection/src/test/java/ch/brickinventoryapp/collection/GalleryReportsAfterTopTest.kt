@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -11,18 +10,19 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.model.domain.MetricsView
-import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.collection.ui.BarcodeUiState
 import ch.brickinventoryapp.collection.ui.GalleryUiState
 import ch.brickinventoryapp.collection.ui.screens.GalleryEvents
-import ch.brickinventoryapp.collection.ui.screens.GalleryState
 import ch.brickinventoryapp.collection.ui.screens.GalleryScreen
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.collection.ui.screens.GalleryState
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule

@@ -12,6 +12,7 @@ import ch.brickinventoryapp.contract.CsvImportErgebnis
 import ch.brickinventoryapp.contract.GenericAdminResponse
 import ch.brickinventoryapp.contract.JobsResponse
 import ch.brickinventoryapp.contract.ProtokollResponse
+import ch.brickinventoryapp.contract.StartupStatus
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -19,10 +20,9 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
-import retrofit2.http.Part
-import ch.brickinventoryapp.contract.StartupStatus
 
 /**
  * Operation of the server and data maintenance: CSV import, log, startup state,

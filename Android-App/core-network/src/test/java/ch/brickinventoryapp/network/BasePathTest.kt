@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.network
 
+import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
 import ch.brickinventoryapp.network.di.ServerGuard
-import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.ownAddress
 import ch.brickinventoryapp.network.util.pdfInViewer

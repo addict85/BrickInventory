@@ -1,13 +1,17 @@
 package ch.brickinventoryapp.management
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.model.ui.dataOrNull
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.testing.BrickApiService
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
@@ -20,10 +24,6 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.ui.dataOrNull
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 
 /**
  * The monitoring ViewModel against a MockWebServer: anticipated states with

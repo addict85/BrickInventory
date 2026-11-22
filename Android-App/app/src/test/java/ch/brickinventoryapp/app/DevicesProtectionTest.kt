@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.testing.testTrustCipher
 import android.content.Context
 import android.os.SystemClock
 import android.view.InputDevice
@@ -13,17 +12,21 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.DevicesStore
 import ch.brickinventoryapp.data.TokenStore
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import ch.brickinventoryapp.security.TokenEncryption
+import ch.brickinventoryapp.testing.testTrustCipher
 import ch.brickinventoryapp.ui.components.LocalStepGuard
+import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.ui.components.StepGuard
 import ch.brickinventoryapp.ui.components.StepLock
-import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.security.TokenEncryption
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -32,9 +35,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import java.io.File
 
 /**

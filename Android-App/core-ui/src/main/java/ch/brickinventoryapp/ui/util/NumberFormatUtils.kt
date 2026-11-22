@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.ui.util
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import androidx.appcompat.app.AppCompatDelegate
 import android.text.format.DateFormat
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.util.DateYear
+import ch.brickinventoryapp.model.util.fmtDatum
+import ch.brickinventoryapp.model.util.numbersLocale
 import java.text.NumberFormat
 import java.time.Instant
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.model.util.DateYear
-import ch.brickinventoryapp.model.util.fmtDatum
-import ch.brickinventoryapp.model.util.numbersLocale
 
 /*
  * Numbers and amounts — one version for the whole app, kept in step with

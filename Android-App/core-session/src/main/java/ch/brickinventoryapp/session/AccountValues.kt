@@ -2,8 +2,8 @@ package ch.brickinventoryapp.session
 
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow

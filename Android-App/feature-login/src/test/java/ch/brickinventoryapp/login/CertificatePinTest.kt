@@ -1,18 +1,19 @@
 package ch.brickinventoryapp.login
 
 import ch.brickinventoryapp.login.ui.parseQrPayload
+import ch.brickinventoryapp.network.util.RenewableTlsFactory
+import ch.brickinventoryapp.security.CA_FAMILIES
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.security.ChoiceTrust
 import ch.brickinventoryapp.security.PinStore
 import ch.brickinventoryapp.security.PinTrust
-import ch.brickinventoryapp.security.ChoiceTrust
-import ch.brickinventoryapp.security.CertificateUnresolved
-import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.security.Transcript
-import ch.brickinventoryapp.security.CA_FAMILIES
-import ch.brickinventoryapp.security.sheetPinKey
-import ch.brickinventoryapp.security.fingerprintStart
 import ch.brickinventoryapp.security.fingerprintReadable
+import ch.brickinventoryapp.security.fingerprintStart
 import ch.brickinventoryapp.security.fitsToPin
 import ch.brickinventoryapp.security.pinKey
+import ch.brickinventoryapp.security.sheetPinKey
 import ch.brickinventoryapp.security.spkiFingerprint
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,8 +26,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+import java.net.Socket
 import java.security.KeyFactory
 import java.security.KeyStore
+import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
@@ -34,12 +37,9 @@ import java.util.Base64
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLEngine
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509ExtendedTrustManager
-import ch.brickinventoryapp.network.util.RenewableTlsFactory
-import java.net.Socket
-import java.security.cert.CertificateException
-import javax.net.ssl.SSLEngine
 
 /**
  * Pinning of our own server, over real TLS against a test server: root →

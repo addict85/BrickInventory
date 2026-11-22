@@ -9,8 +9,8 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import ch.brickinventoryapp.model.domain.ColorView
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.parts.ui.screens.ColorChoiceField
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

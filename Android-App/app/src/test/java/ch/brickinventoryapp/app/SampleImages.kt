@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.app
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import coil3.ImageLoader
 import coil3.asImage
 import coil3.decode.DataSource
 import coil3.intercept.Interceptor
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
-import android.graphics.BitmapFactory
 import kotlinx.coroutines.Dispatchers
 
 /**

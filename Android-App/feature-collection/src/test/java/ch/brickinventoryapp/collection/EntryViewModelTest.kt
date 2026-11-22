@@ -1,25 +1,28 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.ScannerOrigin
-import ch.brickinventoryapp.model.domain.EntryRequest
-import ch.brickinventoryapp.model.domain.Condition
-
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.model.domain.SetRecorded
-import ch.brickinventoryapp.testing.testCatalogRepository
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.collection.ui.CheckPhase
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.data.SetCreateStep
+import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.EntryRequest
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetRecorded
+import ch.brickinventoryapp.model.ui.ScannerOrigin
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testCatalogRepository
+import ch.brickinventoryapp.testing.text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -30,10 +33,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
 
 /**
  * The entry ViewModel: scan, add by set number, check display.

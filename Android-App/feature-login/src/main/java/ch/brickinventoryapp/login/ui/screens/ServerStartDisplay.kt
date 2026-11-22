@@ -19,10 +19,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.model.domain.StartStateView
-import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.outsideTheSystemBars
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * „Der Server startet gerade“ — with progress instead of an error message, like the

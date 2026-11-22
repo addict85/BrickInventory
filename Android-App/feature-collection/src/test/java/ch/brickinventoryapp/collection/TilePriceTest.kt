@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.contract.PnlSetZeile
-import ch.brickinventoryapp.contract.mapping.asView
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
 import ch.brickinventoryapp.collection.ui.TilePrice
 import ch.brickinventoryapp.collection.ui.TileSource
 import ch.brickinventoryapp.collection.ui.tileAmount
 import ch.brickinventoryapp.collection.ui.tilePrices
 import ch.brickinventoryapp.collection.ui.tileSource
+import ch.brickinventoryapp.contract.PnlSetZeile
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetView
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
 
 /**
  * Price and P&L on the gallery tile: from the server (kachel_preis,

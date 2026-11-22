@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.testing.testVouchersRepository
-import ch.brickinventoryapp.model.file.FileRef
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.SnackbarHostState
@@ -10,10 +8,14 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.finances.ui.screens.VoucherPdfProtection
 import ch.brickinventoryapp.finances.ui.screens.VouchersRoute
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.testing.NumbersTexts
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.testVouchersRepository
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -21,8 +23,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.PathServer
 
 /**
  * The vouchers page and a voucher PDF set FLAG_SECURE, run; an

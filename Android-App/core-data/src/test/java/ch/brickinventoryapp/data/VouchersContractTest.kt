@@ -1,21 +1,21 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.VouchersRepository
+import ch.brickinventoryapp.model.domain.Confirmation
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.VoucherInfo
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.Confirmation
-import ch.brickinventoryapp.data.repository.VouchersRepository
-import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
-import ch.brickinventoryapp.data.repository.Outcome
-import java.io.File
-import org.json.JSONObject
-import ch.brickinventoryapp.testing.testVouchersRepository
 import ch.brickinventoryapp.testing.PathServer
 import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testVouchersRepository
+import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
 
 /**
  * Vouchers — LEGO gift cards in one's own profile.

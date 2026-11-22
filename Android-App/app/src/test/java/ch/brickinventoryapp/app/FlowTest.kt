@@ -1,15 +1,14 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.resources.R
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
@@ -23,20 +22,24 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
+import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.contract.Gutschein
 import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.finances.ui.VoucherConfirmation
 import ch.brickinventoryapp.finances.ui.VoucherStep
 import ch.brickinventoryapp.finances.ui.VoucherUiState
-import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
+import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
-import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.StepGuard
-import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -46,9 +49,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
-import android.os.Build
 
 /**
  * The core flows as a UI test on the JVM (Robolectric): sign in, add a

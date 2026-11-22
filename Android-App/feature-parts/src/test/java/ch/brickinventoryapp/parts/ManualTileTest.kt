@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.contract.FigValuationItem
 import ch.brickinventoryapp.contract.PartValuationItem
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * What a manually entered tile and its detail need: the quantity-weighted

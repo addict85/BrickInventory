@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.collection
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testFinancesRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * Whoever loads the gallery over selected accounts carries along what the gallery shows:

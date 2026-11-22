@@ -1,16 +1,13 @@
 package ch.brickinventoryapp.finances.ui.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -20,18 +17,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.model.domain.VoucherView
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.finances.ui.inGroupsOfFour
+import ch.brickinventoryapp.model.domain.PlaintextView
+import ch.brickinventoryapp.model.domain.VoucherView
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.model.domain.PlaintextView
 import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.ui.util.fmtTag
 
 /**
  * A voucher as a card: number on the left (in groups of four, because nineteen digits

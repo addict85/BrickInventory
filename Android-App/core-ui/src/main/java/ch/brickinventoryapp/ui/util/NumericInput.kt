@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.ui.util
 
-import ch.brickinventoryapp.model.domain.Money
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import ch.brickinventoryapp.model.domain.Money
 import java.text.DecimalFormatSymbols
 
 /**

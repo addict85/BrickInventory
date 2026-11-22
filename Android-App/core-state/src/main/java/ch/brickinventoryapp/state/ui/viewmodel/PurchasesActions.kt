@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.state.ui.viewmodel
 
-import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.NO_COLOR
 
 /**

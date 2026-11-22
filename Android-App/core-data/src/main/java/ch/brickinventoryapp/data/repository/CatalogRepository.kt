@@ -1,11 +1,10 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogMetaView
 import ch.brickinventoryapp.model.domain.CatalogPageView
-
 import ch.brickinventoryapp.model.domain.CatalogSort
+import ch.brickinventoryapp.model.domain.YearCountView
 
 /**
  * The server's set catalog.

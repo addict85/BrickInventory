@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.contract.LoginResponse
-import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.data.SecondFactorRequired
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.session.adoptAccount
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testAccountRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * Admin rights without a second factor: sign-in and /auth/me name the field

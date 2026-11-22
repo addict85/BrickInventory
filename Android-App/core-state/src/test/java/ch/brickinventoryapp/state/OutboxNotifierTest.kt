@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.ui.Message
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.local.ReconcileEvent
 import ch.brickinventoryapp.data.local.Baseline
 import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
+import ch.brickinventoryapp.data.local.ReconcileEvent
 import ch.brickinventoryapp.model.local.StockKind
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.OutboxNotifier
-import ch.brickinventoryapp.testing.testStockReconciliation
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.TestStore
+import ch.brickinventoryapp.testing.testStockReconciliation
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runCurrent

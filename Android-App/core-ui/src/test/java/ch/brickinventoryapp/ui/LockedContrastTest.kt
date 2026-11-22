@@ -6,10 +6,10 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.ui.theme.windowSurface
 import ch.brickinventoryapp.ui.theme.colorScheme
-import ch.brickinventoryapp.ui.theme.lockedColors
 import ch.brickinventoryapp.ui.theme.hasDarkVersion
+import ch.brickinventoryapp.ui.theme.lockedColors
+import ch.brickinventoryapp.ui.theme.windowSurface
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

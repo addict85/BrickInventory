@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.model.domain.LocationView
-import ch.brickinventoryapp.model.domain.LocationEntryView
-import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.LocationEntryView
+import ch.brickinventoryapp.model.domain.LocationView
+import ch.brickinventoryapp.model.domain.MemberView
 
 /*
  * The state classes live per area in ui/Zustand*.kt; here, what applies alongside

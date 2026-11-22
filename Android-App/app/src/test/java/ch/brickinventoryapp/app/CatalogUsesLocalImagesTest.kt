@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.contract.CatalogSetItem
 import ch.brickinventoryapp.contract.CatalogSetDetail
+import ch.brickinventoryapp.contract.CatalogSetItem
+import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.testing.Sources
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Catalog images use the user-independent local file determined by the server

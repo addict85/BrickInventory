@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.session.LogoutProcess
 import ch.brickinventoryapp.data.LogoutPath
 import ch.brickinventoryapp.data.LogoutState
 import ch.brickinventoryapp.data.SessionCleanup
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.session.LogoutProcess
+import ch.brickinventoryapp.session.Session
 import javax.inject.Inject
 
 /**

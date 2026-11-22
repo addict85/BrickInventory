@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.state
 
-import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
-import org.junit.Test
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.testManagementRepository
 import ch.brickinventoryapp.testing.withRepo
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
 /**
  * The server's theme is already known before sign-in.

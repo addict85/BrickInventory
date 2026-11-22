@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.ApiLimitsView
+import ch.brickinventoryapp.model.domain.BackgroundView
 import ch.brickinventoryapp.model.domain.BricksetEntryView
 import ch.brickinventoryapp.model.domain.CacheMetricsView
-import ch.brickinventoryapp.model.domain.CsvResultView
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CsvImportKind
-import ch.brickinventoryapp.model.domain.BackgroundView
+import ch.brickinventoryapp.model.domain.CsvResultView
 import ch.brickinventoryapp.model.domain.JobsView
 import ch.brickinventoryapp.model.domain.LogRowView
 import ch.brickinventoryapp.model.domain.StartStateView

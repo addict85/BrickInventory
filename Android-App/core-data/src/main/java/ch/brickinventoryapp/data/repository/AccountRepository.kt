@@ -1,27 +1,27 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.data.RedemptionOutcome
 import ch.brickinventoryapp.data.SwappedToken
-import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.model.domain.Login
-import ch.brickinventoryapp.model.domain.Confirmation
-import ch.brickinventoryapp.model.domain.DesignState
 import ch.brickinventoryapp.model.domain.AccountCreation
-import ch.brickinventoryapp.model.domain.AccountSettings
 import ch.brickinventoryapp.model.domain.AccountOwner
-import ch.brickinventoryapp.model.domain.ProfileSaved
+import ch.brickinventoryapp.model.domain.AccountSettings
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Confirmation
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.DesignState
+import ch.brickinventoryapp.model.domain.DeviceView
+import ch.brickinventoryapp.model.domain.Login
 import ch.brickinventoryapp.model.domain.ProfileChange
-import ch.brickinventoryapp.model.domain.QrPickupState
+import ch.brickinventoryapp.model.domain.ProfileSaved
+import ch.brickinventoryapp.model.domain.ProfileView
 import ch.brickinventoryapp.model.domain.QrPairing
+import ch.brickinventoryapp.model.domain.QrPickupState
 import ch.brickinventoryapp.model.domain.Registration
 import ch.brickinventoryapp.model.domain.RegistrationState
 import ch.brickinventoryapp.model.domain.SecondFactorSetup
 import ch.brickinventoryapp.model.domain.SecondFactorStatus
-import ch.brickinventoryapp.model.domain.DeviceView
-import ch.brickinventoryapp.model.domain.ProfileView
+import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.serialization.json.JsonObject
 
 /**

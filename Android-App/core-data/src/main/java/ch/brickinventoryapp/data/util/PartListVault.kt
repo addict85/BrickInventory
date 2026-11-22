@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.util
 
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.security.StoreKey
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
-import ch.brickinventoryapp.security.StoreCipher
-import ch.brickinventoryapp.security.StoreKey
 
 /** The encrypted parts list in filesDir/pdf; older versions stored `partList.pdf` in plaintext. */
 internal const val PART_LIST_FILE = "teileliste.bin"

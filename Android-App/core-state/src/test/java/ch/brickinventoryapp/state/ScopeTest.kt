@@ -2,10 +2,11 @@ package ch.brickinventoryapp.state
 
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AccountSelection
+import ch.brickinventoryapp.state.ui.FilterStore
+import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.testHouseholdRepository
 import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.state.ui.Scope
-import ch.brickinventoryapp.state.ui.FilterStore
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -15,7 +16,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The Blickfeld service — account filter, storage filter, household accounts — run

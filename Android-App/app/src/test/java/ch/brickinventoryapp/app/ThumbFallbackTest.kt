@@ -4,12 +4,12 @@ import ch.brickinventoryapp.model.util.IMG_PROXY
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.model.util.resolveThumbUrl
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /** Server address with a trailing slash: the helpers cut it off. */
 private const val SERVER = "http://nas:3000/"

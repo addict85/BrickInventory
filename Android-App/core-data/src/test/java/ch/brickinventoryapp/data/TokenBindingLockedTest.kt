@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.testing.testTrustCipher
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
@@ -8,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.TokenEncryption
 import ch.brickinventoryapp.security.VaultFinding
+import ch.brickinventoryapp.testing.testTrustCipher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,9 +22,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicInteger
-import java.io.File
 
 /**
  * A token goes only to the server that issued it — even if the keystore is locked during

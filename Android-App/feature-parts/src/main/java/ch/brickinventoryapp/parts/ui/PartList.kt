@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.parts.ui
 
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.PartsRepository
+import ch.brickinventoryapp.data.repository.SetCatalogRepository
 import ch.brickinventoryapp.model.domain.AccountSelection
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartialKey
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetCatalogRepository
-import ch.brickinventoryapp.data.repository.PartsRepository
+import ch.brickinventoryapp.model.util.IMG_PROXY
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.parts.ui.screens.comparePartNumbers
 import ch.brickinventoryapp.parts.ui.screens.plColorCollator
-import ch.brickinventoryapp.model.util.IMG_PROXY
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

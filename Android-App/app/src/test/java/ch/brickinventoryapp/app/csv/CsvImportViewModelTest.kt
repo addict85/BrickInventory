@@ -1,16 +1,21 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.domain.RunStatus
-import ch.brickinventoryapp.data.CsvImportObserver
 import androidx.lifecycle.viewModelScope
+import ch.brickinventoryapp.contract.CsvImportStatus
+import ch.brickinventoryapp.contract.GenericAdminResponse
+import ch.brickinventoryapp.data.CsvImportObserver
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStream
-import ch.brickinventoryapp.contract.CsvImportStatus
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
-import ch.brickinventoryapp.contract.GenericAdminResponse
+import ch.brickinventoryapp.model.domain.RunStatus
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.services.service.CsvImportRunner
+import ch.brickinventoryapp.testing.FakeApi
+import ch.brickinventoryapp.testing.NumbersTexts
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testSetFilesRepository
+import ch.brickinventoryapp.testing.text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -33,11 +38,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.testSetFilesRepository
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
 
 /**
  * The CSV import bar executed, ViewModel including coordinator: stream,

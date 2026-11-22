@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.network.di.ServerGuard
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.di.ServerGuard
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.VaultFinding
+import ch.brickinventoryapp.testing.testAccountRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
@@ -20,8 +22,6 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.testing.testAccountRepository
 
 /**
  * Signing out without network does not leave the token valid at the server: if

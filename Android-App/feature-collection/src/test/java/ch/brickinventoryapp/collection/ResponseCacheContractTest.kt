@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.collection
 
+import ch.brickinventoryapp.contract.FigValuationItem
+import ch.brickinventoryapp.contract.Minifig
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.SetsResponse
-import ch.brickinventoryapp.contract.ValuationSet
 import ch.brickinventoryapp.contract.StatsResponse
+import ch.brickinventoryapp.contract.ValuationSet
+import ch.brickinventoryapp.testing.Sources
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
-import ch.brickinventoryapp.contract.FigValuationItem
-import ch.brickinventoryapp.contract.Minifig
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * The server's answers pass through serialization without loss; how they lie in the

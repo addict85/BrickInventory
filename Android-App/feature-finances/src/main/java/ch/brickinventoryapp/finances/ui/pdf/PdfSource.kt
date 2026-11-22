@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.finances.ui.pdf
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.os.ParcelFileDescriptor
 import android.system.Os
 import android.system.OsConstants
+import ch.brickinventoryapp.data.DownloadFailed
 import ch.brickinventoryapp.data.util.INSTRUCTION_IN_STORAGE_UNTIL
 import ch.brickinventoryapp.data.util.InstructionStore
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File
@@ -14,8 +16,6 @@ import java.io.InputStream
 import java.io.InterruptedIOException
 import java.net.SocketException
 import java.net.UnknownHostException
-import ch.brickinventoryapp.data.DownloadFailed
-import ch.brickinventoryapp.model.ui.ErrorClass
 
 /**
  * Where the viewer reads from. An interface, so that the ViewModel can be

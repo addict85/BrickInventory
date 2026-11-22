@@ -1,16 +1,25 @@
 package ch.brickinventoryapp.account
 
+import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.testing.RowsServer
+import ch.brickinventoryapp.testing.SessionFake
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.testing.text
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -20,15 +29,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.testing.RowsServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import java.time.Instant
 
 /**

@@ -1,22 +1,24 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.domain.WantedRequest
-import ch.brickinventoryapp.model.domain.Money
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.domain.Condition
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.flow.first
-import ch.brickinventoryapp.offline.Editing
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.WantedRequest
+import ch.brickinventoryapp.model.domain.WantedSort
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testCatalogRepository
+import ch.brickinventoryapp.testing.testFinancesRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -26,8 +28,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The wishlist ViewModel, run against a PathServer without network. The waiting periods

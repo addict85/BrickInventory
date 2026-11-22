@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.management.ui
 
-import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.domain.LogRowView
+import ch.brickinventoryapp.model.ui.Load
 
 /**
  * The server log — its own state for admins: exactly one screen reads

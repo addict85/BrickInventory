@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.parts.ui
 
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -22,24 +22,24 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.ui.ScannerOrigin
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.navigation.AreaEnvironment
 import ch.brickinventoryapp.parts.ui.dialogs.SetItemDetailArea
 import ch.brickinventoryapp.parts.ui.dialogs.SetItemDetailDialog
 import ch.brickinventoryapp.parts.ui.screens.ManualItemDetailRoute
 import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsListRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.parts.ui.viewmodel.WithSetItem
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.ListAndDetail
-import ch.brickinventoryapp.ui.components.UndoMessage
 import ch.brickinventoryapp.ui.components.LocalOpenDetail
+import ch.brickinventoryapp.ui.components.UndoMessage
 import ch.brickinventoryapp.ui.components.detailKey
 import ch.brickinventoryapp.ui.listAndDetail
-import ch.brickinventoryapp.navigation.AreaEnvironment
-import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import coil3.ImageLoader
 
 /** What the scanner found for the parts list, along with the receipts. */

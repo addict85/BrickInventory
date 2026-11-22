@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.testing.text
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
-import ch.brickinventoryapp.testing.text
 
 /**
  * Two messages shortly after one another: the second waits until the first is

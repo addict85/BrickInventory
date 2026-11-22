@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
+import ch.brickinventoryapp.data.repository.Outcome
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test

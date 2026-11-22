@@ -3,10 +3,10 @@ package ch.brickinventoryapp.ui
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Density
-import ch.brickinventoryapp.ui.theme.Shapes
-import org.junit.Test
-import org.junit.Assert
 import ch.brickinventoryapp.testing.Sources
+import ch.brickinventoryapp.ui.theme.Shapes
+import org.junit.Assert
+import org.junit.Test
 
 /**
  * The dimensions of an inventory tile live in ONE place.

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.shared
 
-import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.shared.ui.entryInvalid
 import ch.brickinventoryapp.shared.ui.entryValues
-import ch.brickinventoryapp.model.domain.MemberView
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

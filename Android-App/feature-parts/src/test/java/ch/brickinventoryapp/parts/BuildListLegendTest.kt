@@ -3,11 +3,11 @@ package ch.brickinventoryapp.parts
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.PartListUiState
+import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.screens.PartsListScreen
 import ch.brickinventoryapp.parts.ui.screens.buildListsGroups
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import coil3.ImageLoader
 import org.junit.Assert.assertEquals

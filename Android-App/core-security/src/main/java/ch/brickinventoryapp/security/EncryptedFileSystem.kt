@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.security
 
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import okio.Buffer
 import okio.BufferedSource
 import okio.FileHandle
@@ -14,7 +15,6 @@ import java.io.File
 import java.io.IOException
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 
 /**
  * A file system that encrypts every file with [StoreCipher]: for the

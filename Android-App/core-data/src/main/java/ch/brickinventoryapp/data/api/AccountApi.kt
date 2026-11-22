@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.contract.Erledigt
 import ch.brickinventoryapp.contract.AndereBeendenAnfrage
 import ch.brickinventoryapp.contract.AndereBeendet
+import ch.brickinventoryapp.contract.AppThemeResponse
 import ch.brickinventoryapp.contract.DefaultConditionResponse
+import ch.brickinventoryapp.contract.Erledigt
 import ch.brickinventoryapp.contract.ForgotPasswordRequest
 import ch.brickinventoryapp.contract.ForgotPasswordResponse
 import ch.brickinventoryapp.contract.GenericAdminResponse
@@ -42,7 +43,6 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
-import ch.brickinventoryapp.contract.AppThemeResponse
 
 /**
  * Sign-in and the own account: profile, password, second factor, signed-in

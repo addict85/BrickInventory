@@ -1,13 +1,12 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.HouseholdStatusView
+import ch.brickinventoryapp.model.domain.InvitationView
+import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.PurchaseChange
 import ch.brickinventoryapp.model.domain.PurchaseCorrection
-import ch.brickinventoryapp.model.domain.InvitationView
-import ch.brickinventoryapp.model.domain.HouseholdStatusView
 import ch.brickinventoryapp.model.domain.PurchasesView
-import ch.brickinventoryapp.model.domain.MemberView
-
-import ch.brickinventoryapp.model.domain.Condition
 /**
  * The household: members, invitations, accounts.
  * An interface so that ViewModels and tests do not depend on the implementation with

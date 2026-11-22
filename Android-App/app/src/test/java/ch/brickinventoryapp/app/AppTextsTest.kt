@@ -3,9 +3,9 @@ package ch.brickinventoryapp.app
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.LoginState
-import ch.brickinventoryapp.model.util.TextSource
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.ErrorCode
+import ch.brickinventoryapp.model.util.TextSource
 import ch.brickinventoryapp.state.ui.viewmodel.AppTexts
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

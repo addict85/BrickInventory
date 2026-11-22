@@ -2,10 +2,10 @@ package ch.brickinventoryapp.security
 
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.util.AppLog
-import java.util.concurrent.CopyOnWriteArrayList
 import java.io.File
 import java.io.IOException
 import java.security.SecureRandom
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.crypto.Cipher
 import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec

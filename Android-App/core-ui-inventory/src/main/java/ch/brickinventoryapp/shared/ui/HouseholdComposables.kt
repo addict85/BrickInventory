@@ -1,12 +1,5 @@
 package ch.brickinventoryapp.shared.ui
 
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.model.domain.accountOptions
-import ch.brickinventoryapp.model.domain.AccountView
-import ch.brickinventoryapp.model.domain.LocationView
-import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -19,10 +12,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.model.domain.AccountView
+import ch.brickinventoryapp.model.domain.LocationView
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.accountOptions
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * The account filter, as an inventory view shows it: top left, with the

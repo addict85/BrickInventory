@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.shared
 
-import ch.brickinventoryapp.model.domain.Money
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -20,12 +19,13 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.shared.ui.AcquisitionSummarySection
-import ch.brickinventoryapp.shared.ui.ValueTiles
 import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.shared.ui.AcquisitionSummarySection
+import ch.brickinventoryapp.shared.ui.ValueTiles
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtPercent

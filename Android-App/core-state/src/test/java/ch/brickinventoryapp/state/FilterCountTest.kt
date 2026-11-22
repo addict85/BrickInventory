@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
+import ch.brickinventoryapp.model.domain.ColorPicker
 import ch.brickinventoryapp.model.domain.LocationView
 import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.state.ui.FilterCount
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.model.data.SparePartChoice
 
 /**
  * The number on the „Filter“ button counts what really narrows the list — not

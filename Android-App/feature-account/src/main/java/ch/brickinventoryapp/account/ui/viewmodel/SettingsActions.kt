@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.account.ui.viewmodel
 
-import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.LocationEntryView
+import ch.brickinventoryapp.model.domain.Money
 
 /** What settings and its subpages change on the account; the cards only know this interface. */
 interface SettingsActions {

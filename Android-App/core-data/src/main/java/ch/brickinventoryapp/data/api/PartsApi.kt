@@ -14,6 +14,7 @@ import ch.brickinventoryapp.contract.LagerortVorgabeRequest
 import ch.brickinventoryapp.contract.LagerortVorgabeResponse
 import ch.brickinventoryapp.contract.LagerortVorratResponse
 import ch.brickinventoryapp.contract.LagerorteResponse
+import ch.brickinventoryapp.contract.ManualPartsResponse
 import ch.brickinventoryapp.contract.PartsCategoriesResponse
 import ch.brickinventoryapp.contract.PartsFilterColorsResponse
 import ch.brickinventoryapp.contract.PartsResponse
@@ -22,6 +23,7 @@ import ch.brickinventoryapp.contract.TeilFarbeRequest
 import ch.brickinventoryapp.contract.TeilFarbeResponse
 import ch.brickinventoryapp.contract.UpdateManualItemRequest
 import ch.brickinventoryapp.contract.VerwendendeSetsResponse
+import ch.brickinventoryapp.model.data.SparePartChoice
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -31,8 +33,6 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.contract.ManualPartsResponse
-import ch.brickinventoryapp.model.data.SparePartChoice
 
 /**
  * Query the parts list — for the parts tab and the content of a set;

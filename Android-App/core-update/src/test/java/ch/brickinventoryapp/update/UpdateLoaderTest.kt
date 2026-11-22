@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.update
 
-import ch.brickinventoryapp.update.data.UpdateLoader
 import ch.brickinventoryapp.model.util.AppVersion
+import ch.brickinventoryapp.update.data.UpdateLoader
 import ch.brickinventoryapp.update.util.UPDATE_JSON_MAX_BYTES
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_BASE
 import ch.brickinventoryapp.update.util.UpdateDescription

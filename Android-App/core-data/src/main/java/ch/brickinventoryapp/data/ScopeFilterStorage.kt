@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.data.ScopeFilter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.model.data.ScopeFilter
 
 /**
  * Where the choice of the account and storage location filter lies: only in memory. The values name accounts

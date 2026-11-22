@@ -1,32 +1,32 @@
 package ch.brickinventoryapp.parts.ui.screens
 
-import ch.brickinventoryapp.model.domain.PartEntry
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.ui.theme.colorFromHex
-import ch.brickinventoryapp.shared.ui.entryInvalid
-import ch.brickinventoryapp.shared.ui.entryValues
-import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.model.domain.ColorView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.PartEntry
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
 import ch.brickinventoryapp.model.ui.withoutNoColor
-import androidx.compose.material3.ExperimentalMaterial3Api
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.AddDialog
-import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.EntryFields
 import ch.brickinventoryapp.shared.ui.OwnerPicker
+import ch.brickinventoryapp.shared.ui.entryInvalid
+import ch.brickinventoryapp.shared.ui.entryValues
+import ch.brickinventoryapp.ui.components.AddDialog
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.colorFromHex
 
 @Composable
 internal fun AddPartDialog(

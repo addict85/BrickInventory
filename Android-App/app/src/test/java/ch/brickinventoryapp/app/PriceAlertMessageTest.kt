@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.app
 
 import android.app.Notification
+import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import android.content.Context
 
 /**
  * A price alert names set and price only when unlocked; on the lock screen a

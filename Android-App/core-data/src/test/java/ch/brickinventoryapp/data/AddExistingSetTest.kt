@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.Sources
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testSetCatalogRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testSetCatalogRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * An already added set is opened, not silently increased — whether

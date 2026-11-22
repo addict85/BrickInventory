@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.Slots
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton

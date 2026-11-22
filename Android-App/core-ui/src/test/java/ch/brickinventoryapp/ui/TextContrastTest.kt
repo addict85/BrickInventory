@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.ChartColors
 import ch.brickinventoryapp.ui.theme.StatusColors
 import ch.brickinventoryapp.ui.theme.accentSurfaces
 import ch.brickinventoryapp.ui.theme.chartColors
 import ch.brickinventoryapp.ui.theme.colorScheme
 import ch.brickinventoryapp.ui.theme.hasDarkVersion
-import ch.brickinventoryapp.ui.theme.tabColors
 import ch.brickinventoryapp.ui.theme.statusColorsFor
+import ch.brickinventoryapp.ui.theme.tabColors
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

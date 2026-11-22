@@ -1,9 +1,16 @@
 package ch.brickinventoryapp.app
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
+import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.Sources
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testFinancesRepository
+import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.testing.testSetsRepository
+import ch.brickinventoryapp.testing.text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -13,13 +20,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import javax.inject.Singleton
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
 
 /**
  * There is exactly ONE path to the snackbar.

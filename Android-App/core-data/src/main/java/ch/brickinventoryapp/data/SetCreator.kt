@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.SetRecorded
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore

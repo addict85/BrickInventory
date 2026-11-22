@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.collection.ui
 
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.domain.SetSort
-import ch.brickinventoryapp.model.domain.PurchaseView
-import ch.brickinventoryapp.model.domain.PurchaseSumsView
 import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.domain.PriceHistoryView
-import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.domain.PurchaseSumsView
+import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.model.domain.SetPriceView
+import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.ui.Load
 
 /**
  * Gallery: list, filter, paging state and figures. Its own flow, because

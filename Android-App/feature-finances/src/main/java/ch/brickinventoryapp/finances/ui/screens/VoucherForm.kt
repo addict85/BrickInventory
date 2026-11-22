@@ -1,38 +1,38 @@
 package ch.brickinventoryapp.finances.ui.screens
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.finances.ui.VoucherUiState
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.finances.ui.viewmodel.inputViaMask
-import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.model.domain.PIN_MASK_DISPLAY
 import ch.brickinventoryapp.model.domain.isMaskedNumber
-import ch.brickinventoryapp.ui.theme.Shapes
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.ui.components.SelectionField
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ButtonRow
+import ch.brickinventoryapp.ui.components.SelectionField
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
 
 /**
  * The form for creating and editing as a sheet from the bottom, right away fully open: half open

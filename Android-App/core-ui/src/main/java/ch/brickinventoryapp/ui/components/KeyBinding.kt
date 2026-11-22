@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui.components
 
 import ch.brickinventoryapp.model.step.KeyNonce
-import ch.brickinventoryapp.model.step.StepResponse
 import ch.brickinventoryapp.model.step.StepBinding
+import ch.brickinventoryapp.model.step.StepResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

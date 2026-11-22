@@ -3,10 +3,10 @@ package ch.brickinventoryapp.ui
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.util.NumericInput
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Number fields: number pad and allowed characters — one version.

@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.management.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Condition
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
@@ -10,11 +8,22 @@ import ch.brickinventoryapp.data.repository.ManagementRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.model.domain.ApiLimitsView
+import ch.brickinventoryapp.model.domain.BackgroundView
 import ch.brickinventoryapp.model.domain.BricksetEntryView
 import ch.brickinventoryapp.model.domain.CacheMetricsView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.domain.JobStateView
 import ch.brickinventoryapp.model.domain.ScheduleView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.dataOrNull
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.errorMessage
+import ch.brickinventoryapp.state.ui.loadAs
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,15 +31,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.domain.ErrorCode
-import ch.brickinventoryapp.model.domain.BackgroundView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.dataOrNull
-import ch.brickinventoryapp.state.ui.loadAs
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.state.ui.errorMessage
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
  * What the monitoring screen knows from the server — server data only. What is

@@ -3,13 +3,13 @@ package ch.brickinventoryapp.model
 import ch.brickinventoryapp.contract.AppThemeResponse
 import ch.brickinventoryapp.contract.CsvImportStatus
 import ch.brickinventoryapp.contract.UserSettings
-import ch.brickinventoryapp.model.domain.ColorPicker
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.CategoryChoice
-import ch.brickinventoryapp.model.domain.RunStatus
-import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.domain.ColorPicker
 import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.RunStatus
+import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.domain.WantedSort
 import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals

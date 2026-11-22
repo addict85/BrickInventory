@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.data.util.PartListVault
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.testing.Sources
+import ch.brickinventoryapp.update.util.checkedDescription
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -11,10 +15,6 @@ import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.util.Base64
-import ch.brickinventoryapp.data.util.PartListVault
-import ch.brickinventoryapp.security.StoreCipher
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.update.util.checkedDescription
 
 /**
  * INVARIANTEN.md refers to source files and test classes; a reference to

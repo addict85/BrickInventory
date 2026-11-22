@@ -13,27 +13,27 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import ch.brickinventoryapp.model.ui.ScannerOrigin
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.collection.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.collection.ui.screens.BarcodeScannerScreen
 import ch.brickinventoryapp.collection.ui.screens.ComparisonScreen
-import ch.brickinventoryapp.collection.ui.screens.GalleryUndoRoute
 import ch.brickinventoryapp.collection.ui.screens.GalleryAndDetail
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
-import ch.brickinventoryapp.collection.ui.screens.WantedRoute
+import ch.brickinventoryapp.collection.ui.screens.GalleryUndoRoute
+import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedItemDetailRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedItemUndoRoute
-import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
+import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
+import ch.brickinventoryapp.model.ui.ScannerOrigin
+import ch.brickinventoryapp.navigation.AreaEnvironment
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.WithTarget
 import ch.brickinventoryapp.ui.listAndDetail
-import ch.brickinventoryapp.navigation.AreaEnvironment
-import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 
 /** What the collection needs from the app; the entry flow hangs on the destination that scans. */
 interface CollectionNavigation : AreaEnvironment {

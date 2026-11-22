@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui.components
 
 import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.model.step.StepResponse
 import ch.brickinventoryapp.model.step.StepBinding
+import ch.brickinventoryapp.model.step.StepResponse
 import java.security.Signature
 
 /**

@@ -1,20 +1,19 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.ValuationView
-import ch.brickinventoryapp.model.domain.FiguresValuationView
-import ch.brickinventoryapp.model.domain.ProfitView
-import ch.brickinventoryapp.model.domain.MetricsView
-import ch.brickinventoryapp.model.domain.PriceHistoryView
-import ch.brickinventoryapp.model.domain.SetPriceView
-import ch.brickinventoryapp.model.domain.PartsValuationView
-import ch.brickinventoryapp.model.domain.ValueHistoryView
 import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.mapping.asView
-
-import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.data.api.FinancesApi
-import ch.brickinventoryapp.offline.Slots
+import ch.brickinventoryapp.model.domain.AccountSelection
+import ch.brickinventoryapp.model.domain.FiguresValuationView
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.model.domain.PartsValuationView
+import ch.brickinventoryapp.model.domain.PriceHistoryView
+import ch.brickinventoryapp.model.domain.ProfitView
+import ch.brickinventoryapp.model.domain.SetPriceView
+import ch.brickinventoryapp.model.domain.ValuationView
+import ch.brickinventoryapp.model.domain.ValueHistoryView
 import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.Slots
 import javax.inject.Inject
 import javax.inject.Singleton
 

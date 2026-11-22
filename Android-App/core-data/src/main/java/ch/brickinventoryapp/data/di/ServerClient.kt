@@ -1,36 +1,36 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.model.ui.Message
-import javax.inject.Inject
 import android.os.Build
 import ch.brickinventoryapp.core.data.BuildConfig
-import ch.brickinventoryapp.data.NetworkTrust
-import ch.brickinventoryapp.data.TokenMirror
-import ch.brickinventoryapp.data.TokenStore
-import java.io.IOException
-import ch.brickinventoryapp.network.util.NetworkPolicy
-import ch.brickinventoryapp.network.util.VersionsHint
-import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.NetworkTrust
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.RightsSignal
-import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.network.util.RenewableTlsFactory
+import ch.brickinventoryapp.data.SessionExpiredSignal
+import ch.brickinventoryapp.data.TokenMirror
+import ch.brickinventoryapp.data.TokenStore
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.security.PinTrust
-import ch.brickinventoryapp.security.ChoiceTrust
-import ch.brickinventoryapp.security.CertificateQuestion
-import ch.brickinventoryapp.security.trustJob
 import ch.brickinventoryapp.data.util.networkRecording
-import ch.brickinventoryapp.security.pinKey
-import ch.brickinventoryapp.security.spkiFingerprint
-import ch.brickinventoryapp.security.SystemRoots
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.RotationReason
 import ch.brickinventoryapp.network.di.ServerGuard
-import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.network.util.RenewableTlsFactory
+import ch.brickinventoryapp.network.util.VersionsHint
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.ChoiceTrust
+import ch.brickinventoryapp.security.PinTrust
+import ch.brickinventoryapp.security.SystemRoots
+import ch.brickinventoryapp.security.pinKey
+import ch.brickinventoryapp.security.spkiFingerprint
+import ch.brickinventoryapp.security.trustJob
+import okhttp3.OkHttpClient
+import java.io.IOException
+import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 /**
  * The device's access situation. The values come from the in-memory mirror of the

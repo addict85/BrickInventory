@@ -5,6 +5,7 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.file.FileCollection
 import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
@@ -42,6 +43,7 @@ class DetektConvention : Plugin<Project> {
                 DetektArguments(
                     sources, target.rootDir.resolve("config/detekt/detekt.yml"),
                     target.rootDir.resolve("config/detekt/baseline.xml"), ruleset, report.map { it.asFile },
+                    target.providers.gradleProperty("detektAutoCorrect").isPresent,
                 ),
             )
             task.outputs.file(report)
@@ -74,6 +76,8 @@ internal class DetektArguments(
     @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val baseline: File,
     @get:Classpath val ruleset: FileCollection,
     @get:Internal val report: org.gradle.api.provider.Provider<File>,
+    /** `-PdetektAutoCorrect`: let the formatting rules (import order) rewrite the files instead of only reporting. */
+    @get:Input val autoCorrect: Boolean,
 ) : CommandLineArgumentProvider {
     override fun asArguments(): Iterable<String> = listOf(
         "--input", sources.files.joinToString(",") { it.absolutePath },
@@ -82,5 +86,5 @@ internal class DetektArguments(
         "--baseline", baseline.absolutePath,
         "--plugins", ruleset.files.joinToString(",") { it.absolutePath },
         "--report", "txt:" + report.get().absolutePath,
-    )
+    ) + if (autoCorrect) listOf("--auto-correct") else emptyList()
 }

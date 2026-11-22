@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.model.local.StockKind
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow

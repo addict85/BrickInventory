@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.collection
 
-import java.time.Instant
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,9 +12,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.collection.ui.screens.PurchaseDate
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.collection.ui.screens.PurchaseDate
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -24,6 +23,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Instant
 import java.util.Locale
 
 /**

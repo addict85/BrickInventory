@@ -7,11 +7,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
-import ch.brickinventoryapp.model.domain.EntryRequest
-import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.collection.ui.dialogs.BarcodeResultRoute
 import ch.brickinventoryapp.collection.ui.dialogs.SetCheckRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.model.domain.EntryRequest
+import ch.brickinventoryapp.model.ui.ScannerOrigin
 import coil3.ImageLoader
 
 /** Key in the SavedStateHandle of the destination that opened the scanner. */

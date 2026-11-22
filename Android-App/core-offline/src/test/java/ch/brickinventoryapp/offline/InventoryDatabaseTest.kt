@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.local.StockKind
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ReconcileOutcome
 import ch.brickinventoryapp.data.local.SendOutcome
+import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.offline.Outbox.DiscardedItem
-import ch.brickinventoryapp.offline.room.OutboxRow
 import ch.brickinventoryapp.offline.room.InventoryDatabase
-import ch.brickinventoryapp.offline.room.RoomOutbox
+import ch.brickinventoryapp.offline.room.OutboxRow
 import ch.brickinventoryapp.offline.room.RoomInventory
-import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.offline.room.RoomOutbox
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After

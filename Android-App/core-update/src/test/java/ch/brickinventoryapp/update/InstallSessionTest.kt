@@ -9,8 +9,8 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.update.util.INSTALLATION_CONFIRM
-import ch.brickinventoryapp.update.util.InstallReceiver
 import ch.brickinventoryapp.update.util.InstallMessage
+import ch.brickinventoryapp.update.util.InstallReceiver
 import ch.brickinventoryapp.update.util.install
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

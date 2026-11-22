@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.collection.ui.Entry
-import ch.brickinventoryapp.collection.ui.EntryUiState
 import ch.brickinventoryapp.collection.ui.CheckPhase
 import ch.brickinventoryapp.collection.ui.CheckStep
+import ch.brickinventoryapp.collection.ui.Entry
+import ch.brickinventoryapp.collection.ui.EntryUiState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

@@ -10,16 +10,16 @@ import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.net.toUri
-import ch.brickinventoryapp.resources.R
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import java.io.File
-import java.security.MessageDigest
 import ch.brickinventoryapp.data.util.UPDATE_FOLDER
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.resources.R
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.io.File
+import java.security.MessageDigest
+import javax.inject.Inject
 
 /**
  * The app updates itself from the GitHub release: check silently on start,

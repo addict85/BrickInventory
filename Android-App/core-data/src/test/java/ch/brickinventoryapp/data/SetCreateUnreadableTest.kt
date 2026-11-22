@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.testing.TestApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import ch.brickinventoryapp.testing.TestApi
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After

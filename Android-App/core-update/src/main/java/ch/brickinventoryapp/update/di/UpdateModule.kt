@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.update.di
 
-import ch.brickinventoryapp.update.data.UpdateStore
 import ch.brickinventoryapp.update.data.UpdateLoader
 import ch.brickinventoryapp.update.data.UpdateRepository
+import ch.brickinventoryapp.update.data.UpdateStore
 import ch.brickinventoryapp.update.util.AndroidUpdateDevice
 import ch.brickinventoryapp.update.util.UpdateDevice
 import ch.brickinventoryapp.update.util.UpdateStatusStore

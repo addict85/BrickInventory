@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.PartsValuationResponse
+import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.SetsResponse
 import ch.brickinventoryapp.contract.ValuationResponse
 import ch.brickinventoryapp.contract.present
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.model.json.BrickJson
 
 /**
  * Client-side API contract for the price history and the valuation.

@@ -1,8 +1,10 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.domain.CatalogMetaView
 import ch.brickinventoryapp.data.repository.CatalogRepository
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.CatalogMetaView
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testCatalogRepository
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -10,8 +12,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The store ONLY steps in when the server is not reachable — and then says

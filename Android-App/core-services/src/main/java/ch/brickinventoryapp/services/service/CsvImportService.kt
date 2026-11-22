@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.services.service
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -10,9 +9,14 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.data.CsvImportSseClient
+import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.SetFilesRepository
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.resources.R
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -22,11 +26,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import javax.inject.Inject
-import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.data.util.LanguageManager
 
 /** The foreground service of a running CSV import; a counter in the test. */
 interface CsvImportRunner {

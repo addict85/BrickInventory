@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.data.local
 
-import ch.brickinventoryapp.model.domain.EntryRequest
-import ch.brickinventoryapp.model.domain.FigureEntry
-import ch.brickinventoryapp.model.domain.WantedRequest
-import ch.brickinventoryapp.model.domain.SetTotals
-import ch.brickinventoryapp.model.domain.QuantityChange
-import ch.brickinventoryapp.model.domain.PartEntry
-import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.contract.AddMinifigRequest
 import ch.brickinventoryapp.contract.AddPartRequest
 import ch.brickinventoryapp.contract.AddSetRequest
 import ch.brickinventoryapp.contract.MerkpostenRequest
 import ch.brickinventoryapp.contract.SetAggregate
 import ch.brickinventoryapp.contract.UpdateManualItemRequest
+import ch.brickinventoryapp.model.domain.EntryRequest
+import ch.brickinventoryapp.model.domain.FigureEntry
+import ch.brickinventoryapp.model.domain.PartEntry
+import ch.brickinventoryapp.model.domain.QuantityChange
+import ch.brickinventoryapp.model.domain.SetTotals
+import ch.brickinventoryapp.model.domain.WantedRequest
+import ch.brickinventoryapp.model.domain.asMoney
 
 /*
  * The requests for the store's edits: the store holds domain values, only here does

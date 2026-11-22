@@ -12,8 +12,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.shared.ui.LocalColumnMap
 import ch.brickinventoryapp.shared.ui.SectionCard
-import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.ui.theme.Spacing
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

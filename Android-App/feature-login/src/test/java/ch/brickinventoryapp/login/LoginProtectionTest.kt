@@ -4,15 +4,17 @@ import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.platform.InterceptPlatformTextInput
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.login.ui.LoginForm
-import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.QrSetupScannerScreen
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -20,8 +22,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.platform.InterceptPlatformTextInput
 
 /**
  * Sign-in protects against overlaid windows (tapjacking on sign-in and

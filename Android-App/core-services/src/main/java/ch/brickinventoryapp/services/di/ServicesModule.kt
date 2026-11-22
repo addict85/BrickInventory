@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.services.di
 
+import ch.brickinventoryapp.data.AlarmPlanner
 import ch.brickinventoryapp.services.alarm.PriceAlertPass
 import ch.brickinventoryapp.services.alarm.PriceAlertRepository
 import ch.brickinventoryapp.services.alarm.WorkManagerAlarmPlanner
-import ch.brickinventoryapp.data.AlarmPlanner
 import ch.brickinventoryapp.services.service.AndroidCsvImportService
 import ch.brickinventoryapp.services.service.CsvImportRunner
 import dagger.Binds

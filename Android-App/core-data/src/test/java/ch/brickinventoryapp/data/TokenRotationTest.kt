@@ -1,11 +1,20 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.network.di.ServerGuard
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
+import ch.brickinventoryapp.network.di.ServerGuard
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testAccountRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -13,25 +22,16 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import java.io.File
+import java.io.IOException
 import java.util.Collections
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
-import java.io.IOException
-import okhttp3.mockwebserver.SocketPolicy
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The swap of the token in the real network path: guard, account repository and

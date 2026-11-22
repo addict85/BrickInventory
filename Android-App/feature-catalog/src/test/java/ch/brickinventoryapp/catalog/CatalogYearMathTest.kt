@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.catalog
 
-import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.catalog.ui.CatalogYearMath
+import ch.brickinventoryapp.model.domain.YearCountView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

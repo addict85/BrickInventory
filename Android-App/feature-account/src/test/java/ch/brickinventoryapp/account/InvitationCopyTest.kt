@@ -15,8 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import ch.brickinventoryapp.account.ui.HouseholdUiState
 import ch.brickinventoryapp.account.ui.screens.HouseholdCard
-import ch.brickinventoryapp.model.domain.HouseholdStatusView
 import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.HouseholdStatusView
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.LocalSdkLevel

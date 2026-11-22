@@ -1,17 +1,18 @@
 package ch.brickinventoryapp.account
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.update.data.UpdateLoader
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.LoginState
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.data.LoginState
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.model.util.AppVersion
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.update.data.UpdateLoader
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_BASE
 import ch.brickinventoryapp.update.util.UPDATE_VERSION_URL
-import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.UpdateDevice
+import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.UpdateStatus
 import ch.brickinventoryapp.update.util.UpdateStatusStore
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,6 @@ import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.Signature
 import java.util.Base64
-import ch.brickinventoryapp.model.ui.Message
 
 /**
  * The self-update run: signed description, download, checksum,

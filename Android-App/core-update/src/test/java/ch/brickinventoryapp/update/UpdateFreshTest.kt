@@ -4,9 +4,9 @@ import ch.brickinventoryapp.update.util.UpdateDescription
 import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.UpdateStatus
 import ch.brickinventoryapp.update.util.UpdateStatusStore
-import ch.brickinventoryapp.update.util.offerableVersion
-import ch.brickinventoryapp.update.util.checkedDescription
 import ch.brickinventoryapp.update.util.checkFresh
+import ch.brickinventoryapp.update.util.checkedDescription
+import ch.brickinventoryapp.update.util.offerableVersion
 import ch.brickinventoryapp.update.util.sourceStale
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

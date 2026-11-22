@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.state.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.session.derived
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AppearanceStore
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.state.ui.WidgetKick
 import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.session.derived
+import ch.brickinventoryapp.state.ui.WidgetKick
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

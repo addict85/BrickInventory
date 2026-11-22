@@ -2,8 +2,8 @@ package ch.brickinventoryapp.shared.ui
 
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.PriceChartView
-import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.model.util.fmtDatum
+import ch.brickinventoryapp.ui.util.appNumberLocale
 
 /**
  * Computation for the price chart, without Compose and thus testable. The zeros

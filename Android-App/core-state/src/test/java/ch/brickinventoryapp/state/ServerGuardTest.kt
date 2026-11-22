@@ -1,8 +1,11 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.di.ServerGuard
+import ch.brickinventoryapp.network.util.APP_API_VERSION
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.PlaintextRejected
+import ch.brickinventoryapp.network.util.VersionsHint
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.Dispatcher
@@ -18,9 +21,6 @@ import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import ch.brickinventoryapp.network.util.APP_API_VERSION
-import ch.brickinventoryapp.network.util.NetworkPolicy
-import ch.brickinventoryapp.network.util.VersionsHint
 
 /**
  * The guard for all requests to the app's own server, run against a

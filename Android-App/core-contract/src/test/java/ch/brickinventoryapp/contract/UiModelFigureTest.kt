@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.contract
 
+import ch.brickinventoryapp.contract.mapping.asData
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.model.domain.AccountView
 import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.CsvImportKind
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.NO_COLOR
 import ch.brickinventoryapp.model.domain.Origin
 import ch.brickinventoryapp.model.domain.RunStatus
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.NO_COLOR
-import ch.brickinventoryapp.model.domain.CsvImportKind
-import ch.brickinventoryapp.model.domain.AccountView
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.contract.mapping.asData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

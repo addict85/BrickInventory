@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.finances.ui.viewmodel
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.DownloadFailed
 import ch.brickinventoryapp.finances.ui.pdf.PdfError
 import ch.brickinventoryapp.finances.ui.pdf.PdfHolder
-import ch.brickinventoryapp.finances.ui.pdf.PdfLoader
 import ch.brickinventoryapp.finances.ui.pdf.PdfLoadState
+import ch.brickinventoryapp.finances.ui.pdf.PdfLoader
 import ch.brickinventoryapp.finances.ui.pdf.PdfPagesSource
 import ch.brickinventoryapp.finances.ui.pdf.PdfWriter
 import ch.brickinventoryapp.finances.ui.pdf.copyCancellable
 import ch.brickinventoryapp.finances.ui.pdf.pdfErrorClass
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.util.pdfInViewer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.FigureEntry
-import ch.brickinventoryapp.model.domain.WantedRequest
-import ch.brickinventoryapp.model.domain.QuantityChange
 import ch.brickinventoryapp.model.domain.PartEntry
-import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.QuantityChange
+import ch.brickinventoryapp.model.domain.WantedRequest
 import ch.brickinventoryapp.model.domain.asMoney
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi

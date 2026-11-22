@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.security
 
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import android.security.keystore.KeyPermanentlyInvalidatedException
 import java.security.InvalidKeyException
 import java.security.KeyStoreException
 import java.security.ProviderException

@@ -1,13 +1,5 @@
 package ch.brickinventoryapp.account.ui.screens
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -19,15 +11,23 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.title
-import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.account.ui.DevicesUiState
 import ch.brickinventoryapp.model.domain.DeviceView
-import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.PasswordPrompt
-import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.components.SettingsCard
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.ui.util.fmtTag
 
 /**
  * Signed-in devices: see and lock out the issued access tokens.

@@ -8,10 +8,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.centeredUntil
-import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.title
 
 /**
  * The frame of every sub-page: title, back arrow, the content below it with

@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.finances.ui.pdf
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.content.Context
-import ch.brickinventoryapp.model.coroutines.BrickDispatchers
-import ch.brickinventoryapp.model.coroutines.Dispatcher
-import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
-import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
-import ch.brickinventoryapp.data.util.INSTRUCTION_DISPLAY_FOLDER
 import ch.brickinventoryapp.data.InstructionRepository
+import ch.brickinventoryapp.data.util.INSTRUCTION_DISPLAY_FOLDER
 import ch.brickinventoryapp.data.util.InstructionStore
 import ch.brickinventoryapp.data.util.pdfStore
+import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
+import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

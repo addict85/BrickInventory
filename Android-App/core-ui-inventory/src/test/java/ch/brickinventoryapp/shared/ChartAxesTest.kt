@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.shared
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.ChartAxis
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PricePoint
+import ch.brickinventoryapp.shared.ui.localAxis
+import ch.brickinventoryapp.shared.ui.localValues
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
-import ch.brickinventoryapp.shared.ui.localAxis
-import ch.brickinventoryapp.shared.ui.localValues
 
 /**
  * The axes of the value development follow the app language instead of the server's

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.update.data
 
+import ch.brickinventoryapp.data.di.UpdateClient
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
-import ch.brickinventoryapp.data.di.UpdateClient
 import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.update.util.UPDATE_JSON_MAX_BYTES
 import ch.brickinventoryapp.update.util.UPDATE_MAX_BYTES

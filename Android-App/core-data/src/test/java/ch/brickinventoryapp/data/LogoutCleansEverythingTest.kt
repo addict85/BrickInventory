@@ -1,9 +1,5 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.MetricsView
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.testing.testTrustCipher
 import android.Manifest
 import android.app.Application
 import android.app.NotificationChannel
@@ -12,19 +8,28 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.cache.PreviewMemory
-import ch.brickinventoryapp.offline.Slots
-import ch.brickinventoryapp.testing.TestStore
 import ch.brickinventoryapp.contract.SetItem
-import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.repository.AccountDataDeletion
-import ch.brickinventoryapp.state.ui.LogoutHook
-import ch.brickinventoryapp.state.ui.Logout
-import ch.brickinventoryapp.state.ui.Scope
-import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.security.StoreKey
 import ch.brickinventoryapp.security.TokenEncryption
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.Logout
+import ch.brickinventoryapp.state.ui.LogoutHook
+import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.testing.StorageStore
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.TestStore
+import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.testing.testHouseholdRepository
+import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.testing.testTrustCipher
 import coil3.ImageLoader
 import coil3.disk.DiskCache
 import kotlinx.coroutines.CoroutineScope
@@ -53,11 +58,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.StorageStore
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * After signing out nothing of the account remains: Abmelden.execute() with the real

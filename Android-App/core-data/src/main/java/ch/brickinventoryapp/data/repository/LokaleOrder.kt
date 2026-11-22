@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.SetSort
-import ch.brickinventoryapp.model.domain.WantedSort
 import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.WantedSort
 import java.time.Instant
 
 /**

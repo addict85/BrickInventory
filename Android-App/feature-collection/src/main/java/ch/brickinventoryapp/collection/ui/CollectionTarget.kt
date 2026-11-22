@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.collection.ui
 
-import ch.brickinventoryapp.model.domain.NO_COLOR
-import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.NO_COLOR
 import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.ui.TabTarget
 import kotlinx.serialization.Serializable

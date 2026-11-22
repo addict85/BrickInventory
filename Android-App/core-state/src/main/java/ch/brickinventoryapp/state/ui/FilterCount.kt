@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.state.ui
 
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.LocationView
 import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.accountOptions
-import ch.brickinventoryapp.model.data.SparePartChoice
 
 /**
  * How many filters currently apply — the number on the „Filter“ button. Only what

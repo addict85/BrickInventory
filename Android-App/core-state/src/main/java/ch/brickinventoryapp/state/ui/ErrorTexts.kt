@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.errorTextToCode
 import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.data.repository.errorTextToCode
+import ch.brickinventoryapp.resources.R
 
 /**
  * Which text resource belongs to which error? A dedicated, pure function

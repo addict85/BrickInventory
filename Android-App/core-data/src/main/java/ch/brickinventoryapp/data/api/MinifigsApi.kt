@@ -5,6 +5,8 @@ import ch.brickinventoryapp.contract.AddMinifigResponse
 import ch.brickinventoryapp.contract.GenericResponse
 import ch.brickinventoryapp.contract.LagerortRequest
 import ch.brickinventoryapp.contract.LagerortResponse
+import ch.brickinventoryapp.contract.ManualFigsResponse
+import ch.brickinventoryapp.contract.MinifigStatsResponse
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.UpdateManualItemRequest
 import ch.brickinventoryapp.contract.VerwendendeSetsResponse
@@ -17,8 +19,6 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.contract.ManualFigsResponse
-import ch.brickinventoryapp.contract.MinifigStatsResponse
 
 /**
  * Query the figure list — for the figures tab and the content of a set.

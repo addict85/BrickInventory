@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * What can only be seen in the structure of the preview store: the order in the image client,

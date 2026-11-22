@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.contract.JobsResponse
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testManagementRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.testManagementRepository
 
 /**
  * Three admin actions the web app can already do, in the app too: change the schedule

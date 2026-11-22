@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.state
 
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.Sources
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testFinancesRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * Expired session, ImageLoader lifetime, and background polling.

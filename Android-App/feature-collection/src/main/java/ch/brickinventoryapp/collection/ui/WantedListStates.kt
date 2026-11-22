@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.collection.ui
 
-import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CatalogDetailView
-import ch.brickinventoryapp.model.domain.WantedItemView
-import ch.brickinventoryapp.model.domain.WantedItemPricesView
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.domain.PriceHistoryView
+import ch.brickinventoryapp.model.domain.WantedItemPricesView
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.WantedSort
 import ch.brickinventoryapp.model.ui.Load
 
 /**

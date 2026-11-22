@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.parts
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * The PARTS LIST's barcode scanner shows no entry fields.

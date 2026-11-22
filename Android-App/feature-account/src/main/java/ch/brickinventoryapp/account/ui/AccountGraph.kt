@@ -1,27 +1,27 @@
 package ch.brickinventoryapp.account.ui
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import ch.brickinventoryapp.account.ui.screens.AccountRoute
 import ch.brickinventoryapp.account.ui.screens.CsvImportRoute
 import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
-import ch.brickinventoryapp.account.ui.screens.AccountRoute
 import ch.brickinventoryapp.account.ui.screens.LocationsRoute
 import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.screens.SettingsRoute
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.navigation.AreaEnvironment
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
 import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
+import ch.brickinventoryapp.ui.ScrollPositionKeeper
 
 /**
  * What the settings need from the app: update, design and certificate live with

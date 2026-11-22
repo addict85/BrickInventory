@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.parts.ui.PartsFilter
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.domain.PartView
+import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.sorted
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.testing.PathServer

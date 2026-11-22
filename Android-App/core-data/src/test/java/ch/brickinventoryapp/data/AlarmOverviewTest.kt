@@ -1,8 +1,12 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.contract.Preisalarm
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.contract.Preisalarm
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.Sources
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testAlarmRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -10,10 +14,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.http.DELETE
 import retrofit2.http.PUT
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testAlarmRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The price alert overview exists in the app just as in the web app: an alert

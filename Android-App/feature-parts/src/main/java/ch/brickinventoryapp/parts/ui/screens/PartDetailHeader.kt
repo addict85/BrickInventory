@@ -16,13 +16,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.MetricsSeries
 import ch.brickinventoryapp.shared.ui.StatChipV2
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.CatalogNameHint
 import ch.brickinventoryapp.ui.components.ProductImage
-import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import coil3.ImageLoader
 
 /**

@@ -18,9 +18,9 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.model.domain.FigureEntry
 import ch.brickinventoryapp.model.domain.PartEntry
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.parts.ui.screens.AddMinifigDialog
 import ch.brickinventoryapp.parts.ui.screens.AddPartDialog
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.addClosable
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals

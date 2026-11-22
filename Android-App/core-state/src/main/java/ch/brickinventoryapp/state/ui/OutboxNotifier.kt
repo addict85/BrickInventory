@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.local.ReconcileEvent
 import ch.brickinventoryapp.data.local.Baseline
 import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
+import ch.brickinventoryapp.data.local.ReconcileEvent
 import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.resources.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,6 +1,10 @@
 package ch.brickinventoryapp.parts
 
 import ch.brickinventoryapp.parts.ui.PartList
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.testing.testSetCatalogRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -10,10 +14,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.net.URLEncoder
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.testSetCatalogRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The temporary parts list, run against a test server: resolve a set

@@ -1,16 +1,8 @@
 package ch.brickinventoryapp.shared.ui
 
-import ch.brickinventoryapp.model.domain.Condition
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.AnnotatedString
-import coil3.compose.AsyncImagePainter
-import ch.brickinventoryapp.ui.components.catalogName
-import ch.brickinventoryapp.ui.components.focusFrame
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,24 +10,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
-import coil3.ImageLoader
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.quantity
-import ch.brickinventoryapp.ui.components.readAloudAs
 import ch.brickinventoryapp.ui.components.ProductImage
 import ch.brickinventoryapp.ui.components.SegmentChoice
+import ch.brickinventoryapp.ui.components.catalogName
+import ch.brickinventoryapp.ui.components.focusFrame
 import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.quantity
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtInt
+import coil3.ImageLoader
+import coil3.compose.AsyncImagePainter
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 
 /**
  * A row of the table view — for parts and figures, like the web app's two

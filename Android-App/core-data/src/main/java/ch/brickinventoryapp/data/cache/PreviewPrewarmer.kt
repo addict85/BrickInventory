@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.cache
 
-import ch.brickinventoryapp.data.di.ImageClient
-import ch.brickinventoryapp.data.NetworkState
 import ch.brickinventoryapp.data.DevicesSettings
+import ch.brickinventoryapp.data.NetworkState
 import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.data.di.ImageClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope

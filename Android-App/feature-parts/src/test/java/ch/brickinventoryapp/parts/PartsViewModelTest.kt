@@ -1,17 +1,23 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.domain.CategoryChoice
-import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.resources.R
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.model.data.SparePartChoice
+import ch.brickinventoryapp.model.domain.CategoryChoice
+import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.text
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -22,12 +28,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.model.data.SparePartChoice
-import ch.brickinventoryapp.model.ui.ListView
-import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.parts.ui.PartsFilter
 
 /**
  * Parts and figures ViewModel, run against the rules of a PathServer without network

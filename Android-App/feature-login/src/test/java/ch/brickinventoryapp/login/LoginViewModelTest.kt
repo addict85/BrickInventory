@@ -1,14 +1,27 @@
 package ch.brickinventoryapp.login
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.data.LoginStore
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.login.ui.PasskeyQuery
 import ch.brickinventoryapp.login.ui.PasskeyResult
+import ch.brickinventoryapp.login.ui.QrAccount
 import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.security.PinStore
+import ch.brickinventoryapp.state.ui.FilterStore
+import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.SessionFake
+import ch.brickinventoryapp.testing.StorageStore
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.testing.testHouseholdRepository
+import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.testing.text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -22,22 +35,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.state.ui.Scope
-import ch.brickinventoryapp.state.ui.FilterStore
-import ch.brickinventoryapp.login.ui.QrAccount
 import java.util.Base64
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.StorageStore
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.security.PinStore
-import ch.brickinventoryapp.security.CertificateUnresolved
-import ch.brickinventoryapp.security.CertificateQuestion
 
 /**
  * The sign-in ViewModel, run against a PathServer without network and a store in

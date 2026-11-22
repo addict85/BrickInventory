@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.contract.mapping
 
 import ch.brickinventoryapp.contract.AppToken
-import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_FULL
 import ch.brickinventoryapp.model.domain.DeviceView
+import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_FULL
 import ch.brickinventoryapp.model.util.parseInstant
 
 fun AppToken.asDevice(): DeviceView = DeviceView(

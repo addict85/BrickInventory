@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.network
 
-import ch.brickinventoryapp.network.util.NetworkPolicy
-import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.di.ServerGuard
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody

@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.data.repository.FiguresRepositoryImpl
-import ch.brickinventoryapp.data.repository.WantedListRepositoryImpl
-import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
-import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
-import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.contract.FigValuationItem
 import ch.brickinventoryapp.contract.KontoName
 import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.data.NetworkState.RetryPolicy
+import ch.brickinventoryapp.data.repository.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
+import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
+import ch.brickinventoryapp.data.repository.WantedListRepositoryImpl
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
+import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.StorageInventory
 import ch.brickinventoryapp.testing.PathServer
 import kotlinx.coroutines.runBlocking

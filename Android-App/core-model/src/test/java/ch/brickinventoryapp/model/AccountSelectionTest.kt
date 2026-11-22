@@ -2,8 +2,8 @@ package ch.brickinventoryapp.model
 
 import ch.brickinventoryapp.contract.Preisalarm
 import ch.brickinventoryapp.contract.PreisalarmRequest
-import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.AccountSelection
+import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals

@@ -1,16 +1,15 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.YearCountView
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.data.NetworkState.RetryPolicy
+import ch.brickinventoryapp.data.api.CatalogApi
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogMetaView
 import ch.brickinventoryapp.model.domain.CatalogPageView
-import ch.brickinventoryapp.contract.mapping.asView
-
-import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.model.domain.CatalogSort
-import ch.brickinventoryapp.data.api.CatalogApi
-import ch.brickinventoryapp.offline.Slots
+import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.Slots
 import javax.inject.Inject
 import javax.inject.Singleton
 

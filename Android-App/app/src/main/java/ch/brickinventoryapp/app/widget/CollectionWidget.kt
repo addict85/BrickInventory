@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app.widget
 
-import ch.brickinventoryapp.security.DeviceLock
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
@@ -9,10 +7,10 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
@@ -25,6 +23,7 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -34,24 +33,25 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.app.AppLockStore
 import ch.brickinventoryapp.app.MainActivity
-import ch.brickinventoryapp.ui.components.AppLock
-import ch.brickinventoryapp.resources.R
-import androidx.hilt.work.HiltWorker
 import ch.brickinventoryapp.data.AppearanceStore
-import ch.brickinventoryapp.data.WidgetStatusStore
 import ch.brickinventoryapp.data.Credentials
+import ch.brickinventoryapp.data.WidgetStatusStore
+import ch.brickinventoryapp.data.repository.FinancesRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.DeviceLock
+import ch.brickinventoryapp.ui.components.AppLock
+import ch.brickinventoryapp.ui.theme.Spacing
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.data.repository.FinancesRepository
-import ch.brickinventoryapp.data.util.LanguageManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.ui.theme.Spacing
 /**
  * The most recently fetched numbers. The widget reads only here and thus shows the last state
  * even without network; only [WidgetWorker] fetches. Encrypted like the

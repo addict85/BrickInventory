@@ -4,8 +4,8 @@ import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.SetFilesRepository
 import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.RunStatus
-import ch.brickinventoryapp.testing.testSetFilesRepository
 import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testSetFilesRepository
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer

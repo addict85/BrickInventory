@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.model.step.StepResponse
 import ch.brickinventoryapp.model.step.StepBinding
-import ch.brickinventoryapp.ui.components.StepFlow
+import ch.brickinventoryapp.model.step.StepResponse
 import ch.brickinventoryapp.ui.components.StepApproval
+import ch.brickinventoryapp.ui.components.StepFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

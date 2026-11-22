@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.shared
 
+import ch.brickinventoryapp.shared.ui.quantityFromSet
+import ch.brickinventoryapp.shared.ui.quantityManual
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.shared.ui.quantityFromSet
-import ch.brickinventoryapp.shared.ui.quantityManual
 
 /**
  * The quantity badge on a tile faces the same way everywhere.

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.app.Application
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.testing.testTrustCipher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

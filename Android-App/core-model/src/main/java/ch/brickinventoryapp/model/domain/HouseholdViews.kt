@@ -1,8 +1,7 @@
 package ch.brickinventoryapp.model.domain
 
-import java.time.Instant
-
 import ch.brickinventoryapp.model.data.ScopeFilter
+import java.time.Instant
 
 // Accounts, purchases and storage locations as the UI shows them.
 

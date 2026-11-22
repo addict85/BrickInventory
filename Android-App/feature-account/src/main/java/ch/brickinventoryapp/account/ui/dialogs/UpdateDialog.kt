@@ -1,25 +1,23 @@
 package ch.brickinventoryapp.account.ui.dialogs
 
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.ui.theme.windowSurface
-// Bulk imports as in the neighboring dialogs (BarcodeResultDialog.kt,
-// SetCheckDialog.kt) — see the reasoning there.
-import ch.brickinventoryapp.account.ui.UpdateUiState
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.account.ui.UpdateUiState
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.versionsName
 import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.components.versionsName
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.windowSurface
 import ch.brickinventoryapp.update.util.permissionIntent
 
 /**

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.model
 
 import ch.brickinventoryapp.model.util.DateYear
+import ch.brickinventoryapp.model.util.fmtClockTime
 import ch.brickinventoryapp.model.util.fmtDatum
 import ch.brickinventoryapp.model.util.fmtStatus
-import ch.brickinventoryapp.model.util.fmtClockTime
 import org.junit.Test
 import java.time.Instant
 import java.time.ZoneOffset

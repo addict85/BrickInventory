@@ -1,19 +1,26 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.testing.testWantedRepository
-import ch.brickinventoryapp.model.domain.Condition
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
 import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ReconcileOutcome
-import ch.brickinventoryapp.offline.Editing
-import ch.brickinventoryapp.offline.Slots
-import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.data.local.ServerSender
-import ch.brickinventoryapp.offline.OutboxStorage
-import ch.brickinventoryapp.offline.StorageInventory
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.OutboxStorage
+import ch.brickinventoryapp.offline.Slots
+import ch.brickinventoryapp.offline.StorageInventory
+import ch.brickinventoryapp.testing.BrickApiService
+import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.testMinifigsRepository
+import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.testing.testSetsRepository
+import ch.brickinventoryapp.testing.testWantedRepository
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -22,17 +29,10 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlinx.coroutines.flow.first
 import java.io.File
-import java.util.Collections
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.testing.BrickApiService
 import java.net.ConnectException
 import java.net.SocketTimeoutException
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestApi
+import java.util.Collections
 
 /**
  * Editing offline from start to end: repository, outbox and sender against

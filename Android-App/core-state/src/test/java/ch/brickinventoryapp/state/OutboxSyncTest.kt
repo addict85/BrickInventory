@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.state
 
+import ch.brickinventoryapp.data.local.EditingSender
 import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ReconcileEvent
 import ch.brickinventoryapp.data.local.ReconcileOutcome
-import ch.brickinventoryapp.offline.Editing
-import ch.brickinventoryapp.data.local.EditingSender
-import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.data.local.SendOutcome
-import ch.brickinventoryapp.offline.OutboxStorage
-import ch.brickinventoryapp.offline.StorageInventory
 import ch.brickinventoryapp.data.local.classify
 import ch.brickinventoryapp.data.local.deleteClassify
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.OutboxStorage
+import ch.brickinventoryapp.offline.StorageInventory
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first

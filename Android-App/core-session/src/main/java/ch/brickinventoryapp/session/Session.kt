@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.session
 
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.data.SecondFactorRequired
+import ch.brickinventoryapp.data.repository.AccountRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.AccountOwner
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.StartStateView
+import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.model.domain.StartStateView
-import ch.brickinventoryapp.model.domain.AccountOwner
-import java.time.Instant
 
 /**
  * The app's session: server, sign-in, account settings. It is only changed

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.contract.AcquisitionsResponse
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * The surfaces do not calculate — they display. Totals and key figures come from the

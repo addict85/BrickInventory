@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.contract.GeraeteSchluesselAnfrage
 import ch.brickinventoryapp.contract.Erledigt
+import ch.brickinventoryapp.contract.GeraeteSchluesselAnfrage
 import ch.brickinventoryapp.contract.SchluesselNonce
 import ch.brickinventoryapp.contract.SchrittChallenge
 import ch.brickinventoryapp.contract.SchrittChallengeAnfrage

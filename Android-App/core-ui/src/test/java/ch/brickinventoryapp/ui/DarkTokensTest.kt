@@ -1,21 +1,21 @@
 package ch.brickinventoryapp.ui
 
+import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.DarkTokens
 import ch.brickinventoryapp.ui.theme.SlateBlueStud
 import ch.brickinventoryapp.ui.theme.argb
-import ch.brickinventoryapp.ui.theme.darkToken
-import ch.brickinventoryapp.ui.theme.darkRoles
 import ch.brickinventoryapp.ui.theme.darkBrickDecor
+import ch.brickinventoryapp.ui.theme.darkRoles
+import ch.brickinventoryapp.ui.theme.darkToken
 import ch.brickinventoryapp.ui.theme.hasDarkVersion
-import androidx.compose.ui.graphics.toArgb
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 import java.awt.Color
+import java.io.File
 
 /**
  * The dark version for each design comes from the same tokens as the web

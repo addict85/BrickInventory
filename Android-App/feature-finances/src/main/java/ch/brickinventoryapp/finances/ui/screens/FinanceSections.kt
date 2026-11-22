@@ -1,27 +1,12 @@
 package ch.brickinventoryapp.finances.ui.screens
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.finances.ui.FinanceRow
-import ch.brickinventoryapp.model.domain.ValuationSetView
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.ui.components.SelectionChip
-
-/**
- * The sections of the finances page: portfolio chart, key-figure cards,
- * category filter and the three lists. As with SetDetailSections.kt, extensions
- * on `LazyListScope` instead of @Composable functions, because they enter items into the list.
- */
-
-import ch.brickinventoryapp.model.domain.ValuationView
-import ch.brickinventoryapp.model.domain.FiguresValuationView
-import ch.brickinventoryapp.model.domain.ProfitView
-import ch.brickinventoryapp.model.domain.PartsValuationView
-import ch.brickinventoryapp.ui.theme.Shapes
-import androidx.compose.foundation.lazy.LazyListScope
-import coil3.ImageLoader
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,30 +16,42 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.finances.ui.minifigRows
+import ch.brickinventoryapp.finances.ui.FinanceRow
 import ch.brickinventoryapp.finances.ui.financeHeader
 import ch.brickinventoryapp.finances.ui.financeTotals
 import ch.brickinventoryapp.finances.ui.foreignPurchasePrices
-import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.finances.ui.minifigRows
 import ch.brickinventoryapp.finances.ui.partRows
-import ch.brickinventoryapp.ui.util.fmtPercent
-import ch.brickinventoryapp.model.util.resolveThumbUrl
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.LocalStatusColors
-import ch.brickinventoryapp.ui.components.readAloudAs
-import ch.brickinventoryapp.ui.components.SectionTitle
-import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.components.quantity
-import ch.brickinventoryapp.shared.ui.quantityManual
+import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.model.domain.FiguresValuationView
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.PartsValuationView
+import ch.brickinventoryapp.model.domain.ProfitView
+import ch.brickinventoryapp.model.domain.ValuationSetView
+import ch.brickinventoryapp.model.domain.ValuationView
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
-import ch.brickinventoryapp.ui.components.LabelAndValue
+import ch.brickinventoryapp.model.util.resolveThumbUrl
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionBadges
 import ch.brickinventoryapp.shared.ui.FinanceImage
 import ch.brickinventoryapp.shared.ui.PnlBadge
+import ch.brickinventoryapp.shared.ui.quantityManual
+import ch.brickinventoryapp.ui.components.LabelAndValue
+import ch.brickinventoryapp.ui.components.SectionTitle
+import ch.brickinventoryapp.ui.components.SelectionChip
+import ch.brickinventoryapp.ui.components.quantity
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.fmtPercent
+import coil3.ImageLoader
+
+// The sections of the finances page: portfolio chart, key-figure cards,
+// category filter and the three lists. As with SetDetailSections.kt, extensions
+// on `LazyListScope` instead of @Composable functions, because they enter items into the list.
 
 /**
  * Grand total: sets + manually entered parts + minifigures. `valuation` is not nullable here: FinanceScreen() bails out beforehand on `null`.

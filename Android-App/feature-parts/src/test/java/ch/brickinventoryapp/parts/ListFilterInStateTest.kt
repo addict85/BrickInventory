@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.parts.ui.PartsFilter
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import org.junit.Assert.assertTrue
-import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.Dispatchers
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
-import ch.brickinventoryapp.model.data.ScopeFilter
 import androidx.lifecycle.SavedStateHandle
-import org.junit.Test
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.parts.ui.PartsFilter
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.testing.PathServer
 import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.testing.testPartsRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 /**
  * A list filter belongs in the list's state, not in the call.
