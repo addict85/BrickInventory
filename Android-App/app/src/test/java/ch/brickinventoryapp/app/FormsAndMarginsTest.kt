@@ -301,8 +301,9 @@ class FormsAndMarginsTest {
         val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
         runBlocking { vm.loadBackground() }
         val networks = mapOf(PrewarmNetwork.WIFI to true, PrewarmNetwork.MOBILE to false, PrewarmNetwork.ROAMING to false)
+        val background = vm.background.value
         show {
-            MonitoringScreen(MonitoringState(MonitoringUiState(), vm.background.value, ManagementUiState(),
+            MonitoringScreen(MonitoringState(MonitoringUiState(), background, ManagementUiState(),
                 networks, Design.CLASSIC, 0L), vm, CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> }))
         }
         // The one title stands in the bar (VerwaltungGraph); the content does not repeat it.

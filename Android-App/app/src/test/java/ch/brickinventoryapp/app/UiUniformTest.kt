@@ -211,8 +211,9 @@ class UiUniformTest {
         val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
+        val background = vm.background.value
         show {
-            MonitoringScreen(MonitoringState(MonitoringUiState(), vm.background.value, ManagementUiState(),
+            MonitoringScreen(MonitoringState(MonitoringUiState(), background, ManagementUiState(),
                 emptyMap(), Design.CLASSIC, 0L), vm, events)
         }
         linksAbFormEdge(ctx.getString(R.string.background_jobs), "Hintergrundarbeiten")

@@ -1327,9 +1327,10 @@ class ScreenPhotoVariantsTest {
         val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
+        val background = vm.background.value
         show("hintergrundarbeiten", dark = dark, device = device, wait = false) {
             // Wi-Fi allowed, the others not: both switch positions in the image.
-            MonitoringScreen(MonitoringState(MonitoringUiState(), vm.background.value, ManagementUiState(),
+            MonitoringScreen(MonitoringState(MonitoringUiState(), background, ManagementUiState(),
                 mapOf(PrewarmNetwork.WIFI to true), Design.CLASSIC, 0L), vm, events)
         }
         pause()

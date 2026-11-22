@@ -320,8 +320,9 @@ class WrapGuardTest {
         val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
+        val background = vm.background.value
         check("Hintergrundarbeiten $font", font, device = "w360dp-h891dp-port-xxhdpi") {
-            MonitoringScreen(MonitoringState(MonitoringUiState(defaultState = Condition.USED), vm.background.value, ManagementUiState(),
+            MonitoringScreen(MonitoringState(MonitoringUiState(defaultState = Condition.USED), background, ManagementUiState(),
                 emptyMap(), Design.CLASSIC, 0L), vm, events)
         }
         inImage("Hintergrundarbeiten $font", "Gebraucht")
