@@ -83,6 +83,7 @@ internal val structureChecks: Map<String, String> = mapOf(
     "SelfUpdateTest.kt: the update trusts only system certificates" to "network_security_config.xml",
     "SelfUpdateTest.kt: the manifest allows installing, no provider exposes the update directory" to "manifest",
     "SelfUpdateTest.kt: the workflow puts the description next to the APK" to "workflow",
+    "SelfUpdateTest.kt: no field promises a check that does not exist" to "the field name the signing workflow writes",
     "ListFilterInStateTest.kt: no loader takes a list filter as a parameter" to "ban",
     "ListFilterInStateTest.kt: no search in the screen over a loaded list" to "ban",
 )

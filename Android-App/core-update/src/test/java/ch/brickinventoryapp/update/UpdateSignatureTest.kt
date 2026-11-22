@@ -40,6 +40,7 @@ import java.util.Base64
  *      (`@SerialName("signature")`) → red „the signature of the APK key no longer applies“;
  *      counter-checks/beschreibung-ohne-schluesseltrennung.patch
  *   E  descriptionKey() only the first block (`.take(1)`) → red „waehrend eines Schluesselwechsels gelten alter und neuer Schluessel“
+ *   F  UpdateDescription reads the origin as `@SerialName("sha")` → red “the description signed by the description key applies”
  */
 class UpdateSignatureTest {
 
@@ -68,6 +69,7 @@ class UpdateSignatureTest {
         assertEquals(200001234, b!!.versionCode)
         assertEquals("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", b.apkSha256)
         assertTrue(isAllowedApkAddress(b.apkUrl))
+        assertEquals("the build's origin is read as `commit`", "abc123", b.commit)
     }
 
     @Test
