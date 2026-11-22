@@ -25,5 +25,9 @@ export const access = (db: Db) => ({
     countHour: bound(db)(repository.countHour),
     countOncePerDay: bound(db)(repository.countOncePerDay),
   },
+  apiBudget: {
+    claim: bound(db)(repository.claimApiBudget),
+    clear: bound(db)(repository.clearApiBudget),
+  },
 });
 export type ThrottleContext = Context<ThrottleDependencies, ReturnType<typeof access>>;

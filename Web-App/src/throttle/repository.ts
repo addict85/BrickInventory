@@ -145,3 +145,39 @@ export function countOncePerDay(db: DbInterface, key: string) {
     [key],
   );
 }
+
+export interface BudgetClaim {
+  cost: number;
+  job: boolean;
+  windowS: number;
+  budget: number;
+  jobBudget: number;
+  /** The services' clock (ms), not the database's: tests move it. */
+  nowMs: number;
+}
+export type BudgetRow = { units: number; jobs: number; allowed: boolean; rest_s: string };
+
+/** One statement under the row lock of the upsert: concurrent requests of every web process see
+ * one another. An expired window starts anew; a rejected claim adds nothing. */
+export async function claimApiBudget(db: DbInterface, uid: number, c: BudgetClaim): Promise<BudgetRow> {
+  return (await db.get<BudgetRow>(
+    `INSERT INTO api_budget AS b (user_id, window_start, units, jobs, last_allowed)
+     SELECT $1, to_timestamp($7 / 1000.0), CASE WHEN v.ok THEN $2 ELSE 0 END, CASE WHEN v.ok AND $3 THEN 1 ELSE 0 END, v.ok
+       FROM (SELECT $2::int <= $5::int AND (NOT $3::boolean OR 0 < $6::int) AS ok) v
+     ON CONFLICT (user_id) DO UPDATE SET (window_start, units, jobs, last_allowed) = (
+       SELECT y.start, y.units + CASE WHEN y.ok THEN $2 ELSE 0 END, y.jobs + CASE WHEN y.ok AND $3 THEN 1 ELSE 0 END, y.ok
+         FROM (SELECT x.start, x.units, x.jobs, x.units + $2 <= $5 AND (NOT $3 OR x.jobs < $6) AS ok
+                 FROM (SELECT CASE WHEN w.fresh THEN to_timestamp($7 / 1000.0) ELSE b.window_start END AS start,
+                              CASE WHEN w.fresh THEN 0 ELSE b.units END AS units,
+                              CASE WHEN w.fresh THEN 0 ELSE b.jobs END AS jobs
+                         FROM (SELECT b.window_start <= to_timestamp($7 / 1000.0) - make_interval(secs => $4) AS fresh) w) x) y)
+     RETURNING units, jobs, last_allowed AS allowed,
+               CEIL(EXTRACT(EPOCH FROM (window_start + make_interval(secs => $4) - to_timestamp($7 / 1000.0)))) AS rest_s`,
+    [uid, c.cost, c.job, c.windowS, c.budget, c.jobBudget, c.nowMs],
+  ))!;
+}
+
+/** Only for tests: a budget that does not depend on the previous case. */
+export async function clearApiBudget(db: DbInterface, uid: number): Promise<void> {
+  await db.run('DELETE FROM api_budget WHERE user_id = $1', [uid]);
+}

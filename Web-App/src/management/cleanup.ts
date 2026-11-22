@@ -30,6 +30,7 @@ function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
       ['alte Aufträge', k.jobQueue.cleanCompletedOn],
       ['verfallene Bildwünsche', k.images.deleteExpired],
       ['Idempotenzschlüssel', k.idempotency.cleanupIdempotency],
+      ['PDF-Tickets', k.vouchers.cleanupTickets],
     ],
     lauf,
   );

@@ -34,6 +34,13 @@ export interface Tables {
     effective_at: Date;
     cancel_hash: string | null;
   };
+  api_budget: {
+    user_id: number;
+    window_start: Date;
+    units: number;
+    jobs: number;
+    last_allowed: boolean;
+  };
   api_cadence: {
     api: string;
     next_at: Date;
@@ -369,6 +376,12 @@ export interface Tables {
     name: string | null;
     created_at: Date;
     last_used: Date | null;
+  };
+  pdf_tickets: {
+    ticket_hash: string;
+    user_id: number;
+    target: string;
+    expires_at: Date;
   };
   price_alerts: {
     user_id: number;

@@ -5,7 +5,8 @@ import { access, type ThrottleDependencies, type ThrottleContext } from './conte
 
 export type { ThrottleDependencies, ThrottleContext } from './context';
 
-/** Login attempts, balance lookups and source fetches all count in one table; only this area may write. */
+/** Login attempts, balance lookups and source fetches count in rate_limit_attempts, the API
+ * budget in api_budget; only this area may write them. */
 export function createThrottle(a: ThrottleDependencies, inspect?: Inspect<ThrottleContext>) {
   return buildArea(
     a,
@@ -21,6 +22,8 @@ export function createThrottle(a: ThrottleDependencies, inspect?: Inspect<Thrott
       oncePerDay: bound(k)(counter.oncePerDay),
       hourlyState: k.counter.hourlyState,
       countHour: k.counter.countHour,
+      claimApiBudget: k.apiBudget.claim,
+      clearApiBudget: k.apiBudget.clear,
     }),
     inspect,
   );

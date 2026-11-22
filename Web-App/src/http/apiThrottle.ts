@@ -1,9 +1,9 @@
 /** A budget per account for the logged-in API, weighted by cost (PDF, imports, catalog), so that
- * an account cannot call expensive paths in rapid succession. Counted in the process: there is exactly one web process. */
+ * an account cannot call expensive paths in rapid succession. Counted in the database (api_budget):
+ * every web process on it shares the same budget. */
 import type { Request, Response, NextFunction } from 'express';
 import { userId } from './userId';
 import { sendError } from './httpResponse';
-import { processWide } from '../infra/processWide';
 import { keyForRequest, type Key } from '../contract';
 
 export const WINDOW_MS = 5 * 60 * 1000;
@@ -54,7 +54,7 @@ const FOREIGN_FETCH: ReadonlySet<Key> = new Set<Key>([
   'POST /api/v1/vouchers/:id/guthaben',
 ]);
 
-/** @param path relative to /api/v1, as apiDrossel sees it there */
+/** @param path relative to /api/v1, as apiThrottle sees it there */
 export function classification(method: string, path: string): { kosten: number; auftrag: boolean } {
   const k = keyForRequest(method === 'HEAD' ? 'GET' : method, `/api/v1${path}`);
   if (!k) return { kosten: COST.normal, auftrag: false };
@@ -64,55 +64,54 @@ export function classification(method: string, path: string): { kosten: number; 
   return { kosten: COST.normal, auftrag: false };
 }
 
-type Stand = { start: number; units: number; auftraege: number };
-/** Per process, not per access: the throttle protects this process (src/infra/processWide.ts). */
-const states = () => processWide('apiDrossel', () => new Map<number, Stand>());
-
-/** Only for tests: a state that does not depend on the previous run. */
-export function clearThrottle(): void {
-  states().clear();
+/** The store of the budget (src/throttle, claimApiBudget); src/http knows only its shape. */
+export interface BudgetStore {
+  claimApiBudget(
+    uid: number,
+    c: { cost: number; job: boolean; windowS: number; budget: number; jobBudget: number; nowMs: number },
+  ): Promise<{ units: number; jobs: number; allowed: boolean; rest_s: string | number }>;
 }
 
-/** An expired window starts anew; rejected requests do not count,
- * otherwise an attack would extend its own lock endlessly. */
-function statusFor(uid: number, now: number): Stand {
-  const _states = states();
-  let s = _states.get(uid);
-  if (!s || now - s.start >= WINDOW_MS) {
-    s = { start: now, units: 0, auftraege: 0 };
-    _states.set(uid, s);
-  }
-  if (_states.size > 5000) for (const [id, x] of _states) if (now - x.start >= WINDOW_MS) _states.delete(id);
-  return s;
-}
-
-export function checkBudget(uid: number, method: string, path: string, now = Date.now()) {
+/** Rejected requests do not count, otherwise an attack would extend its own lock endlessly. */
+export async function checkBudget(store: BudgetStore, uid: number, method: string, path: string, now = Date.now()) {
   const { kosten, auftrag } = classification(method, path);
-  const s = statusFor(uid, now);
-  const restSec = Math.max(1, Math.ceil((s.start + WINDOW_MS - now) / 1000));
-  if (s.units + kosten > BUDGET || (auftrag && s.auftraege >= JOB_BUDGET))
-    return { erlaubt: false as const, kosten, auftrag, restSec, units: s.units, auftraege: s.auftraege };
-  s.units += kosten;
-  if (auftrag) s.auftraege++;
-  return { erlaubt: true as const, kosten, auftrag, restSec, units: s.units, auftraege: s.auftraege };
+  const r = await store.claimApiBudget(uid, {
+    cost: kosten,
+    job: auftrag,
+    windowS: WINDOW_MS / 1000,
+    budget: BUDGET,
+    jobBudget: JOB_BUDGET,
+    nowMs: now,
+  });
+  const restSec = Math.max(1, Number(r.rest_s) || 1);
+  return { erlaubt: r.allowed, kosten, auftrag, restSec, units: r.units, auftraege: r.jobs };
 }
 
 /** Behind loginAtInbox: without an account there is nothing to limit, and
- * login has its own brakes (src/account/loginLimiter.ts). */
-export function apiThrottle(req: Request, res: Response, next: NextFunction): void {
-  const uid = userId(req);
-  if (uid === null) {
-    next();
-    return;
-  }
-  const r = checkBudget(uid, req.method, req.path);
-  res.setHeader('RateLimit-Limit', String(BUDGET));
-  res.setHeader('RateLimit-Remaining', String(Math.max(0, BUDGET - r.units)));
-  res.setHeader('RateLimit-Reset', String(r.restSec));
-  if (r.erlaubt) {
-    next();
-    return;
-  }
-  res.setHeader('Retry-After', String(r.restSec));
-  sendError(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: Math.max(1, Math.ceil(r.restSec / 60)) });
+ * login has its own brakes (src/account/loginLimiter.ts). A database error goes to the error
+ * path: without the database the request could not be served anyway. */
+export function apiThrottle(store: BudgetStore) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const uid = userId(req);
+    if (uid === null) {
+      next();
+      return;
+    }
+    let r: Awaited<ReturnType<typeof checkBudget>>;
+    try {
+      r = await checkBudget(store, uid, req.method, req.path);
+    } catch (e) {
+      next(e);
+      return;
+    }
+    res.setHeader('RateLimit-Limit', String(BUDGET));
+    res.setHeader('RateLimit-Remaining', String(Math.max(0, BUDGET - r.units)));
+    res.setHeader('RateLimit-Reset', String(r.restSec));
+    if (r.erlaubt) {
+      next();
+      return;
+    }
+    res.setHeader('Retry-After', String(r.restSec));
+    sendError(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: Math.max(1, Math.ceil(r.restSec / 60)) });
+  };
 }

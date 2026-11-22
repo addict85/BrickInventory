@@ -279,7 +279,7 @@ function apiInbox(app: express.Express, d: Services): void {
   app.use('/api/v1', guardFor(d.account).loginAtInbox);
   // Then the budget per account, BEFORE the body: a rejected request should
   // no longer read its body (src/http/apiThrottle.ts).
-  app.use('/api/v1', apiThrottle);
+  app.use('/api/v1', apiThrottle(d.throttle));
   // Sensitive steps of an app token only after the device lock (src/account/http/stepGuard.ts).
   app.use('/api/v1', stepProtectionAtInbox(d.account));
   // Read bodies only after login: unauthenticated there are only 16 KB (readBody).

@@ -296,7 +296,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 |---|---|
 | `db` | `schema_migrations` |
 | `src/infra` | `app_logs` |
-| `src/throttle` | `rate_limit_attempts` |
+| `src/throttle` | `rate_limit_attempts`, `api_budget` |
 | `src/settings` | `global_settings`, `user_settings` |
 | `src/jobQueue` | `jobs`, `job_exclusive_locks`, `job_pauses`, `job_types`, `import_status`, `run_state` |
 | `src/externalSources` | `api_calls`, `api_cadence` |
@@ -312,7 +312,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `src/sets` | `instructions` |
 | `src/parts` | `parts_catalog_pending`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
 | `src/wanted` | `wanted` |
-| `src/vouchers` | `voucher_balance_throttle`, `vouchers` |
+| `src/vouchers` | `voucher_balance_throttle`, `vouchers`, `pdf_tickets` |
 
 ## API-Vertrag
 

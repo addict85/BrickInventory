@@ -91,7 +91,8 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
 
   router.endpoint('GET /api/v1/vouchers/export/pdf', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
-    if (!d.vouchers.redeemTicket(req.abfrage.ticket, uid, 'export')) failDomain('verboten', 'pdf_freigabe_noetig');
+    if (!(await d.vouchers.redeemTicket(req.abfrage.ticket, uid, 'export')))
+      failDomain('verboten', 'pdf_freigabe_noetig');
     const { pdf, results } = await d.vouchers.exportVouchers(uid);
     const tag = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/pdf');
@@ -130,7 +131,7 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
 
   router.endpoint('GET /api/v1/vouchers/:id/pdf', requireToken, async (req, res) => {
     const id = req.pfad.id;
-    if (!d.vouchers.redeemTicket(req.abfrage.ticket, req.apiUser.user_id, String(id)))
+    if (!(await d.vouchers.redeemTicket(req.abfrage.ticket, req.apiUser.user_id, String(id))))
       failDomain('verboten', 'pdf_freigabe_noetig');
     const pdf = await d.vouchers.voucherPdf(req.apiUser.user_id, id);
     res.type('application/pdf');

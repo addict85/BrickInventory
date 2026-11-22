@@ -4,6 +4,7 @@ import type { Db } from '../../db/database';
 import { bound, type Context } from '../infra/area';
 import * as balanceThrottle from './repository/balanceThrottle';
 import * as vouchers from './repository/vouchers';
+import * as pdfTickets from './repository/pdfTickets';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../account';
 import type { ForeignSourcesServices } from '../externalSources';
@@ -17,7 +18,7 @@ export interface VoucherDependencies {
   account: AccountServices;
   throttle: ThrottleServices;
   externalSources: ForeignSourcesServices;
-  /** Sessions of balance lookups and PDF tickets of this set of services. */
+  /** Sessions of balance lookups of this set of services. */
   faecher: Compartments;
 }
 
@@ -39,6 +40,11 @@ export const access = (db: Db) => ({
     reencryptAllVouchers: bound(db)(vouchers.reencryptAllVouchers),
     reencryptCopies: bound(db)(vouchers.reencryptCopies),
     reencryptNumbers: bound(db)(vouchers.reencryptNumbers),
+  },
+  pdfTickets: {
+    insert: bound(db)(pdfTickets.insertTicket),
+    take: bound(db)(pdfTickets.takeTicket),
+    deleteExpired: bound(db)(pdfTickets.deleteExpiredTickets),
   },
 });
 export type VoucherContext = Context<VoucherDependencies, ReturnType<typeof access>>;

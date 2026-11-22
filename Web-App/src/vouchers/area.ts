@@ -25,6 +25,7 @@ export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, inspect?
       exportVouchers: bound(k)(service.exportVouchers),
       voucherPdf: bound(k)(service.voucherPdf),
       redeemTicket: bound(k)(pdfTicket.redeemTicket),
+      cleanupTickets: bound(k)(pdfTicket.cleanupTickets),
       encryptLegacyFiles: encryptLegacyVoucherFiles,
       // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
       reencryptNumbers: k.vouchers.reencryptNumbers,

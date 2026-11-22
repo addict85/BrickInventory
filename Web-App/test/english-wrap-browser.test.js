@@ -1,6 +1,6 @@
 /**
  * UX review 21 in English (N8, N11): an account in English, background jobs at 320 px and 200 %
- * font. Own file because only one web process runs per database and startApp closes the pool at the end.
+ * font. Own file because startApp closes the pool at the end.
  *
  * Counter-checks (measured 13.11.2026, each alone):
  *   P  mobile.css again `.ptitle { overflow-wrap: anywhere }` → red: break after “Backg” without hyphen

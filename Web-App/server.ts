@@ -18,7 +18,6 @@ import { HTTP_DEADLINES } from './src/infra/httpDeadlines';
 import { closeAllSse } from './src/http/sseRegistry';
 
 import { closeBufferAndTicks } from './startup/shutdown';
-import { holdWebLock } from './startup/singleInstance';
 import { inSystemContext } from './src/infra/accountContext';
 
 // Only log: a rejected promise is usually a side task without catch;
@@ -79,7 +78,6 @@ async function shutdown(
   jobs: boolean,
   access: Db,
   dienste: Services,
-  webLockFree: (() => Promise<void>) | null,
 ): Promise<void> {
   if (lauf.ending) return;
   lauf.ending = true;
@@ -100,7 +98,6 @@ async function shutdown(
     // Running jobs stop safely and go back into the table.
     if (jobs && lauf.jobs) await stopJobs(dienste, lauf.jobs);
     await closeBufferAndTicks(access, dienste);
-    await webLockFree?.();
     await access.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(emergencyBrake);
@@ -152,12 +149,6 @@ async function start(): Promise<void> {
     process.exit(1);
   }
   logToDatabase(access.pool);
-  const webLockFree = web
-    ? await holdWebLock(access).catch((e: unknown) => {
-        console.error(`❌ [start] ${errorMessage(e)}`);
-        process.exit(1);
-      })
-    : null;
   // Hints into the log: one that fails holds up neither the start nor the others.
   const hints: [string, () => Promise<unknown>][] = [
     ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],
@@ -183,10 +174,10 @@ async function start(): Promise<void> {
     : null;
   const lauf: Lauf = { ending: false, jobs: null };
   process.on('SIGTERM', () => {
-    void shutdown(lauf, 'SIGTERM', httpServer, jobs, access, dienste, webLockFree);
+    void shutdown(lauf, 'SIGTERM', httpServer, jobs, access, dienste);
   });
   process.on('SIGINT', () => {
-    void shutdown(lauf, 'SIGINT', httpServer, jobs, access, dienste, webLockFree);
+    void shutdown(lauf, 'SIGINT', httpServer, jobs, access, dienste);
   });
   // Without frame: queue and jobs enter it themselves (src/jobQueue/context.ts, service.ts).
   if (jobs) lauf.jobs = await startJobs(dienste);

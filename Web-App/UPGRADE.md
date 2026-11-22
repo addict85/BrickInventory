@@ -2501,3 +2501,18 @@ Daten, keine Bezeichner, und bleiben unverändert.
   `app.account`. Ein Prozess mit dem alten Code sieht nach der Migration keine Zeilen mehr
   (er schliesst, statt zu öffnen) – Web- und Job-Prozess deshalb zusammen mit dem Update
   neu starten, wie bei jedem Update mit Migration.
+
+<a id="mehrere-web-prozesse"></a>
+
+## 71. Mehrere Web-Prozesse je Datenbank (Migration 0135)
+
+- Anfragebudget je Konto und PDF-Tickets liegen jetzt in PostgreSQL (`api_budget`,
+  `pdf_tickets`, beide mit Zeilenschutz). Die Sperre „genau ein Web-Prozess“ aus
+  Abschnitt 56 ist entfernt: Zwei oder mehr `app`-Prozesse (etwa
+  `docker compose up --scale app=2` hinter einem Lastverteiler) teilen Budget und
+  Tickets. Die Meldung „Ein zweiter Web-Prozess … läuft schon“ gibt es nicht mehr.
+- Was weiter je Prozess zählt, ist Absicht: Die Kontoschranke (gleichzeitige Uploads und
+  Ströme) schützt den Speicher des einzelnen Prozesses, die CSP-Berichtsdrossel dessen
+  Protokoll. Token-, Sitzungsversions- und Haushaltszwischenspeicher werden über
+  `LISTEN/NOTIFY` in allen Prozessen geleert.
+- Nichts von Hand zu tun; `docker compose up -d` spielt die Migration ein.

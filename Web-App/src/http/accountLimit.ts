@@ -1,5 +1,6 @@
 /** How many uploads and event streams an account keeps open at the same time: one should not occupy memory
- * and process for everyone. In memory, because there is exactly one web process. */
+ * and process for everyone. Per process on purpose: what it protects is this process's memory, so
+ * a second web process has its own slots. */
 import { processWide } from '../infra/processWide';
 
 export const CONCURRENT = { upload: 2, voucherPdf: 1, strom: 6 } as const;

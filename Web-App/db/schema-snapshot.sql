@@ -67,6 +67,20 @@ CREATE UNIQUE INDEX idx_admin_takeovers_cancel ON admin_takeovers USING btree (c
 CREATE INDEX idx_admin_takeovers_initiator ON admin_takeovers USING btree (initiated_by);
 ALTER TABLE admin_takeovers ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE api_budget (
+  user_id integer NOT NULL,
+  window_start timestamp with time zone NOT NULL,
+  units integer NOT NULL DEFAULT 0,
+  jobs integer NOT NULL DEFAULT 0,
+  last_allowed boolean NOT NULL DEFAULT true,
+  CONSTRAINT api_budget_jobs_check CHECK ((jobs >= 0)),
+  CONSTRAINT api_budget_pkey PRIMARY KEY (user_id),
+  CONSTRAINT api_budget_units_check CHECK ((units >= 0)),
+  CONSTRAINT api_budget_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+ALTER TABLE api_budget ENABLE ROW LEVEL SECURITY;
+CREATE POLICY row_security ON api_budget USING ((user_id = ( SELECT row_security_account() AS row_security_account))) WITH CHECK ((user_id = ( SELECT row_security_account() AS row_security_account)));
+
 CREATE TABLE api_cadence (
   api text NOT NULL,
   next_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -683,6 +697,21 @@ CREATE TABLE passkeys (
 CREATE INDEX idx_passkeys_account ON passkeys USING btree (user_id);
 ALTER TABLE passkeys ENABLE ROW LEVEL SECURITY;
 CREATE POLICY row_security ON passkeys USING ((user_id = ( SELECT row_security_account() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT row_security_account() AS zeilenschutz_konto)));
+
+CREATE TABLE pdf_tickets (
+  ticket_hash text NOT NULL,
+  user_id integer NOT NULL,
+  target text NOT NULL,
+  expires_at timestamp with time zone NOT NULL,
+  CONSTRAINT pdf_tickets_pkey PRIMARY KEY (ticket_hash),
+  CONSTRAINT pdf_tickets_target_check CHECK (((length(target) >= 1) AND (length(target) <= 40))),
+  CONSTRAINT pdf_tickets_ticket_hash_check CHECK ((length(ticket_hash) = 64)),
+  CONSTRAINT pdf_tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX pdf_tickets_expires_at ON pdf_tickets USING btree (expires_at);
+CREATE INDEX pdf_tickets_user_id ON pdf_tickets USING btree (user_id);
+ALTER TABLE pdf_tickets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY row_security ON pdf_tickets USING ((user_id = ( SELECT row_security_account() AS row_security_account))) WITH CHECK ((user_id = ( SELECT row_security_account() AS row_security_account)));
 
 CREATE TABLE price_alerts (
   user_id integer NOT NULL,

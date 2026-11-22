@@ -1,4 +1,4 @@
-/** Unknown bearer tokens cost database queries before apiDrossel knows an
+/** Unknown bearer tokens cost database queries before apiThrottle knows an
  * account. Counting happens in rate_limit_attempts so that several web processes share the same
  * limit; writes only happen on a failed attempt, the lock itself is remembered by
  * each process so that a valid token costs no additional query.

@@ -130,7 +130,7 @@ test('session cookie with and without TLS', { concurrency: 1, timeout: 240_000 }
     await db.pool.end().catch(() => {});
   });
 
-  // One server per case that ends with the case: only one web process runs on a database.
+  // One server per case that ends with the case, each with its own environment.
   await t.test('with TLS: __Host-bim.sid, Secure, Path=/, without Domain', async st => {
     const server = await startServer(st, {});
     const d = await pass(server, { 'x-forwarded-proto': 'https' });

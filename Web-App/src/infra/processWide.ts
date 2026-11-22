@@ -5,7 +5,6 @@
 import { Compartments } from './cache';
 
 export const REASONS = {
-  apiDrossel: 'Anfragebudget je Konto: schützt Rechenzeit und Speicher dieses Prozesses, gleich welcher Zugang',
   kontoSchranke: 'gleichzeitige Uploads und Ströme je Konto belegen Speicher dieses Prozesses',
   anmeldeRueckfall: 'Rückfall der Anmeldebremse, wenn die Datenbank klemmt: zählt gerade ohne sie',
   tokenSperre: 'Abkürzung der Fehlversuchssperre je Adresse; gezählt wird in der Datenbank',

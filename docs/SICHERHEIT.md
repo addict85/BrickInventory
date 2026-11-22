@@ -535,11 +535,10 @@ handelte der Prozess für jede gerade aktive Sitzung.
   und `caddy-rechte` laufen ohne Netz. `app`, `jobs` und `caddy` brauchen das
   Internet; den Weg ins Heimnetz sperrt optional eine `DOCKER-USER`-Regel auf
   ihr festes Subnetz (UPGRADE.md, Abschnitt 52) — `compose-haertung`.
-- Genau ein Web-Prozess je Datenbank: Budget je Konto, Kontoschranke,
-  Gutschein-Abfragen, PDF-Tickets und Passwort-Schranke zählen im Speicher
-  dieses Prozesses; mehrere Web-Prozesse teilten jede Grenze. Er hält deshalb
-  eine Datenbanksperre, ein zweiter beendet sich (UPGRADE.md §56) —
-  `web-einzelinstanz-db`.
+- Mehrere Web-Prozesse je Datenbank: Budget je Konto und PDF-Tickets zählen in
+  PostgreSQL (`api_budget`, `pdf_tickets`, Migration 0135), Anmelde- und
+  Gutscheinbremsen schon vorher; die Kontoschranke schützt bewusst den Speicher
+  des einzelnen Prozesses (UPGRADE.md §71) — `web-two-instances-db`.
 - Ohne `NODE_ENV` gelten alle Regeln des Betriebs (Startverbote, Superuser-
   Verbot, verborgene 5xx-Texte, sicheres Cookie); nur `development` und
   `test` lockern sie — `operation-without-node-env-db`.

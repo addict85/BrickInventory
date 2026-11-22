@@ -26,8 +26,6 @@ export const LOCKS = {
   INVENTORY: 61,
   /** Second value: hashtext(set number); "already in scope?" and creation in one step. */
   SET_ADD: 64,
-  /** Held by the one web process as long as it lives (startup/singleInstance.ts); second value 0. */
-  WEB_PROCESS: 65,
   PROXY_THUMBS: 918273645,
   SCHEMA_INIT: 55667788,
 } as const;
