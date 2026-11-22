@@ -167,10 +167,7 @@ private fun NavGraphBuilder.singlePieceTarget(navigation: PartsNavigation) {
             parts = tab?.takeIf { target.kind != ItemKind.FIG }?.let { hiltViewModel<PartsViewModel>(it) } ?: hiltViewModel(),
             figures = tab?.takeIf { target.kind == ItemKind.FIG }?.let { hiltViewModel<MinifigsViewModel>(it) } ?: hiltViewModel(),
             undo = tab != null,
-            type = target.kind,
-            id = target.id,
-            colorId = target.colorId,
-            fallbackTitle = target.title,
+            item = target,
             imageLoader = navigation.images,
             onBack = { navController.popBackStack() },
             onNavigateToAcqMgmt = navigation::openPurchases,
@@ -200,7 +197,7 @@ private fun NavGraphBuilder.partListsTarget(navigation: PartsNavigation) {
                 serverUrl = state.serverUrl,
                 imageLoader = navigation.images,
                 onScanBarcode = { navigation.openScanner(ScannerOrigin.PART_LIST) },
-                // Erfolgloser Scan → Cursor ins Set-Feld.
+                // An unsuccessful scan puts the cursor into the set field.
                 requestManualEntry = scan.manualRecord,
                 onManualEntryAcknowledged = scan.manualAcknowledged,
                 // The same rule as in the web app (`sammlung.js`): more than
@@ -275,10 +272,7 @@ internal fun ListAndDetailRoute(
                             vm = hiltViewModel<PurchasesViewModel>(),
                             parts = detailVm as? PartsViewModel ?: hiltViewModel<PartsViewModel>(),
                             figures = detailVm as? MinifigsViewModel ?: hiltViewModel<MinifigsViewModel>(),
-                            type = ItemKind.from(open[0]),
-                            id = open[1],
-                            colorId = open[2].toInt(),
-                            fallbackTitle = open[3],
+                            item = PartsTarget.ManualItemDetail(ItemKind.from(open[0]), open[1], open[2].toInt(), open[3]),
                             imageLoader = imageLoader,
                             onBack = { manual = null },
                             onNavigateToAcqMgmt = openPurchases,

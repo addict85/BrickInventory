@@ -251,6 +251,20 @@ class SubpagesTest {
         compose.onNodeWithText(ctx.getString(R.string.csv_format_parts), useUnmergedTree = true).fetchSemanticsNode()
     }
 
+    /** Counter-check (run here): `onAcknowledged()` removed from FocusOnManualEntry → red “acknowledged once”. */
+    @Test
+    fun `after an unsuccessful scan the build list puts the cursor into the set field and acknowledges`() {
+        var acknowledged = 0
+        show {
+            PartsListScreen(PartListUiState(), serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
+                onScanBarcode = {}, requestManualEntry = true, onManualEntryAcknowledged = { acknowledged++ })
+        }
+        compose.mainClock.advanceTimeBy(500)
+        compose.waitForIdle()
+        compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number))).assertIsFocused()
+        assertEquals("acknowledged once", 1, acknowledged)
+    }
+
     @Test
     fun `empty build list stands centered and offers no reset`() {
         show {

@@ -24,6 +24,10 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.QrAccount
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
@@ -31,21 +35,22 @@ import ch.brickinventoryapp.ui.components.LoginCard
 import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.windowSurface
 
-/** What the sign-in screen shows; LoginGraph fills it from the session and LoginUiState. */
+/** What the sign-in screen shows; LoginGraph fills it from the session and LoginUiState. The screen forms the sentences. */
 data class LoginScreenState(
     val serverUrl: String,
     val form: LoginForm = LoginForm.LOGIN,
-    val isLoading: Boolean = false,
-    val error: String? = null,
+    val login: Operation = Operation.Done,
     val codeNeeded: Boolean = false,
     val registrationOpen: Boolean? = null,
-    val accountRunning: Boolean = false,
-    val accountMessage: String? = null,
-    val accountError: String? = null,
+    val account: Operation = Operation.Done,
+    /** Success message and hint after register or reset; they stand together below the form. */
+    val message: Message? = null,
+    val hint: Message? = null,
     val fullAccess: Boolean = false,
     val passkeyInsteadOfCode: Boolean = false,
     /** After a QR scan: the code one types into the browser. */
@@ -142,6 +147,8 @@ private fun LoginFormCard(state: LoginScreenState, actions: LoginActions, wide: 
     var password by remember { mutableStateOf("") }
     var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
+    val accountMessage = listOfNotNull(state.message?.sentence(), state.hint?.sentence()).joinToString(" ").ifEmpty { null }
+    val accountError = state.account.errorMessage?.sentence()
     LoginCard {
         when (state.form) {
             LoginForm.LOGIN -> LoginFields(
@@ -151,12 +158,12 @@ private fun LoginFormCard(state: LoginScreenState, actions: LoginActions, wide: 
                 focusMgr = focusMgr)
 
             LoginForm.REGISTER -> RegisterFields(
-                running = state.accountRunning, message = state.accountMessage, error = state.accountError,
+                running = state.account.running, message = accountMessage, error = accountError,
                 focusMgr = focusMgr, namesSideBySide = wide,
                 onRegister = actions::register, onForm = actions::showForm)
 
             LoginForm.FORGOT_PASSWORD -> ForgotPasswordFields(
-                running = state.accountRunning, message = state.accountMessage, error = state.accountError,
+                running = state.account.running, message = accountMessage, error = accountError,
                 sendOn = actions::forgotPassword, onForm = actions::showForm)
         }
     }

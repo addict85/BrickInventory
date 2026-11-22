@@ -138,6 +138,7 @@ import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.PartListUiState
 import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
+import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.PlSet
 import ch.brickinventoryapp.parts.ui.screens.ManualItemDetailRoute
@@ -1301,7 +1302,7 @@ class ScreenPhotoVariantsTest {
         val vm = purchases()
         val parts = world.parts()
         show("einzelteil-detail", dark = dark, device = device) {
-            ManualItemDetailRoute(vm, parts, world.figures(), type = ItemKind.PART, id = "3001", colorId = 5, fallbackTitle = "Brick 2 x 4",
+            ManualItemDetailRoute(vm, parts, world.figures(), item = PartsTarget.ManualItemDetail(ItemKind.PART, "3001", 5, "Brick 2 x 4"),
                 imageLoader = images, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
         }
         pause()

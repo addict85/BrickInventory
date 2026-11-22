@@ -129,10 +129,10 @@ private fun PriceCardContent(
     }
 }
 
-/** Core data: number, quantity (changeable), entry date. */
 /** What the details section shows of the purchases: rows, currency and the date format. */
 internal class PurchaseSummary(val acquisitions: List<PurchaseView>, val currency: CurrencyCode, val fmtDate: (Instant?) -> String)
 
+/** Core data: number, quantity (changeable), entry date. */
 internal fun LazyListScope.setDetailDetailsSection(
     set: SetView,
     setNumber: String,

@@ -1,16 +1,15 @@
 # Rules for detekt (convention brickinventory.detekt in build-logic, Detekt.kt).
 #
 # Based on detekt's defaults (buildUponDefaultConfig); only what deviates stands here,
-# each with its reason. The baseline (baseline.xml) holds only old findings on length
-# and branching; tools/detekt-limit.txt lets it shrink.
+# each with its reason. The baseline (baseline.xml) is empty: tools/detekt-limit.txt
+# holds it at 0, so a finding is fixed, not recorded.
 
 config:
   validation: true
 
 complexity:
-  # Length and branching with detekt's defaults (60 lines, 15 branches). Today's excess
-  # stands in config/detekt/baseline.xml; new ones fail, and tools/detekt-limit.txt
-  # lets the list only shrink.
+  # Length and branching with detekt's defaults (60 lines, 15 branches); a longer
+  # function is split into named parts.
   CyclomaticComplexMethod:
     ignoreSimpleWhenEntries: true
   LongParameterList:

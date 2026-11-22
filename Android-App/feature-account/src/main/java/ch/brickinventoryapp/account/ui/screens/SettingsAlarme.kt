@@ -340,7 +340,7 @@ private fun AlarmStateBadge(triggered: Boolean) {
  * it" — whoever grants it later gets the notifications without any further action.
  */
 @Composable
-fun PriceAlertCard(an: Boolean, toggleOn: (Boolean) -> Unit) {
+internal fun PriceAlertCard(an: Boolean, toggleOn: (Boolean) -> Unit) {
     val question = androidx.activity.compose.rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* The answer doesn't matter — reasoning in the comment above this function. */ }

@@ -13,6 +13,9 @@ import org.junit.Test
  * `requestManualEntry` in the state. Whoever embeds the scanner reads the
  * field and opens THEIR adding — the gallery a dialog, the parts list
  * puts the cursor into its input field (there is no dialog there).
+ *
+ * Counter-check (run here): `entryVm.acknowledgeManualEntry()` removed from GalleryScreen →
+ * red “every scanner entry reacts to it”.
  */
 class ManualEntryAfterScanTest {
 
@@ -23,19 +26,13 @@ class ManualEntryAfterScanTest {
 
     @Test
     fun `every scanner entry reacts to it`() {
-        // The gallery opens its dialog, the parts list sets the cursor.
-        // Both acknowledge.
+        // The gallery opens its dialog and acknowledges; what the build list does is
+        // checked as behavior in SubpagesTest.
         val g = code(read("collection/ui/screens/GalleryScreen.kt"))
         assert(g.contains("barcode.requestManualEntry") && g.contains("showAddDialog = true")) {
             "Die Galerie öffnet die manuelle Erfassung nach einem erfolglosen Scan nicht"
         }
         assert(g.contains("entryVm.acknowledgeManualEntry()")) { "Die Galerie quittiert nicht" }
-
-        val pl = code(read("parts/ui/screens/PartsListScreen.kt"))
-        assert(pl.contains("requestManualEntry") && pl.contains("setFieldFocus.requestFocus()")) {
-            "Die Teileliste setzt den Cursor nach einem erfolglosen Scan nicht ins Feld"
-        }
-        assert(pl.contains("onManualEntryAcknowledged()")) { "Die Teileliste quittiert nicht" }
 
         val tg = code(read("parts/ui/PartsGraph.kt"))
         assert(tg.contains("requestManualEntry = scan.manualRecord")) {

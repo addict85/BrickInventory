@@ -285,7 +285,8 @@ class ScaffoldAndFormTest {
         show {
             when (fall.intValue) {
                 0 -> LoginScreen(
-                    LoginScreenState(serverUrl = "https://brick.example.org", error = error[0], registrationOpen = false),
+                    LoginScreenState(serverUrl = "https://brick.example.org", login = Operation.Failed(Message.Text(error[0])),
+                        registrationOpen = false),
                     object : LoginActions {},
                 )
                 1 -> StartPasswordMask(AccountUiState(save = Operation.Failed(Message.Text(error[1]))), { _, _, _ -> }, {})

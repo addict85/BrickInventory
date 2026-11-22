@@ -86,88 +86,8 @@ fun MinifigCard(fig: FigureView, serverUrl: String, imageLoader: ImageLoader,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column {
-            Box(Modifier.fillMaxWidth().height(110.dp)) {
-                // Thumbnail with a fallback to full resolution — see
-                // util/ImageRueckfall.kt, rememberTileImageWithFallback().
-                val (figImg, onFigImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-                ProductImage(
-                    model = figImg,
-                    imageLoader = imageLoader,
-                    // Without a description: the name stands below it, TalkBack would otherwise read it twice.
-                    contentDescription = null,
-                    onState = { st ->
-                        if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
-                    },
-                    modifier = Modifier.fillMaxSize()
-                        .clip(Shapes.tileImageCorners),
-                    contentScale = ContentScale.Fit,
-                    // Image background across the whole tile width as with sets and parts: the tall
-                    // figure image otherwise stood narrow in the middle with white margins.
-                    imageBackground = true,
-                    innerGap = Spacing.tiny,
-                )
-                if (qty > 1) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = Shapes.brand,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.tiny)
-                    ) {
-                        // The quantity badge: "×N" on a manually entered tile, "N×" on
-                        // a tile from a set — the web app's rule (`man-tile` with
-                        // `qbadge` ×N, `part-card` with `part-qty` N×).
-                        Text(quantityFromSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Spacing.hairline)
-                            .readAloudAs(quantity(qty)),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                }
-                // Condition only for manually entered minifigures (ones taken over from sets have none
-                // of their own). The owner badge, however, always: "whose is this?" comes up just
-                // the same for a figure from a child's set, and this list only loads
-                // `source=set`. Without a household, `owners` is empty and OwnerBadges returns
-                // right away. Column instead of Box: two badges stacked, not at the same point.
-                Column(Modifier.align(Alignment.BottomStart).padding(Spacing.tiny),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
-                    if (fig.source == Origin.MANUAL) ConditionBadges(fig.conditions, fig.condition)
-                    OwnerBadges(fig.owners)
-                }
-                if (fig.source == Origin.MANUAL) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
-                        shape = Shapes.brand,
-                        modifier = Modifier.align(Alignment.TopStart).padding(Spacing.tiny)
-                    ) {
-                        Text(stringResource(R.string.minifigs_manual_badge), Modifier.padding(horizontal = 5.dp, vertical = Spacing.hairline),
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Column(Modifier.padding(Spacing.small), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(fig.figNumber, Modifier.readAloudAs(stringResource(R.string.cd_figure_number, fig.figNumber)),
-                    style = MaterialTheme.typography.bodySmall,
-                    // A number, not a link: primary blue is for what can be tapped.
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
-                // The number already stands above it; without a name, the same number again looked like a name.
-                val figName = fig.figName
-                if (figName != null) {
-                    Text(catalogName(figName),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = if (largeFont()) 3 else 2, overflow = TextOverflow.Ellipsis)
-                } else {
-                    Text(stringResource(R.string.name_unknown), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                // A shared helper (util/DatumFormat.kt): it also handles timestamps without
-                // milliseconds.
-                val dateLabel = remember(fig.setAddedAt) {
-                    fmtTag(fig.setAddedAt, DateYear.SHORT)
-                }
-                if (dateLabel != null)
-                    Text(dateLabel, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            MinifigCardImage(fig, serverUrl, imageLoader, qty)
+            MinifigCardTexts(fig)
         }
     }
 }
@@ -193,4 +113,96 @@ internal fun MinifigTableRow(fig: FigureView, serverUrl: String, imageLoader: Im
         onImageError = onError,
         onClick = onClick,
     )
+}
+
+/** The figure's image with quantity, condition, owner and the "manual" badge. */
+@Composable
+private fun MinifigCardImage(fig: FigureView, serverUrl: String, imageLoader: ImageLoader, qty: Int) {
+    Box(Modifier.fillMaxWidth().height(110.dp)) {
+        // Thumbnail with a fallback to full resolution — see
+        // util/ImageRueckfall.kt, rememberTileImageWithFallback().
+        val (figImg, onFigImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
+        ProductImage(
+            model = figImg,
+            imageLoader = imageLoader,
+            // Without a description: the name stands below it, TalkBack would otherwise read it twice.
+            contentDescription = null,
+            onState = { st ->
+                if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
+            },
+            modifier = Modifier.fillMaxSize()
+                .clip(Shapes.tileImageCorners),
+            contentScale = ContentScale.Fit,
+            // Image background across the whole tile width as with sets and parts: the tall
+            // figure image otherwise stood narrow in the middle with white margins.
+            imageBackground = true,
+            innerGap = Spacing.tiny,
+        )
+        if (qty > 1) {
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                shape = Shapes.brand,
+                modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.tiny)
+            ) {
+                // The quantity badge: "×N" on a manually entered tile, "N×" on
+                // a tile from a set — the web app's rule (`man-tile` with
+                // `qbadge` ×N, `part-card` with `part-qty` N×).
+                Text(quantityFromSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Spacing.hairline)
+                    .readAloudAs(quantity(qty)),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+        // Condition only for manually entered minifigures (ones taken over from sets have none
+        // of their own). The owner badge, however, always: "whose is this?" comes up just
+        // the same for a figure from a child's set, and this list only loads
+        // `source=set`. Without a household, `owners` is empty and OwnerBadges returns
+        // right away. Column instead of Box: two badges stacked, not at the same point.
+        Column(Modifier.align(Alignment.BottomStart).padding(Spacing.tiny),
+            verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
+            if (fig.source == Origin.MANUAL) ConditionBadges(fig.conditions, fig.condition)
+            OwnerBadges(fig.owners)
+        }
+        if (fig.source == Origin.MANUAL) {
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                shape = Shapes.brand,
+                modifier = Modifier.align(Alignment.TopStart).padding(Spacing.tiny)
+            ) {
+                Text(stringResource(R.string.minifigs_manual_badge), Modifier.padding(horizontal = 5.dp, vertical = Spacing.hairline),
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+/** Number, name and the date it came with its set. */
+@Composable
+private fun MinifigCardTexts(fig: FigureView) {
+    Column(Modifier.padding(Spacing.small), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Text(fig.figNumber, Modifier.readAloudAs(stringResource(R.string.cd_figure_number, fig.figNumber)),
+            style = MaterialTheme.typography.bodySmall,
+            // A number, not a link: primary blue is for what can be tapped.
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+        // The number already stands above it; without a name, the same number again looked like a name.
+        val figName = fig.figName
+        if (figName != null) {
+            Text(catalogName(figName),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                maxLines = if (largeFont()) 3 else 2, overflow = TextOverflow.Ellipsis)
+        } else {
+            Text(stringResource(R.string.name_unknown), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        // A shared helper (util/DatumFormat.kt): it also handles timestamps without
+        // milliseconds.
+        val dateLabel = remember(fig.setAddedAt) {
+            fmtTag(fig.setAddedAt, DateYear.SHORT)
+        }
+        if (dateLabel != null)
+            Text(dateLabel, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

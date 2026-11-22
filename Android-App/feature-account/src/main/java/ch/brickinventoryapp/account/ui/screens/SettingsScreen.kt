@@ -144,12 +144,9 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(Spacing.large)
     ) {
         // Here stands only what a setting is in the narrow sense: display & prices,
-        // server, update check. The categories with their own page sit in the
-        // "More" page, one tap further away.
-        //
-        // Every choice applies right away and announces itself: previously language and
-        // display took effect right away, currency and conditions only via a button
-        // below them — two rules on one card, and whoever missed the button lost the choice.
+        // server, update check; the categories with their own page sit on "More".
+        // Every choice applies right away and announces itself: a save button below
+        // the card was a second rule, and whoever missed it lost the choice.
         SettingsCard(title = stringResource(R.string.settings_group_display),
                      icon = Icons.Default.Tune) {
             DisplaySettings(condition, appearance)

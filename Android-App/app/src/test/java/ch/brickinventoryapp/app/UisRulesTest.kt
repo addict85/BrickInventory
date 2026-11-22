@@ -64,7 +64,6 @@ import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.finances.ui.FinanceTarget
-import ch.brickinventoryapp.finances.ui.inGroupsOfFour
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.finances.ui.setRows
 import ch.brickinventoryapp.model.domain.Condition
@@ -687,7 +686,7 @@ class UisRulesTest {
     @Test
     fun `voucher buttons name the number and the PIN has 48 dp`() {
         show { Vouchers() }
-        val number = inGroupsOfFour("6061 2345 6789")
+        val number = "6061 2345 6789"
         val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, number))
             .fetchSemanticsNode().boundsInRoot
         val density = ctx.resources.displayMetrics.density

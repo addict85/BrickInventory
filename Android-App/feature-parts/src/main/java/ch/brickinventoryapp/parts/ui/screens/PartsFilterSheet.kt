@@ -6,14 +6,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.domain.LocationView
-import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.parts.ui.PartsUiState
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsActions
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.AccountFilterSection
 import ch.brickinventoryapp.shared.ui.FilterChoice
@@ -25,30 +20,22 @@ import ch.brickinventoryapp.state.ui.FilterCount
 
 /** The parts' filter sheet: account, storage location, spare parts, color and category, view. */
 @Composable
-internal fun PartsFilterSheet(
-    actions: PartsActions,
-    partsState: PartsUiState,
-    householdMembers: List<MemberView>,
-    scopeMode: String,
-    onScopeChange: (String) -> Unit,
-    storageLocations: List<LocationView>,
-    storageMode: String,
-    onStorageChange: (String) -> Unit,
-    colorEntries: List<PartsFilterEntry>,
-    categoryEntries: List<PartsFilterEntry>,
-    onClose: () -> Unit,
-) {
+internal fun PartsFilterSheet(filter: PartsFilterContext, onClose: () -> Unit) {
+    val actions = filter.actions
+    val partsState = filter.partsState
     val spare = partsState.filter.spare
     val color = partsState.filter.color
     val category = partsState.filter.category
+    val householdMembers = filter.members
+    val scopeMode = filter.account
+    val storageLocations = filter.locations
+    val storageMode = filter.storage
+    val colorEntries = filter.colors
+    val categoryEntries = filter.categories
+    val onScopeChange: (String) -> Unit = filter::onAccount
+    val onStorageChange: (String) -> Unit = filter::onStorage
     // Only reset what deviates: every change reloads the list.
-    val reset: () -> Unit = {
-        if (FilterCount.account(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
-        if (FilterCount.storage(storageLocations, storageMode) > 0) onStorageChange("")
-        if (spare != SparePartChoice.ALL) actions.setPartsSpare(SparePartChoice.ALL)
-        if (color != ColorPicker.All) actions.setPartsColorFilter(ColorPicker.All)
-        if (category != CategoryChoice.All) actions.setPartsCategoryFilter(CategoryChoice.All)
-    }
+    val reset: () -> Unit = filter::reset
     val active = FilterCount.parts(householdMembers, scopeMode, storageLocations, storageMode, spare, color, category)
     FilterSheetFrame(onClose = onClose, resetOn = reset.takeIf { active > 0 }) {
         AccountFilterSection(householdMembers, scopeMode, onScopeChange)

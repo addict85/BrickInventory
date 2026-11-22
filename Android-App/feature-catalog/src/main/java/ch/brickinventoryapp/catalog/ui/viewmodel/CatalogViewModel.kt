@@ -49,7 +49,7 @@ internal const val VIEWPORT_REST_MS = 150L
  * it, like AppViewModel, is held by the Activity.
  */
 @HiltViewModel
-class CatalogViewModel @Inject constructor(
+internal class CatalogViewModel @Inject constructor(
     private val catalog: CatalogRepository,
     private val messages: MessageChannel,
     /** Texts in the app's language and error messages like everywhere else (AppTexts). */

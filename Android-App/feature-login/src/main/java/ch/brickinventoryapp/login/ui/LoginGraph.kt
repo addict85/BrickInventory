@@ -20,9 +20,6 @@ import ch.brickinventoryapp.login.ui.screens.QrAccountQuestion
 import ch.brickinventoryapp.login.ui.screens.ServerStartDisplay
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.ui.sentence
 
 /** What sign-in needs from the app: only the app knows where it goes after signing in. */
 interface LoginNavigation {
@@ -107,16 +104,14 @@ private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
         } else LoginScreen(
             state = LoginScreenState(
                 serverUrl = state.serverUrl,
-                isLoading = loginUiState.login.running,
-                error = loginUiState.login.errorMessage?.sentence(),
+                login = loginUiState.login,
                 qrConfirmation = loginUiState.qrConfirmation,
                 codeNeeded = loginUiState.codeNeeded,
                 form = loginUiState.form,
                 registrationOpen = loginUiState.registrationOpen,
-                accountRunning = loginUiState.account.running,
-                accountMessage = listOfNotNull(loginUiState.message?.sentence(), loginUiState.hint?.sentence())
-                    .joinToString(" ").ifEmpty { null },
-                accountError = loginUiState.account.errorMessage?.sentence(),
+                account = loginUiState.account,
+                message = loginUiState.message,
+                hint = loginUiState.hint,
                 fullAccess = loginUiState.fullAccess,
                 passkeyInsteadOfCode = loginUiState.passkeyInsteadOfCode,
             ),

@@ -40,11 +40,6 @@ import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtMoney
 
-/**
- * Vouchers — LEGO gift cards in one's own profile, reachable as simply as possible
- * and as in the web app's profile. A file of its own, so that SettingsScreen.kt
- * stays manageable.
- */
 /** What the vouchers card can trigger; every action does nothing unless overridden (preview, test). */
 interface VoucherCardActions {
     fun setField(number: String?, pin: String?, amount: String?, currency: String?) = Unit
@@ -76,6 +71,11 @@ interface VoucherCardActions {
     fun cancelConfirmation() = Unit
 }
 
+/**
+ * Vouchers — LEGO gift cards in one's own profile, reachable as simply as possible
+ * and as in the web app's profile. A file of its own, so that SettingsScreen.kt
+ * stays manageable.
+ */
 @Composable
 fun VouchersCard(
     condition: VoucherUiState,

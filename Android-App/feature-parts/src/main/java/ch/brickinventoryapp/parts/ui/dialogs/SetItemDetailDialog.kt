@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.model.domain.ComponentHeaderView
+import ch.brickinventoryapp.model.domain.UsingSetView
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
@@ -86,10 +88,6 @@ private fun SetItemDetail(
     // rememberSaveable, not remember: the opened zoom is a decision of the
     // user and must survive a rotation — as at the other zoom spots.
     var showZoom by rememberSaveable { mutableStateOf(false) }
-    // stringResource() only works outside the LazyColumn's body — there
-    // no Composable context is needed for every item, and reading it once
-    // is enough.
-    val openLabel = stringResource(R.string.setitem_open_set)
     val header = condition.header
     // Full resolution VIA the server proxy — for parts and figures this is
     // deliberately decided this way (see resolveFullUrlViaProxy), so that no
@@ -97,16 +95,6 @@ private fun SetItemDetail(
     // entered parts makes exactly the same choice.
     val image = header?.let { resolveFullUrlViaProxy(serverUrl, it.imageLocal, it.imageUrl) }
 
-    val title: @Composable () -> Unit = {
-            Column {
-                Text(header?.name ?: condition.number, fontWeight = FontWeight.SemiBold)
-                Text(
-                    condition.number + (header?.colorName?.let { " · " + color(it) } ?: ""),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-    }
     val content: @Composable () -> Unit = {
             Column(Modifier.fillMaxWidth()) {
                 when {
@@ -117,95 +105,31 @@ private fun SetItemDetail(
                         condition.fetch.message.sentence(),
                         color = MaterialTheme.colorScheme.error,
                     )
-                    else -> {
-                        // The same header as for a self-entered part; only the sections below it
-                        // depend on the origin.
-                        val category = categoryTranslator()
-                        val chips = buildList {
-                            add(stringResource(R.string.setitem_total_qty) to quantityFromSet(header?.totalQuantity ?: 0))
-                            header?.colorName?.let { add(stringResource(R.string.setitem_color) to color(it)) }
-                            header?.categoryName?.let { add(stringResource(R.string.setitem_category) to category(it)) }
-                            if (header?.isSpare == true) add(stringResource(R.string.parts_spare_tag) to "✓")
-                        }
-                        PartDetailHeader(image, imageLoader, header?.name, chips, onZoom = { showZoom = true })
-                        Spacer(Modifier.height(Spacing.small))
-                        // Only for parts (header.colorId is null for figures): a minifigure
-                        // is stuck in its set, whose location stands in the set detail — a second
-                        // location could drift apart. Editable as in the web app; the
-                        // field writes to every row of this part-color pair.
-                        val headerColor = header?.colorId
-                        if (header != null && headerColor != null) {
-                            Row(Modifier.fillMaxWidth().padding(vertical = Spacing.hairline),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Text(stringResource(R.string.detail_storage),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyMedium)
-                                LocationField(
-                                    value = header.storage ?: "",
-                                    stock = storageUiState.stock.map { it.name },
-                                    onValue = { actions.setPartLocation(header.number, headerColor, it) },
-                                    modifier = Modifier.padding(start = Spacing.large)
-                                        .weight(1f).widthIn(max = 320.dp),
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(Spacing.medium))
-                        Text(
-                            stringResource(R.string.setitem_used_in),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        if (condition.sets.isEmpty()) {
-                            Text(
-                                stringResource(R.string.setitem_used_in_none),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        } else {
-                            // LazyColumn with a height limit: a part can be
-                            // stuck in dozens of sets, and a dialog that grows
-                            // beyond the screen edge can no longer be
-                            // closed.
-                            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
-                                items(condition.sets, key = { it.setNumber + "-" + it.ownerUserId }) { s ->
-                                    // ── Image, number, name, quantity ──
-                                    //
-                                    // First the small image, then number, then name — as in the
-                                    // finances tab. TableRow exists for that; a row of its
-                                    // own would have a fixed corner radius and no fallback to the full
-                                    // resolution without a thumbnail.
-                                    val (imageUrl, onImageError) =
-                                        rememberTileImageWithFallback(serverUrl, s.imageLocal, s.imageUrl)
-                                    TableRow(
-                                        imageUrl = imageUrl,
-                                        number = s.setNumber,
-                                        name = s.setName,
-                                        quantity = s.quantity,
-                                        imageLoader = imageLoader,
-                                        onImageError = onImageError,
-                                        // onClickLabel tells the screen reader what tapping does
-                                        // — without it, it only reads out the set number. In the web app
-                                        // the same text is the title attribute.
-                                        onClickLabel = openLabel,
-                                        onClick = {
-                                            // Close first, then open:
-                                            // otherwise the dialog would lie
-                                            // over the set detail.
-                                            actions.closeSetItem()
-                                            onOpenSet(s.setNumber)
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    else -> SetItemBody(condition, storageUiState, actions, imageLoader, serverUrl, onOpenSet) { showZoom = true }
                 }
             }
     }
 
-    // Close on the left as in every detail header (DetailTopAppBar), in the sheet as next to the list.
-    val close = { actions.closeSetItem() }
+    SetItemFrame(asDialog, header?.name ?: condition.number,
+        condition.number + (header?.colorName?.let { " · " + color(it) } ?: ""), actions::closeSetItem, content)
+
+    if (showZoom && image != null) {
+        ZoomableImageDialog(
+            imageUrl = image,
+            contentDescription = header.name,
+            imageLoader = imageLoader,
+            onDismiss = { showZoom = false },
+        )
+    }
+}
+
+/**
+ * A sheet over the list, or the pane next to it. Close on the left as in every detail header
+ * (DetailTopAppBar), in the sheet as next to the list.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SetItemFrame(asDialog: Boolean, title: String, subtitle: String, close: () -> Unit, content: @Composable () -> Unit) {
     if (asDialog) {
         ModalBottomSheet(onDismissRequest = close) {
             Column(
@@ -216,7 +140,13 @@ private fun SetItemDetail(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     BackButton(close, close = true)
                     Box(Modifier.weight(1f)) {
-                        ProvideTextStyle(MaterialTheme.typography.titleLarge) { title() }
+                        ProvideTextStyle(MaterialTheme.typography.titleLarge) {
+                            Column {
+                                Text(title, fontWeight = FontWeight.SemiBold)
+                                Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 }
                 content()
@@ -224,25 +154,127 @@ private fun SetItemDetail(
         }
     } else {
         Column(Modifier.fillMaxSize()) {
-            DetailTopAppBar(
-                title = header?.name ?: condition.number,
-                subtitle = condition.number + (header?.colorName?.let { " · " + color(it) } ?: ""),
-                onBack = close,
-                close = true,
-            )
+            DetailTopAppBar(title = title, subtitle = subtitle, onBack = close, close = true)
             Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.large),
                 verticalArrangement = Arrangement.spacedBy(Spacing.medium),
             ) { content() }
         }
     }
+}
 
-    if (showZoom && image != null) {
-        ZoomableImageDialog(
-            imageUrl = image,
-            contentDescription = header.name,
-            imageLoader = imageLoader,
-            onDismiss = { showZoom = false },
+/** Header with image and figures, the storage location (parts only) and the sets the item is in. */
+@Composable
+private fun SetItemBody(
+    condition: SetItemUiState,
+    storageUiState: StorageUiState,
+    actions: SetItemActions,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    onOpenSet: (String) -> Unit,
+    onZoom: () -> Unit,
+) {
+    val color = colorTranslator()
+    val header = condition.header
+    val image = header?.let { resolveFullUrlViaProxy(serverUrl, it.imageLocal, it.imageUrl) }
+    // The same header as for a self-entered part; only the sections below it
+    // depend on the origin.
+    val category = categoryTranslator()
+    val chips = buildList {
+        add(stringResource(R.string.setitem_total_qty) to quantityFromSet(header?.totalQuantity ?: 0))
+        header?.colorName?.let { add(stringResource(R.string.setitem_color) to color(it)) }
+        header?.categoryName?.let { add(stringResource(R.string.setitem_category) to category(it)) }
+        if (header?.isSpare == true) add(stringResource(R.string.parts_spare_tag) to "✓")
+    }
+    PartDetailHeader(image, imageLoader, header?.name, chips, onZoom = onZoom)
+    Spacer(Modifier.height(Spacing.small))
+    if (header != null) SetItemStorageRow(header, storageUiState, actions)
+    Spacer(Modifier.height(Spacing.medium))
+    Text(
+        stringResource(R.string.setitem_used_in),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    if (condition.sets.isEmpty()) {
+        Text(
+            stringResource(R.string.setitem_used_in_none),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
         )
+    } else {
+        UsedInSets(condition.sets, serverUrl, imageLoader, actions, onOpenSet)
+    }
+}
+
+/**
+ * Only for parts (header.colorId is null for figures): a minifigure is stuck in its set, whose
+ * location stands in the set detail — a second location could drift apart. Editable as in the
+ * web app; the field writes to every row of this part-color pair.
+ */
+@Composable
+private fun SetItemStorageRow(header: ComponentHeaderView, storageUiState: StorageUiState, actions: SetItemActions) {
+    val headerColor = header.colorId ?: return
+    Row(Modifier.fillMaxWidth().padding(vertical = Spacing.hairline),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.detail_storage),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium)
+        LocationField(
+            value = header.storage ?: "",
+            stock = storageUiState.stock.map { it.name },
+            onValue = { actions.setPartLocation(header.number, headerColor, it) },
+            modifier = Modifier.padding(start = Spacing.large)
+                .weight(1f).widthIn(max = 320.dp),
+        )
+    }
+}
+
+/**
+ * The sets this item is in. LazyColumn with a height limit: a part can be stuck in dozens of
+ * sets, and a dialog that grows beyond the screen edge can no longer be closed.
+ */
+@Composable
+private fun UsedInSets(
+    sets: List<UsingSetView>,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    actions: SetItemActions,
+    onOpenSet: (String) -> Unit,
+) {
+    // stringResource() only works outside the LazyColumn's body — there
+    // no Composable context is needed for every item, and reading it once
+    // is enough.
+    val openLabel = stringResource(R.string.setitem_open_set)
+    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
+        items(sets, key = { it.setNumber + "-" + it.ownerUserId }) { s ->
+            // ── Image, number, name, quantity ──
+            //
+            // First the small image, then number, then name — as in the
+            // finances tab. TableRow exists for that; a row of its
+            // own would have a fixed corner radius and no fallback to the full
+            // resolution without a thumbnail.
+            val (imageUrl, onImageError) =
+                rememberTileImageWithFallback(serverUrl, s.imageLocal, s.imageUrl)
+            TableRow(
+                imageUrl = imageUrl,
+                number = s.setNumber,
+                name = s.setName,
+                quantity = s.quantity,
+                imageLoader = imageLoader,
+                onImageError = onImageError,
+                // onClickLabel tells the screen reader what tapping does
+                // — without it, it only reads out the set number. In the web app
+                // the same text is the title attribute.
+                onClickLabel = openLabel,
+                onClick = {
+                    // Close first, then open:
+                    // otherwise the dialog would lie
+                    // over the set detail.
+                    actions.closeSetItem()
+                    onOpenSet(s.setNumber)
+                },
+            )
+        }
     }
 }

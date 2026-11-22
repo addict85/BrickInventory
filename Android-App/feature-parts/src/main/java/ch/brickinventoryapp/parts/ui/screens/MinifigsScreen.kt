@@ -19,6 +19,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.FigureOrder
+import ch.brickinventoryapp.model.domain.ManualMinifigView
+import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.ui.ListView
 import ch.brickinventoryapp.model.ui.Load
@@ -95,31 +97,19 @@ internal fun MinifigsScreen(
     /** Scroll state from outside: the target is discarded when a detail is opened. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    val state = condition.session
     val glance = condition.glance
     val partsState = condition.figures
-
     val figs = partsState.minifigs
-    val minifigStats = partsState.minifigStats
     val isLoading = partsState.minifigsFetch.loading
     val error = partsState.minifigsFetch as? Load.Failure
     val errorText = error?.message?.sentence()
-    val serverUrl = state.serverUrl
-    val currency = state.currency
-    val defaultCondition = state.userDefaultCondition ?: Condition.NEW
     val householdMembers = glance.householdMembers
     val scopeMode = glance.scopeModes[ScopeFilter.View.MINIFIGS]
         ?: ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
-    val storageState = condition.storage
-    // The figure whose detail is open next to it (wide window); its tile is marked.
-    val chosen = LocalOpenDetail.current
 
     val onRefresh: () -> Unit = { actions.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { actions.setScope(ScopeFilter.View.MINIFIGS, it) }
-    // The SUPPLY of storage locations (not the occupied ones): on entry,
-    // even an empty shelf should be offered as a choice.
-    val locationStock = storageState.own.map { it.name }
 
     // Search text from the state, filtering happens on the server — as with the parts and
     // in the gallery, so that the search rule exists only once (reasoning in
@@ -161,84 +151,12 @@ internal fun MinifigsScreen(
         )
 
         OfflineHint(partsState.minifigsOfflineStatus, onAgain = onRefresh)
-        when (display) {
-            LoadingIndicator.LOADS ->
-                SkeletonRaster(ReadableColumns(140.dp), tileHeight = 196.dp)
-            LoadingIndicator.ERROR -> StateHint { ErrorHint(errorText, onRefresh, error?.kind) }
-            // Like the empty parts tab: sentence and action, no key figures next to "empty".
-            LoadingIndicator.EMPTY -> StateHint {
-                HintText(Icons.Default.Person, stringResource(R.string.minifigs_none),
-                    stringResource(R.string.minifigs_empty_text))
-                Button(onClick = { showAddDialog = true }) { Text(addText) }
-            }
-            LoadingIndicator.NO_HITS -> StateHint {
-                NoHitsHint(stringResource(R.string.minifigs_no_results))
-                OutlinedButton(onClick = {
-                    search = ""; actions.setMinifigsQuery("")
-                    if (FilterCount.account(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
-                }, colors = secondaryButtonColors(), border = secondaryButtonRand()) { Text(stringResource(R.string.search_clear_all)) }
-            }
-            LoadingIndicator.LIST -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
-                LazyVerticalGrid(
-                    columns = ReadableColumns(140.dp),
-                    state = gridState,
-                    // Space at the bottom for the entry button, otherwise it covers the last row.
-                    contentPadding = PaddingValues(start = Spacing.medium, top = Spacing.medium,
-                        end = Spacing.medium, bottom = FabSpace),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.small)
-                ) {
-                    // Asked for the content, not the loaded page: the
-                    // numbers mean the whole collection, even during a search.
-                    if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { MinifigsMetrics(minifigStats) }
-                    }
-                    if (partsState.metricsFetch is Load.Failure) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "figs-metrics-failed") {
-                            PartialLoadFailed(partsState.metricsFetch, actions::retryMetrics)
-                        }
-                    }
-                    // Manual figures as a grid section — one continuous
-                    // scroll list instead of a fixed block above the grid (see PartsScreen).
-                    if (manualFigs.isNotEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "manual-header") {
-                            SectionHeader(stringResource(R.string.minifigs_manual_section))
-                        }
-                        items(manualFigs, key = { "manual-${it.id ?: it.figNumber}" }) { fig ->
-                            Moved {
-                                ManualFigTile(
-                                    fig = fig,
-                                    serverUrl = serverUrl,
-                                    imageLoader = imageLoader,
-                                    currency = currency,
-                                    onEdit = { onOpenDetail(fig.figNumber) },
-                                )
-                            }
-                        }
-                        if (figs.isNotEmpty()) {
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "sets-header") {
-                                SectionHeader(stringResource(R.string.minifigs_sets_section))
-                            }
-                        }
-                    }
-                    // As with the parts: in the table view every row takes the whole width,
-                    // the grid container stays the same. The manual figures stay tiles in both
-                    // views — like #manual-figs-list in the web app, which is not tied to
-                    // figs-view.
-                    itemsIndexed(
-                        figs,
-                        key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
-                        span = { _, _ -> if (view == ListView.TABLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
-                    ) { _, fig ->
-                        // BOTH views open the same dialog.
-                        val open = { actions.openSetItem(fig.figNumber) }
-                        Moved {
-                            if (view == ListView.TABLE) MinifigTableRow(fig, serverUrl, imageLoader, open)
-                            else MinifigCard(fig, serverUrl, imageLoader, open,
-                                picked = chosen == detailKey("fig", fig.figNumber))
-                        }
-                    }
-                }
+        MinifigsContent(display, error, onRefresh, onAdd = { showAddDialog = true }, onReset = {
+            search = ""; actions.setMinifigsQuery("")
+            if (FilterCount.account(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
+        }) {
+            PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
+                MinifigsGrid(condition, gridState, imageLoader, onOpenDetail, actions)
             }
         }
     }
@@ -250,30 +168,9 @@ internal fun MinifigsScreen(
         )
     }
 
-    if (showFilter) {
-        val reset: () -> Unit = { onScopeChange(ScopeFilter.ALL) }
-        FilterSheetFrame(
-            onClose = { showFilter = false },
-            resetOn = reset.takeIf { FilterCount.account(householdMembers, scopeMode) > 0 },
-        ) {
-            AccountFilterSection(householdMembers, scopeMode, onScopeChange)
-            ViewSection(view) { actions.setMinifigsView(it) }
-        }
-    }
+    if (showFilter) MinifigsFilter(householdMembers, scopeMode, view, actions) { showFilter = false }
 
-    if (showAddDialog) {
-        AddMinifigDialog(
-            householdMembers = householdMembers,
-            defaultCondition = defaultCondition,
-            onDismiss = { showAddDialog = false },
-            storageLocations = locationStock,
-            locationDefault = storageState.default?.name ?: "",
-            onAdd = { entry ->
-                showAddDialog = false
-                actions.addMinifig(entry)
-            }
-        )
-    }
+    if (showAddDialog) MinifigEntryDialog(condition, actions) { showAddDialog = false }
 
     // Deleted in the detail (ManualItemDetailScreen, showDeleteConfirm) — at
     // the same spot as for the set.
@@ -295,4 +192,157 @@ private fun FigureOrder.label(): Int = when (this) {
     FigureOrder.NAME -> R.string.parts_order_name
     FigureOrder.NUMBER -> R.string.minifigs_order_number
     FigureOrder.QUANTITY -> R.string.parts_order_quantity
+}
+
+/** Key figures, the manually entered figures, then the figures from sets. */
+@Composable
+private fun MinifigsGrid(
+    condition: FiguresState,
+    gridState: LazyGridState,
+    imageLoader: ImageLoader,
+    onOpenDetail: (figNumber: String) -> Unit,
+    actions: FiguresActions,
+) {
+    val partsState = condition.figures
+    val figs = partsState.minifigs
+    val minifigStats = partsState.minifigStats
+    val manualFigs = partsState.manualFigs ?: emptyList()
+    val serverUrl = condition.session.serverUrl
+    val currency = condition.session.currency
+    val view = partsState.minifigsView
+    // The figure whose detail is open next to it (wide window); its tile is marked.
+    val chosen = LocalOpenDetail.current
+    LazyVerticalGrid(
+        columns = ReadableColumns(140.dp),
+        state = gridState,
+        // Space at the bottom for the entry button, otherwise it covers the last row.
+        contentPadding = PaddingValues(start = Spacing.medium, top = Spacing.medium,
+            end = Spacing.medium, bottom = FabSpace),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+        verticalArrangement = Arrangement.spacedBy(Spacing.small)
+    ) {
+        // Asked for the content, not the loaded page: the
+        // numbers mean the whole collection, even during a search.
+        if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { MinifigsMetrics(minifigStats) }
+        }
+        if (partsState.metricsFetch is Load.Failure) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "figs-metrics-failed") {
+                PartialLoadFailed(partsState.metricsFetch, actions::retryMetrics)
+            }
+        }
+        // Manual figures as a grid section — one continuous
+        // scroll list instead of a fixed block above the grid (see PartsScreen).
+        if (manualFigs.isNotEmpty()) manualFigsSection(manualFigs, condition.session, imageLoader, onOpenDetail,
+            setsFollow = figs.isNotEmpty())
+        // As with the parts: in the table view every row takes the whole width,
+        // the grid container stays the same. The manual figures stay tiles in both
+        // views — like #manual-figs-list in the web app, which is not tied to
+        // figs-view.
+        itemsIndexed(
+            figs,
+            key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
+            span = { _, _ -> if (view == ListView.TABLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+        ) { _, fig ->
+            // BOTH views open the same dialog.
+            val open = { actions.openSetItem(fig.figNumber) }
+            Moved {
+                if (view == ListView.TABLE) MinifigTableRow(fig, serverUrl, imageLoader, open)
+                else MinifigCard(fig, serverUrl, imageLoader, open,
+                    picked = chosen == detailKey("fig", fig.figNumber))
+            }
+        }
+}
+}
+
+/** Skeleton, error, empty (with entry) or no hits (with the way back) — otherwise [list]. */
+@Composable
+private fun MinifigsContent(
+    display: LoadingIndicator,
+    error: Load.Failure?,
+    onRefresh: () -> Unit,
+    onAdd: () -> Unit,
+    onReset: () -> Unit,
+    list: @Composable () -> Unit,
+) {
+    when (display) {
+        LoadingIndicator.LOADS ->
+            SkeletonRaster(ReadableColumns(140.dp), tileHeight = 196.dp)
+        LoadingIndicator.ERROR -> StateHint { ErrorHint(error?.message?.sentence(), onRefresh, error?.kind) }
+        // Like the empty parts tab: sentence and action, no key figures next to "empty".
+        LoadingIndicator.EMPTY -> StateHint {
+            HintText(Icons.Default.Person, stringResource(R.string.minifigs_none),
+                stringResource(R.string.minifigs_empty_text))
+            Button(onClick = onAdd) { Text(stringResource(R.string.minifigs_add)) }
+        }
+        LoadingIndicator.NO_HITS -> StateHint {
+            NoHitsHint(stringResource(R.string.minifigs_no_results))
+            OutlinedButton(onClick = onReset, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+                Text(stringResource(R.string.search_clear_all))
+            }
+        }
+        LoadingIndicator.LIST -> list()
+    }
+}
+
+/** The manually entered figures with their heading; the sets' heading follows if there are any. */
+private fun LazyGridScope.manualFigsSection(
+    manualFigs: List<ManualMinifigView>,
+    session: PartsSessionUiState,
+    imageLoader: ImageLoader,
+    onOpenDetail: (figNumber: String) -> Unit,
+    setsFollow: Boolean,
+) {
+    item(span = { GridItemSpan(maxLineSpan) }, key = "manual-header") {
+        SectionHeader(stringResource(R.string.minifigs_manual_section))
+    }
+    items(manualFigs, key = { "manual-${it.id ?: it.figNumber}" }) { fig ->
+        Moved {
+            ManualFigTile(
+                fig = fig,
+                serverUrl = session.serverUrl,
+                imageLoader = imageLoader,
+                currency = session.currency,
+                onEdit = { onOpenDetail(fig.figNumber) },
+            )
+        }
+    }
+    if (setsFollow) {
+        item(span = { GridItemSpan(maxLineSpan) }, key = "sets-header") {
+            SectionHeader(stringResource(R.string.minifigs_sets_section))
+        }
+    }
+}
+
+/** Account and view of the figures in the filter sheet. */
+@Composable
+private fun MinifigsFilter(householdMembers: List<MemberView>, scopeMode: String, view: ListView, actions: FiguresActions, onClose: () -> Unit) {
+    val onScopeChange: (String) -> Unit = { actions.setScope(ScopeFilter.View.MINIFIGS, it) }
+    val reset: () -> Unit = { onScopeChange(ScopeFilter.ALL) }
+    FilterSheetFrame(
+        onClose = onClose,
+        resetOn = reset.takeIf { FilterCount.account(householdMembers, scopeMode) > 0 },
+    ) {
+        AccountFilterSection(householdMembers, scopeMode, onScopeChange)
+        ViewSection(view) { actions.setMinifigsView(it) }
+    }
+}
+
+/** The entry dialog for a figure, with the account's storage locations and default condition. */
+@Composable
+private fun MinifigEntryDialog(condition: FiguresState, actions: FiguresActions, onClose: () -> Unit) {
+    val storageState = condition.storage
+    AddMinifigDialog(
+        householdMembers = condition.glance.householdMembers,
+        defaultCondition = condition.session.userDefaultCondition ?: Condition.NEW,
+        onDismiss = onClose,
+        // The SUPPLY of storage locations (not the occupied ones): on entry,
+        // even an empty shelf should be offered as a choice.
+        storageLocations = storageState.own.map { it.name },
+        locationDefault = storageState.default?.name ?: "",
+        onAdd = { entry ->
+            onClose()
+            actions.addMinifig(entry)
+        }
+    )
 }

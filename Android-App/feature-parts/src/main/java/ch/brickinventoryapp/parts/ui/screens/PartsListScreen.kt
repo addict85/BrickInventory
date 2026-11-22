@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -35,6 +36,8 @@ import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.parts.ui.PartListUiState
+import ch.brickinventoryapp.parts.ui.PlPart
+import ch.brickinventoryapp.parts.ui.PlSet
 import ch.brickinventoryapp.parts.ui.normalized
 import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
 import ch.brickinventoryapp.resources.R
@@ -78,12 +81,14 @@ fun PartsListRoute(
     serverUrl: String,
     imageLoader: ImageLoader,
     onScanBarcode: () -> Unit,
-    hasSubAccounts: Boolean,
     barcodeSetNumber: String?,
     onBarcodeConsumed: () -> Unit,
-    listState: LazyListState,
     requestManualEntry: Boolean,
     onManualEntryAcknowledged: () -> Unit,
+    /** Does this account have sub-accounts? Only then does "Unterkonten mit einbeziehen" appear. */
+    hasSubAccounts: Boolean = false,
+    /** Scroll state from outside: the screen is left on the way to the barcode scanner. */
+    listState: LazyListState = rememberLazyListState(),
     /** Shows „removed“ with „Undo“; without one (tests), removing has no undo. */
     snackbar: SnackbarHostState? = null,
     vm: PartListViewModel = hiltViewModel(),
@@ -191,9 +196,6 @@ fun PartsListScreen(
     val isLoading = condition.generating.loading
     val status = condition.status?.sentence().orEmpty()
     val generated = condition.generated
-    val onlyLose = condition.onlyLose
-    val withSubAccounts = condition.withSubAccounts
-    val quantities = androidx.compose.ui.platform.LocalResources.current
 
     fun addSet(nr: String) {
         onAdd(nr)
@@ -221,162 +223,28 @@ fun PartsListScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        // ── An unsuccessful scan sets the cursor into the set field ──
-        //
-        // The counterpart to the other screens' entry dialog.
-        LaunchedEffect(requestManualEntry) {
-            if (requestManualEntry) {
-                kotlinx.coroutines.delay(120)
-                try { setFieldFocus.requestFocus() } catch (_: Exception) { /* dialog already closed */ }
-                onManualEntryAcknowledged()
-            }
-        }
+        FocusOnManualEntry(requestManualEntry, setFieldFocus, onManualEntryAcknowledged)
 
         // Input row
         Surface(tonalElevation = 2.dp) {
             Column(Modifier.padding(Spacing.medium), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = setInput,
-                        // Filter and keyboard choice like every set-number field (util/NumericInput.kt).
-                        // "Fertig" and the "+" in the field take the set into the list: one way in,
-                        // one button to create it.
-                        onValueChange = { setInput = NumericInput.setNumber(it); setMissing = false },
-                        keyboardOptions = NumericInput.setNumberKeyboard(ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) addSet(setInput) }),
-                        // Label instead of placeholder: the long placeholder wrapped into two
-                        // lines in the field and disappeared while typing.
-                        label = { Text(stringResource(R.string.gallery_set_number)) },
-                        isError = setMissing,
-                        supportingText = if (setMissing) {
-                            { Text(stringResource(R.string.partslist_set_missing), Modifier.announce()) }
-                        } else null,
-                        modifier = Modifier.weight(1f).focusRequester(setFieldFocus),
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.large,
-                        trailingIcon = {
-                            if (setInput.isNotBlank()) WithTooltip(stringResource(R.string.partslist_add_set)) {
-                                IconButton(onClick = { addSet(setInput) }) {
-                                    Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
-                                }
-                            }
-                        }
-                    )
-                    // The same scan button as next to every search; a floating button in the middle
-                    // of a row looked like the screen's one main button.
-                    ScanButton(onScanBarcode)
-                }
+                SetInputRow(setInput, { setInput = NumericInput.setNumber(it); setMissing = false }, setMissing,
+                    setFieldFocus, ::addSet, onScanBarcode)
 
                 // The collected sets with their reset: it clears this list and so stands
                 // next to it, not floating free below the buttons. Without content it is missing entirely.
-                if (sets.isNotEmpty() || generated) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(quantities.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f))
-                        // With a confirmation prompt: resetting discards the sets and the created list.
-                        TextButton(
-                            onClick = { clearAsk = true },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        ) { Text(stringResource(R.string.partslist_reset)) }
-                    }
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.tiny)
-                    ) {
-                        sets.forEachIndexed { i, s ->
-                            RemovableChip(
-                                label = if (s.name.isNotBlank() && s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
-                                removeLabel = stringResource(R.string.partslist_remove_set, s.setNumber),
-                                onRemove = { onRemove(i) },
-                            )
-                        }
-                    }
-                }
+                if (sets.isNotEmpty() || generated) CollectedSets(sets, onClearAsk = { clearAsk = true }, onRemove = onRemove)
 
                 // One main action at full width: create, with the number of sets it
                 // takes — the typed one included.
-                val count = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalized(setInput) }) 1 else 0)
-                Button(
-                    onClick = { creating(count) },
-                    enabled = !isLoading,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    // Only the icon turns into a spinner, the label stays: otherwise
-                    // the button would shrink and the row would jump. Spinner and icon are
-                    // both 16 dp wide.
-                    if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
-                        color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                    else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(withFont(16.dp)))
-                    Spacer(Modifier.width(Spacing.tiny))
-                    Text(stringResource(R.string.partslist_generate))
-                    // The number as a badge: "(2 Sets)" wrapped into a second line at 200 %.
-                    if (count > 0) {
-                        val announced = pluralStringResource(R.plurals.partslist_generate_count, count, count)
-                        Spacer(Modifier.width(Spacing.small))
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.onPrimary,
-                            contentColor = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clearAndSetSemantics { contentDescription = announced },
-                        ) { Text("$count", style = MaterialTheme.typography.labelMedium) }
-                    }
-                }
+                val count = setsToCreate(sets, setInput)
+                CreateButton(count, isLoading) { creating(count) }
                 if (generated && parts.isNotEmpty()) {
                     PdfButton(condition.pdf.running, condition.pdf.errorMessage?.sentence(), onExportPdf, onPdfErrorSeen)
+                    StockSection(condition, hasSubAccounts, onLoadStock, onOnlyLose, onWithSubAccounts)
                 }
 
-                // ── Own stock: a row of its own ──
-                //
-                // The row above puts the list together and passes it on; the stock
-                // enters numbers into the finished list. "nur lose Teile" stands next to the button,
-                // because the choice changes from question to question.
-                if (generated && parts.isNotEmpty()) {
-                    // Runs in the ViewModel: a rotation does not abort the comparison.
-                    val stockRunning = condition.stock.running
-                    // Stacked: the choice's label is long and does not fit next to the button
-                    // on a 360-dp phone.
-                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
-                        // Outlined: a second filled button fought with "Bauliste erstellen"
-                        // over being the main action.
-                        OutlinedButton(
-                            onClick = onLoadStock,
-                            enabled = !stockRunning,
-                            colors = secondaryButtonColors(),
-                            border = secondaryButtonRand(!stockRunning),
-                        ) {
-                            // Only the icon turns into a spinner, the label stays: otherwise
-                            // the button would shrink and the row would jump. Spinner and icon are
-                            // both 16 dp wide.
-                            if (stockRunning) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            else Icon(Icons.Default.Inventory2, null, Modifier.size(withFont(16.dp)))
-                            Spacer(Modifier.width(Spacing.tiny))
-                            Text(stringResource(R.string.partslist_fill_owned))
-                        }
-                        BoxRow(stringResource(R.string.partslist_only_loose), onlyLose, onOnlyLose)
-                        // Second choice, a different question: the first says WHICH KIND of
-                        // parts counts, this one says WHOSE. Both act
-                        // together — "nur manuell erfasste" plus "mit
-                        // Unterkonten" counts the manually entered parts of the
-                        // whole household.
-                        if (hasSubAccounts) {
-                            BoxRow(stringResource(R.string.partslist_include_subs), withSubAccounts, onWithSubAccounts)
-                        }
-                    }
-                }
-
-                if (status.isNotBlank()) {
-                    Text(status, Modifier.announce(), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-                // Live countdown while the PDF is being created (only while an export is running).
-                pdfStatus?.let { txt ->
-                    // Visible every second, announced every ten.
-                    ThrottledAnnouncement(txt)
-                    Text(txt, Modifier.clearAndSetSemantics { contentDescription = txt }, style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary)
-                }
+                PartsListStatus(status, pdfStatus)
             }
         }
 
@@ -389,21 +257,213 @@ fun PartsListScreen(
             return@Column
         }
 
-        // Grouping and sorting memoized: `parts` rarely changes on a recomposition.
-        val colorGroups = remember(parts) { buildListsGroups(parts) }
-        val withInventory = parts.any { it.present != null }
-        LazyColumn(state = listState, contentPadding = PaddingValues(Spacing.medium), verticalArrangement = Arrangement.spacedBy(Spacing.large)) {
-            if (withInventory) item(key = "legende") { BuildListsLegend() }
-            colorGroups.forEachIndexed { groupIdx, (colorName, colorParts) ->
-                item(key = "header_${groupIdx}_$colorName") {
-                    ColorGroupsHeader(colorName, colorParts)
+        BuildList(parts, listState, serverUrl, imageLoader)
+    }
+}
+
+/** The sets "Create" takes: the collected ones and the typed one, unless it is already among them. */
+private fun setsToCreate(sets: List<PlSet>, setInput: String): Int =
+    sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalized(setInput) }) 1 else 0)
+
+/** An unsuccessful scan sets the cursor into the set field: the counterpart to the other screens' entry dialog. */
+@Composable
+private fun FocusOnManualEntry(requested: Boolean, focus: FocusRequester, onAcknowledged: () -> Unit) {
+    LaunchedEffect(requested) {
+        if (requested) {
+            kotlinx.coroutines.delay(120)
+            try { focus.requestFocus() } catch (_: Exception) { /* dialog already closed */ }
+            onAcknowledged()
+        }
+    }
+}
+
+/** The set number with "+", and the scan button next to it. */
+@Composable
+private fun SetInputRow(
+    setInput: String,
+    onInput: (String) -> Unit,
+    setMissing: Boolean,
+    focus: FocusRequester,
+    onAdd: (String) -> Unit,
+    onScan: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = setInput,
+            // Filter and keyboard choice like every set-number field (util/NumericInput.kt).
+            // "Fertig" and the "+" in the field take the set into the list: one way in,
+            // one button to create it.
+            onValueChange = onInput,
+            keyboardOptions = NumericInput.setNumberKeyboard(ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) onAdd(setInput) }),
+            // Label instead of placeholder: the long placeholder wrapped into two
+            // lines in the field and disappeared while typing.
+            label = { Text(stringResource(R.string.gallery_set_number)) },
+            isError = setMissing,
+            supportingText = if (setMissing) {
+                { Text(stringResource(R.string.partslist_set_missing), Modifier.announce()) }
+            } else null,
+            modifier = Modifier.weight(1f).focusRequester(focus),
+            singleLine = true,
+            shape = MaterialTheme.shapes.large,
+            trailingIcon = {
+                if (setInput.isNotBlank()) WithTooltip(stringResource(R.string.partslist_add_set)) {
+                    IconButton(onClick = { onAdd(setInput) }) {
+                        Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
+                    }
                 }
-                items(
-                    colorParts,
-                    key = { "${groupIdx}_${it.blPartNumber ?: it.partNumber}_${it.colorName}" }
-                ) { part ->
-                    PartListRow(part, serverUrl, imageLoader)
-                }
+            }
+        )
+        // The same scan button as next to every search; a floating button in the middle
+        // of a row looked like the screen's one main button.
+        ScanButton(onScan)
+    }
+}
+
+/**
+ * The collected sets with their reset: it clears this list and so stands
+ * next to it, not floating free below the buttons.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CollectedSets(sets: List<PlSet>, onClearAsk: () -> Unit, onRemove: (Int) -> Unit) {
+    val quantities = LocalResources.current
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(quantities.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f))
+        // With a confirmation prompt: resetting discards the sets and the created list.
+        TextButton(
+            onClick = onClearAsk,
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        ) { Text(stringResource(R.string.partslist_reset)) }
+    }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.tiny)
+    ) {
+        sets.forEachIndexed { i, s ->
+            RemovableChip(
+                label = if (s.name.isNotBlank() && s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
+                removeLabel = stringResource(R.string.partslist_remove_set, s.setNumber),
+                onRemove = { onRemove(i) },
+            )
+        }
+    }
+}
+
+/** "Create" with the number of sets as a badge; the icon turns into a spinner while it runs. */
+@Composable
+private fun CreateButton(count: Int, isLoading: Boolean, onCreate: () -> Unit) {
+    Button(
+        onClick = onCreate,
+        enabled = !isLoading,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        // Only the icon turns into a spinner, the label stays: otherwise
+        // the button would shrink and the row would jump. Spinner and icon are
+        // both 16 dp wide.
+        if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
+            color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+        else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(withFont(16.dp)))
+        Spacer(Modifier.width(Spacing.tiny))
+        Text(stringResource(R.string.partslist_generate))
+        // The number as a badge: "(2 Sets)" wrapped into a second line at 200 %.
+        if (count > 0) {
+            val announced = pluralStringResource(R.plurals.partslist_generate_count, count, count)
+            Spacer(Modifier.width(Spacing.small))
+            Badge(
+                containerColor = MaterialTheme.colorScheme.onPrimary,
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clearAndSetSemantics { contentDescription = announced },
+            ) { Text("$count", style = MaterialTheme.typography.labelMedium) }
+        }
+    }
+}
+
+/**
+ * Own stock in a row of its own: the row above puts the list together, the stock enters numbers
+ * into the finished list. "nur lose Teile" stands next to the button, because the choice changes
+ * from question to question.
+ */
+@Composable
+private fun StockSection(
+    condition: PartListUiState,
+    hasSubAccounts: Boolean,
+    onLoadStock: () -> Unit,
+    onOnlyLose: (Boolean) -> Unit,
+    onWithSubAccounts: (Boolean) -> Unit,
+) {
+    val onlyLose = condition.onlyLose
+    val withSubAccounts = condition.withSubAccounts
+    // Runs in the ViewModel: a rotation does not abort the comparison.
+    val stockRunning = condition.stock.running
+    // Stacked: the choice's label is long and does not fit next to the button
+    // on a 360-dp phone.
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
+        // Outlined: a second filled button fought with "Bauliste erstellen"
+        // over being the main action.
+        OutlinedButton(
+            onClick = onLoadStock,
+            enabled = !stockRunning,
+            colors = secondaryButtonColors(),
+            border = secondaryButtonRand(!stockRunning),
+        ) {
+            // Only the icon turns into a spinner, the label stays: otherwise
+            // the button would shrink and the row would jump. Spinner and icon are
+            // both 16 dp wide.
+            if (stockRunning) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            else Icon(Icons.Default.Inventory2, null, Modifier.size(withFont(16.dp)))
+            Spacer(Modifier.width(Spacing.tiny))
+            Text(stringResource(R.string.partslist_fill_owned))
+        }
+        BoxRow(stringResource(R.string.partslist_only_loose), onlyLose, onOnlyLose)
+        // Second choice, a different question: the first says WHICH KIND of
+        // parts counts, this one says WHOSE. Both act
+        // together — "nur manuell erfasste" plus "mit
+        // Unterkonten" counts the manually entered parts of the
+        // whole household.
+        if (hasSubAccounts) {
+            BoxRow(stringResource(R.string.partslist_include_subs), withSubAccounts, onWithSubAccounts)
+        }
+    }
+}
+
+/** The last status sentence and, while the PDF is being created, its live countdown. */
+@Composable
+private fun PartsListStatus(status: String, pdfStatus: String?) {
+    if (status.isNotBlank()) {
+        Text(status, Modifier.announce(), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+
+    // Live countdown while the PDF is being created (only while an export is running).
+    pdfStatus?.let { txt ->
+        // Visible every second, announced every ten.
+        ThrottledAnnouncement(txt)
+        Text(txt, Modifier.clearAndSetSemantics { contentDescription = txt }, style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** The finished list, grouped by color; with stock, the legend on top. */
+@Composable
+private fun BuildList(parts: List<PlPart>, listState: LazyListState, serverUrl: String, imageLoader: ImageLoader) {
+    // Grouping and sorting memoized: `parts` rarely changes on a recomposition.
+    val colorGroups = remember(parts) { buildListsGroups(parts) }
+    val withInventory = parts.any { it.present != null }
+    LazyColumn(state = listState, contentPadding = PaddingValues(Spacing.medium), verticalArrangement = Arrangement.spacedBy(Spacing.large)) {
+        if (withInventory) item(key = "legende") { BuildListsLegend() }
+        colorGroups.forEachIndexed { groupIdx, (colorName, colorParts) ->
+            item(key = "header_${groupIdx}_$colorName") {
+                ColorGroupsHeader(colorName, colorParts)
+            }
+            items(
+                colorParts,
+                key = { "${groupIdx}_${it.blPartNumber ?: it.partNumber}_${it.colorName}" }
+            ) { part ->
+                PartListRow(part, serverUrl, imageLoader)
             }
         }
     }

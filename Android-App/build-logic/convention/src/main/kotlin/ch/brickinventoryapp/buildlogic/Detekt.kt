@@ -19,7 +19,7 @@ import java.io.File
 /**
  * Task `detekt`: checks src/main, src/test and src/testFixtures of the module against config/detekt/detekt.yml
  * and fails on every finding that is not in config/detekt/baseline.xml. The
- * baseline only records length and branching; tools/detekt-limit.txt lets it shrink. The command line instead of the Gradle plugin:
+ * baseline is empty, tools/detekt-limit.txt holds it at 0. The command line instead of the Gradle plugin:
  * it only needs the source folders and brings its own Kotlin, the plugin would have to
  * hook into the source sets of AGP 9 with built-in Kotlin.
  */

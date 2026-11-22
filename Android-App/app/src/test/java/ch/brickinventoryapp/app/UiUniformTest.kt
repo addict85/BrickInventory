@@ -61,6 +61,7 @@ import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
+import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.parts.ui.screens.ManualItemDetailRoute
 import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
@@ -420,8 +421,8 @@ class UiUniformTest {
         val parts = world.parts().also { it.loadParts() }
         drive("Teile") { parts.partsState.value.manualParts?.isNotEmpty() == true }
         show {
-            ManualItemDetailRoute(purchases(), parts, world.figures(), type = ItemKind.PART, id = "3001", colorId = 5,
-                fallbackTitle = "Brick 2 x 4", imageLoader = images, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
+            ManualItemDetailRoute(purchases(), parts, world.figures(), item = PartsTarget.ManualItemDetail(ItemKind.PART, "3001", 5, "Brick 2 x 4"),
+                imageLoader = images, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
         }
         assertTrue("Teil ohne Marktpreis: „noch kein Preis“ statt eines Strichs",
             compose.onAllNodes(hasText(ctx.getString(R.string.detail_price_none_yet))).fetchSemanticsNodes().isNotEmpty())

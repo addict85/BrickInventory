@@ -124,34 +124,34 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
         onCancel = { if (!barcodeState.add.running) actions.cancelBarcode() },
     ) {
         BarcodeFound(barcodeState, state.serverUrl, imageLoader, forPartList)
-                // Entry fields only when entering into the collection. No inventory item comes
-                // from a parts list entry — confirmAddBarcode() only passes the
-                // number on in the TEILELISTE branch. Owner, purchase price and condition would be fields with no
-                // effect there, looking like input that counts. Image, name, number and
-                // figures stay: they help check that the right set was scanned.
-                if (barcodeState.source != ScannerOrigin.PART_LIST) {
-                    // Purchase price right at entry (optional) — leaving it empty takes over
-                    // the current market price server-side (same logic as the web app).
-                    // OwnerPicker hides itself without a household
-                    // (members.size < 2 → return), hence no condition here.
-                    OwnerPicker(
-                        glance.householdMembers, barcodeOwner, { barcodeOwner = it }
-                    )
-                    // The same fields as "Add set": label, help line, check.
-                    CountField(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
-                    PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
-                    ConditionRow(
-                        condition = barcodeUiState,
-                        onUiState = { barcodeUiState = it }
-                    )
-                    StorageLocationEntry(
-                        barcodeLocation,
-                        // The STOCK, not the occupied locations: entering should
-                        // also offer an empty shelf as an option.
-                        storageUiState.own.map { it.name },
-                        { barcodeLocation = it }
-                    )
-                }
+        // Entry fields only when entering into the collection. No inventory item comes
+        // from a parts list entry — confirmAddBarcode() only passes the
+        // number on in the parts list branch. Owner, purchase price and condition would be fields with no
+        // effect there, looking like input that counts. Image, name, number and
+        // figures stay: they help check that the right set was scanned.
+        if (barcodeState.source != ScannerOrigin.PART_LIST) {
+            // Purchase price right at entry (optional) — leaving it empty takes over
+            // the current market price server-side (same logic as the web app).
+            // OwnerPicker hides itself without a household
+            // (members.size < 2 → return), hence no condition here.
+            OwnerPicker(
+                glance.householdMembers, barcodeOwner, { barcodeOwner = it }
+            )
+            // The same fields as "Add set": label, help line, check.
+            CountField(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
+            PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
+            ConditionRow(
+                condition = barcodeUiState,
+                onUiState = { barcodeUiState = it }
+            )
+            StorageLocationEntry(
+                barcodeLocation,
+                // The STOCK, not the occupied locations: entering should
+                // also offer an empty shelf as an option.
+                storageUiState.own.map { it.name },
+                { barcodeLocation = it }
+            )
+        }
     }
 }
 

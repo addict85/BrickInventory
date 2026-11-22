@@ -63,7 +63,7 @@ internal const val QR_QUERY_MS = 2_000L
  * leaves setup while sign-in is still running.
  */
 @HiltViewModel
-class LoginViewModel @Inject constructor(
+internal class LoginViewModel @Inject constructor(
     private val session: Session,
     private val scopeService: Scope,
     private val messages: Messages,

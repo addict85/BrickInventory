@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -85,7 +86,6 @@ private const val PART_IMAGE_RATIO = 4f / 3f
 @Composable
 fun PartCard(part: PartView, serverUrl: String, imageLoader: ImageLoader,
              onClick: (() -> Unit)? = null, picked: Boolean = false) {
-    val ctx = LocalContext.current
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
         colorFromHex(part.colorHex)
@@ -96,7 +96,6 @@ fun PartCard(part: PartView, serverUrl: String, imageLoader: ImageLoader,
     // From large font on, a list row like the sets: the image at full width
     // left room for one part per screen. The quantity then moves from the image into the text.
     val row = largeFont()
-    val soft = !movementReduced()
     val quantity: @Composable () -> Unit = {
         Surface(color = MaterialTheme.colorScheme.primary, shape = Shapes.brand) {
             Text(quantityFromSet(qty), Modifier.padding(horizontal = Spacing.tiny, vertical = 1.dp)
@@ -109,62 +108,10 @@ fun PartCard(part: PartView, serverUrl: String, imageLoader: ImageLoader,
     // Growing with the tile instead of a fixed 90 dp: on the tablet a small
     // image otherwise stood above a wide tile.
     val canvas: @Composable (Modifier) -> Unit = { surface ->
-        Box(surface) {
-            ProductImage(
-                model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(soft).build() },
-                imageLoader = imageLoader,
-                // Without a description: the name stands below it, TalkBack would otherwise read it twice.
-                contentDescription = null,
-                onState = { st ->
-                    if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
-                },
-                modifier = Modifier.fillMaxSize()
-                    .clip(Shapes.tileImageCorners),
-                contentScale = ContentScale.Fit,
-                fallbackSize = 32.dp,
-                // The image background across the whole tile width as with the sets: a narrow
-                // image otherwise stood as a box with white margins in the card.
-                imageBackground = true,
-                innerGap = Spacing.tiny,
-            )
-            if (!row) Box(Modifier.align(Alignment.TopEnd).padding(Spacing.tiny)) { quantity() }
-            // Color dot
-            if (colorObj != null) {
-                Box(
-                    Modifier.size(14.dp).align(Alignment.BottomStart).padding(3.dp)
-                        .clip(CircleShape).background(colorObj)
-                )
-            }
-        }
+        PartCardImage(surface, imageUrl, imageLoader, onImageError, colorObj, quantity.takeUnless { row })
     }
 
-    val texts: @Composable (Modifier) -> Unit = { column ->
-        Column(column.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            if (row) quantity()
-            val number = part.blPartNumber ?: part.partNumber
-            // A number, not a link: primary blue is for what can be tapped.
-            Text(number, Modifier.readAloudAs(stringResource(R.string.cd_part_number, number)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold)
-            Text(part.partName?.let { catalogName(it) }
-                    ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                // Always room for two lines in the grid: tiles of a row are equally high,
-                // even when a name is short. The row does not have to resemble anyone else's.
-                minLines = if (row) 1 else 2,
-                maxLines = if (row) 4 else 2, overflow = TextOverflow.Ellipsis)
-            part.colorName?.let {
-                Text(colorTranslator()(it), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            }
-            // Spare part — sets include a small bag of them. Only when it
-            // IS one: a badge "kein Ersatzteil" on every tile
-            // would be noise.
-            if (part.isSpare) SparePartBadge(Modifier.padding(top = Spacing.hairline))
-        }
-    }
+    val texts: @Composable (Modifier) -> Unit = { column -> PartCardTexts(part, row, column, quantity) }
 
     Card(
         // Tapping opens the detail dialog, as for manually entered parts.
@@ -233,4 +180,75 @@ internal fun PartTableRow(part: PartView, serverUrl: String, imageLoader: ImageL
         onImageError = onError,
         onClick = onClick,
     )
+}
+
+/** The tile's image, growing with the tile; the quantity on it except in the list row, the color dot below. */
+@Composable
+private fun PartCardImage(
+    modifier: Modifier,
+    imageUrl: String?,
+    imageLoader: ImageLoader,
+    onImageError: () -> Unit,
+    colorObj: Color?,
+    quantity: (@Composable () -> Unit)?,
+) {
+    val ctx = LocalContext.current
+    val soft = !movementReduced()
+    Box(modifier) {
+        ProductImage(
+            model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(soft).build() },
+            imageLoader = imageLoader,
+            // Without a description: the name stands below it, TalkBack would otherwise read it twice.
+            contentDescription = null,
+            onState = { st ->
+                if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+            },
+            modifier = Modifier.fillMaxSize()
+                .clip(Shapes.tileImageCorners),
+            contentScale = ContentScale.Fit,
+            fallbackSize = 32.dp,
+            // The image background across the whole tile width as with the sets: a narrow
+            // image otherwise stood as a box with white margins in the card.
+            imageBackground = true,
+            innerGap = Spacing.tiny,
+        )
+        if (quantity != null) Box(Modifier.align(Alignment.TopEnd).padding(Spacing.tiny)) { quantity() }
+        // Color dot
+        if (colorObj != null) {
+            Box(
+                Modifier.size(14.dp).align(Alignment.BottomStart).padding(3.dp)
+                    .clip(CircleShape).background(colorObj)
+            )
+        }
+    }
+}
+
+/** Number, name, color and spare-part badge; in the list row the quantity leads. */
+@Composable
+private fun PartCardTexts(part: PartView, row: Boolean, modifier: Modifier, quantity: @Composable () -> Unit) {
+    Column(modifier.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        if (row) quantity()
+        val number = part.blPartNumber ?: part.partNumber
+        // A number, not a link: primary blue is for what can be tapped.
+        Text(number, Modifier.readAloudAs(stringResource(R.string.cd_part_number, number)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold)
+        Text(part.partName?.let { catalogName(it) }
+                ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            // Always room for two lines in the grid: tiles of a row are equally high,
+            // even when a name is short. The row does not have to resemble anyone else's.
+            minLines = if (row) 1 else 2,
+            maxLines = if (row) 4 else 2, overflow = TextOverflow.Ellipsis)
+        part.colorName?.let {
+            Text(colorTranslator()(it), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
+        // Spare part — sets include a small bag of them. Only when it
+        // IS one: a badge "kein Ersatzteil" on every tile
+        // would be noise.
+        if (part.isSpare) SparePartBadge(Modifier.padding(top = Spacing.hairline))
+    }
 }

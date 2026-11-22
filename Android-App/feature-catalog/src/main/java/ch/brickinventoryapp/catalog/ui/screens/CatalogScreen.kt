@@ -252,10 +252,10 @@ private fun CatalogGrid(
         }
     }
 }
-/** A row of the theme and year picker; public so the accessibility test can show it. */
+/** A row of the theme and year picker. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
     // A radio button: TalkBack names role and choice, the checkmark alone only saw those who could see.
     Surface(
         selected = selected,

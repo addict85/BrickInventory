@@ -26,6 +26,8 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.LoginTitle
@@ -33,6 +35,7 @@ import ch.brickinventoryapp.ui.components.PasswordField
 import ch.brickinventoryapp.ui.components.secondaryButtonColors
 import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 
@@ -60,11 +63,11 @@ internal fun LoginFields(
 
     CredentialFields(input, onInput, codeNeeded, tried, focusMgr, logIn)
 
-    if (state.error != null) FormMessage(state.error, error = true)
+    state.login.errorMessage?.let { FormMessage(it.sentence(), error = true) }
 
     FullAccessSection(state.fullAccess, actions::setFullAccess)
 
-    LoadButton(stringResource(R.string.login_button), running = state.isLoading, active = true, onClick = logIn)
+    LoadButton(stringResource(R.string.login_button), running = state.login.running, active = true, onClick = logIn)
 
     PasskeyButton(state, actions, input)
 
@@ -170,7 +173,7 @@ private fun FullAccessSection(fullAccess: Boolean, onFullAccess: (Boolean) -> Un
 /** Instead of the code: name and password from above go along, the passkey only replaces the code. */
 @Composable
 private fun PasskeyButton(state: LoginScreenState, actions: LoginActions, input: LoginInput) {
-    val isLoading = state.isLoading
+    val isLoading = state.login.running
     if (!actions.offersPasskey) return
     if (state.codeNeeded && state.passkeyInsteadOfCode) {
         val ready = !isLoading && input.username.isNotBlank() && input.password.isNotBlank()

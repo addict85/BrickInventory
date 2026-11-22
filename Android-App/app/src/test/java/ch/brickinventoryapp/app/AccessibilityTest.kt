@@ -60,7 +60,6 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
 import ch.brickinventoryapp.account.ui.UpdateUiState
-import ch.brickinventoryapp.account.ui.screens.PriceAlertCard
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
 import ch.brickinventoryapp.account.ui.screens.SettingsExits
 import ch.brickinventoryapp.account.ui.screens.SettingsScreen
@@ -70,7 +69,6 @@ import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.app.ui.components.CsvProgress
 import ch.brickinventoryapp.catalog.ui.screens.CatalogSetCard
-import ch.brickinventoryapp.catalog.ui.screens.ThemeRow
 import ch.brickinventoryapp.collection.ui.screens.SetCard
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
@@ -113,7 +111,8 @@ import java.util.Locale
 
 /**
  * What TalkBack, keyboard and large font find at the central building blocks, checked as
- * behavior.
+ * behavior. Building blocks only one area uses are checked there (PriceAlertSwitchTest,
+ * ThemeRowRoleTest), so they can stay internal.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
  *   schalter-ohne-namen          build list checkboxes again with own callback → red “checkboxes of the build list carry …”
@@ -123,7 +122,6 @@ import java.util.Locale
  *   bildzoom-nur-geste           zoom bar in the image dialog removed → red “image zoom works with buttons …”
  *   fokus-ohne-rahmen            focusFrame draws nothing → red “keyboard focus shows a frame …”
  *   csv-aufklapper-stumm         state and expanding removed from the CSV bar → red “CSV bar names state, expanding …”
- *   themenzeile-ohne-rolle       ThemeRow without radio button role → red “theme and year choice announce …”
  *   setkachel-name-hinten        name of the set tile again below number and condition → red “set and catalog tile read …”
  *   unterseite-einzeilig         subpage again with single-line title → red “long titles wrap at …”
  *   rueckfrage-ohne-ueberschrift title of the confirmation without heading → red “the confirmation names its …”
@@ -207,7 +205,7 @@ class AccessibilityTest {
     }
 
     @Test
-    fun `switches for price alert notifications and user certificates carry names`() {
+    fun `the user certificate switch carries its name and toggles via its text`() {
         var ca: Boolean? = null
         val update = object : UpdateActions {
             override fun checkOnUpdate(still: Boolean) = Unit
@@ -235,7 +233,6 @@ class AccessibilityTest {
                 }))
             show {
                 Column {
-                    PriceAlertCard(false) {}
                     SettingsScreen(
                         condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
                             "system", Design.CLASSIC, false, false, false, false),
@@ -248,8 +245,6 @@ class AccessibilityTest {
                     )
                 }
             }
-            // Without a tap: turning on asks for the system permission from Android 13.
-            checkToggle(ctx.getString(R.string.alert_notify), Role.Switch, false)
             val userCa = ctx.getString(R.string.settings_user_ca)
             compose.onNode(hasText(userCa) and isToggleable()).performScrollTo()
             checkToggle(userCa, Role.Switch, false)
@@ -394,21 +389,6 @@ class AccessibilityTest {
         assertTrue("Fortschritt mit Zeichen statt Worten: ${announced(bar)}", announced(bar).none { '/' in it })
         compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo,
             ProgressBarRangeInfo(3f, 0f..10f)), useUnmergedTree = true).fetchSemanticsNode("Fortschritt nicht als 3 von 10")
-    }
-
-    @Test
-    fun `theme and year choice announce role and selection`() {
-        show {
-            Column(Modifier.then(Modifier)) {
-                ThemeRow("Alle Themen", false) {}
-                ThemeRow("Icons (21)", true) {}
-            }
-        }
-        for ((text, an) in listOf("Alle Themen" to false, "Icons (21)" to true)) {
-            val row = compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode()
-            assertEquals("$text: Rolle", Role.RadioButton, role(row))
-            assertEquals("$text: gewählt", an, row.config.getOrNull(SemanticsProperties.Selected))
-        }
     }
 
     @Test

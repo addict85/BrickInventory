@@ -102,7 +102,7 @@ class SourceRatchetTest {
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 209
+        val FUNCTIONS = 208
         val ONLY_SOURCE_TEXT = 33
         val all = Sources.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "SourceRatchetTest.kt" }.toList()
@@ -449,7 +449,7 @@ class SourceRatchetTest {
         val ids = Regex("""<ID>(\w+):""").findAll(baseline).map { it.groupValues[1] }.toList()
         val limit = File(Sources.project, "tools/detekt-limit.txt").readLines()
             .first { it.isNotBlank() && !it.startsWith("#") }.trim().toInt()
-        assert(ids.size >= 10) { "Nur ${ids.size} Einträge in der Baseline — Muster veraltet?" }
+        assert("<CurrentIssues>" in baseline) { "No <CurrentIssues> in the baseline — format outdated?" }
         val foreign = ids.filter { it !in setOf("LongMethod", "CyclomaticComplexMethod", "LongParameterList") }.distinct()
         assert(foreign.isEmpty()) { "Die Baseline verschweigt andere Regeln: $foreign. Den Fund beheben, nicht eintragen." }
         ratchet("Funktionen in der detekt-Baseline (tools/detekt-limit.txt)", limit, ids.size,
@@ -521,7 +521,7 @@ class SourceRatchetTest {
     fun `fixed numbers in padding do not increase`() {
         // Spacings have names (ui/theme/Abstaende); a bare `padding(… 14.dp)` keeps to
         // no scale, and two cards side by side are indented differently.
-        val LIMIT_AREAS = 46
+        val LIMIT_AREAS = 45
         // Likewise the spacings between siblings: spacedBy and Spacer.
         val BETWEEN = 40
         val fixed = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
@@ -669,7 +669,7 @@ class SourceRatchetTest {
     @Test
     fun `fully qualified names of foreign packages become fewer`() {
         // Written out only for a real name clash, and then better with `import … as`.
-        val MAIN = 180
+        val MAIN = 161
         val TESTS = 0
         val full = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun count(files: Sequence<File>) = files.sumOf { f ->

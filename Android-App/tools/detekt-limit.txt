@@ -1,4 +1,4 @@
 # Upper limit for the entries in config/detekt/baseline.xml (LongMethod, CyclomaticComplexMethod
-# with detekt's defaults of 60 lines and 15 branches, LongParameterList from 8). May sink, never rise;
-# checked in SourceRatchetTest. Whoever splits a function strikes its entry and lowers the number.
-90
+# with detekt's defaults of 60 lines and 15 branches, LongParameterList from 8). At 0: every
+# finding is fixed, none is recorded; checked in SourceRatchetTest.
+0
