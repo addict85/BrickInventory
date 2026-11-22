@@ -1,12 +1,13 @@
-/** Write into a shadow table and swap in one transaction so that
- * the existing data stays readable until then. */
+/** Write into a shadow table and swap, all in one transaction: readers keep seeing the
+ * old rows until the COMMIT, and an abort at any point leaves them untouched. */
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { dbConfigFromEnvironment, createDb, type Db } from '../../db/database';
 import { databaseConnection, systemConnection } from '../infra/config';
 import { isJa } from '../infra/validate';
-import { logAndContinue } from '../infra/error';
+import { inSystemContext } from '../infra/accountContext';
+import { buildContext } from '../infra/area';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/csvSwap';
 import type { CatalogReadContract } from './readContract';
@@ -94,35 +95,34 @@ interface Swap {
   reconcile?: typeof repo.swap;
 }
 
-// Via a shadow table: readers see the old one until the swap, never an empty table.
-async function importWithSwap(pool: Db['systemPool'], report: (m: Message) => void, t: Swap): Promise<number> {
-  const shadow = `${t.tabelle}_import`;
-  const client = await pool.connect();
-  try {
-    await repo.lockTable(client, t.tabelle);
-    try {
-      await repo.createShadow(client, t.tabelle, shadow);
-      const total = await streamInsert(
-        t.tmp,
-        t.chunkSize ?? 100,
-        t.mapRow,
-        chunk => repo.addBlockOne(client, shadow, t.cols, chunk, t.konflikt),
-        t.filename,
+// One transaction holds the snapshot for the whole file (minutes for the largest table).
+// That is the price for "old state or new state, nothing in between" without a session lock.
+async function importWithSwap(db: Db, report: (m: Message) => void, s: Swap): Promise<number> {
+  const shadow = `${s.tabelle}_import`;
+  const k = buildContext({ db }, () => ({}));
+  // Reconciling rb_sets asks whether any account holds a set: across account boundaries, so
+  // as system role; without an account the runtime role would see no row and delete it.
+  const total = await inSystemContext('katalog-import', () =>
+    k.transact(async t => {
+      await repo.lockTable(t.db, s.tabelle);
+      await repo.createShadow(t.db, s.tabelle, shadow);
+      const n = await streamInsert(
+        s.tmp,
+        s.chunkSize ?? 100,
+        s.mapRow,
+        chunk => repo.addBlockOne(t.db, shadow, s.cols, chunk, s.konflikt),
+        s.filename,
         report,
       );
       // An empty file is an error, not an empty catalog.
-      if (total === 0)
-        throw new Error(`${t.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
-      await (t.reconcile ?? repo.swap)(client, t.tabelle, shadow, t.cols);
-      await repo.removeShadow(client, shadow).catch(logAndContinue('csv-worker:query'));
-      await repo.maintenance(client, t.tabelle);
-      return total;
-    } finally {
-      await repo.giveTableFree(client, t.tabelle).catch(logAndContinue('csv-worker:lockKeyFor'));
-    }
-  } finally {
-    client.release();
-  }
+      if (n === 0)
+        throw new Error(`${s.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
+      await (s.reconcile ?? repo.swap)(t.db, s.tabelle, shadow, s.cols);
+      return n;
+    }),
+  );
+  await repo.maintenance(sql => db.systemPool.query(sql), s.tabelle);
+  return total;
 }
 
 /** The import process's access, without the server's deadlines: swapping a large
@@ -136,15 +136,8 @@ export function createImportAccess(): Db {
   });
 }
 
-export function createCatalogImports(
-  db: Pick<Db, 'systemPool'>,
-  report: (m: Message) => void,
-  l: Pick<CatalogReadContract, 'setZaehlt'>,
-) {
-  // Reconciling rb_sets asks whether any account holds a set: across account boundaries, so
-  // as system role; without an account the runtime role would see no row and delete it.
-  const pool = db.systemPool;
-  const swap = (t: Swap) => () => importWithSwap(pool, report, t);
+export function createCatalogImports(db: Db, report: (m: Message) => void, l: Pick<CatalogReadContract, 'setZaehlt'>) {
+  const swap = (t: Swap) => () => importWithSwap(db, report, t);
   return {
     colors: swap({
       tabelle: 'rb_colors',

@@ -640,25 +640,29 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
   await t.test('the catalog import swaps as the runtime role', async () => {
     const tausch = require(path.join(ROOT, 'dist', 'src', 'catalog', 'repository', 'csvSwap.js'));
     await als(neu, ROLE, PASSWORT, async app => {
-      await tausch.lockTable(app, 'rb_colors');
-      try {
-        await tausch.createShadow(app, 'rb_colors', 'rb_colors_import');
-        await tausch.addBlockOne(
-          app,
-          'rb_colors_import',
-          ['id', 'name', 'rgb', 'is_trans'],
-          [
-            [9001, 'Probe-Rot', 'C91A09', false],
-            [9002, 'Probe-Blau', '0055BF', false],
-          ],
-          ['id'],
-        );
-        await tausch.swap(app, 'rb_colors', 'rb_colors_import', ['id', 'name', 'rgb', 'is_trans']);
-        await tausch.removeShadow(app, 'rb_colors_import');
-        assert.equal(await tausch.maintenance(app, 'rb_colors'), true, 'VACUUM (ANALYZE) bricht ab');
-      } finally {
-        await tausch.giveTableFree(app, 'rb_colors');
-      }
+      // The repository takes a transaction handle; here one over the raw connection of the role.
+      const tx = {
+        run: async (sql, p) => ({ changes: (await app.query(sql, p)).rowCount ?? 0 }),
+        exec: async sql => void (await app.query(sql)),
+        get: async (sql, p) => (await app.query(sql, p)).rows[0],
+        all: async (sql, p) => (await app.query(sql, p)).rows,
+      };
+      await app.query('BEGIN');
+      await tausch.lockTable(tx, 'rb_colors');
+      await tausch.createShadow(tx, 'rb_colors', 'rb_colors_import');
+      await tausch.addBlockOne(
+        tx,
+        'rb_colors_import',
+        ['id', 'name', 'rgb', 'is_trans'],
+        [
+          [9001, 'Probe-Rot', 'C91A09', false],
+          [9002, 'Probe-Blau', '0055BF', false],
+        ],
+        ['id'],
+      );
+      await tausch.swap(tx, 'rb_colors', 'rb_colors_import', ['id', 'name', 'rgb', 'is_trans']);
+      await app.query('COMMIT');
+      assert.equal(await tausch.maintenance(sql => app.query(sql), 'rb_colors'), true, 'VACUUM (ANALYZE) bricht ab');
       assert.deepEqual((await app.query('SELECT id, name FROM rb_colors ORDER BY id')).rows, [
         { id: 9001, name: 'Probe-Rot' },
         { id: 9002, name: 'Probe-Blau' },

@@ -23,6 +23,10 @@
  *   H  the wishlist (wanted) removed from the reference → red: “with reference” (E missing)
  *   I  the final INSERT INTO set_catalog removed → red: “new” (G without row)
  *
+ * Counter-check for “an error in the middle of the file leaves the old state” (22.11.2026):
+ *   J  in importWithSwap() the target table cleared before db.transaction (the classic “clear,
+ *      then fill”) → red: “der alte Bestand ist nach dem Abbruch verschwunden”
+ *
  * Prerequisite: test DB (content is emptied!) via TEST_DATABASE_URL.
  * Without DB: skip.
  */
@@ -149,6 +153,26 @@ test('catalog import swaps instead of clearing', async t => {
     const remaining = await db.get('SELECT count(*)::int AS c FROM rb_colors');
     assert.equal(remaining.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
     await db.run(`ALTER TABLE rb_colors DROP CONSTRAINT rb_colors_name_kurz`);
+  });
+
+  await t.test('an error in the middle of the file leaves the old state', async () => {
+    await db.run('DELETE FROM rb_colors');
+    await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans) VALUES (1,'bestand','FFFFFF','f')`);
+    // Row 15000 does not fit INTEGER: the 150th chunk into the shadow fails, 149 are already in.
+    const zeilen = Array.from({ length: 20000 }, (_, i) => `${i + 1},neu-${i + 1},C91A09,f`);
+    zeilen[14999] = '99999999999,zu-gross,C91A09,f';
+    writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans'].concat(zeilen));
+    const worker = _req('jobs/csvImportWorker.js');
+    await assert.rejects(() => worker.TASKS.colors(), /out of range/);
+    assert.deepEqual(
+      await db.all('SELECT id, name FROM rb_colors'),
+      [{ id: 1, name: 'bestand' }],
+      'der alte Bestand ist nach dem Abbruch verschwunden',
+    );
+    // Lock and shadow ended with the transaction: the next run goes through.
+    writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans', '2,danach,C91A09,f']);
+    assert.equal(await worker.TASKS.colors(), 1);
+    assert.deepEqual(await db.all('SELECT id, name FROM rb_colors'), [{ id: 2, name: 'danach' }]);
   });
 
   await t.test('set numbers without a version suffix get it during the swap', async () => {

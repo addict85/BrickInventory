@@ -22,8 +22,8 @@
  * still be imported in parallel.
  *
  * What is checked is BEHAVIOR (both runs succeed, final stock complete), not
- * the wording of the code. Counter-check (performed): pg_advisory_lock removed in
- * jobs/csvImportWorker.ts → the test turns red, one run fails with
+ * the wording of the code. Counter-check (performed): pg_advisory_lock removed
+ * (today pg_advisory_xact_lock in src/catalog/repository/csvSwap.ts) → the test turns red, one run fails with
  * exactly the message above.
  *
  * Prerequisite: test DB (content is changed!) via TEST_DATABASE_URL.

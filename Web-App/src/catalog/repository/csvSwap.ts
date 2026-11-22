@@ -1,11 +1,11 @@
-import type { PoolClient } from 'pg';
 import { maintainTable } from '../../../db/maintainTable';
+import type { DbInterface } from '../../../db/types';
 import type { CatalogReadContract } from '../readContract';
 import { LOCKS } from '../../infra/lockNamespaces';
-import { logAndContinue } from '../../infra/error';
 
-/** On ONE connection, because session lock, shadow and transaction are bound
- * to it. Table and column names come only from the source code. */
+/** Every step takes the handle of ONE transaction (db.transaction): lock, shadow and swap
+ * end with it, so an abort anywhere leaves the old table and no leftovers. Table and
+ * column names come only from the source code. */
 
 /** The repository swaps only these tables; another name throws instead of clearing a foreign one. */
 export const CSV_TABLES = [
@@ -32,22 +32,19 @@ function lockKey(table: string): number {
   return h;
 }
 
-export async function lockTable(c: PoolClient, table: string): Promise<void> {
-  // A running swap of the same table may take longer than lock_timeout.
-  await c.query('SET lock_timeout = 0');
-  await c.query('SELECT pg_advisory_lock($1, $2)', [LOCKS.CSV_IMPORT, lockKey(table)]);
-}
-
-export async function giveTableFree(c: PoolClient, table: string): Promise<void> {
-  await c.query('SELECT pg_advisory_unlock($1, $2)', [LOCKS.CSV_IMPORT, lockKey(table)]);
-  await c.query('RESET lock_timeout');
+/** Held until the end of the transaction. A running swap of the same table may take longer than lock_timeout. */
+export async function lockTable(tx: DbInterface, table: string): Promise<void> {
+  await tx.exec('SET LOCAL lock_timeout = 0');
+  await tx.run('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.CSV_IMPORT, lockKey(table)]);
 }
 
 /** With keys (ON CONFLICT needs them), without CHECKs (checked on swap, after the
  * target table's triggers), temporary (the runtime role may not create anything in public). */
-export async function createShadow(c: PoolClient, table: CsvTable, shadow: string): Promise<void> {
-  await c.query(`DROP TABLE IF EXISTS pg_temp.${shadow}`);
-  await c.query(`CREATE TEMP TABLE ${shadow} (LIKE ${onlyCsvTable(table)} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
+export async function createShadow(tx: DbInterface, table: CsvTable, shadow: string): Promise<void> {
+  await tx.exec(`DROP TABLE IF EXISTS pg_temp.${shadow}`);
+  await tx.exec(
+    `CREATE TEMP TABLE ${shadow} (LIKE ${onlyCsvTable(table)} INCLUDING ALL EXCLUDING CONSTRAINTS) ON COMMIT DROP`,
+  );
 }
 
 /** A rejected chunk aborts the import. */
@@ -62,7 +59,7 @@ function onConflict(columns: string[], k: Conflict | undefined): string {
 }
 
 export async function addBlockOne(
-  c: PoolClient,
+  tx: DbInterface,
   shadow: string,
   columns: string[],
   block: unknown[][],
@@ -70,36 +67,23 @@ export async function addBlockOne(
 ): Promise<void> {
   const n = columns.length;
   const slot = block.map((_, j) => '(' + columns.map((_, k) => `$${j * n + k + 1}`).join(',') + ')').join(',');
-  await c.query(
+  await tx.run(
     `INSERT INTO ${shadow} (${columns.join(',')}) VALUES ${slot} ${onConflict(columns, conflict)}`,
     block.flat(),
   );
 }
 
-async function inStep(c: PoolClient, steps: () => Promise<void>): Promise<void> {
-  await c.query('BEGIN');
-  try {
-    await steps();
-    await c.query('COMMIT');
-  } catch (e) {
-    await c.query('ROLLBACK').catch(logAndContinue('csv-tausch:rollback'));
-    throw e;
-  }
-}
-
-export function swap(c: PoolClient, table: CsvTable, shadow: string, columns: string[]): Promise<void> {
+export async function swap(tx: DbInterface, table: CsvTable, shadow: string, columns: string[]): Promise<void> {
   const target = onlyCsvTable(table);
-  return inStep(c, async () => {
-    await c.query(`DELETE FROM ${target}`);
-    await c.query(`INSERT INTO ${target} (${columns.join(',')}) SELECT ${columns.join(',')} FROM ${shadow}`);
-  });
+  await tx.run(`DELETE FROM ${target}`);
+  await tx.run(`INSERT INTO ${target} (${columns.join(',')}) SELECT ${columns.join(',')} FROM ${shadow}`);
 }
 
 /** rb_sets mirrors the dump: insert, update, remove. Only a set to which
  * inventory, wishlist or price alert is attached stays as an 'api' row, otherwise
  * an account would lose name and image. Afterwards every row has its set_catalog entry (0105). */
 export async function syncSets(
-  c: PoolClient,
+  tx: DbInterface,
   l: Pick<CatalogReadContract, 'setZaehlt'>,
   shadow: string,
   columns: string[],
@@ -107,27 +91,22 @@ export async function syncSets(
   const fresh = columns.filter(s => s !== 'set_num');
   const vanished = `NOT EXISTS (SELECT 1 FROM ${shadow} n WHERE n.set_num = rb_sets.set_num)`;
   const basis = l.setZaehlt('rb_sets.set_num');
-  await inStep(c, async () => {
-    await c.query(`INSERT INTO rb_sets (${columns.join(',')}, source) SELECT ${columns.join(',')}, 'csv' FROM ${shadow}
+  await tx.run(`INSERT INTO rb_sets (${columns.join(',')}, source) SELECT ${columns.join(',')}, 'csv' FROM ${shadow}
                    ON CONFLICT (set_num) DO UPDATE SET ${fresh.map(s => `${s}=EXCLUDED.${s}`).join(',')}, source='csv'
                    WHERE (${fresh.map(s => `rb_sets.${s}`).join(',')}, rb_sets.source)
                          IS DISTINCT FROM (${fresh.map(s => `EXCLUDED.${s}`).join(',')}, 'csv')`);
-    await c.query(`UPDATE rb_sets SET source = 'api' WHERE source = 'csv' AND ${vanished} AND ${basis}`);
-    // set_catalog goes along via ON DELETE CASCADE.
-    await c.query(`DELETE FROM rb_sets WHERE ${vanished} AND NOT ${basis}`);
-    // The CSV's image address only applies in set_catalog, the only image source (0108).
-    await c.query(`INSERT INTO set_catalog (set_number, image_url)
-                   SELECT set_num, NULLIF(set_img_url, '') FROM rb_sets WHERE set_num ~ '-[0-9]+$'
-                   ON CONFLICT (set_number) DO UPDATE SET image_url = EXCLUDED.image_url, updated_at = NOW()
-                   WHERE set_catalog.image_url IS NULL AND EXCLUDED.image_url IS NOT NULL`);
-  });
+  await tx.run(`UPDATE rb_sets SET source = 'api' WHERE source = 'csv' AND ${vanished} AND ${basis}`);
+  // set_catalog goes along via ON DELETE CASCADE.
+  await tx.run(`DELETE FROM rb_sets WHERE ${vanished} AND NOT ${basis}`);
+  // The CSV's image address only applies in set_catalog, the only image source (0108).
+  await tx.run(`INSERT INTO set_catalog (set_number, image_url)
+                 SELECT set_num, NULLIF(set_img_url, '') FROM rb_sets WHERE set_num ~ '-[0-9]+$'
+                 ON CONFLICT (set_number) DO UPDATE SET image_url = EXCLUDED.image_url, updated_at = NOW()
+                 WHERE set_catalog.image_url IS NULL AND EXCLUDED.image_url IS NOT NULL`);
 }
 
-export async function removeShadow(c: PoolClient, shadow: string): Promise<void> {
-  await c.query(`DROP TABLE IF EXISTS pg_temp.${shadow}`);
-}
-
-/** After a complete swap the planner statistics are meaningless. */
-export function maintenance(c: PoolClient, table: string) {
-  return maintainTable(sql => c.query(sql), table);
+/** After a complete swap the planner statistics are meaningless. Outside any transaction:
+ * VACUUM refuses to run inside one. */
+export function maintenance(runOutsideTx: (sql: string) => Promise<unknown>, table: string) {
+  return maintainTable(runOutsideTx, table);
 }
