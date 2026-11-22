@@ -1589,3 +1589,42 @@ test('paths named in test comments exist', () => {
   assert.ok(n > 400, `nur ${n} Pfade gefunden — greift die Suche noch?`);
   assert.deepEqual(fehlt, [], 'Pfad auf die heutige Datei ändern; Geschichte gehört in den Commit');
 });
+
+// ---- Language of the code: German identifiers per area ---------------------
+// Counter-checks (22.11.2026): `const fehlerZahl = 1;` added to src/infra/config.ts
+// → "server" red (953 > 952); the word list emptied → the sample check red;
+// `'Fehler'` only as a string → stays green (texts are not code).
+test('German identifiers become fewer, never more (server, tests, public separately)', () => {
+  const { germanIdentifiers, isGerman } = require('./helpers/german-identifiers');
+  assert.ok(isGerman('backInDieTable') && isGerman('preiseNachladen') && isGerman('ladeAn'), 'Stichprobe deutsch');
+  assert.ok(!isGerman('importStatus') && !isGerman('jobKinds') && !isGerman('settable'), 'Stichprobe englisch');
+  assert.equal(germanIdentifiers("const x = 'Fehler'; // Fehler").size, 0, 'Texte und Kommentare zählen nicht');
+  const SKIP = new Set(['node_modules', 'dist', 'coverage', 'data', 'vendor', '.git']);
+  const files = (/** @type {string} */ d, /** @type {string[]} */ out = []) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) {
+        if (!SKIP.has(e.name)) files(p, out);
+      } else if (/\.(ts|js|mjs|cjs)$/.test(e.name) && !e.name.endsWith('.d.ts')) out.push(p);
+    }
+    return out;
+  };
+  const SERVER = ['src', 'routes', 'db', 'clients', 'startup', 'jobs', 'scripts'].filter(d =>
+    fs.existsSync(path.join(WEB, d)),
+  );
+  const AREAS = {
+    server: [path.join(WEB, 'server.ts'), ...SERVER.flatMap(d => files(path.join(WEB, d)))],
+    test: files(__dirname),
+    public: files(path.join(WEB, 'public')),
+  };
+  // Distinct names per area; the goal for "server" is 0.
+  const LIMITS = { server: 952, test: 1494, public: 564 };
+  for (const [area, list] of Object.entries(AREAS)) {
+    const found = new Set();
+    for (const f of list) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) found.add(id);
+    const limit = LIMITS[/** @type {keyof typeof LIMITS} */ (area)];
+    assert.ok(found.size <= limit, `${found.size} deutsche Bezeichner in ${area}, erlaubt sind ${limit}`);
+    if (found.size < limit)
+      console.log(`  ℹ deutsche Bezeichner ${area}: ${found.size} (Schranke ${limit}) — Schranke nachziehen`);
+  }
+});

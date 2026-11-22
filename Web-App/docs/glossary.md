@@ -2,13 +2,13 @@
 
 One English term per concept in the server code, the database and the API v2.
 The German term is what users see in the interface (and what older code,
-migrations before 0127 and the API v1 still say).
+migrations before 0127 and the API v1 wire fields still say).
 
 | Concept (German, UI) | Code / DB / API v2 | Not |
 |---|---|---|
 | Auftrag | job | task, order |
 | Auftragsart | job kind (`jobKind`, `jobKinds`; column `jobs.type`) | job type, art |
-| Auftragsstatus | job status: `open`, `running`, `done`, `error`, `cancelled` | state |
+| Auftragsstatus | job status (stored values are still the v1 ones, `src/jobQueue`) | state |
 | Erfassung | acquisition | entry, purchase |
 | Bestand | holding (what an account owns) | stock, inventory |
 | Vorrat (eines Lagerorts) | stock | holding |

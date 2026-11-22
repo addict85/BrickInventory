@@ -23,12 +23,14 @@ function parts(id) {
     .map(w => w.toLowerCase());
 }
 
-/** German if one part is a known German word or has an umlaut; a trailing
- *  `An`/`Ab`/`Auf`/`Aus`/`Zu` part is a split-off German verb prefix. */
+/** German if one part is a known German word or has an umlaut. A trailing
+ *  `An`/`Ab`/`Auf`/`Aus`/`Zu` is a split-off verb prefix, and an article after
+ *  the first part (`backInDieTable`) is half-translated German. */
 function isGerman(id) {
   const p = parts(id);
   if (p.some(w => /[äöüß]/.test(w) || WORDS.has(w))) return true;
-  return p.length > 1 && /^(an|ab|auf|aus|zu|die|der|das|dem|den)$/.test(p[p.length - 1]);
+  if (p.length > 1 && /^(an|ab|auf|aus|zu)$/.test(p[p.length - 1])) return true;
+  return p.slice(1).some(w => /^(die|der|das|dem|den)$/.test(w));
 }
 
 /** Code without comments and without the contents of strings and templates. */
