@@ -7,10 +7,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.account.ui.AlarmOverviewUiState
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.resources.R
@@ -51,28 +49,14 @@ fun PriceAlarmsRoute(
     reportToggle: @Composable () -> Unit = { PriceAlertToggleRoute() },
 ) {
     val overview by vm.alarmOverview.collectAsStateWithLifecycle()
-    PriceAlertsSubpage(overview, vm, imageLoader, serverUrl, snackbarHostState, onSetClick, onBack, reportToggle)
-}
-
-@Composable
-internal fun PriceAlertsSubpage(
-    overview: AlarmOverviewUiState,
-    actions: SettingsActions,
-    imageLoader: ImageLoader,
-    serverUrl: String,
-    snackbarHostState: SnackbarHostState,
-    onSetClick: (String) -> Unit,
-    onBack: () -> Unit,
-    reportToggle: @Composable () -> Unit,
-) {
     Subpage(stringResource(R.string.alerts_group), snackbarHostState, onBack,
         width = ReadingWidth.form) {
         reportToggle()
-        PriceAlarmsCard(overview, actions, imageLoader, serverUrl, onSetClick)
+        PriceAlarmsCard(overview, vm, imageLoader, serverUrl, onSetClick)
     }
 }
 
-/** Lagerorte. */
+/** Storage locations. */
 @Composable
 fun LocationsRoute(
     vm: SettingsViewModel,
@@ -88,7 +72,7 @@ fun LocationsRoute(
     }
 }
 
-/** Haushalt — Konten verknuepfen. */
+/** Household: link accounts. */
 @Composable
 fun HouseholdRoute(
     vm: HouseholdViewModel,
@@ -152,7 +136,7 @@ fun AccountRoute(
     }
 }
 
-/** CSV importieren. */
+/** CSV import. */
 @Composable
 fun CsvImportRoute(
     vm: SettingsViewModel,

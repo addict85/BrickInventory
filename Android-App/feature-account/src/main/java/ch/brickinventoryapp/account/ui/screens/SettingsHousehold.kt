@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.HouseholdUiState
+import ch.brickinventoryapp.model.domain.HouseholdStatusView
 import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.DateYear
@@ -63,17 +64,8 @@ internal fun HouseholdCard(
     val st = state.status
     // remember, not rememberSaveable: saved state lands in the Bundle and, on
     // process death, on disk (ActivityManager) — no place for passwords and codes.
-    var code by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var factorCode by remember { mutableStateOf("") }
-    LaunchedEffect(state.redeemed) { if (state.redeemed > 0) code = "" }
-    // Via SecretClipboard instead of LocalClipboard: it takes the code back out
-    // after a minute, even if the page is already closed by then.
-    val context = LocalContext.current
-    // A ClipData's label is visible on some Android UIs and therefore
-    // belongs in the language files. Fetched here because the click handler isn't
-    // @Composable.
-    val invitationLabel = stringResource(R.string.household_invite_label)
+    val redeem = remember { RedeemDraft() }
+    LaunchedEffect(state.redeemed) { if (state.redeemed > 0) redeem.code = "" }
     // Unlinking takes a main account's view of someone else's data away; getting
     // back needs a new invitation. That's why it asks first, with the account's name.
     // Remembers the account ID and whether it's a main account.
@@ -88,26 +80,56 @@ internal fun HouseholdCard(
     // An account can be both a sub-account (of several main accounts too) and
     // a main account of its own sub-accounts: both lists are independent.
     val parents = st?.parentAccounts.orEmpty()
+    if (st != null) {
+        LinkedSection(st, onDiscard) { id, parent -> separate = id; separateParent = parent }
+        InviteSection(state, onCreateInvite)
+        RedeemSection(state, redeem, onRedeemInvite)
+    }
+
+    separate?.let { id ->
+        val name = (if (separateParent) parents.firstOrNull { it.id == id }?.username
+                    else st?.subAccounts.orEmpty().firstOrNull { it.id == id }?.username) ?: "—"
+        Prompt(
+            title = stringResource(if (separateParent) R.string.household_unlink_title else R.string.household_remove_title),
+            text = stringResource(if (separateParent) R.string.household_unlink_text else R.string.household_remove_text, name),
+            confirm = stringResource(if (separateParent) R.string.household_unlink else R.string.household_remove),
+            onConfirm = {
+                separate = null
+                if (separateParent) onUnlinkParent(id) else onUnlink(id)
+            },
+            onCancel = { separate = null },
+            symbol = Icons.Default.LinkOff,
+        )
+    }
+}
+
+/** Code, password and second factor of the invitation being accepted; only in memory. */
+private class RedeemDraft {
+    var code by mutableStateOf("")
+    var password by mutableStateOf("")
+    var factorCode by mutableStateOf("")
+}
+
+/** Main accounts above, sub-accounts below, then links that ended; [onSeparate] gets (id, isParent). */
+@Composable
+private fun LinkedSection(st: HouseholdStatusView, onDiscard: (Int) -> Unit, onSeparate: (Int, Boolean) -> Unit) {
+    val parents = st.parentAccounts
     // Sub-accounts only: the card is named for that directly, instead of showing
     // "Linked accounts" with "Sub-accounts" as a second heading below it.
-    val onlySubAccounts = parents.isEmpty() && st?.subAccounts?.isNotEmpty() == true
-    if (st != null) Section(stringResource(if (onlySubAccounts) R.string.household_state_main else R.string.household_linked)) {
+    val onlySubAccounts = parents.isEmpty() && st.subAccounts.isNotEmpty()
+    Section(stringResource(if (onlySubAccounts) R.string.household_state_main else R.string.household_linked)) {
         if (parents.isNotEmpty()) {
             Text(stringResource(R.string.household_state_parents),
                 style = MaterialTheme.typography.labelLarge)
             parents.forEach { m ->
-                AccountRow(m.username, stringResource(R.string.household_unlink)) {
-                    separate = m.id; separateParent = true
-                }
+                AccountRow(m.username, stringResource(R.string.household_unlink)) { onSeparate(m.id, true) }
             }
         }
         if (st.subAccounts.isNotEmpty()) {
             if (!onlySubAccounts) Text(stringResource(R.string.household_state_main),
                 style = MaterialTheme.typography.labelLarge)
             st.subAccounts.forEach { m ->
-                AccountRow(m.username, stringResource(R.string.household_remove)) {
-                    separate = m.id; separateParent = false
-                }
+                AccountRow(m.username, stringResource(R.string.household_remove)) { onSeparate(m.id, false) }
             }
         }
         if (parents.isEmpty() && st.subAccounts.isEmpty()) {
@@ -115,37 +137,45 @@ internal fun HouseholdCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (st.formerLinks.isNotEmpty()) {
-            Surface(color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = MaterialTheme.shapes.small) {
-                Column(Modifier.padding(Spacing.medium),
-                       verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                    Text(stringResource(R.string.household_former_intro),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer)
-                    st.formerLinks.forEach { f ->
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                            Column(Modifier.weight(1f)) {
-                                Text(f.username, fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                f.via?.let {
-                                    Text(stringResource(R.string.household_former_via, it),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                }
-                            }
-                            TextButton(onClick = { onDiscard(f.id) }) {
-                                Text(stringResource(R.string.household_former_dismiss))
-                            }
+        if (st.formerLinks.isNotEmpty()) FormerLinks(st, onDiscard)
+    }
+}
+
+/** Links the other side ended; each can be dismissed. */
+@Composable
+private fun FormerLinks(st: HouseholdStatusView, onDiscard: (Int) -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.secondaryContainer,
+            shape = MaterialTheme.shapes.small) {
+        Column(Modifier.padding(Spacing.medium),
+               verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+            Text(stringResource(R.string.household_former_intro),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer)
+            st.formerLinks.forEach { f ->
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(f.username, fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        f.via?.let {
+                            Text(stringResource(R.string.household_former_via, it),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
+                    }
+                    TextButton(onClick = { onDiscard(f.id) }) {
+                        Text(stringResource(R.string.household_former_dismiss))
                     }
                 }
             }
         }
     }
+}
 
-    if (st != null) Section(stringResource(R.string.household_invite_section)) {
+/** Create an invitation and hand its code to the other device. */
+@Composable
+private fun InviteSection(state: HouseholdUiState, onCreateInvite: () -> Unit) {
+    Section(stringResource(R.string.household_invite_section)) {
         Text(stringResource(R.string.household_invite_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -163,48 +193,68 @@ internal fun HouseholdCard(
                         fmtStatus(until, appNumberLocale(), twentyFour = twentyFourHours(), year = DateYear.WITHOUT)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            // The code belongs on a different device: share and copy, both weighted equally.
-            val shareTitle = stringResource(R.string.household_invite_section)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                OutlinedButton(onClick = { partsCodes(context, shareTitle, listOf(c)) }, modifier = Modifier.weight(1f),
-                    colors = secondaryButtonColors(), border = secondaryButtonRand()) {
-                    Icon(Icons.Default.Share, null, Modifier.size(withFont(18.dp)))
-                    Spacer(Modifier.width(Spacing.small))
-                    Text(stringResource(R.string.household_invite_share))
-                }
-                // Below Android 13 the keyboard would see the code; sharing stays the way there.
-                if (secretCopyable(LocalSdkLevel.current)) OutlinedButton(
-                    onClick = { SecretClipboard.copy(context, invitationLabel, c) },
-                    modifier = Modifier.weight(1f), colors = secondaryButtonColors(), border = secondaryButtonRand()) {
-                    Icon(Icons.Default.ContentCopy, null, Modifier.size(withFont(18.dp)))
-                    Spacer(Modifier.width(Spacing.small))
-                    Text(stringResource(R.string.household_invite_copy))
-                }
-            }
+            InviteHandOver(c)
         }
     }
+}
 
-    if (st != null) Section(stringResource(R.string.household_redeem_title)) {
+/** The code belongs on a different device: share and copy, both weighted equally. */
+@Composable
+private fun InviteHandOver(c: String) {
+    // Via SecretClipboard instead of LocalClipboard: it takes the code back out
+    // after a minute, even if the page is already closed by then.
+    val context = LocalContext.current
+    // A ClipData's label is visible on some Android UIs and therefore
+    // belongs in the language files. Fetched here because the click handler isn't
+    // @Composable.
+    val invitationLabel = stringResource(R.string.household_invite_label)
+    val shareTitle = stringResource(R.string.household_invite_section)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        OutlinedButton(onClick = { partsCodes(context, shareTitle, listOf(c)) }, modifier = Modifier.weight(1f),
+            colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+            Icon(Icons.Default.Share, null, Modifier.size(withFont(18.dp)))
+            Spacer(Modifier.width(Spacing.small))
+            Text(stringResource(R.string.household_invite_share))
+        }
+        // Below Android 13 the keyboard would see the code; sharing stays the way there.
+        if (secretCopyable(LocalSdkLevel.current)) OutlinedButton(
+            onClick = { SecretClipboard.copy(context, invitationLabel, c) },
+            modifier = Modifier.weight(1f), colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+            Icon(Icons.Default.ContentCopy, null, Modifier.size(withFont(18.dp)))
+            Spacer(Modifier.width(Spacing.small))
+            Text(stringResource(R.string.household_invite_copy))
+        }
+    }
+}
+
+/** Accept an invitation: code, password and — with the second factor active — its code. */
+@Composable
+private fun RedeemSection(
+    state: HouseholdUiState,
+    draft: RedeemDraft,
+    onRedeemInvite: (code: String, password: String, factorCode: String?) -> Unit,
+) {
+    Section(stringResource(R.string.household_redeem_title)) {
         Text(stringResource(R.string.household_redeem_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         // Labeled with what belongs in it; "Accept invitation" is the heading.
         OutlinedTextField(
-            value = code, onValueChange = { code = it }, singleLine = true,
+            value = draft.code, onValueChange = { draft.code = it }, singleLine = true,
             label = { Text(stringResource(R.string.household_invite_label)) },
             modifier = Modifier.fillMaxWidth(), shape = Shapes.field,
         )
         // After a failed attempt the field is empty and red, until typed in again.
-        val passwordWrong = state.passwordWrong && password.isEmpty()
-        PasswordField(password, { password = it }, stringResource(R.string.household_redeem_password),
+        val passwordWrong = state.passwordWrong && draft.password.isEmpty()
+        PasswordField(draft.password, { draft.password = it }, stringResource(R.string.household_redeem_password),
             Modifier.fillMaxWidth(),
             hint = if (passwordWrong) stringResource(R.string.household_redeem_password_wrong) else null,
             faulty = passwordWrong)
         // With the second factor active, the server requires its code (or a recovery code).
         if (state.factorNeeded) {
-            val factorWrong = state.factorWrong && factorCode.isEmpty()
+            val factorWrong = state.factorWrong && draft.factorCode.isEmpty()
             OutlinedTextField(
-                value = factorCode, onValueChange = { factorCode = it.take(24) }, singleLine = true,
+                value = draft.factorCode, onValueChange = { draft.factorCode = it.take(24) }, singleLine = true,
                 label = { Text(stringResource(R.string.household_redeem_code)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                 isError = factorWrong,
@@ -221,30 +271,18 @@ internal fun HouseholdCard(
             Text(it.sentence(), Modifier.announce(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
-        val ready = code.isNotBlank() && password.isNotEmpty() && (!state.factorNeeded || factorCode.isNotBlank())
+        val ready = draft.code.isNotBlank() && draft.password.isNotEmpty() &&
+            (!state.factorNeeded || draft.factorCode.isNotBlank())
         // As at sign-in: a disabled button says what's missing.
         if (!ready) LockReason(stringResource(if (state.factorNeeded) R.string.household_redeem_lock_reason_factor
                                               else R.string.household_redeem_lock_reason))
-        Button(onClick = { onRedeemInvite(code, password, factorCode.takeIf { state.factorNeeded }); password = ""; factorCode = "" },
+        Button(onClick = {
+                onRedeemInvite(draft.code, draft.password, draft.factorCode.takeIf { state.factorNeeded })
+                draft.password = ""; draft.factorCode = ""
+            },
                enabled = ready && !state.fetch.loading, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.household_redeem_submit))
         }
-    }
-
-    separate?.let { id ->
-        val name = (if (separateParent) parents.firstOrNull { it.id == id }?.username
-                    else st?.subAccounts.orEmpty().firstOrNull { it.id == id }?.username) ?: "—"
-        Prompt(
-            title = stringResource(if (separateParent) R.string.household_unlink_title else R.string.household_remove_title),
-            text = stringResource(if (separateParent) R.string.household_unlink_text else R.string.household_remove_text, name),
-            confirm = stringResource(if (separateParent) R.string.household_unlink else R.string.household_remove),
-            onConfirm = {
-                separate = null
-                if (separateParent) onUnlinkParent(id) else onUnlink(id)
-            },
-            onCancel = { separate = null },
-            symbol = Icons.Default.LinkOff,
-        )
     }
 }
 

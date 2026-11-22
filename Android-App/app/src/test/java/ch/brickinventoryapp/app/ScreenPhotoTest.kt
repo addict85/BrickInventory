@@ -29,7 +29,9 @@ import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
 import ch.brickinventoryapp.finances.ui.screens.VouchersPage
 import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
@@ -191,10 +193,8 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
     fun logIn() {
         photo("anmelden") {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = LoginForm.LOGIN, registrationOpen = true, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
-                onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = true),
+                object : LoginActions {},
             )
         }
     }
@@ -219,10 +219,8 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
     fun register() {
         photo("registrieren") {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = LoginForm.REGISTER, registrationOpen = true, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
-                onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", form = LoginForm.REGISTER, registrationOpen = true),
+                object : LoginActions {},
             )
         }
     }

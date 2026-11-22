@@ -32,7 +32,9 @@ import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
@@ -96,10 +98,8 @@ class LoginEdgeTest {
 
     @Composable
     private fun Login(form: LoginForm) = LoginScreen(
-        serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-        form = form, registrationOpen = true, accountRunning = false,
-        accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
-        onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+        LoginScreenState(serverUrl = "https://brick.example.org", form = form, registrationOpen = true),
+        object : LoginActions {},
     )
 
     /** Reports bars and keyboard like a device on which the app draws under the bars. */
@@ -159,10 +159,10 @@ class LoginEdgeTest {
         var logins = 0
         show {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = LoginForm.LOGIN, registrationOpen = true, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> logins++ }, onForm = {},
-                onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = true),
+                object : LoginActions {
+                    override fun login(username: String, password: String, code: String?) { logins++ }
+                },
             )
         }
         val button = compose.onNode(hasText(text(R.string.login_button)) and hasClickAction())

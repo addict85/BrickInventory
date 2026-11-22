@@ -30,8 +30,9 @@ import ch.brickinventoryapp.finances.ui.VoucherConfirmation
 import ch.brickinventoryapp.finances.ui.VoucherStep
 import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
-import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
@@ -107,10 +108,10 @@ class FlowTest {
         var sent: Triple<String, String, String?>? = null
         show {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = LoginForm.LOGIN, registrationOpen = false, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { n, p, c -> sent = Triple(n, p, c) },
-                onForm = {}, onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = false),
+                object : LoginActions {
+                    override fun login(username: String, password: String, code: String?) { sent = Triple(username, password, code) }
+                },
             )
         }
         compose.onNodeWithText(ctx.getString(R.string.login_username)).performTextInput("marco")

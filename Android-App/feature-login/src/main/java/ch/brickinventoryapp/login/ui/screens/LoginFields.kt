@@ -36,37 +36,59 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 
-@OptIn(ExperimentalLayoutApi::class)
+/** What is typed into the sign-in form; LoginFormCard holds it. */
+internal data class LoginInput(val username: String, val password: String, val code: String)
+
 @Composable
 internal fun LoginFields(
-    username: String, onUsername: (String) -> Unit,
-    password: String, onPassword: (String) -> Unit,
-    codeNeeded: Boolean, code: String, onCode: (String) -> Unit,
-    isLoading: Boolean, error: String?,
-    registrationOpen: Boolean?,
+    state: LoginScreenState,
+    actions: LoginActions,
+    input: LoginInput,
+    onInput: (LoginInput) -> Unit,
     focusMgr: FocusManager,
-    onLogin: (String, String, String?) -> Unit,
-    onForm: (LoginForm) -> Unit,
-    fullAccess: Boolean,
-    onFullAccess: (Boolean) -> Unit,
-    onPasskey: (() -> Unit)?,
-    onPasskeyInsteadOfCode: ((String, String) -> Unit)?,
 ) {
     LoginTitle(stringResource(R.string.login_title))
     // The button stays tappable; a tap with empty fields shows at the field what is missing.
     // Disabled and pale, it left one guessing why nothing happens.
     var tried by rememberSaveable { mutableStateOf(false) }
-    val nameMissing = tried && username.isBlank()
-    val passwordMissing = tried && password.isBlank()
-    val codeMissing = tried && codeNeeded && code.isBlank()
+    val codeNeeded = state.codeNeeded
     val logIn = {
         tried = true
-        if (username.isNotBlank() && password.isNotBlank() && (!codeNeeded || code.isNotBlank()))
-            onLogin(username, password, code.takeIf { codeNeeded })
+        if (input.username.isNotBlank() && input.password.isNotBlank() && (!codeNeeded || input.code.isNotBlank()))
+            actions.login(input.username, input.password, input.code.takeIf { codeNeeded })
     }
 
+    CredentialFields(input, onInput, codeNeeded, tried, focusMgr, logIn)
+
+    if (state.error != null) FormMessage(state.error, error = true)
+
+    FullAccessSection(state.fullAccess, actions::setFullAccess)
+
+    LoadButton(stringResource(R.string.login_button), running = state.isLoading, active = true, onClick = logIn)
+
+    PasskeyButton(state, actions, input)
+
+    // The register link appears ONLY on an explicit `true`.
+    // `null` means "not asked yet" or "the server did not
+    // answer" — in both cases the button led nowhere.
+    FormLinks(state.registrationOpen == true, actions::showForm)
+}
+
+/** Name, password and — once the server demands it — the code, each naming what is missing. */
+@Composable
+private fun CredentialFields(
+    input: LoginInput,
+    onInput: (LoginInput) -> Unit,
+    codeNeeded: Boolean,
+    tried: Boolean,
+    focusMgr: FocusManager,
+    logIn: () -> Unit,
+) {
+    val nameMissing = tried && input.username.isBlank()
+    val passwordMissing = tried && input.password.isBlank()
+    val codeMissing = tried && codeNeeded && input.code.isBlank()
     OutlinedTextField(
-        value = username, onValueChange = onUsername,
+        value = input.username, onValueChange = { onInput(input.copy(username = it)) },
         label = { Text(stringResource(R.string.login_username)) },
         isError = nameMissing,
         supportingText = if (nameMissing) ({ Text(stringResource(R.string.login_username_missing)) }) else null,
@@ -79,7 +101,7 @@ internal fun LoginFields(
     )
 
     PasswordField(
-        value = password, onValue = onPassword,
+        value = input.password, onValue = { onInput(input.copy(password = it)) },
         label = stringResource(R.string.login_password),
         modifier = Modifier.fillMaxWidth(),
         hint = if (passwordMissing) stringResource(R.string.login_password_missing) else null,
@@ -97,7 +119,7 @@ internal fun LoginFields(
     // Text instead of number: a recovery code (letters) fits in it too.
     if (codeNeeded) {
         OutlinedTextField(
-            value = code, onValueChange = { onCode(it.take(24)) },
+            value = input.code, onValueChange = { onInput(input.copy(code = it.take(24))) },
             label = { Text(stringResource(R.string.login_code)) },
             isError = codeMissing,
             supportingText = { Text(stringResource(if (codeMissing) R.string.login_code_missing else R.string.login_code_hint)) },
@@ -110,13 +132,15 @@ internal fun LoginFields(
             keyboardActions = KeyboardActions(onDone = { focusMgr.clearFocus(); logIn() })
         )
     }
+}
 
-    if (error != null) FormMessage(error, error = true)
-
-    // Without the checkbox, a token without admin rights, even for an admin account. Checking the
-    // box asks for the device lock: a token with scope "voll" can do anything.
-    // Collapsed under „Erweitert“: hardly anyone needs it to collect, and open
-    // it pushed the sign-in button out of the first frame at 200 %.
+/**
+ * Without the checkbox, a token without admin rights, even for an admin account. Checking the
+ * box asks for the device lock: a token with scope "voll" can do anything. Collapsed under
+ * „Erweitert“: open, it pushed the sign-in button out of the first frame at 200 %.
+ */
+@Composable
+private fun FullAccessSection(fullAccess: Boolean, onFullAccess: (Boolean) -> Unit) {
     val protection = LocalStepGuard.current
     val fullReason = stringResource(R.string.step_full_access)
     var extended by rememberSaveable { mutableStateOf(fullAccess) }
@@ -141,22 +165,26 @@ internal fun LoginFields(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
 
-    LoadButton(stringResource(R.string.login_button), running = isLoading, active = true, onClick = logIn)
-
-    // Instead of the code: name and password from above go along, the passkey only replaces the code.
-    if (codeNeeded && onPasskeyInsteadOfCode != null) {
-        OutlinedButton(onClick = { onPasskeyInsteadOfCode(username, password) },
-            enabled = !isLoading && username.isNotBlank() && password.isNotBlank(),
+/** Instead of the code: name and password from above go along, the passkey only replaces the code. */
+@Composable
+private fun PasskeyButton(state: LoginScreenState, actions: LoginActions, input: LoginInput) {
+    val isLoading = state.isLoading
+    if (!actions.offersPasskey) return
+    if (state.codeNeeded && state.passkeyInsteadOfCode) {
+        val ready = !isLoading && input.username.isNotBlank() && input.password.isNotBlank()
+        OutlinedButton(onClick = { actions.passkeyInsteadOfCode(input.username, input.password) },
+            enabled = ready,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             colors = secondaryButtonColors(),
-            border = secondaryButtonRand(!isLoading && username.isNotBlank() && password.isNotBlank())) {
+            border = secondaryButtonRand(ready)) {
             Icon(Icons.Default.Fingerprint, null, Modifier.size(withFont(18.dp)))
             Spacer(Modifier.width(Spacing.small))
             Text(stringResource(R.string.login_passkey_instead_of_code))
         }
-    } else if (!codeNeeded && onPasskey != null) {
-        OutlinedButton(onClick = onPasskey, enabled = !isLoading,
+    } else if (!state.codeNeeded) {
+        OutlinedButton(onClick = actions::loginPasskey, enabled = !isLoading,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             colors = secondaryButtonColors(),
             border = secondaryButtonRand(!isLoading)) {
@@ -165,12 +193,14 @@ internal fun LoginFields(
             Text(stringResource(R.string.login_passkey))
         }
     }
+}
 
-    // The register link appears ONLY on an explicit `true`.
-    // `null` means "not asked yet" or "the server did not
-    // answer" — in both cases the button led nowhere.
+/** „Kein Konto?“ (only when registration is open) and „Passwort vergessen?“. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FormLinks(registrationOpen: Boolean, onForm: (LoginForm) -> Unit) {
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-        if (registrationOpen == true) {
+        if (registrationOpen) {
             TextButton(onClick = { onForm(LoginForm.REGISTER) }) {
                 Text(stringResource(R.string.login_no_account), textAlign = TextAlign.Center)
             }

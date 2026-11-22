@@ -33,8 +33,9 @@ import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
-import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.screens.CacheEvents
 import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
@@ -335,10 +336,8 @@ class WrapGuardTest {
     private fun login(font: Float) {
         check("Anmeldung $font", font) {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = LoginForm.LOGIN, registrationOpen = true, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
-                onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = true),
+                object : LoginActions {},
             )
         }
     }

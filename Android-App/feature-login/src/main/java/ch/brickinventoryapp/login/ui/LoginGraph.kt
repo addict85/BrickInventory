@@ -13,7 +13,9 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.QrAccountQuestion
 import ch.brickinventoryapp.login.ui.screens.ServerStartDisplay
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
@@ -103,32 +105,22 @@ private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
         if (serverStart != null) {
             ServerStartDisplay(serverStart)
         } else LoginScreen(
-            serverUrl = state.serverUrl,
-            isLoading = loginUiState.login.running,
-            error = loginUiState.login.errorMessage?.sentence(),
-            qrConfirmation = loginUiState.qrConfirmation,
-            codeNeeded = loginUiState.codeNeeded,
-            form = loginUiState.form,
-            registrationOpen = loginUiState.registrationOpen,
-            accountRunning = loginUiState.account.running,
-            accountMessage = listOfNotNull(loginUiState.message?.sentence(), loginUiState.hint?.sentence())
-                .joinToString(" ").ifEmpty { null },
-            accountError = loginUiState.account.errorMessage?.sentence(),
-            onLogin = { user, pw, code -> loginVm.login(user, pw, code) },
-            fullAccess = loginUiState.fullAccess,
-            onFullAccess = { loginVm.setFullAccess(it) },
-            // The query is tied to the Activity (the system's picker dialog); the ViewModel lives longer.
-            onPasskey = { loginVm.loginPasskey(passkeys) },
-            passkeyInsteadOfCode = loginUiState.passkeyInsteadOfCode,
-            onPasskeyInsteadOfCode = { user, pw -> loginVm.passkeyInsteadOfCode(user, pw, passkeys) },
-            onForm = { loginVm.showLoginForm(it) },
-            onRegister = { u, e, v, n, pw -> loginVm.register(u, e, v, n, pw) },
-            onPasswordForget = { loginVm.passwordForget(it) },
-            onChangeServer = {
-                navController.navigate(LoginTarget.Setup) {
-                    popUpTo<LoginTarget.Login> { inclusive = true }
-                }
-            }
+            state = LoginScreenState(
+                serverUrl = state.serverUrl,
+                isLoading = loginUiState.login.running,
+                error = loginUiState.login.errorMessage?.sentence(),
+                qrConfirmation = loginUiState.qrConfirmation,
+                codeNeeded = loginUiState.codeNeeded,
+                form = loginUiState.form,
+                registrationOpen = loginUiState.registrationOpen,
+                accountRunning = loginUiState.account.running,
+                accountMessage = listOfNotNull(loginUiState.message?.sentence(), loginUiState.hint?.sentence())
+                    .joinToString(" ").ifEmpty { null },
+                accountError = loginUiState.account.errorMessage?.sentence(),
+                fullAccess = loginUiState.fullAccess,
+                passkeyInsteadOfCode = loginUiState.passkeyInsteadOfCode,
+            ),
+            actions = remember(loginVm, passkeys) { GraphLoginActions(loginVm, passkeys, navController) },
         )
         loginUiState.qrAccount?.let { QrAccountQuestion(it, loginVm::decideQrAccount) }
         // Outside the if/else: if someone signs in while the server
@@ -136,6 +128,29 @@ private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
         // the jump to the gallery should happen anyway.
         LaunchedEffect(state.isLoggedIn) {
             if (state.isLoggedIn) navigation.loggedIn()
+        }
+    }
+}
+
+/** The sign-in screen's actions on the ViewModel; the passkey query is tied to the Activity (system picker). */
+private class GraphLoginActions(
+    private val loginVm: LoginViewModel,
+    private val passkeys: CredentialManagerQuery,
+    private val navController: NavHostController,
+) : LoginActions {
+    override fun login(username: String, password: String, code: String?) = loginVm.login(username, password, code)
+    override fun showForm(form: LoginForm) = loginVm.showLoginForm(form)
+    override fun register(username: String, email: String, firstName: String, lastName: String, password: String) =
+        loginVm.register(username, email, firstName, lastName, password)
+    override fun forgotPassword(email: String) = loginVm.passwordForget(email)
+    override fun setFullAccess(on: Boolean) = loginVm.setFullAccess(on)
+    override val offersPasskey get() = true
+    override fun loginPasskey() = loginVm.loginPasskey(passkeys)
+    override fun passkeyInsteadOfCode(username: String, password: String) =
+        loginVm.passkeyInsteadOfCode(username, password, passkeys)
+    override fun changeServer() {
+        navController.navigate(LoginTarget.Setup) {
+            popUpTo<LoginTarget.Login> { inclusive = true }
         }
     }
 }

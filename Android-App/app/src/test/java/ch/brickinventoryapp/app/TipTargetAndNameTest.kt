@@ -15,6 +15,7 @@ import ch.brickinventoryapp.account.ui.AccountUiState
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
 import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.account.ui.screens.SettingsExits
 import ch.brickinventoryapp.account.ui.screens.SettingsScreen
 import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
@@ -33,7 +34,9 @@ import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.Condition
@@ -198,7 +201,7 @@ class TipTargetAndNameTest {
             condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
                 "system", Design.CLASSIC, false, false, false, false),
             actions = none<SettingsActions>(), update = none<UpdateActions>(),
-            appearance = none<AppearanceActions>(), onUserCa = {}, onLogout = {}, onServerSwitch = {},
+            appearance = none<AppearanceActions>(), exits = none<SettingsExits>(),
             scrollState = androidx.compose.foundation.rememberScrollState(),
         )
     }
@@ -220,9 +223,7 @@ class TipTargetAndNameTest {
 
     @Composable
     private fun LoginContent(form: LoginForm) = LoginScreen(
-        serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-        form = form, registrationOpen = true, accountRunning = false,
-        accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
-        onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+        LoginScreenState(serverUrl = "https://brick.example.org", form = form, registrationOpen = true),
+        object : LoginActions {},
     )
 }

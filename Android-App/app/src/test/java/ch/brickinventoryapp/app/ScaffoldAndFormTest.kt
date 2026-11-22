@@ -70,8 +70,9 @@ import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
-import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.model.domain.BrickLinkView
 import ch.brickinventoryapp.model.domain.CatalogDetailView
@@ -286,10 +287,8 @@ class ScaffoldAndFormTest {
         show {
             when (fall.intValue) {
                 0 -> LoginScreen(
-                    serverUrl = "https://brick.example.org", isLoading = false, error = error[0], codeNeeded = false,
-                    form = LoginForm.LOGIN, registrationOpen = false, accountRunning = false,
-                    accountMessage = null, accountError = null, onLogin = { _, _, _ -> },
-                    onForm = {}, onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                    LoginScreenState(serverUrl = "https://brick.example.org", error = error[0], registrationOpen = false),
+                    object : LoginActions {},
                 )
                 1 -> StartPasswordMask(AccountUiState(save = Operation.Failed(Message.Text(error[1]))), { _, _, _ -> }, {})
                 else -> SecondFactorRequiredMask(
@@ -437,10 +436,8 @@ class ScaffoldAndFormTest {
     fun `admin rights stand collapsed under Advanced`() {
         show {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = LoginForm.LOGIN, registrationOpen = false, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> },
-                onForm = {}, onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = false),
+                object : LoginActions {},
             )
         }
         val full = ctx.getString(R.string.login_full_access)
@@ -535,10 +532,10 @@ class ScaffoldAndFormTest {
         var changed = 0
         show(font = 2f) {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = LoginForm.LOGIN, registrationOpen = false, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> },
-                onForm = {}, onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = { changed++ },
+                LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = false),
+                object : LoginActions {
+                    override fun changeServer() { changed++ }
+                },
             )
         }
         val chip = compose.onNodeWithContentDescription(ctx.getString(R.string.login_server_edit, "https://brick.example.org"))

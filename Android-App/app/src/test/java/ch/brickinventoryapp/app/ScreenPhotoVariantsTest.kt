@@ -61,6 +61,7 @@ import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
 import ch.brickinventoryapp.account.ui.screens.LocationsRoute
 import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.account.ui.screens.SettingsExits
 import ch.brickinventoryapp.account.ui.screens.SettingsScreen
 import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
@@ -110,7 +111,9 @@ import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.finances.ui.screens.VouchersRoute
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.screens.CacheEvents
@@ -315,10 +318,8 @@ class ScreenPhotoVariantsTest {
     private fun loginPhoto(name: String, font: Float) {
         show(name, font = font) {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = LoginForm.LOGIN, registrationOpen = true, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
-                onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = true),
+                object : LoginActions {},
             )
         }
         photo(name)
@@ -1152,10 +1153,8 @@ class ScreenPhotoVariantsTest {
     private fun loginPhoto(name: String, form: LoginForm, device: String, font: Float) {
         show(name, device = device, font = font) {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                form = form, registrationOpen = true, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
-                onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", form = form, registrationOpen = true),
+                object : LoginActions {},
             )
         }
         photo(name, device = device)
@@ -1206,6 +1205,12 @@ class ScreenPhotoVariantsTest {
         override fun setWidgetValues(an: Boolean) = Unit
     }
 
+    private val noExits = object : SettingsExits {
+        override fun logout() = Unit
+        override fun switchServer() = Unit
+        override fun setUserCa(on: Boolean) = Unit
+    }
+
     private fun settingsPhoto(name: String, dark: Boolean, device: String, update: UpdateUiState = UpdateUiState(),
                                   font: Float = 1f, language: String? = GERMAN) {
         val vm = settings()
@@ -1213,8 +1218,7 @@ class ScreenPhotoVariantsTest {
             SettingsScreen(
                 condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), update,
                     "system", Design.CLASSIC, false, false, false, false),
-                actions = vm, update = noUpdate, appearance = noRendering, onUserCa = {},
-                onLogout = {}, onServerSwitch = {}, scrollState = androidx.compose.foundation.rememberScrollState(),
+                actions = vm, update = noUpdate, appearance = noRendering, exits = noExits, scrollState = androidx.compose.foundation.rememberScrollState(),
             )
         }
         // The update card stands further down: without scrolling the progress was missing from the image.
@@ -1402,11 +1406,10 @@ class ScreenPhotoVariantsTest {
         val name = level(if (code) "anmelden-code" else "anmelden-passkey", font)
         show(name, dark = dark, font = font) {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = code,
-                form = LoginForm.LOGIN, registrationOpen = true, accountRunning = false,
-                accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},
-                onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
-                onPasskey = {}, onPasskeyInsteadOfCode = { _, _ -> },
+                LoginScreenState(serverUrl = "https://brick.example.org", codeNeeded = code, registrationOpen = true),
+                object : LoginActions {
+                    override val offersPasskey get() = true
+                },
             )
         }
         pause()

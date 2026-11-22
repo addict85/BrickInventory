@@ -59,21 +59,16 @@ internal fun AccountCard(
     // `remember(profile)`, not `remember`: after saving, the ViewModel fetches
     // the profile again, and the fields should show the server's
     // NORMALIZED state, not what was typed.
-    var username by remember(profile) { mutableStateOf(profile?.username.orEmpty()) }
-    var email        by remember(profile) { mutableStateOf(profile?.email.orEmpty()) }
-    var firstName      by remember(profile) { mutableStateOf(profile?.firstName.orEmpty()) }
-    var lastName     by remember(profile) { mutableStateOf(profile?.lastName.orEmpty()) }
+    val draft = remember(profile) { ProfileDraft(profile) }
     // remember, not rememberSaveable: saved state lands in the Bundle and, on
     // process death, on disk (ActivityManager) — no place for passwords and codes.
-    var pwCurrent    by remember { mutableStateOf("") }
-    var pwNew        by remember { mutableStateOf("") }
-    var pwRepeated by remember { mutableStateOf("") }
+    val passwords = remember { PasswordDraft() }
     // The password for a profile change is only asked by the dialog on save.
     var asksPassword by remember(profile) { mutableStateOf(false) }
     var factorCode   by remember { mutableStateOf("") }
     val code = factorCode.takeIf { accountUiState.codeNeeded && it.isNotBlank() }
 
-    val changed = profileChanged(profile, username, email, firstName, lastName)
+    val changed = profileChanged(profile, draft.username, draft.email, draft.firstName, draft.lastName)
     // Save stays tappable and then marks what's missing (as with the set dialog).
     var profileChecked by rememberSaveable(profile) { mutableStateOf(false) }
     val profileFocus = remember { ProfileField.entries.associateWith { FocusRequester() } }
@@ -90,21 +85,17 @@ internal fun AccountCard(
         if (accountUiState.codeNeeded) SecondFactorCodeField(factorCode) { factorCode = it }
 
         if (profile != null) {
-            val tap: (String) -> Unit = { onMessageRoute() }
             ProfileFields(profile,
-                error = if (profileChecked) profileError(username, email) else emptyList(),
+                error = if (profileChecked) profileError(draft.username, draft.email) else emptyList(),
                 focus = profileFocus,
-                username = username, onUsername = { username = it; tap(it) },
-                email = email, onEmail = { email = it; tap(it) },
-                firstName = firstName, onFirstName = { firstName = it; tap(it) },
-                lastName = lastName, onLastName = { lastName = it; tap(it) })
+                draft = draft, onEdit = onMessageRoute)
             // Give up focus first: otherwise the last-typed field stays focused behind the
             // dialog and keeps the keyboard and cursor, even though only the dialog
             // accepts input.
             val focus = LocalFocusManager.current
             ProfileSaveButton(nothingChanged = profileChecked && !changed, saves = accountUiState.save.running) {
                 profileChecked = true
-                val first = profileError(username, email).firstOrNull()
+                val first = profileError(draft.username, draft.email).firstOrNull()
                 if (first != null) profileFocus.getValue(first).requestFocus()
                 else if (changed) { focus.clearFocus(); asksPassword = true }
             }
@@ -115,12 +106,10 @@ internal fun AccountCard(
     // as part of the data that "Save profile" secures.
     if (profile != null) {
         PasswordCard(
-            pwCurrent = pwCurrent, onPwCurrent = { pwCurrent = it },
-            pwNew = pwNew, onPwNew = { pwNew = it },
-            pwRepeated = pwRepeated, onPwRepeated = { pwRepeated = it },
+            passwords = passwords,
             saves = accountUiState.save.running,
             check = passwordCheck,
-            changeOn = { onPassword(pwCurrent, pwNew, code) },
+            changeOn = { onPassword(passwords.current, passwords.new, code) },
         )
     }
 
@@ -131,9 +120,27 @@ internal fun AccountCard(
         text = stringResource(R.string.account_profile_password_needed),
         confirm = stringResource(R.string.account_save),
         codeNeeded = false, error = null, running = accountUiState.save.running,
-        onConfirm = { pw, _ -> asksPassword = false; onSave(username, email, firstName, lastName, pw, code) },
+        onConfirm = { pw, _ -> asksPassword = false; onSave(draft.username, draft.email, draft.firstName, draft.lastName, pw, code) },
         onCancel = { asksPassword = false },
     )
+}
+
+/**
+ * The profile fields while editing: pre-filled from the server state, then driven by the user.
+ * Created anew per profile, so that after saving the fields show the server's NORMALIZED state.
+ */
+private class ProfileDraft(profile: ProfileView?) {
+    var username by mutableStateOf(profile?.username.orEmpty())
+    var email by mutableStateOf(profile?.email.orEmpty())
+    var firstName by mutableStateOf(profile?.firstName.orEmpty())
+    var lastName by mutableStateOf(profile?.lastName.orEmpty())
+}
+
+/** Current, new and repeated password; only in memory, never in the saved state. */
+private class PasswordDraft {
+    var current by mutableStateOf("")
+    var new by mutableStateOf("")
+    var repeated by mutableStateOf("")
 }
 
 /** Does an input differ from the server's state? Only then can it be saved. */
@@ -185,20 +192,15 @@ private fun ProfileFields(
     profile: ProfileView,
     error: List<ProfileField>,
     focus: Map<ProfileField, FocusRequester>,
-    username: String,
-    onUsername: (String) -> Unit,
-    email: String,
-    onEmail: (String) -> Unit,
-    firstName: String,
-    onFirstName: (String) -> Unit,
-    lastName: String,
-    onLastName: (String) -> Unit,
+    draft: ProfileDraft,
+    /** Every keystroke clears the message about the last save. */
+    onEdit: () -> Unit,
 ) {
     val pending = profile.emailNew
     val nameMissing = ProfileField.USERNAME in error
     OutlinedTextField(
-        value = username,
-        onValueChange = onUsername,
+        value = draft.username,
+        onValueChange = { draft.username = it; onEdit() },
         label = { Text(stringResource(R.string.login_username)) },
         leadingIcon = { Icon(Icons.Default.Person, null) },
         isError = nameMissing,
@@ -207,8 +209,8 @@ private fun ProfileFields(
         singleLine = true, shape = Shapes.field)
     val emailMissing = ProfileField.EMAIL in error
     OutlinedTextField(
-        value = email,
-        onValueChange = onEmail,
+        value = draft.email,
+        onValueChange = { draft.email = it; onEdit() },
         label = { Text(stringResource(R.string.register_email)) },
         leadingIcon = { Icon(Icons.Default.Email, null) },
         // A new address is waiting for its confirmation link, the field shows the
@@ -224,12 +226,12 @@ private fun ProfileFields(
         singleLine = true, shape = Shapes.field,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
     OutlinedTextField(
-        value = firstName, onValueChange = onFirstName,
+        value = draft.firstName, onValueChange = { draft.firstName = it; onEdit() },
         label = { Text(stringResource(R.string.register_first_name)) },
         leadingIcon = { Icon(Icons.Default.Badge, null) },
         modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Shapes.field)
     OutlinedTextField(
-        value = lastName, onValueChange = onLastName,
+        value = draft.lastName, onValueChange = { draft.lastName = it; onEdit() },
         label = { Text(stringResource(R.string.register_last_name)) },
         leadingIcon = { Icon(Icons.Default.Badge, null) },
         modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Shapes.field)
@@ -238,12 +240,7 @@ private fun ProfileFields(
 /** Change password. AccountCard holds the inputs; the card only displays them and reports changes. */
 @Composable
 private fun PasswordCard(
-    pwCurrent: String,
-    onPwCurrent: (String) -> Unit,
-    pwNew: String,
-    onPwNew: (String) -> Unit,
-    pwRepeated: String,
-    onPwRepeated: (String) -> Unit,
+    passwords: PasswordDraft,
     saves: Boolean,
     check: PasswordSwitchCheck,
     changeOn: () -> Unit,
@@ -255,11 +252,12 @@ private fun PasswordCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         val focus = LocalFocusManager.current
-        PasswordSwitchFields(pwCurrent, onPwCurrent, pwNew, onPwNew, pwRepeated, onPwRepeated, check,
+        PasswordSwitchFields(passwords.current, { passwords.current = it }, passwords.new, { passwords.new = it },
+            passwords.repeated, { passwords.repeated = it }, check,
             KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
         // Tonal instead of outlined: a disabled outlined button was barely visible.
         FilledTonalButton(
-            onClick = { check.submit(pwCurrent, pwNew, pwRepeated, changeOn) },
+            onClick = { check.submit(passwords.current, passwords.new, passwords.repeated, changeOn) },
             enabled = !saves,
             colors = toneButtonColors(),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)

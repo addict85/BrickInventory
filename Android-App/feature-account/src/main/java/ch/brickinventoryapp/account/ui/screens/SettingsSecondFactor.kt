@@ -111,118 +111,139 @@ internal fun SecondFactorCard(
     onBack: () -> Unit,
 ) {
     // Passwords only in remember, see above.
-    var zfPassword by remember { mutableStateOf("") }
-    var zfCode     by remember { mutableStateOf("") }
-    var withoutApp    by rememberSaveable { mutableStateOf(false) }
-    var secured  by rememberSaveable(secondFactorUiState.codes) { mutableStateOf(false) }
-    // Confirm stays tappable; without a code it marks the field and puts the cursor in it.
-    var codeMissing  by rememberSaveable { mutableStateOf(false) }
-    val codeFocus = remember { FocusRequester() }
-    val selectionTitle = stringResource(R.string.zf_open_app)
-    val context = LocalContext.current
-    val keyLabel = stringResource(R.string.app_name)
-    val shareTitle = stringResource(R.string.zf_share_title)
-    val copy: (String) -> Unit = { text ->
-        SecretClipboard.copy(context, keyLabel, text)
+    val draft = remember { FactorDraft() }
+    // Clear the fields as soon as a step succeeds — otherwise the
+    // password would still be there at the next step.
+    LaunchedEffect(secondFactorUiState.active, secondFactorUiState.secret, secondFactorUiState.codes) {
+        draft.password = ""; draft.code = ""
     }
     // New codes and a new key appear in plain text right after: only
     // behind the device lock (step protection), in addition to password or code.
     val protection = LocalStepGuard.current.forTarget(StepAction.SECOND_FACTOR)
     val codesReason = stringResource(R.string.step_codes)
-    // Clear the fields as soon as a step succeeds — otherwise the
-    // password would still be there at the next step.
-    LaunchedEffect(secondFactorUiState.active, secondFactorUiState.secret, secondFactorUiState.codes) { zfPassword = ""; zfCode = "" }
+    val loading = secondFactorUiState.fetch.loading
 
     SettingsCard(title = stringResource(R.string.zf_title), icon = Icons.Default.Security) {
         Text(stringResource(R.string.zf_hint), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (secondFactorUiState.fetch.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         secondFactorUiState.fetch.errorMessage?.let { ErrorRow(it) }
-
-        val passwordField: @Composable () -> Unit = {
-            PasswordField(zfPassword, { zfPassword = it }, stringResource(R.string.account_password_current),
-                Modifier.fillMaxWidth())
-        }
-        val codeField: @Composable (String) -> Unit = { label ->
-            OutlinedTextField(
-                value = zfCode, onValueChange = { zfCode = it.take(24); codeMissing = false },
-                label = { Text(label) },
-                isError = codeMissing,
-                supportingText = if (codeMissing) { { Text(stringResource(R.string.login_code_missing), Modifier.announce()) } } else null,
-                modifier = Modifier.fillMaxWidth().focusRequester(codeFocus),
-                singleLine = true, shape = Shapes.field,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
-        }
 
         when {
             // 1. Fresh codes: show once, then clear away. No screen capture of them.
-            secondFactorUiState.codes.isNotEmpty() -> {
-                PrivacyShield()
-                Text(stringResource(R.string.zf_codes_title), fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
-                // Read out character by character: as a word, TalkBack read "i9j0".
-                Text(secondFactorUiState.codes.joinToString("\n"),
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.readAloudAs(secondFactorUiState.codes.joinToString(", ") { charByChar(it) }))
-                val secure = rememberCodesSecure(secondFactorUiState.codes) { secured = true }
-                Button(onClick = secure) { Text(stringResource(R.string.zf_codes_save)) }
-                OutlinedButton(onClick = { partsCodes(context, shareTitle, secondFactorUiState.codes) }, colors = secondaryButtonColors(), border = secondaryButtonRand()) { Text(stringResource(R.string.zf_share)) }
-                CodesSecured(secured) { secured = it }
-                Button(onClick = onBack, enabled = secured) { Text(stringResource(R.string.zf_codes_done)) }
-            }
+            secondFactorUiState.codes.isNotEmpty() -> FreshCodes(secondFactorUiState.codes, onBack)
             // 2. Setup running: key into the app, confirm the code.
             secondFactorUiState.secret != null -> {
-                PrivacyShield()
-                Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
-                Button(
-                    onClick = {
-                        val uri = otpauthAddress(secondFactorUiState.otpauth)
-                        withoutApp = uri == null || !openWithSelection(context, uri, selectionTitle)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(stringResource(R.string.zf_open_app)) }
-                if (withoutApp) {
-                    Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error, modifier = Modifier.announce())
-                }
-                Text(secondFactorUiState.secret.chunked(4).joinToString(" "),
-                    fontFamily = FontFamily.Monospace)
-                if (secretCopyable(LocalSdkLevel.current)) {
-                    OutlinedButton(onClick = { copy(secondFactorUiState.secret) }, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
-                        Text(stringResource(R.string.zf_copy_key))
-                    }
-                }
-                codeField(stringResource(R.string.zf_confirm_code))
+                KeyForTheApp(secondFactorUiState.secret, secondFactorUiState.otpauth)
+                FactorCodeField(draft, stringResource(R.string.zf_confirm_code))
                 ButtonRow(
                     confirm = stringResource(R.string.zf_confirm),
                     onConfirm = {
-                        if (zfCode.isBlank()) { codeMissing = true; codeFocus.requestFocus() } else onConfirm(zfCode)
+                        if (draft.code.isBlank()) { draft.codeMissing = true; draft.focus.requestFocus() } else onConfirm(draft.code)
                     },
                     onCancel = onBack,
-                    running = secondFactorUiState.fetch.loading,
+                    running = loading,
                 )
             }
             // 3. Active: new codes or disable.
             secondFactorUiState.active == true -> {
                 Text(pluralStringResource(R.plurals.zf_active, secondFactorUiState.codesRemaining, secondFactorUiState.codesRemaining),
                     color = MaterialTheme.colorScheme.primary)
-                passwordField()
-                codeField(stringResource(R.string.login_code))
+                FactorPasswordField(draft)
+                FactorCodeField(draft, stringResource(R.string.login_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                    OutlinedButton(onClick = { protection.confirm(codesReason) { onNewCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !secondFactorUiState.fetch.loading, colors = secondaryButtonColors(), border = secondaryButtonRand(zfCode.isNotBlank() && !secondFactorUiState.fetch.loading)) { Text(stringResource(R.string.zf_new_codes)) }
-                    OutlinedButton(onClick = { onTurnOff(zfPassword, zfCode) },
-                        enabled = zfPassword.isNotBlank() && zfCode.isNotBlank() && !secondFactorUiState.fetch.loading,
+                    val renewable = draft.code.isNotBlank() && !loading
+                    OutlinedButton(onClick = { protection.confirm(codesReason) { onNewCodes(draft.code) } }, enabled = renewable,
+                        colors = secondaryButtonColors(), border = secondaryButtonRand(renewable)) { Text(stringResource(R.string.zf_new_codes)) }
+                    val disableable = draft.password.isNotBlank() && draft.code.isNotBlank() && !loading
+                    OutlinedButton(onClick = { onTurnOff(draft.password, draft.code) },
+                        enabled = disableable,
                         colors = secondaryButtonColors(),
-                        border = secondaryButtonRand(zfPassword.isNotBlank() && zfCode.isNotBlank() && !secondFactorUiState.fetch.loading)) { Text(stringResource(R.string.zf_disable)) }
+                        border = secondaryButtonRand(disableable)) { Text(stringResource(R.string.zf_disable)) }
                 }
             }
             // 4. Not set up.
             secondFactorUiState.active == false -> {
-                passwordField()
-                Button(onClick = { protection.confirm(codesReason) { onSetUp(zfPassword) } }, enabled = zfPassword.isNotBlank() && !secondFactorUiState.fetch.loading,
+                FactorPasswordField(draft)
+                Button(onClick = { protection.confirm(codesReason) { onSetUp(draft.password) } }, enabled = draft.password.isNotBlank() && !loading,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }
+        }
+    }
+}
+
+/** Password and code of the next step; the code field marks itself when Confirm finds it empty. */
+private class FactorDraft {
+    var password by mutableStateOf("")
+    var code by mutableStateOf("")
+    var codeMissing by mutableStateOf(false)
+    val focus = FocusRequester()
+}
+
+@Composable
+private fun FactorPasswordField(draft: FactorDraft) {
+    PasswordField(draft.password, { draft.password = it }, stringResource(R.string.account_password_current),
+        Modifier.fillMaxWidth())
+}
+
+@Composable
+private fun FactorCodeField(draft: FactorDraft, label: String) {
+    OutlinedTextField(
+        value = draft.code, onValueChange = { draft.code = it.take(24); draft.codeMissing = false },
+        label = { Text(label) },
+        isError = draft.codeMissing,
+        supportingText = if (draft.codeMissing) { { Text(stringResource(R.string.login_code_missing), Modifier.announce()) } } else null,
+        modifier = Modifier.fillMaxWidth().focusRequester(draft.focus),
+        singleLine = true, shape = Shapes.field,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
+}
+
+/** The fresh recovery codes, shown once: save, share, confirm they are secured, done. */
+@Composable
+private fun FreshCodes(codes: List<String>, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val shareTitle = stringResource(R.string.zf_share_title)
+    var secured by rememberSaveable(codes) { mutableStateOf(false) }
+    PrivacyShield()
+    Text(stringResource(R.string.zf_codes_title), fontWeight = FontWeight.SemiBold)
+    Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
+    // Read out character by character: as a word, TalkBack read "i9j0".
+    Text(codes.joinToString("\n"),
+        fontFamily = FontFamily.Monospace,
+        modifier = Modifier.readAloudAs(codes.joinToString(", ") { charByChar(it) }))
+    val secure = rememberCodesSecure(codes) { secured = true }
+    Button(onClick = secure) { Text(stringResource(R.string.zf_codes_save)) }
+    OutlinedButton(onClick = { partsCodes(context, shareTitle, codes) }, colors = secondaryButtonColors(), border = secondaryButtonRand()) { Text(stringResource(R.string.zf_share)) }
+    CodesSecured(secured) { secured = it }
+    Button(onClick = onBack, enabled = secured) { Text(stringResource(R.string.zf_codes_done)) }
+}
+
+/** The key: open the authenticator app with it, or type it in by hand (from API 33 also copy it). */
+@Composable
+private fun KeyForTheApp(secret: String, otpauth: String?) {
+    val context = LocalContext.current
+    val selectionTitle = stringResource(R.string.zf_open_app)
+    val keyLabel = stringResource(R.string.app_name)
+    var withoutApp by rememberSaveable { mutableStateOf(false) }
+    PrivacyShield()
+    Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
+    Button(
+        onClick = {
+            val uri = otpauthAddress(otpauth)
+            withoutApp = uri == null || !openWithSelection(context, uri, selectionTitle)
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) { Text(stringResource(R.string.zf_open_app)) }
+    if (withoutApp) {
+        Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error, modifier = Modifier.announce())
+    }
+    Text(secret.chunked(4).joinToString(" "),
+        fontFamily = FontFamily.Monospace)
+    if (secretCopyable(LocalSdkLevel.current)) {
+        OutlinedButton(onClick = { SecretClipboard.copy(context, keyLabel, secret) }, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+            Text(stringResource(R.string.zf_copy_key))
         }
     }
 }

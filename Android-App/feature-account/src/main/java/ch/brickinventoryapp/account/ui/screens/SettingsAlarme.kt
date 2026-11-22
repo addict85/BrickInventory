@@ -26,6 +26,7 @@ import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
 import ch.brickinventoryapp.data.alarm.AlarmInput
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 import ch.brickinventoryapp.resources.R
@@ -83,109 +84,7 @@ internal fun PriceAlarmsCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         for (a in overview.alerts) {
-            // Key is (set, condition) — both, otherwise one alert's field would
-            // carry the other's value when a set has both.
-            // As an amount like everywhere else ("750.00"), not as a raw number "750.0".
-            var value by rememberSaveable(a.setNumber + a.condition) {
-                mutableStateOf(fmtInput(a.threshold))
-            }
-            // Order as in finances and the web app: downloaded
-            // copy, own address, catalog. For a set one doesn't own, only
-            // the last one is left — and that's the common case for a price alert.
-            val imageUrl = resolveThumbUrl(serverUrl, a.imageLocal, a.imageUrl)
-                ?: a.setImgUrl
-            // Only clickable if the detail view even exists. `Modifier`
-            // without `clickable` also means: no ripple on tap, so
-            // the entry visibly shows there's nothing to go to.
-            val row = if (a.owns)
-                Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.cd_set_open), role = Role.Button) { onSetClick(a.setNumber) }
-            else Modifier.fillMaxWidth()
-            // Spacing within an alert: it's a child of the card, whose spacings don't
-            // apply here. Outside between header and threshold, inside hairline-thin between
-            // number, name and badge, so the three stay a unit.
-            Column(row.padding(vertical = Spacing.tiny),
-                   verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                    FinanceImage(imageUrl, imageLoader, a.name)
-                    Column(Modifier.weight(1f),
-                           verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
-                        // Name first as in the collection; number and condition quieter
-                        // below. Without a name, the number carries the row.
-                        val condition = if (a.condition == Condition.USED)
-                            stringResource(R.string.condition_used)
-                        else stringResource(R.string.condition_new)
-                        Text(a.name ?: a.setNumber,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold)
-                        Text(if (a.name != null) "${a.setNumber} · $condition" else condition,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        // FlowRow: in a Row the badge took the whole width, and "last …"
-                        // wrapped character by character. This way the price below moves when it gets tight.
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-                            verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
-                            AlarmStateBadge(a.triggered)
-                            a.lastlyPrice?.let {
-                                Text(stringResource(R.string.alerts_last,
-                                        fmtMoney(it, a.currencyCode)),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                    // Quiet like every row action: red per row would drown out the prices; the
-                    // confirmation afterward carries the weight.
-                    WithTooltip(stringResource(R.string.alerts_delete_for, a.name ?: a.setNumber)) {
-                        IconButton(onClick = { deleteAsks = a }) {
-                            Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_for, a.name ?: a.setNumber),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-                // A save model like in the set and watchlist detail: typed text saves on its own
-                // after the quiet period (in the ViewModel, so it survives leaving), the
-                // row below confirms it. The choice above names the direction; the field is called
-                // "threshold" instead of naming it a second time.
-                val number = AlarmInput.number(value)
-                // The direction can be toggled as in the web app; saved right away.
-                SegmentChoice(
-                    options = listOf(AlarmDirection.BELOW to stringResource(R.string.detail_alert_chip_below),
-                                      AlarmDirection.OVER to stringResource(R.string.detail_alert_chip_above)),
-                    chosen = a.direction,
-                    onChoice = { newValue -> if (newValue != a.direction) actions.changeAlarmThreshold(a.setNumber, a.condition, newValue, number ?: a.threshold) },
-                    modifier = Modifier.amountWidth(),
-                )
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = { raw ->
-                        value = NumericInput.price(raw)
-                        actions.setAlarmThreshold(a.setNumber, a.condition, a.direction, value)
-                    },
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.alerts_threshold)) },
-                    // Prefixed like every amount in the app ("CHF 750.00").
-                    prefix = { Text(a.currencyCode.code + "\u00A0") },
-                    // Just "Saved": direction, amount and condition already sit in the field and
-                    // badge, repeating all of it below would double every line.
-                    supportingText = {
-                        if (number == a.threshold) Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
-                            Icon(Icons.Default.Check, null, Modifier.size(withFont(14.dp)))
-                            Text(stringResource(R.string.vm_saved))
-                        } else Text(stringResource(R.string.detail_alert_hint))
-                    },
-                    keyboardOptions = NumericInput.priceKeyboard(),
-                    // "Done" saves right away, without waiting for the quiet period.
-                    keyboardActions = KeyboardActions(onDone = {
-                        if (number != null && number != a.threshold) actions.changeAlarmThreshold(a.setNumber, a.condition, a.direction, number)
-                    }),
-                    shape = Shapes.field,
-                    // An amount, not a line of text: doesn't span the whole card on a tablet.
-                    modifier = Modifier.amountWidth(),
-                )
-                Announcement(if (number == a.threshold) stringResource(R.string.vm_saved) else null)
-            }
+            PriceAlarmRow(a, actions, imageLoader, serverUrl, onSetClick) { deleteAsks = a }
         }
         AlarmCreate(actions)
     }
@@ -204,6 +103,141 @@ internal fun PriceAlarmsCard(
             onCancel = { deleteAsks = null },
         )
     }
+}
+
+/** One alert: image, name and state above, direction and threshold below; saved as it is typed. */
+@Composable
+private fun PriceAlarmRow(
+    a: PriceAlertView,
+    actions: SettingsActions,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    onSetClick: (String) -> Unit,
+    onDelete: () -> Unit,
+) {
+    // Key is (set, condition) — both, otherwise one alert's field would
+    // carry the other's value when a set has both.
+    // As an amount like everywhere else ("750.00"), not as a raw number "750.0".
+    var value by rememberSaveable(a.setNumber + a.condition) {
+        mutableStateOf(fmtInput(a.threshold))
+    }
+    // Only clickable if the detail view even exists. `Modifier`
+    // without `clickable` also means: no ripple on tap, so
+    // the entry visibly shows there's nothing to go to.
+    val row = if (a.owns)
+        Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.cd_set_open), role = Role.Button) { onSetClick(a.setNumber) }
+    else Modifier.fillMaxWidth()
+    // Spacing within an alert: it's a child of the card, whose spacings don't
+    // apply here. Outside between header and threshold, inside hairline-thin between
+    // number, name and badge, so the three stay a unit.
+    Column(row.padding(vertical = Spacing.tiny),
+           verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        AlarmRowHeader(a, imageLoader, serverUrl, onDelete)
+        // A save model like in the set and watchlist detail: typed text saves on its own
+        // after the quiet period (in the ViewModel, so it survives leaving), the
+        // row below confirms it. The choice above names the direction; the field is called
+        // "threshold" instead of naming it a second time.
+        val number = AlarmInput.number(value)
+        // The direction can be toggled as in the web app; saved right away.
+        SegmentChoice(
+            options = listOf(AlarmDirection.BELOW to stringResource(R.string.detail_alert_chip_below),
+                              AlarmDirection.OVER to stringResource(R.string.detail_alert_chip_above)),
+            chosen = a.direction,
+            onChoice = { newValue -> if (newValue != a.direction) actions.changeAlarmThreshold(a.setNumber, a.condition, newValue, number ?: a.threshold) },
+            modifier = Modifier.amountWidth(),
+        )
+        AlarmThresholdField(a, value, number, actions) { value = it }
+        Announcement(if (number == a.threshold) stringResource(R.string.vm_saved) else null)
+    }
+}
+
+/** Image, name, number and condition, state and last price, and the delete button. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AlarmRowHeader(a: PriceAlertView, imageLoader: ImageLoader, serverUrl: String, onDelete: () -> Unit) {
+    // Order as in finances and the web app: downloaded
+    // copy, own address, catalog. For a set one doesn't own, only
+    // the last one is left — and that's the common case for a price alert.
+    val imageUrl = resolveThumbUrl(serverUrl, a.imageLocal, a.imageUrl)
+        ?: a.setImgUrl
+    Row(verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        FinanceImage(imageUrl, imageLoader, a.name)
+        Column(Modifier.weight(1f),
+               verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
+            // Name first as in the collection; number and condition quieter
+            // below. Without a name, the number carries the row.
+            val condition = if (a.condition == Condition.USED)
+                stringResource(R.string.condition_used)
+            else stringResource(R.string.condition_new)
+            Text(a.name ?: a.setNumber,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold)
+            Text(if (a.name != null) "${a.setNumber} · $condition" else condition,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // FlowRow: in a Row the badge took the whole width, and "last …"
+            // wrapped character by character. This way the price below moves when it gets tight.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+                verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
+                AlarmStateBadge(a.triggered)
+                a.lastlyPrice?.let {
+                    Text(stringResource(R.string.alerts_last,
+                            fmtMoney(it, a.currencyCode)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        // Quiet like every row action: red per row would drown out the prices; the
+        // confirmation afterward carries the weight.
+        WithTooltip(stringResource(R.string.alerts_delete_for, a.name ?: a.setNumber)) {
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_for, a.name ?: a.setNumber),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** The threshold of one alert; [number] is the typed amount, null while it is not one. */
+@Composable
+private fun AlarmThresholdField(
+    a: PriceAlertView,
+    value: String,
+    number: Money?,
+    actions: SettingsActions,
+    onValue: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { raw ->
+            val price = NumericInput.price(raw)
+            onValue(price)
+            actions.setAlarmThreshold(a.setNumber, a.condition, a.direction, price)
+        },
+        singleLine = true,
+        label = { Text(stringResource(R.string.alerts_threshold)) },
+        // Prefixed like every amount in the app ("CHF 750.00").
+        prefix = { Text(a.currencyCode.code + " ") },
+        // Just "Saved": direction, amount and condition already sit in the field and
+        // badge, repeating all of it below would double every line.
+        supportingText = {
+            if (number == a.threshold) Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
+                Icon(Icons.Default.Check, null, Modifier.size(withFont(14.dp)))
+                Text(stringResource(R.string.vm_saved))
+            } else Text(stringResource(R.string.detail_alert_hint))
+        },
+        keyboardOptions = NumericInput.priceKeyboard(),
+        // "Done" saves right away, without waiting for the quiet period.
+        keyboardActions = KeyboardActions(onDone = {
+            if (number != null && number != a.threshold) actions.changeAlarmThreshold(a.setNumber, a.condition, a.direction, number)
+        }),
+        shape = Shapes.field,
+        // An amount, not a line of text: doesn't span the whole card on a tablet.
+        modifier = Modifier.amountWidth(),
+    )
 }
 
 /**

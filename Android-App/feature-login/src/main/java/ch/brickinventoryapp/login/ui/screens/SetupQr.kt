@@ -94,64 +94,11 @@ internal fun QrSuggestionDialog(
             // The confirmation sends the sign-in to this server: no tap through an overlay.
             OverlayGuard()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                // Parsed instead of raw: a code like `https://mein.server@foreign.example` or with
-                // a line break would otherwise show a name that is not the destination.
-                val view = remember(suggestion) { NetworkPolicy.view(suggestion.url) }
-                val sofarHost = remember(suggestion, currentUrl) { qrSwitchesServer(currentUrl, suggestion.url) }
-                Text(stringResource(R.string.setup_qr_target))
-                if (view != null) {
-                    Text(view.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium)
-                    Text(view.address, fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (view.international) Text(stringResource(R.string.setup_qr_international),
-                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    Row(
-                        Modifier.fillMaxWidth().toggleable(targetConfirmed, role = Role.Checkbox) { targetConfirmed = it },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = targetConfirmed, onCheckedChange = null)
-                        Text(stringResource(R.string.setup_qr_target_confirm, view.host), fontWeight = FontWeight.Bold)
-                    }
-                }
-                Text(stringResource(R.string.setup_qr_hint))
-                if (sofarHost != null) Text(stringResource(R.string.setup_qr_other_server, sofarHost),
-                    color = MaterialTheme.colorScheme.error)
+                QrTarget(suggestion, currentUrl, targetConfirmed) { targetConfirmed = it }
                 val fp = suggestion.fingerprint
-                if (previous != null && fp != null) {
-                    Text(stringResource(R.string.setup_qr_pin_changed), color = MaterialTheme.colorScheme.error)
-                    Text(stringResource(R.string.cert_previous), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerprintReadable(previous), fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Like CertificateDialog: the code itself names the new value, it is typed off
-                    // from the web app; only its start stands here.
-                    Text(stringResource(R.string.cert_starts_with), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                } else if (fp != null) {
-                    // First setup: without typing it off, only a system root applies; a code
-                    // from someone else could just as well name its own key.
-                    Text(stringResource(if (type) R.string.setup_qr_pin_type else R.string.setup_qr_pin),
-                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.cert_starts_with), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall)
-                }
+                if (fp != null) QrPin(fp, previous, type)
                 if (type && fp != null) {
-                    FingerprintField(
-                        input = input,
-                        onInput = { input = it; finding = null },
-                        needed = Transcript.NEEDED,
-                        help = stringResource(if (previous != null) R.string.cert_changed_input else R.string.cert_unknown_input),
-                        error = { counted ->
-                            when (finding) {
-                                null, Transcript.MATCHES -> null
-                                Transcript.EMPTY, Transcript.TO_SHORT ->
-                                    stringResource(R.string.cert_input_too_short, counted, Transcript.NEEDED)
-                                Transcript.FITS_NOT -> stringResource(R.string.cert_input_wrong)
-                            }
-                        },
-                    )
+                    QrFingerprintInput(input, finding, changed = previous != null) { input = it; finding = null }
                 }
                 if (qrLocked) Text(stringResource(R.string.setup_qr_plaintext_declined), color = MaterialTheme.colorScheme.error)
             }
@@ -167,11 +114,83 @@ internal fun QrSuggestionDialog(
                 }
             }) {
                 Text(stringResource(if (previous != null) R.string.setup_qr_pin_adopt else R.string.setup_qr_adopt),
-                    color = if (previous != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
+                    color = if (previous != null) MaterialTheme.colorScheme.error else Color.Unspecified)
             }
         },
         dismissButton = {
             TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
+}
+
+/**
+ * Where the code leads, parsed instead of raw: a code like `https://mein.server@foreign.example`
+ * or with a line break would otherwise show a name that is not the destination.
+ */
+@Composable
+private fun QrTarget(suggestion: QrLoginPayload, currentUrl: String, confirmed: Boolean, onConfirmed: (Boolean) -> Unit) {
+    val view = remember(suggestion) { NetworkPolicy.view(suggestion.url) }
+    val sofarHost = remember(suggestion, currentUrl) { qrSwitchesServer(currentUrl, suggestion.url) }
+    Text(stringResource(R.string.setup_qr_target))
+    if (view != null) {
+        Text(view.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium)
+        Text(view.address, fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (view.international) Text(stringResource(R.string.setup_qr_international),
+            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        Row(
+            Modifier.fillMaxWidth().toggleable(confirmed, role = Role.Checkbox, onValueChange = onConfirmed),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = confirmed, onCheckedChange = null)
+            Text(stringResource(R.string.setup_qr_target_confirm, view.host), fontWeight = FontWeight.Bold)
+        }
+    }
+    Text(stringResource(R.string.setup_qr_hint))
+    if (sofarHost != null) Text(stringResource(R.string.setup_qr_other_server, sofarHost),
+        color = MaterialTheme.colorScheme.error)
+}
+
+/** The code's key: against the remembered one if it changed, otherwise its start and why it counts. */
+@Composable
+private fun QrPin(fp: String, previous: String?, type: Boolean) {
+    if (previous != null) {
+        Text(stringResource(R.string.setup_qr_pin_changed), color = MaterialTheme.colorScheme.error)
+        Text(stringResource(R.string.cert_previous), style = MaterialTheme.typography.labelMedium)
+        Text(fingerprintReadable(previous), fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Like CertificateDialog: the code itself names the new value, it is typed off
+        // from the web app; only its start stands here.
+        Text(stringResource(R.string.cert_starts_with), style = MaterialTheme.typography.labelMedium)
+        Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    } else {
+        // First setup: without typing it off, only a system root applies; a code
+        // from someone else could just as well name its own key.
+        Text(stringResource(if (type) R.string.setup_qr_pin_type else R.string.setup_qr_pin),
+            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.cert_starts_with), style = MaterialTheme.typography.labelMedium)
+        Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** The field for typing off the fingerprint, with what was wrong about the last attempt. */
+@Composable
+private fun QrFingerprintInput(input: String, finding: Transcript?, changed: Boolean, onInput: (String) -> Unit) {
+    FingerprintField(
+        input = input,
+        onInput = onInput,
+        needed = Transcript.NEEDED,
+        help = stringResource(if (changed) R.string.cert_changed_input else R.string.cert_unknown_input),
+        error = { counted ->
+            when (finding) {
+                null, Transcript.MATCHES -> null
+                Transcript.EMPTY, Transcript.TO_SHORT ->
+                    stringResource(R.string.cert_input_too_short, counted, Transcript.NEEDED)
+                Transcript.FITS_NOT -> stringResource(R.string.cert_input_wrong)
+            }
         },
     )
 }

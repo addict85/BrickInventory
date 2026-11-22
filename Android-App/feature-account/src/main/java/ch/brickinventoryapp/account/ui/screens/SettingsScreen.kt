@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -69,6 +70,18 @@ data class SettingsState(
     val userCa: Boolean,
 )
 
+/** Where settings lead out of the page; only the graph knows the NavController and the trust dialog. */
+interface SettingsExits {
+    /** Sign out. */
+    fun logout()
+
+    /** Switch to server setup. No default, so a forgotten pass-through fails to compile. */
+    fun switchServer()
+
+    /** User CAs on or off; turning on asks first (UserCaDialog in MainActivity). */
+    fun setUserCa(on: Boolean)
+}
+
 /** Settings at the navigation destination; display, trust and update live on the Activity. */
 @Composable
 internal fun SettingsRoute(
@@ -88,13 +101,15 @@ internal fun SettingsRoute(
     val hidePreview by appearance.hidePreview.collectAsStateWithLifecycle()
     val widgetValues by appearance.widgetValues.collectAsStateWithLifecycle()
     val userCa by trust.userCa.an.collectAsStateWithLifecycle()
+    val exits = object : SettingsExits {
+        override fun logout() = onLogout()
+        override fun switchServer() = onServerSwitch()
+        override fun setUserCa(on: Boolean) { if (on) trust.userCa.requests() else trust.userCa.turnOff() }
+    }
     SettingsScreen(
         condition = SettingsState(appState, updateUiState, brightness, design, systemColors,
             hidePreview, widgetValues, userCa),
-        actions = vm, update = selfUpdate, appearance = appearance,
-        // Turning it on asks first (UserCaDialog in MainActivity).
-        onUserCa = { if (it) trust.userCa.requests() else trust.userCa.turnOff() },
-        onLogout = onLogout, onServerSwitch = onServerSwitch, scrollState = scrollState,
+        actions = vm, update = selfUpdate, appearance = appearance, exits = exits, scrollState = scrollState,
     )
 }
 
@@ -109,15 +124,7 @@ fun SettingsScreen(
     actions: SettingsActions,
     update: UpdateActions,
     appearance: AppearanceActions,
-    onUserCa: (Boolean) -> Unit,
-    /** Sign out — only the graph knows the NavController. */
-    onLogout: () -> Unit,
-    /**
-     * Switch to server setup — a callback, because only the graph
-     * knows the NavController. No default value, so a forgotten pass-through
-     * fails to compile instead of producing a button with no effect.
-     */
-    onServerSwitch: () -> Unit,
+    exits: SettingsExits,
     /**
      * Scroll position — from OUTSIDE, for the same reason as in finances:
      * the route into the detail view discards this destination, and a
@@ -125,21 +132,7 @@ fun SettingsScreen(
      */
     scrollState: ScrollState,
 ) {
-    val appState = condition.appState
     val updateUiState = condition.updateUiState
-
-    val currency = appState.currency
-    val priceCondition = appState.priceCondition
-    val userDefaultCondition = appState.userDefaultCondition
-    val defaultPriceCondition = appState.defaultPriceCondition
-    val language = appState.language
-
-    // Falls back to the server's global default on entry
-    // (`defaultPriceCondition`), not to the pricing basis for valuations. `null`
-    // means: no own default — not the same as NEW.
-    val ownDefault = userDefaultCondition
-    val effectiveUserDefault = ownDefault ?: defaultPriceCondition
-
     Column(
         Modifier
             .fillMaxSize()
@@ -154,138 +147,23 @@ fun SettingsScreen(
         // server, update check. The categories with their own page sit in the
         // "More" page, one tap further away.
         //
-        // ── 2. Display & prices ──
+        // Every choice applies right away and announces itself: previously language and
+        // display took effect right away, currency and conditions only via a button
+        // below them — two rules on one card, and whoever missed the button lost the choice.
         SettingsCard(title = stringResource(R.string.settings_group_display),
                      icon = Icons.Default.Tune) {
-            // Every choice applies right away and announces itself: previously language and
-            // display took effect right away, currency and conditions only via a button
-            // below them — two rules on one card, and whoever missed the button lost the choice.
-            SelectionField(
-                stringResource(R.string.settings_language),
-                listOf("system" to stringResource(R.string.settings_language_system),
-                       "en" to stringResource(R.string.settings_language_en),
-                       "de" to stringResource(R.string.settings_language_de)),
-                chosen = language, onChoice = { appearance.setLanguage(it) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            // Display per device: System follows the phone, Light and Dark always apply.
-            Signature(stringResource(R.string.settings_dark_label))
-            val brightness = condition.brightness
-            val design = condition.design
-            val colorsOfSystems = condition.systemColors
-            val selectable = brightnessSelectable(design, colorsOfSystems, android.os.Build.VERSION.SDK_INT)
-            SegmentChoice(
-                listOf(Brightness.SYSTEM to stringResource(R.string.settings_light_system),
-                       Brightness.LIGHT to stringResource(R.string.settings_light_light),
-                       Brightness.DARK to stringResource(R.string.settings_light_dark)),
-                chosen = brightness, onChoice = { appearance.setBrightness(it) },
-                enabled = selectable,
-            )
-            // Werkbank is already dark: the choice is off, and the sentence says why.
-            if (!selectable) Text(stringResource(R.string.settings_light_fixed), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-            // Material You: in addition to the six designs, per device. System colors only
-            // exist from Android 12; below that the switch is missing entirely.
-            if (android.os.Build.VERSION.SDK_INT >= SYSTEM_COLORS_AB_SDK) {
-                val systemColors = condition.systemColors
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        .toggleable(value = systemColors, role = Role.Switch, onValueChange = { appearance.setSystemColors(it) }),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_system_colors), style = MaterialTheme.typography.bodyMedium)
-                        Text(stringResource(R.string.settings_system_colors_hint), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Switch(checked = systemColors, onCheckedChange = null)
-                }
-            }
-
-            // Per device, default off: whoever shows the overview to others wants no preview.
-            val hidePreview = condition.hidePreview
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .toggleable(value = hidePreview, role = Role.Switch, onValueChange = { appearance.setPreviewHidden(it) }),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_preview_hide), style = MaterialTheme.typography.bodyMedium)
-                    Text(stringResource(R.string.settings_preview_hide_hint), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(checked = hidePreview, onCheckedChange = null)
-            }
-
-            // Per device, default off: whoever shares the phone locks the app after a while in the background.
-            LocalAppLock.current?.let { AppLockChoice(it) }
-
-            // Per device, default off: the widget sits on the home screen without unlocking.
-            val widgetValues = condition.widgetValues
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .toggleable(value = widgetValues, role = Role.Switch, onValueChange = { appearance.setWidgetValues(it) }),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_widget_values), style = MaterialTheme.typography.bodyMedium)
-                    Text(stringResource(R.string.settings_widget_values_hint), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(checked = widgetValues, onCheckedChange = null)
-            }
-
+            DisplaySettings(condition, appearance)
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            // Currency and pricing basis go to the server together (one endpoint).
-            SelectionField(
-                stringResource(R.string.settings_currency),
-                CurrencyCode.SELECTABLE.map { it to it.code },
-                chosen = currency, onChoice = { actions.saveSettings(it, priceCondition) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Signature(stringResource(R.string.settings_price_condition))
-            Text(stringResource(R.string.settings_price_basis),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            SegmentChoice(
-                listOf(Condition.NEW to stringResource(R.string.settings_condition_new),
-                       Condition.USED to stringResource(R.string.settings_condition_used)),
-                chosen = priceCondition, onChoice = { actions.saveSettings(currency, it) },
-            )
-
-            // ── My state when adding ──
-            //
-            // Three options, so there's a way back to the server's default; the
-            // hint names what it's based on.
-            Signature(stringResource(R.string.settings_default_condition))
-            val works = if (effectiveUserDefault == Condition.USED) stringResource(R.string.condition_used)
-                        else stringResource(R.string.condition_new)
-            Text(stringResource(R.string.settings_default_condition_hint) + " " +
-                    stringResource(R.string.settings_default_condition_effective, works),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            SegmentChoice(
-                listOf<Pair<Condition?, String>>(null to stringResource(R.string.settings_default_condition_global),
-                       Condition.NEW to stringResource(R.string.condition_new),
-                       Condition.USED to stringResource(R.string.condition_used)),
-                chosen = ownDefault, onChoice = { actions.saveUserDefaultCondition(it) },
-            )
+            PriceSettings(condition.appState, actions)
         }
 
-        // ── 3. Server ──
-        //
         // The server address is a setting like currency and language, not an action
         // on the running session.
-        val userCa = condition.userCa
         ServerCard(
-            serverUrl = appState.serverUrl,
-            switchOn = onServerSwitch,
-            userCa = userCa,
-            onUserCa = onUserCa,
+            serverUrl = condition.appState.serverUrl,
+            switchOn = exits::switchServer,
+            userCa = condition.userCa,
+            onUserCa = exits::setUserCa,
         )
 
         UpdateCard(
@@ -299,26 +177,139 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(Spacing.small))
 
-        // The same confirmation as under "More": signing out is equally hard from either place.
-        var logoutAsks by rememberSaveable { mutableStateOf(false) }
-        if (logoutAsks) Prompt(
-            title = stringResource(R.string.logout_confirm_title),
-            text = stringResource(R.string.logout_confirm_text),
-            confirm = stringResource(R.string.settings_logout),
-            onConfirm = { logoutAsks = false; onLogout() },
-            onCancel = { logoutAsks = false },
-            symbol = Icons.AutoMirrored.Filled.Logout,
-        )
-        OutlinedButton(
-            onClick = { logoutAsks = true },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-        ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(withFont(18.dp)))
-            Spacer(Modifier.width(Spacing.small))
-            Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
+        LogoutButton(exits::logout)
+    }
+}
+
+/** Language, brightness and the per-device switches. */
+@Composable
+private fun DisplaySettings(condition: SettingsState, appearance: AppearanceActions) {
+    SelectionField(
+        stringResource(R.string.settings_language),
+        listOf("system" to stringResource(R.string.settings_language_system),
+               "en" to stringResource(R.string.settings_language_en),
+               "de" to stringResource(R.string.settings_language_de)),
+        chosen = condition.appState.language, onChoice = { appearance.setLanguage(it) },
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    // Display per device: System follows the phone, Light and Dark always apply.
+    Signature(stringResource(R.string.settings_dark_label))
+    val selectable = brightnessSelectable(condition.design, condition.systemColors, android.os.Build.VERSION.SDK_INT)
+    SegmentChoice(
+        listOf(Brightness.SYSTEM to stringResource(R.string.settings_light_system),
+               Brightness.LIGHT to stringResource(R.string.settings_light_light),
+               Brightness.DARK to stringResource(R.string.settings_light_dark)),
+        chosen = condition.brightness, onChoice = { appearance.setBrightness(it) },
+        enabled = selectable,
+    )
+    // Werkbank is already dark: the choice is off, and the sentence says why.
+    if (!selectable) Text(stringResource(R.string.settings_light_fixed), style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+    // Material You: in addition to the six designs, per device. System colors only
+    // exist from Android 12; below that the switch is missing entirely.
+    if (android.os.Build.VERSION.SDK_INT >= SYSTEM_COLORS_AB_SDK) {
+        SettingSwitch(R.string.settings_system_colors, R.string.settings_system_colors_hint,
+            condition.systemColors) { appearance.setSystemColors(it) }
+    }
+
+    // Per device, default off: whoever shows the overview to others wants no preview.
+    SettingSwitch(R.string.settings_preview_hide, R.string.settings_preview_hide_hint,
+        condition.hidePreview) { appearance.setPreviewHidden(it) }
+
+    // Per device, default off: whoever shares the phone locks the app after a while in the background.
+    LocalAppLock.current?.let { AppLockChoice(it) }
+
+    // Per device, default off: the widget sits on the home screen without unlocking.
+    SettingSwitch(R.string.settings_widget_values, R.string.settings_widget_values_hint,
+        condition.widgetValues) { appearance.setWidgetValues(it) }
+}
+
+/** A setting that is on or off, with its explanation below the name; the whole row toggles. */
+@Composable
+private fun SettingSwitch(title: Int, hint: Int, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(title), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(hint), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+/** Currency, pricing basis and one's own default condition when adding. */
+@Composable
+private fun PriceSettings(appState: AppUiState, actions: SettingsActions) {
+    val currency = appState.currency
+    val priceCondition = appState.priceCondition
+    // Falls back to the server's global default on entry
+    // (`defaultPriceCondition`), not to the pricing basis for valuations. `null`
+    // means: no own default — not the same as NEW.
+    val ownDefault = appState.userDefaultCondition
+    val effectiveUserDefault = ownDefault ?: appState.defaultPriceCondition
+
+    // Currency and pricing basis go to the server together (one endpoint).
+    SelectionField(
+        stringResource(R.string.settings_currency),
+        CurrencyCode.SELECTABLE.map { it to it.code },
+        chosen = currency, onChoice = { actions.saveSettings(it, priceCondition) },
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    Signature(stringResource(R.string.settings_price_condition))
+    Text(stringResource(R.string.settings_price_basis),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    SegmentChoice(
+        listOf(Condition.NEW to stringResource(R.string.settings_condition_new),
+               Condition.USED to stringResource(R.string.settings_condition_used)),
+        chosen = priceCondition, onChoice = { actions.saveSettings(currency, it) },
+    )
+
+    // Three options, so there's a way back to the server's default; the
+    // hint names what it's based on.
+    Signature(stringResource(R.string.settings_default_condition))
+    val works = if (effectiveUserDefault == Condition.USED) stringResource(R.string.condition_used)
+                else stringResource(R.string.condition_new)
+    Text(stringResource(R.string.settings_default_condition_hint) + " " +
+            stringResource(R.string.settings_default_condition_effective, works),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    SegmentChoice(
+        listOf<Pair<Condition?, String>>(null to stringResource(R.string.settings_default_condition_global),
+               Condition.NEW to stringResource(R.string.condition_new),
+               Condition.USED to stringResource(R.string.condition_used)),
+        chosen = ownDefault, onChoice = { actions.saveUserDefaultCondition(it) },
+    )
+}
+
+/** The same confirmation as under "More": signing out is equally hard from either place. */
+@Composable
+private fun LogoutButton(onLogout: () -> Unit) {
+    var logoutAsks by rememberSaveable { mutableStateOf(false) }
+    if (logoutAsks) Prompt(
+        title = stringResource(R.string.logout_confirm_title),
+        text = stringResource(R.string.logout_confirm_text),
+        confirm = stringResource(R.string.settings_logout),
+        onConfirm = { logoutAsks = false; onLogout() },
+        onCancel = { logoutAsks = false },
+        symbol = Icons.AutoMirrored.Filled.Logout,
+    )
+    OutlinedButton(
+        onClick = { logoutAsks = true },
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+    ) {
+        Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(withFont(18.dp)))
+        Spacer(Modifier.width(Spacing.small))
+        Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -376,7 +367,6 @@ private fun UpdateCard(
     onLoad: () -> Unit,
     onInstall: () -> Unit,
 ) {
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     SettingsCard(title = stringResource(R.string.update_title), icon = Icons.Default.SystemUpdate) {
         Text(
             stringResource(R.string.update_installed, versionsName()),
@@ -384,88 +374,99 @@ private fun UpdateCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Spacing.small))
-
-        val newer = updateUiState.newerVersion
-        when {
-            newer != null -> Text(
-                stringResource(R.string.update_available, newer.versionName),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            // Only after a check: beforehand "current" would be a claim
-            // about something no one has looked at. A stale source
-            // is never "current" (notice below).
-            updateUiState.checked && !sourceStale(updateUiState.freshness) -> Text(
-                stringResource(R.string.update_current, versionsName()),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (sourceStale(updateUiState.freshness)) {
-            Spacer(Modifier.height(Spacing.small))
-            Text(
-                stringResource(if (updateUiState.freshness == UpdateFresh.EXPIRED)
-                    R.string.update_source_expired else R.string.update_source_reset),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-
-        updateUiState.progress?.let { p ->
-            Spacer(Modifier.height(Spacing.small))
-            Text(stringResource(R.string.update_downloading, p),
-                style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(Spacing.tiny))
-            LinearProgressIndicator(
-                progress = { p / 100f },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        if (updateUiState.permissionAbsent) {
-            Spacer(Modifier.height(Spacing.small))
-            Text(
-                stringResource(R.string.update_permission_needed),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(Spacing.tiny))
-            TextButton(onClick = {
-                ctx.startActivity(permissionIntent(ctx))
-            }) { Text(stringResource(R.string.update_permission_grant)) }
-        }
-
-        updateUiState.error?.let { f ->
-            Spacer(Modifier.height(Spacing.small))
-            Text(f.sentence(), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error)
-        }
-
+        UpdateStatus(updateUiState)
         Spacer(Modifier.height(Spacing.medium))
-        // 48 dp high like "Sign out": Material draws 40 dp, and the node for tapping and
-        // reading would only be as tall as the drawing.
-        val buttonHeight = Modifier.heightIn(min = 48.dp)
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-            verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onCheck, modifier = buttonHeight, enabled = !updateUiState.check.running && updateUiState.progress == null, colors = secondaryButtonColors(), border = secondaryButtonRand(!updateUiState.check.running && updateUiState.progress == null)) {
-                if (updateUiState.check.running) {
-                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(Spacing.small))
-                }
-                Text(stringResource(R.string.update_check))
+        UpdateButtons(updateUiState, onCheck, onLoad, onInstall)
+    }
+}
+
+/** What the last check found: a newer version, "current", a stale source, progress, permission, error. */
+@Composable
+private fun UpdateStatus(updateUiState: UpdateUiState) {
+    val ctx = LocalContext.current
+    val newer = updateUiState.newerVersion
+    when {
+        newer != null -> Text(
+            stringResource(R.string.update_available, newer.versionName),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        // Only after a check: beforehand "current" would be a claim
+        // about something no one has looked at. A stale source
+        // is never "current" (notice below).
+        updateUiState.checked && !sourceStale(updateUiState.freshness) -> Text(
+            stringResource(R.string.update_current, versionsName()),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (sourceStale(updateUiState.freshness)) {
+        Spacer(Modifier.height(Spacing.small))
+        Text(
+            stringResource(if (updateUiState.freshness == UpdateFresh.EXPIRED)
+                R.string.update_source_expired else R.string.update_source_reset),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+
+    updateUiState.progress?.let { p ->
+        Spacer(Modifier.height(Spacing.small))
+        Text(stringResource(R.string.update_downloading, p),
+            style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(Spacing.tiny))
+        LinearProgressIndicator(
+            progress = { p / 100f },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    if (updateUiState.permissionAbsent) {
+        Spacer(Modifier.height(Spacing.small))
+        Text(
+            stringResource(R.string.update_permission_needed),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Spacing.tiny))
+        TextButton(onClick = {
+            ctx.startActivity(permissionIntent(ctx))
+        }) { Text(stringResource(R.string.update_permission_grant)) }
+    }
+
+    updateUiState.error?.let { f ->
+        Spacer(Modifier.height(Spacing.small))
+        Text(f.sentence(), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error)
+    }
+}
+
+/** Check always; download only if there's something to fetch; install only once it's on disk. */
+@Composable
+private fun UpdateButtons(updateUiState: UpdateUiState, onCheck: () -> Unit, onLoad: () -> Unit, onInstall: () -> Unit) {
+    // 48 dp high like "Sign out": Material draws 40 dp, and the node for tapping and
+    // reading would only be as tall as the drawing.
+    val buttonHeight = Modifier.heightIn(min = 48.dp)
+    val checkable = !updateUiState.check.running && updateUiState.progress == null
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+        verticalAlignment = Alignment.CenterVertically) {
+        OutlinedButton(onClick = onCheck, modifier = buttonHeight, enabled = checkable,
+            colors = secondaryButtonColors(), border = secondaryButtonRand(checkable)) {
+            if (updateUiState.check.running) {
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(Spacing.small))
             }
-            // Download only if there's something to fetch; Install
-            // only once it's already on disk.
-            if (newer != null && !updateUiState.readyToInstallation) {
-                Button(onClick = onLoad, modifier = buttonHeight, enabled = updateUiState.progress == null) {
-                    Text(stringResource(R.string.update_download))
-                }
+            Text(stringResource(R.string.update_check))
+        }
+        if (updateUiState.newerVersion != null && !updateUiState.readyToInstallation) {
+            Button(onClick = onLoad, modifier = buttonHeight, enabled = updateUiState.progress == null) {
+                Text(stringResource(R.string.update_download))
             }
-            if (updateUiState.readyToInstallation) {
-                Button(onClick = onInstall, modifier = buttonHeight) {
-                    Text(stringResource(R.string.update_install))
-                }
+        }
+        if (updateUiState.readyToInstallation) {
+            Button(onClick = onInstall, modifier = buttonHeight) {
+                Text(stringResource(R.string.update_install))
             }
         }
     }

@@ -62,6 +62,7 @@ import ch.brickinventoryapp.account.ui.SecondFactorUiState
 import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.screens.PriceAlertCard
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.account.ui.screens.SettingsExits
 import ch.brickinventoryapp.account.ui.screens.SettingsScreen
 import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
@@ -237,8 +238,12 @@ class AccessibilityTest {
                     SettingsScreen(
                         condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
                             "system", Design.CLASSIC, false, false, false, false),
-                        actions = vm, update = update, appearance = appearance, onUserCa = { ca = it },
-                        onLogout = {}, onServerSwitch = {}, scrollState = androidx.compose.foundation.rememberScrollState(),
+                        actions = vm, update = update, appearance = appearance, exits = object : SettingsExits {
+                            override fun logout() = Unit
+                            override fun switchServer() = Unit
+                            override fun setUserCa(on: Boolean) { ca = on }
+                        },
+                        scrollState = androidx.compose.foundation.rememberScrollState(),
                     )
                 }
             }

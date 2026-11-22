@@ -2,8 +2,6 @@ package ch.brickinventoryapp.login.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -32,13 +30,41 @@ import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
 import ch.brickinventoryapp.ui.components.LoginCard
 import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.outsideTheSystemBars
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.theme.windowSurface
+
+/** What the sign-in screen shows; LoginGraph fills it from the session and LoginUiState. */
+data class LoginScreenState(
+    val serverUrl: String,
+    val form: LoginForm = LoginForm.LOGIN,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val codeNeeded: Boolean = false,
+    val registrationOpen: Boolean? = null,
+    val accountRunning: Boolean = false,
+    val accountMessage: String? = null,
+    val accountError: String? = null,
+    val fullAccess: Boolean = false,
+    val passkeyInsteadOfCode: Boolean = false,
+    /** After a QR scan: the code one types into the browser. */
+    val qrConfirmation: String? = null,
+)
+
+/** What the sign-in screen can trigger; every action does nothing unless overridden (preview, test). */
+interface LoginActions {
+    fun login(username: String, password: String, code: String?) = Unit
+    fun showForm(form: LoginForm) = Unit
+    fun register(username: String, email: String, firstName: String, lastName: String, password: String) = Unit
+    fun forgotPassword(email: String) = Unit
+    fun changeServer() = Unit
+    fun setFullAccess(on: Boolean) = Unit
+    /** false: no passkey button (for instance in preview and test). */
+    val offersPasskey: Boolean get() = false
+    fun loginPasskey() = Unit
+    fun passkeyInsteadOfCode(username: String, password: String) = Unit
+}
 
 /**
  * Sign in, create an account, request a reset link — like the web app. Three
@@ -47,141 +73,93 @@ import ch.brickinventoryapp.ui.theme.windowSurface
  * an intent filter on an address that everyone sets themselves.
  */
 @Composable
-fun LoginScreen(
-    serverUrl: String,
-    isLoading: Boolean,
-    error: String?,
-    codeNeeded: Boolean,
-    form: LoginForm,
-    registrationOpen: Boolean?,
-    accountRunning: Boolean,
-    accountMessage: String?,
-    accountError: String?,
-    onLogin: (String, String, String?) -> Unit,
-    onForm: (LoginForm) -> Unit,
-    onRegister: (String, String, String, String, String) -> Unit,
-    onPasswordForget: (String) -> Unit,
-    onChangeServer: () -> Unit,
-    fullAccess: Boolean = false,
-    onFullAccess: (Boolean) -> Unit = {},
-    /** null: no passkey button (for instance in preview and test). */
-    onPasskey: (() -> Unit)? = null,
-    passkeyInsteadOfCode: Boolean = false,
-    onPasskeyInsteadOfCode: (String, String) -> Unit = { _, _ -> },
-    /** After a QR scan: the code one types into the browser. */
-    qrConfirmation: String? = null,
-) {
+fun LoginScreen(state: LoginScreenState, actions: LoginActions) {
+    // A planted tap can sign in here or confirm a passkey. The
+    // visual protection for a revealed password is brought along by the PasswordField itself.
+    OverlayGuard()
+
+    // The keyboard does not learn password, code or address. In landscape, brand and form
+    // sit side by side as during setup, otherwise „Registrieren“ was below the fold.
+    KeyboardWithoutLearn {
+        TwoPartLayout(
+            partPadding = Spacing.large,
+            singlePadding = PaddingValues(horizontal = 28.dp, vertical = Spacing.large),
+            header = { LoginHeader(state.serverUrl, state.qrConfirmation, actions::changeServer) },
+        ) { wide ->
+            if (!wide) Spacer(Modifier.height(28.dp))
+            LoginFormCard(state, actions, wide)
+        }
+    }
+}
+
+/** The same header as during setup, which comes right before this, with the server chip. */
+@Composable
+private fun LoginHeader(serverUrl: String, qrConfirmation: String?, onChangeServer: () -> Unit) {
+    BrandsHeader()
+    Spacer(Modifier.height(Spacing.medium))
+
+    // The chip switches the server: TalkBack names that along with the address (the surface
+    // combines the description with its role „Schaltfläche“). The address wraps
+    // instead of being truncated: it is exactly what one checks before signing in.
+    val changeServer = stringResource(R.string.login_server_edit, serverUrl)
+    Surface(
+        onClick = onChangeServer,
+        // Surface(onClick) sets no role: TalkBack would otherwise only read the address.
+        modifier = Modifier.semantics {
+            role = Role.Button
+            contentDescription = changeServer
+        },
+        shape = Shapes.chip,
+        color = MaterialTheme.colorScheme.surface,
+        // outline: the border is the chip's only boundary and needs 3:1.
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Spacing.small, vertical = Spacing.tiny),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+            Icon(Icons.Default.Cloud, null, Modifier.size(withFont(16.dp)),
+                tint = MaterialTheme.colorScheme.primary)
+            Text(serverUrl, Modifier.weight(1f, fill = false),
+                style = MaterialTheme.typography.labelMedium)
+            Icon(Icons.Default.Edit, null, Modifier.size(withFont(16.dp)),
+                tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+    if (qrConfirmation != null) {
+        Spacer(Modifier.height(Spacing.medium))
+        Text(stringResource(R.string.login_qr_confirm_hint), style = MaterialTheme.typography.bodyMedium)
+        Text(qrConfirmation.chunked(3).joinToString(" "), Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            style = MaterialTheme.typography.headlineMedium)
+    }
+}
+
+/** The card with the current form; name, password and code live here, not in the ViewModel. */
+@Composable
+private fun LoginFormCard(state: LoginScreenState, actions: LoginActions, wide: Boolean) {
     var username by rememberSaveable { mutableStateOf("") }
     // remember, not rememberSaveable: saved state ends up in the bundle and on a
     // process death on disk (ActivityManager) — no place for passwords and codes.
     var password by remember { mutableStateOf("") }
     var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
-    // A planted tap can sign in here or confirm a passkey. The
-    // visual protection for a revealed password is brought along by the PasswordField itself.
-    OverlayGuard()
+    LoginCard {
+        when (state.form) {
+            LoginForm.LOGIN -> LoginFields(
+                state = state, actions = actions,
+                input = LoginInput(username, password, code),
+                onInput = { username = it.username; password = it.password; code = it.code },
+                focusMgr = focusMgr)
 
-    // The keyboard does not learn password, code or address.
-    KeyboardWithoutLearn {
-    val header: @Composable ColumnScope.() -> Unit = {
-            // The same header as during setup, which comes right before this.
-            BrandsHeader()
-            Spacer(Modifier.height(Spacing.medium))
+            LoginForm.REGISTER -> RegisterFields(
+                running = state.accountRunning, message = state.accountMessage, error = state.accountError,
+                focusMgr = focusMgr, namesSideBySide = wide,
+                onRegister = actions::register, onForm = actions::showForm)
 
-            // The chip switches the server: TalkBack names that along with the address (the surface
-            // combines the description with its role „Schaltfläche“). The address wraps
-            // instead of being truncated: it is exactly what one checks before signing in.
-            val changeServer = stringResource(R.string.login_server_edit, serverUrl)
-            Surface(
-                onClick = onChangeServer,
-                // Surface(onClick) sets no role: TalkBack would otherwise only read the address.
-                modifier = Modifier.semantics {
-                    role = Role.Button
-                    contentDescription = changeServer
-                },
-                shape = Shapes.chip,
-                color = MaterialTheme.colorScheme.surface,
-                // outline: the border is the chip's only boundary and needs 3:1.
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            ) {
-                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Spacing.small, vertical = Spacing.tiny),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                    Icon(Icons.Default.Cloud, null, Modifier.size(withFont(16.dp)),
-                        tint = MaterialTheme.colorScheme.primary)
-                    Text(serverUrl, Modifier.weight(1f, fill = false),
-                        style = MaterialTheme.typography.labelMedium)
-                    Icon(Icons.Default.Edit, null, Modifier.size(withFont(16.dp)),
-                        tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-            if (qrConfirmation != null) {
-                Spacer(Modifier.height(Spacing.medium))
-                Text(stringResource(R.string.login_qr_confirm_hint), style = MaterialTheme.typography.bodyMedium)
-                Text(qrConfirmation.chunked(3).joinToString(" "), Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    style = MaterialTheme.typography.headlineMedium)
-            }
-    }
-    val card: @Composable (wide: Boolean) -> Unit = { wide ->
-            LoginCard {
-                when (form) {
-                    LoginForm.LOGIN -> LoginFields(
-                        username = username, onUsername = { username = it },
-                        password = password, onPassword = { password = it },
-                        codeNeeded = codeNeeded, code = code, onCode = { code = it },
-                        isLoading = isLoading, error = error,
-                        registrationOpen = registrationOpen,
-                        focusMgr = focusMgr,
-                        onLogin = onLogin, onForm = onForm,
-                        fullAccess = fullAccess, onFullAccess = onFullAccess,
-                        onPasskey = onPasskey,
-                        onPasskeyInsteadOfCode = onPasskeyInsteadOfCode.takeIf { passkeyInsteadOfCode && onPasskey != null })
-
-                    LoginForm.REGISTER -> RegisterFields(
-                        running = accountRunning, message = accountMessage, error = accountError,
-                        focusMgr = focusMgr, namesSideBySide = wide,
-                        onRegister = onRegister, onForm = onForm)
-
-                    LoginForm.FORGOT_PASSWORD -> ForgotPasswordFields(
-                        running = accountRunning, message = accountMessage, error = accountError,
-                        sendOn = onPasswordForget, onForm = onForm)
-                }
-            }
-    }
-    // Scrollable and centered as long as it fits: with a keyboard or large font, the
-    // main button would otherwise sit unreachably below the fold. In landscape, brand and form
-    // sit side by side as during setup, otherwise „Registrieren“ was below the fold.
-    BoxWithConstraints(Modifier.fillMaxSize().outsideTheSystemBars()) {
-        val height = maxHeight
-        if (maxWidth > height && maxWidth >= ACROSS_TWO_COLUMN) {
-            Row(
-                Modifier.fillMaxSize().centeredUntil(ReadingWidth.form * 2)
-                    .padding(horizontal = Spacing.huge),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.huge),
-            ) {
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = height)
-                    .padding(vertical = Spacing.large),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-                    content = header)
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = height)
-                    .padding(vertical = Spacing.large),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    card(true)
-                }
-            }
-        } else Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = height)
-                .centeredUntil(ReadingWidth.form)
-                .padding(horizontal = 28.dp, vertical = Spacing.large),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            header()
-            Spacer(Modifier.height(28.dp))
-            card(false)
+            LoginForm.FORGOT_PASSWORD -> ForgotPasswordFields(
+                running = state.accountRunning, message = state.accountMessage, error = state.accountError,
+                sendOn = actions::forgotPassword, onForm = actions::showForm)
         }
     }
-}
 }
 
 /**
@@ -209,9 +187,6 @@ internal fun QrAccountQuestion(account: QrAccount, onQrAccount: (adopt: Boolean)
         },
     )
 }
-
-/** From this width on, in landscape, brand and form sit side by side (like SetupScreen). */
-private val ACROSS_TWO_COLUMN = 840.dp
 
 /**
  * A persistent message in the form — error red, confirmation calm. One version

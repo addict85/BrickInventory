@@ -10,8 +10,9 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.QrSetupScannerScreen
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.PrivacyShield
@@ -54,11 +55,10 @@ class LoginProtectionTest {
             BrickInventoryManagerTheme {
                 if (global.value) PrivacyShield()
                 LoginScreen(
-                    serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
-                    form = LoginForm.LOGIN, registrationOpen = false, accountRunning = false,
-                    accountMessage = null, accountError = null, onLogin = { _, _, _ -> },
-                    onForm = {}, onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
-                    onPasskey = {},
+                    LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = false),
+                    object : LoginActions {
+                        override val offersPasskey get() = true
+                    },
                 )
             }
         }
@@ -78,10 +78,8 @@ class LoginProtectionTest {
             }) {
                 BrickInventoryManagerTheme {
                     LoginScreen(
-                        serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = true,
-                        form = LoginForm.LOGIN, registrationOpen = false, accountRunning = false,
-                        accountMessage = null, accountError = null, onLogin = { _, _, _ -> },
-                        onForm = {}, onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
+                        LoginScreenState(serverUrl = "https://brick.example.org", codeNeeded = true, registrationOpen = false),
+                        object : LoginActions {},
                     )
                 }
             }
