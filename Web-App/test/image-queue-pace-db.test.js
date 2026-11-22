@@ -126,7 +126,7 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
         'Genau das war Marcos Lage: Der Job arbeitete ab, aber mit ' +
         `${STAPEL} je zwanzig Sekunden — für 1113 fertige Bilder gut 37 Minuten.`,
     );
-    assert.equal(e.uebersprungen, COUNT, 'Nicht alle wurden als „vorhanden" gezählt');
+    assert.equal(e.skipped, COUNT, 'Nicht alle wurden als „vorhanden" gezählt');
     assert.equal(e.work, 0, 'Für ein Bild samt Vorschau darf kein Arbeitsschritt anfallen');
     assert.equal(loadTimes.length, 0, 'Es wurde beim CDN angefragt, obwohl alles dalag');
     // Without real work no politeness pause may occur either: it protects
@@ -240,8 +240,8 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
       'Ein Takt muss die ganze Strecke abräumen — die drei fehlenden Bilder ' +
         'liegen unter dem Kontingent, die fertigen kosten nichts',
     );
-    assert.equal(e.geholt, ZU_LADEN);
-    assert.equal(e.uebersprungen, DONE);
+    assert.equal(e.fetched, ZU_LADEN);
+    assert.equal(e.skipped, DONE);
     assert.equal(loadTimes.length, ZU_LADEN, 'Es wurde mehr geladen als nötig');
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
@@ -441,7 +441,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
       1,
       'Eine Notiz ohne Setnummer verschwindet spurlos — sie zählte als ' + '„bearbeitet", ohne irgendwo aufzutauchen',
     );
-    assert.equal(e.geholt + e.preview + e.uebersprungen, 0);
+    assert.equal(e.fetched + e.preview + e.skipped, 0);
     await db.run(`DELETE FROM image_wanted WHERE url LIKE $1`, [`%${P}%`]).catch(() => {});
   });
 

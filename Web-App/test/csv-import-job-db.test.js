@@ -83,7 +83,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
   });
   const { jobSet } = _req('src/jobQueue/importJob.js');
   const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
-    arten: ['csv_import'],
+    kinds: ['csv_import'],
     tickMs: 50,
   });
   const nacharbeit = uid =>

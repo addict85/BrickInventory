@@ -110,7 +110,7 @@ test('metrics', { concurrency: 1 }, async t => {
       q.testServices().jobQueue,
       {
         brickset: {
-          ausfuehren: async n => {
+          run: async n => {
             if (n.set_number === '10180-1') throw new Error('Brickset weg');
           },
         },

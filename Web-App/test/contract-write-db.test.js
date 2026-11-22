@@ -46,7 +46,7 @@ const NAME = `kschreib_${process.pid}`,
   PASS = 'VertragsPasswort1!';
 const SET = '99075-1',
   SET2 = '99076-1',
-  TEIL = '3001ks',
+  PART = '3001ks',
   FARBE = 5,
   FARBE2 = 1,
   FIGUR = 'ks0001';
@@ -139,8 +139,8 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
     for (const tab of ['set_catalog', 'set_parts_catalog', 'set_minifigs_catalog', 'brickset_queue'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2]]).catch(() => {});
-    await db.run('DELETE FROM part_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
-    await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM part_catalog WHERE part_number = $1', [PART]).catch(() => {});
+    await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [PART]).catch(() => {});
     await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGUR]).catch(() => {});
     for (const { key, value } of globalBefore)
       await db.run('UPDATE global_settings SET value = $2 WHERE key = $1', [key, value]).catch(() => {});
@@ -165,7 +165,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`,
-    [TEIL],
+    [PART],
   );
   for (const [f, n] of [
     [FARBE, 'Rot'],
@@ -174,7 +174,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     await db.run(
       `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1, $2, $3, 'C91A09')
                   ON CONFLICT DO NOTHING`,
-      [TEIL, f, n],
+      [PART, f, n],
     );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [
     FIGUR,
@@ -216,7 +216,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   const routen = appRoutes(_req).filter(r => r.methode !== 'GET');
 
   /** Values for the placeholders in the path; steps add new ones. */
-  const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
+  const w = { setNumber: SET, partNumber: PART, colorId: String(FARBE), figNumber: FIGUR };
   const erst = async (sql, values) => await db.get(sql, values);
 
   /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, kopf?: () => object, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
@@ -417,7 +417,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     {
       m: 'POST',
       p: '/api/v2/parts',
-      body: { part_number: TEIL, color_id: FARBE, color_name: 'Rot', quantity: 3, unit_price: 0.2, condition: 'N' },
+      body: { part_number: PART, color_id: FARBE, color_name: 'Rot', quantity: 3, unit_price: 0.2, condition: 'N' },
     },
     {
       m: 'PUT',
@@ -428,14 +428,14 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
           await erst(
             `SELECT unit_price::float AS p FROM part_acquisitions WHERE user_id = $1 AND part_number = $2
                                     ORDER BY created_at DESC, id DESC LIMIT 1`,
-            [uid, TEIL],
+            [uid, PART],
           )
         ).p;
         w.acqId = String(
           (
             await erst(`SELECT id FROM part_acquisitions WHERE user_id = $1 AND part_number = $2 ORDER BY id LIMIT 1`, [
               uid,
-              TEIL,
+              PART,
             ])
           ).id,
         );
@@ -446,10 +446,10 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     {
       m: 'POST',
       p: '/api/v2/parts',
-      body: { part_number: TEIL, color_id: FARBE, color_name: 'Rot', quantity: 2, condition: 'N' },
+      body: { part_number: PART, color_id: FARBE, color_name: 'Rot', quantity: 2, condition: 'N' },
     },
     { m: 'PUT', p: '/api/v2/parts/{partNumber}/{colorId}/storage', body: { storage: 'Kiste' } },
-    { m: 'POST', p: '/api/v2/parts/owned', body: { parts: [{ part_number: TEIL, color_id: FARBE }] } },
+    { m: 'POST', p: '/api/v2/parts/owned', body: { parts: [{ part_number: PART, color_id: FARBE }] } },
     {
       m: 'PUT',
       p: '/api/v2/parts/{partNumber}/{colorId}/color',
@@ -660,7 +660,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
           await {
             ..._req('src/jobQueue/service.js'),
             ...require('./helpers/sources').testArea('jobQueue').jobs,
-          }.placeJobOne('instructions', { set_number: SET }, { schluessel: `vertrag:${process.pid}:${Date.now()}` }),
+          }.placeJobOne('instructions', { set_number: SET }, { key: `vertrag:${process.pid}:${Date.now()}` }),
         );
       },
     },

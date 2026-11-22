@@ -169,12 +169,14 @@ export function reportLoginEvent(
   event: LoginEvent,
   details: { ip?: string; account?: number | null; kind?: Brake; method?: string },
 ): void {
-  const { ip, account, ...rest } = details;
+  const { ip, account, kind, method } = details;
+  // The keys are the fields of the security events that monitoring reads; they stay as they are.
   console.warn(`[anmeldung] ${event}`, {
-    event,
+    ereignis: event,
     ...(ip ? { address: throttleAddress(ip) } : {}),
-    account: account ?? 'unbekannt',
-    ...rest,
+    konto: account ?? 'unbekannt',
+    ...(kind ? { kind } : {}),
+    ...(method ? { zugang: method } : {}),
   });
 }
 
@@ -183,10 +185,10 @@ export type LoginMethod = 'passwort' | 'passwort+code' | 'passwort+passkey' | 'p
 export function reportLogin(details: { ip?: string | undefined; account: number; method: LoginMethod }): void {
   const { ip, account, method } = details;
   console.info('[anmeldung] anmeldung_erfolgreich', {
-    event: 'anmeldung_erfolgreich',
+    ereignis: 'anmeldung_erfolgreich',
     ...(ip ? { address: throttleAddress(ip) } : {}),
-    account,
-    method,
+    konto: account,
+    zugang: method,
   });
 }
 

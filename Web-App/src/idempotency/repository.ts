@@ -29,7 +29,7 @@ export async function receipts(
 
 export function entry(db: DbInterface, uid: number, key: string, orphanedAfterS: number) {
   return db.get<Entry>(
-    `SELECT request, status, response, has_effect, created_at < NOW() - make_interval(secs => $3) AS verwaist
+    `SELECT request, status, response, has_effect, created_at < NOW() - make_interval(secs => $3) AS orphaned
        FROM idempotency WHERE user_id = $1 AND key = $2`,
     [uid, key, orphanedAfterS],
   );

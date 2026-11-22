@@ -89,7 +89,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
       await new Promise(r => setTimeout(r, 25));
     return gesendet
       .filter(m => m.type === type && NAMEN.some(n => m.an === `${n}@example.org`))
-      .map(m => ({ an: m.an.split('@')[0], konto: m.konto, durch: m.durch, name: m.passkey }))
+      .map(m => ({ an: m.an.split('@')[0], konto: m.account, durch: m.actor, name: m.passkey }))
       .sort((a, b) => a.an.localeCompare(b.an));
   };
 

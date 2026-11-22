@@ -38,7 +38,7 @@ function probebaum() {
 
 function ratsche(kind, schranken, wurzel) {
   const env = { ...process.env };
-  if (wurzel) env.LINT_WURZEL = wurzel;
+  if (wurzel) env.LINT_ROOT = wurzel;
   if (schranken) {
     const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lint-')), 's.json');
     fs.writeFileSync(datei, JSON.stringify(schranken));

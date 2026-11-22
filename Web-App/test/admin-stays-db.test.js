@@ -24,7 +24,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
+const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').accounts };
 /** The service throws the refusal; here it becomes a value so that concurrent calls stay countable. */
 const LAST = 'last_admin';
 const alsWert = p => p.catch(e => (e?.code === LAST ? LAST : Promise.reject(e)));
@@ -34,7 +34,7 @@ const remove = (ziel, durch) =>
   _req('src/infra/accountContext.js').inSystemContext('test', () =>
     require('./helpers/sources')
       .testContext('account')
-      .transact(t => t.konten.deleteAccount(ziel, durch)),
+      .transact(t => t.accounts.deleteAccount(ziel, durch)),
   );
 
 const ROUNDS = 12;

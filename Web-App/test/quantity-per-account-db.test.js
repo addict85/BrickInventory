@@ -63,7 +63,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
       [[1, 210, '2026-06-02']],
     );
     assert.ok(r.trash, 'kein Papierkorb-Eintrag');
-    assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
+    assert.equal((await pk.restore({ writer: uid }, r.trash)).type, 'set');
     assert.deepEqual(await kaeufe(db, kid, SN), vorher);
   });
 
@@ -81,7 +81,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
     );
     assert.ok(r.trash, 'kein Papierkorb-Eintrag');
     assert.equal((await pk.listTrash([uid])).find(e => e.id === r.trash)?.count, 1);
-    assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
+    assert.equal((await pk.restore({ writer: uid }, r.trash)).type, 'set');
     assert.deepEqual(await kaeufe(db, uid, SN), vorher);
   });
 
@@ -96,7 +96,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
     // With a changed price the search for an identical purchase no longer finds the row.
     const id = r.dropped[0].id;
     await db.run('UPDATE set_acquisitions SET purchase_price = 85 WHERE id = $1', [id]);
-    assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
+    assert.equal((await pk.restore({ writer: uid }, r.trash)).type, 'set');
     assert.deepEqual(
       await kaeufe(db, uid, SN),
       vorher.map(z => (z.id === id ? { ...z, purchase_price: 85 } : z)),
@@ -107,7 +107,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
     await record(db, uid, SN, 1, { preis: 60, am: '2026-10-05T10:00:00Z' });
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
     await record(db, uid, SN, 1, { preis: 60, am: '2026-10-05T12:00:00Z' });
-    assert.equal((await pk.restore({ schreiber: uid }, r.trash)).type, 'set');
+    assert.equal((await pk.restore({ writer: uid }, r.trash)).type, 'set');
     const am5 = (await kaeufe(db, uid, SN)).filter(z => Number(z.purchase_price) === 60);
     assert.deepEqual(
       am5.map(z => z.quantity),
@@ -128,7 +128,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
     await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [uid, SN]);
     await db.run('DELETE FROM sets WHERE user_id=$1 AND set_number=$2', [uid, SN]);
-    await assert.rejects(pk.restore({ schreiber: uid }, r.trash), { code: 'not_found' });
+    await assert.rejects(pk.restore({ writer: uid }, r.trash), { code: 'not_found' });
     assert.ok((await pk.listTrash([uid])).some(e => e.id === r.trash));
   });
 });

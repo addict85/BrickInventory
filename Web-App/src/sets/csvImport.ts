@@ -16,7 +16,7 @@ export interface ImportRow {
   condition: string | null;
   acquiredAt: string | null;
   row?: number;
-  error?: { code: 'csv_quantity_invalid' | 'csv_no_set_number'; value?: string };
+  error?: { code: 'csv_quantity_invalid' | 'csv_no_set_number'; wert?: string };
 }
 
 /** Turning "x" into a 1 and "-2" into a 2 would silently book something other than what is in the file. */
@@ -41,7 +41,7 @@ function importRowOf(row: Record<string, string>, line: number | undefined): Imp
   if (!sn) return { ...base, error: { code: 'csv_no_set_number' } };
   const quantityRaw = String(csvAny(row, 'quantity', 'anzahl', 'qty', 'menge') ?? '');
   const qty = csvQuantity(quantityRaw);
-  if (qty === null) return { ...base, error: { code: 'csv_quantity_invalid', value: quantityRaw.trim().slice(0, 20) } };
+  if (qty === null) return { ...base, error: { code: 'csv_quantity_invalid', wert: quantityRaw.trim().slice(0, 20) } };
   const rawPrice = csvAny(row, 'purchase_price', 'kaufpreis', 'einkaufspreis', 'price') ?? '';
   const priceValue = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
   const state = String(csvFirst(row, 'condition', 'zustand', 'kondition') || '')
@@ -102,7 +102,7 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
     run_id: run,
   });
   try {
-    await sk.jobQueue.placeJobOne('csv_import', { user_id: userId, run, rows }, { userId, maxAttempts: 3 });
+    await sk.jobQueue.placeJobOne('csv_import', { user_id: userId, lauf: run, rows }, { userId, maxAttempts: 3 });
   } catch (e) {
     await attempts(
       'csv-import:fehler vermerken',

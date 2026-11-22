@@ -59,6 +59,6 @@ export const setCounts = (number: string) =>
 
 /** Query: per set that counts for `accounts`, set_number and owned (held, not only wanted). */
 export const countedSets = (accounts?: AccountFilter) =>
-  `SELECT set_number, bool_or(besitz) AS besitz FROM (
-     ${COUNTS.map(z => `SELECT set_number, ${z.owned} AS besitz FROM ${z.table}${only(accounts)}`).join('\n     UNION ALL ')}) t
+  `SELECT set_number, bool_or(owned) AS owned FROM (
+     ${COUNTS.map(z => `SELECT set_number, ${z.owned} AS owned FROM ${z.table}${only(accounts)}`).join('\n     UNION ALL ')}) t
    GROUP BY set_number`;

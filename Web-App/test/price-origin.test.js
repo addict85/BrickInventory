@@ -24,7 +24,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
 
 const U = 990811,
-  TEIL = `ph-teil-${process.pid}`,
+  PART = `ph-teil-${process.pid}`,
   FIG = `ph-fig-${process.pid}`,
   FARBE = 4;
 
@@ -40,7 +40,7 @@ async function setup(t) {
   const weg = async () => {
     for (const tab of ['part_acquisitions', 'minifig_acquisitions', 'parts', 'minifigs'])
       await db.run(`DELETE FROM ${tab} WHERE user_id=$1`, [U]).catch(() => {});
-    await db.run('DELETE FROM part_price_cache WHERE part_number=$1', [TEIL]);
+    await db.run('DELETE FROM part_price_cache WHERE part_number=$1', [PART]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number=$1', [FIG]);
     await db.run('DELETE FROM users WHERE id=$1', [U]).catch(() => {});
   };
@@ -58,7 +58,7 @@ async function setup(t) {
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
       VALUES ($1,$2,$3,'EUR',$4,$4,NOW())`,
-      [TEIL, FARBE, condition, preis],
+      [PART, FARBE, condition, preis],
     );
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price,qty_avg_price,fetched_at)
@@ -73,21 +73,21 @@ test('part and minifigure without a price in the selected condition take the oth
   if (!(await setup(t))) return;
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
-  const teil = await addManualPart(U, { part_number: TEIL, color_id: FARBE, condition: 'N' });
+  const teil = await addManualPart(U, { part_number: PART, color_id: FARBE, condition: 'N' });
   const fig = await addManualMinifig(U, { fig_number: FIG, condition: 'N' });
   assert.deepEqual([teil.price_from_condition, fig.price_from_condition], ['U', 'U']);
   const { manualPartPurchase } = _req('src/parts/manualParts.js');
-  const r = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });
+  const r = await manualPartPurchase(U, { partNumber: PART, colorId: FARBE, condition: 'N' });
   assert.deepEqual([r.effectivePurchasePrice, r.priceFromState], [0.9, 'U'], 'der übernommene Preis fehlt');
-  const gleich = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'U' });
+  const gleich = await manualPartPurchase(U, { partNumber: PART, colorId: FARBE, condition: 'U' });
   assert.deepEqual([gleich.effectivePurchasePrice, gleich.priceFromState], [0.9, null], 'ohne Rückfall keine Herkunft');
 });
 
 test('a typed-in number has no origin', async t => {
   if (!(await setup(t))) return;
   const { manualPartPurchase } = _req('src/parts/manualParts.js');
-  const r = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
-  assert.deepEqual([r.effectivePurchasePrice, r.priceFromState, r.geschaetzt], [2.5, null, false]);
+  const r = await manualPartPurchase(U, { partNumber: PART, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
+  assert.deepEqual([r.effectivePurchasePrice, r.priceFromState, r.estimated], [2.5, null, false]);
 });
 
 test('the web app names the origin for part and minifigure', async () => {

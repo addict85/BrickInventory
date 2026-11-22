@@ -62,14 +62,14 @@ test('token revocation across all processes', { concurrency: 1 }, async t => {
 
   await t.test('a revocation from another process applies immediately', async () => {
     const token = await auth.createToken(uid, 'Probe', true);
-    assert.ok((await auth.checkToken(token)).nutzer, 'Vorbedingung: Token gilt');
+    assert.ok((await auth.checkToken(token)).user, 'Vorbedingung: Token gilt');
     await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
-    assert.ok((await auth.checkToken(token)).nutzer, 'Vorbedingung: der Zwischenspeicher trägt ihn noch');
+    assert.ok((await auth.checkToken(token)).user, 'Vorbedingung: der Zwischenspeicher trägt ihn noch');
     let gilt = true;
     for (let i = 0; i < 40 && gilt; i++) {
       await anderer.query("SELECT pg_notify('token_widerrufen', '')");
       await new Promise(r => setTimeout(r, 50));
-      gilt = !!(await auth.checkToken(token)).nutzer;
+      gilt = !!(await auth.checkToken(token)).user;
     }
     assert.equal(gilt, false, 'der widerrufene Token gilt im Zwischenspeicher weiter');
   });

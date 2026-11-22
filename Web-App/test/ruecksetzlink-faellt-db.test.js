@@ -23,7 +23,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
+const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').accounts };
 const { tokenDigest } = _req('src/account/deviceToken.js');
 
 test('reset links fall with password and address change', { concurrency: 1 }, async t => {

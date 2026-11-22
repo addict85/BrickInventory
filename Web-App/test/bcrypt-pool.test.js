@@ -48,7 +48,7 @@ test('computes in the worker and correctly', async t => {
   assert.equal(await pool.compare('falsch', hash), false);
   assert.equal(await pool.compare('egal', 'x'), false, 'ein kaputter Hash ist kein Treffer');
   assert.equal(bcrypt.compareSync('Geheim-2026', hash), true, 'der Hash ist ein gewöhnlicher bcrypt-Hash');
-  assert.deepEqual(pool.state(), { worker: 1, frei: 1, wartend: 0, hauptthread: false }, 'rechnet im Worker …');
+  assert.deepEqual(pool.state(), { worker: 1, free: 1, waiting: 0, mainThread: false }, 'rechnet im Worker …');
 });
 
 test('the main thread stays responsive', async t => {
@@ -69,7 +69,7 @@ test('the main thread stays responsive', async t => {
 test('without a worker file the main thread computes', async () => {
   const pool = newPool(2, path.join(os.tmpdir(), `bcrypt-arbeiter-${process.pid}-fehlt.js`));
   assert.equal(await pool.compare('a', bcrypt.hashSync('a', 4)), true);
-  assert.equal(pool.state().hauptthread, true);
+  assert.equal(pool.state().mainThread, true);
 });
 
 test('an idle worker does not keep the process alive', () => {
@@ -84,7 +84,7 @@ test('login checks old bcrypt hashes via the pool', async () => {
   const { bcryptPool } = _req('src/account/bcryptLimit.js');
   const { passwordFits } = _req('src/account/passwordHash.js');
   assert.equal(await passwordFits('Geheim-2026', bcrypt.hashSync('Geheim-2026', 4)), true);
-  assert.ok(bcryptPool.state().worker >= 1 && !bcryptPool.state().hauptthread, JSON.stringify(bcryptPool.state()));
+  assert.ok(bcryptPool.state().worker >= 1 && !bcryptPool.state().mainThread, JSON.stringify(bcryptPool.state()));
   await bcryptPool.finish();
 });
 
@@ -96,7 +96,7 @@ test('an idle worker ends after the idle time', async t => {
   for (let i = 0; i < 100 && pool.state().worker > 0; i++) await new Promise(r => setTimeout(r, 50));
   assert.equal(pool.state().worker, 0, 'ein untätiger Arbeiter endet nach der Leerlaufzeit');
   assert.equal(await pool.compare('x', await pool.hash('x', 4)), true, 'danach entsteht wieder einer');
-  assert.deepEqual(pool.state(), { worker: 1, frei: 1, wartend: 0, hauptthread: false });
+  assert.deepEqual(pool.state(), { worker: 1, free: 1, waiting: 0, mainThread: false });
 });
 
 test('the number of workers is capped', () => {

@@ -56,7 +56,7 @@ test('capturing under load', { concurrency: 1 }, async t => {
       Array.from({ length: 10 }, () =>
         holding.transact(
           tt => addPurchaseAtTag(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
-          { sperren: [{ konto: uid, schluessel: '70001-1' }] },
+          { locks: [{ account: uid, key: '70001-1' }] },
         ),
       ),
     );
@@ -172,7 +172,7 @@ test('all capture paths use the same check', () => {
   const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/contract/sets.ts'), 'utf8'));
   assert.match(
     vertrag,
-    /const NewSet = [^;]*quantity: input\.pieceCount\(\)[^;]*purchase_price: input\.geld\(/,
+    /const NewSet = [^;]*quantity: input\.pieceCount\(\)[^;]*purchase_price: input\.money\(/,
     'Sets: Menge oder Preis ungeprüft',
   );
 
@@ -310,7 +310,7 @@ test('the parts list delivers what it reports', () => {
   const setsLesen = src.slice(src.indexOf('async function setList'));
   assert.match(
     setsLesen,
-    /if \(f\.seite\) \{/,
+    /if \(f\.page\) \{/,
     'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +
       'page_size (Skripte, ältere App-Stände) bekämen sonst stillschweigend weniger Sets',
   );

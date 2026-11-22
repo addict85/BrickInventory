@@ -71,7 +71,7 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
     for (const { kind } of require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
-      .filter(a => a.zeitplan))
+      .filter(a => a.schedule))
       assert.ok(plan(kind), `kein Termin für ${kind}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
     assert.ok(
       plan('csv_sync').in_sek <= 0 && plan('csv_sync').payload.onStart,

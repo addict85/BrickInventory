@@ -1,9 +1,9 @@
 /**
  * The price run fetches per set exactly the conditions that the account carries or remembers
- * (statesJeSet in src/finances/priceRun.ts).
+ * (statesPerSet in src/finances/priceRun.ts).
  *
  * Counter-checks (measured 09.11.2026):
- *   A  the wishlist no longer read in statesJeSet() → red: “a remembered used condition counts as well”
+ *   A  the wishlist no longer read in statesPerSet() → red: “a remembered used condition counts as well”
  *   B  ergebnis.set(sn, ['N', 'U']) for every set → red: “a pure set costs only one request”
  *   C  the hint skipped when capturing → red: “the condition of a not yet written entry counts”
  */
@@ -50,10 +50,10 @@ test('conditions per set for the price run', { concurrency: 1 }, async t => {
     });
   }
   await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, $2, 'U')`, [uid, GEMERKT]);
-  const { statesJeSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
+  const { statesPerSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
   const sortiert = m => Object.fromEntries([...m].map(([k, v]) => [k, [...v].sort()]));
 
-  const z = sortiert(await statesJeSet(uid, [MIXED, REIN, GEMERKT, FREMD]));
+  const z = sortiert(await statesPerSet(uid, [MIXED, REIN, GEMERKT, FREMD]));
 
   await t.test('a mixed set needs both prices', () => assert.deepEqual(z[MIXED], ['N', 'U']));
   await t.test('a pure set costs only one request', () => assert.deepEqual(z[REIN], ['U']));

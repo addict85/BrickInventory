@@ -52,7 +52,7 @@ export async function rememberCatalogPlaceholder(dbh: DbInterface, setNumber: st
 
 export function catalogStatus(dbh: DbInterface, setNumber: string) {
   return dbh.get<{ name: string | null; image_local: string | null; minifigs: number | null; placeholder: boolean }>(
-    `SELECT rs.name, c.image_local, c.minifigs, ${PLACEHOLDER_SQL} AS platzhalter
+    `SELECT rs.name, c.image_local, c.minifigs, ${PLACEHOLDER_SQL} AS placeholder
        FROM rb_sets rs LEFT JOIN set_catalog c ON c.set_number = rs.set_num
       WHERE rs.set_num = $1`,
     [setNumber],

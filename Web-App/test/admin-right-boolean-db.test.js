@@ -33,8 +33,8 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
   const app = await A.createToken(id, 'app', false, null, { scope: 'app' });
 
   await t.test('a token with scope full carries true, with app false', async () => {
-    assert.equal((await A.checkToken(voll)).nutzer?.is_admin, true);
-    assert.equal((await A.checkToken(app)).nutzer?.is_admin, false);
+    assert.equal((await A.checkToken(voll)).user?.is_admin, true);
+    assert.equal((await A.checkToken(app)).user?.is_admin, false);
   });
 
   await t.test('requireToken passes a boolean on', async () => {

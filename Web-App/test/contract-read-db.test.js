@@ -37,7 +37,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 const NAME = `kvertrag_${process.pid}`;
 const SET = '99074-1',
-  TEIL = '3001kv',
+  PART = '3001kv',
   FARBE = 5,
   FIGUR = 'kv0001';
 
@@ -102,7 +102,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     for (const tab of ['set_parts', 'set_minifigs', 'price_cache', 'price_history', 'set_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = $1`, [SET]).catch(() => {});
     for (const tab of ['part_price_cache', 'part_price_history', 'part_catalog', 'part_color_catalog'])
-      await db.run(`DELETE FROM ${tab} WHERE part_number = $1`, [TEIL]).catch(() => {});
+      await db.run(`DELETE FROM ${tab} WHERE part_number = $1`, [PART]).catch(() => {});
     for (const tab of ['minifig_price_cache', 'minifig_price_history', 'minifigs_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE fig_number = $1`, [FIGUR]).catch(() => {});
     for (const [sql, values] of aufraeumen) await db.run(sql, values).catch(() => {});
@@ -121,15 +121,15 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   await db.run(
     `INSERT INTO set_parts (set_number, part_number, color_id, quantity)
                 VALUES ($1, $2, $3, 4) ON CONFLICT DO NOTHING`,
-    [SET, TEIL, FARBE],
+    [SET, PART, FARBE],
   );
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Stein 2x2') ON CONFLICT DO NOTHING`, [
-    TEIL,
+    PART,
   ]);
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name)
                 VALUES ($1, $2, 'Rot') ON CONFLICT DO NOTHING`,
-    [TEIL, FARBE],
+    [PART, FARBE],
   );
   await db.run(
     `INSERT INTO set_minifigs (set_number, fig_number, quantity)
@@ -178,30 +178,30 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   await katalog(
     `INSERT INTO rb_inventory_parts (id, inventory_id, part_num, color_id, quantity, is_spare)
                  VALUES (999074, 999074, $1, $2, 4, false)`,
-    [TEIL, FARBE],
+    [PART, FARBE],
     'DELETE FROM rb_inventory_parts WHERE id = 999074',
     [],
   );
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`,
-    [TEIL],
+    [PART],
   );
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1, $2, 'Rot', 'C91A09')
                 ON CONFLICT DO NOTHING`,
-    [TEIL, FARBE],
+    [PART, FARBE],
   );
   for (const condition of ['N', 'U']) {
     await db.run(
       `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
                   VALUES ($1, $2, $3, 'EUR', 0.2, 0.18)`,
-      [TEIL, FARBE, condition],
+      [PART, FARBE, condition],
     );
     await db.run(
       `INSERT INTO part_price_history (part_number, color_id, condition, currency_code, avg_price, recorded_at)
                   VALUES ($1, $2, $3, 'EUR', 0.19, NOW() - INTERVAL '2 days')`,
-      [TEIL, FARBE, condition],
+      [PART, FARBE, condition],
     );
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
@@ -227,7 +227,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   const auftrag = await {
     ..._req('src/jobQueue/service.js'),
     ...require('./helpers/sources').testArea('jobQueue').jobs,
-  }.placeJobOne('instructions', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
+  }.placeJobOne('instructions', { set_number: SET }, { key: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE jobs SET progress = '{"done":1,"total":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [auftrag]);
   await db.run(`INSERT INTO job_pauses (type, until_at, reason) VALUES ('exchange_rates', NOW() + INTERVAL '1 hour', 'Vertrag')
                 ON CONFLICT (type) DO UPDATE SET until_at = EXCLUDED.until_at, reason = EXCLUDED.reason`);
@@ -236,8 +236,8 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     [`DELETE FROM job_pauses WHERE reason = 'Vertrag'`, []],
   );
   await holdsSet(db, uid, SET, 2, { preis: 49.9 });
-  await holdsPart(db, uid, TEIL, { setNumber: SET, colorId: FARBE, quantity: 4 });
-  await holdsPart(db, uid, TEIL, { colorId: FARBE, quantity: 3 });
+  await holdsPart(db, uid, PART, { setNumber: SET, colorId: FARBE, quantity: 4 });
+  await holdsPart(db, uid, PART, { colorId: FARBE, quantity: 3 });
   await holdsMinifig(db, uid, FIGUR, { setNumber: SET, quantity: 1 });
   await holdsMinifig(db, uid, FIGUR, { quantity: 1 });
   await db.run(`INSERT INTO wanted (user_id, set_number) VALUES ($1, $2)`, [uid, SET]);
@@ -271,7 +271,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
   const routen = appRoutes(_req).filter(r => r.methode === 'GET');
-  const values = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
+  const values = { setNumber: SET, partNumber: PART, colorId: String(FARBE), figNumber: FIGUR };
 
   const deviations = [],
     leer = [],

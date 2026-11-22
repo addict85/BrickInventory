@@ -59,7 +59,7 @@ test('an unknown login name computes the same hash as a wrong password', async t
       const r = await checkCredentials(anfrage(ip), wer, 'falschesPasswort1');
       // Precondition: really rejected, with 401 — not 429 (lock) or 400 (form error).
       assert.equal(r.ok, false, `${was}: hätte abgelehnt werden müssen`);
-      assert.equal(r.absage.kind, 'not_signed_in', `${was}: erwartet not_signed_in (${r.absage.error})`);
+      assert.equal(r.refusal.kind, 'not_signed_in', `${was}: erwartet not_signed_in (${r.refusal.error})`);
       assert.equal(gerechnet.length, 1, `${was}: genau ein Hash`);
       assert.equal(kosten(gerechnet[0]), kosten(hash), `${was}: dieselben Kosten wie ein echtes Konto`);
     }

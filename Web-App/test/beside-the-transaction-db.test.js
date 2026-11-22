@@ -31,7 +31,7 @@ const PID = 'SELECT pg_backend_pid() AS p';
 
 test('queries next to a transaction', { concurrency: 1 }, async t => {
   const k = modul.dbConfigFromEnvironment();
-  const db = modul.createDb({ ...k, system: { ...k.verbindung } });
+  const db = modul.createDb({ ...k, system: { ...k.connection } });
   try {
     await db.get(PID);
   } catch (e) {

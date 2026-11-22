@@ -52,7 +52,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     pool: db.systemPool,
     config: _req('src/infra/config.js').config(),
     sessionSecret: 's'.repeat(48),
-    dienste: require('./helpers/sources').testServices(),
+    services: require('./helpers/sources').testServices(),
   });
   const srv = app.listen(0);
   t.after(() => {

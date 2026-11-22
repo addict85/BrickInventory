@@ -109,16 +109,17 @@ interface State {
 const P = processWide('log', () => ({ z: null as State | null }));
 const pidTag = String(process.pid).slice(-4);
 
-/** Fields in a fixed order. */
+/** Fields in a fixed order. The keys are the documented line format (README) that log tools
+ * of the operators read; they stay as they are. */
 export function jsonRow(level: Level, args: unknown[], time: number, rid?: string): string {
   const { message, context } = split(args);
   return JSON.stringify({
-    time: new Date(time).toISOString(),
-    level,
+    zeit: new Date(time).toISOString(),
+    stufe: level,
     message,
     pid: process.pid,
     ...(rid ? { rid } : {}),
-    ...(context ? { context } : {}),
+    ...(context ? { kontext: context } : {}),
   });
 }
 

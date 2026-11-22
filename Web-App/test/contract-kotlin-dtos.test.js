@@ -41,8 +41,8 @@ test('the checked-in Kotlin types are generated from openapi.json', () => {
 const zuordnung = (mehr = {}) => ({
   OMIT: new Set(),
   STRICT: new Set(),
-  DOMAIN_TYPES: { Zustand: { paket: 'ch.brickinventoryapp.model.domain.Zustand', leer: 'Zustand.NEU' } },
-  NAMEN: {},
+  DOMAIN_TYPES: { Zustand: { pkg: 'ch.brickinventoryapp.model.domain.Zustand', empty: 'Zustand.NEU' } },
+  NAMES: {},
   FIELD_TYPES: {},
   DEFAULTS: {},
   PROPERTIES: {},
@@ -147,7 +147,7 @@ test('shapes with the same name become one: fields merged, required only where a
       },
       B: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
     },
-    { NAMEN: { A: 'Konto', B: 'Konto' } },
+    { NAMES: { A: 'Konto', B: 'Konto' } },
   );
   assert.equal((kt.match(/data class Konto\(/g) ?? []).length, 1);
   assert.match(kt, /val id: Int = 0,/);

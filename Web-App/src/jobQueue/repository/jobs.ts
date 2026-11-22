@@ -148,7 +148,7 @@ export async function heartbeat(db: DbInterface, a: Claim, deadlineSec: number):
 /** Read only: a status change wakes every run; none of them should write while doing so. */
 export async function belongsStill(db: DbInterface, a: Claim): Promise<boolean> {
   return !!(await db.get<{ yes: number }>(
-    `SELECT 1 AS ja FROM jobs WHERE id = $1 AND locked_by = $2 AND status = 'running'`,
+    `SELECT 1 AS yes FROM jobs WHERE id = $1 AND locked_by = $2 AND status = 'running'`,
     [a.id, a.locked_by],
   ));
 }
@@ -414,7 +414,7 @@ export function waitingTheKind(db: DbInterface, kind: string) {
 
 export function numbersTheKind(db: DbInterface, kind: string) {
   return db.get<{ waiting: number; due: number }>(
-    `SELECT COUNT(*)::int AS waiting, COUNT(*) FILTER (WHERE due_at <= NOW())::int AS faellig
+    `SELECT COUNT(*)::int AS waiting, COUNT(*) FILTER (WHERE due_at <= NOW())::int AS due
        FROM jobs WHERE type = $1 AND status IN ('pending', 'running')`,
     [kind],
   );

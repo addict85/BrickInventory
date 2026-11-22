@@ -57,7 +57,7 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
     pool: db.systemPool,
     config: _req('src/infra/config.js').config(),
     sessionSecret: GEHEIM,
-    dienste,
+    services: dienste,
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));

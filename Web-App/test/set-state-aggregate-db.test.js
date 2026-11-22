@@ -238,7 +238,7 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
         name: 'Testset',
         catalog_pending: true,
         supplement: 'pending',
-        besitzer: uid,
+        owner: uid,
       };
     };
     try {
@@ -252,7 +252,7 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
       posedAddSet = null;
     }
     assert.equal(aufrufe.length, 1, 'acquireSet wurde nicht gerufen');
-    assert.equal(aufrufe[0][0].kaufpreis, 20, 'Der Kaufpreis kommt nicht an');
+    assert.equal(aufrufe[0][0].purchasePrice, 20, 'Der Kaufpreis kommt nicht an');
     assert.equal(aufrufe[0][0].condition, 'U', 'Der Zustand aus dem Formular kommt nicht bei acquireSet an');
   });
 });

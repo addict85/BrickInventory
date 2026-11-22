@@ -385,7 +385,7 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   );
   assert.match(
     fn,
-    /await bookEntry\(sk, \{\s*konto: userId,\s*setNumber,\s*quantity: delta,\s*kaufpreis: plan\.price,\s*condition: plan\.condition,/,
+    /await bookEntry\(sk, \{\s*account: userId,\s*setNumber,\s*quantity: delta,\s*purchasePrice: plan\.price,\s*condition: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
   // The price comes from priceForNewEntry() — extracted, because the
@@ -417,7 +417,7 @@ test('a quantity change runs under the inventory lock', () => {
   // Target is the account `ziel` — the rule stays: ONE locked transaction for quantity and acquisitions.
   assert.match(
     fn,
-    /sperren: \[\{ konto: target, schluessel: sn \}\]/,
+    /locks: \[\{ account: target, key: sn \}\]/,
     'Menge und Erfassungen gehören in EINE gesperrte Transaktion',
   );
   assert.doesNotMatch(
@@ -436,7 +436,7 @@ test('a quantity change runs under the inventory lock', () => {
   // Since migration 0036 the query stands in db/stockQuantity.ts; here …
   assert.match(
     fn,
-    /repo\.setMenge\(s\.db, 'blickfeld', readField/,
+    /repo\.setQuantity\(s\.db, 'blickfeld', readField/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden',
   );
 });

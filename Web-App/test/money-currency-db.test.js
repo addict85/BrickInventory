@@ -35,12 +35,12 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
   await t.test('120.3333 × 2 is 240.67, and 1.005 rounds to 1.01', () => {
     assert.equal(geld.rowValue(120.3333, 2), 240.67);
     assert.equal(geld.rowValue('120.3333', 2), 240.67);
-    assert.equal(geld.alsText(1.005), '1.01');
-    assert.equal(geld.aufRappen(-12345), -1.23);
+    assert.equal(geld.asText(1.005), '1.01');
+    assert.equal(geld.toCents(-12345), -1.23);
     assert.equal(
       geld.sumFrom([
-        { preis: 0.07, quantity: 1000 },
-        { preis: null, quantity: 5 },
+        { price: 0.07, quantity: 1000 },
+        { price: null, quantity: 5 },
       ]),
       70,
     );
@@ -130,7 +130,7 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
     const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
     const parts = await valueParts(uid, [uid]);
     const minifigs = await valueMinifigs(uid, [uid]);
-    const sicht = z => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_percent };
+    const sicht = z => z && { market: z.avg_price, purchase: z.purchase_price, pnl: z.pnl_percent };
     assert.deepEqual(
       {
         eur: sicht(parts.parts.find(z => z.part_number === PART_EUR)),
@@ -139,9 +139,9 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
         fremd: [parts.foreign_currency_purchases, minifigs.foreign_currency_purchases],
       },
       {
-        eur: { markt: 2.1, kauf: null, pnl: null },
-        chf: { markt: 2.1, kauf: 0.1, pnl: 2000 },
-        figur: { markt: 4, kauf: null, pnl: null },
+        eur: { market: 2.1, purchase: null, pnl: null },
+        chf: { market: 2.1, purchase: 0.1, pnl: 2000 },
+        figur: { market: 4, purchase: null, pnl: null },
         fremd: [1, 1],
       },
     );

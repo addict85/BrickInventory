@@ -69,7 +69,7 @@ test('acquisitions: account currency and CSV date', { concurrency: 1 }, async t 
         requester: uid,
         setNumber: SN,
         quantity: 1,
-        kaufpreis: 100,
+        purchasePrice: 100,
         condition: 'N',
         recordedAt: '2020-05-05',
         ifPresent: 'aufstocken',

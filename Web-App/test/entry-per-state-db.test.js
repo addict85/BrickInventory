@@ -171,7 +171,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
       price: 0.3,
       condition: 'N',
       createdAt: TAG,
-      geschaetzt: true,
+      estimated: true,
     });
     await addPurchaseAtTag('part', UID, ['3005', 1], {
       quantity: 1,

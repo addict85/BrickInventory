@@ -20,7 +20,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { hatPrice } = _req('src/catalog/bricklinkPrices.js');
+const { hasPrice } = _req('src/catalog/bricklinkPrices.js');
 
 test('the price rule applies the same everywhere', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
@@ -31,18 +31,18 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
 
   try {
     // 1. The rule itself — four cases, one per corner.
-    assert.equal(hatPrice({ avg_price: 12.34, qty_avg_price: 0 }), true);
+    assert.equal(hasPrice({ avg_price: 12.34, qty_avg_price: 0 }), true);
     assert.equal(
-      hatPrice({ avg_price: 0, qty_avg_price: 12.34 }),
+      hasPrice({ avg_price: 0, qty_avg_price: 12.34 }),
       true,
       'Der Mengenschnitt ist der Rückfall: 0 ist kein Preis, 12.34 schon',
     );
-    assert.equal(hatPrice({ avg_price: null, qty_avg_price: null }), false);
-    assert.equal(hatPrice(null), false, 'kein Datensatz, kein Preis');
+    assert.equal(hasPrice({ avg_price: null, qty_avg_price: null }), false);
+    assert.equal(hasPrice(null), false, 'kein Datensatz, kein Preis');
     // Depending on the path numeric comes as text — the rule must tolerate both.
-    assert.equal(hatPrice({ avg_price: '12.34' }), true);
+    assert.equal(hasPrice({ avg_price: '12.34' }), true);
     assert.equal(
-      hatPrice({ avg_price: '0.00' }),
+      hasPrice({ avg_price: '0.00' }),
       false,
       '"0.00" ist als Zeichenkette wahr — genau daran ist die Regel schon ' + 'einmal gescheitert',
     );

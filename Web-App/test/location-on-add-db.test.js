@@ -97,7 +97,7 @@ test('storage location when capturing — against a real database', async t => {
       setNumber: '10179-1',
       quantity: 1,
       condition: 'N',
-      lagerort: 'Kiste 3',
+      storage: 'Kiste 3',
       ifPresent: 'aufstocken',
     });
     const location = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '10179-1']);
@@ -146,7 +146,7 @@ test('storage location when capturing — against a real database', async t => {
   await t.test('6. the overview counts figures SEPARATELY, not as part kinds', async () => {
     // „18 Teilesorten" would otherwise mean 18 part kinds at one time and 12 plus 6
     // figures at another, and nobody could tell from the number what is meant.
-    const liste = await L.lagerorte([U.ich]);
+    const liste = await L.storages([U.ich]);
     const vitrine = liste.find(o => o.location === 'Vitrine');
     assert.ok(vitrine, 'Ein Ort, in dem NUR eine Figur liegt, fehlt in der Übersicht.');
     assert.deepEqual([vitrine.sets, vitrine.parts, vitrine.minifigs], [0, 0, 1]);

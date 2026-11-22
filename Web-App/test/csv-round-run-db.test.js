@@ -65,7 +65,7 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
   );
 
   const { partsCsv, minifigsCsv } = _req('src/inventory/inventoryExport.js');
-  const { setsAlsCsv } = require('./helpers/sources').areaPage('sets');
+  const { setsAsCsv } = require('./helpers/sources').areaPage('sets');
   const { importPartsCsv } = _req('src/parts/manualParts.js');
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
   const { setCsvRows } = require('./helpers/sources').areaPage('sets');
@@ -97,7 +97,7 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
   });
 
   await t.test("sets: the import's row reader reads every column of the export", async () => {
-    const { rows } = setCsvRows(await setsAlsCsv(A));
+    const { rows } = setCsvRows(await setsAsCsv(A));
     assert.deepEqual(rows, [
       { sn: 'RL10001-1', qty: 2, row: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' },
     ]);

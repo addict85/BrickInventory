@@ -69,7 +69,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     // The work takes longer than the deadline (1 s): only the own heartbeat holds the row.
     const editor = {
       exchange_rates: {
-        ausfuehren: async () => {
+        run: async () => {
           starts++;
           await warte(4500);
         },
@@ -85,11 +85,11 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
       deadlineSec: 1,
       tickMs: 300,
     });
-    const id = await A.placeJobOne('exchange_rates', {}, { schluessel: `pacht-${process.pid}` });
+    const id = await A.placeJobOne('exchange_rates', {}, { key: `pacht-${process.pid}` });
     const status = async () => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
-    w.starte();
+    w.launch();
     await bis(async () => (await status()) === 'running');
-    w2.starte();
+    w2.launch();
     await bis(async () => (await status()) === 'done', 8000);
     await w.stop(100);
     await w2.stop(100);
@@ -143,7 +143,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     );
     const id = await A.placeJobOne('csv_sync', {});
     downloadRunning = false;
-    w.starte();
+    w.launch();
     t.after(() => w.stop(0));
     await bis(() => w.running() > 0);
     assert.equal(w.running(), 1, 'der Abgleich läuft');

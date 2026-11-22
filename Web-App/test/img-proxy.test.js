@@ -43,7 +43,7 @@ test('only complete files get into the cache', () => {
   // 200 but cannot decode the image.
   assert.match(
     SERVER,
-    /const expected = parseInt\(String\(r\.kopf\['content-length'\]/,
+    /const expected = parseInt\(String\(r\.head\['content-length'\]/,
     'Die erwartete Länge muss gemerkt werden',
   );
   // After unpacking the announced length no longer fits — then the check
@@ -61,7 +61,7 @@ test('the cache stream hangs in front of the client stream', () => {
   // cache stream was even attached.
   // The cache branch stands in intoCache(); there up to body.pipe(ws), then in the
   // caller from the call up to body.pipe(res).
-  const start = CODE.indexOf("const rawType = String(r.kopf['content-type']");
+  const start = CODE.indexOf("const rawType = String(r.head['content-type']");
   const blk = CODE.slice(start, CODE.indexOf('body.pipe(res);', start) + 20);
   const iCache = blk.indexOf('intoCache(d, body'),
     iClient = blk.indexOf('body.pipe(res)');
@@ -178,7 +178,7 @@ test('broken responses are not nailed into the browser for a day', () => {
 
   // The streamed path does not know the content yet — keep it short there.
   const stream = SERVER.slice(
-    SERVER.indexOf("const rawType = String(r.kopf['content-type']"),
+    SERVER.indexOf("const rawType = String(r.head['content-type']"),
     SERVER.indexOf('body.pipe(res);'),
   );
   assert.match(
@@ -212,7 +212,7 @@ test('minifigure images are stored locally like set images', () => {
   // set parts lists nobody has — those need no local image.
   assert.match(
     SERVER,
-    /EXISTS \(SELECT 1 FROM \$\{l\.figurBestand\(\)\} m WHERE m\.fig_number = mc\.fig_number\)/,
+    /EXISTS \(SELECT 1 FROM \$\{l\.figHoldings\(\)\} m WHERE m\.fig_number = mc\.fig_number\)/,
     'Der Lauf darf nicht Bilder von Figuren holen, die niemand besitzt',
   );
 

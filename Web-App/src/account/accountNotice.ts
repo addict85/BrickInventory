@@ -64,7 +64,8 @@ export function hintInBackground(
   details: Details = {},
 ): void {
   // A trace in the log even without a mail address; without name and label, which are typed freely.
-  console.info(`[konto] ${kind}`, { event: kind, account: uid });
+  // Keys as in the login events, which monitoring reads.
+  console.info(`[konto] ${kind}`, { ereignis: kind, konto: uid });
   reportAccountChange(k, uid, kind, { ...details, name }).catch(logAndContinue(`konto:hinweismail ${kind}`));
 }
 

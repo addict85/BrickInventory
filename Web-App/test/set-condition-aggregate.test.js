@@ -402,7 +402,7 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
   const aufrufe = await recording(async () => {
     await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000 }).catch(() => {});
-    await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000, methode: 'POST', rumpf: '{}' }).catch(() => {});
+    await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000, method: 'POST', bodyText: '{}' }).catch(() => {});
     await openImage(url, { maxBytes: 1000, pool: true }).catch(() => {});
   });
   assert.deepEqual(
@@ -560,7 +560,7 @@ test('both login paths check the same', async () => {
   for (const name of ['a b', "' OR 1=1 --", '@example.com'])
     assert.deepEqual(
       await checkCredentials({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
-      { ok: false, absage: { kind: 'invalid', code: 'enter_name_or_email' } },
+      { ok: false, refusal: { kind: 'invalid', code: 'enter_name_or_email' } },
       name,
     );
 

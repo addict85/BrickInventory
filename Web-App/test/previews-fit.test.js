@@ -61,7 +61,7 @@ test('cropped previews are refitted once', async t => {
     },
     clock: _req('src/infra/clock.js').systemClock,
   };
-  const lokale = [quer, quadrat].map(n => ({ web: `/images/sets/${n}.jpg`, datei: datei(n) }));
+  const lokale = [quer, quadrat].map(n => ({ web: `/images/sets/${n}.jpg`, file: datei(n) }));
 
   await t.test('replaces only cropped ones', async () => {
     assert.equal(await fitTailoredPreviews(k, lokale, proxy), 2);

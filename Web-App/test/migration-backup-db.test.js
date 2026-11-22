@@ -118,7 +118,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     assert.deepEqual(open, [], 'Kopien ohne Zeilenschutz');
   });
 
-  const SHORT = { fristMs: 200, versuche: 2 };
+  const SHORT = { deadlineMs: 200, attempts: 2 };
   const SPERRPROBE = `9998-sperre-${process.pid}.sql`,
     TABELLE = `migsperre_${process.pid}`;
   /** A second connection holds `tabelle` exclusively until `frei()` is called –
@@ -176,7 +176,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
 
   await t.test('the backup does not wait forever either', { timeout: 15_000 }, async () => {
     const frei = await holdLock('users');
-    const { ergebnis } = await withWarnings(() => secureUserData(client, ['probe'], { fristMs: 200, versuche: 1 }));
+    const { ergebnis } = await withWarnings(() => secureUserData(client, ['probe'], { deadlineMs: 200, attempts: 1 }));
     await frei();
     assert.ok(ergebnis instanceof Error, `ohne Fehler zurück: ${ergebnis}`);
     assert.match(ergebnis.message, /Sicherung vor den Migrationen fehlgeschlagen: .*keine Sperre erhalten/);

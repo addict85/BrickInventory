@@ -26,7 +26,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { OUT_FILE, OUT_FILE_V2, alsText } = require('../scripts/contract-openapi.js');
+const { OUT_FILE, OUT_FILE_V2, asText } = require('../scripts/contract-openapi.js');
 const { CONTRACT, AREAS } = _req('src/contract/index.js');
 const { openapi } = _req('src/contract/openapi.js');
 
@@ -72,7 +72,7 @@ test('no key twice', () => {
 
 test('the checked-in openapi.json is generated', () => {
   assert.ok(
-    fs.readFileSync(OUT_FILE, 'utf8') === alsText(openapi()),
+    fs.readFileSync(OUT_FILE, 'utf8') === asText(openapi()),
     'docs/openapi.json weicht vom Vertrag ab — `npm run contract:openapi` ausführen und einchecken',
   );
 });
@@ -80,7 +80,7 @@ test('the checked-in openapi.json is generated', () => {
 test('the checked-in openapi-v2.json is generated from the same contract', () => {
   // Counter-check (22.11.2026): in docs/openapi-v2.json the first `"heartbeat"` renamed to `lebenszeichen` → red.
   assert.ok(
-    fs.readFileSync(OUT_FILE_V2, 'utf8') === alsText(openapi(2)),
+    fs.readFileSync(OUT_FILE_V2, 'utf8') === asText(openapi(2)),
     'docs/openapi-v2.json weicht vom Vertrag ab — `npm run contract:openapi` ausführen und einchecken',
   );
 });

@@ -46,7 +46,7 @@ const VICTIM = `opfer_${MARKE}`,
 const SET = '99181-1',
   SET2 = '99182-1',
   SET3 = '99183-1',
-  TEIL = '3001fk',
+  PART = '3001fk',
   FARBE = 5,
   FIGUR = 'fk0001';
 const GUTSCHEIN = '5045076374450019876';
@@ -92,8 +92,8 @@ test('a foreign account sees and changes no data of another via any route', {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[opfer, fremd]]).catch(() => {});
     for (const tab of ['set_catalog', 'set_parts_catalog', 'set_minifigs_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2, SET3]]).catch(() => {});
-    await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
-    await db.run('DELETE FROM part_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [PART]).catch(() => {});
+    await db.run('DELETE FROM part_catalog WHERE part_number = $1', [PART]).catch(() => {});
     await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGUR]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -103,12 +103,12 @@ test('a foreign account sees and changes no data of another via any route', {
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`,
-    [TEIL],
+    [PART],
   );
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1, $2, 'Rot', 'C91A09')
                 ON CONFLICT DO NOTHING`,
-    [TEIL, FARBE],
+    [PART, FARBE],
   );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [
     FIGUR,
@@ -187,14 +187,14 @@ test('a foreign account sees and changes no data of another via any route', {
   const anleitung = (await db.get('SELECT id FROM instructions WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [opfer]))
     .id;
   await ok('POST', '/api/v2/parts', {
-    part_number: TEIL,
+    part_number: PART,
     color_id: FARBE,
     color_name: 'Rot',
     quantity: 3,
     unit_price: 0.2,
     condition: 'N',
   });
-  await ok('PUT', `/api/v2/parts/${TEIL}/${FARBE}/storage`, { storage: `Kiste ${MARKE}` });
+  await ok('PUT', `/api/v2/parts/${PART}/${FARBE}/storage`, { storage: `Kiste ${MARKE}` });
   const teilAcq = (await db.get('SELECT id FROM part_acquisitions WHERE user_id = $1', [opfer])).id;
   await ok('POST', '/api/v2/minifigs', { fig_number: FIGUR, quantity: 1, unit_price: 4, condition: 'N' });
   const figAcq = (await db.get('SELECT id FROM minifig_acquisitions WHERE user_id = $1', [opfer])).id;
@@ -250,7 +250,7 @@ test('a foreign account sees and changes no data of another via any route', {
     ({
       setNumber: p.includes('/wanted/') ? SET2 : SET,
       sn: SET,
-      partNumber: TEIL,
+      partNumber: PART,
       colorId: FARBE,
       figNumber: FIGUR,
       id: idFor(p),
@@ -279,10 +279,10 @@ test('a foreign account sees and changes no data of another via any route', {
       set_number: SET,
       sets: [SET],
       set_numbers: [SET],
-      part_number: TEIL,
+      part_number: PART,
       color_id: FARBE,
       fig_number: FIGUR,
-      parts: [{ part_number: TEIL, color_id: FARBE }],
+      parts: [{ part_number: PART, color_id: FARBE }],
       condition: 'N',
       storage: 'Lager des Fremden',
       name: 'Name des Fremden',

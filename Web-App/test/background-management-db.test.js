@@ -80,7 +80,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
 
   // An interval from an earlier run would already leave the date correct.
   await db.run(`DELETE FROM global_settings WHERE key = 'price_job_interval_minutes'`);
-  await Z.planeAll();
+  await Z.planAll();
   // A postponed (quota) and an aborted job next to the failed one.
   const moved = await A.placeJobOne('instructions', { set_number: '44444-1' });
   const receipt = await A.claimJob(['instructions'], 60);
@@ -91,7 +91,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
 
   const wartend = [];
   for (const sn of ['11111-1', '22222-1'])
-    wartend.push(await A.placeJobOne('instructions', { set_number: sn }, { schluessel: `instructions:${sn}` }));
+    wartend.push(await A.placeJobOne('instructions', { set_number: sn }, { key: `instructions:${sn}` }));
   const kaputt = await A.placeJobOne('followup', { schritt: 'katalog' });
   await db.run(`UPDATE jobs SET status = 'error', error_message = 'Quelle weg' WHERE id = $1`, [kaputt]);
   await db.run(`INSERT INTO run_state (key, value) VALUES ('jobs_lebenszeichen', NOW()::text)

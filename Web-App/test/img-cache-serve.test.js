@@ -208,9 +208,9 @@ test('delivery order of the image cache', async t => {
       createMay: false,
       note() {},
     });
-    assert.equal(treffer.datei, orig);
-    assert.equal(treffer.typ, 'image/png');
-    assert.equal(treffer.groesse, 5000);
+    assert.equal(treffer.file, orig);
+    assert.equal(treffer.contentType, 'image/png');
+    assert.equal(treffer.size, 5000);
     assert.match(String(treffer.etag), /^"c-5000-\d+"$/);
     aufraeumen();
     assert.equal(

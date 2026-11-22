@@ -55,7 +55,7 @@ test('sets export: one row per acquisition, without an acquisition the set row',
       [uid],
     );
 
-    const csv = await require('./helpers/sources').areaPage('sets').setsAlsCsv(uid);
+    const csv = await require('./helpers/sources').areaPage('sets').setsAsCsv(uid);
     const r = zeilen(csv);
     const je = sn => r.filter(x => x.set_number === sn);
 
@@ -126,7 +126,7 @@ test('sets export needs ONE query, independent of the number of sets', { concurr
       abfragen++;
       return realQuery(...args);
     };
-    const csv = await require('./helpers/sources').areaPage('sets').setsAlsCsv(uid);
+    const csv = await require('./helpers/sources').areaPage('sets').setsAsCsv(uid);
     db.pool.query = realQuery;
 
     assert.equal(zeilen(csv).length, 25, 'alle 25 Sets stehen im Export');

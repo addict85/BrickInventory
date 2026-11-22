@@ -587,7 +587,7 @@ function routesWithoutSlotFlow() {
   // routes/api/sets.ts → rot; `import { createMail } from '../../src/mail'` in
   // routes/auth/registration.ts → rot.
   /** @type {[RegExp, string][]} */
-  const MUSTER = [
+  const PATTERN = [
     [
       /import\s*\{[^}]*\b(?:tokenDigest|forgetTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:account|profile)'/g,
       'Werkzeug aus src/account',
@@ -596,7 +596,7 @@ function routesWithoutSlotFlow() {
     [/from\s*'[./]+\/src\/mail(?:\/\w+)?'/g, 'src/mail'],
   ];
   assert.ok(
-    MUSTER.every(([re], i) =>
+    PATTERN.every(([re], i) =>
       new RegExp(re.source).test(
         [
           "import { tokenDigest } from '../../src/account';",
@@ -609,7 +609,7 @@ function routesWithoutSlotFlow() {
   );
   const treffer = [];
   for (const d of tsBelow('routes'))
-    for (const [re, was] of MUSTER) for (const _ of sourceText(d).matchAll(re)) treffer.push(`${d}: ${was}`);
+    for (const [re, was] of PATTERN) for (const _ of sourceText(d).matchAll(re)) treffer.push(`${d}: ${was}`);
   assert.deepEqual(treffer, []);
 }
 

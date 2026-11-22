@@ -51,7 +51,7 @@ export async function lock(tx: DbInterface, key: string, windowMin: number, ongo
   );
   return (await tx.get<LockState>(
     `SELECT count, ongoing,
-            first_at < NOW() - make_interval(mins => $2) AS abgelaufen,
+            first_at < NOW() - make_interval(mins => $2) AS expired,
             COALESCE(ongoing_since < NOW() - make_interval(secs => $3), TRUE) AS running_stale,
             EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS since

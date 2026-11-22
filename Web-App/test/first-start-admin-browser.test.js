@@ -128,7 +128,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await enter();
     await bis(`(document.getElementById('sf-error')?.textContent || '') !== ''`, 'Enter im Codefeld bestätigt', 50);
     const z = await b.auswerten(
-      `({ ungueltig: document.getElementById('sf-code').getAttribute('aria-invalid'), toasts: ${errorToasts} })`,
+      `({ invalid: document.getElementById('sf-code').getAttribute('aria-invalid'), toasts: ${errorToasts} })`,
     );
     assert.equal(z.invalid, 'true');
     assert.deepEqual(z.toasts, [], 'falscher Code am Feld, nicht als Toast');

@@ -430,16 +430,16 @@ test('any in all forms, unknown parameters and success in services become fewer,
   // (src/contract, src/infra, src/http) and error parameters.
   // Counter-check (11.11.2026): `condition: unknown` back in deleteAlarmOfSets → red (75).
   const LIMIT_UNKNOWN = 63;
-  const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
+  const PATTERN = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
-    ('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length,
+    ('f(a: unknown, b?: unknown = 1)'.match(PATTERN) || []).length + ('catch (e: unknown)'.match(PATTERN) || []).length,
     2,
   );
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const RAW = /[\\/]src[\\/](?:contract|infra|http)[\\/]/;
   const unbekannt = sources()
     .filter(f => /[\\/]src[\\/]/.test(f) && !RAW.test(f))
-    .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(MUSTER) || []).length, 0);
+    .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(PATTERN) || []).length, 0);
   assert.ok(unbekannt > 20, `nur ${unbekannt} unknown-Parameter gefunden — greift die Suche noch?`);
   assert.ok(
     unbekannt <= LIMIT_UNKNOWN,
@@ -1664,11 +1664,26 @@ test('German identifiers: none in the server, fewer and fewer in the tests', () 
       'nummern',
       'zeit',
       'ergebnis',
+      // Payloads of queued jobs: csv_import (lauf, rows[].error.wert), price_refresh (items[].farbe).
+      'lauf',
+      'wert',
+      'farbe',
     ],
     /** Fields on the wire that the UI reads (contract.d.ts does not list them). */
     WIRE: ['abdeckung'],
-    /** Names of others: Node's TLS option, operator environment variables, keys of shared/app-schnittstelle.json. */
-    EXTERNAL: ['servername', 'DB_LESEN_USER', 'TEST_NACHLAUF', 'antwortfelder'],
+    /** Names of others: Node's TLS option, operator environment variables, keys of shared/app-schnittstelle.json,
+     * the keys of the JSON log line (README) and of the security events in it, which log tools read. */
+    EXTERNAL: [
+      'servername',
+      'DB_LESEN_USER',
+      'TEST_NACHLAUF',
+      'antwortfelder',
+      'stufe',
+      'kontext',
+      'ereignis',
+      'konto',
+      'zugang',
+    ],
   };
   const exempt = new Set(Object.values(NOT_OURS).flat());
   const server = [path.join(WEB, 'server.ts'), ...SERVER.flatMap(d => files(path.join(WEB, d)))].filter(
@@ -1691,7 +1706,7 @@ test('German identifiers: none in the server, fewer and fewer in the tests', () 
   assert.deepEqual(unused, [], 'Ausnahme ohne Vorkommen — aus NOT_OURS streichen');
 
   // Distinct names in the test area; the goal is 0.
-  const LIMIT_TEST = 1217;
+  const LIMIT_TEST = 1182;
   const inTests = new Set();
   for (const f of files(__dirname)) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) inTests.add(id);
   assert.ok(inTests.size <= LIMIT_TEST, `${inTests.size} deutsche Bezeichner in test, erlaubt sind ${LIMIT_TEST}`);

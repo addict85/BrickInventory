@@ -247,8 +247,8 @@ export const ERRORS = {
   },
   account_id_invalid: { de: 'Ungültige Konto-ID.', en: 'Invalid account ID.' },
   currency_mismatch: {
-    de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
-    en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).',
+    de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {main}, dieses Konto: {sub}).',
+    en: 'Both accounts must use the same currency (main account: {main}, this account: {sub}).',
   },
   // The 60 is written out because fachfehler() fills no placeholders;
   // test/location-stock-db.test.js checks the limit (60 allowed, 61 rejected).
@@ -362,14 +362,14 @@ export const ERRORS = {
   csv_parse_error: { de: 'CSV Parse Fehler: {reason}', en: 'CSV parse error: {reason}' },
   csv_no_data_rows: { de: 'Keine Datenzeilen in der Datei', en: 'The file has no data rows' },
   csv_no_usable_row: {
-    de: 'Keine brauchbare Zeile gefunden — übersprungen: Zeile {zeilen}',
-    en: 'No usable row found — skipped: row {zeilen}',
+    de: 'Keine brauchbare Zeile gefunden — übersprungen: Zeile {rows}',
+    en: 'No usable row found — skipped: row {rows}',
   },
   csv_skipped: {
-    de: '{count} Zeile(n) übersprungen (Zeile {zeilen})',
-    en: '{count} row(s) skipped (row {zeilen})',
+    de: '{count} Zeile(n) übersprungen (Zeile {rows})',
+    en: '{count} row(s) skipped (row {rows})',
   },
-  csv_quantity_invalid: { de: 'Menge „{wert}“ ungültig', en: 'Quantity "{wert}" is invalid' },
+  csv_quantity_invalid: { de: 'Menge „{value}“ ungültig', en: 'Quantity "{value}" is invalid' },
   csv_no_set_number: { de: 'keine Setnummer', en: 'no set number' },
   import_timeout: { de: 'Zeitüberschreitung', en: 'Timed out' },
   import_quota: { de: 'Abruflimit erreicht', en: 'Rate limit reached' },
@@ -390,8 +390,8 @@ export const ERRORS = {
   pdf_not_ready: { de: 'PDF noch nicht fertig', en: 'The PDF is not ready yet' },
   pdf_not_available: { de: 'PDF nicht mehr verfügbar', en: 'The PDF is no longer available' },
   pdf_job_running: {
-    de: 'Es {laufenVerb} bereits {count} PDF-{auftragWort}. Bitte warten, bis er fertig ist.',
-    en: 'There {laufenVerb} already {count} PDF {auftragWort}. Please wait until it is done.',
+    de: 'Es {runVerb} bereits {count} PDF-{jobWord}. Bitte warten, bis er fertig ist.',
+    en: 'There {runVerb} already {count} PDF {jobWord}. Please wait until it is done.',
   },
   job_id_invalid: { de: 'Ungültige Job-ID', en: 'Invalid job ID' },
   job_not_found: { de: 'Job nicht gefunden oder abgelaufen', en: 'Job not found, or it has expired' },
@@ -426,8 +426,8 @@ export const ERRORS = {
   voucher_exists: { de: 'Diesen Gutschein gibt es bereits.', en: 'This voucher already exists.' },
   pdf_only: { de: 'Nur PDF-Dateien', en: 'PDF files only' },
   pdf_too_many_pages: {
-    de: 'Das PDF hat {seiten} Seiten, höchstens {max} sind möglich. Bitte in kleinere Dateien teilen.',
-    en: 'The PDF has {seiten} pages; at most {max} are possible. Please split it into smaller files.',
+    de: 'Das PDF hat {pages} Seiten, höchstens {max} sind möglich. Bitte in kleinere Dateien teilen.',
+    en: 'The PDF has {pages} pages; at most {max} are possible. Please split it into smaller files.',
   },
   upload_running: {
     de: 'Für dieses Konto läuft schon ein Upload dieser Art — bitte warten, bis er fertig ist.',
@@ -501,8 +501,8 @@ export const ERRORS = {
   },
   // {sek} instead of a fixed number: two numbers for one rule drift apart.
   balance_interval: {
-    de: 'Es wird höchstens eine Karte alle {sek} Sekunden ' + 'abgefragt. Bitte noch {warten} Sekunden warten.',
-    en: 'At most one card is queried every {sek} seconds. ' + 'Please wait another {warten} seconds.',
+    de: 'Es wird höchstens eine Karte alle {sek} Sekunden ' + 'abgefragt. Bitte noch {wait} Sekunden warten.',
+    en: 'At most one card is queried every {sek} seconds. ' + 'Please wait another {wait} seconds.',
   },
   // Says that it is not the card's fault and how long the lookup rests —
   // otherwise the user keeps pressing.
@@ -510,7 +510,7 @@ export const ERRORS = {
     de: 'LEGO hat die Abfrage abgewiesen (Bot-Schutz). ' + 'Die Abfrage ruht noch {min} Minuten.',
     en: 'LEGO rejected the query (bot protection). ' + 'The query is paused for another {min} minutes.',
   },
-  // {grund} passes through verdecke() beforehand: no card number and PIN in it.
+  // {reason} passes through redact() beforehand: no card number and PIN in it.
   balance_failed: {
     de: 'Das Guthaben liess sich nicht abfragen: {reason}',
     en: 'The balance could not be queried: {reason}',

@@ -292,7 +292,7 @@ test('the CSV download goes via abruf.ts, with deadline, cap and host list', () 
   // on abruf.ts; here only that the download takes this path.
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
   const call = src.slice(src.indexOf('await openHttps('), src.indexOf('});', src.indexOf('await openHttps(')));
-  for (const field of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
+  for (const field of ['hosts:', 'maxBytes:', 'timeoutMs:', 'signal'])
     assert.ok(call.includes(field), `der Download ruft openHttps ohne ${field}`);
   assert.doesNotMatch(
     ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/catalog/csvSync.ts'), 'utf8')),

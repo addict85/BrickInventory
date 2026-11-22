@@ -77,9 +77,9 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
     const r = await record(h, {
       setNumber: SN,
       quantity: 1,
-      lagerort: 'Kiste 1',
+      storage: 'Kiste 1',
       ifPresent: 'aufstocken',
-      nacharbeit: 'csv',
+      rework: 'csv',
     });
     assert.equal(r.action, 'added');
     const auftrag = await db.get(

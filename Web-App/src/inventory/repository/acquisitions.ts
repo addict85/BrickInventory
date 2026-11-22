@@ -24,7 +24,7 @@ export function entryInWriteField(
   const s = SHAPES[kind];
   const columns = s.keys.map((k, i) => ` AND ${k}=$${i + 3}`).join('');
   return tx.get<EntryInField>(
-    `SELECT id, user_id, condition, ${s.price} AS preis, price_estimated, currency, (${acquisitionDaySql()})::text AS tag
+    `SELECT id, user_id, condition, ${s.price} AS price, price_estimated, currency, (${acquisitionDaySql()})::text AS tag
        FROM ${s.table} WHERE id=$1 AND user_id = ANY($2)${columns}`,
     [id, wids, ...key.slice(0, s.keys.length)],
   );

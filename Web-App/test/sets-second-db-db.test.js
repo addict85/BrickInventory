@@ -50,15 +50,15 @@ const SN = '99877-1';
 
 /** Counts every query that goes via the access or its pool. */
 function zaehle(zugang) {
-  const n = { anfragen: 0 };
+  const n = { requests: 0 };
   const pool = zugang.pool;
   const echt = { query: pool.query.bind(pool), connect: pool.connect.bind(pool) };
   pool.query = (...a) => {
-    n.anfragen++;
+    n.requests++;
     return echt.query(...a);
   };
   pool.connect = (...a) => {
-    n.anfragen++;
+    n.requests++;
     return echt.connect(...a);
   };
   n.back = () => Object.assign(pool, echt);
@@ -74,7 +74,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
   const url = new URL(process.env.DATABASE_URL);
   url.pathname = '/' + NAME;
-  const zweite = createDb({ verbindung: { connectionString: url.toString() }, pool: { max: 4 } });
+  const zweite = createDb({ connection: { connectionString: url.toString() }, pool: { max: 4 } });
   t.after(async () => {
     await zweite.notification.close();
     await zweite.pool.end().catch(() => {});
@@ -138,7 +138,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('market price from the cache of the second database', async () => {
-    const p = await sets.setPrice(uid, { nutzer: uid }, SN);
+    const p = await sets.setPrice(uid, { user: uid }, SN);
     assert.equal(p.error, undefined, JSON.stringify(p));
     assert.equal(Number(p.avg_price), 42.5);
     assert.equal(p.from_cache, true);
@@ -146,7 +146,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('price history from the second database', async () => {
-    const v = await sets.setPriceHistory(uid, { nutzer: uid }, SN);
+    const v = await sets.setPriceHistory(uid, { user: uid }, SN);
     assert.equal(Number(v.current.N?.avg_price), 42.5);
     assert.deepEqual(
       v.history_new.map(p => Number(p.avg_price)),
@@ -173,7 +173,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('deleting via household and trash of the second database', async () => {
-    const trash = await sets.deleteSetFor({ nutzer: uid }, SN);
+    const trash = await sets.deleteSetFor({ user: uid }, SN);
     assert.equal(trash.length, 1);
     assert.equal((await zweite.get('SELECT count(*)::int AS n FROM sets WHERE user_id = $1', [uid])).n, 0);
     assert.equal(
@@ -183,7 +183,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('the process access stayed untouched', () => {
-    assert.equal(prozess.anfragen, 0);
+    assert.equal(prozess.requests, 0);
   });
 
   await t.test('household memory per access', async () => {

@@ -6,7 +6,7 @@ const SET_NUMBER = z.string().min(1).max(64);
 const CONDITION = z.enum(['N', 'U']);
 const PriceItem = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('set'), number: SET_NUMBER, condition: CONDITION }),
-  z.object({ kind: z.literal('teil'), number: SET_NUMBER, color: z.number().int(), condition: CONDITION }),
+  z.object({ kind: z.literal('teil'), number: SET_NUMBER, farbe: z.number().int(), condition: CONDITION }),
   z.object({ kind: z.literal('figur'), number: SET_NUMBER, condition: CONDITION }),
   z.object({ kind: z.literal('schaetzung'), number: SET_NUMBER, condition: CONDITION }),
 ]);

@@ -31,7 +31,7 @@ test('the suite separates the roles as in production, exceptions become fewer', 
   const zugang = await accessOrSkip(t, _req);
   if (!zugang) return;
   t.after(() => zugang.pool.end().catch(() => {}));
-  if (!process.env.TEST_DB_VORLAGE) return missingPrecondition(t, 'nur npm test trennt Rollen');
+  if (!process.env.TEST_DB_TEMPLATE) return missingPrecondition(t, 'nur npm test trennt Rollen');
 
   assert.deepEqual(
     (await zugang.pool.query(ROLE)).rows[0],
@@ -44,7 +44,7 @@ test('the suite separates the roles as in production, exceptions become fewer', 
     'der Systemrahmen fragt als Systemrolle',
   );
   const k = dbConfigFromEnvironment();
-  const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
+  const eigen = createDb({ ...k, connection: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
   try {
     assert.deepEqual(
       (await eigen.pool.query(ROLE)).rows[0],

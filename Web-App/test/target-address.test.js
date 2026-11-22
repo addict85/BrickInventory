@@ -100,15 +100,15 @@ test('the mail server may be in the own network, just not in that of the contain
     lo: [{ address: '127.0.0.1', cidr: '127.0.0.1/8', family: 'IPv4', internal: true }],
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
-  const imContainer = ip => Z.mailServerAddress(ip, { imContainer: true, interfaces });
-  assert.deepEqual(['192.168.1.10', '10.0.0.25', '172.28.73.20', '127.0.0.1', '169.254.169.254'].map(imContainer), [
+  const inContainer = ip => Z.mailServerAddress(ip, { inContainer: true, interfaces });
+  assert.deepEqual(['192.168.1.10', '10.0.0.25', '172.28.73.20', '127.0.0.1', '169.254.169.254'].map(inContainer), [
     true,
     true,
     false,
     false,
     false,
   ]);
-  const withoutContainer = ip => Z.mailServerAddress(ip, { imContainer: false, interfaces });
+  const withoutContainer = ip => Z.mailServerAddress(ip, { inContainer: false, interfaces });
   assert.deepEqual(
     ['127.0.0.1', '172.28.73.20', '169.254.169.254', 'fe80::1'].map(withoutContainer),
     [true, true, false, false],
@@ -181,7 +181,7 @@ test('the mail server does not reach the container network via NAT64 either', ()
   const interfaces = {
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
-  const pruefe = ip => Z.mailServerAddress(ip, { imContainer: true, interfaces });
+  const pruefe = ip => Z.mailServerAddress(ip, { inContainer: true, interfaces });
   assert.equal(pruefe('64:ff9b::172.28.73.20'), false, 'Container-Netz auch über NAT64');
   assert.equal(pruefe('::ffff:172.28.73.20'), false);
   assert.equal(pruefe('64:ff9b::7f00:1'), false, 'Loopback über NAT64');
@@ -197,8 +197,8 @@ test('IPv4-compatible addresses (::a.b.c.d) count like the IPv4 address inside',
   const interfaces = {
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
-  const pruefe = ip => Z.mailServerAddress(ip, { imContainer: true, interfaces });
+  const pruefe = ip => Z.mailServerAddress(ip, { inContainer: true, interfaces });
   assert.equal(pruefe('::127.0.0.1'), false, 'Loopback über ::/96');
   assert.equal(pruefe('::172.28.73.20'), false, 'Container-Netz über ::/96');
-  assert.equal(Z.mailServerAddress('::1', { imContainer: false, interfaces }), true, '::1 ohne Container');
+  assert.equal(Z.mailServerAddress('::1', { inContainer: false, interfaces }), true, '::1 ohne Container');
 });

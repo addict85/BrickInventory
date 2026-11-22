@@ -108,7 +108,7 @@ async function setup() {
 async function limitFree() {
   await S.forgetThrottle();
   testContext('vouchers')
-    .faecher.slot('voucherBalanceSessions', () => new Map())
+    .compartments.slot('voucherBalanceSessions', () => new Map())
     .clear();
 }
 

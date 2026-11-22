@@ -30,7 +30,7 @@ const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-const TEIL = {
+const PART = {
   part_number: '3001',
   part_name: 'Brick 2 x 4',
   color_id: 4,
@@ -76,7 +76,7 @@ test('setup: labels, reset not red', async () => {
 test('adding computes immediately, without a second step; "recompute" only with a set', async () => {
   const o = await openUi({
     '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
-    '/v2/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
+    '/v2/sets/10294-1/parts-list': { success: true, parts: [PART] },
     '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
     '/v2/parts/bl-color-map': { success: true, map: { 4: 5 } },
   });
@@ -111,7 +111,7 @@ test('adding computes immediately, without a second step; "recompute" only with 
 });
 
 test('removing recomputes', async () => {
-  const { w, d } = await create([TEIL], '10294, 99999-1');
+  const { w, d } = await create([PART], '10294, 99999-1');
   try {
     d.querySelector('#pl-sets .pl-chip:nth-child(2) [data-click="plRemoveSet"]').click();
     assert.ok(
@@ -137,7 +137,7 @@ test('empty result: reason, no exports', async () => {
 });
 
 test('unknown number: named in the chip, not counted', async () => {
-  const { w, d } = await create([TEIL], '10294, 99999-1');
+  const { w, d } = await create([PART], '10294, 99999-1');
   try {
     const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({
       text: text(c),
@@ -157,7 +157,7 @@ test('unknown number: named in the chip, not counted', async () => {
 });
 
 test('result with parts: exports enabled, input fields labeled', async () => {
-  const { w, d } = await create([TEIL]);
+  const { w, d } = await create([PART]);
   try {
     assert.equal(d.getElementById('pl-options').hidden, false);
     assert.equal(d.getElementById('btn-pl-pdf').disabled, false);
@@ -169,7 +169,7 @@ test('result with parts: exports enabled, input fields labeled', async () => {
 });
 
 test('color groups in German, summary names the kinds', async () => {
-  const { w, d } = await create([TEIL, { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 }]);
+  const { w, d } = await create([PART, { ...PART, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 }]);
   try {
     assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Farbgruppe in der Sprache der Oberfläche');
     assert.doesNotMatch(text(d.getElementById('pl-result')), /\bRed\b/);

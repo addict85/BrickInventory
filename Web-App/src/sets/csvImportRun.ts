@@ -17,13 +17,13 @@ const CsvRowSchema = z.object({
   // Line of the file and, if it already failed while reading, why: the result then names it in its place.
   row: z.number().int().optional(),
   error: z
-    .object({ code: z.enum(['csv_quantity_invalid', 'csv_no_set_number']), value: z.string().optional() })
+    .object({ code: z.enum(['csv_quantity_invalid', 'csv_no_set_number']), wert: z.string().optional() })
     .optional(),
 });
 /** Part of the kind 'csv_import', which the collection registers (src/collection/jobKinds.ts). */
 export const SetCsvPayload = z.object({
   user_id: z.number().int().positive(),
-  run: z.string().min(1),
+  lauf: z.string().min(1),
   rows: z.array(CsvRowSchema),
 });
 export type CsvPayload = z.output<typeof SetCsvPayload>;
@@ -32,7 +32,7 @@ export type CsvRow = CsvPayload['rows'][number];
 async function importRow(sk: SetsContext, z: CsvRow, userId: number): Promise<ImportResult> {
   const where = z.row ? { row: z.row } : {};
   if (z.error) {
-    const vars = z.error.value !== undefined ? { value: z.error.value } : undefined;
+    const vars = z.error.wert !== undefined ? { value: z.error.wert } : undefined;
     return {
       set_number: z.sn,
       ...where,
@@ -89,7 +89,7 @@ async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<Impo
 
 async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): Promise<void> {
   const userId = Number(n.user_id),
-    run = String(n.run),
+    run = String(n.lauf),
     rows = n.rows ?? [];
   const state = await sk.jobQueue.setImportProgress(userId, run);
   if (!state) return;
@@ -127,7 +127,7 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
 /** The status line shows the error instead of running forever. */
 async function csvImportGivenUp(k: SetsContext, n: CsvPayload, error: string): Promise<void> {
   console.error(`CSV import fatal error: ${error}`);
-  await k.jobQueue.jobUpdate(Number(n.user_id), { status: 'error', error: error, current: null }, String(n.run));
+  await k.jobQueue.jobUpdate(Number(n.user_id), { status: 'error', error: error, current: null }, String(n.lauf));
   await k.jobQueue.reportJobStatus(Number(n.user_id));
 }
 

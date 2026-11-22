@@ -129,9 +129,9 @@ test('invalid values: all at once, with names', () => {
     APP_BASE_URL: 'https://lego.example.org//',
   });
   assert.equal(k.port, 8080);
-  assert.equal(k.rolle, 'jobs');
-  assert.deepEqual(k.veraltet, ['WEB_WORKERS'], 'WEB_WORKERS wirkt nicht mehr, der Start nennt es');
-  assert.equal(loadConfig({}).rolle, 'both', 'ohne Angabe ein Prozess für alles');
+  assert.equal(k.role, 'jobs');
+  assert.deepEqual(k.deprecated, ['WEB_WORKERS'], 'WEB_WORKERS wirkt nicht mehr, der Start nennt es');
+  assert.equal(loadConfig({}).role, 'both', 'ohne Angabe ein Prozess für alles');
   assert.throws(() => loadConfig({ ROLE: 'primary' }), /ROLE="primary" ist weder web noch jobs noch both/);
   assert.equal(k.cookieSecure, false);
   assert.equal(k.appBaseUrl, 'https://lego.example.org');

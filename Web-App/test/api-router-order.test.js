@@ -22,9 +22,9 @@ const _req = q.buildAndRequire();
 function holding() {
   const api = _req('routes/api/index.js').buildApiRouter(q.testServices());
   /** @param {any} r */
-  const collect = (r, aus = { routen: [], prefilters: [] }) => {
+  const collect = (r, aus = { routes: [], prefilters: [] }) => {
     for (const l of r.stack) {
-      if (l.route) for (const m of Object.keys(l.route.methods)) aus.routen.push({ m, path: l.route.path, l });
+      if (l.route) for (const m of Object.keys(l.route.methods)) aus.routes.push({ m, path: l.route.path, l });
       else if (!l.slash) aus.prefilters.push(l);
       else if (l.handle?.stack) collect(l.handle, aus);
     }
@@ -44,8 +44,8 @@ test('the routers under /api/v1 do not hit each other', () => {
   const middleware = [];
   router.forEach((r, i) => {
     for (const fremd of router.filter((_, j) => j !== i))
-      for (const ziel of fremd.routen) {
-        for (const eigen of r.routen)
+      for (const ziel of fremd.routes) {
+        for (const eigen of r.routes)
           if (eigen.m === ziel.m && eigen.l.match(beispiel(ziel.path)))
             muster.push(`${eigen.m} ${eigen.path} trifft ${ziel.path}`);
         for (const v of r.prefilters)
@@ -62,7 +62,7 @@ test('the app attaches the error path, once behind all routers', () => {
     pool: q.testAccess().systemPool,
     config: _req('src/infra/config.js').config(),
     sessionSecret: 'test-sitzungsgeheimnis-lang-genug',
-    dienste: q.testServices(),
+    services: q.testServices(),
     sessionStorage: (/** @type {any} */ _q, /** @type {any} */ _r, /** @type {Function} */ n) => n(),
   });
   /** @type {string[]} */

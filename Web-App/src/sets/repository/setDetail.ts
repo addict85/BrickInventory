@@ -11,7 +11,7 @@ export function setMaster(db: DbInterface, setNumber: string) {
     `SELECT ${SET.name} AS name, ${SET.year} AS year, ${SET.theme} AS theme,
            ${SET.parts} AS pieces, c.minifigs, c.image_url, c.image_local,
            ${SET.name} = 'Set ' || rs.set_num AND ${SET.year} IS NULL AND ${SET.theme} IS NULL
-             AND ${SET.parts} IS NULL AS platzhalter
+             AND ${SET.parts} IS NULL AS placeholder
       FROM (SELECT $1::text AS nr) x
       ${setMasterJoin('x.nr')}
       LEFT JOIN set_catalog c ON c.set_number = x.nr

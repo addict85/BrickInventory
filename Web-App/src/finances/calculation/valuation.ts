@@ -423,7 +423,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     const { priceMap, priceData } = pricesPerState(key, conditionsOf(acqs), cond => {
       const p = priceFromStock(c => partStock.get(`${stockKey}|${c}`), cond, ttl, k.clock.now());
       if (p.pending)
-        isMissing.push({ kind: 'teil', number: blNumber(part), color: part.color_id ?? NO_COLOR, condition: cond });
+        isMissing.push({ kind: 'teil', number: blNumber(part), farbe: part.color_id ?? NO_COLOR, condition: cond });
       return p;
     });
     const value = valueManual(key, acqs, priceMap, part.quantity || 1);

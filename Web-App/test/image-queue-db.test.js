@@ -195,9 +195,9 @@ test('the job also reports pure skips', () => {
   // Marco's finding
   const { message: meldung } = _req('src/images/imageDemandRun.js');
   const onlySkipped = {
-    geholt: 0,
+    fetched: 0,
     preview: 0,
-    uebersprungen: 10,
+    skipped: 10,
     total: 10,
     notLoaded: 0,
     noPreview: 0,

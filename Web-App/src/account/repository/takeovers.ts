@@ -30,7 +30,7 @@ export async function adminOrJustBeen(db: DbInterface, target: number, hours: nu
   const r = await db.get<{ yes: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND is_admin)
          OR EXISTS (SELECT 1 FROM admin_log WHERE target_id = $1 AND action = 'admin_revoked'
-                     AND occurred_at > NOW() - make_interval(hours => $2)) AS ja`,
+                     AND occurred_at > NOW() - make_interval(hours => $2)) AS yes`,
     [target, hours],
   );
   return r?.yes === true;
@@ -46,7 +46,7 @@ export async function takeDue(db: DbInterface): Promise<{ valid: Takeover[]; dis
        AND (w.type NOT IN ('password', 'second_factor') OR NOT (
          EXISTS (SELECT 1 FROM admin_log p WHERE p.target_id = w.target_id
                    AND p.action = 'account_deactivated' AND p.occurred_at >= w.created_at)
-         OR EXISTS (SELECT 1 FROM weg x WHERE x.target_id = w.target_id AND x.type = 'deactivate'))) AS gilt
+         OR EXISTS (SELECT 1 FROM weg x WHERE x.target_id = w.target_id AND x.type = 'deactivate'))) AS valid
        FROM weg w`,
   );
   return { valid: route.filter(z => z.valid), discarded: route.filter(z => !z.valid).length };

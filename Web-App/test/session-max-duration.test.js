@@ -89,18 +89,18 @@ async function anmelden(base, verwalter) {
 
 test('administrator sessions have shorter periods', async t => {
   await t.test('an administrator session ends after a short idle time, but not while it works', async () => {
-    const LEER = 3_000;
-    const { srv, base } = testApp(LANG, { idleMs: LEER });
+    const EMPTY = 3_000;
+    const { srv, base } = testApp(LANG, { idleMs: EMPTY });
     t.after(() => new Promise(r => srv.close(r)));
     const chef = await anmelden(base, true);
     const nutzer = await anmelden(base, false);
     // Work for longer than the idle time: every request pushes the period.
-    const bis = Date.now() + LEER * 1.5;
+    const bis = Date.now() + EMPTY * 1.5;
     while (Date.now() < bis) {
       assert.equal(await chef.wer(), 8, 'trotz Anfragen abgemeldet');
       await warte(400);
     }
-    await warte(LEER + 800);
+    await warte(EMPTY + 800);
     assert.equal(await chef.wer(), null, 'nach dem Leerlauf noch angemeldet');
     assert.equal(await nutzer.wer(), 7, 'die allgemeine Frist gilt für andere weiter');
   });

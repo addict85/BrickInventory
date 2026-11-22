@@ -107,7 +107,7 @@ test('service keys become fewer, never more, and each has a caller', () => {
   const schluessel = Object.entries(d).flatMap(([b, x]) => leaves(x, b));
   assert.ok(Object.keys(d).length > 15, `nur ${Object.keys(d).length} Bereiche gebaut`);
   assert.ok(schluessel.length > 300, `nur ${schluessel.length} Dienstschlüssel — greift die Zählung noch?`);
-  assert.ok(schluessel.includes('account.sitzungen.endOther'), 'Selbstbeweis: Teilflächen zählen je Dienst');
+  assert.ok(schluessel.includes('account.sessions.endOther'), 'Selbstbeweis: Teilflächen zählen je Dienst');
 
   const LIMIT_NUMBER = 537;
   assert.ok(
@@ -150,7 +150,7 @@ const RAW_ALLOWED = {
   'jobQueue.rememberExclusive': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.lastPerKind': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
   'jobQueue.cleanCompletedOn': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',
-  'jobQueue.liesPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
+  'jobQueue.readPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
   'jobQueue.pauseKind': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
   'jobQueue.readState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'jobQueue.deleteState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',

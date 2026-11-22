@@ -7,7 +7,7 @@
  * files with the marker `@superuser` still run as superuser.
  */
 // Only in the test runner's child and only once: started servers inherit the environment including the marker.
-const vorlage = process.env.TEST_DB_VORLAGE;
+const vorlage = process.env.TEST_DB_TEMPLATE;
 if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL && !process.env.TEST_DB_EIGEN) {
   const { execFileSync } = require('node:child_process');
   const fs = require('node:fs');

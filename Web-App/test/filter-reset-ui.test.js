@@ -13,10 +13,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
-const LEER = { '/v2/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
+const EMPTY = { '/v2/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
 
 test('collection: search without hits', async () => {
-  const { w, d, aufrufe } = await openUi(LEER);
+  const { w, d, aufrufe } = await openUi(EMPTY);
   try {
     d.getElementById('gs').value = 'xyz';
     d.getElementById('gs').dispatchEvent(new w.Event('input'));
@@ -37,7 +37,7 @@ test('collection: search without hits', async () => {
 });
 
 test('collection: theme filter without hits', async () => {
-  const { w, d } = await openUi(LEER);
+  const { w, d } = await openUi(EMPTY);
   try {
     await warte(() => d.querySelector('#gtheme option[value="Icons"]'));
     d.getElementById('gtheme').value = 'Icons';

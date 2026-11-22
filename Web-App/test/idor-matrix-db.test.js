@@ -47,7 +47,7 @@ const OPFER = `idor_opfer_${process.pid}`,
   PASS = 'Idor-Passwort-1!';
 const SET = '99281-1',
   SET2 = '99282-1',
-  TEIL = '3001ik',
+  PART = '3001ik',
   FARBE = 5,
   FIGUR = 'ik0001';
 const GUTSCHEIN = '5045076374450029876';
@@ -93,18 +93,18 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[opfer, fremd]]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[SET, SET2]]).catch(() => {});
-    await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
-    await db.run('DELETE FROM part_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [PART]).catch(() => {});
+    await db.run('DELETE FROM part_catalog WHERE part_number = $1', [PART]).catch(() => {});
     await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGUR]).catch(() => {});
     await db.pool.end().catch(() => {});
     fs.rmSync(WURZEL, { recursive: true, force: true });
   });
   for (const s of [SET, SET2]) await catalogSet(db, s, { name: 'Idorprobe', year: 2024, theme: 'Test', pieces: 10 });
-  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Stein') ON CONFLICT DO NOTHING`, [TEIL]);
+  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Stein') ON CONFLICT DO NOTHING`, [PART]);
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1, $2, 'Rot', 'C91A09')
      ON CONFLICT DO NOTHING`,
-    [TEIL, FARBE],
+    [PART, FARBE],
   );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Figur') ON CONFLICT DO NOTHING`, [
     FIGUR,
@@ -136,7 +136,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   const location = (await ok('POST', '/api/v2/storage/locations', { name: `Ort ${MARKE}` })).location.id;
   await ok('POST', '/api/v2/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
   await ok('POST', '/api/v2/parts', {
-    part_number: TEIL,
+    part_number: PART,
     color_id: FARBE,
     color_name: 'Rot',
     quantity: 3,
@@ -203,7 +203,7 @@ test('IDOR: identifiers of another household give 403/404 on every route', {
   const fest = {
     setNumber: SET,
     sn: SET,
-    partNumber: TEIL,
+    partNumber: PART,
     colorId: FARBE,
     figNumber: FIGUR,
     condition: 'N',

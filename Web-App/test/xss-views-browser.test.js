@@ -23,7 +23,7 @@ const CHECK = `(() => {
   const fremd = [...document.querySelectorAll('*')].filter(e =>
       [...e.attributes].some(a => /^on/i.test(a.name)) || (e.tagName === 'IMG' && e.getAttribute('src') === 'x'))
     .map(e => e.outerHTML.slice(0, 100));
-  return { fremd, xss: window.__xss ?? null, alsText: document.body.innerText.includes('<img src=x onerror')
+  return { fremd, xss: window.__xss ?? null, asText: document.body.innerText.includes('<img src=x onerror')
     || [...document.querySelectorAll('input')].some(i => i.getClientRects().length && i.value.includes('<img src=x onerror')) };
 })()`;
 
@@ -78,7 +78,7 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
       const r = await b.auswerten(CHECK);
       assert.deepEqual(r.fremd, [], `${name}: Markup aus Daten im DOM`);
       assert.equal(r.xss, null, `${name}: Nutzlast ausgeführt`);
-      assert.ok(r.alsText, `${name}: Nutzlast steht nicht als Text da — prüft der Test noch etwas?`);
+      assert.ok(r.asText, `${name}: Nutzlast steht nicht als Text da — prüft der Test noch etwas?`);
     });
   };
   await ansicht(

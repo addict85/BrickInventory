@@ -6,7 +6,7 @@
  * makes of it.
  *
  * Counter-checks (measured on 30.10.2026):
- *   A  `if (lastFetchWarExtern())` removed before the tick pause → red: “after
+ *   A  `if (lastFetchWasExternal())` removed before the tick pause → red: “after
  *      a supplied set nobody waits”
  *   B  in the Cloudflare ladder `level + 1` replaced by `level` → red: “the
  *      Cloudflare ladder rises and ends the next day”
@@ -29,7 +29,7 @@ Module.prototype.require = function (name, ...rest) {
   return {
     ...m,
     instructionCount: async () => 0,
-    lastFetchWarExtern: () => abruf.extern,
+    lastFetchWasExternal: () => abruf.extern,
     loadSetInstructions: async () => {
       abruf.aufrufe++;
       if (abruf.error_message) throw abruf.error_message;
@@ -56,7 +56,7 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     ...require('./helpers/sources').testArea('jobQueue').jobs,
   });
   const { JobMove } = _req('jobs/jobWorker.js');
-  const pause = () => A.liesPause('instructions');
+  const pause = () => A.readPause('instructions');
   const inSec = async () => {
     const p = await pause();
     return p ? Math.round((new Date(p.until_at).getTime() - Date.now()) / 1000) : null;

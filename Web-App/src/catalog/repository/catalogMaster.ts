@@ -281,7 +281,7 @@ export function partFromCatalog(db: DbInterface, partNumber: string, colorId: nu
   }>(
     `
     SELECT COALESCE(pc.part_name, rp.name, te.part_name)   AS name,
-           COALESCE(pc.category_name, te.category_name)     AS kategorie,
+           COALESCE(pc.category_name, te.category_name)     AS category,
            rp.part_img_url                                  AS image_generic,
            COALESCE(pcc.image_url, tfe.image_url)           AS color_url,
            pcc.image_local                                  AS color_file

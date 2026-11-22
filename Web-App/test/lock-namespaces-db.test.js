@@ -157,7 +157,7 @@ test('lock namespaces against a real database', async t => {
           (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.IMAGE_DOWNLOAD}|${SET}`])).rows[0].h,
         );
       },
-      { sperren: [{ konto: LOCKS.IMAGE_DOWNLOAD, schluessel: SET }] },
+      { locks: [{ account: LOCKS.IMAGE_DOWNLOAD, key: SET }] },
     );
     assert.equal(frei.image, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
     assert.equal(

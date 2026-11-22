@@ -34,7 +34,7 @@ const { portOf } = require('./helpers/server');
 
 const NAME = `kurse_${process.pid}`;
 const SET = `7${process.pid}1-1`,
-  TEIL = `wk${process.pid}`,
+  PART = `wk${process.pid}`,
   FARBE = 4;
 
 /** A ZIP file with a CSV, as the ECB delivers it. */
@@ -146,10 +146,10 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
   });
 
   await t.test('Teil', async () => {
-    await holdsPart(db, uid, TEIL, { colorId: FARBE, quantity: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
+    await holdsPart(db, uid, PART, { colorId: FARBE, quantity: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
     await db.run(`UPDATE part_acquisitions SET currency = 'USD' WHERE user_id = $1`, [uid]);
     const { priceHistoryPart } = _req('src/finances/priceHistory.js');
-    const v = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');
+    const v = await priceHistoryPart([uid], PART, FARBE, 'CHF');
     // 2 USD / 1,26 × 0,96 = 1,5238
     assert.equal(v.by_condition.N.purchase_price, 1.5238);
   });

@@ -73,7 +73,7 @@ test('images from the CDNs: whole, as a stream, with the browser headers', async
       : reply(res, 200, image, { 'content-type': 'image/jpeg' }),
   );
   const r = await fetchImage('https://cdn.rebrickable.com/media/sets/10294-1.jpg', { maxBytes: 1000 });
-  assert.deepEqual([r.status, r.koerper], [200, image]);
+  assert.deepEqual([r.status, r.body], [200, image]);
   assert.equal(stub.calls[0].headers.referer, IMAGE_HEADERS.Referer);
   const s = await openImage('https://images.brickset.com/sets/10294-1.jpg', { maxBytes: 1000, pool: true });
   const parts = [];

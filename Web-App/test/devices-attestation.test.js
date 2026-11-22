@@ -14,7 +14,7 @@
  *   E  in checkDescription() the check for noAuthRequired deleted → red:
  *      “a key without lock …”
  *   F  a digit changed in FINGERPRINTS → red: “the Google roots …”
- *   G  in liesTlv() the length check `p + laenge > b.length` deleted → red:
+ *   G  in readTlv() the length check `p + laenge > b.length` deleted → red:
  *      “truncated bytes …”
  *
  * Counter-checks for revocation list, RootOfTrust and patch level (measured 14.11.2026):
@@ -131,8 +131,8 @@ test('truncated bytes and indefinite lengths throw instead of guessing', () => {
   ])
     assert.throws(() => A.readDescription(kaputt), der.TheError);
   assert.throws(() => der.readWhole(Buffer.from([0x05, 0x00, 0x00])), /hinter dem Element/);
-  assert.throws(() => der.liesTlv(Buffer.from([0x04, 0x05, 1, 2])), /über das Ende/);
-  assert.equal(der.liesTlv(Buffer.from([0xbf, 0x85, 0x45, 0x02, 0x05, 0x00])).tlv.number, 709);
+  assert.throws(() => der.readTlv(Buffer.from([0x04, 0x05, 1, 2])), /über das Ende/);
+  assert.equal(der.readTlv(Buffer.from([0xbf, 0x85, 0x45, 0x02, 0x05, 0x00])).tlv.number, 709);
 });
 
 test('the Google roots match their fingerprints', () => {

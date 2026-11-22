@@ -183,7 +183,7 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
     kompakt(read('src/sets/setMove.ts')).includes('setEntriesReassign(t, sn, fromId'),
     'Das Verschieben läuft über setEntriesReassign',
   );
-  assert.ok(kompakt(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
+  assert.ok(kompakt(mv).includes('locks: [{ account: fromId, key: sn }]'), 'Serialisiert über das Quellkonto');
   // The whole set and single purchase prices run through THE SAME implementation — the
   // partial case is no special path but the general case with a selection.
   const acq = read('routes/api/acquisitions.ts');

@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 test('the file has its own copy of the template', async t => {
-  const vorlage = process.env.TEST_DB_VORLAGE;
+  const vorlage = process.env.TEST_DB_TEMPLATE;
   if (!vorlage) {
     t.skip('no parallel run');
     return;
