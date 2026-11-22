@@ -60,7 +60,7 @@ function leaves(x, ago) {
 
 /** At most this many per area; a new service displaces an old one. */
 const JE_AREA = {
-  throttle: 10,
+  throttle: 11, // the API budget (api_budget) moved here from process memory; vouchers gave up two
   settings: 22,
   mail: 13,
   jobQueue: 65,
@@ -79,7 +79,7 @@ const JE_AREA = {
   parts: 13,
   minifigs: 8,
   wanted: 9,
-  vouchers: 16,
+  vouchers: 15,
   collection: 8,
   management: 28,
 };
@@ -162,12 +162,7 @@ const RAW_ALLOWED = {
   'finances.marketPriceFromCache':
     'Rückfall der Set-Bewertung (src/sets/service.ts) auf den Zwischenspeicher, ohne Regel',
   'finances.marketPriceFromHistory': 'Rückfall der Set-Bewertung (src/sets/service.ts) auf den Verlauf, ohne Regel',
-  'vouchers.reencryptAllVouchers':
-    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
-  'vouchers.reencryptCopies':
-    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
-  'vouchers.reencryptNumbers':
-    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
+  'throttle.claimApiBudget': 'API-Budget (src/http/apiThrottle.ts): die Regel steht im SQL des Upserts',
   'catalog.catalogStatus':
     'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
   'catalog.rememberCatalogPlaceholder':
@@ -228,6 +223,6 @@ test('no service key passes a repository through raw', () => {
     Object.keys(RAW_ALLOWED).sort(),
     'Dienstschlüssel, die ein Repository roh weiterreichen',
   );
-  const LIMIT_RAW = 23;
+  const LIMIT_RAW = 21;
   assert.ok(roh.size <= LIMIT_RAW, `${roh.size} rohe Weitergaben, erlaubt ${LIMIT_RAW}`);
 });

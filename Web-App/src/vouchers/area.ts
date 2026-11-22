@@ -28,12 +28,18 @@ export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, inspect?
       cleanupTickets: bound(k)(pdfTicket.cleanupTickets),
       encryptLegacyFiles: encryptLegacyVoucherFiles,
       // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
-      reencryptNumbers: k.vouchers.reencryptNumbers,
-      reencryptCopies: k.vouchers.reencryptCopies,
-      reencryptAllVouchers: k.vouchers.reencryptAllVouchers,
+      reencrypt: bound(k)(reencrypt),
     }),
     inspect,
   );
+}
+
+/** Legacy upgrade (default): numbers and copies still in v1. Key switch (`all`): every row the
+ * previous key opens. @returns how many values were rewritten */
+async function reencrypt(k: VoucherContext, o: { all?: boolean } = {}): Promise<number> {
+  return o.all
+    ? (await k.vouchers.reencryptAllVouchers()) + (await k.vouchers.reencryptCopies(true))
+    : (await k.vouchers.reencryptNumbers()) + (await k.vouchers.reencryptCopies());
 }
 
 export type VoucherServices = ReturnType<typeof createVouchers>;

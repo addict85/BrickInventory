@@ -30,8 +30,7 @@ export const LEGACY_STOCK_BRAND = 'altbestand_v2';
 export async function legacyStockUpgrade(d: Services): Promise<{ umgeschluesselt: number; prints: number } | null> {
   if (await d.jobQueue.readState(LEGACY_STOCK_BRAND)) return null;
   const n =
-    (await d.vouchers.reencryptNumbers()) +
-    (await d.vouchers.reencryptCopies()) +
+    (await d.vouchers.reencrypt()) +
     (await d.factors.encryptLegacySecrets()) +
     (await d.idempotency.reencryptResponses()) +
     (await d.vouchers.encryptLegacyFiles());
@@ -49,8 +48,7 @@ export async function keySwitch(d: Services): Promise<number | null> {
   if (!altKey()) return null;
   const n =
     (await d.factors.encryptLegacySecrets({ alle: true })) +
-    (await d.vouchers.reencryptAllVouchers()) +
-    (await d.vouchers.reencryptCopies(true)) +
+    (await d.vouchers.reencrypt({ all: true })) +
     (await d.vouchers.encryptLegacyFiles({ alle: true }));
   // Responses and fingerprints apply for 24 hours and depend on the key; recomputing is not worth it.
   await d.idempotency.forgetAll();

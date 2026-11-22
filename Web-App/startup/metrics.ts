@@ -32,11 +32,11 @@ export function registerCollectors(db: Pick<Db, 'pool' | 'systemPool' | 'systemW
     }
     // A scrape while the database is away shows the pools, not an error page.
     try {
-      const q = await inSystemContext('metriken', () => jobs.queueCounts());
+      const q = await inSystemContext('metriken', () => jobs.jobsInOverview());
       queue.clear();
-      for (const c of q.counts) queue.set({ type: c.type, status: c.status }, c.count);
+      for (const c of q.summary) queue.set({ type: c.type, status: c.status }, c.count);
       heartbeat.clear();
-      if (q.heartbeatAgeSec !== null) heartbeat.set({}, Math.max(0, q.heartbeatAgeSec));
+      if (q.job_process.age_seconds !== null) heartbeat.set({}, Math.max(0, q.job_process.age_seconds));
     } catch (e) {
       reportError('metriken:warteschlange', e);
     }

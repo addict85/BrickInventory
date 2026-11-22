@@ -40,7 +40,6 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
       placeOwnJobOne: bound(k)(service.placeOwnJobOne),
       inNamesOfJob: bound(k)(service.inNamesOfJob),
       jobsInOverview: bound(k)(background.jobsInOverview),
-      queueCounts: bound(k)(background.queueCounts),
       emptyJobKind: bound(k)(background.emptyJobKind),
       jobKindNow: bound(k)(background.jobKindNow),
       cancelJob: bound(k)(background.auftragAbbrechen),
