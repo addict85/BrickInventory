@@ -1,10 +1,10 @@
-/* Log-Betrachter im Popup (js/monitor.js). Eine Datei statt <style>: Das
-   Popup erbt die CSP der App, und die erlaubt keine Inline-Stile. Farben aus
-   tokens.css; monitor.js gibt data-theme und data-dunkel der App mit. */
+/* Log viewer in the popup (js/monitor.js). A file instead of <style>: the popup inherits the app's
+   CSP, which allows no inline styles. Colours from tokens.css; monitor.js passes on the app's
+   data-theme and data-dark. */
 :root{--fs-0:.75rem;--fs-1:.75rem;--fs-2:.8125rem;--fs-4:1rem;color-scheme:light;
   --bg:#f8fafc;--sur:#fff;--bdr:#cbd5e1;--txt:#1e293b;--mut:#475569;
   --lv-info:var(--b700);--lv-warn:#92400e;--lv-error:#b91c1c;--lv-error-bg:#fee2e2;--lv-mark:#fde68a}
-[data-dunkel]{color-scheme:dark;--lv-info:var(--b600);--lv-warn:var(--a-schrift);--lv-error:var(--r700);--lv-error-bg:var(--r100);--lv-mark:#5c4a1a}
+[data-dark]{color-scheme:dark;--lv-info:var(--b600);--lv-warn:var(--a-text);--lv-error:var(--r700);--lv-error-bg:var(--r100);--lv-mark:#5c4a1a}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:monospace;background:var(--bg);color:var(--txt);display:flex;flex-direction:column;height:100vh;overflow:hidden}
 header{background:var(--sur);border-bottom:1px solid var(--bdr);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
@@ -24,7 +24,7 @@ button{font-family:monospace;font-size:var(--fs-2);min-height:24px;padding:4px 1
 .ll.info{color:var(--txt);border-left-color:var(--bdr)}
 .ts{color:var(--mut);flex-shrink:0;user-select:none}.lv{flex-shrink:0;min-width:6.5em;font-weight:700;text-transform:uppercase;font-size:var(--fs-0)}
 .lv.info{color:var(--lv-info)}.lv.warn{color:var(--lv-warn)}.lv.error{color:var(--lv-error)}.msg{flex:1;min-width:0}
-summary{cursor:pointer;min-height:24px}.mehr{color:var(--mut)}
+summary{cursor:pointer;min-height:24px}.more{color:var(--mut)}
 mark{background:var(--lv-mark);color:inherit;border-radius:2px}
 .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .lvbtn{padding:3px 9px;font-size:var(--fs-1)}
@@ -33,4 +33,4 @@ mark{background:var(--lv-mark);color:inherit;border-radius:2px}
 .lvbtn.warn-btn.active{border-color:var(--lv-warn)}
 .lvbtn.error-btn.active{border-color:var(--lv-error)}
 .lvbtn[aria-pressed="true"]::before{content:"\2713 "}
-.leer{padding:20px;color:var(--mut);text-align:center}
+.empty-state{padding:20px;color:var(--mut);text-align:center}

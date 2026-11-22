@@ -24,7 +24,7 @@ test('without server: hint and try again', async () => {
       },
       '/v1/auth/me': { loggedIn: false },
     },
-    { angemeldet: false, browserLanguage: 'de-DE' },
+    { loggedIn: false, browserLanguage: 'de-DE' },
   );
   try {
     const hinweis = o.d.getElementById('start-offline');
@@ -32,7 +32,7 @@ test('without server: hint and try again', async () => {
     assert.ok(await warte(() => !hinweis.hidden, 8000), 'nach 8 s kein Hinweis');
     assert.match(hinweis.textContent, /nicht erreichbar/);
     assert.equal(hinweis.getAttribute('role'), 'alert');
-    const knopf = o.d.getElementById('start-erneut');
+    const knopf = o.d.getElementById('start-again');
     assert.match(knopf.textContent, /Erneut versuchen/);
 
     stand.weg = false;

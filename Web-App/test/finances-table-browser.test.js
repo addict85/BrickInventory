@@ -3,7 +3,7 @@
  * and no table header wraps (1280 and 1440 px, DE and EN).
  *
  * Counter-checks (measured on 03.11.2026):
- *   A  in setRow again `fmtGeld(purchase,cur)` instead of einstandZelle → red:
+ *   A  in setRow again `fmtMoney(purchase,cur)` instead of einstandZelle → red:
  *      “cost: column yields the sum” (column 250 €, sum 300 €)
  *   B  status column of the sets back to sp-40 and `.dt-fin th{white-space:nowrap;…}`
  *      removed → red: “headers in one line” (“Preis” two lines)
@@ -19,7 +19,7 @@ const { startApp, warte } = require('./helpers/app-browser');
 const { holdsSet } = require('./helpers/inventory');
 
 /** Visible text (without .vh) that wraps or sticks out over the cell. */
-const WRAP = `[...document.querySelectorAll('.dt-fin thead th, .dt-summe thead th')].filter(e => e.getClientRects().length).map(th => {
+const WRAP = `[...document.querySelectorAll('.dt-fin thead th, .dt-sum thead th')].filter(e => e.getClientRects().length).map(th => {
   const tops = new Set(); let rechts = 0; const w = document.createTreeWalker(th, NodeFilter.SHOW_TEXT);
   while (w.nextNode()) { const n = w.currentNode; if (!n.textContent.trim() || n.parentElement.closest('.vh')) continue;
     const r = document.createRange(); r.selectNodeContents(n);
@@ -61,16 +61,16 @@ test('finance table can be recalculated and without wrapping in the header', {
     await warte(300);
   };
   await b.auswerten(`location.hash = '#/finanzen'; true`);
-  await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
+  await bis(`document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
 
   await t.test('cost basis: the column yields the sum', async () => {
     const m = await b.auswerten(`(() => {
-      const tab = document.querySelector('[data-fin-art="sets"] table');
+      const tab = document.querySelector('[data-fin-kind="sets"] table');
       const spalte = [...tab.querySelectorAll('thead th')].findIndex(th => th.textContent.trim() === 'Kaufpreis');
       const zahl = s => Number(s.replace(/\\D/g, '')) / 100;
       const cells = [...tab.querySelectorAll('tbody tr')].map(tr => tr.children[spalte]);
-      return { spalte, zeilen: cells.map(z => zahl(z.firstChild.textContent)), je: cells.map(z => z.querySelector('.fin-je')?.textContent || ''),
-               summe: zahl(tab.querySelector('tfoot .fin-fuss-wert').textContent) }; })()`);
+      return { spalte, zeilen: cells.map(z => zahl(z.firstChild.textContent)), je: cells.map(z => z.querySelector('.fin-per')?.textContent || ''),
+               summe: zahl(tab.querySelector('tfoot .fin-footer-value').textContent) }; })()`);
     assert.ok(m.spalte > 0, 'Spalte „Einstand“ fehlt');
     assert.deepEqual(
       m.zeilen.slice().sort((a, b) => a - b),
@@ -98,7 +98,7 @@ test('finance table can be recalculated and without wrapping in the header', {
         await warte(300);
         await b.auswerten(`location.hash = '#/finanzen'; true`);
         await bis(
-          `document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2 && /Purchase price/.test(document.querySelector('.dt-fin thead').textContent)`,
+          `document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2 && /Purchase price/.test(document.querySelector('.dt-fin thead').textContent)`,
           'englische Finanztabelle',
         );
       }

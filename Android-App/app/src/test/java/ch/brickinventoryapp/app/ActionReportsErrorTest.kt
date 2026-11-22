@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * What the user triggers also reports when it fails.
@@ -39,48 +39,48 @@ class ActionReportsErrorTest {
 
     /** All functions of the ViewModels, per name. */
     private fun viewModelFunctions(): Map<String, String> {
-        val dateien = Quellen.unter("ui").filter { it.name.endsWith("ViewModel.kt") }
-        assert(dateien.size >= 10) {
-            "Nur ${dateien.size} *ViewModel.kt gefunden — der Pfad stimmt nicht, und ein " +
+        val files = Sources.below("ui").filter { it.name.endsWith("ViewModel.kt") }
+        assert(files.size >= 10) {
+            "Nur ${files.size} *ViewModel.kt gefunden — der Pfad stimmt nicht, und ein " +
                 "leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
         }
-        val kopf = Regex("""\n    (?:override |private |internal |protected )?(?:suspend )?fun (\w+)\(""")
-        val ergebnis = linkedMapOf<String, String>()
-        for (datei in dateien) {
-            val src = Quellen.withoutComments(datei.readText())
-            val treffer = kopf.findAll(src).toList()
-            for ((k, m) in treffer.withIndex()) {
-                val ende = treffer.getOrNull(k + 1)?.range?.first ?: src.length
-                ergebnis["${datei.name}:${m.groupValues[1]}"] = src.substring(m.range.first, ende)
+        val header = Regex("""\n    (?:override |private |internal |protected )?(?:suspend )?fun (\w+)\(""")
+        val outcome = linkedMapOf<String, String>()
+        for (file in files) {
+            val src = Sources.withoutComments(file.readText())
+            val hits = header.findAll(src).toList()
+            for ((k, m) in hits.withIndex()) {
+                val end = hits.getOrNull(k + 1)?.range?.first ?: src.length
+                outcome["${file.name}:${m.groupValues[1]}"] = src.substring(m.range.first, end)
             }
         }
-        assert(ergebnis.size >= 40) { "Nur ${ergebnis.size} Funktionen gefunden — Muster veraltet?" }
-        return ergebnis
+        assert(outcome.size >= 40) { "Nur ${outcome.size} Funktionen gefunden — Muster veraltet?" }
+        return outcome
     }
 
     @Test
     fun `every changing function reports its error`() {
         // Changing = it calls a writing path of the repository.
         val changing = Regex(
-            """\b(?:repo|sets|teile|finanzen|haushalt|admin|konto|gutscheine)\.(?:\w+\.)?(add|delete|update|unlink|invite|redeem|create|remove|save|move|change)\w*\(""",
+            """\b(?:repo|sets|parts|finances|household|admin|account|vouchers)\.(?:\w+\.)?(add|delete|update|unlink|invite|redeem|create|remove|save|move|change)\w*\(""",
             RegexOption.IGNORE_CASE)
-        val still = Regex("""is Ergebnis\.Fehler\s*->\s*\{\s*\}""")
+        val still = Regex("""is Outcome\.Failure\s*->\s*\{\s*\}""")
 
-        val stumm = mutableListOf<String>()
-        var geprueft = 0
-        for ((name, rumpf) in viewModelFunctions()) {
-            if (!changing.containsMatchIn(rumpf)) continue
-            geprueft++
-            if (still.containsMatchIn(rumpf)) stumm += name
+        val silent = mutableListOf<String>()
+        var checked = 0
+        for ((name, body) in viewModelFunctions()) {
+            if (!changing.containsMatchIn(body)) continue
+            checked++
+            if (still.containsMatchIn(body)) silent += name
         }
 
-        assert(geprueft >= 15) {
-            "Nur $geprueft ändernde Funktionen erkannt — das Muster findet zu wenig, " +
+        assert(checked >= 15) {
+            "Nur $checked ändernde Funktionen erkannt — das Muster findet zu wenig, " +
                 "und ein leeres Ergebnis unten sagt dann nichts."
         }
 
-        assert(stumm.isEmpty()) {
-            "Diese Handlungen scheitern lautlos:\n  " + stumm.joinToString("\n  ") +
+        assert(silent.isEmpty()) {
+            "Diese Handlungen scheitern lautlos:\n  " + silent.joinToString("\n  ") +
                 "\nDer Nutzer tippt, es passiert sichtbar nichts, und er erfährt " +
                 "keinen Grund. Fehler melden — über den Weg, den die Nachbarn " +
                 "derselben Datei benutzen."

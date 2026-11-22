@@ -30,8 +30,8 @@ const collect = src => {
   for (const m of src.matchAll(/\.id\s*=\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/\.id\s*=\s*"([^"]+)"/g)) knownIds.add(m[1]);
   // And the fourth path: the view building block sets the id as an OPTION.
-  for (const m of src.matchAll(/wertId:\s*'([^']+)'/g)) knownIds.add(m[1]);
-  for (const m of src.matchAll(/wertId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
+  for (const m of src.matchAll(/valueId:\s*'([^']+)'/g)) knownIds.add(m[1]);
+  for (const m of src.matchAll(/valueId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
   // And the fifth path: the storage location building block creates TWO elements from
   // one identifier — the text field `id` and the select `id-sel`
   // (admin.js, locationBlock). Since the field is a select with

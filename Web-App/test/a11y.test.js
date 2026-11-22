@@ -130,7 +130,7 @@ test('meaningful symbols in the finance table are explained', async () => {
         `${p.className}: ${a}="${p.getAttribute(a)}"`,
       );
   }
-  assert.deepEqual([...states].sort(), ['pst-err', 'pst-leer', 'pst-ok']);
+  assert.deepEqual([...states].sort(), ['pst-empty', 'pst-err', 'pst-ok']);
 });
 
 /** Visible here means: no ancestor with display:none (markup or script). */

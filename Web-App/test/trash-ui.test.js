@@ -6,7 +6,7 @@
  * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
  *   A  in zeile() the quantity deleted from text and button names → red: “account and quantity” (each individually)
  *   B  loadTrash() without focus on the neighbor → red: “focus and toast” (focus on the heading)
- *   C  in papierkorbWiederherstellen() the closing of the toast deleted → red: “focus and toast”
+ *   C  in restoreFromTrash() the closing of the toast deleted → red: “focus and toast”
  *      (undo still stands)
  */
 const test = require('node:test');
@@ -60,15 +60,13 @@ function antworten() {
 test('account and quantity distinguish equal entries', async () => {
   const { w, d } = await openUi(antworten());
   try {
-    await sicht(w, 'daten');
-    await warte(() => d.querySelectorAll('#papierkorb-liste .pk-zeile').length === 2);
-    const zeilen = [...d.querySelectorAll('#papierkorb-liste .pk-zeile')];
+    await sicht(w, 'data');
+    await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 2);
+    const zeilen = [...d.querySelectorAll('#trash-list .pk-row')];
     assert.match(text(zeilen[0]), /Menge 1 · anna \(ich\)/);
     assert.match(text(zeilen[1]), /Menge 2 · lena/);
-    assert.match(text(zeilen[0].querySelector('.pk-frist')), /^wird am .+ endgültig gelöscht$/);
-    const namen = zeilen.map(z =>
-      z.querySelector('[data-click="papierkorbWiederherstellen"]').getAttribute('aria-label'),
-    );
+    assert.match(text(zeilen[0].querySelector('.pk-deadline')), /^wird am .+ endgültig gelöscht$/);
+    const namen = zeilen.map(z => z.querySelector('[data-click="restoreFromTrash"]').getAttribute('aria-label'));
     assert.equal(new Set(namen).size, 2, `Knöpfe gleich benannt: ${namen.join(' | ')}`);
     assert.match(namen[1], /^Wiederherstellen: 21318-1 · Tree House · Menge 2 · lena$/);
   } finally {
@@ -81,19 +79,19 @@ test('focus and toast after restoring in the trash', async () => {
   try {
     await warte(() => d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn'));
     d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn').click();
-    assert.ok(await warte(() => d.querySelector('#toasts [data-papierkorb="7"] .toast-aktion')), 'Rückgängig');
-    await sicht(w, 'daten');
-    await warte(() => d.querySelectorAll('#papierkorb-liste .pk-zeile').length === 2);
-    const knopf = d.querySelector('[data-click="papierkorbWiederherstellen"][data-arg="7"]');
+    assert.ok(await warte(() => d.querySelector('#toasts [data-trash="7"] .toast-action')), 'Rückgängig');
+    await sicht(w, 'data');
+    await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 2);
+    const knopf = d.querySelector('[data-click="restoreFromTrash"][data-arg="7"]');
     knopf.focus();
     knopf.click();
     await warte(() => aufrufe.some(a => a.url.endsWith('/v1/papierkorb/7/wiederherstellen')));
-    await warte(() => d.querySelectorAll('#papierkorb-liste .pk-zeile').length === 1);
+    await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 1);
     assert.ok(
       await warte(() => d.activeElement?.getAttribute('data-arg') === '8'),
       `Fokus auf ${d.activeElement?.outerHTML?.slice(0, 80) ?? d.activeElement?.tagName}`,
     );
-    assert.equal(d.querySelector('#toasts [data-papierkorb]'), null, 'Rückgängig steht noch');
+    assert.equal(d.querySelector('#toasts [data-trash]'), null, 'Rückgängig steht noch');
   } finally {
     w.close();
   }

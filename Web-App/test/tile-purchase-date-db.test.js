@@ -64,8 +64,8 @@ test('the tile shows the purchase date', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await warte(() => d.querySelector('.sc .kachel-datum'));
-    const datum = d.querySelector('.sc .kachel-datum');
+    await warte(() => d.querySelector('.sc .tile-date'));
+    const datum = d.querySelector('.sc .tile-date');
     assert.ok(datum, 'Kein Datum auf der Kachel');
     // One notation for all dates (fmtDatum): two digits, since 29.10.
     assert.match(datum.textContent, /14\.07\.2025/);

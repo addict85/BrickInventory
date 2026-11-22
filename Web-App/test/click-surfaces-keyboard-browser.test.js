@@ -3,7 +3,7 @@
  * all main pages, in card and table view and in the household, every
  * visible element with data-click that is not a button, link or field has
  * tabindex="0" and a role; a table row carries a row button for it
- * (.zeile-oeffnen) with the same action. Excepted …
+ * (.row-open) with the same action. Excepted …
  *
  * Counter-checks (measured 04.11.2026, each alone, bundle rebuilt):
  *   A  minifigure tile from sets again without tabindex and role (minifigs.js) →
@@ -25,7 +25,7 @@ const { patternHousehold } = require('./helpers/inventory');
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const reiter = r => klick(`.ntab[data-tab="${r}"]`);
 const sicht = s => klick(`.umenu-item[data-arg="${s}"]`);
-const ansicht = (id, wert) => klick(`[data-click="ansichtWaehlen"][data-arg="${id}"][data-arg2="${wert}"]`);
+const ansicht = (id, wert) => klick(`[data-click="chooseView"][data-arg="${id}"][data-arg2="${wert}"]`);
 
 const SEITEN = [
   ['Sammlung', [reiter('gallery')]],
@@ -43,10 +43,10 @@ const SEITEN = [
     'Einstellungen',
     [
       reiter('settings'),
-      `document.querySelectorAll('#global-settings-grid > .ssec').forEach(a => a.classList.add('einst-aktiv')); true`,
+      `document.querySelectorAll('#global-settings-grid > .ssec').forEach(a => a.classList.add('settings-active')); true`,
     ],
   ],
-  ...['profil', 'gutscheine', 'alarme', 'lagerorte', 'haushalt', 'daten', 'app'].map(s => [`Sicht ${s}`, [sicht(s)]]),
+  ...['profile', 'vouchers', 'alerts', 'locations', 'household', 'data', 'app'].map(s => [`Sicht ${s}`, [sicht(s)]]),
   ['Set-Detail', [reiter('gallery'), klick('#gallery [data-click="openModal"]')]],
 ];
 
@@ -54,7 +54,7 @@ const SEITEN = [
 const UNBEDIENBAR = `(() => {
   const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY', 'LABEL', 'OPTION']);
   const bedienbar = (el) => NATIV.has(el.tagName) || (el.tabIndex >= 0 && el.hasAttribute('tabindex') && !!el.getAttribute('role'))
-    || (el.tagName === 'TR' && !!el.querySelector('.zeile-oeffnen[data-click="' + el.dataset.click + '"]'));
+    || (el.tagName === 'TR' && !!el.querySelector('.row-open[data-click="' + el.dataset.click + '"]'));
   const funde = new Set();
   for (const el of document.querySelectorAll('[data-click]')) {
     if (!el.checkVisibility() || bedienbar(el) || el.dataset.click === 'stopEvent') continue;
@@ -98,7 +98,7 @@ test('click areas with the keyboard', { timeout: 280_000 }, async t => {
     await b.auswerten(reiter('minifigs'));
     for (const [wert, sel] of [
       ['grid', '#figs-list .part-card[data-click="openSetItemDetail"]'],
-      ['table', '#figs-list tr .zeile-oeffnen[data-click="openSetItemDetail"]'],
+      ['table', '#figs-list tr .row-open[data-click="openSetItemDetail"]'],
     ]) {
       await b.auswerten(ansicht('figs-view', wert));
       await bis(`!!document.querySelector(${JSON.stringify(sel)})`, `Figur aus Set (${wert})`);

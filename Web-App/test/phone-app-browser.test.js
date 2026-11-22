@@ -8,30 +8,30 @@
  *   B  (29.10.) brand in the header bar again <h1> → red: “skip link and exactly one
  *      h1 per tab” (two h1 per tab)
  *   C  (29.10.) skip link removed from index.html → red: the same check (first
- *      tab stop was .ubadge-knopf)
+ *      tab stop was .ubadge-button)
  *   D  (29.10.) --fs-0 again .6875rem → red: “tap targets and font per
  *      tab” (span.tab-label 11 px); .delbtn again 36 px → red (36×36)
- *   E  (02.11.) the class gruppe-aktiv no longer set in markGroup
+ *   E  (02.11.) the class group-active no longer set in markGroup
  *      → red: “parts and minifigures findable in the bar” (aria-current);
- *      (29.10.) `.ntab.ntab-sammlung{display:none}` removed from styles.css
+ *      (29.10.) `.ntab.ntab-collection{display:none}` removed from styles.css
  *      → red: on the computer two navigations again (teile: true)
  *   F  (29.10.; 30.10. with color heading across the full width) .parts-list
  *      without display:grid → red: “parts: one grid, filters as a sheet” (breit:
  *      12); class filterleiste on the
  *      parts filter row removed → red („Die Auswahlfelder stehen offen da“)
- *   G  (29.10.) .merk-erfassen > .btn{height:38px…} removed → red:
+ *   G  (29.10.) .wanted-capture > .btn{height:38px…} removed → red:
  *      “wishlist: capture row aligned” (button 34 px, CSV 39 px, offset)
- *   H  (29.10.) <details class="mehr-menue"> around #btn-md removed → red:
+ *   H  (29.10.) <details class="more-menu"> around #btn-md removed → red:
  *      “set view: chart, delete, price alert” („Löschen steht offen im
- *      Fuss“); the three .alarm-zeile rules removed from mobile.css → red
+ *      Fuss“); the three .alert-row rules removed from mobile.css → red
  *      (fields next to the label)
- *   J  (08.11.) in mobile.css `.alarm-zeile .alarm-preis` again flex 1 1 100% and `.alarm-waehrung`
+ *   J  (08.11.) in mobile.css `.alert-row .alert-price` again flex 1 1 100% and `.alert-currency`
  *      without a rule → red: “set view: chart, delete, price alert” (currencyBeside: false)
  *   I  (29.10.) in loadPartsData again loadDisplay() → red: “skeleton while
  *      loading the parts”; the prefers-reduced-motion rule removed → red:
  *      „weniger Bewegung“ (dialog 0.2 s); the animation on .tab.active
  *      removed → red (without the setting no transitions)
- *   J  (29.10.) the rule `.ssec:not(.einst-aktiv){display:none…}` removed
+ *   J  (29.10.) the rule `.ssec:not(.settings-active){display:none…}` removed
  *      → red: “settings: one section per subpage” (seven visible);
  *      the phone rule of the bar removed → red (bar in several rows)
  */
@@ -42,7 +42,7 @@ const { holdsSet } = require('./helpers/inventory');
 
 /** Smallest font in px across all labels of the charts below `wurzel`. */
 const DIAGRAMMSCHRIFT = wurzel => `(() => {
-  const svgs = [...document.querySelectorAll(${JSON.stringify(wurzel)} + ' svg.diagramm')];
+  const svgs = [...document.querySelectorAll(${JSON.stringify(wurzel)} + ' svg.chart')];
   return svgs.map(svg => {
     const massstab = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
     const sizes = [...svg.querySelectorAll('text')].map(x => parseFloat(getComputedStyle(x).fontSize) * massstab);
@@ -56,7 +56,7 @@ const SMALL = `(() => {
   const sichtbar = e => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
   const klein = [...document.querySelectorAll('button, a[href], input:not([type=hidden]), select, [role=button], label.btn')]
     // Ein verstecktes Dateifeld wird über sein Knopf-Label getippt; gemessen wird das Label.
-    .filter(sichtbar).filter(e => !e.closest('.vh') && !e.matches('.datei-versteckt'))
+    .filter(sichtbar).filter(e => !e.closest('.vh') && !e.matches('.file-hidden'))
     .map(e => { const q = e.getBoundingClientRect(); return [e, Math.round(q.width), Math.round(q.height)]; })
     .filter(([, w, h]) => w < 44 || h < 44)
     .map(([e, w, h]) => e.tagName.toLowerCase() + (e.className ? '.' + String(e.className).trim().replace(/\\s+/g, '.') : '') + ' ' + w + '×' + h);
@@ -142,12 +142,12 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
   await t.test('skeleton while loading the parts', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
     // The skeleton comes after metrics and filters; the parts themselves are delayed by 1.5 s.
-    await bis(`!!document.querySelector('#parts-main .skelett-raster')`, 'Skelett der Teile', 30);
-    const s = await b.auswerten(`(() => { const r = document.querySelector('#parts-main .skelett-raster');
-      return r && { kacheln: r.querySelectorAll('.part-card.skelett').length, rolle: r.getAttribute('role'), text: r.textContent.trim() }; })()`);
+    await bis(`!!document.querySelector('#parts-main .skeleton-grid')`, 'Skelett der Teile', 30);
+    const s = await b.auswerten(`(() => { const r = document.querySelector('#parts-main .skeleton-grid');
+      return r && { kacheln: r.querySelectorAll('.part-card.skeleton').length, rolle: r.getAttribute('role'), text: r.textContent.trim() }; })()`);
     assert.deepEqual(s, { kacheln: 12, rolle: 'status', text: 'Lade Teile…' });
     await bis(
-      `!document.querySelector('#parts-main .skelett-raster') && document.querySelectorAll('#parts-main .part-card').length === 12`,
+      `!document.querySelector('#parts-main .skeleton-grid') && document.querySelectorAll('#parts-main .part-card').length === 12`,
       'Teile statt Skelett',
     );
   });
@@ -161,11 +161,11 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
       // The settings show one section at a time; all of them are measured.
       const seiten =
         r === 'settings'
-          ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`)
+          ? await b.auswerten(`[...document.querySelectorAll('.settings-nav a')].map(a => a.dataset.arg)`)
           : [null];
       for (const seite of seiten) {
         if (seite) {
-          await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`);
+          await b.auswerten(`document.querySelector('.settings-nav a[data-arg="${seite}"]').click(); true`);
           await warte(100);
         }
         await rest();
@@ -197,7 +197,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
         .find(x => x.tabIndex >= 0 && !x.disabled && x.getClientRects().length > 0);
       e.focus(); const r = e.getBoundingClientRect();
       return { klasse: e.className, text: e.textContent.trim(), oben: r.top, hoehe: r.height }; })()`);
-    assert.equal(fokus.klasse, 'sprunglink', `Erster Tab-Halt: ${JSON.stringify(fokus)}`);
+    assert.equal(fokus.klasse, 'skip-link', `Erster Tab-Halt: ${JSON.stringify(fokus)}`);
     assert.equal(fokus.text, 'Zum Inhalt');
     assert.ok(
       fokus.oben >= 0 && fokus.hoehe >= 24,
@@ -206,7 +206,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await ruhig();
-    assert.equal(await b.auswerten(`document.activeElement.id`), 'inhalt');
+    assert.equal(await b.auswerten(`document.activeElement.id`), 'content');
   });
 
   await t.test('settings: one section per subpage', async () => {
@@ -214,25 +214,25 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     const stand = () =>
       b.auswerten(`(() => {
       const sichtbar = [...document.querySelectorAll('#global-settings-grid > .ssec')].filter(s => s.getClientRects().length > 0);
-      const nav = document.querySelector('.einst-nav').getBoundingClientRect();
-      return { sichtbar: sichtbar.map(s => s.id), aktuell: document.querySelector('.einst-nav a[aria-current="page"]')?.dataset.arg,
-               navRows: new Set([...document.querySelectorAll('.einst-nav a')].map(a => Math.round(a.getBoundingClientRect().top))).size,
+      const nav = document.querySelector('.settings-nav').getBoundingClientRect();
+      return { sichtbar: sichtbar.map(s => s.id), aktuell: document.querySelector('.settings-nav a[aria-current="page"]')?.dataset.arg,
+               navRows: new Set([...document.querySelectorAll('.settings-nav a')].map(a => Math.round(a.getBoundingClientRect().top))).size,
                navHoehe: Math.round(nav.height), pagesWidth: document.documentElement.scrollWidth }; })()`);
     const vorher = await stand();
     assert.equal(vorher.sichtbar.length, 1, `sichtbar: ${vorher.sichtbar}`);
     assert.equal(vorher.aktuell, vorher.sichtbar[0]);
     assert.equal(vorher.navRows, 1, 'am Telefon steht die Leiste in einer Zeile');
     assert.ok(vorher.pagesWidth <= 390, `Seite ${vorher.pagesWidth} px breit`);
-    await b.auswerten(`document.querySelector('.einst-nav a[data-arg="einst-smtp"]').click(); true`);
+    await b.auswerten(`document.querySelector('.settings-nav a[data-arg="settings-smtp"]').click(); true`);
     await ruhig();
     const nachher = await stand();
-    assert.deepEqual([nachher.sichtbar, nachher.aktuell], [['einst-smtp'], 'einst-smtp']);
-    assert.equal(await b.auswerten(`localStorage.getItem('bim_einst_abschnitt')`), 'einst-smtp');
+    assert.deepEqual([nachher.sichtbar, nachher.aktuell], [['settings-smtp'], 'settings-smtp']);
+    assert.equal(await b.auswerten(`localStorage.getItem('bim_settings_section')`), 'settings-smtp');
   });
 
   await t.test('parts and minifigures findable in the bar', async () => {
     await reiter('gallery');
-    await b.auswerten(`document.querySelector('#tab-gallery .sammlung-wahl [data-arg="parts"]').click(); true`);
+    await b.auswerten(`document.querySelector('#tab-gallery .collection-choice [data-arg="parts"]').click(); true`);
     await ruhig();
     const telefon = await b.auswerten(`(() => { const s = document.querySelector('.ntab[data-tab="gallery"]');
       return { text: s.innerText.trim(), aktuell: s.getAttribute('aria-current'),
@@ -253,8 +253,8 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await ruhig();
     const calculator = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
       return { teile: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
-               toggle: document.querySelector('#tab-parts .sammlung-wahl').getClientRects().length > 0,
-               collectionActive: r('gallery').classList.contains('gruppe-aktiv') }; })()`);
+               toggle: document.querySelector('#tab-parts .collection-choice').getClientRects().length > 0,
+               collectionActive: r('gallery').classList.contains('group-active') }; })()`);
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await bis('innerWidth === 390', 'Fensterbreite');
     await ruhig();
@@ -265,7 +265,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
 
   await t.test('parts: one grid, filters as a sheet', async () => {
     await reiter('parts');
-    await bis(`document.querySelectorAll('#parts-main .part-card:not(.skelett)').length === 12`, 'zwölf Teile');
+    await bis(`document.querySelectorAll('#parts-main .part-card:not(.skeleton)').length === 12`, 'zwölf Teile');
     const raster = await b.auswerten(`(() => {
       const liste = document.querySelector('#parts-main .parts-list').getBoundingClientRect();
       const gruppen = [...document.querySelectorAll('#parts-main .parts-group')];
@@ -282,16 +282,16 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     );
     const sichtbar = id => `document.getElementById('${id}').getClientRects().length > 0`;
     assert.equal(await b.auswerten(sichtbar('parts-spare')), false, 'Die Auswahlfelder stehen offen da');
-    await b.auswerten(`document.querySelector('#tab-parts .filter-knopf').click(); true`);
+    await b.auswerten(`document.querySelector('#tab-parts .filter-button').click(); true`);
     const offen = await b.auswerten(`(() => ({
-      erweitert: document.querySelector('#tab-parts .filter-knopf').getAttribute('aria-expanded'),
+      erweitert: document.querySelector('#tab-parts .filter-button').getAttribute('aria-expanded'),
       sichtbar: ${sichtbar('parts-spare')},
-      breiten: [...document.querySelectorAll('#tab-parts .filterleiste > select:not(.vh)')].filter(x => x.getClientRects().length)
+      breiten: [...document.querySelectorAll('#tab-parts .filter-bar > select:not(.vh)')].filter(x => x.getClientRects().length)
         .map(x => Math.round(x.getBoundingClientRect().width)) }))()`);
     assert.equal(offen.erweitert, 'true');
     assert.equal(offen.sichtbar, true);
     assert.equal(new Set(offen.breiten).size, 1, `ungleich breite Felder: ${offen.breiten}`);
-    await b.auswerten(`document.querySelector('#tab-parts .filter-knopf').click(); true`);
+    await b.auswerten(`document.querySelector('#tab-parts .filter-button').click(); true`);
   });
 
   await t.test('wishlist: capture row aligned', async () => {
@@ -323,7 +323,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
 
   await t.test('chart font finances', async () => {
     await reiter('finance');
-    await bis(`!!document.querySelector('#portfolio-chart svg.diagramm')`, 'Wertdiagramm');
+    await bis(`!!document.querySelector('#portfolio-chart svg.chart')`, 'Wertdiagramm');
     const [d] = await b.auswerten(DIAGRAMMSCHRIFT('#portfolio-chart'));
     assert.ok(d.anzahl >= 4, `nur ${d.anzahl} Beschriftungen`);
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
@@ -335,7 +335,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await reiter('gallery');
     await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
     await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
-    await bis(`!!document.querySelector('#m-sparkline-content svg.diagramm')`, 'Preisverlauf');
+    await bis(`!!document.querySelector('#m-sparkline-content svg.chart')`, 'Preisverlauf');
     const [d] = await b.auswerten(DIAGRAMMSCHRIFT('#m-sparkline-content'));
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
     assert.equal(d.rolle, 'img');
@@ -344,19 +344,19 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     // a row of its own across the full width.
     const sichtbar = sel => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;
     assert.equal(await b.auswerten(sichtbar('#btn-md')), false, 'Löschen steht offen im Fuss');
-    await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
+    await b.auswerten(`document.querySelector('#set-modal .more-menu > summary').click(); true`);
     await ruhig();
     assert.equal(await b.auswerten(sichtbar('#btn-md')), true, 'Löschen ist hinter „Weitere Aktionen“ nicht zu finden');
     const alarm = await b.auswerten(`(() => {
-      const zeile = document.querySelector('#set-modal .alarm-zeile');
+      const zeile = document.querySelector('#set-modal .alert-row');
       const titel = zeile.querySelector('.dl').getBoundingClientRect();
-      const felder = [...zeile.querySelectorAll('.alarm-feld')].map(f => f.getBoundingClientRect());
+      const felder = [...zeile.querySelectorAll('.alert-field')].map(f => f.getBoundingClientRect());
       const z = zeile.getBoundingClientRect();
-      const preis = zeile.querySelector('.alarm-preis');
+      const preis = zeile.querySelector('.alert-price');
       return { belowTitle: felder.every(f => f.top >= titel.bottom - 1), zeilen: new Set(felder.map(f => Math.round(f.top))).size,
                beschriftung: preis?.textContent.trim(), hoehe: Math.min(...felder.map(f => f.height)),
                // Die Währung steht in der Zeile des Preisfelds, nicht darunter.
-               currencyBeside: (() => { const w = zeile.querySelector('.alarm-waehrung').getBoundingClientRect(), p = felder[2];
+               currencyBeside: (() => { const w = zeile.querySelector('.alert-currency').getBoundingClientRect(), p = felder[2];
                  return w.top >= p.top - 1 && w.bottom <= p.bottom + 1 && w.left >= p.right - 1; })(),
                breite: Math.round((felder[1].right - felder[0].left) / z.width * 100) };
     })()`);

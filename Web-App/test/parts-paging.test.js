@@ -204,7 +204,7 @@ test('loading more only happens in the visible parts tab', async () => {
   const { w, d, aufrufe, ruhig } = await openUi(
     { '/v1/parts': seite },
     {
-      vorher(w) {
+      before(w) {
         w.IntersectionObserver = class {
           constructor(cb) {
             observer.push(cb);

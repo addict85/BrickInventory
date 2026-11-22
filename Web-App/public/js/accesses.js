@@ -1,11 +1,11 @@
-import { echt, registerActions } from './registry.js';
+import { genuine, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
-import { fmtDatum } from './format.js';
+import { fmtDate } from './format.js';
 import { errorMessage, api } from './api.js';
-import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
+import { ico, G, buttonBusy, setHtml } from './dom.js';
 import { toast } from './messages.js';
 import { html, safeUrl } from './escaping.js';
-import { bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
+import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
 
 // Account access: app tokens, QR sign-in and the TLS certificate for the app.
 // After scanning, the app announces itself with a device name and shows a code; only once it is typed in
@@ -24,11 +24,11 @@ function endPairing() {
 
 /** @param {string} text @param {boolean} withField */
 function showPairing(text, withField) {
-  const box = G('qr-kopplung');
+  const box = G('qr-pairing');
   if (!box) return;
   box.hidden = false;
-  G('qr-kopplung-text').textContent = text;
-  G('qr-kopplung-feld').hidden = G('qr-kopplung-knoepfe').hidden = !withField;
+  G('qr-pairing-text').textContent = text;
+  G('qr-pairing-field').hidden = G('qr-pairing-buttons').hidden = !withField;
 }
 
 async function checkPairing() {
@@ -40,24 +40,24 @@ async function checkPairing() {
   if (d.stand === 'wartet') {
     // The code is used up; otherwise only an image would remain that opens nothing anymore.
     G('qr-code').replaceChildren();
-    if (G('qr-kopplung').hidden || G('qr-kopplung-feld').hidden)
-      showPairing(tRaw('qr.kopplung_frage', { geraet: device, netz: d.ip_range || '—' }), true);
-  } else if (d.stand === 'bestaetigt') showPairing(tRaw('qr.kopplung_bestaetigt', { geraet: device }), false);
+    if (G('qr-pairing').hidden || G('qr-pairing-field').hidden)
+      showPairing(tRaw('qr.pairing_question', { geraet: device, network: d.ip_range || '—' }), true);
+  } else if (d.stand === 'bestaetigt') showPairing(tRaw('qr.pairing_confirmed', { geraet: device }), false);
   else if (d.stand === 'abgeholt') {
     endPairing();
     G('qr-code').replaceChildren();
-    showPairing(tRaw('qr.kopplung_fertig', { geraet: device }), false);
+    showPairing(tRaw('qr.pairing_done', { geraet: device }), false);
     loadTokens();
   } else if (d.stand === 'abgelehnt' || d.stand === 'abgelaufen') {
     endPairing();
     G('qr-code').replaceChildren();
-    showPairing(tRaw('qr.kopplung_abgelehnt'), false);
+    showPairing(tRaw('qr.pairing_rejected'), false);
   }
 }
 
-async function qrKopplungBestaetigen() {
+async function confirmQrPairing() {
   const k = _pairing;
-  const field = G('qr-kopplung-code');
+  const field = G('qr-pairing-code');
   if (!k || !field) return;
   const d = await api('POST', `/v1/auth/qr-kopplung/${k.id}/bestaetigen`, { code: field.value.trim() });
   field.value = '';
@@ -65,7 +65,7 @@ async function qrKopplungBestaetigen() {
   checkPairing();
 }
 
-async function qrKopplungAblehnen() {
+async function rejectQrPairing() {
   const k = _pairing;
   if (!k) return;
   await api('POST', `/v1/auth/qr-kopplung/${k.id}/ablehnen`, {});
@@ -95,7 +95,7 @@ async function generateQrCode() {
   const btn = G('btn-gen-qr');
   const hint = G('qr-hint');
   const container = G('qr-code');
-  const release = knopfBesetzt(btn);
+  const release = buttonBusy(btn);
   try {
     // POST, because the call creates a nonce: as a GET, a foreign page could trigger it via navigation
     // (SameSite=lax). The later token's lifetime travels along with creation, otherwise whoever finds a
@@ -106,7 +106,7 @@ async function generateQrCode() {
     if (pw) pw.value = '';
     endPairing();
     clearInterval(_expiry);
-    if (G('qr-kopplung')) G('qr-kopplung').hidden = true;
+    if (G('qr-pairing')) G('qr-pairing').hidden = true;
     const d = await withSecondFactor(z => api('POST', '/v1/auth/qr-token', { gueltigkeit: validity, password, ...z }));
     if (d === null) {
       release();
@@ -153,7 +153,7 @@ async function generateQrCode() {
     const plainHint = G('qr-tls-hint');
     if (plainHint) {
       plainHint.hidden = !/^http:\/\//i.test(serverUrl || '');
-      plainHint.textContent = plainHint.hidden ? '' : tRaw('qr.klartext_hinweis');
+      plainHint.textContent = plainHint.hidden ? '' : tRaw('qr.plain_text_hint');
     }
     const access = G('qr-access-hint');
     if (access)
@@ -183,7 +183,7 @@ G('btn-gen-qr').onclick = generateQrCode;
  */
 function tokenDate(value) {
   if (!value) return '—';
-  return fmtDatum(value, 'tagzeit');
+  return fmtDate(value, 'datetime');
 }
 
 export async function loadTokens() {
@@ -191,14 +191,14 @@ export async function loadTokens() {
   if (!target) return;
   const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) {
-    setzeHtml(target, html`<p data-stil="color:var(--mut)">${d.error || t('settings.error')}</p>`);
+    setHtml(target, html`<p data-style="color:var(--mut)">${d.error || t('settings.error')}</p>`);
     return;
   }
   if (!d.tokens.length) {
-    setzeHtml(target, html`<p data-stil="color:var(--mut)">${tRaw('tokens.none')}</p>`);
+    setHtml(target, html`<p data-style="color:var(--mut)">${tRaw('tokens.none')}</p>`);
     return;
   }
-  setzeHtml(
+  setHtml(
     target,
     html`<div class="tw"><table class="dt" aria-label="${tRaw('tokens.title')}"><thead><tr>
       <th>${tRaw('tokens.col.label')}</th><th>${tRaw('tokens.col.created')}</th>
@@ -208,10 +208,10 @@ export async function loadTokens() {
       <td><strong>${tk.label || '—'}</strong>${tk.aktuell ? html` <span class="rb ra">${tRaw('tokens.current')}</span>` : ''}</td>
       <td>${tokenDate(tk.created_at)}</td>
       <td>${tokenDate(tk.last_used)}</td>
-      <td>${tk.scope === 'voll' ? tRaw('tokens.scope.voll') : tRaw('tokens.scope.app')}</td>
+      <td>${tk.scope === 'voll' ? tRaw('tokens.scope.full') : tRaw('tokens.scope.app')}</td>
       <td>${tk.ip_range || '—'}</td>
       <td>${tk.never_expires ? tRaw('tokens.never') : tokenDate(tk.expires_at)}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDate(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
-      <td>${tk.aktuell ? '' : html`<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${tk.token_id}" data-arg2="${tk.label || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button>`}</td>
+      <td>${tk.aktuell ? '' : html`<button class="btn bd btn-sm" data-click="revokeToken"${genuine()} data-arg="${tk.token_id}" data-arg2="${tk.label || ''}" aria-label="${tRaw('common.delete')}">${ico('delete')}</button>`}</td>
     </tr>`,
       )}</tbody></table></div>`,
   );
@@ -222,28 +222,31 @@ export async function loadTokens() {
  * Without an internal CA (a foreign proxy), only whether HTTPS applies is shown.
  */
 export async function loadTls() {
-  const target = G('tls-flaeche');
+  const target = G('tls-surface');
   if (!target) return;
   const d = await api('GET', '/v1/settings/tls');
   if (!d?.success) {
-    setzeHtml(target, html`<p class="hinweis-absatz">${d?.error || t('settings.error')}</p>`);
+    setHtml(target, html`<p class="hint-paragraph">${d?.error || t('settings.error')}</p>`);
     return;
   }
   if (!d.fp) {
-    setzeHtml(target, html`<p class="hinweis-absatz">${d.https ? tRaw('tls.ohne_ca') : tRaw('tls.ohne_https')}</p>`);
+    setHtml(
+      target,
+      html`<p class="hint-paragraph">${d.https ? tRaw('tls.without_ca') : tRaw('tls.without_https')}</p>`,
+    );
     return;
   }
-  setzeHtml(
+  setHtml(
     target,
-    html`<p class="hinweis-absatz">${tRaw('tls.hint')}</p>
-    <div class="text-klein">${tRaw('tls.subject')}: ${d.subject}<br>${tRaw('tls.valid_until')}: ${tokenDate(d.gueltig_bis)}</div>
-    <div class="text-klein abstand-o-075">${tRaw('tls.zert_sha256')}</div>
-    <code id="tls-zert-sha256" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.zert_sha256 || ''}</code>
-    <div class="text-klein abstand-o-075">${tRaw('tls.fp_sha256')}</div>
-    <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
-    <div class="text-klein abstand-o-075">${tRaw('tls.fp_base64')}</div>
-    <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp}</code>
-    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${safeUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`,
+    html`<p class="hint-paragraph">${tRaw('tls.hint')}</p>
+    <div class="text-small">${tRaw('tls.subject')}: ${d.subject}<br>${tRaw('tls.valid_until')}: ${tokenDate(d.gueltig_bis)}</div>
+    <div class="text-small space-top-075">${tRaw('tls.zert_sha256')}</div>
+    <code id="tls-zert-sha256" data-style="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.zert_sha256 || ''}</code>
+    <div class="text-small space-top-075">${tRaw('tls.fp_sha256')}</div>
+    <code id="tls-fp-hex" data-style="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
+    <div class="text-small space-top-075">${tRaw('tls.fp_base64')}</div>
+    <code id="tls-fp" data-style="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp}</code>
+    <div class="space-top-075"><a class="btn bs btn-sm" href="${safeUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`,
   );
 }
 
@@ -254,11 +257,11 @@ export async function loadTls() {
  * @param {string} label
  */
 async function revokeToken(tokenId, label) {
-  const password = await bestaetigeMitPasswort(
+  const password = await confirmDeleteWithPassword(
     tRaw('tokens.revoke.title'),
     tRaw('tokens.revoke.text', { name: label || '—' }),
-    'schluessel',
-    { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' },
+    'key',
+    { button: 'confirm.btn.device_logout', art: 'bp' },
   );
   if (password === null) return;
   const d = await withSecondFactor(z =>
@@ -279,11 +282,11 @@ async function revokeOtherTokens() {
     return;
   }
   const others = d.tokens.filter(tk => !tk.aktuell);
-  const password = await bestaetigeMitPasswort(
+  const password = await confirmDeleteWithPassword(
     tRaw('tokens.revoke_others.title'),
     tRaw('tokens.revoke_others.text', { n: others.length }),
-    'abmelden',
-    { knopf: 'confirm.btn.abmelden', art: 'bp' },
+    'logout',
+    { button: 'confirm.btn.logout', art: 'bp' },
   );
   if (password === null) return;
   const s = await withSecondFactor(z =>
@@ -302,8 +305,8 @@ async function revokeOtherTokens() {
 // Names below are registry-exposed (index.html/connection.js/tests) — kept unchanged.
 registerActions({
   loadTokens,
-  qrKopplungAblehnen,
-  qrKopplungBestaetigen,
+  rejectQrPairing,
+  confirmQrPairing,
   revokeOtherTokens,
   revokeToken,
 });

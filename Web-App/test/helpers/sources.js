@@ -945,14 +945,7 @@ function loginSource() {
 
 /** The files per view; a split view thus stays checkable under one name. */
 const VIEWS = {
-  einstellungen: [
-    'settings.js',
-    'accesses.js',
-    'household.js',
-    'user-management.js',
-    'alerts.js',
-    'storage-locations.js',
-  ],
+  settings: ['settings.js', 'accesses.js', 'household.js', 'user-management.js', 'alerts.js', 'storage-locations.js'],
 };
 
 /** All files of a view (key from VIEWS) as ONE text. */

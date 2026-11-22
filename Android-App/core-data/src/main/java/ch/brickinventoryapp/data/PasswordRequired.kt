@@ -8,14 +8,14 @@ import javax.inject.Singleton
 
 /**
  * The account still signs in with its start password: until it is replaced,
- * the server rejects every fetch with 403 `passwort_wechsel_noetig`. The
- * ServerWaechter sets the state, the app then shows the form „Startpasswort
+ * the server rejects every fetch with 403 `password_switch_needed`. The
+ * ServerGuard sets the state, the app then shows the form „Startpasswort
  * ersetzen“ instead of a chain of error messages.
  */
 interface PasswordRequired {
-    val noetig: StateFlow<Boolean>
-    fun melde()
-    fun erledigt()
+    val needed: StateFlow<Boolean>
+    fun report()
+    fun done()
 
     /** For tests without Hilt. */
     companion object {
@@ -26,8 +26,8 @@ interface PasswordRequired {
 @Singleton
 internal class PasswordRequiredState @Inject constructor() : PasswordRequired {
     private val _needed = MutableStateFlow(false)
-    override val noetig: StateFlow<Boolean> = _needed.asStateFlow()
+    override val needed: StateFlow<Boolean> = _needed.asStateFlow()
 
-    override fun melde() { _needed.value = true }
-    override fun erledigt() { _needed.value = false }
+    override fun report() { _needed.value = true }
+    override fun done() { _needed.value = false }
 }

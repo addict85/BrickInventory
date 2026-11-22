@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.domain.Kategoriewahl
+import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.resources.R
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
@@ -22,30 +22,30 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.TestDienste
-import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.ui.ListView
 import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.parts.ui.Teilefilter
+import ch.brickinventoryapp.parts.ui.PartsFilter
 
 /**
- * Parts and figures ViewModel, run against the rules of a PfadServer without network
- * (imTakt): fetches and the store run on the test clock, no test waits in real time.
+ * Parts and figures ViewModel, run against the rules of a PathServer without network
+ * (onTick): fetches and the store run on the test clock, no test waits in real time.
  * A process death is a new ViewModel with the same SavedStateHandle in new services.
  *
  * Counter-checks:
  *   A  in PartsViewModel `filterChanged` no longer written to the SavedStateHandle
  *      → red “filter and view survive …”
- *   teile-kontofilter-gemerkt  (gegenproben/) the account filter kept in the SavedStateHandle and
+ *   teile-kontofilter-gemerkt  (counter-checks/) the account filter kept in the SavedStateHandle and
  *      restored after a process death → red “… not the account filter”
- *   figuren-suche-vergessen    (gegenproben/) MinifigsViewModel does not read the search back
+ *   figuren-suche-vergessen    (counter-checks/) MinifigsViewModel does not read the search back
  *      → red “search and view of the figures survive …”
- *   teile-laden-beim-zeigen    (gegenproben/) loadPerServer in PartsViewModel without loadPartsColors
+ *   teile-laden-beim-zeigen    (counter-checks/) loadPerServer in PartsViewModel without loadPartsColors
  *      → red “whoever shows the tab gets …”
- *   B  in LocalApplication.manuelleTeile the branch TeilAendern removed → red “a
+ *   B  in LocalApplication.manualParts the branch EditPart removed → red “a
  *      changed part is in the store …”
- *   C  in aendere() back to `fehler ?: text(err_unknown)` → red “an error
+ *   C  in applyChangeTo() back to `error ?: text(err_unknown)` → red “an error
  *      the session layer already reports stays silent”
  *   D  in setPartLocation() the debounce removed → red “the storage location is
  *      saved debounced …”
@@ -53,7 +53,7 @@ import ch.brickinventoryapp.parts.ui.Teilefilter
  *      each red “search text and storage location also reach the manually entered …”
  *   F  getMinifigStats without the view → red “the figures' account filter …”
  *   G  in BrickApiService for getManualParts or getManualMinifigs
- *      `@Query("search")` changed to `@Query("suche")` → each red “search text and
+ *      `@Query("search")` changed to `@Query("search")` → each red “search text and
  *      storage location also reach the manually entered …” (timeout
  *      "manuelle Teile" or "manuelle Figuren")
  */
@@ -61,20 +61,20 @@ import ch.brickinventoryapp.parts.ui.Teilefilter
 class PartsViewModelTest {
 
     private val clock = TestCoroutineScheduler()
-    private val takt = UnconfinedTestDispatcher(clock)
-    private lateinit var paths: PfadServer
-    private lateinit var t: TestDienste
+    private val tick = UnconfinedTestDispatcher(clock)
+    private lateinit var paths: PathServer
+    private lateinit var t: TestServices
 
-    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) =
-        t.merke(PartsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.scrollMemory, t.teile(), t.kontosicht, gemerkt))
+    private fun vm(wanted: SavedStateHandle = SavedStateHandle(), t: TestServices = this.t) =
+        t.track(PartsViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, t.parts(), t.accountView, wanted))
 
-    private fun minifigsVm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) =
-        t.merke(MinifigsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.figuren(), t.kontosicht, gemerkt))
+    private fun minifigsVm(wanted: SavedStateHandle = SavedStateHandle(), t: TestServices = this.t) =
+        t.track(MinifigsViewModel(t.session, t.filter(), t.hints, t.changes, t.figures(), t.accountView, wanted))
 
     @Before
-    fun auf() {
-        Dispatchers.setMain(takt)
-        paths = PfadServer(
+    fun setUp() {
+        Dispatchers.setMain(tick)
+        paths = PathServer(
             "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5,"color_name":"Red"}]}""",
             "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
             "/api/v1/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001"}]}""",
@@ -84,54 +84,54 @@ class PartsViewModelTest {
             "/api/v1/parts/3001/5/sets" to """{"success":true,"item":{"nummer":"3001","color_id":5},
                 "sets":[{"set_number":"75192-1","quantity":4}]}""",
         )
-        t = TestDienste(paths.imTakt(), io = takt)
+        t = TestServices(paths.onTick(), io = tick)
     }
 
     @After
-    fun zu() {
-        t.aufraeumen()
+    fun tearDown() {
+        t.cleanUp()
         Dispatchers.resetMain()
         paths.server.shutdown()
     }
 
     @Test
     fun `filter and view survive a process death and travel along, the account filter does not`() {
-        val gemerkt = SavedStateHandle()
-        val erstes = vm(gemerkt)
-        erstes.setScope(ScopeFilter.View.PARTS, "own")
-        erstes.setPartsColorFilter(ColorPicker.Farbe("5"))
-        erstes.setPartsCategoryFilter(Kategoriewahl.Kategorie("11"))
-        erstes.setPartsSpare(Ersatzteilwahl.NUR)
-        erstes.setPartsView(ListView.TABLE)
-        erstes.setPartsOrder(Teilefilter.Order.QUANTITY)
-        erstes.setPartsQuery("stein")
-        assertTrue("vorher mit Konto", "accounts=own" in paths.requestsAn("GET /api/v1/parts?").last())
+        val wanted = SavedStateHandle()
+        val first = vm(wanted)
+        first.setScope(ScopeFilter.View.PARTS, "own")
+        first.setPartsColorFilter(ColorPicker.Color("5"))
+        first.setPartsCategoryFilter(CategoryChoice.Category("11"))
+        first.setPartsSpare(SparePartChoice.ONLY)
+        first.setPartsView(ListView.TABLE)
+        first.setPartsOrder(PartsFilter.Order.QUANTITY)
+        first.setPartsQuery("stein")
+        assertTrue("vorher mit Konto", "accounts=own" in paths.requestsTo("GET /api/v1/parts?").last())
 
-        paths.newProcess(io = takt) { paths, t ->
-            val neu = vm(gemerkt, t)
-            assertEquals(Teilefilter("stein", Ersatzteilwahl.NUR, ListView.TABLE, Teilefilter.Order.QUANTITY, ColorPicker.Farbe("5"), Kategoriewahl.Kategorie("11")),
-                neu.teileState.value.filter)
-            assertNull("der Kontofilter lebt nur im Speicher", neu.accountFor(ScopeFilter.View.PARTS))
-            neu.loadParts()
-            assertTrue("Liste geladen", neu.teileState.value.parts.isNotEmpty())
-            val abruf = paths.requestsAn("GET /api/v1/parts?").single()
-            assertTrue(abruf, listOf("color=5", "category=11", "spare=1", "with_sets=1", "search=stein").all { it in abruf })
-            assertTrue(abruf, "accounts=" !in abruf)
+        paths.newProcess(io = tick) { paths, t ->
+            val newValue = vm(wanted, t)
+            assertEquals(PartsFilter("stein", SparePartChoice.ONLY, ListView.TABLE, PartsFilter.Order.QUANTITY, ColorPicker.Color("5"), CategoryChoice.Category("11")),
+                newValue.partsState.value.filter)
+            assertNull("der Kontofilter lebt nur im Speicher", newValue.accountFor(ScopeFilter.View.PARTS))
+            newValue.loadParts()
+            assertTrue("Liste geladen", newValue.partsState.value.parts.isNotEmpty())
+            val fetch = paths.requestsTo("GET /api/v1/parts?").single()
+            assertTrue(fetch, listOf("color=5", "category=11", "spare=1", "with_sets=1", "search=stein").all { it in fetch })
+            assertTrue(fetch, "accounts=" !in fetch)
         }
     }
 
     @Test
     fun `search and view of the figures survive a process death, the account filter does not`() {
-        val gemerkt = SavedStateHandle()
-        val erstes = minifigsVm(gemerkt)
-        erstes.setScope(ScopeFilter.View.MINIFIGS, "own")
-        erstes.setMinifigsQuery("han")
-        erstes.setMinifigsView(ListView.TABLE)
+        val wanted = SavedStateHandle()
+        val first = minifigsVm(wanted)
+        first.setScope(ScopeFilter.View.MINIFIGS, "own")
+        first.setMinifigsQuery("han")
+        first.setMinifigsView(ListView.TABLE)
 
-        paths.newProcess(io = takt) { _, t ->
-            val neu = minifigsVm(gemerkt, t)
-            assertEquals("han" to ListView.TABLE, neu.minifigsState.value.let { it.minifigsQuery to it.minifigsView })
-            assertNull(neu.accountFor(ScopeFilter.View.MINIFIGS))
+        paths.newProcess(io = tick) { _, t ->
+            val newValue = minifigsVm(wanted, t)
+            assertEquals("han" to ListView.TABLE, newValue.minifigsState.value.let { it.minifigsQuery to it.minifigsView })
+            assertNull(newValue.accountFor(ScopeFilter.View.MINIFIGS))
         }
     }
 
@@ -139,21 +139,21 @@ class PartsViewModelTest {
     fun `whoever shows the tab gets list, colors and filter values, the figures only once`() {
         val vm = vm()
         val fig = minifigsVm()
-        val vorher = CoroutineScope(takt).launch { vm.teileState.collect {} }
-        assertTrue("ohne Server kein Abruf", paths.requestsAn("GET /api/v1/parts").isEmpty())
-        vorher.cancel()
-        t.sitzung.anmeldungGeaendert(paths.server.url("/").toString(), angemeldet = true)
-        assertTrue("ohne Beobachter kein Abruf", paths.requestsAn("GET /api/v1/parts").isEmpty())
-        val seite = CoroutineScope(takt).launch { vm.teileState.collect {} }
-        for (pfad in listOf("GET /api/v1/parts?", "GET /api/v1/parts/brick-colors", "GET /api/v1/parts/colors", "GET /api/v1/parts/categories"))
-            assertTrue(pfad, paths.requestsAn(pfad).isNotEmpty())
-        seite.cancel()
+        val before = CoroutineScope(tick).launch { vm.partsState.collect {} }
+        assertTrue("ohne Server kein Abruf", paths.requestsTo("GET /api/v1/parts").isEmpty())
+        before.cancel()
+        t.session.loginChanged(paths.server.url("/").toString(), loggedIn = true)
+        assertTrue("ohne Beobachter kein Abruf", paths.requestsTo("GET /api/v1/parts").isEmpty())
+        val page = CoroutineScope(tick).launch { vm.partsState.collect {} }
+        for (path in listOf("GET /api/v1/parts?", "GET /api/v1/parts/brick-colors", "GET /api/v1/parts/colors", "GET /api/v1/parts/categories"))
+            assertTrue(path, paths.requestsTo(path).isNotEmpty())
+        page.cancel()
 
-        CoroutineScope(takt).launch { fig.minifigsState.collect {} }.cancel()
-        val minifigsFetches = paths.requestsAn("GET /api/v1/minifigs").size
+        CoroutineScope(tick).launch { fig.minifigsState.collect {} }.cancel()
+        val minifigsFetches = paths.requestsTo("GET /api/v1/minifigs").size
         assertTrue("die Figuren geladen", minifigsFetches > 0 && fig.minifigsState.value.minifigs.isNotEmpty())
-        CoroutineScope(takt).launch { fig.minifigsState.collect {} }.cancel()
-        assertEquals("schon da: nicht noch einmal", minifigsFetches, paths.requestsAn("GET /api/v1/minifigs").size)
+        CoroutineScope(tick).launch { fig.minifigsState.collect {} }.cancel()
+        assertEquals("schon da: nicht noch einmal", minifigsFetches, paths.requestsTo("GET /api/v1/minifigs").size)
     }
 
     @Test
@@ -164,24 +164,24 @@ class PartsViewModelTest {
         vm.setStorageFilter(ScopeFilter.View.PARTS, "Keller")
         vm.setPartsQuery("stein")
         vm.loadParts()
-        assertTrue("manuelle Teile", paths.requestsAn("GET /api/v1/parts/manual?").any { "search=stein" in it })
-        val teile = paths.requestsAn("GET /api/v1/parts/manual?").last { "search=stein" in it }
-        assertTrue(teile, "storage=Keller" in teile)
+        assertTrue("manuelle Teile", paths.requestsTo("GET /api/v1/parts/manual?").any { "search=stein" in it })
+        val parts = paths.requestsTo("GET /api/v1/parts/manual?").last { "search=stein" in it }
+        assertTrue(parts, "storage=Keller" in parts)
 
         // Without an account filter, figure search searches the store; the fetch is unfiltered.
         val fig = minifigsVm()
         fig.setMinifigsQuery("han")
         fig.loadMinifigs()
-        val figuren = paths.requestsAn("GET /api/v1/minifigs/manual")
-        assertTrue("manuelle Figuren abgerufen: $figuren", figuren.isNotEmpty() && figuren.none { "search=" in it })
+        val figures = paths.requestsTo("GET /api/v1/minifigs/manual")
+        assertTrue("manuelle Figuren abgerufen: $figures", figures.isNotEmpty() && figures.none { "search=" in it })
     }
 
     @Test
     fun `the account filter of the figures travels with list, key figures and manual figures`() {
         val vm = minifigsVm()
         vm.setScope(ScopeFilter.View.MINIFIGS, "own")
-        for (pfad in listOf("GET /api/v1/minifigs?", "GET /api/v1/minifigs/stats?", "GET /api/v1/minifigs/manual?")) {
-            assertTrue(pfad, paths.requestsAn(pfad).any { "accounts=own" in it })
+        for (path in listOf("GET /api/v1/minifigs?", "GET /api/v1/minifigs/stats?", "GET /api/v1/minifigs/manual?")) {
+            assertTrue(path, paths.requestsTo(path).any { "accounts=own" in it })
         }
     }
 
@@ -189,25 +189,25 @@ class PartsViewModelTest {
     fun `the account filter of the parts travels along, that of another view does not`() {
         val vm = vm()
         vm.setScope(ScopeFilter.View.PARTS, "own")
-        assertTrue("Liste geladen", vm.teileState.value.parts.isNotEmpty())
-        assertTrue("accounts=own" in paths.requestsAn("GET /api/v1/parts?").last())
-        val vorher = paths.requestsAn("GET /api/v1/parts?").size
+        assertTrue("Liste geladen", vm.partsState.value.parts.isNotEmpty())
+        assertTrue("accounts=own" in paths.requestsTo("GET /api/v1/parts?").last())
+        val before = paths.requestsTo("GET /api/v1/parts?").size
         vm.setScope(ScopeFilter.View.GALLERY, "own")
-        assertEquals(vorher, paths.requestsAn("GET /api/v1/parts?").size)
+        assertEquals(before, paths.requestsTo("GET /api/v1/parts?").size)
     }
 
     @Test
     fun `a changed part is in the store without fetching the list again`() {
-        paths.antworten["/api/v1/parts/manual"] = """{"success":true,"parts":[{"part_number":"3001","color_id":5,"quantity":1}]}"""
+        paths.responses["/api/v1/parts/manual"] = """{"success":true,"parts":[{"part_number":"3001","color_id":5,"quantity":1}]}"""
         val vm = vm()
         vm.loadParts()
-        assertEquals(listOf(1), vm.teileState.value.manualParts?.map { it.quantity })
-        val fetches = paths.requestsAn("GET /api/v1/parts/manual").size
+        assertEquals(listOf(1), vm.partsState.value.manualParts?.map { it.quantity })
+        val fetches = paths.requestsTo("GET /api/v1/parts/manual").size
         vm.updatePart("3001", 5, quantity = 3, unitPrice = 0.1)
-        assertEquals("die neue Menge aus der Ablage", listOf(3), vm.teileState.value.manualParts?.map { it.quantity })
-        assertEquals("ohne neuen Abruf", fetches, paths.requestsAn("GET /api/v1/parts/manual").size)
-        assertEquals("t${R.string.vm_saved}", t.meldungen.text)
-        assertTrue(paths.requestsAn("PUT /api/v1/parts/3001/5").isNotEmpty())
+        assertEquals("die neue Menge aus der Ablage", listOf(3), vm.partsState.value.manualParts?.map { it.quantity })
+        assertEquals("ohne neuen Abruf", fetches, paths.requestsTo("GET /api/v1/parts/manual").size)
+        assertEquals("t${R.string.vm_saved}", t.messages.text)
+        assertTrue(paths.requestsTo("PUT /api/v1/parts/3001/5").isNotEmpty())
     }
 
     @Test
@@ -215,36 +215,36 @@ class PartsViewModelTest {
         paths.codes["/api/v1/parts/3001/5"] = 401
         val vm = vm()
         vm.deletePart("3001", 5)
-        assertTrue("Antwort da", paths.requestsAn("DELETE /api/v1/parts/3001/5").isNotEmpty())
-        assertNull("Ein 401 ist schon gemeldet — hier kein zweiter, leerer Satz", t.meldungen.text)
+        assertTrue("Antwort da", paths.requestsTo("DELETE /api/v1/parts/3001/5").isNotEmpty())
+        assertNull("Ein 401 ist schon gemeldet — hier kein zweiter, leerer Satz", t.messages.text)
     }
 
     @Test
     fun `the storage location is saved debounced and shown in the open dialog`() {
         val vm = vm()
         vm.openSetItem("3001", 5)
-        assertTrue("Dialog geladen", !vm.setItemState.value.abruf.laedt)
+        assertTrue("Dialog geladen", !vm.setItemState.value.fetch.loading)
         assertEquals("75192-1", vm.setItemState.value.sets.single().setNumber)
 
         vm.setPartLocation("3001", 5, "Ki")
         vm.setPartLocation("3001", 5, "Kiste 3")
         clock.advanceTimeBy(500)
-        assertTrue("Vor der Ruhezeit geht nichts hinaus", paths.requestsAn("PUT /api/v1/parts/3001/5/storage").isEmpty())
+        assertTrue("Vor der Ruhezeit geht nichts hinaus", paths.requestsTo("PUT /api/v1/parts/3001/5/storage").isEmpty())
         clock.advanceTimeBy(400)
-        assertTrue("gespeichert", vm.setItemState.value.kopf?.storage == "Kiste 3")
-        assertEquals(1, paths.requestsAn("PUT /api/v1/parts/3001/5/storage").size)
+        assertTrue("gespeichert", vm.setItemState.value.header?.storage == "Kiste 3")
+        assertEquals(1, paths.requestsTo("PUT /api/v1/parts/3001/5/storage").size)
     }
 
     @Test
     fun `after sign-out nothing is left`() {
-        val gemerkt = SavedStateHandle()
-        val vm = vm(gemerkt)
-        vm.setPartsColorFilter(ColorPicker.Farbe("Red"))
+        val wanted = SavedStateHandle()
+        val vm = vm(wanted)
+        vm.setPartsColorFilter(ColorPicker.Color("Red"))
         vm.openSetItem("3001", 5)
-        assertTrue("geladen", vm.teileState.value.parts.isNotEmpty() && !vm.setItemState.value.abruf.laedt)
-        t.sitzung.abgemeldet()
-        assertTrue(vm.teileState.value.parts.isEmpty())
-        assertTrue(!vm.setItemState.value.offen)
-        assertEquals(Teilefilter(), vm(gemerkt).teileState.value.filter)
+        assertTrue("geladen", vm.partsState.value.parts.isNotEmpty() && !vm.setItemState.value.fetch.loading)
+        t.session.loggedOut()
+        assertTrue(vm.partsState.value.parts.isEmpty())
+        assertTrue(!vm.setItemState.value.open)
+        assertEquals(PartsFilter(), vm(wanted).partsState.value.filter)
     }
 }

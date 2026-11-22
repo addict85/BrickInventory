@@ -1,0 +1,17 @@
+Gegenprobe: Die Anzahl aus dem Barcode-Dialog wird nicht weitergereicht
+Modul: app
+Test: ch.brickinventoryapp.app.AreaFlowsTest
+Rot: adding after the scan has a quantity and keeps inputs across a rotation
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
+@@ -109,7 +109,7 @@
+             } else {
+                 aktionen.confirmAddBarcode(Erfassungswunsch(
+                     setNumber = barcodeState.result,
+-                    menge = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
++                    menge = 1,
+                     kaufpreis = NumericInput.readMoney(barcodePriceText),
+                     zustand = barcodeCondition,
+                     // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim

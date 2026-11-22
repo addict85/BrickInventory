@@ -23,27 +23,27 @@ import coil3.ImageLoader
  */
 @Composable
 fun GalleryAndDetail(
-    galerie: GalleryViewModel,
-    erfassung: EntryViewModel,
+    gallery: GalleryViewModel,
+    entryVm: EntryViewModel,
     imageLoader: ImageLoader,
     /** The set whose detail sits on the right; null as long as none is chosen. */
-    offen: String?,
+    open: String?,
     onSetClick: (String) -> Unit,
     onScanBarcode: () -> Unit,
     gridState: LazyGridState = rememberLazyGridState(),
     detail: @Composable () -> Unit,
 ) {
     ListAndDetail(
-        liste = {
-            CompositionLocalProvider(LocalOpenDetail provides offen) {
-                GalleryRoute(vm = galerie, erfassung = erfassung, imageLoader = imageLoader,
+        list = {
+            CompositionLocalProvider(LocalOpenDetail provides open) {
+                GalleryRoute(vm = gallery, entryVm = entryVm, imageLoader = imageLoader,
                     onScanBarcode = onScanBarcode, onSetClick = onSetClick, gridState = gridState)
             }
         },
         detail = {
-            if (offen != null) detail()
+            if (open != null) detail()
             else StateHint {
-                HintText(Icons.Default.ViewInAr, stringResource(R.string.gallery_detail_leer))
+                HintText(Icons.Default.ViewInAr, stringResource(R.string.gallery_detail_empty))
             }
         },
     )

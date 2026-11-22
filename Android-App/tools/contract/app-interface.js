@@ -27,7 +27,7 @@ function quellwurzeln() {
 
 /**
  * What the sign-in screen calls before there is a token, as "METHOD /api/v1/…":
- * AnmeldungViewModel → its `konto.x(…)` → the `api.y(…)` in KontoRepositoryImpl.x → AccountApi.y.
+ * LoginViewModel → its `account.x(…)` → the `api.y(…)` in KontoRepositoryImpl.x → AccountApi.y.
  * The server opens exactly these at its entrance (PUBLIC_ROUTES, test/public-entrance-db).
  */
 function ohneToken() {
@@ -39,14 +39,14 @@ function ohneToken() {
   ))
     api.set(m[3], `${m[1]} /${m[2]}`);
   const repo = new Map(
-    lies('core-data', ...KT, 'data', 'repository', 'KontoRepositoryImpl.kt')
+    lies('core-data', ...KT, 'data', 'repository', 'AccountRepositoryImpl.kt')
       .split(/\n\s*override (?:suspend )?fun /)
       .slice(1)
       .map(t => [t.match(/^(\w+)/)?.[1] ?? '', [...t.matchAll(/\bapi\.(\w+)\(/g)].map(m => m[1])]),
   );
-  const vm = lies('feature-login', ...KT, 'login', 'ui', 'viewmodel', 'AnmeldungViewModel.kt');
+  const vm = lies('feature-login', ...KT, 'login', 'ui', 'viewmodel', 'LoginViewModel.kt');
   const routen = new Set();
-  for (const [, name] of vm.matchAll(/\bkonto\.(\w+)\(/g))
+  for (const [, name] of vm.matchAll(/\baccount\.(\w+)\(/g))
     for (const a of repo.get(name ?? '') ?? []) {
       const r = api.get(a ?? '');
       if (!r) throw new Error(`${name} → api.${a} ohne Adresse in AccountApi.kt`);

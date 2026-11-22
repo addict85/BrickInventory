@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import android.app.Application
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.testing.testVertrauenschiffre
+import ch.brickinventoryapp.testing.testTrustCipher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -18,9 +18,9 @@ import java.io.File
  * The server's design is remembered, and twice: in the DataStore and in a
  * synchronously readable mirror, so that already the first frame of a cold start arises in the right
  * design. That an empty or unknown value deletes nothing is held by the type
- * (DesignOderNichts, FachtypenTest). Under Robolectric with a real store.
+ * (DesignOrNothing, DomainTypesTest). Under Robolectric with a real store.
  *
- * Counter-check (patch under gegenproben/, Robolectric, measured by CI):
+ * Counter-check (patch under counter-checks/, Robolectric, measured by CI):
  *   design-ohne-spiegel   saveAppTheme does not write the mirror → red “the remembered design …”
  */
 @RunWith(RobolectricTestRunner::class)
@@ -29,17 +29,17 @@ class DesignStoreTest {
 
     private val ctx = ApplicationProvider.getApplicationContext<Application>()
 
-    private fun ablage() = DevicesStore(ctx,
+    private fun store() = DevicesStore(ctx,
         PreferenceDataStoreFactory.create { File(ctx.filesDir, "design-${System.nanoTime()}.preferences_pb") },
-        testVertrauenschiffre())
+        testTrustCipher())
 
     @Test
     fun `the remembered design is there immediately on the next start`() = runBlocking {
-        val jetzt = ablage()
-        assertEquals("Ohne Eintrag gilt der Standard", Design.CLASSIC, jetzt.rememberedDesign())
-        jetzt.saveAppTheme(Design.BRICK)
-        assertEquals(Design.BRICK, jetzt.appTheme.first())
+        val now = store()
+        assertEquals("Ohne Eintrag gilt der Standard", Design.CLASSIC, now.rememberedDesign())
+        now.saveAppTheme(Design.BRICK)
+        assertEquals(Design.BRICK, now.appTheme.first())
         // A new start whose DataStore has not delivered anything yet: only the mirror counts.
-        assertEquals(Design.BRICK, ablage().rememberedDesign())
+        assertEquals(Design.BRICK, store().rememberedDesign())
     }
 }

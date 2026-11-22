@@ -104,7 +104,7 @@ test('value chart: division by 1-2-5, real time axis, month names', async () => 
       `uneinheitlich: ${x.join(' | ')}`,
     );
     // Between the last two points lies a day, before that a month.
-    const cx = JSON.parse(svg.dataset.punkte).map(p => p.x);
+    const cx = JSON.parse(svg.dataset.dots).map(p => p.x);
     const tag = cx[13] - cx[12],
       monat = cx[12] - cx[11];
     assert.ok(monat > 10 * tag, `Zeitachse: ein Tag ${tag.toFixed(1)}, ein Monat ${monat.toFixed(1)}`);
@@ -132,13 +132,13 @@ test('finances: placeholder while loading instead of "—"', async () => {
     await takt(30);
     assert.equal(d.getElementById('fin-sum').getAttribute('aria-busy'), 'true');
     assert.ok(
-      d.querySelector('#fin-einstand .skelett-wert'),
-      `Einstand: „${d.getElementById('fin-einstand').textContent}“`,
+      d.querySelector('#fin-cost-basis .skeleton-value'),
+      `Einstand: „${d.getElementById('fin-cost-basis').textContent}“`,
     );
-    assert.ok(d.querySelector('#fin-wert .skelett-wert'), 'Gesamtwert ohne Platzhalter');
+    assert.ok(d.querySelector('#fin-value .skeleton-value'), 'Gesamtwert ohne Platzhalter');
     freigeben();
     await warte(() => !d.getElementById('fin-sum').hasAttribute('aria-busy'));
-    assert.equal(d.querySelector('#fin-sum .skelett-wert'), null, 'der Platzhalter bleibt stehen');
+    assert.equal(d.querySelector('#fin-sum .skeleton-value'), null, 'der Platzhalter bleibt stehen');
   } finally {
     w.close();
   }
@@ -177,7 +177,7 @@ test('account: without email it does not say "verified"', async () => {
     },
   });
   try {
-    await sicht(w, 'profil');
+    await sicht(w, 'profile');
     await warte(() => d.getElementById('prof-user').value === 'anna');
     assert.equal(d.getElementById('prof-email-verified').textContent.trim(), '');
   } finally {
@@ -200,7 +200,7 @@ test('account: a pending address stands below the field, the valid one in the fi
     },
   });
   try {
-    await sicht(w, 'profil');
+    await sicht(w, 'profile');
     await warte(() => d.getElementById('prof-user').value === 'anna');
     assert.equal(d.getElementById('prof-email').value, 'alt@example.org');
     assert.match(d.getElementById('prof-email-hint').textContent, /^Ausstehend: neu@example\.org\. Sie gilt erst/);
@@ -220,14 +220,14 @@ test('no hint about the Rebrickable key above the setup wizard', async () => {
     },
   });
   try {
-    await warte(() => d.getElementById('einrichtung-modal').classList.contains('open'));
+    await warte(() => d.getElementById('setup-modal').classList.contains('open'));
     await ruhig();
-    assert.ok(d.getElementById('einrichtung-modal').classList.contains('open'), 'der Assistent ist zu');
+    assert.ok(d.getElementById('setup-modal').classList.contains('open'), 'der Assistent ist zu');
     const hinweise = [...d.querySelectorAll('#toasts .toast')]
       .map(t => t.textContent)
       .filter(t => /Rebrickable/.test(t));
     assert.deepEqual(hinweise, []);
-    assert.equal(d.getElementById('rb-hinweis').hidden, true, 'Hinweisband über dem Assistenten');
+    assert.equal(d.getElementById('rb-hint').hidden, true, 'Hinweisband über dem Assistenten');
   } finally {
     w.close();
   }
@@ -253,8 +253,8 @@ test("account: own theme or the admin's default", async () => {
         'utf8',
       ),
     );
-    await sicht(w, 'profil');
-    const sel = d.getElementById('design-wahl');
+    await sicht(w, 'profile');
+    const sel = d.getElementById('design-choice');
     await warte(() => /Noppe/.test(sel.options[0].textContent));
     assert.equal(sel.options[0].textContent, 'Vorgabe: Noppe (poppig)');
     assert.equal(sel.value, '');

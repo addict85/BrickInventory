@@ -1,6 +1,6 @@
 // What every area needs from the app to show its destinations (Bereichsumgebung).
 // Own module because it knows Compose, Navigation and Coil: core-state thus stays
-// without UI (Modulkanten.withoutUi).
+// without UI (ModuleEdges.withoutUi).
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.compose)

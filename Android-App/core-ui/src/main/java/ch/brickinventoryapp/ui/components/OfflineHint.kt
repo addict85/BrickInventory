@@ -28,8 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.model.util.fmtStatus
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.ui.util.twentyFourHours
@@ -48,24 +48,24 @@ val LocalOfflineHints = staticCompositionLocalOf<MutableIntState?> { null }
  * A banner over a list that doesn't come from the server but from
  * disk storage, together with the changes waiting for the next connection.
  * Without a surface it got lost between the switcher and the search field; with `null`, nothing.
- * [onErneut] fetches the list again: without a button, only pulling was left, and that can't be seen.
+ * [onAgain] fetches the list again: without a button, only pulling was left, and that can't be seen.
  */
 @Composable
-fun OfflineHint(stand: Long?, modifier: Modifier = Modifier, onErneut: (() -> Unit)? = null) {
-    if (stand == null) return
+fun OfflineHint(state: Long?, modifier: Modifier = Modifier, onAgain: (() -> Unit)? = null) {
+    if (state == null) return
     val counter = LocalOfflineHints.current
     if (counter != null) DisposableEffect(counter) {
         counter.intValue += 1
         onDispose { counter.intValue -= 1 }
     }
-    val offen = LocalOpenChanges.current
+    val open = LocalOpenChanges.current
     NoticeBanner(
         symbol = Icons.Default.CloudOff,
-        titel = stringResource(R.string.offline_stand,
-            fmtStatus(stand, appNumberLocale(), twentyFour = twentyFourHours())),
-        text = if (offen > 0) pluralStringResource(R.plurals.offline_warten, offen, offen) else null,
+        title = stringResource(R.string.offline_state,
+            fmtStatus(state, appNumberLocale(), twentyFour = twentyFourHours())),
+        text = if (open > 0) pluralStringResource(R.plurals.offline_wait, open, open) else null,
         modifier = modifier,
-        aktion = onErneut?.let { stringResource(R.string.common_retry) to it },
+        action = onAgain?.let { stringResource(R.string.common_retry) to it },
     )
 }
 
@@ -75,11 +75,11 @@ fun OfflineHint(stand: Long?, modifier: Modifier = Modifier, onErneut: (() -> Un
  * the number when it changes.
  */
 @Composable
-fun ExitBar(anzahl: Int, modifier: Modifier = Modifier) {
-    if (anzahl <= 0) return
+fun OutboxBar(count: Int, modifier: Modifier = Modifier) {
+    if (count <= 0) return
     NoticeBanner(
         symbol = Icons.Default.CloudUpload,
-        titel = pluralStringResource(R.plurals.offline_warten, anzahl, anzahl),
+        title = pluralStringResource(R.plurals.offline_wait, count, count),
         text = null,
         modifier = modifier,
     )
@@ -93,31 +93,31 @@ fun ExitBar(anzahl: Int, modifier: Modifier = Modifier) {
 @Composable
 private fun NoticeBanner(
     symbol: ImageVector,
-    titel: String,
+    title: String,
     text: String?,
     modifier: Modifier = Modifier,
-    aktion: Pair<String, () -> Unit>? = null,
+    action: Pair<String, () -> Unit>? = null,
 ) {
     Surface(
-        modifier.fillMaxWidth().padding(horizontal = Abstaende.mittel, vertical = Abstaende.tiny).announce(),
-        shape = Formen.leiste,
+        modifier.fillMaxWidth().padding(horizontal = Spacing.medium, vertical = Spacing.tiny).announce(),
+        shape = Shapes.bar,
         color = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
-            Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.small),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(symbol, contentDescription = null, modifier = Modifier.size(withFont(18.dp)),
                 tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
-                Text(titel, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
+                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                 if (text != null) Text(text, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (aktion != null) TextButton(onClick = aktion.second) { Text(aktion.first) }
+            if (action != null) TextButton(onClick = action.second) { Text(action.first) }
         }
     }
 }

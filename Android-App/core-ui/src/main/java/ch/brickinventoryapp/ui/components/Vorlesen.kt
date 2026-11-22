@@ -10,7 +10,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
 
 /** „12 Stück“ for a quantity badge „×12“: TalkBack read the symbol as „times“. */
 @Composable
-fun stueckzahl(menge: Int): String = pluralStringResource(R.plurals.cd_stueck, menge, fmtInt(menge))
+fun quantity(quantity: Int): String = pluralStringResource(R.plurals.cd_piece, quantity, fmtInt(quantity))
 
 /**
  * Replaces what TalkBack reads for this text: abbreviations like „×12“, „✓“ or a

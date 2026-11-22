@@ -17,7 +17,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.account.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.testAccountRepository
@@ -44,7 +44,7 @@ import java.util.Locale
  * confirmation. A row opens its set only if it is in the collection, and the
  * state stands as a word, not only as a color — in both languages.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   preisalarm-laedt-nicht         observeLoadOn of the overview deleted → red “the overview fetches …”
  *   preisalarm-loescht-sofort      the trash can deletes without confirmation → red “the overview fetches …”
  *   preisalarm-zeile-immer-offen   every row clickable → red “a row opens …”
@@ -60,14 +60,14 @@ class PriceAlertsDisplayTest {
     val compose = createComposeRule()
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val vorher = Locale.getDefault()
-    private val world = Examples.Welt(ContextTexts())
+    private val before = Locale.getDefault()
+    private val world = Examples.World(ContextTexts())
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() {
-        Locale.setDefault(vorher)
+    fun tearDown() {
+        Locale.setDefault(before)
         world.close()
     }
 
@@ -77,48 +77,48 @@ class PriceAlertsDisplayTest {
         {"set_number":"10179-1","condition":"N","direction":"unter","threshold":900.0,"currency_code":"CHF",
          "name":"Ultimate Falcon","besitzt":false,"triggered":true}]}"""
 
-    private fun einstellungen() = world.t.merke(SettingsViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, world.t.sync,
+    private fun settings() = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
         testAccountRepository(world.t.api, world.t.io), testManagementRepository(world.t.api),
         world.t.alerts(), testPartsRepository(world.t.api),
         object : FileReader {
-            override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null
+            override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
         }))
 
-    /** Shows the overview and waits until it has fetched its alerts; [geoeffnet] collects clicks on sets. */
-    private fun zeige(geoeffnet: MutableList<String> = mutableListOf()): SettingsViewModel {
-        world.paths.antworten["/api/v1/alerts"] = alerts
-        world.paths.antworten["/api/v1/sets/75192-1/alert"] = """{"success":true}"""
-        val vm = einstellungen()
+    /** Shows the overview and waits until it has fetched its alerts; [opened] collects clicks on sets. */
+    private fun show(opened: MutableList<String> = mutableListOf()): SettingsViewModel {
+        world.paths.responses["/api/v1/alerts"] = alerts
+        world.paths.responses["/api/v1/sets/75192-1/alert"] = """{"success":true}"""
+        val vm = settings()
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    PreisalarmeRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
-                        snackbarHostState = remember { SnackbarHostState() }, onSetClick = { geoeffnet += it },
-                        onZurueck = {}, reportToggle = {})
+                    PriceAlarmsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
+                        snackbarHostState = remember { SnackbarHostState() }, onSetClick = { opened += it },
+                        onBack = {}, reportToggle = {})
                 }
             }
         }
-        wait("Alarme") { vm.alarmOverview.value.geladen }
+        wait("Alarme") { vm.alarmOverview.value.loaded }
         return vm
     }
 
-    private fun wait(name: String, fertig: () -> Boolean) {
-        driveUntil(name, bereit = fertig)
+    private fun wait(name: String, done: () -> Boolean) {
+        driveUntil(name, ready = done)
         compose.waitForIdle()
     }
 
-    private fun requests(methode: String) = world.paths.requests.toList().filter { it.startsWith("$methode ") }
+    private fun requests(method: String) = world.paths.requests.toList().filter { it.startsWith("$method ") }
 
     @Test
     fun `the overview fetches its alerts, changes and deletes via the set, deletes only after confirmation`() {
-        zeige()
+        show()
         assertEquals(listOf("GET /api/v1/alerts"), requests("GET").filter { "alerts" in it })
 
         compose.onAllNodesWithText(ctx.getString(R.string.detail_alert_chip_above))[0].performClick()
         wait("Richtung") { requests("PUT").isNotEmpty() }
         assertTrue(requests("PUT").toString(), requests("PUT").single().startsWith("PUT /api/v1/sets/75192-1/alert"))
 
-        compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_fuer, "Millennium Falcon")).performClick()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_for, "Millennium Falcon")).performClick()
         compose.waitForIdle()
         assertEquals("Ein Tipp auf den Mülleimer löscht schon", emptyList<String>(), requests("DELETE"))
         compose.onNode(hasText(ctx.getString(R.string.common_delete)) and hasClickAction() and hasAnyAncestor(isDialog()))
@@ -129,14 +129,14 @@ class PriceAlertsDisplayTest {
 
     @Test
     fun `a row opens its set only if it is in the collection, and names its state in words`() {
-        val geoeffnet = mutableListOf<String>()
-        zeige(geoeffnet)
+        val opened = mutableListOf<String>()
+        show(opened)
         compose.onNodeWithContentDescription("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode()
 
         compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Ultimate Falcon", useUnmergedTree = true).performClick()
         compose.waitForIdle()
-        assertEquals("Nur das Set aus der Sammlung öffnet sich", listOf("75192-1"), geoeffnet)
+        assertEquals("Nur das Set aus der Sammlung öffnet sich", listOf("75192-1"), opened)
 
         compose.onNodeWithText(ctx.getString(R.string.alerts_armed), useUnmergedTree = true).fetchSemanticsNode()
         compose.onNodeWithText(ctx.getString(R.string.alerts_fired), useUnmergedTree = true).fetchSemanticsNode()
@@ -144,17 +144,17 @@ class PriceAlertsDisplayTest {
 
     @Test
     fun `the two states say in both languages without color and symbol what applies`() {
-        for (sprache in listOf("de", "en")) {
-            val c = ctx.createConfigurationContext(Configuration(ctx.resources.configuration).apply { setLocale(Locale.forLanguageTag(sprache)) })
-            val aktiv = c.getString(R.string.alerts_armed)
-            val ausgeloest = c.getString(R.string.alerts_fired)
-            assertNotEquals("Beide Zustände heissen in $sprache gleich", aktiv.lowercase(), ausgeloest.lowercase())
-            for (t in listOf(aktiv, ausgeloest)) {
-                assertTrue("„$t“ ($sprache) trägt ein Sinnbildzeichen", t.none { it in '■'..'◿' })
-                assertTrue("„$t“ ($sprache) ist kein Wort", t.count { it.isLetter() } >= 4)
+        for (language in listOf("de", "en")) {
+            val c = ctx.createConfigurationContext(Configuration(ctx.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)) })
+            val active = c.getString(R.string.alerts_armed)
+            val triggered = c.getString(R.string.alerts_fired)
+            assertNotEquals("Beide Zustände heissen in $language gleich", active.lowercase(), triggered.lowercase())
+            for (t in listOf(active, triggered)) {
+                assertTrue("„$t“ ($language) trägt ein Sinnbildzeichen", t.none { it in '■'..'◿' })
+                assertTrue("„$t“ ($language) ist kein Wort", t.count { it.isLetter() } >= 4)
             }
             val explanation = c.getString(R.string.detail_alert_fired)
-            assertTrue("„$explanation“ ($sprache) erklärt nicht, was als Nächstes geschieht", explanation.trim().contains(' '))
+            assertTrue("„$explanation“ ($language) erklärt nicht, was als Nächstes geschieht", explanation.trim().contains(' '))
         }
     }
 }

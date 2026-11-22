@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.data.Netzlage.Wiederholung
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.repository.AlarmRepositoryImpl
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
-import ch.brickinventoryapp.model.domain.Alarmrichtung
-import ch.brickinventoryapp.model.domain.Zustand
-import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.offline.StorageExit
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.PfadServer
+import ch.brickinventoryapp.testing.PathServer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -23,15 +23,15 @@ import org.junit.Test
  * lists: reading happens only there, writing updates them, and without network
  * the last state stays.
  *
- * Counter-checks (gegenproben/alarm-ohne-nachzug.patch, vorrat-vorgabe-ohne-nachzug.patch):
- *   in AlarmRepositoryImpl.setPreisalarm only `sicherAufrufen` → red “a set and a deleted alert …”
- *   in LocalApplication.lagerorte the branch LocationDefault on `liste` → red “creating, renaming …”
+ * Counter-checks (counter-checks/alarm-ohne-nachzug.patch, vorrat-vorgabe-ohne-nachzug.patch):
+ *   in AlarmRepositoryImpl.setPriceAlarm only `safeCall` → red “a set and a deleted alert …”
+ *   in LocalApplication.lagerorte the branch LocationDefault on `list` → red “creating, renaming …”
  */
 class AlarmAndStockStoreTest {
 
-    @Volatile private var bereich: String? = "a"
-    private val ablage = Offlineablage(StorageInventory(), StorageExit(), { bereich })
-    private val paths = PfadServer(
+    @Volatile private var area: String? = "a"
+    private val store = OfflineStore(StorageInventory(), OutboxStorage(), { area })
+    private val paths = PathServer(
         "/api/v1/alerts" to """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF","name":"Falcon"},
             {"set_number":"10294-1","condition":"U","direction":"ueber","threshold":440.0,"currency_code":"CHF","name":"Titanic"}]}""",
@@ -42,44 +42,44 @@ class AlarmAndStockStoreTest {
         "/api/v1/storage/locations/1" to """{"success":true,"ort":{"id":1,"user_id":9,"name":"Estrich"}}""",
         "/api/v1/storage/default" to """{"success":true,"vorgabe":{"id":1,"user_id":9,"name":"Estrich"}}""",
     )
-    private val api = paths.imTakt()
-    private val alerts = AlarmRepositoryImpl(api, ablage, Wiederholung.EINMAL)
-    private val teile = TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+    private val api = paths.onTick()
+    private val alerts = AlarmRepositoryImpl(api, store, RetryPolicy.ONCE)
+    private val parts = PartsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
     @After
-    fun zu() = paths.server.shutdown()
+    fun tearDown() = paths.server.shutdown()
 
     @Test
     fun `a set and a deleted alert are in the store immediately`() = runBlocking {
-        assertTrue(alerts.refreshAlerts() is Ergebnis.Erfolg)
-        assertEquals(listOf("75192-1", "10294-1"), alerts.observeAlerts().first().liste.map { it.setNumber })
-        assertEquals(listOf(Alarmrichtung.UNTER), alerts.observeAlerts("75192-1").first().liste.map { it.richtung })
+        assertTrue(alerts.refreshAlerts() is Outcome.Success)
+        assertEquals(listOf("75192-1", "10294-1"), alerts.observeAlerts().first().list.map { it.setNumber })
+        assertEquals(listOf(AlarmDirection.BELOW), alerts.observeAlerts("75192-1").first().list.map { it.direction })
 
-        alerts.setPreisalarm("75192-1", Alarmrichtung.UEBER, Geld.aus(800.0)!!, Zustand.NEU)
-        val gesetzt = alerts.observeAlerts("75192-1").first().liste.single()
-        assertEquals(Alarmrichtung.UEBER to Geld.aus(800.0), gesetzt.richtung to gesetzt.schwelle)
-        assertEquals("der Name der Übersicht bleibt", "Falcon", gesetzt.name)
+        alerts.setPriceAlarm("75192-1", AlarmDirection.OVER, Money.from(800.0)!!, Condition.NEW)
+        val set = alerts.observeAlerts("75192-1").first().list.single()
+        assertEquals(AlarmDirection.OVER to Money.from(800.0), set.direction to set.threshold)
+        assertEquals("der Name der Übersicht bleibt", "Falcon", set.name)
 
-        alerts.deletePriceAlert("10294-1", Zustand.GEBRAUCHT)
-        assertEquals(listOf("75192-1"), alerts.observeAlerts().first().liste.map { it.setNumber })
+        alerts.deletePriceAlert("10294-1", Condition.USED)
+        assertEquals(listOf("75192-1"), alerts.observeAlerts().first().list.map { it.setNumber })
     }
 
     @Test
     fun `without network the most recently fetched list of alerts stays`() = runBlocking {
         alerts.refreshAlerts()
-        // In ticks PfadServer answers without network; switching it off would mean nothing here.
+        // In ticks PathServer answers without network; switching it off would mean nothing here.
         paths.priority = { _, _ -> 503 to """{"success":false}""" }
-        assertTrue(alerts.refreshAlerts() is Ergebnis.Fehler)
-        assertEquals(2, alerts.observeAlerts().first().liste.size)
+        assertTrue(alerts.refreshAlerts() is Outcome.Failure)
+        assertEquals(2, alerts.observeAlerts().first().list.size)
     }
 
     @Test
     fun `creating, renaming and the star change the supply in the store`() = runBlocking {
-        assertTrue(teile.refreshLocationStock() is Ergebnis.Erfolg)
-        fun stock() = runBlocking { teile.observeLocationStock().first().liste.map { it.ort.name to it.vorgabe } }
+        assertTrue(parts.refreshLocationStock() is Outcome.Success)
+        fun stock() = runBlocking { parts.observeLocationStock().first().list.map { it.location.name to it.default } }
         assertEquals(listOf("Keller" to false, "Regal" to true), stock())
-        teile.nameLocationUm(1, alt = "Keller", name = "Estrich")
-        teile.setLocationDefault(1)
+        parts.renameLocation(1, old = "Keller", name = "Estrich")
+        parts.setLocationDefault(1)
         assertEquals(listOf("Estrich" to true, "Regal" to false), stock())
     }
 }

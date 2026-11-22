@@ -21,15 +21,15 @@ import java.io.File
  * it only needs the source folders and brings its own Kotlin, the plugin would have to
  * hook into the source sets of AGP 9 with built-in Kotlin.
  */
-class DetektKonvention : Plugin<Project> {
+class DetektConvention : Plugin<Project> {
     override fun apply(target: Project) {
-        val fassung = target.libs.findVersion("detekt").get().requiredVersion
+        val version = target.libs.findVersion("detekt").get().requiredVersion
         val tool = detektConfiguration(target, "detektWerkzeug")
         val ruleset = detektConfiguration(target, "detektRegeln")
-        target.dependencies.add(tool.name, "io.gitlab.arturbosch.detekt:detekt-cli:$fassung")
-        target.dependencies.add(ruleset.name, "io.gitlab.arturbosch.detekt:detekt-formatting:$fassung")
+        target.dependencies.add(tool.name, "io.gitlab.arturbosch.detekt:detekt-cli:$version")
+        target.dependencies.add(ruleset.name, "io.gitlab.arturbosch.detekt:detekt-formatting:$version")
 
-        val quellen = target.files(
+        val sources = target.files(
             listOf("src/main/java", "src/main/kotlin", "src/test/java", "src/test/kotlin").map { target.file(it) },
         ).filter { it.isDirectory }
         val report = target.layout.buildDirectory.file("reports/detekt/detekt.txt")
@@ -40,13 +40,13 @@ class DetektKonvention : Plugin<Project> {
             task.mainClass.set("io.gitlab.arturbosch.detekt.cli.Main")
             task.argumentProviders.add(
                 DetektArguments(
-                    quellen, target.rootDir.resolve("config/detekt/detekt.yml"),
+                    sources, target.rootDir.resolve("config/detekt/detekt.yml"),
                     target.rootDir.resolve("config/detekt/baseline.xml"), ruleset, report.map { it.asFile },
                 ),
             )
             task.outputs.file(report)
             // Without source folders (core-resources) detekt would otherwise read the whole module including build/.
-            task.onlyIf("das Modul hat Kotlin-Quellen") { !quellen.isEmpty }
+            task.onlyIf("das Modul hat Kotlin-Quellen") { !sources.isEmpty }
         }
         target.tasks.matching { it.name == "check" }.configureEach { it.dependsOn(detekt) }
     }
@@ -69,14 +69,14 @@ class DetektKonvention : Plugin<Project> {
 
 /** The command line of detekt; the fields are at the same time the task's inputs. */
 internal class DetektArguments(
-    @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) val quellen: FileCollection,
+    @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) val sources: FileCollection,
     @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val rules: File,
     @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val baseline: File,
     @get:Classpath val ruleset: FileCollection,
     @get:Internal val report: org.gradle.api.provider.Provider<File>,
 ) : CommandLineArgumentProvider {
     override fun asArguments(): Iterable<String> = listOf(
-        "--input", quellen.files.joinToString(",") { it.absolutePath },
+        "--input", sources.files.joinToString(",") { it.absolutePath },
         "--config", rules.absolutePath,
         "--build-upon-default-config",
         "--baseline", baseline.absolutePath,

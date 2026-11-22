@@ -12,7 +12,7 @@
  *   C  on #m-img again tabindex="0" role="button" data-click → red: “set without
  *      image …” (a tab stop before the first opening)
  *   D  in index.html role="group" of the account group removed → red: “menu in
- *      groups …”; in sichtAusDialog the click on the close button removed
+ *      groups …”; in viewFromDialog the click on the close button removed
  *      → red: “from the set detail …” (dialog stays open)
  */
 const test = require('node:test');
@@ -114,12 +114,12 @@ test('menu in groups with titles', async () => {
       punkte: [...g.querySelectorAll('[role="menuitem"]')].map(b => b.dataset.arg),
     }));
     assert.deepEqual(gruppen, [
-      { titel: 'Rund um die Sammlung', punkte: ['lagerorte', 'alarme', 'gutscheine'] },
-      { titel: 'Mein Konto', punkte: ['profil', 'haushalt', 'daten', 'app'] },
+      { titel: 'Rund um die Sammlung', punkte: ['locations', 'alerts', 'vouchers'] },
+      { titel: 'Mein Konto', punkte: ['profile', 'household', 'data', 'app'] },
       { titel: 'Verwaltung', punkte: ['settings', 'monitor'] },
     ]);
     // Account and settings say what they stand for.
-    assert.match(text(o.d.querySelector('[data-arg="profil"]')), /Profil, Design, Anmeldung/);
+    assert.match(text(o.d.querySelector('[data-arg="profile"]')), /Profil, Design, Anmeldung/);
     assert.match(text(o.d.querySelector('[data-arg="settings"]')), /Für alle Konten/);
   } finally {
     o.w.close();
@@ -134,11 +134,11 @@ test('from the set detail to price alerts and storage locations', async () => {
     '/v1/storage': { success: true },
   });
   try {
-    for (const ziel of ['alarme', 'lagerorte']) {
+    for (const ziel of ['alerts', 'locations']) {
       await reiter(o.w, 'gallery');
       assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
       o.d.querySelector('#gallery [data-click="openModal"]').click();
-      const knopf = () => o.d.querySelector(`#set-modal [data-click="sichtAusDialog"][data-arg="${ziel}"]`);
+      const knopf = () => o.d.querySelector(`#set-modal [data-click="viewFromDialog"][data-arg="${ziel}"]`);
       assert.ok(await warte(knopf), `kein Weg zu ${ziel}`);
       knopf().click();
       assert.ok(await warte(() => o.d.getElementById(`tab-${ziel}`).classList.contains('active')), ziel);

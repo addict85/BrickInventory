@@ -122,7 +122,7 @@ test('a manually entered part gets market price and entry', () => {
     fn,
     /price: erfassungsPreis/,
     'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
-      '(src/finances/priceRule.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
+      '(src/finances/priceRule.ts, acquisitionPrice) — in der Erfassung hiesse eine 0 ' +
       '„für null Franken gekauft"',
   );
   const regel = fs.readFileSync(path.join(ROOT, 'src/finances/priceRule.ts'), 'utf8');
@@ -609,7 +609,7 @@ test('the tile takes the condition from the server response', async () => {
       set: { set_number: '10294-1', conditions: ['U'], condition: 'U' },
     },
   });
-  const badges = () => d.querySelector('#gallery .sc .splaketten')?.textContent ?? '';
+  const badges = () => d.querySelector('#gallery .sc .sbadges')?.textContent ?? '';
   try {
     assert.ok(await warte(() => /Neu/.test(badges())), `vorher: ${badges()}`);
     d.querySelector('#gallery [data-click="openModal"]').click();

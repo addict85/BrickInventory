@@ -20,7 +20,7 @@ import javax.inject.Singleton
 /**
  * One binding per area of the interface (data/api/): every repository gets
  * only its area and cannot call anything else. One Retrofit, one client —
- * the network behavior stands in NetzModule and is the same for all areas.
+ * the network behavior stands in NetworkModule and is the same for all areas.
  */
 @Module
 @InstallIn(SingletonComponent::class)

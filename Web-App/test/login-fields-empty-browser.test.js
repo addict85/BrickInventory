@@ -17,7 +17,7 @@ const { patternCollection } = require('./helpers/inventory');
 
 const felder = `({ lu: document.getElementById('lu').value, lp: document.getElementById('lp').value,
   lc: document.getElementById('lc').value, mask: getComputedStyle(document.getElementById('login-screen')).display,
-  hinweis: document.getElementById('login-hinweis').hidden ? '' : document.getElementById('login-hinweis').textContent,
+  hinweis: document.getElementById('login-hint').hidden ? '' : document.getElementById('login-hint').textContent,
   fehler: [...document.querySelectorAll('#toasts .toast.error')].map(t => t.textContent) })`;
 
 test('login fields after the session expired and after logout', { timeout: 180_000 }, async t => {
@@ -51,7 +51,7 @@ test('login fields after the session expired and after logout', { timeout: 180_0
       document.getElementById('btn-login').click(); true`);
     await app.bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'wieder angemeldet', 300);
     assert.equal(
-      await app.b.auswerten(`document.getElementById('login-hinweis').hidden`),
+      await app.b.auswerten(`document.getElementById('login-hint').hidden`),
       true,
       'Hinweis verschwindet mit der Anmeldung',
     );

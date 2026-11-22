@@ -2037,7 +2037,6 @@
     "guthaben_geprueft_am",
     "hard_expires_at",
     "hat_pdf",
-    "herkunft",
     "heute",
     "heuteProzent",
     "hex",
@@ -2086,6 +2085,8 @@
     "kaufpreise_umgerechnet",
     "keks_fehlt",
     "kette",
+    "key",
+    "kind",
     "konfiguriert",
     "kopplung",
     "korrekturen",
@@ -2171,6 +2172,7 @@
     "ok",
     "open_invites",
     "optionen",
+    "origin",
     "original",
     "ort",
     "orte",
@@ -2260,7 +2262,6 @@
     "rotation_faellig",
     "running",
     "schedules",
-    "schluessel",
     "schluessel_nonce",
     "schritt",
     "schritte",
@@ -2434,13 +2435,13 @@
     },
     "AcquisitionManagement": {
       "felder": [
-        "art",
+        "kind",
         "id",
         "colorId",
         "title"
       ],
       "pflicht": [
-        "art",
+        "kind",
         "id",
         "title"
       ]
@@ -2778,10 +2779,10 @@
     },
     "BarcodeScanner": {
       "felder": [
-        "herkunft"
+        "origin"
       ],
       "pflicht": [
-        "herkunft"
+        "origin"
       ]
     },
     "BestandEintrag": {
@@ -3127,6 +3128,14 @@
       ],
       "pflicht": []
     },
+    "CreateWantedItem": {
+      "felder": [
+        "anfrage"
+      ],
+      "pflicht": [
+        "anfrage"
+      ]
+    },
     "CsvImportErgebnis": {
       "felder": [
         "success",
@@ -3234,6 +3243,37 @@
         "success"
       ]
     },
+    "DeleteFigure": {
+      "felder": [
+        "figNumber",
+        "besitzer"
+      ],
+      "pflicht": [
+        "figNumber"
+      ]
+    },
+    "DeletePart": {
+      "felder": [
+        "partNumber",
+        "colorId",
+        "besitzer"
+      ],
+      "pflicht": [
+        "partNumber",
+        "colorId"
+      ]
+    },
+    "DeleteWantedItem": {
+      "felder": [
+        "setNumber",
+        "zustand",
+        "besitzer"
+      ],
+      "pflicht": [
+        "setNumber",
+        "zustand"
+      ]
+    },
     "DeleteWithQuantityResponse": {
       "felder": [
         "success",
@@ -3241,6 +3281,30 @@
       ],
       "pflicht": [
         "success"
+      ]
+    },
+    "EditFigure": {
+      "felder": [
+        "figNumber",
+        "anfrage",
+        "besitzer"
+      ],
+      "pflicht": [
+        "figNumber",
+        "anfrage"
+      ]
+    },
+    "EditPart": {
+      "felder": [
+        "partNumber",
+        "colorId",
+        "anfrage",
+        "besitzer"
+      ],
+      "pflicht": [
+        "partNumber",
+        "colorId",
+        "anfrage"
       ]
     },
     "Einrichtung": {
@@ -3338,34 +3402,6 @@
       "pflicht": [
         "success",
         "total_value"
-      ]
-    },
-    "FigurAendern": {
-      "felder": [
-        "figNumber",
-        "anfrage",
-        "besitzer"
-      ],
-      "pflicht": [
-        "figNumber",
-        "anfrage"
-      ]
-    },
-    "FigurErfassen": {
-      "felder": [
-        "anfrage"
-      ],
-      "pflicht": [
-        "anfrage"
-      ]
-    },
-    "FigurLoeschen": {
-      "felder": [
-        "figNumber",
-        "besitzer"
-      ],
-      "pflicht": [
-        "figNumber"
       ]
     },
     "FigurTeile": {
@@ -3938,13 +3974,13 @@
     },
     "ManualItemDetail": {
       "felder": [
-        "art",
+        "kind",
         "id",
         "colorId",
         "title"
       ],
       "pflicht": [
-        "art",
+        "kind",
         "id",
         "title"
       ]
@@ -4033,14 +4069,6 @@
       ],
       "pflicht": []
     },
-    "MerkpostenAnlegen": {
-      "felder": [
-        "anfrage"
-      ],
-      "pflicht": [
-        "anfrage"
-      ]
-    },
     "MerkpostenAntwort": {
       "felder": [
         "success",
@@ -4048,16 +4076,6 @@
         "merkposten"
       ],
       "pflicht": []
-    },
-    "MerkpostenDetail": {
-      "felder": [
-        "setNumber",
-        "condition"
-      ],
-      "pflicht": [
-        "setNumber",
-        "condition"
-      ]
     },
     "MerkpostenInhaberAntwort": {
       "felder": [
@@ -4076,17 +4094,6 @@
       "pflicht": [
         "owner_user_id",
         "neuer_inhaber"
-      ]
-    },
-    "MerkpostenLoeschen": {
-      "felder": [
-        "setNumber",
-        "zustand",
-        "besitzer"
-      ],
-      "pflicht": [
-        "setNumber",
-        "zustand"
       ]
     },
     "MerkpostenPreiseResponse": {
@@ -4541,10 +4548,10 @@
     },
     "PdfViewer": {
       "felder": [
-        "schluessel"
+        "key"
       ],
       "pflicht": [
-        "schluessel"
+        "key"
       ]
     },
     "PendingAlertsResponse": {
@@ -4958,6 +4965,30 @@
       ],
       "pflicht": []
     },
+    "RecordFigure": {
+      "felder": [
+        "anfrage"
+      ],
+      "pflicht": [
+        "anfrage"
+      ]
+    },
+    "RecordPart": {
+      "felder": [
+        "anfrage"
+      ],
+      "pflicht": [
+        "anfrage"
+      ]
+    },
+    "RecordSet": {
+      "felder": [
+        "anfrage"
+      ],
+      "pflicht": [
+        "anfrage"
+      ]
+    },
     "RegisterRequest": {
       "felder": [
         "username",
@@ -5075,14 +5106,6 @@
         "setNumber"
       ]
     },
-    "SetErfassen": {
-      "felder": [
-        "anfrage"
-      ],
-      "pflicht": [
-        "anfrage"
-      ]
-    },
     "SetExistsResponse": {
       "felder": [
         "success",
@@ -5143,16 +5166,6 @@
         "set_number"
       ]
     },
-    "SetMenge": {
-      "felder": [
-        "setNumber",
-        "schritt"
-      ],
-      "pflicht": [
-        "setNumber",
-        "schritt"
-      ]
-    },
     "SetPriceResponse": {
       "felder": [
         "from_cache",
@@ -5168,6 +5181,16 @@
       ],
       "pflicht": [
         "success"
+      ]
+    },
+    "SetQuantity": {
+      "felder": [
+        "setNumber",
+        "schritt"
+      ],
+      "pflicht": [
+        "setNumber",
+        "schritt"
       ]
     },
     "SetResponse": {
@@ -5247,33 +5270,12 @@
         "success"
       ]
     },
-    "TeilAendern": {
-      "felder": [
-        "partNumber",
-        "colorId",
-        "anfrage",
-        "besitzer"
-      ],
-      "pflicht": [
-        "partNumber",
-        "colorId",
-        "anfrage"
-      ]
-    },
     "TeileGeladen": {
       "felder": [
         "success",
         "count"
       ],
       "pflicht": []
-    },
-    "TeilErfassen": {
-      "felder": [
-        "anfrage"
-      ],
-      "pflicht": [
-        "anfrage"
-      ]
     },
     "TeilFarbeRequest": {
       "felder": [
@@ -5294,17 +5296,6 @@
         "vereint"
       ],
       "pflicht": []
-    },
-    "TeilLoeschen": {
-      "felder": [
-        "partNumber",
-        "colorId",
-        "besitzer"
-      ],
-      "pflicht": [
-        "partNumber",
-        "colorId"
-      ]
     },
     "TlsStand": {
       "felder": [
@@ -5395,7 +5386,7 @@
       ],
       "pflicht": []
     },
-    "UpdateBeschreibung": {
+    "UpdateDescription": {
       "felder": [
         "versionCode",
         "versionName",
@@ -5559,6 +5550,16 @@
         "set_number"
       ]
     },
+    "WantedItemDetail": {
+      "felder": [
+        "setNumber",
+        "condition"
+      ],
+      "pflicht": [
+        "setNumber",
+        "condition"
+      ]
+    },
     "WantedXmlErgebnis": {
       "felder": [
         "success",
@@ -5626,7 +5627,7 @@
       ],
       "pflicht": []
     },
-    "WidgetZahlen": {
+    "WidgetNumbers": {
       "felder": [
         "waehrung",
         "wert",

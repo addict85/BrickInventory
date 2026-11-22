@@ -16,7 +16,7 @@
  *      removed → red: “sort headers with aria-sort”
  *   C  passt() always returns true → red: “search over all items”
  *   D  (13.11.2026) in legende() the signs omitted (eintrag() without
- *      .legende-zeichen) → red: “legend shows signs” (0 instead of 3)
+ *      .legend-char) → red: “legend shows signs” (0 instead of 3)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -103,7 +103,7 @@ function inSicht(o) {
   b.callback([{ isIntersecting: true }]);
   return true;
 }
-const zeilen = o => [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr[data-arg]')];
+const zeilen = o => [...o.d.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody tr[data-arg]')];
 
 test('block by block while scrolling', async () => {
   const o = await openFinances(250);
@@ -125,7 +125,7 @@ test('block by block while scrolling', async () => {
 test('search over all positions', async () => {
   const o = await openFinances(250);
   try {
-    const feld = o.d.getElementById('fin-suche');
+    const feld = o.d.getElementById('fin-search');
     assert.ok(feld.labels?.length || feld.getAttribute('aria-label'), 'Suchfeld ohne Namen');
     feld.value = 'seltene';
     feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
@@ -140,9 +140,9 @@ test('search over all positions', async () => {
 test('sort headers with aria-sort', async () => {
   const o = await openFinances(30);
   try {
-    const headers = [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] th[aria-sort]')];
+    const headers = [...o.d.querySelectorAll('#fin-tbl [data-fin-kind="sets"] th[aria-sort]')];
     assert.ok(headers.length >= 3, `sortierbare Köpfe: ${headers.length}`);
-    const knopf = () => o.d.querySelector('#fin-tbl [data-click="finSortiere"][data-arg="wert"]');
+    const knopf = () => o.d.querySelector('#fin-tbl [data-click="finSort"][data-arg="value"]');
     knopf().click();
     await takt(10);
     assert.equal(knopf().closest('th').getAttribute('aria-sort'), 'descending');
@@ -160,10 +160,10 @@ test('sort headers with aria-sort', async () => {
 test('legend shows symbols', async () => {
   const o = await openFinances(3);
   try {
-    const legende = o.d.querySelector('#fin-tbl .fin-legende');
+    const legende = o.d.querySelector('#fin-tbl .fin-legend');
     assert.ok(legende, 'Legende fehlt');
     assert.doesNotMatch(legende.textContent, /<span/);
-    assert.equal(legende.querySelectorAll('.legende-zeichen').length, 3);
+    assert.equal(legende.querySelectorAll('.legend-char').length, 3);
   } finally {
     o.w.close();
   }

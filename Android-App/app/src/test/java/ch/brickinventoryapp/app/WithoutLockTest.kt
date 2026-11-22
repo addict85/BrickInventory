@@ -22,9 +22,9 @@ import org.robolectric.RobolectricTestRunner
  * and management no longer open silently there, the app first says that they are
  * unprotected. Robolectric by itself reports no secured device.
  *
- * Counter-check: in DevicesStepProtection.bestaetige() without lock again `weiter()`
- * instead of `withoutLock.frage(…)` → red “without a screen lock the step guard warns
- * …” (the step went on silently); gegenproben/ohne-sperre-still.patch
+ * Counter-check: in DevicesStepProtection.bestaetige() without lock again `next()`
+ * instead of `withoutLock.question(…)` → red “without a screen lock the step guard warns
+ * …” (the step went on silently); counter-checks/ohne-sperre-still.patch
  */
 @RunWith(RobolectricTestRunner::class)
 class WithoutLockTest {
@@ -34,25 +34,25 @@ class WithoutLockTest {
 
     @Test
     fun `without a screen lock the step guard warns instead of silently letting through`() {
-        val aktivitaet = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
-        val protection = DevicesStepProtection(aktivitaet) { "" }
-        var weiter = 0
-        compose.runOnUiThread { protection.confirm("Gutschein-PIN anzeigen") { weiter++ } }
-        assertEquals("Ohne Sperre ging der Schritt still weiter", 0, weiter)
+        val activity = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        val protection = DevicesStepProtection(activity) { "" }
+        var next = 0
+        compose.runOnUiThread { protection.confirm("Gutschein-PIN anzeigen") { next++ } }
+        assertEquals("Ohne Sperre ging der Schritt still weiter", 0, next)
 
         compose.setContent { BrickInventoryManagerTheme { WithoutLockWarning(protection.withoutLock) } }
         compose.onNodeWithText("Gutschein-PIN anzeigen", substring = true).assertExists()
         compose.onNodeWithText(compose.activity.getString(R.string.common_cancel)).performClick()
         compose.waitForIdle()
-        assertEquals("Abbrechen lässt nichts durch", 0, weiter)
-        assertNull(protection.withoutLock.wartet)
+        assertEquals("Abbrechen lässt nichts durch", 0, next)
+        assertNull(protection.withoutLock.waiting)
 
-        compose.runOnUiThread { protection.confirm("Gutschein-PIN anzeigen") { weiter++ } }
-        compose.onNodeWithText(compose.activity.getString(R.string.schritt_ohne_sperre_weiter)).performClick()
+        compose.runOnUiThread { protection.confirm("Gutschein-PIN anzeigen") { next++ } }
+        compose.onNodeWithText(compose.activity.getString(R.string.step_without_lock_next)).performClick()
         compose.waitForIdle()
-        assertEquals("Ungeschützt fortfahren führt den Schritt aus", 1, weiter)
+        assertEquals("Ungeschützt fortfahren führt den Schritt aus", 1, next)
 
-        compose.runOnUiThread { protection.confirm("Verwaltung öffnen") { weiter++ } }
-        assertEquals("Das Ja gilt bis zur Frist wie eine Bestätigung", 2, weiter)
+        compose.runOnUiThread { protection.confirm("Verwaltung öffnen") { next++ } }
+        assertEquals("Das Ja gilt bis zur Frist wie eine Bestätigung", 2, next)
     }
 }

@@ -13,30 +13,30 @@ import kotlinx.serialization.encoding.Encoder
 /**
  * The designs — the same list as ALLOWED in js/theme-boot.js and the whitelist
  * in src/contract/globalRules.ts (theme.test.js keeps them together). On the wire and in
- * the store stands the [kennung].
+ * the store stands the [identifier].
  */
 @Serializable(with = DesignSerializer::class)
-enum class Design(val kennung: String) {
+enum class Design(val identifier: String) {
     CLASSIC("classic"),
     BRICK("brick"),
-    WERKBANK("werkbank"),
-    FARBFAECHER("farbfaecher"),
-    NOPPE("noppe"),
-    HOCHGLANZ("hochglanz");
+    WORKBENCH("werkbank"),
+    COLOR_FAN("farbfaecher"),
+    STUD("noppe"),
+    GLOSSY("hochglanz");
 
     companion object {
         val DEFAULT = CLASSIC
 
         /** null for empty or unknown: „no information“, not „back to the default“. */
-        fun aus(kennung: String?): Design? = entries.firstOrNull { it.kennung == kennung?.trim() }
+        fun from(identifier: String?): Design? = entries.firstOrNull { it.identifier == identifier?.trim() }
     }
 }
 
-/** Writes the [Design.kennung]; reads unknown as [Design.DEFAULT]. */
+/** Writes the [Design.identifier]; reads unknown as [Design.DEFAULT]. */
 object DesignSerializer : KSerializer<Design> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(Design::class.java.name, PrimitiveKind.STRING)
-    override fun serialize(encoder: Encoder, value: Design) = encoder.encodeString(value.kennung)
-    override fun deserialize(decoder: Decoder): Design = Design.aus(decoder.decodeString()) ?: Design.DEFAULT
+    override fun serialize(encoder: Encoder, value: Design) = encoder.encodeString(value.identifier)
+    override fun deserialize(decoder: Decoder): Design = Design.from(decoder.decodeString()) ?: Design.DEFAULT
 }
 
 /**
@@ -44,13 +44,13 @@ object DesignSerializer : KSerializer<Design> {
  * „no information“ (null) and must not overwrite a remembered design.
  */
 @OptIn(ExperimentalSerializationApi::class)
-object DesignOderNichts : KSerializer<Design?> {
+object DesignOrNothing : KSerializer<Design?> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor(Design::class.java.name + "?", PrimitiveKind.STRING).nullable
 
     override fun serialize(encoder: Encoder, value: Design?) =
-        if (value == null) encoder.encodeNull() else encoder.encodeString(value.kennung)
+        if (value == null) encoder.encodeNull() else encoder.encodeString(value.identifier)
 
     override fun deserialize(decoder: Decoder): Design? =
-        if (decoder.decodeNotNullMark()) Design.aus(decoder.decodeString()) else decoder.decodeNull()
+        if (decoder.decodeNotNullMark()) Design.from(decoder.decodeString()) else decoder.decodeNull()
 }

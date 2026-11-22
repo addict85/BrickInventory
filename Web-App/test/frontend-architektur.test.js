@@ -13,16 +13,16 @@
  *      state only in zustand.js”
  *   E  in bausteine.js `import { loadGallery } from './sammlung.js'` → red:
  *      “core imports no view” (and the cycle test)
- *   G  (08.11.2026) in minifigs.js again `import('./parts.js').ManuellesTeil` as a JSDoc type
+ *   G  (08.11.2026) in minifigs.js again `import('./parts.js').ManualPart` as a JSDoc type
  *      (teile.js imports minifigs.js) → red: “no import cycle”, the cycle names both files
  *   F  in the chapter “Oberfläche” of docs/architecture.md `zustand.js` renamed to
  *      `00-staat.js` → red; the chapter deleted → red
- *   H  (11.11.2026) in registry.js (KERN) `import './sammlung.js'` added → red: “core and
+ *   H  (11.11.2026) in registry.js (CORE) `import './sammlung.js'` added → red: “core and
  *      building blocks … import no view” names js/registry.js → js/sammlung.js
  *   I  (15.11.2026) in fortschritt.js again `new EventSource(url, { withCredentials: true })` instead of
  *      strom() → red: “no fetch and no EventSource past the API shell” with file and line
  */
-const { isAppModule, KERN, BAUSTEINE } = require('../scripts/build-frontend');
+const { isAppModule, CORE, BUILDING_BLOCKS } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -45,7 +45,7 @@ function graph() {
         '--bundle',
         '--format=iife',
         '--log-level=error',
-        '--define:__ERLAUBTE_STILE__=[]',
+        '--define:__ALLOWED_STYLES__=[]',
         `--metafile=${meta}`,
         `--outfile=${path.join(dir, 'out.js')}`,
       ],
@@ -125,12 +125,12 @@ test('the frontend bundle has no import cycle', () => {
   );
 });
 
-test('core and building blocks (KERN, BAUSTEINE, i18n.js) import no view', () => {
+test('core and building blocks (CORE, BUILDING_BLOCKS, i18n.js) import no view', () => {
   const g = graph();
-  const layer = new Set([...KERN, ...BAUSTEINE].map(f => `js/${f}`));
+  const layer = new Set([...CORE, ...BUILDING_BLOCKS].map(f => `js/${f}`));
   const unten = (/** @type {string} */ k) => k === 'i18n.js' || layer.has(k);
   const kern = [...g.keys()].filter(unten);
-  assert.equal(kern.length, KERN.length + BAUSTEINE.length, `nur ${kern.length} Kernmodule gefunden`);
+  assert.equal(kern.length, CORE.length + BUILDING_BLOCKS.length, `nur ${kern.length} Kernmodule gefunden`);
   const aufwaerts = kern.flatMap(k => (g.get(k) ?? []).filter(z => !unten(z)).map(z => `${k} → ${z}`));
   assert.deepEqual(aufwaerts, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
 });

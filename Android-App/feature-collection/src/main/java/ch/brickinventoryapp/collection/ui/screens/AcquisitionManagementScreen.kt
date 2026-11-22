@@ -4,19 +4,19 @@ import ch.brickinventoryapp.model.util.calendarDay
 import java.time.Instant
 import java.time.ZoneOffset
 import androidx.compose.runtime.remember
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.domain.Waehrung
-import ch.brickinventoryapp.model.domain.Postenart
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.UndoMessage
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.state.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.state.ui.viewmodel.KaeufeAktionen
-import ch.brickinventoryapp.model.domain.KaufAnsicht
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.state.ui.viewmodel.PurchasesActions
+import ch.brickinventoryapp.model.domain.PurchaseView
+import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -41,15 +41,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.state.ui.viewmodel.KaeufeViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.centeredUntil
-import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.model.domain.OHNE_FARBE
-import ch.brickinventoryapp.ui.util.fmtEingabe
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
+import ch.brickinventoryapp.ui.util.fmtInput
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.shared.ui.ConditionToggle
 import ch.brickinventoryapp.shared.ui.OwnerPicker
@@ -62,27 +62,27 @@ import ch.brickinventoryapp.shared.ui.OwnerPicker
  */
 @Composable
 fun AcquisitionManagementRoute(
-    vm: KaeufeViewModel,
-    type: Postenart,
+    vm: PurchasesViewModel,
+    type: ItemKind,
     id: String,
-    colorId: Int = OHNE_FARBE,
+    colorId: Int = WITHOUT_COLOR,
     title: String,
     onBack: () -> Unit
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val glance by vm.viewport.collectAsStateWithLifecycle()
     val manDetailState by remember(type, id, colorId) { vm.purchasesOf(type, id, colorId) }.collectAsStateWithLifecycle()
-    val weg = vm.purchaseRoute.wert.collectAsStateWithLifecycle().value
-    val meldung = remember { SnackbarHostState() }
-    UndoMessage(weg, stringResource(R.string.acq_geloescht), meldung, vm.purchaseRoute::rueckgaengig, vm.purchaseRoute::ausfuehren)
-    AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState, weg?.purchaseId), vm, type, id, colorId, title, onBack,
-        meldung)
+    val gone = vm.purchaseRoute.value.collectAsStateWithLifecycle().value
+    val message = remember { SnackbarHostState() }
+    UndoMessage(gone, stringResource(R.string.acq_deleted), message, vm.purchaseRoute::undo, vm.purchaseRoute::execute)
+    AcquisitionManagementScreen(PurchasesState(state, glance, manDetailState, gone?.purchaseId), vm, type, id, colorId, title, onBack,
+        message)
 }
 
 /** What purchase management shows: one state for sets, parts and figures. */
-internal data class KaeufeZustand(
+internal data class PurchasesState(
     val state: AppUiState,
-    val blick: ScopeUiState,
+    val glance: ScopeUiState,
     val manDetailState: ManualItemDetailUiState,
     /** The purchase whose deletion currently offers "Undo"; it's already missing from the list. */
     val routePurchaseId: Int? = null,
@@ -91,21 +91,21 @@ internal data class KaeufeZustand(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AcquisitionManagementScreen(
-    zustand: KaeufeZustand,
-    aktionen: KaeufeAktionen,
-    type: Postenart,
+    condition: PurchasesState,
+    actions: PurchasesActions,
+    type: ItemKind,
     id: String,             // setNumber / partNumber / figNumber
-    colorId: Int = OHNE_FARBE,
+    colorId: Int = WITHOUT_COLOR,
     title: String,
     onBack: () -> Unit,
-    meldung: SnackbarHostState = remember { SnackbarHostState() },
+    message: SnackbarHostState = remember { SnackbarHostState() },
 ) {
-    val state = zustand.state
-    val blick = zustand.blick
+    val state = condition.state
+    val glance = condition.glance
     val currency = state.currency
-    val manDetailState = zustand.manDetailState
+    val manDetailState = condition.manDetailState
 
-    val acquisitions = manDetailState.acquisitions.filterNot { it.id == zustand.routePurchaseId }
+    val acquisitions = manDetailState.acquisitions.filterNot { it.id == condition.routePurchaseId }
     // Total from the server — the calculation used to sit here, and three more times
     // elsewhere (see utils/acquisitions.ts, acquisitionTotals).
     val totals = manDetailState.acquisitionTotals
@@ -118,13 +118,13 @@ internal fun AcquisitionManagementScreen(
     // `stringResource` doesn't work, because the numbers only exist in the response;
     // LocalResources is the config-aware form.
     val res = androidx.compose.ui.platform.LocalResources.current
-    val isLoading    = manDetailState.purchasesFetch.laedt
+    val isLoading    = manDetailState.purchasesFetch.loading
 
     Scaffold(
-        snackbarHost = { SnackbarHost(meldung) },
+        snackbarHost = { SnackbarHost(message) },
         topBar = {
             // The title is a part or set name: two lines instead of a hard cut-off.
-            DetailTopAppBar(title, onBack, schliessen = false)
+            DetailTopAppBar(title, onBack, close = false)
         }
     ) { innerPadding ->
         if (isLoading && acquisitions.isEmpty()) {
@@ -144,9 +144,9 @@ internal fun AcquisitionManagementScreen(
         // Centered at form width on the tablet, like settings: above 1200 dp
         // quantity and price in one row sat too far apart to read together.
         LazyColumn(
-            Modifier.fillMaxSize().padding(innerPadding).centeredUntil(Lesebreite.formular),
-            contentPadding = PaddingValues(Abstaende.gross),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
+            Modifier.fillMaxSize().padding(innerPadding).centeredUntil(ReadingWidth.form),
+            contentPadding = PaddingValues(Spacing.large),
+            verticalArrangement = Arrangement.spacedBy(Spacing.medium)
         ) {
             // No column headers: quantity and price sit side by side, the condition below;
             // headers over three columns matched none of the rows. Every field carries its own
@@ -155,7 +155,7 @@ internal fun AcquisitionManagementScreen(
                 item {
                     Text(msg, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = Abstaende.tiny))
+                        modifier = Modifier.padding(vertical = Spacing.tiny))
                 }
             }
 
@@ -165,58 +165,58 @@ internal fun AcquisitionManagementScreen(
                     currency = currency,
                     onSave = { price, cond, qty, date ->
                         when (type) {
-                            Postenart.SET  -> aktionen.updateAcquisition(id, acq.id, price, cond, qty, date)
-                            else   -> aktionen.updateManualAcquisition(type, id, colorId, acq.id, price, cond, qty, date)
+                            ItemKind.SET  -> actions.updateAcquisition(id, acq.id, price, cond, qty, date)
+                            else   -> actions.updateManualAcquisition(type, id, colorId, acq.id, price, cond, qty, date)
                         }
                         // Reload after save to reflect server-side changes (e.g. market price fill);
                         // the ViewModel already reloads date changes on its own.
                         if (price == null && date == null) {
-                            if (type == Postenart.SET) aktionen.loadAcquisitions(id)
-                            else aktionen.loadManualAcquisitions(type, id, colorId)
+                            if (type == ItemKind.SET) actions.loadAcquisitions(id)
+                            else actions.loadManualAcquisitions(type, id, colorId)
                         }
                     },
-                    onDelete = { aktionen.purchaseDeleteReserve(type, id, colorId, acq.id) }
+                    onDelete = { actions.purchaseDeleteReserve(type, id, colorId, acq.id) }
                 )
                 // ── Owner of this row ──
                 //
                 // The purchase price is the level at which a copy exists: three entries
                 // are three purchases, which can belong to different children. For sets, manual
                 // parts and minifigures — the only way to move inventory between accounts.
-                if (blick.householdMembers.size > 1) {
+                if (glance.householdMembers.size > 1) {
                     OwnerPicker(
-                        members = blick.householdMembers,
-                        selected = acq.ownerUserId ?: blick.householdMembers.firstOrNull { it.isSelf }?.id,
+                        members = glance.householdMembers,
+                        selected = acq.ownerUserId ?: glance.householdMembers.firstOrNull { it.isSelf }?.id,
                         onSelect = { target ->
                             // acq.ownerUserId only for comparison — the
                             // server determines the sender from the row.
-                            if (target != acq.ownerUserId) aktionen.changeAcquisitionOwner(
+                            if (target != acq.ownerUserId) actions.changeAcquisitionOwner(
                                 type, id, colorId, acq.id, target
-                            ) { err, teile, figuren ->
+                            ) { err, parts, figures ->
                                 // After the switch the list no longer matches:
                                 // the row now belongs to the other account.
-                                if (type == Postenart.SET) aktionen.loadAcquisitions(id)
-                                else aktionen.loadManualAcquisitions(type, id, colorId)
+                                if (type == ItemKind.SET) actions.loadAcquisitions(id)
+                                else actions.loadManualAcquisitions(type, id, colorId)
                                 // The numbers come from the response, otherwise the message said "0
                                 // parts" even when hundreds move. Two numbers, two
                                 // matches: a <plurals> only matches one,
                                 // hence two fragments in one frame.
                                 moveMessage = err ?: res.getString(
                                     R.string.household_move_ok,
-                                    res.getQuantityString(R.plurals.household_move_parts, teile, teile),
-                                    res.getQuantityString(R.plurals.household_move_minifigs, figuren, figuren))
+                                    res.getQuantityString(R.plurals.household_move_parts, parts, parts),
+                                    res.getQuantityString(R.plurals.household_move_minifigs, figures, figures))
                             }
                         },
-                        modifier = Modifier.padding(top = Abstaende.tiny)
+                        modifier = Modifier.padding(top = Spacing.tiny)
                     )
                 }
                 HorizontalDivider()
             }
 
             // The total comes from the server and still counts a pending purchase.
-            if (acquisitions.size > 1 && zustand.routePurchaseId == null) {
+            if (acquisitions.size > 1 && condition.routePurchaseId == null) {
                 item {
                     Row(
-                        Modifier.fillMaxWidth().padding(top = Abstaende.tiny),
+                        Modifier.fillMaxWidth().padding(top = Spacing.tiny),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -243,18 +243,18 @@ internal fun AcquisitionManagementScreen(
  * that tapping changes it. The form follows the app language like every date (fmtTag).
  */
 @Composable
-internal fun Kaufdatum(createdAt: Instant?, changeOn: () -> Unit) {
+internal fun PurchaseDate(createdAt: Instant?, changeOn: () -> Unit) {
     Row(
         // heightIn instead of minimumInteractiveComponentSize: that only enlarges the tap area around the
         // button, the button surface itself stayed 44 dp (PurchaseDateTest).
         Modifier
             .heightIn(min = 48.dp)
-            .clickable(onClickLabel = stringResource(R.string.acq_kaufdatum_aendern), role = Role.Button, onClick = changeOn)
-            .padding(vertical = Abstaende.tiny),
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            .clickable(onClickLabel = stringResource(R.string.acq_purchase_date_edit), role = Role.Button, onClick = changeOn)
+            .padding(vertical = Spacing.tiny),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(stringResource(R.string.acq_gekauft_am), style = MaterialTheme.typography.labelMedium,
+        Text(stringResource(R.string.acq_bought_at), style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(fmtTag(createdAt) ?: "—", style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
@@ -264,17 +264,17 @@ internal fun Kaufdatum(createdAt: Instant?, changeOn: () -> Unit) {
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AcquisitionManagementRow(
-    acquisition: KaufAnsicht,
-    currency: Waehrung,
-    onSave: (price: Double?, cond: Zustand?, qty: Int?, date: String?) -> Unit,
+    acquisition: PurchaseView,
+    currency: CurrencyCode,
+    onSave: (price: Double?, cond: Condition?, qty: Int?, date: String?) -> Unit,
     onDelete: () -> Unit
 ) {
     var qtyText   by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
     var priceText by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { fmtEingabe(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { fmtInput(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
-    val estimatedText = stringResource(R.string.acq_preis_geschaetzt)
+    val estimatedText = stringResource(R.string.acq_price_estimated)
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
@@ -282,7 +282,7 @@ private fun AcquisitionManagementRow(
     // DisposableEffect for navigating back. lastSaved prevents a double save
     // and deletion just by tapping an empty field.
     var lastSavedPrice by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { fmtEingabe(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { fmtInput(it) } ?: "")
     }
     var lastSavedQty by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
 
@@ -309,16 +309,16 @@ private fun AcquisitionManagementRow(
 
     if (showDeleteConfirm) {
         Prompt(
-            titel = stringResource(R.string.acq_delete_question),
+            title = stringResource(R.string.acq_delete_question),
             text = stringResource(R.string.acq_delete_text),
-            bestaetigen = stringResource(R.string.common_delete),
-            onBestaetigen = { showDeleteConfirm = false; onDelete() },
-            onAbbrechen = { showDeleteConfirm = false },
+            confirm = stringResource(R.string.common_delete),
+            onConfirm = { showDeleteConfirm = false; onDelete() },
+            onCancel = { showDeleteConfirm = false },
         )
     }
 
     var showDatePicker by remember(acquisition.id) { mutableStateOf(false) }
-    Kaufdatum(acquisition.createdAt) { showDatePicker = true }
+    PurchaseDate(acquisition.createdAt) { showDatePicker = true }
     if (showDatePicker) {
         val initialMillis = remember(acquisition.createdAt) {
             acquisition.createdAt?.calendarDay()?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
@@ -345,8 +345,8 @@ private fun AcquisitionManagementRow(
 
     Column(Modifier.fillMaxWidth()) {
     Row(
-        Modifier.fillMaxWidth().padding(bottom = Abstaende.tiny),
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        Modifier.fillMaxWidth().padding(bottom = Spacing.tiny),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Qty
@@ -362,11 +362,11 @@ private fun AcquisitionManagementRow(
                 .width(COUNT_WIDTH)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
-            keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
+            keyboardOptions = NumericInput.integerKeyboard(ImeAction.Done),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus(); flushPending() }
             ),
-            shape = Formen.etikett
+            shape = Shapes.tag
         )
 
         // Price
@@ -393,11 +393,11 @@ private fun AcquisitionManagementRow(
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus(); flushPending() }
             ),
-            shape = Formen.etikett
+            shape = Shapes.tag
         )
 
         // Delete
-        MitTooltip(stringResource(R.string.acq_delete_title)) {
+        WithTooltip(stringResource(R.string.acq_delete_title)) {
             IconButton(onClick = { showDeleteConfirm = true }) {
                 Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
                     tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
@@ -409,7 +409,7 @@ private fun AcquisitionManagementRow(
     ConditionToggle(
         selected = condition,
         onSelect = { newCond -> condition = newCond; onSave(null, newCond, null, null) },
-        modifier = Modifier.padding(bottom = Abstaende.klein),
+        modifier = Modifier.padding(bottom = Spacing.small),
     )
     }
 }

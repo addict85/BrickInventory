@@ -5,7 +5,7 @@
  * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt):
  *   A  in index.html data-arg="gutscheine" → "gutschein" → red: “every
  *      menu entry opens …” and “every view without a tab …”
- *   B  the VIEWS entry `daten` removed in navigation.js → red: “every
+ *   B  the VIEWS entry `data` removed in navigation.js → red: “every
  *      menu entry opens …” (daten opens nothing)
  *   C  in sitzung.js the line that shows #ntab-settings for admins
  *      removed → red: “only an admin sees settings and background jobs …”
@@ -38,7 +38,7 @@ const SICHTDATEN = Object.fromEntries(
     '/v1/auth/passkeys',
   ].map(p => [p, { success: true }]),
 );
-const eintraege = d => [...d.querySelectorAll('.umenu-item[data-click="oeffneSicht"]')];
+const eintraege = d => [...d.querySelectorAll('.umenu-item[data-click="openView"]')];
 
 test('every menu entry opens its area and loads it', async () => {
   const o = await openUi(SICHTDATEN);
@@ -127,7 +127,7 @@ test('logout stands once, in the drawer, and logs out', async () => {
     const knopf = o.d.querySelectorAll('#btn-logout');
     assert.equal(knopf.length, 1);
     assert.ok(o.d.getElementById('umenu-pop').contains(knopf[0]), 'Abmelden steht nicht in der Klappe');
-    assert.ok(knopf[0].previousElementSibling?.matches('hr.umenu-trenner'), 'vor Abmelden fehlt der Trenner');
+    assert.ok(knopf[0].previousElementSibling?.matches('hr.umenu-divider'), 'vor Abmelden fehlt der Trenner');
     knopf[0].click();
     await takt(30);
     await o.ruhig();
@@ -145,7 +145,7 @@ test('the header bar keeps its deliberate height', () => {
   // The height belongs to the header bar, not .btn-sm: the class carries half the
   // UI; min-height 32 px is the compact button size.
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-  assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*(max\()?\d+px/, 'In `.umenu` steht keine Höhe mehr.');
-  assert.match(css, /\.umenu \.ubadge\{height:var\(--kopf-hoehe\)\}/, 'Der Namensknopf nimmt die Höhe nicht mehr.');
+  assert.match(css, /\.umenu\{[^}]*--header-height:\s*(max\()?\d+px/, 'In `.umenu` steht keine Höhe mehr.');
+  assert.match(css, /\.umenu \.ubadge\{height:var\(--header-height\)\}/, 'Der Namensknopf nimmt die Höhe nicht mehr.');
   assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/, '`.btn-sm` hat eine feste Höhe bekommen.');
 });

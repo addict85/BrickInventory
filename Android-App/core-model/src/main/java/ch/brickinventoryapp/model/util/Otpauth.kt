@@ -8,8 +8,8 @@ import java.net.URI
  * `https:`, `content:`) would otherwise open an arbitrary target and give it the secret.
  */
 fun otpauthAddress(url: String?): String? {
-    val roh = url?.trim()?.takeIf { it.isNotEmpty() && it.none(Char::isWhitespace) } ?: return null
-    val uri = runCatching { URI(roh) }.getOrNull() ?: return null
+    val raw = url?.trim()?.takeIf { it.isNotEmpty() && it.none(Char::isWhitespace) } ?: return null
+    val uri = runCatching { URI(raw) }.getOrNull() ?: return null
     if (!uri.scheme.equals("otpauth", ignoreCase = true) || uri.isOpaque) return null
-    return roh.takeIf { uri.host?.lowercase() in setOf("totp", "hotp") }
+    return raw.takeIf { uri.host?.lowercase() in setOf("totp", "hotp") }
 }

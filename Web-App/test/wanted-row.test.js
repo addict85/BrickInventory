@@ -39,12 +39,12 @@ test('the web app row shows market price and trash, no takeover button', async (
   });
   try {
     await reiter(o.w, 'wanted');
-    assert.ok(await warte(() => o.d.querySelector('#mk-list .mk-zeile')), 'keine Zeile');
-    const z = o.d.querySelector('#mk-list .mk-zeile');
-    assert.match(z.querySelector('.mk-preis')?.textContent ?? '', /349[.,]99/, 'kein Marktpreis');
-    assert.ok(z.querySelector('.delbtn[data-click="merkpostenLoeschenStop"]'), 'kein Papierkorb');
-    assert.equal(z.querySelector('[data-click="merkpostenUebernehmen"]'), null, 'die Zeile übernimmt wieder');
-    assert.equal(z.dataset.click, 'oeffneMerkpostenDetail', 'die Zeile öffnet nicht das Detail');
+    assert.ok(await warte(() => o.d.querySelector('#mk-list .mk-row')), 'keine Zeile');
+    const z = o.d.querySelector('#mk-list .mk-row');
+    assert.match(z.querySelector('.mk-price')?.textContent ?? '', /349[.,]99/, 'kein Marktpreis');
+    assert.ok(z.querySelector('.delbtn[data-click="stopDeleteWantedItem"]'), 'kein Papierkorb');
+    assert.equal(z.querySelector('[data-click="takeOverWantedItem"]'), null, 'die Zeile übernimmt wieder');
+    assert.equal(z.dataset.click, 'openWantedDetail', 'die Zeile öffnet nicht das Detail');
   } finally {
     o.w.close();
   }

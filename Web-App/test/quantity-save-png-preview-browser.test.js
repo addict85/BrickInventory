@@ -21,7 +21,7 @@ const { startApp } = require('./helpers/app-browser');
 const { patternCollection, catalogSet, holdsSet, quantityOf } = require('./helpers/inventory');
 
 const ROOT = path.join(__dirname, '..');
-const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-close]').forEach(x => x.click()); true`;
 
 /** 32 × 32 PNG: red border, inside a checkerboard of red and fully transparent. */
 function checkerboard() {
@@ -72,7 +72,7 @@ async function closeQuantityOn(_t, a) {
     await bis(`document.getElementById('m-qty')?.value === '${3 - Number(soll)}'`, 'Detail');
     // Change and close in the same move: far below the 400 ms until saving.
     await b.auswerten(`document.querySelector('#set-modal [data-click="${knopf}"]').click();
-      document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
+      document.querySelector('#set-modal [data-dialog-close]').click(); true`);
     await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'geschlossen');
     await a.warte(800);
     await a.ruhig();
@@ -82,7 +82,7 @@ async function closeQuantityOn(_t, a) {
 
 async function transparentPreview(_t, a, nr) {
   const { b, bis } = a;
-  await b.auswerten(`document.documentElement.setAttribute('data-dunkel', ''); true`);
+  await b.auswerten(`document.documentElement.setAttribute('data-dark', ''); true`);
   try {
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="${nr}"] .sci img')`, 'Sammlung');
     await bis(
@@ -100,7 +100,7 @@ async function transparentPreview(_t, a, nr) {
     assert.equal(m.typ, 'image/png', `Vorschau mit falschem Typ: ${JSON.stringify(m)}`);
     assert.deepEqual([m.rand, m.innen], [255, 0], `Transparenz ging verloren: ${JSON.stringify(m)}`);
   } finally {
-    await b.auswerten(`document.documentElement.removeAttribute('data-dunkel'); true`);
+    await b.auswerten(`document.documentElement.removeAttribute('data-dark'); true`);
   }
 }
 

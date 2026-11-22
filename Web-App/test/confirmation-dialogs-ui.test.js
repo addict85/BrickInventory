@@ -14,9 +14,9 @@
  *   D  in papierkorb.js or gutscheine.js again confirmDelete() and
  *      api() without password → red: “emptying the trash …” or “deleting a
  *      voucher …" (the password dialog does not appear)
- *   E  in gutscheinPinUmschalten() fetchPlaintext() skipped → red: “the
+ *   E  in toggleVoucherPin() fetchPlaintext() skipped → red: “the
  *      voucher list shows the mask …" (no password dialog)
- *   F  gutscheinPdfOeffnen() again openPdfViewer() directly → red: “the
+ *   F  openVoucherPdf() again openPdfViewer() directly → red: “the
  *      voucher PDF opens only after confirmation …"
  */
 const test = require('node:test');
@@ -40,7 +40,7 @@ function withFactor(liste, passkey = false) {
   };
 }
 
-/** @param {Document} d @param {{ passwort?: string, code?: string }} eingabe */
+/** @param {Document} d @param {{ passwort?: string, code?: string }} input */
 async function confirm(d, { passwort, code }) {
   const modal = d.getElementById('confirm-modal');
   assert.ok(
@@ -98,7 +98,7 @@ test('the passkey replaces the code', async () => {
       '/v1/auth/passkey/anmelden/optionen': { success: true, optionen: { challenge: 'AAAA', allowCredentials: [] } },
     },
     {
-      vorher: fenster => {
+      before: fenster => {
         fenster.PublicKeyCredential = function PublicKeyCredential() {};
         Object.defineProperty(fenster, 'isSecureContext', { value: true });
         Object.defineProperty(fenster.navigator, 'credentials', {
@@ -141,7 +141,7 @@ test('emptying the trash asks for password and code', async () => {
       o?.method === 'DELETE' ? withFactor(rufe)(url, o) : { success: true, eintraege: [] },
   });
   try {
-    d.getElementById('papierkorb-leeren').click();
+    d.getElementById('trash-empty').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '246810' });
     assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
     assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
@@ -160,9 +160,9 @@ test('deleting a voucher asks for password and code', async () => {
     '/v1/vouchers/3': withFactor(rufe),
   });
   try {
-    await sicht(w, 'gutscheine');
-    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinLoeschen"]')), 'Gutscheinliste');
-    d.querySelector('[data-click="gutscheinLoeschen"]').click();
+    await sicht(w, 'vouchers');
+    assert.ok(await warte(() => d.querySelector('[data-click="deleteVoucher"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="deleteVoucher"]').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '135790' });
     assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
     assert.deepEqual(rufe[1], { password: 'Mein-Passwort-1', code: '135790' });
@@ -189,9 +189,9 @@ test('the voucher PDF only opens after confirmation, with the ticket', async () 
     },
   });
   try {
-    await sicht(w, 'gutscheine');
-    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinPdfOeffnen"]')), 'Gutscheinliste');
-    d.querySelector('[data-click="gutscheinPdfOeffnen"]').click();
+    await sicht(w, 'vouchers');
+    assert.ok(await warte(() => d.querySelector('[data-click="openVoucherPdf"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="openVoucherPdf"]').click();
     const modal = d.getElementById('confirm-modal');
     assert.ok(
       await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
@@ -221,10 +221,10 @@ test('the voucher list shows the mask, number and PIN only after confirmation', 
     },
   });
   try {
-    await sicht(w, 'gutscheine');
+    await sicht(w, 'vouchers');
     assert.ok(await warte(() => d.querySelector('.voucher-row')), 'Gutscheinliste');
     assert.equal(d.querySelector('.voucher-num').textContent, '…9012');
-    d.querySelector('[data-click="gutscheinPinUmschalten"]').click();
+    d.querySelector('[data-click="toggleVoucherPin"]').click();
     const modal = d.getElementById('confirm-modal');
     assert.ok(
       await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),

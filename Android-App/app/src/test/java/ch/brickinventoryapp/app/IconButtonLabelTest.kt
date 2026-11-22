@@ -2,7 +2,7 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Controls that consist ONLY of an icon need a label.
@@ -22,7 +22,7 @@ class IconButtonLabelTest {
     // edit buttons in the monitoring. The quantity buttons carried "+" and "-"
 
     private fun screens(): List<File> =
-        Quellen.root
+        Sources.root
             .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
                 // Lower bound: an empty file walk lets every
@@ -34,10 +34,10 @@ class IconButtonLabelTest {
     fun `every IconButton has a label`() {
         val withoutLabel = mutableListOf<String>()
 
-        for (datei in screens()) {
-            val zeilen = datei.readText().lines()
-            zeilen.forEachIndexed { i, zeile ->
-                if (!zeile.contains("IconButton(")) return@forEachIndexed
+        for (file in screens()) {
+            val rows = file.readText().lines()
+            rows.forEachIndexed { i, row ->
+                if (!row.contains("IconButton(")) return@forEachIndexed
                 // The icon call stands on the same or one of the next
                 // lines — multi-line calls are the normal case.
                 //
@@ -47,11 +47,11 @@ class IconButtonLabelTest {
                 // unlabelled, although the label — behind two
                 // comment lines — stood directly below. A test that
                 // complains about correct code gets switched off instead of followed.
-                val block = zeilen.subList(i, minOf(i + 10, zeilen.size)).joinToString("\n")
+                val block = rows.subList(i, minOf(i + 10, rows.size)).joinToString("\n")
                 if (!block.contains("Icon(")) return@forEachIndexed
-                val beschriftet = block.contains("stringResource") ||
+                val labeled = block.contains("stringResource") ||
                     block.contains("contentDescription =")
-                if (!beschriftet) withoutLabel += "${datei.name}:${i + 1}"
+                if (!labeled) withoutLabel += "${file.name}:${i + 1}"
             }
         }
 
@@ -61,46 +61,46 @@ class IconButtonLabelTest {
     }
 
     /**
-     * Every pure icon button lies in MitTooltip: sighted users could only guess filter and
+     * Every pure icon button lies in WithTooltip: sighted users could only guess filter and
      * sort (both lines), Material shows the name on long press.
      * The call stands on the same line or up to two lines above. The only exception is
-     * MitTooltip.kt itself, which gets the button as content.
+     * WithTooltip.kt itself, which gets the button as content.
      *
-     * Counter-check (gegenproben/symbolknopf-ohne-tooltip.patch): the back arrow of the
-     * subpage without MitTooltip → red with Unterseite.kt.
+     * Counter-check (counter-checks/symbolknopf-ohne-tooltip.patch): the back arrow of the
+     * subpage without WithTooltip → red with Unterseite.kt.
      */
     @Test
     fun `every icon button shows its name as a tooltip`() {
-        val ohne = mutableListOf<String>()
-        for (datei in screens()) {
-            if (datei.name == "MitTooltip.kt") continue
-            val zeilen = Quellen.withoutComments(datei.readText()).lines()
-            zeilen.forEachIndexed { i, zeile ->
-                if (!zeile.contains("IconButton(")) return@forEachIndexed
-                val davor = zeilen.subList(maxOf(0, i - 2), i + 1).joinToString("\n")
-                if (!davor.contains("MitTooltip(")) ohne += "${datei.name}:${i + 1}"
+        val without = mutableListOf<String>()
+        for (file in screens()) {
+            if (file.name == "WithTooltip.kt") continue
+            val rows = Sources.withoutComments(file.readText()).lines()
+            rows.forEachIndexed { i, row ->
+                if (!row.contains("IconButton(")) return@forEachIndexed
+                val before = rows.subList(maxOf(0, i - 2), i + 1).joinToString("\n")
+                if (!before.contains("WithTooltip(")) without += "${file.name}:${i + 1}"
             }
         }
-        assert(ohne.isEmpty()) { "Symbolknopf ohne Tooltip (MitTooltip): $ohne" }
+        assert(without.isEmpty()) { "Symbolknopf ohne Tooltip (WithTooltip): $without" }
     }
 
     @Test
     fun `the labels exist in both languages`() {
         // A missing entry in values-de does not lead to an error but
         // silently to the English text — exactly the kind of gap nobody reports.
-        val en = File(Quellen.res, "values/strings.xml").readText()
-        val de = File(Quellen.res, "values-de/strings.xml").readText()
-        val namen = listOf(
+        val en = File(Sources.res, "values/strings.xml").readText()
+        val de = File(Sources.res, "values-de/strings.xml").readText()
+        val names = listOf(
             "cd_search_clear", "cd_password_show", "cd_password_hide", "cd_set_delete",
             "cd_qty_increase", "cd_qty_decrease", "cd_edit_cache_ttl", "cd_edit_limits",
         )
-        for (name in namen) {
+        for (name in names) {
             assert(en.contains("\"$name\"")) { "values/strings.xml: $name fehlt" }
             assert(de.contains("\"$name\"")) { "values-de/strings.xml: $name fehlt" }
         }
     }
 
-    // Counter-check (measured on 27.10.): in MerklisteZeile.kt the
+    // Counter-check (measured on 27.10.): in WantedListRow.kt the
     // `role = Role.Button` removed again → red with exactly this place.
     @Test
     fun `every clickable names its role`() {

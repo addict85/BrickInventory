@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
 import ch.brickinventoryapp.contract.CsvImportStatus
-import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -38,7 +38,7 @@ class CsvImportSseClient @Inject constructor(
         data class Status(val status: CsvImportStatusView) : Event()
         /**
          * Connection error. [technical] is exclusively for the log: the caller
-         * (CsvImportService via folgeStrom) falls back to polling, the user is
+         * (CsvImportService via followStream) falls back to polling, the user is
          * shown nothing — hence no translatable
          * text but the cause in technical form.
          */
@@ -64,10 +64,10 @@ class CsvImportSseClient @Inject constructor(
         val events = sseStream(client, request) { json.decodeFromString(CsvImportStatus.serializer(), it) }
         emitAll(events.map { e ->
             when (e) {
-                is SseEvent.Daten      -> Event.Status(e.wert.alsAnsicht())
-                is SseEvent.Unlesbar   -> Event.Failed("unreadable event: ${e.technical}")
+                is SseEvent.Data      -> Event.Status(e.value.asView())
+                is SseEvent.Unreadable   -> Event.Failed("unreadable event: ${e.technical}")
                 is SseEvent.Ended    -> Event.Failed("stream closed by server")
-                is SseEvent.Gescheitert -> Event.Failed(e.code?.let { "HTTP $it" } ?: e.technical)
+                is SseEvent.StreamFailed -> Event.Failed(e.code?.let { "HTTP $it" } ?: e.technical)
             }
         })
     }

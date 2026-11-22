@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.finances.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Load
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinancesRepository
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.Bestandsabgleich
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.finances.ui.FinanceUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,10 +20,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.session.Sitzung
-import ch.brickinventoryapp.state.ui.viewmodel.Filterwahl
-import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
-import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
+import ch.brickinventoryapp.state.ui.viewmodel.Messages
+import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 
 /**
  * The finance tab: valuation of sets, parts and figures, profit and
@@ -35,18 +35,18 @@ import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
  */
 @HiltViewModel
 class FinanceViewModel @Inject constructor(
-    private val sitzung: Sitzung,
-    private val filter: Filterwahl,
-    private val meldungen: Meldungen,
-    private val changes: Bestandsabgleich,
-    private val finanzen: FinancesRepository,
-    private val gemerkt: SavedStateHandle,
-) : ViewModel(), Filterwahl by filter, FinanzAktionen {
+    private val session: Session,
+    private val filter: FilterChoice,
+    private val messages: Messages,
+    private val changes: StockReconciliation,
+    private val finances: FinancesRepository,
+    private val wanted: SavedStateHandle,
+) : ViewModel(), FilterChoice by filter, FinanceActions {
 
-    val state: StateFlow<AppUiState> = sitzung.state
+    val state: StateFlow<AppUiState> = session.state
 
     init {
-        sequenceSignOut(sitzung) { reset() }
+        logoutSequence(session) { reset() }
         // The valuation is computed by the server from the store's stock; if that changes, it is no longer valid.
         viewModelScope.launch { changes.inventoryChanged().collect { loadValuation() } }
     }
@@ -60,7 +60,7 @@ class FinanceViewModel @Inject constructor(
 
     override fun setStorageFilter(view: ScopeFilter.View, value: String) {
         viewModelScope.launch {
-            filter.setzeLager(view, value)
+            filter.applyStorage(view, value)
             afterFilter(view)
         }
     }
@@ -72,37 +72,37 @@ class FinanceViewModel @Inject constructor(
         // Whoever opens finances loads what is missing; returning does not load anything twice.
         observeLoadOn(_financeState) {
             val s = _financeState.value
-            if (s.valuation == null && !s.bewertung.laedt) loadValuation()
-            if (s.historyPoints.isEmpty() && !s.verlauf.laedt) loadPortfolioHistory()
+            if (s.valuation == null && !s.valuationLoad.loading) loadValuation()
+            if (s.historyPoints.isEmpty() && !s.history.loading) loadPortfolioHistory()
         }
     }
 
     private fun rememberedState() = FinanceUiState(
-        kategorien = gemerkt.get<ArrayList<String>>(CATEGORIES)?.toSet() ?: emptySet(),
-        historyPeriod = gemerkt.get<String>(PERIOD) ?: "week",
+        categories = wanted.get<ArrayList<String>>(CATEGORIES)?.toSet() ?: emptySet(),
+        historyPeriod = wanted.get<String>(PERIOD) ?: "week",
     )
 
     override fun loadValuation() {
         viewModelScope.launch {
-            _financeState.update { it.copy(bewertung = Laden.Loads) }
-            val konto = filter.accountFor(ScopeFilter.View.FINANCE)
-            when (val r = finanzen.getValuation(konto)) {
-                is Ergebnis.Erfolg -> {
-                    _financeState.update { it.copy(valuation = r.data, bewertung = Laden.Daten(Unit)) }
+            _financeState.update { it.copy(valuationLoad = Load.Loads) }
+            val account = filter.accountFor(ScopeFilter.View.FINANCE)
+            when (val r = finances.getValuation(account)) {
+                is Outcome.Success -> {
+                    _financeState.update { it.copy(valuation = r.data, valuationLoad = Load.Data(Unit)) }
                     // The account's currency comes along with the valuation; the
                     // AppViewModel remembers it for the next start.
-                    sitzung.waehrungUebernommen(r.data.currency)
+                    session.currencyAdopted(r.data.currency)
                 }
-                is Ergebnis.Fehler -> {
-                    _financeState.update { it.copy(bewertung = loadError(r)) }
-                    meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Outcome.Failure -> {
+                    _financeState.update { it.copy(valuationLoad = loadError(r)) }
+                    messages.show(messages.messageForSnackbar(r))
                 }
             }
-            (finanzen.getPartsValuation(konto) as? Ergebnis.Erfolg)
+            (finances.getPartsValuation(account) as? Outcome.Success)
                 ?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
-            (finanzen.getMinifigsValuation(konto) as? Ergebnis.Erfolg)
+            (finances.getMinifigsValuation(account) as? Outcome.Success)
                 ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
-            (finanzen.getPnl(konto) as? Ergebnis.Erfolg)
+            (finances.getPnl(account) as? Outcome.Success)
                 ?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
         }
     }
@@ -111,32 +111,32 @@ class FinanceViewModel @Inject constructor(
     fun loadPortfolioHistory() = loadPortfolioHistory(_financeState.value.historyPeriod)
 
     override fun loadPortfolioHistory(period: String) {
-        gemerkt[PERIOD] = period
+        wanted[PERIOD] = period
         viewModelScope.launch {
-            _financeState.update { it.copy(verlauf = Laden.Loads, historyPeriod = period,
+            _financeState.update { it.copy(history = Load.Loads, historyPeriod = period,
                 historyPoints = emptyList(), historyYAxis = emptyList(), historyDays = emptyList(),
                 historyPeriodChangePct = null) }
-            when (val r = finanzen.getPortfolioHistory(period, filter.accountFor(ScopeFilter.View.FINANCE))) {
-                is Ergebnis.Erfolg -> _financeState.update { it.copy(
-                    verlauf                = Laden.Daten(Unit),
+            when (val r = finances.getPortfolioHistory(period, filter.accountFor(ScopeFilter.View.FINANCE))) {
+                is Outcome.Success -> _financeState.update { it.copy(
+                    history                = Load.Data(Unit),
                     historyPeriodChangePct = r.data.changePercent,
-                    historyPoints          = r.data.punkte,
-                    historyYAxis           = r.data.yAchse,
+                    historyPoints          = r.data.points,
+                    historyYAxis           = r.data.yAxis,
                     historyDays            = r.data.days,
-                    historyCurrency        = r.data.waehrung) }
-                is Ergebnis.Fehler -> _financeState.update { it.copy(verlauf = loadError(r)) }
+                    historyCurrency        = r.data.currency) }
+                is Outcome.Failure -> _financeState.update { it.copy(history = loadError(r)) }
             }
         }
     }
 
-    override fun toggleFinanceCategory(kategorie: String) {
-        _financeState.update { it.withToggledCategory(kategorie) }
-        gemerkt[CATEGORIES] = ArrayList(_financeState.value.kategorien)
+    override fun toggleFinanceCategory(category: String) {
+        _financeState.update { it.withToggledCategory(category) }
+        wanted[CATEGORIES] = ArrayList(_financeState.value.categories)
     }
 
     override fun resetFinanceCategories() {
-        _financeState.update { it.copy(kategorien = emptySet()) }
-        gemerkt[CATEGORIES] = ArrayList<String>()
+        _financeState.update { it.copy(categories = emptySet()) }
+        wanted[CATEGORIES] = ArrayList<String>()
     }
 
     private fun afterFilter(view: ScopeFilter.View) {
@@ -147,8 +147,8 @@ class FinanceViewModel @Inject constructor(
 
     private fun reset() {
         _financeState.value = FinanceUiState()
-        gemerkt[CATEGORIES] = ArrayList<String>()
-        gemerkt[PERIOD] = "week"
+        wanted[CATEGORIES] = ArrayList<String>()
+        wanted[PERIOD] = "week"
     }
 
     private companion object {

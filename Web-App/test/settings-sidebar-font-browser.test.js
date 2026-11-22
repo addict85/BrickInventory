@@ -14,9 +14,9 @@ const { startApp } = require('./helpers/app-browser');
 
 /** Per entry: does its text stick out beyond the entry, does the entry stick out beyond the column, is the text visible? */
 const MEASURE = `(() => {
-  const nav = document.querySelector('#global-settings-grid > .einst-nav'), n = nav.getBoundingClientRect();
+  const nav = document.querySelector('#global-settings-grid > .settings-nav'), n = nav.getBoundingClientRect();
   const funde = [];
-  for (const a of nav.querySelectorAll('.einst-link')) {
+  for (const a of nav.querySelectorAll('.settings-link')) {
     if (!a.checkVisibility()) continue;
     const r = a.getBoundingClientRect(), z = document.createRange();
     z.selectNodeContents(a);
@@ -27,7 +27,7 @@ const MEASURE = `(() => {
     if (r.right > n.right + 1) funde.push(text + ': Eintrag ragt über die Leiste');
     if (nav.scrollWidth > nav.clientWidth + 1) funde.push('Leiste scrollt waagerecht');
   }
-  return { funde: [...new Set(funde)], spalte: Math.round(n.width), eintraege: nav.querySelectorAll('.einst-link').length,
+  return { funde: [...new Set(funde)], spalte: Math.round(n.width), eintraege: nav.querySelectorAll('.settings-link').length,
            seite: document.documentElement.scrollWidth, innen: document.documentElement.clientWidth };
 })()`;
 
@@ -43,7 +43,7 @@ test('settings: section list with large font on the desktop', { concurrency: 1, 
   await b.auswerten(`document.querySelector('.ntab[data-tab="settings"]').click(); true`);
   await bis(`document.getElementById('tab-settings').classList.contains('active')`, 'Einstellungen');
   await bis(
-    `document.querySelector('#global-settings-grid > .einst-nav .einst-link')?.checkVisibility()`,
+    `document.querySelector('#global-settings-grid > .settings-nav .settings-link')?.checkVisibility()`,
     'Abschnittsliste',
   );
   await ruhig();

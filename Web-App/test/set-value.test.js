@@ -216,11 +216,11 @@ test('finances: purchase price instead of a second market price column', () => {
   // The header may be a sort button (sortButton), the order stays.
   assert.match(
     fin,
-    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortButton\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{(?:t(?:Raw)?\('(?:detail\.market_price|finance\.grand\.value)'\)|sortButton\('wert', \w+, tRaw\('finance\.grand\.value'\)\))\}/,
+    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortButton\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{(?:t(?:Raw)?\('(?:detail\.market_price|finance\.grand\.value)'\)|sortButton\('value', \w+, tRaw\('finance\.grand\.value'\)\))\}/,
     'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren',
   );
-  // fmtGeld instead of fmtN: a purchase price of 0 (gift) stands there as „0,00 €“.
-  assert.match(fin, /if \(n <= 1\) return fmtGeld\(p, cur\);/, 'Die Kaufpreis-Spalte muss den Wert auch anzeigen');
+  // fmtMoney instead of fmtN: a purchase price of 0 (gift) stands there as „0,00 €“.
+  assert.match(fin, /if \(n <= 1\) return fmtMoney\(p, cur\);/, 'Die Kaufpreis-Spalte muss den Wert auch anzeigen');
 
   // The weighting of the purchase price has moved from the SQL into weightedPurchase()
   // — it is now computed over the same rows that also stand in
@@ -307,7 +307,7 @@ test('preview generation is capped', () => {
     'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"',
   );
   const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'catalog.js'), 'utf8');
-  assert.match(kat, /imgUrl\(thumbUrl\(src\), 'nur'\)/, 'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
+  assert.match(kat, /imgUrl\(thumbUrl\(src\), 'only'\)/, 'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
   // The gallery does NOT — there it pays off.
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'collection.js'), 'utf8');
   assert.match(
@@ -372,7 +372,7 @@ test('the history endpoints deliver finished chart data', () => {
   );
   assert.equal(d.values[0].firstRealIndex, 0);
   assert.equal(
-    buildChart([{ name: 'leer', rows: [] }]).values[0].firstRealIndex,
+    buildChart([{ name: 'empty-state', rows: [] }]).values[0].firstRealIndex,
     0,
     'Eine leere Reihe zeigt hinter ihr Ende',
   );

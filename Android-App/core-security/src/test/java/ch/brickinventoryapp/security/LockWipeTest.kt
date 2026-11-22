@@ -19,32 +19,32 @@ import java.util.Base64
  *   A  forgetInMemory() empty → red „after the wipe a locked device yields no key“
  *   B  fetch() returns the cached array instead of a copy → red „a key handed out before …“
  *      and „after the wipe …“ (the handed-out array was zeroed along)
- *   C  LockWipe.wipe() without fangeAusserAbbruch → red „one failing holder …“
+ *   C  LockWipe.wipe() without catchUnlessCancelled → red „one failing holder …“
  */
 class LockWipeTest {
 
     private val folder = File(System.getProperty("java.io.tmpdir"), "bim-sperre-${System.nanoTime()}").apply { mkdirs() }
 
     @After
-    fun zu() {
+    fun tearDown() {
         folder.deleteRecursively()
     }
 
     /** Like a Keystore key with setUnlockedDeviceRequired: locked it opens nothing. */
     private class LockedVault : TokenEncryption {
         var locked = false
-        override fun verschluessle(klartext: String): String {
+        override fun encrypt(plaintext: String): String {
             check(!locked) { "gesperrt" }
-            return "t:" + Base64.getEncoder().encodeToString(klartext.toByteArray())
+            return "t:" + Base64.getEncoder().encodeToString(plaintext.toByteArray())
         }
-        override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Readable)?.klartext
-        override fun oeffne(gespeichert: String): Tresorbefund =
-            if (locked) Tresorbefund.Gesperrt
-            else Tresorbefund.Readable(String(Base64.getDecoder().decode(gespeichert.removePrefix("t:"))))
+        override fun decrypt(saved: String): String? = (open(saved) as? VaultFinding.Readable)?.plaintext
+        override fun open(saved: String): VaultFinding =
+            if (locked) VaultFinding.LockedState
+            else VaultFinding.Readable(String(Base64.getDecoder().decode(saved.removePrefix("t:"))))
     }
 
     private val vault = LockedVault()
-    private val key = Ablageschluessel(File(folder, "ablage.schluessel"), vault)
+    private val key = StoreKey(File(folder, "ablage.schluessel"), vault)
 
     @Test
     fun `after the wipe a locked device yields no key, unlocked the same one again`() {

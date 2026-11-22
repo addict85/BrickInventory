@@ -21,7 +21,7 @@ async function suche(sprache) {
   feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
   await warte(() => /xyzxyz/.test(o.d.getElementById('gallery').textContent), 3000);
   await takt(20);
-  const text = o.d.querySelector('#gallery .leer h2')?.textContent || o.d.getElementById('gallery').textContent;
+  const text = o.d.querySelector('#gallery .empty-state h2')?.textContent || o.d.getElementById('gallery').textContent;
   return { o, text: text.trim() };
 }
 
@@ -44,7 +44,7 @@ test('search without results: en', async () => {
 });
 
 test('every „ has its “, and English has no straight quotes around words', async () => {
-  const { w } = await openUi({}, { angemeldet: false });
+  const { w } = await openUi({}, { loggedIn: false });
   try {
     const de = Object.entries(w.I18N_DE),
       en = Object.entries(w.I18N_EN);

@@ -26,7 +26,7 @@ test('build list in the account language', async () => {
     await reiter(w, 'partslist');
     await warte(() => d.documentElement.lang === 'en');
     await takt(50);
-    const leer = text(d.querySelector('#pl-sets .leer'));
+    const leer = text(d.querySelector('#pl-sets .empty-state'));
     assert.doesNotMatch(leer, /Bauliste|Noch keine|Setnummer/, `deutsch: ${leer}`);
     assert.match(leer, /build list is still empty/i);
   } finally {
@@ -35,7 +35,7 @@ test('build list in the account language', async () => {
 });
 
 async function anmelden(antwort) {
-  const o = await openUi({ '/v1/auth/login': antwort }, { angemeldet: false });
+  const o = await openUi({ '/v1/auth/login': antwort }, { loggedIn: false });
   await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'falsch-falsch';
@@ -52,7 +52,7 @@ test('login: wrong password without confirmation link', async () => {
     error: 'Benutzername oder Passwort falsch',
   });
   try {
-    assert.equal(d.querySelector('#lerr [data-click="bestaetigungErneut"]'), null);
+    assert.equal(d.querySelector('#lerr [data-click="resendConfirmation"]'), null);
   } finally {
     w.close();
   }
@@ -67,7 +67,7 @@ test('login: address not confirmed, with confirmation link', async () => {
     error: 'E-Mail-Adresse noch nicht bestätigt',
   });
   try {
-    assert.ok(d.querySelector('#lerr [data-click="bestaetigungErneut"]'));
+    assert.ok(d.querySelector('#lerr [data-click="resendConfirmation"]'));
   } finally {
     w.close();
   }

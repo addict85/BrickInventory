@@ -23,16 +23,16 @@ import javax.crypto.BadPaddingException
  *      red „only a permanent error means token gone“ and „ein vorübergehender
  *      Fehler wird einmal wiederholt“
  *   B  openWithRetry() with `repeat(1)` → red „… wird einmal wiederholt“
- *   C  readToken() reports „“ immediately when locked (`melde(alt ?: ""); return`) →
+ *   C  readToken() reports „“ immediately when locked (`report(old ?: ""); return`) →
  *      red „ein gesperrter Keystore beim Start …“ and „… nachgemeldet“
  *   D  readToken() stops after startup (`return` after the first „“) → red
  *      „ein länger gesperrter Keystore meldet das Token nach“
  * Counter-checks for the key that only works on an unlocked device (measured locally):
  *   E  readToken() counts every attempt (`attempt++` unconditionally) → red „bei
- *      gesperrtem Geraet wartet das Lesen …“; gegenproben/sperre-zaehlt-versuche.patch
- *   G  EntsperrVault.oeffne() always via `onlyUnlocked` → red „ein Geheimtext ohne
- *      Praefix …“; gegenproben/entsperrtresor-vergisst-altbestand.patch
- * That EntsperrVault never falls back to the key without a condition is checked by StoreUnlockedTest.
+ *      gesperrtem Geraet wartet das Lesen …“; counter-checks/sperre-zaehlt-versuche.patch
+ *   G  UnlockVault.open() always via `onlyUnlocked` → red „ein Geheimtext ohne
+ *      Praefix …“; counter-checks/entsperrtresor-vergisst-altbestand.patch
+ * That UnlockVault never falls back to the key without a condition is checked by StoreUnlockedTest.
  */
 class VaultLockTest {
 
@@ -53,35 +53,35 @@ class VaultLockTest {
     @Test
     fun `a temporary error is retried once, a permanent one is not`() {
         var n = 0
-        assertEquals(Tresorbefund.Readable("t"), openWithRetry {
+        assertEquals(VaultFinding.Readable("t"), openWithRetry {
             if (n++ == 0) throw KeyStoreException("kurz") else "t"
         })
         n = 0
-        assertEquals(Tresorbefund.Gesperrt, openWithRetry { n++; throw ProviderException("haengt") })
+        assertEquals(VaultFinding.LockedState, openWithRetry { n++; throw ProviderException("haengt") })
         assertEquals(2, n)
         n = 0
-        assertEquals(Tresorbefund.Weg, openWithRetry { n++; throw AEADBadTagException() })
+        assertEquals(VaultFinding.Gone, openWithRetry { n++; throw AEADBadTagException() })
         assertEquals("Kein zweiter Versuch bei einem falschen Schlüssel", 1, n)
-        assertEquals(Tresorbefund.Weg, openWithRetry { null })
+        assertEquals(VaultFinding.Gone, openWithRetry { null })
     }
 
     /** Delivers [findings] in order, then always the last one. */
-    private class Sequence(vararg findings: Tresorbefund) : TokenEncryption {
+    private class Sequence(vararg findings: VaultFinding) : TokenEncryption {
         private val rest = ArrayDeque(findings.toList())
-        override fun verschluessle(klartext: String) = klartext
-        override fun entschluessle(gespeichert: String): String? = null
-        override fun oeffne(gespeichert: String): Tresorbefund = if (rest.size > 1) rest.removeFirst() else rest.first()
+        override fun encrypt(plaintext: String) = plaintext
+        override fun decrypt(saved: String): String? = null
+        override fun open(saved: String): VaultFinding = if (rest.size > 1) rest.removeFirst() else rest.first()
     }
 
-    private fun lies(
-        tresor: TokenEncryption,
-        alt: String? = null,
-        lock: Geraetesperre = Geraetesperre { false },
+    private fun read(
+        vault: TokenEncryption,
+        old: String? = null,
+        lock: DeviceLock = DeviceLock { false },
     ): Pair<List<String>, List<Long>> {
-        val gemeldet = mutableListOf<String>()
-        val pausen = mutableListOf<Long>()
-        runBlocking { readToken(tresor, "geheim", alt, melde = { gemeldet += it }, wait = { pausen += it }, lock = lock) }
-        return gemeldet to pausen
+        val reported = mutableListOf<String>()
+        val pauses = mutableListOf<Long>()
+        runBlocking { readToken(vault, "geheim", old, report = { reported += it }, wait = { pauses += it }, lock = lock) }
+        return reported to pauses
     }
 
     /**
@@ -91,64 +91,64 @@ class VaultLockTest {
     @Test
     fun `with a locked device reading waits without a deadline and reports the token after unlocking`() {
         val night = VAULT_ATTEMPT_MS.size + VAULT_FOLLOW_UP_ATTEMPTS + 50
-        var gelesen = 0
-        val tresor = object : TokenEncryption {
-            override fun verschluessle(klartext: String) = klartext
-            override fun entschluessle(gespeichert: String): String? = null
-            override fun oeffne(gespeichert: String): Tresorbefund =
-                if (gelesen++ < night) Tresorbefund.Gesperrt else Tresorbefund.Readable("token")
+        var read = 0
+        val vault = object : TokenEncryption {
+            override fun encrypt(plaintext: String) = plaintext
+            override fun decrypt(saved: String): String? = null
+            override fun open(saved: String): VaultFinding =
+                if (read++ < night) VaultFinding.LockedState else VaultFinding.Readable("token")
         }
-        val (gemeldet, pausen) = lies(tresor, lock = { gelesen < night })
-        assertEquals("Einmal leer, dann das Token", listOf("", "token"), gemeldet)
-        assertEquals(night, pausen.size)
+        val (reported, pauses) = read(vault, lock = { read < night })
+        assertEquals("Einmal leer, dann das Token", listOf("", "token"), reported)
+        assertEquals(night, pauses.size)
     }
 
-    private class Attrappe(val name: String, val gesperrt: () -> Boolean = { false }) : TokenEncryption {
-        override fun verschluessle(klartext: String): String {
-            if (gesperrt()) throw InvalidKeyException("Gerät gesperrt")
-            return "$name(" + klartext.reversed() + ")"
+    private class Fake(val name: String, val locked: () -> Boolean = { false }) : TokenEncryption {
+        override fun encrypt(plaintext: String): String {
+            if (locked()) throw InvalidKeyException("Gerät gesperrt")
+            return "$name(" + plaintext.reversed() + ")"
         }
-        override fun entschluessle(gespeichert: String): String? =
-            gespeichert.takeIf { it.startsWith("$name(") }?.removePrefix("$name(")?.removeSuffix(")")?.reversed()
+        override fun decrypt(saved: String): String? =
+            saved.takeIf { it.startsWith("$name(") }?.removePrefix("$name(")?.removeSuffix(")")?.reversed()
     }
 
     @Test
     fun `the unlock vault stores under the strict key and recognizes the legacy stock`() {
-        val tresor = EntsperrVault(Attrappe("streng"), Attrappe("immer"))
-        val geheim = tresor.verschluessle("token")
-        assertTrue(geheim, geheim.contains("streng("))
-        assertFalse(tresor.veraltet(geheim))
-        assertEquals(Tresorbefund.Readable("token"), tresor.oeffne(geheim))
+        val vault = UnlockVault(Fake("streng"), Fake("immer"))
+        val secret = vault.encrypt("token")
+        assertTrue(secret, secret.contains("streng("))
+        assertFalse(vault.stale(secret))
+        assertEquals(VaultFinding.Readable("token"), vault.open(secret))
     }
 
     @Test
     fun `a ciphertext without prefix stays readable via the old key`() {
-        val tresor = EntsperrVault(Attrappe("streng"), Attrappe("immer"))
-        assertEquals(Tresorbefund.Readable("alt"), tresor.oeffne("immer(tla)"))
-        assertTrue(tresor.veraltet("immer(tla)"))
+        val vault = UnlockVault(Fake("streng"), Fake("immer"))
+        assertEquals(VaultFinding.Readable("alt"), vault.open("immer(tla)"))
+        assertTrue(vault.stale("immer(tla)"))
     }
 
     @Test
     fun `a locked keystore at start is waited for, without signing out`() {
-        val (gemeldet, pausen) = lies(Sequence(Tresorbefund.Gesperrt, Tresorbefund.Gesperrt, Tresorbefund.Readable("token")))
-        assertEquals("Kein leeres Token vor dem echten", listOf("token"), gemeldet)
-        assertEquals(VAULT_ATTEMPT_MS.take(2), pausen)
+        val (reported, pauses) = read(Sequence(VaultFinding.LockedState, VaultFinding.LockedState, VaultFinding.Readable("token")))
+        assertEquals("Kein leeres Token vor dem echten", listOf("token"), reported)
+        assertEquals(VAULT_ATTEMPT_MS.take(2), pauses)
         assertTrue("Der Anlauf bleibt unter der Wartezeit des Wächters (5 s)", VAULT_ATTEMPT_MS.sum() < 5_000)
     }
 
     @Test
     fun `a keystore locked for longer reports the token afterwards`() {
-        val sperren = Array<Tresorbefund>(VAULT_ATTEMPT_MS.size + 3) { Tresorbefund.Gesperrt }
-        val (gemeldet, pausen) = lies(Sequence(*sperren, Tresorbefund.Readable("token")))
-        assertEquals("Erst die Anmeldemaske, dann wieder angemeldet", listOf("", "token"), gemeldet)
-        assertEquals(VAULT_ATTEMPT_MS + List(3) { VAULT_FOLLOW_UP_MS }, pausen)
+        val lock = Array<VaultFinding>(VAULT_ATTEMPT_MS.size + 3) { VaultFinding.LockedState }
+        val (reported, pauses) = read(Sequence(*lock, VaultFinding.Readable("token")))
+        assertEquals("Erst die Anmeldemaske, dann wieder angemeldet", listOf("", "token"), reported)
+        assertEquals(VAULT_ATTEMPT_MS + List(3) { VAULT_FOLLOW_UP_MS }, pauses)
     }
 
     @Test
     fun `a permanently locked keystore gives up eventually, a missing key immediately`() {
-        val (gemeldet, pausen) = lies(Sequence(Tresorbefund.Gesperrt))
-        assertEquals(listOf(""), gemeldet)
-        assertTrue("Höchstens zehn Minuten: ${pausen.sum()}", pausen.sum() <= 10 * 60_000L + VAULT_ATTEMPT_MS.sum())
-        assertEquals(listOf("alt") to emptyList<Long>(), lies(Sequence(Tresorbefund.Weg), alt = "alt"))
+        val (reported, pauses) = read(Sequence(VaultFinding.LockedState))
+        assertEquals(listOf(""), reported)
+        assertTrue("Höchstens zehn Minuten: ${pauses.sum()}", pauses.sum() <= 10 * 60_000L + VAULT_ATTEMPT_MS.sum())
+        assertEquals(listOf("alt") to emptyList<Long>(), read(Sequence(VaultFinding.Gone), old = "alt"))
     }
 }

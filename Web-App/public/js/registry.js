@@ -17,10 +17,10 @@ const _actions = new Map();
 export function registerActions(map) {
   for (const [name, fn] of Object.entries(map)) {
     if (typeof fn !== 'function') {
-      console.warn('[actions] kein Funktionswert:', name);
+      console.warn('[actions] not a function:', name);
       continue;
     }
-    if (_actions.has(name)) console.warn('[actions] Handler doppelt angemeldet:', name);
+    if (_actions.has(name)) console.warn('[actions] handler registered twice:', name);
     _actions.set(name, fn);
   }
 }
@@ -36,7 +36,7 @@ export function resolveAction(name) {
 }
 
 // Random marker per page load. Dangerous actions only run from elements that were already in the markup at load
-// or whose template carries echt(); injected HTML does not know the marker.
+// or whose template carries genuine(); injected HTML does not know the marker.
 const _brand =
   typeof crypto !== 'undefined' && crypto.getRandomValues
     ? [...crypto.getRandomValues(new Uint8Array(12))].map(b => b.toString(16).padStart(2, '0')).join('')
@@ -47,13 +47,13 @@ if (typeof document !== 'undefined')
     _ofStart.add(el);
 
 /** Attribute for templates that trigger a dangerous action. */
-export function echt() {
-  return html` data-echt="${_brand}"`;
+export function genuine() {
+  return html` data-genuine="${_brand}"`;
 }
 
 /** @param {Element} el  the element with the data-* attribute */
 export function isTrusted(el) {
-  return _ofStart.has(el) || el.getAttribute('data-echt') === _brand;
+  return _ofStart.has(el) || el.getAttribute('data-genuine') === _brand;
 }
 
 /** All registered names — for tests and debugging. */

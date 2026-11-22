@@ -74,12 +74,12 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     @POST("api/v1/sets/{setNumber}/instructions/upload")
     suspend fun uploadInstruction(
         @Path("setNumber") setNumber: String,
-        @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
-        @retrofit2.http.Part("description") beschreibung: okhttp3.RequestBody,
+        @retrofit2.http.Part file: okhttp3.MultipartBody.Part,
+        @retrofit2.http.Part("description") description: okhttp3.RequestBody,
     ): Response<GenericResponse>
 
     @DELETE("api/v1/sets/{setNumber}/instructions/{instrId}")
-    suspend fun deleteAnleitung(
+    suspend fun deleteInstructionNow(
         @Path("setNumber") setNumber: String,
         @Path("instrId") instrId: Int,
     ): Response<GenericResponse>
@@ -129,14 +129,14 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     @POST("api/v1/sets")
     suspend fun addSet(
         @Body request: AddSetRequest,
-        @Header("Idempotency-Key") schluessel: String? = null,
+        @Header("Idempotency-Key") key: String? = null,
     ): Response<AddSetResponse>
 
     @PUT("api/v1/sets/{setNumber}")
     suspend fun updateSetQuantity(
         @Path("setNumber") setNumber: String,
         @Body request: UpdateQuantityRequest,
-        @Header("Idempotency-Key") schluessel: String? = null,
+        @Header("Idempotency-Key") key: String? = null,
     ): Response<MengeGeaendert>
 
     @DELETE("api/v1/sets/{setNumber}")
@@ -171,12 +171,12 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     suspend fun getAllAlerts(): Response<PreisalarmeResponse>
 
     @GET("api/v1/sets/{setNumber}/alert")
-    suspend fun getPreisalarme(
+    suspend fun getPriceAlarms(
         @Path("setNumber") setNumber: String,
     ): Response<PreisalarmeResponse>
 
     @PUT("api/v1/sets/{setNumber}/alert")
-    suspend fun setPreisalarm(
+    suspend fun setPriceAlarm(
         @Path("setNumber") setNumber: String,
         @Body request: PreisalarmRequest,
     ): Response<PreisalarmResponse>
@@ -206,7 +206,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
      * address.
      */
     @GET("api/v1/wanted")
-    suspend fun getMerkliste(
+    suspend fun getWantedList(
         @Query("search") search: String? = null,
         @Query("condition") condition: String? = null,
         @Query("sort") sort: String? = null,
@@ -214,9 +214,9 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     ): Response<MerklisteResponse>
 
     @POST("api/v1/wanted")
-    suspend fun legeMerkpostenAn(
+    suspend fun createWantedItem(
         @Body request: MerkpostenRequest,
-        @Header("Idempotency-Key") schluessel: String? = null,
+        @Header("Idempotency-Key") key: String? = null,
     ): Response<MerkpostenAntwort>
 
     /**
@@ -235,7 +235,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
         @Query("owner_user_id") ownerUserId: Int? = null,
-        @Header("Idempotency-Key") schluessel: String? = null,
+        @Header("Idempotency-Key") key: String? = null,
     ): Response<GenericResponse>
 
     /**

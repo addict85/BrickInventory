@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Message
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -10,10 +10,10 @@ import ch.brickinventoryapp.testing.text
 
 /**
  * Two messages shortly after one another: the second waits until the first is
- * acknowledged instead of replacing it. Writing happens only via zeige() and quittiere().
+ * acknowledged instead of replacing it. Writing happens only via show() and quittiere().
  *
  * Counter-checks:
- *   meldung-ueberschreibt   zeige() sets the value directly → red “the second …”
+ *   meldung-ueberschreibt   show() sets the value directly → red “the second …”
  *   meldung-doppelt         without comparison with the last one → red “the same …” and
  *                           “a resource stays …” (measured with kotlinc: the same
  *                           resource comes twice)
@@ -22,71 +22,71 @@ class MessageQueueTest {
 
     @Test
     fun `the second message waits for the acknowledgement of the first`() {
-        val kanal = MeldungsKanal()
-        kanal.zeige("gespeichert")
-        kanal.zeige("offline gemerkt")
-        assertEquals("gespeichert", kanal.text)
-        kanal.acknowledge()
-        assertEquals("offline gemerkt", kanal.text)
-        kanal.acknowledge()
-        assertNull(kanal.text)
+        val channel = MessageChannel()
+        channel.show("gespeichert")
+        channel.show("offline gemerkt")
+        assertEquals("gespeichert", channel.text)
+        channel.acknowledge()
+        assertEquals("offline gemerkt", channel.text)
+        channel.acknowledge()
+        assertNull(channel.text)
     }
 
     @Test
     fun `a resource stays a domain value until the UI shows it`() {
-        val kanal = MeldungsKanal()
-        kanal.zeige(Meldung.Resource(7, listOf(3)))
-        kanal.zeige(Meldung.Resource(7, listOf(3)))
-        kanal.zeige(Meldung.Resource(7, listOf(4)))
-        assertEquals(Meldung.Resource(7, listOf(3)), kanal.meldung.value)
-        kanal.acknowledge()
-        assertEquals("andere Werte sind eine andere Meldung", Meldung.Resource(7, listOf(4)), kanal.meldung.value)
-        kanal.acknowledge()
-        assertNull(kanal.meldung.value)
+        val channel = MessageChannel()
+        channel.show(Message.Resource(7, listOf(3)))
+        channel.show(Message.Resource(7, listOf(3)))
+        channel.show(Message.Resource(7, listOf(4)))
+        assertEquals(Message.Resource(7, listOf(3)), channel.message.value)
+        channel.acknowledge()
+        assertEquals("andere Werte sind eine andere Meldung", Message.Resource(7, listOf(4)), channel.message.value)
+        channel.acknowledge()
+        assertNull(channel.message.value)
     }
 
     @Test
     fun `the same message in a row comes once, null shows nothing`() {
-        val kanal = MeldungsKanal()
-        kanal.zeige(null as String?)
-        assertNull(kanal.text)
-        repeat(3) { kanal.zeige("Netzfehler") }
-        kanal.zeige("gespeichert")
-        kanal.zeige("gespeichert")
-        assertEquals("Netzfehler", kanal.text)
-        kanal.acknowledge()
-        assertEquals("gespeichert", kanal.text)
-        kanal.acknowledge()
-        assertNull(kanal.text)
+        val channel = MessageChannel()
+        channel.show(null as String?)
+        assertNull(channel.text)
+        repeat(3) { channel.show("Netzfehler") }
+        channel.show("gespeichert")
+        channel.show("gespeichert")
+        assertEquals("Netzfehler", channel.text)
+        channel.acknowledge()
+        assertEquals("gespeichert", channel.text)
+        channel.acknowledge()
+        assertNull(channel.text)
     }
 
     @Test
     fun `at most five wait, the oldest stay`() {
-        val kanal = MeldungsKanal()
-        (1..10).forEach { kanal.zeige("m$it") }
-        val gesehen = mutableListOf<String>()
+        val channel = MessageChannel()
+        (1..10).forEach { channel.show("m$it") }
+        val seen = mutableListOf<String>()
         while (true) {
-            gesehen += kanal.text ?: break
-            kanal.acknowledge()
+            seen += channel.text ?: break
+            channel.acknowledge()
         }
-        assertEquals((1..6).map { "m$it" }, gesehen)
+        assertEquals((1..6).map { "m$it" }, seen)
     }
 
     @Test
     fun `concurrent writers lose nothing`() {
-        val kanal = MeldungsKanal()
+        val channel = MessageChannel()
         val pool = Executors.newFixedThreadPool(4)
-        val los = CountDownLatch(1)
-        val fertig = CountDownLatch(4)
-        repeat(4) { i -> pool.execute { los.await(); kanal.zeige("t$i"); fertig.countDown() } }
-        los.countDown()
-        fertig.await()
+        val go = CountDownLatch(1)
+        val done = CountDownLatch(4)
+        repeat(4) { i -> pool.execute { go.await(); channel.show("t$i"); done.countDown() } }
+        go.countDown()
+        done.await()
         pool.shutdown()
-        val gesehen = mutableSetOf<String>()
+        val seen = mutableSetOf<String>()
         while (true) {
-            gesehen += kanal.text ?: break
-            kanal.acknowledge()
+            seen += channel.text ?: break
+            channel.acknowledge()
         }
-        assertEquals(setOf("t0", "t1", "t2", "t3"), gesehen)
+        assertEquals(setOf("t0", "t1", "t2", "t3"), seen)
     }
 }

@@ -4,12 +4,12 @@
 import { registerActions } from './registry.js';
 import { html, rawHtml } from './escaping.js';
 import { api } from './api.js';
-import { G, setzeHtml } from './dom.js';
+import { G, setHtml } from './dom.js';
 import { amountForField, fmtN, readAmount } from './format.js';
-import { meldeAmFeld, toast } from './messages.js';
-import { feldFehler } from './form.js';
+import { reportAtField, toast } from './messages.js';
+import { fieldError } from './form.js';
 import { accountCurrency, loggedInAccount, gallerySets, openSet, setOpenSet } from './state.js';
-import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './account-filter.js';
+import { scopeQuery, LOCATION_VIEWS, locationMode, setLocationMode } from './account-filter.js';
 import { tRaw } from '../i18n.js';
 
 /**
@@ -18,10 +18,10 @@ import { tRaw } from '../i18n.js';
  * ── Why on leaving the field and not on key press ───────────────────────────
  *
  * Like the quantity next to it (`autosaveSet`): a storage location is typed, not chosen. Saving per character
- * produced six requests for "Kiste 3" and left five intermediate states in the database along the way.
+ * produced six requests for "Box 3" and left five intermediate states in the database along the way.
  * @param {string} sn
  */
-export async function speichereSetLagerort(sn) {
+export async function saveSetLocation(sn) {
   const el = G('m-storage');
   if (!el) return;
   const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/storage`, { storage: el.value });
@@ -31,10 +31,10 @@ export async function speichereSetLagerort(sn) {
   }
   // The list in the background carries the place as well — without updating it the tile showed the old one until
   // someone reloads.
-  const eintrag = (gallerySets || []).find(x => x.set_number === sn);
-  if (eintrag) eintrag.storage = d.storage ?? null;
+  const entry = (gallerySets || []).find(x => x.set_number === sn);
+  if (entry) entry.storage = d.storage ?? null;
   if (openSet && openSet.set_number === sn) openSet.storage = d.storage ?? null;
-  meldeAmFeld(el);
+  reportAtField(el);
   await loadLocations();
 }
 
@@ -42,16 +42,16 @@ export async function speichereSetLagerort(sn) {
  * Which alert block is meant: 'm' (set) or 'mk-m' (wishlist item). A module variable instead of a parameter,
  * because the dispatcher only passes the set number; only one dialog is ever open anyway.
  */
-let _alarmField = 'm';
+let _alertField = 'm';
 
 /**
- * @param {string} praefix
+ * @param {string} prefix
  */
-export function setAlarmField(praefix) {
-  _alarmField = praefix === 'mk-m' ? 'mk-m' : 'm';
+export function setAlertField(prefix) {
+  _alertField = prefix === 'mk-m' ? 'mk-m' : 'm';
 }
 
-const alarmId = (/** @type {string} */ teil) => `${_alarmField}-alert-${teil}`;
+const alertId = (/** @type {string} */ part) => `${_alertField}-alert-${part}`;
 
 /**
  * The alert block — formulated ONCE, used by both dialogs.
@@ -60,27 +60,27 @@ const alarmId = (/** @type {string} */ teil) => `${_alarmField}-alert-${teil}`;
  * A second form for it would be the next place where a rule is only updated on one of the two paths
  * — that has already happened several times in this tree.
  * @param {string} sn
- * @param {string} [zustand] condition of the inventory: a used set is mostly looked for used.
+ * @param {string} [state] condition of the inventory: a used set is mostly looked for used.
  */
-export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
-  const p = praefix === 'mk-m' ? 'mk-m' : 'm';
-  // The look is in styles.css under .alarm-feld, not here: the fixed height in the style attribute cut the
+export function alertBlock(sn, prefix = 'm', state = 'N') {
+  const p = prefix === 'mk-m' ? 'mk-m' : 'm';
+  // The look is in styles.css under .alert-field, not here: the fixed height in the style attribute cut the
   // chosen entry down to six pixels (measured in the browser, reasoning there).
   return html`
-      <select id="${p}-alert-cond" class="alarm-feld" aria-label="${tRaw('detail.alert')}: ${tRaw('common.condition')}" data-change="wechsleAlarmZustand" data-arg="${sn}">
-        <option value="N"${zustand !== 'U' ? ' selected' : ''}>${tRaw('common.condition_new')}</option>
-        <option value="U"${zustand === 'U' ? ' selected' : ''}>${tRaw('common.condition_used')}</option>
+      <select id="${p}-alert-cond" class="alert-field" aria-label="${tRaw('detail.alert')}: ${tRaw('common.condition')}" data-change="toggleAlertState" data-arg="${sn}">
+        <option value="N"${state !== 'U' ? ' selected' : ''}>${tRaw('common.condition_new')}</option>
+        <option value="U"${state === 'U' ? ' selected' : ''}>${tRaw('common.condition_used')}</option>
       </select>
-      <select id="${p}-alert-dir" class="alarm-feld" aria-label="${tRaw('detail.alert')}" data-change="speichereAlarm" data-arg="${sn}">
+      <select id="${p}-alert-dir" class="alert-field" aria-label="${tRaw('detail.alert')}" data-change="saveAlert" data-arg="${sn}">
         <option value="unter">${tRaw('detail.alert_below')}</option>
         <option value="ueber">${tRaw('detail.alert_above')}</option>
       </select>
-      <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${tRaw('detail.alert_preis_ph')}</span>
-      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')} (${accountCurrency})"
-             data-input="alarmGetippt" data-arg="${sn}"
-             data-change="speichereAlarm" /></label><span class="alarm-waehrung" aria-hidden="true">${accountCurrency}</span>
-      <span id="${p}-alert-state" class="alarm-stand"></span>
-      <button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="alarme">${tRaw('detail.alle_alarme')}</button>
+      <label class="alert-price" for="${p}-alert-val"><span class="alert-price-title">${tRaw('detail.alert_price_ph')}</span>
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alert-field" aria-label="${tRaw('detail.alert_price')} (${accountCurrency})"
+             data-input="alertTyped" data-arg="${sn}"
+             data-change="saveAlert" /></label><span class="alert-currency" aria-hidden="true">${accountCurrency}</span>
+      <span id="${p}-alert-state" class="alert-status"></span>
+      <button type="button" class="close-view" data-click="viewFromDialog" data-arg="alerts">${tRaw('detail.all_alerts')}</button>
     `;
 }
 
@@ -88,10 +88,10 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
  * "New place" is recognized by an attribute, not by an agreed value: any invented value can be
  * typed in as a storage location by someone.
  */
-const LOCATION_NEW_BRAND = html`data-neu="1"`;
+const LOCATION_NEW_BRAND = html`data-new="1"`;
 
 const isNewEntry = (/** @type {Pick<HTMLSelectElement, 'selectedOptions'> | null | undefined} */ sel) =>
-  sel?.selectedOptions?.[0]?.dataset?.neu === '1';
+  sel?.selectedOptions?.[0]?.dataset?.new === '1';
 
 /** @type {string[]} */
 let _locations = [];
@@ -101,34 +101,34 @@ let _locations = [];
  *
  * The places come over the network, but the dialog is already there. Without updating, the first display showed
  * an empty selection — and that is exactly when one looks.
- * @param {unknown[] | null | undefined} namen
+ * @param {unknown[] | null | undefined} names
  */
-export function setLocationStock(namen) {
-  _locations = [...new Set((namen || []).filter(Boolean).map(String))].sort((a, b) => a.localeCompare(b));
+export function setLocationStock(names) {
+  _locations = [...new Set((names || []).filter(Boolean).map(String))].sort((a, b) => a.localeCompare(b));
   for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (
-    document.querySelectorAll('select[data-ortauswahl]')
+    document.querySelectorAll('select[data-place-selection]')
   )) {
     // If the selection is currently at "new place", it should stay there — otherwise it would jump away from someone
     // while typing.
     const warNew = isNewEntry(sel);
-    const vorher = sel.value;
-    setzeHtml(sel, locationOptions(vorher));
+    const before = sel.value;
+    setHtml(sel, locationOptions(before));
     if (warNew) sel.selectedIndex = sel.options.length - 1;
-    else if ([...sel.options].some(o => o.value === vorher)) sel.value = vorher;
+    else if ([...sel.options].some(o => o.value === before)) sel.value = before;
   }
 }
 
 /**
- * @param {string} wert
+ * @param {string} value
  */
-function locationOptions(wert) {
-  const bekannt = _locations.includes(wert);
+function locationOptions(value) {
+  const known = _locations.includes(value);
   return [
     html`<option value="">${tRaw('detail.storage_none')}</option>`,
     // A place the stock does not know (yet) — e.g. because it was only just typed in — must still
     // be there, otherwise the display would jump back to "—".
-    ...(wert && !bekannt ? [html`<option value="${wert}" selected>${wert}</option>`] : []),
-    ..._locations.map(o => html`<option value="${o}"${o === wert ? ' selected' : ''}>${o}</option>`),
+    ...(value && !known ? [html`<option value="${value}" selected>${value}</option>`] : []),
+    ..._locations.map(o => html`<option value="${o}"${o === value ? ' selected' : ''}>${o}</option>`),
     // ALWAYS last: setLocationStock() picks it up via options.length - 1.
     html`<option value="" ${LOCATION_NEW_BRAND}>${tRaw('detail.storage_new')}</option>`,
   ];
@@ -139,17 +139,17 @@ function locationOptions(wert) {
  * open. Saving still goes via the text field, so that the saving rule exists only once.
  * @param {string} id  identifier of the text field (m-storage, setitem-storage); the
  *   selection gets the same one with the suffix "-sel".
- * @param {string | null | undefined} wert  current storage location, or empty.
+ * @param {string | null | undefined} value  current storage location, or empty.
  * @param {string} [attrs]  further attributes for the text field (data-change, data-part, …).
  */
-export function locationBlock(id, wert, attrs = '') {
-  const ort = String(wert || '');
+export function locationBlock(id, value, attrs = '') {
+  const place = String(value || '');
   return html`
-      <select id="${id}-sel" class="alarm-feld" aria-label="${tRaw('detail.storage')}" data-ortauswahl="1"
-              data-change="lagerortGewaehlt" data-arg="${id}">${locationOptions(ort)}</select>
-      <input type="text" id="${id}" class="alarm-feld" maxlength="60" aria-label="${tRaw('detail.storage')}" data-stil="display:none"
-             placeholder="${tRaw('detail.storage_ph')}" value="${ort}"
-             data-blur="lagerortGetippt" ${rawHtml(attrs)} />
+      <select id="${id}-sel" class="alert-field" aria-label="${tRaw('detail.storage')}" data-place-selection="1"
+              data-change="locationSelected" data-arg="${id}">${locationOptions(place)}</select>
+      <input type="text" id="${id}" class="alert-field" maxlength="60" aria-label="${tRaw('detail.storage')}" data-style="display:none"
+             placeholder="${tRaw('detail.storage_ph')}" value="${place}"
+             data-blur="locationTyped" ${rawHtml(attrs)} />
     `;
 }
 
@@ -157,23 +157,23 @@ export function locationBlock(id, wert, attrs = '') {
  * Chosen from the list — or "new place".
  * @param {string} id identifier of the text field; the selection is called id + "-sel".
  */
-export function lagerortGewaehlt(id) {
+export function locationSelected(id) {
   const sel = G(`${id}-sel`),
-    feld = G(id);
-  if (!sel || !feld) return;
+    field = G(id);
+  if (!sel || !field) return;
   if (isNewEntry(sel)) {
     // Clear, show, focus: whoever chooses "new place" wants to type — not delete the old name first.
-    feld.value = '';
-    feld.style.display = '';
-    feld.focus();
+    field.value = '';
+    field.style.display = '';
+    field.focus();
     return;
   }
-  feld.style.display = 'none';
-  feld.value = sel.value;
+  field.style.display = 'none';
+  field.value = sel.value;
   // The change event by hand: a programmatically set value triggers none. Via the
   // event delegation (actions.js) it lands at exactly the handler that also saves an input made by
   // hand.
-  feld.dispatchEvent(new Event('change', { bubbles: true }));
+  field.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 /**
@@ -181,42 +181,42 @@ export function lagerortGewaehlt(id) {
  * selection next to it is updated. `this` is the field (the dispatcher calls with the element as receiver).
  * @this {HTMLInputElement}
  */
-export function lagerortGetippt() {
+export function locationTyped() {
   const sel = G(`${this?.id}-sel`);
   if (!sel) return;
-  const ort = String(this.value || '').trim();
-  if (!_locations.includes(ort) && ort) _locations = [..._locations, ort].sort((a, b) => a.localeCompare(b));
-  setzeHtml(sel, locationOptions(ort));
-  sel.value = ort;
-  if (ort) this.style.display = 'none';
+  const place = String(this.value || '').trim();
+  if (!_locations.includes(place) && place) _locations = [..._locations, place].sort((a, b) => a.localeCompare(b));
+  setHtml(sel, locationOptions(place));
+  sel.value = place;
+  if (place) this.style.display = 'none';
 }
 
 /**
  * Which condition the alert applies to: new and used are often far apart, and whoever looks for used
  * should be able to wait for that. The server has the condition in the key.
  */
-function alarmState() {
-  return G(alarmId('cond'))?.value === 'U' ? 'U' : 'N';
+function alertState() {
+  return G(alertId('cond'))?.value === 'U' ? 'U' : 'N';
 }
 
 /**
  * Load and show the price alert of the open set.
  * @param {string} sn
  */
-export async function ladeAlarm(sn) {
+export async function loadAlert(sn) {
   const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`);
-  const dir = G(alarmId('dir')),
-    val = G(alarmId('val'));
+  const dir = G(alertId('dir')),
+    val = G(alertId('val'));
   if (!dir || !val) return;
   // If there is only an alert for the other condition, the selection is set to it: otherwise it would look as if it were missing.
-  const alle = d?.alerts || [];
-  const wahl = G(alarmId('cond'));
-  if (wahl && alle.length && !alle.some(x => x.condition === alarmState()))
-    wahl.value = alle[0]?.condition === 'U' ? 'U' : 'N';
-  const a = alle.find(x => x.condition === alarmState());
+  const all = d?.alerts || [];
+  const choice = G(alertId('cond'));
+  if (choice && all.length && !all.some(x => x.condition === alertState()))
+    choice.value = all[0]?.condition === 'U' ? 'U' : 'N';
+  const a = all.find(x => x.condition === alertState());
   dir.value = a?.direction || 'unter';
   val.value = a ? amountForField(a.threshold) : '';
-  showAlarmMarker(a);
+  showAlertMarker(a);
 }
 
 /**
@@ -224,13 +224,13 @@ export async function ladeAlarm(sn) {
  * character just typed.
  * @param {import('../../frontend-types/contract').Preisalarm | undefined} a
  */
-function showAlarmMarker(a) {
-  const st = G(alarmId('state'));
+function showAlertMarker(a) {
+  const st = G(alertId('state'));
   if (!st) return;
   // The flag says whether a notification was already sent. Showing it is the difference between "the alert is set"
   // and "the alert has fired" — otherwise one wonders why no more mail comes.
   st.textContent = !a ? '' : a.triggered ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
-  st.className = a ? `alarm-stand alarm-marke alarm-marke-${a.triggered ? 'aus' : 'an'}` : 'alarm-stand';
+  st.className = a ? `alert-status alert-badge alert-badge-${a.triggered ? 'off' : 'on'}` : 'alert-status';
 }
 
 /**
@@ -238,10 +238,10 @@ function showAlarmMarker(a) {
  * A running quiet period is dropped, so that the old threshold does not end up at the new condition.
  * @param {string} sn
  */
-export function wechsleAlarmZustand(sn) {
-  clearTimeout(_alarmRest);
-  _alarmRest = null;
-  return ladeAlarm(sn);
+export function toggleAlertState(sn) {
+  clearTimeout(_alertRest);
+  _alertRest = null;
+  return loadAlert(sn);
 }
 
 /**
@@ -250,29 +250,29 @@ export function wechsleAlarmZustand(sn) {
  * The same number as in the app (Alarmeingabe.RUHE_MS) — if the two drift apart, the same
  * field behaves differently in two places without anyone noticing.
  */
-const ALARM_REST = 800;
+const ALERT_REST = 800;
 
 /**
  * @type {ReturnType<typeof setTimeout> | null}
  */
-let _alarmRest = null;
+let _alertRest = null;
 
 /**
  * Save while typing, debounced: whoever types and closes the window without clicking elsewhere lost
  * the input. The values are now copied, because the field may already be gone when the quiet period ends.
  * @param {string} sn
  */
-export function alarmGetippt(sn) {
-  const dir = G(alarmId('dir')),
-    val = G(alarmId('val'));
+export function alertTyped(sn) {
+  const dir = G(alertId('dir')),
+    val = G(alertId('val'));
   if (!dir || !val) return;
-  const richtung = dir.value,
-    roh = String(val.value || '').trim();
-  clearTimeout(_alarmRest);
-  _alarmRest = setTimeout(() => {
-    _alarmRest = null;
-    sendAlarm(sn, richtung, roh);
-  }, ALARM_REST);
+  const direction = dir.value,
+    raw = String(val.value || '').trim();
+  clearTimeout(_alertRest);
+  _alertRest = setTimeout(() => {
+    _alertRest = null;
+    sendAlert(sn, direction, raw);
+  }, ALERT_REST);
 }
 
 /**
@@ -283,45 +283,45 @@ export function alarmGetippt(sn) {
  * direction does not follow shortly afterwards.
  * @param {string} sn
  */
-export function speichereAlarm(sn) {
-  const dir = G(alarmId('dir')),
-    val = G(alarmId('val'));
+export function saveAlert(sn) {
+  const dir = G(alertId('dir')),
+    val = G(alertId('val'));
   if (!dir || !val) return;
-  clearTimeout(_alarmRest);
-  _alarmRest = null;
-  return sendAlarm(sn, dir.value, String(val.value || '').trim());
+  clearTimeout(_alertRest);
+  _alertRest = null;
+  return sendAlert(sn, dir.value, String(val.value || '').trim());
 }
 
 /**
  * THE one path to the server. An empty field deletes the alert, not a threshold of 0: clearing the field is the
  * natural gesture. The quiet period prevents a threshold at 2 from arising on the way to "249".
  * @param {string} sn
- * @param {string} richtung
- * @param {string} roh
+ * @param {string} direction
+ * @param {string} raw
  */
-async function sendAlarm(sn, richtung, roh) {
-  const zahl = readAmount(roh);
+async function sendAlert(sn, direction, raw) {
+  const number = readAmount(raw);
   // "abc" or "0" is not a wish to delete but a typo: the same message as on #/alarme.
-  if (roh !== '' && !(zahl != null && zahl > 0)) {
-    feldFehler(alarmId('val'), tRaw('alerts.new_preis_fehlt'));
+  if (raw !== '' && !(number != null && number > 0)) {
+    fieldError(alertId('val'), tRaw('alerts.new_price_missing'));
     return;
   }
-  const loeschen = zahl == null;
-  const cond = alarmState();
-  const d = loeschen
+  const remove = number == null;
+  const cond = alertState();
+  const d = remove
     ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
     : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
-        direction: richtung,
-        threshold: zahl,
+        direction: direction,
+        threshold: number,
         condition: cond,
       });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // Only the flag, not the field — the reasoning is at showAlarmMarker().
-  showAlarmMarker(loeschen ? undefined : (d.alert ?? undefined));
-  meldeAmFeld(G(alarmId('state')));
+  // Only the flag, not the field — the reasoning is at showAlertMarker().
+  showAlertMarker(remove ? undefined : (d.alert ?? undefined));
+  reportAtField(G(alertId('state')));
 }
 
 /**
@@ -330,33 +330,31 @@ async function sendAlarm(sn, richtung, roh) {
  */
 export async function showOpenAlerts() {
   if (!loggedInAccount?.id) return;
-  const schluessel = 'bim_alarm_marke_' + loggedInAccount.id;
+  const key = 'bim_alert_seen_' + loggedInAccount.id;
   /** @type {string | null} */
-  let marke = null;
+  let mark = null;
   try {
-    marke = localStorage.getItem(schluessel);
+    mark = localStorage.getItem(key);
   } catch (_) {}
-  const d = await api('GET', `/v1/alerts/pending${marke ? '?since=' + encodeURIComponent(marke) : ''}`).catch(
-    () => null,
-  );
+  const d = await api('GET', `/v1/alerts/pending${mark ? '?since=' + encodeURIComponent(mark) : ''}`).catch(() => null);
   // Without `now` no new marker — and without a new marker better save nothing at all than a wrong one.
   if (!d?.success || !d.now) return;
   try {
-    localStorage.setItem(schluessel, String(d.now));
+    localStorage.setItem(key, String(d.now));
   } catch (_) {}
   // First visit: only remember, report nothing. Otherwise a freshly logged-in account would be hit with thresholds
   // that were crossed weeks ago.
-  if (!marke) return;
-  const unter = tRaw('detail.alert_below'),
-    ueber = tRaw('detail.alert_above');
+  if (!mark) return;
+  const sub = tRaw('detail.alert_below'),
+    via = tRaw('detail.alert_above');
   for (const a of d.alerts || []) {
-    const richtung = a.direction === 'unter' ? unter : ueber;
+    const direction = a.direction === 'unter' ? sub : via;
     // Amounts as everywhere in the UI ("712,40 €"), in the alert's currency.
-    const schwelle = fmtN(a.threshold, a.currency_code);
+    const threshold = fmtN(a.threshold, a.currency_code);
     const txt =
       a.last_price == null
-        ? `${a.set_number}: ${richtung} ${schwelle}`
-        : `${a.set_number}: ${fmtN(a.last_price, a.currency_code)} (${richtung} ${schwelle})`;
+        ? `${a.set_number}: ${direction} ${threshold}`
+        : `${a.set_number}: ${fmtN(a.last_price, a.currency_code)} (${direction} ${threshold})`;
     toast(txt, 'info');
   }
 }
@@ -364,18 +362,18 @@ export async function showOpenAlerts() {
 /**
  * The place selection in the detail is the OWNER's stock: for the grandchild's set the grandchild's shelves are
  * up for choice. A datalist allows choosing and typing something new at the same time.
- * @param {({ id: number } | number)[] | null | undefined} besitzer
+ * @param {({ id: number } | number)[] | null | undefined} owner
  */
-export async function loadLocationSelection(besitzer) {
-  const dl = G('lagerorte');
+export async function loadLocationSelection(owner) {
+  const dl = G('locations');
   if (!dl) return;
-  const ids = (besitzer || [])
+  const ids = (owner || [])
     .map((/** @type {{ id: number } | number} */ o) => (typeof o === 'number' ? o : (o?.id ?? o)))
     .filter(n => Number.isFinite(Number(n)));
-  const frage = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
-  const d = await api('GET', `/v1/storage/locations${frage}`);
+  const question = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
+  const d = await api('GET', `/v1/storage/locations${question}`);
   if (!d?.success) return;
-  setzeHtml(
+  setHtml(
     dl,
     (d.orte || []).map(o => html`<option value="${o.name}"></option>`),
   );
@@ -389,43 +387,43 @@ let _stockAccounts = [];
 /**
  * The whole stock is up for choice (/v1/storage/locations), even a new, empty place; the filters only show
  * occupied places (/v1/storage), because an empty place would find nothing there.
- * @param {number[]} [konten] household accounts; without a value the most recently named ones
+ * @param {number[]} [accounts] household accounts; without a value the most recently named ones
  */
-export async function loadLocations(konten) {
-  if (konten) _stockAccounts = konten;
-  const frage = _stockAccounts.length > 1 ? '?owner=' + encodeURIComponent(_stockAccounts.join(',')) : '';
-  const [vorrat, belegt] = await Promise.all([
-    api('GET', `/v1/storage/locations${frage}`),
+export async function loadLocations(accounts) {
+  if (accounts) _stockAccounts = accounts;
+  const question = _stockAccounts.length > 1 ? '?owner=' + encodeURIComponent(_stockAccounts.join(',')) : '';
+  const [supply, used] = await Promise.all([
+    api('GET', `/v1/storage/locations${question}`),
     api('GET', `/v1/storage${scopeQuery('gallery')}`),
   ]);
-  if (vorrat?.success) {
-    const namen = (vorrat.orte || []).map(o => o.name);
-    const dl = G('lagerorte');
+  if (supply?.success) {
+    const names = (supply.orte || []).map(o => o.name);
+    const dl = G('locations');
     if (dl)
-      setzeHtml(
+      setHtml(
         dl,
-        [...new Set(namen)].map(n => html`<option value="${n}"></option>`),
+        [...new Set(names)].map(n => html`<option value="${n}"></option>`),
       );
-    setLocationStock(namen);
+    setLocationStock(names);
   }
-  if (belegt?.success) initStorageSelects(belegt.orte || []);
+  if (used?.success) initStorageSelects(used.orte || []);
 }
 
 /**
  * The quantity field in the set detail including "−": for one copy "−" would be deletion; the button stays reachable
  * and says where that is done. Here, because the purchase price dialog updates the quantity too.
- * @param {number} [menge] new value; without it only align the button with the field
+ * @param {number} [quantity] new value; without it only align the button with the field
  */
-export function setQuantitiesField(menge) {
-  const feld = G('m-qty'),
+export function setQuantitiesField(quantity) {
+  const field = G('m-qty'),
     minus = G('m-qty-dec');
-  if (!feld) return;
-  if (menge !== undefined) feld.value = String(menge);
+  if (!field) return;
+  if (quantity !== undefined) field.value = String(quantity);
   if (!minus) return;
-  const letztes = (parseInt(feld.value, 10) || 1) <= 1;
-  minus.setAttribute('aria-disabled', String(letztes));
-  minus.title = letztes ? tRaw('detail.qty_letztes') : '';
-  if (letztes) minus.setAttribute('aria-describedby', 'm-qty-letztes');
+  const last = (parseInt(field.value, 10) || 1) <= 1;
+  minus.setAttribute('aria-disabled', String(last));
+  minus.title = last ? tRaw('detail.qty_last') : '';
+  if (last) minus.setAttribute('aria-describedby', 'm-qty-last');
   else minus.removeAttribute('aria-describedby');
 }
 
@@ -438,41 +436,41 @@ export function closeModal() {
 
 registerActions({
   closeModal,
-  speichereAlarm,
-  alarmGetippt,
-  wechsleAlarmZustand,
-  speichereSetLagerort,
-  lagerortGewaehlt,
-  lagerortGetippt,
+  saveAlert,
+  alertTyped,
+  toggleAlertState,
+  saveSetLocation,
+  locationSelected,
+  locationTyped,
 });
 
 /**
  * Fill the storage location filters. Without places they stay hidden: a choice with only "all" answers nothing —
  * the same rule as for the account filter.
- * @param {import('../../frontend-types/contract').Lagerort[]} orte
+ * @param {import('../../frontend-types/contract').Lagerort[]} locations
  */
-export function initStorageSelects(orte) {
+export function initStorageSelects(locations) {
   // Long names shortened: a select field is as wide as its longest option; the full name is in the title.
-  const kurz = (/** @type {string} */ s) => (s.length > 32 ? s.slice(0, 30) + '…' : s);
+  const short = (/** @type {string} */ s) => (s.length > 32 ? s.slice(0, 30) + '…' : s);
   const opts = [
     html`<option value="">${tRaw('filter.storage_all')}</option>`,
-    ...orte.map(
-      o => html`<option value="${o.ort}"${o.ort.length > 32 ? html` title="${o.ort}"` : ''}>${kurz(o.ort)}</option>`,
+    ...locations.map(
+      o => html`<option value="${o.ort}"${o.ort.length > 32 ? html` title="${o.ort}"` : ''}>${short(o.ort)}</option>`,
     ),
   ].join('');
-  for (const view of LAGER_VIEWS) {
+  for (const view of LOCATION_VIEWS) {
     const el = G('storage-' + view);
     if (!el) continue;
-    if (!orte.length) {
+    if (!locations.length) {
       el.style.display = 'none';
       continue;
     }
-    setzeHtml(el, rawHtml(opts));
+    setHtml(el, rawHtml(opts));
     // If the stored choice points to a place that has since become empty, an empty label would otherwise stand here
     // above a filtered list — the same trap as with the account filter.
-    const gespeichert = lagerModus(view);
-    el.value = [...el.options].some(o => o.value === gespeichert) ? gespeichert : '';
-    if (el.value !== gespeichert) setLagerModus(view, el.value);
+    const saved = locationMode(view);
+    el.value = [...el.options].some(o => o.value === saved) ? saved : '';
+    if (el.value !== saved) setLocationMode(view, el.value);
     el.style.display = '';
   }
 }

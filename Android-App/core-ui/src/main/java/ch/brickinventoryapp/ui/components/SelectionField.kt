@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Shapes
 
 /**
  * A choice from a longer list (language, currency, theme, lock timeout) as a field with
@@ -32,38 +32,38 @@ import ch.brickinventoryapp.ui.theme.Formen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> SelectionField(
-    beschriftung: String,
-    optionen: List<Pair<T, String>>,
-    gewaehlt: T,
-    onWahl: (T) -> Unit,
+    label: String,
+    options: List<Pair<T, String>>,
+    chosen: T,
+    onChoice: (T) -> Unit,
     modifier: Modifier = Modifier,
     /** Off, when the choice currently has no effect; the caller says why next to it. */
     enabled: Boolean = true,
 ) {
-    var offen by rememberSaveable { mutableStateOf(false) }
-    val text = optionen.firstOrNull { it.first == gewaehlt }?.second.orEmpty()
-    ExposedDropdownMenuBox(expanded = offen && enabled, onExpandedChange = { if (enabled) offen = it }, modifier = modifier) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val text = options.firstOrNull { it.first == chosen }?.second.orEmpty()
+    ExposedDropdownMenuBox(expanded = open && enabled, onExpandedChange = { if (enabled) open = it }, modifier = modifier) {
         OutlinedTextField(
             value = text,
             onValueChange = {},
             readOnly = true,
             enabled = enabled,
-            label = { Text(beschriftung) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen) },
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
             singleLine = true,
-            shape = Formen.feld,
+            shape = Shapes.field,
             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled).fillMaxWidth(),
         )
-        ExposedDropdownMenu(expanded = offen && enabled, onDismissRequest = { offen = false }) {
-            optionen.forEach { (wert, name) ->
+        ExposedDropdownMenu(expanded = open && enabled, onDismissRequest = { open = false }) {
+            options.forEach { (value, name) ->
                 DropdownMenuItem(
                     text = { Text(name) },
-                    onClick = { offen = false; if (wert != gewaehlt) onWahl(wert) },
+                    onClick = { open = false; if (value != chosen) onChoice(value) },
                     leadingIcon = {
-                        if (wert == gewaehlt) Icon(Icons.Default.Check, null, Modifier.size(withFont(18.dp)))
+                        if (value == chosen) Icon(Icons.Default.Check, null, Modifier.size(withFont(18.dp)))
                         else Spacer(Modifier.size(withFont(18.dp)))
                     },
-                    modifier = Modifier.semantics { selected = wert == gewaehlt },
+                    modifier = Modifier.semantics { selected = value == chosen },
                 )
             }
         }

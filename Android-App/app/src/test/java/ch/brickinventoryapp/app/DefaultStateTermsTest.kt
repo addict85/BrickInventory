@@ -17,7 +17,7 @@ import java.util.Locale
  * the own one (settings) and the one for all accounts (background work) have different
  * names, and the hint for the own one names the choice that really exists.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   zwei-vorgaben-gleich-benannt  both again „Standard-Zustand“ → red “the own default …”
  *   hinweis-nennt-leer            hint again „Leer = globale Vorgabe …“ → red “the hint …”
  */
@@ -27,27 +27,27 @@ class DefaultStateTermsTest {
 
     private val languages = listOf(Locale.forLanguageTag("de-CH"), Locale.ENGLISH)
 
-    private fun inLanguage(sprache: Locale): Context {
+    private fun inLanguage(language: Locale): Context {
         val ctx: Context = ApplicationProvider.getApplicationContext()
-        return ctx.createConfigurationContext(Configuration(ctx.resources.configuration).apply { setLocale(sprache) })
+        return ctx.createConfigurationContext(Configuration(ctx.resources.configuration).apply { setLocale(language) })
     }
 
     @Test
     fun `the own default and the one for all accounts have different names`() {
-        for (sprache in languages) {
-            val c = inLanguage(sprache)
-            assertNotEquals("$sprache: zweimal derselbe Name", c.getString(R.string.settings_default_condition),
+        for (language in languages) {
+            val c = inLanguage(language)
+            assertNotEquals("$language: zweimal derselbe Name", c.getString(R.string.settings_default_condition),
                 c.getString(R.string.monitoring_default_condition))
         }
     }
 
     @Test
     fun `the hint names the choice next to New and Used`() {
-        for (sprache in languages) {
-            val c = inLanguage(sprache)
-            val wahl = c.getString(R.string.settings_default_condition_global)
-            val hinweis = c.getString(R.string.settings_default_condition_hint)
-            assertTrue("$sprache: „$hinweis“ nennt „$wahl“ nicht", Regex("[„“\"]${Regex.escape(wahl)}[“”\"]").containsMatchIn(hinweis))
+        for (language in languages) {
+            val c = inLanguage(language)
+            val choice = c.getString(R.string.settings_default_condition_global)
+            val hint = c.getString(R.string.settings_default_condition_hint)
+            assertTrue("$language: „$hint“ nennt „$choice“ nicht", Regex("[„“\"]${Regex.escape(choice)}[“”\"]").containsMatchIn(hint))
         }
     }
 }

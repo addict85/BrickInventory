@@ -3,7 +3,7 @@ package ch.brickinventoryapp.model.coroutines
 import javax.inject.Qualifier
 
 // Here instead of in core-data: an area asks for a dispatcher without seeing the
-// data layer and its Hilt modules for it. Bound in core-data (KoroutinenModule).
+// data layer and its Hilt modules for it. Bound in core-data (CoroutinesModule).
 
 /** Which place of execution is meant. */
 enum class BrickDispatchers { IO, Default, Main }
@@ -14,7 +14,7 @@ enum class BrickDispatchers { IO, Default, Main }
  */
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Dispatcher(val wert: BrickDispatchers)
+annotation class Dispatcher(val value: BrickDispatchers)
 
 /**
  * Work that shall outlive the screen (startup cleanup, token swap,

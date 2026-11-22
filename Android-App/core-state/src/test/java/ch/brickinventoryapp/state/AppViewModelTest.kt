@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.session.Sitzung
-import ch.brickinventoryapp.session.SitzungsRepository
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.session.SessionRepository
 import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.TestServices
 import ch.brickinventoryapp.state.ui.AppViewModel
-import ch.brickinventoryapp.state.ui.Ausgangsmelder
+import ch.brickinventoryapp.state.ui.OutboxNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +26,7 @@ import org.junit.Test
  * activity and decides two things itself — what gets reloaded in the foreground
  * and which set a tapped notification may open.
  *
- * Counter-checks (one patch each under gegenproben/):
+ * Counter-checks (one patch each under counter-checks/):
  *   app-vordergrund-ohne-sitzung   inForeground() without `if (!state.value.isLoggedIn) return`
  *                                  → red „abgemeldet laedt der Vordergrund nichts nach“
  *   app-meldungsziel-ungeprueft    setFromMessageRequest() without setNumberFromMessage
@@ -35,73 +35,73 @@ import org.junit.Test
  */
 class AppViewModelTest {
 
-    private val t = TestDienste(FakeApi().api)
+    private val t = TestServices(FakeApi().api)
 
     /** Counts what the AppViewModel triggers on the session. */
-    private class Sitzungsschritte : SitzungsRepository {
+    private class SessionSteps : SessionRepository {
         val called = mutableListOf<String>()
-        override fun starte() { called += "starte" }
-        override fun abmelden(): Job { called += "abmelden"; return Job().apply { complete() } }
+        override fun launch() { called += "starte" }
+        override fun logout(): Job { called += "abmelden"; return Job().apply { complete() } }
         override fun secondFactorConfigured() { called += "faktor" }
-        override fun ladeEinstellungen() { called += "einstellungen" }
+        override fun loadSettings() { called += "einstellungen" }
         override fun loadMembers() { called += "mitglieder" }
-        override fun ladeLagerorte() { called += "lagerorte" }
+        override fun fetchStorageLocations() { called += "lagerorte" }
     }
 
-    private val schritte = Sitzungsschritte()
-    private val sitzung: Sitzung = t.sitzung
-    private val kanal = MeldungsKanal()
-    private val passwort = PasswordRequired()
-    private val faktor = SecondFactorRequired()
-    private val ausgang = object : Ausgangsmelder {
-        override val offene: StateFlow<Int> = MutableStateFlow(3)
-        override fun starte(scope: CoroutineScope) = Unit
+    private val steps = SessionSteps()
+    private val session: Session = t.session
+    private val channel = MessageChannel()
+    private val password = PasswordRequired()
+    private val factor = SecondFactorRequired()
+    private val outbox = object : OutboxNotifier {
+        override val pending: StateFlow<Int> = MutableStateFlow(3)
+        override fun launch(scope: CoroutineScope) = Unit
     }
-    private val vm = AppViewModel(schritte, kanal, sitzung, t.blickfeld, ScrollMemory(), ausgang, passwort, faktor)
+    private val vm = AppViewModel(steps, channel, session, t.viewport, ScrollMemory(), outbox, password, factor)
 
-    @After fun zu() { t.aufraeumen() }
+    @After fun tearDown() { t.cleanUp() }
 
     @Test
     fun `signed out the foreground reloads nothing, signed in settings and filter lists`() {
         vm.inForeground()
-        assertEquals(emptyList<String>(), schritte.called)
-        sitzung.angemeldet(admin = false)
+        assertEquals(emptyList<String>(), steps.called)
+        session.loggedIn(admin = false)
         vm.inForeground()
-        assertEquals(listOf("einstellungen", "mitglieder", "lagerorte"), schritte.called)
+        assertEquals(listOf("einstellungen", "mitglieder", "lagerorte"), steps.called)
     }
 
     @Test
     fun `a tapped notification opens only a valid set number until it is acknowledged`() {
         vm.setFromMessageRequest("75192-1")
-        assertEquals("75192-1", vm.messageTarget.value.setNummer)
+        assertEquals("75192-1", vm.messageTarget.value.setNumber)
         vm.setFromMessageAcknowledge()
-        assertNull(vm.messageTarget.value.setNummer)
+        assertNull(vm.messageTarget.value.setNumber)
         // The number becomes part of a route: whatever is not a set number opens nothing.
         vm.setFromMessageRequest("../../konto")
-        assertNull(vm.messageTarget.value.setNummer)
+        assertNull(vm.messageTarget.value.setNumber)
         vm.setFromMessageRequest(null)
-        assertNull(vm.messageTarget.value.setNummer)
+        assertNull(vm.messageTarget.value.setNumber)
     }
 
     @Test
     fun `the snackbar shows the channel, acknowledged the next one moves up`() {
-        kanal.zeige(Meldung.Resource(1))
-        kanal.zeige(Meldung.Resource(2))
-        assertEquals(Meldung.Resource(1), vm.snackbar.value)
+        channel.show(Message.Resource(1))
+        channel.show(Message.Resource(2))
+        assertEquals(Message.Resource(1), vm.snackbar.value)
         vm.clearSnackbar()
-        assertEquals(Meldung.Resource(2), vm.snackbar.value)
+        assertEquals(Message.Resource(2), vm.snackbar.value)
     }
 
     @Test
     fun `sign-out, second factor and obligations go through to session and store`() {
         vm.logout()
         vm.secondFactorConfigured()
-        assertEquals(listOf("abmelden", "faktor"), schritte.called)
-        passwort.melde()
-        faktor.melde()
+        assertEquals(listOf("abmelden", "faktor"), steps.called)
+        password.report()
+        factor.report()
         assertEquals(true, vm.startPasswordNeeded.value)
         assertEquals(true, vm.secondFactorNeeded.value)
-        assertEquals(3, vm.offeneAenderungen.value)
-        assertSame("dieselbe Sitzung wie die Bereiche", sitzung.state, vm.state)
+        assertEquals(3, vm.pendingChanges.value)
+        assertSame("dieselbe Sitzung wie die Bereiche", session.state, vm.state)
     }
 }

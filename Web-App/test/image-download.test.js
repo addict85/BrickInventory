@@ -89,7 +89,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
     assert.equal(aufrufe.length, 1);
     assert.equal(fs.readFileSync(path.join(PART_IMAGES_DIR, `${NUMBER}_4.png`), 'utf8'), 'PNGDATEN');
     assert.deepEqual(
-      fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMBER) && f.endsWith('.teil')),
+      fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMBER) && f.endsWith('.part')),
       [],
     );
   });

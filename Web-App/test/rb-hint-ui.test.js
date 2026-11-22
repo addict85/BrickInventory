@@ -10,8 +10,8 @@
  *   C  localStorage check removed in showRbHint → red: “dismissed
  *      it stays away” (03.11.2026: deadline set to 30 days → red: “after
  *      30 days it comes back”)
- *   D  rbHinweisOeffnen without a click on the section → red: “link leads to the field”
- *   E  einrichtungSpaeter without showRbHint() → red: “after “Später” in the
+ *   D  openRbHint without a click on the section → red: “link leads to the field”
+ *   E  setupLater without showRbHint() → red: “after “Später” in the
  *      wizard the banner appears”
  *   F  (12.11.2026, UX check 19 M4: permanently per account) key again
  *      without account → red: “another account sees it again”; with a deadline of
@@ -34,7 +34,7 @@ const WITHOUT_KEY = {
 test('without a Rebrickable key: collection with hint banner', async t => {
   const { w, d, aufrufe } = await openUi(WITHOUT_KEY);
   try {
-    const band = d.getElementById('rb-hinweis');
+    const band = d.getElementById('rb-hint');
     await warte(() => !band.hidden, 2000);
     await t.test('banner appears', () => {
       assert.equal(band.hidden, false);
@@ -50,10 +50,10 @@ test('without a Rebrickable key: collection with hint banner', async t => {
       );
     });
     await t.test('link leads to the field', async () => {
-      band.querySelector('[data-click="rbHinweisOeffnen"]').click();
+      band.querySelector('[data-click="openRbHint"]').click();
       await takt(50);
       assert.equal(d.getElementById('tab-settings').classList.contains('active'), true);
-      assert.equal(d.getElementById('einst-rb').classList.contains('einst-aktiv'), true);
+      assert.equal(d.getElementById('settings-rb').classList.contains('settings-active'), true);
       assert.equal(d.activeElement.id, 'rb-key');
       assert.equal(band.hidden, true);
     });
@@ -66,21 +66,21 @@ test('dismissed it stays away — even in a new session', async () => {
   const erst = await openUi(WITHOUT_KEY);
   let gemerkt;
   try {
-    const band = erst.d.getElementById('rb-hinweis');
+    const band = erst.d.getElementById('rb-hint');
     await warte(() => !band.hidden, 2000);
-    band.querySelector('[data-click="rbHinweisWeg"]').click();
+    band.querySelector('[data-click="dismissRbHint"]').click();
     assert.equal(band.hidden, true);
-    gemerkt = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hinweis_weg:'));
+    gemerkt = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hint_dismissed:'));
     assert.ok(gemerkt, 'nichts in localStorage gemerkt');
   } finally {
     erst.w.close();
   }
   const zweit = await openUi(WITHOUT_KEY, {
-    vorher: w => w.localStorage.setItem(gemerkt, '1'),
+    before: w => w.localStorage.setItem(gemerkt, '1'),
   });
   try {
     assert.ok(await zweit.ruhig());
-    assert.equal(zweit.d.getElementById('rb-hinweis').hidden, true);
+    assert.equal(zweit.d.getElementById('rb-hint').hidden, true);
   } finally {
     zweit.w.close();
   }
@@ -90,23 +90,23 @@ test('even after 31 days it stays away, another account sees it again', async t 
   const erst = await openUi(WITHOUT_KEY);
   let schluessel;
   try {
-    await warte(() => !erst.d.getElementById('rb-hinweis').hidden, 2000);
-    erst.d.querySelector('#rb-hinweis [data-click="rbHinweisWeg"]').click();
-    schluessel = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hinweis_weg:'));
+    await warte(() => !erst.d.getElementById('rb-hint').hidden, 2000);
+    erst.d.querySelector('#rb-hint [data-click="dismissRbHint"]').click();
+    schluessel = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hint_dismissed:'));
   } finally {
     erst.w.close();
   }
   await t.test('even after 31 days it stays away', async () => {
     const vor31 = Date.now() - 31 * 24 * 3600 * 1000;
     const { w, d, ruhig } = await openUi(WITHOUT_KEY, {
-      vorher: f => {
+      before: f => {
         f.localStorage.setItem(schluessel, String(vor31));
         f.Date.now = () => vor31 + 62 * 24 * 3600 * 1000;
       },
     });
     try {
       assert.ok(await ruhig());
-      assert.equal(d.getElementById('rb-hinweis').hidden, true);
+      assert.equal(d.getElementById('rb-hint').hidden, true);
     } finally {
       w.close();
     }
@@ -121,11 +121,11 @@ test('even after 31 days it stays away, another account sees it again', async t 
           user: { id: 2, username: 'bert', is_admin: true, zweiterFaktorPflicht: false },
         },
       },
-      { vorher: f => f.localStorage.setItem(schluessel, '1') },
+      { before: f => f.localStorage.setItem(schluessel, '1') },
     );
     try {
-      await warte(() => !d.getElementById('rb-hinweis').hidden, 2000);
-      assert.equal(d.getElementById('rb-hinweis').hidden, false);
+      await warte(() => !d.getElementById('rb-hint').hidden, 2000);
+      assert.equal(d.getElementById('rb-hint').hidden, false);
     } finally {
       w.close();
     }
@@ -143,12 +143,12 @@ test('after “Später” in the wizard the banner appears', async () => {
     },
   });
   try {
-    await warte(() => d.getElementById('einrichtung-modal').classList.contains('open'));
+    await warte(() => d.getElementById('setup-modal').classList.contains('open'));
     assert.ok(await ruhig());
-    assert.equal(d.getElementById('rb-hinweis').hidden, true, 'Band über dem Assistenten');
-    d.querySelector('#einrichtung-modal [data-click="einrichtungSpaeter"]').click();
+    assert.equal(d.getElementById('rb-hint').hidden, true, 'Band über dem Assistenten');
+    d.querySelector('#setup-modal [data-click="setupLater"]').click();
     await takt(20);
-    assert.equal(d.getElementById('rb-hinweis').hidden, false);
+    assert.equal(d.getElementById('rb-hint').hidden, false);
   } finally {
     w.close();
   }
@@ -158,7 +158,7 @@ test('with a key no banner', async () => {
   const { w, d, ruhig } = await openUi();
   try {
     assert.ok(await ruhig());
-    assert.equal(d.getElementById('rb-hinweis').hidden, true);
+    assert.equal(d.getElementById('rb-hint').hidden, true);
   } finally {
     w.close();
   }

@@ -16,7 +16,7 @@
  *   D  showConfirmationTarget() without preview (text from the profile as before)
  *      → red: both subcases (“timeout: own account named” and
  *      “… link's account named”)
- *   E  the branch `verify.fremdes_konto` deleted → red: “a foreign link …”
+ *   E  the branch `verify.fremdes_account` deleted → red: “a foreign link …”
  *   F  the preview route redeems the link (verifyEmailToken) → red: “opening
  *      the link confirms nothing”
  *
@@ -37,7 +37,7 @@ const sichtbar = id => `getComputedStyle(document.getElementById('${id}')).displ
 const text = id => `(document.getElementById('${id}')?.textContent || '')`;
 /** The button is enabled as soon as the page names the link's account. */
 const accountNamed =
-  name => `!document.getElementById('btn-verify').disabled && ${text('verify-ziel')}.includes('„${name}“')
+  name => `!document.getElementById('btn-verify').disabled && ${text('verify-target')}.includes('„${name}“')
   && ${text('btn-verify')}.includes('„${name}“')`;
 
 test('email confirmation via button', { timeout: 180_000 }, async t => {
@@ -90,7 +90,7 @@ test('email confirmation via button', { timeout: 180_000 }, async t => {
     await app.b.tab('Page.navigate', { url: link });
     await app.bis(accountNamed(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
     assert.match(
-      await app.b.auswerten(text('verify-ziel')),
+      await app.b.auswerten(text('verify-target')),
       new RegExp(`als „bestaetigen_${process.pid}“`),
       'ein fremder Link nennt beide Konten',
     );

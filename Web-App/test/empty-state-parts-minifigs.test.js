@@ -73,17 +73,17 @@ test('parts: manual ones there, from sets empty — no empty state', async () =>
 test('parts: both empty — exactly one empty state, the empty box disappears', async () => {
   const { w, d } = await teile({});
   try {
-    const leer = d.querySelectorAll('#tab-parts .leer');
+    const leer = d.querySelectorAll('#tab-parts .empty-state');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
     assert.ok(text(leer[0]).includes('Noch keine Teile'));
     assert.ok(
-      d.querySelector('#tab-parts .erfassen-leiste [data-click="oeffneErfassen"][data-arg="part"]'),
+      d.querySelector('#tab-parts .capture-bar [data-click="openCapture"][data-arg="part"]'),
       'Die Leiste bietet das Erfassen an',
     );
     // The same icon as the “parts" tab — not a puzzle piece.
     assert.equal(
-      leer[0].querySelector('.leer-ico use')?.getAttribute('href'),
-      d.querySelector('.sammlung-wahl [data-arg="parts"] use')?.getAttribute('href'),
+      leer[0].querySelector('.empty-ico use')?.getAttribute('href'),
+      d.querySelector('.collection-choice [data-arg="parts"] use')?.getAttribute('href'),
     );
     assert.equal(sichtbar(d.getElementById('manual-parts-box')), false);
   } finally {
@@ -96,7 +96,7 @@ test('parts: only from sets — no empty box for manual ones', async () => {
   try {
     assert.equal(d.querySelectorAll('#parts-main .part-card').length, 1);
     assert.equal(sichtbar(d.getElementById('manual-parts-box')), false);
-    assert.equal(d.querySelectorAll('#tab-parts .leer').length, 0);
+    assert.equal(d.querySelectorAll('#tab-parts .empty-state').length, 0);
   } finally {
     w.close();
   }
@@ -157,7 +157,7 @@ test('figures: manual ones there, from sets empty — no empty state', async () 
 test('figures: both empty — exactly one empty state', async () => {
   const { w, d } = await figuren({});
   try {
-    const leer = d.querySelectorAll('#tab-minifigs .leer');
+    const leer = d.querySelectorAll('#tab-minifigs .empty-state');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
     assert.ok(text(leer[0]).includes('Noch keine Minifiguren'));
     assert.equal(sichtbar(d.getElementById('manual-figs-box')), false);

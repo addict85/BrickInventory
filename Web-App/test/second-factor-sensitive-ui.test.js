@@ -28,14 +28,14 @@ test('mandatory change with second factor asks for the code', async () => {
   });
   try {
     assert.ok(
-      await warte(() => d.getElementById('panel-pflichtwechsel')?.style.display === 'block'),
+      await warte(() => d.getElementById('panel-required-change')?.style.display === 'block'),
       'Vorbedingung: Pflichtwechsel sichtbar',
     );
-    d.getElementById('pflicht-alt').value = 'Start-Passwort-1';
-    d.getElementById('pflicht-neu').value = 'Neues-Passwort-22';
-    d.getElementById('pflicht-wdh').value = 'Neues-Passwort-22';
+    d.getElementById('required-alt').value = 'Start-Passwort-1';
+    d.getElementById('required-new').value = 'Neues-Passwort-22';
+    d.getElementById('required-repeat').value = 'Neues-Passwort-22';
     w.location.reload = () => {};
-    d.getElementById('btn-pflicht').click();
+    d.getElementById('btn-required').click();
 
     const codeWrap = d.getElementById('cd-code-wrap');
     assert.ok(

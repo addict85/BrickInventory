@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.ui.util.fmtAmount
-import ch.brickinventoryapp.ui.util.fmtEingabe
+import ch.brickinventoryapp.ui.util.fmtInput
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
@@ -11,7 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import java.util.Locale
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Numbers and amounts come from ONE version — and it follows the app language.
@@ -21,7 +21,7 @@ import ch.brickinventoryapp.testing.Quellen
  *      Komma …“ and „ohne passende Landesform …“ (de-AT)
  *   B  the country taken without a language check → red „ohne passende Landesform …“
  *      (de with device en-US gave de-US)
- *   C  isGroupingUsed not turned off in fmtEingabe() → red „ein Eingabefeld
+ *   C  isGroupingUsed not turned off in fmtInput() → red „ein Eingabefeld
  *      bekommt den Betrag ohne Tausendertrennung zurück“
  *   D  "%.2f".format back in AcquisitionManagementScreen.kt → red „keine
  *      Ansicht setzt Betrag und Währung selbst zusammen“
@@ -29,7 +29,7 @@ import ch.brickinventoryapp.testing.Quellen
 class NumberFormatTest {
 
     private fun read(rel: String) =
-        File(Quellen.root, "$rel").readText()
+        File(Sources.root, "$rel").readText()
 
     /** Hide comments line by line — otherwise the explanatory text itself keeps the check green. */
     private fun code(s: String) = s.lines()
@@ -42,8 +42,8 @@ class NumberFormatTest {
         val screens = listOf(
             "app/AppNavigation.kt",
             "parts/ui/screens/PartsScreen.kt",
-            "parts/ui/screens/TeileFilterBlatt.kt",
-            "parts/ui/screens/TeileKarte.kt",
+            "parts/ui/screens/PartsFilterSheet.kt",
+            "parts/ui/screens/PartsCard.kt",
             "finances/ui/screens/FinanceScreen.kt",
             "collection/ui/screens/SetDetailScreen.kt",
             "shared/ui/SetDetailComponents.kt",
@@ -51,10 +51,10 @@ class NumberFormatTest {
             "parts/ui/screens/ManualItemDetailScreen.kt",
             "collection/ui/screens/AcquisitionManagementScreen.kt",
             "collection/ui/screens/GalleryScreen.kt",
-            "collection/ui/screens/GalerieFilter.kt",
-            "collection/ui/screens/GalerieKarte.kt",
-            "collection/ui/screens/GalerieErfassen.kt",
-            "account/ui/screens/EinstellungenAlarme.kt",
+            "collection/ui/screens/GalleryFilter.kt",
+            "collection/ui/screens/GalleryCard.kt",
+            "collection/ui/screens/GalleryRecord.kt",
+            "account/ui/screens/SettingsAlarme.kt",
         )
         for (f in screens) {
             val c = code(read(f))
@@ -73,7 +73,7 @@ class NumberFormatTest {
                 "$f formatiert eine Zahl von Hand statt über fmtInt()"
             }
             assert(!c.contains("\"%.2f\".format")) {
-                "$f formatiert einen Betrag in der Gerätesprache statt über fmtAmount()/fmtEingabe()"
+                "$f formatiert einen Betrag in der Gerätesprache statt über fmtAmount()/fmtInput()"
             }
         }
     }
@@ -85,15 +85,15 @@ class NumberFormatTest {
      */
     @Test
     fun `the opposite direction stays the platform's business`() {
-        withDevice("de-DE") { assertEquals("812,50\u00A0€", fmtMoney(812.5, Waehrung("EUR"))) }
-        withDevice("en-GB") { assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR"))) }
+        withDevice("de-DE") { assertEquals("812,50\u00A0€", fmtMoney(812.5, CurrencyCode("EUR"))) }
+        withDevice("en-GB") { assertEquals("€812.50", fmtMoney(812.5, CurrencyCode("EUR"))) }
     }
 
     // ── Part 2: the result ─────────────────────────────────────────────────
 
     @Test
     fun `amounts contain number and currency`() {
-        val s = fmtMoney(1234.5, Waehrung("CHF"))
+        val s = fmtMoney(1234.5, CurrencyCode("CHF"))
         assert(s.contains("1") && s.contains("234")) { "Der Betrag fehlt: $s" }
         assert(s.contains("CHF") || s.contains("Fr")) { "Die Währung fehlt: $s" }
         // Two decimal places, as in the web app (minimumFractionDigits: 2).
@@ -107,15 +107,15 @@ class NumberFormatTest {
         // Happens when the server delivers a code the platform doesn't
         // know. It used to fall into a catch that produced a SECOND
         // spelling — now the fallback is part of the same version.
-        val s = fmtMoney(10.0, Waehrung("XYZ123"))
+        val s = fmtMoney(10.0, CurrencyCode("XYZ123"))
         assert(s.contains("10")) { "Der Betrag muss auch ohne bekannte Währung erscheinen: $s" }
     }
 
     @Test
     fun `a missing amount gives a dash`() {
-        assertEquals("—", fmtMoneyOrDash(null as String?, Waehrung("CHF")))
-        assertEquals("—", fmtMoneyOrDash("keine Zahl", Waehrung("CHF")))
-        assert(fmtMoneyOrDash("12.5", Waehrung("CHF")).contains("12")) { "gültiger Wert muss durchkommen" }
+        assertEquals("—", fmtMoneyOrDash(null as String?, CurrencyCode("CHF")))
+        assertEquals("—", fmtMoneyOrDash("keine Zahl", CurrencyCode("CHF")))
+        assert(fmtMoneyOrDash("12.5", CurrencyCode("CHF")).contains("12")) { "gültiger Wert muss durchkommen" }
     }
 
     @Test
@@ -130,9 +130,9 @@ class NumberFormatTest {
     // ── Part 3: the locale follows the device, as in the web ──────────────
 
     private fun withDevice(tag: String, block: () -> Unit) {
-        val vorher = Locale.getDefault()
+        val before = Locale.getDefault()
         Locale.setDefault(Locale.forLanguageTag(tag))
-        try { block() } finally { Locale.setDefault(vorher) }
+        try { block() } finally { Locale.setDefault(before) }
     }
 
     @Test
@@ -144,10 +144,10 @@ class NumberFormatTest {
 
     @Test
     fun `an input field gets the amount back without thousands separator`() {
-        withDevice("de-DE") { assertEquals("4894,77", fmtEingabe(4894.77)) }
-        withDevice("de-CH") { assertEquals("4894.77", fmtEingabe(4894.77)) }
+        withDevice("de-DE") { assertEquals("4894,77", fmtInput(4894.77)) }
+        withDevice("de-CH") { assertEquals("4894.77", fmtInput(4894.77)) }
         // This is how AcquisitionManagementRow reads the field on save.
-        withDevice("de-DE") { assertEquals(4894.77, fmtEingabe(4894.77).replace(',', '.').toDouble(), 0.0) }
+        withDevice("de-DE") { assertEquals(4894.77, fmtInput(4894.77).replace(',', '.').toDouble(), 0.0) }
     }
 
     @Test
@@ -169,12 +169,12 @@ class NumberFormatTest {
     @Test
     fun `currency code and amount stand with a non-breaking space`() {
         withDevice("en-GB") {
-            assertEquals("CHF\u00A0812.50", fmtMoney(812.5, Waehrung("CHF")))
-            assertEquals("-CHF\u00A012.00", fmtMoney(-12.0, Waehrung("CHF")))
-            assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR")))
+            assertEquals("CHF\u00A0812.50", fmtMoney(812.5, CurrencyCode("CHF")))
+            assertEquals("-CHF\u00A012.00", fmtMoney(-12.0, CurrencyCode("CHF")))
+            assertEquals("€812.50", fmtMoney(812.5, CurrencyCode("EUR")))
         }
         withDevice("de-CH") {
-            val s = fmtMoney(812.5, Waehrung("CHF"))
+            val s = fmtMoney(812.5, CurrencyCode("CHF"))
             assertEquals("CHF\u00A0812.50", s.replace(' ', '\u00A0'))
             assert(!s.contains("\u00A0\u00A0") && !s.contains("  ")) { "doppelter Abstand: $s" }
         }

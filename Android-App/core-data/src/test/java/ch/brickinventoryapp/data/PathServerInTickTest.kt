@@ -11,34 +11,34 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
-import ch.brickinventoryapp.testing.PfadServer
+import ch.brickinventoryapp.testing.PathServer
 import ch.brickinventoryapp.testing.RowsServer
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * PfadServer.imTakt reads every response against the DTO of the called method. An
+ * PathServer.onTick reads every response against the DTO of the called method. An
  * incomplete test response thus fails in the calling thread instead of coming back via
  * Dispatchers.Default and throwing the test out of tick.
  *
  * Counter-checks (measured locally with kotlinc):
- *   A  in imTakt the call of checkAgainstDto struck → red “an incomplete
+ *   A  in onTick the call of checkAgainstDto struck → red “an incomplete
  *      response fails …” (SerializationException instead of AssertionError)
- *   B  pruefeEinlesen does not check the list → red “the cleanup names …”
+ *   B  checkReadIn does not check the list → red “the cleanup names …”
  *   C  ImmediatelyCall does not ask staysFrom → red “a held-back response …”
- *   D  in senden() `isCanceled` not checked → red “an aborted fetch …”
+ *   D  in send() `isCanceled` not checked → red “an aborted fetch …”
  *   E  RowsServer without vorrang (by path instead of order) → red “the RowsServer …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PathServerInTickTest {
 
-    private val paths = PfadServer(
+    private val paths = PathServer(
         "/api/v1/finance/parts-valuation" to """{"success":true,"parts":[]}""",
         "/api/v1/finance/minifigs-valuation" to """{"success":true,"total_value":"0.00","figs":[]}""",
     )
-    private val api = paths.imTakt()
+    private val api = paths.onTick()
 
     @After
-    fun zu() = paths.server.shutdown()
+    fun tearDown() = paths.server.shutdown()
 
     @Test
     fun `an incomplete response fails in the calling thread`() {
@@ -55,17 +55,17 @@ class PathServerInTickTest {
 
     @Test
     fun `a complete response arrives, and the cleanup stays silent`() {
-        val antwort = runBlocking { api.getMinifigsValuation() }
-        assertEquals("0.00", antwort.body()?.totalValue)
-        paths.pruefeEinlesen()
+        val response = runBlocking { api.getMinifigsValuation() }
+        assertEquals("0.00", response.body()?.totalValue)
+        paths.checkReadIn()
     }
 
     @Test
     fun `the cleanup names the unsuitable response`() {
-        assertSame("TestDienste findet den Server über den Dienst", paths, PfadServer.von(api))
+        assertSame("TestServices findet den Server über den Dienst", paths, PathServer.of(api))
         runCatching { runBlocking { api.getPartsValuation() } }
         try {
-            paths.pruefeEinlesen()
+            paths.checkReadIn()
             fail("pruefeEinlesen blieb still")
         } catch (e: AssertionError) {
             assertTrue(e.message, "GET /api/v1/finance/parts-valuation" in e.message.orEmpty())
@@ -74,24 +74,24 @@ class PathServerInTickTest {
 
     @Test
     fun `a held-back response comes only with release, without a wall clock`() = runTest {
-        paths.ausbleibend += "/api/v1/finance/minifigs-valuation"
-        val abruf = launch { api.getMinifigsValuation() }
+        paths.missing += "/api/v1/finance/minifigs-valuation"
+        val fetch = launch { api.getMinifigsValuation() }
         runCurrent()
-        assertTrue("Der Abruf wartet noch", abruf.isActive)
+        assertTrue("Der Abruf wartet noch", fetch.isActive)
         assertTrue(paths.requests.isEmpty())
-        paths.freigeben()
+        paths.release()
         runCurrent()
-        assertTrue("Nach dem Freigeben ist er fertig", abruf.isCompleted)
+        assertTrue("Nach dem Freigeben ist er fertig", fetch.isCompleted)
         assertEquals(listOf("GET /api/v1/finance/minifigs-valuation"), paths.requests.toList())
     }
 
     @Test
     fun `an aborted fetch gets no response after the release`() = runTest {
-        paths.ausbleibend += "/api/v1/finance/minifigs-valuation"
-        val abruf = launch { api.getMinifigsValuation() }
+        paths.missing += "/api/v1/finance/minifigs-valuation"
+        val fetch = launch { api.getMinifigsValuation() }
         runCurrent()
-        abruf.cancel()
-        paths.freigeben()
+        fetch.cancel()
+        paths.release()
         runCurrent()
         assertTrue("Der Server hat nichts gesehen: ${paths.requests}", paths.requests.isEmpty())
     }
@@ -100,13 +100,13 @@ class PathServerInTickTest {
     fun `the RowsServer responds in order and records the requests`() {
         val series = RowsServer()
         try {
-            series.enqueue(TestApi.antwort("""{"success":true,"total_value":"1.00","figs":[]}"""))
-            series.enqueue(TestApi.antwort("""{"success":true,"total_value":"2.00","figs":[]}"""))
-            val werte = runBlocking { List(2) { series.api.getMinifigsValuation().body()?.totalValue } }
-            assertEquals(listOf("1.00", "2.00"), werte)
+            series.enqueue(TestApi.response("""{"success":true,"total_value":"1.00","figs":[]}"""))
+            series.enqueue(TestApi.response("""{"success":true,"total_value":"2.00","figs":[]}"""))
+            val values = runBlocking { List(2) { series.api.getMinifigsValuation().body()?.totalValue } }
+            assertEquals(listOf("1.00", "2.00"), values)
             assertEquals(2, series.requestCount)
             assertEquals("/api/v1/finance/minifigs-valuation", series.takeRequest().path)
-            series.pruefeEinlesen()
+            series.checkReadIn()
         } finally {
             series.shutdown()
         }

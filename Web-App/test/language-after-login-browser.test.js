@@ -34,7 +34,7 @@ test('English UI without reloading', { timeout: 120_000 }, async t => {
   );
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(`sprache_${process.pid}`)};
     document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('btn-login').click(); true`);
-  await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet', 300);
+  await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'loggedIn', 300);
   await app.warte(1500);
   assert.equal(
     await app.b.auswerten(`document.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim()`),

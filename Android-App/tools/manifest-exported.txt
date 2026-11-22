@@ -5,7 +5,7 @@
 # Der Launcher-Einstieg; NurLauncherStart entfernt alles, was von aussen mitkommt.
 ch.brickinventoryapp.app.MainActivity
 # Nur das System bindet Widgets.
-ch.brickinventoryapp.app.widget.SammlungsWidgetEmpfaenger android.permission.BIND_APPWIDGET
+ch.brickinventoryapp.app.widget.CollectionWidgetReceiver android.permission.BIND_APPWIDGET
 # WorkManager: Der JobScheduler des Systems startet den Dienst, adb liest die Diagnose.
 androidx.work.impl.background.systemjob.SystemJobService android.permission.BIND_JOB_SERVICE
 androidx.work.impl.diagnostics.DiagnosticsReceiver android.permission.DUMP

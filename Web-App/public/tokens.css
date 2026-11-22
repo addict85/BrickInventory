@@ -174,8 +174,8 @@
   --ink: #161a21;
 }
 
-/* Dark variant — see _dunkel_warum in shared/design-tokens.json. */
-[data-dunkel]:is([data-theme], :not([data-theme])) {
+/* Dark variant — reasoning in shared/design-tokens.json. */
+[data-dark]:is([data-theme], :not([data-theme])) {
   --s50: #11151a;
   --s100: #161b21;
   --s200: #262d36;
@@ -191,22 +191,22 @@
   --txt: #e6e9ed;
   --mut: #9aa3af;
   --screen-bg: #14181d;
-  --auf-primaer: #0b1a2e;
+  --on-primary: #0b1a2e;
   --g100: #1d2a20;
   --g500: #6fbf7f;
   --g700: #7fcf8f;
-  --gewinn: #7fcf8f;
+  --profit: #7fcf8f;
   --r100: #2c1c1c;
   --r500: #e07a72;
   --r700: #f08c84;
   --a100: #2a2418;
   --a500: #d9a84e;
-  --a-schrift: #e0b462;
+  --a-text: #e0b462;
   --p100: #241d2e;
   --p600: #b087d6;
 }
 
-[data-dunkel]:is([data-theme="classic"], :not([data-theme])) {
+[data-dark]:is([data-theme="classic"], :not([data-theme])) {
   --b50: #13233d;
   --b100: #172c4d;
   --b200: #1e3a63;
@@ -219,7 +219,7 @@
   --chart-used: #f0a54a;
 }
 
-[data-dunkel][data-theme="brick"] {
+[data-dark][data-theme="brick"] {
   --b50: #18222d;
   --b100: #1d2a38;
   --b200: #273849;
@@ -232,7 +232,7 @@
   --chart-used: #c9a46a;
 }
 
-[data-dunkel][data-theme="farbfaecher"] {
+[data-dark][data-theme="farbfaecher"] {
   --b50: #1c1c1c;
   --b100: #242424;
   --b200: #333333;
@@ -245,7 +245,7 @@
   --chart-used: #f0a54a;
 }
 
-[data-dunkel][data-theme="noppe"] {
+[data-dark][data-theme="noppe"] {
   --b50: #2a1415;
   --b100: #3a1a1c;
   --b200: #5a2226;
@@ -259,7 +259,7 @@
   --ink: #05070a;
 }
 
-[data-dunkel][data-theme="hochglanz"] {
+[data-dark][data-theme="hochglanz"] {
   --b50: #2a1415;
   --b100: #3a1a1c;
   --b200: #5a2226;
@@ -273,28 +273,28 @@
   --ink: #05070a;
 }
 
-/* faecher — see listen.faecher.warum in shared/design-tokens.json. */
+/* --fan-0… — reasoning in shared/design-tokens.json. */
 :root {
-  --faecher-0: #c0392b;
-  --faecher-1: #c0682b;
-  --faecher-2: #b08c1e;
-  --faecher-3: #7d9b2a;
-  --faecher-4: #3f9142;
-  --faecher-5: #1f8a75;
-  --faecher-6: #1f8a92;
-  --faecher-7: #2f6fc6;
-  --faecher-8: #4a4fc0;
-  --faecher-9: #7a3fa0;
-  --faecher-10: #a8348a;
-  --faecher-11: #bb2f5e;
+  --fan-0: #c0392b;
+  --fan-1: #c0682b;
+  --fan-2: #b08c1e;
+  --fan-3: #7d9b2a;
+  --fan-4: #3f9142;
+  --fan-5: #1f8a75;
+  --fan-6: #1f8a92;
+  --fan-7: #2f6fc6;
+  --fan-8: #4a4fc0;
+  --fan-9: #7a3fa0;
+  --fan-10: #a8348a;
+  --fan-11: #bb2f5e;
 }
 
-/* steine — see listen.steine.warum in shared/design-tokens.json. */
+/* --brick-0… — reasoning in shared/design-tokens.json. */
 :root {
-  --stein-0: #d91f26;
-  --stein-1: #f5c400;
-  --stein-2: #1a6fd4;
-  --stein-3: #00a94f;
-  --stein-4: #ff7a00;
-  --stein-5: #8a4fbf;
+  --brick-0: #d91f26;
+  --brick-1: #f5c400;
+  --brick-2: #1a6fd4;
+  --brick-3: #00a94f;
+  --brick-4: #ff7a00;
+  --brick-5: #8a4fbf;
 }

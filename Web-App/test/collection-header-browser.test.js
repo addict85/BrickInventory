@@ -5,7 +5,7 @@
  * with delayed responses, so that everything loaded later occurs.
  *
  * Counter-checks (measured on 13.11.2026):
- *   A  in showApp() startgeruestWeg() again immediately instead of after banner and
+ *   A  in showApp() removeStartupScaffold() again immediately instead of after banner and
  *      account filter → red: all three “loading without a jump” (the header slips
  *      45 px lower as soon as the banner comes)
  *   B  `.bstat .bstat-s:empty::before` without content → red: “sets: loading without
@@ -27,11 +27,11 @@ const { patternHousehold } = require('./helpers/inventory');
 /** Records the position of the header parts in every frame as soon as the startup skeleton is gone. */
 const RECORD = `(() => {
   window.__kopf = [];
-  const teile = ['.brotkrume', 'h1', '.ptitle-unter', '.sammlung-wahl', '.brick-stats', '.erfassen-leiste', '.suchfeld'];
+  const teile = ['.breadcrumb', 'h1', '.ptitle-sub', '.collection-choice', '.brick-stats', '.capture-bar', '.search-field'];
   const bild = () => {
     const tab = document.querySelector('.tab.active');
     const app = document.getElementById('app');
-    if (tab && app && app.style.display === 'block' && !document.getElementById('startgeruest')) {
+    if (tab && app && app.style.display === 'block' && !document.getElementById('start-skeleton')) {
       const situation = teile.map(s => {
         const e = tab.querySelector(s);
         if (!e || !e.getClientRects().length) return s + ': –';
@@ -89,7 +89,7 @@ test('header of the collection: the same and without a jump', { concurrency: 1, 
       const bilder = await b.auswerten('window.__kopf');
       assert.ok(bilder.length >= 1, 'kein Bild aufgezeichnet');
       assert.deepEqual(bilder, [bilder.at(-1)], 'der Kopf veränderte sich nach dem ersten Bild');
-      assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), false, 'Band fehlt');
+      assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'Band fehlt');
       endState[name] = bilder.at(-1);
     });
   }
@@ -100,7 +100,7 @@ test('header of the collection: the same and without a jump', { concurrency: 1, 
       z
         .split(' | ')
         .slice(0, 6)
-        .map(s => s.replace(/^(\.brotkrume|\.ptitle-unter|h1): (\d+)\/(\d+)\/\d+/, '$1: $2/$3'));
+        .map(s => s.replace(/^(\.breadcrumb|\.ptitle-sub|h1): (\d+)\/(\d+)\/\d+/, '$1: $2/$3'));
     assert.deepEqual(kopf(endState.Teile), kopf(endState.Sets));
     assert.deepEqual(kopf(endState.Minifiguren), kopf(endState.Sets));
   });

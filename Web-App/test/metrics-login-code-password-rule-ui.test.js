@@ -10,7 +10,7 @@
  *   D  lc-status not set → red: “M2 …” (sentence „Passwort stimmt …“ missing)
  *   E  btn-sav-pw again with return after the error at the first field → red: “N6 …” (repetition without message)
  *   F  summenTabelle again with area rows in the tbody → red: “N7 …” („Bereichssummen doppelt“)
- *   G  auth.ohne_https again with COOKIE_SECURE=0 → red: “N10 …” (operator hint up front)
+ *   G  auth.without_https again with COOKIE_SECURE=0 → red: “N10 …” (operator hint up front)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +37,7 @@ test('M1 a set without a parts list: singular, explanation below the bar', async
   try {
     await warte(() => text(d.getElementById('bstat-sets')) === '1');
     assert.deepEqual(labels(d), ['Set', 'Teile', 'Minifigur', 'Anleitung']);
-    assert.equal(text(d.getElementById('bstat-hinweis')), 'Teileliste für das Set fehlt noch');
+    assert.equal(text(d.getElementById('bstat-hint')), 'Teileliste für das Set fehlt noch');
     assert.equal(d.querySelector('.bstat-erklaert'), null, 'die Kennzahl selbst wird nicht mehr umgebaut');
   } finally {
     w.close();
@@ -51,7 +51,7 @@ test('M1 several sets with parts: plural, no explanation', async () => {
   try {
     await warte(() => text(d.getElementById('bstat-sets')) === '4');
     assert.deepEqual(labels(d), ['Sets', 'Teile', 'Minifiguren', 'Anleitungen']);
-    assert.equal(text(d.getElementById('bstat-hinweis')), '');
+    assert.equal(text(d.getElementById('bstat-hint')), '');
   } finally {
     w.close();
   }
@@ -68,7 +68,7 @@ test('M2 empty code in the second step: message at the field, no second request'
         zweiter_faktor: true,
       },
     },
-    { angemeldet: false },
+    { loggedIn: false },
   );
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
@@ -76,7 +76,7 @@ test('M2 empty code in the second step: message at the field, no second request'
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'richtig-Passwort-1';
     d.getElementById('btn-login').click();
-    await warte(() => d.getElementById('lc-zeile').style.display === '');
+    await warte(() => d.getElementById('lc-row').style.display === '');
     assert.equal(logins(), 1);
     const status = d.getElementById('lc-status');
     assert.equal(status.getAttribute('role'), 'status');
@@ -87,7 +87,7 @@ test('M2 empty code in the second step: message at the field, no second request'
     d.getElementById('btn-login').click();
     await takt(50);
     assert.equal(logins(), 1, 'leerer Code ging an den Server');
-    assert.equal(text(d.getElementById('lc-fehler')), 'Bitte Code eingeben.');
+    assert.equal(text(d.getElementById('lc-error')), 'Bitte Code eingeben.');
     assert.equal(d.getElementById('lc').getAttribute('aria-invalid'), 'true');
     assert.equal(d.activeElement?.id, 'lc');
 
@@ -95,7 +95,7 @@ test('M2 empty code in the second step: message at the field, no second request'
     const lc = d.getElementById('lc');
     lc.value = '123456';
     lc.dispatchEvent(new w.Event('input', { bubbles: true }));
-    assert.equal(text(d.getElementById('lc-fehler')), '');
+    assert.equal(text(d.getElementById('lc-error')), '');
     d.getElementById('btn-login').click();
     await warte(() => logins() === 2);
     assert.equal(JSON.parse(aufrufe.filter(a => a.url.includes('/v1/auth/login'))[1].body).code, '123456');
@@ -114,16 +114,16 @@ test('M2 first step without a code field: the code is not required', async () =>
         code: 'anmeldedaten_ungueltig',
       },
     },
-    { angemeldet: false },
+    { loggedIn: false },
   );
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
     d.getElementById('lu').value = 'anna';
-    d.getElementById('lp').value = 'falsch';
+    d.getElementById('lp').value = 'wrong';
     d.getElementById('btn-login').click();
     await warte(() => text(d.getElementById('lerr')));
     assert.equal(aufrufe.filter(a => a.url.includes('/v1/auth/login')).length, 1);
-    assert.equal(text(d.getElementById('lc-fehler')), '');
+    assert.equal(text(d.getElementById('lc-error')), '');
   } finally {
     w.close();
   }
@@ -134,13 +134,13 @@ test('N6 change password: length and repetition reported at once', async () => {
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
-    await sicht(w, 'profil');
-    d.getElementById('pw-n').value = 'kurz';
+    await sicht(w, 'profile');
+    d.getElementById('pw-n').value = 'short';
     d.getElementById('pw-r').value = 'anders';
     d.getElementById('btn-sav-pw').click();
     await takt(30);
-    assert.match(text(d.getElementById('pw-n-fehler')), /mindestens \d+ Zeichen/);
-    assert.equal(text(d.getElementById('pw-r-fehler')), 'Passwörter stimmen nicht überein');
+    assert.match(text(d.getElementById('pw-n-error')), /mindestens \d+ Zeichen/);
+    assert.equal(text(d.getElementById('pw-r-error')), 'Passwörter stimmen nicht überein');
     assert.equal(d.activeElement?.id, 'pw-n');
     assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'Rückfrage trotz Fehler');
     assert.equal(aufrufe.filter(a => a.url.endsWith('/v1/auth/change-password')).length, 0);
@@ -149,8 +149,8 @@ test('N6 change password: length and repetition reported at once', async () => {
     d.getElementById('pw-n').value = 'lang-genug-Passwort-1';
     d.getElementById('btn-sav-pw').click();
     await takt(30);
-    assert.equal(text(d.getElementById('pw-n-fehler')), '');
-    assert.equal(text(d.getElementById('pw-r-fehler')), 'Passwörter stimmen nicht überein');
+    assert.equal(text(d.getElementById('pw-n-error')), '');
+    assert.equal(text(d.getElementById('pw-r-error')), 'Passwörter stimmen nicht überein');
     assert.equal(d.activeElement?.id, 'pw-r');
   } finally {
     w.close();
@@ -195,11 +195,11 @@ test('N7 finances: sum per area below the area, at the bottom only the grand tot
   });
   try {
     await reiter(w, 'finance');
-    await warte(() => d.querySelector('#fin-tbl .dt-summe tfoot'));
-    assert.equal(d.querySelectorAll('#fin-tbl .dt-summe tbody tr').length, 0, 'Bereichssummen doppelt');
-    assert.match(text(d.querySelector('#fin-tbl .dt-summe tfoot')), /^Gesamt/);
-    assert.ok(d.querySelector('[data-fin-art="sets"] tfoot'), 'Summe unter den Sets fehlt');
-    assert.ok(d.querySelector('[data-fin-art="parts"] tfoot'), 'Summe unter den Teilen fehlt');
+    await warte(() => d.querySelector('#fin-tbl .dt-sum tfoot'));
+    assert.equal(d.querySelectorAll('#fin-tbl .dt-sum tbody tr').length, 0, 'Bereichssummen doppelt');
+    assert.match(text(d.querySelector('#fin-tbl .dt-sum tfoot')), /^Gesamt/);
+    assert.ok(d.querySelector('[data-fin-kind="sets"] tfoot'), 'Summe unter den Sets fehlt');
+    assert.ok(d.querySelector('[data-fin-kind="parts"] tfoot'), 'Summe unter den Teilen fehlt');
   } finally {
     w.close();
   }
@@ -214,19 +214,19 @@ test('N10 without HTTPS: up front only "unencrypted", the operator hint only wit
         keks_fehlt: true,
       },
     },
-    { angemeldet: false, url: 'http://192.168.1.20/' },
+    { loggedIn: false, url: 'http://192.168.1.20/' },
   );
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
-    const upfront = d.getElementById('login-ohne-https');
+    const upfront = d.getElementById('login-without-https');
     assert.equal(upfront.hidden, false);
     assert.equal(text(upfront), 'Verbindung unverschlüsselt: Passwort und Sitzung gehen ungeschützt durchs Netz.');
     assert.doesNotMatch(text(d.getElementById('login-screen')), /COOKIE_SECURE/);
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'richtig-Passwort-1';
     d.getElementById('btn-login').click();
-    await warte(() => !d.getElementById('login-hinweis').hidden);
-    assert.match(text(d.getElementById('login-hinweis')), /COOKIE_SECURE=0/);
+    await warte(() => !d.getElementById('login-hint').hidden);
+    assert.match(text(d.getElementById('login-hint')), /COOKIE_SECURE=0/);
   } finally {
     w.close();
   }

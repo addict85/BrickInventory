@@ -1,0 +1,16 @@
+Gegenprobe: Die Baseline verschweigt eine andere Regel als Länge und Verzweigung
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: the detekt baseline holds only length and branching and shrinks
+
+diff --git a/Android-App/config/detekt/baseline.xml b/Android-App/config/detekt/baseline.xml
+--- a/Android-App/config/detekt/baseline.xml
++++ b/Android-App/config/detekt/baseline.xml
+@@ -2,6 +2,7 @@
+ <SmellBaseline>
+   <ManuallySuppressedIssues/>
+   <CurrentIssues>
++    <ID>MagicNumber:Probe.kt$42</ID>
+     <ID>CyclomaticComplexMethod:AcquisitionManagementScreen.kt$@Composable @OptIn(ExperimentalMaterial3Api::class) private fun AcquisitionManagementRow( acquisition: KaufAnsicht, currency: Waehrung, onSave: (price: Double?, cond: Zustand?, qty: Int?, date: String?) -&gt; Unit, onDelete: () -&gt; Unit )</ID>
+     <ID>CyclomaticComplexMethod:AcquisitionManagementScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable internal fun AcquisitionManagementScreen( zustand: KaeufeZustand, aktionen: KaeufeAktionen, type: Postenart, id: String, // setNumber / partNumber / figNumber colorId: Int = OHNE_FARBE, title: String, onBack: () -&gt; Unit, meldung: SnackbarHostState = remember { SnackbarHostState() }, )</ID>
+     <ID>CyclomaticComplexMethod:BarcodeResultDialog.kt$@Composable fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktionen, imageLoader: ImageLoader)</ID>

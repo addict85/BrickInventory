@@ -34,7 +34,7 @@ import org.robolectric.annotation.Config
  * "Löschen" for a Brickset entry ask first, cancel in the confirmation prompt does
  * nothing. Every button tells TalkBack what it acts on (job kind, set).
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   auftraege-leeren-ohne-frage   „Leeren“ calls clearOn right away → red “Leeren asks …”
  *   brickset-loeschen-ohne-frage  the delete icon deletes right away → red “deleting a Brickset entry …”
  *   auftrag-knopf-ohne-art        job buttons without contentDescription → red “every button tells …”
@@ -48,24 +48,24 @@ class BackgroundButtonsTest {
 
     private fun text(id: Int, vararg a: Any) = compose.activity.getString(id, *a)
 
-    private fun job(id: String, art: String, status: JobStatus, set: String?) = JobView(
-        id = id, art = art, status = status, attempt = 1, maxVersuche = 3, geplant = false,
-        dueAb = null, progressText = null, fehler = null, setNumber = set)
+    private fun job(id: String, kind: String, status: JobStatus, set: String?) = JobView(
+        id = id, kind = kind, status = status, attempt = 1, maxAttempts = 3, scheduled = false,
+        dueFrom = null, progressText = null, error = null, setNumber = set)
 
-    private val geleert = mutableListOf<String>()
-    private val abgebrochen = mutableListOf<String>()
-    private val wiederholt = mutableListOf<String>()
+    private val emptied = mutableListOf<String>()
+    private val cancelled = mutableListOf<String>()
+    private val retried = mutableListOf<String>()
 
-    private fun zeige() {
-        val ansicht = BackgroundView(
-            auftraege = listOf(job("17", "bilder", JobStatus.LAEUFT, "75192-1"),
-                               job("18", "preise", JobStatus.FEHLER, null)),
-            pausen = emptyList(), bildbedarf = 0, jobProcessRunning = true)
+    private fun show() {
+        val view = BackgroundView(
+            jobs = listOf(job("17", "bilder", JobStatus.RUNNING, "75192-1"),
+                               job("18", "preise", JobStatus.ERROR, null)),
+            pauses = emptyList(), imageDemand = 0, jobProcessRunning = true)
         compose.setContent {
             BrickInventoryManagerTheme {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    BackgroundSection(BackgroundUiState(ansicht), startOn = { _, _ -> }, clearOn = { geleert += it },
-                        onAbbrechen = { abgebrochen += it }, retryOn = { wiederholt += it })
+                    BackgroundSection(BackgroundUiState(view), startOn = { _, _ -> }, clearOn = { emptied += it },
+                        onCancel = { cancelled += it }, retryOn = { retried += it })
                 }
             }
         }
@@ -79,54 +79,54 @@ class BackgroundButtonsTest {
 
     @Test
     fun `clearing asks first and then clears the one job kind`() {
-        zeige()
-        val bilder = text(R.string.art_bilder)
-        button(text(R.string.hintergrund_leeren_cd, bilder)).performScrollTo().performClick()
+        show()
+        val images = text(R.string.kind_images)
+        button(text(R.string.background_clear_cd, images)).performScrollTo().performClick()
         compose.waitForIdle()
-        assertEquals("Ein Tipp allein leert schon", emptyList<String>(), geleert)
+        assertEquals("Ein Tipp allein leert schon", emptyList<String>(), emptied)
         inDialog(text(R.string.common_cancel)).performClick()
         compose.waitForIdle()
-        assertEquals("Abbrechen leert", emptyList<String>(), geleert)
+        assertEquals("Abbrechen leert", emptyList<String>(), emptied)
 
-        button(text(R.string.hintergrund_leeren_cd, bilder)).performScrollTo().performClick()
+        button(text(R.string.background_clear_cd, images)).performScrollTo().performClick()
         compose.waitForIdle()
-        inDialog(text(R.string.hintergrund_leeren)).performClick()
+        inDialog(text(R.string.background_clear)).performClick()
         compose.waitForIdle()
-        assertEquals(listOf("bilder"), geleert)
+        assertEquals(listOf("bilder"), emptied)
     }
 
     @Test
     fun `every button names the job kind and the set to TalkBack`() {
-        zeige()
-        val bilder = text(R.string.art_bilder)
-        val preise = text(R.string.art_preise)
-        for (art in listOf(bilder, preise)) {
-            button(text(R.string.hintergrund_jetzt_cd, art))
-            button(text(R.string.hintergrund_leeren_cd, art))
+        show()
+        val images = text(R.string.kind_images)
+        val prices = text(R.string.kind_prices)
+        for (kind in listOf(images, prices)) {
+            button(text(R.string.background_now_cd, kind))
+            button(text(R.string.background_clear_cd, kind))
         }
-        button(text(R.string.aktion_fuer, text(R.string.hintergrund_abbrechen), "$bilder 75192-1")).performScrollTo().performClick()
-        button(text(R.string.aktion_fuer, text(R.string.hintergrund_auftrag_wiederholen), preise)).performScrollTo().performClick()
+        button(text(R.string.action_for, text(R.string.background_cancel), "$images 75192-1")).performScrollTo().performClick()
+        button(text(R.string.action_for, text(R.string.background_job_retry), prices)).performScrollTo().performClick()
         compose.waitForIdle()
-        assertEquals(listOf("17"), abgebrochen)
-        assertEquals(listOf("18"), wiederholt)
+        assertEquals(listOf("17"), cancelled)
+        assertEquals(listOf("18"), retried)
     }
 
     @Test
     fun `deleting a Brickset entry asks first`() {
-        val geloescht = mutableListOf<String>()
+        val deleted = mutableListOf<String>()
         compose.setContent {
             BrickInventoryManagerTheme {
                 BricksetQueueRow(BricksetEntryView("75192-1", name = "Millennium Falcon", attempts = 2),
-                    onRetry = {}, onDelete = { geloescht += it })
+                    onRetry = {}, onDelete = { deleted += it })
             }
         }
         compose.waitForIdle()
-        button(text(R.string.aktion_fuer, text(R.string.monitoring_queue_entfernen), "75192-1")).performClick()
+        button(text(R.string.action_for, text(R.string.monitoring_queue_remove), "75192-1")).performClick()
         compose.waitForIdle()
-        assertEquals("Ein Tipp allein löscht schon", emptyList<String>(), geloescht)
-        inDialog(text(R.string.monitoring_queue_entfernen)).performClick()
+        assertEquals("Ein Tipp allein löscht schon", emptyList<String>(), deleted)
+        inDialog(text(R.string.monitoring_queue_remove)).performClick()
         compose.waitForIdle()
-        assertEquals(listOf("75192-1"), geloescht)
-        button(text(R.string.aktion_fuer, text(R.string.monitoring_icon_retry), "75192-1"))
+        assertEquals(listOf("75192-1"), deleted)
+        button(text(R.string.action_for, text(R.string.monitoring_icon_retry), "75192-1"))
     }
 }

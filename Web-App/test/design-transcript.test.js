@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { buildCss, QUELLE, TARGET_CSS } = require('../scripts/generate-design-tokens.js');
+const { buildCss, cssToken, SOURCE, TARGET_CSS } = require('../scripts/generate-design-tokens.js');
 
 // TREE, not ROOT: in every other test file of this folder `ROOT` means
 // the root of the WEB APP. eigenbruecken.test.js relies on that to check every
@@ -17,7 +17,7 @@ const CSS_BASIS = path.join(TREE, 'Web-App', 'public', 'styles.css');
 const CSS_BRICK = path.join(TREE, 'Web-App', 'public', 'themes', 'brick.css');
 const CSS_MOBILE = path.join(TREE, 'Web-App', 'public', 'mobile.css');
 const INDEX = path.join(TREE, 'Web-App', 'public', 'index.html');
-const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
+const DATEN = JSON.parse(fs.readFileSync(SOURCE, 'utf8'));
 
 // The Kotlin products (DesignTokens.kt, DunkelTokens.kt) are checked by the Android run with
 // `node scripts/generate-design-tokens.js --pruefen`.
@@ -33,7 +33,7 @@ test('the generated stylesheet matches shared/design-tokens.json', () => {
 
 test('no handwritten stylesheet redefines a generated token', () => {
   // An own --b600 in styles.css would win (loaded later); the app would keep following the source.
-  const erzeugt = new Set(Object.values(DATEN.designs).flatMap(t => Object.keys(t)));
+  const erzeugt = new Set(Object.values(DATEN.designs).flatMap(t => Object.keys(t).map(cssToken)));
   assert.ok(erzeugt.size >= 10, `Nur ${erzeugt.size} erzeugte Tokens — greift die Suche noch?`);
 
   const doppelt = [];
@@ -43,7 +43,7 @@ test('no handwritten stylesheet redefines a generated token', () => {
     const src = fs
       .readFileSync(datei, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\[data-dunkel\][^{]*\{[^}]*\}/g, '');
+      .replace(/\[data-dark\][^{]*\{[^}]*\}/g, '');
     for (const m of src.matchAll(/--([a-z0-9-]+)\s*:/g)) {
       if (erzeugt.has(m[1])) doppelt.push(`${path.basename(datei)}: --${m[1]}`);
     }
@@ -89,7 +89,7 @@ test('without the Android app the generator only writes the web CSS', () => {
     fs.mkdirSync(path.join(tmp, 'shared'));
     fs.mkdirSync(path.join(tmp, 'Web-App', 'scripts'), { recursive: true });
     fs.mkdirSync(path.join(tmp, 'Web-App', 'public'));
-    fs.copyFileSync(QUELLE, path.join(tmp, 'shared', 'design-tokens.json'));
+    fs.copyFileSync(SOURCE, path.join(tmp, 'shared', 'design-tokens.json'));
     const script = path.join(tmp, 'Web-App', 'scripts', 'generate-design-tokens.js');
     fs.copyFileSync(path.join(__dirname, '..', 'scripts', 'generate-design-tokens.js'), script);
     const r = spawnSync(process.execPath, [script], { encoding: 'utf8' });

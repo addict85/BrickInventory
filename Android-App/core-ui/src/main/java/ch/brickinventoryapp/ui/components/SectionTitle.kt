@@ -19,7 +19,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * The heading of a card or a section in a card list: small
@@ -28,12 +28,12 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  */
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier, symbol: ImageVector? = null) {
-    val vorgelesen = AnnotatedString(text)
+    val announced = AnnotatedString(text)
     Row(
         // The text is read out as written, not spelled out letter by letter in caps.
-        modifier.clearAndSetSemantics { heading(); this.text = vorgelesen },
+        modifier.clearAndSetSemantics { heading(); this.text = announced },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
     ) {
         if (symbol != null) Icon(symbol, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.primary)
         Text(
@@ -53,7 +53,7 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, symbol: ImageVecto
  */
 @Composable
 fun GroupTitle(text: String, modifier: Modifier = Modifier, separator: Boolean = true) {
-    if (separator) HorizontalDivider(Modifier.padding(top = Abstaende.klein))
-    SectionTitle(text, modifier.padding(start = Abstaende.gross, end = Abstaende.gross, top = Abstaende.gross,
-        bottom = Abstaende.tiny))
+    if (separator) HorizontalDivider(Modifier.padding(top = Spacing.small))
+    SectionTitle(text, modifier.padding(start = Spacing.large, end = Spacing.large, top = Spacing.large,
+        bottom = Spacing.tiny))
 }

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Load
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -18,7 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.screens.CameraPermissionHint
@@ -36,7 +36,7 @@ import java.util.Locale
  * Where the app could load forever or show a dead button, a reason and a
  * way forward are shown: catalog detail in error, camera permanently denied.
  *
- * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
  *   katalog-detail-ewig-laden      detail without error branch, only the spinner → red “if the catalog detail fails, the reason …”
  *   kamera-hinweis-ohne-weg        hint shows only „Erlauben“ despite the block → red “if the camera is permanently …”
  *   kamera-hinweis-ohne-zweck      hint without purpose and without typing → red “if the camera is missing, the hint …”
@@ -48,18 +48,18 @@ class ErrorHintsTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val vorher = Locale.getDefault()
+    private val before = Locale.getDefault()
     private val ctx: Context = ApplicationProvider.getApplicationContext()
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = Locale.setDefault(vorher)
+    fun tearDown() = Locale.setDefault(before)
 
-    private fun zeige(inhalt: @Composable () -> Unit) {
+    private fun show(content: @Composable () -> Unit) {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
-                Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
+                Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
         }
         compose.waitForIdle()
@@ -67,49 +67,49 @@ class ErrorHintsTest {
 
     @Test
     fun `if the catalog detail fails, the reason with Retry is shown instead of the spinner`() {
-        val geladen = mutableListOf<String>()
-        zeige {
+        val loaded = mutableListOf<String>()
+        show {
             CatalogDetailScreen(setNumber = "10305-1",
-                geladen = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text("Server antwortet mit 503")),
-                imageLoader = SampleImages.loader(ctx), serverUrl = "", onLoad = { geladen += it },
+                loaded = Load.Failure(ErrorClass.SERVER, Message.Text("Server antwortet mit 503")),
+                imageLoader = SampleImages.loader(ctx), serverUrl = "", onLoad = { loaded += it },
                 onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {})
         }
-        compose.onNodeWithText(ctx.getString(R.string.fehler_server_titel)).fetchSemanticsNode("Keine Überschrift der Fehlerklasse")
+        compose.onNodeWithText(ctx.getString(R.string.error_server_title)).fetchSemanticsNode("Keine Überschrift der Fehlerklasse")
         compose.onNodeWithText("Server antwortet mit 503").fetchSemanticsNode("Der Grund fehlt")
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.common_loading)).fetchSemanticsNodes()
             .let { assertEquals("Der Kringel steht noch da", 0, it.size) }
         compose.onNodeWithText(ctx.getString(R.string.common_retry)).performClick()
         compose.waitForIdle()
-        assertEquals("Erneut versuchen lädt dasselbe Set", listOf("10305-1", "10305-1"), geladen)
+        assertEquals("Erneut versuchen lädt dasselbe Set", listOf("10305-1", "10305-1"), loaded)
     }
 
     @Test
     fun `if the camera is permanently denied, the hint names the way via the settings`() {
-        var getippt = 0
-        zeige {
+        var typed = 0
+        show {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
-                CameraPermissionHint("Zweck", "Eintippen", typeInOn = {}, denied = true) { getippt++ }
+                CameraPermissionHint("Zweck", "Eintippen", typeInOn = {}, denied = true) { typed++ }
             }
         }
-        compose.onNodeWithText(ctx.getString(R.string.scanner_camera_gesperrt)).fetchSemanticsNode("Die Erklärung fehlt")
+        compose.onNodeWithText(ctx.getString(R.string.scanner_camera_locked)).fetchSemanticsNode("Die Erklärung fehlt")
         compose.onAllNodesWithText(ctx.getString(R.string.scanner_allow)).fetchSemanticsNodes()
             .let { assertEquals("Der tote Knopf steht noch da", 0, it.size) }
-        compose.onNodeWithText(ctx.getString(R.string.scanner_camera_einstellungen)).performClick()
-        assertEquals(1, getippt)
+        compose.onNodeWithText(ctx.getString(R.string.scanner_camera_settings)).performClick()
+        assertEquals(1, typed)
     }
 
     @Test
     fun `if the camera is missing, the hint says what for and offers typing`() {
         var typed = 0
-        val zweck = ctx.getString(R.string.scanner_camera_zweck_barcode)
-        val eintippen = ctx.getString(R.string.scanner_nummer_eintippen)
-        zeige {
+        val purpose = ctx.getString(R.string.scanner_camera_purpose_barcode)
+        val typeIn = ctx.getString(R.string.scanner_number_type_in)
+        show {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
-                CameraPermissionHint(zweck, eintippen, typeInOn = { typed++ }) {}
+                CameraPermissionHint(purpose, typeIn, typeInOn = { typed++ }) {}
             }
         }
-        compose.onNodeWithText(zweck).fetchSemanticsNode("Der Zweck fehlt")
-        compose.onNodeWithText(eintippen).performClick()
+        compose.onNodeWithText(purpose).fetchSemanticsNode("Der Zweck fehlt")
+        compose.onNodeWithText(typeIn).performClick()
         assertEquals("Eintippen führt nicht weiter", 1, typed)
     }
 }

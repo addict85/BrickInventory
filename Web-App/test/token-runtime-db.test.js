@@ -237,7 +237,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
 });
 
 test('QR access: the UI chooses when CREATING, not when redeeming', () => {
-  const einst = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
+  const einst = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
 
   assert.ok(
     /api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit: validity, password\b/.test(einst),

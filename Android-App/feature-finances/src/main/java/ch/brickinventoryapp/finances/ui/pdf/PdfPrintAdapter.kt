@@ -9,7 +9,7 @@ import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentAdapter.LayoutResultCallback
 import android.print.PrintDocumentAdapter.WriteResultCallback
 import android.print.PrintDocumentInfo
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -17,14 +17,14 @@ import java.io.FileOutputStream
 
 /**
  * Prints a loaded PDF via the system. Android calls onWrite on the main thread;
- * copying therefore happens via [schreiber] into [bereich], and a cancel in the
+ * copying therefore happens via [writer] into [area], and a cancel in the
  * print dialog stops the copying instead of still writing the whole file.
  */
 internal class PdfPrintAdapter(
-    private val quelle: PdfQuelle,
+    private val source: PdfSource,
     private val name: String,
-    private val schreiber: PdfSchreiber,
-    private val bereich: CoroutineScope,
+    private val writer: PdfWriter,
+    private val area: CoroutineScope,
 ) : PrintDocumentAdapter() {
 
     override fun onLayout(
@@ -50,13 +50,13 @@ internal class PdfPrintAdapter(
         cancellationSignal: CancellationSignal?,
         callback: WriteResultCallback?,
     ) {
-        val job = bereich.launch {
-            fangeAusserAbbruch {
-                FileOutputStream(destination.fileDescriptor).use { schreiber.schreibe(quelle, it) }
+        val job = area.launch {
+            catchUnlessCancelled {
+                FileOutputStream(destination.fileDescriptor).use { writer.write(source, it) }
             }.onSuccess { callback?.onWriteFinished(arrayOf(PageRange.ALL_PAGES)) }
                 .onFailure { e -> callback?.onWriteFailed(e.message) }
         }
-        job.invokeOnCompletion { grund -> if (grund is CancellationException) callback?.onWriteCancelled() }
+        job.invokeOnCompletion { reason -> if (reason is CancellationException) callback?.onWriteCancelled() }
         cancellationSignal?.setOnCancelListener { job.cancel() }
     }
 }

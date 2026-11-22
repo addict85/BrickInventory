@@ -61,7 +61,7 @@ test('the error message names the same number as the rule', () => {
 test('the web app checks before submitting', () => {
   // Otherwise it would submit and only then show the server error.
   const core = ohneKommentare(read('public/js/form.js'));
-  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
+  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
   // Login, registration and resetting stand in sitzung.js since the rebuild.
   const sitzung = ohneKommentare(read('public/js/session.js'));
   const webCalls =

@@ -16,7 +16,7 @@
  *   F  `summary` out of FOKUSSIERBAR (dialoge.js) → “set detail” (“more
  *      actions” not reachable via Tab)
  *   G  file field of the instructions back to display:none → “set detail” (button without keyboard)
- *   H  --feldrand back to var(--bdr) → almost every view (field border 1.18:1)
+ *   H  --field-border back to var(--bdr) → almost every view (field border 1.18:1)
  *   I  .btn without min-height 24px → “background jobs”, “set detail” and others (21–23 px)
  * Counter-checks (02.11.2026, each alone):
  *   K  .bs again border var(--bdr) → classic/desktop “collection”, “parts”,
@@ -27,15 +27,15 @@
  *      “parts list”, “finances” and others (active state 1.13:1)
  * Counter-checks (04.11.2026, applied together, classic/phone and narrow):
  *   N  wishlist row without its own row for label and price → “wishlist”
- *      (narrow 0 px, 7 lines: .mk-titel)
+ *      (narrow 0 px, 7 lines: .mk-title)
  *   O  page title of the collection without min-height 44px → “parts” (obscured:
  *      subtitle under “Importieren”)
  *   P  (alone, 320 px page font 200 %) finance row without the
  *      container query 17rem → “finances” (narrow 0 px: .fin-name)
  * Counter-checks (04.11.2026, stock with sub-account, patternHousehold):
- *   Q  .toast-aktion back to --b500, .pl-chip-name back to --mut →
+ *   Q  .toast-action back to --b500, .pl-chip-name back to --mut →
  *      classic/desktop “toast with action” (3.67:1) and “build list with sets” (4.37:1)
- *   R  .haushalt-liste again max-content max-content without wrapping the button
+ *   R  .household-list again max-content max-content without wrapping the button
  *      → 390 px page font 200 % “view haushalt” (overflow 432 px);
  *      with patternCollection instead of patternHousehold the same check stayed green —
  *      the gap through which the finding of UI review 12 slipped.
@@ -92,25 +92,25 @@ const VIEWS = [
     'Einstellungen',
     [
       reiter('settings'),
-      `document.querySelectorAll('#global-settings-grid > .ssec').forEach(a => a.classList.add('einst-aktiv')); true`,
+      `document.querySelectorAll('#global-settings-grid > .ssec').forEach(a => a.classList.add('settings-active')); true`,
     ],
   ],
-  ...['profil', 'gutscheine', 'alarme', 'lagerorte', 'haushalt', 'daten', 'app'].map(
+  ...['profile', 'vouchers', 'alerts', 'locations', 'household', 'data', 'app'].map(
     s => /** @type {[string, string[]]} */ ([`Sicht ${s}`, [klick(`.umenu-item[data-arg="${s}"]`)]]),
   ),
   ['Benutzermenü', [reiter('gallery'), klick('#btn-umenu')]],
-  ['Import-Menü', [reiter('gallery'), `document.querySelector('#tab-gallery details.import-menue').open = true; true`]],
-  ['Set hinzufügen', [reiter('gallery'), klick('button[data-click="oeffneErfassen"][data-arg="set"]')]],
+  ['Import-Menü', [reiter('gallery'), `document.querySelector('#tab-gallery details.import-menu').open = true; true`]],
+  ['Set hinzufügen', [reiter('gallery'), klick('button[data-click="openCapture"][data-arg="set"]')]],
   ['Set-Detail', [reiter('gallery'), klick('#gallery [data-click="openModal"]')]],
   [
     'Kaufpreise',
     [reiter('gallery'), klick('#gallery [data-click="openModal"]'), klick('#set-modal [data-click="openAcqModal"]')],
   ],
-  ['Teil hinzufügen', [reiter('parts'), klick('button[data-click="oeffneErfassen"][data-arg="part"]')]],
-  ['Minifigur hinzufügen', [reiter('minifigs'), klick('button[data-click="oeffneErfassen"][data-arg="fig"]')]],
+  ['Teil hinzufügen', [reiter('parts'), klick('button[data-click="openCapture"][data-arg="part"]')]],
+  ['Minifigur hinzufügen', [reiter('minifigs'), klick('button[data-click="openCapture"][data-arg="fig"]')]],
   ['Teil-Detail', [reiter('parts'), klick('.man-tile[data-click="openManDetail"]')]],
   ['Teil aus Set', [reiter('parts'), klick('.part-card[data-click="openSetItemDetail"]')]],
-  ['Merkposten-Detail', [reiter('wanted'), klick('.mk-zeile[data-click="oeffneMerkpostenDetail"]')]],
+  ['Merkposten-Detail', [reiter('wanted'), klick('.mk-row[data-click="openWantedDetail"]')]],
   [
     'Löschen bestätigen',
     [
@@ -161,9 +161,9 @@ const VIEWS = [
 
 const CLOSE = `(() => {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  document.querySelectorAll('.ovl.open').forEach(o => o.querySelector('[data-click^="close"], [data-click^="schliesse"], .mx')?.click());
+  document.querySelectorAll('.ovl.open').forEach(o => o.querySelector('[data-click^="close"], [data-click^="close"], .mx')?.click());
   document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
-  document.querySelectorAll('details[open]:not(#mk-kasten):not(#pl-optionen)').forEach(d => { d.open = false; });
+  document.querySelectorAll('details[open]:not(#mk-box):not(#pl-options)').forEach(d => { d.open = false; });
   document.querySelectorAll('#toasts .toast').forEach(x => x.remove());
   const pop = document.getElementById('umenu-pop'); if (pop) pop.style.display = 'none';
   return true; })()`;
@@ -185,7 +185,7 @@ function checkUi(design, geraet) {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
     // Without a Rebrickable key the setup wizard opens after startup.
     await warte(1000);
-    await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
+    await b.auswerten(klick('#setup-modal.open [data-click="setupLater"]'));
     const bild = () =>
       b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
     // Instead of fixed pauses: wait until no request runs anymore, then two frames.
@@ -201,19 +201,19 @@ function checkUi(design, geraet) {
       const funde = [];
       // If the login mask is shown, the rest only measures it; then better name the cause.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
-        assert.fail(`Sitzung vor „${ansicht}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
+        assert.fail(`Sitzung vor „${ansicht}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'none'}`);
       await b.auswerten(CLOSE);
       await b.auswerten(
-        `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.removeAttribute('data-dunkel'); true`,
+        `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.removeAttribute('data-dark'); true`,
       );
       for (const s of schritte) {
         await b.auswerten(s);
         await ruhig();
       }
       for (const dunkel of [false, true]) {
-        await b.auswerten(`document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`);
+        await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`);
         await bild();
-        const wo = dunkel ? 'dunkel' : 'hell';
+        const wo = dunkel ? 'dark' : 'hell';
         for (const f of await b.auswerten(LAYOUT(mobil))) funde.push(`${wo}: ${f}`);
         for (const f of await b.auswerten(AXE_LAUF)) funde.push(`${wo}: axe ${f}`);
       }
@@ -231,7 +231,7 @@ const BAR = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisi
   .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => 'Leiste: „' + l.textContent.trim() + '“ abgeschnitten')`;
 
 /**
- * All views at 320 px (or `breite`) and 200 % font, in all six designs light
+ * All views at 320 px (or `width`) and 200 % font, in all six designs light
  * and dark. Above 640 px the page counts as a desktop (24 px tap targets, no phone emulation). `modus` 'browser' enlarges like the browser setting
  * (Page.setFontSizes), 'seite' sets the page's base font to 200 %,
  * 'schmal' measures 320 px at normal font in English.
@@ -258,9 +258,9 @@ function checkLargeFont(modus, breite = 320) {
       mobile: mobil,
     });
     await warte(1000);
-    await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
+    await b.auswerten(klick('#setup-modal.open [data-click="setupLater"]'));
     if (modus === 'browser') await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
-    else if (modus === 'seite')
+    else if (modus === 'page')
       await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
     const designs =
       modus === 'browser'
@@ -278,15 +278,15 @@ function checkLargeFont(modus, breite = 320) {
       await warte(400);
       // What is measured is the loaded content, not the skeleton before it (market price in the set dialog).
       await app
-        .bis(`!document.querySelector('.ovl.open .skelett-zeile, .tab.active .skelett-zeile')`, 'Inhalt geladen', 40)
+        .bis(`!document.querySelector('.ovl.open .skeleton-row, .tab.active .skeleton-row')`, 'Inhalt geladen', 40)
         .catch(() => {});
       for (const design of designs)
         for (const dunkel of [false, true]) {
           await b.auswerten(
-            `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`,
+            `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`,
           );
           await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
-          const wo = `${design} ${dunkel ? 'dunkel' : 'hell'}`;
+          const wo = `${design} ${dunkel ? 'dark' : 'hell'}`;
           for (const f of [...(await b.auswerten(LAYOUT(mobil))), ...(await b.auswerten(BAR))])
             if (GROSS.test(f) || (modus === 'schmal' && f.startsWith('Auswahl'))) funde.push(`${wo}: ${f}`);
         }

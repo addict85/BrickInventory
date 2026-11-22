@@ -5,16 +5,16 @@
  * nothing sticks out of the card.
  *
  * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
- *   A  .chip-weg without min-width/min-height → red: „Rechner: X mindestens 24 px“
+ *   A  .chip-remove without min-width/min-height → red: „Rechner: X mindestens 24 px“
  *      (16 × 16)
- *   B  the phone rule .chip-weg { min-width: 44px … } removed → red:
+ *   B  the phone rule .chip-remove { min-width: 44px … } removed → red:
  *      „Telefon: X mindestens 44 px“ (24 × 24)
- *   C  .chip-weg:focus-visible{outline:none} → red: „Rechner: sichtbarer Fokus“
- *   D  .rolle-chip with min-width:20rem and white-space:nowrap → red: “320 px,
+ *   C  .chip-remove:focus-visible{outline:none} → red: „Rechner: sichtbarer Fokus“
+ *   D  .role-chip with min-width:20rem and white-space:nowrap → red: “320 px,
  *      200 %: nothing sticks out of the card” (100 %: the chip begins on the left
  *      outside the card). With the first version, which only checked the right edge,
  *      it stayed green.
- *   E  the rule .rolle-wort (word may break) removed → red: the same
+ *   E  the rule .role-word (word may break) removed → red: the same
  *      (200 %: the word sticks out of the chip). Without the check on scrollWidth
  *      it stayed green.
  */
@@ -35,7 +35,7 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
     [ANDERE, `${ANDERE}@example.org`],
   );
   t.after(() => db.run('DELETE FROM users WHERE username = $1', [ANDERE]).catch(() => {}));
-  const X = `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)})?.querySelector('.rolle-chip .chip-weg')`;
+  const X = `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)})?.querySelector('.role-chip .chip-remove')`;
   const metric = (breite, telefon) =>
     b.tab('Emulation.setDeviceMetricsOverride', {
       width: breite,
@@ -52,7 +52,7 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
   };
   const mass = () =>
     b.auswerten(`(() => { const x = ${X}, r = x.getBoundingClientRect(), karte = x.closest('tr').getBoundingClientRect();
-      const el = x.closest('.rolle-chip'), chip = el.getBoundingClientRect();
+      const el = x.closest('.role-chip'), chip = el.getBoundingClientRect();
       return { b: Math.round(r.width), h: Math.round(r.height), seite: document.documentElement.scrollWidth, fenster: innerWidth,
         ragt: chip.left < karte.left - 0.5 || chip.right > karte.right + 0.5 || el.scrollWidth > el.clientWidth + 1 }; })()`);
 

@@ -30,28 +30,28 @@ const sichtbar = (w, sel) =>
   });
 
 test('add set exactly once', async () => {
-  const { w, d } = await openUi({}, { vorher: withStyle });
+  const { w, d } = await openUi({}, { before: withStyle });
   try {
-    await warte(() => !!d.querySelector('#gallery .empty.leer'));
-    const knoepfe = sichtbar(w, '#tab-gallery [data-click="oeffneErfassen"][data-arg="set"]');
+    await warte(() => !!d.querySelector('#gallery .empty.empty-state'));
+    const knoepfe = sichtbar(w, '#tab-gallery [data-click="openCapture"][data-arg="set"]');
     assert.equal(knoepfe.length, 1);
-    assert.ok(knoepfe[0].closest('#gallery .empty.leer'), 'der sichtbare Knopf steht nicht im Leerzustand');
-    assert.match(d.querySelector('#gallery .empty.leer').textContent, /Noch keine Sets/);
+    assert.ok(knoepfe[0].closest('#gallery .empty.empty-state'), 'der sichtbare Knopf steht nicht im Leerzustand');
+    assert.match(d.querySelector('#gallery .empty.empty-state').textContent, /Noch keine Sets/);
   } finally {
     w.close();
   }
 });
 
 test('parts and minifigures likewise', async () => {
-  const { w } = await openUi({}, { vorher: withStyle });
+  const { w } = await openUi({}, { before: withStyle });
   try {
     for (const [tab, art] of [
       ['parts', 'part'],
       ['minifigs', 'fig'],
     ]) {
       await reiter(w, tab);
-      await warte(() => !!w.document.querySelector(`#tab-${tab} .empty.leer`));
-      assert.equal(sichtbar(w, `#tab-${tab} [data-click="oeffneErfassen"][data-arg="${art}"]`).length, 1, tab);
+      await warte(() => !!w.document.querySelector(`#tab-${tab} .empty.empty-state`));
+      assert.equal(sichtbar(w, `#tab-${tab} [data-click="openCapture"][data-arg="${art}"]`).length, 1, tab);
     }
   } finally {
     w.close();

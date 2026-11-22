@@ -23,7 +23,7 @@ const withPasskeys = w => {
 };
 
 async function mask(status) {
-  const o = await openUi({ '/v1/auth/registration-status': status }, { angemeldet: false, vorher: withPasskeys });
+  const o = await openUi({ '/v1/auth/registration-status': status }, { loggedIn: false, before: withPasskeys });
   await warte(() => o.aufrufe.some(a => a.url.includes('registration-status')));
   await warte(() => false, 100);
   const d = o.d;

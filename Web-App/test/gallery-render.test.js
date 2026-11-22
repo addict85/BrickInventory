@@ -48,7 +48,7 @@ function loadedImages(w) {
 }
 
 test('loaded images are marked as loaded immediately, also in the list', async () => {
-  const { w, d, warte } = await openUi({ '/v1/sets': SETS }, { vorher: loadedImages });
+  const { w, d, warte } = await openUi({ '/v1/sets': SETS }, { before: loadedImages });
   try {
     assert.ok(await warte(() => d.querySelectorAll('#gallery img').length === 2));
     const notLoaded = () => [...d.querySelectorAll('#gallery img')].filter(i => !i.classList.contains('loaded'));
@@ -84,7 +84,7 @@ test('prices go into the existing tile; an empty container is hidden', async () 
           totals: { purchase: '0', current: '679.99', kaufpreise_fremde_waehrung: 0 },
         })),
     },
-    { vorher: loadedImages },
+    { before: loadedImages },
   );
   try {
     assert.ok(await warte(() => d.querySelector('#gallery [data-price-for="10294-1"]')));

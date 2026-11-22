@@ -9,8 +9,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.login.ui.AnmeldeFormular
-import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.QrSetupScannerScreen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -29,15 +29,15 @@ import androidx.compose.ui.platform.InterceptPlatformTextInput
  * app overview's preview image (FLAG_SECURE). The request "hide preview"
  * stays in effect once the password is hidden again.
  *
- * Counter-checks (Robolectric, measurable only in the CI; job `gegenproben`):
- *   (a) Ueberdeckungsschutz() removed from LoginScreen → red “sign-in is
- *       protected against overlay …” (gegenproben/anmeldung-ohne-ueberdeckungsschutz.patch)
- *   (b) Sichtschutz() removed for the visible password → red “a visible
- *       password …” (gegenproben/passwort-ohne-sichtschutz.patch)
+ * Counter-checks (Robolectric, measurable only in the CI; job `counter-checks`):
+ *   (a) OverlayGuard() removed from LoginScreen → red “sign-in is
+ *       protected against overlay …” (counter-checks/anmeldung-ohne-ueberdeckungsschutz.patch)
+ *   (b) PrivacyShield() removed for the visible password → red “a visible
+ *       password …” (counter-checks/passwort-ohne-sichtschutz.patch)
  *   (c) KeyboardWithoutLearn no longer sets the flag → red “the keyboard
- *       does not learn password and code” (gegenproben/tastatur-lernt-mit.patch)
- *   (d) Sichtschutz() removed from QrSetupScannerScreen → red “the scanner for the
- *       sign-in code …” (gegenproben/qr-scanner-ohne-sichtschutz.patch)
+ *       does not learn password and code” (counter-checks/tastatur-lernt-mit.patch)
+ *   (d) PrivacyShield() removed from QrSetupScannerScreen → red “the scanner for the
+ *       sign-in code …” (counter-checks/qr-scanner-ohne-sichtschutz.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class LoginProtectionTest {
@@ -46,18 +46,18 @@ class LoginProtectionTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val ctx get() = compose.activity
-    private fun geschuetzt() = (ctx.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+    private fun guarded() = (ctx.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
 
-    private fun zeige(hidePreview: Boolean = false) {
+    private fun show(hidePreview: Boolean = false) {
         val global = mutableStateOf(hidePreview)
         compose.setContent {
             BrickInventoryManagerTheme {
-                if (global.value) Sichtschutz()
+                if (global.value) PrivacyShield()
                 LoginScreen(
-                    serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
-                    formular = AnmeldeFormular.ANMELDEN, registrierungOffen = false, kontoLaeuft = false,
-                    kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
-                    onFormular = {}, onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+                    serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
+                    form = LoginForm.LOGIN, registrationOpen = false, accountRunning = false,
+                    accountMessage = null, accountError = null, onLogin = { _, _, _ -> },
+                    onForm = {}, onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
                     onPasskey = {},
                 )
             }
@@ -70,25 +70,25 @@ class LoginProtectionTest {
     @OptIn(ExperimentalComposeUiApi::class)
     @Test
     fun `the keyboard does not learn password and code`() {
-        var gesehen: EditorInfo? = null
+        var seen: EditorInfo? = null
         compose.setContent {
-            InterceptPlatformTextInput(interceptor = { anfrage, _ ->
-                gesehen = EditorInfo().also { anfrage.createInputConnection(it) }
+            InterceptPlatformTextInput(interceptor = { request, _ ->
+                seen = EditorInfo().also { request.createInputConnection(it) }
                 kotlinx.coroutines.awaitCancellation()
             }) {
                 BrickInventoryManagerTheme {
                     LoginScreen(
-                        serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = true,
-                        formular = AnmeldeFormular.ANMELDEN, registrierungOffen = false, kontoLaeuft = false,
-                        kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
-                        onFormular = {}, onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+                        serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = true,
+                        form = LoginForm.LOGIN, registrationOpen = false, accountRunning = false,
+                        accountMessage = null, accountError = null, onLogin = { _, _, _ -> },
+                        onForm = {}, onRegister = { _, _, _, _, _ -> }, onPasswordForget = {}, onChangeServer = {},
                     )
                 }
             }
         }
         compose.onNodeWithText(ctx.getString(R.string.login_password)).performClick()
         compose.waitForIdle()
-        val info = checkNotNull(gesehen) { "Das Passwortfeld hat keine Eingabe gestartet" }
+        val info = checkNotNull(seen) { "Das Passwortfeld hat keine Eingabe gestartet" }
         assertTrue("Die Tastatur darf das Passwort lernen",
             (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0)
     }
@@ -97,35 +97,35 @@ class LoginProtectionTest {
     fun `the scanner for the sign-in code gets into no screenshot`() {
         compose.setContent { BrickInventoryManagerTheme { QrSetupScannerScreen(onResult = {}, onDismiss = {}) } }
         compose.waitForIdle()
-        assertTrue("Das Kamerabild mit dem Anmeldecode ist nicht geschützt", geschuetzt())
+        assertTrue("Das Kamerabild mit dem Anmeldecode ist nicht geschützt", guarded())
     }
 
     @Test
     fun `the sign-in is protected against overlays, the passkey button too`() {
-        zeige()
+        show()
         assertTrue("Berührungen durch ein fremdes Fenster kämen an", ctx.window.decorView.filterTouchesWhenObscured)
     }
 
     @Test
     fun `a visible password gets into no screenshot`() {
-        zeige()
-        assertFalse("Ohne sichtbares Passwort braucht es keinen Sichtschutz", geschuetzt())
+        show()
+        assertFalse("Ohne sichtbares Passwort braucht es keinen Sichtschutz", guarded())
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_show)).performClick()
         compose.waitForIdle()
-        assertTrue("Das sichtbare Passwort ist nicht geschützt", geschuetzt())
+        assertTrue("Das sichtbare Passwort ist nicht geschützt", guarded())
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_hide)).performClick()
         compose.waitForIdle()
-        assertFalse("Nach dem Verdecken bleibt der Schutz stehen", geschuetzt())
+        assertFalse("Nach dem Verdecken bleibt der Schutz stehen", guarded())
     }
 
     @Test
     fun `hiding the preview stays when the password is hidden again`() {
-        zeige(hidePreview = true)
-        assertTrue(geschuetzt())
+        show(hidePreview = true)
+        assertTrue(guarded())
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_show)).performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_hide)).performClick()
         compose.waitForIdle()
-        assertTrue("Der Wunsch des Nutzers ging mit dem Passwort verloren", geschuetzt())
+        assertTrue("Der Wunsch des Nutzers ging mit dem Passwort verloren", guarded())
     }
 }

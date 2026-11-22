@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.offline
 
 import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.domain.Kategoriewahl
-import ch.brickinventoryapp.model.domain.Setsortierung
+import ch.brickinventoryapp.model.domain.CategoryChoice
+import ch.brickinventoryapp.model.domain.SetSort
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.PartsApi
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
-import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
-import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
+import ch.brickinventoryapp.data.NetworkState.RetryPolicy
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.contract.Part
 import ch.brickinventoryapp.contract.PartsResponse
 import ch.brickinventoryapp.contract.ManualPartsResponse
@@ -19,7 +19,7 @@ import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.SetsResponse
 import ch.brickinventoryapp.offline.room.InventoryDatabase
-import ch.brickinventoryapp.offline.room.RoomExit
+import ch.brickinventoryapp.offline.room.RoomOutbox
 import ch.brickinventoryapp.offline.room.RoomInventory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -38,7 +38,7 @@ import java.net.ConnectException
  * queries as on the device, against an API fake that delivers pages online and
  * fails with ConnectException offline. Runs only in CI.
  *
- * Counter-checks (gegenproben/, the CI job `gegenproben` requires red):
+ * Counter-checks (counter-checks/, the CI job `counter-checks` requires red):
  *   ohne-netz-suche-als-muster `%` and `_` not escaped → red „ein Prozentzeichen …“
  *   ohne-netz-filter-spalte    the thema column gets the storage location → red „Suche, Thema …“
  *   galerie-ablage-ungefiltert observeSets passes no filter columns → red „die Galerie filtert in Room …“
@@ -50,13 +50,13 @@ class WithoutNetworkFilterTest {
 
     private val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), InventoryDatabase::class.java)
         .allowMainThreadQueries().build()
-    private val bestand = RoomInventory(db)
-    private val ablage = Offlineablage(bestand, RoomExit(db), { "a" }, clock = { STATUS })
+    private val stock = RoomInventory(db)
+    private val store = OfflineStore(stock, RoomOutbox(db), { "a" }, clock = { STATUS })
 
     private var offline = false
 
     @After
-    fun zu() = db.close()
+    fun tearDown() = db.close()
 
     private val sets = listOf(
         SetItem(setNumber = "10001-1", name = "Burg am See", theme = "Castle", storage = "Kiste 1", year = 2001),
@@ -71,13 +71,13 @@ class WithoutNetworkFilterTest {
                                      pageSize: Int?, storage: String?): Response<SetsResponse> {
             if (offline) throw ConnectException("aus")
             val n = pageSize ?: sets.size
-            val seite = sets.drop(((page ?: 1) - 1) * n).take(n)
-            return Response.success(SetsResponse(success = true, count = seite.size, sets = seite, total = sets.size))
+            val page = sets.drop(((page ?: 1) - 1) * n).take(n)
+            return Response.success(SetsResponse(success = true, count = page.size, sets = page, total = sets.size))
         }
     }
-    private val setsRepo = SetsRepositoryImpl(setsApi, ablage, Wiederholung.EINMAL)
+    private val setsRepo = SetsRepositoryImpl(setsApi, store, RetryPolicy.ONCE)
 
-    private val teile = listOf(
+    private val parts = listOf(
         Part(partNumber = "3001", partName = "Brick 2 x 4", colorId = 4, colorName = "Red", categoryName = "11"),
         Part(partNumber = "3001", partName = "Brick 2 x 4", colorId = 1, colorName = "Blue", categoryName = "11"),
         Part(partNumber = "3023", partName = "Plate 1 x 2", colorId = 4, colorName = "Red", categoryName = "14", isSpare = true),
@@ -91,27 +91,27 @@ class WithoutNetworkFilterTest {
                                       withSets: String?, storage: String?): Response<PartsResponse> {
             if (offline) throw ConnectException("aus")
             // Two per page: that way the local list is only complete after page 2.
-            val seite = teile.drop((page - 1) * 2).take(2)
-            return Response.success(PartsResponse(success = true, total = teile.size, parts = seite))
+            val page = parts.drop((page - 1) * 2).take(2)
+            return Response.success(PartsResponse(success = true, total = parts.size, parts = page))
         }
         override suspend fun getManualParts(accounts: String?, search: String?, storage: String?): Response<ManualPartsResponse> {
             if (offline) throw ConnectException("aus")
             return Response.success(ManualPartsResponse(success = true, parts = listOf(PartValuationItem(partNumber = "m1"))))
         }
     }
-    private val partsRepo = TeileRepositoryImpl(partsApi, ablage, Wiederholung.EINMAL)
+    private val partsRepo = PartsRepositoryImpl(partsApi, store, RetryPolicy.ONCE)
 
-    private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: Setsortierung? = null) =
+    private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: SetSort? = null) =
         runBlocking { setsRepo.observeSets(search, theme, storage, sort).first() }
-            .also { assertEquals("trägt den Stand", STATUS, it.stand) }
-            .liste.map { it.setNumber }
+            .also { assertEquals("trägt den Stand", STATUS, it.state) }
+            .list.map { it.setNumber }
 
     private fun partsOffline(search: String? = null, color: String? = null, category: String? = null,
-                             spare: Ersatzteilwahl = Ersatzteilwahl.ALLE) =
-        runBlocking { partsRepo.observeParts(search, ColorPicker.aus(color), Kategoriewahl.aus(category), spare).first() }
-            .liste.map { "${it.partNumber}/${it.colorName}" }
+                             spare: SparePartChoice = SparePartChoice.ALL) =
+        runBlocking { partsRepo.observeParts(search, ColorPicker.from(color), CategoryChoice.from(category), spare).first() }
+            .list.map { "${it.partNumber}/${it.colorName}" }
 
-    private fun loadSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Erfolg) }
+    private fun loadSetsOnline() = runBlocking { assertTrue(setsRepo.refreshSets() is Outcome.Success) }
 
     @Test
     fun `search, theme, storage location and sorting of the gallery work offline on the whole local list`() {
@@ -123,7 +123,7 @@ class WithoutNetworkFilterTest {
         assertEquals("Lagerort", listOf("10001-1", "10003-1"), setsOffline(storage = "Kiste 1"))
         assertEquals("Thema und Lagerort zusammen", listOf("10001-1"), setsOffline(theme = "Castle", storage = "Kiste 1"))
         assertEquals("Sortierung nach Name", listOf("21000-1", "10001-1", "10002-1", "30000-1", "10003-1"),
-            setsOffline(sort = Setsortierung.NAME))
+            setsOffline(sort = SetSort.NAME))
     }
 
     @Test
@@ -136,11 +136,11 @@ class WithoutNetworkFilterTest {
 
     @Test
     fun `color, category, spare parts and search of the parts list work offline`() {
-        runBlocking { assertTrue(partsRepo.refreshParts() is Ergebnis.Erfolg) }
+        runBlocking { assertTrue(partsRepo.refreshParts() is Outcome.Success) }
         offline = true
         assertEquals(listOf("3001/Red", "3023/Red"), partsOffline(color = "Red"))
-        assertEquals(listOf("3001/Red"), partsOffline(color = "Red", spare = Ersatzteilwahl.OHNE))
-        assertEquals(listOf("3023/Red"), partsOffline(spare = Ersatzteilwahl.NUR))
+        assertEquals(listOf("3001/Red"), partsOffline(color = "Red", spare = SparePartChoice.WITHOUT))
+        assertEquals(listOf("3023/Red"), partsOffline(spare = SparePartChoice.ONLY))
         assertEquals(listOf("3069b/Blue"), partsOffline(category = "19"))
         assertEquals("Suche im Namen", listOf("3023/Red"), partsOffline(search = "plate"))
         assertEquals("Suche in der BrickLink-Nummer", listOf("3069b/Blue"), partsOffline(search = "87079"))
@@ -149,22 +149,22 @@ class WithoutNetworkFilterTest {
 
     @Test
     fun `the gallery filters in Room, the fetch only fills the store`() = runBlocking {
-        assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Erfolg)
-        assertEquals("alle Sets in der Ablage", sets.size, setsRepo.observeSets().first().liste.size)
-        val city = setsRepo.observeSets(thema = "City", sort = Setsortierung.NUMMER).first().liste.map { it.setNumber }
+        assertTrue(setsRepo.refreshSets() is Outcome.Success)
+        assertEquals("alle Sets in der Ablage", sets.size, setsRepo.observeSets().first().list.size)
+        val city = setsRepo.observeSets(theme = "City", sort = SetSort.NUMBER).first().list.map { it.setNumber }
         assertEquals("die Galerie filtert in Room und sortiert wie der Server", listOf("10002-1", "21000-1"), city)
         offline = true
-        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.aktualisiereSets() is Ergebnis.Fehler)
-        assertEquals("und die Ablage bleibt", sets.size, setsRepo.observeSets().first().liste.size)
+        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.refreshSets() is Outcome.Failure)
+        assertEquals("und die Ablage bleibt", sets.size, setsRepo.observeSets().first().list.size)
     }
 
     @Test
     fun `the parts go into the store whole and filter there`() = runBlocking {
-        assertTrue(partsRepo.refreshParts() is Ergebnis.Erfolg)
-        assertEquals("alle Seiten der Teile in der Ablage", teile.size, partsRepo.observeParts().first().liste.size)
-        assertEquals("die manuellen Teile ebenso", listOf("m1"), partsRepo.observeManualParts().first().liste.map { it.partNumber })
-        val rot = partsRepo.observeParts(farbe = ColorPicker.Farbe("Red"), spareParts = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }
-        assertEquals("Farbe und Ersatzteile filtern in Room", listOf("3001"), rot)
+        assertTrue(partsRepo.refreshParts() is Outcome.Success)
+        assertEquals("alle Seiten der Teile in der Ablage", parts.size, partsRepo.observeParts().first().list.size)
+        assertEquals("die manuellen Teile ebenso", listOf("m1"), partsRepo.observeManualParts().first().list.map { it.partNumber })
+        val red = partsRepo.observeParts(color = ColorPicker.Color("Red"), spareParts = SparePartChoice.WITHOUT).first().list.map { it.partNumber }
+        assertEquals("Farbe und Ersatzteile filtern in Room", listOf("3001"), red)
     }
 
     private companion object {

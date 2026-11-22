@@ -20,7 +20,7 @@
  *      csv.import_title back to “CSV Import” → red: same place; settings.users_new back to “Neuen Benutzer
  *      erstellen” → red: same place
  *   F  (16.11.2026) users.role.user (de) back to “Benutzer” → red: “no text … untranslated” and “the
- *      roles are called …”; maillink.abbrechen.ok back to “übrigen Verwalter”, FEHLER.nur_admins (de)
+ *      roles are called …”; maillink.cancel.ok back to “übrigen Verwalter”, FEHLER.nur_admins (de)
  *      back to “Nur für Admins”, settings.admins_only (en) back to “Admins only” → each red: “the roles are called …”
  */
 const test = require('node:test');
@@ -99,7 +99,7 @@ test('no text stands untranslated in both languages', () => {
     'users.role.admin',
     'users.role.user',
     'users.admin_badge',
-    'users.protokoll.verwalter',
+    'users.log.admin',
     'settings.users_admin_badge',
     // The label of the button that reads in a BrickLink wanted list:
     // a proper name and a file format. “BrickLink XML" is the same in both

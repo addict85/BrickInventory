@@ -12,34 +12,34 @@ import java.security.ProviderException
  * StrongBoxUnavailableException), in the TEE. Any other error does not fall back silently.
  *
  * Counter-checks (measured locally with kotlinc):
- *   A  strongBoxFirst() asks `erzeuge(false)` directly → red „zuerst StrongBox, …“;
- *      gegenproben/geraeteschluessel-ohne-strongbox.patch
+ *   A  strongBoxFirst() asks `generate(false)` directly → red „zuerst StrongBox, …“;
+ *      counter-checks/geraeteschluessel-ohne-strongbox.patch
  *   B  the fallback catches every exception → red „ein anderer Fehler …“;
- *      gegenproben/geraeteschluessel-strongbox-faengt-alles.patch
+ *      counter-checks/geraeteschluessel-strongbox-faengt-alles.patch
  */
 class StrongBoxFirstTest {
 
     @Test
     fun `first StrongBox, without the chip the TEE`() {
-        val versuche = mutableListOf<Boolean>()
-        assertEquals("chip", strongBoxFirst { s -> versuche += s; if (s) "chip" else "tee" })
-        assertEquals(listOf(true), versuche)
+        val attempts = mutableListOf<Boolean>()
+        assertEquals("chip", strongBoxFirst { s -> attempts += s; if (s) "chip" else "tee" })
+        assertEquals(listOf(true), attempts)
 
-        versuche.clear()
-        val ergebnis = strongBoxFirst { s ->
-            versuche += s
+        attempts.clear()
+        val outcome = strongBoxFirst { s ->
+            attempts += s
             if (s) throw ProviderException("kein StrongBox") else "tee"
         }
-        assertEquals("tee", ergebnis)
-        assertEquals(listOf(true, false), versuche)
+        assertEquals("tee", outcome)
+        assertEquals(listOf(true, false), attempts)
     }
 
     @Test
     fun `another error of the keystore does not fall back to the TEE`() {
-        val versuche = mutableListOf<Boolean>()
+        val attempts = mutableListOf<Boolean>()
         assertThrows(IllegalStateException::class.java) {
-            strongBoxFirst<String> { s -> versuche += s; error("Keystore") }
+            strongBoxFirst<String> { s -> attempts += s; error("Keystore") }
         }
-        assertEquals(listOf(true), versuche)
+        assertEquals(listOf(true), attempts)
     }
 }

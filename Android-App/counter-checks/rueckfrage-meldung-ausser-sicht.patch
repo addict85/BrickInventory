@@ -1,0 +1,16 @@
+Gegenprobe: Die Absage in der Passwort-Rückfrage rollt nicht ins Bild
+Modul: app
+Test: ch.brickinventoryapp.app.FlowTest
+Rot: the confirmation shows the code field only on demand
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
+@@ -255,7 +255,6 @@
+     LaunchedEffect(fehler) {
+         if (fehler == null) return@LaunchedEffect
+         withFrameNanos { }  // erst wenn die Zeile gesetzt ist
+-        messageVisible.bringIntoView()
+     }
+     AddDialog(
+         titel = titel,

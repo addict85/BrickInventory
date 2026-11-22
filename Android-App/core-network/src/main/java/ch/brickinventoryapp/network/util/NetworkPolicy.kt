@@ -26,37 +26,37 @@ object NetworkPolicy {
      * app/src/debug/res/xml/network_security_config.xml; the release build has
      * no exception.
      */
-    val ENTWICKLUNGS_HOSTS = setOf("localhost", "127.0.0.1", "10.0.2.2")
+    val DEVELOPMENT_HOSTS = setOf("localhost", "127.0.0.1", "10.0.2.2")
 
     /** A debug build? Callers on the device read this value; tests set it explicitly. */
-    val entwicklung: Boolean get() = BuildConfig.DEBUG
+    val development: Boolean get() = BuildConfig.DEBUG
 
-    /** May this request go out? https always, http only in a debug build to [ENTWICKLUNGS_HOSTS]. */
-    fun connectionAllowed(url: HttpUrl, entwicklung: Boolean): Boolean =
-        url.isHttps || (entwicklung && url.host.lowercase() in ENTWICKLUNGS_HOSTS)
+    /** May this request go out? https always, http only in a debug build to [DEVELOPMENT_HOSTS]. */
+    fun connectionAllowed(url: HttpUrl, development: Boolean): Boolean =
+        url.isHttps || (development && url.host.lowercase() in DEVELOPMENT_HOSTS)
 
     /**
      * Why setup won't accept an address. USER_INPUT and EXTRA: `a@b`, line
      * breaks, `\`, `?` or `#` can make an address look like it points at one
      * server and lead to another; a server address needs none of that.
      */
-    enum class AddressError { UNLESBAR, PLAINTEXT, USER_INPUT, EXTRA }
+    enum class AddressError { UNREADABLE, PLAINTEXT, USER_INPUT, EXTRA }
 
     /** Input without a scheme counts as https: "nas.fritz.box" means https://nas.fritz.box. */
-    fun normalize(eingabe: String): String {
-        val t = eingabe.trim()
+    fun normalize(input: String): String {
+        val t = input.trim()
         return (if (t.isEmpty() || t.contains("://")) t else "https://$t").trimEnd('/')
     }
 
     /** Null means: setup accepts the address. Whitespace at the edge carries manual input through. */
-    fun addressError(serverUrl: String, entwicklung: Boolean): AddressError? {
-        val roh = normalize(serverUrl)
-        if (roh.any { it.isWhitespace() || it.isISOControl() || it == '\\' }) return AddressError.EXTRA
-        val url = roh.toHttpUrlOrNull() ?: return AddressError.UNLESBAR
-        val authority = roh.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore('#')
+    fun addressError(serverUrl: String, development: Boolean): AddressError? {
+        val raw = normalize(serverUrl)
+        if (raw.any { it.isWhitespace() || it.isISOControl() || it == '\\' }) return AddressError.EXTRA
+        val url = raw.toHttpUrlOrNull() ?: return AddressError.UNREADABLE
+        val authority = raw.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore('#')
         if ('@' in authority || url.username.isNotEmpty() || url.password.isNotEmpty()) return AddressError.USER_INPUT
         if (url.query != null || url.fragment != null) return AddressError.EXTRA
-        return if (connectionAllowed(url, entwicklung)) null else AddressError.PLAINTEXT
+        return if (connectionAllowed(url, development)) null else AddressError.PLAINTEXT
     }
 
     /**
@@ -64,14 +64,14 @@ object NetworkPolicy {
      * ASCII (punycode), because a Cyrillic "і" is indistinguishable from "i" in
      * the Unicode rendering. [international]: the host contains an `xn--` label.
      */
-    data class Adressansicht(val host: String, val adresse: String, val international: Boolean)
+    data class AddressView(val host: String, val address: String, val international: Boolean)
 
-    fun ansicht(serverUrl: String): Adressansicht? {
+    fun view(serverUrl: String): AddressView? {
         val url = normalize(serverUrl).toHttpUrlOrNull() ?: return null
         val host = if (':' in url.host) "[${url.host}]" else url.host
         val port = if (url.port == HttpUrl.defaultPort(url.scheme)) "" else ":${url.port}"
-        val pfad = url.encodedPath.trimEnd('/')
-        return Adressansicht(host, "${url.scheme}://$host$port$pfad", url.host.split('.').any { it.startsWith("xn--") })
+        val path = url.encodedPath.trimEnd('/')
+        return AddressView(host, "${url.scheme}://$host$port$path", url.host.split('.').any { it.startsWith("xn--") })
     }
 
     /**
@@ -79,25 +79,25 @@ object NetworkPolicy {
      * to setup and explains the move to https, instead of failing on the first
      * request with a network error.
      */
-    fun plaintextLegacyStock(serverUrl: String, entwicklung: Boolean): Boolean =
-        addressError(serverUrl, entwicklung) == AddressError.PLAINTEXT
+    fun plaintextLegacyStock(serverUrl: String, development: Boolean): Boolean =
+        addressError(serverUrl, development) == AddressError.PLAINTEXT
 
     /** Is the address encrypted? Only then does the app offer a token without expiry. */
-    fun istHttps(serverUrl: String): Boolean = serverUrl.trim().toHttpUrlOrNull()?.isHttps == true
+    fun isHttps(serverUrl: String): Boolean = serverUrl.trim().toHttpUrlOrNull()?.isHttps == true
 
     /**
      * Scheme, host and port as one text — the origin a token is bound to. A
      * token is only valid for the server that issued it.
      */
-    fun herkunft(serverUrl: String): String? {
+    fun origin(serverUrl: String): String? {
         val url = serverUrl.trim().trimEnd('/').toHttpUrlOrNull() ?: return null
         return "${url.scheme}://${url.host.lowercase()}:${url.port}"
     }
 
     /** Both addresses point at the same server; an empty one points at none. */
     fun sameOrigin(a: String, b: String): Boolean {
-        val ha = herkunft(a) ?: return false
-        return ha == herkunft(b)
+        val ha = origin(a) ?: return false
+        return ha == origin(b)
     }
 
     /** The server's path behind a proxy ("/brick"), without a trailing slash; "" without a prefix. */

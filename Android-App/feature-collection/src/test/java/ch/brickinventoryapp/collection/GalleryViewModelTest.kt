@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.domain.Teilerfassung
-import ch.brickinventoryapp.model.domain.Setzusammenfassung
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.offline.Offlineablage.FollowUp
-import ch.brickinventoryapp.model.domain.Setsortierung
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.PartEntry
+import ch.brickinventoryapp.model.domain.SetTotals
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.offline.OfflineStore.FollowUp
+import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.domain.Condition
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.testing.testFinancesRepository
@@ -25,11 +25,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
 
 /**
- * The gallery ViewModel, run against a PfadServer without network.
+ * The gallery ViewModel, run against a PathServer without network.
  *
  * Counter-checks (measured 28.10.2026, kotlinc against GalleryViewModel.kt):
  *   A  in init the remembered search not taken over → red “search, theme and
@@ -42,25 +42,25 @@ import ch.brickinventoryapp.testing.TestDienste
  *      changed purchase changes the tile, without fetching the list anew”
  *   E  in the init of GalleryViewModel the collecting of `changes.inventoryChanged()` removed
  *      → red “an added part loads the key figures …” and “a deleted set …”
- *   F  vergissScroll on "parts" instead of "gallery" → red “a filter change
+ *   F  forgetScroll on "parts" instead of "gallery" → red “a filter change
  *      forgets the scroll position of the gallery and only that one”
  *   G  tilePrices() without kachel_preis/kachel_pnl_pct → red “the
  *      key figures bring price and P&L …” (800.0 instead of 812.5)
  *   G  in loadStats() loadPrices() removed → red “the key figures bring
  *      price and P&L …”
- *   H  in loeschenVormerken() deleteSet() called immediately →
+ *   H  in markForDeletion() deleteSet() called immediately →
  *      red “pending deletion …” and “undo …” (DELETE already sent)
  *   I  in galleryState the filtering out of the pending set removed → red
  *      “pending deletion removes the tile right away …”
  *   J in galleryState the key figures not adjusted
- *      (gegenproben/galerie-kennzahlen-beim-loeschen.patch) → red “the key figures
+ *      (counter-checks/galerie-kennzahlen-beim-loeschen.patch) → red “the key figures
  *      do not count the pending set …” (2 instead of 1 set)
- *   K  in executeDelete() the check for [nur] removed
- *      (gegenproben/galerie-abgeloestes-loeschen.patch) → red “the snackbar of a
+ *   K  in executeDelete() the check for [only] removed
+ *      (counter-checks/galerie-abgeloestes-loeschen.patch) → red “the snackbar of a
  *      superseded deletion does not carry out the next one” (DELETE for 75192-1)
  *   L  in loadIfEmpty() the check for an empty list removed → red “on
  *      show the gallery only loads if it is empty” (two fetches)
- *   galerie-laedt-nicht-beim-zeigen  (gegenproben/) loadPerServer of the gallery removed → red
+ *   galerie-laedt-nicht-beim-zeigen  (counter-checks/) loadPerServer of the gallery removed → red
  *      “whoever shows the gallery triggers the loading …”
  *   K, L and the last only measurable in the CI (Android classes in the test run).
  */
@@ -68,19 +68,19 @@ import ch.brickinventoryapp.testing.TestDienste
 class GalleryViewModelTest {
 
     private val clock = TestCoroutineScheduler()
-    private lateinit var paths: PfadServer
-    private lateinit var t: TestDienste
+    private lateinit var paths: PathServer
+    private lateinit var t: TestServices
 
-    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(GalleryViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.scrollMemory, t.sets(),
-        t.kontosicht, testFinancesRepository(t.api), gemerkt))
+    private fun vm(wanted: SavedStateHandle = SavedStateHandle(), t: TestServices = this.t) = t.track(GalleryViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, t.sets(),
+        t.accountView, testFinancesRepository(t.api), wanted))
 
-    private fun fetches(paths: PfadServer = this.paths) =
-        paths.requestsAn("GET /api/v1/sets?") + paths.requestsAn("GET /api/v1/sets ")
+    private fun fetches(paths: PathServer = this.paths) =
+        paths.requestsTo("GET /api/v1/sets?") + paths.requestsTo("GET /api/v1/sets ")
 
     @Before
-    fun auf() {
+    fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher(clock))
-        paths = PfadServer(
+        paths = PathServer(
             "/api/v1/sets" to """{"success":true,"total":2,"sets":[
                 {"set_number":"75192-1","name":"Falke","used_count":0},{"set_number":"10294-1","name":"Titanic"}]}""",
             "/api/v1/stats" to """{"success":true,"stats":{"total_sets":2,"total_quantity":2,"total_pieces":0,"total_instructions":0,"total_parts":0,"total_minifigs":0}}""",
@@ -89,12 +89,12 @@ class GalleryViewModelTest {
                  "kachel_preis":812.5,"kachel_pnl_pct":16.1}]}""",
             "/api/v1/sets/10294-1" to """{"success":true}""",
         )
-        t = TestDienste(paths.imTakt(), io = Dispatchers.Main)
+        t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
 
     @After
-    fun zu() {
-        t.aufraeumen()
+    fun tearDown() {
+        t.cleanUp()
         Dispatchers.resetMain()
         paths.server.shutdown()
     }
@@ -103,27 +103,27 @@ class GalleryViewModelTest {
     fun `the key figures bring price and P&L for the tiles along`() {
         val vm = vm()
         vm.loadStats()
-        assertTrue("Preise da", vm.preise.value.containsKey("75192-1"))
-        assertEquals(Geld.aus(812.5), vm.preise.value["75192-1"]?.betrag)
-        assertEquals(16.1, vm.preise.value["75192-1"]?.pnlPct ?: -1.0, 1e-9)
+        assertTrue("Preise da", vm.prices.value.containsKey("75192-1"))
+        assertEquals(Money.from(812.5), vm.prices.value["75192-1"]?.amount)
+        assertEquals(16.1, vm.prices.value["75192-1"]?.pnlPct ?: -1.0, 1e-9)
     }
 
     @Test
     fun `search, theme and sorting survive a process death and travel along`() {
-        val gemerkt = SavedStateHandle()
-        val erstes = vm(gemerkt)
-        erstes.setGalleryTheme("Technic")
-        erstes.setGallerySort(Setsortierung.JAHR)
-        erstes.setGalleryQuery("Falke")
+        val wanted = SavedStateHandle()
+        val first = vm(wanted)
+        first.setGalleryTheme("Technic")
+        first.setGallerySort(SetSort.YEAR)
+        first.setGalleryQuery("Falke")
 
         paths.newProcess(io = Dispatchers.Main) { paths, t ->
-            val neu = vm(gemerkt, t)
-            val g = neu.galleryState.value
-            assertEquals(Triple("Falke", "Technic", Setsortierung.JAHR), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
+            val newValue = vm(wanted, t)
+            val g = newValue.galleryState.value
+            assertEquals(Triple("Falke", "Technic", SetSort.YEAR), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
             // The filters apply to the store; the fetch fills it completely, without filters.
-            neu.loadSets()
-            val abruf = fetches(paths).single()
-            assertTrue(abruf, "search=" !in abruf && "theme=" !in abruf && "sort=" !in abruf)
+            newValue.loadSets()
+            val fetch = fetches(paths).single()
+            assertTrue(fetch, "search=" !in fetch && "theme=" !in fetch && "sort=" !in fetch)
         }
     }
 
@@ -133,7 +133,7 @@ class GalleryViewModelTest {
         vm.setScope(ScopeFilter.View.GALLERY, "own")
         assertTrue("Liste und Kennzahlen", vm.galleryState.value.sets.isNotEmpty() && vm.galleryState.value.stats != null)
         assertTrue("accounts=own" in fetches().last())
-        assertTrue("accounts=own" in paths.requestsAn("GET /api/v1/stats").last())
+        assertTrue("accounts=own" in paths.requestsTo("GET /api/v1/stats").last())
 
         vm.setStorageFilter(ScopeFilter.View.GALLERY, "Regal")
         assertTrue("neu geladen", fetches().size >= 2)
@@ -145,13 +145,13 @@ class GalleryViewModelTest {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
-        val liste = fetches().size
-        val zahlen = paths.requestsAn("GET /api/v1/stats").size
+        val list = fetches().size
+        val numbers = paths.requestsTo("GET /api/v1/stats").size
         vm.deleteSet("10294-1")
-        assertTrue(paths.requestsAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
+        assertTrue(paths.requestsTo("DELETE /api/v1/sets/10294-1").isNotEmpty())
         assertTrue("Liste ohne das Set", vm.galleryState.value.sets.none { it.setNumber == "10294-1" })
-        assertEquals("die Liste kommt aus der Ablage, nicht neu vom Server", liste, fetches().size)
-        assertTrue("Kennzahlen neu", paths.requestsAn("GET /api/v1/stats").size > zahlen)
+        assertEquals("die Liste kommt aus der Ablage, nicht neu vom Server", list, fetches().size)
+        assertTrue("Kennzahlen neu", paths.requestsTo("GET /api/v1/stats").size > numbers)
     }
 
     @Test
@@ -159,32 +159,32 @@ class GalleryViewModelTest {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
-        vm.loeschenVormerken("10294-1", "Titanic")
+        vm.markForDeletion("10294-1", "Titanic")
         assertTrue(vm.galleryState.value.sets.none { it.setNumber == "10294-1" })
-        assertEquals("Titanic", vm.vorgemerkt.value?.name)
-        assertTrue("Noch kein DELETE", paths.requestsAn("DELETE /api/v1/sets/10294-1").isEmpty())
+        assertEquals("Titanic", vm.marked.value?.name)
+        assertTrue("Noch kein DELETE", paths.requestsTo("DELETE /api/v1/sets/10294-1").isEmpty())
         vm.executeDelete()
-        assertTrue("DELETE gesendet", paths.requestsAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
-        assertEquals(null, vm.vorgemerkt.value)
+        assertTrue("DELETE gesendet", paths.requestsTo("DELETE /api/v1/sets/10294-1").isNotEmpty())
+        assertEquals(null, vm.marked.value)
     }
 
     @Test
     fun `the key figures do not count the pending set and count it again after undo`() {
-        paths.antworten["/api/v1/sets"] = """{"success":true,"total":2,"sets":[
+        paths.responses["/api/v1/sets"] = """{"success":true,"total":2,"sets":[
             {"set_number":"75192-1","name":"Falke","pieces":7541,"minifigs":7,"quantity":1},
             {"set_number":"10294-1","name":"Titanic","pieces":9090,"minifigs":0,"quantity":2}]}"""
-        paths.antworten["/api/v1/stats"] = """{"success":true,"stats":{"total_sets":2,"total_quantity":3,"total_pieces":25721,
+        paths.responses["/api/v1/stats"] = """{"success":true,"stats":{"total_sets":2,"total_quantity":3,"total_pieces":25721,
             "total_instructions":0,"total_parts":25721,"total_minifigs":7}}"""
         val vm = vm()
         vm.loadSets(); vm.loadStats()
         assertEquals(2, vm.galleryState.value.stats?.totalSets)
-        vm.loeschenVormerken("10294-1", "Titanic")
+        vm.markForDeletion("10294-1", "Titanic")
         val k = vm.galleryState.value.stats
         assertEquals("Sets", 1, k?.totalSets)
         assertEquals("Exemplare", 1, k?.totalQuantity)
         assertEquals("Teile", 7541, k?.totalParts)
         assertEquals("Figuren", 7, k?.totalMinifigs)
-        vm.rueckgaengig()
+        vm.undo()
         assertEquals("nach Rückgängig wieder vollständig", 2, vm.galleryState.value.stats?.totalSets)
         assertEquals(3, vm.galleryState.value.stats?.totalQuantity)
     }
@@ -194,42 +194,42 @@ class GalleryViewModelTest {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
-        vm.loeschenVormerken("10294-1", "Titanic")
-        vm.rueckgaengig()
+        vm.markForDeletion("10294-1", "Titanic")
+        vm.undo()
         assertTrue("Set wieder da", vm.galleryState.value.sets.any { it.setNumber == "10294-1" })
-        assertTrue("Kein DELETE", paths.requestsAn("DELETE /api/v1/sets/10294-1").isEmpty())
+        assertTrue("Kein DELETE", paths.requestsTo("DELETE /api/v1/sets/10294-1").isEmpty())
         vm.executeDelete()
-        assertTrue("Nach Rückgängig gibt es nichts mehr auszuführen", paths.requestsAn("DELETE /api/v1/sets/10294-1").isEmpty())
+        assertTrue("Nach Rückgängig gibt es nichts mehr auszuführen", paths.requestsTo("DELETE /api/v1/sets/10294-1").isEmpty())
     }
 
     @Test
     fun `the snackbar of a superseded deletion does not execute the next one`() {
         val vm = vm()
         vm.loadSets()
-        vm.loeschenVormerken("10294-1", "Titanic")
-        val erstes = vm.vorgemerkt.value
+        vm.markForDeletion("10294-1", "Titanic")
+        val first = vm.marked.value
         // A second deletion carries out the first and marks the second as pending.
-        vm.loeschenVormerken("75192-1", "Falke")
-        assertTrue("erstes gelöscht", paths.requestsAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
-        val zweites = vm.vorgemerkt.value
+        vm.markForDeletion("75192-1", "Falke")
+        assertTrue("erstes gelöscht", paths.requestsTo("DELETE /api/v1/sets/10294-1").isNotEmpty())
+        val second = vm.marked.value
         // The first one's snackbar only ends now (superseded) — it must not touch the second.
-        vm.executeDelete(erstes)
-        vm.rueckgaengig(erstes)
-        assertEquals("Falke", vm.vorgemerkt.value?.name)
-        assertTrue("zweites noch nicht gelöscht", paths.requestsAn("DELETE /api/v1/sets/75192-1").isEmpty())
-        vm.rueckgaengig(zweites)
-        assertEquals(null, vm.vorgemerkt.value)
-        assertTrue("zweites nie gelöscht", paths.requestsAn("DELETE /api/v1/sets/75192-1").isEmpty())
+        vm.executeDelete(first)
+        vm.undo(first)
+        assertEquals("Falke", vm.marked.value?.name)
+        assertTrue("zweites noch nicht gelöscht", paths.requestsTo("DELETE /api/v1/sets/75192-1").isEmpty())
+        vm.undo(second)
+        assertEquals(null, vm.marked.value)
+        assertTrue("zweites nie gelöscht", paths.requestsTo("DELETE /api/v1/sets/75192-1").isEmpty())
     }
 
     @Test
     fun `whoever shows the gallery triggers loading, once per server`() {
         val vm = vm()
-        t.sitzung.anmeldungGeaendert(paths.server.url("/").toString(), angemeldet = true)
+        t.session.loginChanged(paths.server.url("/").toString(), loggedIn = true)
         assertTrue("ohne Beobachter kein Abruf", fetches().isEmpty())
-        val seite = CoroutineScope(Dispatchers.Main).launch { vm.galleryState.collect {} }
+        val page = CoroutineScope(Dispatchers.Main).launch { vm.galleryState.collect {} }
         assertEquals("beim Zeigen geladen", 1, fetches().size)
-        seite.cancel()
+        page.cancel()
         CoroutineScope(Dispatchers.Main).launch { vm.galleryState.collect {} }.cancel()
         assertEquals("schon da: beim Wiederkommen nicht noch einmal", 1, fetches().size)
     }
@@ -239,10 +239,10 @@ class GalleryViewModelTest {
         val vm = vm()
         vm.loadIfEmpty()
         assertTrue("ohne Server kein Abruf", fetches().isEmpty())
-        t.sitzung.anmeldungGeaendert(paths.server.url("/").toString(), angemeldet = true)
+        t.session.loginChanged(paths.server.url("/").toString(), loggedIn = true)
         vm.loadIfEmpty()
         assertEquals("leer: einmal geladen", 1, fetches().size)
-        assertTrue("Kennzahlen mit", paths.requestsAn("GET /api/v1/stats").isNotEmpty())
+        assertTrue("Kennzahlen mit", paths.requestsTo("GET /api/v1/stats").isNotEmpty())
         vm.loadIfEmpty()
         assertEquals("schon da: nicht noch einmal", 1, fetches().size)
     }
@@ -252,16 +252,16 @@ class GalleryViewModelTest {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
-        val vorher = fetches().size
+        val before = fetches().size
         // Counted from here: the first load already fetches the key figures itself.
-        val numbersBefore = paths.requestsAn("GET /api/v1/stats").size
+        val numbersBefore = paths.requestsTo("GET /api/v1/stats").size
 
         // This is how HouseholdRepository writes the server's answer into the store.
-        runBlocking { t.ablage.applyAn(FollowUp.SetSummary(Setzusammenfassung(setNumber = "75192-1", zustand = Zustand.GEBRAUCHT, states = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
+        runBlocking { t.store.applyChange(FollowUp.SetSummary(SetTotals(setNumber = "75192-1", condition = Condition.USED, states = listOf(Condition.USED), used = 1,
             highestPurchasePrice = null, purchasePriceCut = null))) }
-        assertTrue("Kennzahlen neu", paths.requestsAn("GET /api/v1/stats").size > numbersBefore)
+        assertTrue("Kennzahlen neu", paths.requestsTo("GET /api/v1/stats").size > numbersBefore)
         assertTrue("Kachel geändert", vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1)
-        assertEquals("Die Liste darf nicht neu geholt werden", vorher, fetches().size)
+        assertEquals("Die Liste darf nicht neu geholt werden", before, fetches().size)
     }
 
     @Test
@@ -272,11 +272,11 @@ class GalleryViewModelTest {
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
         val listBefore = fetches().size
-        val numbersBefore = paths.requestsAn("GET /api/v1/stats").size
+        val numbersBefore = paths.requestsTo("GET /api/v1/stats").size
 
         // This is how PartsRepository applies an added part in the store.
-        runBlocking { t.ablage.applyAn(Editing.TeilErfassen(Teilerfassung(nummer = "3001", farbId = 5, menge = 2))) }
-        assertEquals("Kennzahlen nach Teilen", numbersBefore + 1, paths.requestsAn("GET /api/v1/stats").size)
+        runBlocking { t.store.applyChange(Editing.RecordPart(PartEntry(number = "3001", colorId = 5, quantity = 2))) }
+        assertEquals("Kennzahlen nach Teilen", numbersBefore + 1, paths.requestsTo("GET /api/v1/stats").size)
         assertEquals("Ein Teil ändert die Set-Liste nicht", listBefore, fetches().size)
     }
 
@@ -284,24 +284,24 @@ class GalleryViewModelTest {
     fun `a filter change forgets the scroll position of the gallery and only that`() {
         // The remembered position otherwise pointed at sets that stand
         // elsewhere or not at all in the new list.
-        t.scrollMemory.merke("gallery", 40, 3)
-        t.scrollMemory.merke("parts", 7, 0)
+        t.scrollMemory.track("gallery", 40, 3)
+        t.scrollMemory.track("parts", 7, 0)
         val vm = vm()
         vm.setGalleryTheme("Technic")
-        assertEquals(0 to 0, t.scrollMemory.lies("gallery"))
-        assertEquals(7 to 0, t.scrollMemory.lies("parts"))
+        assertEquals(0 to 0, t.scrollMemory.read("gallery"))
+        assertEquals(7 to 0, t.scrollMemory.read("parts"))
     }
 
     @Test
     fun `after sign-out the gallery is empty and without filters`() {
-        val gemerkt = SavedStateHandle()
-        val vm = vm(gemerkt)
+        val wanted = SavedStateHandle()
+        val vm = vm(wanted)
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.isNotEmpty())
         vm.setGalleryTheme("Technic")
-        t.sitzung.abgemeldet()
+        t.session.loggedOut()
         assertTrue(vm.galleryState.value.sets.isEmpty())
         assertEquals("", vm.galleryState.value.galleryTheme)
-        assertEquals("", vm(gemerkt).galleryState.value.galleryTheme)
+        assertEquals("", vm(wanted).galleryState.value.galleryTheme)
     }
 }

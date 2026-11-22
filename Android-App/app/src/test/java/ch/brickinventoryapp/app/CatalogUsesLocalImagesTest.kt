@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.contract.CatalogSetItem
 import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Catalog images use the user-independent local file determined by the server
@@ -21,16 +21,16 @@ import ch.brickinventoryapp.testing.Quellen
  * and is user-independent. The server checks that now and delivers
  * `image_local` if the file exists.
  *
- * Counter-check: in CatalogSetItem.alsAnsicht `imageLocal =
+ * Counter-check: in CatalogSetItem.asView `imageLocal =
  * null` → red “catalog models know image_local”.
- * Counter-check (local, reads only source; not compilable as a patch): in TeileKarte.kt
+ * Counter-check (local, reads only source; not compilable as a patch): in PartsCard.kt
  * `serverUrl: String` taken out of the signature of PartTableRow or ManualPartTile →
  * red „Funktion 'PartTableRow' …“ or „Funktion 'ManualPartTile' …“.
  */
 class CatalogUsesLocalImagesTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.root, "$rel")
+        val f = File(Sources.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -43,16 +43,16 @@ class CatalogUsesLocalImagesTest {
     fun `catalog models know image_local`() {
         // What the server sends is read, and it arrives in the view.
         val item = BrickJson.decodeFromString(CatalogSetItem.serializer(),
-            """{"set_number": "75192-1", "image_local": "/images/sets/75192-1.jpg"}""").alsAnsicht()
+            """{"set_number": "75192-1", "image_local": "/images/sets/75192-1.jpg"}""").asView()
         assertEquals("/images/sets/75192-1.jpg", item.imageLocal)
         val detail = BrickJson.decodeFromString(CatalogSetDetail.serializer(),
-            """{"set_number": "75192-1", "image_local": "/images/sets/75192-1_thumb.jpg"}""").alsAnsicht()
+            """{"set_number": "75192-1", "image_local": "/images/sets/75192-1_thumb.jpg"}""").asView()
         assertEquals("/images/sets/75192-1_thumb.jpg", detail.imageLocal)
     }
 
     @Test
     fun `catalog screens pass the field through instead of forcing null`() {
-        val list = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
+        val list = code(Sources.screen("catalog/ui/screens/CatalogScreen.kt"))
         // rememberTileImageWithFallback(...) counts as well:
         assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
                list.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
@@ -81,9 +81,9 @@ class CatalogUsesLocalImagesTest {
         assert(Regex("""fun CatalogDetailScreen\([^)]*serverUrl: String""").containsMatchIn(screenSrc)) {
             "serverUrl fehlt in der Funktionssignatur"
         }
-        val graphSrc = code(read("catalog/ui/KatalogGraph.kt"))
+        val graphSrc = code(read("catalog/ui/CatalogGraph.kt"))
         assert(graphSrc.contains("serverUrl = state.serverUrl")) {
-            "Der Aufrufer in KatalogGraph.kt muss serverUrl übergeben"
+            "Der Aufrufer in CatalogGraph.kt muss serverUrl übergeben"
         }
     }
 
@@ -126,14 +126,14 @@ class CatalogUsesLocalImagesTest {
         // resolve*Url(serverUrl, …) call, "serverUrl: String" must
         // stand in the SAME signature.
         val screensToCheck = listOf(
-            "collection/ui/screens/GalerieKarte.kt",
+            "collection/ui/screens/GalleryCard.kt",
             "collection/ui/screens/SetDetailScreen.kt",
             "parts/ui/screens/PartsScreen.kt",
             "finances/ui/screens/FinanceScreen.kt",
             "parts/ui/screens/MinifigsScreen.kt",
             "catalog/ui/screens/CatalogScreen.kt",
             "catalog/ui/screens/CatalogDetailScreen.kt",
-        ).flatMap { Quellen.screenFiles(it) }
+        ).flatMap { Sources.screenFiles(it) }
         for (rel in screensToCheck) {
             val raw = read(rel)
             // Only functions at the top level (column 0), also internal or private:
@@ -171,7 +171,7 @@ class CatalogUsesLocalImagesTest {
             "catalog/ui/screens/CatalogScreen.kt" to 1,     // CatalogSetCard
         )
         for ((rel, expectedCount) in expectations) {
-            val src = Quellen.bildschirm(rel)
+            val src = Sources.screen(rel)
             val count = Regex("""rememberTileImageWithFallback\(serverUrl""").findAll(src).count()
             assert(count == expectedCount) {
                 "$rel: $count statt $expectedCount Verwendungen von rememberTileImageWithFallback()"

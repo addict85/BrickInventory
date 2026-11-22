@@ -5,17 +5,17 @@
  * contrast under the text in the “hochglanz” design.
  *
  * Counter-checks (measured 15.11.2026, each alone, bundle rebuilt):
- *   A  .konto-nav without position:sticky → red: “M2 …” all cases with account and background jobs (“bar
+ *   A  .account-nav without position:sticky → red: “M2 …” all cases with account and background jobs (“bar
  *      scrolls away”); the mobile rule of the settings back to position:static → red: “M2 390 px … settings”
  *   B  background jobs without jump bar → red: “M2 …” (no bar); without tabindex on the titles → red:
  *      same place (focus)
  *   C  errorPlace() without the branch for grid cells → red: “N2 …” (message not below its field)
- *   D  finanzen-fehler hides nothing → red: “N3 …” (period and chips visible)
+ *   D  finances-error hides nothing → red: “N3 …” (period and chips visible)
  *   E  the rule for 601–640 px removed (names hidden only up to 640 px again) → red: “N4 …” (640 × 450)
- *   F  .besitzer-badge back to overflow:hidden → red: “N5 …” (badges offset by 4–6 px)
+ *   F  .owner-badge back to overflow:hidden → red: “N5 …” (badges offset by 4–6 px)
  *   G  set image without a button again (img with role=button, no button) → red: “N7 …” (no button around the image)
  *   H  hochglanz.css: badges again with the light of the buttons → red: “contrast …” (#fin-tbl .cond-new 3.03:1);
- *      --mut back to #5a6270 from noppe → red: same place (.fin-fussnote 4.21:1)
+ *      --mut back to #5a6270 from noppe → red: same place (.fin-footnote 4.21:1)
  *
  * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -68,11 +68,11 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
     };
     b.listener.push(intercept);
     await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/finance/valuation*', requestStage: 'Request' }] });
-    const ELEMENTS = '.zeitraum-wahl .period-btn, #fin-filter button, #fin-suche';
+    const ELEMENTS = '.period-choice .period-btn, #fin-filter button, #fin-search';
     try {
       await groesse(b, 1280, 900, false);
       await zu('#/finanzen');
-      await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Fehlerzustand');
+      await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Fehlerzustand');
       const fehler = await b.auswerten(sichtbar(ELEMENTS));
       assert.equal(fehler.length, 9);
       assert.deepEqual(fehler, Array(9).fill(false), 'im Fehlerfall sichtbar');
@@ -80,7 +80,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       await b.tab('Fetch.disable');
       b.listener.splice(b.listener.indexOf(intercept), 1);
     }
-    await b.auswerten(`document.querySelector('#portfolio-chart .fehler-zustand button[data-click]').click(); true`);
+    await b.auswerten(`document.querySelector('#portfolio-chart .error-state button[data-click]').click(); true`);
     await bis(`!!document.querySelector('#fin-tbl table')`, 'Tabelle nach „Erneut versuchen“');
     await ruhig();
     assert.deepEqual(await b.auswerten(sichtbar(ELEMENTS)), Array(9).fill(true), 'nach Erfolg');
@@ -92,9 +92,9 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
   ])
     for (const dunkel of [false, true])
       for (const [ansicht, hash, leiste] of [
-        ['Konto', '#/konto', '#tab-profil .konto-nav'],
-        ['Hintergrundarbeiten', '#/hintergrund', '#tab-monitor .konto-nav'],
-        ...(telefon ? [['Einstellungen', '#/einstellungen/benutzer', '#global-settings-grid > .einst-nav']] : []),
+        ['Konto', '#/konto', '#tab-profile .account-nav'],
+        ['Hintergrundarbeiten', '#/hintergrund', '#tab-monitor .account-nav'],
+        ...(telefon ? [['Einstellungen', '#/einstellungen/benutzer', '#global-settings-grid > .settings-nav']] : []),
       ])
         await t.test(`M2 ${breite} px ${dunkel ? 'dark' : 'light'}: jump bar ${ansicht} sticks`, async () => {
           await groesse(b, breite, telefon ? 844 : 900, telefon);
@@ -112,7 +112,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
             return {
               gerollt: scrollY,
               oben: Math.round(r.top), unten: Math.round(r.bottom),
-              soll: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--leiste-oben')) || 0,
+              soll: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-top')) || 0,
               lowerBar: unten ? Math.round(unten.getBoundingClientRect().top) : innerHeight,
               grund: getComputedStyle(nav).backgroundColor,
               pageWider: document.documentElement.scrollWidth > innerWidth,
@@ -125,13 +125,13 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
           assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
           if (ansicht !== 'Hintergrundarbeiten') return;
           // A jump to the very top: the heading is in view and not below the bar.
-          await b.auswerten(`document.querySelector('${leiste} a[data-arg="mon-t-kontingente"]').click(); true`);
+          await b.auswerten(`document.querySelector('${leiste} a[data-arg="mon-t-quotas"]').click(); true`);
           await ruhig(400);
           const z =
-            await b.auswerten(`(() => { const h = document.getElementById('mon-t-kontingente').getBoundingClientRect();
+            await b.auswerten(`(() => { const h = document.getElementById('mon-t-quotas').getBoundingClientRect();
             return { fokus: document.activeElement.id, oben: h.top, unten: h.bottom,
               leiste: document.querySelector(${JSON.stringify(leiste)}).getBoundingClientRect().bottom, h: innerHeight }; })()`);
-          assert.equal(z.fokus, 'mon-t-kontingente', 'Fokus auf der Überschrift');
+          assert.equal(z.fokus, 'mon-t-quotas', 'Fokus auf der Überschrift');
           assert.ok(
             z.oben >= z.leiste - 1 && z.unten <= z.h,
             `Überschrift verdeckt oder nicht im Bild: ${JSON.stringify(z)}`,
@@ -142,14 +142,14 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
     await groesse(b, 1280, 900, false);
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
     await zu('#/sammlung');
-    await b.auswerten(`document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
+    await b.auswerten(`document.querySelector('[data-click="openCapture"][data-arg="set"]').click(); true`);
     await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
     await b.auswerten(`document.getElementById('add-qty').value = '0'; document.getElementById('add-price').value = 'abc';
       document.getElementById('btn-add').click(); true`);
-    await bis(`!document.getElementById('add-price-fehler')?.hidden`, 'Feldfehler');
+    await bis(`!document.getElementById('add-price-error')?.hidden`, 'Feldfehler');
     const m = await b.auswerten(`['add-num', 'add-qty', 'add-price'].map(id => {
-      const f = (document.getElementById(id).closest('.preis-mit-waehrung') ?? document.getElementById(id)).getBoundingClientRect();
-      const e = document.getElementById(id + '-fehler').getBoundingClientRect();
+      const f = (document.getElementById(id).closest('.price-with-currency') ?? document.getElementById(id)).getBoundingClientRect();
+      const e = document.getElementById(id + '-error').getBoundingClientRect();
       return { id, links: Math.round(e.left - f.left), abstand: Math.round(e.top - f.bottom), breiter: e.width > f.width + 1 };
     })`);
     for (const x of m) {
@@ -157,7 +157,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       assert.ok(x.abstand >= 0 && x.abstand < 12, `${x.id}: ${x.abstand} px unter dem Feld`);
       assert.equal(x.breiter, false, `${x.id}: Meldung breiter als ihre Spalte`);
     }
-    await b.auswerten(`document.querySelector('[data-click="schliesseErfassen"][data-arg="set"]').click(); true`);
+    await b.auswerten(`document.querySelector('[data-click="closeCapture"][data-arg="set"]').click(); true`);
   });
 
   await t.test('N4 bottom bar at low height: names up to 601 px', async () => {
@@ -179,7 +179,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       assert.equal(m.n, 5, `${breite} × ${hoehe}: Reiter`);
       assert.equal(m.pageWider, false, `${breite} × ${hoehe}: Seite breiter als das Fenster`);
       for (const x of m.namen) {
-        assert.equal(x.breit, namen, `${breite} × ${hoehe}: Namen ${namen ? 'fehlen' : 'stehen da'}`);
+        assert.equal(x.breit, namen, `${breite} × ${hoehe}: Namen ${namen ? 'missing' : 'stehen da'}`);
         if (namen) assert.ok(x.innen, `${breite} × ${hoehe}: Name ragt aus dem Reiter`);
       }
     }
@@ -188,9 +188,9 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
   await t.test('N5 finance table: condition and account on one baseline', async () => {
     await groesse(b, 1280, 900, false);
     await zu('#/finanzen');
-    await bis(`!!document.querySelector('#fin-tbl .besitzer-badge')`, 'Abzeichen');
+    await bis(`!!document.querySelector('#fin-tbl .owner-badge')`, 'Abzeichen');
     const m = await b.auswerten(`[...document.querySelectorAll('#fin-tbl td.fin-name')].flatMap(td => {
-      const a = td.querySelector('.cond-new, .cond-used'), k = td.querySelector('.besitzer-badge');
+      const a = td.querySelector('.cond-new, .cond-used'), k = td.querySelector('.owner-badge');
       if (!a || !k) return [];
       const unten = x => { const r = document.createRange(); r.selectNodeContents(x); return r.getBoundingClientRect().bottom; };
       // Nur Abzeichen auf derselben Zeile; ein umbrochenes steht zu Recht tiefer.
@@ -260,7 +260,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
     );
     await ruhig();
     try {
-      for (const sel of ['#fin-tbl .cond-new', '.fin-fussnote']) {
+      for (const sel of ['#fin-tbl .cond-new', '.fin-footnote']) {
         const r =
           await b.auswerten(`(() => { const e = document.querySelector('${sel}'); e.scrollIntoView({ block: 'center' });
           const r = e.getBoundingClientRect();

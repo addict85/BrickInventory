@@ -18,13 +18,13 @@ const assert = require('node:assert/strict');
 const { openUi, takt, warte } = require('./helpers/ui');
 
 const errorAt = (d, id) => {
-  const e = d.getElementById(id + '-fehler');
+  const e = d.getElementById(id + '-error');
   return e && !e.hidden ? e.textContent : '';
 };
 
 async function setErfassen(o, { qty, datum = null }) {
   const { d, aufrufe } = o;
-  d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
+  d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
   await takt(10);
   d.getElementById('add-num').value = '10294-1';
   d.getElementById('add-qty').value = qty;
@@ -98,7 +98,7 @@ test('add part and figure: invalid quantity and future date do not go out', asyn
       ['part', 'ap', 'btn-add-part', '/parts'],
       ['fig', 'af', 'btn-add-fig', '/minifigs'],
     ]) {
-      d.querySelector(`[data-click="oeffneErfassen"][data-arg="${art}"]`).click();
+      d.querySelector(`[data-click="openCapture"][data-arg="${art}"]`).click();
       await takt(10);
       d.getElementById(nr + '-num-inline').value = art === 'part' ? '3001' : 'fig-001';
       for (const [qty, datum, errorId] of [
@@ -145,7 +145,7 @@ async function purchasePriceDialog(puts) {
   knopf.dataset.arg = '10294-1';
   o.d.body.append(knopf);
   knopf.click();
-  await warte(() => o.d.getElementById('acq-menge-7'));
+  await warte(() => o.d.getElementById('acq-quantity-7'));
   return o;
 }
 
@@ -154,13 +154,13 @@ test('purchase price dialog: quantity and date report at the field, valid ones g
   const o = await purchasePriceDialog(puts);
   try {
     const { d, w } = o;
-    const menge = d.getElementById('acq-menge-7');
+    const menge = d.getElementById('acq-quantity-7');
     for (const roh of ['0', '', '-1', '10001']) {
       menge.value = roh;
       menge.dispatchEvent(new w.FocusEvent('blur'));
       await takt(30);
       assert.equal(puts.length, 0, `Anzahl „${roh}“ ging hinaus`);
-      assert.match(errorAt(d, 'acq-menge-7'), /ganze Zahl/, `Anzahl „${roh}“ ohne Hinweis`);
+      assert.match(errorAt(d, 'acq-quantity-7'), /ganze Zahl/, `Anzahl „${roh}“ ohne Hinweis`);
     }
     menge.value = '3';
     menge.dispatchEvent(new w.FocusEvent('blur'));
@@ -170,13 +170,13 @@ test('purchase price dialog: quantity and date report at the field, valid ones g
     d.activeElement?.blur();
     await o.ruhig();
     puts.length = 0;
-    const datum = d.getElementById('acq-datum-feld-7');
+    const datum = d.getElementById('acq-date-field-7');
     assert.ok(datum.max, 'Datumsfeld ohne max');
     datum.value = '2099-01-01';
     datum.dispatchEvent(new w.Event('change', { bubbles: true }));
     await takt(30);
     assert.equal(puts.filter(p => 'date' in p).length, 0, 'Zukunftsdatum ging hinaus');
-    assert.match(errorAt(d, 'acq-datum-feld-7'), /Zukunft/);
+    assert.match(errorAt(d, 'acq-date-field-7'), /Zukunft/);
   } finally {
     o.w.close();
   }

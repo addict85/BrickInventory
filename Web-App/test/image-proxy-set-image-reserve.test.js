@@ -90,7 +90,7 @@ test('image proxy reserves set images for images/sets', async t => {
       'was der Proxy hat, liegt danach unter images/sets',
     );
     assert.deepEqual(
-      fs.readdirSync(SET_IMAGES_DIR).filter(n => n.startsWith(fehlt) && n.endsWith('.teil')),
+      fs.readdirSync(SET_IMAGES_DIR).filter(n => n.startsWith(fehlt) && n.endsWith('.part')),
       [],
       'keine halbe Datei bleibt liegen',
     );

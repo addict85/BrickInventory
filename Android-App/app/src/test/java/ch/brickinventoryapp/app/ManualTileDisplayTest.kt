@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import android.os.Looper
@@ -34,7 +34,7 @@ import java.util.Locale
  * purchase price before the most recently written one. Drawn from responses of the test server
  * so that passing the fields into each of the two tiles is checked too.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   kachel-teil-ohne-besitzer       ManualPartTile does not pass on the owners → red “the manual part shows …”
  *   kachel-figur-ohne-zustaende     ManualFigTile does not pass on the conditions → red “the manual figure shows …”
  *   kachel-preis-zuletzt-geschrieben  unit_price before avg_purchase_price → red “the manual part shows …”
@@ -48,31 +48,31 @@ class ManualTileDisplayTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val vorher = Locale.getDefault()
+    private val before = Locale.getDefault()
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val bilder = SampleImages.loader(ctx)
-    private val world = Examples.Welt(ContextTexts())
+    private val images = SampleImages.loader(ctx)
+    private val world = Examples.World(ContextTexts())
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() {
-        Locale.setDefault(vorher)
+    fun tearDown() {
+        Locale.setDefault(before)
         world.close()
     }
 
-    private fun zeige(inhalt: @Composable () -> Unit) {
+    private fun show(content: @Composable () -> Unit) {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
-                Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
+                Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
         }
         compose.waitForIdle()
     }
 
-    private fun wait(was: String, bereit: () -> Boolean) {
+    private fun wait(was: String, ready: () -> Boolean) {
         try {
-            compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); bereit() }
+            compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); ready() }
         } catch (e: ComposeTimeoutException) {
             throw AssertionError("$was: nach 10 s nicht da", e)
         }
@@ -80,37 +80,37 @@ class ManualTileDisplayTest {
     }
 
     /** Conditions, owners and both prices: averaged 5.–, most recently written 8.–. */
-    private val felder = """"quantity":4,"unit_price":8.0,"avg_purchase_price":5.0,"condition":"U","conditions":["N","U"],""" +
+    private val fields = """"quantity":4,"unit_price":8.0,"avg_purchase_price":5.0,"condition":"U","conditions":["N","U"],""" +
         """"owners":[{"id":2,"username":"Anna"},{"id":3,"username":"Beat"}]"""
 
-    private fun showsEverything(wer: String) {
+    private fun showsEverything(who: String) {
         for (text in listOf(ctx.getString(R.string.condition_new), ctx.getString(R.string.condition_used), "Anna", "Beat")) {
-            assertTrue("$wer zeigt „$text“ nicht",
+            assertTrue("$who zeigt „$text“ nicht",
                 compose.onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
         }
-        val preis = fmtMoney(5.0, Waehrung("CHF"))
-        assertTrue("$wer zeigt nicht den gemittelten Kaufpreis $preis",
-            compose.onAllNodesWithText(preis, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
+        val price = fmtMoney(5.0, CurrencyCode("CHF"))
+        assertTrue("$who zeigt nicht den gemittelten Kaufpreis $price",
+            compose.onAllNodesWithText(price, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
     }
 
     @Test
     fun `the manual part shows conditions, owners and the averaged purchase price`() {
-        world.paths.antworten["/api/v1/parts/manual"] =
-            """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1","color_id":1,$felder}]}"""
-        val vm = world.teile().also { it.loadParts() }
-        wait("Teile") { !vm.teileState.value.manualParts.isNullOrEmpty() }
-        zeige { PartsRoute(vm = vm, imageLoader = bilder) }
+        world.paths.responses["/api/v1/parts/manual"] =
+            """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1","color_id":1,$fields}]}"""
+        val vm = world.parts().also { it.loadParts() }
+        wait("Teile") { !vm.partsState.value.manualParts.isNullOrEmpty() }
+        show { PartsRoute(vm = vm, imageLoader = images) }
         compose.onNodeWithText("Brick 1 x 1", useUnmergedTree = true).fetchSemanticsNode()
         showsEverything("Teil")
     }
 
     @Test
     fun `the manual figure shows conditions, owners and the averaged purchase price`() {
-        world.paths.antworten["/api/v1/minifigs/manual"] =
-            """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia",$felder}]}"""
-        val vm = world.figuren().also { it.loadMinifigs() }
+        world.paths.responses["/api/v1/minifigs/manual"] =
+            """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia",$fields}]}"""
+        val vm = world.figures().also { it.loadMinifigs() }
         wait("Figuren") { !vm.minifigsState.value.manualFigs.isNullOrEmpty() }
-        zeige { MinifigsRoute(vm = vm, imageLoader = bilder) }
+        show { MinifigsRoute(vm = vm, imageLoader = images) }
         compose.onNodeWithText("Prinzessin Leia", useUnmergedTree = true).fetchSemanticsNode()
         showsEverything("Figur")
     }
@@ -118,15 +118,15 @@ class ManualTileDisplayTest {
     @Test
     fun `the key figures of the figures stay, even without figures from sets`() {
         // They mean the whole collection (/minifigs/stats), not the loaded list.
-        world.paths.antworten["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
-        world.paths.antworten["/api/v1/minifigs/manual"] =
+        world.paths.responses["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
+        world.paths.responses["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia","quantity":1}]}"""
-        val vm = world.figuren().also { it.loadMinifigs() }
+        val vm = world.figures().also { it.loadMinifigs() }
         wait("Figuren") { vm.minifigsState.value.let { !it.manualFigs.isNullOrEmpty() && it.minifigStats.types > 0 } }
-        zeige { MinifigsRoute(vm = vm, imageLoader = bilder) }
+        show { MinifigsRoute(vm = vm, imageLoader = images) }
         compose.onNodeWithText("Prinzessin Leia", useUnmergedTree = true).fetchSemanticsNode()
-        val typen = ctx.resources.getQuantityString(R.plurals.minifigs_stat_types, 2, "2")
-        assertTrue("Die Kennzahlen „$typen“ fehlen",
-            compose.onAllNodesWithText(typen, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
+        val types = ctx.resources.getQuantityString(R.plurals.minifigs_stat_types, 2, "2")
+        assertTrue("Die Kennzahlen „$types“ fehlen",
+            compose.onAllNodesWithText(types, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
     }
 }

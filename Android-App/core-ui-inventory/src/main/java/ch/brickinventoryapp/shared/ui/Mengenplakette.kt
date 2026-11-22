@@ -5,6 +5,6 @@ package ch.brickinventoryapp.shared.ui
  * „×3“ (manual, gallery, finances) read side by side like two different pieces of information.
  * Two names remain, so callers say where the quantity comes from.
  */
-fun mengeManuell(menge: Int): String = "×$menge"
+fun quantityManual(quantity: Int): String = "×$quantity"
 
-fun mengeAusSet(menge: Int): String = mengeManuell(menge)
+fun quantityFromSet(quantity: Int): String = quantityManual(quantity)

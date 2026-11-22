@@ -8,7 +8,7 @@
  * Counter-checks (measured on 03.11.2026):
  *   A  a character changed in <style id="startstil">, hash not recomputed
  *      (static copy) → red: “the hash matches the delivered block”
- *   B  startgeruestWeg() removed in showApp() → red: “logged in: skeleton gone”
+ *   B  removeStartupScaffold() removed in showApp() → red: “logged in: skeleton gone”
  *   C  styles.css again in the <head> → red: “before the first stylesheet”
  *   D  (08.11.2026) the two rules for [data-theme=brick] deleted from the start style
  *      → red: “Stein (blue): header blue, background blue-gray”
@@ -44,7 +44,7 @@ test('the hash matches the delivered block', async () => {
 
 test('before the first stylesheet and before every blocking script', () => {
   const html = stripComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8'));
-  const geruest = html.indexOf('id="startgeruest"');
+  const geruest = html.indexOf('id="start-skeleton"');
   assert.ok(geruest > 0);
   const firstStylesheet = html.search(/<link rel="stylesheet"/);
   const firstScript = html.search(/<script (?!defer)[^>]*src=/);
@@ -55,18 +55,18 @@ test('before the first stylesheet and before every blocking script', () => {
 test('logged in: skeleton gone, app there', async () => {
   const { w, d } = await openUi({});
   try {
-    await warte(() => !d.getElementById('startgeruest'));
-    assert.equal(d.getElementById('startgeruest'), null, 'angemeldet: Gerüst weg');
+    await warte(() => !d.getElementById('start-skeleton'));
+    assert.equal(d.getElementById('start-skeleton'), null, 'angemeldet: Gerüst weg');
   } finally {
     w.close();
   }
 });
 
 test('logged out: skeleton gone, login there', async () => {
-  const { w, d } = await openUi({}, { angemeldet: false });
+  const { w, d } = await openUi({}, { loggedIn: false });
   try {
     await warte(() => d.getElementById('login-screen').style.display === 'flex');
-    assert.equal(d.getElementById('startgeruest'), null);
+    assert.equal(d.getElementById('start-skeleton'), null);
   } finally {
     w.close();
   }
@@ -80,9 +80,9 @@ test('Stein (blue): header blue, background blue-gray', () => {
   // By default JSDOM runs no scripts and loads no foreign ones: the skeleton stands alone.
   const w = new JSDOM(html).window;
   try {
-    const kopf = w.getComputedStyle(w.document.querySelector('#startgeruest .sg-kopf'));
+    const kopf = w.getComputedStyle(w.document.querySelector('#start-skeleton .sg-header'));
     assert.equal(kopf.backgroundColor, 'rgb(61, 90, 128)', 'die Kopfkachel ist blau wie im Stein-Design');
-    const grund = w.getComputedStyle(w.document.querySelector('#startgeruest'));
+    const grund = w.getComputedStyle(w.document.querySelector('#start-skeleton'));
     assert.equal(grund.getPropertyValue('--sg-bg').trim(), '#c9d5e2', 'der Grund ist blaugrau, nicht weiss');
   } finally {
     w.close();
@@ -94,8 +94,8 @@ test('without a session: no app tiles in the skeleton, with a session yes', asyn
   const sichtbar = html => {
     const w = new JSDOM(html).window;
     try {
-      return ['.sg-kopf', '.sg-leiste', '.sg-inhalt'].map(
-        s => w.getComputedStyle(w.document.querySelector(`#startgeruest ${s}`)).display !== 'none',
+      return ['.sg-header', '.sg-bar', '.sg-content'].map(
+        s => w.getComputedStyle(w.document.querySelector(`#start-skeleton ${s}`)).display !== 'none',
       );
     } finally {
       w.close();

@@ -11,123 +11,123 @@ import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.ManagementApi
-import ch.brickinventoryapp.offline.Ausgang
-import ch.brickinventoryapp.offline.ExitPlanner
-import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.offline.StorageExit
+import ch.brickinventoryapp.offline.Outbox
+import ch.brickinventoryapp.offline.OutboxPlanner
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
 import ch.brickinventoryapp.data.repository.MinifigsRepository
-import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
+import ch.brickinventoryapp.data.repository.FiguresRepositoryImpl
 import ch.brickinventoryapp.data.repository.FinancesRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepositoryImpl
+import ch.brickinventoryapp.data.repository.FinancesRepositoryImpl
 import ch.brickinventoryapp.data.repository.VouchersRepository
-import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
+import ch.brickinventoryapp.data.repository.VouchersRepositoryImpl
 import ch.brickinventoryapp.data.repository.HouseholdRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepositoryImpl
+import ch.brickinventoryapp.data.repository.HouseholdRepositoryImpl
 import ch.brickinventoryapp.data.repository.CatalogRepository
-import ch.brickinventoryapp.data.repository.KatalogRepositoryImpl
+import ch.brickinventoryapp.data.repository.CatalogRepositoryImpl
 import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.data.repository.KontoRepositoryImpl
+import ch.brickinventoryapp.data.repository.AccountRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.data.repository.AlarmRepositoryImpl
 import ch.brickinventoryapp.data.repository.WantedRepository
-import ch.brickinventoryapp.data.repository.MerklisteRepositoryImpl
-import ch.brickinventoryapp.data.repository.SetDateienRepository
+import ch.brickinventoryapp.data.repository.WantedListRepositoryImpl
+import ch.brickinventoryapp.data.repository.SetFilesRepository
 import ch.brickinventoryapp.data.repository.SetFilesRepositoryImpl
-import ch.brickinventoryapp.data.repository.SetKatalogRepository
+import ch.brickinventoryapp.data.repository.SetCatalogRepository
 import ch.brickinventoryapp.data.repository.SetCatalogRepositoryImpl
 import ch.brickinventoryapp.data.repository.PartsRepository
-import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
+import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
 import ch.brickinventoryapp.data.repository.ManagementRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
-import ch.brickinventoryapp.data.repository.Bestandsabgleich
-import ch.brickinventoryapp.data.repository.Kontosicht
-import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.security.Vertrauenschiffre
+import ch.brickinventoryapp.data.repository.AdminRepositoryImpl
+import ch.brickinventoryapp.data.repository.StockReconciliation
+import ch.brickinventoryapp.data.repository.AccountView
+import ch.brickinventoryapp.data.NetworkState.RetryPolicy
+import ch.brickinventoryapp.security.TrustCipher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import ch.brickinventoryapp.session.SitzungsRepository
+import ch.brickinventoryapp.session.SessionRepository
 import kotlinx.coroutines.Job
 
 // Test defaults don't belong in the @Inject constructors: there, whoever builds without Hilt
 // would silently get a transient store. The factories are named like the interfaces; whoever
 // needs a store gets their own in memory with no argument given.
 
-/** Lists and outbox in memory, with a fixed scope; the test keeps [ausgang] to check on it. */
-fun Testablage(bereich: String? = "test", ausgang: Ausgang = StorageExit(), planner: ExitPlanner = ExitPlanner {}) =
-    Offlineablage(StorageInventory(), ausgang, { bereich }, planner)
+/** Lists and outbox in memory, with a fixed scope; the test keeps [outbox] to check on it. */
+fun TestStore(area: String? = "test", outbox: Outbox = OutboxStorage(), planner: OutboxPlanner = OutboxPlanner {}) =
+    OfflineStore(StorageInventory(), outbox, { area }, planner)
 
-fun testSetsRepository(api: SetsApi, ablage: Offlineablage = Testablage()): SetsRepository =
-    SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+fun testSetsRepository(api: SetsApi, store: OfflineStore = TestStore()): SetsRepository =
+    SetsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
-fun testWantedRepository(api: SetsApi, ablage: Offlineablage = Testablage()): WantedRepository =
-    MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+fun testWantedRepository(api: SetsApi, store: OfflineStore = TestStore()): WantedRepository =
+    WantedListRepositoryImpl(api, store, RetryPolicy.ONCE)
 
-fun testAlarmRepository(api: SetsApi, ablage: Offlineablage = Testablage()): AlarmRepository =
-    AlarmRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+fun testAlarmRepository(api: SetsApi, store: OfflineStore = TestStore()): AlarmRepository =
+    AlarmRepositoryImpl(api, store, RetryPolicy.ONCE)
 
-fun testSetCatalogRepository(api: SetsApi): SetKatalogRepository =
+fun testSetCatalogRepository(api: SetsApi): SetCatalogRepository =
     SetCatalogRepositoryImpl(api)
 
-fun testSetFilesRepository(api: SetsApi): SetDateienRepository =
+fun testSetFilesRepository(api: SetsApi): SetFilesRepository =
     SetFilesRepositoryImpl(api)
 
-fun testPartsRepository(api: PartsApi, ablage: Offlineablage = Testablage()): PartsRepository =
-    TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+fun testPartsRepository(api: PartsApi, store: OfflineStore = TestStore()): PartsRepository =
+    PartsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
-fun testMinifigsRepository(api: MinifigsApi, ablage: Offlineablage = Testablage()): MinifigsRepository =
-    FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+fun testMinifigsRepository(api: MinifigsApi, store: OfflineStore = TestStore()): MinifigsRepository =
+    FiguresRepositoryImpl(api, store, RetryPolicy.ONCE)
 
 fun testVouchersRepository(api: VouchersApi): VouchersRepository =
-    GutscheineRepositoryImpl(api, Testablage())
+    VouchersRepositoryImpl(api, TestStore())
 
 fun testAccountRepository(
     api: AccountApi,
     io: CoroutineDispatcher = Dispatchers.IO,
-): AccountRepository = KontoRepositoryImpl(api, io)
+): AccountRepository = AccountRepositoryImpl(api, io)
 
-fun testFinancesRepository(api: FinancesApi, ablage: Offlineablage = Testablage()): FinancesRepository = FinanzenRepositoryImpl(api, ablage)
+fun testFinancesRepository(api: FinancesApi, store: OfflineStore = TestStore()): FinancesRepository = FinancesRepositoryImpl(api, store)
 
-fun testHouseholdRepository(api: HouseholdApi, ablage: Offlineablage = Testablage()): HouseholdRepository =
-    HaushaltRepositoryImpl(api, ablage)
+fun testHouseholdRepository(api: HouseholdApi, store: OfflineStore = TestStore()): HouseholdRepository =
+    HouseholdRepositoryImpl(api, store)
 
 fun testManagementRepository(api: ManagementApi): ManagementRepository =
-    VerwaltungRepositoryImpl(api)
+    AdminRepositoryImpl(api)
 
-fun testCatalogRepository(api: CatalogApi, ablage: Offlineablage = Testablage()): CatalogRepository =
-    KatalogRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+fun testCatalogRepository(api: CatalogApi, store: OfflineStore = TestStore()): CatalogRepository =
+    CatalogRepositoryImpl(api, store, RetryPolicy.ONCE)
 
-/** The view over chosen accounts; with the same [ablage] as the repositories, so writing asks it again. */
-fun testKontosicht(api: BrickApiService, ablage: Offlineablage = Testablage()): Kontosicht =
-    Kontosicht(api, api, api, ablage, Wiederholung.EINMAL)
+/** The view over chosen accounts; with the same [store] as the repositories, so writing asks it again. */
+fun testAccountView(api: BrickApiService, store: OfflineStore = TestStore()): AccountView =
+    AccountView(api, api, api, store, RetryPolicy.ONCE)
 
-/** Sets, parts and figures on one shared [ablage]. */
-fun testBestandsabgleich(api: BrickApiService, ablage: Offlineablage): Bestandsabgleich =
-    Bestandsabgleich(SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL), MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL),
-        TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL),
-        FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL), ablage)
+/** Sets, parts and figures on one shared [store]. */
+fun testStockReconciliation(api: BrickApiService, store: OfflineStore): StockReconciliation =
+    StockReconciliation(SetsRepositoryImpl(api, store, RetryPolicy.ONCE), WantedListRepositoryImpl(api, store, RetryPolicy.ONCE),
+        PartsRepositoryImpl(api, store, RetryPolicy.ONCE),
+        FiguresRepositoryImpl(api, store, RetryPolicy.ONCE), store)
 
 /** The device store's trust cipher with a fixed key: Robolectric has no Keystore. */
-fun testVertrauenschiffre(schluessel: Byte = 7): Vertrauenschiffre = Vertrauenschiffre { ByteArray(32) { schluessel } }
+fun testTrustCipher(key: Byte = 7): TrustCipher = TrustCipher { ByteArray(32) { key } }
 
 /**
- * The SitzungsDienst for tests of ViewModels that trigger a sign-out: it only
+ * The SessionService for tests of ViewModels that trigger a sign-out: it only
  * counts along, so a test can check whether and when a sign-out happened.
  */
-class SessionFake(private val signOutOn: () -> Unit = {}) : SitzungsRepository {
-    var signOuts = 0
+class SessionFake(private val logoutOn: () -> Unit = {}) : SessionRepository {
+    var logouts = 0
         private set
 
-    override fun starte() = Unit
-    override fun abmelden(): Job {
-        signOuts++
-        signOutOn()
+    override fun launch() = Unit
+    override fun logout(): Job {
+        logouts++
+        logoutOn()
         return Job().apply { complete() }
     }
     override fun secondFactorConfigured() = Unit
-    override fun ladeEinstellungen() = Unit
+    override fun loadSettings() = Unit
     override fun loadMembers() = Unit
-    override fun ladeLagerorte() = Unit
+    override fun fetchStorageLocations() = Unit
 }

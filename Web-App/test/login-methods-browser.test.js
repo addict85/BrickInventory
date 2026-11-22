@@ -8,7 +8,7 @@
  * Counter-checks (measured 14.11.2026, bundle rebuilt):
  *   A  in checkRegistrationEnabled the check `lauf !== _loginMethodsRun`
  *      removed → red: „die jüngste Antwort gilt“ (link-forgot hidden)
- *   B  `dataset.anmeldewege = 'geladen'` removed → red: timeout
+ *   B  `dataset.loginMethods = 'loaded'` removed → red: timeout
  *      „Anmeldewege eingetragen“
  */
 const test = require('node:test');
@@ -52,10 +52,10 @@ test('login methods: the most recent response applies', { timeout: 120_000 }, as
   await b.auswerten(`fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => {
     document.querySelector('.ntab[data-tab="finance"]').click(); return true; })`);
   await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Sitzung abgelaufen');
-  await bis(`document.getElementById('login-screen').dataset.anmeldewege === 'geladen'`, 'Anmeldewege eingetragen');
+  await bis(`document.getElementById('login-screen').dataset.loginMethods === 'loaded'`, 'Anmeldewege eingetragen');
   // Wait for the late first response.
   await bis('window.__spaet === true', 'späte erste Antwort', 150);
   await ruhig();
   assert.equal(await b.auswerten(`document.getElementById('link-forgot').hidden`), false, 'die jüngste Antwort gilt');
-  assert.equal(await b.auswerten(`document.getElementById('login-screen').dataset.anmeldewege`), 'geladen');
+  assert.equal(await b.auswerten(`document.getElementById('login-screen').dataset.loginMethods`), 'loaded');
 });

@@ -49,13 +49,13 @@ test('server: empty catalog', { concurrency: 1 }, async t => {
 async function versuche(antworten, nr) {
   const o = await openUi(antworten);
   const { d } = o;
-  d.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click();
+  d.querySelector('button[data-click="openCapture"][data-arg="set"]').click();
   d.getElementById('add-num').value = nr;
   d.getElementById('btn-add').click();
-  await warte(() => !d.getElementById('add-unbekannt').hidden);
+  await warte(() => !d.getElementById('add-unknown').hidden);
   return {
     ...o,
-    hinweis: d.getElementById('add-unbekannt').textContent.replace(/\s+/g, ' ').trim(),
+    hinweis: d.getElementById('add-unknown').textContent.replace(/\s+/g, ' ').trim(),
     knopf: d.getElementById('btn-add').textContent.trim(),
   };
 }

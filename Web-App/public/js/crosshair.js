@@ -13,13 +13,13 @@ import { esc, html, rawHtml } from './escaping.js';
 export function crosshairParts(points, colors, top, bottom, f = 1) {
   const json = esc(JSON.stringify(points));
   const circles = colors
-    .map(fb => html`<circle class="fk-punkt" r="${4.5 * f}" fill="${fb}" stroke="var(--sur)" stroke-width="2"/>`)
+    .map(fb => html`<circle class="fk-dot" r="${4.5 * f}" fill="${fb}" stroke="var(--sur)" stroke-width="2"/>`)
     .join('');
   return {
-    attr: ` data-punkte="${json}" data-mass="${f}" tabindex="0"`,
-    svg: html`<g class="fadenkreuz" visibility="hidden" pointer-events="none">
-      <line class="fk-linie" y1="${top}" y2="${bottom}" stroke="var(--txt)" stroke-width="1"/>${rawHtml(circles)}
-      <rect class="fk-schild" rx="6" height="0" width="0" fill="var(--txt)"/>
+    attr: ` data-dots="${json}" data-mass="${f}" tabindex="0"`,
+    svg: html`<g class="crosshair" visibility="hidden" pointer-events="none">
+      <line class="fk-line" y1="${top}" y2="${bottom}" stroke="var(--txt)" stroke-width="1"/>${rawHtml(circles)}
+      <rect class="fk-sign" rx="6" height="0" width="0" fill="var(--txt)"/>
       <text class="fk-text" font-size="${12 * f}" font-weight="600" fill="var(--sur)" font-family="inherit"></text></g>`,
   };
 }
@@ -29,14 +29,14 @@ export function crosshairParts(points, colors, top, bottom, f = 1) {
  * @param {SVGSVGElement} svg
  */
 function pointsOf(svg) {
-  if (!svg._punkte) {
+  if (!svg._dots) {
     try {
-      svg._punkte = JSON.parse(svg.dataset.punkte || '[]');
+      svg._dots = JSON.parse(svg.dataset.dots || '[]');
     } catch (_) {
-      svg._punkte = [];
+      svg._dots = [];
     }
   }
-  return svg._punkte ?? [];
+  return svg._dots ?? [];
 }
 
 /**
@@ -45,7 +45,7 @@ function pointsOf(svg) {
  * @param {number | null} i
  */
 export function showCrosshair(svg, i, announce = false) {
-  const g = svg?.querySelector('.fadenkreuz');
+  const g = svg?.querySelector('.crosshair');
   if (!svg || !g) return;
   const points = pointsOf(svg);
   if (i == null || !points.length) {
@@ -56,13 +56,13 @@ export function showCrosshair(svg, i, announce = false) {
   svg._fk = i;
   const f = Number(svg.dataset.mass) || 1;
   const p = points[i];
-  const line = g.querySelector('.fk-linie'),
+  const line = g.querySelector('.fk-line'),
     text = g.querySelector('.fk-text'),
-    shield = g.querySelector('.fk-schild');
+    shield = g.querySelector('.fk-sign');
   if (!line || !text || !shield) return;
   line.setAttribute('x1', String(p.x));
   line.setAttribute('x2', String(p.x));
-  g.querySelectorAll('.fk-punkt').forEach((c, k) => {
+  g.querySelectorAll('.fk-dot').forEach((c, k) => {
     const y = p.y[k];
     c.setAttribute('visibility', y == null ? 'hidden' : 'visible');
     if (y != null) {
@@ -102,10 +102,10 @@ export function showCrosshair(svg, i, announce = false) {
   });
   g.setAttribute('visibility', 'visible');
   if (announce) {
-    let announcement = svg.parentElement?.querySelector(':scope > .diagramm-ansage');
+    let announcement = svg.parentElement?.querySelector(':scope > .chart-announcement');
     if (!announcement && svg.parentElement) {
       announcement = document.createElement('span');
-      announcement.className = 'vh diagramm-ansage';
+      announcement.className = 'vh chart-announcement';
       announcement.setAttribute('aria-live', 'polite');
       svg.after(announcement);
     }
@@ -131,7 +131,7 @@ function nearestPoint(svg, clientX) {
 
 const chartOf = (/** @type {Event} */ e) =>
   /** @type {SVGSVGElement | null | undefined} */ (
-    /** @type {Element | null} */ (e.target)?.closest?.('svg[data-punkte]')
+    /** @type {Element | null} */ (e.target)?.closest?.('svg[data-dots]')
   );
 
 for (const kind of ['pointermove', 'pointerdown']) {

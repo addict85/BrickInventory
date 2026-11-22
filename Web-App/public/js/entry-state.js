@@ -1,34 +1,34 @@
 import { todayIso } from './components.js';
 import { tRaw } from '../i18n.js';
 import { html, rawHtml } from './escaping.js';
-import { ico, G, setzeHtml } from './dom.js';
-import { fmtDatum, browserWritesDateHowApp } from './format.js';
+import { ico, G, setHtml } from './dom.js';
+import { fmtDate, browserWritesDateHowApp } from './format.js';
 
 // What the set's purchase price dialog and the dialog of manual entries share: the same window (#acq-modal),
 // the same household list and the same table building blocks.
-/** @typedef {import('../../frontend-types/contract').HouseholdMember} Konto */
+/** @typedef {import('../../frontend-types/contract').HouseholdMember} Account */
 
 /** Whose acquisitions are in the dialog and where closing leads back to. */
-export const erfassung = {
+export const acquisition = {
   /** @type {string | null} */ sn: null,
-  /** @type {number | null} */ besitzer: null,
-  /** @type {Konto[]} */ mitglieder: [],
+  /** @type {number | null} */ owner: null,
+  /** @type {Account[]} */ members: [],
   /** Return from the dialog of a manual entry; null means "back to the set".
    * @type {(() => void) | null} */
-  zurueck: null,
+  back: null,
 };
 
 /**
  * Redraw without losing focus: saving on leaving a field redraws the table
  * when Tab is already in the next field — the focus then fell onto <body>, and the keyboard was out.
- * @param {HTMLElement} ziel
+ * @param {HTMLElement} target
  * @param {import('./escaping.js').Markup} markup
  */
-export function setWithFocus(ziel, markup) {
-  const felder = () => /** @type {HTMLElement[]} */ ([...ziel.querySelectorAll('input, select, button')]);
-  const place = felder().indexOf(/** @type {HTMLElement} */ (document.activeElement));
-  setzeHtml(ziel, markup);
-  if (place >= 0) felder()[place]?.focus({ preventScroll: true });
+export function setWithFocus(target, markup) {
+  const fields = () => /** @type {HTMLElement[]} */ ([...target.querySelectorAll('input, select, button')]);
+  const place = fields().indexOf(/** @type {HTMLElement} */ (document.activeElement));
+  setHtml(target, markup);
+  if (place >= 0) fields()[place]?.focus({ preventScroll: true });
 }
 
 /**
@@ -50,20 +50,20 @@ export function isoTag(v) {
  * @param {string} textId
  */
 export function dateField(attrs, iso, textId) {
-  const text = browserWritesDateHowApp(iso) ? '' : fmtDatum(iso, 'lang');
-  return html`<span class="acq-datum"><input class="acq-feld" type="date" max="${todayIso()}" value="${iso}" aria-label="${tRaw('detail.added')}"
-      ${text ? html`aria-describedby="${textId}"` : ''} ${rawHtml(attrs)} />${text ? html`<span class="acq-datum-text" id="${textId}">${text}</span>` : ''}</span>`;
+  const text = browserWritesDateHowApp(iso) ? '' : fmtDate(iso, 'lang');
+  return html`<span class="acq-date"><input class="acq-field" type="date" max="${todayIso()}" value="${iso}" aria-label="${tRaw('detail.added')}"
+      ${text ? html`aria-describedby="${textId}"` : ''} ${rawHtml(attrs)} />${text ? html`<span class="acq-date-text" id="${textId}">${text}</span>` : ''}</span>`;
 }
 
 /** Rows whose last change is saved; the marker survives redrawing. */
-export const gespeichert = new Set();
+export const saved = new Set();
 /** @param {number | string} id */
 export function savedBrand(id) {
-  return html`<span class="acq-ok" id="acq-ok-${id}" role="status"${gespeichert.has(String(id)) ? '' : ' hidden'}>${ico('ok')}<span>${tRaw('settings.saved')}</span></span>`;
+  return html`<span class="acq-ok" id="acq-ok-${id}" role="status"${saved.has(String(id)) ? '' : ' hidden'}>${ico('ok')}<span>${tRaw('settings.saved')}</span></span>`;
 }
 /** @param {number | string} id */
 export function showSaved(id) {
-  gespeichert.add(String(id));
+  saved.add(String(id));
   const el = G(`acq-ok-${id}`);
   if (el) el.hidden = false;
 }

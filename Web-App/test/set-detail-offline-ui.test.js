@@ -6,7 +6,7 @@
  * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
  *   A  the fallback to galerieSets deleted in openModal() → red: “offline” (dialog closes)
  *   B  PAAR deleted at year/theme/parts in setDetailHtml() → red: “pairs” (dt/dd ≠ rows)
- *   C  .menge-zahl again as <span> → red: “household” (no output)
+ *   C  .quantity-number again as <span> → red: “household” (no output)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -87,8 +87,8 @@ test('household: every quantity an output with the account in the name', async (
   try {
     await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.querySelectorAll('#m-menge output.menge-zahl').length === 2), 'Haushalt');
-    const namen = [...d.querySelectorAll('#m-menge output.menge-zahl')].map(o => o.getAttribute('aria-label'));
+    assert.ok(await warte(() => d.querySelectorAll('#m-quantity output.quantity-number').length === 2), 'Haushalt');
+    const namen = [...d.querySelectorAll('#m-quantity output.quantity-number')].map(o => o.getAttribute('aria-label'));
     assert.equal(namen.length, 2);
     assert.match(namen.find(n => /lena/.test(n)) || '', /^Anzahl: lena/);
     assert.ok(

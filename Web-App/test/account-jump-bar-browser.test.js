@@ -6,7 +6,7 @@
  * Counter-checks (measured 15.11.2026, each alone, bundle rebuilt):
  *   A  bar back as <nav> instead of <div role="navigation"> → red: all four subcases (“bar is fixed like
  *      the main navigation”; on the phone it lay over the bottom bar)
- *   B  mobile rule .konto-nav{flex-wrap:nowrap;overflow-x:auto} removed → red: both 390 px cases (“bar
+ *   B  mobile rule .account-nav{flex-wrap:nowrap;overflow-x:auto} removed → red: both 390 px cases (“bar
  *      wraps”)
  *
  * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
@@ -26,9 +26,9 @@ async function groesse(b, breite, telefon) {
 }
 
 const MASS = `(() => {
-  const nav = document.querySelector('#tab-profil .konto-nav');
+  const nav = document.querySelector('#tab-profile .account-nav');
   const r = nav.getBoundingClientRect();
-  const titel = document.querySelector('#tab-profil .ptitle').getBoundingClientRect();
+  const titel = document.querySelector('#tab-profile .ptitle').getBoundingClientRect();
   const links = [...nav.querySelectorAll('a')].map(a => a.getBoundingClientRect());
   return {
     situation: getComputedStyle(nav).position,
@@ -60,7 +60,7 @@ test('N5 jump bar in the account', { timeout: 240_000 }, async t => {
           features: [{ name: 'prefers-color-scheme', value: dunkel ? 'dark' : 'light' }],
         });
         await app.b.auswerten(`location.hash = '#/konto'; true`);
-        await app.bis(`document.getElementById('tab-profil').classList.contains('active')`, 'Konto offen');
+        await app.bis(`document.getElementById('tab-profile').classList.contains('active')`, 'Konto offen');
         await app.ruhig();
         const m = await app.b.auswerten(MASS);
         // Since round 27 it sticks below the header (sticky); fixed like the main navigation stays wrong.
@@ -71,8 +71,8 @@ test('N5 jump bar in the account', { timeout: 240_000 }, async t => {
         assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
         assert.equal(m.rollt, telefon, telefon ? 'rollt am Telefon nicht' : 'rollt am Rechner');
         assert.notEqual(m.farbe, m.grund, 'Linkfarbe gleich dem Grund');
-        for (const ziel of ['konto-t-gefahr', 'konto-t-profil']) {
-          await app.b.auswerten(`document.querySelector('.konto-nav a[data-arg="${ziel}"]').click(); true`);
+        for (const ziel of ['account-t-danger', 'account-t-profile']) {
+          await app.b.auswerten(`document.querySelector('.account-nav a[data-arg="${ziel}"]').click(); true`);
           await app.ruhig(500);
           const situation =
             await app.b.auswerten(`(() => { const r = document.getElementById('${ziel}').getBoundingClientRect();

@@ -6,7 +6,7 @@ import ch.brickinventoryapp.contract.PartValuationItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * What a manually entered tile and its detail need: the quantity-weighted
@@ -17,7 +17,7 @@ import ch.brickinventoryapp.testing.Quellen
 class ManualTileTest {
 
     private fun read(rel: String) =
-        File(Quellen.root, "$rel").readText()
+        File(Sources.root, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -27,12 +27,12 @@ class ManualTileTest {
         // unit price. Anyone who bought once for 2.- and once for 8.-
         // would see 8.- there instead of 5.-. The server computes it correctly
         // (utils/handlers/shared.ts) — the app simply did not read that field.
-        val teil = BrickJson.decodeFromString(PartValuationItem.serializer(),
+        val part = BrickJson.decodeFromString(PartValuationItem.serializer(),
             """{"part_number":"3001","unit_price":8.0,"avg_purchase_price":5.0}""")
-        val figur = BrickJson.decodeFromString(FigValuationItem.serializer(),
+        val figure = BrickJson.decodeFromString(FigValuationItem.serializer(),
             """{"fig_number":"sw0001","unit_price":8.0,"avg_purchase_price":5.0}""")
-        assertEquals(5.0, teil.avgPurchasePrice ?: 0.0, 0.0)
-        assertEquals(5.0, figur.avgPurchasePrice ?: 0.0, 0.0)
+        assertEquals(5.0, part.avgPurchasePrice ?: 0.0, 0.0)
+        assertEquals(5.0, figure.avgPurchasePrice ?: 0.0, 0.0)
     }
 
     // The value tiles like in the set detail; a large price row in the market-price card
@@ -40,8 +40,8 @@ class ManualTileTest {
     @Test
     fun `the detail view shows value tiles, market price and price history, without a large price row`() {
         val s = code(read("parts/ui/screens/ManualItemDetailScreen.kt"))
-        for (teil in listOf("WertKacheln(", "MarketPriceByCondition(", "PriceChart(")) {
-            assert(s.contains(teil)) { "$teil fehlt in der Detailansicht" }
+        for (part in listOf("ValueTiles(", "MarketPriceByCondition(", "PriceChart(")) {
+            assert(s.contains(part)) { "$part fehlt in der Detailansicht" }
         }
         assert(!s.contains("headlineSmall")) { "wieder eine grosse Preiszeile neben den Kacheln" }
     }

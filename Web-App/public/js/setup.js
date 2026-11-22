@@ -1,11 +1,11 @@
 import { registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { ico, G, alle, eins, setzeHtml, fuegeHtmlEin } from './dom.js';
+import { ico, G, queryAll, queryOne, setHtml, insertHtml } from './dom.js';
 import { passwordRuleText, formError } from './form.js';
 import { hideRbHint, showRbHint } from './account.js';
 import { toast, discardToasts } from './messages.js';
-import { oeffneErfassen, clearerReason } from './components.js';
+import { openCapture, clearerReason } from './components.js';
 import { withSecondFactor, saveSettings } from './confirm-prompt.js';
 import { html } from './escaping.js';
 
@@ -23,23 +23,23 @@ let _saved = {};
 
 /** @type {Record<string, Record<string, string>>} */
 const SOURCE_FIELDS = {
-  rebrickable: { rebrickable_api_key: 'ew-rb' },
-  brickset: { brickset_api_key: 'ew-bs' },
+  rebrickable: { rebrickable_api_key: 'wiz-rb' },
+  brickset: { brickset_api_key: 'wiz-bs' },
   bricklink: {
-    bricklink_consumer_key: 'ew-bl-ck',
-    bricklink_consumer_secret: 'ew-bl-cs',
-    bricklink_token: 'ew-bl-tv',
-    bricklink_token_secret: 'ew-bl-ts',
+    bricklink_consumer_key: 'wiz-bl-ck',
+    bricklink_consumer_secret: 'wiz-bl-cs',
+    bricklink_token: 'wiz-bl-tv',
+    bricklink_token_secret: 'wiz-bl-ts',
   },
 };
 
 function render() {
-  const modal = G('einrichtung-modal');
-  for (const el of alle('.ew-schritt', modal)) el.classList.toggle('aktiv', el.dataset.schritt === _steps[_now]);
-  G('ew-schritte').textContent = tRaw('setup.step', { n: _now + 1, von: _steps.length });
-  G('ew-spaeter').hidden = _now === _steps.length - 1;
-  G('ew-zurueck').style.display = _now > 0 ? '' : 'none';
-  G('ew-weiter').textContent = _now === _steps.length - 1 ? tRaw('setup.finish') : tRaw('setup.next');
+  const modal = G('setup-modal');
+  for (const el of queryAll('.wiz-step', modal)) el.classList.toggle('active', el.dataset.step === _steps[_now]);
+  G('wiz-steps').textContent = tRaw('setup.step', { n: _now + 1, of: _steps.length });
+  G('wiz-later').hidden = _now === _steps.length - 1;
+  G('wiz-back').style.display = _now > 0 ? '' : 'none';
+  G('wiz-next').textContent = _now === _steps.length - 1 ? tRaw('setup.finish') : tRaw('setup.next');
   // Toasts belong to the step they arose in; they're shown at the field anyway.
   discardToasts();
 }
@@ -49,28 +49,28 @@ function render() {
  * @param {boolean | null} ok  null: not checked yet
  */
 function setStatus(source, ok) {
-  const el = G(`ew-stand-${source}`);
+  const el = G(`wiz-status-${source}`);
   if (!el) return;
-  el.className = ok === null ? '' : ok ? 'ew-stand ok' : 'ew-stand fehlt';
-  setzeHtml(
+  el.className = ok === null ? '' : ok ? 'wiz-status ok' : 'wiz-status missing';
+  setHtml(
     el,
     ok === null
       ? ''
-      : html`${ico(ok ? 'ok' : 'fehler')}<span class="vh">${tRaw(ok ? 'setup.test_ok' : 'setup.test_failed')}</span>`,
+      : html`${ico(ok ? 'ok' : 'error')}<span class="vh">${tRaw(ok ? 'setup.test_ok' : 'setup.test_failed')}</span>`,
   );
 }
 
 /** Message on the section; the raw reason sits expandable below it. */
 /** @param {string} source @param {string} text @param {string} [details] @param {string[]} [fields] */
 function sourceError(source, text, details = '', fields = []) {
-  const box = G(`ew-fehler-${source}`);
+  const box = G(`wiz-error-${source}`);
   if (!box) return;
   formError(box, text, fields);
   if (text && details && details !== text)
-    fuegeHtmlEin(
+    insertHtml(
       box,
       'beforeend',
-      html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${details}</code></details>`,
+      html`<details class="error-details"><summary>${tRaw('list.details')}</summary><code>${details}</code></details>`,
     );
 }
 
@@ -87,17 +87,17 @@ export async function checkSetup() {
     const total = s ? (s.total_sets || 0) + (s.total_parts || 0) + (s.total_minifigs || 0) : 0;
     if (total > 0) return;
   }
-  _steps = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'erstes-set'];
+  _steps = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'first-set'];
   _now = 0;
   _saved = Object.fromEntries(Object.entries(d.quellen || {}).map(([q, ok]) => [q, !!ok]));
   for (const [q, ok] of Object.entries(_saved)) setStatus(q, ok ? true : null);
   render();
-  G('einrichtung-modal').classList.add('open');
+  G('setup-modal').classList.add('open');
   hideRbHint();
 }
 
 function close() {
-  G('einrichtung-modal').classList.remove('open');
+  G('setup-modal').classList.remove('open');
 }
 
 async function finish() {
@@ -106,20 +106,20 @@ async function finish() {
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
 }
 
-export function einrichtungSpaeter() {
+export function setupLater() {
   close();
   // Saved in the wizard, the checkmark is already there; the cache doesn't know yet.
-  if (!G('ew-stand-rebrickable')?.classList.contains('ok')) showRbHint();
+  if (!G('wiz-status-rebrickable')?.classList.contains('ok')) showRbHint();
 }
 
-export function einrichtungZurueck() {
+export function setupBack() {
   if (_now > 0) {
     _now--;
     render();
   }
 }
 
-export async function einrichtungWeiter() {
+export async function setupNext() {
   if (_now < _steps.length - 1) {
     _now++;
     render();
@@ -128,43 +128,43 @@ export async function einrichtungWeiter() {
   await finish();
 }
 
-export async function einrichtungPasswort() {
-  const old = G('ew-pw-alt').value,
-    neu = G('ew-pw-neu').value,
-    again = G('ew-pw-wdh').value;
-  const box = G('ew-pw-fehler');
+export async function setupPassword() {
+  const old = G('wiz-pw-alt').value,
+    newValue = G('wiz-pw-new').value,
+    again = G('wiz-pw-repeat').value;
+  const box = G('wiz-pw-error');
   formError(box, '');
-  const rule = passwordRuleText(neu);
+  const rule = passwordRuleText(newValue);
   if (rule) {
-    formError(box, rule, ['ew-pw-neu']);
+    formError(box, rule, ['wiz-pw-new']);
     return;
   }
-  if (neu !== again) {
-    formError(box, tRaw('settings.password.mismatch'), ['ew-pw-wdh']);
+  if (newValue !== again) {
+    formError(box, tRaw('settings.password.mismatch'), ['wiz-pw-repeat']);
     return;
   }
   const d = await withSecondFactor(z =>
-    api('POST', '/v1/auth/change-password', { current: old, newPassword: neu, ...z }),
+    api('POST', '/v1/auth/change-password', { current: old, newPassword: newValue, ...z }),
   );
   if (!d) return;
   if (!d?.success) {
     formError(box, d?.error || tRaw('settings.error'), [
-      d?.code === 'aktuelles_passwort_falsch' ? 'ew-pw-alt' : 'ew-pw-neu',
+      d?.code === 'aktuelles_passwort_falsch' ? 'wiz-pw-alt' : 'wiz-pw-new',
     ]);
     return;
   }
-  ['ew-pw-alt', 'ew-pw-neu', 'ew-pw-wdh'].forEach(id => {
+  ['wiz-pw-alt', 'wiz-pw-new', 'wiz-pw-repeat'].forEach(id => {
     G(id).value = '';
   });
   toast(tRaw('setup.pw_done'), 'success');
-  await einrichtungWeiter();
+  await setupNext();
 }
 
 /**
  * Save whatever is filled in (empty fields stay as they are), then test.
  * @param {string} source
  */
-export async function einrichtungQuelle(source) {
+export async function setupSource(source) {
   const fields = SOURCE_FIELDS[source];
   if (!fields) return;
   /** @type {Record<string, string>} */
@@ -198,12 +198,12 @@ export async function einrichtungQuelle(source) {
     toast(tRaw('setup.test_ok'), 'success');
     return;
   }
-  const { grund, details } = d?.code
+  const { grund: reason, details } = d?.code
     ? { grund: d.error, details: d.details == null ? undefined : String(d.details) }
     : clearerReason(d);
   sourceError(
     source,
-    grund || tRaw('settings.error'),
+    reason || tRaw('settings.error'),
     details || '',
     d?.code === 'quelle_abgelehnt' ? Object.values(fields) : [],
   );
@@ -213,24 +213,24 @@ export async function einrichtungQuelle(source) {
  * Last step: head to wherever the first set is created.
  * @param {string} target
  */
-export function einrichtungZiel(target) {
-  const tab = (/** @type {string} */ name) => eins(`.ntab[data-tab="${name}"]`)?.click();
-  if (target === 'katalog') tab('catalog');
+export function setupTarget(target) {
+  const tab = (/** @type {string} */ name) => queryOne(`.ntab[data-tab="${name}"]`)?.click();
+  if (target === 'catalog') tab('catalog');
   else {
     tab('gallery');
     // The file picker must open in the same click, otherwise the browser blocks it.
     if (target === 'csv') G('csv-file')?.click();
-    else oeffneErfassen();
+    else openCapture();
   }
   finish();
 }
 
 // Names below are registry-exposed (index.html/connection.js) — kept unchanged.
 registerActions({
-  einrichtungSpaeter,
-  einrichtungZurueck,
-  einrichtungWeiter,
-  einrichtungPasswort,
-  einrichtungQuelle,
-  einrichtungZiel,
+  setupLater,
+  setupBack,
+  setupNext,
+  setupPassword,
+  setupSource,
+  setupTarget,
 });

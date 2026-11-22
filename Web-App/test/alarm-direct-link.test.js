@@ -16,7 +16,7 @@ test('4. and the web app redeems it', async () => {
     {
       '/v1/sets/10294-1': { success: true, set: { set_number: '10294-1', name: 'Titanic', quantity: 1 } },
     },
-    { vorher: fenster => fenster.history.replaceState({}, '', '/?set=10294-1') },
+    { before: fenster => fenster.history.replaceState({}, '', '/?set=10294-1') },
   );
   try {
     assert.ok(

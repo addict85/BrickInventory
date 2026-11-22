@@ -1,0 +1,12 @@
+{
+  // The two classic scripts of the UI: theme-boot.js runs before the bundle in
+  // the <head>, logviewer.js in the log window. Their functions are global on
+  // purpose (window[name]), hence without moduleDetection "force".
+  "extends": "./tsconfig.frontend.json",
+  "compilerOptions": {
+    "moduleDetection": "auto",
+    "noUnusedLocals": false
+  },
+  "include": ["public/js/theme-boot.js", "public/js/logviewer.js", "frontend-types/*.d.ts"],
+  "exclude": []
+}

@@ -28,7 +28,7 @@
   release-check.py schluessel GELIEFERT_PEM APP_PEM
       GELIEFERT_PEM ist der öffentliche Beschreibungsschlüssel, mit dem der
       Signierjob signiert hat (fehlt die Datei: keiner). APP_PEM ist
-      res/raw/beschreibungs_schluessel.pem der App. Nennt die App Schlüssel, muss
+      res/raw/description_key.pem der App. Nennt die App Schlüssel, muss
       der gelieferte darunter sein; sonst lehnten die Geräte die Beschreibung ab
       (sec11 H1). Nennt sie keinen, nähme sie keine Beschreibung an:
       Rückgabe 3, damit der Workflow das sichtbar macht (Etikett: kein Release).

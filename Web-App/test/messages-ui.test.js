@@ -4,7 +4,7 @@
  * clears them away.
  *
  * Counter-checks (measured on 28.10.2026):
- *   A  (re-measured 05.11.2026) `bleibt` in toast() always false → red:
+ *   A  (re-measured 05.11.2026) `stays` in toast() always false → red:
  *      “errors and button messages do not expire”
  *   B  the click handler on the toast removed → red: “a click clears the message”
  *   C  (30.10.) the search for the same message in toast() removed → red:
@@ -16,7 +16,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-// Since 29.10. a list shows its load error itself (fehlerZustand);
+// Since 29.10. a list shows its load error itself (errorState);
 // a message comes from an action — here „Auf die Merkliste“.
 const FEHLER = { '/v1/wanted': { success: false, error: 'Merkliste kaputt' } };
 async function createWantedItem(w, d) {
@@ -49,7 +49,7 @@ test('errors and button messages do not expire', async () => {
     assert.match(meldung.textContent, /Merkliste kaputt/);
     for (const z of gefangen) z.fn();
     assert.ok(meldung.isConnected, 'der Fehler lief nach seiner Frist ab');
-    const zu = meldung.querySelector('.toast-zu');
+    const zu = meldung.querySelector('.toast-close');
     assert.equal(zu.getAttribute('aria-label'), 'Schliessen');
     zu.click();
     assert.equal(meldung.isConnected, false, 'das ✕ schliesst');
@@ -97,10 +97,10 @@ test('identical errors do not stack', async () => {
       await createWantedItem(w, d);
       await warte(() => d.querySelectorAll('#toasts .toast.error').length > 0);
     }
-    await warte(() => d.querySelector('#toasts .toast-anzahl:not([hidden])')?.textContent === '×3', 1000);
+    await warte(() => d.querySelector('#toasts .toast-count:not([hidden])')?.textContent === '×3', 1000);
     const meldungen = d.querySelectorAll('#toasts .toast.error');
     assert.equal(meldungen.length, 1, `${meldungen.length} Meldungen`);
-    assert.equal(meldungen[0].querySelector('.toast-anzahl').textContent, '×3');
+    assert.equal(meldungen[0].querySelector('.toast-count').textContent, '×3');
   } finally {
     w.close();
   }

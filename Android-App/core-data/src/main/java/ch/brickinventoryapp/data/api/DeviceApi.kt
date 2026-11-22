@@ -11,18 +11,18 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
 
-/** Device key and release of sensitive steps; only SchrittbindungImpl needs it, hence not in BrickApiService. */
+/** Device key and release of sensitive steps; only StepBindingImpl needs it, hence not in BrickApiService. */
 internal interface DeviceApi {
 
     @POST("api/v1/geraet/schluessel")
-    suspend fun depositChain(@Body anfrage: GeraeteSchluesselAnfrage): Response<Erledigt>
+    suspend fun depositChain(@Body request: GeraeteSchluesselAnfrage): Response<Erledigt>
 
     @POST("api/v1/geraet/schluessel/nonce")
-    suspend fun schluesselNonce(): Response<SchluesselNonce>
+    suspend fun keyNonce(): Response<SchluesselNonce>
 
     @POST("api/v1/geraet/schritt/challenge")
-    suspend fun stepChallenge(@Body anfrage: SchrittChallengeAnfrage): Response<SchrittChallenge>
+    suspend fun stepChallenge(@Body request: SchrittChallengeAnfrage): Response<SchrittChallenge>
 
     @POST("api/v1/geraet/schritt/freigabe")
-    suspend fun stepRelease(@Body anfrage: SchrittFreigabeAnfrage): Response<SchrittFreigabe>
+    suspend fun stepRelease(@Body request: SchrittFreigabeAnfrage): Response<SchrittFreigabe>
 }

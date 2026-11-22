@@ -80,7 +80,7 @@ const LAYOUT = telefon => `(() => {
     if (!zieher.length) for (const e of document.body.querySelectorAll('*')) { const r = e.getBoundingClientRect(); if (r.width > 0 && r.right > breite + 1 && !fest(e) && !rollt(e) && (!aussen || r.right > aussen.r)) aussen = { e, r: r.right }; }
     const verborgen = aussen ? '; verborgen: ' + name(aussen.e) + ' bis ' + Math.round(aussen.r) + ' px' : '';
     // Die Reiterleiste ist fest und kann das Fenster selbst aufweiten: dann ihre Masse dazu.
-    const leiste = liste.find(e => e.matches('nav:not(.einst-nav)'));
+    const leiste = liste.find(e => e.matches('nav:not(.settings-nav)'));
     const ls = leiste && getComputedStyle(leiste);
     const reiter = leiste ? [...leiste.querySelectorAll('.ntab')].filter(sichtbar) : [];
     const masse = leiste ? '; Leiste ' + Math.round(leiste.getBoundingClientRect().width) + ' px, Schrift ' + ls.fontSize + ', ' + ls.flexWrap + ', ' + reiter.length + ' Reiter je ' + (reiter[0] ? getComputedStyle(reiter[0]).flexBasis : '?') + ' (' + reiter.map(r => Math.round(r.getBoundingClientRect().width)).join('/') + ')' : '';
@@ -90,7 +90,7 @@ const LAYOUT = telefon => `(() => {
   // 2. Bedienelemente: Tippziele und Überlappung.
   const SEL = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [tabindex]:not([tabindex="-1"])';
   const ziele = [...wurzel.querySelectorAll(SEL)].filter(e => {
-    if (e.closest('.ovl:not(.open)') || e.matches('.sprunglink, [disabled]')) return false;
+    if (e.closest('.ovl:not(.open)') || e.matches('.skip-link, [disabled]')) return false;
     if (e.matches('input') && e.closest('label')) return sichtbar(e.closest('label'));
     return sichtbar(e);
   }).map(e => {
@@ -114,7 +114,7 @@ const LAYOUT = telefon => `(() => {
 
   // 3. Abgeschnittener Text ohne Auslassungszeichen, 4. Kontrast.
   for (const e of wurzel.querySelectorAll('*')) {
-    if (!sichtbar(e) || e.closest('svg, img, canvas, video, .color-dot, [data-farbe], .bild-ph, .skelett, .vh')) continue;
+    if (!sichtbar(e) || e.closest('svg, img, canvas, video, .color-dot, [data-color-hex], .image-ph, .skeleton, .vh')) continue;
     const text = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     const s = getComputedStyle(e);
     if (text && e.scrollWidth > e.clientWidth + 1 && /hidden|clip/.test(s.overflowX) && s.textOverflow !== 'ellipsis')
@@ -135,7 +135,7 @@ const LAYOUT = telefon => `(() => {
   const umgebung = (e) => grund(e.parentElement);
   const feld = 'input:not([type=hidden]):not([type=file]):not([type=range]):not([type=color]), select, textarea';
   for (const e of wurzel.querySelectorAll(feld + ', [role=switch]')) {
-    if (!sichtbar(e) || e.closest(':disabled, [aria-disabled="true"], .datei-versteckt') || e.matches('.datei-versteckt')) continue;
+    if (!sichtbar(e) || e.closest(':disabled, [aria-disabled="true"], .file-hidden') || e.matches('.file-hidden')) continue;
     const s = getComputedStyle(e);
     if ((e.type === 'checkbox' || e.type === 'radio') && s.appearance !== 'none') continue;   // gezeichnet vom Browser
     const u = umgebung(e); if (!u) continue;
@@ -169,7 +169,7 @@ const LAYOUT = telefon => `(() => {
       if (parseFloat(s['border' + seite + 'Width']) < 1 || s['border' + seite + 'Style'] === 'none') continue;
       const r = rgba(s['border' + seite + 'Color']); if (r && r.a > 0) best = Math.max(best, kontrast(ueber(r, u), u)); }
     return best; };
-  const KNOPF = '.btn, .period-btn:not(.zeitraum-wahl > *), .ubadge-knopf, .v-btn, .vtgl, .zeitraum-wahl, .sammlung-wahl';
+  const KNOPF = '.btn, .period-btn:not(.period-choice > *), .ubadge-button, .v-btn, .vtgl, .period-choice, .collection-choice';
   for (const e of wurzel.querySelectorAll(KNOPF)) {
     if (!sichtbar(e) || e.closest(':disabled, [aria-disabled="true"]') || e.matches(':disabled')) continue;
     const k = grenze(e); if (k === null) continue;
@@ -178,7 +178,7 @@ const LAYOUT = telefon => `(() => {
   // 7. Aktiver Zustand: Das aktive Element unterscheidet sich vom inaktiven
   //    Nachbarn mit 3:1 — als Fläche gegen Fläche oder als Rand (≥ 2 px)
   //    gegen die Fläche, auf der er liegt.
-  const AKTIV = '.vb.active, .sammlung-wahl [aria-current="page"], .period-btn.active, .ntab.active, .einst-nav a[aria-current]';
+  const AKTIV = '.vb.active, .collection-choice [aria-current="page"], .period-btn.active, .ntab.active, .settings-nav a[aria-current]';
   for (const e of wurzel.querySelectorAll(AKTIV)) {
     if (!sichtbar(e)) continue;
     const nachbar = [...e.parentElement.children].find(x => x !== e && x.tagName === e.tagName && !x.matches(AKTIV) && sichtbar(x));
@@ -234,7 +234,7 @@ const LAYOUT = telefon => `(() => {
   //    einer Textzeile im Fluss der Seite — dort ist der Text nicht lesbar.
   //    Aufgeklappte Menüs liegen mit Absicht über der Seite.
   const absolut = (e) => { for (let x = e; x; x = x.parentElement) { const p = getComputedStyle(x).position; if (p === 'absolute') return true; if (p === 'fixed' || p === 'sticky') return false; } return false; };
-  const darueber = eindeutig.filter(z => absolut(z.flaeche) && !z.flaeche.closest('.import-klappe, #umenu-pop, [role=menu], [role=listbox]'));
+  const darueber = eindeutig.filter(z => absolut(z.flaeche) && !z.flaeche.closest('.import-toggle, #umenu-pop, [role=menu], [role=listbox]'));
   for (const { n, e } of zeilenText) {
     if (absolut(e) || fest(e) || !sichtbar(e)) continue;
     const b = document.createRange(); b.selectNodeContents(n);
@@ -264,17 +264,17 @@ const LAYOUT = telefon => `(() => {
       }
     }
   }
-  // 12. Diagramm: Die Zeichenfläche (data-flaeche, in viewBox-Einheiten) behält
+  // 12. Diagramm: Die Zeichenfläche (data-surface, in viewBox-Einheiten) behält
   //     mindestens die Hälfte der Breite, sonst bleibt neben den Achsen kaum Kurve.
-  for (const svg of wurzel.querySelectorAll('svg[data-flaeche]')) {
+  for (const svg of wurzel.querySelectorAll('svg[data-surface]')) {
     if (!sichtbar(svg)) continue;
-    const px = +svg.dataset.flaeche * svg.getBoundingClientRect().width / (svg.viewBox.baseVal.width || 1);
+    const px = +svg.dataset.surface * svg.getBoundingClientRect().width / (svg.viewBox.baseVal.width || 1);
     if (px < Math.min(160, svg.getBoundingClientRect().width * 0.5)) funde.push('schmal (Diagramm) ' + Math.round(px) + ' px Kurve: ' + name(svg));
   }
   // 13. Filter einer Liste: Der gewählte Eintrag passt ganz hinein (der Browser
   //     kürzt ihn ohne „…“, und „Alle Zuständ“ sagt nicht, was gefiltert ist).
   const leinwand = document.createElement('canvas').getContext('2d');
-  for (const e of wurzel.querySelectorAll(':is(.filterzeile, .filterleiste) select')) {
+  for (const e of wurzel.querySelectorAll(':is(.filter-row, .filter-bar) select')) {
     if (!sichtbar(e) || e.multiple || e.size > 1) continue;
     const s = getComputedStyle(e), text = e.selectedOptions[0]?.textContent.trim() || '';
     leinwand.font = s.fontWeight + ' ' + s.fontSize + ' ' + s.fontFamily;
@@ -294,7 +294,7 @@ const TAB_PREPARE = `(() => {
   const d = ${TOPMOST}; if (!d) return null;
   const SEL = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
   const bereit = (e) => !e.disabled && !e.closest('[inert], [hidden]') &&
-    (e.matches('.datei-versteckt') ? e.parentElement.checkVisibility() : e.checkVisibility({ visibilityProperty: true }));
+    (e.matches('.file-hidden') ? e.parentElement.checkVisibility() : e.checkVisibility({ visibilityProperty: true }));
   const name = (e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + [...e.classList].slice(0, 2).map(c => '.' + c).join('')
     + ' „' + (e.textContent.trim() || e.getAttribute('aria-label') || e.getAttribute('data-click') || '').replace(/s+/g, ' ').slice(0, 24) + '“';
   const funde = [];

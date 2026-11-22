@@ -1,25 +1,25 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Zustand
-import ch.brickinventoryapp.data.Entwertungsergebnis
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.data.RedemptionOutcome
 import ch.brickinventoryapp.data.SwappedToken
 import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.model.domain.Anmeldung
+import ch.brickinventoryapp.model.domain.Login
 import ch.brickinventoryapp.model.domain.Confirmation
-import ch.brickinventoryapp.model.domain.Designstand
-import ch.brickinventoryapp.model.domain.Kontoanlage
+import ch.brickinventoryapp.model.domain.DesignState
+import ch.brickinventoryapp.model.domain.AccountCreation
 import ch.brickinventoryapp.model.domain.AccountSettings
 import ch.brickinventoryapp.model.domain.AccountOwner
-import ch.brickinventoryapp.model.domain.ProfilGespeichert
-import ch.brickinventoryapp.model.domain.Profilaenderung
-import ch.brickinventoryapp.model.domain.QrAbholstand
+import ch.brickinventoryapp.model.domain.ProfileSaved
+import ch.brickinventoryapp.model.domain.ProfileChange
+import ch.brickinventoryapp.model.domain.QrPickupState
 import ch.brickinventoryapp.model.domain.QrPairing
-import ch.brickinventoryapp.model.domain.Registrierung
-import ch.brickinventoryapp.model.domain.Registrierungsstand
-import ch.brickinventoryapp.model.domain.ZweiterFaktorEinrichtung
-import ch.brickinventoryapp.model.domain.ZweiterFaktorStand
+import ch.brickinventoryapp.model.domain.Registration
+import ch.brickinventoryapp.model.domain.RegistrationState
+import ch.brickinventoryapp.model.domain.SecondFactorSetup
+import ch.brickinventoryapp.model.domain.SecondFactorStatus
 import ch.brickinventoryapp.model.domain.DeviceView
 import ch.brickinventoryapp.model.domain.ProfileView
 import kotlinx.serialization.json.JsonObject
@@ -27,70 +27,70 @@ import kotlinx.serialization.json.JsonObject
 /**
  * The own account: sign-in, profile, settings, second factor, token.
  * An interface so that ViewModels and tests do not depend on the implementation with
- * Retrofit and store (KontoRepositoryImpl).
+ * Retrofit and store (AccountRepositoryImpl).
  */
 interface AccountRepository {
     suspend fun login(serverUrl: String, username: String, password: String, code: String? = null,
-                      scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Ergebnis<Anmeldeantwort>
+                      scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Outcome<LoginReply>
 
-    suspend fun passkeyOptions(zweck: String): Ergebnis<JsonObject>
+    suspend fun passkeyOptions(purpose: String): Outcome<JsonObject>
 
-    suspend fun signInPasskey(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Ergebnis<Anmeldung>
+    suspend fun loginPasskey(serverUrl: String, response: JsonObject, scope: String = TOKEN_SCOPE_APP): Outcome<Login>
 
-    suspend fun qrLogin(token: String, label: String): Ergebnis<QrPairing>
-    /** [vorschau]: after confirmation in the browser only the account, no token yet. */
-    suspend fun pickUpQr(abholung: String, vorschau: Boolean = false): Ergebnis<QrAbholstand>
+    suspend fun qrLogin(token: String, label: String): Outcome<QrPairing>
+    /** [preview]: after confirmation in the browser only the account, no token yet. */
+    suspend fun pickUpQr(pickup: String, preview: Boolean = false): Outcome<QrPickupState>
     /** The no after the preview: the pairing is refused afterwards. */
-    suspend fun discardQr(abholung: String): Ergebnis<Unit>
+    suspend fun discardQr(pickup: String): Outcome<Unit>
 
-    suspend fun getMe(): Ergebnis<AccountOwner?>
+    suspend fun getMe(): Outcome<AccountOwner?>
 
-    suspend fun getRegistrationStatus(): Ergebnis<Registrierungsstand>
+    suspend fun getRegistrationStatus(): Outcome<RegistrationState>
 
-    suspend fun register(anlage: Kontoanlage): Ergebnis<Registrierung>
+    suspend fun register(creation: AccountCreation): Outcome<Registration>
 
-    suspend fun forgotPassword(email: String): Ergebnis<String?>
+    suspend fun forgotPassword(email: String): Outcome<String?>
 
-    suspend fun getProfile(): Ergebnis<ProfileView>
+    suspend fun getProfile(): Outcome<ProfileView>
 
-    suspend fun secondFactorStatus(): Ergebnis<ZweiterFaktorStand>
+    suspend fun secondFactorStatus(): Outcome<SecondFactorStatus>
 
-    suspend fun setUpSecondFactor(passwort: String): Ergebnis<ZweiterFaktorEinrichtung>
+    suspend fun setUpSecondFactor(password: String): Outcome<SecondFactorSetup>
 
-    suspend fun zweiterFaktorBestaetigen(code: String): Ergebnis<List<String>>
+    suspend fun secondFactorConfirm(code: String): Outcome<List<String>>
 
-    suspend fun disableSecondFactor(passwort: String, code: String): Ergebnis<Unit>
+    suspend fun disableSecondFactor(password: String, code: String): Outcome<Unit>
 
-    suspend fun secondFactorNewCodes(code: String): Ergebnis<List<String>>
+    suspend fun secondFactorNewCodes(code: String): Outcome<List<String>>
 
-    suspend fun updateProfile(aenderung: Profilaenderung): Ergebnis<ProfilGespeichert>
+    suspend fun updateProfile(change: ProfileChange): Outcome<ProfileSaved>
 
-    suspend fun changePassword(aktuell: String, neu: String, code: String? = null): Ergebnis<Unit>
+    suspend fun changePassword(current: String, newValue: String, code: String? = null): Outcome<Unit>
 
-    suspend fun getTokens(): Ergebnis<List<DeviceView>>
+    suspend fun getTokens(): Outcome<List<DeviceView>>
 
     /** How many tokens were invalidated; 0 if it was already gone. */
-    suspend fun revokeToken(tokenId: String, confirmation: Confirmation): Ergebnis<Int>
+    suspend fun revokeToken(tokenId: String, confirmation: Confirmation): Outcome<Int>
 
     /** How many accesses were ended. */
-    suspend fun endOther(confirmation: Confirmation): Ergebnis<Int>
+    suspend fun endOther(confirmation: Confirmation): Outcome<Int>
 
-    suspend fun rotateToken(alterToken: String): Ergebnis<SwappedToken>
+    suspend fun rotateToken(oldToken: String): Outcome<SwappedToken>
 
-    suspend fun signOutAtServer(limitMs: Long = 3_000): Boolean
+    suspend fun logoutAtServer(limitMs: Long = 3_000): Boolean
 
-    suspend fun redeemAtServer(limitMs: Long = 3_000): Entwertungsergebnis
+    suspend fun redeemAtServer(limitMs: Long = 3_000): RedemptionOutcome
 
-    suspend fun getSettings(): Ergebnis<AccountSettings>
+    suspend fun getSettings(): Outcome<AccountSettings>
 
-    suspend fun getAppTheme(): Ergebnis<Designstand>
+    suspend fun getAppTheme(): Outcome<DesignState>
 
-    suspend fun setOwnDesign(theme: Design?): Ergebnis<Designstand>
+    suspend fun setOwnDesign(theme: Design?): Outcome<DesignState>
 
-    suspend fun updateSettings(currency: Waehrung, condition: Zustand): Ergebnis<Unit>
+    suspend fun updateSettings(currency: CurrencyCode, condition: Condition): Outcome<Unit>
 
-    suspend fun getDefaultCondition(): Ergebnis<Zustand>
+    suspend fun getDefaultCondition(): Outcome<Condition>
 
     /** null: back to the server's default. */
-    suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<Unit>
+    suspend fun setUserDefaultCondition(condition: Condition?): Outcome<Unit>
 }

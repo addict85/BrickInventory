@@ -57,7 +57,7 @@ val SlateBlueDark = Color(0xFF2F4763)
 val SlateBlueLight = Color(0xFFD9E4F0)
 
 /** --b400 in the theme "brick". */
-val SlateBlueNoppe = Color(0xFF6D94B8)
+val SlateBlueStud = Color(0xFF6D94B8)
 
 /**
  * --brick-petrol in the theme "brick".
@@ -91,13 +91,13 @@ val ChartNewBrick = Color(0xFF3D6A8F)
 val ChartUsedBrick = Color(0xFF7A5C2A)
 
 /** --b600 in the theme "werkbank". */
-val WerkbankAzur = Color(0xFF4D9FFF)
+val WorkbenchAzure = Color(0xFF4D9FFF)
 
 /** --b50 in the theme "werkbank". */
-val WerkbankAzurDunkel = Color(0xFF16243A)
+val WorkbenchAzureDark = Color(0xFF16243A)
 
 /** --b700 in the theme "werkbank". */
-val WerkbankAzurHell = Color(0xFF8CC2FF)
+val WorkbenchAzureLight = Color(0xFF8CC2FF)
 
 /**
  * --chart-new in the theme "werkbank".
@@ -106,7 +106,7 @@ val WerkbankAzurHell = Color(0xFF8CC2FF)
  * in the JavaScript; no theme could adjust them, and in the brick look
  * the amber of the used line stuck out of the otherwise blue palette.
  */
-val ChartNewWerkbank = Color(0xFF4D9FFF)
+val ChartNewWorkbench = Color(0xFF4D9FFF)
 
 /**
  * --chart-used in the theme "werkbank".
@@ -120,16 +120,16 @@ val ChartNewWerkbank = Color(0xFF4D9FFF)
  * made TWO shades of blue that only differed in lightness, and scaled
  * down or printed such a difference is the first to disappear.
  */
-val ChartUsedWerkbank = Color(0xFFD99A4E)
+val ChartUsedWorkbench = Color(0xFFD99A4E)
 
 /** --b600 in the theme "farbfaecher". */
-val FaecherTinte = Color(0xFF2B2B2B)
+val FanInk = Color(0xFF2B2B2B)
 
 /** --b50 in the theme "farbfaecher". */
-val FaecherTinteHell = Color(0xFFF4F4F4)
+val FanInkLight = Color(0xFFF4F4F4)
 
 /** --b700 in the theme "farbfaecher". */
-val FaecherTinteDunkel = Color(0xFF111111)
+val FanInkDark = Color(0xFF111111)
 
 /**
  * --chart-new in the theme "farbfaecher".
@@ -138,7 +138,7 @@ val FaecherTinteDunkel = Color(0xFF111111)
  * in the JavaScript; no theme could adjust them, and in the brick look
  * the amber of the used line stuck out of the otherwise blue palette.
  */
-val ChartNewFarbfaecher = Color(0xFF2563EB)
+val ChartNewColorFan = Color(0xFF2563EB)
 
 /**
  * --chart-used in the theme "farbfaecher".
@@ -152,13 +152,13 @@ val ChartNewFarbfaecher = Color(0xFF2563EB)
  * made TWO shades of blue that only differed in lightness, and scaled
  * down or printed such a difference is the first to disappear.
  */
-val ChartUsedFarbfaecher = Color(0xFFD97706)
+val ChartUsedColorFan = Color(0xFFD97706)
 
 /** --b600 in the theme "noppe". */
-val NoppeRot = Color(0xFFD91F26)
+val StudRed = Color(0xFFD91F26)
 
 /** --b50 in the theme "noppe". */
-val NoppeRotHell = Color(0xFFFDECEC)
+val StudRedLight = Color(0xFFFDECEC)
 
 /**
  * --ink in the theme "noppe".
@@ -168,7 +168,7 @@ val NoppeRotHell = Color(0xFFFDECEC)
  * the shadow is the same tone as the border, only offset. With two
  * tones the edge would look like a misprint.
  */
-val NoppeTinte = Color(0xFF161A21)
+val StudInk = Color(0xFF161A21)
 
 /**
  * --chart-new in the theme "noppe".
@@ -177,7 +177,7 @@ val NoppeTinte = Color(0xFF161A21)
  * in the JavaScript; no theme could adjust them, and in the brick look
  * the amber of the used line stuck out of the otherwise blue palette.
  */
-val ChartNewNoppe = Color(0xFF1A6FD4)
+val ChartNewStud = Color(0xFF1A6FD4)
 
 /**
  * --chart-used in the theme "noppe".
@@ -191,7 +191,7 @@ val ChartNewNoppe = Color(0xFF1A6FD4)
  * made TWO shades of blue that only differed in lightness, and scaled
  * down or printed such a difference is the first to disappear.
  */
-val ChartUsedNoppe = Color(0xFFFF7A00)
+val ChartUsedStud = Color(0xFFFF7A00)
 
 
 /**
@@ -202,7 +202,7 @@ val ChartUsedNoppe = Color(0xFFFF7A00)
  * formula would have to be rebuilt identically in CSS and in Kotlin,
  * and exactly such pairs drift apart. A list can be generated.
  */
-val FaecherFarben = listOf(
+val FanColors = listOf(
     Color(0xFFC0392B),
     Color(0xFFC0682B),
     Color(0xFFB08C1E),
@@ -227,7 +227,7 @@ val FaecherFarben = listOf(
  * the repetition stays readable as rhythm instead of chance. The
  * mapping is the position in the list modulo six.
  */
-val SteinFarben = listOf(
+val BrickColors = listOf(
     Color(0xFFD91F26),
     Color(0xFFF5C400),
     Color(0xFF1A6FD4),

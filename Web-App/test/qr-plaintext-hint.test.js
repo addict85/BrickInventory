@@ -50,8 +50,8 @@ test('without HTTPS the TLS area says that the app only connects via HTTPS', asy
   });
   try {
     await sicht(w, 'app');
-    await warte(() => /HTTPS/.test(d.getElementById('tls-flaeche')?.textContent || ''));
-    assert.match(d.getElementById('tls-flaeche').textContent, /Android-App verbindet sich nur über HTTPS/);
+    await warte(() => /HTTPS/.test(d.getElementById('tls-surface')?.textContent || ''));
+    assert.match(d.getElementById('tls-surface').textContent, /Android-App verbindet sich nur über HTTPS/);
   } finally {
     w.close();
   }

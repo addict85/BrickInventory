@@ -6,9 +6,9 @@
  *
  * Counter-checks (measured 02.11.2026, each on its own):
  *   A  voucher-nopdf again only „—“ with .vh text → red: “vouchers …”
- *   B  the hiding of [data-nur-mit-gutscheinen] removed in ladeGutscheine()
+ *   B  the hiding of [data-only-with-vouchers] removed in loadVouchers()
  *      → red: “without vouchers …”
- *   C  rule body:not(:has(…)) #rb-hinweis removed → red: “Rebrickable banner …”
+ *   C  rule body:not(:has(…)) #rb-hint removed → red: “Rebrickable banner …”
  *   D  #qr-code:empty rule removed → red: “QR area …”
  *   E  showSettingAccess() not called → red: „Kein Zugriff …“
  *   F  description left out (only werkbank hint) → red: “design …”
@@ -42,35 +42,35 @@ const GUTSCHEIN = {
 };
 
 test('vouchers: row and actions', async () => {
-  const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [GUTSCHEIN] } }, { vorher: withStyle });
+  const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [GUTSCHEIN] } }, { before: withStyle });
   try {
-    await sicht(o.w, 'gutscheine');
+    await sicht(o.w, 'vouchers');
     await warte(() => o.d.querySelector('.voucher-row'));
     const zeile = o.d.querySelector('.voucher-row');
     assert.match(zeile.querySelector('.voucher-nopdf').textContent.trim(), /^kein PDF$/);
-    const loeschen = zeile.querySelector('[data-click="gutscheinLoeschen"]');
-    const bearbeiten = zeile.querySelector('[data-click="gutscheinBearbeiten"]');
+    const loeschen = zeile.querySelector('[data-click="deleteVoucher"]');
+    const bearbeiten = zeile.querySelector('[data-click="editVoucher"]');
     // Both labeled (UI check 6, M7), delete marked as danger.
-    assert.equal(loeschen.className, bearbeiten.className + ' v-btn-gefahr');
+    assert.equal(loeschen.className, bearbeiten.className + ' v-btn-danger');
     assert.deepEqual([bearbeiten.textContent.trim(), loeschen.textContent.trim()], ['Bearbeiten', 'Löschen']);
-    for (const e of o.d.querySelectorAll('[data-nur-mit-gutscheinen]')) assert.equal(zu(o.w, e), false);
+    for (const e of o.d.querySelectorAll('[data-only-with-vouchers]')) assert.equal(zu(o.w, e), false);
   } finally {
     o.w.close();
   }
 });
 
 test('without vouchers: no sum, no “query all”, no export', async () => {
-  const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } }, { vorher: withStyle });
+  const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } }, { before: withStyle });
   try {
-    await sicht(o.w, 'gutscheine');
-    await warte(() => o.d.querySelector('.voucher-leer'));
-    const teile = [...o.d.querySelectorAll('[data-nur-mit-gutscheinen]')];
+    await sicht(o.w, 'vouchers');
+    await warte(() => o.d.querySelector('.voucher-empty'));
+    const teile = [...o.d.querySelectorAll('[data-only-with-vouchers]')];
     assert.equal(teile.length, 3);
     assert.deepEqual(
       teile.map(e => zu(o.w, e)),
       [true, true, true],
     );
-    assert.equal(zu(o.w, o.d.querySelector('[data-click="gutscheineExportieren"]')), true);
+    assert.equal(zu(o.w, o.d.querySelector('[data-click="exportVouchers"]')), true);
   } finally {
     o.w.close();
   }
@@ -79,10 +79,10 @@ test('without vouchers: no sum, no “query all”, no export', async () => {
 test('Rebrickable banner only in collection and catalog', async () => {
   const o = await openUi(
     { '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } } },
-    { vorher: withStyle },
+    { before: withStyle },
   );
   try {
-    const band = o.d.getElementById('rb-hinweis');
+    const band = o.d.getElementById('rb-hint');
     await warte(() => !band.hidden, 2000);
     assert.equal(zu(o.w, band), false, 'Sammlung');
     for (const [tab, versteckt] of /** @type {[string, boolean][]} */ ([
@@ -100,7 +100,7 @@ test('Rebrickable banner only in collection and catalog', async () => {
 });
 
 test('QR area only with a code', async () => {
-  const o = await openUi({}, { vorher: withStyle });
+  const o = await openUi({}, { before: withStyle });
   try {
     const f = o.d.getElementById('qr-code');
     assert.equal(o.w.getComputedStyle(f).display, 'none');
@@ -118,7 +118,7 @@ test('no access for a normal account, administrator sees none of it', async () =
   try {
     normal.d.querySelector('.ntab[data-tab="settings"]').click();
     await takt(50);
-    const f = normal.d.getElementById('einst-kein-zugriff');
+    const f = normal.d.getElementById('settings-no-access');
     assert.equal(f.hidden, false);
     assert.match(f.textContent, /Kein Zugriff/);
   } finally {
@@ -128,7 +128,7 @@ test('no access for a normal account, administrator sees none of it', async () =
   try {
     chef.d.querySelector('.ntab[data-tab="settings"]').click();
     await takt(50);
-    assert.equal(chef.d.getElementById('einst-kein-zugriff').hidden, true);
+    assert.equal(chef.d.getElementById('settings-no-access').hidden, true);
   } finally {
     chef.w.close();
   }
@@ -145,9 +145,9 @@ test('design: one sentence for the choice, Noppe and Hochglanz different', async
       },
     });
     try {
-      await sicht(o.w, 'profil');
-      await warte(() => o.d.getElementById('design-hinweis').textContent);
-      texte[design] = o.d.getElementById('design-hinweis').textContent;
+      await sicht(o.w, 'profile');
+      await warte(() => o.d.getElementById('design-hint').textContent);
+      texte[design] = o.d.getElementById('design-hint').textContent;
     } finally {
       o.w.close();
     }

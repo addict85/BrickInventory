@@ -8,14 +8,14 @@ import javax.inject.Singleton
 
 /**
  * Connects the OkHttp interceptor (sees first that the server returns a
- * 401) with the SitzungsDienst (the only one allowed to sign out).
+ * 401) with the SessionService (the only one allowed to sign out).
  * A state until acknowledgement instead of an event: a 401 before the first
  * collector (cold start, worker) would otherwise get lost.
  */
 @Singleton
 class SessionExpiredSignal @Inject constructor() {
     private val _expired = MutableStateFlow(false)
-    val abgelaufen: StateFlow<Boolean> = _expired.asStateFlow()
+    val expired: StateFlow<Boolean> = _expired.asStateFlow()
 
     fun notifyExpired() {
         _expired.value = true

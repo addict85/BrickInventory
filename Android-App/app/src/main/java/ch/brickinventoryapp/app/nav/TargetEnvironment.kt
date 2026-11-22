@@ -5,95 +5,95 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import ch.brickinventoryapp.login.ui.LoginNavigation
-import ch.brickinventoryapp.app.ReiterGeruest
+import ch.brickinventoryapp.app.TabScaffold
 import ch.brickinventoryapp.finances.ui.FinancesNavigation
 import ch.brickinventoryapp.catalog.ui.CatalogNavigation
 import ch.brickinventoryapp.account.ui.AccountNavigation
-import ch.brickinventoryapp.account.ui.KontoZiel
+import ch.brickinventoryapp.account.ui.AccountTarget
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
-import ch.brickinventoryapp.model.domain.Erfassungswunsch
-import ch.brickinventoryapp.model.domain.Postenart
-import ch.brickinventoryapp.model.domain.Zustand
-import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.domain.EntryRequest
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.collection.ui.CollectionNavigation
 import ch.brickinventoryapp.collection.ui.setEntry
 import ch.brickinventoryapp.collection.ui.partListsEntry
 import ch.brickinventoryapp.parts.ui.PartsNavigation
 import ch.brickinventoryapp.parts.ui.PartListsScan
 import ch.brickinventoryapp.management.ui.ManagementNavigation
-import ch.brickinventoryapp.state.ui.viewmodel.DarstellungViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
 import ch.brickinventoryapp.login.ui.LoginTarget
-import ch.brickinventoryapp.collection.ui.SammlungZiel
-import ch.brickinventoryapp.parts.ui.TeileZiel
+import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.parts.ui.PartsTarget
 import coil3.ImageLoader
 
 /** A destination of the bottom bar: route, icon and label. */
-data class Reiter(val ziel: Any, val symbol: @Composable () -> Unit, val beschriftung: String)
+data class Tab(val target: Any, val symbol: @Composable () -> Unit, val label: String)
 
 /**
  * The environment of all areas: it fulfils every navigation interface and
  * connects the areas that do not know each other (catalog → adding and
  * wishlist item, parts list → scan). The few ViewModels of the activity come via
- * [aktivitaet], read only when shown — so the graph can be built without Hilt.
+ * [activity], read only when shown — so the graph can be built without Hilt.
  */
 class TargetEnvironment(
     override val navController: NavHostController,
-    override val bilder: ImageLoader,
-    val tab: List<Reiter>,
+    override val images: ImageLoader,
+    val tab: List<Tab>,
     override val snackbar: SnackbarHostState,
     private val states: () -> ActivityState,
 ) : LoginNavigation, CollectionNavigation, CatalogNavigation, PartsNavigation, FinancesNavigation, AccountNavigation,
     ManagementNavigation {
-    val aktivitaet: ActivityState get() = states()
+    val activity: ActivityState get() = states()
 
-    override val sitzung get() = aktivitaet.app.state
-    override val blickfeld get() = aktivitaet.app.blickfeld
-    override val lager get() = aktivitaet.app.storageState
-    override val rollgedaechtnis get() = aktivitaet.app.scrollMemory
-    override fun ladeEinstellungen() = aktivitaet.app.loadSettings()
-    override fun abmelden() { aktivitaet.app.logout() }
-    override val update: UpdateViewModel get() = aktivitaet.update
-    override val darstellung: DarstellungViewModel get() = aktivitaet.darstellung
-    override val vertrauen: VertrauenViewModel get() = aktivitaet.vertrauen
-
-    @Composable
-    override fun Reiter(titel: String, inhalt: @Composable () -> Unit) = ReiterGeruest(titel, this, inhalt)
+    override val session get() = activity.app.state
+    override val viewport get() = activity.app.viewport
+    override val storage get() = activity.app.storageState
+    override val scrollMemory get() = activity.app.scrollMemory
+    override fun loadSettings() = activity.app.loadSettings()
+    override fun logout() { activity.app.logout() }
+    override val update: UpdateViewModel get() = activity.update
+    override val appearance: AppearanceViewModel get() = activity.appearance
+    override val trust: TrustViewModel get() = activity.trust
 
     @Composable
-    override fun erfassen(entry: NavBackStackEntry): (Erfassungswunsch) -> Unit =
-        setEntry(entry, bilder, ::openSet)
+    override fun Tab(title: String, content: @Composable () -> Unit) = TabScaffold(title, this, content)
+
+    @Composable
+    override fun record(entry: NavBackStackEntry): (EntryRequest) -> Unit =
+        setEntry(entry, images, ::openSet)
 
     @Composable
     override fun partListsScan(entry: NavBackStackEntry): PartListsScan =
-        partListsEntry(entry, bilder, ::openSet, ::PartListsScan)
+        partListsEntry(entry, images, ::openSet, ::PartListsScan)
 
     // The paths between the areas: only here do the routes of foreign areas appear.
 
-    override fun angemeldet() = navController.navigate(SammlungZiel.Gallery) {
+    override fun loggedIn() = navController.navigate(CollectionTarget.Gallery) {
         popUpTo<LoginTarget.Login> { inclusive = true }
     }
 
-    override fun abgemeldet() = navController.navigate(LoginTarget.Login) { popUpTo(0) { inclusive = true } }
+    override fun loggedOut() = navController.navigate(LoginTarget.Login) { popUpTo(0) { inclusive = true } }
 
     override fun openSetup() = navController.navigate(LoginTarget.Setup)
 
-    override fun openSet(setNumber: String) = navController.navigate(SammlungZiel.SetDetail(setNumber))
+    override fun openSet(setNumber: String) = navController.navigate(CollectionTarget.SetDetail(setNumber))
 
-    override fun openWantedItem(setNumber: String, zustand: Zustand) {
-        navController.navigate(SammlungZiel.Wanted)
-        navController.navigate(SammlungZiel.MerkpostenDetail(setNumber, zustand))
+    override fun openWantedItem(setNumber: String, condition: Condition) {
+        navController.navigate(CollectionTarget.Wanted)
+        navController.navigate(CollectionTarget.WantedItemDetail(setNumber, condition))
     }
 
-    override fun openPurchases(art: Postenart, id: String, colorId: Int, titel: String) =
-        navController.navigate(SammlungZiel.AcquisitionManagement(art, id, colorId, titel))
+    override fun openPurchases(kind: ItemKind, id: String, colorId: Int, title: String) =
+        navController.navigate(CollectionTarget.AcquisitionManagement(kind, id, colorId, title))
 
-    override fun openScanner(herkunft: Scannerherkunft) = navController.navigate(SammlungZiel.BarcodeScanner(herkunft))
+    override fun openScanner(origin: ScannerOrigin) = navController.navigate(CollectionTarget.BarcodeScanner(origin))
 
-    override fun openSinglePiece(art: Postenart, id: String, colorId: Int, titel: String) =
-        navController.navigate(TeileZiel.ManualItemDetail(art, id, colorId, titel))
+    override fun openSinglePiece(kind: ItemKind, id: String, colorId: Int, title: String) =
+        navController.navigate(PartsTarget.ManualItemDetail(kind, id, colorId, title))
 
-    override fun openPdf(url: String, titel: String) = showPdf(url, titel)
+    override fun openPdf(url: String, title: String) = showPdf(url, title)
 
-    override fun openPriceAlerts() = navController.navigate(KontoZiel.Preisalarme)
+    override fun openPriceAlerts() = navController.navigate(AccountTarget.PriceAlarms)
 }

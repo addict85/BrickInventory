@@ -32,9 +32,9 @@ test('one data point: empty state instead of a line', async () => {
   });
   try {
     await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .diagramm-leer, #portfolio-chart svg'));
+    await warte(() => d.querySelector('#portfolio-chart .chart-empty, #portfolio-chart svg'));
     assert.equal(d.querySelector('#portfolio-chart svg'), null, 'Es steht eine Linie da');
-    assert.match(d.querySelector('#portfolio-chart .diagramm-leer').textContent, /Noch zu wenig Verlauf/);
+    assert.match(d.querySelector('#portfolio-chart .chart-empty').textContent, /Noch zu wenig Verlauf/);
     assert.equal(d.getElementById('portfolio-pnl').textContent.trim(), '');
   } finally {
     w.close();
@@ -83,8 +83,8 @@ test('en: empty state translated', async () => {
   );
   try {
     await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .diagramm-leer'));
-    assert.match(d.querySelector('#portfolio-chart .diagramm-leer').textContent, /^Not enough history yet/);
+    await warte(() => d.querySelector('#portfolio-chart .chart-empty'));
+    assert.match(d.querySelector('#portfolio-chart .chart-empty').textContent, /^Not enough history yet/);
   } finally {
     w.close();
   }

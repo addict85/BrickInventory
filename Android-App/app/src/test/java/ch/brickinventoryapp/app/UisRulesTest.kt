@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.model.domain.Condition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
@@ -49,16 +49,16 @@ import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.collection.ui.TilePrice
 import ch.brickinventoryapp.ui.components.ErrorHint
-import ch.brickinventoryapp.model.domain.SetAnsicht
+import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.screens.SetCard
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.util.fmtProzent
+import ch.brickinventoryapp.ui.util.fmtPercent
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -96,9 +96,9 @@ import java.math.BigDecimal
 import java.util.Locale
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.app.nav.AppTarget
-import ch.brickinventoryapp.finances.ui.FinanzZiel
-import ch.brickinventoryapp.collection.ui.SammlungZiel
-import ch.brickinventoryapp.parts.ui.TeileZiel
+import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.parts.ui.PartsTarget
 
 /**
  * What the screenshots show, executed here as a rule: on the tablet the
@@ -106,7 +106,7 @@ import ch.brickinventoryapp.parts.ui.TeileZiel
  * wishlist offers both paths to the first entry. Tile and value tiles are checked by
  * SetTileTest and ValueTilesTest in the modules that own them.
  *
- * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
  *   tablet-umschalter-oben          switcher in the app bar on the tablet too → red “tablet has the switcher …”
  *   fehlerhinweis-roher-satz        the data layer's sentence also for OFFLINE → red “error hint …”
  *   merkliste-leer-ohne-knoepfe     button „Set merken“ without label → red “empty wishlist …”
@@ -116,7 +116,7 @@ import ch.brickinventoryapp.parts.ui.TeileZiel
  *   teile-raster-fest               parts grid again fixed 120 dp → red “parts at 200 percent …”
  *   finanzen-einspaltig             finances single-column on the tablet too → red “finances stand in two columns on the tablet …”
  *   gutschein-pin-klein             PIN row without minimum height → red “voucher buttons …”
- *   bildflaeche-ohne-ersatz         ProduktBild without placeholder image → red “gallery without image shows the placeholder image”
+ *   bildflaeche-ohne-ersatz         ProductImage without placeholder image → red “gallery without image shows the placeholder image”
  *   leiste-klappt-nicht-ein         TopAppBar without scrollBehavior → red “app bar yields when scrolling”
  *   merkliste-zustand-als-segmente  condition filter of the wishlist again as segments → red “wishlist filters …”
  *   umschalter-chips-bei-200        Sets | Parts | Minifigures from 130 % as a chip row instead of segments
@@ -151,20 +151,20 @@ class UisRulesTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val vorher = Locale.getDefault()
+    private val before = Locale.getDefault()
     private val ctx: Context = ApplicationProvider.getApplicationContext()
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = Locale.setDefault(vorher)
+    fun tearDown() = Locale.setDefault(before)
 
-    private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
+    private fun show(font: Float = 1f, content: @Composable () -> Unit) {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
-                    Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
+                CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
+                    Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
         }
@@ -174,28 +174,28 @@ class UisRulesTest {
     @Test
     fun `tablet has the switcher to the right of the side bar`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
-        zeige {
+        show {
             val nav = rememberNavController()
             val tab = remember {
                 listOf(
-                    Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
+                    Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, onTabAngetippt = {},
+                onCsvCancel = {}, onTabTapped = {},
             ) {
-                NavHost(nav, startDestination = SammlungZiel.Gallery) { composable<SammlungZiel.Gallery> { } }
+                NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
             }
         }
-        val teile = ctx.getString(R.string.nav_parts)
-        compose.onAllNodesWithText(teile).assertCountEquals(1)
-        val leiste = compose.onAllNodesWithText("Sammlung")
+        val parts = ctx.getString(R.string.nav_parts)
+        compose.onAllNodesWithText(parts).assertCountEquals(1)
+        val bar = compose.onAllNodesWithText("Sammlung")
         // The tab in the side bar is the left one of the two (the other one is the title).
-        val tabRight = (0 until 2).map { leiste[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
+        val tabRight = (0 until 2).map { bar[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
         assertTrue("Der Umschalter beginnt rechts der Seitenleiste",
-            compose.onNodeWithText(teile).fetchSemanticsNode().boundsInRoot.left >= tabRight)
+            compose.onNodeWithText(parts).fetchSemanticsNode().boundsInRoot.left >= tabRight)
     }
 
     /**
@@ -205,56 +205,56 @@ class UisRulesTest {
      */
     @Test
     fun `the collection switcher shows all three views as segments at 200 percent`() {
-        zeige(schrift = 2f) {
+        show(font = 2f) {
             val nav = rememberNavController()
-            val tab = remember { listOf(Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung")) }
+            val tab = remember { listOf(Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung")) }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, onTabAngetippt = {},
+                onCsvCancel = {}, onTabTapped = {},
             ) {
-                NavHost(nav, startDestination = SammlungZiel.Gallery) { composable<SammlungZiel.Gallery> { } }
+                NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
             }
         }
-        val dichte = ctx.resources.displayMetrics.density
+        val density = ctx.resources.displayMetrics.density
         val segments = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs).map {
             val text = ctx.getString(it)
-            val beschriftung = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
+            val label = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
                 .first { n -> n.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
             val layouts = mutableListOf<TextLayoutResult>()
-            beschriftung.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+            label.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
             assertTrue("$text bei 200 % abgeschnitten", layouts.none { l -> l.hasVisualOverflow })
             compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         }
-        val breite = ctx.resources.displayMetrics.widthPixels
+        val width = ctx.resources.displayMetrics.widthPixels
         segments.forEach { s ->
-            assertTrue("Segment ausserhalb des Bilds (${s.left / dichte} – ${s.right / dichte} dp)",
-                s.left >= 0f && s.right <= breite + 1f)
+            assertTrue("Segment ausserhalb des Bilds (${s.left / density} – ${s.right / density} dp)",
+                s.left >= 0f && s.right <= width + 1f)
         }
         segments.zipWithNext().forEach { (a, b) ->
-            val sideBySide = kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f
-            val untereinander = kotlin.math.abs(b.top - a.bottom) <= 2 * dichte && kotlin.math.abs(a.left - b.left) < 1f
-            assertTrue("Segmente stossen aneinander ($a / $b)", sideBySide || untereinander)
+            val sideBySide = kotlin.math.abs(b.left - a.right) <= 2 * density && kotlin.math.abs(a.top - b.top) < 1f
+            val stacked = kotlin.math.abs(b.top - a.bottom) <= 2 * density && kotlin.math.abs(a.left - b.left) < 1f
+            assertTrue("Segmente stossen aneinander ($a / $b)", sideBySide || stacked)
         }
     }
 
     @Test
     fun `app bar yields when scrolling and comes back when scrolling back`() {
-        zeige {
+        show {
             val nav = rememberNavController()
             val tab = remember {
                 listOf(
-                    Reiter(FinanzZiel.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+                    Tab(FinanceTarget.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
             }
             MainScaffold(
                 title = "Finanzen", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, onTabAngetippt = {},
+                onCsvCancel = {}, onTabTapped = {},
             ) {
-                NavHost(nav, startDestination = FinanzZiel.Finance) {
-                    composable<FinanzZiel.Finance> {
+                NavHost(nav, startDestination = FinanceTarget.Finance) {
+                    composable<FinanceTarget.Finance> {
                         LazyColumn(Modifier.testTag("liste")) {
                             items(80) { i -> Text("Zeile $i", Modifier.padding(16.dp)) }
                         }
@@ -262,41 +262,41 @@ class UisRulesTest {
                 }
             }
         }
-        fun oben() = compose.onNodeWithTag("liste").fetchSemanticsNode().boundsInRoot.top
-        val vorher = oben()
+        fun top() = compose.onNodeWithTag("liste").fetchSemanticsNode().boundsInRoot.top
+        val before = top()
         compose.onNodeWithTag("liste").performTouchInput { swipeUp() }
         compose.waitForIdle()
-        val dichte = ctx.resources.displayMetrics.density
-        assertTrue("Die Liste rückt nach oben, wenn die Leiste weicht (${vorher / dichte} → ${oben() / dichte} dp)",
-            oben() < vorher - 40 * dichte)
+        val density = ctx.resources.displayMetrics.density
+        assertTrue("Die Liste rückt nach oben, wenn die Leiste weicht (${before / density} → ${top() / density} dp)",
+            top() < before - 40 * density)
         compose.onNodeWithTag("liste").performTouchInput { swipeDown() }
         compose.waitForIdle()
-        assertEquals("Zurückgerollt steht die Leiste wieder da", vorher, oben(), dichte)
+        assertEquals("Zurückgerollt steht die Leiste wieder da", before, top(), density)
     }
 
     @Test
     fun `phone navigates without drawer and account menu, More collects the rest`() {
-        zeige {
+        show {
             val nav = rememberNavController()
             val tab = remember {
                 listOf(
-                    Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Reiter(AppTarget.Mehr, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
+                    Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Tab(AppTarget.More, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, onTabAngetippt = {},
+                onCsvCancel = {}, onTabTapped = {},
             ) {
-                NavHost(nav, startDestination = SammlungZiel.Gallery) {
-                    composable<SammlungZiel.Gallery> { }
-                    composable<AppTarget.Mehr> { MehrBildschirm(nav::openOfMore, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                NavHost(nav, startDestination = CollectionTarget.Gallery) {
+                    composable<CollectionTarget.Gallery> { }
+                    composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, updateAvailable = false, onLogout = {}) }
                 }
             }
         }
         // No second and third level in the app bar.
-        compose.onAllNodesWithContentDescription(ctx.getString(R.string.konto_title)).assertCountEquals(0)
+        compose.onAllNodesWithContentDescription(ctx.getString(R.string.account_title)).assertCountEquals(0)
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.nav_more)).assertCountEquals(0)
         compose.onNodeWithText(ctx.getString(R.string.nav_more)).performClick()
         compose.waitForIdle()
@@ -307,40 +307,40 @@ class UisRulesTest {
 
     @Test
     fun `error hint names the class and the sentence only where it says more`() {
-        zeige { ErrorHint("Serverfehler (500)", {}, Fehlerklasse.OFFLINE) }
-        compose.onNodeWithText(ctx.getString(R.string.fehler_offline_titel)).fetchSemanticsNode()
+        show { ErrorHint("Serverfehler (500)", {}, ErrorClass.OFFLINE) }
+        compose.onNodeWithText(ctx.getString(R.string.error_offline_title)).fetchSemanticsNode()
         compose.onAllNodesWithText("Serverfehler (500)").assertCountEquals(0)
     }
 
     @Test
     fun `error hint of a server error shows the code`() {
-        zeige { ErrorHint("Serverfehler (500)", {}, Fehlerklasse.SERVER) }
-        compose.onNodeWithText(ctx.getString(R.string.fehler_server_titel)).fetchSemanticsNode()
+        show { ErrorHint("Serverfehler (500)", {}, ErrorClass.SERVER) }
+        compose.onNodeWithText(ctx.getString(R.string.error_server_title)).fetchSemanticsNode()
         compose.onNodeWithText("Serverfehler (500)").fetchSemanticsNode()
     }
 
-    /** The world responds in ticks; drive the main looper until [fertig] holds. */
-    private fun wait(name: String, fertig: () -> Boolean) {
-        driveUntil(name, bereit = fertig)
+    /** The world responds in ticks; drive the main looper until [done] holds. */
+    private fun wait(name: String, done: () -> Boolean) {
+        driveUntil(name, ready = done)
         compose.waitForIdle()
     }
 
     @Test
     fun `set detail shows market value, purchase price and P&L at the top in the classic design`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
             val vm = world.setDetail()
-            zeige {
+            show {
                 SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "",
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
             }
-            wait("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.priceFetch.laedt } }
+            wait("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.priceFetch.loading } }
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
             // The P&L tile names amount and percent (812.50 − 700.00); the percentage alone stands
             // further down in the badge per condition.
-            compose.onNodeWithText("+" + fmtMoney(112.5, Waehrung("CHF")) + " · " + fmtProzent(16.1), useUnmergedTree = true)
+            compose.onNodeWithText("+" + fmtMoney(112.5, CurrencyCode("CHF")) + " · " + fmtPercent(16.1), useUnmergedTree = true)
                 .assertIsDisplayed()
-            compose.onAllNodesWithText(fmtMoney(812.5, Waehrung("CHF")), useUnmergedTree = true)[0].assertIsDisplayed()
+            compose.onAllNodesWithText(fmtMoney(812.5, CurrencyCode("CHF")), useUnmergedTree = true)[0].assertIsDisplayed()
         } finally {
             world.close()
         }
@@ -353,71 +353,71 @@ class UisRulesTest {
     @Test
     fun `set detail on the tablet in portrait has a width for tiles and price history`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w800dp-h1280dp-port-xhdpi")
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
             val vm = world.setDetail()
-            zeige {
+            show {
                 SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "",
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
             }
-            wait("Set-Detail") { vm.setDetailState.value.let { it.priceHistory != null && !it.historyFetch.laedt && !it.priceFetch.laedt } }
-            val dichte = ctx.resources.displayMetrics.density
-            val titel = ctx.getString(R.string.detail_section_price_history)
+            wait("Set-Detail") { vm.setDetailState.value.let { it.priceHistory != null && !it.historyFetch.loading && !it.priceFetch.loading } }
+            val density = ctx.resources.displayMetrics.density
+            val title = ctx.getString(R.string.detail_section_price_history)
             // Inside, the tile lies 12 dp (medium), the title 16 dp (large) from the edge of its surface.
-            val kachel = compose.onAllNodes(hasText(ctx.getString(R.string.detail_section_market)))[0]
-                .fetchSemanticsNode().boundsInRoot.left - 12 * dichte
-            compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).performScrollToNode(hasText(titel, ignoreCase = true))
+            val tile = compose.onAllNodes(hasText(ctx.getString(R.string.detail_section_market)))[0]
+                .fetchSemanticsNode().boundsInRoot.left - 12 * density
+            compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).performScrollToNode(hasText(title, ignoreCase = true))
             // The heading, not its text in capitals below: the section title carries both.
-            val karte = compose.onNode(hasText(titel) and androidx.compose.ui.test.isHeading(), useUnmergedTree = true)
-                .fetchSemanticsNode().boundsInRoot.left - 16 * dichte
-            assertEquals("Preisverlauf beginnt wie die Kacheln (${karte / dichte} / ${kachel / dichte} dp)",
-                kachel / dichte, karte / dichte, 1f)
+            val card = compose.onNode(hasText(title) and androidx.compose.ui.test.isHeading(), useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInRoot.left - 16 * density
+            assertEquals("Preisverlauf beginnt wie die Kacheln (${card / density} / ${tile / density} dp)",
+                tile / density, card / density, 1f)
         } finally {
             world.close()
         }
     }
 
-    /** A gallery with [bilder]; waits until the sets are there. */
-    private fun galleryWith(world: Examples.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
-        val vm = world.galerie().also { it.loadSets() }
-        val erfassung = world.t.merke(EntryViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, testSetsRepository(world.t.api), world.t.setCatalog(), world.t.merkliste(),
+    /** A gallery with [images]; waits until the sets are there. */
+    private fun galleryWith(world: Examples.World, images: coil3.ImageLoader, font: Float = 1f) {
+        val vm = world.gallery().also { it.loadSets() }
+        val entryVm = world.t.track(EntryViewModel(world.t.session, world.t.filter(), world.t.hints, testSetsRepository(world.t.api), world.t.setCatalog(), world.t.wantedList(),
             testCatalogRepository(world.t.api),
             object : SetCreator {
-                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
+                override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
             }))
-        zeige(schrift) {
-            GalleryRoute(vm = vm, erfassung = erfassung,
-                imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
+        show(font) {
+            GalleryRoute(vm = vm, entryVm = entryVm,
+                imageLoader = images, onScanBarcode = {}, onSetClick = {})
         }
-        wait("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.abruf.laedt }
+        wait("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.fetch.loading }
     }
 
     /**
-     * How many of the [namen] stand fully in the grid? Unclipped position instead of boundsInRoot: the
+     * How many of the [names] stand fully in the grid? Unclipped position instead of boundsInRoot: the
      * grid clips a half-visible tile, and clipped it would seemingly lie inside.
      */
-    private fun wholeVisible(namen: List<String>): Int {
+    private fun wholeVisible(names: List<String>): Int {
         val raster = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
-        return namen.count { name ->
+        return names.count { name ->
             compose.onAllNodes(hasClickAction() and hasText(name, substring = true)).fetchSemanticsNodes().any { k ->
-                val oben = k.positionInRoot.y
-                k.size.height > 0 && oben >= raster.top - 0.5f && oben + k.size.height <= raster.bottom + 0.5f
+                val top = k.positionInRoot.y
+                k.size.height > 0 && top >= raster.top - 0.5f && top + k.size.height <= raster.bottom + 0.5f
             }
         }
     }
 
     /**
-     * Add buttons with [beschreibung] that do not stand above the list. At 200 % add belongs
+     * Add buttons with [description] that do not stand above the list. At 200 % add belongs
      * in the row below the search; a floating button lies below the
      * start of the list, even if the list is shorter than the screen with few sets.
      */
-    private fun addNotViaList(beschreibung: String): List<Rect> {
-        val liste = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
-        val buttons = compose.onAllNodesWithContentDescription(beschreibung).fetchSemanticsNodes().map { it.boundsInRoot }
+    private fun addNotViaList(description: String): List<Rect> {
+        val list = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
+        val buttons = compose.onAllNodesWithContentDescription(description).fetchSemanticsNodes().map { it.boundsInRoot }
         assertTrue("Erfassen ist da", buttons.isNotEmpty())
-        return buttons.filter { it.bottom > liste.top + 0.5f }
+        return buttons.filter { it.bottom > list.top + 0.5f }
     }
 
     /**
@@ -427,14 +427,14 @@ class UisRulesTest {
      */
     @Test
     fun `gallery at 200 percent shows several sets fully and add lies on none`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            galleryWith(world, coil3.ImageLoader.Builder(ctx).build(), schrift = 2f)
-            val namen = listOf("Millennium Falcon", "Titanic", "Baumhaus")
-            val ganz = wholeVisible(namen)
-            assertTrue("Nur $ganz Set(s) ganz sichtbar", ganz >= 2)
-            val daneben = addNotViaList(ctx.getString(R.string.gallery_add_set))
-            assertTrue("Erfassen steht nicht über der Liste: $daneben", daneben.isEmpty())
+            galleryWith(world, coil3.ImageLoader.Builder(ctx).build(), font = 2f)
+            val names = listOf("Millennium Falcon", "Titanic", "Baumhaus")
+            val whole = wholeVisible(names)
+            assertTrue("Nur $whole Set(s) ganz sichtbar", whole >= 2)
+            val beside = addNotViaList(ctx.getString(R.string.gallery_add_set))
+            assertTrue("Erfassen steht nicht über der Liste: $beside", beside.isEmpty())
         } finally {
             world.close()
         }
@@ -442,19 +442,19 @@ class UisRulesTest {
 
     @Test
     fun `parts at 200 percent show several parts fully and add lies on none`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.teile().also { it.loadParts() }
-            zeige(schrift = 2f) {
+            val vm = world.parts().also { it.loadParts() }
+            show(font = 2f) {
                 PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
-            wait("Teile") { vm.teileState.value.parts.isNotEmpty() }
-            val namen = vm.teileState.value.parts.mapNotNull { it.partName }
-            assertTrue(namen.size >= 3)
-            val ganz = wholeVisible(namen)
-            assertTrue("Nur $ganz Teil(e) ganz sichtbar", ganz >= 2)
-            val daneben = addNotViaList(ctx.getString(R.string.parts_add))
-            assertTrue("Erfassen steht nicht über der Liste: $daneben", daneben.isEmpty())
+            wait("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            val names = vm.partsState.value.parts.mapNotNull { it.partName }
+            assertTrue(names.size >= 3)
+            val whole = wholeVisible(names)
+            assertTrue("Nur $whole Teil(e) ganz sichtbar", whole >= 2)
+            val beside = addNotViaList(ctx.getString(R.string.parts_add))
+            assertTrue("Erfassen steht nicht über der Liste: $beside", beside.isEmpty())
         } finally {
             world.close()
         }
@@ -466,40 +466,40 @@ class UisRulesTest {
      */
     @Test
     fun `comparison and build list mark More and lead back there with Back`() {
-        val mehr = ctx.getString(R.string.nav_more)
-        zeige {
+        val more = ctx.getString(R.string.nav_more)
+        show {
             val nav = rememberNavController()
             val tab = remember {
                 listOf(
-                    Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Reiter(AppTarget.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
+                    Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Tab(AppTarget.More, { Icon(Icons.Default.ViewInAr, null) }, more))
             }
             MainScaffold(
                 title = "Seite", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, onTabAngetippt = {},
+                onCsvCancel = {}, onTabTapped = {},
             ) {
-                NavHost(nav, startDestination = SammlungZiel.Gallery) {
-                    composable<SammlungZiel.Gallery> { }
-                    composable<AppTarget.Mehr> { MehrBildschirm(nav::openOfMore, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
-                    composable<SammlungZiel.Comparison> { Text("Vergleichsseite") }
-                    composable<TeileZiel.PartsList> { Text("Baulistenseite") }
+                NavHost(nav, startDestination = CollectionTarget.Gallery) {
+                    composable<CollectionTarget.Gallery> { }
+                    composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, updateAvailable = false, onLogout = {}) }
+                    composable<CollectionTarget.Comparison> { Text("Vergleichsseite") }
+                    composable<PartsTarget.PartsList> { Text("Baulistenseite") }
                 }
             }
         }
-        val zurueck = ctx.getString(R.string.common_back)
+        val back = ctx.getString(R.string.common_back)
         // On a tab itself no back: it is a root.
-        compose.onAllNodesWithContentDescription(zurueck).assertCountEquals(0)
-        for ((entry, inhalt) in listOf(R.string.nav_comparison to "Vergleichsseite", R.string.nav_partslist to "Baulistenseite")) {
-            compose.onNode(hasText(mehr) and hasClickAction()).performClick()
+        compose.onAllNodesWithContentDescription(back).assertCountEquals(0)
+        for ((entry, content) in listOf(R.string.nav_comparison to "Vergleichsseite", R.string.nav_partslist to "Baulistenseite")) {
+            compose.onNode(hasText(more) and hasClickAction()).performClick()
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(entry)).performClick()
             compose.waitForIdle()
-            compose.onNodeWithText(inhalt).fetchSemanticsNode()
-            compose.onNode(hasText(mehr) and androidx.compose.ui.test.isSelected())
+            compose.onNodeWithText(content).fetchSemanticsNode()
+            compose.onNode(hasText(more) and androidx.compose.ui.test.isSelected())
                 .fetchSemanticsNode("„Mehr“ ist auf ${ctx.getString(entry)} nicht gewählt")
-            compose.onNodeWithContentDescription(zurueck).performClick()
+            compose.onNodeWithContentDescription(back).performClick()
             compose.waitForIdle()
             // Back on “More”: its entries are there again.
             compose.onNodeWithText(ctx.getString(R.string.vouchers_title)).fetchSemanticsNode()
@@ -512,30 +512,30 @@ class UisRulesTest {
      */
     @Test
     fun `the arrow of a More subpage goes the same way as the back gesture`() {
-        val mehr = ctx.getString(R.string.nav_more)
+        val more = ctx.getString(R.string.nav_more)
         var nav: NavHostController? = null
-        zeige {
+        show {
             val n = rememberNavController().also { nav = it }
             val tab = remember {
                 listOf(
-                    Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Reiter(AppTarget.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
+                    Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Tab(AppTarget.More, { Icon(Icons.Default.ViewInAr, null) }, more))
             }
             MainScaffold(
                 title = "Seite", navController = n, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, onTabAngetippt = {},
+                onCsvCancel = {}, onTabTapped = {},
             ) {
-                NavHost(n, startDestination = SammlungZiel.Gallery) {
-                    composable<SammlungZiel.Gallery> { Text("Galerieseite") }
-                    composable<AppTarget.Mehr> { MehrBildschirm(n::openOfMore, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
-                    composable<SammlungZiel.Comparison> { Text("Vergleichsseite") }
+                NavHost(n, startDestination = CollectionTarget.Gallery) {
+                    composable<CollectionTarget.Gallery> { Text("Galerieseite") }
+                    composable<AppTarget.More> { MoreScreen(n::openOfMore, isAdmin = false, updateAvailable = false, onLogout = {}) }
+                    composable<CollectionTarget.Comparison> { Text("Vergleichsseite") }
                 }
             }
         }
         // As from within a set: the comparison directly above the gallery, without “More”.
-        compose.runOnIdle { nav!!.navigate(SammlungZiel.Comparison) }
+        compose.runOnIdle { nav!!.navigate(CollectionTarget.Comparison) }
         compose.onNodeWithText("Vergleichsseite").fetchSemanticsNode()
         compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).performClick()
         compose.waitForIdle()
@@ -549,22 +549,22 @@ class UisRulesTest {
 
     @Test
     fun `gallery without image shows the placeholder image on every tile`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
             // Every request fails, as offline or with a missing preview.
-            val kaputt = coil3.ImageLoader.Builder(ctx).components {
+            val broken = coil3.ImageLoader.Builder(ctx).components {
                 add(object : Interceptor {
                     override suspend fun intercept(chain: Interceptor.Chain) =
                         ErrorResult(null, chain.request, IllegalStateException("kein Bild"))
                 })
             }.build()
-            galleryWith(world, kaputt)
+            galleryWith(world, broken)
             val tiles = compose.onAllNodes(hasClickAction() and hasText("Millennium Falcon", substring = true))
                 .fetchSemanticsNodes().size
             assertTrue("Die erste Kachel ist sichtbar", tiles >= 1)
-            val namen = listOf("Millennium Falcon", "Titanic", "Baumhaus")
-            val sichtbar = namen.count { compose.onAllNodesWithText(it, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-            assertEquals("Ersatzbild je sichtbarer Kachel", sichtbar, fallbackImages())
+            val names = listOf("Millennium Falcon", "Titanic", "Baumhaus")
+            val visible = names.count { compose.onAllNodesWithText(it, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals("Ersatzbild je sichtbarer Kachel", visible, fallbackImages())
         } finally {
             world.close()
         }
@@ -572,7 +572,7 @@ class UisRulesTest {
 
     @Test
     fun `gallery with image shows no placeholder image`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
             galleryWith(world, SampleImages.loader(ctx))
             wait("Bilder") { fallbackImages() == 0 }
@@ -583,28 +583,28 @@ class UisRulesTest {
 
     @Test
     fun `gallery has a floating button and scanning next to the search`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.galerie().also { it.loadSets() }
-            val erfassung = world.t.merke(EntryViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, testSetsRepository(world.t.api), world.t.setCatalog(), world.t.merkliste(),
+            val vm = world.gallery().also { it.loadSets() }
+            val entryVm = world.t.track(EntryViewModel(world.t.session, world.t.filter(), world.t.hints, testSetsRepository(world.t.api), world.t.setCatalog(), world.t.wantedList(),
                 testCatalogRepository(world.t.api),
                 object : SetCreator {
-                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
+                    override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
                 }))
-            zeige {
-                GalleryRoute(vm = vm, erfassung = erfassung,
+            show {
+                GalleryRoute(vm = vm, entryVm = entryVm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
-            wait("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.abruf.laedt }
+            wait("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.fetch.loading }
             val scan = compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode))
             scan.assertCountEquals(1)
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_add_set)).assertCountEquals(1)
-            val suche = compose.onNode(androidx.compose.ui.test.hasSetTextAction())
+            val search = compose.onNode(androidx.compose.ui.test.hasSetTextAction())
                 .fetchSemanticsNode().boundsInRoot
             val button = scan[0].fetchSemanticsNode().boundsInRoot
-            assertTrue("Scannen steht in der Zeile der Suche", button.top < suche.bottom && button.bottom > suche.top)
+            assertTrue("Scannen steht in der Zeile der Suche", button.top < search.bottom && button.bottom > search.top)
         } finally {
             world.close()
         }
@@ -612,34 +612,34 @@ class UisRulesTest {
 
     @Test
     fun `parts at 200 percent shorten no name`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.teile().also { it.loadParts() }
-            zeige(schrift = 2f) {
+            val vm = world.parts().also { it.loadParts() }
+            show(font = 2f) {
                 PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
-            wait("Teile") { vm.teileState.value.parts.isNotEmpty() }
-            val namen = vm.teileState.value.parts.mapNotNull { it.partName }
-            assertTrue(namen.size >= 3)
-            val dichte = ctx.resources.displayMetrics.density
-            for (name in namen) {
+            wait("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            val names = vm.partsState.value.parts.mapNotNull { it.partName }
+            assertTrue(names.size >= 3)
+            val density = ctx.resources.displayMetrics.density
+            for (name in names) {
                 // The tile has grown with the font (120 dp × 2) …
                 // The images grow with the tile: not every tile lies in the visible grid.
                 compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
                     .performScrollToNode(hasText(name) and hasClickAction())
-                val kachel = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
-                assertTrue("Kachel von $name nur ${kachel.width / dichte} dp breit", kachel.width / dichte >= 200f)
+                val tile = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+                assertTrue("Kachel von $name nur ${tile.width / density} dp breit", tile.width / density >= 200f)
                 // … and the name stands in full: the last visible line ends with the
                 // last character, without ellipsis. didOverflowWidth is no use: Robolectric
                 // reports it for 342 px text under a 1119 px limit, fully in one line.
-                val ergebnis = mutableListOf<TextLayoutResult>()
+                val outcome = mutableListOf<TextLayoutResult>()
                 compose.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode()
-                    .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-                val text = ergebnis.single()
-                val letzte = text.lineCount - 1
+                    .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
+                val text = outcome.single()
+                val last = text.lineCount - 1
                 assertTrue("$name ist abgeschnitten (${text.lineCount} Zeilen, sichtbar bis " +
-                    "${text.getLineEnd(letzte, visibleEnd = true)}/${name.length})",
-                    !text.isLineEllipsized(letzte) && text.getLineEnd(letzte, visibleEnd = true) == name.length)
+                    "${text.getLineEnd(last, visibleEnd = true)}/${name.length})",
+                    !text.isLineEllipsized(last) && text.getLineEnd(last, visibleEnd = true) == name.length)
             }
         } finally {
             world.close()
@@ -652,11 +652,11 @@ class UisRulesTest {
      */
     @Test
     fun `parts name colors in German and names as English`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.teile().also { it.loadParts() }
-            zeige { PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Teile") { vm.teileState.value.parts.isNotEmpty() }
+            val vm = world.parts().also { it.loadParts() }
+            show { PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            wait("Teile") { vm.partsState.value.parts.isNotEmpty() }
             compose.onAllNodesWithText("Trans-Klar", useUnmergedTree = true).fetchSemanticsNodes().let {
                 assertTrue("Trans-Klar steht da", it.isNotEmpty())
             }
@@ -673,16 +673,16 @@ class UisRulesTest {
     @Test
     fun `finances stand in two columns on the tablet`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-            zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.verlauf.laedt } }
-            val verlauf = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
+            val vm = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
+            show { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.history.loading } }
+            val history = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             val falcon = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-            assertTrue("Die Zeilen stehen rechts neben dem Verlauf ($verlauf / $falcon)",
-                falcon.left > verlauf.right)
+            assertTrue("Die Zeilen stehen rechts neben dem Verlauf ($history / $falcon)",
+                falcon.left > history.right)
         } finally {
             world.close()
         }
@@ -694,24 +694,24 @@ class UisRulesTest {
      */
     @Test
     fun `voucher buttons name the number and the PIN has 48 dp`() {
-        zeige { Gutscheine() }
-        val nummer = inGroupsOfFour("6061 2345 6789")
-        val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, nummer))
+        show { Vouchers() }
+        val number = inGroupsOfFour("6061 2345 6789")
+        val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, number))
             .fetchSemanticsNode().boundsInRoot
-        val dichte = ctx.resources.displayMetrics.density
-        assertTrue("PIN-Zeile nur ${pin.height / dichte} dp hoch", pin.height / dichte >= 47.5f)
-        compose.onAllNodesWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).assertCountEquals(0)
-        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_menu, nummer)).performClick()
+        val density = ctx.resources.displayMetrics.density
+        assertTrue("PIN-Zeile nur ${pin.height / density} dp hoch", pin.height / density >= 47.5f)
+        compose.onAllNodesWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, number)).assertCountEquals(0)
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_menu, number)).performClick()
         compose.waitForIdle()
-        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).fetchSemanticsNode()
-        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_edit, nummer)).fetchSemanticsNode()
-        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_balance, nummer)).fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, number)).fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_edit, number)).fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_balance, number)).fetchSemanticsNode()
     }
 
     /** The form does not stand permanently below the list but opens as a sheet. */
     @Test
     fun `adding a voucher opens the form only on request`() {
-        zeige { Gutscheine() }
+        show { Vouchers() }
         compose.onAllNodesWithText(ctx.getString(R.string.vouchers_number)).assertCountEquals(0)
         compose.onNode(hasText(ctx.getString(R.string.vouchers_add)) and hasClickAction()).performClick()
         compose.waitForIdle()
@@ -725,24 +725,24 @@ class UisRulesTest {
      */
     @Test
     fun `wishlist filters the condition with chips and sorts via a menu`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.merkliste().also { it.loadWanted() }
-            zeige { WantedRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOpenSingle = { _, _ -> }) }
-            wait("Merkliste") { vm.wantedState.value.merkposten.isNotEmpty() }
+            val vm = world.wantedList().also { it.loadWanted() }
+            show { WantedRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOpenSingle = { _, _ -> }) }
+            wait("Merkliste") { vm.wantedState.value.wantedItem.isNotEmpty() }
             val chips = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
                 compose.onNode(hasText(ctx.getString(it)) and
                     SemanticsMatcher.expectValue(SemanticsProperties.Role,
                         Role.Checkbox)).fetchSemanticsNode("${ctx.getString(it)} ist kein Filterchip").boundsInRoot
             }
-            val dichte = ctx.resources.displayMetrics.density
+            val density = ctx.resources.displayMetrics.density
             chips.zipWithNext().forEach { (a, b) ->
-                assertTrue("Chips stehen mit Abstand (${a.right / dichte} / ${b.left / dichte} dp)", b.left - a.right >= 4 * dichte)
+                assertTrue("Chips stehen mit Abstand (${a.right / density} / ${b.left / density} dp)", b.left - a.right >= 4 * density)
             }
             // The sorting does not stand as a chip with its name but behind the icon.
-            val vorgabe = ctx.getString(R.string.gallery_sort_added_desc)
-            compose.onAllNodesWithText(vorgabe).assertCountEquals(0)
-            compose.onNodeWithContentDescription(ctx.getString(R.string.sort_menu_cd, vorgabe)).performClick()
+            val default = ctx.getString(R.string.gallery_sort_added_desc)
+            compose.onAllNodesWithText(default).assertCountEquals(0)
+            compose.onNodeWithContentDescription(ctx.getString(R.string.sort_menu_cd, default)).performClick()
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.gallery_sort_name)).fetchSemanticsNode()
         } finally {
@@ -758,22 +758,22 @@ class UisRulesTest {
     @Test
     fun `tablet shows wishlist and detail side by side`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.merkliste().also { it.loadWanted() }
-            zeige {
+            val vm = world.wantedList().also { it.loadWanted() }
+            show {
                 WantedRoute(vm = vm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), sideBySide = true,
                     onScan = {}, onOpenSingle = { _, _ -> error("auf dem Tablet keine eigene Seite") })
             }
-            wait("Merkliste") { vm.wantedState.value.merkposten.isNotEmpty() }
-            val karte = compose.onNode(hasText("Titanic", substring = true) and hasClickAction())
-            karte.performClick()
+            wait("Merkliste") { vm.wantedState.value.wantedItem.isNotEmpty() }
+            val card = compose.onNode(hasText("Titanic", substring = true) and hasClickAction())
+            card.performClick()
             compose.waitForIdle()
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.common_back)).assertCountEquals(0)
-            val zurueck = compose.onNodeWithContentDescription(ctx.getString(R.string.detail_close)).fetchSemanticsNode().boundsInRoot
-            val liste = compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
-            assertTrue("Das Detail steht rechts der Liste ($liste / $zurueck)", zurueck.left >= liste.right)
+            val back = compose.onNodeWithContentDescription(ctx.getString(R.string.detail_close)).fetchSemanticsNode().boundsInRoot
+            val list = compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+            assertTrue("Das Detail steht rechts der Liste ($list / $back)", back.left >= list.right)
             compose.onNode(hasText("Titanic", substring = true) and hasClickAction() and
                 SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
                 .fetchSemanticsNode()
@@ -784,12 +784,12 @@ class UisRulesTest {
 
     @Test
     fun `empty wishlist offers remembering and scanning`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            world.paths.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
-            val vm = world.merkliste().also { it.loadWanted() }
-            zeige { WantedRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOpenSingle = { _, _ -> }) }
-            driveUntil("Merkliste", bereit = { !(world.paths.requests.none { "/api/v1/wanted" in it } || vm.wantedState.value.abruf.laedt) })
+            world.paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
+            val vm = world.wantedList().also { it.loadWanted() }
+            show { WantedRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOpenSingle = { _, _ -> }) }
+            driveUntil("Merkliste", ready = { !(world.paths.requests.none { "/api/v1/wanted" in it } || vm.wantedState.value.fetch.loading) })
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.wanted_add_first)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).fetchSemanticsNode()
@@ -803,10 +803,10 @@ class UisRulesTest {
 
     /** Text fully in one line: neither wrapped nor elided. */
     private fun wholeOneRow(text: String) {
-        val ergebnis = mutableListOf<TextLayoutResult>()
+        val outcome = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode()
-            .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-        val t = ergebnis.single()
+            .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
+        val t = outcome.single()
         assertTrue("„$text“ steht in ${t.lineCount} Zeilen, sichtbar bis ${t.getLineEnd(t.lineCount - 1, visibleEnd = true)}",
             t.lineCount == 1 && !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == text.length)
     }
@@ -821,7 +821,7 @@ class UisRulesTest {
             .map { ctx.getString(it) }
         val period = listOf(R.string.chart_period_week, R.string.chart_period_month, R.string.chart_period_year,
             R.string.chart_period_max).map { ctx.getString(it) }
-        zeige(schrift = 2f) {
+        show(font = 2f) {
             Column(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
                 SegmentChoice(states.map { it to it }, states[0], {})
                 SegmentChoice(period.map { it to it }, period[0], {})
@@ -837,12 +837,12 @@ class UisRulesTest {
     @Test
     fun `single choice stands as segments below each other in full width at 200 percent`() {
         val states = listOf(R.string.condition_new, R.string.condition_used).map { ctx.getString(it) }
-        zeige(schrift = 2f) {
+        show(font = 2f) {
             Column(Modifier.width(360.dp).padding(horizontal = 16.dp).testTag("wahl")) {
                 SegmentChoice(states.map { it to it }, states[0], {})
             }
         }
-        val dichte = ctx.resources.displayMetrics.density
+        val density = ctx.resources.displayMetrics.density
         val frame = compose.onNodeWithTag("wahl").fetchSemanticsNode().boundsInRoot
         val segments = states.map { text ->
             val node = compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode()
@@ -850,37 +850,37 @@ class UisRulesTest {
             node.boundsInRoot
         }
         segments.forEach { s ->
-            assertTrue("Segment über die volle Breite (${s.width / dichte} von ${frame.width / dichte} dp)",
-                kotlin.math.abs(s.width - frame.width) <= dichte)
+            assertTrue("Segment über die volle Breite (${s.width / density} von ${frame.width / density} dp)",
+                kotlin.math.abs(s.width - frame.width) <= density)
         }
-        val (oben, unten) = segments
-        assertTrue("Segmente stehen untereinander und stossen aneinander ($oben / $unten)",
-            kotlin.math.abs(unten.top - oben.bottom) <= 2 * dichte)
+        val (top, bottom) = segments
+        assertTrue("Segmente stehen untereinander und stossen aneinander ($top / $bottom)",
+            kotlin.math.abs(bottom.top - top.bottom) <= 2 * density)
     }
 
     /** Titanic ×2: market value and purchase both for two pieces, the profit as an amount too. */
     @Test
     fun `finances name the purchase total and the profit as an amount for two pieces`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.finanzen().also { it.loadValuation() }
-            zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.bewertung.laedt } }
-            val zeile = setRows(vm.financeState.value.valuation!!.sets).map { it.second }
-                .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
-            // Computed ourselves, not from kaufGesamt/gewinn: otherwise the test would check the calculation with itself.
-            val gesamt = zeile.kaufpreis!! * zeile.menge
-            val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, Waehrung("CHF")))
-            compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
-            val gewinn = zeile.wert!! - gesamt
-            compose.onAllNodesWithText(fmtMoney(gewinn, Waehrung("CHF")), substring = true, useUnmergedTree = true)
+            val vm = world.finances().also { it.loadValuation() }
+            show { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoad.loading } }
+            val row = setRows(vm.financeState.value.valuation!!.sets).map { it.second }
+                .first { it.quantity > 1 && it.purchasePrice != null && it.value != null }
+            // Computed ourselves, not from purchaseTotal/gewinn: otherwise the test would check the calculation with itself.
+            val total = row.purchasePrice!! * row.quantity
+            val purchase = ctx.getString(R.string.finance_purchase_total, fmtMoney(total, CurrencyCode("CHF")))
+            compose.onNodeWithText(purchase, useUnmergedTree = true).fetchSemanticsNode()
+            val profit = row.value!! - total
+            compose.onAllNodesWithText(fmtMoney(profit, CurrencyCode("CHF")), substring = true, useUnmergedTree = true)
                 .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
         } finally {
             world.close()
         }
     }
 
-    private fun standsDa(text: String, substring: Boolean = false) =
+    private fun showsText(text: String, substring: Boolean = false) =
         compose.onAllNodesWithText(text, substring = substring, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
     /**
@@ -889,29 +889,29 @@ class UisRulesTest {
      */
     @Test
     fun `finance header shows cost plus P and L equals market value and the basis row`() {
-        val world = Examples.Welt(ContextTexts())
+        val world = Examples.World(ContextTexts())
         try {
-            val vm = world.finanzen().also { it.loadValuation() }
-            zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.bewertung.laedt } }
+            val vm = world.finances().also { it.loadValuation() }
+            show { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            wait("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoad.loading } }
             compose.waitForIdle()
             // The numbers of the examples, not from financeHeader: otherwise the test would check the calculation with itself.
             val cost = BigDecimal("1500.00")
-            val guv = BigDecimal("212.40")
-            val wert = BigDecimal("1712.40")
-            assertEquals(0, cost.add(guv).compareTo(wert))
-            val costText = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(cost.toDouble(), Waehrung("CHF")))
-            assertTrue(costText, standsDa(costText))
-            val guvText = ctx.getString(R.string.finance_guv_zeile, "+" + fmtMoney(guv.toDouble(), Waehrung("CHF")))
-            assertTrue(guvText, standsDa(guvText))
-            assertTrue("Marktwert", standsDa(fmtMoney(wert.toDouble(), Waehrung("CHF"))))
+            val pnl = BigDecimal("212.40")
+            val value = BigDecimal("1712.40")
+            assertEquals(0, cost.add(pnl).compareTo(value))
+            val costText = ctx.getString(R.string.finance_cost_basis_row, fmtMoney(cost.toDouble(), CurrencyCode("CHF")))
+            assertTrue(costText, showsText(costText))
+            val pnlText = ctx.getString(R.string.finance_pnl_row, "+" + fmtMoney(pnl.toDouble(), CurrencyCode("CHF")))
+            assertTrue(pnlText, showsText(pnlText))
+            assertTrue("Marktwert", showsText(fmtMoney(value.toDouble(), CurrencyCode("CHF"))))
             // The cost of ALL positions (with the tree house) would stand next to a market value without it.
-            val alle = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(1680.0, Waehrung("CHF")))
-            assertTrue("kein Einstand aller Positionen", !standsDa(alle))
-            val gerechnet = ctx.resources.getQuantityString(R.plurals.finance_basis_gerechnet, 3, 2, 3)
-            val ohne = ctx.resources.getQuantityString(R.plurals.finance_basis_ohne_markt, 1, 1, fmtMoney(180.0, Waehrung("CHF")))
-            assertTrue(gerechnet, standsDa(gerechnet, substring = true))
-            assertTrue(ohne, standsDa(ohne, substring = true))
+            val all = ctx.getString(R.string.finance_cost_basis_row, fmtMoney(1680.0, CurrencyCode("CHF")))
+            assertTrue("kein Einstand aller Positionen", !showsText(all))
+            val calculated = ctx.resources.getQuantityString(R.plurals.finance_basis_calculated, 3, 2, 3)
+            val without = ctx.resources.getQuantityString(R.plurals.finance_basis_without_market, 1, 1, fmtMoney(180.0, CurrencyCode("CHF")))
+            assertTrue(calculated, showsText(calculated, substring = true))
+            assertTrue(without, showsText(without, substring = true))
         } finally {
             world.close()
         }
@@ -920,24 +920,24 @@ class UisRulesTest {
     /** Without market price the server delivers the purchase price (kachel_quelle "kauf"); the tile says so. */
     @Test
     fun `gallery tile names the purchase price as purchase price`() {
-        val bilder = coil3.ImageLoader.Builder(ctx).build()
-        val markt = ctx.getString(R.string.gallery_card_market)
-        val kauf = ctx.getString(R.string.gallery_card_paid)
-        zeige {
+        val images = coil3.ImageLoader.Builder(ctx).build()
+        val market = ctx.getString(R.string.gallery_card_market)
+        val purchase = ctx.getString(R.string.gallery_card_paid)
+        show {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
-                    SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
-                        preis = TilePrice(Geld.aus(180.0), null, "kauf"), waehrung = Waehrung("CHF"))
+                    SetCard(SetView(setNumber = "21318-1", name = "Baumhaus"), "", images, {},
+                        price = TilePrice(Money.from(180.0), null, "kauf"), currency = CurrencyCode("CHF"))
                 }
                 // Older servers without kachel_quelle delivered only market prices.
                 Box(Modifier.weight(1f)) {
-                    SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon"), "", bilder, {},
-                        preis = TilePrice(Geld.aus(812.5), 16.1), waehrung = Waehrung("CHF"))
+                    SetCard(SetView(setNumber = "75192-1", name = "Millennium Falcon"), "", images, {},
+                        price = TilePrice(Money.from(812.5), 16.1), currency = CurrencyCode("CHF"))
                 }
             }
         }
-        compose.onAllNodesWithText(kauf, useUnmergedTree = true).assertCountEquals(1)
-        compose.onAllNodesWithText(markt, useUnmergedTree = true).assertCountEquals(1)
-        assertTrue(standsDa(fmtMoney(180.0, Waehrung("CHF"))))
+        compose.onAllNodesWithText(purchase, useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithText(market, useUnmergedTree = true).assertCountEquals(1)
+        assertTrue(showsText(fmtMoney(180.0, CurrencyCode("CHF"))))
     }
 }

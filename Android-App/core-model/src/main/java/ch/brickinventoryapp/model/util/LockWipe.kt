@@ -22,7 +22,7 @@ class LockWipe @Inject constructor() {
 
     // One failing holder must not keep the others' secrets in memory; the failure itself only
     // means that holder reloads lazily, so there is nothing to report.
-    fun wipe() = holders.forEach { h -> fangeAusserAbbruch { h.wipe() } }
+    fun wipe() = holders.forEach { h -> catchUnlessCancelled { h.wipe() } }
 
-    fun restore() = holders.forEach { h -> fangeAusserAbbruch { h.restore() } }
+    fun restore() = holders.forEach { h -> catchUnlessCancelled { h.restore() } }
 }

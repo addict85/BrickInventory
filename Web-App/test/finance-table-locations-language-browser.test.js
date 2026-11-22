@@ -17,13 +17,13 @@
  *      “foreign currency and tile …”
  *   E  loadLocations() fills the select from /v1/storage again → red:
  *      “new storage location …”
- *   F  the listener on spracheGewechselt in konten-orte.js deleted → red:
+ *   F  the listener on languageChanged in konten-orte.js deleted → red:
  *      “language switch …” (afterwards also the two following ones, the page stays
  *      English)
  *   G  data-i18n-aria not evaluated → red: the same three
  *   H  reportHits() deleted in renderGallery → red: “hit count …”
  *   I  the owner line deleted in the set detail → red: “set detail names …”
- *   K  .knopf-fuellend back to flex:1 → red: “wishlist item dialog …” (text
+ *   K  .button-filled back to flex:1 → red: “wishlist item dialog …” (text
  *      wider than the button)
  */
 const test = require('node:test');
@@ -99,7 +99,7 @@ test('finance table, storage locations, number format, screen reader', {
 
   await geh('finanzen');
   await bis(
-    `document.querySelectorAll('[data-fin-art="sets"] tbody tr').length >= 4 && document.getElementById('fin-sum').dataset.geladen === '1'`,
+    `document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length >= 4 && document.getElementById('fin-sum').dataset.loaded === '1'`,
     'Finanztabelle',
   );
 
@@ -107,10 +107,10 @@ test('finance table, storage locations, number format, screen reader', {
     const fehler = [];
     for (const w of [683, 820, 1024, 1280]) {
       await groesse(w, w === 683 ? 450 : 900);
-      await b.auswerten(`document.querySelector('[data-fin-art="sets"]').scrollIntoView(); true`);
+      await b.auswerten(`document.querySelector('[data-fin-kind="sets"]').scrollIntoView(); true`);
       await receipt(`finanzen-${w}`);
       const m = await b.auswerten(`(() => {
-        const tw = document.querySelector('[data-fin-art="sets"]'), stand = [...tw.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().width > 0).pop();
+        const tw = document.querySelector('[data-fin-kind="sets"]'), stand = [...tw.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().width > 0).pop();
         const wert = [...tw.querySelectorAll('thead th')].find(th => /Marktwert/.test(th.textContent));
         return { seite: document.documentElement.scrollWidth, fenster: innerWidth, rollt: tw.scrollWidth - tw.clientWidth,
                  stand: Math.round(stand.getBoundingClientRect().right), wert: Math.round(wert.getBoundingClientRect().right),
@@ -125,7 +125,7 @@ test('finance table, storage locations, number format, screen reader', {
   });
 
   await t.test('number format: a German account in EUR writes 1.234,56 €', async () => {
-    const einstand = await b.auswerten(text('#fin-einstand'));
+    const einstand = await b.auswerten(text('#fin-cost-basis'));
     assert.match(einstand.replace(/ /g, ' '), /^\d{1,3}(\.\d{3})*,\d{2} €$/, einstand);
     assert.equal(
       await b.auswerten(`navigator.language.startsWith('de-')`),
@@ -136,11 +136,11 @@ test('finance table, storage locations, number format, screen reader', {
 
   await t.test('foreign currency and tile: purchase price in ARS visible, market value named', async () => {
     const zelle =
-      await b.auswerten(`(() => { const tr = [...document.querySelectorAll('[data-fin-art="sets"] tbody tr')].find(r => r.textContent.includes('Galaxy Explorer'));
+      await b.auswerten(`(() => { const tr = [...document.querySelectorAll('[data-fin-kind="sets"] tbody tr')].find(r => r.textContent.includes('Galaxy Explorer'));
       return tr.querySelector('td.price-cell').textContent.replace(/\\s+/g, ' ').trim(); })()`);
     assert.match(zelle, /99,99\sARS.*nicht umgerechnet/);
-    assert.equal(await b.auswerten(text('#fin-wert-titel')), 'Marktwert (bewertete Positionen)');
-    assert.match(await b.auswerten(text('#fin-wert-sub')), /^Gesamter Marktwert: .+ €$/);
+    assert.equal(await b.auswerten(text('#fin-value-title')), 'Marktwert (bewertete Positionen)');
+    assert.match(await b.auswerten(text('#fin-value-sub')), /^Gesamter Marktwert: .+ €$/);
     // Missing values look the same: dash with screen reader text, nowhere “Preis fehlt” as visible text.
     const sichtbar = await b.auswerten(`[...document.querySelectorAll('#fin-tbl td')].filter(td => {
       const k = td.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove()); return /Preis fehlt/.test(k.textContent); }).length`);
@@ -150,14 +150,14 @@ test('finance table, storage locations, number format, screen reader', {
   await t.test('a new storage location is available when capturing, the filter only shows occupied ones', async () => {
     await geh('lagerorte');
     await bis(
-      `!!document.getElementById('storage-new') && !!document.querySelector('#storage-list .lager-eingabe')`,
+      `!!document.getElementById('storage-new') && !!document.querySelector('#storage-list .location-input')`,
       'Lagerorte',
     );
     await b.auswerten(
-      `document.getElementById('storage-new').value = 'Dachboden Kiste 3'; ${klick('[data-click="legeLagerortAn"]')}`,
+      `document.getElementById('storage-new').value = 'Dachboden Kiste 3'; ${klick('[data-click="createLocation"]')}`,
     );
     await bis(
-      `[...document.querySelectorAll('#storage-list .lager-eingabe')].some(e => e.value === 'Dachboden Kiste 3')`,
+      `[...document.querySelectorAll('#storage-list .location-input')].some(e => e.value === 'Dachboden Kiste 3')`,
       'neuer Ort in der Liste',
     );
     // Without opening the dialog: opening it loads the stock itself and would hide what the page fills before.
@@ -204,16 +204,16 @@ test('finance table, storage locations, number format, screen reader', {
     await geh('sammlung');
     const suche = async q => {
       // The search is debounced: the wait is for the change of the live region, at most 5 s.
-      await b.auswerten(`new Promise(r => { const e = document.getElementById('treffer-live');
+      await b.auswerten(`new Promise(r => { const e = document.getElementById('match-live');
         const mo = new MutationObserver(() => { mo.disconnect(); r(true); });
         mo.observe(e, { childList: true, characterData: true, subtree: true }); setTimeout(() => r(false), 5000);
         const f = document.getElementById('gs'); f.value = ${JSON.stringify(q)}; f.dispatchEvent(new Event('input', { bubbles: true })); })`);
       await ruhig();
-      return b.auswerten(text('#treffer-live'));
+      return b.auswerten(text('#match-live'));
     };
     assert.deepEqual(
       await b.auswerten(
-        `(() => { const e = document.getElementById('treffer-live'); return [e.getAttribute('role'), e.getAttribute('aria-live')]; })()`,
+        `(() => { const e = document.getElementById('match-live'); return [e.getAttribute('role'), e.getAttribute('aria-live')]; })()`,
       ),
       ['status', 'polite'],
     );
@@ -225,25 +225,25 @@ test('finance table, storage locations, number format, screen reader', {
   await t.test('set detail names the account the set belongs to', async () => {
     await geh('sammlung/set/75313-1');
     await bis(
-      `document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skelett-zeile')`,
+      `document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skeleton-row')`,
       'Set-Dialog',
     );
-    assert.equal(await b.auswerten(text('#m-untertit')), `75313-1 · Konto: ${KIND}`);
+    assert.equal(await b.auswerten(text('#m-subtitle')), `75313-1 · Konto: ${KIND}`);
     await b.auswerten(klick('#set-modal [data-click="closeModal"]'));
   });
 
   await t.test('wishlist item dialog: button texts fit into their buttons', async () => {
     await geh('merkliste');
-    await bis(`!!document.querySelector('#mk-list .mk-zeile')`, 'Merkliste');
-    await b.auswerten(klick('#mk-list .mk-zeile'));
+    await bis(`!!document.querySelector('#mk-list .mk-row')`, 'Merkliste');
+    await b.auswerten(klick('#mk-list .mk-row'));
     await bis(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Merkposten-Dialog');
     // The BrickLink button only appears with a catalog response; it is measured even without one.
     await b.auswerten(
-      `document.getElementById('mk-m-bricklink').style.display = ''; document.getElementById('mk-m-vergleich').style.display = ''; true`,
+      `document.getElementById('mk-m-bricklink').style.display = ''; document.getElementById('mk-m-comparison').style.display = ''; true`,
     );
     await ruhig();
     const eng = await b.auswerten(
-      `[...document.querySelectorAll('#mk-detail-modal .knopf-fuellend')].filter(k => k.scrollWidth > k.clientWidth + 1).map(k => k.textContent.trim())`,
+      `[...document.querySelectorAll('#mk-detail-modal .button-filled')].filter(k => k.scrollWidth > k.clientWidth + 1).map(k => k.textContent.trim())`,
     );
     assert.deepEqual(eng, []);
   });

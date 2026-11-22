@@ -212,7 +212,7 @@ test('signing in separate jobs without project code, checked and published after
 // Counter-checks (measured 02.11.2026): in the job `pruefsummen-vorschlagen` again
 // `git push origin "HEAD:$GITHUB_REF_NAME"` → red (push target not the own
 // branch); `pull-requests: write` additionally in the job `pruefsummen` → red „… nur
-// der vorschlagende Job …“; in the job `bildschirmfotos-einchecken` the PNG check
+// der vorschlagende Job …“; in the job `screenshots-commit` the PNG check
 // removed → red „eingecheckt wird nur PNG“.
 test('checksums come as a pull request, screenshots only as PNG', () => {
   const yml = fs
@@ -243,16 +243,16 @@ test('checksums come as a pull request, screenshots only as PNG', () => {
     'build',
     'uebergabe',
     'signieren',
-    'gegenproben',
+    'counter-checks',
     'pruefsummen',
     'pruefsummen-zusammenfassen',
-    'bildschirmfotos',
-    'bildschirmfotos-einchecken',
+    'screenshots',
+    'screenshots-commit',
   ])
     assert.doesNotMatch(job(name), /pull-requests: write/, `${name}: nur der vorschlagende Job legt Pull-Requests an`);
-  const bilder = job('bildschirmfotos-einchecken');
+  const bilder = job('screenshots-commit');
   assert.match(bilder, /89504e470d0a1a0a/, 'eingecheckt wird nur PNG');
-  assert.match(bilder, /git add Android-App\/app\/src\/test\/bildschirmfotos\/\*\.png/);
+  assert.match(bilder, /git add Android-App\/app\/src\/test\/screenshots\/\*\.png/);
 });
 
 /** The run block of a step, without the YAML indentation. */

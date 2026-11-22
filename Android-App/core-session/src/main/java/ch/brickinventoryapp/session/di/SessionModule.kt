@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.session.di
 
 import ch.brickinventoryapp.session.StoreAccountValues
-import ch.brickinventoryapp.session.Kontowerte
-import ch.brickinventoryapp.session.Sitzung
-import ch.brickinventoryapp.session.SitzungsDienst
-import ch.brickinventoryapp.session.SitzungsRepository
+import ch.brickinventoryapp.session.AccountValues
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.session.SessionService
+import ch.brickinventoryapp.session.SessionRepository
 import ch.brickinventoryapp.session.SessionState
 import dagger.Module
 import dagger.Provides
@@ -15,7 +15,7 @@ import dagger.hilt.components.SingletonComponent
 @Module
 @InstallIn(SingletonComponent::class)
 object SessionModule {
-    @Provides fun provideSession(s: SessionState): Sitzung = s
-    @Provides fun provideSitzungsRepository(d: SitzungsDienst): SitzungsRepository = d
-    @Provides fun provideKontowerte(k: StoreAccountValues): Kontowerte = k
+    @Provides fun provideSession(s: SessionState): Session = s
+    @Provides fun provideSessionRepository(d: SessionService): SessionRepository = d
+    @Provides fun provideAccountValues(k: StoreAccountValues): AccountValues = k
 }

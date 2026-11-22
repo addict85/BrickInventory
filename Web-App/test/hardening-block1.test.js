@@ -267,8 +267,8 @@ test('minifigures and finances request preview images', async () => {
     assert.ok(await warte(() => d.querySelector('#figs-list img')), 'keine Figurenkachel');
     assert.match(d.querySelector('#figs-list img').getAttribute('src'), /^\/api\/v1\/img-proxy\?.*&thumb=1/);
     await reiter(w, 'finance');
-    assert.ok(await warte(() => d.querySelector('#fin-tbl .fin-bild img')), 'kein Bild in der Finanztabelle');
-    assert.match(d.querySelector('#fin-tbl .fin-bild img').getAttribute('src'), /^\/api\/v1\/img-proxy\?.*&thumb=1/);
+    assert.ok(await warte(() => d.querySelector('#fin-tbl .fin-image img')), 'kein Bild in der Finanztabelle');
+    assert.match(d.querySelector('#fin-tbl .fin-image img').getAttribute('src'), /^\/api\/v1\/img-proxy\?.*&thumb=1/);
   } finally {
     w.close();
   }

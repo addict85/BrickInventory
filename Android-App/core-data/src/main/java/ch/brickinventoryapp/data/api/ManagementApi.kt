@@ -37,36 +37,36 @@ interface ManagementApi {
     // Three calls instead of one with a path parameter, because they are three routers.
     @Multipart
     @POST("api/v1/sets/import/csv")
-    suspend fun importSetsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importSetsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     @Multipart
     @POST("api/v1/parts/import/csv")
-    suspend fun importPartsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importPartsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     @Multipart
     @POST("api/v1/minifigs/import/csv")
-    suspend fun importMinifigsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importMinifigsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // The wishlist does NOT lie under an own old router like sets,
     // parts and minifigures, but completely in routes/api_v1/wanted.ts —
     // hence its import stands there and not under api/v1/merkliste/.
     @Multipart
     @POST("api/v1/wanted/import/csv")
-    suspend fun importWantedCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importWantedCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // Price alerts. The address lies under /alerts and not under
     // /sets/<nr>/alert because the file carries MANY sets — the single route
     // next to it sets exactly one alert.
     @Multipart
     @POST("api/v1/alerts/import/csv")
-    suspend fun importAlertsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importAlertsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // ── Server log (admins only) ──
     //
     // User management (/auth/users) is deliberately missing here: it belongs at the
     // computer, not on the phone.
     @GET("api/v1/admin/logs")
-    suspend fun getLog(@Query("minutes") minuten: Int): Response<ProtokollResponse>
+    suspend fun getLog(@Query("minutes") minutes: Int): Response<ProtokollResponse>
 
     /**
      * Startup state of the server — without sign-in because it is needed before
@@ -154,24 +154,24 @@ interface ManagementApi {
      * and „running“. Only with full scope, otherwise 403.
      */
     @GET("api/v1/admin/auftraege")
-    suspend fun getAuftraege(
+    suspend fun getBackgroundJobs(
         @Query("status") status: String? = null,
-        @Query("art") art: String? = null,
+        @Query("art") kind: String? = null,
     ): Response<AuftraegeResponse>
 
     /** Only for „open“ and „running“, otherwise 409. */
     @POST("api/v1/admin/auftraege/{id}/abbrechen")
-    suspend fun abortJobAb(@Path("id") id: String): Response<AuftragAenderung>
+    suspend fun requestJobCancel(@Path("id") id: String): Response<AuftragAenderung>
 
     /** Only for „error“ and „cancelled“, otherwise 409. */
     @POST("api/v1/admin/auftraege/{id}/wiederholen")
     suspend fun repeatJob(@Path("id") id: String): Response<AuftragAenderung>
 
     @POST("api/v1/admin/auftraege/art/{art}/jetzt")
-    suspend fun starteAuftragsArt(@Path("art") art: String): Response<AuftragsArtStart>
+    suspend fun startJobKind(@Path("art") kind: String): Response<AuftragsArtStart>
 
     @DELETE("api/v1/admin/auftraege/art/{art}")
-    suspend fun emptyJobKind(@Path("art") art: String): Response<AuftragsArtLeerung>
+    suspend fun emptyJobKind(@Path("art") kind: String): Response<AuftragsArtLeerung>
 
     @POST("api/v1/admin/trigger-csv-sync")
     suspend fun triggerCsvSync(): Response<GenericAdminResponse>

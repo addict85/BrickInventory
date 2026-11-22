@@ -22,7 +22,7 @@ import ch.brickinventoryapp.ui.screens.imageAnalyse
 // Opt-in for imageProxy.image: `@androidx.annotation.OptIn` is the form
 // for a marker defined in Java — `@ExperimentalGetImage` on the local
 // variable would be the annotation, not the opt-in (Lint:
-// UnsafeOptInUsageError). The same pattern as in KameraAufbau.kt.
+// UnsafeOptInUsageError). The same pattern as in CameraSetup.kt.
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 internal fun rememberBarcodeAnalyzer(
@@ -47,8 +47,8 @@ internal fun rememberBarcodeAnalyzer(
      * gets free in between and focus doesn't feel sluggish. The barcode reader keeps
      * running on every frame regardless.
      */
-    val OCR_INTERVALL_MS = 700L
-    val letzteOcr = remember { java.util.concurrent.atomic.AtomicLong(0L) }
+    val OCR_INTERVAL_MS = 700L
+    val lastOcr = remember { java.util.concurrent.atomic.AtomicLong(0L) }
 
     val barcodeScanner = remember {
         BarcodeScanning.getClient(
@@ -75,7 +75,7 @@ internal fun rememberBarcodeAnalyzer(
         }
     }
     val imageAnalyzer = remember {
-        // Setup including AF mode: ui/screens/KameraAufbau.kt — the same
+        // Setup including AF mode: ui/screens/CameraSetup.kt — the same
         // settings as in SetupScreen, only with more resolution for
         // small EAN bars and text recognition.
         imageAnalyse(1920, 1080)
@@ -100,13 +100,13 @@ internal fun rememberBarcodeAnalyzer(
                                 // deliberate: the barcode is unambiguous, the read number only
                                 // probable — on the box the barcode wins, text
                                 // recognition applies on the instructions.
-                                val jetzt = System.currentTimeMillis()
-                                if (jetzt - letzteOcr.get() < OCR_INTERVALL_MS) {
+                                val now = System.currentTimeMillis()
+                                if (now - lastOcr.get() < OCR_INTERVAL_MS) {
                                     onStatus(aimHint)
                                     imageProxy.close()
                                     return@addOnSuccessListener
                                 }
-                                letzteOcr.set(jetzt)
+                                lastOcr.set(now)
 
                                 if (!ocrEnabled) {
                                     // Text recognition not wanted here — only the target hint, and

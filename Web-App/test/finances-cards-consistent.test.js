@@ -130,9 +130,9 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
   });
   try {
     await reiter(w, 'finance');
-    await warte(() => d.querySelector('#fin-tbl tfoot') && d.getElementById('fin-sum').dataset.geladen);
-    const einstand = betrag(text(d.getElementById('fin-einstand')));
-    const wert = betrag(text(d.getElementById('fin-wert')));
+    await warte(() => d.querySelector('#fin-tbl tfoot') && d.getElementById('fin-sum').dataset.loaded);
+    const einstand = betrag(text(d.getElementById('fin-cost-basis')));
+    const wert = betrag(text(d.getElementById('fin-value')));
     const guv = betrag(text(d.getElementById('fin-pnl-sub')));
     const prozent = betrag(text(d.getElementById('fin-total-pnl')));
     assert.equal(

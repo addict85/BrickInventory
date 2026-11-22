@@ -7,7 +7,7 @@
  * Counter-checks (measured 02.11.2026, each alone):
  *   A  rueckziel() in dialoge.js only returns `el` → red:
  *      “Escape with collapsed menu: focus on more actions”
- *   B  button again with data-stil="padding:1px 6px;…" and without text → red:
+ *   B  button again with data-style="padding:1px 6px;…" and without text → red:
  *      “reimport parts: labeled, 24 px, without inline style”
  *   C  rule input[type="checkbox"]{width:24px…} removed → red: “checkbox
  *      passkeys 24 px”
@@ -15,7 +15,7 @@
  *      “hover only on pointer devices”
  *   E  .bs again with border var(--bdr) → red: “login mask” classic, brick,
  *      werkbank, farbfaecher (button border “Mit Passkey anmelden”)
- *   F  (04.11.) the class v-mehr removed in the set dialog (menu stays open
+ *   F  (04.11.) the class v-more removed in the set dialog (menu stays open
  *      on choosing) → red: “Escape in the confirmation dialog: focus back
  *      on more actions” (“menu collapses on choosing”)
  *   G  (07.11.) `checked` removed from the checkbox #pw-pk in index.html → red:
@@ -61,8 +61,8 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
   );
 
   await t.test('reimport parts: labeled, 24 px, without inline style', async () => {
-    const k = await b.auswerten(`(() => { document.querySelector('#set-modal details.mehr-menue').open = true;
-      const k = document.querySelector('#set-modal [data-click="teileNeuImportieren"]'); const r = k.getBoundingClientRect();
+    const k = await b.auswerten(`(() => { document.querySelector('#set-modal details.more-menu').open = true;
+      const k = document.querySelector('#set-modal [data-click="reimportOpenSetParts"]'); const r = k.getBoundingClientRect();
       return { text: k.textContent.trim(), b: r.width, h: r.height, stil: k.getAttribute('style') }; })()`);
     assert.match(k.text, /Teile neu/);
     assert.ok(k.b >= 24 && k.h >= 24, `nur ${k.b}×${k.h}`);
@@ -72,18 +72,18 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
   await t.test('Escape in the confirmation dialog: focus back on "more actions"', async () => {
     // The menu collapses on choosing; the visible trigger is then its button.
     await b.auswerten(
-      `document.querySelector('#set-modal details.mehr-menue').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`,
+      `document.querySelector('#set-modal details.more-menu').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`,
     );
     await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
     assert.equal(
-      await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open`),
+      await b.auswerten(`document.querySelector('#set-modal details.more-menu').open`),
       false,
       'Menü klappt bei der Wahl zu',
     );
     await printEscape();
     assert.equal(await b.auswerten(`document.getElementById('confirm-modal').style.display`), 'none');
     assert.equal(
-      await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`),
+      await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.more-menu > summary')`),
       true,
       `Fokus auf ${await fokus()}`,
     );
@@ -92,10 +92,10 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
   await t.test('Escape with a collapsed menu: focus on more actions', async () => {
     await b.auswerten(`document.getElementById('btn-md').click(); true`);
     await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
-    await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open = false; true`);
+    await b.auswerten(`document.querySelector('#set-modal details.more-menu').open = false; true`);
     await printEscape();
     assert.equal(
-      await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`),
+      await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.more-menu > summary')`),
       true,
       `Fokus auf ${await fokus()}`,
     );
@@ -103,7 +103,7 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
   await printEscape();
 
   await t.test('passkeys check box 24 px', async () => {
-    await b.auswerten(`document.querySelector('.umenu-item[data-arg="profil"]').click(); true`);
+    await b.auswerten(`document.querySelector('.umenu-item[data-arg="profile"]').click(); true`);
     await bis(`!!document.getElementById('pw-pk')?.checkVisibility()`, 'Konto');
     const r = await b.auswerten(
       `(() => { const r = document.getElementById('pw-pk').getBoundingClientRect(); return [r.width, r.height]; })()`,
@@ -140,7 +140,7 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
   // “Passwort vergessen?”; the full mask is measured.
   // Only when the latest response is registered: a later one would otherwise hide
   // the just shown passkey button again.
-  await bis(`document.getElementById('login-screen').dataset.anmeldewege === 'geladen'`, 'Anmeldewege abgefragt');
+  await bis(`document.getElementById('login-screen').dataset.loginMethods === 'loaded'`, 'Anmeldewege abgefragt');
   await b.auswerten(
     `document.getElementById('btn-passkey').hidden = false; document.getElementById('link-forgot').hidden = false; true`,
   );
@@ -149,7 +149,7 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
       const funde = [];
       for (const dunkel of [false, true]) {
         await b.auswerten(
-          `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`,
+          `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`,
         );
         await warte(80);
         assert.equal(
@@ -157,7 +157,7 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
           true,
           'Passkey-Knopf fehlt',
         );
-        for (const f of await b.auswerten(LAYOUT(false))) funde.push(`${dunkel ? 'dunkel' : 'hell'}: ${f}`);
+        for (const f of await b.auswerten(LAYOUT(false))) funde.push(`${dunkel ? 'dark' : 'hell'}: ${f}`);
       }
       assert.deepEqual(funde, []);
     });

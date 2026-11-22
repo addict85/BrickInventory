@@ -4,8 +4,8 @@
  * the dialog is opened and button text and class are read.
  *
  * Counter-checks (measured 04.11.2026, each alone, bundle rebuilt):
- *   A  openDialog() again with `!knopf` as the danger rule (red as soon as no
- *      button is passed) and bestaetigeMitPasswort() without passing on →
+ *   A  openDialog() again with `!button` as the danger rule (red as soon as no
+ *      button is passed) and confirmDeleteWithPassword() without passing on →
  *      both tests red: “create account” with button “Löschen”, English “Delete”
  *   B  in unlinkHousehold() the button spec removed → red: “household”
  *      (button “Löschen” instead of “Verknüpfung lösen”)
@@ -56,13 +56,13 @@ test('confirmation dialogs: button text and color per caller', async () => {
     const konto = await liesDialog(d);
     assert.deepEqual([konto.text, konto.rot, konto.haupt], ['Konto anlegen', false, true], 'Konto anlegen');
 
-    await sicht(w, 'gutscheine');
-    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinPinUmschalten"]')), 'Gutscheinliste');
-    d.querySelector('[data-click="gutscheinPinUmschalten"]').click();
+    await sicht(w, 'vouchers');
+    assert.ok(await warte(() => d.querySelector('[data-click="toggleVoucherPin"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="toggleVoucherPin"]').click();
     const pin = await liesDialog(d);
     assert.deepEqual([pin.text, pin.rot, pin.haupt], ['Anzeigen', false, true], 'Gutschein-PIN');
 
-    await sicht(w, 'haushalt');
+    await sicht(w, 'household');
     assert.ok(await warte(() => d.querySelector('[data-click="unlinkHousehold"]')), 'Haushaltsliste');
     d.querySelector('[data-click="unlinkHousehold"]').click();
     const haushalt = await liesDialog(d);
@@ -102,9 +102,9 @@ test('confirmation dialogs in English: the same verb translated', async () => {
     d.getElementById('btn-cu').click();
     const k = await liesDialog(d);
     assert.deepEqual([k.text, k.rot], ['Create account', false]);
-    await sicht(w, 'gutscheine');
-    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinPinUmschalten"]')), 'Gutscheinliste');
-    d.querySelector('[data-click="gutscheinPinUmschalten"]').click();
+    await sicht(w, 'vouchers');
+    assert.ok(await warte(() => d.querySelector('[data-click="toggleVoucherPin"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="toggleVoucherPin"]').click();
     assert.equal((await liesDialog(d)).text, 'Show');
   } finally {
     w.close();

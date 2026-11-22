@@ -189,7 +189,7 @@ async function main() {
   if (coverage) {
     // An own bundle with an embedded source map: the delivered one stays without.
     const withCard = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
-    require('./build-frontend').buildBundle(withCard, { quellkarte: true });
+    require('./build-frontend').buildBundle(withCard, { sourceMap: true });
     fs.rmSync(COVERAGE, { recursive: true, force: true });
     fs.mkdirSync(path.join(COVERAGE, 'v8'), { recursive: true });
     Object.assign(measurement, { NODE_V8_COVERAGE: path.join(COVERAGE, 'v8'), TEST_BUENDEL: withCard });

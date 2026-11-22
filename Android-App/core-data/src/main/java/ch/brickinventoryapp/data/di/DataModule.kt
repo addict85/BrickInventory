@@ -6,15 +6,15 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.core.DataStore
 import ch.brickinventoryapp.data.AccountStore
-import ch.brickinventoryapp.data.TokenAblage
-import ch.brickinventoryapp.security.Geraetesperre
+import ch.brickinventoryapp.data.TokenStore
+import ch.brickinventoryapp.security.DeviceLock
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
-import ch.brickinventoryapp.data.Anmeldeablage
+import ch.brickinventoryapp.data.LoginStore
 import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.CreateWithStore
 import ch.brickinventoryapp.data.TokenSwap
@@ -22,7 +22,7 @@ import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.AccountRepository
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
-import ch.brickinventoryapp.data.Entwertungsquelle
+import ch.brickinventoryapp.data.RedemptionSource
 import ch.brickinventoryapp.data.cache.CacheOwner
 
 /** Interfaces of the data layer and their implementations, where the data layer knows them. */
@@ -42,13 +42,13 @@ internal object DataModule {
     ): DataStore<Preferences> = PreferenceDataStoreFactory.create { context.preferencesDataStoreFile("app_prefs") }
 
     @Provides
-    fun provideAnmeldeablage(p: AccountStore): Anmeldeablage = p
+    fun provideLoginStore(p: AccountStore): LoginStore = p
 
     @Provides
-    fun provideEntwertungsquelle(p: TokenAblage): Entwertungsquelle = p
+    fun provideRedemptionSource(p: TokenStore): RedemptionSource = p
 
     @Provides
-    fun provideCacheOwner(p: TokenAblage): CacheOwner = p
+    fun provideCacheOwner(p: TokenStore): CacheOwner = p
 
     /**
      * The token swap. Provider instead of directly: the account repository depends on the
@@ -57,16 +57,16 @@ internal object DataModule {
     @Provides
     @javax.inject.Singleton
     fun provideTokenSwap(
-        p: TokenAblage,
-        konto: javax.inject.Provider<AccountRepository>,
-        @ApplicationScope bereich: kotlinx.coroutines.CoroutineScope,
-        lock: Geraetesperre,
+        p: TokenStore,
+        account: javax.inject.Provider<AccountRepository>,
+        @ApplicationScope area: kotlinx.coroutines.CoroutineScope,
+        lock: DeviceLock,
     ): TokenSwap = TokenSwap(
-        stand = { p.tokenStatus() },
-        ersetze = { vorher, neu, herkunft -> p.replaceSwappedToken(vorher, neu, herkunft) },
-        rotiere = { konto.get().rotateToken(it) },
-        hintergrund = bereich,
-        bereit = { !lock.gesperrt() },
+        state = { p.tokenStatus() },
+        replace = { before, newValue, origin -> p.replaceSwappedToken(before, newValue, origin) },
+        rotate = { account.get().rotateToken(it) },
+        background = area,
+        ready = { !lock.locked() },
     )
 
     @Provides

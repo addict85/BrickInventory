@@ -8,9 +8,9 @@
  * Counter-checks (measured on 03.11.2026; C on 16.11.2026):
  *   A  in themes/noppe.css --b600 of the light variant not overridden →
  *      red: “noppe light: set number in the table 4.44:1” (likewise hochglanz)
- *   B  --gewinn not overridden there → red: “noppe light: gain in the
+ *   B  --profit not overridden there → red: “noppe light: gain in the
  *      table 4.43:1” (likewise hochglanz)
- *   C  .chip-weg with color:var(--mut) instead of inherit → red: “classic light: X on the
+ *   C  .chip-remove with color:var(--mut) instead of inherit → red: “classic light: X on the
  *      role chip 4.03:1”
  */
 const test = require('node:test');
@@ -39,14 +39,14 @@ const { chrome } = require('./helpers/app-browser');
 function abschnitt(n) {
   return `
   <div class="tw"><table class="dt dt-fin"><thead><tr><th data-k="${n}: Tabellenkopf">Einstand</th></tr></thead><tbody><tr>
-    <td><span class="nummer-klein" data-k="${n}: Setnummer in der Tabelle">10294-1</span></td>
-    <td class="fin-name">Titanic <span class="fin-jahr" data-k="${n}: Jahr in der Tabelle">2021</span></td>
-    <td class="fin-datum" data-k="${n}: Datum in der Tabelle">01.06.2026</td>
+    <td><span class="number-small" data-k="${n}: Setnummer in der Tabelle">10294-1</span></td>
+    <td class="fin-name">Titanic <span class="fin-year" data-k="${n}: Jahr in der Tabelle">2021</span></td>
+    <td class="fin-date" data-k="${n}: Datum in der Tabelle">01.06.2026</td>
     <td class="fin-guv"><span class="pnl-pos" data-k="${n}: Gewinn in der Tabelle">+4,8 %</span></td>
     <td class="fin-guv"><span class="pnl-neg" data-k="${n}: Verlust in der Tabelle">−6,9 %</span></td>
-    <td class="fin-wert price-total" data-k="${n}: Marktwert in der Tabelle">712,40 €</td>
-    <td><span class="pnl-geschenk" data-k="${n}: Geschenk">Geschenk</span></td>
-  </tr></tbody></table><p class="fin-fussnote" data-k="${n}: Fussnote">Der Marktwert enthält …</p></div>
+    <td class="fin-value price-total" data-k="${n}: Marktwert in der Tabelle">712,40 €</td>
+    <td><span class="pnl-gift" data-k="${n}: Geschenk">Geschenk</span></td>
+  </tr></tbody></table><p class="fin-footnote" data-k="${n}: Fussnote">Der Marktwert enthält …</p></div>
   <div class="fgrid">
     <div class="fstat"><div class="flbl" data-k="${n}: Kartenkopf">Einstand</div><div class="fval" data-k="${n}: Kennzahl">1.529,98 €</div><div class="fsub" data-k="${n}: Kartenunterzeile">Summe der Kaufpreise</div></div>
     <div class="fstat hi"><div class="flbl" data-k="${n}: Kopf der Hervorhebung">Marktwert</div><div class="fval" data-k="${n}: Kennzahl der Hervorhebung">1.863,90 €</div><div class="fsub" data-k="${n}: Unterzeile der Hervorhebung">Zum mittleren BrickLink-Preis</div></div>
@@ -55,14 +55,14 @@ function abschnitt(n) {
   <div id="gallery"><div class="sgrid"><div class="sc"><div class="scb">
     <div class="snum" data-k="${n}: Setnummer der Kachel">10294-1</div>
     <div class="smeta"><span class="smeta-text" data-k="${n}: Jahr und Thema">2021 · Icons</span>
-      <div class="splaketten"><span class="teile-zahl" data-k="${n}: Teilezahl">9.092 Teile</span><span class="ibadge besitz-badge" data-k="${n}: In Sammlung">In Sammlung</span></div></div>
-    <div class="price-badge"><span class="preis-art" data-k="${n}: Preisart">Marktpreis</span><span class="preis" data-k="${n}: Preis der Kachel">712,40 €</span><span class="preis-pnl"><span class="pnl-pos" data-k="${n}: Gewinn der Kachel">+4,8 %</span></span></div>
-    <div class="kachel-datum" data-k="${n}: Kaufdatum der Kachel">Gekauft 01.06.2026</div>
+      <div class="sbadges"><span class="parts-number" data-k="${n}: Teilezahl">9.092 Teile</span><span class="ibadge owned-badge" data-k="${n}: In Sammlung">In Sammlung</span></div></div>
+    <div class="price-badge"><span class="price-kind" data-k="${n}: Preisart">Marktpreis</span><span class="price" data-k="${n}: Preis der Kachel">712,40 €</span><span class="price-pnl"><span class="pnl-pos" data-k="${n}: Gewinn der Kachel">+4,8 %</span></span></div>
+    <div class="tile-date" data-k="${n}: Kaufdatum der Kachel">Gekauft 01.06.2026</div>
   </div></div></div></div>
   <div class="parts-group"><div class="group-hd"><span class="group-title" data-k="${n}: Gruppentitel">Manuell erfasste Teile</span><span class="group-sub" data-k="${n}: Gruppenzahl">1 Sorte</span></div></div>
   <div class="brick-stats"><div class="bstat bstat-slate"><div class="bstat-l" data-k="${n}: Statistik-Etikett">Sets</div><div class="bstat-v" data-k="${n}: Statistik-Wert">4</div></div></div>
   <button class="period-btn" data-k="${n}: Zeitraum-Knopf">Woche</button>
-  <div class="rollen-zelle"><span class="rb rv rolle-chip" data-k="${n}: Rollen-Chip Administrator">Administrator<button type="button" class="chip-weg" data-k="${n}: X am Rollen-Chip">×</button></span><span class="rb ru" data-k="${n}: Rollen-Chip Standard">Standard</span></div>`;
+  <div class="roles-cell"><span class="rb rv role-chip" data-k="${n}: Rollen-Chip Administrator">Administrator<button type="button" class="chip-remove" data-k="${n}: X am Rollen-Chip">×</button></span><span class="rb ru" data-k="${n}: Rollen-Chip Standard">Standard</span></div>`;
 }
 
 function testPage() {
@@ -71,7 +71,7 @@ function testPage() {
   for (const d of DESIGNS)
     for (const dunkel of d === 'werkbank' ? [true] : [false, true])
       teile.push(
-        `<section data-theme="${d}"${dunkel ? ' data-dunkel' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${abschnitt(`${d} ${dunkel ? 'dunkel' : 'hell'}`)}</div></section>`,
+        `<section data-theme="${d}"${dunkel ? ' data-dark' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${abschnitt(`${d} ${dunkel ? 'dark' : 'hell'}`)}</div></section>`,
       );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>*{transition:none!important;animation:none!important}</style></head><body>${teile.join('\n')}

@@ -5,10 +5,10 @@
  * operable (it only reads) and loads by itself as soon as the connection is back …
  *
  * Counter-checks (measured on 03.11.2026):
- *   A  ausZwischenspeicher() not asked in api() → red: „Merkliste: letzter Stand“
- *   B  [data-lesend] removed from NOT_LOCK → red: “try again stays operable”
+ *   A  offZwischenspeicher() not asked in api() → red: „Merkliste: letzter Stand“
+ *   B  [data-reading] removed from NOT_LOCK → red: “try again stays operable”
  *   C  the automatic reloading removed in showConnection(true) → red: “loads by itself”
- *   D  the rule label:has(> input[data-offline-gesperrt]) removed → red: “CSV label locked”
+ *   D  the rule label:has(> input[data-offline-locked]) removed → red: “CSV label locked”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +37,7 @@ test('wishlist: last state instead of an error, even after reloading the page', 
   // First visit with network; the second (as after F5) without, with the storage of this tab.
   const erst = await openUi({ '/v1/wanted': MERK });
   await reiter(erst.w, 'wanted');
-  await warte(() => erst.d.querySelector('#mk-list .mk-zeile'));
+  await warte(() => erst.d.querySelector('#mk-list .mk-row'));
   const speicher = Object.fromEntries(
     Object.keys(erst.w.sessionStorage).map(k => [k, erst.w.sessionStorage.getItem(k)]),
   );
@@ -49,7 +49,7 @@ test('wishlist: last state instead of an error, even after reloading the page', 
       },
     },
     {
-      vorher: w2 => {
+      before: w2 => {
         for (const [k, v] of Object.entries(speicher)) w2.sessionStorage.setItem(k, v);
       },
     },
@@ -58,7 +58,7 @@ test('wishlist: last state instead of an error, even after reloading the page', 
     netz(w, false);
     await reiter(w, 'wanted');
     await ruhig();
-    assert.equal(d.querySelector('#mk-list .fehler-zustand'), null, 'Merkliste: letzter Stand');
+    assert.equal(d.querySelector('#mk-list .error-state'), null, 'Merkliste: letzter Stand');
     assert.match(d.getElementById('mk-list').textContent, /Galaxie-Forscher/);
     assert.match(d.getElementById('offline-band').textContent, /^Keine Verbindung/);
   } finally {
@@ -75,13 +75,13 @@ test('never loaded: "no connection", try again stays operable and loads by itsel
         return MERK;
       },
     },
-    { vorher: withStyle },
+    { before: withStyle },
   );
   try {
     netz(w, false);
     await reiter(w, 'wanted');
-    await warte(() => d.querySelector('#mk-list .fehler-zustand'));
-    const box = d.querySelector('#mk-list .fehler-zustand');
+    await warte(() => d.querySelector('#mk-list .error-state'));
+    const box = d.querySelector('#mk-list .error-state');
     await t.test('Text', () => assert.match(box.textContent, /Keine Verbindung zum Server/));
     await t.test('try again stays operable', () =>
       assert.equal(box.querySelector('button[data-click]').disabled, false),
@@ -93,8 +93,8 @@ test('never loaded: "no connection", try again stays operable and loads by itsel
     });
     offline = false;
     netz(w, true);
-    await warte(() => d.querySelector('#mk-list .mk-zeile'));
-    await t.test('loads by itself', () => assert.ok(d.querySelector('#mk-list .mk-zeile')));
+    await warte(() => d.querySelector('#mk-list .mk-row'));
+    await t.test('loads by itself', () => assert.ok(d.querySelector('#mk-list .mk-row')));
   } finally {
     w.close();
   }

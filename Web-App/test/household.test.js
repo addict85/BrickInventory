@@ -121,7 +121,7 @@ test('web app and app get the same endpoints', () => {
 test('the web app offers inviting and redeeming to every account', () => {
   // An account can belong to several main accounts; each needs its own
   // invitation. A hidden input field prevented exactly that.
-  const js = require('./helpers/sources').ansichtQuelle('einstellungen');
+  const js = require('./helpers/sources').ansichtQuelle('settings');
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
 });
@@ -294,9 +294,8 @@ test('the UI shows owners and account selection only in the household', () => {
     'Das ganze Set darf nicht mehr auf einmal verschoben werden',
   );
   const ownerCols = (
-    adm.match(
-      /erfassung\.mitglieder\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g,
-    ) || []
+    adm.match(/acquisition\.members\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g) ||
+    []
   ).length;
   assert.equal(ownerCols, 2, 'Eigentümer-Spalte fehlt in einem der beiden Kaufpreis-Dialoge');
 });
@@ -305,11 +304,11 @@ test('the account filter applies per view and is sent along everywhere', () => {
   // Whoever sees the whole household in the gallery may want only their own
   // numbers in the finances — hence a separate value per view.
   const core = require('./helpers/sources').coreSource();
-  // 'merkliste' was added on 24.09. (Marco's specification: “In der Merkliste
+  // 'wanted' was added on 24.09. (Marco's specification: “In der Merkliste
   // noch einen Filter analog den Sets einbauen inkl. Inhaber"). The server
   // always understood `accounts=` on /v1/wanted — only the
   // choice in the UIs was missing.
-  assert.match(core, /export const SCOPE_VIEWS = \['gallery', 'parts', 'minifigs', 'finance', 'merkliste'\];/);
+  assert.match(core, /export const SCOPE_VIEWS = \['gallery', 'parts', 'minifigs', 'finance', 'wanted'\];/);
   assert.match(core, /localStorage\.getItem\('bim_scope_' \+ view\)/, 'Die Wahl soll einen Neuladen überleben');
   // 'all' is the server's default and is omitted.
   assert.match(core, /if \(m && m !== 'all'\) p\.set\('accounts', m\);/);
@@ -318,7 +317,7 @@ test('the account filter applies per view and is sent along everywhere', () => {
   assert.match(read('public/js/collection.js'), /addScopeParam\(p, 'gallery'\)/);
   assert.match(read('public/js/parts.js'), /addScopeParam\(p, 'parts'\)/);
   assert.match(read('public/js/minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
-  assert.match(read('public/js/wanted.js'), /addScopeParam\(p, 'merkliste'\)/);
+  assert.match(read('public/js/wanted.js'), /addScopeParam\(p, 'wanted'\)/);
 
   // In the finances tab ALL four queries — otherwise a sum from one
   // view would stand next to a listing from another.
@@ -348,7 +347,7 @@ test('the switch only reloads the affected view', () => {
   // nobody looks at — and trigger price fetches in doing so.
   const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function onScopeChange\(view\)/);
-  assert.match(gal, /if \(view === 'finance'\) emit\('finanzenLaden'\);/);
+  assert.match(gal, /if \(view === 'finance'\) emit\('financesLoad'\);/);
   // The parts and minifigures tabs have TWO lists — the one from sets and the
   // manually entered one. The manual area loads via its own endpoint
   // and otherwise stayed unfiltered.

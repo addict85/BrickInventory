@@ -65,11 +65,11 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
   // The start loads settings and prices afterwards; only then is the state settled.
   await ruhig();
 
-  /** @param {string} name @param {string} hash @param {string} [bereit] expression that becomes true when the data is in place */
-  const ansicht = async (name, hash, bereit) => {
+  /** @param {string} name @param {string} hash @param {string} [ready] expression that becomes true when the data is in place */
+  const ansicht = async (name, hash, ready) => {
     await t.test(name, async () => {
       await b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-      await bis(bereit ?? `document.body.innerText.includes(${JSON.stringify(SPUR + ' ')})`, `${name}: Daten sichtbar`);
+      await bis(ready ?? `document.body.innerText.includes(${JSON.stringify(SPUR + ' ')})`, `${name}: Daten sichtbar`);
       await ruhig();
       const r = await b.auswerten(CHECK);
       assert.deepEqual(r.fremd, [], `${name}: Markup aus Daten im DOM`);
@@ -96,6 +96,6 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
   await ansicht(
     'Lagerorte',
     '#/lagerorte',
-    `[...document.querySelectorAll('.lager-eingabe')].some(i => i.value.includes(${JSON.stringify(SPUR)}))`,
+    `[...document.querySelectorAll('.location-input')].some(i => i.value.includes(${JSON.stringify(SPUR)}))`,
   );
 });

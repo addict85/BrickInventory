@@ -1,30 +1,30 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogMetaView
 import ch.brickinventoryapp.model.domain.CatalogPageView
 
-import ch.brickinventoryapp.model.domain.Katalogsortierung
+import ch.brickinventoryapp.model.domain.CatalogSort
 
 /**
  * The server's set catalog.
  * An interface so that ViewModels and tests do not depend on the implementation with
- * Retrofit and store (KatalogRepositoryImpl).
+ * Retrofit and store (CatalogRepositoryImpl).
  */
 interface CatalogRepository {
-    suspend fun getCatalogMeta(): Ergebnis<CatalogMetaView>
+    suspend fun getCatalogMeta(): Outcome<CatalogMetaView>
 
     suspend fun getCatalogSets(
         q: String? = null, themeId: Int? = null, yearFrom: Int? = null, yearTo: Int? = null,
-        sort: Katalogsortierung = Katalogsortierung.DEFAULT, page: Int = 1, limit: Int = CATALOG_PAGE_SIZE
-    ): Ergebnis<CatalogPageView>
+        sort: CatalogSort = CatalogSort.DEFAULT, page: Int = 1, limit: Int = CATALOG_PAGE_SIZE
+    ): Outcome<CatalogPageView>
 
-    suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogDetailView?>
+    suspend fun getCatalogSetDetail(setNumber: String): Outcome<CatalogDetailView?>
 
-    suspend fun getCatalogYearVerteilung(
-        q: String? = null, themeId: Int? = null, sort: Katalogsortierung = Katalogsortierung.DEFAULT
-    ): Ergebnis<List<JahrAnzahlAnsicht>>
+    suspend fun getCatalogYearDistribution(
+        q: String? = null, themeId: Int? = null, sort: CatalogSort = CatalogSort.DEFAULT
+    ): Outcome<List<YearCountView>>
 }
 
 /**

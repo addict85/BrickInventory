@@ -20,10 +20,10 @@ const putCalls = aufrufe => aufrufe.filter(a => a.method === 'PUT' && a.url.ends
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 
 async function speichern(w, d) {
-  await sicht(w, 'profil');
+  await sicht(w, 'profile');
   await warte(() => d.getElementById('prof-user').value === 'anna');
   assert.equal(
-    d.querySelectorAll('#tab-profil input[type="password"][autocomplete="current-password"]').length,
+    d.querySelectorAll('#tab-profile input[type="password"][autocomplete="current-password"]').length,
     0,
     'kein Feld „Aktuelles Passwort“ mehr auf der Seite',
   );
@@ -72,7 +72,7 @@ test('a wrong password asks again', async () => {
   });
   try {
     await speichern(w, d);
-    d.getElementById('cd-pw').value = 'falsch';
+    d.getElementById('cd-pw').value = 'wrong';
     d.getElementById('cd-confirm').click();
     await warte(
       () => putCalls(aufrufe).length === 1 && openDialog(d) && /falsch/.test(d.getElementById('cd-msg').textContent),

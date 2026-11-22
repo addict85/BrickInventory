@@ -3,10 +3,10 @@ package ch.brickinventoryapp.ui
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Density
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Shapes
 import org.junit.Test
 import org.junit.Assert
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * The dimensions of an inventory tile live in ONE place.
@@ -29,28 +29,28 @@ import ch.brickinventoryapp.testing.Quellen
  * Only the geometry. The content of the two cards is different and should
  * stay that way: a different image source (minifigures with fallback to full
  * resolution), a different placeholder, a different quantity badge, and for parts
- * additionally the color dot. The same boundary that AppKarte in Formen.kt
+ * additionally the color dot. The same boundary that AppCard in Shapes.kt
  * already draws — it encapsulates the shell and leaves the inner padding to the caller.
  */
 class TileDimensionsTest {
 
     @Test
-    fun `the tile dimensions live only in Formen`() {
-        val zahlen = listOf("width(112.dp)", "height(178.dp)", "topStart = 14.dp")
+    fun `the tile dimensions live only in Shapes`() {
+        val numbers = listOf("width(112.dp)", "height(178.dp)", "topStart = 14.dp")
         val violations = mutableListOf<String>()
-        for (datei in Quellen.unter("ui")) {
-            if (datei.name == "Formen.kt") continue   // dort gehoeren sie hin
-            val src = Quellen.withoutComments(datei.readText())
-            for ((nr, zeile) in src.lines().withIndex()) {
-                for (z in zahlen) if (zeile.contains(z)) {
-                    violations += "${datei.name}:${nr + 1}  $z"
+        for (file in Sources.below("ui")) {
+            if (file.name == "Shapes.kt") continue   // dort gehoeren sie hin
+            val src = Sources.withoutComments(file.readText())
+            for ((nr, row) in src.lines().withIndex()) {
+                for (z in numbers) if (row.contains(z)) {
+                    violations += "${file.name}:${nr + 1}  $z"
                 }
             }
         }
         assert(violations.isEmpty()) {
             "Diese Stellen schreiben die Kachelmasse als Zahl:\n  " +
                 violations.joinToString("\n  ") +
-                "\nSie gehoeren nach Formen (kachelBreite/kachelHoehe/kachelBildEcken). " +
+                "\nSie gehoeren nach Formen (tileWidth/tileHeight/tileImageCorners). " +
                 "Zwei Zahlen fuer dasselbe Raster koennen auseinanderlaufen, und das " +
                 "faellt erst am Geraet auf."
         }
@@ -60,17 +60,17 @@ class TileDimensionsTest {
      */
     @Test
     fun `the common tile gets its dimensions there`() {
-        val nutzer = Quellen.unter("ui").filter { datei ->
-            val src = Quellen.withoutComments(datei.readText())
-            src.contains("Formen.kachelBreite") && src.contains("Formen.kachelHoehe")
+        val user = Sources.below("ui").filter { file ->
+            val src = Sources.withoutComments(file.readText())
+            src.contains("Shapes.tileWidth") && src.contains("Shapes.tileHeight")
         }
-        assert(nutzer.size == 1) {
-            "Die Kachelmasse stehen in ${nutzer.size} Dateien (${nutzer.joinToString { it.name }}) " +
-                "— erwartet wird genau eine: die gemeinsame ManuelleKachel. Mehr heisst, " +
+        assert(user.size == 1) {
+            "Die Kachelmasse stehen in ${user.size} Dateien (${user.joinToString { it.name }}) " +
+                "— erwartet wird genau eine: die gemeinsame ManualTile. Mehr heisst, " +
                 "es gibt wieder zwei Kacheln; keine heisst, sie ist weg oder umbenannt."
         }
-        assert(nutzer.single().name == "ManualItemComposables.kt") {
-            "Die Masse stehen in ${nutzer.single().name} statt in ManualItemComposables.kt"
+        assert(user.single().name == "ManualItemComposables.kt") {
+            "Die Masse stehen in ${user.single().name} statt in ManualItemComposables.kt"
         }
     }
 
@@ -80,29 +80,29 @@ class TileDimensionsTest {
      * Image areas IN the card may be fixed.
      *
      * Counter-check (measured on Oct 28, 2026, kotlinc): the set card back with
-     * `Modifier.height(272.dp)` → red with „GalerieKarte.kt …“.
+     * `Modifier.height(272.dp)` → red with „GalleryCard.kt …“.
      */
     @Test
     fun `cards have no fixed height`() {
-        val karte = Regex("""\b(Card|AppKarte|OutlinedCard|ElevatedCard)\(""")
+        val card = Regex("""\b(Card|AppCard|OutlinedCard|ElevatedCard)\(""")
         val fixedHeight = Regex("""modifier\s*=\s*Modifier[^\n]*?\.height\(""")
         val violations = mutableListOf<String>()
-        var karten = 0
-        for (datei in Quellen.unter("ui")) {
-            val zeilen = Quellen.withoutComments(datei.readText()).lines()
-            for ((nr, zeile) in zeilen.withIndex()) {
-                if (!karte.containsMatchIn(zeile)) continue
-                karten++
+        var cards = 0
+        for (file in Sources.below("ui")) {
+            val rows = Sources.withoutComments(file.readText()).lines()
+            for ((nr, row) in rows.withIndex()) {
+                if (!card.containsMatchIn(row)) continue
+                cards++
                 // The card's modifier sits in its first argument lines.
-                val kopf = zeilen.subList(nr, minOf(nr + 6, zeilen.size))
+                val header = rows.subList(nr, minOf(nr + 6, rows.size))
                 // Without content (`) {}`) it's a placeholder: its fixed height
                 // keeps the list steady until the page arrives (CatalogScrubberTest).
-                if (kopf.any { it.trim() == ") {}" }) continue
-                val treffer = kopf.indexOfFirst { fixedHeight.containsMatchIn(it) }
-                if (treffer >= 0) violations += "${datei.name}:${nr + treffer + 1}"
+                if (header.any { it.trim() == ") {}" }) continue
+                val hits = header.indexOfFirst { fixedHeight.containsMatchIn(it) }
+                if (hits >= 0) violations += "${file.name}:${nr + hits + 1}"
             }
         }
-        Assert.assertTrue("Keine Karte gefunden — Muster veraltet?", karten >= 10)
+        Assert.assertTrue("Keine Karte gefunden — Muster veraltet?", cards >= 10)
         Assert.assertTrue("Feste Kartenhöhe statt heightIn(min = …): $violations", violations.isEmpty())
     }
 
@@ -115,18 +115,18 @@ class TileDimensionsTest {
      */
     @Test
     fun `buttons and chips have no fixed height`() {
-        val button = Regex("""\b(Button|OutlinedButton|TextButton|FilledTonalButton|FilterChip|AuswahlChip|AssistChip|InputChip|Surface)\(""")
+        val button = Regex("""\b(Button|OutlinedButton|TextButton|FilledTonalButton|FilterChip|SelectionChip|AssistChip|InputChip|Surface)\(""")
         val fixedHeight = Regex("""modifier\s*=\s*Modifier\.height\(""")
         val violations = mutableListOf<String>()
         var buttons = 0
-        for (datei in Quellen.unter("ui")) {
-            val zeilen = Quellen.withoutComments(datei.readText()).lines()
-            for ((nr, zeile) in zeilen.withIndex()) {
-                if (!button.containsMatchIn(zeile)) continue
+        for (file in Sources.below("ui")) {
+            val rows = Sources.withoutComments(file.readText()).lines()
+            for ((nr, row) in rows.withIndex()) {
+                if (!button.containsMatchIn(row)) continue
                 buttons++
-                val kopf = zeilen.subList(nr, minOf(nr + 6, zeilen.size))
-                val treffer = kopf.indexOfFirst { fixedHeight.containsMatchIn(it) }
-                if (treffer >= 0) violations += "${datei.name}:${nr + treffer + 1}"
+                val header = rows.subList(nr, minOf(nr + 6, rows.size))
+                val hits = header.indexOfFirst { fixedHeight.containsMatchIn(it) }
+                if (hits >= 0) violations += "${file.name}:${nr + hits + 1}"
             }
         }
         Assert.assertTrue("Keine Knöpfe gefunden — Muster veraltet?", buttons >= 20)
@@ -139,12 +139,12 @@ class TileDimensionsTest {
      */
     @Test
     fun `image corner and card shape share the radius`() {
-        val groesse = Size(112f, 208f)
-        val dichte = Density(2.75f)
-        fun px(corner: CornerSize) = corner.toPx(groesse, dichte)
-        Assert.assertEquals(px(Formen.leiste.topStart), px(Formen.kachelBildEcken.topStart), 0f)
-        Assert.assertEquals(px(Formen.leiste.topEnd), px(Formen.kachelBildEcken.topEnd), 0f)
-        Assert.assertTrue("Die Leiste ist rund", px(Formen.leiste.topStart) > 0f)
-        Assert.assertEquals("unten hat das Bild keine Ecke", 0f, px(Formen.kachelBildEcken.bottomStart), 0f)
+        val size = Size(112f, 208f)
+        val density = Density(2.75f)
+        fun px(corner: CornerSize) = corner.toPx(size, density)
+        Assert.assertEquals(px(Shapes.bar.topStart), px(Shapes.tileImageCorners.topStart), 0f)
+        Assert.assertEquals(px(Shapes.bar.topEnd), px(Shapes.tileImageCorners.topEnd), 0f)
+        Assert.assertTrue("Die Leiste ist rund", px(Shapes.bar.topStart) > 0f)
+        Assert.assertEquals("unten hat das Bild keine Ecke", 0f, px(Shapes.tileImageCorners.bottomStart), 0f)
     }
 }

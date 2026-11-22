@@ -5,7 +5,7 @@
  * the hint „nicht CHF wie das Ausgabeland“.
  *
  * Counter-checks (measured on 03.11.2026):
- *   A  in ladeGutscheine() again `einstellungsStand?.gutschein_land || 'de-CH'` → red: „EUR-Konto“
+ *   A  in loadVouchers() again `einstellungsStand?.gutschein_land || 'de-CH'` → red: „EUR-Konto“
  *   B  landFuerWaehrung() always returns LAND_STANDARD → red: “server: …”
  */
 const test = require('node:test');
@@ -33,10 +33,10 @@ test('EUR account without a stored country: Germany, no deviation hint', async (
     },
   });
   try {
-    await sicht(w, 'gutscheine');
+    await sicht(w, 'vouchers');
     await warte(() => d.querySelector('.voucher-row'));
-    assert.equal(d.getElementById('gutschein-land').value, 'de-DE', 'EUR-Konto');
-    assert.equal(d.querySelector('.voucher-abweichung'), null);
+    assert.equal(d.getElementById('voucher-country').value, 'de-DE', 'EUR-Konto');
+    assert.equal(d.querySelector('.voucher-deviation'), null);
     assert.equal(d.getElementById('v-currency').value, 'EUR');
   } finally {
     w.close();

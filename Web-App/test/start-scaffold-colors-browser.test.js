@@ -1,15 +1,15 @@
 /**
- * The start skeleton paints in the colors the page has afterwards: it follows the attribute data-dunkel
- * (set by theme-boot.js according to the device setting „bim_dunkel“), not the system alone.
+ * The start skeleton paints in the colors the page has afterwards: it follows the attribute data-dark
+ * (set by theme-boot.js according to the device setting „bim_dark“), not the system alone.
  * The same applies to <meta name="theme-color"> (browser bar). Measured in Chrome with the theme
  * „Stein (Blau)“; all scripts and styles except the boot script are held back so that only the skeleton paints.
  *
  * Counter-checks (measured on 08.11.2026):
- *   A  in the start style again `@media (prefers-color-scheme:dark)` instead of [data-dunkel]
+ *   A  in the start style again `@media (prefers-color-scheme:dark)` instead of [data-dark]
  *      → red: „System hell, immer dunkel: Gerüst dunkel“ and „System dunkel, nie dunkel: Gerüst hell“
- *   B  the rule `[data-theme=brick][data-dunkel] .sg-kopf` removed
+ *   B  the rule `[data-theme=brick][data-dark] .sg-header` removed
  *      → red: „Stein dunkel: Kopf im dunklen Blau“
- *   C  the rule `[data-theme=brick] .sg-kopf` removed → red: „Stein hell: Kopf im Stein-Blau“
+ *   C  the rule `[data-theme=brick] .sg-header` removed → red: „Stein hell: Kopf im Stein-Blau“
  *   D  the lines on `theme-color` removed in theme-boot.js
  *      → red: all four cases (color of the browser bar)
  *
@@ -20,7 +20,7 @@ const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
 const CASES = [
-  { name: 'System hell, immer dunkel: Gerüst dunkel', system: 'light', wahl: 'immer', dunkel: true },
+  { name: 'System hell, immer dunkel: Gerüst dunkel', system: 'light', wahl: 'always', dunkel: true },
   { name: 'System dunkel, nie dunkel: Gerüst hell', system: 'dark', wahl: 'server', dunkel: false },
   { name: 'System dunkel, Vorgabe: Gerüst dunkel', system: 'dark', wahl: null, dunkel: true },
   { name: 'System hell, Vorgabe: Gerüst hell', system: 'light', wahl: null, dunkel: false },
@@ -43,12 +43,12 @@ test('startup skeleton follows the device setting and the design', async t => {
     if (d.params.resourceType === 'Document' || u.includes('theme-boot.js'))
       b.tab('Fetch.continueRequest', { requestId: d.params.requestId }).catch(() => {});
   });
-  const messen = `(() => { const sg = document.getElementById('startgeruest'); if (!sg) return null;
+  const messen = `(() => { const sg = document.getElementById('start-skeleton'); if (!sg) return null;
     const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
     const f = getComputedStyle(sg).backgroundColor.match(/\\d+/g).map(Number);
     return { hell: 0.2126 * lin(f[0]) + 0.7152 * lin(f[1]) + 0.0722 * lin(f[2]),
-      kopf: getComputedStyle(sg.querySelector('.sg-kopf')).backgroundColor,
-      dunkel: document.documentElement.hasAttribute('data-dunkel'),
+      kopf: getComputedStyle(sg.querySelector('.sg-header')).backgroundColor,
+      dunkel: document.documentElement.hasAttribute('data-dark'),
       leiste: [...document.querySelectorAll('meta[name=theme-color]')].map(m => m.content) }; })()`;
 
   for (const fall of CASES) {
@@ -60,18 +60,18 @@ test('startup skeleton follows the device setting and the design', async t => {
         ],
       });
       await b.auswerten(
-        fall.wahl ? `localStorage.setItem('bim_dunkel', '${fall.wahl}')` : `localStorage.removeItem('bim_dunkel')`,
+        fall.wahl ? `localStorage.setItem('bim_dark', '${fall.wahl}')` : `localStorage.removeItem('bim_dark')`,
       );
       await b.tab('Page.navigate', { url: `http://127.0.0.1:${app.port}/` });
       await app.bis(
-        `!!document.getElementById('startgeruest') && document.documentElement.dataset.theme === 'brick'`,
+        `!!document.getElementById('start-skeleton') && document.documentElement.dataset.theme === 'brick'`,
         'Gerüst steht',
       );
       const m = await b.auswerten(messen);
-      assert.equal(m.dunkel, fall.dunkel, 'data-dunkel am <html>');
+      assert.equal(m.dunkel, fall.dunkel, 'data-dark am <html>');
       assert.ok(
         fall.dunkel ? m.hell < 0.05 : m.hell > 0.3,
-        `Grund ${fall.dunkel ? 'dunkel' : 'hell'}, Helligkeit ${m.hell.toFixed(3)}`,
+        `Grund ${fall.dunkel ? 'dark' : 'hell'}, Helligkeit ${m.hell.toFixed(3)}`,
       );
       assert.deepEqual(
         m.leiste,

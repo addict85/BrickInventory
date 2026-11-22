@@ -10,8 +10,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.http.DELETE
 import retrofit2.http.PUT
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.testing.testAlarmRepository
 import ch.brickinventoryapp.testing.TestApi
 
@@ -20,13 +20,13 @@ import ch.brickinventoryapp.testing.TestApi
  * that only stands in the detail of its set can only be found if one already knows the set.
  * The web app checks the opposite direction (test/webapp-endpoints.test.js).
  *
- * Counter-check (gegenproben/alarm-besitzt-vorgabe-falsch.patch): default of `besitzt`
+ * Counter-check (counter-checks/alarm-besitzt-vorgabe-falsch.patch): default of `owns`
  * to false → red “a missing besitzt field …”. Loading, changing, deleting after confirmation,
  * click and state words are checked, drawn, by PriceAlertsDisplayTest.
  */
 class AlarmOverviewTest {
 
-    private fun quelle(rel: String) = Quellen.withoutComments(Quellen.lies(rel))
+    private fun source(rel: String) = Sources.withoutComments(Sources.read(rel))
 
     /**
      * Executed against a test server. Counter-check: in
@@ -34,10 +34,10 @@ class AlarmOverviewTest {
      */
     @Test
     fun `the app fetches all alerts via the common route`() {
-        val paths = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
+        val paths = PathServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
-                testAlarmRepository(TestApi.fuer(paths.server)).refreshAlerts()
+                testAlarmRepository(TestApi.forTarget(paths.server)).refreshAlerts()
             }
             assertEquals(listOf("GET /api/v1/alerts"), paths.requests.toList())
         } finally {
@@ -62,14 +62,14 @@ class AlarmOverviewTest {
     }
 
     /**
-     * The thumbnail comes as in the finances via [FinanzBild] and [resolveThumbUrl].
+     * The thumbnail comes as in the finances via [FinanceImage] and [resolveThumbUrl].
      * That the row shows an image and only opens a set from the collection is checked,
      * drawn, by PriceAlertsDisplayTest.
      */
     @Test
     fun `the row shows the image like the finances`() {
-        val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
-        assert(s.contains("FinanzBild(")) {
+        val s = source("account/ui/screens/SettingsAlarme.kt")
+        assert(s.contains("FinanceImage(")) {
             "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
         }
         assert(s.contains("resolveThumbUrl(")) {
@@ -79,7 +79,7 @@ class AlarmOverviewTest {
 
     /**
      * A missing field does not switch off the section. An older server does not send
-     * `besitzt`; with the default `false` „field missing" would mean the same as „set
+     * `owns`; with the default `false` „field missing" would mean the same as „set
      * does not exist", and no row would be clickable any more. When in doubt, try: a click
      * that ends in an error message is better than a list in which nothing works.
      */
@@ -88,8 +88,8 @@ class AlarmOverviewTest {
         val alarm = BrickJson.decodeFromString(Preisalarm.serializer(),
             """{"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}""")
         assertTrue("Ohne das Feld gilt das Set als nicht vorhanden — die ganze Rubrik waere tot", alarm.besitzt)
-        val weg = BrickJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
-        assertFalse(weg.besitzt)
+        val gone = BrickJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
+        assertFalse(gone.besitzt)
     }
 
     /**
@@ -103,12 +103,12 @@ class AlarmOverviewTest {
      */
     @Test
     fun `the settings remember their scroll position`() {
-        val graph = quelle("account/ui/KontoGraph.kt")
+        val graph = source("account/ui/AccountGraph.kt")
         assert(graph.contains("settingsScrollState")) {
             "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
                 "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."
         }
-        assert(Regex("""KontoZiel\.Settings\.rollSchluessel,\s*settingsScrollState""").containsMatchIn(graph)) {
+        assert(Regex("""AccountTarget\.Settings\.rollKey,\s*settingsScrollState""").containsMatchIn(graph)) {
             "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
                 "springt zurueck."
         }
@@ -116,7 +116,7 @@ class AlarmOverviewTest {
         assert(graph.contains("val settingsScrollState = remember { ScrollState(0) }")) {
             "Die Einstellungen legen ihren Rollzustand nicht im Ziel an"
         }
-        val screen = quelle("account/ui/screens/SettingsScreen.kt")
+        val screen = source("account/ui/screens/SettingsScreen.kt")
         assert(!screen.contains("rememberScrollState()")) {
             "In SettingsScreen steht wieder ein eigenes rememberScrollState() — " +
                 "damit ist der durchgereichte Zustand wirkungslos."
@@ -137,13 +137,13 @@ class AlarmOverviewTest {
     @Test
     fun `the alert state stands as a badge`() {
         // That it shows „Aktiv“ and „Ausgelöst“ in words is checked by PriceAlertsDisplayTest.
-        val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
+        val s = source("account/ui/screens/SettingsAlarme.kt")
         // The save button appears only on a change. Without this
         // barrier a symbol stands permanently next to it again that looks like a
         // state indicator.
-        // Until the settings were split, `val geaendert =` matched from the
+        // Until the settings were split, `val changed =` matched from the
         // account card; nothing was checked by that. The barrier is the comparison.
-        assert(s.contains("zahl != a.schwelle")) {
+        assert(s.contains("number != a.threshold")) {
             "Der Speichern-Knopf steht wieder dauerhaft da und sieht aus wie ein Zustand."
         }
 
@@ -155,21 +155,21 @@ class AlarmOverviewTest {
         // A statement that only stands in the
         // color stands nowhere. This test therefore requires a
         // difference that one sees WITHOUT color.
-        val rumpf = s.substring(s.indexOf("fun AlarmZustandPlakette("))
+        val body = s.substring(s.indexOf("fun AlarmStateBadge("))
             .let { it.substring(0, minOf(1200, it.length)) }
-        assert(rumpf.contains("BorderStroke(")) {
+        assert(body.contains("BorderStroke(")) {
             "Die beiden Zustaende unterscheiden sich nicht in der Flaeche " +
                 "(gefuellt gegen umrandet) — dann bliebe nur die Farbe."
         }
-        assert(rumpf.contains("FontWeight.SemiBold")) {
+        assert(body.contains("FontWeight.SemiBold")) {
             "Auch das Schriftgewicht unterscheidet die beiden nicht mehr."
         }
         // No green against red, not even well-meant — that would be the same
         // error once more.
-        for (verboten in listOf("LocalStatusFarben", "colorScheme.error",
+        for (forbidden in listOf("LocalStatusColors", "colorScheme.error",
                                 "colorScheme.tertiary")) {
-            assert(!rumpf.contains(verboten)) {
-                "`$verboten` traegt eine Bedeutung ueber die Farbe. Genau das soll " +
+            assert(!body.contains(forbidden)) {
+                "`$forbidden` traegt eine Bedeutung ueber die Farbe. Genau das soll " +
                     "die Plakette nicht mehr tun."
             }
         }

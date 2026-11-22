@@ -43,8 +43,8 @@ async function einstand(browserLanguage, waehrung = 'EUR') {
   const o = await openUi(antwort(waehrung), { browserLanguage });
   try {
     await reiter(o.w, 'finance');
-    await warte(() => o.d.getElementById('fin-einstand').textContent.includes('1'));
-    return o.d.getElementById('fin-einstand').textContent.replace(/ /g, ' ');
+    await warte(() => o.d.getElementById('fin-cost-basis').textContent.includes('1'));
+    return o.d.getElementById('fin-cost-basis').textContent.replace(/ /g, ' ');
   } finally {
     o.w.close();
   }

@@ -17,7 +17,7 @@ import org.robolectric.annotation.Config
  * would only repeat the obvious and is missing.
  *
  * Counter-checks (not locally runnable, to be checked in CI — Robolectric):
- *   CatalogNameHint() without the `deutsch()` check → red “in English …” (one node instead of none)
+ *   CatalogNameHint() without the `german()` check → red “in English …” (one node instead of none)
  *   CatalogNameHint() returning early always → red “in German …” (no node)
  */
 @RunWith(RobolectricTestRunner::class)

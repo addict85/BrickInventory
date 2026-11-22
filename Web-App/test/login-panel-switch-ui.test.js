@@ -16,7 +16,7 @@ const klick = (d, id) => d.getElementById(id).click();
 const fokus = d => d.activeElement?.id || d.activeElement?.tagName;
 
 test('focus when switching the fields of the login card', async () => {
-  const { w, d } = await openUi({}, { angemeldet: false });
+  const { w, d } = await openUi({}, { loggedIn: false });
   try {
     await warte(() => d.getElementById('panel-login')?.style.display !== 'none');
     klick(d, 'link-forgot');
@@ -35,7 +35,7 @@ test('focus when switching the fields of the login card', async () => {
 test('forgot password: title, explanation and Enter submits', async () => {
   const { w, d, aufrufe } = await openUi(
     { '/v1/auth/forgot-password': { success: true, message: 'Falls die Adresse existiert, kommt ein Link.' } },
-    { angemeldet: false },
+    { loggedIn: false },
   );
   try {
     klick(d, 'link-forgot');

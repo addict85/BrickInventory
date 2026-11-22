@@ -18,11 +18,11 @@ import java.util.concurrent.TimeUnit
  * reads: no content preview, no keyboard suggestion. After a
  * minute it is gone again — only if our clip is still there.
  *
- * Counter-checks (Robolectric, measurable only in CI; job `gegenproben`):
+ * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
  *   (a) the line with IS_SECRET removed from secretClip() → red (intended)
- *   (b) the LEEREN branch in SecretClipboard.pruefe() has no effect → red
+ *   (b) the LEEREN branch in SecretClipboard.check() has no effect → red
  *       „ein kopiertes Geheimnis ist nach einer Minute weg …“
- *       (gegenproben/zwischenablage-leert-nicht.patch)
+ *       (counter-checks/zwischenablage-leert-nicht.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class SecretClipboardTest {
@@ -38,18 +38,18 @@ class SecretClipboardTest {
     @Test
     fun `a copied secret is gone after one minute, foreign content stays`() {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
-        val ablage = ctx.getSystemService(ClipboardManager::class.java)
-        fun inhalt() = ablage.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString().orEmpty()
+        val store = ctx.getSystemService(ClipboardManager::class.java)
+        fun content() = store.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString().orEmpty()
 
         SecretClipboard.copy(ctx, "BrickInventory", "4711")
         ShadowLooper.idleMainLooper(59, TimeUnit.SECONDS)
-        assertEquals("Vor Ablauf noch da", "4711", inhalt())
+        assertEquals("Vor Ablauf noch da", "4711", content())
         ShadowLooper.idleMainLooper(2, TimeUnit.SECONDS)
-        assertEquals("Nach einer Minute leer", "", inhalt())
+        assertEquals("Nach einer Minute leer", "", content())
 
         SecretClipboard.copy(ctx, "BrickInventory", "4711")
-        ablage.setPrimaryClip(ClipData.newPlainText("Notiz", "fremd"))
+        store.setPrimaryClip(ClipData.newPlainText("Notiz", "fremd"))
         ShadowLooper.idleMainLooper(61, TimeUnit.SECONDS)
-        assertEquals("Fremder Inhalt bleibt", "fremd", inhalt())
+        assertEquals("Fremder Inhalt bleibt", "fremd", content())
     }
 }

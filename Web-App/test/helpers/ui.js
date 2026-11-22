@@ -225,12 +225,12 @@ async function warte(bedingung, ms = 3000) {
 
 /**
  * @param {object} [antworten]  path → response (object or function(url))
- * @param {{ angemeldet?: boolean, sprache?: string, browserLanguage?: string, vorher?: (w: any) => void, url?: string }} [opt]
+ * @param {{ loggedIn?: boolean, sprache?: string, browserLanguage?: string, before?: (w: any) => void, url?: string }} [opt]
  *   url: address of the page (default http://localhost/), e.g. https:// for a page with TLS.
  */
 async function openUi(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
-  const alle = { ...(opt.angemeldet === false ? SIGNED_OUT : ANMELDUNG), ...antworten };
+  const alle = { ...(opt.loggedIn === false ? SIGNED_OUT : ANMELDUNG), ...antworten };
   // The account's language wins over the stored one on loading — so set both.
   if (opt.sprache && !antworten['/v1/settings/raw'])
     alle['/v1/settings/raw'] = {
@@ -287,11 +287,11 @@ async function openUi(antworten = {}, opt = {}) {
   };
   // index.html loads the dictionaries as separate <script> tags.
   for (const l of ['de', 'en']) w.eval(fs.readFileSync(path.join(ROOT, 'public', 'locales', l + '.js'), 'utf8'));
-  if (opt.vorher) opt.vorher(w);
+  if (opt.before) opt.before(w);
   // With file names instead of w.eval(): that way V8 attributes the coverage to the bundle.
   new (require('node:vm').Script)(BUNDLE, { filename: BUNDLE_PATH }).runInContext(dom.getInternalVMContext());
   if (w.document.readyState === 'loading') await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
-  if (opt.angemeldet !== false)
+  if (opt.loggedIn !== false)
     await warte(
       () =>
         w.document.getElementById('app')?.style.display !== 'none' &&

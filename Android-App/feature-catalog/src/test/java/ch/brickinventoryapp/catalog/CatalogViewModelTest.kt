@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.catalog
 
-import ch.brickinventoryapp.model.domain.Katalogsortierung
+import ch.brickinventoryapp.model.domain.CatalogSort
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
@@ -8,21 +8,21 @@ import ch.brickinventoryapp.contract.CatalogSetItem
 import ch.brickinventoryapp.contract.CatalogSetsResponse
 import ch.brickinventoryapp.contract.CatalogYearVerteilungResponse
 import ch.brickinventoryapp.contract.JahrAnzahl
-import ch.brickinventoryapp.model.domain.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel
-import ch.brickinventoryapp.model.domain.Alarmrichtung
-import ch.brickinventoryapp.catalog.ui.KatalogZiel
-import ch.brickinventoryapp.catalog.ui.Merkwunsch
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.catalog.ui.CatalogTarget
+import ch.brickinventoryapp.catalog.ui.WantedRequest
 import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.MerklisteResponse
 import ch.brickinventoryapp.contract.MerkpostenAntwort
 import ch.brickinventoryapp.contract.PreisalarmRequest
 import ch.brickinventoryapp.contract.PreisalarmResponse
-import ch.brickinventoryapp.model.domain.Zustand
-import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.model.ui.Fehlerklasse
-import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.dataOrNull
 import ch.brickinventoryapp.model.ui.errorMessage
 import kotlinx.coroutines.launch
@@ -46,7 +46,7 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.TestServices
 import ch.brickinventoryapp.testing.text
 
 /**
@@ -56,10 +56,10 @@ import ch.brickinventoryapp.testing.text
  * Counter-checks:
  *   katalog-suche-ohne-entprellen  setCatalogQuery() loads right away → red "die Suche wartet …"
  *   katalog-seite-doppelt          ensureCatalogPage() without the "already loading" check → red "eine Seite …"
- *   katalog-filter-behaelt-rolle   loadCatalogSets() without `rollgedaechtnis.vergiss` → red "ein Filterwechsel …"
- *   katalog-merkt-ohne-alarm       merke() without setPreisalarm → red "merken legt den Posten an …"
- *   katalog-alarm-falsche-richtung merke() always sends "below" → red "merken legt den Posten an …"
- *   katalog-merkposten-unbekannt   gemerkt() doesn't compare the set number → red "das Detail kennt …"
+ *   katalog-filter-behaelt-rolle   loadCatalogSets() without `scrollMemory.forgetNow` → red "ein Filterwechsel …"
+ *   katalog-merkt-ohne-alarm       track() without setPriceAlarm → red "merken legt den Posten an …"
+ *   katalog-alarm-falsche-richtung track() always sends "below" → red "merken legt den Posten an …"
+ *   katalog-merkposten-unbekannt   wanted() doesn't compare the set number → red "das Detail kennt …"
  *   katalog-verteilung-ohne-filter loadYearDistribution() without `themeId` → red "die Jahresverteilung …"
  *   katalog-detail-fehler-verschluckt loadCatalogDetail() doesn't put the error into the
  *                                  state → red "scheitert das Detail, steht der Grund …"
@@ -68,24 +68,24 @@ import ch.brickinventoryapp.testing.text
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogViewModelTest {
 
-    private val takt = StandardTestDispatcher()
+    private val tick = StandardTestDispatcher()
     private val fake = FakeApi()
-    private lateinit var t: TestDienste
+    private lateinit var t: TestServices
 
-    @Before fun auf() {
-        Dispatchers.setMain(takt)
-        t = TestDienste(fake.api, io = takt)
+    @Before fun setUp() {
+        Dispatchers.setMain(tick)
+        t = TestServices(fake.api, io = tick)
     }
 
     @After fun ab() {
         Dispatchers.resetMain()
     }
 
-    private fun seite(vararg numbers: String) =
+    private fun page(vararg numbers: String) =
         CatalogSetsResponse(success = true, total = 120, sets = numbers.map { CatalogSetItem(setNumber = it, name = "Set $it") })
 
-    private fun withVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(takt) {
-        val vm = CatalogViewModel(testCatalogRepository(fake.api), t.meldungen, NumbersTexts, t.merkliste(), t.alerts(), t.scrollMemory)
+    private fun withVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(tick) {
+        val vm = CatalogViewModel(testCatalogRepository(fake.api), t.messages, NumbersTexts, t.wantedList(), t.alerts(), t.scrollMemory)
         try {
             block(vm)
         } finally {
@@ -94,29 +94,29 @@ class CatalogViewModelTest {
     }
 
     /** The search text of the list fetches, in order. */
-    private fun gesucht() = synchronized(fake.arguments) {
+    private fun searched() = synchronized(fake.arguments) {
         fake.arguments.filter { it.first == "getCatalogSets" }.map { it.second.first() }
     }
 
     @Test
     fun `the search waits until typing rests and then loads once`() = withVm { vm ->
-        fake.antworten["getCatalogSets"] = seite("10294-1")
+        fake.responses["getCatalogSets"] = page("10294-1")
         vm.setCatalogQuery("t")
         advanceTimeBy(200)
         vm.setCatalogQuery("ti")
         advanceTimeBy(200)
         vm.setCatalogQuery("tit")
         advanceTimeBy(349)
-        assertEquals("Während des Tippens kein Abruf", emptyList<Any?>(), gesucht())
+        assertEquals("Während des Tippens kein Abruf", emptyList<Any?>(), searched())
         advanceUntilIdle()
-        assertEquals(listOf<Any?>("tit"), gesucht())
+        assertEquals(listOf<Any?>("tit"), searched())
         assertEquals(listOf("10294-1"), vm.state.value.loadedPages[1]?.map { it.setNumber })
         assertEquals(120, vm.state.value.total)
     }
 
     @Test
     fun `a page is fetched only once, even if it becomes visible several times`() = withVm { vm ->
-        fake.antworten["getCatalogSets"] = seite("1-1")
+        fake.responses["getCatalogSets"] = page("1-1")
         vm.ensureCatalogPage(2)
         vm.ensureCatalogPage(2)
         advanceUntilIdle()
@@ -129,19 +129,19 @@ class CatalogViewModelTest {
 
     @Test
     fun `a filter change starts at the top and forgets the loaded pages`() = withVm { vm ->
-        fake.antworten["getCatalogSets"] = seite("1-1")
+        fake.responses["getCatalogSets"] = page("1-1")
         vm.loadCatalogSets()
         advanceUntilIdle()
         vm.ensureCatalogPage(2)
         advanceUntilIdle()
         // The view writes its position into ScrollMemory, the one source for every tab.
-        t.scrollMemory.merke(KatalogZiel.Catalog.rollSchluessel, 40, 12)
+        t.scrollMemory.track(CatalogTarget.Catalog.rollKey, 40, 12)
         assertEquals(setOf(1, 2), vm.state.value.loadedPages.keys)
 
-        fake.antworten["getCatalogSets"] = seite("2-1")
+        fake.responses["getCatalogSets"] = page("2-1")
         vm.setCatalogTheme(158)
         advanceUntilIdle()
-        assertEquals(0 to 0, t.scrollMemory.lies(KatalogZiel.Catalog.rollSchluessel))
+        assertEquals(0 to 0, t.scrollMemory.read(CatalogTarget.Catalog.rollKey))
         assertEquals(setOf(1), vm.state.value.loadedPages.keys)
         assertEquals(listOf("2-1"), vm.state.value.loadedPages[1]?.map { it.setNumber })
     }
@@ -151,14 +151,14 @@ class CatalogViewModelTest {
         fake.codes["getCatalogSets"] = 500
         vm.loadCatalogSets()
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.err_server, listOf(500)), vm.state.value.abruf.errorMessage)
-        assertNull("Ohne geladene Liste keine zweite Meldung", t.meldungen.text)
+        assertEquals(Message.Resource(R.string.err_server, listOf(500)), vm.state.value.fetch.errorMessage)
+        assertNull("Ohne geladene Liste keine zweite Meldung", t.messages.text)
 
-        fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = false)
+        fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = false)
         vm.loadCatalogDetail("99999-1")
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.err_set_not_found), vm.state.value.detail.errorMessage)
-        assertNull("Der Bildschirm zeigt den Fehler selbst", t.meldungen.text)
+        assertEquals(Message.Resource(R.string.err_set_not_found), vm.state.value.detail.errorMessage)
+        assertNull("Der Bildschirm zeigt den Fehler selbst", t.messages.text)
     }
 
     @Test
@@ -167,10 +167,10 @@ class CatalogViewModelTest {
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
         assertEquals("Ohne Grund bliebe der Kringel stehen",
-            Laden.Fehler(Fehlerklasse.SERVER, Meldung.Resource(R.string.err_server, listOf(503))), vm.state.value.detail)
+            Load.Failure(ErrorClass.SERVER, Message.Resource(R.string.err_server, listOf(503))), vm.state.value.detail)
 
         fake.codes.remove("getCatalogSetDetail")
-        fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true,
+        fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true,
             set = CatalogSetDetail(setNumber = "10305-1", name = "Lion Knights' Castle"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
@@ -179,63 +179,63 @@ class CatalogViewModelTest {
 
     @Test
     fun `whoever sees the catalog loads it, returning does not load again`() = withVm { vm ->
-        fake.antworten["getCatalogSets"] = seite("10294-1")
-        val erster = backgroundScope.launch { vm.state.collect {} }
+        fake.responses["getCatalogSets"] = page("10294-1")
+        val first = backgroundScope.launch { vm.state.collect {} }
         advanceUntilIdle()
         assertEquals(setOf(1), vm.state.value.loadedPages.keys)
-        erster.cancel()
+        first.cancel()
         advanceUntilIdle()
         backgroundScope.launch { vm.state.collect {} }
         advanceUntilIdle()
-        assertEquals("Die Liste ist da, ein zweiter Abruf wäre nur Last", 1, gesucht().size)
+        assertEquals("Die Liste ist da, ein zweiter Abruf wäre nur Last", 1, searched().size)
     }
 
     /** The years only exist on the server; fetched with the same filters as the list. */
     @Test
     fun `the year distribution comes from the server, with the list's filters`() = withVm { vm ->
-        fake.antworten["getCatalogSets"] = seite("10294-1")
-        fake.antworten["getCatalogYearVerteilung"] = CatalogYearVerteilungResponse(
+        fake.responses["getCatalogSets"] = page("10294-1")
+        fake.responses["getCatalogYearDistribution"] = CatalogYearVerteilungResponse(
             success = true, years = listOf(JahrAnzahl(year = 1999, n = 4), JahrAnzahl(year = null, n = 2), JahrAnzahl(year = 2024, n = 7)))
-        vm.setCatalogSort(Katalogsortierung.JAHR_ABSTEIGEND)
+        vm.setCatalogSort(CatalogSort.YEAR_DESCENDING)
         vm.setCatalogTheme(158)
         advanceUntilIdle()
-        val fetches = synchronized(fake.arguments) { fake.arguments.filter { it.first == "getCatalogYearVerteilung" } }
+        val fetches = synchronized(fake.arguments) { fake.arguments.filter { it.first == "getCatalogYearDistribution" } }
         assertEquals(listOf<Any?>(null, 158, "year_desc"), fetches.last().second)
         assertEquals("Jahrgänge ohne Jahr fallen weg, wie in der Webapp",
-            listOf(JahrAnzahlAnsicht(1999, 4), JahrAnzahlAnsicht(2024, 7)), vm.state.value.yearDistribution)
+            listOf(YearCountView(1999, 4), YearCountView(2024, 7)), vm.state.value.yearDistribution)
     }
 
     @Test
     fun `remembering creates the item, sets the alert in the chosen direction and reports`() = withVm { vm ->
-        fake.antworten["legeMerkpostenAn"] = MerkpostenAntwort(success = true, warNeu = true,
-            merkposten = Merkposten(setNumber = "10305-1", condition = Zustand.GEBRAUCHT))
-        fake.antworten["setPreisalarm"] = PreisalarmResponse(success = true)
-        vm.merke(Merkwunsch("10305-1", Zustand.GEBRAUCHT, Alarmrichtung.UEBER, "120", konto = null))
+        fake.responses["createWantedItem"] = MerkpostenAntwort(success = true, warNeu = true,
+            merkposten = Merkposten(setNumber = "10305-1", condition = Condition.USED))
+        fake.responses["setPriceAlarm"] = PreisalarmResponse(success = true)
+        vm.track(WantedRequest("10305-1", Condition.USED, AlarmDirection.OVER, "120", account = null))
         advanceUntilIdle()
-        val alarm = synchronized(fake.arguments) { fake.arguments.single { it.first == "setPreisalarm" }.second }
+        val alarm = synchronized(fake.arguments) { fake.arguments.single { it.first == "setPriceAlarm" }.second }
         assertEquals("10305-1", alarm[0])
-        assertEquals(PreisalarmRequest(direction = Alarmrichtung.UEBER, threshold = 120.0, condition = Zustand.GEBRAUCHT), alarm[1])
-        assertEquals(Meldung.Resource(R.string.wanted_added), t.meldungen.meldung.value)
+        assertEquals(PreisalarmRequest(direction = AlarmDirection.OVER, threshold = 120.0, condition = Condition.USED), alarm[1])
+        assertEquals(Message.Resource(R.string.wanted_added), t.messages.message.value)
     }
 
     @Test
     fun `remembering without a threshold sets no alert`() = withVm { vm ->
-        fake.antworten["legeMerkpostenAn"] = MerkpostenAntwort(success = true, warNeu = false)
-        vm.merke(Merkwunsch("10305-1", Zustand.NEU, Alarmrichtung.UNTER, "", konto = null))
+        fake.responses["createWantedItem"] = MerkpostenAntwort(success = true, warNeu = false)
+        vm.track(WantedRequest("10305-1", Condition.NEW, AlarmDirection.BELOW, "", account = null))
         advanceUntilIdle()
-        assertEquals(0, fake.callsOf("setPreisalarm"))
-        assertEquals(Meldung.Resource(R.string.wanted_already), t.meldungen.meldung.value)
+        assertEquals(0, fake.callsOf("setPriceAlarm"))
+        assertEquals(Message.Resource(R.string.wanted_already), t.messages.message.value)
     }
 
     @Test
     fun `the detail knows the wishlist item from the store, another set does not`() = withVm { vm ->
-        fake.antworten["getMerkliste"] = MerklisteResponse(success = true,
-            merkposten = listOf(Merkposten(setNumber = "10305-1", condition = Zustand.NEU)))
-        fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true, set = CatalogSetDetail(setNumber = "10305-1"))
+        fake.responses["getWantedList"] = MerklisteResponse(success = true,
+            merkposten = listOf(Merkposten(setNumber = "10305-1", condition = Condition.NEW)))
+        fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true, set = CatalogSetDetail(setNumber = "10305-1"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
-        assertEquals("Das Detail holt die Merkliste in die Ablage", 1, fake.callsOf("getMerkliste"))
-        assertEquals("10305-1", vm.gemerkt("10305-1").first()?.setNumber)
-        assertNull(vm.gemerkt("75192-1").first())
+        assertEquals("Das Detail holt die Merkliste in die Ablage", 1, fake.callsOf("getWantedList"))
+        assertEquals("10305-1", vm.wanted("10305-1").first()?.setNumber)
+        assertNull(vm.wanted("75192-1").first())
     }
 }

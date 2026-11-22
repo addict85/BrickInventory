@@ -18,11 +18,11 @@ import kotlinx.coroutines.Dispatchers
  */
 object SampleImages {
 
-    /** The name of the resource for [adresse], or null if there is no sample image. */
-    fun resource(adresse: String): String? {
-        val name = adresse.substringBefore('?').substringAfterLast('/')
-        val pfad = "beispielbilder/$name"
-        return pfad.takeIf { name.endsWith(".png") && javaClass.classLoader?.getResource(it) != null }
+    /** The name of the resource for [address], or null if there is no sample image. */
+    fun resource(address: String): String? {
+        val name = address.substringBefore('?').substringAfterLast('/')
+        val path = "beispielbilder/$name"
+        return path.takeIf { name.endsWith(".png") && javaClass.classLoader?.getResource(it) != null }
     }
 
     /** On the main looper: that way a photo waits for no image from a foreign thread. */
@@ -31,8 +31,8 @@ object SampleImages {
 
     private object Intercept : Interceptor {
         override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
-            val pfad = (chain.request.data as? String)?.let(::resource) ?: return chain.proceed()
-            val bitmap = javaClass.classLoader!!.getResourceAsStream(pfad).use { BitmapFactory.decodeStream(it) }
+            val path = (chain.request.data as? String)?.let(::resource) ?: return chain.proceed()
+            val bitmap = javaClass.classLoader!!.getResourceAsStream(path).use { BitmapFactory.decodeStream(it) }
             // MEMORY_CACHE so that Coil does not crossfade: Robolectric draws one image for the
             // photo, and a crossfade stood in it still at opacity 0 — the
             // tiles with crossfade(true) stayed empty.

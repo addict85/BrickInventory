@@ -1,7 +1,7 @@
 // Domain building blocks shared by several scopes: filter sheet, household and
 // storage-location choice, own entries, price chart and value tiles. A core module, not a
 // scope: display only, knows models, texts and core-ui, but neither the data nor
-// the state layer (ModulgrenzenTest), so no scope can reach another one through this.
+// the state layer (ModuleBoundariesTest), so no scope can reach another one through this.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)

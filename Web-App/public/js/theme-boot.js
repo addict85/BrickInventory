@@ -3,6 +3,33 @@
 // flashes and nothing goes stale.
 
 (() => {
+  // Storage keys and values were German until the English renaming; move them once so nobody loses
+  // their dark mode, filters or dismissed hints. Runs first because this script reads bim_dark itself.
+  const RENAMED_PREFIXES = [
+    ['bim_lager_', 'bim_location_'],
+    ['bim_rb_hinweis_weg:', 'bim_rb_hint_dismissed:'],
+    ['bim_alarm_marke_', 'bim_alert_seen_'],
+    ['bim_scope_merkliste', 'bim_scope_wanted'],
+    ['bim_teile_ordnung', 'bim_parts_order'],
+    ['bim_einst_abschnitt', 'bim_settings_section'],
+    ['bim_dunkel', 'bim_dark'],
+  ];
+  const moveOldKey = (/** @type {string} */ old) => {
+    for (const [from, to] of RENAMED_PREFIXES) {
+      if (old.indexOf(from) !== 0) continue;
+      const value = localStorage.getItem(old);
+      const renamed = to + old.slice(from.length);
+      if (value !== null && localStorage.getItem(renamed) === null)
+        localStorage.setItem(renamed, renamed === 'bim_dark' && value === 'immer' ? 'always' : value);
+      localStorage.removeItem(old);
+    }
+  };
+  try {
+    Object.keys(localStorage).forEach(moveOldKey);
+  } catch (e) {
+    console.warn('[storage] old settings not moved', e);
+  }
+
   var KEY = 'bim_theme';
   // Must match DESIGNS in src/contract/globalRules.ts — a test keeps both in sync (theme.test.js).
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
@@ -69,17 +96,17 @@
 
   // ── Dark mode follows the system, per device (profile settings) ────────────────────
   // Only the DEVICE knows whether it wants dark mode. The default is "system": on a dark system, the dark
-  // variant of the SAME theme (data-dunkel, colors from tokens.css). Whoever picks "server" keeps the
+  // variant of the SAME theme (data-dark, colors from tokens.css). Whoever picks "server" keeps the
   // theme without a variant.
-  var DARK_KEY = 'bim_dunkel';
+  var DARK_KEY = 'bim_dark';
   var systemDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   /** @type {string | null} */
   var serverTheme = null;
-  /** 'system', 'server' (never dark) or 'immer' (always). */
+  /** 'system', 'server' (never dark) or 'always'. */
   function choice() {
     try {
       const w = localStorage.getItem(DARK_KEY);
-      return w === 'server' || w === 'immer' ? w : 'system';
+      return w === 'server' || w === 'always' ? w : 'system';
     } catch (_) {
       return 'system';
     }
@@ -88,9 +115,9 @@
   function effective(theme) {
     var w = choice();
     // "Always dark" even on a light system: otherwise only picking Werkbank got dark mode.
-    var dark = theme !== 'werkbank' && (w === 'immer' || (w === 'system' && !!systemDark && systemDark.matches));
-    if (dark) document.documentElement.setAttribute('data-dunkel', '');
-    else document.documentElement.removeAttribute('data-dunkel');
+    var dark = theme !== 'werkbank' && (w === 'always' || (w === 'system' && !!systemDark && systemDark.matches));
+    if (dark) document.documentElement.setAttribute('data-dark', '');
+    else document.documentElement.removeAttribute('data-dark');
     // The meta tags' media attributes don't know "always" and "never dark"; Werkbank is dark with no variant.
     var bar = dark || theme === 'werkbank' ? '#14181d' : '#f8fafc';
     document.querySelectorAll('meta[name=theme-color]').forEach(m => {
@@ -102,15 +129,15 @@
     if (serverTheme) document.documentElement.setAttribute('data-theme', effective(serverTheme));
   }
   if (systemDark?.addEventListener) systemDark.addEventListener('change', reapply);
-  window.__bimDunkel = value => {
+  window.__bimDark = value => {
     try {
-      localStorage.setItem(DARK_KEY, value === 'immer' || value === 'server' ? value : 'system');
+      localStorage.setItem(DARK_KEY, value === 'always' || value === 'server' ? value : 'system');
     } catch (_) {}
     reapply();
   };
-  window.__bimDunkelWert = choice;
+  window.__bimDarkValue = choice;
   // Does a theme have no light variant? Settings then says so.
-  window.__bimNurDunkel = theme => theme === 'werkbank';
+  window.__bimOnlyDark = theme => theme === 'werkbank';
 
   /**
    * Setter for account.js and the admin save handler. Only valid values are applied AND cached — an empty

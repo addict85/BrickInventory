@@ -18,7 +18,7 @@ const { openUi } = require('./helpers/ui');
 async function withObserver(antworten = {}) {
   const leer = [];
   const o = await openUi(antworten, {
-    vorher(w) {
+    before(w) {
       new w.MutationObserver(ms => {
         for (const m of ms) {
           const ziel = /** @type {any} */ (m.target);

@@ -28,7 +28,7 @@ const GEMERKT = {
   bim_scope_gallery: '7',
   bim_scope_parts: 'own',
   bim_scope_finance: '7',
-  bim_lager_gallery: 'Regal A',
+  bim_location_gallery: 'Regal A',
 };
 const remember = w => {
   for (const [k, v] of Object.entries(GEMERKT)) w.localStorage.setItem(k, v);
@@ -46,7 +46,7 @@ test('login resets the account and location filters before the list loads', asyn
         user: { id: 1, username: 'anna', is_admin: false, zweiterFaktorPflicht: false },
       },
     },
-    { angemeldet: false, vorher: remember },
+    { loggedIn: false, before: remember },
   );
   try {
     await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
@@ -66,7 +66,7 @@ test('login resets the account and location filters before the list loads', asyn
 });
 
 test('a reload in the same session keeps the choice', async () => {
-  const o = await openUi(HAUSHALT, { vorher: remember });
+  const o = await openUi(HAUSHALT, { before: remember });
   try {
     await o.ruhig();
     assert.ok(

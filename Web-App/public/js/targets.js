@@ -6,7 +6,7 @@
  * @typedef {object} Targets
  * @property {(setNumber: string) => unknown} setDetail     Set's detail dialog
  * @property {(name: string) => unknown} view                Tab or view from the user menu
- * @property {(id: string) => unknown} einstAbschnitt       Section of the settings (registry-exposed name, kept)
+ * @property {(id: string) => unknown} settingsSection       Section of the settings (registry-exposed name, kept)
  */
 
 /** @type {Partial<Targets>} */

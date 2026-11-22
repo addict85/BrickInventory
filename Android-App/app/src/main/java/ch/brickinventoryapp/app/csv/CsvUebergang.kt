@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.domain.Laufstatus
+import ch.brickinventoryapp.model.domain.RunStatus
 /**
  * What follows from a CSV status message? Separate from CsvImportCoordinator, which
  * acts: the decision needs neither service nor time and can thus be checked as a
@@ -8,16 +8,16 @@ import ch.brickinventoryapp.model.domain.Laufstatus
  */
 internal enum class CsvSequence {
     /** An import has just begun — the foreground service must start. */
-    DIENST_STARTEN,
+    SERVICE_START,
 
     /** A running import has finished — reload data once. */
-    NACHLADEN,
+    RELOAD,
 
     /** The import has failed — show the banner briefly, then clean up. */
-    FEHLER_AUFRAEUMEN,
+    ERROR_CLEAN_UP,
 
     /** Nothing to do: no transition, only a repetition of the state. */
-    NICHTS
+    NOTHING
 }
 
 /**
@@ -27,24 +27,24 @@ internal enum class CsvSequence {
  * and the service should already run — otherwise the app seems frozen between
  * acceptance and the first line.
  */
-internal fun importRunning(status: Laufstatus?): Boolean = status?.laeuft == true
+internal fun importRunning(status: RunStatus?): Boolean = status?.running == true
 
 /**
  * The actual rule: reloading happens on the transition from “running” to “finished”, not in
  * every “finished” state.
  */
-internal fun csvSequence(warBeforeActive: Boolean, status: Laufstatus?): CsvSequence = when {
+internal fun csvSequence(wasBeforeActive: Boolean, status: RunStatus?): CsvSequence = when {
     // Running: start the service only on startup, not on every progress line.
-    importRunning(status) -> if (warBeforeActive) CsvSequence.NICHTS else CsvSequence.DIENST_STARTEN
+    importRunning(status) -> if (wasBeforeActive) CsvSequence.NOTHING else CsvSequence.SERVICE_START
 
     // An error is reported as long as it is pending — here the cleanup is
     // intentionally idempotent and not bound to the transition.
-    status == Laufstatus.FEHLER -> CsvSequence.FEHLER_AUFRAEUMEN
+    status == RunStatus.ERROR -> CsvSequence.ERROR_CLEAN_UP
 
-    status == null -> CsvSequence.NICHTS
+    status == null -> CsvSequence.NOTHING
 
     // Finished — but only reload if something really ran before.
-    warBeforeActive -> CsvSequence.NACHLADEN
+    wasBeforeActive -> CsvSequence.RELOAD
 
-    else -> CsvSequence.NICHTS
+    else -> CsvSequence.NOTHING
 }

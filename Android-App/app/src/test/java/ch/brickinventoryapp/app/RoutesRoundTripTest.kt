@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.Condition
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import ch.brickinventoryapp.model.domain.KEINE_FARBE
-import ch.brickinventoryapp.model.domain.Postenart
-import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.domain.NO_COLOR
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.login.ui.LoginTarget
-import ch.brickinventoryapp.finances.ui.FinanzZiel
-import ch.brickinventoryapp.catalog.ui.KatalogZiel
-import ch.brickinventoryapp.collection.ui.SammlungZiel
-import ch.brickinventoryapp.parts.ui.TeileZiel
+import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.catalog.ui.CatalogTarget
+import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.parts.ui.PartsTarget
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -26,10 +26,10 @@ import org.robolectric.RobolectricTestRunner
  * brings along, `toRoute()` reads back exactly so in the destination — also special characters
  * and the default “no color”. PDF addresses do not travel in the route (PdfSelection).
  *
- * Counter-check (gegenproben/route-feld-transient.patch, measurable only in CI):
+ * Counter-check (counter-checks/route-feld-transient.patch, measurable only in CI):
  *   ManualItemDetail.title as @Transient → red “titles with special characters arrive unchanged“
- * Counter-check (gegenproben/postenart-aus-fest.patch, measurable only in CI):
- *   Postenart.aus() always returns SET → red “every item kind arrives as the same one“
+ * Counter-check (counter-checks/postenart-aus-fest.patch, measurable only in CI):
+ *   Postenart.from() always returns SET → red “every item kind arrives as the same one“
  * Counter-check (measurable only in CI, not performed): StateSerializer with
  *   PrimitiveKind.STRING instead of SerialKind.ENUM → red “set numbers and wishlist items
  *   arrive unchanged” (navigation finds no NavType for the field)
@@ -41,38 +41,38 @@ class RoutesRoundTripTest {
     val compose = createComposeRule()
 
     /** What the destination read on construction, per entry in the back stack. */
-    private val gelesen = mutableMapOf<String, Any>()
+    private val read = mutableMapOf<String, Any>()
 
     private lateinit var nav: NavHostController
 
-    private fun aufbauen() {
+    private fun build() {
         compose.setContent {
             nav = rememberNavController()
             NavHost(nav, startDestination = LoginTarget.Setup) {
                 composable<LoginTarget.Setup> {}
-                composable<SammlungZiel.SetDetail> { gelesen[it.id] = it.toRoute<SammlungZiel.SetDetail>() }
-                composable<KatalogZiel.CatalogDetail> { gelesen[it.id] = it.toRoute<KatalogZiel.CatalogDetail>() }
-                composable<SammlungZiel.MerkpostenDetail> { gelesen[it.id] = it.toRoute<SammlungZiel.MerkpostenDetail>() }
-                composable<TeileZiel.ManualItemDetail> { gelesen[it.id] = it.toRoute<TeileZiel.ManualItemDetail>() }
-                composable<SammlungZiel.AcquisitionManagement> { gelesen[it.id] = it.toRoute<SammlungZiel.AcquisitionManagement>() }
-                composable<FinanzZiel.PdfViewer> { gelesen[it.id] = it.toRoute<FinanzZiel.PdfViewer>() }
-                composable<SammlungZiel.BarcodeScanner> { gelesen[it.id] = it.toRoute<SammlungZiel.BarcodeScanner>() }
+                composable<CollectionTarget.SetDetail> { read[it.id] = it.toRoute<CollectionTarget.SetDetail>() }
+                composable<CatalogTarget.CatalogDetail> { read[it.id] = it.toRoute<CatalogTarget.CatalogDetail>() }
+                composable<CollectionTarget.WantedItemDetail> { read[it.id] = it.toRoute<CollectionTarget.WantedItemDetail>() }
+                composable<PartsTarget.ManualItemDetail> { read[it.id] = it.toRoute<PartsTarget.ManualItemDetail>() }
+                composable<CollectionTarget.AcquisitionManagement> { read[it.id] = it.toRoute<CollectionTarget.AcquisitionManagement>() }
+                composable<FinanceTarget.PdfViewer> { read[it.id] = it.toRoute<FinanceTarget.PdfViewer>() }
+                composable<CollectionTarget.BarcodeScanner> { read[it.id] = it.toRoute<CollectionTarget.BarcodeScanner>() }
             }
         }
         compose.waitForIdle()
     }
 
     /** Navigates to the destination and returns what the destination read. */
-    private fun hin(ziel: Any): Any {
-        compose.runOnIdle { nav.navigate(ziel) }
+    private fun there(target: Any): Any {
+        compose.runOnIdle { nav.navigate(target) }
         compose.waitForIdle()
         return compose.runOnIdle {
-            val oben = nav.currentBackStackEntry!!
-            checkNotNull(gelesen[oben.id]) { "Ziel für $ziel nicht aufgebaut (${oben.destination.route})" }
+            val top = nav.currentBackStackEntry!!
+            checkNotNull(read[top.id]) { "Ziel für $target nicht aufgebaut (${top.destination.route})" }
         }
     }
 
-    private val titel = listOf(
+    private val title = listOf(
         "100 % C++",
         "Anthony / Skater",
         "Grüße aus Zürich: Öl, Ähre, ß",
@@ -84,54 +84,54 @@ class RoutesRoundTripTest {
 
     @Test
     fun `titles with special characters arrive unchanged`() {
-        aufbauen()
-        for (t in titel) {
-            val teil = TeileZiel.ManualItemDetail(Postenart.PART, "3001 b", 4, t)
-            assertEquals("Teil „$t“", teil, hin(teil))
-            val kauf = SammlungZiel.AcquisitionManagement(Postenart.FIG, "sw0001+", 0, t)
-            assertEquals("Kauf „$t“", kauf, hin(kauf))
+        build()
+        for (t in title) {
+            val part = PartsTarget.ManualItemDetail(ItemKind.PART, "3001 b", 4, t)
+            assertEquals("Teil „$t“", part, there(part))
+            val purchase = CollectionTarget.AcquisitionManagement(ItemKind.FIG, "sw0001+", 0, t)
+            assertEquals("Kauf „$t“", purchase, there(purchase))
         }
     }
 
     @Test
     fun `every item kind arrives as the same one`() {
-        aufbauen()
-        for (art in Postenart.entries) {
-            val kauf = SammlungZiel.AcquisitionManagement(art, "3001", 4, "Stein")
-            assertEquals(kauf, hin(kauf))
-            assertEquals(art, Postenart.aus(art.kennung))
+        build()
+        for (kind in ItemKind.entries) {
+            val purchase = CollectionTarget.AcquisitionManagement(kind, "3001", 4, "Stein")
+            assertEquals(purchase, there(purchase))
+            assertEquals(kind, ItemKind.from(kind.identifier))
         }
     }
 
     @Test
     fun `the scanner knows where it was opened from`() {
-        aufbauen()
-        for (herkunft in Scannerherkunft.entries) {
-            assertEquals(SammlungZiel.BarcodeScanner(herkunft), hin(SammlungZiel.BarcodeScanner(herkunft)))
+        build()
+        for (origin in ScannerOrigin.entries) {
+            assertEquals(CollectionTarget.BarcodeScanner(origin), there(CollectionTarget.BarcodeScanner(origin)))
         }
     }
 
     @Test
     fun `without a color no color arrives, not black`() {
-        aufbauen()
-        assertEquals(KEINE_FARBE, (hin(TeileZiel.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke")) as TeileZiel.ManualItemDetail).colorId)
+        build()
+        assertEquals(NO_COLOR, (there(PartsTarget.ManualItemDetail(ItemKind.FIG, "sw0001", title = "Luke")) as PartsTarget.ManualItemDetail).colorId)
     }
 
     @Test
     fun `the PDF viewer gets only its key`() {
         // Address (including ticket) and title stay in the PdfSelection (PdfSelectionTest).
-        aufbauen()
-        val pdf = FinanzZiel.PdfViewer("0f8e2c1a-7d3b-4c55-9a0e-1b2c3d4e5f60")
-        assertEquals(pdf, hin(pdf))
+        build()
+        val pdf = FinanceTarget.PdfViewer("0f8e2c1a-7d3b-4c55-9a0e-1b2c3d4e5f60")
+        assertEquals(pdf, there(pdf))
     }
 
     @Test
     fun `set numbers and wishlist items arrive unchanged`() {
-        aufbauen()
+        build()
         for (sn in listOf("75192-1", "col23-1", "a b/c%", "10 % +1")) {
-            assertEquals(SammlungZiel.SetDetail(sn), hin(SammlungZiel.SetDetail(sn)))
-            assertEquals(KatalogZiel.CatalogDetail(sn), hin(KatalogZiel.CatalogDetail(sn)))
-            assertEquals(SammlungZiel.MerkpostenDetail(sn, Zustand.GEBRAUCHT), hin(SammlungZiel.MerkpostenDetail(sn, Zustand.GEBRAUCHT)))
+            assertEquals(CollectionTarget.SetDetail(sn), there(CollectionTarget.SetDetail(sn)))
+            assertEquals(CatalogTarget.CatalogDetail(sn), there(CatalogTarget.CatalogDetail(sn)))
+            assertEquals(CollectionTarget.WantedItemDetail(sn, Condition.USED), there(CollectionTarget.WantedItemDetail(sn, Condition.USED)))
         }
     }
 }

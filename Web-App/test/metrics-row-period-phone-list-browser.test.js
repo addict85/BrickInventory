@@ -4,11 +4,11 @@
  * (N8) and the button „Set hinzufügen“ at 200 % zoom (N9).
  *
  * Counter-checks (measured 15.11.2026, each on its own, bundle rebuilt):
- *   A  .bstat-hinweis:not(:empty) in mobile.css set to display:none → red: “M1 …” (explanation invisible)
+ *   A  .bstat-hint:not(:empty) in mobile.css set to display:none → red: “M1 …” (explanation invisible)
  *   B  the dark rule for #start-offline removed → red: “M3 …” (background rgb(255, 255, 255))
- *   C  background, border and button shape of .zeitraum-wahl removed → red: “N4 …” („Segment ohne Grund“)
- *   D  .sform .fg > .feld-fehler{contain:none} removed → red: “N5 …” (27.5 px against 8 px)
- *   E  #tab-parts .filterleiste > .vtgl hidden again → red: “N8 …” (toggle missing);
+ *   C  background, border and button shape of .period-choice removed → red: “N4 …” („Segment ohne Grund“)
+ *   D  .sform .fg > .field-error{contain:none} removed → red: “N5 …” (27.5 px against 8 px)
+ *   E  #tab-parts .filter-bar > .vtgl hidden again → red: “N8 …” (toggle missing);
  *      the list card without display:grid → red: same place („Listenzeile 131 px hoch“)
  *   F  the rule for max-height 500px ineffective (50px) → red: “N9 …” (button over a card)
  *
@@ -80,7 +80,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     }
     const m = await b.auswerten(`(() => {
       const k = [...document.querySelectorAll('#tab-gallery .brick-stats .bstat')].filter(e => e.checkVisibility());
-      const h = document.getElementById('bstat-hinweis');
+      const h = document.getElementById('bstat-hint');
       return {
         text: k.map(e => e.querySelector('.bstat-v').textContent.trim() + ' ' + e.querySelector('.bstat-l').textContent.trim()),
         punkte: k.map(e => getComputedStyle(e, '::after').content).filter(c => c.includes('·')).length,
@@ -102,9 +102,9 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
   await t.test('N4 period as a segment: one background, the chosen button framed, aria-pressed', async () => {
     await groesse(b, 390, 844, true);
     await zu('#/finanzen');
-    await bis(`!!document.querySelector('.zeitraum-wahl .period-btn')?.checkVisibility()`, 'Zeitraum');
+    await bis(`!!document.querySelector('.period-choice .period-btn')?.checkVisibility()`, 'Zeitraum');
     const m = await b.auswerten(`(() => {
-      const g = document.querySelector('.zeitraum-wahl');
+      const g = document.querySelector('.period-choice');
       const k = [...g.querySelectorAll('.period-btn')];
       const s = getComputedStyle(g);
       return {
@@ -133,7 +133,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     const hoehe = () =>
       b.auswerten(`Math.round(document.querySelector('#parts-main .part-card').getBoundingClientRect().height)`);
     const karte = await hoehe();
-    const knopf = `document.querySelector('#tab-parts [data-click="ansichtWaehlen"][data-arg2="table"]')`;
+    const knopf = `document.querySelector('#tab-parts [data-click="chooseView"][data-arg2="table"]')`;
     assert.equal(await b.auswerten(`!!${knopf}?.checkVisibility()`), true, 'Umschalter Karten/Liste fehlt');
     await b.auswerten(`${knopf}.click(); true`);
     await ruhig();
@@ -148,9 +148,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     assert.ok(breit.breite > 300, `Zeile nicht über die Breite: ${breit.breite} px`);
     assert.equal(breit.seite, false, 'Seite breiter als das Fenster');
     assert.equal(breit.gedrueckt, 'true');
-    await b.auswerten(
-      `document.querySelector('#tab-parts [data-click="ansichtWaehlen"][data-arg2="grid"]').click(); true`,
-    );
+    await b.auswerten(`document.querySelector('#tab-parts [data-click="chooseView"][data-arg2="grid"]').click(); true`);
     await ruhig();
   });
 
@@ -162,7 +160,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
       await b.auswerten(`scrollTo(0, ${y}); true`);
       await ruhig(300);
       const m = await b.auswerten(`(() => {
-        const k = document.querySelector('#tab-gallery .knopf-schwebend').getBoundingClientRect();
+        const k = document.querySelector('#tab-gallery .button-floating').getBoundingClientRect();
         const ueber = [...document.querySelectorAll('#gallery .sc')].map(e => e.getBoundingClientRect())
           .filter(r => r.left < k.right && r.right > k.left && r.top < k.bottom && r.bottom > k.top).length;
         return { ueber, oben: Math.round(k.top), unten: Math.round(k.bottom) };
@@ -171,7 +169,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     }
     await b.auswerten(`scrollTo(0, 0); true`);
     assert.equal(
-      await b.auswerten(`document.querySelector('#tab-gallery .knopf-schwebend').checkVisibility()`),
+      await b.auswerten(`document.querySelector('#tab-gallery .button-floating').checkVisibility()`),
       true,
       'Knopf oben nicht sichtbar',
     );
@@ -190,12 +188,12 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     );
     await b.auswerten(`document.getElementById('lu').value = ''; document.getElementById('lp').value = '';
       document.getElementById('btn-login').click(); true`);
-    await bis(`!!document.getElementById('lp-fehler')?.textContent`, 'Feldmeldungen');
+    await bis(`!!document.getElementById('lp-error')?.textContent`, 'Feldmeldungen');
     const m = await b.auswerten(`(() => {
       const r = id => document.getElementById(id).getBoundingClientRect();
       const naechstes = id => document.getElementById(id).closest('.fg').nextElementSibling;
       const folgt = e => { while (e && !e.checkVisibility()) e = e.nextElementSibling; return e?.getBoundingClientRect() ?? { top: NaN }; };
-      return { lu: folgt(naechstes('lu-fehler')).top - r('lu-fehler').bottom, lp: folgt(naechstes('lp-fehler')).top - r('lp-fehler').bottom };
+      return { lu: folgt(naechstes('lu-error')).top - r('lu-error').bottom, lp: folgt(naechstes('lp-error')).top - r('lp-error').bottom };
     })()`);
     assert.ok(Math.abs(m.lu - m.lp) <= 1, `Abstand unter den Meldungen ${m.lu} px gegen ${m.lp} px`);
   });
@@ -209,8 +207,8 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
       await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
       const m = await b.auswerten(`(() => { const k = document.getElementById('start-offline'); k.hidden = false;
         const s = getComputedStyle(k); const r = { grund: s.backgroundColor, schrift: s.color,
-        dunkel: document.documentElement.hasAttribute('data-dunkel') }; k.hidden = true; return r; })()`);
-      assert.equal(m.dunkel, dunkel, 'data-dunkel folgt dem System');
+        dunkel: document.documentElement.hasAttribute('data-dark') }; k.hidden = true; return r; })()`);
+      assert.equal(m.dunkel, dunkel, 'data-dark folgt dem System');
       const hell = c =>
         c
           .match(/\d+/g)

@@ -1,9 +1,9 @@
 /**
- * Call knopfBesetzt() correctly — the button that shows its own source text.
+ * Call buttonBusy() correctly — the button that shows its own source text.
  *
  * ── Counter-checks (performed, result in the commit) ───────────────────────
  *   a) one of the three places turned back to the old form → red.
- *   b) the release no longer undone (`knopfBesetzt(btn);` alone) → red.
+ *   b) the release no longer undone (`buttonBusy(btn);` alone) → red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,7 +46,7 @@ function gruppe(t, auf) {
   throw new Error('keine passende Klammer');
 }
 
-test('knopfBesetzt(): the second argument is a label, not a callback', () => {
+test('buttonBusy(): the second argument is a label, not a callback', () => {
   const dateien = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 
@@ -55,7 +55,7 @@ test('knopfBesetzt(): the second argument is a label, not a callback', () => {
   let gefunden = 0;
   for (const name of dateien) {
     const src = fs.readFileSync(path.join(JS, name), 'utf8');
-    for (const m of src.matchAll(/knopfBesetzt\s*\(/g)) {
+    for (const m of src.matchAll(/buttonBusy\s*\(/g)) {
       // Skip the definition itself and the import.
       const davor = src.slice(Math.max(0, m.index - 30), m.index);
       if (/function\s+$/.test(davor) || /import .*$/.test(davor)) continue;
@@ -99,17 +99,17 @@ test('knopfBesetzt(): the second argument is a label, not a callback', () => {
 /**
  * The working button keeps its label — and its width. Counter-checks:
  *   a) label swapped for “…" again → step 1 red.
- *   b) the class `besetzt` no longer set → step 1 red.
+ *   b) the class `occupied` no longer set → step 1 red.
  *   c) freezing the width removed → step 5 red.
  *   d) the release blindly sets minWidth to '' → step 3 red.
  */
-test('knopfBesetzt(): label and width stay as long as the button is busy', () => {
+test('buttonBusy(): label and width stay as long as the button is busy', () => {
   const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
 
   // Take the real function from the source text — not rebuilt.
   const src = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
-  const auf = src.indexOf('export function knopfBesetzt');
-  assert.ok(auf > 0, 'knopfBesetzt() nicht gefunden — umbenannt?');
+  const auf = src.indexOf('export function buttonBusy');
+  assert.ok(auf > 0, 'buttonBusy() nicht gefunden — umbenannt?');
   const start = src.indexOf('{', src.indexOf(')', auf));
   let tiefe = 0,
     ende = start;
@@ -124,7 +124,7 @@ test('knopfBesetzt(): label and width stay as long as the button is busy', () =>
     }
   }
   const quelle = src.slice(auf, ende + 1).replace(/^export\s+/, '');
-  const knopfBesetzt = new Function(`${quelle}; return knopfBesetzt;`)();
+  const knopfBesetzt = new Function(`${quelle}; return buttonBusy;`)();
 
   const LABEL = '📦 Bereits vorhandene Teile eintragen';
   const dom = new JSDOM(`<button class="btn bs" id="b">${LABEL}</button>`);
@@ -142,7 +142,7 @@ test('knopfBesetzt(): label and width stay as long as the button is busy', () =>
     'Die Beschriftung darf nicht weichen — genau das meinte Marco mit „man ' + 'sieht ganz kurz Punkt".',
   );
   assert.ok(
-    btn.classList.contains('besetzt'),
+    btn.classList.contains('occupied'),
     'Ohne diese Klasse fehlt jedes Zeichen, dass der Knopf arbeitet — ' + 'die Regel dazu steht in styles.css.',
   );
   assert.equal(btn.disabled, true);
@@ -150,7 +150,7 @@ test('knopfBesetzt(): label and width stay as long as the button is busy', () =>
   // 2. Released: everything back.
   frei();
   assert.equal(btn.textContent, LABEL);
-  assert.equal(btn.classList.contains('besetzt'), false);
+  assert.equal(btn.classList.contains('occupied'), false);
   assert.equal(btn.disabled, false);
   assert.equal(btn.style.minWidth, '', 'Die Vorgabe war leer, also muss sie leer zurückkommen.');
 
@@ -169,7 +169,7 @@ test('knopfBesetzt(): label and width stay as long as the button is busy', () =>
   knopfBesetzt(btn);
   assert.equal(btn.style.minWidth, '', 'Bei Breite 0 gibt es nichts einzufrieren.');
   btn.disabled = false;
-  btn.classList.remove('besetzt');
+  btn.classList.remove('occupied');
 
   // 5. WITH its own waiting text: the text changes — and the width is
   //    held, otherwise this button would tear the line along.

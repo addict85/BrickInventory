@@ -11,7 +11,7 @@
  *      wizard, text and headings” (levels 3,2,2; axe alone stayed
  *      green here, because in the empty state an h2 stands before it)
  *   C  setup.rb_hint again „… bleibt die Sammlung leer …“ → red: the same check
- *   D  (04.11.) in einrichtungQuelle the check for an empty field removed
+ *   D  (04.11.) in setupSource the check for an empty field removed
  *      → red: “check key: error at the field, in plain text” (no error at the field)
  *   E  (04.11.) quellenFehler no longer shows the details → red: the same
  *      check („Technische Details“ missing)
@@ -57,11 +57,11 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
     return;
   }
   const { b, bis, db, uid, ruhig } = app;
-  const offen = `document.getElementById('einrichtung-modal').classList.contains('open')`;
+  const offen = `document.getElementById('setup-modal').classList.contains('open')`;
 
   await t.test('empty collection: wizard, text and headings', async () => {
     await bis(offen, 'Assistent');
-    const text = await b.auswerten(`document.querySelector('#einrichtung-modal .ew-schritt.aktiv')?.textContent || ''`);
+    const text = await b.auswerten(`document.querySelector('#setup-modal .wiz-step.active')?.textContent || ''`);
     assert.match(text, /Rebrickable/);
     assert.doesNotMatch(text, /bleibt die Sammlung leer/);
     const funde = await b.auswerten(`(async () => { if (!window.axe) (0, eval)(${JSON.stringify(AXE)});
@@ -71,7 +71,7 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
     // the page (above 12 sets: h1, in the empty state: h2). The title of the
     // dialog is not a heading; its steps therefore begin at h2.
     const layers = await b.auswerten(
-      `[...document.querySelectorAll('#einrichtung-modal h1, #einrichtung-modal h2, #einrichtung-modal h3, #einrichtung-modal h4')].map(h => +h.tagName[1])`,
+      `[...document.querySelectorAll('#setup-modal h1, #setup-modal h2, #setup-modal h3, #setup-modal h4')].map(h => +h.tagName[1])`,
     );
     assert.ok(layers.length >= 3, `Testdaten: ${layers}`);
     assert.ok(
@@ -81,19 +81,19 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
   });
 
   await t.test('check key: error at the field, in plain text', async () => {
-    const pruefen = `document.querySelector('#einrichtung-modal .ew-schritt.aktiv [data-click="einrichtungQuelle"]').click(); true`;
-    const stand = `({ fehler: document.getElementById('ew-fehler-rebrickable').textContent, ungueltig: document.getElementById('ew-rb').getAttribute('aria-invalid'),
-      fokus: document.activeElement?.id, zeichen: document.getElementById('ew-stand-rebrickable').className,
+    const pruefen = `document.querySelector('#setup-modal .wiz-step.active [data-click="setupSource"]').click(); true`;
+    const stand = `({ fehler: document.getElementById('wiz-error-rebrickable').textContent, ungueltig: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
+      fokus: document.activeElement?.id, zeichen: document.getElementById('wiz-status-rebrickable').className,
       toasts: [...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent) })`;
     await b.auswerten(pruefen);
-    await bis(`document.getElementById('ew-fehler-rebrickable').textContent !== ''`, 'Fehler am leeren Feld', 50);
+    await bis(`document.getElementById('wiz-error-rebrickable').textContent !== ''`, 'Fehler am leeren Feld', 50);
     const leer = await b.auswerten(stand);
     assert.match(leer.fehler, /Schlüssel eintragen/);
-    assert.deepEqual([leer.ungueltig, leer.fokus, leer.toasts], ['true', 'ew-rb', []]);
-    await b.auswerten(`document.getElementById('ew-rb').value = 'probe-schluessel'; true`);
+    assert.deepEqual([leer.ungueltig, leer.fokus, leer.toasts], ['true', 'wiz-rb', []]);
+    await b.auswerten(`document.getElementById('wiz-rb').value = 'probe-schluessel'; true`);
     await b.auswerten(pruefen);
     await bis(
-      `/nicht erreichbar/.test(document.getElementById('ew-fehler-rebrickable').textContent)`,
+      `/nicht erreichbar/.test(document.getElementById('wiz-error-rebrickable').textContent)`,
       'Klartext statt Rohtext',
       100,
     );
@@ -103,23 +103,23 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
       'in der Einrichtung speichert der Assistent den ersten Schlüssel ohne Passwortfrage',
     );
     assert.match(z.fehler, /Technische Details/, 'die technische Ursache steht aufklappbar dabei');
-    assert.match(z.zeichen, /fehlt/, '✗ neben dem Titel');
+    assert.match(z.zeichen, /missing/, '✗ neben dem Titel');
     assert.deepEqual(z.toasts, []);
     await b.auswerten(
-      `document.getElementById('toasts').append(Object.assign(document.createElement('div'), { className: 'toast success', textContent: 'Verbindung steht' })); document.getElementById('ew-weiter').click(); true`,
+      `document.getElementById('toasts').append(Object.assign(document.createElement('div'), { className: 'toast success', textContent: 'Verbindung steht' })); document.getElementById('wiz-next').click(); true`,
     );
     assert.equal(
       await b.auswerten(`document.querySelectorAll('#toasts .toast').length`),
       0,
       'Meldungen bleiben nicht über den Schrittwechsel stehen',
     );
-    await b.auswerten(`document.getElementById('ew-zurueck').click(); true`);
+    await b.auswerten(`document.getElementById('wiz-back').click(); true`);
     // The wizard has stored the sample key; the banner below needs it missing.
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   });
 
   await t.test('filled collection: no wizard, but the banner', async () => {
-    await b.auswerten(`document.querySelector('#einrichtung-modal [data-click="einrichtungSpaeter"]').click(); true`);
+    await b.auswerten(`document.querySelector('#setup-modal [data-click="setupLater"]').click(); true`);
     await holdsSet(db, uid, '10294-1', 1, { preis: 100 });
     await b.tab('Page.reload');
     await bis(
@@ -129,6 +129,6 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
     );
     await ruhig();
     assert.equal(await b.auswerten(offen), false, 'Assistent über der gefüllten Sammlung');
-    assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), false, 'Hinweisband fehlt');
+    assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'Hinweisband fehlt');
   });
 });

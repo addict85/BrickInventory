@@ -128,17 +128,17 @@ function fakeApi(_method, url) {
 Object.assign(w, require('./helpers/markup').markupHelper());
 w.eval(`
   window.G = id => document.getElementById(id);
-  window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
+  window.queryAll = (s, w = document) => [...w.querySelectorAll(s)]; window.queryOne = (s, w = document) => w.querySelector(s);
   window.t = (k, v) => { let s = k; if (v) for (const [a,b] of Object.entries(v)) s += ' ' + b; return s; };
   window.locale = () => 'de-CH';
   window.toast = () => {}; window.reportHits = () => {};
-  window.PLACEHOLDER_SET = '/assets/set-placeholder.svg'; window.setDialogbild = (img, src) => { img.src = src; };
+  window.PLACEHOLDER_SET = '/assets/set-placeholder.svg'; window.setDialogImage = (img, src) => { img.src = src; };
   // Das Teile-Symbol kommt aus collection.js und wird hier nur als Marke
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
   // Seit einer früheren Runde steht es dort statt des Puzzleteil-Emojis.
   window.PARTS_ICON_SVG = '<svg data-test-parts-icon></svg>';
   // Bild und Platzhalter kommen aus bilder.js; hier zählt nur die Kachel.
-  window.bildTag = o => '<img src="' + o.src + '" alt="">';
+  window.imageTag = o => '<img src="' + o.src + '" alt="">';
   window.placeholderContent = () => '';
   // Den gemeinsamen Scrollbalken stellt js/rollbalken.js; hier zählt nur, DASS
   // der Katalog sein Etikett dort anmeldet.
@@ -247,7 +247,7 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
   // jumps when loading more and one loses the place.
   check(
     'Höhe wird gemessen, nicht geraten',
-    /erste\.offsetHeight/.test(quelle) && /_setPlaceholderHeight\(\)/.test(quelle),
+    /first\.offsetHeight/.test(quelle) && /_setPlaceholderHeight\(\)/.test(quelle),
     null,
   );
   // The reliable loading path: the scroll event itself, throttled.
@@ -269,12 +269,12 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
     null,
   );
   // 2. Loading only happens at rest; that this works is measured by catalog-move-debounced.test.js.
-  check('Laden wartet auf Ruhe', /_catLadeTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
+  check('Laden wartet auf Ruhe', /_catLoadTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
   // The observer is gone — one path that always applies instead of two
   // that are supposed to complement each other.
   check('kein zweiter Ladeweg mehr', !/new IntersectionObserver/.test(quelle), null);
   check('der Katalog meldet sein Etikett an', /setScrollLabel\(/.test(quelle), null);
-  check('Etikett liest zuerst die sichtbare Kachel', /karte\.dataset\.year/.test(quelle), null);
+  check('Etikett liest zuerst die sichtbare Kachel', /card\.dataset\.year/.test(quelle), null);
   // And where nothing is loaded, the computation uses the actual DISTRIBUTION,
   // not a linear estimate. The linear version showed “1966" at 90 %, where
   // in truth it was 1995 — Marco's finding.

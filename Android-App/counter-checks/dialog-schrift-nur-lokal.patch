@@ -1,0 +1,16 @@
+Gegenprobe: Schrift der Dialogfotos wieder nur über LocalDensity
+Modul: app
+Test: ch.brickinventoryapp.app.ScreenPhotoVariantsTest
+Rot: dialogSetAddFont200
+
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoVariantsTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoVariantsTest.kt
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoVariantsTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoVariantsTest.kt
+@@ -219,7 +219,6 @@ class ScreenPhotoVariantsTest {
+         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$mask" else mask)
+         // Die Schrift auch in der Konfiguration: Ein Dialog hat sein eigenes Fenster und
+         // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein.
+-        if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
+         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
+         if (warten) bereitstellen(name, bereit, zustand)
+         compose.setContent {

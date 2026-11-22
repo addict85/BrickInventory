@@ -14,27 +14,27 @@ import java.lang.reflect.Modifier
  * derived part only reports real changes is checked by DerivedStateTest.
  *
  * Counter-checks:
- *   A  `val sets: List<SetAnsicht> = emptyList()` added to AppUiState → red
+ *   A  `val sets: List<SetView> = emptyList()` added to AppUiState → red
  *      “these gallery fields are back in AppUiState: sets”
  *   B  a test field added to AppUiState → red “AppUiState has 11 fields
  *      (allowed: 10)”
  */
 class StateFlowWidthTest {
 
-    private fun felder(k: Class<*>) = k.declaredFields.filterNot { Modifier.isStatic(it.modifiers) }.map { it.name }
+    private fun fields(k: Class<*>) = k.declaredFields.filterNot { Modifier.isStatic(it.modifiers) }.map { it.name }
 
     @Test
     fun `the gallery fields stay out of the common state`() {
-        val galerie = felder(GalleryUiState::class.java)
-        assertTrue("Nur ${galerie.size} Felder in GalleryUiState", galerie.size >= 8)
-        val fallback = galerie.filter { it in felder(AppUiState::class.java) }
+        val gallery = fields(GalleryUiState::class.java)
+        assertTrue("Nur ${gallery.size} Felder in GalleryUiState", gallery.size >= 8)
+        val fallback = gallery.filter { it in fields(AppUiState::class.java) }
         assertTrue("Diese Galerie-Felder stehen wieder in AppUiState: ${fallback.joinToString()}", fallback.isEmpty())
     }
 
     @Test
     fun `the common state does not grow again`() {
         // Whoever lands here checks whether the field really belongs to everyone, instead of raising the number.
-        val n = felder(AppUiState::class.java).size
+        val n = fields(AppUiState::class.java).size
         assertTrue("AppUiState hat $n Felder (erlaubt: 10)", n <= 10)
     }
 }

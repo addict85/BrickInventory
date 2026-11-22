@@ -3,8 +3,8 @@ import { detailRow, loadDisplay, rowsButton } from './components.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, escJs, esc, html, joinHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogbild } from './images.js';
-import { ico, G, setzeHtml } from './dom.js';
+import { imageTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogImage } from './images.js';
+import { ico, G, setHtml } from './dom.js';
 import { toast } from './messages.js';
 import { scopeQuery } from './account-filter.js';
 import { loadLocations, locationBlock, loadLocationSelection } from './detail-fields.js';
@@ -20,20 +20,20 @@ function usedInList(sets) {
   const setImage = (/** @type {{ image_local?: string | null, image_url?: string | null }} */ s) => {
     const small = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
     return small
-      ? bildTag({ src: imgUrl(small, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
-      : html`<span class="bild-ph bild-34" aria-hidden="true">${placeholderContent('set')}</span>`;
+      ? imageTag({ src: imgUrl(small, true), orig: imgUrl(s.image_url || ''), alt: '', class: 'image-34', ph: 'set' })
+      : html`<span class="image-ph image-34" aria-hidden="true">${placeholderContent('set')}</span>`;
   };
   return sets.length
-    ? html`<table aria-label="${tRaw('setitem.used_in')}" data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(
+    ? html`<table aria-label="${tRaw('setitem.used_in')}" data-style="width:100%;border-collapse:collapse"><tbody>${sets.map(
         s => html`
         <tr>
-          <td data-stil="width:34px;padding:4px 8px 4px 0">${setImage(s)}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${rowsButton({ click: 'openSetAusItem', arg: s.set_number }, s.set_number, tRaw('zeile.oeffnen', { name: s.set_name || s.set_number, nr: s.set_number }))}</td>
-          <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${s.set_name || ''}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
+          <td data-style="width:34px;padding:4px 8px 4px 0">${setImage(s)}</td>
+          <td data-style="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${rowsButton({ click: 'openSetFromItem', arg: s.set_number }, s.set_number, tRaw('row.open', { name: s.set_name || s.set_number, nr: s.set_number }))}</td>
+          <td data-style="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${s.set_name || ''}</td>
+          <td data-style="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
         </tr>`,
       )}</tbody></table>`
-    : html`<span data-stil="color:var(--mut);font-size:var(--fs-2)">${t('setitem.used_in_none')}</span>`;
+    : html`<span data-style="color:var(--mut);font-size:var(--fs-2)">${t('setitem.used_in_none')}</span>`;
 }
 
 /**
@@ -51,7 +51,7 @@ export async function openSetItemDetail(type, id, colorId) {
   G('setitem-tit').textContent = id;
   G('setitem-sub').textContent = '';
   imgEl.style.display = 'none';
-  setzeHtml(bodyEl, loadDisplay('', { stil: 'padding:1rem' }));
+  setHtml(bodyEl, loadDisplay('', { style: 'padding:1rem' }));
   modal.classList.add('open');
 
   // Pass the account scope along as everywhere: in a household, the sibling account's set belongs too.
@@ -76,7 +76,7 @@ export async function openSetItemDetail(type, id, colorId) {
   const raw = item?.image_local || item?.image_url || '';
   const full = raw ? imgUrl(fullUrl(raw), false) : '';
   if (full) {
-    setDialogbild(imgEl, full, full);
+    setDialogImage(imgEl, full, full);
     imgEl.style.display = '';
   } else {
     imgEl.style.display = 'none';
@@ -88,13 +88,13 @@ export async function openSetItemDetail(type, id, colorId) {
   rows.push(
     detailRow(
       t('setitem.total_qty'),
-      html`<span data-stil="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`,
+      html`<span data-style="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`,
     ),
   );
 
   if (type === 'part' && item?.color_name) {
     const dot = item.color_hex
-      ? html`<span data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`
+      ? html`<span data-style="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-color-hex="${escHex(item.color_hex, 'var(--s300)')}"></span>`
       : '';
     rows.push(detailRow(t('parts.color_label'), `${dot}${esc(colorName(item.color_name))}`));
   }
@@ -113,7 +113,7 @@ export async function openSetItemDetail(type, id, colorId) {
         locationBlock(
           'setitem-storage',
           item?.storage,
-          `data-change="speichereTeilLagerort" data-typ="part" data-part="${escJs(id)}" data-color="${color}" ` +
+          `data-change="savePartLocation" data-entry-type="part" data-part="${escJs(id)}" data-color="${color}" ` +
             `data-owners="${esc((item?.owner_ids || []).join(','))}"`,
         ),
         { valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
@@ -131,7 +131,7 @@ export async function openSetItemDetail(type, id, colorId) {
     }),
   );
 
-  setzeHtml(bodyEl, joinHtml(rows));
+  setHtml(bodyEl, joinHtml(rows));
 }
 
 /**
@@ -139,13 +139,13 @@ export async function openSetItemDetail(type, id, colorId) {
  * keystroke). `this` instead of a fixed id, because two dialogs share this handler.
  * @this {unknown}
  */
-async function speichereTeilLagerort() {
+async function savePartLocation() {
   const el = this instanceof HTMLInputElement ? this : G('setitem-storage');
   if (!el) return;
   const number = el.dataset.part ?? '';
   const color = parseInt(el.dataset.color ?? '', 10) || 0;
   const url =
-    el.dataset.typ === 'fig'
+    el.dataset.entryType === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(number)}/storage`
       : `/v1/parts/${encodeURIComponent(number)}/${color}/storage`;
   const d = await api('PUT', url, { storage: el.value });
@@ -168,14 +168,14 @@ G('setitem-modal').addEventListener('click', e => e.target === e.currentTarget &
  * From the part dialog to the set detail — one closes, the other opens.
  * @param {string} setNumber
  */
-function openSetAusItem(setNumber) {
+function openSetFromItem(setNumber) {
   closeSetItemDetail();
   jumpTo('setDetail', setNumber);
 }
 
 registerActions({
-  openSetAusItem,
+  openSetFromItem,
   openSetItemDetail,
   closeSetItemDetail,
-  speichereTeilLagerort,
+  savePartLocation,
 });

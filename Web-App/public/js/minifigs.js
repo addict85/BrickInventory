@@ -2,45 +2,35 @@
 // manual tables and CSV status.
 import { loadGuard } from './load-guard.js';
 import { subscribe, emit } from './events.js';
-import { echt, registerActions } from './registry.js';
+import { genuine, registerActions } from './registry.js';
 import {
   listLoadError,
   condBadges,
   ownerBadges,
-  schliesseErfassen,
+  closeCapture,
   uploadCsv,
   rowsButton,
   skeletonTiles,
-  kachelName,
+  tileName,
 } from './components.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl } from './images.js';
-import {
-  emptyState,
-  reportHits,
-  G,
-  TRASH_ICON_SVG,
-  resetButton,
-  activeTab,
-  ico,
-  setzeHtml,
-  telefonBreite,
-} from './dom.js';
-import { fmtDatum, fmtN } from './format.js';
+import { imageTag, placeholderContent, fullUrl, imgUrl, thumbUrl } from './images.js';
+import { emptyState, reportHits, G, TRASH_ICON_SVG, resetButton, activeTab, ico, setHtml, phoneWidth } from './dom.js';
+import { fmtDate, fmtN } from './format.js';
 import { amountFromField, quantityFromField, purchaseDateValid } from './form.js';
 import { toast } from './messages.js';
-import { addLagerParam, addScopeParam, scopeQuery } from './account-filter.js';
+import { addLocationParam, addScopeParam, scopeQuery } from './account-filter.js';
 import { deleteRestorable } from './deletion.js';
 import { accountCurrency } from './state.js';
 import { emptyLocationField, selectedOwner, selectedStorage } from './account-locations.js';
 
-// ── MINIFIGUREN ──────────────────────────────────────────────────────────────
+// ── MINIFIGS ──────────────────────────────────────────────────────────────
 /**
- * @typedef {import('../../frontend-types/contract').GET_api_v1_minifigs['figs'][number]} Figur
+ * @typedef {import('../../frontend-types/contract').GET_api_v1_minifigs['figs'][number]} Minifig
  */
-/** @type {Figur[]} */
+/** @type {Minifig[]} */
 let allFigsCache = [];
 /** The most recently loaded figures from sets (read only). */
 export function allMinifigs() {
@@ -51,7 +41,7 @@ export function allMinifigs() {
 // As in gallery, catalog and parts view. Search and source filter go to the server: filtering on the client over
 // allFigsCache would only search the loaded page with page-wise loading.
 const FIG_PAGE_SIZE = 60;
-const figurenLaden = loadGuard();
+const minifigsGuard = loadGuard();
 let _figPage = 1,
   _figDone = false,
   _figLoadingMore = false,
@@ -74,10 +64,10 @@ function figParams(page) {
 async function loadMinifigsMore() {
   if (_figLoadingMore || _figDone) return;
   _figLoadingMore = true;
-  const gen = figurenLaden.current();
+  const gen = minifigsGuard.current();
   try {
     const d = await api('GET', `/v1/minifigs?${figParams(_figPage + 1)}`);
-    if (!figurenLaden.isCurrent(gen)) return;
+    if (!minifigsGuard.isCurrent(gen)) return;
     const batch = d.figs || [];
     if (!batch.length) {
       _figDone = true;
@@ -90,7 +80,7 @@ async function loadMinifigsMore() {
   } catch (_) {
     /* silent — the sentinel tries again on the next scroll */
   } finally {
-    if (figurenLaden.isCurrent(gen)) _figLoadingMore = false;
+    if (minifigsGuard.isCurrent(gen)) _figLoadingMore = false;
   }
 }
 
@@ -122,16 +112,16 @@ function bindFigsSentinel() {
 }
 
 export async function loadMinifigs() {
-  figurenLaden.start();
+  minifigsGuard.start();
   _figPage = 1;
   _figDone = false;
   _figLoadingMore = false;
   // An old error state gives way to the skeleton while reloading (as in the wishlist).
-  const liste = G('figs-list');
-  if (liste?.querySelector('.fehler-zustand')) setzeHtml(liste, skeletonTiles(8, tRaw('common.loading')));
-  const d = await figurenLaden.whenCurrent(api('GET', `/v1/minifigs?${figParams(1)}`));
+  const list = G('figs-list');
+  if (list?.querySelector('.error-state')) setHtml(list, skeletonTiles(8, tRaw('common.loading')));
+  const d = await minifigsGuard.whenCurrent(api('GET', `/v1/minifigs?${figParams(1)}`));
   if (d === undefined) return;
-  if (listLoadError(G('figs-list'), d, { erneut: 'loadMinifigs', behalten: allFigsCache.length > 0 })) return;
+  if (listLoadError(G('figs-list'), d, { again: 'loadMinifigs', keep: allFigsCache.length > 0 })) return;
   allFigsCache = d.figs || [];
   _figTotal = d.total ?? allFigsCache.length;
   if (allFigsCache.length >= _figTotal) _figDone = true;
@@ -169,7 +159,7 @@ function filterFigs() {
  * Appends a page loaded later instead of rebuilding the list: replacing via innerHTML aborted the
  * running image requests, and tiles whose image never got past one round stayed empty.
  */
-/** @param {Figur[]} batch */
+/** @param {Minifig[]} batch */
 function appendFigs(batch) {
   const el = G('figs-list');
   // Render the page detached, so that the existing list stays untouched.
@@ -196,7 +186,7 @@ function appendFigs(batch) {
 }
 
 /**
- * @param {(Figur | ManuelleFigur)[]} list
+ * @param {(Minifig | ManualMinifig)[]} list
  * @param {HTMLElement} [target] target container. Default is #figs-list.
  *        If another one is passed, a page can be rendered detached and
  *        appended afterwards — see appendFigs().
@@ -204,8 +194,7 @@ function appendFigs(batch) {
 export function renderFigs(list, target) {
   const el = target || G('figs-list');
   if (!target) _setMinifigsEmpty = !list.length;
-  if (!target && list.length && G('fig-search')?.value.trim())
-    reportHits(tRaw('treffer.eintraege', { n: list.length }));
+  if (!target && list.length && G('fig-search')?.value.trim()) reportHits(tRaw('match.entries', { n: list.length }));
   if (!list.length) {
     if (target) el.replaceChildren();
     else reconcileMinifigsEmpty();
@@ -216,7 +205,7 @@ export function renderFigs(list, target) {
   if (tablesView('figs-view')) {
     // Without "source" and trash: this list only loads source=set, both columns would be the same or empty
     // in every row. Manual figures have their own area with editable cards.
-    setzeHtml(
+    setHtml(
       el,
       html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.minifigs')}">
       <thead><tr>
@@ -225,11 +214,11 @@ export function renderFigs(list, target) {
       <tbody>${list.map(f => {
         const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
         const dateVal = /** @type {string | null} */ (f.set_added_at || null);
-        const erfasst = dateVal ? fmtDatum(dateVal) : '—';
+        const captured = dateVal ? fmtDate(dateVal) : '—';
         // Clickable like the tile below — the same action in both views (Marco's detail dialog
         // for automatically captured figures).
-        return html`<tr data-stil="cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
-          <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${placeholderContent('figur')}</span>`}</td>
+        return html`<tr data-style="cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
+          <td>${imgSrc ? imageTag({ src: imgSrc, alt: '', class: 'image-small', ph: 'figur' }) : html`<span class="image-ph image-small" aria-hidden="true">${placeholderContent('figur')}</span>`}</td>
           <td>${rowsButton(
             {
               click: f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail',
@@ -237,12 +226,12 @@ export function renderFigs(list, target) {
               arg2: f.fig_number,
               arg3: 0,
             },
-            html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${f.fig_number}</span>`,
-            tRaw('zeile.oeffnen', { name: f.fig_name || f.fig_number, nr: f.fig_number }),
+            html`<span data-style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${f.fig_number}</span>`,
+            tRaw('row.open', { name: f.fig_name || f.fig_number, nr: f.fig_number }),
           )}</td>
-          <td data-stil="max-width:200px">${f.fig_name || '—'}</td>
-          <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity || f.quantity}</span></td>
-          <td data-stil="font-size:var(--fs-1);color:var(--mut)">${rawHtml(erfasst)}</td>
+          <td data-style="max-width:200px">${f.fig_name || '—'}</td>
+          <td><span data-style="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity || f.quantity}</span></td>
+          <td data-style="font-size:var(--fs-1);color:var(--mut)">${rawHtml(captured)}</td>
         </tr>`;
       })}</tbody></table></div>`,
     );
@@ -250,14 +239,14 @@ export function renderFigs(list, target) {
   }
 
   // Grid view: group by source (Set / Manual)
-  /** @type {Record<string, (Figur | ManuelleFigur)[]>} */
+  /** @type {Record<string, (Minifig | ManualMinifig)[]>} */
   const groups = {};
   for (const f of list) {
     const key = f.source === 'manual' ? tRaw('figs.group_manual') : tRaw('figs.group_sets');
     if (!groups[key]) groups[key] = [];
     groups[key].push(f);
   }
-  setzeHtml(
+  setHtml(
     el,
     Object.entries(groups).map(
       ([label, figs]) => html`
@@ -270,39 +259,39 @@ export function renderFigs(list, target) {
         ${figs.map(f => {
           const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
           const dateVal = /** @type {string | null} */ (f.set_added_at || null);
-          const erfasst = dateVal ? fmtDatum(dateVal) : '';
+          const captured = dateVal ? fmtDate(dateVal) : '';
           // Trash at the top right, as on the set tile: .ca sets top:6px;right:6px and fades it in on
           // hover (styles.css). Marco's requirement from 24.09., second part: "like the tiles for
           // the sets. But only in the web app."
           const delBtn =
             f.source === 'manual'
-              ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" data-taste="${esc(tRaw('kachel.entf'))}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
+              ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${genuine()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" data-key-hint="${esc(tRaw('tile.delete_key'))}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
               : '';
           // Condition only for manually captured figures — those from sets have none of their own. The
           // owner badge on the other hand always: "whom does this belong to?" arises just the same for the figure from a
           // child's set.
           const condBadge =
             f.source === 'manual'
-              ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
+              ? `<div data-style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
               : '';
-          const besitzer = ownerBadges(f)
-            ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
+          const owner = ownerBadges(f)
+            ? `<div data-style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
             : '';
           // Manually captured figures have their own dialog (purchase prices, quantity editable); those from sets
           // the new one without price and without quantity change. The tile decides by the source, so that
           // BOTH cases are right — even if this list today only
           // loads `source=set`.
-          const k = kachelName();
-          return html`<div class="part-card" tabindex="0" role="button"${k.attr}${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-stil="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
+          const k = tileName();
+          return html`<div class="part-card" tabindex="0" role="button"${k.attr}${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-style="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
             ${rawHtml(delBtn)}
-            ${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="bild-ph part-img" aria-hidden="true">${placeholderContent('figur')}</span>`}
+            ${imgSrc ? imageTag({ src: imgSrc, alt: '', class: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="image-ph part-img" aria-hidden="true">${placeholderContent('figur')}</span>`}
             <div class="part-num">${f.fig_number}</div>
             <div class="part-name">${f.fig_name || '—'}</div>
-            <div class="kachel-mehr"${k.teil(0)}>
+            <div class="tile-more"${k.teil(0)}>
             <div class="part-qty">×${f.total_quantity || f.quantity}</div>
             ${rawHtml(condBadge)}
-            ${rawHtml(besitzer)}
-            ${erfasst ? html`<div data-stil="font-size:var(--fs-0);color:var(--mut)">${tRaw('gallery.card.bought')} ${erfasst}</div>` : ''}
+            ${rawHtml(owner)}
+            ${captured ? html`<div data-style="font-size:var(--fs-0);color:var(--mut)">${tRaw('gallery.card.bought')} ${captured}</div>` : ''}
             </div>
           </div>`;
         })}
@@ -329,7 +318,7 @@ export async function deleteManualFig(figNumber, owner) {
   return true;
 }
 
-/** @type {ManuelleFigur[]} */
+/** @type {ManualMinifig[]} */
 let manualFigsCache = [];
 /** The most recently loaded manually captured figures (read only). */
 export function manualMinifigs() {
@@ -353,7 +342,7 @@ let _manualMinifigsEmpty = null;
  */
 function reconcileMinifigsEmpty() {
   const box = G('manual-figs-box');
-  G('tab-minifigs')?.classList.remove('sammlung-leer');
+  G('tab-minifigs')?.classList.remove('collection-empty');
   if (box) box.style.display = _manualMinifigsEmpty === false ? '' : 'none';
   const n = manualFigsCache.length;
   if (G('manual-figs-n')) G('manual-figs-n').textContent = n ? tRaw('parts.group_types', { n }) : '';
@@ -364,21 +353,21 @@ function reconcileMinifigsEmpty() {
     return;
   }
   const q = G('fig-search')?.value.trim() || '';
-  G('tab-minifigs')?.classList.toggle('sammlung-leer', !q);
+  G('tab-minifigs')?.classList.toggle('collection-empty', !q);
   if (q) reportHits(tRaw('common.no_hits', { query: q }));
-  setzeHtml(
+  setHtml(
     el,
     q
       ? emptyState({
-          ico: 'suche',
-          titel: tRaw('common.no_hits', { query: q }),
-          knopf: resetButton('minifigs'),
+          ico: 'search',
+          title: tRaw('common.no_hits', { query: q }),
+          button: resetButton('minifigs'),
         })
       : emptyState({
-          ico: 'figur',
-          titel: tRaw('figs.empty'),
+          ico: 'minifig',
+          title: tRaw('figs.empty'),
           text: tRaw('figs.auto_hint'),
-          knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' },
+          button: { text: tRaw('figs.add_title'), click: 'openCapture', arg: 'fig' },
         }),
   );
 }
@@ -400,35 +389,35 @@ export function renderManualFigsTable() {
     return;
   }
   if (tablesView('figs-view')) {
-    setzeHtml(el, manualTable(manualFigsCache, 'fig'));
+    setHtml(el, manualTable(manualFigsCache, 'fig'));
     if (typeof window.__bimLabelTables === 'function') window.__bimLabelTables(el.querySelector('table'));
     return;
   }
-  setzeHtml(
+  setHtml(
     el,
     html`<div class="man-grid">
     ${manualFigsCache.map(f => {
       const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
       const img = imgSrc
-        ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'figur' })
-        : `<span class="bild-ph man-tile-img" aria-hidden="true">${placeholderContent('figur')}</span>`;
+        ? imageTag({ src: imgSrc, alt: '', class: 'man-tile-img', ph: 'figur' })
+        : `<span class="image-ph man-tile-img" aria-hidden="true">${placeholderContent('figur')}</span>`;
       // Quantity-weighted purchase price over the acquisitions (the server computes it). unit_price is the most recently
       // written single value of the master row — with two acquisitions at different prices it was
       // wrong.
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
-      const priceStr = figPrice != null ? esc(tRaw('finance.je', { preis: fmtN(figPrice, accountCurrency) })) : '—';
+      const priceStr = figPrice != null ? esc(tRaw('finance.per', { price: fmtN(figPrice, accountCurrency) })) : '—';
       const condBadge = condBadges(f);
-      const k = kachelName();
-      return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-stil="cursor:pointer">
-        <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" data-taste="${tRaw('kachel.entf')}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
+      const k = tileName();
+      return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-style="cursor:pointer">
+        <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${genuine()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" data-key-hint="${tRaw('tile.delete_key')}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
         ${rawHtml(img)}
         <div class="man-tile-num">${f.fig_number}</div>
         <div class="man-tile-name">${f.fig_name || '—'}</div>
-        <div class="kachel-mehr"${k.teil(0)}>
-        <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
+        <div class="tile-more"${k.teil(0)}>
+        <div data-style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${f.quantity}</span>${rawHtml(condBadge)}${ownerBadges(f)}
         </div>
-        <div class="preis man-preis">${rawHtml(priceStr)}</div>
+        <div class="price man-price">${rawHtml(priceStr)}</div>
         </div>
       </div>`;
     })}
@@ -447,7 +436,7 @@ export async function updateManualFig(figNumber, body, owner) {
     toast(tRaw('settings.saved'), 'success');
     loadManualFigsTable();
     loadMinifigs();
-    if (activeTab() === 'finance') emit('finanzenLaden');
+    if (activeTab() === 'finance') emit('financesLoad');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -455,11 +444,11 @@ export async function updateManualFig(figNumber, body, owner) {
  * Hint when the purchase price comes from the other condition: BrickLink often lists only one. Adopt and
  * mark it, so that the fallback is neither invisible nor leaves the field empty. One helper for parts and
  * figures.
- * @param {string | null | undefined} zustand 'N' | 'U' | null — null means "nothing to say".
+ * @param {string | null | undefined} state 'N' | 'U' | null — null means "nothing to say".
  */
-export function priceOriginHint(zustand) {
-  if (zustand !== 'N' && zustand !== 'U') return '';
-  return t(zustand === 'N' ? 'price.from_other_condition_new' : 'price.from_other_condition_used');
+export function priceOriginHint(state) {
+  if (state !== 'N' && state !== 'U') return '';
+  return t(state === 'N' ? 'price.from_other_condition_new' : 'price.from_other_condition_used');
 }
 
 G('btn-add-fig')?.addEventListener('click', async () => {
@@ -470,10 +459,10 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     res.textContent = tRaw('figs.number_required');
     return;
   }
-  const preis = amountFromField('af-price-inline');
-  const datumOk = purchaseDateValid('af-date');
-  const menge = quantityFromField('af-qty-inline');
-  if (!preis.ok || !menge.ok || !datumOk) return;
+  const price = amountFromField('af-price-inline');
+  const dateOk = purchaseDateValid('af-date');
+  const quantity = quantityFromField('af-qty-inline');
+  if (!price.ok || !quantity.ok || !dateOk) return;
   const btn = G('btn-add-fig');
   btn.disabled = true;
   btn.textContent = '…';
@@ -482,8 +471,8 @@ G('btn-add-fig')?.addEventListener('click', async () => {
   const d = await api('POST', '/v1/minifigs', {
     fig_number: num,
     bl_fig_number: G('af-blnum-inline')?.value.trim() || null,
-    quantity: menge.wert,
-    unit_price: preis.wert,
+    quantity: quantity.value,
+    unit_price: price.value,
     condition: G('af-condition')?.value || 'N',
     acquired_at: G('af-date')?.value || null,
     owner_user_id: selectedOwner('af-owner'),
@@ -498,7 +487,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
       `${d.fig_number} ${d.action === 'added' ? t('common.added') : t('common.updated')}` +
       (hintF ? ` — ${hintF}` : '');
     // The dialog closes; the result including the price hint comes as a message.
-    schliesseErfassen('fig');
+    closeCapture('fig');
     toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
     G('af-num-inline').value = '';
     G('af-blnum-inline').value = '';
@@ -550,7 +539,7 @@ async function importFigsCsv() {
   const d = await uploadCsv({
     feld: 'fig-csv-file',
     pfad: '/v1/minifigs/import/csv',
-    zeige: l => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', tRaw('import.running')),
+    show: l => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', tRaw('import.running')),
   });
   if (d) loadMinifigs();
 }
@@ -575,9 +564,9 @@ export function manualQuery(view, searchId) {
   const p = new URLSearchParams();
   addScopeParam(p, view);
   // The storage location filter stands in the same bar and thus belongs to the same promise. It only exists
-  // for gallery and parts (LAGER_VIEWS in account-filter.js); for 'minifigs' addLagerParam appends nothing, and
+  // for gallery and parts (LOCATION_VIEWS in account-filter.js); for 'minifigs' addLocationParam appends nothing, and
   // that is why getManualMinifigs does not know it either.
-  addLagerParam(p, view);
+  addLocationParam(p, view);
   const q = G(searchId)?.value?.trim();
   if (q) p.set('search', q);
   const s = p.toString();
@@ -587,12 +576,12 @@ export function manualQuery(view, searchId) {
 /**
  * The manually captured items as a table: the view switch stands above both lists and must apply to
  * both. One function for parts and figures, so that the two tables do not drift apart.
- * @param {(ManuellesTeil | ManuelleFigur)[]} posten  the entries from the respective cache.
- * @param {'part'|'fig'} art
+ * @param {(ManualPart | ManualMinifig)[]} items  the entries from the respective cache.
+ * @param {'part'|'fig'} kind
  */
-export function manualTable(posten, art) {
-  const isPart = art === 'part';
-  const kopf = [
+export function manualTable(items, kind) {
+  const isPart = kind === 'part';
+  const header = [
     t('col.image_th'),
     isPart ? t('col.part_nr') : t('col.number'),
     t('col.name'),
@@ -603,36 +592,36 @@ export function manualTable(posten, art) {
     t('detail.storage'),
     '',
   ];
-  const zeile = (/** @type {ManuellesTeil | ManuelleFigur} */ p) => {
-    const nummer = isPart ? p.part_number : p.fig_number;
-    const blNumber = (isPart ? p.bl_part_number : p.bl_fig_number) || nummer;
+  const row = (/** @type {ManualPart | ManualMinifig} */ p) => {
+    const number = isPart ? p.part_number : p.fig_number;
+    const blNumber = (isPart ? p.bl_part_number : p.bl_fig_number) || number;
     const name = isPart ? p.part_name : p.fig_name;
     const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
-    const preis = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
-    const loeschKlick = isPart ? 'deleteManualPartStop' : 'deleteManualFigStop';
-    const loeschTitle = tRaw(isPart ? 'parts.delete.title' : 'figs.delete');
+    const price = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
+    const deleteClick = isPart ? 'deleteManualPartStop' : 'deleteManualFigStop';
+    const deleteTitle = tRaw(isPart ? 'parts.delete.title' : 'figs.delete');
     // For the part the trash carries (number, color, owner), for the figure (number, owner) — the same
     // order as on the tiles.
-    const loeschArgs = isPart
-      ? `data-arg="${esc(nummer)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
-      : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
-    return html`<tr data-stil="cursor:pointer" data-click="openManDetail" data-arg="${art}" data-arg2="${nummer}" data-arg3="${isPart ? p.color_id || 0 : 0}">
-      <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: isPart ? 'teil' : 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${placeholderContent(isPart ? 'teil' : 'figur')}</span>`}</td>
+    const deleteArgs = isPart
+      ? `data-arg="${esc(number)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
+      : `data-arg="${esc(number)}" data-arg2="${p.user_id || ''}"`;
+    return html`<tr data-style="cursor:pointer" data-click="openManDetail" data-arg="${kind}" data-arg2="${number}" data-arg3="${isPart ? p.color_id || 0 : 0}">
+      <td>${imgSrc ? imageTag({ src: imgSrc, alt: '', class: 'image-small', ph: isPart ? 'teil' : 'figur' }) : html`<span class="image-ph image-small" aria-hidden="true">${placeholderContent(isPart ? 'teil' : 'figur')}</span>`}</td>
       <td>${rowsButton(
-        { click: 'openManDetail', arg: art, arg2: String(nummer), arg3: isPart ? Number(p.color_id) || 0 : 0 },
-        html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${nummer}">${blNumber}</span>`,
-        tRaw('zeile.oeffnen', { name: name || nummer, nr: blNumber }),
+        { click: 'openManDetail', arg: kind, arg2: String(number), arg3: isPart ? Number(p.color_id) || 0 : 0 },
+        html`<span data-style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${number}">${blNumber}</span>`,
+        tRaw('row.open', { name: name || number, nr: blNumber }),
       )}</td>
-      <td data-stil="max-width:200px">${name || '—'}</td>
-      ${isPart ? html`<td><div data-stil="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
-      <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
+      <td data-style="max-width:200px">${name || '—'}</td>
+      ${isPart ? html`<td><div data-style="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-color-hex="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
+      <td><span data-style="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
       <td>${condBadges(p)}</td>
-      <td class="preis">${preis != null ? fmtN(preis, accountCurrency) : '—'}</td>
-      <td data-stil="font-size:var(--fs-1);color:var(--mut)">${p.storage || ''}</td>
-      <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${rawHtml(loeschArgs)} title="${loeschTitle}" aria-label="${loeschTitle}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
+      <td class="price">${price != null ? fmtN(price, accountCurrency) : '—'}</td>
+      <td data-style="font-size:var(--fs-1);color:var(--mut)">${p.storage || ''}</td>
+      <td><button class="delbtn" data-click="${deleteClick}"${genuine()} ${rawHtml(deleteArgs)} title="${deleteTitle}" aria-label="${deleteTitle}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
   };
-  return html`<div class="tw"><table class="dt" aria-label="${tRaw(isPart ? 'parts.manual_section' : 'finance.figs_section')}" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${rawHtml(h)}</th>`)}</tr></thead><tbody>${joinHtml(posten.map(zeile))}</tbody></table></div>`;
+  return html`<div class="tw"><table class="dt" aria-label="${tRaw(isPart ? 'parts.manual_section' : 'finance.figs_section')}" data-style="font-size:var(--fs-2)"><thead><tr>${header.map(h => html`<th>${rawHtml(h)}</th>`)}</tr></thead><tbody>${joinHtml(items.map(row))}</tbody></table></div>`;
 }
 
 /**
@@ -640,10 +629,10 @@ export function manualTable(posten, art) {
  * @param {string} id
  */
 export function tablesView(id) {
-  return G(id)?.value === 'table' && !telefonBreite();
+  return G(id)?.value === 'table' && !phoneWidth();
 }
 
-subscribe('bestandGeaendert', () => {
+subscribe('stockChanged', () => {
   loadMinifigs();
   loadManualFigsTable();
 });

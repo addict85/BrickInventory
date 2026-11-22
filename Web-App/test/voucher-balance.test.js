@@ -314,7 +314,7 @@ test('balance query', async t => {
     // human can choose, LAENDER what the route accepts. If the HTML had
     // one country too many, the user would get a refusal instead of a balance.
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-    const block = html.slice(html.indexOf('<select id="gutschein-land"'));
+    const block = html.slice(html.indexOf('<select id="voucher-country"'));
     const werte = [...block.slice(0, block.indexOf('</select>')).matchAll(/<option value="([^"]+)"/g)].map(m => m[1]);
     assert.deepEqual(
       werte,

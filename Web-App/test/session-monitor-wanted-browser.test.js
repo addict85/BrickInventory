@@ -9,15 +9,15 @@
  *   B  monitor.js schedules the next round without ifVisible() → red: „Hintergrundarbeiten“ (query in the
  *      hidden tab)
  *   C  fehlerfang.js again reports every event without an error object → red: „200 % Schrift“ (red toast)
- *   D  finanzen.js always with 'finance.basis.gerechnet' → red: „Rechenbasis“
+ *   D  finanzen.js always with 'finance.basis.computed' → red: „Rechenbasis“
  *   T  wertkurve.js redraws itself again in the ResizeObserver → red: „200 % Schrift“ (loop)
  *   E  einstellungen.js again with `z?.prices || 0` without a substitute text → red: „Leeren ohne Zahl“ („Löscht 0 …“)
- *   F  merkliste.js again with the selector `.mk-zeile, .leer` → red: „Neuladen nach Fehler“ (wishlist)
+ *   F  merkliste.js again with the selector `.mk-row, .empty-state` → red: „Neuladen nach Fehler“ (wishlist)
  *   G  loadMinifigs() without the skeleton → red: same place (figures)
  *   H  #mon-app-theme without data-change → red: „Design sofort“
  *   I  btn-cu aborts again after the first field error → red: „Benutzer anlegen“ (only one message)
- *   K  styles.css without `.nutzer-neu{align-items:flex-start}` → red: same place (input fields offset)
- *   L  mobile.css without the full width for .nutzer-neu > .fg → red: same place (390 px)
+ *   K  styles.css without `.user-new{align-items:flex-start}` → red: same place (input fields offset)
+ *   L  mobile.css without the full width for .user-new > .fg → red: same place (390 px)
  *   M  #mk-m-del again free in the footer instead of under „Weitere Aktionen“ → red: „Merkposten-Detail“
  *   N  mk-m-sub again with the number without a name → red: same place
  *   O  portfolioChartSVG() without a legend (belowTheImage = false) → red: „Bezugslinie bei 320 px“
@@ -82,8 +82,8 @@ async function financesOffline(_t, a) {
   await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETWORK });
   try {
     await reiter(b, 'finance');
-    await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Diagramm nicht verfügbar');
-    const k = await b.auswerten(`[...document.querySelectorAll('.zeitraum-wahl .period-btn')].map(k => {
+    await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Diagramm nicht verfügbar');
+    const k = await b.auswerten(`[...document.querySelectorAll('.period-choice .period-btn')].map(k => {
       const s = getComputedStyle(k); return { aus: k.disabled, coverage: +s.opacity, zeiger: s.cursor }; })`);
     assert.equal(k.length, 4);
     for (const z of k) {
@@ -94,18 +94,18 @@ async function financesOffline(_t, a) {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
   await b.auswerten(`document.querySelector('#fin-tbl [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
 }
 
 async function rechenbasis(_t, a) {
   const { b, bis } = a;
   await reiter(b, 'finance');
   await bis(
-    `!!document.querySelector('#fin-tbl [data-fin-art="sets"] tbody tr') && !document.getElementById('fin-basis').hidden`,
+    `!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tbody tr') && !document.getElementById('fin-basis').hidden`,
     'Basiszeile',
   );
   const z = await b.auswerten(`({ basis: ${text('#fin-basis')},
-    zeilen: [...document.querySelectorAll('#fin-tbl [data-fin-art] tbody tr')].length })`);
+    zeilen: [...document.querySelectorAll('#fin-tbl [data-fin-kind] tbody tr')].length })`);
   const von = Number(/von (\d+) Positionen/.exec(z.basis)?.[1]);
   assert.ok(von > 0, `keine Zahl in „${z.basis}“`);
   assert.ok(z.zeilen > von, `Testaufbau: ${z.zeilen} Zeilen, ${von} Positionen`);
@@ -121,17 +121,17 @@ async function referenceLineNarrow(_t, a) {
   await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
   try {
     await reiter(b, 'finance');
-    await bis(`!!document.querySelector('#portfolio-chart svg.diagramm-wert')`, 'Wertkurve');
-    await b.auswerten(`document.querySelector('.zeitraum-wahl [data-arg="max"]').click(); true`);
-    await bis(`!!document.querySelector('#portfolio-chart svg.diagramm-wert')`, 'Wertkurve neu');
+    await bis(`!!document.querySelector('#portfolio-chart svg.chart-value')`, 'Wertkurve');
+    await b.auswerten(`document.querySelector('.period-choice [data-arg="max"]').click(); true`);
+    await bis(`!!document.querySelector('#portfolio-chart svg.chart-value')`, 'Wertkurve neu');
     await ruhig();
-    const d = await b.auswerten(`(() => { const s = document.querySelector('#portfolio-chart svg.diagramm-wert');
+    const d = await b.auswerten(`(() => { const s = document.querySelector('#portfolio-chart svg.chart-value');
       const flaeche = s.querySelector('polyline').getBoundingClientRect();
-      const leg = s.querySelector('[data-legende="bezug"] text');
-      return { imBild: [...s.querySelectorAll('.einstand-linie text')].map(t => t.textContent),
+      const leg = s.querySelector('[data-legend="basis"] text');
+      return { inImage: [...s.querySelectorAll('.cost-basis-line text')].map(t => t.textContent),
         legende: leg?.textContent.replace(/\\s+/g, ' ') ?? '', legTop: leg?.getBoundingClientRect().top ?? 0,
         surfaceBottom: flaeche.bottom }; })()`);
-    assert.deepEqual(d.imBild, [], 'mehrzeilige Beschriftung über der Kurve');
+    assert.deepEqual(d.inImage, [], 'mehrzeilige Beschriftung über der Kurve');
     assert.match(d.legende, /^Kaufpreis/);
     assert.ok(d.legTop > d.surfaceBottom, `Legende ${d.legTop} px, Kurve endet ${d.surfaceBottom} px`);
   } finally {
@@ -199,19 +199,19 @@ async function newAfterError(b, bis, tab, ziel, pfad) {
   let aus = async () => {};
   try {
     await reiter(b, tab);
-    await bis(`!!document.querySelector('${ziel} .fehler-zustand')`, `${tab}: Fehlerzustand`);
+    await bis(`!!document.querySelector('${ziel} .error-state')`, `${tab}: Fehlerzustand`);
     aus = await intercept(b, [{ contains: pfad, tun: spaeter(b, 3000) }]);
   } finally {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
   try {
-    await b.auswerten(`document.querySelector('${ziel} .fehler-zustand [data-click]')?.click(); true`);
+    await b.auswerten(`document.querySelector('${ziel} .error-state [data-click]')?.click(); true`);
     await bis(
-      `!document.querySelector('${ziel} .fehler-zustand') && !!document.querySelector('${ziel} [aria-busy="true"]')`,
+      `!document.querySelector('${ziel} .error-state') && !!document.querySelector('${ziel} [aria-busy="true"]')`,
       `${tab}: Gerüst statt altem Fehler`,
       25,
     );
-    await bis(`!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .fehler-zustand')`, `${tab}: geladen`, 100);
+    await bis(`!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .error-state')`, `${tab}: geladen`, 100);
   } finally {
     await aus();
   }
@@ -225,21 +225,21 @@ async function reloadAfterError(_t, a) {
 async function wantedItemDetail(_t, a) {
   const { b, bis, ruhig } = a;
   await reiter(b, 'wanted');
-  await bis(`!!document.querySelector('#mk-list .mk-zeile[data-arg^="10276-1|"]')`, 'Merkposten');
-  await b.auswerten(`document.querySelector('#mk-list .mk-zeile[data-arg^="10276-1|"]').click(); true`);
+  await bis(`!!document.querySelector('#mk-list .mk-row[data-arg^="10276-1|"]')`, 'Merkposten');
+  await b.auswerten(`document.querySelector('#mk-list .mk-row[data-arg^="10276-1|"]').click(); true`);
   await bis(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Detail');
   await ruhig();
   const d = await b.auswerten(`(() => { const f = document.querySelector('#mk-detail-modal .mfooter');
     const sichtbar = [...f.querySelectorAll('button, a, summary')].filter(e => e.checkVisibility());
     const loeschen = document.getElementById('mk-m-del');
     return { erste: sichtbar[0]?.className, deleteVisible: loeschen.checkVisibility(),
-      inMenu: !!loeschen.closest('details.mehr-menue'), titel: ${text('#mk-m-tit')}, unter: ${text('#mk-m-sub')} }; })()`);
+      inMenu: !!loeschen.closest('details.more-menu'), titel: ${text('#mk-m-tit')}, unter: ${text('#mk-m-sub')} }; })()`);
   assert.doesNotMatch(d.erste || '', /\bbd\b/, 'roter Knopf als erste Aktion');
   assert.equal(d.deleteVisible, false, 'Löschen ohne „Weitere Aktionen“ sichtbar');
   assert.equal(d.inMenu, true, 'Löschen nicht unter „Weitere Aktionen“');
   assert.equal(d.titel, '10276-1', 'Testaufbau: Merkposten ohne Katalognamen');
   assert.equal(d.unter, 'Neuware', 'Nummer doppelt im Kopf');
-  await b.auswerten(`document.querySelector('#mk-detail-modal .mehr-menue summary').click(); true`);
+  await b.auswerten(`document.querySelector('#mk-detail-modal .more-menu summary').click(); true`);
   await bis(`document.getElementById('mk-m-del').checkVisibility()`, 'Löschen im Menü');
   await b.auswerten(CLOSE);
 }
@@ -248,23 +248,23 @@ async function createUser(_t, a) {
   const { b, bis } = a;
   await groesse(b, 1280);
   await reiter(b, 'settings');
-  await b.auswerten(`document.querySelector('.einst-link[data-arg="usermgmt"]').click(); true`);
+  await b.auswerten(`document.querySelector('.settings-link[data-arg="usermgmt"]').click(); true`);
   await bis(`document.getElementById('btn-cu')?.checkVisibility()`, 'Benutzerverwaltung');
   const setze = (id, wert) =>
     b.auswerten(`(() => { const f = document.getElementById('${id}'); f.value = ${JSON.stringify(wert)};
       f.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   const stand = `(() => { const r = id => document.getElementById(id).getBoundingClientRect();
     const sicht = id => !!document.getElementById(id)?.checkVisibility();
-    const zeile = document.querySelector('.nutzer-neu').getBoundingClientRect();
-    return { nameError: sicht('nu-n-fehler') ? ${text('#nu-n-fehler')} : '', pwError: sicht('nu-p-fehler') ? ${text('#nu-p-fehler')} : '',
-      nameRule: sicht('nu-n-regel'), pwRule: sicht('nu-p-regel'),
+    const zeile = document.querySelector('.user-new').getBoundingClientRect();
+    return { nameError: sicht('nu-n-error') ? ${text('#nu-n-error')} : '', pwError: sicht('nu-p-error') ? ${text('#nu-p-error')} : '',
+      nameRule: sicht('nu-n-rule'), pwRule: sicht('nu-p-rule'),
       oben: [r('nu-n').top, r('nu-p').top].map(Math.round), hook: (r('nu-a').top + r('nu-a').bottom) / 2,
       feld: [r('nu-n').top, r('nu-n').bottom], zeile: zeile.width,
       breiten: ['nu-p', 'nu-a'].map(id => document.getElementById(id).closest('.fg').getBoundingClientRect().width) }; })()`;
   await setze('nu-n', '');
   await setze('nu-p', '');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
-  await bis(`!!document.getElementById('nu-p-fehler')?.checkVisibility()`, 'Meldungen');
+  await bis(`!!document.getElementById('nu-p-error')?.checkVisibility()`, 'Meldungen');
   let s = await b.auswerten(stand);
   assert.equal(s.nameError, 'Bitte einen Benutzernamen eintragen.');
   assert.equal(s.pwError, 'Bitte ein Passwort eintragen.', 'nur eine Meldung auf einmal');
@@ -274,7 +274,7 @@ async function createUser(_t, a) {
   await setze('nu-p', 'Ziegel-Turm-Fenster-42');
   await setze('nu-n', 'a b');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
-  await bis(`!!document.getElementById('nu-n-fehler')?.checkVisibility()`, 'Meldung am Namen');
+  await bis(`!!document.getElementById('nu-n-error')?.checkVisibility()`, 'Meldung am Namen');
   s = await b.auswerten(stand);
   assert.equal(s.pwError, '');
   assert.equal(s.pwRule, true, 'Passwortregel fehlt');
@@ -327,9 +327,9 @@ async function hintergrundarbeiten(_t, a) {
   try {
     await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
     await bis(`/Wechselkurse/.test(document.getElementById('tab-monitor').textContent)`, 'Aufträge');
-    await b.auswerten(`document.querySelector('.mon-einzeln')?.setAttribute('open', ''); true`);
-    const zeilen = await b.auswerten(`[...document.querySelectorAll('#tab-monitor .mon-einzeln tbody tr')]
-      .filter(r => r.textContent.includes('Wechselkurse')).map(r => r.querySelector('.mon-rolle')?.textContent || '')`);
+    await b.auswerten(`document.querySelector('.mon-single')?.setAttribute('open', ''); true`);
+    const zeilen = await b.auswerten(`[...document.querySelectorAll('#tab-monitor .mon-single tbody tr')]
+      .filter(r => r.textContent.includes('Wechselkurse')).map(r => r.querySelector('.mon-role')?.textContent || '')`);
     assert.deepEqual(zeilen.sort(), ['Wiederholung nach Fehler', 'regulärer Lauf'], 'Rollen der beiden Läufe');
     await ruhig();
     // Hidden: no query, even beyond the 15 s of the calm beat.
@@ -343,7 +343,7 @@ async function hintergrundarbeiten(_t, a) {
       'Abfrage im verborgenen Tab',
     );
     await b.auswerten(`delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); true`);
-    await bis(`true`, 'sichtbar');
+    await bis(`true`, 'visible');
     for (const ende = Date.now() + 3000; !fetches.some(z => z > ab) && Date.now() < ende; ) await warte(100);
     assert.ok(
       fetches.some(z => z > ab),
@@ -375,7 +375,7 @@ async function sessionUnresolved(_t, a) {
               },
               [{ name: 'Retry-After', value: '40' }],
             )
-          : type === 'netz'
+          : type === 'network'
             ? b.tab('Fetch.failRequest', { requestId: id, errorReason: 'InternetDisconnected' })
             : b.tab('Fetch.continueRequest', { requestId: id }),
     },
@@ -388,20 +388,20 @@ async function sessionUnresolved(_t, a) {
       200,
     );
     const z = await b.auswerten(`({ mask: getComputedStyle(document.getElementById('login-screen')).display,
-      app: getComputedStyle(document.getElementById('app')).display, titel: ${text('#start-offline-titel')},
-      text: ${text('#start-offline-text')}, knopf: document.getElementById('start-erneut').checkVisibility() })`);
+      app: getComputedStyle(document.getElementById('app')).display, titel: ${text('#start-offline-title')},
+      text: ${text('#start-offline-text')}, knopf: document.getElementById('start-again').checkVisibility() })`);
     assert.equal(z.mask, 'none', 'Anmeldemaske trotz gültiger Sitzung');
     assert.equal(z.app, 'none');
     // Throttled: an own title and only one time statement (UI check 22, N4).
     assert.equal(z.titel, 'Zu viele Anfragen');
     assert.match(z.text, /^Der Server nimmt gerade keine weiteren Anfragen an\. Neuer Versuch in (40|39|38) s\.$/);
     assert.equal(z.knopf, true, '„Erneut versuchen“ fehlt');
-    type = 'netz';
-    await b.auswerten(`document.getElementById('start-erneut').click(); true`);
+    type = 'network';
+    await b.auswerten(`document.getElementById('start-again').click(); true`);
     await bis(`/Keine Verbindung zum Server/.test(${text('#start-offline-text')})`, 'Grund: kein Netz');
     assert.equal(await b.auswerten(`getComputedStyle(document.getElementById('login-screen')).display`), 'none');
-    type = 'durch';
-    await b.auswerten(`document.getElementById('start-erneut').click(); true`);
+    type = 'through';
+    await b.auswerten(`document.getElementById('start-again').click(); true`);
     await bis(
       `getComputedStyle(document.getElementById('app')).display !== 'none' && document.getElementById('start-offline').hidden`,
       'App nach dem neuen Versuch',

@@ -1,48 +1,10 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   APP-DESIGN "noppe" (poppig) — der Klemmbaustein als Bauteil der Oberflaeche.
-   ---------------------------------------------------------------------------
-   Aktiv, sobald <html data-theme="noppe"> gesetzt ist (siehe applyTheme() in
-   js/theme-boot.js); die Datei wird immer geladen, greift aber nur beim
-   aktiven Design.
-
-   ── Warum jede Regel ZWEI Designs nennt ────────────────────────────────────
-
-   "hochglanz" ist dasselbe Design als lackierte Broschuere: dieselbe Anatomie,
-   dieselben Abstaende, dieselbe Palette — dazu Schichten (Woelbung,
-   Lichtkuppen, Lichtstreifen), die kein Farbwert sind. Diese Datei ist deshalb
-   die GEMEINSAME Grundlage; themes/hochglanz.css traegt nur noch die
-   Schichten.
-
-   Die Alternative waere ein zweites Stylesheet mit denselben achtzig Zeilen
-   gewesen. Genau daran ist in diesem Projekt schon mehrmals eine Haelfte
-   stehen geblieben, waehrend die andere weiterging.
-
-   Die PALETTE steht nicht hier, sondern in /tokens.css — erzeugt aus
-   shared/design-tokens.json, damit die Android-App dieselben Werte fuehrt.
-   Das gilt auch fuer --ink (die Kante) und --stein-0..5 (die Deckelfarben).
-   Hier steht nur, was das Web allein betrifft.
-
-   ── Die drei Gedanken dieses Designs ───────────────────────────────────────
-
-   1. GRUNDPLATTE. Der Seitengrund traegt ein Noppenraster — so schwach, dass
-      es Textur ist und kein Muster, ueber das man lesen muss.
-
-   2. KANTE STATT WOLKE. Kunststoff wirft keinen weichen Schatten, er liegt
-      auf. Rahmen und Versatzschatten stehen deshalb auf DEMSELBEN Ton
-      (--ink); waeren es zwei, saehe die Kante aus wie ein Druckfehler.
-
-   3. DER DECKEL GIBT TAKT, KEINE AUSKUNFT. Jede Kachel bekommt einen farbigen
-      Steindeckel mit Noppen, die Farbe laeuft im Kreis durch --stein-0..5.
-      Sie bedeutet NICHTS. Das ist der ausdrueckliche Unterschied zum Design
-      "farbfaecher", wo die Farbe das Thema IST — und der bekannte Haken
-      dieses Designs: Wer den Faecher kennt, sucht hier eine Auskunft, die es
-      nicht gibt.
-
-   ── Wo es LEISE wird ───────────────────────────────────────────────────────
-   Tabellen und Angabenzeilen bleiben weiss mit grauen Trennlinien. Das Laute
-   gehoert an die Raender — Kopfleiste, Knoepfe, Plaketten —, nicht zwischen
-   die Zahlen. Ein Bestand ist nichts, was man einmal anschaut.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ APP THEME "noppe" (poppy) — the building brick as a part of the UI ═══
+   Active with <html data-theme="noppe"> (applyTheme() in js/theme-boot.js). Every rule names TWO themes:
+   "hochglanz" is the same theme as a glossy brochure, so this file is the shared base and hochglanz.css only
+   adds its layers. The palette (incl. --ink and --brick-0..5) is in /tokens.css.
+   Three ideas: a faint stud grid on the page (texture, not pattern); edge instead of cloud — border and offset
+   shadow share one tone (--ink); the lid gives rhythm, not information (its colour cycles and means nothing,
+   unlike "farbfaecher"). Tables stay quiet: white with grey dividers. */
 
 [data-theme="noppe"],[data-theme="hochglanz"]{
   --font:'Nunito','Plus Jakarta Sans',system-ui,sans-serif;
@@ -52,37 +14,34 @@
   --bdr:var(--ink);
   --txt:var(--ink);
   --mut:#5a6270;
-  --screen-bg:#eef1f6;      /* Login-/Startup-Screen, vor dem Login */
-  /* Die Marke ist rot; ein roter Preis neben grüner G&V las sich als Verlust. */
-  --preis:var(--ink);
+  --screen-bg:#eef1f6;      /* Login/startup screen, before login */
+  /* The brand is red; a red price next to a green P&L read as a loss. */
+  --price:var(--ink);
   --rad:14px;
 
-  /* Kante statt Wolke: derselbe Ton wie der Rahmen, nur versetzt. */
+  /* Edge instead of cloud: the same tone as the border, only offset. */
   --sh0:0 3px 0 var(--ink);
   --sh1:0 4px 0 var(--ink);
   --sh2:0 6px 0 var(--ink);
 
-  /* Die Noppenform steht in styles.css unter :root — seit auch das
-     Stein-Design sie benutzt, gehoert sie keinem Design mehr allein. */
+  /* The stud shape is in styles.css under :root — two themes use it, so it belongs to none alone. */
 }
-/* Hell liegen Setnummer und Gewinn in Tabellen auf getöntem Grund; mit dem
-   Markenrot und dem Standardgrün waren es 4,44:1 bzw. 4,43:1. */
-[data-theme="noppe"]:not([data-dunkel]),[data-theme="hochglanz"]:not([data-dunkel]){--b600:#c01b21;--gewinn:#11652f}
-/* Dunkel ist die Kante fast schwarz; Preise stehen dann in der Schriftfarbe. */
-[data-theme="noppe"][data-dunkel],[data-theme="hochglanz"][data-dunkel]{--preis:var(--txt)}
+/* Light: set number and profit in tables lie on a tinted ground; brand red and the standard green only
+   reached 4.44:1 and 4.43:1 there. */
+[data-theme="noppe"]:not([data-dark]),[data-theme="hochglanz"]:not([data-dark]){--b600:#c01b21;--profit:#11652f}
+/* Dark: the edge is almost black; prices then use the text colour. */
+[data-theme="noppe"][data-dark],[data-theme="hochglanz"][data-dark]{--price:var(--txt)}
 
-/* ── Die Grundplatte ────────────────────────────────────────────────────────
-   Der Verlauf sitzt auf dem BODY und nicht auf einem eigenen Element: So
-   scrollt er mit dem Inhalt und braucht kein zusaetzliches Kaestchen. */
+/* ── The base plate ──
+   The gradient sits on the BODY, not on an element of its own: it scrolls with the content and needs no extra box. */
 [data-theme="noppe"] body,[data-theme="hochglanz"] body{
   background-color:var(--bg);
   background-image:radial-gradient(circle at 10px 10px,rgba(22,26,33,.055) 4px,transparent 4.6px);
   background-size:20px 20px;
 }
 
-/* ── Vor dem Login ──────────────────────────────────────────────────────────
-   Muss hier stehen: Login- und Startup-Screen erscheinen, bevor irgendeine
-   Nutzereinstellung gelesen ist (siehe --screen-bg oben und theme.test.js). */
+/* ── Before login ──
+   Must be here: login and startup screen appear before any user setting is read (see --screen-bg and theme.test.js). */
 [data-theme="noppe"] #login-screen,[data-theme="hochglanz"] #login-screen,
 [data-theme="noppe"] #startup-screen,[data-theme="hochglanz"] #startup-screen{
   background-color:var(--screen-bg);
@@ -95,16 +54,10 @@
   background:var(--sur);border:2.5px solid var(--ink);box-shadow:0 4px 0 var(--ink);
 }
 
-/* ── Kopf- und Reiterleiste: der Stein ──────────────────────────────────────
-   Die Noppen sind eine wiederholte Maske und keine sechzehn <div>: Die Zahl
-   der Noppen soll sich mit der Fensterbreite ergeben, nicht im HTML stehen.
-
-   KEIN `position` hier. Die Kopfleiste steht in styles.css auf
-   `position:sticky;top:0`, die Reiterleiste darunter auf `top:58px` — also
-   genau auf der Hoehe der Kopfleiste. Ein `position:relative` in dieser Datei
-   hat das ueberschrieben: Die Kopfleiste scrollte weg, die Reiterleiste blieb
-   bei 58px stehen und schob sich ueber den Inhalt. Die Noppenreihe braucht
-   zwar einen positionierten Vorfahren — den liefert `sticky` genauso. */
+/* ── Header and tab bar: the brick ──
+   The studs are a repeated mask, not sixteen <div>s: their number follows the window width. NO position here:
+   styles.css keeps the header sticky and the tab bar below it; a position:relative here once overrode that.
+   sticky provides the positioned ancestor the stud row needs. */
 [data-theme="noppe"] header,[data-theme="hochglanz"] header{
   background:var(--b600);
   border-bottom:3px solid var(--ink);
@@ -113,66 +66,47 @@
 [data-theme="noppe"] header::before,[data-theme="hochglanz"] header::before{
   content:"";position:absolute;top:0;left:28px;right:28px;height:7px;
   background:var(--b300);
-  -webkit-mask-image:var(--noppen-form);mask-image:var(--noppen-form);
+  -webkit-mask-image:var(--studs-form);mask-image:var(--studs-form);
   -webkit-mask-size:24px 7px;mask-size:24px 7px;
   -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
 }
-/* ── Was auf dem Stein steht, ist weiss ──────────────────────────────
-   ALLES, nicht nur Titel und Verweise. styles.css faerbt die Kennzahlen mit
-   `color:var(--b600)` und ihre Beschriftungen mit `var(--mut)` — Werte, die
-   fuer eine WEISSE Kopfleiste gedacht sind. Dieses Design streicht die
-   Kopfleiste aber mit genau diesem --b600.
-
-   GEMESSEN im Browser: Die Zahlen standen bei Kontrast 1.00 zum Untergrund,
-   also in exakt derselben Farbe; das "Manager" im Titel ebenso; die
-   Beschriftungen bei 1.22. Marco hat es gemeldet, und man sieht auf seinem
-   Bild nur einen roten Balken, wo vier Zahlen stehen sollten.
-
-   themes/brick.css hatte dieselben drei Stellen laengst behandelt — ich habe
-   hier nur Titel, Verweise und .brand aufgezaehlt und den Rest vergessen. Die
-   Lehre steht als Pruefung in test/kopfleiste-lesbar.test.js.
-
-   Beschriftung ebenfalls WEISS und nicht gedaempft: Auf diesem Rot gibt es
-   keinen Weissanteil unter 100%, der noch auf die geforderten 4.5 kommt
-   (rgba(255,255,255,.85) liegt GEMESSEN bei 3.8). Der Unterschied zwischen
-   Zahl und Beschriftung kommt hier aus Groesse, Gewicht und Sperrung — die
-   stehen schon in styles.css. */
+/* ── What stands on the brick is white ──
+   ALL of it, not only title and links: styles.css colours key figures with var(--b600) and labels with
+   var(--mut), meant for a WHITE header, but this theme paints the header in exactly --b600 (measured 1.00:1).
+   Labels are white too: no white below 100 % reaches 4.5:1 on this red; size, weight and tracking set them apart. */
 [data-theme="noppe"] header,[data-theme="hochglanz"] header,
 [data-theme="noppe"] header a,[data-theme="hochglanz"] header a,
 [data-theme="noppe"] header .brand,[data-theme="hochglanz"] header .brand,
-[data-theme="noppe"] header .logo .marke span,[data-theme="hochglanz"] header .logo .marke span{color:#fff}
+[data-theme="noppe"] header .logo .brand span,[data-theme="hochglanz"] header .logo .brand span{color:#fff}
 
 [data-theme="noppe"] nav,[data-theme="hochglanz"] nav{
   background:var(--b600);border-bottom:3px solid var(--ink);
 }
-/* Der rote Stein des Logos lag rot auf rot; auf einer weissen Platte mit dunklem Rand ist er wieder ein Zeichen. */
-[data-theme="noppe"] header .logo-bild,[data-theme="hochglanz"] header .logo-bild{
+/* The red brick of the logo lay red on red; on a white plate with a dark border it is a sign again. */
+[data-theme="noppe"] header .logo-image,[data-theme="hochglanz"] header .logo-image{
   background:#fff;border:2px solid var(--ink);border-radius:8px;padding:2px;box-sizing:content-box;
 }
-/* Dunkel ist --b600 ein helles Rot; Kopf- und Reiterleiste nehmen das tiefe
-   Rot, damit die weisse Schrift darauf lesbar bleibt. */
-[data-theme="noppe"][data-dunkel] header,[data-theme="hochglanz"][data-dunkel] header,
-[data-theme="noppe"][data-dunkel] nav,[data-theme="hochglanz"][data-dunkel] nav{background:var(--b300)}
-/* Weiss statt --b100: Das helle Rosa kam auf dem Rot auf 3,74:1, Weiss auf 5,0:1. */
+/* Dark: --b600 is a light red; header and tab bar take the deep red so the white text stays readable. */
+[data-theme="noppe"][data-dark] header,[data-theme="hochglanz"][data-dark] header,
+[data-theme="noppe"][data-dark] nav,[data-theme="hochglanz"][data-dark] nav{background:var(--b300)}
+/* White instead of --b100: the light pink reached 3.74:1 on the red, white 5.0:1. */
 [data-theme="noppe"] nav .ntab,[data-theme="hochglanz"] nav .ntab{color:#fff;font-weight:700}
 [data-theme="noppe"] nav .ntab.active,[data-theme="hochglanz"] nav .ntab.active{
   background:var(--sur);color:var(--ink);font-weight:900;
   border:2.5px solid var(--ink);border-radius:9px;
 }
-[data-theme="noppe"][data-dunkel] nav .ntab,[data-theme="hochglanz"][data-dunkel] nav .ntab{color:#ffd9db}
-/* Dunkel ist die Tintenkante unsichtbar; ein heller Rand hebt den aktiven Reiter 3:1 ab. */
-[data-theme="noppe"][data-dunkel] nav .ntab.active,[data-theme="hochglanz"][data-dunkel] nav .ntab.active{color:var(--txt);border-color:#fff}
+[data-theme="noppe"][data-dark] nav .ntab,[data-theme="hochglanz"][data-dark] nav .ntab{color:#ffd9db}
+/* Dark: the ink edge is invisible; a light border sets the active tab apart at 3:1. */
+[data-theme="noppe"][data-dark] nav .ntab.active,[data-theme="hochglanz"][data-dark] nav .ntab.active{color:var(--txt);border-color:#fff}
 
-/* ── Flaechen ───────────────────────────────────────────────────────────── */
+/* ── Surfaces ───────────────────────────────────────────────────────────── */
 [data-theme="noppe"] .card,[data-theme="hochglanz"] .card,
 [data-theme="noppe"] .modal,[data-theme="hochglanz"] .modal{
   background:var(--sur);border:2.5px solid var(--ink);box-shadow:0 4px 0 var(--ink);
 }
 
-/* ── Die Kachel mit ihrem Deckel ────────────────────────────────────────────
-   ::before ist der Deckel, ::after die Noppen darauf. Beides am
-   Pseudo-Element und nicht im HTML: Die Kachel selbst soll in allen Designs
-   dieselbe Auszeichnung behalten. */
+/* ── The tile with its lid ──
+   ::before is the lid, ::after the studs on it — pseudo elements, so the tile keeps the same markup in every theme. */
 [data-theme="noppe"] .sc,[data-theme="hochglanz"] .sc{
   background:var(--sur);border:2.5px solid var(--ink);border-radius:14px;
   box-shadow:0 4px 0 var(--ink);overflow:hidden;position:relative;
@@ -180,103 +114,82 @@
 }
 [data-theme="noppe"] .sc::before,[data-theme="hochglanz"] .sc::before{
   content:"";position:absolute;top:0;left:0;right:0;height:26px;
-  background-color:var(--stein-0);border-bottom:2.5px solid var(--ink);
+  background-color:var(--brick-0);border-bottom:2.5px solid var(--ink);
 }
-/* Vier Noppen auf dem Deckel: dieselbe Form, nur im Takt von 22 statt 24
-   (mask-size staucht die Form mit). 3×22+14 = 80 — daher die Breite. */
+/* Four studs on the lid: the same shape in a rhythm of 22 instead of 24 (mask-size scales it). 3×22+14 = 80 — hence the width. */
 [data-theme="noppe"] .sc::after,[data-theme="hochglanz"] .sc::after{
   content:"";position:absolute;top:6px;left:12px;height:7px;width:80px;
   background:rgba(255,255,255,.5);
-  -webkit-mask-image:var(--noppen-form);mask-image:var(--noppen-form);
+  -webkit-mask-image:var(--studs-form);mask-image:var(--studs-form);
   -webkit-mask-size:22px 7px;mask-size:22px 7px;
   -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
 }
-/* Der Takt: sechs Deckelfarben, dann von vorn. Die Werte kommen aus
-   tokens.css, damit die App dieselben fuehrt.
+/* The rhythm: six lid colours, then from the start; the values come from tokens.css so the app carries them too.
+   background-color and NOT the shorthand: the shorthand also resets background-image, and :nth-child() is
+   more specific than the gloss layer in hochglanz.css — the lacquer vanished on five of six tiles. */
+[data-theme="noppe"] .sc:nth-child(6n+2)::before,[data-theme="hochglanz"] .sc:nth-child(6n+2)::before{background-color:var(--brick-1)}
+[data-theme="noppe"] .sc:nth-child(6n+3)::before,[data-theme="hochglanz"] .sc:nth-child(6n+3)::before{background-color:var(--brick-2)}
+[data-theme="noppe"] .sc:nth-child(6n+4)::before,[data-theme="hochglanz"] .sc:nth-child(6n+4)::before{background-color:var(--brick-3)}
+[data-theme="noppe"] .sc:nth-child(6n+5)::before,[data-theme="hochglanz"] .sc:nth-child(6n+5)::before{background-color:var(--brick-4)}
+[data-theme="noppe"] .sc:nth-child(6n)::before,[data-theme="hochglanz"] .sc:nth-child(6n)::before{background-color:var(--brick-5)}
 
-   `background-color` und NICHT die Kurzform `background`. Der Unterschied ist
-   hier nicht Geschmack, sondern war ein Fehler:
-
-   Die Kurzform setzt ALLE Hintergrund-Eigenschaften zurueck, `background-image`
-   eingeschlossen. Und `:nth-child()` zaehlt wie eine Klasse — diese Regeln sind
-   damit eine Stufe spezifischer als die Glanzschicht in hochglanz.css. Ergebnis
-   GEMESSEN: Bei fuenf von sechs Kacheln stand am Deckel `background-image: none`,
-   der Lack war weg. Nur die erste je Sechsergruppe hatte ihn.
-
-   Marco hat es als „in der Webapp ist der Glanz gar nicht sichtbar" gemeldet —
-   und in der App gleichzeitig als „zu stark". Dieselbe Wurzel: Die beiden
-   Oberflaechen haben nicht dasselbe gezeichnet, und eine Pruefung, die nur die
-   Haltepunkte im Quelltext vergleicht, sieht das nicht. */
-[data-theme="noppe"] .sc:nth-child(6n+2)::before,[data-theme="hochglanz"] .sc:nth-child(6n+2)::before{background-color:var(--stein-1)}
-[data-theme="noppe"] .sc:nth-child(6n+3)::before,[data-theme="hochglanz"] .sc:nth-child(6n+3)::before{background-color:var(--stein-2)}
-[data-theme="noppe"] .sc:nth-child(6n+4)::before,[data-theme="hochglanz"] .sc:nth-child(6n+4)::before{background-color:var(--stein-3)}
-[data-theme="noppe"] .sc:nth-child(6n+5)::before,[data-theme="hochglanz"] .sc:nth-child(6n+5)::before{background-color:var(--stein-4)}
-[data-theme="noppe"] .sc:nth-child(6n)::before,[data-theme="hochglanz"] .sc:nth-child(6n)::before{background-color:var(--stein-5)}
-
-[data-theme="noppe"]:not([data-dunkel]) .sci,[data-theme="hochglanz"]:not([data-dunkel]) .sci{background:#f7f9fc}
+[data-theme="noppe"]:not([data-dark]) .sci,[data-theme="hochglanz"]:not([data-dark]) .sci{background:#f7f9fc}
 [data-theme="noppe"] .sci,[data-theme="hochglanz"] .sci{border-bottom:2.5px solid var(--ink)}
 [data-theme="noppe"] .sc .snum,[data-theme="hochglanz"] .sc .snum{color:var(--mut);font-weight:700}
 [data-theme="noppe"] .sc .sname,[data-theme="hochglanz"] .sc .sname{font-weight:800}
 
-/* ── Knoepfe und Eingaben ──────────────────────────────────────────────────
-   Der Versatzschatten macht sie greifbar, ohne dass es eine zweite laute
-   Farbe braucht. Beim Druecken wandert der Knopf auf den Schatten — dieselbe
-   Bewegung wie bei einem Stein, den man aufsetzt. */
+/* ── Buttons and inputs ──
+   The offset shadow makes them tangible without a second loud colour. Pressed, the button moves onto its
+   shadow — like a brick being set down. */
 [data-theme="noppe"] .btn,[data-theme="hochglanz"] .btn{
-  border:2.5px solid var(--bedienrand);border-radius:10px;
-  box-shadow:0 3px 0 var(--bedienrand);font-weight:800;
+  border:2.5px solid var(--control-border);border-radius:10px;
+  box-shadow:0 3px 0 var(--control-border);font-weight:800;
 }
 [data-theme="noppe"] .btn:active,[data-theme="hochglanz"] .btn:active{transform:translateY(3px);box-shadow:none}
-[data-theme="noppe"] .btn.bp,[data-theme="hochglanz"] .btn.bp{background:var(--b600);color:var(--auf-primaer,#fff)}
+[data-theme="noppe"] .btn.bp,[data-theme="hochglanz"] .btn.bp{background:var(--b600);color:var(--on-primary,#fff)}
 
 [data-theme="noppe"] input,[data-theme="hochglanz"] input,
 [data-theme="noppe"] select,[data-theme="hochglanz"] select,
 [data-theme="noppe"] textarea,[data-theme="hochglanz"] textarea{
   background:var(--sur);color:var(--txt);
-  border:2.5px solid var(--feldrand);border-radius:10px;
+  border:2.5px solid var(--field-border);border-radius:10px;
 }
-/* Hell trägt das Feld die Tintenkontur wie die Kacheln; dunkel wäre Tinte unsichtbar. */
-[data-theme="noppe"]:not([data-dunkel]),[data-theme="hochglanz"]:not([data-dunkel]){--feldrand:var(--ink)}
+/* Light: the field carries the ink outline like the tiles; dark, ink would be invisible. */
+[data-theme="noppe"]:not([data-dark]),[data-theme="hochglanz"]:not([data-dark]){--field-border:var(--ink)}
 [data-theme="noppe"] input::placeholder,[data-theme="hochglanz"] input::placeholder,
 [data-theme="noppe"] textarea::placeholder,[data-theme="hochglanz"] textarea::placeholder{color:var(--mut)}
 
-/* ── Wo es leise wird: Tabellen ─────────────────────────────────────────────
-   Graue Trennlinien statt der Tinte. Eine Tabelle mit 2,5px schwarzen Kanten
-   je Zeile waere ein Gitter und kein Text. */
+/* ── Where it gets quiet: tables ──
+   Grey dividers instead of ink: a table with 2.5px black edges per row would be a grid, not text. */
 [data-theme="noppe"] table td,[data-theme="hochglanz"] table td,
 [data-theme="noppe"] table th,[data-theme="hochglanz"] table th{border-bottom:2px solid #e4e8ef}
 
-/* ── Zustands-Plaketten ─────────────────────────────────────────────────────
-   Dieselbe Bedeutung wie ueberall: Neu gegen Gebraucht. Sie bekommen die
-   Tintenkante wie alles andere, tragen aber die Diagrammfarben — damit
-   Plakette und Linie zusammengehoeren, dieselbe Ueberlegung wie in
-   themes/brick.css und themes/werkbank.css. */
+/* ── Condition badges ──
+   New vs. used as everywhere; they get the ink edge but carry the chart colours so badge and line belong together. */
 [data-theme="noppe"] .cond-new,[data-theme="hochglanz"] .cond-new{
   background:var(--chart-new);color:#fff;border:2px solid var(--ink);font-weight:800;
 }
-/* Dunkel ist die Diagrammfarbe hell; die Schrift nimmt die (dann dunkle) Tinte. */
-[data-theme="noppe"][data-dunkel] .cond-new,[data-theme="hochglanz"][data-dunkel] .cond-new{color:var(--ink)}
+/* Dark: the chart colour is light; the text takes the (then dark) ink. */
+[data-theme="noppe"][data-dark] .cond-new,[data-theme="hochglanz"][data-dark] .cond-new{color:var(--ink)}
 [data-theme="noppe"] .cond-used,[data-theme="hochglanz"] .cond-used{
   background:var(--chart-used);color:var(--ink);border:2px solid var(--ink);font-weight:800;
 }
 
-/* ── Finanzen: Marktwert in der Farbe seiner Kurve ──────────────────────────
-   --b50 ist hier ein Rosa; die hervorgehobene Kachel sah damit nach Verlust
-   aus. Die Kachel bleibt weiss und trägt oben die Linienfarbe des Diagramms,
-   so gehören Zahl und Kurve sichtbar zusammen. */
+/* ── Finances: market value in the colour of its curve ──
+   --b50 is a pink here, which made the highlighted tile look like a loss. The tile stays white and carries
+   the chart's line colour on top, so number and curve visibly belong together. */
 [data-theme="noppe"] .fstat.hi,[data-theme="hochglanz"] .fstat.hi{
-  background:var(--sur);border-color:var(--bdr);border-top:6px solid var(--chart-wert);
+  background:var(--sur);border-color:var(--bdr);border-top:6px solid var(--chart-value);
 }
 
-/* Noppe dunkel: Kopf- und Reiterleiste neutral dunkel mit roter Kante. Das
-   gesättigte Rot über die ganze Breite war auf Dunkel grell, und das Hinweis-
-   band auf Dunkelrot las sich wie eine Fehlermeldung. */
-[data-theme="noppe"][data-dunkel] header,[data-theme="noppe"][data-dunkel] nav{background:#1b1e25}
-[data-theme="noppe"][data-dunkel] nav{border-bottom:3px solid var(--b400)}
-[data-theme="noppe"][data-dunkel] nav .ntab{color:#e6e8ee}
-[data-theme="noppe"] .hinweis-band{background:var(--sur);border-left:4px solid var(--chart-new)}
-[data-theme="noppe"] .hinweis-band > .ico{color:var(--chart-new)}
+/* noppe dark: header and tab bar neutral dark with a red edge. Saturated red across the full width was
+   garish on dark, and the hint band on dark red read like an error. */
+[data-theme="noppe"][data-dark] header,[data-theme="noppe"][data-dark] nav{background:#1b1e25}
+[data-theme="noppe"][data-dark] nav{border-bottom:3px solid var(--b400)}
+[data-theme="noppe"][data-dark] nav .ntab{color:#e6e8ee}
+[data-theme="noppe"] .hint-band{background:var(--sur);border-left:4px solid var(--chart-new)}
+[data-theme="noppe"] .hint-band > .ico{color:var(--chart-new)}
 
-/* Fokusring auf der roten Leiste weiss, auch am aktiven Reiter: Der Ring steht 2 px davor auf dem Rot, Tinte kam dort nur auf 2,8:1. */
-[data-theme="noppe"],[data-theme="hochglanz"]{--fokus-kopf:#fff;--fokus-nav:#fff;--fokus-nav-aktiv:#fff}
-[data-theme="noppe"][data-dunkel],[data-theme="hochglanz"][data-dunkel]{--fokus-nav-aktiv:#fff}
+/* Focus ring on the red bar white, also on the active tab: ink only reached 2.8:1 on the red. */
+[data-theme="noppe"],[data-theme="hochglanz"]{--focus-header:#fff;--focus-nav:#fff;--focus-nav-active:#fff}
+[data-theme="noppe"][data-dark],[data-theme="hochglanz"][data-dark]{--focus-nav-active:#fff}

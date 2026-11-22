@@ -16,7 +16,7 @@ import org.junit.Test
  * Creating a set via the stream: an unreadable event is an error. It could be the
  * completion event, and without completion the user never learns whether the set is there.
  *
- * Counter-check (patch gegenproben/anlegen-unlesbar-verschluckt.patch): verarbeite() silently returns
+ * Counter-check (patch counter-checks/anlegen-unlesbar-verschluckt.patch): verarbeite() silently returns
  * false again on an unreadable payload → red “an unreadable event
  * ends as an error” (the stream ends after the master data without completion).
  */
@@ -25,20 +25,20 @@ class SetCreateUnreadableTest {
     private val server = MockWebServer().apply { start() }
 
     @After
-    fun zu() { server.shutdown() }
+    fun tearDown() { server.shutdown() }
 
     @Test
     fun `an unreadable event ends as an error`() {
         server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
             .setBody("data: {\"step\":\"meta\",\"set\":\"Falke\"}\n\ndata: {kaputt\n\n"))
-        val schritte = runBlocking {
+        val steps = runBlocking {
             withTimeout(5_000) {
-                SetCreateSseClient(TestApi.umgeleitet(server), Dispatchers.IO).anlegen("10305", 1, null, null, null, null).toList()
+                SetCreateSseClient(TestApi.redirected(server), Dispatchers.IO).create("10305", 1, null, null, null, null).toList()
             }
         }
 
-        assertEquals(SetCreateStep.Stammdaten("Falke"), schritte[0])
-        assertTrue("erwartet Fehler, war ${schritte.last()}", schritte.last() is SetCreateStep.Fehler)
-        assertEquals(2, schritte.size)
+        assertEquals(SetCreateStep.MasterData("Falke"), steps[0])
+        assertTrue("erwartet Fehler, war ${steps.last()}", steps.last() is SetCreateStep.Failure)
+        assertEquals(2, steps.size)
     }
 }

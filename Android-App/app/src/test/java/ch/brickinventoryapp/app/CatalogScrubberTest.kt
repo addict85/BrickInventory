@@ -2,7 +2,7 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * The year bar in the catalog JUMPS, it does not filter.
@@ -28,7 +28,7 @@ import ch.brickinventoryapp.testing.Quellen
 class CatalogScrubberTest {
 
     private fun read(rel: String) =
-        File(Quellen.root, "$rel").readText()
+        File(Sources.root, "$rel").readText()
 
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
@@ -61,11 +61,11 @@ class CatalogScrubberTest {
         //
         // Now the callback only passes the position on, and the rest
         // lives in the viewport loader — both paths end there. The rule for it
-        // stands WITH the measurement in KatalogSprungEntprelltTest, not here once
+        // stands WITH the measurement in CatalogJumpDebouncedTest, not here once
         // more; at this place it only remains that NO loading happens here.
         assert(!call.contains("onEnsurePage")) {
             "Die Leiste laedt wieder selbst — das ist ein Abruf je " +
-                "Beruehrungspunkt, siehe KatalogSprungEntprelltTest"
+                "Beruehrungspunkt, siehe CatalogJumpDebouncedTest"
         }
         // The explicit filter stays.
         assert(s.contains("onYearChange")) {
@@ -75,15 +75,15 @@ class CatalogScrubberTest {
 
     @Test
     fun `the list holds all places and loads in both directions`() {
-        val s = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
+        val s = code(Sources.screen("catalog/ui/screens/CatalogScreen.kt"))
         assert(s.contains("items(count = state.total")) {
             "Die Liste zählt über die geladene Teilmenge statt über das ganze Ergebnis — " +
                 "dann gibt es an der Sprungstelle nichts"
         }
-        assert(s.contains("state.loadedPages[seite]")) {
+        assert(s.contains("state.loadedPages[page]")) {
             "Die Plätze werden nicht aus den geladenen Seiten bedient"
         }
-        // The prefetch in both directions is checked by KatalogSprungEntprelltTest, executed
+        // The prefetch in both directions is checked by CatalogJumpDebouncedTest, executed
         // on the viewport loader (pages 99..102 for the window 100..101).
         assert(s.contains("CatalogPlaceholderCard()")) { "Der Platzhalter fehlt" }
         assert(Regex("""CatalogPlaceholderCard[\s\S]{0,400}\.height\(""").containsMatchIn(s)) {
@@ -98,11 +98,11 @@ class CatalogScrubberTest {
         // only later. The ScrollMemory holds the position as for every tab; the list is
         // ready as soon as `total` is there, because the places count via the total.
         val s = code(read("catalog/ui/screens/CatalogScreen.kt"))
-        assert(s.contains("ScrollPositionKeeper(KatalogZiel.Catalog.rollSchluessel, gridState, bereit = state.total > 0")) {
+        assert(s.contains("ScrollPositionKeeper(CatalogTarget.Catalog.rollKey, gridState, ready = state.total > 0")) {
             "Die Wiederherstellung hängt nicht an state.total — vor dem Eintreffen " +
                 "der Länge gibt es keine Stelle, an die gesprungen werden könnte"
         }
-        // How the marker jumps back is checked by RollstelleTest, executed; the forgetting
+        // How the marker jumps back is checked by ScrollPositionTest, executed; the forgetting
         // on a filter change by CatalogViewModelTest.
     }
 }

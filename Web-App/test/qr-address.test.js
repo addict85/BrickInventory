@@ -108,7 +108,7 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
 });
 
 test('2. the web app no longer has its own opinion about the address', () => {
-  const js = require('./helpers/sources').ansichtQuelle('einstellungen');
+  const js = require('./helpers/sources').ansichtQuelle('settings');
   assert.match(js, /const serverUrl = d\.url;/, 'Die Webapp nimmt nicht schlicht die Adresse des Servers.');
   // The fallback is gone — that was Marco's second sentence. `ohneKommentare`
   // makes sure that the explanation ABOVE (which quotes the old expression)

@@ -43,7 +43,7 @@ const STANDALONE = new Set([
  * lives; the layer is therefore listed here, and test/frontend-architektur.test.js
  * checks that core and building blocks import no view. Everything else is a view.
  */
-const KERN = [
+const CORE = [
   'styles.js',
   'escaping.js',
   'events.js',
@@ -53,7 +53,7 @@ const KERN = [
   'registry.js',
   'theme-boot.js',
 ];
-const BAUSTEINE = [
+const BUILDING_BLOCKS = [
   'dom.js',
   'format.js',
   'messages.js',
@@ -101,9 +101,9 @@ function appModule() {
  * A newly created .js that nobody imports would otherwise silently be missing.
  */
 function checkComplete() {
-  const absent = [...KERN, ...BAUSTEINE].filter(f => !fs.existsSync(path.join(PUBLIC, 'js', f)));
-  if (absent.length) {
-    console.error(`[build-frontend] KERN/BAUSTEINE nennen fehlende Dateien: ${absent.join(', ')}`);
+  const missing = [...CORE, ...BUILDING_BLOCKS].filter(f => !fs.existsSync(path.join(PUBLIC, 'js', f)));
+  if (missing.length) {
+    console.error(`[build-frontend] CORE/BUILDING_BLOCKS nennen fehlende Dateien: ${missing.join(', ')}`);
     process.exit(1);
   }
   const entry = fs.readFileSync(path.join(PUBLIC, ENTRY), 'utf8');
@@ -118,9 +118,9 @@ function checkComplete() {
 }
 
 /**
- * All style values that stand like this in the source: data-stil="…" in the markup and the
- * stil parameters of the building blocks (components.js). js/styles.js only applies
- * these — an injected data-stil with a different value stays ineffective.
+ * All style values that stand like this in the source: data-style="…" in the markup and the
+ * style parameters of the building blocks (components.js). js/styles.js only applies
+ * these — an injected data-style with a different value stays ineffective.
  * Values with `${…}` do not count; the caller sets those itself at runtime.
  */
 function allowedStyles() {
@@ -136,12 +136,12 @@ function allowedStyles() {
   const entity = { '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
   for (const d of files) {
     const s = fs.readFileSync(path.join(PUBLIC, d), 'utf8');
-    for (const m of s.matchAll(/data-stil=(\\?["'])([\s\S]*?)\1/g)) {
+    for (const m of s.matchAll(/data-style=(\\?["'])([\s\S]*?)\1/g)) {
       const raw = m[2] ?? '';
       if (!raw.includes('${'))
         values.add(raw.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
     }
-    for (const m of s.matchAll(/\b(?:stil|rowsStyle|valueStyle):\s*'([^'$]*)'/g)) values.add(m[1] ?? '');
+    for (const m of s.matchAll(/\b(?:style|rowsStyle|valueStyle):\s*'([^'$]*)'/g)) values.add(m[1] ?? '');
   }
   return [...values].sort();
 }
@@ -149,8 +149,8 @@ function allowedStyles() {
 /** Bundles to `outAbs` (delivery, test-run.js). */
 /**
  * @param {string} outAbs
- * @param {{ quellkarte?: boolean }} [opt]  quellkarte: source map embedded, only for the
- *   coverage measurement (test-run.js --coverage); the delivered bundle stays without.
+ * @param {{ sourceMap?: boolean }} [opt]  sourceMap: source map embedded, only for the
+ *   coverage measurement (test-run.js --abdeckung); the delivered bundle stays without.
  */
 function buildBundle(outAbs, opt = {}) {
   // Local esbuild instead of npx — see the reasoning in scripts/build-ts.js.
@@ -163,17 +163,17 @@ function buildBundle(outAbs, opt = {}) {
       path.join(PUBLIC, ENTRY),
       '--bundle',
       '--format=iife',
-      ...(opt.quellkarte ? [] : ['--minify']),
+      ...(opt.sourceMap ? [] : ['--minify']),
       '--charset=utf8',
-      `--define:__ERLAUBTE_STILE__=${JSON.stringify(allowedStyles())}`,
+      `--define:__ALLOWED_STYLES__=${JSON.stringify(allowedStyles())}`,
       `--outfile=${outAbs}`,
-      ...(opt.quellkarte ? ['--sourcemap=inline', '--sources-content=true'] : []),
+      ...(opt.sourceMap ? ['--sourcemap=inline', '--sources-content=true'] : []),
     ],
     { stdio: ['ignore', 'ignore', 'inherit'] },
   );
 }
 
-/** Most recent change to everything the bundle is built from (also index.html: data-stil values). */
+/** Most recent change to everything the bundle is built from (also index.html: data-style values). */
 function newestSource() {
   const files = [
     ...fs
@@ -195,12 +195,12 @@ function newestSource() {
  */
 function placeBundleSafe(outAbs = path.join(PUBLIC, OUT_REL)) {
   if (fs.existsSync(outAbs) && fs.statSync(outAbs).mtimeMs >= newestSource()) return false;
-  const between = `${outAbs}.${process.pid}.tmp`;
+  const temp = `${outAbs}.${process.pid}.tmp`;
   try {
-    buildBundle(between);
-    fs.renameSync(between, outAbs);
+    buildBundle(temp);
+    fs.renameSync(temp, outAbs);
   } finally {
-    fs.rmSync(between, { force: true });
+    fs.rmSync(temp, { force: true });
   }
   return true;
 }
@@ -236,8 +236,8 @@ module.exports = {
   ENTRY,
   OUT_REL,
   STANDALONE,
-  KERN,
-  BAUSTEINE,
+  CORE,
+  BUILDING_BLOCKS,
   isAppModule,
   appModule,
   allowedStyles,

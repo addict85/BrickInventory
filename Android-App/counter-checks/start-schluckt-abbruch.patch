@@ -1,0 +1,18 @@
+Gegenprobe: ein Aufräumschritt beim Start fängt wieder Exception und schluckt so das Abbrechen
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no broad catch swallows the cancellation of a suspending call
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 757cf28..502823f 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -204,7 +204,7 @@ class TokenAblage @Inject constructor(
+                 fangeAusserAbbruch { bindLegacyStock() }
+                 fangeAusserAbbruch { dataStore.edit { adoptDetails(it) } }
+                 // Aufräumen ist Nebensache: Scheitert es, startet die App trotzdem.
+-                fangeAusserAbbruch { dataStore.edit { PlaintextRemainder.entferne(it) } }
++                try { dataStore.edit { PlaintextRemainder.entferne(it) } } catch (_: Exception) { }
+             } finally {
+                 readStart.countDown()
+             }
