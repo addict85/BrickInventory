@@ -1,9 +1,9 @@
 {
-  // Typprüfung der Oberfläche (ES-Module unter public/js und i18n.js), ohne
-  // Übersetzen: esbuild bündelt, tsc prüft nur. moduleDetection "force", weil
-  // sonst die Namen der klassischen Skripte als globale gelten und ein
-  // fehlender Import nicht auffällt. Die zwei klassischen Skripte prüft
-  // tsconfig.frontend-skripte.json; beide laufen über scripts/check-frontend-types.js.
+  // Type check of the UI (ES modules under public/js and i18n.js) without
+  // emitting: esbuild bundles, tsc only checks. moduleDetection "force", since
+  // otherwise the names of the classic scripts count as globals and a missing
+  // import goes unnoticed. The two classic scripts are checked by
+  // tsconfig.frontend-scripts.json; both run via scripts/check-frontend-types.js.
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,

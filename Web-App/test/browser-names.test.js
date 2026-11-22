@@ -25,7 +25,7 @@ test('UI: the CI checks both configurations as a step of its own', () => {
   const ci = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
   assert.match(ci, /^\s+run: npm run typecheck:frontend\s*$/m);
   assert.equal(require('../package.json').scripts['typecheck:frontend'], 'node scripts/check-frontend-types.js');
-  assert.deepEqual(RUNS, ['tsconfig.frontend.json', 'tsconfig.frontend-skripte.json']);
+  assert.deepEqual(RUNS, ['tsconfig.frontend.json', 'tsconfig.frontend-scripts.json']);
   assert.equal(typeof pruefe, 'function');
 });
 
