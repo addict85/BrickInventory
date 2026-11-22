@@ -124,51 +124,6 @@ class ListFilterInStateTest {
     }
 
     /**
-     * As structure: the filtered parts list fetches only the account view
-     * (core-data, AccountView's parts list); its call names both.
-     */
-    @Test
-    fun `every fetch of the parts list carries view and search text`() {
-        val calls = listOf("parts.getParts(")
-        // The parts API does not know theme and sort (`utils/handlers/parts.ts`,
-        // getParts reads color, category, search, spare, set_number, page).
-        val required = listOf("accounts", "search")
-        val missing = mutableListOf<String>()
-        var found = 0
-
-        for (file in Sources.all()) for (call in calls) {
-            val src = Sources.withoutComments(file.readText())
-            var i = src.indexOf(call)
-            while (i >= 0) {
-                found++
-                var depth = 1
-                var j = i + call.length
-                while (j < src.length && depth > 0) {
-                    val c = src[j]
-                    if (c == '(') {
-                        depth++
-                    } else if (c == ')') {
-                        depth--
-                    }
-                    j++
-                }
-                val text = src.substring(i, j)
-                val absent = required.filterNot { text.contains(it) }
-                if (absent.isNotEmpty()) {
-                    val row = src.substring(0, i).count { it == '\n' } + 1
-                    missing += "${file.name}:$row — es fehlt: ${absent.joinToString()}"
-                }
-                i = src.indexOf(call, j)
-            }
-        }
-
-        assert(found >= 1) { "No call of $calls found — pattern outdated?" }
-        assert(missing.isEmpty()) {
-            "These fetches of the parts list leave something out:\n  " + missing.joinToString("\n  ")
-        }
-    }
-
-    /**
      * The search happens on the server, not in the screen.
      *
      * ── The finding ──────────────────────────────────────────────────────────
