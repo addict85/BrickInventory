@@ -13,11 +13,11 @@ export async function getStats(k: InventoryContext, userIdChoice: Sicht | number
     // `fehlt = 1` in a multiplication: a manual part without a set simply counts.
     k.metrics.partsInInventory(uids),
     k.metrics.minifigsInInventory(uids),
-    k.einstellungen.valueInView(uids, 'currency').then(value => (value === null ? undefined : { value })),
+    k.settings.valueInView(uids, 'currency').then(value => (value === null ? undefined : { value })),
     k.metrics.partsSingle(uids),
   ]);
-  const ownState = await k.einstellungen.valueInView(uids, 'user_default_condition');
-  const globalCond = await k.einstellungen.globalValue('default_price_condition');
+  const ownState = await k.settings.valueInView(uids, 'user_default_condition');
+  const globalCond = await k.settings.globalValue('default_price_condition');
   const effectiveCondition = ownState && ['N', 'U'].includes(ownState) ? ownState : globalCond || 'N';
   const pieces = Number(partsRow?.t ?? 0);
   const single = Number(singleRow?.t ?? 0);

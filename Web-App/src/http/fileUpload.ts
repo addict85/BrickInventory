@@ -1,4 +1,4 @@
-import { konfig } from '../infra/config';
+import { config } from '../infra/config';
 import { DATA_DIR } from '../infra/appPaths';
 import multer from 'multer';
 import crypto from 'node:crypto';
@@ -56,7 +56,7 @@ export async function contentFitsToType(file: string, mime: string): Promise<boo
 /** The per-file limit does not stop anyone who sends a hundred files — and all
  * accounts share one disk. */
 export function uploadQuotaBytes(): number {
-  return konfig().uploadQuotaMb * 1024 * 1024;
+  return config().uploadQuotaMb * 1024 * 1024;
 }
 
 export async function occupiedSpace(folder: string): Promise<number> {
@@ -95,14 +95,14 @@ export function privaterReceive(o: {
       },
       filename: (req, file, cb) => {
         const ext = fromTable(o.typen, file.mimetype);
-        if (!ext) return cb(fileError('falscher_typ', 'datei_typ_falsch'), '');
+        if (!ext) return cb(fileError('falscher_typ', 'file_type_wrong'), '');
         cb(null, `${o.prefix(req).replace(/[^a-z0-9-]/gi, '_')}_${crypto.randomBytes(12).toString('hex')}${ext}`);
       },
     }),
     limits: { ...FORM_LIMITS, fileSize: o.maxBytes },
     fileFilter: (_req, file, cb) => {
       if (fromTable(o.typen, file.mimetype)) cb(null, true);
-      else cb(fileError('falscher_typ', 'datei_typ_falsch'));
+      else cb(fileError('falscher_typ', 'file_type_wrong'));
     },
   });
 }
@@ -114,7 +114,7 @@ export async function quotaSufficesFor(folder: string, length: number): Promise<
 
 /** The per-account quota does not stop many accounts; this limit applies to all of them together. */
 const TOTAL_ROOTS = ['uploads', 'vouchers'].map(n => path.join(DATA_DIR, n));
-export const uploadTotalMb = (): number => konfig().uploadTotalMb;
+export const uploadTotalMb = (): number => config().uploadTotalMb;
 
 async function totalOccupied(): Promise<number> {
   let sum = 0;
@@ -144,11 +144,11 @@ export async function checkReceivedFile(wurzel: string, received: string, mime: 
   const file = belowRoot(wurzel, received);
   await fs.promises.chmod(file, 0o600);
   const refusal = !(await contentFitsToType(file, mime))
-    ? fileError('ungueltig', 'datei_inhalt_falsch')
+    ? fileError('ungueltig', 'file_content_wrong')
     : (await occupiedSpace(path.dirname(file))) > uploadQuotaBytes()
-      ? fileError('zu_gross', 'upload_kontingent_voll', { mb: Math.round(uploadQuotaBytes() / 1024 / 1024) })
+      ? fileError('zu_gross', 'upload_quota_full', { mb: Math.round(uploadQuotaBytes() / 1024 / 1024) })
       : !(await totalSufficesFor(0))
-        ? fileError('speicher_voll', 'upload_gesamt_voll', { mb: uploadTotalMb() })
+        ? fileError('speicher_voll', 'upload_total_full', { mb: uploadTotalMb() })
         : null;
   if (!refusal) return;
   await fs.promises.rm(file, { force: true });

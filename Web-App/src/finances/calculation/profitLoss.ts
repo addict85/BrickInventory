@@ -17,7 +17,7 @@ type MarketValues = {
   preis: Map<string, number>;
   erster: Map<string, number>;
   kauf: Map<string, number>;
-  menge: Map<string, number>;
+  quantity: Map<string, number>;
 };
 
 /** Falling back to the other condition lives in valueSet() (priceFor). */
@@ -39,7 +39,7 @@ async function setMarketValues(
   currency: string,
   ttl: number,
 ): Promise<MarketValues> {
-  const w: MarketValues = { preis: new Map(), erster: new Map(), kauf: new Map(), menge: new Map() };
+  const w: MarketValues = { preis: new Map(), erster: new Map(), kauf: new Map(), quantity: new Map() };
   const numbers = sets.map(s => s.set_number);
   if (!numbers.length) return w;
   const [current, history] = await Promise.all([
@@ -60,7 +60,7 @@ async function setMarketValues(
     if (hist.unit_z) w.erster.set(set.set_number, hist.unit_z / 10000);
     const kauf = weightedPurchase(valueAcquisitionRows(set.set_number, acqs, prices));
     if (kauf != null) w.kauf.set(set.set_number, kauf);
-    w.menge.set(set.set_number, cur.quantity);
+    w.quantity.set(set.set_number, cur.quantity);
   }
   return w;
 }
@@ -74,7 +74,7 @@ function pnlSetRow(set: PnlSet, w: MarketValues) {
   const kauf = w.kauf.get(sn);
   const hasCost = kauf != null,
     purchasePrice = kauf ?? 0;
-  const qty = w.menge.get(sn) || set.quantity || 1;
+  const qty = w.quantity.get(sn) || set.quantity || 1;
   const pnlAbs = hasCost ? (currentPrice - purchasePrice) * qty : null;
   const pnlPct = hasCost ? developmentPercent(purchasePrice, currentPrice) : null;
   const baselinePrice = hasCost ? purchasePrice : (w.erster.get(sn) ?? null);
@@ -95,9 +95,9 @@ function pnlSetRow(set: PnlSet, w: MarketValues) {
     pnl_pct: pnlPct?.toFixed(1) ?? null,
     baseline_pnl_pct: baselinePnlPct?.toFixed(1) ?? null,
     // The text fields stay for older clients.
-    pnl_betrag: pnlAbs === null ? null : aufRappen(inTenThousandths(pnlAbs) ?? 0),
-    pnl_prozent: pnlPct === null ? null : Number(pnlPct.toFixed(1)),
-    baseline_pnl_prozent: baselinePnlPct === null ? null : Number(baselinePnlPct.toFixed(1)),
+    pnl_amount: pnlAbs === null ? null : aufRappen(inTenThousandths(pnlAbs) ?? 0),
+    pnl_percent: pnlPct === null ? null : Number(pnlPct.toFixed(1)),
+    baseline_pnl_percent: baselinePnlPct === null ? null : Number(baselinePnlPct.toFixed(1)),
   };
 }
 
@@ -118,15 +118,15 @@ function itemRow(p: { quantity?: number | null; avg_price?: unknown; purchase_pr
 
 /** Summed in ten-thousandths, rounded to cents only at the end. */
 const purchaseTotal = (rs: Array<{ purchase_price: number | null; quantity: number }>) =>
-  sumFrom(rs.map(r => ({ preis: r.purchase_price || 0, menge: r.quantity || 1 })));
+  sumFrom(rs.map(r => ({ preis: r.purchase_price || 0, quantity: r.quantity || 1 })));
 
 export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
   // Two quantities: viewerId — whose SETTINGS apply; ids — WHOSE DATA
   // is calculated. With the filter "sub-accounts" viewerId is missing from ids.
   const uids = await k.household.scopeFrom(idsChoice);
   const [currency, ttlHours] = await Promise.all([
-    k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
-    k.einstellungen.globalValue('price_cache_ttl', '24'),
+    k.settings.userValue(viewerId, 'currency', 'EUR'),
+    k.settings.globalValue('price_cache_ttl', '24'),
   ]);
   const sets = await k.profitLoss.setsWithEntries(uids);
   // From the acquisitions, so that gallery, detail and finances show the same numbers.
@@ -149,7 +149,7 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
   const totalPurchase = aufRappen(
     [setResults, partsResults, figsResults].reduce((z, rs) => z + (inTenThousandths(purchaseTotal(rs)) ?? 0), 0),
   );
-  const totalCurrent = sumFrom(allRows.map(r => ({ preis: r.current_price || 0, menge: r.quantity || 1 })));
+  const totalCurrent = sumFrom(allRows.map(r => ({ preis: r.current_price || 0, quantity: r.quantity || 1 })));
   const comparable = comparableSums(allRows);
   const totalPnlPct = totalGuvPercent(allRows);
   return {
@@ -159,15 +159,15 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
       purchase: totalPurchase.toFixed(2),
       current: totalCurrent.toFixed(2),
       pnl_pct: totalPnlPct,
-      pnl_prozent: totalPnlPct === null ? null : Number(totalPnlPct),
-      kaufpreise_fremde_waehrung:
+      pnl_percent: totalPnlPct === null ? null : Number(totalPnlPct),
+      foreign_currency_purchases:
         countFlagged(acqRows, 'kaufpreis_fremd') +
-        (partsVal.kaufpreise_fremde_waehrung ?? 0) +
-        (figsVal.kaufpreise_fremde_waehrung ?? 0),
-      kaufpreise_umgerechnet:
+        (partsVal.foreign_currency_purchases ?? 0) +
+        (figsVal.foreign_currency_purchases ?? 0),
+      converted_purchase_prices:
         countFlagged(acqRows, 'kaufpreis_umgerechnet') +
-        (partsVal.kaufpreise_umgerechnet ?? 0) +
-        (figsVal.kaufpreise_umgerechnet ?? 0),
+        (partsVal.converted_purchase_prices ?? 0) +
+        (figsVal.converted_purchase_prices ?? 0),
       // From the same items as pnl_pct: calculated from all of them, every item
       // without a market price would count as a loss.
       pnl_purchase: comparable.kauf.toFixed(2),
@@ -225,14 +225,14 @@ export function baseTheMetrics(rows: GuvRow[]) {
     }
   }
   return {
-    positionen: rows.length,
-    positionen_bewertet: rows.length - withoutMarket - withoutPurchase,
-    positionen_ohne_marktpreis: withoutMarket,
-    positionen_ohne_kaufpreis: withoutPurchase,
-    basis_einstand: kauf.toFixed(2),
-    basis_marktwert: markt.toFixed(2),
-    basis_guv_betrag: (markt - kauf).toFixed(2),
-    ohne_marktpreis_einstand: withoutMarketPurchase.toFixed(2),
-    ohne_kaufpreis_marktwert: withoutPurchaseMarket.toFixed(2),
+    positions: rows.length,
+    positions_valued: rows.length - withoutMarket - withoutPurchase,
+    positions_without_market_price: withoutMarket,
+    positions_without_purchase_price: withoutPurchase,
+    baseline_cost: kauf.toFixed(2),
+    baseline_market_value: markt.toFixed(2),
+    baseline_pnl_amount: (markt - kauf).toFixed(2),
+    cost_without_market_price: withoutMarketPurchase.toFixed(2),
+    market_value_without_purchase_price: withoutPurchaseMarket.toFixed(2),
   };
 }

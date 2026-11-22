@@ -22,7 +22,7 @@ export type Profile = Pick<Account, 'id' | 'username' | 'email' | 'first_name' |
   new_email: string | null;
 };
 export type AccountInList = Pick<Account, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & {
-  wartet_auf_bestaetigung: boolean;
+  awaiting_confirmation: boolean;
 };
 
 export function accountShort(db: DbInterface, id: number): Promise<AccountShort | undefined> {
@@ -76,13 +76,13 @@ export async function changeUsernames(db: DbInterface, id: number, name: string)
 
 /** An intruder may have triggered it. @returns the discarded address or null */
 export async function discardPendingAddress(db: DbInterface, id: number): Promise<string | null> {
-  const r = await db.get<{ adresse: string }>(
+  const r = await db.get<{ address: string }>(
     `UPDATE users u SET ${WITHOUT_EMAIL_NEW} FROM users alt
       WHERE u.id = $1 AND alt.id = u.id AND alt.new_email IS NOT NULL AND NOT alt.registration_pending
-      RETURNING alt.new_email AS adresse`,
+      RETURNING alt.new_email AS address`,
     [id],
   );
-  return r?.adresse ?? null;
+  return r?.address ?? null;
 }
 
 export async function rememberEmailNew(
@@ -198,7 +198,7 @@ export async function pendingWithoutLink(db: DbInterface): Promise<number[]> {
 export function allAccounts(db: DbInterface): Promise<AccountInList[]> {
   return db.all<AccountInList>(
     `SELECT u.id, u.username, u.is_admin, u.is_active, u.created_at,
-            (u.registration_pending AND NOT u.email_verified) AS wartet_auf_bestaetigung
+            (u.registration_pending AND NOT u.email_verified) AS awaiting_confirmation
        FROM users u ORDER BY u.id`,
   );
 }
@@ -229,7 +229,7 @@ export async function addAccountOne(
   return fresh ? fresh.id : null;
 }
 
-export const LAST_ADMIN = 'letzter_verwalter' as const;
+export const LAST_ADMIN = 'last_admin' as const;
 
 /** Another active admin than the one in parameter `$1`. */
 const OTHER_ADMIN = 'EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1)';
@@ -518,14 +518,14 @@ export async function deleteAccess(
   db: DbInterface,
   uid: number,
   key: string,
-): Promise<{ anzahl: number; label: string | null }> {
+): Promise<{ count: number; label: string | null }> {
   const r = await db.get<{ n: number; label: string | null }>(
     `WITH weg AS (DELETE FROM api_tokens WHERE user_id = $1 AND (left(token, 16) = $2 OR left(replaced_by, 16) = $2)
                   RETURNING replaced_by, label)
      SELECT count(*) FILTER (WHERE replaced_by IS NULL)::int AS n, max(label) AS label FROM weg`,
     [uid, key],
   );
-  return { anzahl: r?.n ?? 0, label: r?.label ?? null };
+  return { count: r?.n ?? 0, label: r?.label ?? null };
 }
 
 /** All app accesses except `eigener`, including its predecessor and successor within the overlap. */

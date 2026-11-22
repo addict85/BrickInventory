@@ -25,14 +25,14 @@ export async function setDetails(k: CatalogContext, setNumber: string) {
   // "Set <number>" is a placeholder, not a name; as a hit it would overwrite
   // the real name on the next capture. A re-query happens at most daily.
   if (cached?.name && cached.name !== `Set ${n}`) return cached;
-  if (cached?.fetched_at && k.uhr.jetzt() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
-  const data = await k.externalSources.quellen.holeSet(n);
+  if (cached?.fetched_at && k.clock.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
+  const data = await k.externalSources.sources.holeSet(n);
   if (!data) {
-    await k.rebrickableCache.rememberUnknownSet(n, !!(await k.externalSources.quellen.getRbKey()));
+    await k.rebrickableCache.rememberUnknownSet(n, !!(await k.externalSources.sources.getRbKey()));
     return null;
   }
   // The theme is secondary: without it the set is still remembered, the row names none.
-  const thema = await attempts('rebrickable:thema', k.externalSources.quellen.getThemeName(data.theme_id ?? 0));
+  const thema = await attempts('rebrickable:thema', k.externalSources.sources.getThemeName(data.theme_id ?? 0));
   const theme = thema.ok ? thema.wert : null;
   const row = {
     set_number: n,
@@ -75,16 +75,16 @@ export async function allPartsOfSet(k: CatalogContext, setNumber: string) {
   const csvParts = await setPartsFromCsv(k, setNumber);
   if (csvParts) return csvParts;
   const n = withVersion(setNumber);
-  const remembered = fromCache<Awaited<ReturnType<Sources['fetchSetParts']>>['teile']>(
+  const remembered = fromCache<Awaited<ReturnType<Sources['fetchSetParts']>>['parts']>(
     await k.rebrickableCache.partListFromCache(n),
   );
   if (remembered) return remembered;
   if (leer(k).hole(n)) return [];
-  const { teile, verweigert } = await k.externalSources.quellen.fetchSetParts(n);
+  const { parts, verweigert } = await k.externalSources.sources.fetchSetParts(n);
   // A refusal (403) is remembered as an empty list so that not every import asks again.
-  if (teile.length > 0 || verweigert) await k.rebrickableCache.rememberPartList(n, JSON.stringify(teile));
+  if (parts.length > 0 || verweigert) await k.rebrickableCache.rememberPartList(n, JSON.stringify(parts));
   else leer(k).set(n, true);
-  return teile;
+  return parts;
 }
 
 /** Shared cache: the data rarely changes, the quota is scarce. */
@@ -93,7 +93,7 @@ export async function minifigPartsQuery(k: CatalogContext, figNumber: string) {
     await k.rebrickableCache.minifigsPartsFromCache(figNumber),
   );
   if (remembered) return remembered;
-  const parts = await k.externalSources.quellen.fetchMinifigParts(figNumber);
+  const parts = await k.externalSources.sources.fetchMinifigParts(figNumber);
   if (!parts) return [];
   // The cache only saves the next fetch; the parts apply without it as well.
   await attempts(

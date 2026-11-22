@@ -127,24 +127,24 @@ export function rowsList(zeilen: number[]): string {
 
 export function skippedHint(zeilen: number[], language: Language = 'de'): string | null {
   if (!zeilen.length) return null;
-  return errorText('csv_uebersprungen', language, { anzahl: zeilen.length, zeilen: rowsList(zeilen) });
+  return errorText('csv_skipped', language, { count: zeilen.length, zeilen: rowsList(zeilen) });
 }
 
 // The shared columns read once, so that every fix hits all imports.
 export function csvSharedFields(row: CsvRow): {
-  menge: number;
+  quantity: number;
   preis: number | null;
   recordedAt: string | null;
-  zustand: string;
+  condition: string;
 } {
   const rawPrice = row.unit_price ?? row.Preis ?? '';
   let preis: number | null = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
   if (preis !== null && Number.isNaN(preis)) preis = null;
   return {
-    menge: parseInt(String(row.quantity || row.Anzahl || '1').replace(/[^0-9]/g, ''), 10) || 1,
+    quantity: parseInt(String(row.quantity || row.Anzahl || '1').replace(/[^0-9]/g, ''), 10) || 1,
     preis,
     recordedAt: csvDatum(row.acquired_at || row.erfassungsdatum),
-    zustand: (row.condition || row.zustand || '').trim().toUpperCase(),
+    condition: (row.condition || row.zustand || '').trim().toUpperCase(),
   };
 }
 

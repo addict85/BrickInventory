@@ -23,7 +23,7 @@ export function pdfFilePath(id: string): string | null {
   return validJobId(id) ? path.join(PDF_JOB_DIR, `${id}.pdf`) : null;
 }
 
-export type PdfAuftrag = {
+export type PdfJob = {
   status: 'running' | 'done' | 'error';
   error: string | null;
   user_id: number;
@@ -31,16 +31,16 @@ export type PdfAuftrag = {
   etaSeconds?: number | null;
 };
 
-const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft: 'running', erledigt: 'done' };
+const STATUS: Record<string, PdfJob['status']> = { open: 'running', running: 'running', done: 'done' };
 
 /** Under row security and filtered by account: a foreign job is no job. */
-export async function readJob(k: CatalogContext, id: string, uid: number): Promise<PdfAuftrag | null> {
+export async function readJob(k: CatalogContext, id: string, uid: number): Promise<PdfJob | null> {
   const z = await k.jobQueue.ownJob('pdf', pdfKey(id), uid);
   const { fehlendeBilder, etaSekunden } = z?.progress ?? {};
   return z
     ? {
         status: STATUS[z.status] ?? 'error',
-        error: z.status === 'erledigt' ? null : (z.error_message ?? null),
+        error: z.status === 'done' ? null : (z.error_message ?? null),
         user_id: Number(z.user_id),
         missingImages: typeof fehlendeBilder === 'number' ? fehlendeBilder : null,
         etaSeconds: typeof etaSekunden === 'number' ? etaSekunden : null,
@@ -51,10 +51,10 @@ export async function readJob(k: CatalogContext, id: string, uid: number): Promi
 /** `status` shows the UI how far a not-yet-finished job has progressed. */
 export async function finishedFile(k: CatalogContext, id: string, uid: number): Promise<string> {
   const job = await readJob(k, id, uid);
-  if (!job) notFound('job_nicht_gefunden');
-  if (job.status !== 'done') throw new DomainError('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
+  if (!job) notFound('job_not_found');
+  if (job.status !== 'done') throw new DomainError('konflikt', 'pdf_not_ready', undefined, { status: job.status });
   const file = pdfFilePath(id);
-  if (!file || !fs.existsSync(file)) failDomain('nicht_mehr_da', 'pdf_nicht_verfuegbar');
+  if (!file || !fs.existsSync(file)) failDomain('nicht_mehr_da', 'pdf_not_available');
   return file;
 }
 
@@ -83,7 +83,7 @@ export async function cleanOldPdfJobs(k: CatalogContext) {
   for (const f of files) {
     const fp = path.join(PDF_JOB_DIR, f);
     const st = await fsp.stat(fp).catch(withoutMissingFile('pdf:datei pruefen'));
-    if (st && k.uhr.jetzt() - st.mtimeMs > PDF_JOB_TTL)
+    if (st && k.clock.now() - st.mtimeMs > PDF_JOB_TTL)
       await fsp.unlink(fp).catch(withoutMissingFile('pdf:datei loeschen'));
   }
 }
@@ -121,7 +121,7 @@ export async function startPdfJob(
 ): Promise<{ jobId: string } | { laufend: number }> {
   const laufend = await k.jobQueue.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
   if (laufend >= MAX_JOBS_PRO_USER) return { laufend };
-  const jobId = newJobId(k.uhr.jetzt());
+  const jobId = newJobId(k.clock.now());
   // The client's image details do not go into the job: the images come from the catalog.
   const withoutImages = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
   const missingImages = await fehlendeBilder(k, sets, parts);

@@ -10,7 +10,7 @@ export type { HouseholdDependencies, HouseholdContext } from './context';
 export function createHousehold(a: Omit<HouseholdDependencies, 'faecher'>, inspect?: Inspect<HouseholdContext>) {
   return buildArea(
     { ...a, faecher: new Compartments() },
-    (db: Db) => access(db, a.lesevertrag),
+    (db: Db) => access(db, a.readContract),
     (k: HouseholdContext) => ({
       reportHouseholdChange: bound(k)(household.reportHouseholdChange),
       writeScope: bound(k)(household.writeScope),

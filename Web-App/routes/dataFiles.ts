@@ -9,7 +9,7 @@ import { safeDataPath } from '../src/infra/dataPath';
 import { signedInUserId } from '../src/account/http/login';
 import type { Services } from '../src/services';
 
-type WildcardRequest = Request<{ pfad: string[] }>;
+type WildcardRequest = Request<{ path: string[] }>;
 
 /** Foreign uploads (only the first bytes checked) thus never run under the app's
  * origin; the own viewer loads via fetch and needs no inline display. */

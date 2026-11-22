@@ -2,7 +2,7 @@
  * (insertion order of the Map): clearing everything at once would bring the full
  * load of recomputation precisely at the moment of highest load. */
 export class Cache<K, V> {
-  private readonly eintraege = new Map<K, { wert: V; bis: number }>();
+  private readonly entries = new Map<K, { wert: V; bis: number }>();
 
   constructor(
     private readonly max: number,
@@ -10,10 +10,10 @@ export class Cache<K, V> {
   ) {}
 
   hole(k: K): V | undefined {
-    const e = this.eintraege.get(k);
+    const e = this.entries.get(k);
     if (!e) return undefined;
     if (e.bis <= Date.now()) {
-      this.eintraege.delete(k);
+      this.entries.delete(k);
       return undefined;
     }
     return e.wert;
@@ -21,24 +21,24 @@ export class Cache<K, V> {
 
   /** fristMs only applies to this entry (e.g. shorter for a failure). */
   set(k: K, wert: V, fristMs = this.fristMs): void {
-    this.eintraege.delete(k);
-    if (this.eintraege.size >= this.max) {
-      const oldest = this.eintraege.keys().next();
-      if (!oldest.done) this.eintraege.delete(oldest.value);
+    this.entries.delete(k);
+    if (this.entries.size >= this.max) {
+      const oldest = this.entries.keys().next();
+      if (!oldest.done) this.entries.delete(oldest.value);
     }
-    this.eintraege.set(k, { wert, bis: Date.now() + fristMs });
+    this.entries.set(k, { wert, bis: Date.now() + fristMs });
   }
 
   remove(k: K): void {
-    this.eintraege.delete(k);
+    this.entries.delete(k);
   }
 
   empty(): void {
-    this.eintraege.clear();
+    this.entries.clear();
   }
 
   get size(): number {
-    return this.eintraege.size;
+    return this.entries.size;
   }
 }
 

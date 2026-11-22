@@ -107,7 +107,7 @@ async function fetchImageLock(
     lockClient = null;
   }
   if (!lockClient) return { lockClient, haveXlock };
-  const deadline = k.uhr.jetzt() + 180000; // wait at most 3 min for another worker
+  const deadline = k.clock.now() + 180000; // wait at most 3 min for another worker
   while (true) {
     try {
       haveXlock = await repo.attemptsImageLock(lockClient, n);
@@ -120,7 +120,7 @@ async function fetchImageLock(
       lockClient.release();
       return 'belegt';
     }
-    if (k.uhr.jetzt() > deadline) {
+    if (k.clock.now() > deadline) {
       console.warn(`[img-dl] ${n}: Wartezeit auf anderen Worker überschritten — fahre ohne Lock fort`);
       break; // best effort: continue without lock
     }
@@ -157,7 +157,7 @@ async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBus
 
   let _pendingAdded = 0; // this batch's share of the global imgDl counter
   let _flushed = 0; // of which already reported to the counter (rest in finally)
-  let _lastFlush = k.uhr.jetzt();
+  let _lastFlush = k.clock.now();
   try {
     const needsImg = await k.partsEnrichment.imagesWithoutFile(n);
     if (!needsImg.length) return;
@@ -174,9 +174,9 @@ async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBus
     const flushProgress = async (force?: boolean) => {
       const delta = done - _flushed;
       if (delta <= 0) return;
-      if (!force && k.uhr.jetzt() - _lastFlush < 1000) return;
+      if (!force && k.clock.now() - _lastFlush < 1000) return;
       _flushed += delta;
-      _lastFlush = k.uhr.jetzt();
+      _lastFlush = k.clock.now();
       await imageLoadCounter(k, -delta);
     };
     await Promise.all(

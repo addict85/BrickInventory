@@ -11,13 +11,13 @@ import type { Clock } from '../infra/clock';
 import type { Kinds } from './kinds';
 
 export interface JobsDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
   faecher: Compartments;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   /** The registered kinds; shared across all sets of this access. */
   arten: Kinds;
-  lesevertrag: JobsReadContract;
+  readContract: JobsReadContract;
 }
 
 /** The queue belongs to all accounts; whoever processes or manages it needs the system frame.

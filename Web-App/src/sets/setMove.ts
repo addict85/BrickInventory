@@ -34,11 +34,11 @@ export async function setEntriesReassign(
   acquisitionIds?: number[],
 ): Promise<Shift> {
   const src = await repo.setRow(t.db, fromId, sn);
-  if (!src) failDomain('nicht_gefunden', 'nicht_gefunden');
+  if (!src) failDomain('not_found', 'not_found');
 
   const all = await repo.moveEntriesTo(t.db, fromId, sn);
   const wanted = acquisitionIds?.length ? all.filter(a => acquisitionIds.includes(parseInt(String(a.id), 10))) : all;
-  if (!wanted.length) failDomain('nicht_gefunden', 'kaufpreis_nicht_gefunden');
+  if (!wanted.length) failDomain('not_found', 'purchase_price_not_found');
 
   const totalQty = all.reduce((s, a) => s + (a.quantity || 1), 0);
   const movingQty = wanted.reduce((s, a) => s + (a.quantity || 1), 0);
@@ -85,11 +85,11 @@ export async function moveSet(
   nach: AccountWish,
   acquisitions: number[],
 ) {
-  if (!acquisitions.length) failDomain('ungueltig', 'kaufpreise_angeben');
+  if (!acquisitions.length) failDomain('ungueltig', 'purchase_prices_required');
   const sn = withVersion(raw);
   const fromId = await sk.household.writeTarget(uid, fromValue ?? uid);
   const toId = await sk.household.writeTarget(uid, nach);
-  if (fromId === toId) failDomain('ungueltig', 'quelle_ziel_identisch');
+  if (fromId === toId) failDomain('ungueltig', 'source_equals_target');
   // Two moves in opposite directions lock the rows of both accounts in reverse order.
   const r = await sk.transact(t => setEntriesReassign(t, sn, fromId, toId, acquisitions), {
     sperren: [{ konto: fromId, schluessel: sn }],

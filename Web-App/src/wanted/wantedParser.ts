@@ -8,17 +8,17 @@ export type WantedArt = 'part' | 'fig' | 'set';
 const KINDS: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
 
 export interface WantedItem {
-  art: WantedArt;
+  kind: WantedArt;
   /** ITEMID — a BrickLink number, NOT a Rebrickable number. */
   blId: string;
   /** COLOR as a BrickLink color number; null for sets and colorless items. */
-  blFarbe: number | null;
+  blColor: number | null;
   /** MINQTY, at least 1. */
-  menge: number;
+  quantity: number;
   /** CONDITION: N or U; X ("any") becomes null. */
-  zustand: 'N' | 'U' | null;
+  condition: 'N' | 'U' | null;
   /** MAXPRICE; -1 means "no maximum price" and becomes null. */
-  maxPreis: number | null;
+  maxPrice: number | null;
 }
 
 /** Two searches for fixed text instead of `<name>([\s\S]*?)</name>`: with an open tag the lazy
@@ -50,30 +50,30 @@ function field(block: string, name: string): string | null {
 }
 
 export interface ReadResult {
-  posten: WantedItem[];
-  fremdeArten: Record<string, number>;
-  ohneNummer: number;
+  items: WantedItem[];
+  foreignTypes: Record<string, number>;
+  withoutNumber: number;
 }
 
 /** Does NOT throw for foreign kinds or missing fields: a list that is nine tenths
  * usable should arrive nine tenths complete; the rest is in the result. */
 export function readWantedList(xml: string): ReadResult {
-  const posten: WantedItem[] = [];
-  const fremdeArten: Record<string, number> = {};
-  let ohneNummer = 0;
+  const items: WantedItem[] = [];
+  const foreignTypes: Record<string, number> = {};
+  let withoutNumber = 0;
 
   for (let m = between(xml, 'ITEM', 0); m !== null; m = between(xml, 'ITEM', m.ende)) {
     const block = m.inhalt;
     const type = (field(block, 'ITEMTYPE') ?? '').toUpperCase();
-    const art = KINDS[type];
+    const kind = KINDS[type];
     const blId = field(block, 'ITEMID');
 
     if (!blId) {
-      ohneNummer++;
+      withoutNumber++;
       continue;
     }
-    if (!art) {
-      fremdeArten[type || '(ohne)'] = (fremdeArten[type || '(ohne)'] ?? 0) + 1;
+    if (!kind) {
+      foreignTypes[type || '(ohne)'] = (foreignTypes[type || '(ohne)'] ?? 0) + 1;
       continue;
     }
 
@@ -83,18 +83,18 @@ export function readWantedList(xml: string): ReadResult {
     const stateRaw = (field(block, 'CONDITION') ?? '').toUpperCase();
     const priceRaw = parseFloat(field(block, 'MAXPRICE') ?? '');
 
-    posten.push({
-      art,
+    items.push({
+      kind,
       blId,
       // At BrickLink color 0 is "(Not Applicable)", not a color.
-      blFarbe: color !== null && Number.isFinite(color) && color > 0 ? color : null,
-      menge: Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1,
+      blColor: color !== null && Number.isFinite(color) && color > 0 ? color : null,
+      quantity: Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1,
       // X means "any": null, so that the account's setting decides.
-      zustand: stateRaw === 'N' || stateRaw === 'U' ? stateRaw : null,
+      condition: stateRaw === 'N' || stateRaw === 'U' ? stateRaw : null,
       // MAXPRICE is a search limit, not a purchase price — -1 means "none".
-      maxPreis: Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw : null,
+      maxPrice: Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw : null,
     });
   }
 
-  return { posten, fremdeArten, ohneNummer };
+  return { items, foreignTypes, withoutNumber };
 }

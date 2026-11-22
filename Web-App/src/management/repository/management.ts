@@ -6,7 +6,7 @@ import type { Columns } from '../../../db/rows';
 /** The route does not talk to db/ itself. */
 
 type ImageRow = { image_url: string | null; image_local: string | null };
-export type AccountImageRow = { anzahl_konten: number } & ImageRow;
+export type AccountImageRow = { account_count: number } & ImageRow;
 type ImageMissRow = { checked_at: Date; reason: string | null };
 type CacheKeyRow = { cache_key: string };
 
@@ -26,12 +26,12 @@ export function stalePrices(db: DbInterface): Promise<number> {
 /** Only the number of accounts (function from 0119): which one holds a set is none of the admin's business either. */
 export async function accountImageRows(db: DbInterface, sn: string): Promise<AccountImageRow> {
   const z = await db.get<AccountImageRow>(
-    `SELECT n.anzahl AS anzahl_konten, CASE WHEN n.anzahl > 0 THEN c.image_local END AS image_local,
-            CASE WHEN n.anzahl > 0 THEN c.image_url END AS image_url
-       FROM (SELECT accounts_with_set($1) AS anzahl) n LEFT JOIN set_catalog c ON c.set_number = $1`,
+    `SELECT n.count AS account_count, CASE WHEN n.count > 0 THEN c.image_local END AS image_local,
+            CASE WHEN n.count > 0 THEN c.image_url END AS image_url
+       FROM (SELECT accounts_with_set($1) AS count) n LEFT JOIN set_catalog c ON c.set_number = $1`,
     [sn],
   );
-  return z ?? { anzahl_konten: 0, image_local: null, image_url: null };
+  return z ?? { account_count: 0, image_local: null, image_url: null };
 }
 
 export function catalogImage(db: DbInterface, sn: string): Promise<ImageRow | undefined> {
@@ -209,5 +209,5 @@ export function lastRunOfType(db: DbInterface) {
     due_at: Date;
     progress: Record<string, unknown> | null;
   }>(`SELECT status, due_at, progress FROM jobs
-      WHERE type = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, due_at LIMIT 1`);
+      WHERE type = 'prices' AND status IN ('pending', 'running') ORDER BY status = 'running' DESC, due_at LIMIT 1`);
 }

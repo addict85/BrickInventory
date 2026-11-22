@@ -7,12 +7,12 @@ import { proxyTrust, withoutV4Shell, inDockerNetwork, isDockerGateway } from '..
 export const EINE_ADDRESS = { anfragen: 300, ms: 60 * 60_000 };
 
 export type ProxyStand =
-  | { art: 'gateway' | 'docker_netz'; vars: { ip: string } }
-  | { art: 'eine_adresse'; vars: { ip: string; minuten: number; anzahl: number } };
+  | { kind: 'gateway' | 'docker_netz'; vars: { ip: string } }
+  | { kind: 'eine_adresse'; vars: { ip: string; minutes: number; count: number } };
 /** The admin rarely reads the log; background jobs shows the hint of the hint giver,
  * which startup/app.ts stores in app.locals (GET /admin/jobs). */
 export function proxyHintStatus(app: Application): ProxyStand | null {
-  return (app.locals.proxyHint as ReturnType<typeof proxyHint> | undefined)?.stand() ?? null;
+  return (app.locals.proxyHint as ReturnType<typeof proxyHint> | undefined)?.state() ?? null;
 }
 
 /** Clients come in via the gateway as well; that is why the guess is never
@@ -34,9 +34,9 @@ export function proxyHint(
   checker.set('trust proxy', trust);
   const trusted = checker.get('trust proxy fn') as (address: string, hop: number) => boolean;
   let warned = trust === false;
-  let stand: ProxyStand | null = null;
+  let state: ProxyStand | null = null;
   const eineAddress = onlyClientAddress(Array.isArray(trust), warn, clock, s => {
-    stand = s;
+    state = s;
   });
   const mw = (req: Request, _res: Response, next: NextFunction) => {
     const fromValue = req.socket?.remoteAddress || '';
@@ -44,7 +44,7 @@ export function proxyHint(
     if (!warned && req.headers['x-forwarded-for'] && inDockerNetwork(fromValue) && !trusted(fromValue, 0)) {
       warned = true;
       const ip = withoutV4Shell(fromValue);
-      stand = { art: isDockerGateway(fromValue) ? 'gateway' : 'docker_netz', vars: { ip } };
+      state = { kind: isDockerGateway(fromValue) ? 'gateway' : 'docker_netz', vars: { ip } };
       warn(
         isDockerGateway(fromValue)
           ? `⚠️ [sicherheit] X-Forwarded-For kommt über das Docker-Gateway ${ip} und wird verworfen. Über das Gateway ` +
@@ -58,7 +58,7 @@ export function proxyHint(
     }
     next();
   };
-  return Object.assign(mw, { stand: () => stand });
+  return Object.assign(mw, { state: () => state });
 }
 
 /** If a second proxy stands in front of Caddy, its address always arrives; a report only
@@ -71,26 +71,26 @@ function onlyClientAddress(
 ) {
   let finished = !active;
   let first: string | undefined;
-  let seit = 0;
-  let anzahl = 0;
+  let since = 0;
+  let count = 0;
   return (ip: string | undefined, fromValue: string) => {
     // Without an evaluated X-Forwarded-For (outside production) there is nothing to count.
     if (finished || !ip || ip === fromValue) return;
     if (first === undefined) {
       first = ip;
-      seit = clock();
+      since = clock();
     }
     if (ip !== first) {
       finished = true;
       return;
     }
-    anzahl++;
-    const minuten = Math.floor((clock() - seit) / 60_000);
-    if (anzahl < EINE_ADDRESS.anfragen || clock() - seit < EINE_ADDRESS.ms) return;
+    count++;
+    const minutes = Math.floor((clock() - since) / 60_000);
+    if (count < EINE_ADDRESS.anfragen || clock() - since < EINE_ADDRESS.ms) return;
     finished = true;
-    remember({ art: 'eine_adresse', vars: { ip: withoutV4Shell(ip), minuten, anzahl } });
+    remember({ kind: 'eine_adresse', vars: { ip: withoutV4Shell(ip), minutes, count } });
     warn(
-      `⚠️ [sicherheit] Seit ${minuten} Minuten kommen alle ${anzahl} Anfragen über den Proxy mit derselben ` +
+      `⚠️ [sicherheit] Seit ${minutes} Minuten kommen alle ${count} Anfragen über den Proxy mit derselben ` +
         `Client-Adresse ${withoutV4Shell(ip)}. Steht vor Caddy ein weiterer Proxy (z. B. Nginx Proxy Manager), ` +
         'teilen sich alle Clients diese Adresse: Fehlversuche eines Fremden sperren alle aus, Registrierung und ' +
         '„Passwort vergessen“ sind für alle zusammen gedrosselt. Die Adresse dieses Proxys in VORGELAGERTER_PROXY ' +

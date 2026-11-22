@@ -8,12 +8,12 @@ import type { JobsServices } from '../jobQueue';
 import * as deviceKey from './repository/deviceKeys';
 
 export interface DevicesDependencies {
-  konfig: Readonly<AppConfig>;
+  config: Readonly<AppConfig>;
   db: Db;
-  uhr: Clock;
+  clock: Clock;
   /** The run state holds the attestation's revocation list (catalog/revocationList.ts loads it). */
   jobQueue: JobsServices;
-  lesevertrag: DevicesReadContract;
+  readContract: DevicesReadContract;
 }
 
 /** Keys and approvals are under row security; checking happens before the request carries an account. */

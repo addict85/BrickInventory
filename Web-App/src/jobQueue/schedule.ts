@@ -4,15 +4,15 @@ import { wakeWorker, placeJobOne } from './service';
 import type { JobsContext } from './context';
 
 /** Per scheduled kind exactly one open job `plan:<art>`: a changed time only moves faellig_ab. */
-export const planKey = (art: JobKind) => `plan:${art}`;
+export const planKey = (kind: JobKind) => `plan:${kind}`;
 
-function planOf(k: JobsContext, art: JobKind): Schedule {
-  const plan = k.arten.fromValue(art)?.zeitplan;
-  if (!plan) throw new Error(`${art} hat keinen Zeitplan`);
+function planOf(k: JobsContext, kind: JobKind): Schedule {
+  const plan = k.arten.fromValue(kind)?.zeitplan;
+  if (!plan) throw new Error(`${kind} hat keinen Zeitplan`);
   return plan;
 }
 
-export const hatSchedule = (k: JobsContext, art: JobKind): boolean => !!k.arten.fromValue(art)?.zeitplan;
+export const hatSchedule = (k: JobsContext, kind: JobKind): boolean => !!k.arten.fromValue(kind)?.zeitplan;
 
 export function readTimeOfDay(s: string | null | undefined, defaultValue: string): { h: number; min: number } {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? '').trim()) ?? /^(\d{1,2}):(\d{2})$/.exec(defaultValue);
@@ -34,54 +34,54 @@ export async function dailyTimeOfDay(
   setting: string,
   defaultValue: string,
 ): Promise<{ h: number; min: number }> {
-  return readTimeOfDay(await k.einstellungen.globalValue(setting), defaultValue);
+  return readTimeOfDay(await k.settings.globalValue(setting), defaultValue);
 }
 
-export async function nextRun(k: JobsContext, art: JobKind, now = k.uhr.datum()): Promise<Date> {
-  const plan = planOf(k, art);
+export async function nextRun(k: JobsContext, kind: JobKind, now = k.clock.datum()): Promise<Date> {
+  const plan = planOf(k, kind);
   if ('taeglich' in plan)
-    return nextTimeOfDay(await dailyTimeOfDay(k, plan.taeglich.setting, plan.taeglich.vorgabe), now);
-  const raw = plan.minuten.setting ? await k.einstellungen.globalValue(plan.minuten.setting) : null;
-  const min = Math.max(plan.minuten.mindestens ?? 1, parseInt(String(raw ?? ''), 10) || plan.minuten.vorgabe);
+    return nextTimeOfDay(await dailyTimeOfDay(k, plan.taeglich.setting, plan.taeglich.preset), now);
+  const raw = plan.minutes.setting ? await k.settings.globalValue(plan.minutes.setting) : null;
+  const min = Math.max(plan.minutes.mindestens ?? 1, parseInt(String(raw ?? ''), 10) || plan.minutes.preset);
   return new Date(now.getTime() + min * 60_000);
 }
 
 /** Without a schedule nothing: the worker calls it after every job. */
 export async function planeNext<A extends JobKind>(
   k: JobsContext,
-  art: A,
+  kind: A,
   payload: PayloadInput<A> = {} as PayloadInput<A>,
 ): Promise<string | null> {
-  if (!hatSchedule(k, art)) return null;
-  return placeJobOne(k, art, payload, {
-    schluessel: planKey(art),
-    dueAb: await nextRun(k, art),
+  if (!hatSchedule(k, kind)) return null;
+  return placeJobOne(k, kind, payload, {
+    schluessel: planKey(kind),
+    dueAb: await nextRun(k, kind),
     maxAttempts: 3,
   });
 }
 
 export async function planeAll(k: JobsContext): Promise<void> {
-  for (const a of k.arten.all()) if (a.zeitplan) await planeNext(k, a.art);
+  for (const a of k.arten.all()) if (a.zeitplan) await planeNext(k, a.kind);
 }
 
-export async function scheduleChanged(k: JobsContext, art: JobKind): Promise<void> {
-  await k.jobs.setDueDate(planKey(art), await nextRun(k, art));
-  await wakeWorker(k, art);
+export async function scheduleChanged(k: JobsContext, kind: JobKind): Promise<void> {
+  await k.jobs.setDueDate(planKey(kind), await nextRun(k, kind));
+  await wakeWorker(k, kind);
 }
 
 /** @returns false if it is running right now */
 export async function pullPlanBefore<A extends JobKind>(
   k: JobsContext,
-  art: A,
+  kind: A,
   seconds = 0,
   payload: PayloadInput<A> = {} as PayloadInput<A>,
 ): Promise<boolean> {
-  planOf(k, art);
-  if (await k.jobs.pullAppointmentBefore(planKey(art), seconds, k.arten.check(art, payload))) {
-    await wakeWorker(k, art);
+  planOf(k, kind);
+  if (await k.jobs.pullAppointmentBefore(planKey(kind), seconds, k.arten.check(kind, payload))) {
+    await wakeWorker(k, kind);
     return true;
   }
-  if (await k.jobs.runningKind(art)) return false;
-  await placeJobOne(k, art, payload, { schluessel: planKey(art), afterSeconds: seconds, maxAttempts: 3 });
+  if (await k.jobs.runningKind(kind)) return false;
+  await placeJobOne(k, kind, payload, { schluessel: planKey(kind), afterSeconds: seconds, maxAttempts: 3 });
   return true;
 }

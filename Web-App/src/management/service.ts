@@ -10,7 +10,7 @@ import { asFetchError } from '../externalSources';
 import { failDomain, type ErrorCode } from '../infra/errorTexts';
 import type { ManagementContext } from './context';
 
-const SOURCES: Record<string, (q: ManagementContext['externalSources']['quellen']) => Promise<void>> = {
+const SOURCES: Record<string, (q: ManagementContext['externalSources']['sources']) => Promise<void>> = {
   rebrickable: q => q.checkRebrickableAccess(),
   brickset: q => q.checkBricksetAccess(),
   bricklink: q => q.checkBricklinkAccess(),
@@ -26,29 +26,29 @@ const SOURCE_NAME: Record<string, string> = {
 function sourceRejection(e: unknown): ErrorCode {
   const f = asFetchError(e),
     text = f.message;
-  if (/nicht konfiguriert|nicht vollständig|not configured/i.test(text)) return 'quelle_ohne_schluessel';
+  if (/nicht konfiguriert|nicht vollständig|not configured/i.test(text)) return 'source_without_key';
   if (
     f.isTransient ||
-    (e instanceof FetchError && (e.grund === 'netz' || e.grund === 'zeitlimit')) ||
+    (e instanceof FetchError && (e.reason === 'netz' || e.reason === 'time_limit')) ||
     /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|socket hang up/i.test(text)
   )
-    return 'quelle_nicht_erreichbar';
-  if (/\b(401|403)\b|invalid|ungültig|unauthori[sz]ed/i.test(text)) return 'quelle_abgelehnt';
-  return 'quelle_test_fehlgeschlagen';
+    return 'source_unreachable';
+  if (/\b(401|403)\b|invalid|ungültig|unauthori[sz]ed/i.test(text)) return 'source_rejected';
+  return 'source_test_failed';
 }
 
 /** null if the access answers; otherwise code, name and raw reason. Only throws for an unknown source. */
 export async function checkSource(
   k: ManagementContext,
   source: string,
-): Promise<{ code: ErrorCode; quelle: string; grund: string } | null> {
+): Promise<{ code: ErrorCode; source: string; reason: string } | null> {
   const check = Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
-  if (!check) failDomain('ungueltig', 'quelle_unbekannt');
+  if (!check) failDomain('ungueltig', 'source_unknown');
   try {
-    await check(k.externalSources.quellen);
+    await check(k.externalSources.sources);
     return null;
   } catch (e) {
-    return { code: sourceRejection(e), quelle: SOURCE_NAME[source] ?? source, grund: errorMessage(e).slice(0, 200) };
+    return { code: sourceRejection(e), source: SOURCE_NAME[source] ?? source, reason: errorMessage(e).slice(0, 200) };
   }
 }
 
@@ -119,7 +119,7 @@ export async function priceJobStatus(k: ManagementContext) {
   } catch (e) {
     reportError('management:preis-stand', e);
   }
-  const running = plan?.status === 'laeuft';
+  const running = plan?.status === 'running';
   const job = {
     running: running,
     lastRun: last.lastRun ?? null,
@@ -130,8 +130,8 @@ export async function priceJobStatus(k: ManagementContext) {
     progress:
       running && plan?.progress
         ? {
-            current: plan.progress.erledigt ?? 0,
-            total: plan.progress.gesamt ?? 0,
+            current: plan.progress.done ?? 0,
+            total: plan.progress.total ?? 0,
             set: plan.progress.text ?? null,
           }
         : null,
@@ -141,10 +141,10 @@ export async function priceJobStatus(k: ManagementContext) {
 }
 
 /** false if it is already running. */
-export const runPriceJobNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('preise');
+export const runPriceJobNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('prices');
 /** Only queues the job; if that fails, the admin learns about it instead of the log. */
 export async function reloadMissingImages(k: ManagementContext): Promise<void> {
-  await k.jobQueue.placeJobOne('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxAttempts: 2 });
+  await k.jobQueue.placeJobOne('images_reload', {}, { schluessel: 'images_reload', maxAttempts: 2 });
 }
 
 export const runCatalogSyncNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('csv_sync');
@@ -156,7 +156,7 @@ export async function retryBrickset(k: ManagementContext, sn: string) {
 }
 
 export async function removeBrickset(k: ManagementContext, sn: string) {
-  await k.externalSources.quellen.fromRetryQueue(sn);
+  await k.externalSources.sources.fromRetryQueue(sn);
   await k.catalog.enqueueInstruction(sn, { nurAusweichquelle: true });
 }
 
@@ -170,7 +170,7 @@ export async function setJobSchedule(
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
-    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) failDomain('ungueltig', 'uhrzeit_ungueltig');
+    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) failDomain('ungueltig', 'time_invalid');
     await k.settings.setGlobalValue(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
@@ -181,14 +181,14 @@ export async function setJobSchedule(
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );
   } else {
-    failDomain('ungueltig', 'unbekannter_job');
+    failDomain('ungueltig', 'unknown_job');
   }
   await rescheduleJobs(k);
 }
 
 export async function rescheduleJobs(k: ManagementContext) {
   await k.jobQueue.scheduleChanged('csv_sync');
-  await k.jobQueue.scheduleChanged('preise');
+  await k.jobQueue.scheduleChanged('prices');
   await k.externalSources.brickset.prefer(await k.externalSources.brickset.dueFrom(false));
 }
 
@@ -196,7 +196,7 @@ export async function rescheduleJobs(k: ManagementContext) {
  * are counted as well. */
 export async function queueCatalogImages(kx: ManagementContext, allAgain: boolean) {
   const toForgotten = await (allAgain ? kx.management.setImageMisses() : kx.management.setImageMissesWithout404());
-  const verworfen = toForgotten.length ? await kx.images.forgetMissing(toForgotten.map(r => r.cache_key)) : 0;
+  const discarded = toForgotten.length ? await kx.images.forgetMissing(toForgotten.map(r => r.cache_key)) : 0;
   // What is already finished is not queued again.
   const present: Set<string> = new Set();
   try {
@@ -238,8 +238,8 @@ export async function queueCatalogImages(kx: ManagementContext, allAgain: boolea
     pending: open?.n ?? 0,
     skipped: candidates.length - openUrls.length,
     // Without the number it would stay unclear why images considered missing are pending again.
-    verworfen,
-    dauer_minuten: Math.ceil((open?.n ?? 0) / proMinute),
+    discarded,
+    duration_minutes: Math.ceil((open?.n ?? 0) / proMinute),
   };
 }
 /** Without a set list not the whole table: the preview notes have a

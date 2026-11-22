@@ -18,11 +18,11 @@ async function pullAfter(
   // If the catalog fails, the job tries again.
   await setSupplement(sk, setNumber, userId, null, kindWish !== 'csv');
   checkAbort(lauf);
-  const art = kindWish === 'ergaenzen' ? 'neu' : kindWish;
+  const kind = kindWish === 'ergaenzen' ? 'neu' : kindWish;
   // A failed step does not hold up the others, but it is recorded in the job's state.
   const ohne: string[] = [];
   const step = async (name: string, work: () => Promise<unknown>) => {
-    if (!(await attempts(`nacharbeit:${name} ${setNumber}`, work)).ok) ohne.push(name);
+    if (!(await attempts(`rework:${name} ${setNumber}`, work)).ok) ohne.push(name);
   };
   // The figures in every branch: the import keeps the storage location of existing
   // figures, and that way a second capture catches up on what failed the first time.
@@ -30,8 +30,8 @@ async function pullAfter(
   await importParts(sk, setNumber, userId);
   checkAbort(lauf);
 
-  if (art === 'zweit') await step('bl-nummern', () => sk.catalog.reloadBlNumbers(lauf));
-  if (art === 'neu') {
+  if (kind === 'zweit') await step('bl-nummern', () => sk.catalog.reloadBlNumbers(lauf));
+  if (kind === 'neu') {
     await step('preis', () => sk.finances.fetchPriceForSet(setNumber, userId));
     await step('anleitung', () => sk.catalog.loadSetInstructions(setNumber));
   } else {
@@ -41,7 +41,7 @@ async function pullAfter(
   await step('teile-anreichern', () => sk.catalog.enrichSetParts(setNumber));
   await step('figuren-anreichern', () => sk.catalog.enrichSetMinifigs(setNumber));
   // Brickset only fills gaps; the CSV import does not ask it when creating.
-  if (art === 'csv') await step('brickset', () => sk.catalog.fillFromBrickset(setNumber));
+  if (kind === 'csv') await step('brickset', () => sk.catalog.fillFromBrickset(setNumber));
   checkAbort(lauf);
   await step('bilder', () => sk.catalog.loadSetImages(setNumber));
   if (ohne.length) await lauf?.progress?.({ text: `ohne ${ohne.join(', ')}`, ohne });

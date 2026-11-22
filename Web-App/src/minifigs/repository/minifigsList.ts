@@ -66,7 +66,7 @@ export async function groupedMinifigs(
            MAX(${MINIFIG.name}) AS fig_name,
            -- Manually the sum of acquisitions, from a set the catalog count.
            SUM(${subsetFrom('m', 'fig')})::int AS quantity,
-           MAX(${MINIFIG.bild}) AS image_url,
+           MAX(${MINIFIG.image}) AS image_url,
            MAX(${MINIFIG.bildDatei}) AS image_local,
            m.source,
            -- Price from the latest acquisition; MAX, because the group merges
@@ -145,7 +145,7 @@ export async function manualMinifigsList(
             neu.unit_price,
             COALESCE(neu.unit_price, 0) AS purchase_price,
             COALESCE(neu.condition, 'N') AS condition,
-            ${MINIFIG.name} AS fig_name, ${MINIFIG.bild} AS image_url, ${MINIFIG.bildDatei} AS image_local,
+            ${MINIFIG.name} AS fig_name, ${MINIFIG.image} AS image_url, ${MINIFIG.bildDatei} AS image_local,
             lo.name AS storage
        FROM minifigs m
        ${teilmengeJoin('m', 'fig')}
@@ -182,10 +182,10 @@ export function minifigStats(db: DbInterface, uids: number[]) {
   return db.get<{ types: number; total_quantity: number; manual: number }>(
     `
     SELECT COUNT(*)::int AS types,
-           COALESCE(SUM(g.menge), 0)::int AS total_quantity,
+           COALESCE(SUM(g.quantity), 0)::int AS total_quantity,
            COUNT(*) FILTER (WHERE g.source = 'manual')::int AS manual
       FROM (
-        SELECT m.source, SUM(${subsetFrom('m', 'fig')} * ${quantityFrom('sm', 1)}) AS menge
+        SELECT m.source, SUM(${subsetFrom('m', 'fig')} * ${quantityFrom('sm', 1)}) AS quantity
           FROM minifigs m
           ${mengeJoin('m', 'sm', '= ANY($1)')}
           ${teilmengeJoin('m', 'fig')}

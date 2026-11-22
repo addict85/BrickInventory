@@ -217,12 +217,12 @@ export function rememberMinifigHistory(
 }
 
 /** The market price (marktpreisSql) is one of the price columns of price_cache. */
-type MarketPrice = { marktpreis: NonNullable<Tables['price_cache']['avg_price']> };
+type MarketPrice = { market_price: NonNullable<Tables['price_cache']['avg_price']> };
 
 /** The requested condition wins if it has a price. */
 export function marketPriceFromCache(dbh: DbInterface, setNumber: string, currency: string, condition: string) {
   return dbh.get<MarketPrice>(
-    `SELECT ${marketPriceSql()} AS marktpreis FROM price_cache
+    `SELECT ${marketPriceSql()} AS market_price FROM price_cache
      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marketPriceSql()} IS NOT NULL
      ORDER BY (condition = $3) DESC LIMIT 1`,
     [setNumber, currency, condition],
@@ -232,7 +232,7 @@ export function marketPriceFromCache(dbh: DbInterface, setNumber: string, curren
 /** Fallback if the cache is empty (CSV import without quota). */
 export function marketPriceFromHistory(dbh: DbInterface, setNumber: string, currency: string, condition: string) {
   return dbh.get<MarketPrice>(
-    `SELECT ${marketPriceSql()} AS marktpreis FROM price_history
+    `SELECT ${marketPriceSql()} AS market_price FROM price_history
         WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marketPriceSql()} IS NOT NULL
         ORDER BY (condition = $3) DESC, recorded_at DESC LIMIT 1`,
     [setNumber, currency, condition],

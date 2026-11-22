@@ -63,9 +63,9 @@ export async function loadImage(
   kopfzeilen: Record<string, string> = {},
   reportWarning: (text: string) => void = () => {},
 ): Promise<boolean> {
-  let a: Awaited<ReturnType<ImagesContext['externalSources']['quellen']['oeffneBild']>>;
+  let a: Awaited<ReturnType<ImagesContext['externalSources']['sources']['oeffneBild']>>;
   try {
-    a = await k.externalSources.quellen.oeffneBild(address, {
+    a = await k.externalSources.sources.oeffneBild(address, {
       hosts: allowedHosts,
       maxBytes: IMAGE_MAX_BYTES,
       zeitlimitMs: 30_000,
@@ -89,11 +89,11 @@ export async function loadImage(
   // the same temporary file.
   const between = `${target}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.teil`;
   try {
-    await pipeline(a.strom(), fs.createWriteStream(between));
+    await pipeline(a.stream(), fs.createWriteStream(between));
     await fs.promises.rename(between, target);
     return true;
   } catch (e) {
-    if (e instanceof FetchError && e.grund === 'zu-gross') reportWarning(`Bild zu gross: ${address.slice(0, 80)}`);
+    if (e instanceof FetchError && e.reason === 'zu-gross') reportWarning(`Bild zu gross: ${address.slice(0, 80)}`);
     await fs.promises.rm(between, { force: true });
     return false;
   }

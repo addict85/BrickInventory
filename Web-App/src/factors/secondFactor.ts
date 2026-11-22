@@ -86,7 +86,7 @@ export function otpauthAddress(secret: string, account: string, base: string | n
 
 /** The link for the account, with this service set's base URL. */
 export function otpauthFor(k: FactorsContext, secret: string, account: string): string {
-  return otpauthAddress(secret, account, k.konfig.appBaseUrl);
+  return otpauthAddress(secret, account, k.config.appBaseUrl);
 }
 
 function normalizeCode(code: string): string {
@@ -124,12 +124,12 @@ export function isActive(k: FactorsContext, uid: number): Promise<boolean> {
 export async function status(
   k: FactorsContext,
   uid: number,
-): Promise<{ aktiv: boolean; codes_uebrig: number; alte_codes_bis: string | null }> {
+): Promise<{ active: boolean; codes_left: number; old_codes_until: string | null }> {
   const r = await k.secondFactor.factorStatus(uid);
   return {
-    aktiv: r.active,
-    codes_uebrig: r.remaining,
-    alte_codes_bis: r.legacyUntil ? r.legacyUntil.toISOString() : null,
+    active: r.active,
+    codes_left: r.remaining,
+    old_codes_until: r.legacyUntil ? r.legacyUntil.toISOString() : null,
   };
 }
 
@@ -146,7 +146,7 @@ export async function confirmSetup(k: FactorsContext, uid: number, code: string)
     const step = matchingStep(
       decrypt(z.secret, secondFactorContext(uid)) ?? '',
       String(code ?? '').trim(),
-      t.uhr.jetzt(),
+      t.clock.now(),
     );
     if (step === null) return null;
     await repo.activate(t.db, uid, step);
@@ -167,7 +167,7 @@ export async function checkCode(
   if (/^\d{6}$/.test(input)) {
     if (!withOneTimeCode) return null;
     const z = await k.secondFactor.activeSecret(uid);
-    const step = z ? matchingStep(decrypt(z.secret, secondFactorContext(uid)) ?? '', input, k.uhr.jetzt()) : null;
+    const step = z ? matchingStep(decrypt(z.secret, secondFactorContext(uid)) ?? '', input, k.clock.now()) : null;
     if (step === null) return null;
     return (await k.secondFactor.consumeStep(uid, step)) ? 'totp' : null;
   }

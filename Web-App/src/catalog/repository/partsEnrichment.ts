@@ -27,7 +27,7 @@ export function setPartsCatalog(db: DbInterface, setNumber: string) {
 export function blMappings(db: DbInterface, partNumbers: string[]) {
   return db.all<{ rb_id: string; bl_id: string | null }>(
     `SELECT rb_id, bl_id FROM bl_mapping
-     WHERE art = 'part' AND rb_id = ANY($1::text[])`,
+     WHERE type = 'part' AND rb_id = ANY($1::text[])`,
     [partNumbers],
   );
 }

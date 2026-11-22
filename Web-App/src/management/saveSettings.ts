@@ -9,7 +9,7 @@ import { isSensitive } from './dataExport';
 import { bricksetLimitSet } from './service';
 import type { ManagementContext } from './context';
 
-type SettingsInput = Input<'POST /api/v1/settings'>;
+type SettingsInput = Input<'POST /api/v2/settings'>;
 
 export interface SaveSettingsOptions {
   uid: number;
@@ -62,16 +62,16 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   const global = o.verwalter && hasGlobalValues(e);
   if (global) {
     if (GLOBAL_SETTINGS.some(k => e[k] !== undefined && !isValidGlobalValue(k, e[k])))
-      failDomain('ungueltig', 'wert_ungueltig');
+      failDomain('ungueltig', 'value_invalid');
     if (
       String(e.registration_enabled) === '1' &&
       (await kx.settings.globalValue('registration_enabled')) !== '1' &&
       !(await kx.mail.mailReady(e))
     )
-      failDomain('ungueltig', 'registrierung_braucht_mail');
+      failDomain('ungueltig', 'registration_needs_mail');
   }
   const sensitive = global ? await sensitiveKeys(kx, e) : [];
-  if (sensitive.length && !e.admin_password) failDomain('ungueltig', 'aktuelles_passwort_erforderlich');
+  if (sensitive.length && !e.admin_password) failDomain('ungueltig', 'current_password_required');
   if (sensitive.length && !(await o.confirm(e.admin_password))) return false;
 
   // The currency applies to the whole household and therefore needs the system frame, which

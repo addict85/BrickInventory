@@ -41,7 +41,7 @@ declare global {
       /** Set by requireLoginOrToken when authenticated via bearer/query token. */
       tokenUserId?: number;
       /** Why a presented token did not apply, if there is more to say than "invalid". */
-      tokenRejection?: 'token_rotation_noetig' | 'zu_viele_anfragen';
+      tokenRejection?: 'token_rotation_required' | 'too_many_requests';
       /** Body and query after the check against the contract (src/http/contractRouter.ts);
        * their type is set by Anfrage<K> from the contract. */
       eingabe: unknown;

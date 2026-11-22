@@ -7,7 +7,7 @@ export const fileMaster = (setNumber: string) => String(setNumber).replace(/[^a-
 
 type Stand = { nummern: Set<string>; anleitungen: Set<string>; am: number };
 /** Per set of services; a household change clears it because it shifts the scope. */
-const merker = (k: ImagesContext) =>
+const marker = (k: ImagesContext) =>
   k.faecher.slot('blickfeld', () => {
     const m = new Map<number, Stand>();
     k.household.atHouseholdChange(() => m.clear());
@@ -21,12 +21,12 @@ const HITS_MS = 60_000,
 
 async function lade(k: ImagesContext, uid: number): Promise<Stand> {
   const rows = await k.imageScope.setsInScope(await k.household.scopeIds(uid));
-  const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: k.uhr.jetzt() };
+  const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: k.clock.now() };
   for (const z of rows) {
     s.nummern.add(fileMaster(z.set_number));
     if (z.besitz) s.anleitungen.add(fileMaster(z.set_number));
   }
-  const _cache = merker(k);
+  const _cache = marker(k);
   if (_cache.size >= ACCOUNTS_AT_MOST) _cache.delete(_cache.keys().next().value!);
   _cache.set(uid, s);
   return s;
@@ -36,14 +36,14 @@ async function inScope(
   k: ImagesContext,
   uid: number,
   master: string,
-  art: 'nummern' | 'anleitungen',
+  kind: 'nummern' | 'anleitungen',
 ): Promise<boolean> {
-  const s = merker(k).get(uid);
-  const alter = s ? k.uhr.jetzt() - s.am : Infinity;
-  const inside = !!s?.[art].has(master);
+  const s = marker(k).get(uid);
+  const alter = s ? k.clock.now() - s.am : Infinity;
+  const inside = !!s?.[kind].has(master);
   if (inside && alter < HITS_MS) return true;
   if (s && !inside && alter < REJECTION_MS) return false;
-  return (await lade(k, uid))[art].has(master);
+  return (await lade(k, uid))[kind].has(master);
 }
 
 /** Path under /images/: under sets/ only files, no subfolders. */

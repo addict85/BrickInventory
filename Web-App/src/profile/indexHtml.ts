@@ -83,17 +83,17 @@ export function stripComments(html: string): string {
 /** Only the default sits in the cache; logged in, the user's own theme counts. */
 async function currentTheme(k: ProfileContext, userId?: number): Promise<string> {
   if (userId) {
-    const { eigenes } = await k.einstellungen.themeFor(userId);
-    if (eigenes) return eigenes;
+    const { own } = await k.settings.themeFor(userId);
+    if (own) return own;
   }
-  if (Z.theme !== null && k.uhr.jetzt() - Z.themeAt < THEME_TTL_MS) return Z.theme;
+  if (Z.theme !== null && k.clock.now() - Z.themeAt < THEME_TTL_MS) return Z.theme;
   // The start page still loads with a disrupted database, then classic and uncached.
-  const read = await attempts('index-html:design', k.einstellungen.globalValue('app_theme'));
+  const read = await attempts('index-html:design', k.settings.globalValue('app_theme'));
   if (!read.ok) return 'classic';
   const stored = read.wert;
   const chosen: string = stored && DESIGNS.includes(stored) ? stored : 'classic';
   Z.theme = chosen;
-  Z.themeAt = k.uhr.jetzt();
+  Z.themeAt = k.clock.now();
   return chosen;
 }
 
@@ -119,7 +119,7 @@ async function currentLang(k: ProfileContext, userId?: number): Promise<string> 
   if (!userId) return 'de';
   // Only the user's own setting: without it German applies, not a global default.
   // A read error goes to startPageHtml(), which then serves the file unchanged.
-  const language = String((await k.einstellungen.userSettings(userId)).language ?? 'de');
+  const language = String((await k.settings.userSettings(userId)).language ?? 'de');
   return LANGS.includes(language) ? language : 'de';
 }
 
@@ -127,12 +127,12 @@ async function currentLang(k: ProfileContext, userId?: number): Promise<string> 
 /** The theme sits in the server-rendered <html data-theme>; without invalidation it would
  * keep the old one until restart. */
 export async function setGlobalTheme(k: ProfileContext, theme: string): Promise<void> {
-  await k.einstellungen.setGlobalValue('app_theme', theme);
+  await k.settings.setGlobalValue('app_theme', theme);
   forgetTheme();
 }
 
 export async function startPageHtml(k: ProfileContext, userId?: number): Promise<string> {
-  const html = await readIndex(k.konfig.production);
+  const html = await readIndex(k.config.production);
   try {
     const theme = await currentTheme(k, userId);
     let out = /<html[^>]*\sdata-theme=/i.test(html)

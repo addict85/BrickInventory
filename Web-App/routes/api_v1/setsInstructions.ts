@@ -29,22 +29,26 @@ const beforeTheUpload =
     if (!(await d.sets.setBelongsAccount(uid, pathParam(req, 'setNumber')))) notFound();
     const length = Number(req.headers['content-length']) || 0;
     if (!(await quotaSufficesFor(path.join(INSTRUCTION_ROOT, String(uid)), length)))
-      failDomain('zu_gross', 'upload_kontingent_voll', { mb: uploadQuotaMb() });
-    if (!(await totalSufficesFor(length))) failDomain('speicher_voll', 'upload_gesamt_voll', { mb: uploadTotalMb() });
+      failDomain('zu_gross', 'upload_quota_full', { mb: uploadQuotaMb() });
+    if (!(await totalSufficesFor(length))) failDomain('speicher_voll', 'upload_total_full', { mb: uploadTotalMb() });
     next();
   };
 
 export function buildSetsInstructionsRouter(d: Pick<Services, 'account' | 'sets'>) {
   const { requireToken } = guardFor(d.account);
-  const router = contractRouter('/api/v1');
+  const router = contractRouter('/api/v2');
 
-  router.endpoint('POST /api/v1/sets/:setNumber/instructions', requireToken, async (req, res) => {
+  router.endpoint('POST /api/v2/sets/:setNumber/instructions', requireToken, async (req, res) => {
     // The administrator deletes shared instructions: the same step guard as every administrator route.
     const admin = isAdmin(req);
-    if (admin && !(await released(d.account, req, res, 'verwaltung'))) return;
-    const { instructions, auftrag } = await d.sets.loadInstructionsNew(req.apiUser.user_id, req.pfad.setNumber, admin);
+    if (admin && !(await released(d.account, req, res, 'admin'))) return;
+    const { instructions, auftrag } = await d.sets.loadInstructionsNew(
+      req.apiUser.user_id,
+      req.pathArgs.setNumber,
+      admin,
+    );
     res.status(202);
-    return { instructions, count: instructions.length, auftrag_id: auftrag };
+    return { instructions, count: instructions.length, job_id: auftrag };
   });
 
   const uploadInstr = privaterReceive({
@@ -55,25 +59,25 @@ export function buildSetsInstructionsRouter(d: Pick<Services, 'account' | 'sets'
   });
 
   router.endpoint(
-    'POST /api/v1/sets/:setNumber/instructions/upload',
+    'POST /api/v2/sets/:setNumber/instructions/upload',
     requireToken,
     accountGate('upload'),
     beforeTheUpload(d),
     uploadInstr.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'keine_datei');
+      if (!req.file) failDomain('ungueltig', 'no_file');
       await checkReceivedFile(INSTRUCTION_ROOT, req.file.path, req.file.mimetype);
       const uid = signedInUserId(req),
-        sn = req.pfad.setNumber;
-      const desc = (req.eingabe.description || req.file.originalname).substring(0, 200);
+        sn = req.pathArgs.setNumber;
+      const desc = (req.input.description || req.file.originalname).substring(0, 200);
       const relPath = `/data/uploads/${uid}/${req.file.filename}`;
       await d.sets.rememberInstruction(uid, sn, relPath, desc);
       return { instruction: { url: relPath, description: desc, local_path: relPath } };
     },
   );
 
-  router.endpoint('DELETE /api/v1/sets/:setNumber/instructions/:instrId', requireToken, async req => {
-    await d.sets.deleteInstruction(signedInUserId(req), req.pfad.instrId);
+  router.endpoint('DELETE /api/v2/sets/:setNumber/instructions/:instrId', requireToken, async req => {
+    await d.sets.deleteInstruction(signedInUserId(req), req.pathArgs.instrId);
     return {};
   });
   return router;

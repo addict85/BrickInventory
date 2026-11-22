@@ -10,19 +10,19 @@ import type { InventoryContext } from './context';
  * @returns how many rows were affected (0 = there is nothing to set) */
 export async function setLocation(
   k: InventoryContext,
-  art: LagerArt,
+  kind: LagerArt,
   ownerIdsChoice: Writer | number[],
   keyRaw: (string | number)[],
-  ort: string | null,
+  location: string | null,
 ): Promise<number> {
   const key = keyRaw.map(String);
   const ownerIds = await k.household.writeAreaFrom(ownerIdsChoice);
-  if (ort === null) return storages.sortLocationTo(k.db, art, ownerIds, null, key);
+  if (location === null) return storages.sortLocationTo(k.db, kind, ownerIds, null, key);
   // A new name goes into the stock — before the assignment, which finds it via the ID.
   return k.transact(async t => {
-    const ids = await storages.ownerWithRow(t.db, art, ownerIds, key);
+    const ids = await storages.ownerWithRow(t.db, kind, ownerIds, key);
     if (!ids.length) return 0;
-    await storages.takeLocationOn(t.db, ids, ort);
-    return storages.sortLocationTo(t.db, art, ids, ort, key);
+    await storages.takeLocationOn(t.db, ids, location);
+    return storages.sortLocationTo(t.db, kind, ids, location, key);
   });
 }

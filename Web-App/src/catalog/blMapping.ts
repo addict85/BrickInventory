@@ -11,19 +11,19 @@ export type { BlArt };
 
 /** Only for verified sources (Rebrickable, BrickLink); the same number means
  * "no differing one". What an account enters goes to rememberOwnBlNumber. */
-export function rememberBlNumber(k: CatalogContext, art: BlArt, rbId: string, blId: string): Promise<void> {
-  return k.blMapping.writeBlNumber(art, rbId, blId);
+export function rememberBlNumber(k: CatalogContext, kind: BlArt, rbId: string, blId: string): Promise<void> {
+  return k.blMapping.writeBlNumber(kind, rbId, blId);
 }
 
 /** Applies only to this account, in all read paths before the shared mapping. */
 export function rememberOwnBlNumber(
   k: CatalogContext,
   uid: number,
-  art: BlArt,
+  kind: BlArt,
   rbId: string,
   blId: string,
 ): Promise<void> {
-  return k.blMapping.writeBlNumberOwn(uid, art, rbId, blId || rbId);
+  return k.blMapping.writeBlNumberOwn(uid, kind, rbId, blId || rbId);
 }
 
 const konten = (k: number | number[] | null | undefined): number[] => (k == null ? [] : Array.isArray(k) ? k : [k]);
@@ -31,7 +31,7 @@ const konten = (k: number | number[] | null | undefined): number[] => (k == null
 /** The last entry per number. */
 export async function rememberBlNumbers(
   k: CatalogContext,
-  art: BlArt,
+  kind: BlArt,
   pairs: { rbId: string; blId: string }[],
   dbh?: { run: (sql: string, p?: unknown[]) => Promise<unknown> },
 ) {
@@ -39,7 +39,7 @@ export async function rememberBlNumbers(
   if (!unique.length) return;
   await writeBlNumbers(
     dbh ?? k.db,
-    art,
+    kind,
     unique.map(p => p.rbId),
     unique.map(p => p.blId),
   );
@@ -47,42 +47,42 @@ export async function rememberBlNumbers(
 
 /** So that the same part is not queried again and again; a mapping
  * once found stays. */
-export function rememberBlNumberUnchanged(k: CatalogContext, art: BlArt, rbId: string): Promise<void> {
-  return k.blMapping.noteLookedUp(art, rbId);
+export function rememberBlNumberUnchanged(k: CatalogContext, kind: BlArt, rbId: string): Promise<void> {
+  return k.blMapping.noteLookedUp(kind, rbId);
 }
 
 /** null for "no differing one known" — no row and row without value
  * together. Whoever must tell them apart asks blFetchNumber. */
 export function blNumberOf(
   k: CatalogContext,
-  art: BlArt,
+  kind: BlArt,
   rbId: string,
   konto?: number | number[] | null,
 ): Promise<string | null> {
-  return k.blMapping.differingNumber(art, rbId, konten(konto));
+  return k.blMapping.differingNumber(kind, rbId, konten(konto));
 }
 
 /** null only if it was never looked up: preloading prices does not remember
  * failures and needs this distinction. */
 export function blFetchNumber(
   k: CatalogContext,
-  art: BlArt,
+  kind: BlArt,
   rbId: string,
   konto?: number | number[] | null,
 ): Promise<string | null> {
-  return k.blMapping.effectiveNumber(art, rbId, konten(konto));
+  return k.blMapping.effectiveNumber(kind, rbId, konten(konto));
 }
 
 // One query for many numbers; every row comes back so that nothing is asked twice.
 export async function blFetchNumbers(
   k: CatalogContext,
-  art: BlArt,
+  kind: BlArt,
   rbIds: string[],
   konto?: number | number[] | null,
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!rbIds.length) return out;
-  const rows = await k.blMapping.effectiveNumbers(art, rbIds, konten(konto));
+  const rows = await k.blMapping.effectiveNumbers(kind, rbIds, konten(konto));
   for (const z of rows) out.set(String(z.rb_id), String(z.nr));
   return out;
 }

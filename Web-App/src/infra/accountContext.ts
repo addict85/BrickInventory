@@ -21,7 +21,7 @@ export interface PathTransaction {
 
 interface Frame {
   /** Read only when asking: login sets the account later on the same object. */
-  quelle: AccountSource | null;
+  source: AccountSource | null;
   system: string | null;
   web: boolean;
   /** The open transaction of this call path: only for guards, never a way to it. */
@@ -29,13 +29,13 @@ interface Frame {
   companion: unknown;
   rid: string | null;
 }
-const LEER: Frame = { quelle: null, system: null, web: false, transaktion: null, companion: null, rid: null };
+const LEER: Frame = { source: null, system: null, web: false, transaktion: null, companion: null, rid: null };
 const frame = new AsyncLocalStorage<Frame>();
 const now = (): Frame => frame.getStore() ?? LEER;
 const withFrame = <T>(teil: Partial<Frame>, f: () => T): T => frame.run({ ...now(), ...teil }, f);
 
 export function currentAccount(): { id: number; verwalter: boolean } | null {
-  const q = now().quelle;
+  const q = now().source;
   if (!q) return null;
   const id = Number(q.apiUser?.user_id ?? q.session?.userId ?? q.tokenUserId);
   if (!Number.isInteger(id) || id <= 0) return null;
@@ -45,18 +45,18 @@ export function currentAccount(): { id: number; verwalter: boolean } | null {
 
 /** Work across account boundaries: queries then go via the system role (BYPASSRLS, migration 0112).
  * The reason stands at the call, findable via `inSystemContext(`. */
-export function inSystemContext<T>(grund: string, f: () => T): T {
-  return withFrame({ system: grund }, f);
+export function inSystemContext<T>(reason: string, f: () => T): T {
+  return withFrame({ system: reason }, f);
 }
 
 /** On behalf of an account (job): without an inherited system frame and not as an HTTP request. */
-export function asRequest<T>(quelle: AccountSource, f: () => T): T {
-  return withFrame({ system: null, web: false, quelle }, f);
+export function asRequest<T>(source: AccountSource, f: () => T): T {
+  return withFrame({ system: null, web: false, source }, f);
 }
 
 /** An HTTP request inherits no system frame; its own is carried by the web system role (db/database.ts). */
-export function asWebRequest<T>(quelle: AccountSource, f: () => T): T {
-  return withFrame({ system: null, web: true, quelle }, f);
+export function asWebRequest<T>(source: AccountSource, f: () => T): T {
+  return withFrame({ system: null, web: true, source }, f);
 }
 
 export function rowsContext(): { system: boolean; web: boolean; konto: number | null } {

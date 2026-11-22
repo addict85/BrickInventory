@@ -25,12 +25,12 @@ export interface ManualEntry {
 export function manualEntries(
   db: DbInterface,
   l: FinancesReadContract,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   uids: number[],
   currency: string,
 ) {
   return db.all<ManualEntry>(
-    art === 'part'
+    kind === 'part'
       ? `SELECT id, user_id, part_number, color_id, quantity,
               ${purchasePriceColumns('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
@@ -77,7 +77,7 @@ export function catalogFeatures(db: DbInterface, setNumbers: string[]) {
   );
 }
 
-export interface ManuelleFigur {
+export interface ManualMinifig {
   id: number;
   user_id: number;
   set_number: string | null;
@@ -92,13 +92,13 @@ export interface ManuelleFigur {
 }
 
 export function manualMinifigsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
-  return db.all<ManuelleFigur>(
+  return db.all<ManualMinifig>(
     `
     SELECT m.id, m.user_id, m.set_number, m.fig_number,
            ${blNumberSql('m.fig_number', 'blzf')} AS bl_fig_number,
            ${subsetFrom('m', 'fig')} AS quantity,
            m.source, m.storage_id,
-           ${MINIFIG.name} AS fig_name, ${MINIFIG.bild} AS image_url, ${MINIFIG.bildDatei} AS image_local
+           ${MINIFIG.name} AS fig_name, ${MINIFIG.image} AS image_url, ${MINIFIG.bildDatei} AS image_local
       FROM ${l.figurBestand('= ANY($1)')} m
       ${l.teilmengeJoin('m', 'fig')}
       ${blJoin('m.fig_number', 'fig', 'm.user_id', 'blzf')}
@@ -108,7 +108,7 @@ export function manualMinifigsToValuation(db: DbInterface, l: FinancesReadContra
   );
 }
 
-export interface ManuellesTeil {
+export interface ManualPart {
   id: number;
   user_id: number;
   set_number: string | null;
@@ -128,7 +128,7 @@ export interface ManuellesTeil {
 }
 
 export function manualPartsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
-  return db.all<ManuellesTeil>(
+  return db.all<ManualPart>(
     `
     SELECT p.id, p.user_id, p.set_number, p.part_number,
            ${blNumberSql('p.part_number')} AS bl_part_number,
@@ -138,7 +138,7 @@ export function manualPartsToValuation(db: DbInterface, l: FinancesReadContract,
            p.storage_id, p.added_at,
            ${TEIL.name} AS part_name, ${TEIL.kategorie} AS category_name,
            ${TEIL.farbname} AS color_name, ${TEIL.farbcode} AS color_hex,
-           ${TEIL.bild} AS image_url, ${TEIL.bildDatei} AS image_local
+           ${TEIL.image} AS image_url, ${TEIL.bildDatei} AS image_local
       FROM ${l.teilBestand('= ANY($1)')} p
       ${l.teilmengeJoin('p', 'part')}
       ${blJoin('p.part_number', 'part', 'p.user_id')}

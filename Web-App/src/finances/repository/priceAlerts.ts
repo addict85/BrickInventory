@@ -14,7 +14,7 @@ export type AlarmRow = Columns<
   | 'triggered'
   | 'last_triggered_at'
   | 'last_price'
-> & { besitzt: boolean };
+> & { owns: boolean };
 
 /** The app makes the row clickable based on this; $3 is the scope. */
 /** If the target already has an alert (e.g. on an owned set), its own applies;
@@ -29,7 +29,7 @@ export async function transferAlarm(db: DbInterface, zuId: number, ofId: number,
 }
 
 const owns = (l: FinancesReadContract) =>
-  `EXISTS (SELECT 1 FROM ${l.setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS besitzt`;
+  `EXISTS (SELECT 1 FROM ${l.setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS owns`;
 
 export function writeAlarm(
   db: DbInterface,
@@ -77,7 +77,7 @@ export function alertsInScope(db: DbInterface, l: FinancesReadContract, userId: 
             a.set_number, a.condition, a.direction, a.threshold, a.currency_code,
             a.triggered, a.last_triggered_at, a.last_price,
             rb.name, rb.set_img_url, c.image_local, c.image_url,
-            (s.id IS NOT NULL) AS besitzt
+            (s.id IS NOT NULL) AS owns
        FROM price_alerts a
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
        -- sets sagt, ob der Haushalt das Set BESITZT (daran haengt die Spalte
@@ -114,11 +114,11 @@ export function allActiveAlerts(db: DbInterface, setNumber: string) {
       'price_alerts',
       'user_id' | 'set_number' | 'condition' | 'direction' | 'threshold' | 'currency_code' | 'triggered'
     > &
-      Columns<'users', 'email' | 'username'> & { sprache: NonNullable<Tables['user_settings']['value']> }
+      Columns<'users', 'email' | 'username'> & { language: NonNullable<Tables['user_settings']['value']> }
   >(
     `SELECT a.user_id, a.set_number, a.condition, a.direction, a.threshold,
             a.currency_code, a.triggered, u.email, u.username,
-            COALESCE(us.value, 'de') AS sprache
+            COALESCE(us.value, 'de') AS language
        FROM price_alerts a
        JOIN users u ON u.id = a.user_id
        LEFT JOIN user_settings us ON us.user_id = a.user_id AND us.key = 'language'
@@ -128,8 +128,8 @@ export function allActiveAlerts(db: DbInterface, setNumber: string) {
 }
 
 export function cachePriceForAlarm(db: DbInterface, set_number: string, condition: string, currency_code: string) {
-  return db.get<{ marktpreis: number | null }>(
-    `SELECT ${marketPriceSql()} AS marktpreis FROM price_cache
+  return db.get<{ market_price: number | null }>(
+    `SELECT ${marketPriceSql()} AS market_price FROM price_cache
         WHERE set_number=$1 AND condition=$2 AND currency_code=$3`,
     [set_number, condition, currency_code],
   );

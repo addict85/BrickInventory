@@ -24,24 +24,24 @@ export function withContract<Z, L>(access: Z, l: L) {
 /** Within a transaction the connection already belongs to a role: silently without a system frame the
  * call would run under row security where it expects all accounts. Enter the frame beforehand. */
 export class SystemFrameInTransaction extends Error {
-  constructor(grund: string) {
-    super(`Systemrahmen „${grund}“ in einer Transaktion ohne Systemrahmen: vor der Transaktion betreten.`);
+  constructor(reason: string) {
+    super(`Systemrahmen „${reason}“ in einer Transaktion ohne Systemrahmen: vor der Transaktion betreten.`);
   }
 }
 
-export function inSystemFrame<R>(access: { inTransaction(): boolean }, grund: string, f: () => R): R {
-  if (!access.inTransaction()) return inSystemContext(grund, f);
+export function inSystemFrame<R>(access: { inTransaction(): boolean }, reason: string, f: () => R): R {
+  if (!access.inTransaction()) return inSystemContext(reason, f);
   if (rowsContext().system) return f();
-  throw new SystemFrameInTransaction(grund);
+  throw new SystemFrameInTransaction(reason);
 }
 
 /** Like mit(), but in the system frame: the reason stands at the call, findable via `imSystem(`. */
 export function imSystem<Z extends { inTransaction(): boolean }, A extends unknown[], R>(
   access: Z,
-  grund: string,
+  reason: string,
   f: (z: Z, ...a: A) => R,
 ): (...a: A) => R {
-  return (...a) => inSystemFrame(access, grund, () => f(access, ...a));
+  return (...a) => inSystemFrame(access, reason, () => f(access, ...a));
 }
 
 /** Bound repositories, services of lower areas and the unit of work. `transaktion` passes

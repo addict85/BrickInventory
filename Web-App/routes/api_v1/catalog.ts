@@ -5,14 +5,14 @@ import { notFound } from '../../src/infra/errorTexts';
 
 export function buildCatalogRouter(d: Pick<Services, 'account' | 'catalog'>) {
   const { requireToken } = guardFor(d.account);
-  const router = contractRouter('/api/v1');
+  const router = contractRouter('/api/v2');
 
-  router.endpoint('GET /api/v1/catalog/meta', requireToken, async _req => {
+  router.endpoint('GET /api/v2/catalog/meta', requireToken, async _req => {
     return { ...(await d.catalog.catalogMeta()) };
   });
 
-  router.endpoint('GET /api/v1/catalog/year-verteilung', requireToken, async req => {
-    const q = req.abfrage;
+  router.endpoint('GET /api/v2/catalog/year-distribution', requireToken, async req => {
+    const q = req.queryArgs;
     const years = await d.catalog.yearDistribution(
       { q: (q.q ?? '').trim(), themeId: q.theme_id || null },
       q.sort !== 'year_asc',
@@ -20,8 +20,8 @@ export function buildCatalogRouter(d: Pick<Services, 'account' | 'catalog'>) {
     return { years };
   });
 
-  router.endpoint('GET /api/v1/catalog/sets', requireToken, async req => {
-    const q = req.abfrage;
+  router.endpoint('GET /api/v2/catalog/sets', requireToken, async req => {
+    const q = req.queryArgs;
     const page = Math.max(1, q.page ?? 1);
     const limit = Math.min(200, Math.max(1, q.page_size ?? q.limit ?? 60));
     const pageNo = await d.catalog.catalogPage(
@@ -39,15 +39,15 @@ export function buildCatalogRouter(d: Pick<Services, 'account' | 'catalog'>) {
     return { ...pageNo };
   });
 
-  router.endpoint('GET /api/v1/catalog/sets/:setNumber', requireToken, async req => {
-    const set = await d.catalog.catalogSet(req.apiUser.user_id, req.pfad.setNumber);
-    if (!set) notFound((await d.catalog.catalogLoaded()) ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen');
+  router.endpoint('GET /api/v2/catalog/sets/:setNumber', requireToken, async req => {
+    const set = await d.catalog.catalogSet(req.apiUser.user_id, req.pathArgs.setNumber);
+    if (!set) notFound((await d.catalog.catalogLoaded()) ? 'set_not_in_catalog' : 'catalog_not_loaded');
     return { set };
   });
 
   // Links for a whole catalog page from one query, without a BrickLink call.
-  router.endpoint('GET /api/v1/catalog/bricklink', requireToken, async req => {
-    const raw = (req.abfrage.sets ?? '').trim();
+  router.endpoint('GET /api/v2/catalog/bricklink', requireToken, async req => {
+    const raw = (req.queryArgs.sets ?? '').trim();
     if (!raw) {
       return { links: {} };
     }

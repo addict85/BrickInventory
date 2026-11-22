@@ -40,10 +40,10 @@ export async function released(
     // Without a family (no created_at) there is no key: closed, not open.
     const p = f ? await konto.checkApproval(f, action) : 'kein_schluessel';
     if (p === 'frei') return true;
-    sendError(req, res, 'verboten', p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
+    sendError(req, res, 'verboten', p === 'kein_schluessel' ? 'device_key_missing' : 'step_approval_required');
   } catch (e) {
     reportError('schrittschutz', e);
-    sendError(req, res, 'nicht_verfuegbar', 'server_ausgelastet');
+    sendError(req, res, 'nicht_verfuegbar', 'server_busy');
   }
   return false;
 }
@@ -54,16 +54,16 @@ export async function asAdmin(konto: AccountServices, req: Request): Promise<boo
   if (!isAdmin(req)) return false;
   if (!isAppToken(req)) return true;
   const f = familyFrom(req.apiUser);
-  return !!f && (await konto.checkApproval(f, 'verwaltung')) === 'frei';
+  return !!f && (await konto.checkApproval(f, 'admin')) === 'frei';
 }
 
 /** Behind loginAtInbox, before reading the body. Which steps are protected is said by
- * the marker `schritt` on the contract; res.locals.schritt records what was released here,
+ * the marker `schritt` on the contract; res.locals.step records what was released here,
  * so vertragsRouter checks at the route itself (a second line, in case the mapping here goes wrong). */
 export function stepProtectionAtInbox(konto: AccountServices) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const action = routeForRequest(req.method, req.baseUrl + req.path)?.schritt;
-    res.locals.schritt = action ?? null;
+    const action = routeForRequest(req.method, req.baseUrl + req.path)?.step;
+    res.locals.step = action ?? null;
     if (action) requireRelease(konto, req, res, next, action);
     else next();
   };

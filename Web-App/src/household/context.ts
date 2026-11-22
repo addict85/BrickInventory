@@ -8,12 +8,12 @@ import * as repository from './repository';
 import type { Clock } from '../infra/clock';
 
 export interface HouseholdDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
   /** The households' memory per access; createHousehold creates it. */
   faecher: Compartments;
-  einstellungen: SettingsServices;
-  lesevertrag: HouseholdReadContract;
+  settings: SettingsServices;
+  readContract: HouseholdReadContract;
 }
 
 // Invitations are only visible to their account (0115); whoever redeems is not part of it, cleanup applies to all.

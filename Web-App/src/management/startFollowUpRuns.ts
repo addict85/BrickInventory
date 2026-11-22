@@ -1,4 +1,4 @@
-/** One job 'nachlauf' per step, so that an error is retried and visible in the admin. */
+/** One job 'followup' per step, so that an error is retried and visible in the admin. */
 import { type Payload, checkAbort, type JobRun } from '../jobQueue';
 import type { ManagementContext } from './context';
 
@@ -8,7 +8,7 @@ async function encryptSecrets(k: ManagementContext): Promise<void> {
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
 }
 
-/** The steps of the follow-up after startup; the payload of the kind 'nachlauf' knows exactly these. */
+/** The steps of the follow-up after startup; the payload of the kind 'followup' knows exactly these. */
 export const FOLLOW_UP_STEPS = [
   'geheimnisse',
   'vorschauen',
@@ -40,7 +40,7 @@ function runners(k: ManagementContext): Record<FollowUpStep, () => Promise<unkno
   };
 }
 
-async function runFollowUp(k: ManagementContext, n: Payload<'nachlauf'>, lauf?: JobRun): Promise<void> {
+async function runFollowUp(k: ManagementContext, n: Payload<'followup'>, lauf?: JobRun): Promise<void> {
   checkAbort(lauf);
   await runners(k)[n.schritt]();
 }

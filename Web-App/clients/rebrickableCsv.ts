@@ -56,5 +56,5 @@ export async function loadCatalogCsv(file: string, target: string, o: CsvLaden =
     },
   });
   // An abort ends the request (fetch.ts) and thereby the whole chain.
-  await pipeline(a.strom(), counter, createGunzip(), deckel, fs.createWriteStream(target));
+  await pipeline(a.stream(), counter, createGunzip(), deckel, fs.createWriteStream(target));
 }

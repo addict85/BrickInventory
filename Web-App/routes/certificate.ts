@@ -13,8 +13,8 @@ export function buildCertificateRouter() {
         .status(403)
         .type('text/plain')
         .send('Das Wurzelzertifikat gibt es nur über HTTPS (https://<Server>/ca.crt).\n');
-    const stand = await tlsStand();
-    if (!stand) return res.status(404).type('text/plain').send('Keine interne CA eingerichtet (CA_CERTIFICATE).\n');
+    const state = await tlsStand();
+    if (!state) return res.status(404).type('text/plain').send('Keine interne CA eingerichtet (CA_CERTIFICATE).\n');
     res.set('Cache-Control', 'no-cache');
     res.set('Content-Disposition', 'attachment; filename="brickinventory-ca-fingerabdruck-pruefen.crt"');
     res.set(
@@ -22,7 +22,7 @@ export function buildCertificateRouter() {
       'SHA-256 vor dem Installieren mit der angemeldeten Web-Oberflaeche ' +
         '(Einstellungen > Server-Zertifikat) oder dem Protokoll von Caddy vergleichen',
     );
-    res.type('application/x-x509-ca-cert').send(stand.pem);
+    res.type('application/x-x509-ca-cert').send(state.pem);
   });
   return router;
 }

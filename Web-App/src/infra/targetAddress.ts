@@ -6,9 +6,9 @@ import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 
-const network = (b: net.BlockList, cidr: string, art: 'ipv4' | 'ipv6') => {
+const network = (b: net.BlockList, cidr: string, kind: 'ipv4' | 'ipv6') => {
   const [address = '', length = ''] = cidr.split('/');
-  b.addSubnet(address, Number(length), art);
+  b.addSubnet(address, Number(length), kind);
 };
 const list = (v4: string[], v6: string[]) => {
   const b = new net.BlockList();

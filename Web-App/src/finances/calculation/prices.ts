@@ -115,9 +115,9 @@ export interface PriceData {
   is_fallback?: true;
   /** Freshly checked, but BrickLink knows no price. */
   no_price?: true;
-  bl_unbekannt?: true;
+  bl_unknown?: true;
   /** Not in the cache: the job "preise_nachladen" fetches it. */
-  ausstehend?: true;
+  pending?: true;
   error?: string;
 }
 type CacheRow = {
@@ -169,21 +169,21 @@ async function fetchPriceWithFallback(
   const other = condition === 'N' ? 'U' : 'N';
   const z = await q.lies(condition);
   if (hatPrice(z)) return fromRow(z!);
-  const knownEmpty = cacheUsable(z, ttl, k.uhr.jetzt());
+  const knownEmpty = cacheUsable(z, ttl, k.clock.now());
   let pd: CacheRow | null = null;
   if (!knownEmpty) {
-    if (!(await k.externalSources.quotaFree('bricklink')).allowed) failDomain('zu_viele', 'bricklink_tageslimit');
+    if (!(await k.externalSources.quotaFree('bricklink')).allowed) failDomain('zu_viele', 'bricklink_daily_limit');
     pd = await fetchCached(q, condition);
     if (hatPrice(pd)) return fromRow(pd!, { from_cache: false, condition_used: condition });
   }
   const zf = await q.lies(other);
   if (hatPrice(zf)) return fromRow(zf!, { condition_used: other, is_fallback: true });
-  if (knownEmpty && cacheUsable(zf, ttl, k.uhr.jetzt())) return { ...WITHOUT_PRICE, from_cache: true, no_price: true };
+  if (knownEmpty && cacheUsable(zf, ttl, k.clock.now())) return { ...WITHOUT_PRICE, from_cache: true, no_price: true };
   const free = (await k.externalSources.quotaFree('bricklink')).allowed;
   const pd2 = free ? await fetchCached(q, other) : null;
   if (hatPrice(pd2)) return fromRow(pd2!, { from_cache: false, condition_used: other, is_fallback: true });
   if (knownEmpty || pd || pd2) return { ...WITHOUT_PRICE, from_cache: !pd && !pd2, no_price: true };
-  return free ? failDomain('nicht_gefunden', 'kein_bricklink_preis') : failDomain('zu_viele', 'bricklink_tageslimit');
+  return free ? failDomain('not_found', 'no_bricklink_price') : failDomain('zu_viele', 'bricklink_daily_limit');
 }
 
 /** On capture a failed fetch means "none"; the exhausted quota stays an error. */
@@ -191,7 +191,7 @@ export async function priceOrNone(fetch: Promise<PriceData>): Promise<PriceData 
   try {
     return await fetch;
   } catch (e) {
-    if (e instanceof DomainError && e.code === 'kein_bricklink_preis') return null;
+    if (e instanceof DomainError && e.code === 'no_bricklink_price') return null;
     throw e;
   }
 }
@@ -213,7 +213,7 @@ export async function fetchPrice(
     ? pre.catalog.get(withVersion(setNumber)) || null
     : await k.catalog.catalogEntry(setNumber);
   if (withoutBricklinkPrice(catalogRow))
-    return { ...WITHOUT_PRICE, from_cache: true, no_price: true, bl_unbekannt: true };
+    return { ...WITHOUT_PRICE, from_cache: true, no_price: true, bl_unknown: true };
   const ttl = hours(ttlHours);
   const source: PriceSource = {
     name: `Price ${setNumber}`,
@@ -244,7 +244,7 @@ export function priceFromStock(
   if (hatPrice(zf)) return fromRow(zf!, { condition_used: other, is_fallback: true });
   if (cacheUsable(z, ttlHours, now) && cacheUsable(zf, ttlHours, now))
     return { ...WITHOUT_PRICE, from_cache: true, no_price: true };
-  return { ...WITHOUT_PRICE, from_cache: false, ausstehend: true };
+  return { ...WITHOUT_PRICE, from_cache: false, pending: true };
 }
 
 export function setPriceFromStock(
@@ -259,7 +259,7 @@ export function setPriceFromStock(
       (pre.catalog.get(withVersion(setNumber)) as Parameters<typeof withoutBricklinkPrice>[0]) ?? null,
     )
   )
-    return { ...WITHOUT_PRICE, from_cache: true, no_price: true, bl_unbekannt: true };
+    return { ...WITHOUT_PRICE, from_cache: true, no_price: true, bl_unknown: true };
   return priceFromStock(c => pre.cache.get(`${setNumber}|${c}`), condition, ttlHours, now);
 }
 
@@ -292,7 +292,7 @@ const SUPPLEMENT_MAX = 5000;
 function lookupTable<S, W>(clock: Clock, hole: (key: S) => Promise<W | null>) {
   const karte = new Map<S, { wert: W; zeit: number }>();
   const ask = async (key: S): Promise<W | null> => {
-    const now = clock.jetzt();
+    const now = clock.now();
     const hits = karte.get(key);
     if (hits && now - hits.zeit < SUPPLEMENT_TTL_MS) return hits.wert;
     const wert = await hole(key);
@@ -307,11 +307,11 @@ function lookupTable<S, W>(clock: Clock, hole: (key: S) => Promise<W | null>) {
   // No clearing: the source tables are only extended, a hit stays correct.
   ask.kennt = (key: S) => {
     const hits = karte.get(key);
-    return !!hits && clock.jetzt() - hits.zeit < SUPPLEMENT_TTL_MS;
+    return !!hits && clock.now() - hits.zeit < SUPPLEMENT_TTL_MS;
   };
   ask.merken = (key: S, wert: W) => {
     if (karte.size >= SUPPLEMENT_MAX) karte.clear();
-    karte.set(key, { wert, zeit: clock.jetzt() });
+    karte.set(key, { wert, zeit: clock.now() });
   };
   return ask;
 }
@@ -321,7 +321,7 @@ function lookupTable<S, W>(clock: Clock, hole: (key: S) => Promise<W | null>) {
 type ColorState = { karte: Map<number, number> | null; zeit: number; load: Promise<Map<number, number>> | null };
 export async function colorChart(k: FinancesContext): Promise<Map<number, number>> {
   const st = k.faecher.slot<ColorState>('farbkarte', () => ({ karte: null, zeit: 0, load: null }));
-  const now = k.uhr.jetzt();
+  const now = k.clock.now();
   if (st.karte && now - st.zeit < SUPPLEMENT_TTL_MS) return st.karte;
   if (st.load) return st.load;
   st.load = (async () => {
@@ -344,7 +344,7 @@ export async function colorChart(k: FinancesContext): Promise<Map<number, number
  * is not readable: with the Rebrickable color the price of another part would come back. */
 export async function resolveBlColorId(k: FinancesContext, rbColorId: number): Promise<number | null> {
   if (rbColorId == null || rbColorId === NO_COLOR) return 0;
-  const karte = await attempts('preise:farbkarte', colorChart(k));
+  const karte = await attempts('prices:farbkarte', colorChart(k));
   if (!karte.ok) return null;
   const hits = karte.wert.get(Number(rbColorId));
   return hits != null ? Number(hits) : rbColorId;
@@ -354,7 +354,7 @@ export async function resolveBlColorId(k: FinancesContext, rbColorId: number): P
 // (bl_mapping), so that two places do not drift apart. One memory per set of services.
 const blTeil = (k: FinancesContext) =>
   k.faecher.slot('blTeil', () =>
-    lookupTable(k.uhr, (partNumber: string) => k.catalog.blFetchNumber('part', partNumber)),
+    lookupTable(k.clock, (partNumber: string) => k.catalog.blFetchNumber('part', partNumber)),
   );
 
 /** With `konto`, that account's own mapping first (migration 0094); it bypasses the
@@ -423,11 +423,11 @@ async function questionPriceGuide(
   extra: Record<string, string> = {},
 ) {
   const qp = { guide_type: 'sold', new_or_used: condition, currency_code: currency, vat: 'N', ...extra };
-  const g = await k.externalSources.quellen.bricklinkRequest('GET', path, qp);
+  const g = await k.externalSources.sources.bricklinkRequest('GET', path, qp);
   if (hatPrice(g)) return g;
   const alt = await attempts(
-    'preise:alt',
-    k.externalSources.quellen.bricklinkRequest('GET', path, { ...qp, guide_type: 'stock' }),
+    'prices:alt',
+    k.externalSources.sources.bricklinkRequest('GET', path, { ...qp, guide_type: 'stock' }),
   );
   return alt.ok && hatPrice(alt.wert) ? alt.wert : g;
 }
@@ -435,10 +435,15 @@ async function questionPriceGuide(
 type Writer = (avg: number, qavg: number) => Promise<unknown>;
 
 /** A zero is remembered as well (holds back the fetch); a zero point in the history would look like a price crash. */
-async function rememberWithHistory(g: PriceFuehrer | null | undefined, ort: string, cache: Writer, history: Writer) {
+async function rememberWithHistory(
+  g: PriceFuehrer | null | undefined,
+  location: string,
+  cache: Writer,
+  history: Writer,
+) {
   const row = { avg_price: numberFrom(g?.avg_price), qty_avg_price: numberFrom(g?.qty_avg_price) };
   await cache(row.avg_price, row.qty_avg_price);
-  if (hatPrice(row)) await history(row.avg_price, row.qty_avg_price).catch(logAndContinue(ort));
+  if (hatPrice(row)) await history(row.avg_price, row.qty_avg_price).catch(logAndContinue(location));
   return row;
 }
 
@@ -455,7 +460,7 @@ export async function fetchPartPrice(
   konto: number | null = null,
 ): Promise<PriceData> {
   const color = await resolveBlColorId(k, rbColorId);
-  if (color === null) failDomain('nicht_gefunden', 'kein_bricklink_preis');
+  if (color === null) failDomain('not_found', 'no_bricklink_price');
   const number = await resolveBlPartNumber(k, partNumber, konto);
   const f = Number(color) || 0;
   const ttl = hours(ttlHours);
@@ -468,7 +473,7 @@ export async function fetchPartPrice(
     remember: (c, g) =>
       rememberWithHistory(
         g,
-        'preise:teileverlauf schreiben',
+        'prices:teileverlauf schreiben',
         (avg, qavg) => cache.rememberPartPrice(number, f, c, currency, avg, qavg),
         (avg, qavg) => cache.rememberPartHistory(number, f, c, currency, avg, qavg),
       ),
@@ -496,7 +501,7 @@ export async function fetchMinifigPrice(
     remember: (c, g) =>
       rememberWithHistory(
         g,
-        'preise:figurverlauf schreiben',
+        'prices:figurverlauf schreiben',
         (avg, qavg) => cache.rememberMinifigPrice(figNumber, c, currency, avg, qavg),
         (avg, qavg) => cache.rememberMinifigHistory(figNumber, c, currency, avg, qavg),
       ),

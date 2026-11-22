@@ -3,15 +3,15 @@ import type { SetsContext } from './context';
 
 /** Catalog and inventory in one transaction; throws on errors, the job then retries. */
 export async function importMinifigs(k: SetsContext, setNumber: string, userId: number): Promise<number> {
-  const { figuren, fromSource } = await k.catalog.loadSetMinifigs(setNumber);
-  if (!figuren.length) return 0;
-  const numbers = figuren.map(f => f.fig_number);
+  const { minifigs, fromSource } = await k.catalog.loadSetMinifigs(setNumber);
+  if (!minifigs.length) return 0;
+  const numbers = minifigs.map(f => f.fig_number);
   await k.transact(async t => {
     await t.inventory.setInhalt.enterMinifigs(userId, setNumber, numbers);
-    await t.catalog.setFigurenMerken(setNumber, figuren, fromSource);
+    await t.catalog.setFigurenMerken(setNumber, minifigs, fromSource);
   });
-  console.log(`[minifigs] ${setNumber}: ${figuren.length} importiert`);
-  return figuren.length;
+  console.log(`[minifigs] ${setNumber}: ${minifigs.length} importiert`);
+  return minifigs.length;
 }
 
 /** In one transaction, so that an error never leaves a set without parts. */

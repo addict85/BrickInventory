@@ -6,7 +6,7 @@ import { createToken, runtimeDays, tokenDays } from './deviceToken';
 import { tokenDetails, tokenLabel, tokenScope } from './tokenRequest';
 import { hintInBackground } from './accountNotice';
 import * as QR from './qrPairing';
-import { basisUrl, hintWithoutBaseUrl, viaTls } from '../infra/baseUrl';
+import { baseUrl, hintWithoutBaseUrl, viaTls } from '../infra/baseUrl';
 import { tlsStand } from '../infra/tlsRoot';
 import { failDomain } from '../infra/errorTexts';
 import { passwordLack } from '../infra/passwordRule';
@@ -39,7 +39,7 @@ export async function loginResponse(
       }),
     );
     token = valueOr(fresh, null);
-    if (!token) failDomain('intern', 'token_nicht_ausgestellt');
+    if (!token) failDomain('intern', 'token_not_issued');
     hintInBackground(k, uid, 'token_neu', tokenLabel(wish.label, 'webapp-session'));
   }
   // Administrator rights are carried by the session and a token with scope `voll`, not `app`.
@@ -53,7 +53,7 @@ export async function loginResponse(
       username: user.username,
       is_admin: user.is_admin,
       mustChangePassword: user.must_change_password,
-      zweiterFaktorPflicht: await K.openFactorRequired(k, uid, admin),
+      secondFactorRequired: await K.openFactorRequired(k, uid, admin),
     },
   };
 }
@@ -75,24 +75,24 @@ export async function devicesTokenIssue(
 /** Refuse instead of guessing without an address: a wrong address in the QR code would
  * only show up later in another network. */
 export async function createQrAccess(k: AccountContext, uid: number, validity: unknown) {
-  const basis = basisUrl();
+  const basis = baseUrl();
   if (!basis) {
     hintWithoutBaseUrl('auth:qr', 'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
-    failDomain('nicht_verfuegbar', 'qr_ohne_basis_url');
+    failDomain('nicht_verfuegbar', 'qr_without_base_url');
   }
   // The QR code says how long the access will run: the bound applies here already.
   const days = tokenDays(k, runtimeDays(validity));
-  const { token, kopplung } = await QR.create(k, uid, days);
+  const { token, pairing } = await QR.create(k, uid, days);
   hintInBackground(k, uid, 'qr_zugang_neu');
   // `fp` only with TLS: the app pins the root of the internal CA with it.
   const ca = viaTls(basis) ? await tlsStand() : null;
   return {
     token,
-    kopplung,
+    pairing,
     expires_in: QR.QR_TTL_MS / 1000,
     token_days: days,
     url: basis,
-    ...(ca ? { fp: ca.fp, zert_sha256: ca.zert_sha256 } : {}),
+    ...(ca ? { fp: ca.fp, cert_sha256: ca.cert_sha256 } : {}),
   };
 }
 

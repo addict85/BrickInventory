@@ -5,7 +5,7 @@ import type { ForeignSourcesContext } from './context';
 /** One job per set, due at the configured time of day. `versuch` counts across
  * jobs: after 30 days without quota Brickset gives up. */
 export const BRICKSET_AT_MOST = 30;
-export const BRICKSET_TIME_OF_DAY = { setting: 'job_time_brickset_retry', vorgabe: '04:00' } as const;
+export const BRICKSET_TIME_OF_DAY = { setting: 'job_time_brickset_retry', preset: '04:00' } as const;
 export const BricksetPayload = z.object({
   set_number: z.string().min(1).max(64),
   versuch: z.number().int().optional(),
@@ -19,27 +19,27 @@ declare module '../jobQueue/jobs' {
 
 /** The kind's type and registration live here, where it is queued; the run is provided by the catalog, which knows the sets. */
 export function bricksetJobType(ausfuehren: Handler<'brickset'>['ausfuehren']): Login {
-  return jobKind({ art: 'brickset', payload: BricksetPayload, ausfuehren, exklusiv: true });
+  return jobKind({ kind: 'brickset', payload: BricksetPayload, ausfuehren, exklusiv: true });
 }
 
 const key = (sn: string) => `brickset:${sn}`;
 
 /** Soon (disruption on the remote side) or at the time of day. */
 export async function bricksetDueFrom(k: ForeignSourcesContext, bald: boolean): Promise<Date> {
-  if (bald) return new Date(k.uhr.jetzt() + 30 * 60_000);
-  const time = await k.jobQueue.dailyTimeOfDay(BRICKSET_TIME_OF_DAY.setting, BRICKSET_TIME_OF_DAY.vorgabe);
-  return nextTimeOfDay(time, k.uhr.datum());
+  if (bald) return new Date(k.clock.now() + 30 * 60_000);
+  const time = await k.jobQueue.dailyTimeOfDay(BRICKSET_TIME_OF_DAY.setting, BRICKSET_TIME_OF_DAY.preset);
+  return nextTimeOfDay(time, k.clock.datum());
 }
 
 /** @returns vorgemerkt false if it was already queued BRICKSET_AT_MOST times */
-export async function bricksetReserve(k: ForeignSourcesContext, sn: string, fehler: string, bald = false) {
+export async function bricksetReserve(k: ForeignSourcesContext, sn: string, error: string, bald = false) {
   const r = await k.jobQueue.wiedervorlage.rememberBefore(
     'brickset',
     key(sn),
     versuch => ({ set_number: sn, versuch }),
     {
       dueAb: await bricksetDueFrom(k, bald),
-      fehler,
+      error,
       hoechstens: BRICKSET_AT_MOST,
     },
   );
@@ -71,7 +71,7 @@ export async function bricksetWaiting(k: ForeignSourcesContext) {
       set_number: n.success ? n.data.set_number : '',
       versuch: (n.success ? n.data.versuch : undefined) ?? 1,
       faellig_ab: z.due_at,
-      fehler: z.error_message,
+      error: z.error_message,
       erstellt: z.created_at,
     };
   });

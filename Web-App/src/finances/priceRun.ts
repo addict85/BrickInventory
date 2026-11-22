@@ -7,7 +7,7 @@ import { BricklinkNotReachable } from '../externalSources';
 import { receiptsSessionLock } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
 import { attempts } from '../infra/result';
-import { zustand } from '../infra/validate';
+import { conditionOf } from '../infra/validate';
 import type { FinancesContext } from './context';
 import { checkSet } from './priceAlert';
 
@@ -55,7 +55,7 @@ async function fetchAndCachePrice(
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? ''), 10));
   // The same freshness rule as in the request path: a zero row is retried after six hours as well.
   const present = await priceFromCache(k, setNumber, condition, currency, ttl);
-  if (cacheUsable(present, ttl, k.uhr.jetzt())) return 'skipped';
+  if (cacheUsable(present, ttl, k.clock.now())) return 'skipped';
 
   const rl = await k.externalSources.quotaFree('bricklink');
   if (!rl.allowed) return 'rate_limited';
@@ -153,8 +153,8 @@ async function refreshSet(
 
 /** 'sold' = prices actually achieved in the last six months; five sets in parallel. */
 async function refreshAccount(kx: FinancesContext, userId: number, setNumbers: string[], st: RunState, k?: JobContext) {
-  const currency = await kx.einstellungen.userValue(userId, 'currency', 'EUR');
-  const ttlHours = (await kx.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
+  const currency = await kx.settings.userValue(userId, 'currency', 'EUR');
+  const ttlHours = (await kx.settings.globalValue('price_cache_ttl', '24')) || '24';
   const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
   // Three queries per account instead of per set.
   const states = await statesJeSet(kx, userId, valid);
@@ -166,7 +166,7 @@ async function refreshAccount(kx: FinancesContext, userId: number, setNumbers: s
       return 'rate_limited';
     }
     if (k && st.current % 10 === 1)
-      await k.progress({ erledigt: st.current, gesamt: st.total, text: `${sn} (${st.current}/${st.total})` });
+      await k.progress({ done: st.current, total: st.total, text: `${sn} (${st.current}/${st.total})` });
     return refreshSet(kx, sn, states.get(sn) ?? ['N'], currency, ttlHours, st);
   });
   await parallelLimit(tasks, 5);
@@ -175,60 +175,60 @@ async function refreshAccount(kx: FinancesContext, userId: number, setNumbers: s
 /** Once per run, not per fetch; a failure is recorded in the state, throwing it would repeat the whole run. */
 async function afterTheRun(k: FinancesContext, job?: JobContext) {
   log('Writing daily price_history snapshot from price_cache...');
-  const stand = await attempts('preis-job:tagesstand', k.priceRun.writeDailyStatus());
-  if (stand.ok) log(`Daily snapshot: ${stand.wert} price history entries inserted`);
+  const state = await attempts('preis-job:tagesstand', k.priceRun.writeDailyStatus());
+  if (state.ok) log(`Daily snapshot: ${state.wert} price history entries inserted`);
   const alerts = await attempts('preis-job:preisalarme', async () => {
     const waiting = await k.priceRun.setsWithAlarm();
     let reported = 0;
     for (const sn of waiting) reported += await checkSet(k, sn, k.mail);
     if (waiting?.length) log(`Preisalarm: ${waiting.length} Sets geprueft, ${reported} gemeldet`);
   });
-  const ohne = [stand.ok ? null : 'tagesstand', alerts.ok ? null : 'preisalarme'].filter(x => x !== null);
+  const ohne = [state.ok ? null : 'tagesstand', alerts.ok ? null : 'preisalarme'].filter(x => x !== null);
   if (ohne.length) await job?.progress({ text: `ohne ${ohne.join(', ')}`, ohne });
 }
 
 async function reportResult(kx: FinancesContext, st: RunState, duration: number, k?: JobContext) {
-  const grund = st.notReachable ? 'BrickLink nicht erreichbar' : 'Tageslimit';
+  const reason = st.notReachable ? 'BrickLink nicht erreichbar' : 'Tageslimit';
   log(
-    `Done: ${st.updated} updated, ${st.skipped} skipped, ${st.errors} errors${st.omitted ? `, ${st.omitted} wegen ${grund} ausgelassen` : ''} — ${(duration / 1000).toFixed(1)}s`,
+    `Done: ${st.updated} updated, ${st.skipped} skipped, ${st.errors} errors${st.omitted ? `, ${st.omitted} wegen ${reason} ausgelassen` : ''} — ${(duration / 1000).toFixed(1)}s`,
   );
   await rememberStatus(kx, {
-    lastRun: kx.uhr.datum().toISOString(),
+    lastRun: kx.clock.datum().toISOString(),
     lastDuration: duration,
     lastUpdated: st.updated,
     lastErrors: st.errors,
   });
   await k?.progress({
-    erledigt: st.total,
-    gesamt: st.total,
+    done: st.total,
+    total: st.total,
     text: `${st.updated} aktualisiert, ${st.errors} Fehler — ${(duration / 1000).toFixed(1)}s`,
   });
 }
 
 /** If another process holds the lock, the job is retried one minute later. */
 async function runPriceRefresh(kx: FinancesContext, k?: JobContext) {
-  if (!(await kx.einstellungen.globalValue('bricklink_consumer_key', ''))) {
+  if (!(await kx.settings.globalValue('bricklink_consumer_key', ''))) {
     log('BrickLink credentials not configured, skipping');
     await rememberStatus(kx, {});
     return;
   }
   const releaseLock = await acquireRunLock(kx);
-  if (!releaseLock) throw new JobMove(new Date(kx.uhr.jetzt() + 60_000), 'Läuft bereits in einem anderen Prozess');
-  const t0 = kx.uhr.jetzt();
+  if (!releaseLock) throw new JobMove(new Date(kx.clock.now() + 60_000), 'Läuft bereits in einem anderen Prozess');
+  const t0 = kx.clock.now();
   const st: RunState = { updated: 0, skipped: 0, errors: 0, omitted: 0, current: 0, total: 0 };
-  await k?.progress({ erledigt: 0, gesamt: 0, text: 'Starte…' });
+  await k?.progress({ done: 0, total: 0, text: 'Starte…' });
   try {
     const jeAccount = await pricePlacesJeAccount(kx);
     st.total = [...jeAccount.values()].reduce((n, l) => n + l.length, 0);
     if (!st.total) {
       log('No sets, nothing to do');
-      await rememberStatus(kx, { lastRun: kx.uhr.datum().toISOString() });
+      await rememberStatus(kx, { lastRun: kx.clock.datum().toISOString() });
       return;
     }
     log(`Starting: ${st.total} set-slots`);
-    await k?.progress({ erledigt: 0, gesamt: st.total, text: `0/${st.total} Sets` });
+    await k?.progress({ done: 0, total: st.total, text: `0/${st.total} Sets` });
     for (const [userId, setNumbers] of jeAccount) await refreshAccount(kx, userId, setNumbers, st, k);
-    await reportResult(kx, st, kx.uhr.jetzt() - t0, k);
+    await reportResult(kx, st, kx.clock.now() - t0, k);
     await afterTheRun(kx, k);
   } catch (e) {
     log(`Fatal: ${errorMessage(e)}`);
@@ -257,7 +257,7 @@ async function statesJeSet(
     const m = new Map<string, Set<string>>();
     for (const r of rows) {
       if (!m.has(r.set_number)) m.set(r.set_number, new Set<string>());
-      m.get(r.set_number)!.add(zustand(r.c));
+      m.get(r.set_number)!.add(conditionOf(r.c));
     }
     return m;
   };
@@ -298,10 +298,10 @@ async function fetchPriceForSet(
     log(`Skipping invalid: ${setNumber}`);
     return;
   }
-  const ck = await k.einstellungen.globalValue('bricklink_consumer_key', '');
+  const ck = await k.settings.globalValue('bricklink_consumer_key', '');
   if (!ck) return;
   try {
-    const currency = await k.einstellungen.userValue(userId, 'currency', 'EUR');
+    const currency = await k.settings.userValue(userId, 'currency', 'EUR');
     const guideType = 'sold';
     // All conditions the set has — otherwise one half is missing for mixed sets.
     const conditions = await conditionsNeededFor(k, setNumber, userId, hintCondition);

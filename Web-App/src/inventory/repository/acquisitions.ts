@@ -16,12 +16,12 @@ export type EntryInField = {
  * quantity check ran on A. */
 export function entryInWriteField(
   tx: DbInterface,
-  art: AcquisitionKind,
+  kind: AcquisitionKind,
   id: number,
   wids: number[],
   key: (string | number)[],
 ) {
-  const s = SHAPES[art];
+  const s = SHAPES[kind];
   const columns = s.keys.map((k, i) => ` AND ${k}=$${i + 3}`).join('');
   return tx.get<EntryInField>(
     `SELECT id, user_id, condition, ${s.price} AS preis, price_estimated, currency, (${acquisitionDaySql()})::text AS tag
@@ -33,36 +33,40 @@ export function entryInWriteField(
 /** Writing only in the passed accounts: a second line behind the caller's check. */
 export async function setEntryQuantity(
   tx: DbInterface,
-  art: AcquisitionKind,
+  kind: AcquisitionKind,
   id: number,
-  menge: number,
+  quantity: number,
   konten: number[],
 ): Promise<void> {
-  await tx.run(`UPDATE ${SHAPES[art].table} SET quantity=$1 WHERE id=$2 AND user_id = ANY($3)`, [menge, id, konten]);
+  await tx.run(`UPDATE ${SHAPES[kind].table} SET quantity=$1 WHERE id=$2 AND user_id = ANY($3)`, [
+    quantity,
+    id,
+    konten,
+  ]);
 }
 
 export async function setEntryPrice(
   tx: DbInterface,
-  art: AcquisitionKind,
+  kind: AcquisitionKind,
   id: number,
   price: number | null,
   estimated: boolean,
   konten: number[],
 ): Promise<void> {
   await tx.run(
-    `UPDATE ${SHAPES[art].table} SET ${SHAPES[art].price}=$1, price_estimated=$2 WHERE id=$3 AND user_id = ANY($4)`,
+    `UPDATE ${SHAPES[kind].table} SET ${SHAPES[kind].price}=$1, price_estimated=$2 WHERE id=$3 AND user_id = ANY($4)`,
     [price, estimated, id, konten],
   );
 }
 
 export async function setEntryState(
   tx: DbInterface,
-  art: AcquisitionKind,
+  kind: AcquisitionKind,
   id: number,
   condition: string,
   konten: number[],
 ): Promise<void> {
-  await tx.run(`UPDATE ${SHAPES[art].table} SET condition=$1 WHERE id=$2 AND user_id = ANY($3)`, [
+  await tx.run(`UPDATE ${SHAPES[kind].table} SET condition=$1 WHERE id=$2 AND user_id = ANY($3)`, [
     condition,
     id,
     konten,
@@ -72,18 +76,18 @@ export async function setEntryState(
 /** Noon instead of midnight: the day stays the same in whatever time zone it is read. */
 export async function setEntryDate(
   tx: DbInterface,
-  art: AcquisitionKind,
+  kind: AcquisitionKind,
   id: number,
   date: string,
   konten: number[],
 ): Promise<void> {
   await tx.run(
-    `UPDATE ${SHAPES[art].table} SET created_at=$1::date + interval '12 hours', day=$1::date
+    `UPDATE ${SHAPES[kind].table} SET created_at=$1::date + interval '12 hours', day=$1::date
                  WHERE id=$2 AND user_id = ANY($3)`,
     [date, id, konten],
   );
 }
 
-export async function deleteEntry(tx: DbInterface, art: AcquisitionKind, id: number, owner: number): Promise<void> {
-  await tx.run(`DELETE FROM ${SHAPES[art].table} WHERE id=$1 AND user_id=$2`, [id, owner]);
+export async function deleteEntry(tx: DbInterface, kind: AcquisitionKind, id: number, owner: number): Promise<void> {
+  await tx.run(`DELETE FROM ${SHAPES[kind].table} WHERE id=$1 AND user_id=$2`, [id, owner]);
 }

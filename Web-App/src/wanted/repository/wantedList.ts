@@ -23,8 +23,8 @@ const CATALOG: Record<Art, string> = {
 };
 
 /** Which of the numbers the own catalog of this kind lists. */
-export async function numbersInCatalog(db: DbInterface, art: Art, numbers: string[]): Promise<string[]> {
-  return (await db.all<{ n: string }>(CATALOG[art], [numbers])).map(z => z.n);
+export async function numbersInCatalog(db: DbInterface, kind: Art, numbers: string[]): Promise<string[]> {
+  return (await db.all<{ n: string }>(CATALOG[kind], [numbers])).map(z => z.n);
 }
 
 export type Color = { id: number; name: string | null; rgb: string | null };
@@ -54,9 +54,9 @@ export function partsDescription(db: DbInterface, numbers: string[]) {
 }
 
 export function partColorImages(db: DbInterface, numbers: string[], colorIds: number[]) {
-  return db.all<{ part_number: string; color_id: number; bild: string | null }>(
+  return db.all<{ part_number: string; color_id: number; image: string | null }>(
     `
-        SELECT part_number, color_id, COALESCE(image_local, image_url) AS bild
+        SELECT part_number, color_id, COALESCE(image_local, image_url) AS image
           FROM part_color_catalog
          WHERE (part_number, color_id) IN (
                  SELECT UNNEST($1::text[]), UNNEST($2::int[]))`,
@@ -65,19 +65,19 @@ export function partColorImages(db: DbInterface, numbers: string[], colorIds: nu
 }
 
 export function minifigsDescription(db: DbInterface, numbers: string[]) {
-  return db.all<{ fig_number: string; fig_name: string | null; bild: string | null }>(
-    `SELECT fig_number, fig_name, COALESCE(image_local, image_url) AS bild
+  return db.all<{ fig_number: string; fig_name: string | null; image: string | null }>(
+    `SELECT fig_number, fig_name, COALESCE(image_local, image_url) AS image
          FROM minifigs_catalog WHERE fig_number = ANY($1)`,
     [numbers],
   );
 }
 
 export function setsDescription(db: DbInterface, numbers: string[]) {
-  return db.all<{ set_number: string; name: string | null; bild: string | null }>(
+  return db.all<{ set_number: string; name: string | null; image: string | null }>(
     `
       SELECT s.set_number,
              rs.name                                                   AS name,
-             COALESCE(sc.image_local, sc.image_url)                     AS bild
+             COALESCE(sc.image_local, sc.image_url)                     AS image
         FROM (SELECT UNNEST($1::text[]) AS set_number) s
         LEFT JOIN set_catalog sc ON sc.set_number = s.set_number
         LEFT JOIN rb_sets     rs ON rs.set_num    = s.set_number`,

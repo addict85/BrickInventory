@@ -4,30 +4,30 @@ import type { FinancesContext } from './context';
 
 const SET_NUMBER = z.string().min(1).max(64);
 const CONDITION = z.enum(['N', 'U']);
-const PriceItem = z.discriminatedUnion('art', [
-  z.object({ art: z.literal('set'), nummer: SET_NUMBER, zustand: CONDITION }),
-  z.object({ art: z.literal('teil'), nummer: SET_NUMBER, farbe: z.number().int(), zustand: CONDITION }),
-  z.object({ art: z.literal('figur'), nummer: SET_NUMBER, zustand: CONDITION }),
-  z.object({ art: z.literal('schaetzung'), nummer: SET_NUMBER, zustand: CONDITION }),
+const PriceItem = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('set'), number: SET_NUMBER, condition: CONDITION }),
+  z.object({ kind: z.literal('teil'), number: SET_NUMBER, farbe: z.number().int(), condition: CONDITION }),
+  z.object({ kind: z.literal('figur'), number: SET_NUMBER, condition: CONDITION }),
+  z.object({ kind: z.literal('schaetzung'), number: SET_NUMBER, condition: CONDITION }),
 ]);
 export const PRICE_ITEM_AT_MOST = 2000;
 export const PricesReload = z.object({
   user_id: z.number().int().positive(),
-  waehrung: z.string().min(3).max(3),
-  posten: z.array(PriceItem).max(PRICE_ITEM_AT_MOST),
+  currency: z.string().min(3).max(3),
+  items: z.array(PriceItem).max(PRICE_ITEM_AT_MOST),
 });
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    preise_nachladen: typeof PricesReload;
+    price_refresh: typeof PricesReload;
   }
 }
 
 /** Missing prices of an account in one currency: at most one waiting job that picks up every new report. */
-export function rememberPricesBefore(k: FinancesContext, n: PayloadInput<'preise_nachladen'>): Promise<string> {
-  return k.jobQueue.supplementListenJob('preise_nachladen', n, {
-    schluessel: `preise_nachladen:${n.user_id}:${n.waehrung}`,
-    liste: 'posten',
+export function rememberPricesBefore(k: FinancesContext, n: PayloadInput<'price_refresh'>): Promise<string> {
+  return k.jobQueue.supplementListenJob('price_refresh', n, {
+    schluessel: `price_refresh:${n.user_id}:${n.currency}`,
+    liste: 'items',
     hoechstens: PRICE_ITEM_AT_MOST,
     userId: n.user_id,
   });

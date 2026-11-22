@@ -36,16 +36,16 @@ export function buildJobStatus(
   language: Language = responseLanguage(req),
 ) {
   if (!job?.status) {
-    return { success: false, code: 'kein_import_laeuft', error: errorText('kein_import_laeuft', language) };
+    return { success: false, code: 'no_import_running', error: errorText('no_import_running', language) };
   }
   const results = (Array.isArray(job.results) ? job.results : []).map((r: ImportResult) =>
     r.code ? { ...r, error: errorText(r.code as ErrorCode, language, r.vars) } : r,
   );
   // A set the catalog does not know is booked but worth a warning: green would mean "all known".
-  const ok = results.filter((r: ImportResult) => r.success && !r.katalog_offen).length;
+  const ok = results.filter((r: ImportResult) => r.success && !r.catalog_pending).length;
   const err = results.filter((r: ImportResult) => !r.success && !r.isWarning).length;
   const warn = results.filter(
-    (r: ImportResult) => (!r.success && r.isWarning) || (r.success && r.katalog_offen),
+    (r: ImportResult) => (!r.success && r.isWarning) || (r.success && r.catalog_pending),
   ).length;
   return {
     success: true,
@@ -58,7 +58,7 @@ export function buildJobStatus(
     warn,
     results,
     error: job.error || null,
-    ...(job.updated_at ? { beendet_am: new Date(job.updated_at).toISOString() } : {}),
+    ...(job.updated_at ? { finished_at: new Date(job.updated_at).toISOString() } : {}),
   };
 }
 
@@ -70,7 +70,7 @@ export async function emitJobStatus(k: JobsContext, userId: number) {
 export const ORPHANED_MIN = 10;
 
 export async function jobGet(k: JobsContext, userId: number) {
-  await k.importStand.markOrphaned(userId, errorText('import_unterbrochen', 'de'), ORPHANED_MIN);
+  await k.importStand.markOrphaned(userId, errorText('import_interrupted', 'de'), ORPHANED_MIN);
   const row = await k.importStand.importStand(userId);
   if (!row) return null;
   return { ...row, results: row.results || [] };
@@ -129,7 +129,7 @@ export async function startJob(
     current: details.current ?? null,
     results: JSON.stringify([]),
     error: null,
-    started_at: k.uhr.datum().toISOString(),
+    started_at: k.clock.datum().toISOString(),
   });
   await emitJobStatus(k, userId);
   return true;
@@ -144,7 +144,7 @@ export async function reportJob(
   details: { done: number; total?: number; current?: string | null },
   unconditional = false,
 ): Promise<void> {
-  const now = k.uhr.jetzt();
+  const now = k.clock.now();
   const _lastly = reported(k);
   if (!unconditional && now - (_lastly.get(userId) ?? 0) < REPORT_GAP_MS) return;
   _lastly.set(userId, now);
@@ -160,16 +160,16 @@ export async function reportJob(
 export async function finishJob(
   k: JobsContext,
   userId: number,
-  details: { ok: number; warn?: number; fehler: number; done: number; abgebrochen?: boolean },
+  details: { ok: number; warn?: number; error: number; done: number; aborted?: boolean },
   rows?: ImportResult[],
 ): Promise<void> {
   const results = rows ?? [
     ...Array.from({ length: details.ok }, () => ({ success: true })),
     ...Array.from({ length: details.warn ?? 0 }, () => ({ success: false, isWarning: true })),
-    ...Array.from({ length: details.fehler }, () => ({ success: false })),
+    ...Array.from({ length: details.error }, () => ({ success: false })),
   ];
   await jobUpdate(k, userId, {
-    status: details.abgebrochen ? 'cancelled' : 'done',
+    status: details.aborted ? 'cancelled' : 'done',
     current: null,
     done: details.done,
     results: JSON.stringify(results),
@@ -180,11 +180,11 @@ export async function finishJob(
 
 // Without this question the bar would have a cross that lies; a missing row also means aborted.
 export async function isAborted(k: JobsContext, userId: number): Promise<boolean> {
-  const stand = await jobGet(k, userId).catch(e => {
+  const state = await jobGet(k, userId).catch(e => {
     reportError('import-auftrag:abbruch pruefen', e);
     return null;
   });
-  return stand?.status !== 'running';
+  return state?.status !== 'running';
 }
 
 /** Wakes when a process wrote an account's state; returns the unsubscribe. */

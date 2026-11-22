@@ -9,12 +9,12 @@ export async function purchasePriceFromInput(
   stateRaw: unknown,
   stateNow: string | null | undefined,
   userId: number,
-  marketPrice: (zustand: string) => Promise<number | null>,
+  marketPrice: (condition: string) => Promise<number | null>,
 ): Promise<{ unitPrice: number | null; purchasePrice: number | null }> {
   const number = moneyInput(raw, 'Preis');
   if (number !== null) return { unitPrice: number, purchasePrice: number };
-  const zustand = await k.einstellungen.conditionForPrice(stateRaw, stateNow, userId);
-  return { unitPrice: null, purchasePrice: await marketPrice(zustand) };
+  const condition = await k.settings.conditionForPrice(stateRaw, stateNow, userId);
+  return { unitPrice: null, purchasePrice: await marketPrice(condition) };
 }
 
 /** Without a market price the master row holds 0, the acquisition NULL — the same for
@@ -23,30 +23,30 @@ export async function manualPurchasePrice(
   k: FinancesContext,
   userId: number,
   input: { unitPrice?: unknown; condition?: string | null },
-  marketPrice: (zustand: string) => Promise<{ preis: number | null; fromState: string | null }>,
+  marketPrice: (condition: string) => Promise<{ preis: number | null; fromState: string | null }>,
 ): Promise<{
   unitPrice: number | null;
   /** For the MASTER ROW — never null. */
   kaufpreis: number;
   /** For the ACQUISITION — null if no price is known. */
   erfassungsPreis: number | null;
-  zustand: string;
+  condition: string;
   /** Only set if the market price was adopted from the OTHER condition. */
   priceFromState: string | null;
   geschaetzt: boolean;
 }> {
   const unitPrice = moneyInput(input.unitPrice, 'Stückpreis');
 
-  const zustand = await k.einstellungen.conditionForPrice(input.condition ?? null, null, userId);
+  const condition = await k.settings.conditionForPrice(input.condition ?? null, null, userId);
 
   // A typed-in price does not ask the market — no origin to mark.
-  const market = unitPrice !== null ? null : await marketPrice(zustand);
+  const market = unitPrice !== null ? null : await marketPrice(condition);
   const kaufpreis = unitPrice !== null ? unitPrice : (market?.preis ?? 0);
   return {
     unitPrice,
     kaufpreis,
     erfassungsPreis: kaufpreis > 0 ? kaufpreis : null,
-    zustand,
+    condition,
     // An origin without a value would be a hint at something that is nowhere to be found.
     priceFromState: kaufpreis > 0 && market?.fromState ? market.fromState : null,
     geschaetzt: unitPrice === null && kaufpreis > 0,

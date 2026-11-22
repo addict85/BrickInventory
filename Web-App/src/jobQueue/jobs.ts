@@ -9,11 +9,13 @@ export type PayloadSchema<A extends JobKind> = JobPayloads[A] extends z.ZodType 
 export type Payload<A extends JobKind> = z.output<PayloadSchema<A>>;
 export type PayloadInput<A extends JobKind> = z.input<PayloadSchema<A>>;
 
-export type JobStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
+/** Stored in jobs.status (migration 0136); API v1 shows the former German values (contract/management.ts). */
+export const JOB_STATUSES = ['pending', 'running', 'done', 'error', 'cancelled'] as const;
+export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export interface Progress {
-  erledigt?: number;
-  gesamt?: number;
+  done?: number;
+  total?: number;
   text?: string | null;
   [k: string]: unknown;
 }
@@ -94,9 +96,9 @@ export class JobLost extends Error {
 export class JobMove extends Error {
   constructor(
     readonly bis: Date,
-    readonly grund: string,
+    readonly reason: string,
     readonly counts = false,
   ) {
-    super(grund);
+    super(reason);
   }
 }

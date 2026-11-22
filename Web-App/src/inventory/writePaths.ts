@@ -8,18 +8,18 @@ import { manualEntryReassign } from './reassign';
 import type { InventoryContext } from './context';
 
 export interface EntryChange {
-  menge?: number;
+  quantity?: number;
   preis?: { wert: number | null; geschaetzt: boolean };
-  zustand?: string;
+  condition?: string;
   date?: string;
 }
 
 /** Only in the passed accounts: a second line behind the caller's check. */
-async function change(k: InventoryContext, art: AcquisitionKind, id: number, konten: number[], a: EntryChange) {
-  if (a.menge !== undefined) await acquisitions.setEntryQuantity(k.db, art, id, a.menge, konten);
-  if (a.preis) await acquisitions.setEntryPrice(k.db, art, id, a.preis.wert, a.preis.geschaetzt, konten);
-  if (a.zustand !== undefined) await acquisitions.setEntryState(k.db, art, id, a.zustand, konten);
-  if (a.date) await acquisitions.setEntryDate(k.db, art, id, a.date, konten);
+async function change(k: InventoryContext, kind: AcquisitionKind, id: number, konten: number[], a: EntryChange) {
+  if (a.quantity !== undefined) await acquisitions.setEntryQuantity(k.db, kind, id, a.quantity, konten);
+  if (a.preis) await acquisitions.setEntryPrice(k.db, kind, id, a.preis.wert, a.preis.geschaetzt, konten);
+  if (a.condition !== undefined) await acquisitions.setEntryState(k.db, kind, id, a.condition, konten);
+  if (a.date) await acquisitions.setEntryDate(k.db, kind, id, a.date, konten);
 }
 
 export const writePaths = (k: InventoryContext) => ({

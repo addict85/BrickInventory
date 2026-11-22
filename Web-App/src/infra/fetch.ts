@@ -34,23 +34,23 @@ function measured<T extends FetchHeader>(url: string, o: FetchOptions, p: Promis
       return r;
     },
     (e: unknown) => {
-      record(e instanceof FetchError ? e.grund : 'netz');
+      record(e instanceof FetchError ? e.reason : 'netz');
       throw e;
     },
   );
 }
 
-export type FetchReason = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | 'netz' | 'abgebrochen';
+export type FetchReason = 'adresse' | 'umleitung' | 'zu-gross' | 'time_limit' | 'netz' | 'abgebrochen';
 
 export class FetchError extends Error {
-  readonly grund: FetchReason;
+  readonly reason: FetchReason;
   /** As in clients/fetchError.ts: a retry can succeed. */
   readonly isTransient: boolean;
-  constructor(grund: FetchReason, text: string, cause?: unknown) {
+  constructor(reason: FetchReason, text: string, cause?: unknown) {
     super(text, cause === undefined ? undefined : { cause: cause });
     this.name = 'AbrufFehler';
-    this.grund = grund;
-    this.isTransient = grund === 'zeitlimit' || grund === 'netz';
+    this.reason = reason;
+    this.isTransient = reason === 'time_limit' || reason === 'netz';
   }
 }
 
@@ -84,7 +84,7 @@ export interface FetchResponse extends FetchHeader {
 
 export interface FetchStream extends FetchHeader {
   /** The body, limited to maxBytes; beyond that it ends with AbrufFehler. */
-  strom(): Readable;
+  stream(): Readable;
   verwerfen(): void;
 }
 
@@ -110,7 +110,7 @@ export function excerpt(text: unknown, n = 120): string {
 }
 
 interface Lauf {
-  antwort: IncomingMessage;
+  response: IncomingMessage;
   url: string;
   frist: NodeJS.Timeout;
   abbrechen: (f: FetchError) => void;
@@ -131,7 +131,7 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
       req?.destroy?.();
     };
     const frist = setTimeout(
-      () => abbrechen(new FetchError('zeitlimit', `Zeitlimit ${o.zeitlimitMs} ms: ${addressShort(start)}`)),
+      () => abbrechen(new FetchError('time_limit', `Zeitlimit ${o.zeitlimitMs} ms: ${addressShort(start)}`)),
       o.zeitlimitMs,
     );
     frist.unref?.();
@@ -171,7 +171,7 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
           }
           reply = r;
           done = true;
-          finished({ antwort: r, url: u, frist, abbrechen });
+          finished({ response: r, url: u, frist, abbrechen });
         };
         const connection = o.agent ? { agent: o.agent } : { lookup: publicLookup };
         req =
@@ -205,7 +205,7 @@ export function holeHttps(url: string, o: FetchOptions): Promise<FetchResponse> 
 }
 
 async function fetchWhole(url: string, o: FetchOptions): Promise<FetchResponse> {
-  const { antwort: r, url: end, frist, abbrechen } = await run(url, o);
+  const { response: r, url: end, frist, abbrechen } = await run(url, o);
   return new Promise((finished, fail) => {
     const parts: Buffer[] = [];
     let n = 0,
@@ -243,7 +243,7 @@ export function openHttps(url: string, o: FetchOptions): Promise<FetchStream> {
 }
 
 async function openLimited(url: string, o: FetchOptions): Promise<FetchStream> {
-  const { antwort: r, url: end, frist, abbrechen } = await run(url, o);
+  const { response: r, url: end, frist, abbrechen } = await run(url, o);
   return {
     status: r.statusCode ?? 0,
     kopf: r.headers ?? {},
@@ -252,7 +252,7 @@ async function openLimited(url: string, o: FetchOptions): Promise<FetchStream> {
       clearTimeout(frist);
       r.resume?.();
     },
-    strom: () => {
+    stream: () => {
       const from = new PassThrough();
       let n = 0;
       r.on('data', (d: Buffer) => {

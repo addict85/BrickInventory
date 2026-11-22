@@ -18,17 +18,17 @@ function newestSetEntry(db: DbInterface, field: NewestField, wert: number | stri
 /** For parts and figures 0 means "bought for nothing"; without a price NULL stands there. */
 export async function setNewest(
   db: DbInterface,
-  art: AcquisitionKind,
+  kind: AcquisitionKind,
   field: NewestField,
   wert: number | string | null,
   uid: number,
   key: (string | number)[],
 ): Promise<void> {
-  if (art === 'set') {
+  if (kind === 'set') {
     await newestSetEntry(db, field, wert, uid, String(key[0]));
     return;
   }
-  const s = SHAPES[art];
+  const s = SHAPES[kind];
   const wo = s.keys.map((k, i) => `a.${k} = $${i + 3}`).join(' AND ');
   const target = field === 'preis' ? `${s.price} = NULLIF($1::numeric, 0)` : 'condition = $1';
   await db.run(

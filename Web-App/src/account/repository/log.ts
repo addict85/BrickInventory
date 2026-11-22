@@ -10,7 +10,7 @@ export type AdminAction =
   | 'verwalter_ernannt'
   | 'verwalter_entzogen'
   | 'konto_geloescht'
-  | 'konto_deaktiviert'
+  | 'account_deactivated'
   | 'konto_reaktiviert'
   | 'konto_freigeschaltet'
   | 'einstellungen_geaendert'

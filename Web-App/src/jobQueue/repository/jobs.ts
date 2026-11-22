@@ -24,24 +24,24 @@ export interface JobListenRow {
   progress: Progress | null;
   error_message: string | null;
   user_id: number | null;
-  geplant: boolean;
+  scheduled: boolean;
   waiting: boolean;
   set_number: string | null;
 }
 /** @returns the identifier, or null if the same job is already open */
 export async function addJobOne(
   db: DbInterface,
-  art: JobKind,
+  kind: JobKind,
   payload: object,
   o: Enqueue = {},
 ): Promise<string | null> {
   const z = await db.get<{ id: string }>(
     `INSERT INTO jobs (type, payload, user_id, dedupe_key, max_attempts, due_at, progress)
      VALUES ($1, $2, $3, $4, $5, COALESCE($7::timestamptz, NOW() + make_interval(secs => $6)), $8)
-     ON CONFLICT (dedupe_key) WHERE status = 'offen' DO NOTHING
+     ON CONFLICT (dedupe_key) WHERE status = 'pending' DO NOTHING
      RETURNING id`,
     [
-      art,
+      kind,
       JSON.stringify(payload),
       o.userId ?? null,
       o.schluessel ?? null,
@@ -59,35 +59,35 @@ export const addOwnJobOne = addJobOne;
 
 /** Per key one open job that adds the list's new entries to its own:
  * a new list is not a new job. If one is running, at most one open job arises
- * next to it (unique only under 'offen'); duplicate entries exist only once. */
+ * next to it (unique only under 'pending'); duplicate entries exist only once. */
 export async function enqueueList(
   db: DbInterface,
-  art: string,
+  kind: string,
   payload: object,
   o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
   const z = await db.get<{ id: string }>(
     `INSERT INTO jobs (type, payload, user_id, dedupe_key) VALUES ($5, $2, $3, $1)
-     ON CONFLICT (dedupe_key) WHERE status = 'offen' DO UPDATE SET updated_at = NOW(),
+     ON CONFLICT (dedupe_key) WHERE status = 'pending' DO UPDATE SET updated_at = NOW(),
        payload = jsonb_set(jobs.payload, ARRAY[$6::text], (
          SELECT COALESCE(jsonb_agg(p ORDER BY n), '[]'::jsonb) FROM (
            SELECT p, MIN(n) AS n FROM (
              SELECT p, n FROM jsonb_array_elements(jobs.payload->$6) WITH ORDINALITY AS alt(p, n)
              UNION ALL
              SELECT p, n + 1000000 FROM jsonb_array_elements(EXCLUDED.payload->$6) WITH ORDINALITY AS neu(p, n)
-           ) beide GROUP BY p ORDER BY MIN(n) LIMIT $4) vereint))
+           ) beide GROUP BY p ORDER BY MIN(n) LIMIT $4) united))
      RETURNING id`,
-    [o.schluessel, JSON.stringify(payload), o.userId, o.hoechstens, art, o.liste],
+    [o.schluessel, JSON.stringify(payload), o.userId, o.hoechstens, kind, o.liste],
   );
   return String(z!.id);
 }
 
-/** Back to 'offen', unless a newer open job with the same key
- * already exists: then that one takes over, and this one ends as 'abgebrochen' — two
+/** Back to 'pending', unless a newer open job with the same key
+ * already exists: then that one takes over, and this one ends as 'cancelled' — two
  * open ones with one key are forbidden by the index, the UPDATE would otherwise fail. */
 const OPEN_OR_REPLACED = `CASE WHEN EXISTS (SELECT 1 FROM jobs z WHERE z.dedupe_key = jobs.dedupe_key
-                                   AND z.status = 'offen' AND z.id <> jobs.id)
-            THEN 'abgebrochen' ELSE 'offen' END`;
+                                   AND z.status = 'pending' AND z.id <> jobs.id)
+            THEN 'cancelled' ELSE 'pending' END`;
 
 /** If the twin arises between check and write, the second attempt sees it. */
 async function againAtTwin<T>(f: () => Promise<T>): Promise<T> {
@@ -98,7 +98,7 @@ async function againAtTwin<T>(f: () => Promise<T>): Promise<T> {
     throw e;
   }
 }
-/** A 'laeuft' with an expired deadline belongs to a vanished process and
+/** A 'running' with an expired deadline belongs to a vanished process and
  * is reassigned. SKIP LOCKED: two workers never grab the same row; two
  * exclusive ones of the same kind are prevented by the trigger from migration 0099.
  * @param except identifiers this process is still executing: never reassign to itself */
@@ -111,16 +111,16 @@ export async function claimJob(
   except: readonly string[] = [],
 ): Promise<JobRow | null> {
   const z = await db.get<RawRow>(
-    `UPDATE jobs SET status = 'laeuft', attempts = attempts + 1, locked_by = $1, waiting = false,
+    `UPDATE jobs SET status = 'running', attempts = attempts + 1, locked_by = $1, waiting = false,
             deadline_at = NOW() + make_interval(secs => $2), started_at = NOW(), updated_at = NOW()
       WHERE id = (SELECT a.id FROM jobs a
                    WHERE a.type = ANY($3)
                      AND a.id::text <> ALL($5::text[])
-                     AND ((a.status = 'offen' AND a.due_at <= NOW())
-                       OR (a.status = 'laeuft' AND a.deadline_at < NOW()))
+                     AND ((a.status = 'pending' AND a.due_at <= NOW())
+                       OR (a.status = 'running' AND a.deadline_at < NOW()))
                      AND NOT EXISTS (SELECT 1 FROM job_pauses p WHERE p.type = a.type AND p.until_at > NOW())
                      AND NOT ((a.type = ANY($4) OR EXISTS (SELECT 1 FROM job_exclusive_locks e WHERE e.type = a.type))
-                          AND EXISTS (SELECT 1 FROM jobs l WHERE l.type = a.type AND l.status = 'laeuft'
+                          AND EXISTS (SELECT 1 FROM jobs l WHERE l.type = a.type AND l.status = 'running'
                                          AND l.deadline_at >= NOW() AND l.id <> a.id))
                    ORDER BY a.due_at, a.id LIMIT 1
                    FOR UPDATE SKIP LOCKED)
@@ -140,7 +140,7 @@ export async function rememberExclusive(db: DbInterface, exclusive: readonly str
 export async function heartbeat(db: DbInterface, a: Claim, deadlineSec: number): Promise<boolean> {
   const r = await db.run(
     `UPDATE jobs SET deadline_at = NOW() + make_interval(secs => $3), updated_at = NOW()
-      WHERE id = $1 AND locked_by = $2 AND status = 'laeuft'`,
+      WHERE id = $1 AND locked_by = $2 AND status = 'running'`,
     [a.id, a.locked_by, deadlineSec],
   );
   return (r?.changes ?? 0) > 0;
@@ -148,23 +148,23 @@ export async function heartbeat(db: DbInterface, a: Claim, deadlineSec: number):
 /** Read only: a status change wakes every run; none of them should write while doing so. */
 export async function belongsStill(db: DbInterface, a: Claim): Promise<boolean> {
   return !!(await db.get<{ ja: number }>(
-    `SELECT 1 AS ja FROM jobs WHERE id = $1 AND locked_by = $2 AND status = 'laeuft'`,
+    `SELECT 1 AS ja FROM jobs WHERE id = $1 AND locked_by = $2 AND status = 'running'`,
     [a.id, a.locked_by],
   ));
 }
 export function writeProgress(db: DbInterface, a: Claim, f: Progress, deadlineSec: number): Promise<Stand> {
   return db.get<{ s: string }>(
     `UPDATE jobs SET progress = $3, deadline_at = NOW() + make_interval(secs => $4), updated_at = NOW()
-      WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
+      WHERE id = $1 AND locked_by = $2 AND status = 'running' RETURNING COALESCE(dedupe_key, id::text) AS s`,
     [a.id, a.locked_by, JSON.stringify(f), deadlineSec],
   );
 }
 /** PDF and CSV carry whole lists; once done, nobody needs them any more. */
 export function setDone(db: DbInterface, a: Claim, discardPayload: boolean): Promise<Stand> {
   return db.get<{ s: string }>(
-    `UPDATE jobs SET status = 'erledigt', locked_by = NULL, error_message = NULL, deadline_at = NULL, updated_at = NOW(),
+    `UPDATE jobs SET status = 'done', locked_by = NULL, error_message = NULL, deadline_at = NULL, updated_at = NOW(),
             payload = CASE WHEN $3 THEN '{}'::jsonb ELSE payload END
-      WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
+      WHERE id = $1 AND locked_by = $2 AND status = 'running' RETURNING COALESCE(dedupe_key, id::text) AS s`,
     [a.id, a.locked_by, discardPayload],
   );
 }
@@ -177,10 +177,10 @@ export function setFailed(
 ): Promise<Stand> {
   return againAtTwin(() =>
     db.get<{ s: string }>(
-      `UPDATE jobs SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OPEN_OR_REPLACED} END,
+      `UPDATE jobs SET status = CASE WHEN $3 THEN 'error' ELSE ${OPEN_OR_REPLACED} END,
               error_message = $4, locked_by = NULL, deadline_at = NULL, updated_at = NOW(),
               due_at = NOW() + make_interval(secs => $5)
-        WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
+        WHERE id = $1 AND locked_by = $2 AND status = 'running' RETURNING COALESCE(dedupe_key, id::text) AS s`,
       [a.id, a.locked_by, final, error.slice(0, 2000), waitTimeSec],
     ),
   );
@@ -192,16 +192,16 @@ export function setMoved(
   a: Claim,
   final: boolean,
   bis: Date,
-  grund: string,
+  reason: string,
   counts: boolean,
 ): Promise<Stand> {
   return againAtTwin(() =>
     db.get<{ s: string }>(
-      `UPDATE jobs SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OPEN_OR_REPLACED} END,
+      `UPDATE jobs SET status = CASE WHEN $3 THEN 'error' ELSE ${OPEN_OR_REPLACED} END,
               waiting = NOT $3, error_message = $4, due_at = $5, locked_by = NULL, deadline_at = NULL,
               attempts = CASE WHEN $6 THEN attempts ELSE GREATEST(attempts - 1, 0) END, updated_at = NOW()
-        WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
-      [a.id, a.locked_by, final, grund.slice(0, 2000), bis, counts],
+        WHERE id = $1 AND locked_by = $2 AND status = 'running' RETURNING COALESCE(dedupe_key, id::text) AS s`,
+      [a.id, a.locked_by, final, reason.slice(0, 2000), bis, counts],
     ),
   );
 }
@@ -217,7 +217,7 @@ export async function holdProcessLock(c: Querier, process: string): Promise<void
 export async function giveOrphanedBack(c: Querier, process: string): Promise<number> {
   const { rows } = await c.query<{ p: string }>(
     `SELECT DISTINCT split_part(locked_by, '/', 1) AS p FROM jobs
-      WHERE status = 'laeuft' AND locked_by LIKE '%/%' AND split_part(locked_by, '/', 1) <> $1`,
+      WHERE status = 'running' AND locked_by LIKE '%/%' AND split_part(locked_by, '/', 1) <> $1`,
     [process],
   );
   let n = 0;
@@ -228,7 +228,7 @@ export async function giveOrphanedBack(c: Querier, process: string): Promise<num
         c.query(
           `UPDATE jobs SET status = ${OPEN_OR_REPLACED}, locked_by = NULL, deadline_at = NULL,
                   due_at = NOW(), updated_at = NOW()
-            WHERE status = 'laeuft' AND split_part(locked_by, '/', 1) = $1 AND locked_by LIKE '%/%'`,
+            WHERE status = 'running' AND split_part(locked_by, '/', 1) = $1 AND locked_by LIKE '%/%'`,
           [p],
         );
       n += (await againAtTwin(back)).rowCount ?? 0;
@@ -245,7 +245,7 @@ export async function giveBack(db: DbInterface, a: Claim): Promise<void> {
     db.run(
       `UPDATE jobs SET status = ${OPEN_OR_REPLACED}, attempts = GREATEST(attempts - 1, 0), locked_by = NULL,
               deadline_at = NULL, due_at = NOW(), updated_at = NOW()
-        WHERE id = $1 AND locked_by = $2 AND status = 'laeuft'`,
+        WHERE id = $1 AND locked_by = $2 AND status = 'running'`,
       [a.id, a.locked_by],
     ),
   );
@@ -253,77 +253,77 @@ export async function giveBack(db: DbInterface, a: Claim): Promise<void> {
 export async function cleanCompletedOn(db: DbInterface): Promise<number> {
   const r = await db.run(
     `DELETE FROM jobs
-      WHERE (status IN ('erledigt', 'abgebrochen') AND updated_at < NOW() - INTERVAL '7 days')
-         OR (status = 'fehler' AND updated_at < NOW() - INTERVAL '30 days')`,
+      WHERE (status IN ('done', 'cancelled') AND updated_at < NOW() - INTERVAL '7 days')
+         OR (status = 'error' AND updated_at < NOW() - INTERVAL '30 days')`,
   );
   return r?.changes ?? 0;
 }
-export async function liesPause(db: DbInterface, art: JobKind): Promise<Pause | null> {
+export async function liesPause(db: DbInterface, kind: JobKind): Promise<Pause | null> {
   return (
     (await db.get<Columns<'job_pauses', 'type' | 'until_at' | 'reason' | 'level'>>(
       'SELECT type, until_at, reason, level FROM job_pauses WHERE type = $1',
-      [art],
+      [kind],
     )) ?? null
   );
 }
 /** `level` counts repeated throttling (Cloudflare). */
 export async function pauseKind(
   db: DbInterface,
-  art: JobKind,
+  kind: JobKind,
   bis: Date,
-  grund: string,
+  reason: string,
   level?: number,
 ): Promise<void> {
   await db.run(
     `INSERT INTO job_pauses (type, until_at, reason, level) VALUES ($1, $2, $3, COALESCE($4, 0))
      ON CONFLICT (type) DO UPDATE SET until_at = EXCLUDED.until_at, reason = EXCLUDED.reason,
        level = COALESCE($4, job_pauses.level)`,
-    [art, bis, grund, level ?? null],
+    [kind, bis, reason, level ?? null],
   );
 }
-export async function deletePause(db: DbInterface, art: JobKind): Promise<void> {
-  await db.run('DELETE FROM job_pauses WHERE type = $1', [art]);
+export async function deletePause(db: DbInterface, kind: JobKind): Promise<void> {
+  await db.run('DELETE FROM job_pauses WHERE type = $1', [kind]);
 }
 /** A running one stops at its next sign of life. */
 export async function setAborted(db: DbInterface, id: string): Promise<JobRow | null> {
   const z = await db.get<RawRow>(
-    `UPDATE jobs SET status = 'abgebrochen', deadline_at = NULL, updated_at = NOW(), waiting = false,
-            error_message = COALESCE(error_message, 'abgebrochen')
-      WHERE id = $1 AND status IN ('offen', 'laeuft') RETURNING ${COLUMNS}`,
+    `UPDATE jobs SET status = 'cancelled', deadline_at = NULL, updated_at = NOW(), waiting = false,
+            error_message = COALESCE(error_message, 'cancelled')
+      WHERE id = $1 AND status IN ('pending', 'running') RETURNING ${COLUMNS}`,
     [id],
   );
   return z ? asRow(z) : null;
 }
 export async function placeAgainOne(db: DbInterface, id: string): Promise<boolean> {
   const r = await db.run(
-    `UPDATE jobs a SET status = 'offen', attempts = 0, error_message = NULL, due_at = NOW(), locked_by = NULL, waiting = false,
+    `UPDATE jobs a SET status = 'pending', attempts = 0, error_message = NULL, due_at = NOW(), locked_by = NULL, waiting = false,
             updated_at = NOW()
-      WHERE a.id = $1 AND a.status IN ('fehler', 'abgebrochen')
-        AND NOT EXISTS (SELECT 1 FROM jobs o WHERE o.dedupe_key = a.dedupe_key AND o.status = 'offen')`,
+      WHERE a.id = $1 AND a.status IN ('error', 'cancelled')
+        AND NOT EXISTS (SELECT 1 FROM jobs o WHERE o.dedupe_key = a.dedupe_key AND o.status = 'pending')`,
     [id],
   );
   return (r?.changes ?? 0) > 0;
 }
 /** A scheduled appointment stays. */
-export async function emptyKind(db: DbInterface, art: JobKind): Promise<number> {
+export async function emptyKind(db: DbInterface, kind: JobKind): Promise<number> {
   const r = await db.run(
-    `DELETE FROM jobs WHERE type = $1 AND status = 'offen' AND (dedupe_key IS NULL OR dedupe_key NOT LIKE 'plan:%')`,
-    [art],
+    `DELETE FROM jobs WHERE type = $1 AND status = 'pending' AND (dedupe_key IS NULL OR dedupe_key NOT LIKE 'plan:%')`,
+    [kind],
   );
   return r?.changes ?? 0;
 }
-export async function makeDue(db: DbInterface, art: JobKind, key?: string): Promise<number> {
+export async function makeDue(db: DbInterface, kind: JobKind, key?: string): Promise<number> {
   const r = await db.run(
     `UPDATE jobs SET due_at = NOW(), updated_at = NOW()
-      WHERE type = $1 AND status = 'offen' AND ($2::text IS NULL OR dedupe_key = $2)`,
-    [art, key ?? null],
+      WHERE type = $1 AND status = 'pending' AND ($2::text IS NULL OR dedupe_key = $2)`,
+    [kind, key ?? null],
   );
   return r?.changes ?? 0;
 }
-export function statusNumbers(db: DbInterface, art: JobKind) {
+export function statusNumbers(db: DbInterface, kind: JobKind) {
   return db.all<{ status: JobStatus; n: number }>(
     'SELECT status, COUNT(*)::int AS n FROM jobs WHERE type = $1 GROUP BY status',
-    [art],
+    [kind],
   );
 }
 /** The role as it is now, not as at queuing time. */
@@ -339,7 +339,7 @@ type RawRow = Omit<JobRow, 'id'> & { id: unknown };
 export const asRow = (z: RawRow): JobRow => ({ ...z, id: String(z.id) });
 
 export async function setDueDate(db: DbInterface, key: string, dueFrom: Date): Promise<void> {
-  await db.run(`UPDATE jobs SET due_at = $2, updated_at = NOW() WHERE dedupe_key = $1 AND status = 'offen'`, [
+  await db.run(`UPDATE jobs SET due_at = $2, updated_at = NOW() WHERE dedupe_key = $1 AND status = 'pending'`, [
     key,
     dueFrom,
   ]);
@@ -354,21 +354,21 @@ export async function pullAppointmentBefore(
   const r = await db.run(
     `UPDATE jobs SET due_at = LEAST(due_at, NOW() + make_interval(secs => $2)),
             payload = payload || $3::jsonb, updated_at = NOW()
-      WHERE dedupe_key = $1 AND status = 'offen'`,
+      WHERE dedupe_key = $1 AND status = 'pending'`,
     [key, seconds, JSON.stringify(payload)],
   );
   return (r.changes ?? 0) > 0;
 }
 
-export async function runningKind(db: DbInterface, art: string): Promise<boolean> {
-  return !!(await db.get<Hit>(`SELECT 1 FROM jobs WHERE type = $1 AND status = 'laeuft'`, [art]));
+export async function runningKind(db: DbInterface, kind: string): Promise<boolean> {
+  return !!(await db.get<Hit>(`SELECT 1 FROM jobs WHERE type = $1 AND status = 'running'`, [kind]));
 }
 
 /** The highest counter `feld` of the payload among the waiting jobs of this key. */
 export async function highestCounter(db: DbInterface, key: string, field: string): Promise<number> {
   const z = await db.get<{ v: number }>(
     `SELECT COALESCE(MAX((payload->>$2)::int), 0) AS v FROM jobs
-      WHERE dedupe_key = $1 AND status IN ('offen', 'laeuft')`,
+      WHERE dedupe_key = $1 AND status IN ('pending', 'running')`,
     [key, field],
   );
   return z?.v ?? 0;
@@ -377,23 +377,23 @@ export async function highestCounter(db: DbInterface, key: string, field: string
 /** An already open job with the same key is rescheduled, not duplicated. */
 export async function writeResubmission(
   db: DbInterface,
-  art: string,
+  kind: string,
   key: string,
   payload: object,
-  o: { dueAb: Date; fehler: string; maxAttempts: number },
+  o: { dueAb: Date; error: string; maxAttempts: number },
 ): Promise<void> {
   await db.run(
     `INSERT INTO jobs (type, payload, dedupe_key, max_attempts, due_at, error_message)
      VALUES ($5, $2, $1, $6, $3, $4)
-     ON CONFLICT (dedupe_key) WHERE status = 'offen'
+     ON CONFLICT (dedupe_key) WHERE status = 'pending'
        DO UPDATE SET payload = EXCLUDED.payload, due_at = EXCLUDED.due_at,
                      error_message = EXCLUDED.error_message, updated_at = NOW()`,
-    [key, JSON.stringify(payload), o.dueAb, o.fehler, art, o.maxAttempts],
+    [key, JSON.stringify(payload), o.dueAb, o.error, kind, o.maxAttempts],
   );
 }
 
 export async function openDelete(db: DbInterface, key: string): Promise<void> {
-  await db.run(`DELETE FROM jobs WHERE dedupe_key = $1 AND status = 'offen'`, [key]);
+  await db.run(`DELETE FROM jobs WHERE dedupe_key = $1 AND status = 'pending'`, [key]);
 }
 
 export interface WaitingRow {
@@ -404,34 +404,34 @@ export interface WaitingRow {
 }
 
 /** Waiting and running jobs of a kind, by due time. */
-export function waitingTheKind(db: DbInterface, art: string) {
+export function waitingTheKind(db: DbInterface, kind: string) {
   return db.all<WaitingRow>(
     `SELECT payload, due_at, error_message, created_at FROM jobs
-      WHERE type = $1 AND status IN ('offen', 'laeuft') ORDER BY due_at, id`,
-    [art],
+      WHERE type = $1 AND status IN ('pending', 'running') ORDER BY due_at, id`,
+    [kind],
   );
 }
 
-export function numbersTheKind(db: DbInterface, art: string) {
+export function numbersTheKind(db: DbInterface, kind: string) {
   return db.get<{ wartend: number; faellig: number }>(
     `SELECT COUNT(*)::int AS wartend, COUNT(*) FILTER (WHERE due_at <= NOW())::int AS faellig
-       FROM jobs WHERE type = $1 AND status IN ('offen', 'laeuft')`,
-    [art],
+       FROM jobs WHERE type = $1 AND status IN ('pending', 'running')`,
+    [kind],
   );
 }
 
 /** Without payload (whole lists) and without account, because the admin sees the list. */
-export function jobList(db: DbInterface, status: string[], art: string | null) {
+export function jobList(db: DbInterface, status: string[], kind: string | null) {
   return db.all<JobListenRow>(
     `SELECT id::text AS id, type, status, attempts, max_attempts, due_at, deadline_at, started_at, created_at,
-            updated_at, progress, error_message, COALESCE(dedupe_key LIKE 'plan:%', false) AS geplant, waiting,
+            updated_at, progress, error_message, COALESCE(dedupe_key LIKE 'plan:%', false) AS scheduled, waiting,
             payload->>'set_number' AS set_number
        FROM jobs
       WHERE status = ANY($1) AND ($2::text IS NULL OR type = $2)
-      ORDER BY CASE status WHEN 'laeuft' THEN 0 WHEN 'offen' THEN 1 WHEN 'fehler' THEN 2 ELSE 3 END,
+      ORDER BY CASE status WHEN 'running' THEN 0 WHEN 'pending' THEN 1 WHEN 'error' THEN 2 ELSE 3 END,
                due_at, id
       LIMIT 200`,
-    [status, art],
+    [status, kind],
   );
 }
 
@@ -447,14 +447,14 @@ export function lastPerKind(db: DbInterface, kinds: readonly JobKind[]) {
   return db.all<LastStatus>(
     `SELECT DISTINCT ON (type) type, status, progress, error_message, updated_at FROM jobs
       WHERE type = ANY($1)
-      ORDER BY type, CASE status WHEN 'laeuft' THEN 0 WHEN 'offen' THEN 2 ELSE 1 END, updated_at DESC`,
+      ORDER BY type, CASE status WHEN 'running' THEN 0 WHEN 'pending' THEN 2 ELSE 1 END, updated_at DESC`,
     [[...kinds]],
   );
 }
 
 export function numbersJeKindAndStatus(db: DbInterface) {
-  return db.all<{ type: string; status: string; anzahl: number }>(
-    `SELECT type, status, COUNT(*)::int AS anzahl FROM jobs GROUP BY type, status ORDER BY type, status`,
+  return db.all<{ type: string; status: string; count: number }>(
+    `SELECT type, status, COUNT(*)::int AS count FROM jobs GROUP BY type, status ORDER BY type, status`,
   );
 }
 
@@ -472,8 +472,8 @@ export function jobStatus(db: DbInterface, id: string, uid: number) {
 }
 
 /** Whatever was due later gets its turn by `bis`. */
-export function pullAppointmentsBefore(db: DbInterface, art: string, bis: Date) {
-  return db.run(`UPDATE jobs SET due_at = $1 WHERE type = $2 AND status = 'offen' AND due_at > NOW()`, [bis, art]);
+export function pullAppointmentsBefore(db: DbInterface, kind: string, bis: Date) {
+  return db.run(`UPDATE jobs SET due_at = $1 WHERE type = $2 AND status = 'pending' AND due_at > NOW()`, [bis, kind]);
 }
 
 export async function writeResult(db: DbInterface, id: string, result: Record<string, unknown> | null): Promise<void> {
@@ -481,7 +481,7 @@ export async function writeResult(db: DbInterface, id: string, result: Record<st
 }
 
 /** Only the own one: the key is in the address, it alone grants no right. */
-export function ownRow(db: DbInterface, art: string, key: string, uid: number) {
+export function ownRow(db: DbInterface, kind: string, key: string, uid: number) {
   return db.get<{
     status: JobStatus;
     error_message: string | null;
@@ -490,34 +490,34 @@ export function ownRow(db: DbInterface, art: string, key: string, uid: number) {
   }>(
     `SELECT status, error_message, user_id, progress FROM jobs
       WHERE type = $3 AND dedupe_key = $1 AND user_id = $2 ORDER BY id DESC LIMIT 1`,
-    [key, uid, art],
+    [key, uid, kind],
   );
 }
 
 /** A stuck one no longer counts after `deadlineSec`. */
-export function countRunningRows(db: DbInterface, art: string, uid: number, deadlineSec: number) {
+export function countRunningRows(db: DbInterface, kind: string, uid: number, deadlineSec: number) {
   return db.get<{ n: number }>(
     `SELECT COUNT(*)::int AS n FROM jobs
-      WHERE type = $3 AND user_id = $1 AND status IN ('offen', 'laeuft')
+      WHERE type = $3 AND user_id = $1 AND status IN ('pending', 'running')
         AND created_at > NOW() - make_interval(secs => $2)`,
-    [uid, deadlineSec, art],
+    [uid, deadlineSec, kind],
   );
 }
 
-export function deleteOwnRow(db: DbInterface, art: string, key: string, uid: number) {
-  return db.run(`DELETE FROM jobs WHERE type = $3 AND dedupe_key = $1 AND user_id = $2 AND status <> 'laeuft'`, [
+export function deleteOwnRow(db: DbInterface, kind: string, key: string, uid: number) {
+  return db.run(`DELETE FROM jobs WHERE type = $3 AND dedupe_key = $1 AND user_id = $2 AND status <> 'running'`, [
     key,
     uid,
-    art,
+    kind,
   ]);
 }
 
 /** Finished ones after the deadline expires; returns their keys so that files go along. */
-export function deleteEndedRows(db: DbInterface, art: string, deadlineSec: number) {
+export function deleteEndedRows(db: DbInterface, kind: string, deadlineSec: number) {
   return db.all<{ dedupe_key: string }>(
-    `DELETE FROM jobs WHERE type = $2 AND status IN ('erledigt', 'fehler', 'abgebrochen')
+    `DELETE FROM jobs WHERE type = $2 AND status IN ('done', 'error', 'cancelled')
         AND updated_at < NOW() - make_interval(secs => $1)
      RETURNING dedupe_key`,
-    [deadlineSec, art],
+    [deadlineSec, kind],
   );
 }

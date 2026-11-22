@@ -71,4 +71,4 @@ export function watchViaAccess(
 }
 
 /** The last event of an SSE stream whose access ended. */
-export const SSE_ACCESS_ENDED = 'event: zugang_beendet\ndata: {"reason":"zugang_beendet"}\n\n';
+export const SSE_ACCESS_ENDED = 'event: zugang_beendet\ndata: {"reason":"access_ended"}\n\n';

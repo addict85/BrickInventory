@@ -9,7 +9,7 @@ export const REASONS = {
   anmeldeRueckfall: 'Rückfall der Anmeldebremse, wenn die Datenbank klemmt: zählt gerade ohne sie',
   tokenSperre: 'Abkürzung der Fehlversuchssperre je Adresse; gezählt wird in der Datenbank',
   bildCacheZuwachs: 'der Bildcache ist ein Ordner auf der Platte dieses Rechners, gleich welcher Zugang ihn füllt',
-  konfig: 'die Umgebung des Prozesses, einmal gelesen; konfig() steht im heissen Pfad jeder Anfrage',
+  config: 'die Umgebung des Prozesses, einmal gelesen; konfig() steht im heissen Pfad jeder Anfrage',
   appVersion: 'version.json des Baus, aus dem dieser Prozess läuft',
   datenSchluessel: 'der Datenschlüssel kommt aus Umgebung oder Datei des Rechners, nicht aus einem Zugang',
   protokoll: 'stdout und der Puffer nach app_logs gehören dem Prozess; jede console-Zeile läuft hindurch',
@@ -25,6 +25,7 @@ export const REASONS = {
   indexHtml: 'index.html liegt einmal auf der Platte; das Design wird kurz gemerkt, statt je Seite zu fragen',
   metrics: 'counters and series of this process: every process is scraped on its own (/metrics)',
   platzhalterBild: 'Inhalt einer Datei aus public/, für jeden Zugang derselbe und beim Blättern dutzendfach gebraucht',
+  v1Namen: 'die v1-Namen hängen an den Schemas des Vertrags, die es je Prozess einmal gibt',
 } as const;
 
 const compartments = new Compartments();

@@ -31,7 +31,7 @@ async function originalInsteadOfPreview(res: Response, segments: string[]): Prom
   )
     return false;
   setImmediate(() => {
-    void previewFrom('/images/' + originalSegs.join('/')).catch(e => countProxyError('bilder:vorschau', e));
+    void previewFrom('/images/' + originalSegs.join('/')).catch(e => countProxyError('images:vorschau', e));
   });
   deliverFile(res, originalPath);
   return true;

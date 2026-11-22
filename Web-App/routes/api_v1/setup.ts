@@ -6,10 +6,10 @@ import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 
 export function buildSetupRouter(d: Pick<Services, 'account' | 'profile'>) {
-  const router = contractRouter('/api/v1');
+  const router = contractRouter('/api/v2');
 
   router.endpoint(
-    'GET /api/v1/einrichtung/stand',
+    'GET /api/v2/setup/state',
     ipThrottle(d.account, 'einrichtung-stand', 120, 10 * 60 * 1000),
     async (req, res) => {
       res.set('Cache-Control', 'no-store');

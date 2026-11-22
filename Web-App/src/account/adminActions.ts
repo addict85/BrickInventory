@@ -18,7 +18,7 @@ import type { AccountContext } from './context';
 export function writeRole(k: AccountContext, durch: number, ziel: number, soll: boolean) {
   return withAccessEnd(k, ziel, async t => {
     const r = await setzeVerwalterRolle(t, ziel, soll);
-    if (r.geaendert) await rememberAdminAction(t, durch, ziel, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
+    if (r.changed) await rememberAdminAction(t, durch, ziel, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
     return r;
   });
 }
@@ -26,14 +26,14 @@ export function writeRole(k: AccountContext, durch: number, ziel: number, soll: 
 export function persistActive(k: AccountContext, durch: number, ziel: number, soll: boolean) {
   return withAccessEnd(k, ziel, async t => {
     const r = await setzeAktiv(t, ziel, soll);
-    if (r.geaendert) await rememberAdminAction(t, durch, ziel, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
+    if (r.changed) await rememberAdminAction(t, durch, ziel, soll ? 'konto_reaktiviert' : 'account_deactivated');
     return r;
   });
 }
 
 export async function verwalterRolleSetzen(k: AccountContext, durch: number, ziel: number, soll: boolean) {
   const effectiveAb = soll ? null : await announceTeardown(k, durch, ziel, 'rolle_entziehen');
-  return effectiveAb ? { geaendert: false, effectiveAb } : { ...(await writeRole(k, durch, ziel, soll)), effectiveAb };
+  return effectiveAb ? { changed: false, effectiveAb } : { ...(await writeRole(k, durch, ziel, soll)), effectiveAb };
 }
 
 /** An active administrator is only deactivated after the deadline; an already deactivated account stays so. */
@@ -41,7 +41,7 @@ export async function aktivSetzen(k: AccountContext, durch: number, ziel: number
   const active = !soll && (await k.konten.accountFull(ziel))?.is_active === true;
   const effectiveAb = active ? await announceTeardown(k, durch, ziel, 'deaktivieren') : null;
   return effectiveAb
-    ? { geaendert: false, effectiveAb }
+    ? { changed: false, effectiveAb }
     : { ...(await persistActive(k, durch, ziel, soll)), effectiveAb };
 }
 
@@ -60,7 +60,7 @@ export async function unlockRegistration(k: AccountContext, durch: number, ziel:
     if (r === 'ok') await rememberAdminAction(t, durch, ziel, 'konto_freigeschaltet');
     return r;
   }).catch(duplicateAs('vergeben' as const));
-  if (r !== 'ok') failDomain('konflikt', r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
+  if (r !== 'ok') failDomain('konflikt', r === 'vergeben' ? 'email_taken' : 'account_not_pending');
 }
 
 /** A captured administrator session must not immediately take over another account
@@ -85,7 +85,7 @@ export async function passwordByAdmin(
 }
 
 export async function factorByAdmin(k: AccountContext, durch: number, ziel: number): Promise<AdminRoute> {
-  if (!(await k.konten.accountExists(ziel))) notFound('benutzer_nicht_gefunden');
+  if (!(await k.konten.accountExists(ziel))) notFound('user_not_found');
   const u: Takeover = { target_id: ziel, type: 'zweiter_faktor', initiated_by: durch, password_hash: null };
   return { effectiveAb: await announce(k, u) };
 }
@@ -136,13 +136,13 @@ async function executeTeardown(k: AccountContext, u: Takeover): Promise<void> {
 
 /** The cleanup run (hourly): due announcements, as long as their administrator still is one. */
 export async function runDueTakeoversFrom(k: AccountContext): Promise<number> {
-  const { erledigt, teardown } = await withAccessEnd(
+  const { done, teardown } = await withAccessEnd(
     k,
     () => null,
     async t => {
       const { gilt } = await t.uebernahmen.takeDue();
-      const erledigt = gilt.filter(u => isTakeover(u.type));
-      for (const u of erledigt) {
+      const done = gilt.filter(u => isTakeover(u.type));
+      for (const u of done) {
         if (u.password_hash) await t.konten.setPasswordHash(u.target_id, u.password_hash);
         else await t.factors.disable(u.target_id);
         await endAccesses(t, u.target_id);
@@ -153,10 +153,10 @@ export async function runDueTakeoversFrom(k: AccountContext): Promise<number> {
           u.password_hash ? 'passwort_gesetzt' : 'zweiter_faktor_entfernt',
         );
       }
-      return { erledigt, teardown: gilt.filter(u => !isTakeover(u.type)) };
+      return { done, teardown: gilt.filter(u => !isTakeover(u.type)) };
     },
   );
-  for (const u of erledigt) {
+  for (const u of done) {
     forgetSessionVersion(k, u.target_id);
     await afterTheTakeover(k, u);
   }
@@ -165,7 +165,7 @@ export async function runDueTakeoversFrom(k: AccountContext): Promise<number> {
   for (const u of teardown.sort((a, b) => Number(a.type === 'loeschen') - Number(b.type === 'loeschen')))
     await executeTeardown(k, u).catch((e: unknown) => error.push(e));
   if (error.length) throw new AggregateError(error, `${error.length} angekündigte Verwalteraktion(en) gescheitert`);
-  return erledigt.length + teardown.length;
+  return done.length + teardown.length;
 }
 
 /** After every login: whoever can log in needs no fresh start by another administrator. */
@@ -188,6 +188,6 @@ export async function cancelTakeovers(
 export async function redeemMailLink(k: AccountContext, type: 'abbrechen' | 'freigeben', token: string): Promise<void> {
   if (type === 'freigeben') return approveLogin(k, token);
   const ziel = token ? await k.uebernahmen.targetToAbort(tokenDigest(token)) : null;
-  if (ziel === null) failDomain('konflikt', 'abbruch_link_ungueltig');
+  if (ziel === null) failDomain('konflikt', 'cancel_link_invalid');
   await cancelTakeovers(k, ziel, 'link');
 }

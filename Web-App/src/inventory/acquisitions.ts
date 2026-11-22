@@ -2,7 +2,7 @@
  * purchases of one day are added up. */
 import { priceColumn, keyColumns } from '../../db/stockQuantity';
 import * as repo from './repository/purchaseAcquisitions';
-import { zustand } from '../infra/validate';
+import { conditionOf } from '../infra/validate';
 import type { InventoryContext } from './context';
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
@@ -37,17 +37,17 @@ export async function addPurchaseAtTag(
 ): Promise<{ merged: boolean }> {
   const qty = Math.max(1, parseInt(String(input.quantity), 10) || 1);
   const price = num(input.price);
-  const cond = zustand(input.condition);
+  const cond = conditionOf(input.condition);
   const geschaetzt = price != null && !!input.geschaetzt;
 
   // One statement instead of read-compute-write: concurrent acquisitions
   // add up. Merged only with the same price, origin and currency.
   const merged = await repo.addEntryAdd(k.db, kind, userId, keyValues, {
-    menge: qty,
+    quantity: qty,
     preis: price,
-    zustand: cond,
+    condition: cond,
     geschaetzt,
-    waehrung: input.currency ?? null,
+    currency: input.currency ?? null,
     am: input.createdAt || null,
   });
   return { merged };
@@ -64,14 +64,14 @@ export async function purchaseAtSameTag(
   day: string,
   excludeId: number | null,
   condition: string | null = null,
-  features: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {},
+  features: { preis?: unknown; geschaetzt?: boolean; currency?: string | null } = {},
 ): Promise<number | null> {
-  const cond = zustand(condition);
+  const cond = conditionOf(condition);
   return repo.sameEntryAtTag(k.db, kind, userId, keyValues, day, excludeId ?? -1, {
-    zustand: cond,
+    condition: cond,
     preis: num(features.preis),
     geschaetzt: !!features.geschaetzt,
-    waehrung: features.waehrung ?? null,
+    currency: features.currency ?? null,
   });
 }
 
@@ -85,14 +85,14 @@ export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: u
     amount = 0,
     priced = 0;
   for (const r of rows || []) {
-    const menge = Number(r?.quantity) || 0;
-    quantity += menge;
+    const n = Number(r?.quantity) || 0;
+    quantity += n;
     // purchase_price or unit_price per table — the fallback rule ONCE instead of
     // in every client.
     const raw = r?.purchase_price ?? r?.unit_price;
     const preis = raw === null || raw === undefined ? null : Number(raw);
     if (preis !== null && Number.isFinite(preis)) {
-      amount += preis * menge;
+      amount += preis * n;
       priced++;
     }
   }
@@ -133,13 +133,13 @@ export async function acquisitionsInAccountCurrency<T extends WithPrice>(
     rows.map(r => r.currency ?? null),
     days,
   );
-  const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: converted.amounts[i] ?? null }));
+  const acquisitions = rows.map((r, i) => ({ ...r, account_price: converted.amounts[i] ?? null }));
   return {
     acquisitions,
     totals: {
-      ...acquisitionTotals(acquisitions.map(a => ({ quantity: a.quantity, purchase_price: a.preis_konto }))),
-      currency: converted.waehrung,
-      ohne_kurs: acquisitions.filter((a, i) => prices[i] != null && a.preis_konto == null).length,
+      ...acquisitionTotals(acquisitions.map(a => ({ quantity: a.quantity, purchase_price: a.account_price }))),
+      currency: converted.currency,
+      without_rate: acquisitions.filter((a, i) => prices[i] != null && a.account_price == null).length,
     },
   };
 }
@@ -161,7 +161,7 @@ export async function setEstimatedPrice(
       const target = await purchaseAtSameTag(t, kind, z.user_id, keys, z.tag, id, z.condition, {
         preis,
         geschaetzt: true,
-        waehrung: z.currency,
+        currency: z.currency,
       });
       if (target) await repo.putEntryTogether(t.db, kind, id, target, z.quantity);
       else await repo.setPriceEstimated(t.db, kind, id, preis);

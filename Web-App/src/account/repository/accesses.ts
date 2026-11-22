@@ -75,14 +75,14 @@ export type NewToken = {
   scope: TokenScope;
   bereich: string | null;
   /** 'kurz' = seven fixed days (or fewer, if fixedDays is smaller) */
-  art: 'gleitend' | 'kurz';
+  kind: 'gleitend' | 'kurz';
   idleDays: number;
   /** The fixed end (hard_expires_at) in days; every token has one. */
   fixedDays: number;
 };
 
 export async function insertToken(db: DbInterface, t: NewToken): Promise<void> {
-  if (t.art === 'gleitend') {
+  if (t.kind === 'gleitend') {
     await db.run(
       `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_range)
        VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE, NOW() + make_interval(days => $5), $6, $7)
@@ -147,10 +147,10 @@ export function unusedSuccessor(tx: DbInterface, successor: string, alt: string)
 }
 
 /** The whole family of a token (same created_at), including successors. */
-export async function deleteFamily(tx: DbInterface, userId: number, seit: Date): Promise<void> {
+export async function deleteFamily(tx: DbInterface, userId: number, since: Date): Promise<void> {
   await tx.run(`DELETE FROM api_tokens WHERE user_id = $1 AND ${family('created_at')} = ${family('$2::timestamptz')}`, [
     userId,
-    seit,
+    since,
   ]);
 }
 

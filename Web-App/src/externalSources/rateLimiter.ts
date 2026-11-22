@@ -9,18 +9,18 @@ export class RateLimiter {
   queue: Array<() => void>;
   _scheduled: boolean;
   takt: Tick | null;
-  uhr: Clock;
+  clock: Clock;
 
   /** @param tick Cross-process tick (table api_takt); without it
    *             the instance only throttles itself. */
-  constructor(maxRequests: number, windowMs: number, tick: Tick | null = null, uhr: Clock = systemClock) {
+  constructor(maxRequests: number, windowMs: number, tick: Tick | null = null, clock: Clock = systemClock) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
     this.lastCall = 0; // timestamp of last allowed call
     this.queue = []; // pending {resolve} entries
     this._scheduled = false;
     this.takt = tick;
-    this.uhr = uhr;
+    this.clock = clock;
   }
 
   async waitForSlot() {
@@ -34,13 +34,13 @@ export class RateLimiter {
   _schedule() {
     if (this._scheduled || !this.queue.length) return;
     this._scheduled = true;
-    const now = this.uhr.jetzt();
+    const now = this.clock.now();
     const next = this.lastCall + this.windowMs;
     const wait = Math.max(0, next - now);
     setTimeout(() => {
       this._scheduled = false;
       if (!this.queue.length) return;
-      this.lastCall = this.uhr.jetzt();
+      this.lastCall = this.clock.now();
       const resolve = this.queue.shift();
       // this.queue.length is checked two lines before; shift() does not know that.
       if (resolve) resolve();
@@ -49,7 +49,7 @@ export class RateLimiter {
   }
 
   throttle(waitMs: number) {
-    this.lastCall = this.uhr.jetzt() + waitMs - this.windowMs;
+    this.lastCall = this.clock.now() + waitMs - this.windowMs;
     if (this.takt) suspendTick(this.takt, waitMs);
     if (!this._scheduled && this.queue.length) this._schedule();
   }
@@ -67,21 +67,21 @@ import type { ForeignSourcesContext } from './context';
 /** A single UPDATE moves the point in time forward — two processes never get
  * the same slot, without one holding a lock while it waits. */
 export async function waitOnTick(tick: Tick): Promise<void> {
-  const { api, gapMs, apiTakt, uhr = systemClock } = tick;
-  if (uhr.jetzt() < tick.disruptedUntil) return;
+  const { api, gapMs, apiTakt, clock = systemClock } = tick;
+  if (clock.now() < tick.disruptedUntil) return;
   try {
     const r = await apiTakt.receiptsTick(api, gapMs);
     const wait = Math.ceil(Number(r?.warte_ms) || 0);
     if (wait > 0) await new Promise(res => setTimeout(res, wait));
   } catch (e) {
-    tick.disruptedUntil = uhr.jetzt() + 60_000;
+    tick.disruptedUntil = clock.now() + 60_000;
     reportError('drossel:gemeinsamer-takt', e);
   }
 }
 
 /** A 429 applies to all processes. */
-function suspendTick({ api, apiTakt, disruptedUntil, uhr = systemClock }: Tick, waitMs: number) {
-  if (uhr.jetzt() < disruptedUntil) return;
+function suspendTick({ api, apiTakt, disruptedUntil, clock = systemClock }: Tick, waitMs: number) {
+  if (clock.now() < disruptedUntil) return;
   apiTakt.pushTick(api, waitMs).catch(e => reportError('drossel:takt-aussetzen', e));
 }
 
@@ -94,13 +94,13 @@ export interface Tick {
   /** After a database error one minute without a shared tick: otherwise every call would
    * first run into the connection timeout. The own throttle stays. */
   disruptedUntil: number;
-  uhr?: Clock;
+  clock?: Clock;
 }
 
 /** Once per set of services (createForeignSources): foreground and background share the tick. */
-export function throttleRebrickable(apiTakt: Tick['apiTakt'], uhr: Clock) {
-  const tick: Tick = { api: 'rebrickable', gapMs: 1000, apiTakt, disruptedUntil: 0, uhr };
-  return { foreground: new RateLimiter(1, 1500, tick, uhr), hintergrund: new RateLimiter(1, 1500, tick, uhr) };
+export function throttleRebrickable(apiTakt: Tick['apiTakt'], clock: Clock) {
+  const tick: Tick = { api: 'rebrickable', gapMs: 1000, apiTakt, disruptedUntil: 0, clock };
+  return { foreground: new RateLimiter(1, 1500, tick, clock), hintergrund: new RateLimiter(1, 1500, tick, clock) };
 }
 
 // Counted in the database: counted per process, the limit would multiply.
@@ -120,16 +120,16 @@ export class ConcurrentRateLimiter {
   queue: Array<() => void>;
   lastStart: number;
   _timer: NodeJS.Timeout | null;
-  uhr: Clock;
+  clock: Clock;
 
-  constructor(maxConcurrent: number, intervalMs: number, uhr: Clock = systemClock) {
+  constructor(maxConcurrent: number, intervalMs: number, clock: Clock = systemClock) {
     this.maxConcurrent = maxConcurrent; // max parallel requests in flight
     this.intervalMs = intervalMs; // min ms between starting new requests
     this.active = 0; // currently in-flight
     this.queue = []; // waiting resolvers
     this.lastStart = 0; // timestamp last request was started
     this._timer = null;
-    this.uhr = uhr;
+    this.clock = clock;
   }
 
   acquire() {
@@ -146,7 +146,7 @@ export class ConcurrentRateLimiter {
 
   _drain() {
     if (this._timer || !this.queue.length) return;
-    const now = this.uhr.jetzt();
+    const now = this.clock.now();
     const wait = Math.max(0, this.lastStart + this.intervalMs - now);
     const canStart = this.active < this.maxConcurrent;
     if (canStart && wait === 0) {
@@ -162,7 +162,7 @@ export class ConcurrentRateLimiter {
   _start() {
     if (!this.queue.length || this.active >= this.maxConcurrent) return;
     this.active++;
-    this.lastStart = this.uhr.jetzt();
+    this.lastStart = this.clock.now();
     const resolve = this.queue.shift();
     // The length is checked in the guard at the start of the method.
     if (resolve) resolve();

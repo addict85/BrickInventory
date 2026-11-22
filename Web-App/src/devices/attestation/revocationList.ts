@@ -19,7 +19,7 @@ export function readRevocationList(raw: Buffer | string): string[] {
 }
 
 export interface SavedList {
-  stand: string;
+  state: string;
   nummern: string[];
 }
 
@@ -32,7 +32,7 @@ export function applicableList(wert: string | null, atMostDays: number, now: Dat
   } catch {
     return null;
   }
-  const alter = now.getTime() - new Date(l?.stand).getTime();
+  const alter = now.getTime() - new Date(l?.state).getTime();
   if (!Array.isArray(l?.nummern) || !(alter >= -CLOCK_SPIEL_MS && alter <= atMostDays * 86_400_000)) return null;
   return new Set(l.nummern);
 }

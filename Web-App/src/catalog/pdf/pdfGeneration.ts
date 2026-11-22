@@ -29,7 +29,7 @@ async function minifigsWithoutAddress(k: CatalogContext, parts: PdfTeil[]) {
     p => isMinifig(p) && !p.image_url && !p.image_local && /^fig-\d{1,8}$/.test(p.part_number),
   )) {
     try {
-      const info = await k.externalSources.quellen.getMinifigInfo(p.part_number);
+      const info = await k.externalSources.sources.getMinifigInfo(p.part_number);
       if (!info?.image_url) continue;
       p.image_url = info.image_url;
       await rememberMinifigImageAddress(k, p.part_number, info.image_url).catch(logAndContinue('pdf:figurbild merken'));

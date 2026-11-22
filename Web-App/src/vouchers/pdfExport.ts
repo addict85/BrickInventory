@@ -97,17 +97,17 @@ export interface ReplaceResult {
   hits: number;
   /** Carried the amount, but with an unsafe font. */
   rejected: number;
-  grund: string | null;
+  reason: string | null;
 }
 
 export async function replaceAmount(data: Buffer, newAmount: number): Promise<ReplaceResult> {
   const before = valuesFromPdf(data);
   if (before.amount === null) {
-    return { data: null, hits: 0, rejected: 0, grund: 'No amount found in the PDF' };
+    return { data: null, hits: 0, rejected: 0, reason: 'No amount found in the PDF' };
   }
   // Nothing to do is success: the original already matches.
   if (Math.abs(before.amount - newAmount) < 0.005) {
-    return { data, hits: 0, rejected: 0, grund: null };
+    return { data, hits: 0, rejected: 0, reason: null };
   }
 
   // Looking for how the amount is WRITTEN ("1'234.50", "1.234,50"),
@@ -154,7 +154,7 @@ export async function replaceAmount(data: Buffer, newAmount: number): Promise<Re
       data: null,
       hits: 0,
       rejected,
-      grund: rejected
+      reason: rejected
         ? `The amount is in a font with its own encoding (${rejected}×) — ` +
           'a replaced string would print there as mangled characters'
         : `The notation "${written}" was not found in the content stream`,
@@ -170,13 +170,13 @@ export async function replaceAmount(data: Buffer, newAmount: number): Promise<Re
       data: null,
       hits,
       rejected,
-      grund: `After replacing, the amount reads as ${after.amount} ` + `instead of ${newAmount}`,
+      reason: `After replacing, the amount reads as ${after.amount} ` + `instead of ${newAmount}`,
     };
   }
   if (after.number !== before.number || after.pin !== before.pin) {
-    return { data: null, hits, rejected, grund: 'Number or PIN changed while replacing' };
+    return { data: null, hits, rejected, reason: 'Number or PIN changed while replacing' };
   }
-  return { data: result, hits, rejected, grund: null };
+  return { data: result, hits, rejected, reason: null };
 }
 
 /** So an exported PDF explains itself on import, instead of being guessed at. */
@@ -185,9 +185,9 @@ const MARK_HEADER = 'BIM-GUTSCHEIN v1';
 /** Semicolon as the separator, because notes have commas.
  * NOTE: the field labels (nummer=/pin=/betrag=/waehrung=) are a persisted export
  * format read back by readMark() — they must not change. */
-export function markText(w: { nummer: string; pin: string | null; betrag: number; waehrung: string }): string {
+export function markText(w: { number: string; pin: string | null; betrag: number; currency: string }): string {
   return (
-    `${MARK_HEADER} nummer=${w.nummer}; pin=${w.pin ?? ''}; ` + `betrag=${w.betrag.toFixed(2)}; waehrung=${w.waehrung}`
+    `${MARK_HEADER} nummer=${w.number}; pin=${w.pin ?? ''}; ` + `betrag=${w.betrag.toFixed(2)}; waehrung=${w.currency}`
   );
 }
 
@@ -221,8 +221,8 @@ export interface ExportResult {
   number: string;
   /** 'unveraendert': it should have been replaced and was NOT (with a reason);
    * 'stimmte_schon' is neither an intervention nor an error. */
-  art: 'ersetzt' | 'stimmte_schon' | 'unveraendert' | 'erzeugt';
-  grund: string | null;
+  kind: 'ersetzt' | 'stimmte_schon' | 'unveraendert' | 'erzeugt';
+  reason: string | null;
 }
 
 /** A manually entered voucher has no original in which to replace anything. */
@@ -269,14 +269,14 @@ export async function combineVouchers(vouchers: ExportVoucher[]): Promise<{ pdf:
       if (r.data) {
         source = r.data;
         // No hit does NOT mean "failed" here: the amount was already correct.
-        findings.push({ id: g.id, number: g.number, art: r.hits ? 'ersetzt' : 'stimmte_schon', grund: null });
+        findings.push({ id: g.id, number: g.number, kind: r.hits ? 'ersetzt' : 'stimmte_schon', reason: null });
       } else {
         source = g.pdf;
-        findings.push({ id: g.id, number: g.number, art: 'unveraendert', grund: r.grund });
+        findings.push({ id: g.id, number: g.number, kind: 'unveraendert', reason: r.reason });
       }
     } else {
       source = await buildPage(g);
-      findings.push({ id: g.id, number: g.number, art: 'erzeugt', grund: null });
+      findings.push({ id: g.id, number: g.number, kind: 'erzeugt', reason: null });
     }
 
     const doc = await PdfLibDocument.load(source);
@@ -285,7 +285,7 @@ export async function combineVouchers(vouchers: ExportVoucher[]): Promise<{ pdf:
       target.addPage(s);
       // The mark only on the FIRST page of a voucher.
       if (i === 0) {
-        s.drawText(markText({ nummer: g.number, pin: g.pin, betrag: g.amount, waehrung: g.currency }), {
+        s.drawText(markText({ number: g.number, pin: g.pin, betrag: g.amount, currency: g.currency }), {
           x: 28,
           y: 18,
           size: 6,

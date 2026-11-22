@@ -5,7 +5,7 @@ import * as repository from './repository';
 import type { Clock } from '../infra/clock';
 
 export interface IdempotencyDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
 }
 

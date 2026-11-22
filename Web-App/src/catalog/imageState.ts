@@ -7,19 +7,19 @@ import { enqueueInstruction } from './instructionJob';
 import type { CatalogContext } from './context';
 
 export async function imagesForFollowUp(k: CatalogContext) {
-  const [sets, teile, figuren] = await Promise.all([
+  const [sets, parts, minifigs] = await Promise.all([
     k.imageState.setsWithMissingCatalogImages(),
     // The shared catalog only lists verified addresses: the file applies to all accounts.
     k.imageState.manualPartsWithoutImage(),
     // All figures, not only manual ones: otherwise every tile would go through the proxy.
     k.imageState.minifigsWithoutImage(),
   ]);
-  return { sets, teile, figuren };
+  return { sets, parts, minifigs };
 }
 
 /** Existing data stays. @returns whether Brickset knows the set */
 export async function fillFromBrickset(k: CatalogContext, setNumber: string): Promise<boolean> {
-  const info = await k.externalSources.quellen.setDetails(setNumber);
+  const info = await k.externalSources.sources.setDetails(setNumber);
   if (!info) return false;
   // If it fails, it throws: the job tries again instead of leaving the set nameless.
   await k.imageState.fillSetGaps(setNumber, info);
@@ -44,12 +44,12 @@ export async function imagesFromCatalog<T extends ImageItem>(
     p.image_url = null;
     p.image_local = null;
   }
-  const teile = item.filter(p => !isMinifig(p)),
-    figuren = item.filter(isMinifig);
-  if (teile.length) {
-    const rows = await k.imageState.partImages([...new Set(teile.map(p => String(p.part_number)))]);
+  const parts = item.filter(p => !isMinifig(p)),
+    minifigs = item.filter(isMinifig);
+  if (parts.length) {
+    const rows = await k.imageState.partImages([...new Set(parts.map(p => String(p.part_number)))]);
     const m = new Map(rows.map(r => [`${r.part_number}|${r.color_id}`, r] as const));
-    for (const p of teile) {
+    for (const p of parts) {
       const z = m.get(`${p.part_number}|${p.color_id ?? NO_COLOR}`);
       if (z) {
         p.image_local = z.image_local;
@@ -57,10 +57,10 @@ export async function imagesFromCatalog<T extends ImageItem>(
       }
     }
   }
-  if (!figuren.length) return;
-  const rows = await k.imageState.minifigImages([...new Set(figuren.map(p => String(p.part_number)))]);
+  if (!minifigs.length) return;
+  const rows = await k.imageState.minifigImages([...new Set(minifigs.map(p => String(p.part_number)))]);
   const m = new Map(rows.map(r => [r.fig_number, r] as const));
-  for (const p of figuren) {
+  for (const p of minifigs) {
     const z = m.get(String(p.part_number));
     if (z) {
       p.image_local = z.image_local;
@@ -96,7 +96,7 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
   for (const { set_number, image_url } of missing) {
     // Only 404/410 means "does not exist"; throttling ends the run, everything else is tried by the next one.
     const info: { status?: number } = {};
-    const r = await attempts('nachlauf:setBildHerunterladen', k.images.loadSetImage(image_url, set_number, info));
+    const r = await attempts('followup:setBildHerunterladen', k.images.loadSetImage(image_url, set_number, info));
     const local = r.ok ? r.wert : null;
     if (!local && (info.status === 404 || info.status === 410))
       k.images.rememberMissing('set:' + set_number, `HTTP ${info.status} vom CDN`);
@@ -107,10 +107,10 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
     // A failure counts in the summary; the next run finds the image without an entry again.
     if (
       local &&
-      !(await attempts(`bilder:set ${set_number}`, k.imageState.rememberSetImageLocal(set_number, local))).ok
+      !(await attempts(`images:set ${set_number}`, k.imageState.rememberSetImageLocal(set_number, local))).ok
     )
       failed++;
-    if (local && !(await attempts('nachlauf:vorschauErzeugenAus', k.images.createPreview(local))).ok) failed++;
+    if (local && !(await attempts('followup:vorschauErzeugenAus', k.images.createPreview(local))).ok) failed++;
     await new Promise(r => setTimeout(r, 300));
   }
   console.log(`[set-img-bg] Done${failed ? `, ${failed} Schritte gescheitert` : ''}`);
@@ -136,11 +136,11 @@ export async function backfillThumbnails(k: CatalogContext): Promise<void> {
     const d = file(web);
     return d ? [{ web, datei: d }] : [];
   });
-  await attempts('nachlauf:vorschauen einpassen', k.images.fitTailoredPreviews(local));
+  await attempts('followup:vorschauen einpassen', k.images.fitTailoredPreviews(local));
   for (const { web: localPath, datei: fsPath } of local) {
     const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
     if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
-    if ((await attempts('nachlauf:vorschauErzeugenAus', k.images.createPreview(localPath))).ok) generated++;
+    if ((await attempts('followup:vorschauErzeugenAus', k.images.createPreview(localPath))).ok) generated++;
     else failed++;
     if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
   }

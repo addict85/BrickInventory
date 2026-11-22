@@ -21,7 +21,7 @@ export interface PriceAlert {
   last_triggered_at: string | null;
   last_price: number | null;
   /** The detail view depends on this. */
-  besitzt: boolean;
+  owns: boolean;
 }
 
 const STATES = new Set(['N', 'U']);
@@ -40,13 +40,13 @@ export interface AlarmInput {
 
 function checkInput(direction: string, threshold: AlarmInput['threshold'], condition: string | undefined) {
   const r = String(direction ?? '');
-  if (r !== 'unter' && r !== 'ueber') failDomain('ungueltig', 'alarm_richtung_ungueltig');
+  if (r !== 'unter' && r !== 'ueber') failDomain('ungueltig', 'alert_direction_invalid');
   const s = Number(threshold);
   // Number.isFinite also catches NaN from an empty input; `> 0` alone
   // would report two different errors the same way.
-  if (!Number.isFinite(s) || s <= 0) failDomain('ungueltig', 'alarm_schwelle_ungueltig');
+  if (!Number.isFinite(s) || s <= 0) failDomain('ungueltig', 'alert_threshold_invalid');
   const c = (condition ?? 'N').toUpperCase();
-  if (!STATES.has(c)) failDomain('ungueltig', 'alarm_zustand_ungueltig');
+  if (!STATES.has(c)) failDomain('ungueltig', 'alert_condition_invalid');
   return { direction: r as Direction, threshold: s, condition: c };
 }
 
@@ -84,7 +84,7 @@ export async function deleteAlert(k: FinancesContext, userId: number, setNumber:
 
 export async function alertsFor(k: FinancesContext, userId: number, setNumber: string): Promise<PriceAlert[]> {
   // No catch: an empty list would mean "no alert", and setzeAlarm() would deliver nothing.
-  const rows = await repo.alertsOfSets(k.db, k.lesevertrag, userId, setNumber, await k.household.scopeIds(userId));
+  const rows = await repo.alertsOfSets(k.db, k.readContract, userId, setNumber, await k.household.scopeIds(userId));
   return rows.map(alsAlarm);
 }
 
@@ -97,36 +97,36 @@ export interface AlarmWithName extends PriceAlert {
   image_local: string | null;
   image_url: string | null;
   // Clickable only with the set in scope, otherwise the click would end in an error.
-  besitzt: boolean;
+  owns: boolean;
 }
 
 export async function allAlerts(k: FinancesContext, userId: number): Promise<AlarmWithName[]> {
   // The scope only asks whether the set is visible; the alert stays with the
   // own account.
   const scope = await k.household.scopeIds(userId);
-  return (await repo.alertsInScope(k.db, k.lesevertrag, userId, scope)).map(alsAlarm);
+  return (await repo.alertsInScope(k.db, k.readContract, userId, scope)).map(alsAlarm);
 }
 
 /** The app asks instead of the server pushing: push would go via third-party servers. */
-export async function triggeredSince(k: FinancesContext, userId: number, seit: Date | string | null | undefined) {
+export async function triggeredSince(k: FinancesContext, userId: number, since: Date | string | null | undefined) {
   // The database's time: Postgres stores micro-, JavaScript only
   // milliseconds; with the JS clock a notification would come twice.
   const nowRow = await repo.databaseNow(k.db);
-  const now = nowRow?.now ?? k.uhr.datum();
+  const now = nowRow?.now ?? k.clock.datum();
 
   // `instanceof Date` FIRST: String(date) loses the milliseconds, and a
   // notification from the same second would come a second time.
   const mark =
-    seit instanceof Date
-      ? seit
-      : seit === undefined || seit === null || String(seit).trim() === ''
+    since instanceof Date
+      ? since
+      : since === undefined || since === null || String(since).trim() === ''
         ? null
-        : new Date(String(seit));
+        : new Date(String(since));
   // Unreadable like missing, NOT "since the beginning of time": a typo must not trigger a flood.
   if (!mark || Number.isNaN(mark.getTime())) return { alerts: [], now: now };
 
   // No catch: the app would otherwise advance its marker and lose the notifications in between.
-  const rows = await repo.alertsOfAccount(k.db, k.lesevertrag, userId, mark, await k.household.scopeIds(userId));
+  const rows = await repo.alertsOfAccount(k.db, k.readContract, userId, mark, await k.household.scopeIds(userId));
   return { alerts: rows.map(alsAlarm), now: now };
 }
 
@@ -149,7 +149,7 @@ export async function checkSet(k: FinancesContext, setNumber: string, post: Alar
       reportError('preisalarm:preis-lesen', e);
       return null;
     });
-    const price = priceRow?.marktpreis ?? null;
+    const price = priceRow?.market_price ?? null;
     // No price in THIS currency: the alert stays, and so does the flag.
     if (price == null || !(price > 0)) continue;
 
@@ -193,7 +193,7 @@ async function send(k: FinancesContext, post: AlarmPost, a: ActiveAlarm, price: 
   const name = read.ok ? read.wert : null;
   const mail = await post.buildAlertMail({
     username: a.username,
-    lang: a.sprache,
+    lang: a.language,
     setNumber: a.set_number,
     setName: name?.name ?? null,
     condition: a.condition,
@@ -256,7 +256,7 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
         set_number: sn,
         condition: alarm.condition,
         action: war ? 'updated' : 'added',
-        ...(divergent ? { waehrung_angepasst: true, waehrung_datei: fileCurrency, waehrung_konto: currency } : {}),
+        ...(divergent ? { currency_adjusted: true, file_currency: fileCurrency, account_currency: currency } : {}),
       });
     } catch (e) {
       errors++;
@@ -273,7 +273,7 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
     skipped_hint: skippedHint(uebersprungen) || undefined,
     ...(foreignCurrency
       ? {
-          waehrung_hinweis:
+          currency_note:
             `${foreignCurrency} Alarm(e) standen in einer anderen Währung als ${currency}. ` +
             `Die Schwellen wurden unverändert übernommen und gelten jetzt in ${currency} — ` +
             'die Zahlen bitte nachsehen.',

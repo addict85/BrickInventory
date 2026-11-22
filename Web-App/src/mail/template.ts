@@ -96,7 +96,7 @@ export const MAIL_THEMES = {
 /** When in doubt `classic`: a mail must never fail because of the theme. */
 export async function mailTheme(k: MailContext) {
   try {
-    const stored = await k.einstellungen.globalValue('app_theme');
+    const stored = await k.settings.globalValue('app_theme');
     // fromTable: a database value such as 'constructor' would otherwise find an
     // inherited member, and the fallback would never apply.
     return fromTable(MAIL_THEMES, stored, MAIL_THEMES.classic);

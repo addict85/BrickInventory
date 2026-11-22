@@ -9,9 +9,9 @@ import type { BlArt } from '../../../db/blMappingSql';
 const ONLY_FILL_EMPTY = `ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id, fetched_at = NOW()
      WHERE bl_mapping.bl_id IS NULL AND EXCLUDED.bl_id IS NOT NULL`;
 
-export async function writeBlNumber(db: DbInterface, art: BlArt, rbId: string, blId: string): Promise<void> {
+export async function writeBlNumber(db: DbInterface, kind: BlArt, rbId: string, blId: string): Promise<void> {
   await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2)) ${ONLY_FILL_EMPTY}`, [
-    art,
+    kind,
     rbId,
     blId,
   ]);
@@ -21,20 +21,20 @@ export async function writeBlNumber(db: DbInterface, art: BlArt, rbId: string, b
 export async function writeBlNumberOwn(
   db: DbInterface,
   uid: number,
-  art: BlArt,
+  kind: BlArt,
   rbId: string,
   blId: string,
 ): Promise<void> {
   await db.run(
     `INSERT INTO bl_mapping_custom (user_id, type, rb_id, bl_id) VALUES ($1,$2,$3,$4)
      ON CONFLICT (user_id, type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id, updated_at = NOW()`,
-    [uid, art, rbId, blId],
+    [uid, kind, rbId, blId],
   );
 }
 
 export async function writeBlNumbers(
   db: { run: (sql: string, p?: unknown[]) => Promise<unknown> },
-  art: BlArt,
+  kind: BlArt,
   rbIds: string[],
   blIds: string[],
 ): Promise<void> {
@@ -42,13 +42,13 @@ export async function writeBlNumbers(
     `INSERT INTO bl_mapping (type, rb_id, bl_id)
      SELECT $1, r, NULLIF(b, r) FROM unnest($2::text[], $3::text[]) AS x(r, b)
      ${ONLY_FILL_EMPTY}`,
-    [art, rbIds, blIds],
+    [kind, rbIds, blIds],
   );
 }
 
 /** DO NOTHING: the note "looked up" does not overwrite a mapping that was found. */
-export async function noteLookedUp(db: DbInterface, art: BlArt, rbId: string): Promise<void> {
-  await db.run('INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULL) ON CONFLICT DO NOTHING', [art, rbId]);
+export async function noteLookedUp(db: DbInterface, kind: BlArt, rbId: string): Promise<void> {
+  await db.run('INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULL) ON CONFLICT DO NOTHING', [kind, rbId]);
 }
 
 /** The own row of the accounts `konten` (in their order) before the shared one. */
@@ -58,7 +58,7 @@ const OWN_FIRST = `(SELECT e.bl_id FROM bl_mapping_custom e
 
 export async function differingNumber(
   db: DbInterface,
-  art: BlArt,
+  kind: BlArt,
   rbId: string,
   konten: number[] = [],
 ): Promise<string | null> {
@@ -66,40 +66,40 @@ export async function differingNumber(
     ? await db.get<{ bl_id: string | null }>(
         `SELECT NULLIF(COALESCE(${OWN_FIRST}, g.bl_id), q.rb_id) AS bl_id
          FROM (SELECT $2::text AS rb_id) q LEFT JOIN bl_mapping g ON g.type = $1 AND g.rb_id = q.rb_id`,
-        [art, rbId, konten],
+        [kind, rbId, konten],
       )
-    : await db.get<{ bl_id: string | null }>('SELECT bl_id FROM bl_mapping WHERE type=$1 AND rb_id=$2', [art, rbId]);
+    : await db.get<{ bl_id: string | null }>('SELECT bl_id FROM bl_mapping WHERE type=$1 AND rb_id=$2', [kind, rbId]);
   return z?.bl_id || null;
 }
 
 /** null only if there is no row (never looked up). */
 export async function effectiveNumber(
   db: DbInterface,
-  art: BlArt,
+  kind: BlArt,
   rbId: string,
   konten: number[] = [],
 ): Promise<string | null> {
-  if (konten.length) return (await effectiveNumbers(db, art, [rbId], konten))[0]?.nr ?? null;
+  if (konten.length) return (await effectiveNumbers(db, kind, [rbId], konten))[0]?.nr ?? null;
   const z = await db.get<{ nr: string }>(
     'SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_mapping WHERE type=$1 AND rb_id=$2',
-    [art, rbId],
+    [kind, rbId],
   );
   return z?.nr || null;
 }
 
-export function effectiveNumbers(db: DbInterface, art: BlArt, rbIds: string[], konten: number[] = []) {
+export function effectiveNumbers(db: DbInterface, kind: BlArt, rbIds: string[], konten: number[] = []) {
   if (!konten.length)
     return db.all<{ rb_id: string; nr: string }>(
       `SELECT rb_id, COALESCE(bl_id, rb_id) AS nr FROM bl_mapping
       WHERE type=$1 AND rb_id = ANY($2)`,
-      [art, rbIds],
+      [kind, rbIds],
     );
   return db.all<{ rb_id: string; nr: string }>(
     `SELECT q.rb_id, COALESCE(${OWN_FIRST}, g.bl_id, q.rb_id) AS nr
        FROM unnest($2::text[]) AS q(rb_id)
        LEFT JOIN bl_mapping g ON g.type = $1 AND g.rb_id = q.rb_id
       WHERE g.rb_id IS NOT NULL OR ${OWN_FIRST} IS NOT NULL`,
-    [art, rbIds, konten],
+    [kind, rbIds, konten],
   );
 }
 

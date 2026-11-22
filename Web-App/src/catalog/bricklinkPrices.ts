@@ -52,23 +52,23 @@ async function getPriceGuideRaw(
   const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };
   const cached = await catalogEntry(k, n);
   if (cached?.bl_type === 'GEAR')
-    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
+    return await k.externalSources.sources.bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
   if (cached?.bl_type === 'BOOK')
-    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/book/${bare}/price`, params);
-  if (withoutBricklinkPrice(cached)) failDomain('nicht_gefunden', 'kein_bricklink_preis');
+    return await k.externalSources.sources.bricklinkRequest('GET', `/items/book/${bare}/price`, params);
+  if (withoutBricklinkPrice(cached)) failDomain('not_found', 'no_bricklink_price');
   try {
-    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/set/${n}/price`, params);
+    return await k.externalSources.sources.bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {
     if (!tryNext(e)) throw e;
   }
-  for (const art of ['GEAR', 'BOOK'] as const) {
+  for (const kind of ['GEAR', 'BOOK'] as const) {
     try {
-      const result = await k.externalSources.quellen.bricklinkRequest(
+      const result = await k.externalSources.sources.bricklinkRequest(
         'GET',
-        `/items/${art.toLowerCase()}/${bare}/price`,
+        `/items/${kind.toLowerCase()}/${bare}/price`,
         params,
       );
-      await k.catalogCache.rememberBricklinkKind(n, art);
+      await k.catalogCache.rememberBricklinkKind(n, kind);
       return result;
     } catch (e) {
       if (!tryNext(e)) throw e;

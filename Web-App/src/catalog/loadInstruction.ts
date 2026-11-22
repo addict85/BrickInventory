@@ -30,23 +30,23 @@ function nextTag(now: Date): Date {
  * because advisory locks are bound to the session. */
 function withLock<T>(k: CatalogContext, lauf: () => Promise<T>): Promise<T> {
   return withSessionLock(k.db, LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
-    throw new JobMove(new Date(k.uhr.jetzt() + TICK_AFTER_FETCH_MS), 'Anleitungen laufen in einem anderen Prozess');
+    throw new JobMove(new Date(k.clock.now() + TICK_AFTER_FETCH_MS), 'Anleitungen laufen in einem anderen Prozess');
   });
 }
 
 async function reportInstructions(k: CatalogContext, setNumber: string, lauf?: JobRun): Promise<void> {
-  const z = await k.jobQueue.countKind('anleitung');
-  const open = z.offen + z.laeuft,
-    gesamt = open + z.erledigt + z.fehler;
+  const z = await k.jobQueue.countKind('instructions');
+  const open = z.pending + z.running,
+    total = open + z.done + z.error;
   await lauf?.progress?.({
-    erledigt: gesamt - open + 1,
-    gesamt,
+    done: total - open + 1,
+    total,
     text: open > 1 ? `${setNumber} · ${open - 1} ausstehend` : 'Alle erledigt',
   });
 }
 
 /** Throttling postpones the job without counting it as an attempt. */
-async function loadInstruction(k: CatalogContext, n: Payload<'anleitung'>, lauf?: JobRun): Promise<void> {
+async function loadInstruction(k: CatalogContext, n: Payload<'instructions'>, lauf?: JobRun): Promise<void> {
   const sn = n.set_number;
   if ((await instructionCount(k, sn)) > 0) return;
   if (n.nur_ausweichquelle) {
@@ -58,11 +58,11 @@ async function loadInstruction(k: CatalogContext, n: Payload<'anleitung'>, lauf?
       // The spacing is kept by the kind's pause, not by the function.
       const count = await loadSetInstructions(k, sn, true);
       console.log(`[instr-queue] ${sn}: ${count} instructions`);
-      if (await k.jobQueue.liesPause('anleitung')) await k.jobQueue.endPause('anleitung');
+      if (await k.jobQueue.liesPause('instructions')) await k.jobQueue.endPause('instructions');
       if (lastFetchWarExtern(k))
         await k.jobQueue.pauseKind(
-          'anleitung',
-          new Date(k.uhr.jetzt() + TICK_AFTER_FETCH_MS),
+          'instructions',
+          new Date(k.clock.now() + TICK_AFTER_FETCH_MS),
           'Abstand zwischen zwei Abrufen',
         );
       await reportInstructions(k, sn, lauf);
@@ -70,21 +70,21 @@ async function loadInstruction(k: CatalogContext, n: Payload<'anleitung'>, lauf?
       const f = asFetchError(e);
       const msg = errorMessage(e) || '';
       if (f.isCloudflare || msg.includes('1015')) {
-        const level = (await k.jobQueue.liesPause('anleitung'))?.level ?? 0;
+        const level = (await k.jobQueue.liesPause('instructions'))?.level ?? 0;
         const bis =
-          level < CF_PAUSES_MS.length ? new Date(k.uhr.jetzt() + CF_PAUSES_MS[level]!) : nextTag(k.uhr.datum());
-        const grund =
+          level < CF_PAUSES_MS.length ? new Date(k.clock.now() + CF_PAUSES_MS[level]!) : nextTag(k.clock.datum());
+        const reason =
           level < CF_PAUSES_MS.length
             ? `Cloudflare-Sperre: ${Math.round(CF_PAUSES_MS[level]! / 60000)} min warten (Versuch ${level + 1})`
             : 'Cloudflare-Sperre: bis morgen pausiert';
-        await k.jobQueue.pauseKind('anleitung', bis, grund, level < CF_PAUSES_MS.length ? level + 1 : 0);
-        await lauf?.progress?.({ text: grund });
-        console.log(`[instr-queue] ${grund}`);
-        throw new JobMove(bis, grund);
+        await k.jobQueue.pauseKind('instructions', bis, reason, level < CF_PAUSES_MS.length ? level + 1 : 0);
+        await lauf?.progress?.({ text: reason });
+        console.log(`[instr-queue] ${reason}`);
+        throw new JobMove(bis, reason);
       }
       if (msg.includes('Tageslimit') || msg.includes('rate limit') || msg.includes('429')) {
-        const bis = nextTag(k.uhr.datum());
-        await k.jobQueue.pauseKind('anleitung', bis, 'Tageskontingent erschöpft');
+        const bis = nextTag(k.clock.datum());
+        await k.jobQueue.pauseKind('instructions', bis, 'Tageskontingent erschöpft');
         throw new JobMove(bis, 'Tageskontingent erschöpft');
       }
       throw e;

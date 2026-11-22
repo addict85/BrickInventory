@@ -3,6 +3,7 @@
 import { csvImportReport } from '../infra/csvExport';
 import { DomainError } from '../infra/errorTexts';
 import { z } from 'zod';
+import { v1Keys } from '../contract/v1';
 import type { JobRow, JobContext, Progress } from '../jobQueue';
 import { SetCsvPayload } from '../sets';
 import { importWantedXml } from './wantedXmlImport';
@@ -15,33 +16,34 @@ const text = z.string();
 export const WantedCorrection = z.object({
   index: z.number().int().min(0),
   blId: z.string().max(64),
-  art: z.enum(['part', 'fig', 'set']),
+  kind: z.enum(['part', 'fig', 'set']),
   rbId: z.string().max(64).nullish(),
-  rbFarbe: z.number().int().nullish(),
-  menge: z.number().optional(),
-  zustand: z.string().max(16).nullish(),
+  rbColor: z.number().int().nullish(),
+  quantity: z.number().optional(),
+  condition: z.string().max(16).nullish(),
   kaufpreis: z.number().nullish(),
 });
+v1Keys(WantedCorrection, { quantity: 'menge', condition: 'zustand' });
 export const WantedCorrections = z.array(WantedCorrection).max(100_000);
 
-const ImportPayloadSchema = z.discriminatedUnion('quelle', [
-  z.object({ user_id: ACCOUNT, quelle: z.literal('teile_csv'), eingabe: z.object({ text }) }),
-  z.object({ user_id: ACCOUNT, quelle: z.literal('figuren_csv'), eingabe: z.object({ text }) }),
-  z.object({ user_id: ACCOUNT, quelle: z.literal('merkliste_csv'), eingabe: z.object({ text, owner: ACCOUNT }) }),
+const ImportPayloadSchema = z.discriminatedUnion('source', [
+  z.object({ user_id: ACCOUNT, source: z.literal('teile_csv'), eingabe: z.object({ text }) }),
+  z.object({ user_id: ACCOUNT, source: z.literal('figuren_csv'), eingabe: z.object({ text }) }),
+  z.object({ user_id: ACCOUNT, source: z.literal('merkliste_csv'), eingabe: z.object({ text, owner: ACCOUNT }) }),
   z.object({
     user_id: ACCOUNT,
-    quelle: z.literal('alarme_csv'),
-    eingabe: z.object({ text, waehrung: z.string().min(1).max(8) }),
+    source: z.literal('alarme_csv'),
+    eingabe: z.object({ text, currency: z.string().min(1).max(8) }),
   }),
   z.object({
     user_id: ACCOUNT,
-    quelle: z.literal('wanted_xml'),
+    source: z.literal('wanted_xml'),
     eingabe: z.object({
       xml: text,
       fileName: z.string().max(200),
-      schreiben: z.boolean(),
+      write: z.boolean(),
       viaRebrickable: z.boolean(),
-      korrekturen: WantedCorrections.optional(),
+      corrections: WantedCorrections.optional(),
     }),
   }),
 ]);
@@ -53,23 +55,23 @@ declare module '../jobQueue/jobs' {
   }
 }
 
-export type ImportSource = z.input<typeof ImportPayloadSchema>['quelle'];
+export type ImportSource = z.input<typeof ImportPayloadSchema>['source'];
 /** What the import needs from the source. */
 export type ImportInput<Q extends ImportSource> = Extract<
   z.input<typeof ImportPayloadSchema>,
-  { quelle: Q }
+  { source: Q }
 >['eingabe'];
 
 /** The route submits and waits; the import runs in the job process. */
 export function runImport<T = Record<string, unknown>, Q extends ImportSource = ImportSource>(
   k: CollectionContext,
   uid: number,
-  quelle: Q,
+  source: Q,
   eingabe: ImportInput<Q>,
   o: { progress?: (f: Progress) => void; wartenMs?: number } = {},
 ): Promise<T> {
   // tsc doesn't link Q to the union's branch; it's checked when enqueuing.
-  const payload = { user_id: uid, quelle, eingabe } as z.input<typeof ImportPayloadSchema>;
+  const payload = { user_id: uid, source, eingabe } as z.input<typeof ImportPayloadSchema>;
   return k.jobQueue.waitOnJob<T, 'csv_import'>('csv_import', payload, { ...o, userId: uid });
 }
 
@@ -77,7 +79,7 @@ export type ImportPayload = z.output<typeof ImportPayloadSchema>;
 
 async function resultFrom(kx: CollectionContext, n: ImportPayload, k: JobContext): Promise<Record<string, unknown>> {
   const uid = n.user_id;
-  switch (n.quelle) {
+  switch (n.source) {
     case 'teile_csv':
       return csvImportReport(await kx.parts.importPartsCsv(uid, n.eingabe.text));
     case 'figuren_csv':
@@ -85,7 +87,7 @@ async function resultFrom(kx: CollectionContext, n: ImportPayload, k: JobContext
     case 'merkliste_csv':
       return csvImportReport(await kx.wanted.importWantedListCsv(n.eingabe.owner, n.eingabe.text));
     case 'alarme_csv':
-      return kx.finances.preisalarm.alertsFromCsv(uid, n.eingabe.waehrung, n.eingabe.text);
+      return kx.finances.preisalarm.alertsFromCsv(uid, n.eingabe.currency, n.eingabe.text);
     case 'wanted_xml':
       return importWantedXml(kx, uid, n.eingabe, k);
   }

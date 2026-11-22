@@ -16,8 +16,8 @@ const ACQUISITIONS: Record<Art, string> = {
   figur: 'minifig_acquisitions',
 };
 
-function parameter(art: Art, userId: number, number: string, colorId: number | null) {
-  return art === 'teil' ? [userId, number, colorId] : [userId, number];
+function parameter(kind: Art, userId: number, number: string, colorId: number | null) {
+  return kind === 'teil' ? [userId, number, colorId] : [userId, number];
 }
 
 /** In the deletion's transaction, BEFORE the DELETEs: if storing fails,
@@ -25,18 +25,18 @@ function parameter(art: Art, userId: number, number: string, colorId: number | n
  * @returns the entry's id, or null if there was no master row */
 export async function putInTrash(
   k: InventoryContext,
-  art: Art,
+  kind: Art,
   userId: number,
   number: string,
   colorId: number | null = null,
 ): Promise<number | null> {
-  const p = parameter(art, userId, number, colorId);
-  const rows = await repo.inventoryRows(k.db, art, p);
-  const master = repo.tablesTheKind(art)[0] ?? '';
+  const p = parameter(kind, userId, number, colorId);
+  const rows = await repo.inventoryRows(k.db, kind, p);
+  const master = repo.tablesTheKind(kind)[0] ?? '';
   if (!rows[master]?.length) return null;
 
-  const name = await repo.label(k.db, art, userId, number, colorId);
-  return repo.createEntry(k.db, userId, art, number, art === 'teil' ? colorId : null, name, rows);
+  const name = await repo.label(k.db, kind, userId, number, colorId);
+  return repo.createEntry(k.db, userId, kind, number, kind === 'teil' ? colorId : null, name, rows);
 }
 
 /** Individual purchases of a set that a quantity reduction removed: the inventory row stays, hence an
@@ -60,20 +60,20 @@ export async function putPurchasesInTrash(
 async function restorePurchases(
   tx: DbInterface,
   l: InventoryReadContract,
-  e: { user_id: number; nummer: string },
+  e: { user_id: number; number: string },
   purchases: Purchase[],
 ) {
-  if (!(await repo.hatSetRow(tx, l, e.user_id, e.nummer))) return false;
+  if (!(await repo.hatSetRow(tx, l, e.user_id, e.number))) return false;
   for (const k of purchases) {
-    const menge = Number(k.quantity) || 0;
-    if (await purchase.stallEntryOn(tx, 'set', Number(k.id), e.user_id, menge)) continue;
-    const same = await purchase.sameEntryAtTag(tx, 'set', e.user_id, [e.nummer], String(k.day), -1, {
-      zustand: String(k.condition ?? 'N'),
+    const quantity = Number(k.quantity) || 0;
+    if (await purchase.stallEntryOn(tx, 'set', Number(k.id), e.user_id, quantity)) continue;
+    const same = await purchase.sameEntryAtTag(tx, 'set', e.user_id, [e.number], String(k.day), -1, {
+      condition: String(k.condition ?? 'N'),
       preis: k.purchase_price == null ? null : Number(k.purchase_price),
       geschaetzt: !!k.price_estimated,
-      waehrung: k.currency == null ? null : String(k.currency),
+      currency: k.currency == null ? null : String(k.currency),
     });
-    if (same && (await purchase.stallEntryOn(tx, 'set', same, e.user_id, menge))) continue;
+    if (same && (await purchase.stallEntryOn(tx, 'set', same, e.user_id, quantity))) continue;
     await repo.writeBack(tx, 'set', { set_acquisitions: [k] });
   }
   return true;
@@ -87,9 +87,9 @@ export interface TrashEntry {
   number: string;
   color_id: number | null;
   label: string | null;
-  anzahl: number;
+  count: number;
   deleted_at: string;
-  endgueltig_am: string;
+  purge_at: string;
 }
 
 export async function listTrash(k: InventoryContext, uidsChoice: Writer | number[]): Promise<TrashEntry[]> {
@@ -98,7 +98,7 @@ export async function listTrash(k: InventoryContext, uidsChoice: Writer | number
   return rows.map(r => {
     const acquisitions = r.rows?.[ACQUISITIONS[r.type]] ?? [];
     const { rows: _z, ...rest } = r;
-    return { ...rest, anzahl: acquisitions.reduce((s, e) => s + (Number(e.quantity) || 0), 0) };
+    return { ...rest, count: acquisitions.reduce((s, e) => s + (Number(e.quantity) || 0), 0) };
   });
 }
 
@@ -112,20 +112,20 @@ export async function restore(k: InventoryContext, uidsChoice: Writer | number[]
     return await k.transact(async (t): Promise<Restoration> => {
       const e = await repo.lockTrashEntry(t.db, id, uids);
       if (!e) notFound();
-      const art = e.type as Art;
-      const purchases = art === 'set' && !e.rows?.sets?.length ? (e.rows?.set_acquisitions ?? []) : null;
+      const kind = e.type as Art;
+      const purchases = kind === 'set' && !e.rows?.sets?.length ? (e.rows?.set_acquisitions ?? []) : null;
       if (purchases) {
-        if (!(await restorePurchases(t.db, t.lesevertrag, { user_id: e.user_id, nummer: e.number }, purchases)))
+        if (!(await restorePurchases(t.db, t.readContract, { user_id: e.user_id, number: e.number }, purchases)))
           notFound();
         await repo.removeTrashEntry(t.db, id);
-        return { type: art, number: e.number, user_id: e.user_id };
+        return { type: kind, number: e.number, user_id: e.user_id };
       }
-      await repo.writeBack(t.db, art, e.rows ?? {});
+      await repo.writeBack(t.db, kind, e.rows ?? {});
       await repo.removeTrashEntry(t.db, id);
-      return { type: art, number: e.number, user_id: e.user_id };
+      return { type: kind, number: e.number, user_id: e.user_id };
     });
   } catch (err) {
-    if ((err as { code?: string })?.code === '23505') failDomain('konflikt', 'papierkorb_schon_vorhanden');
+    if ((err as { code?: string })?.code === '23505') failDomain('konflikt', 'trash_already_exists');
     throw err;
   }
 }

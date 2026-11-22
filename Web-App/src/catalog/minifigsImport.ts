@@ -18,7 +18,7 @@ export type Figur = { fig_number: string; fig_name: string; quantity: number; im
 export async function loadSetMinifigs(
   k: CatalogContext,
   setNumber: string,
-): Promise<{ figuren: Figur[]; fromSource: boolean }> {
+): Promise<{ minifigs: Figur[]; fromSource: boolean }> {
   const fromCatalog = await minifigsFromCatalog(k, withVersion(setNumber));
   const raw: Figur[] = fromCatalog.length
     ? fromCatalog.map(f => ({
@@ -27,7 +27,7 @@ export async function loadSetMinifigs(
         quantity: f.quantity || 1,
         image_url: f.image_url || null,
       }))
-    : await k.externalSources.quellen.getSetMinifigs(setNumber);
+    : await k.externalSources.sources.getSetMinifigs(setNumber);
   const jeNumber = new Map<string, Figur>();
   for (const f of raw) {
     if (!f.fig_number) continue;
@@ -38,7 +38,7 @@ export async function loadSetMinifigs(
     );
   }
   // From the catalog the quantities are already merged; only what came from the source is written.
-  return { figuren: [...jeNumber.values()], fromSource: !fromCatalog.length };
+  return { minifigs: [...jeNumber.values()], fromSource: !fromCatalog.length };
 }
 
 /** In the caller's transaction (t.katalog), next to the entry in the inventory. */

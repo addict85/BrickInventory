@@ -6,7 +6,7 @@ import { IMAGE_HEADERS } from '../externalSources';
 import type { ImagesContext } from './context';
 
 /** What the image works need; it is created before the area's context (area.ts). */
-export type ImageWorkerContext = Pick<ImagesContext, 'konfig' | 'externalSources'>;
+export type ImageWorkerContext = Pick<ImagesContext, 'config' | 'externalSources'>;
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { withVersion } from '../infra/setNumber';
 
@@ -43,7 +43,7 @@ export async function downloadSetImage(
   setNumber: string,
   info?: { status?: number },
 ) {
-  const userAgent = imageUserAgent(k.konfig);
+  const userAgent = imageUserAgent(k.config);
   if (!url) return null;
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
   const localPath = path.join(SET_IMAGES_DIR, `${safe}.jpg`);
@@ -55,7 +55,7 @@ export async function downloadSetImage(
     )
   )
     return relPath;
-  const buf = await k.externalSources.quellen
+  const buf = await k.externalSources.sources
     .fetchImage(url, {
       maxBytes: SET_IMG_MAX_BYTES,
       zeitlimitMs: 30_000,
@@ -72,7 +72,7 @@ export async function downloadSetImage(
         return null;
       },
       (e: unknown) => {
-        if (e instanceof FetchError && e.grund === 'zu-gross')
+        if (e instanceof FetchError && e.reason === 'zu-gross')
           console.error(
             `[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`,
           );

@@ -101,5 +101,5 @@ export function publicError(
     };
   }
   reportError(context, e);
-  return { code: 'interner_fehler', error: errorText('interner_fehler', responseLanguage(req)) };
+  return { code: 'internal_error', error: errorText('internal_error', responseLanguage(req)) };
 }

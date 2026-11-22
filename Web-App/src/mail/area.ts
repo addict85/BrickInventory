@@ -8,7 +8,7 @@ import type { MailDependencies, MailContext } from './context';
 export type { MailDependencies, MailContext } from './context';
 
 export function createMail(a: MailDependencies, inspect?: Inspect<MailContext>) {
-  const k: MailContext = { einstellungen: a.einstellungen, konfig: a.konfig, uhr: a.uhr };
+  const k: MailContext = { settings: a.settings, config: a.config, clock: a.clock };
   inspect?.(k);
   const services = {
     buildAlertMail: bound(k)(mailer.buildAlertMail),
@@ -27,7 +27,7 @@ export function createMail(a: MailDependencies, inspect?: Inspect<MailContext>) 
   };
   // No access of its own: inside a transaction the sender reads the settings through it.
   return Object.assign(services, {
-    over: (db: Db): typeof services => createMail({ ...a, einstellungen: a.einstellungen.over(db) }),
+    over: (db: Db): typeof services => createMail({ ...a, settings: a.settings.over(db) }),
   });
 }
 

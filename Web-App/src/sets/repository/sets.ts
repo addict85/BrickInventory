@@ -135,8 +135,8 @@ const SET_SORTS = {
   year_desc: 's.year DESC NULLS LAST',
   year_asc: 's.year ASC NULLS LAST',
   // The table sorts by the column "bought": the last purchase, as tile and row show it.
-  kauf_desc: 'a.letzter_kauf DESC NULLS LAST, s.added_at DESC',
-  kauf_asc: 'a.letzter_kauf ASC NULLS LAST, s.added_at DESC',
+  kauf_desc: 'a.last_purchase DESC NULLS LAST, s.added_at DESC',
+  kauf_asc: 'a.last_purchase ASC NULLS LAST, s.added_at DESC',
   price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
   price_asc: 'COALESCE(a.max_purchase_price, 0) ASC',
   // quantity comes from the subquery; added_at orders equal quantities deterministically.
@@ -150,7 +150,7 @@ export type SetListenRow = {
   acq_count: number;
   used_count: number;
   avg_purchase_price: string | null;
-  kaufpreis_geschaetzt?: boolean | null;
+  purchase_price_estimated?: boolean | null;
   image_local: string | null;
   owner_ids?: number[] | null;
 };
@@ -171,7 +171,7 @@ function setsSource(uids: number[]): string {
   return uids.length > 1
     ? `(SELECT s.set_number,
                MIN(${SET.name}) AS name, MIN(${SET.jahr}) AS year, MIN(${SET.thema}) AS theme,
-               MIN(${SET.teile}) AS pieces, MIN(c.minifigs) AS minifigs,
+               MIN(${SET.parts}) AS pieces, MIN(c.minifigs) AS minifigs,
                -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
                -- sets.quantity geloescht). Die gruppierte Quelle haengt
                -- db/stockQuantity.ts an — hier stand SUM(s.quantity).
@@ -213,7 +213,7 @@ function setsSource(uids: number[]): string {
                ${quantityFrom('sm', 0)}::int AS quantity,
                s.added_at, s.updated_at, s.storage_id,
                lo.name AS storage,
-               ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.teile} AS pieces,
+               ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.parts} AS pieces,
                c.minifigs, c.image_url, c.image_local
           FROM sets s
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
@@ -279,7 +279,7 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
     // One grouped scan via LEFT JOIN instead of three correlated subqueries per row.
     db.all<Row<SetListenRow>>(
       `SELECT ${SET_COLS}${SET_OWNER_COL},
-      a.max_purchase_price, a.avg_purchase_price, a.kaufpreis_geschaetzt, a.letzter_kauf,
+      a.max_purchase_price, a.avg_purchase_price, a.purchase_price_estimated, a.last_purchase,
       COALESCE(a.acq_count, 0)::int AS acq_count, COALESCE(a.used_count, 0)::int AS used_count
       FROM ${setsFrom}
       LEFT JOIN (
@@ -293,9 +293,9 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
                                                        AS avg_purchase_price,
                -- Nur geschätzte Kaufpreise: Die Kachel darf den Betrag nicht „bezahlt“ nennen.
                bool_and(price_estimated) FILTER (WHERE purchase_price IS NOT NULL AND ${inAccountCurrency('set_acquisitions')})
-                                                       AS kaufpreis_geschaetzt,
+                                                       AS purchase_price_estimated,
                -- Die Kachel zeigt den letzten Kauf, nicht die Aufnahme des Sets.
-               MAX(set_acquisitions.created_at)        AS letzter_kauf,
+               MAX(set_acquisitions.created_at)        AS last_purchase,
                COUNT(*)                                AS acq_count,
                COUNT(*) FILTER (WHERE condition = 'U') AS used_count
         FROM set_acquisitions ${accountCurrencyJoin('set_acquisitions')}
@@ -367,7 +367,7 @@ export function setDetailRow(db: DbInterface, uids: number[], setNumber: string,
               -- ohne Migration 0033 braechte s.* ein zweites name mit, und
               -- der Zugriff darauf waere zweideutig (siehe die Begruendung
               -- bei setsFrom weiter oben).
-              ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.teile} AS pieces,
+              ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.parts} AS pieces,
               c.minifigs, c.image_url, c.image_local,
               -- Die Gesamtmenge im Blickfeld, aus den ERFASSUNGEN. Hier
               -- stand eine Summe ueber sets.quantity; die Spalte ist mit

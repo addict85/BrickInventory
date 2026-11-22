@@ -15,8 +15,8 @@ import type { Clock } from '../infra/clock';
 /** What the area gets from outside, so that a test can give it its own access; that
  * all areas use the same one is ensured by buildServices (startup/wiring.ts). */
 export interface SetsDependencies {
-  uhr: Clock;
-  konfig: Readonly<AppConfig>;
+  clock: Clock;
+  config: Readonly<AppConfig>;
   db: Db;
   externalSources: ForeignSourcesServices;
   images: ImagesServices;
@@ -25,7 +25,7 @@ export interface SetsDependencies {
   household: HouseholdServices;
   jobQueue: JobsServices;
   inventory: InventoryServices;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   account: AccountServices;
 }
 export type SetsContext = Context<SetsDependencies, object>;

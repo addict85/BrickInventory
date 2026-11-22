@@ -23,11 +23,11 @@ export const ACCOUNT_PER_HOUR = 20;
 const accountKey = (uid: number) => `guthaben-konto|${uid}`;
 
 export interface Locked {
-  grund: 'konto' | 'abstand' | 'botschutz';
-  wartenSek: number;
+  reason: 'konto' | 'abstand' | 'botschutz';
+  waitSeconds: number;
 }
 
-export type Lookup = { art: 'guthaben'; guthaben: Balance } | ({ art: 'gesperrt' } & Locked);
+export type Lookup = { kind: 'guthaben'; guthaben: Balance } | ({ kind: 'gesperrt' } & Locked);
 
 /** In the database, so the limit holds across every process. */
 export async function claimSlot(k: VoucherContext, uid: number): Promise<{ frei: true } | ({ frei: false } & Locked)> {
@@ -45,16 +45,16 @@ export async function claimSlot(k: VoucherContext, uid: number): Promise<{ frei:
     };
 
     const account = await t.throttle.hourlyState(accountKey(uid));
-    if (rest(account?.anzahl) >= ACCOUNT_PER_HOUR)
-      return { frei: false as const, grund: 'konto' as const, wartenSek: Math.max(1, rest(account?.warten_sek)) };
+    if (rest(account?.count) >= ACCOUNT_PER_HOUR)
+      return { frei: false as const, reason: 'konto' as const, waitSeconds: Math.max(1, rest(account?.warten_sek)) };
 
     // The lock first: whoever reports it should not hear "12 more seconds"
     // when it is 20 minutes.
     const lock = rest(z?.sperre_sek);
-    if (lock > 0) return { frei: false as const, grund: 'botschutz' as const, wartenSek: lock };
+    if (lock > 0) return { frei: false as const, reason: 'botschutz' as const, waitSeconds: lock };
 
     const gap = rest(z?.abstand_sek);
-    if (gap > 0) return { frei: false as const, grund: 'abstand' as const, wartenSek: gap };
+    if (gap > 0) return { frei: false as const, reason: 'abstand' as const, waitSeconds: gap };
 
     await repo.rememberCall(t.db);
     await t.throttle.countHour(accountKey(uid));
@@ -82,24 +82,24 @@ export async function checkBalanceThrottled(
 ): Promise<Lookup> {
   const slot = await claimSlot(k, uid);
   if (!slot.frei) {
-    return { art: 'gesperrt', grund: slot.grund, wartenSek: slot.wartenSek };
+    return { kind: 'gesperrt', reason: slot.reason, waitSeconds: slot.waitSeconds };
   }
   try {
     // Set individually: exactOptionalPropertyTypes distinguishes "not set" from
     // "undefined", and only "not set" makes fetchBalance use the real fetch.
-    const through = { locale: opt.locale || DEFAULT_COUNTRY, fetch: opt.fetch ?? k.externalSources.quellen.legoFetch };
+    const through = { locale: opt.locale || DEFAULT_COUNTRY, fetch: opt.fetch ?? k.externalSources.sources.legoFetch };
     const store = k.faecher.slot<SessionStore>('voucherBalanceSessions', () => new Map());
     const guthaben = await fetchBalance(store, number, pin, through);
-    return { art: 'guthaben', guthaben };
+    return { kind: 'guthaben', guthaben };
   } catch (e) {
     if (e instanceof BotProtection) {
-      const wartenSek = await lockForBotProtection(k);
+      const waitSeconds = await lockForBotProtection(k);
       console.warn(`[guthaben] bot protection — ${BOT_PROTECTION_PAUSE_MIN} minutes pause: ${e.message}`);
-      return { art: 'gesperrt', grund: 'botschutz', wartenSek };
+      return { kind: 'gesperrt', reason: 'botschutz', waitSeconds };
     }
     // An error from the other side is not a server error: whoever asked should read the reason.
-    const grund = redact(String((e as Error)?.message || e), number, pin);
-    console.warn(`[guthaben] lookup failed: ${grund}`);
-    throw new DomainError('fremddienst', 'guthaben_fehlgeschlagen', { grund });
+    const reason = redact(String((e as Error)?.message || e), number, pin);
+    console.warn(`[guthaben] lookup failed: ${reason}`);
+    throw new DomainError('fremddienst', 'balance_failed', { reason });
   }
 }

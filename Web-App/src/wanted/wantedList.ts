@@ -17,33 +17,33 @@ import { reportRow, writeItem, type ItemResult, type WriteOptions } from './want
 import type { WantedContext } from './context';
 
 export interface WantedReport {
-  gelesen: number;
-  fremdeArten: Record<string, number>;
-  ohneNummer: number;
-  stufen: Record<string, number>;
-  farbeOffen: number;
+  parsed: number;
+  foreignTypes: Record<string, number>;
+  withoutNumber: number;
+  levels: Record<string, number>;
+  colorPending: number;
   /** With BL numbers, so that they can be looked up. */
-  offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
-  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean; abgebrochen?: RebrickableAbort };
+  open: { blId: string; kind: WantedArt; blColor: number | null }[];
+  rebrickable?: { asked: number; found: number; filterIneffective: boolean; aborted?: RebrickableAbort };
   /** `abgewiesen`: corrections whose item did not match — then a different
    * file was chosen. They are NAMED, not skipped. */
-  korrekturen?: { angewandt: number; abgewiesen: Correction[] };
-  angelegt: number;
-  aufgestockt: number;
-  fehler: number;
+  corrections?: { applied: number; rejected: Correction[] };
+  created: number;
+  topped_up: number;
+  error: number;
   /** true = NOTHING was written. */
-  vorschau: boolean;
+  preview: boolean;
   /** The numbers above apply to what happened until the abort. */
-  abgebrochen?: boolean;
+  aborted?: boolean;
   /** So that the preview shows what WOULD be created, even if the file names no
    * condition. */
-  standardZustand: 'N' | 'U';
-  posten: ItemResult[];
+  defaultCondition: 'N' | 'U';
+  items: ItemResult[];
 }
 
 function countLevels(auf: Resolution[]): Record<string, number> {
   const z: Record<string, number> = {};
-  for (const a of auf) if (a.sicherheit) z[a.sicherheit] = (z[a.sicherheit] ?? 0) + 1;
+  for (const a of auf) if (a.confidence) z[a.confidence] = (z[a.confidence] ?? 0) + 1;
   return z;
 }
 
@@ -56,27 +56,27 @@ async function resolveCompleteOn(kx: WantedContext, item: WantedItem[], uid: num
     const r = await resolveViaRebrickableOn(kx, auf, 250, opt.progress);
     auf = r.auf;
     rebrickable = {
-      gefragt: r.gefragt,
-      gefunden: r.gefunden,
-      filterWirkungslos: r.filterWirkungslos,
-      ...(r.abgebrochen ? { abgebrochen: r.abgebrochen } : {}),
+      asked: r.asked,
+      found: r.found,
+      filterIneffective: r.filterIneffective,
+      ...(r.aborted ? { aborted: r.aborted } : {}),
     };
   }
-  let korrekturen: WantedReport['korrekturen'];
-  if (opt.korrekturen?.length) {
-    const k = applyCorrections(auf, opt.korrekturen);
+  let corrections: WantedReport['corrections'];
+  if (opt.corrections?.length) {
+    const k = applyCorrections(auf, opt.corrections);
     auf = await backfillColors(kx, k.auf);
-    korrekturen = { angewandt: k.angewandt, abgewiesen: k.abgewiesen };
+    corrections = { applied: k.applied, rejected: k.rejected };
   }
-  return { auf, rebrickable, korrekturen };
+  return { auf, rebrickable, corrections };
 }
 
 export interface WantedOptions extends WriteOptions {
-  vorschau?: boolean;
+  preview?: boolean;
   viaRebrickable?: boolean;
-  korrekturen?: Correction[];
+  corrections?: Correction[];
   /** Is called SYNCHRONOUSLY and must not throw. */
-  progress?: (stand: WantedProgress) => void;
+  progress?: (state: WantedProgress) => void;
   /** The bar in the UI carries a cross; without this question it would have a
    * cancel button that lies. */
   cancellation?: () => Promise<boolean>;
@@ -91,47 +91,47 @@ export async function importWantedList(
   opt: WantedOptions = {},
 ): Promise<WantedReport> {
   const read = readWantedList(xml);
-  const { auf, rebrickable, korrekturen } = await resolveCompleteOn(k, read.posten, uid, opt);
+  const { auf, rebrickable, corrections } = await resolveCompleteOn(k, read.items, uid, opt);
 
   const bericht: WantedReport = {
-    gelesen: read.posten.length,
-    fremdeArten: read.fremdeArten,
-    ohneNummer: read.ohneNummer,
-    stufen: countLevels(auf),
-    farbeOffen: auf.filter(a => a.farbeOffen).length,
-    offen: auf
+    parsed: read.items.length,
+    foreignTypes: read.foreignTypes,
+    withoutNumber: read.withoutNumber,
+    levels: countLevels(auf),
+    colorPending: auf.filter(a => a.colorPending).length,
+    open: auf
       .filter(a => a.rbId === null)
-      .map(a => ({ blId: a.posten.blId, art: a.posten.art, blFarbe: a.posten.blFarbe })),
+      .map(a => ({ blId: a.items.blId, kind: a.items.kind, blColor: a.items.blColor })),
     ...(rebrickable ? { rebrickable } : {}),
-    ...(korrekturen ? { korrekturen } : {}),
-    angelegt: 0,
-    aufgestockt: 0,
-    fehler: 0,
-    vorschau: !!opt.vorschau,
-    standardZustand: await k.einstellungen.userDefaultCondition(uid),
-    posten: [],
+    ...(corrections ? { corrections } : {}),
+    created: 0,
+    topped_up: 0,
+    error: 0,
+    preview: !!opt.preview,
+    defaultCondition: await k.settings.userDefaultCondition(uid),
+    items: [],
   };
 
   let seq = -1;
-  const melde = () => opt.progress?.({ phase: 'schreiben', fertig: seq + 1, gesamt: auf.length });
+  const melde = () => opt.progress?.({ phase: 'schreiben', fertig: seq + 1, total: auf.length });
 
   for (const a of auf) {
     // The tick counts over ALL items, otherwise it would depend on how many were resolvable.
-    if (opt.cancellation && !opt.vorschau && seq >= 0 && (seq + 1) % 10 === 0) {
+    if (opt.cancellation && !opt.preview && seq >= 0 && (seq + 1) % 10 === 0) {
       if (await opt.cancellation()) {
-        bericht.abgebrochen = true;
+        bericht.aborted = true;
         break;
       }
     }
     // An own binding: TypeScript does not narrow `a.rbId` via a helper variable.
     const rbId = a.rbId;
-    const open = rbId === null || a.farbeOffen;
+    const open = rbId === null || a.colorPending;
     seq++;
     const row = reportRow(a);
-    if (rbId === null || a.farbeOffen || opt.vorschau) {
+    if (rbId === null || a.colorPending || opt.preview) {
       // In the preview "created" means "would be created".
-      if (open) row.ausgang = 'offen';
-      bericht.posten.push(row);
+      if (open) row.outcome = 'open';
+      bericht.items.push(row);
       // A skipped item is done too, otherwise the bar would stand still.
       melde();
       continue;
@@ -139,20 +139,20 @@ export async function importWantedList(
 
     try {
       const how = await writeItem(uid, a, rbId, opt);
-      if (how === 'angelegt') bericht.angelegt++;
-      else bericht.aufgestockt++;
-      row.ausgang = how;
+      if (how === 'created') bericht.created++;
+      else bericht.topped_up++;
+      row.outcome = how;
     } catch (e: unknown) {
-      bericht.fehler++;
-      row.ausgang = 'fehler';
-      row.grund = e instanceof Error ? e.message : String(e);
+      bericht.error++;
+      row.outcome = 'error';
+      row.reason = e instanceof Error ? e.message : String(e);
     }
-    bericht.posten.push(row);
+    bericht.items.push(row);
     // After success AND failure, otherwise the bar would stand still on errors.
     melde();
   }
 
-  await describeRows(k, bericht.posten, auf);
+  await describeRows(k, bericht.items, auf);
   return bericht;
 }
 
@@ -164,7 +164,7 @@ async function describeRows(k: WantedContext, rows: ItemResult[], auf: Resolutio
     const b = description.get(i);
     if (!b) return;
     row.name = b.name;
-    row.bild = b.bild;
-    row.nameGeraten = b.geraten;
+    row.image = b.image;
+    row.nameGuessed = b.geraten;
   });
 }

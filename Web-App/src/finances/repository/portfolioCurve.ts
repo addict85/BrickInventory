@@ -29,7 +29,7 @@ export function dailyValuesFromHistory(
           AND ${marketPriceSql('ph')} IS NOT NULL
           ${datumsFilter}
      ),
-     werte AS (
+     vals AS (
        SELECT set_number, bucket,
               (array_agg(preis ORDER BY recorded_at DESC, passender_zustand DESC))[1] AS preis,
               max(tag)   AS letzter_tag,
@@ -44,14 +44,14 @@ export function dailyValuesFromHistory(
      tage AS (
        SELECT bucket, max(letzter_tag) AS tag, min(erster_tag) AS erster_tag,
               max(monat) AS monat
-         FROM werte GROUP BY bucket
+         FROM vals GROUP BY bucket
      ),
      mit_vortag AS (
        SELECT w.*,
               LAG(preis) OVER (PARTITION BY set_number ORDER BY bucket) AS vortag,
               -- Anfang der GANZEN Reihe, nicht des jeweiligen Sets.
               MIN(bucket) OVER () AS erstes_bucket
-         FROM werte w
+         FROM vals w
      ),
      delta AS (
        -- Der ERSTE bekannte Preis eines Sets zählt am Anfang der Reihe, nicht
@@ -81,11 +81,11 @@ export function cachePricesTheSets(
 ) {
   return db.all<{
     set_number: string;
-    marktpreis: number;
+    market_price: number;
     day: string;
     month: string;
   }>(
-    `SELECT set_number, ${marketPriceSql()} AS marktpreis,
+    `SELECT set_number, ${marketPriceSql()} AS market_price,
               to_char(fetched_at,'YYYY-MM-DD') AS day,
               to_char(fetched_at,'YYYY-MM')    AS month
        FROM price_cache

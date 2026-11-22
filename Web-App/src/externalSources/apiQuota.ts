@@ -17,10 +17,10 @@ export const SHARE_JE_ACCOUNT = 0.25;
 export const SHARE_ALL_ACCOUNTS = 0.5;
 const ALL_ACCOUNTS = -1;
 
-const today = (k: ForeignSourcesContext) => k.uhr.datum().toISOString().slice(0, 10);
+const today = (k: ForeignSourcesContext) => k.clock.datum().toISOString().slice(0, 10);
 
 export async function limitTheSource(k: ForeignSourcesContext, apiName: ApiName): Promise<number> {
-  return parseInt(await k.einstellungen.globalValue(`api_limit_${apiName}`, ''), 10) || DEFAULTS[apiName] || 4000;
+  return parseInt(await k.settings.globalValue(`api_limit_${apiName}`, ''), 10) || DEFAULTS[apiName] || 4000;
 }
 
 const limitJeAccount = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_JE_ACCOUNT));
@@ -68,9 +68,9 @@ export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
   const konto = currentAccount();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
   const z = await kx.apiQuota.callsJeAccount(s.date, apiName, konto.id, ALL_ACCOUNTS);
-  const stand = (k: number) => Number(z.find(r => Number(r.account_id) === k)?.count || 0);
+  const state = (k: number) => Number(z.find(r => Number(r.account_id) === k)?.count || 0);
   return {
-    allowed: stand(konto.id) < limitJeAccount(s.limit) && stand(ALL_ACCOUNTS) < limitAllAccounts(s.limit),
+    allowed: state(konto.id) < limitJeAccount(s.limit) && state(ALL_ACCOUNTS) < limitAllAccounts(s.limit),
     limit: s.limit,
   };
 }

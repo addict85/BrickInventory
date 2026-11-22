@@ -17,7 +17,7 @@ export const isSensitive = (k: string) =>
  * SMTP data is none of a sub-account's business. */
 export async function exportConfig(k: ManagementContext, uid: number, admin: boolean, name: string | null) {
   return {
-    exported_at: k.uhr.datum().toISOString(),
+    exported_at: k.clock.datum().toISOString(),
     exported_by: name,
     version: '3.0',
     global: admin ? await k.settings.globalValuesWithoutSecrets() : {},
@@ -85,13 +85,13 @@ const ACCOUNT_IMPORT = ['currency', 'user_default_condition'];
 export async function importConfig(kx: ManagementContext, uid: number, admin: boolean, file: Buffer) {
   const read = jsonOrNull(file.toString('utf-8'));
   const checked = read ? ConfigExport.safeParse(read.wert) : null;
-  if (!checked?.success) failDomain('ungueltig', 'json_ungueltig');
+  if (!checked?.success) failDomain('ungueltig', 'json_invalid');
   const { global, user_settings: konto } = checked.data;
   let imported = 0;
   const smtpSkipped = global ? Object.keys(global).filter(isSensitive) : [];
   if (global && admin) {
     if (GLOBAL_IMPORT.some(k => global[k] !== undefined && !isValidGlobalValue(k, global[k])))
-      failDomain('ungueltig', 'wert_ungueltig');
+      failDomain('ungueltig', 'value_invalid');
     const changed: string[] = [];
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Masked values from older exports must not overwrite real keys.
@@ -120,5 +120,5 @@ export async function importConfig(kx: ManagementContext, uid: number, admin: bo
     (admin && smtpSkipped.length
       ? '; Mailserver, Registrierung und API-Schlüssel nicht übernommen — bitte im Formular setzen'
       : '');
-  return { imported, note, smtp_uebergangen: admin ? smtpSkipped : [] };
+  return { imported, note, smtp_skipped: admin ? smtpSkipped : [] };
 }

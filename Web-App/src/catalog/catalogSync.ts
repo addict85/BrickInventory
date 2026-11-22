@@ -21,9 +21,9 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
   // number would never be checked.
   const n = withVersion(setNumber);
 
-  const stand = await k.csvCatalog.catalogImageStatus(n);
-  const total = stand.total,
-    withImg = stand.withImage;
+  const state = await k.csvCatalog.catalogImageStatus(n);
+  const total = state.total,
+    withImg = state.withImage;
   if (total > 0 && withImg >= total) {
     return;
   }
@@ -50,7 +50,7 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
         imageLocal = rel;
       } else {
         await k.externalSources.drossel.hintergrund.waitForSlot();
-        await k.externalSources.quellen
+        await k.externalSources.sources
           .downloadFile(p.image_url, dest)
           .catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
@@ -103,7 +103,7 @@ async function backfillPartColorsImages(k: CatalogContext) {
   let done = 0;
   for (const row of rows) {
     try {
-      const info = await k.externalSources.quellen.lookupPart(row.part_number, row.color_id);
+      const info = await k.externalSources.sources.lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
         await k.csvCatalog.replacePartColorsImage(row.part_number, row.color_id, info.image_url);
         done++;

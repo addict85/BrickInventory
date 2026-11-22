@@ -47,7 +47,7 @@ export async function accountsList(k: AccountContext) {
       ...(announced.get(a.target_id) ?? []),
       { type: a.type, effective_at: new Date(a.effective_at).toISOString() },
     ]);
-  return konten.map(z => ({ ...z, zweiter_faktor: withFactor.has(z.id), angekuendigt: announced.get(z.id) ?? [] }));
+  return konten.map(z => ({ ...z, second_factor: withFactor.has(z.id), announced: announced.get(z.id) ?? [] }));
 }
 
 export async function profile(k: AccountContext, id: number) {
@@ -79,7 +79,7 @@ export async function openFactorRequired(k: AccountContext, uid: number, admin: 
 /** The setup step "account": one exists, and an administrator has replaced the start password. */
 export async function accountConfigured(k: AccountContext, admin: boolean): Promise<boolean> {
   const s = await k.einrichtung.accountsStatus();
-  return s.vorhanden && (!admin || !s.startpasswort);
+  return s.existing && (!admin || !s.startpasswort);
 }
 
 export function passwordSwitchDue(k: AccountContext, id: number): Promise<boolean> {
@@ -149,9 +149,9 @@ export async function setPasswordBack(k: AccountContext, tokenHash: string, pass
       await endAccesses(t, uid);
       await t.factors.revokePasskeys(uid);
       const household = await t.household.unlinkForeignAccess(uid);
-      const adresse = await t.konten.discardPendingAddress(uid);
+      const address = await t.konten.discardPendingAddress(uid);
       await deleteDailyLimit(t, uid);
-      return { uid, resolved: { haushalt: household.hauptkonten, einladungen: household.einladungen, adresse } };
+      return { uid, resolved: { haushalt: household.hauptkonten, einladungen: household.einladungen, address } };
     },
   );
   if (!r) return null;
@@ -191,7 +191,7 @@ export async function addAccount(
     await rememberAdminAction(t, admin, fresh, 'konto_angelegt');
     if (asAdmin) await rememberAdminAction(t, admin, fresh, 'verwalter_ernannt');
     return fresh;
-  }).catch(asDuplicate('benutzername_vergeben'));
+  }).catch(asDuplicate('username_taken'));
 }
 
 export async function register(
@@ -219,12 +219,12 @@ export async function register(
 
 /** Lock first, then delete accesses (the token query checks is_active). Sessions
  * fall through the session version, even a row written again. */
-export async function setzeAktiv(k: AccountContext, uid: number, expected: boolean): Promise<{ geaendert: boolean }> {
+export async function setzeAktiv(k: AccountContext, uid: number, expected: boolean): Promise<{ changed: boolean }> {
   const r = await accessTransaction(k, t => t.konten.writeActive(uid, expected));
-  if (!r) notFound('benutzer_nicht_gefunden');
-  if (r === repo.LAST_ADMIN) failDomain('konflikt', 'letzter_verwalter');
+  if (!r) notFound('user_not_found');
+  if (r === repo.LAST_ADMIN) failDomain('konflikt', 'last_admin');
   if (!expected) await endAccesses(k, uid);
-  return { geaendert: r.vorher !== expected };
+  return { changed: r.vorher !== expected };
 }
 
 /** If the role changes, the browser sessions end: they carry the role
@@ -234,14 +234,14 @@ export async function setzeVerwalterRolle(
   k: AccountContext,
   uid: number,
   expected: boolean,
-): Promise<{ geaendert: boolean }> {
+): Promise<{ changed: boolean }> {
   const vorher = await accessTransaction(k, t => t.konten.setAdmin(uid, expected));
-  if (!vorher) notFound('benutzer_nicht_gefunden');
-  if (vorher === repo.LAST_ADMIN) failDomain('konflikt', 'letzter_verwalter');
-  const geaendert = vorher.vorher !== expected;
-  if (geaendert) {
+  if (!vorher) notFound('user_not_found');
+  if (vorher === repo.LAST_ADMIN) failDomain('konflikt', 'last_admin');
+  const changed = vorher.vorher !== expected;
+  if (changed) {
     await endAllSessions(k, uid);
     emptyTokenCache(k);
   }
-  return { geaendert };
+  return { changed };
 }

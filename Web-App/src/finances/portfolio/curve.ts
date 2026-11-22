@@ -60,7 +60,7 @@ export async function reconstructCurve(
         const k = r.day;
         buckets[k] ??= { day: r.day, month: r.month, sets: {} };
         const b = buckets[k];
-        b.sets[r.set_number] = Number(r.marktpreis);
+        b.sets[r.set_number] = Number(r.market_price);
       }
       // Every set with its FIRST known price in the basket from the start, otherwise
       // the curve would start too low and report the collection's growth.

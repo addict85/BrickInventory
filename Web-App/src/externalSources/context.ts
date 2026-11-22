@@ -10,9 +10,9 @@ import type { Sources } from './sources';
 import type { Clock } from '../infra/clock';
 
 export interface ForeignSourcesDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   jobQueue: JobsServices;
   /** What a test provides instead of the real clients; read at call time (area.ts). */
   ersatz?: Partial<Sources> | undefined;

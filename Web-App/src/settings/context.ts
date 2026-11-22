@@ -8,12 +8,12 @@ import type { Clock } from '../infra/clock';
 import type { SettingsReadContract } from './readContract';
 
 export interface SettingsDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
   /** Who listens for changes to global values; createSettings sets it up. */
   faecher: Compartments;
   throttle: ThrottleServices;
-  lesevertrag: SettingsReadContract;
+  readContract: SettingsReadContract;
 }
 
 /** Mail server, registration, keys: none of these redirect an injected query (0117). */

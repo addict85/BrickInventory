@@ -12,7 +12,7 @@ const TICK_MS = 150;
 /** What the job stores: the result, or the domain error the route reports. */
 type Stored = {
   ergebnis?: Record<string, unknown>;
-  fachfehler?: { code: ErrorCode; art: ErrorKind; vars?: Record<string, string | number> };
+  fachfehler?: { code: ErrorCode; kind: ErrorKind; vars?: Record<string, string | number> };
 };
 
 export async function setResult(k: JobsContext, id: string, ergebnis: Record<string, unknown>): Promise<void> {
@@ -22,22 +22,22 @@ export async function setResult(k: JobsContext, id: string, ergebnis: Record<str
 /** A domain error (wrong file, missing right) arrives at the request with a code. */
 export async function setSlotError(k: JobsContext, id: string, e: DomainError): Promise<void> {
   await k.jobs.writeResult(id, {
-    fachfehler: { code: e.code, art: e.art, ...(e.vars ? { vars: e.vars } : {}) },
+    fachfehler: { code: e.code, kind: e.kind, ...(e.vars ? { vars: e.vars } : {}) },
   } satisfies Stored);
 }
 
 /** @typeParam T the response the job stores; the contract checks it in the test run. */
 export async function waitOnJob<T, A extends JobKind>(
   k: JobsContext,
-  art: A,
+  kind: A,
   payload: PayloadInput<A>,
   o: { userId: number; progress?: (f: Progress) => void; wartenMs?: number },
 ): Promise<T> {
   const uid = o.userId;
   // One attempt: a second run would create already created items once more.
-  const id = await placeJobOne(k, art, payload, { userId: uid, maxAttempts: 1 });
-  if (!id) failDomain('intern', 'interner_fehler');
-  const bis = k.uhr.jetzt() + (o.wartenMs ?? IMPORT_WAIT_MS);
+  const id = await placeJobOne(k, kind, payload, { userId: uid, maxAttempts: 1 });
+  if (!id) failDomain('intern', 'internal_error');
+  const bis = k.clock.now() + (o.wartenMs ?? IMPORT_WAIT_MS);
   let lastUsed = '';
   for (;;) {
     const s = await k.jobs.jobStatus(id, uid);
@@ -50,15 +50,15 @@ export async function waitOnJob<T, A extends JobKind>(
     }
     const stored = (s?.result ?? {}) as Stored;
     if (stored.fachfehler)
-      throw new DomainError(stored.fachfehler.art ?? 'ungueltig', stored.fachfehler.code, stored.fachfehler.vars);
-    if (s?.status === 'erledigt') {
+      throw new DomainError(stored.fachfehler.kind ?? 'ungueltig', stored.fachfehler.code, stored.fachfehler.vars);
+    if (s?.status === 'done') {
       // Read is read: the result carries names and numbers from the file.
       await k.jobs.writeResult(id, null);
       return (stored.ergebnis ?? {}) as T;
     }
-    if (!s || s.status === 'abgebrochen') failDomain('konflikt', 'import_abgebrochen');
-    if (s.status === 'fehler') failDomain('intern', 'import_fehlgeschlagen');
-    if (k.uhr.jetzt() > bis) failDomain('zeitueberschreitung', 'import_laeuft_noch');
+    if (!s || s.status === 'cancelled') failDomain('konflikt', 'import_cancelled');
+    if (s.status === 'error') failDomain('intern', 'import_failed');
+    if (k.clock.now() > bis) failDomain('zeitueberschreitung', 'import_still_running');
     await new Promise(r => setTimeout(r, TICK_MS));
   }
 }

@@ -19,48 +19,48 @@ export const COST = { normal: 1, abruf: 5, preis: 20, auftrag: 25 } as const;
  * stand out here and not silently land in the normal budget. Contract keys instead of path patterns:
  * what gets classified is the route Express will find, not a spelling of it. */
 const JOBS: ReadonlySet<Key> = new Set<Key>([
-  'POST /api/v1/sets/partslist-pdf',
-  'POST /api/v1/sets/import/csv',
-  'POST /api/v1/sets/add-stream',
-  'POST /api/v1/parts/import/csv',
-  'POST /api/v1/minifigs/import/csv',
-  'POST /api/v1/wanted/import/csv',
-  'POST /api/v1/wanted-list/import/xml',
-  'POST /api/v1/alerts/import/csv',
-  'POST /api/v1/settings/import',
-  'POST /api/v1/vouchers/pdf',
-  'GET /api/v1/settings/export/data',
+  'POST /api/v2/sets/partslist-pdf',
+  'POST /api/v2/sets/import/csv',
+  'POST /api/v2/sets/add-stream',
+  'POST /api/v2/parts/import/csv',
+  'POST /api/v2/minifigs/import/csv',
+  'POST /api/v2/wanted/import/csv',
+  'POST /api/v2/wanted-list/import/xml',
+  'POST /api/v2/alerts/import/csv',
+  'POST /api/v2/settings/import',
+  'POST /api/v2/vouchers/pdf',
+  'GET /api/v2/settings/export/data',
 ]);
 
 /** Up to four BrickLink calls per request (two conditions, one fallback each), all from
  * the daily quota that ALL accounts share. */
 const PRICE_FETCH: ReadonlySet<Key> = new Set<Key>([
-  'GET /api/v1/wanted/:setNumber/preise',
-  'GET /api/v1/sets/:setNumber/price',
+  'GET /api/v2/wanted/:setNumber/prices',
+  'GET /api/v2/sets/:setNumber/price',
 ]);
 
 /** Trigger a fetch from Rebrickable, Brickset, a barcode service or
  * the voucher shop per request. The catalog asks Rebrickable per search; the daily quota there is finite. */
 const FOREIGN_FETCH: ReadonlySet<Key> = new Set<Key>([
-  'GET /api/v1/sets/info/:setNumber',
-  'GET /api/v1/sets/barcode/:barcode',
-  'POST /api/v1/sets',
-  'POST /api/v1/sets/:setNumber/parts',
-  'POST /api/v1/sets/:setNumber/instructions',
-  'POST /api/v1/parts',
-  'PUT /api/v1/parts/:partNumber/:colorId/color',
-  'POST /api/v1/minifigs',
-  'POST /api/v1/wanted/:setNumber/:condition/uebernehmen',
-  'POST /api/v1/vouchers/:id/guthaben',
+  'GET /api/v2/sets/info/:setNumber',
+  'GET /api/v2/sets/barcode/:barcode',
+  'POST /api/v2/sets',
+  'POST /api/v2/sets/:setNumber/parts',
+  'POST /api/v2/sets/:setNumber/instructions',
+  'POST /api/v2/parts',
+  'PUT /api/v2/parts/:partNumber/:colorId/color',
+  'POST /api/v2/minifigs',
+  'POST /api/v2/wanted/:setNumber/:condition/take-over',
+  'POST /api/v2/vouchers/:id/balance',
 ]);
 
-/** @param path relative to /api/v1, as apiThrottle sees it there */
+/** @param path relative to /api/v2, as apiThrottle sees it there */
 export function classification(method: string, path: string): { kosten: number; auftrag: boolean } {
-  const k = keyForRequest(method === 'HEAD' ? 'GET' : method, `/api/v1${path}`);
+  const k = keyForRequest(method === 'HEAD' ? 'GET' : method, `/api/v2${path}`);
   if (!k) return { kosten: COST.normal, auftrag: false };
   if (JOBS.has(k)) return { kosten: COST.auftrag, auftrag: true };
   if (PRICE_FETCH.has(k)) return { kosten: COST.preis, auftrag: false };
-  if (FOREIGN_FETCH.has(k) || k.startsWith('GET /api/v1/catalog')) return { kosten: COST.abruf, auftrag: false };
+  if (FOREIGN_FETCH.has(k) || k.startsWith('GET /api/v2/catalog')) return { kosten: COST.abruf, auftrag: false };
   return { kosten: COST.normal, auftrag: false };
 }
 
@@ -84,7 +84,7 @@ export async function checkBudget(store: BudgetStore, uid: number, method: strin
     nowMs: now,
   });
   const restSec = Math.max(1, Number(r.rest_s) || 1);
-  return { erlaubt: r.allowed, kosten, auftrag, restSec, units: r.units, auftraege: r.jobs };
+  return { erlaubt: r.allowed, kosten, auftrag, restSec, units: r.units, jobs: r.jobs };
 }
 
 /** Behind loginAtInbox: without an account there is nothing to limit, and
@@ -112,6 +112,6 @@ export function apiThrottle(store: BudgetStore) {
       return;
     }
     res.setHeader('Retry-After', String(r.restSec));
-    sendError(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: Math.max(1, Math.ceil(r.restSec / 60)) });
+    sendError(req, res, 'zu_viele', 'too_many_requests', { minutes: Math.max(1, Math.ceil(r.restSec / 60)) });
   };
 }

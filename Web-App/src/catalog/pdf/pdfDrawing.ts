@@ -218,14 +218,14 @@ function drawPart(doc: Doc, p: Row, images: Map<string, Buffer | null>, newPage:
   doc.y = rowY + rowHeight + 2;
 }
 
-type ThreadJob = { art: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };
+type ThreadJob = { kind: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };
 
 /** From the TypeScript sources (tsx) there is no .js file for the thread; then drawing happens here. */
 function drawPdfInThread(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
   if (__filename.endsWith('.ts')) return buildPdf(sets, parts, ziel);
   return new Promise((resolve, reject) => {
-    const w = new Worker(__filename, { workerData: { art: 'pdf-zeichnen', sets, parts, ziel } satisfies ThreadJob });
-    w.once('message', (m: { ok: boolean; fehler?: string }) => (m.ok ? resolve() : reject(new Error(m.fehler))));
+    const w = new Worker(__filename, { workerData: { kind: 'pdf-zeichnen', sets, parts, ziel } satisfies ThreadJob });
+    w.once('message', (m: { ok: boolean; error?: string }) => (m.ok ? resolve() : reject(new Error(m.error))));
     w.once('error', reject);
     w.once('exit', code => {
       if (code !== 0) reject(new Error(`PDF-Faden endete mit ${code}`));
@@ -233,12 +233,12 @@ function drawPdfInThread(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promis
   });
 }
 
-if (!isMainThread && parentPort && (workerData as ThreadJob | undefined)?.art === 'pdf-zeichnen') {
+if (!isMainThread && parentPort && (workerData as ThreadJob | undefined)?.kind === 'pdf-zeichnen') {
   const { sets, parts, ziel } = workerData as ThreadJob;
   const port = parentPort;
   buildPdf(sets, parts, ziel).then(
     () => port.postMessage({ ok: true }),
-    (e: unknown) => port.postMessage({ ok: false, fehler: e instanceof Error ? e.message : String(e) }),
+    (e: unknown) => port.postMessage({ ok: false, error: e instanceof Error ? e.message : String(e) }),
   );
 }
 

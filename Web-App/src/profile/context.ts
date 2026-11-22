@@ -9,11 +9,11 @@ import type { MailServices } from '../mail';
 import type { Clock } from '../infra/clock';
 
 export interface ProfileDependencies {
-  konfig: Readonly<AppConfig>;
+  config: Readonly<AppConfig>;
   db: Db;
-  uhr: Clock;
+  clock: Clock;
   faecher: Compartments;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   account: AccountServices;
   mail: MailServices;
 }

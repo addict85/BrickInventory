@@ -22,8 +22,8 @@ export async function removeAccount(k: AccountContext, target: number, through: 
       if (through !== null && fremd) await t.protokoll.logEntry(through, target, 'konto_geloescht');
       const route =
         through === null ? await t.konten.deleteOwnAccount(target) : await t.konten.deleteAccount(target, through);
-      if (route === repo.LAST_ADMIN || (!route && through === null)) failDomain('konflikt', 'letzter_verwalter');
-      if (!route) notFound('benutzer_nicht_gefunden_oder_eigenes');
+      if (route === repo.LAST_ADMIN || (!route && through === null)) failDomain('konflikt', 'last_admin');
+      if (!route) notFound('user_not_found_or_own');
       // user_sessions has no foreign key to users.
       await increaseSessionVersion(t, target);
       await t.accesses.deleteSessionsOfAccount(target);
@@ -44,9 +44,9 @@ export async function removeAccountFiles(k: AccountContext, target: number): Pro
   } catch (e) {
     reportError(`konto:dateien ${target}`, e);
     await k.jobQueue.placeJobOne(
-      'konto_dateien',
+      'account_files',
       { user_id: target },
-      { schluessel: `konto_dateien:${target}`, maxAttempts: 10, afterSeconds: 60 },
+      { schluessel: `account_files:${target}`, maxAttempts: 10, afterSeconds: 60 },
     );
     return 'eingereiht';
   }
@@ -55,6 +55,6 @@ export async function removeAccountFiles(k: AccountContext, target: number): Pro
 /** Own instructions and voucher PDFs belong to the account; left behind they would have no owner. */
 export async function deleteAccountFiles(userId: number): Promise<void> {
   if (!Number.isInteger(userId) || userId <= 0) return;
-  for (const art of ['uploads', 'vouchers'])
-    await fs.promises.rm(path.join(DATA_DIR, art, String(userId)), { recursive: true, force: true });
+  for (const kind of ['uploads', 'vouchers'])
+    await fs.promises.rm(path.join(DATA_DIR, kind, String(userId)), { recursive: true, force: true });
 }

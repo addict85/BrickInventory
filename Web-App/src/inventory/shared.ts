@@ -91,7 +91,7 @@ export interface UsingSet {
 }
 
 export interface ComponentHeader {
-  nummer: string;
+  number: string;
   name: string | null;
   color_id: number | null;
   color_name: string | null;
@@ -135,7 +135,7 @@ export async function usingSets(
   const withImage = rows.find(r => r.teil_image_local || r.teil_image_url);
   const item: ComponentHeader | null = first
     ? {
-        nummer: String(first.nummer),
+        number: String(first.number),
         name: first.name ?? null,
         color_id: first.color_id == null ? null : parseInt(String(first.color_id), 10),
         color_name: first.color_name ?? null,
@@ -158,17 +158,17 @@ export async function usingSets(
 /** The row and, if it existed, its purchases: the finance sums would otherwise keep counting the part. */
 export async function deleteManual(
   k: InventoryContext,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   ownerId: number,
   key: (string | number)[],
 ) {
   const [number = '', color = 0] = key;
   const r =
-    art === 'part'
+    kind === 'part'
       ? await repo.loescheTeilZeile(k.db, ownerId, String(number), Number(color))
       : await repo.deleteMinifigRow(k.db, ownerId, String(number));
   if (!r.changes) return r;
-  if (art === 'part') await purchases.deletePartEntries(k.db, ownerId, String(number), Number(color) || 0);
+  if (kind === 'part') await purchases.deletePartEntries(k.db, ownerId, String(number), Number(color) || 0);
   else await purchases.deleteMinifigEntries(k.db, ownerId, String(number));
   return r;
 }

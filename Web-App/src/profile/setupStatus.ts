@@ -7,23 +7,23 @@ import { Degradations } from '../infra/result';
 import { tlsStand } from '../infra/tlsRoot';
 import type { ProfileContext } from './context';
 
-export type StepId = 'datenbank' | 'basis_url' | 'https' | 'ca' | 'konto' | 'quelle';
+export type StepId = 'database' | 'base_url' | 'https' | 'ca' | 'account' | 'source';
 export interface StepState {
   id: StepId;
   ok: boolean;
-  pflicht: boolean;
+  required: boolean;
 }
 
 // Field names below (erledigt, konfiguriert, ...) are the API contract (src/contract/settings.ts,
 // EinrichtungStand) and stay as-is; only identifiers around them are English.
 export interface SetupStatusResponse {
-  erledigt: boolean;
-  konfiguriert: boolean;
-  schritte: StepState[];
-  ca: { vorhanden: boolean; fp_hex?: string; gueltig_bis?: string; download: string };
-  basis_url: string | null;
+  done: boolean;
+  configured: boolean;
+  steps: StepState[];
+  ca: { existing: boolean; fp_hex?: string; valid_until?: string; download: string };
+  base_url: string | null;
   https: boolean;
-  degradiert?: string[];
+  degraded?: string[];
 }
 
 /** The page is public and costs about ten queries per call (decryption, account count):
@@ -33,7 +33,7 @@ type Cached = Map<boolean, { until: number; response: Promise<SetupStatusRespons
 const cached = (k: ProfileContext) =>
   k.faecher.slot<Cached>('einrichtungStand', () => {
     const m: Cached = new Map();
-    k.einstellungen.onGlobalChange(() => m.clear());
+    k.settings.onGlobalChange(() => m.clear());
     return m;
   });
 
@@ -47,7 +47,7 @@ export function forgetSetupStatus(k: ProfileContext): void {
  * who only reaches the page should not learn that an account still carries the initial password.
  * Both responses are cached separately, or the public page would see the admin's. */
 export function setupStatus(k: ProfileContext, { isAdmin = false } = {}): Promise<SetupStatusResponse> {
-  const now = k.uhr.jetzt();
+  const now = k.clock.now();
   const _cached = cached(k);
   const old = _cached.get(isAdmin);
   if (old && old.until > now) return old.response;
@@ -61,26 +61,26 @@ export function setupStatus(k: ProfileContext, { isAdmin = false } = {}): Promis
 
 async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatusResponse> {
   const ca = await tlsStand();
-  const k = kx.konfig;
+  const k = kx.config;
   const base = {
     ca: {
-      vorhanden: !!ca,
-      ...(ca ? { fp_hex: ca.fp_hex, zert_sha256: ca.zert_sha256, gueltig_bis: ca.gueltig_bis } : {}),
+      existing: !!ca,
+      ...(ca ? { fp_hex: ca.fp_hex, cert_sha256: ca.cert_sha256, valid_until: ca.valid_until } : {}),
       download: '/ca.crt',
     },
-    basis_url: isAdmin ? k.appBaseUrl : null,
+    base_url: isAdmin ? k.appBaseUrl : null,
     https: k.hinterTls,
   };
 
   // What couldn't be read reads "missing" and goes into `degradiert`; only the
   // database row is itself the probe.
   const ab = new Degradations();
-  const done = !!(await ab.orElse('erledigt', kx.einstellungen.globalValue('einrichtung_erledigt'), null));
+  const done = !!(await ab.orElse('erledigt', kx.settings.globalValue('einrichtung_erledigt'), null));
   // Once setup is done, decrypting the keys is no longer needed.
-  if (done) return { ...base, erledigt: true, konfiguriert: true, schritte: [] };
+  if (done) return { ...base, done: true, configured: true, steps: [] };
 
   // BrickLink only counts with all four values, as in /settings/einrichtung.
-  const has = async (key: string) => !!(await ab.orElse('quelle', kx.einstellungen.globalValue(key), null));
+  const has = async (key: string) => !!(await ab.orElse('quelle', kx.settings.globalValue(key), null));
   const rebrickable = await has('rebrickable_api_key');
   const bricklink = (
     await Promise.all(
@@ -90,13 +90,13 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
 
   const steps: StepState[] = [];
   const database = await kx.db.databaseResponds();
-  steps.push({ id: 'datenbank', ok: database, pflicht: true });
-  steps.push({ id: 'basis_url', ok: !!k.appBaseUrl, pflicht: true });
-  steps.push({ id: 'https', ok: k.hinterTls, pflicht: false });
-  steps.push({ id: 'ca', ok: !!ca, pflicht: !!k.hinterTls });
+  steps.push({ id: 'database', ok: database, required: true });
+  steps.push({ id: 'base_url', ok: !!k.appBaseUrl, required: true });
+  steps.push({ id: 'https', ok: k.hinterTls, required: false });
+  steps.push({ id: 'ca', ok: !!ca, required: !!k.hinterTls });
   const account = await ab.orElse('konten', kx.account.accountConfigured(isAdmin), false);
-  steps.push({ id: 'konto', ok: account, pflicht: true });
-  steps.push({ id: 'quelle', ok: rebrickable, pflicht: true });
+  steps.push({ id: 'account', ok: account, required: true });
+  steps.push({ id: 'source', ok: rebrickable, required: true });
 
-  return { ...base, erledigt: false, konfiguriert: rebrickable || bricklink, schritte: steps, ...ab.detail() };
+  return { ...base, done: false, configured: rebrickable || bricklink, steps: steps, ...ab.detail() };
 }

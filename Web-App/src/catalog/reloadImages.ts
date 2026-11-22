@@ -35,13 +35,13 @@ function _fsPathFromLocal(imageLocal: string) {
 // With await, otherwise the final state would be lost on a restart.
 async function _redownloadSetStatus(k: CatalogContext, obj: Record<string, unknown>) {
   await k.jobQueue
-    .setState('imgredl_status', JSON.stringify({ ...obj, at: k.uhr.jetzt() }))
+    .setState('imgredl_status', JSON.stringify({ ...obj, at: k.clock.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
 async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
-  const lauf_ = k.faecher.slot('bilderNachladen', () => ({ laeuft: false }));
-  if (lauf_.laeuft) return { alreadyRunning: true };
+  const lauf_ = k.faecher.slot('bilderNachladen', () => ({ running: false }));
+  if (lauf_.running) return { alreadyRunning: true };
   // Lock on an OWN connection: advisory locks are bound to the session.
   let lockClient: PoolClient;
   try {
@@ -58,11 +58,11 @@ async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
     lockClient.release();
     return { error: errorMessage(e) || 'Sperre fehlgeschlagen' };
   }
-  lauf_.laeuft = true;
+  lauf_.running = true;
   try {
     return await _redownloadMissingImages(k, lauf);
   } finally {
-    lauf_.laeuft = false;
+    lauf_.running = false;
     await repo.giveFollowUpLockFree(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
     lockClient.release();
   }
@@ -168,7 +168,7 @@ async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: 
     cleared = 0,
     _lastFlush = 0;
   const flush = async (force?: boolean) => {
-    const now = k.uhr.jetzt();
+    const now = k.clock.now();
     if (!force && now - _lastFlush < 1000) return;
     _lastFlush = now;
     await _redownloadSetStatus(k, { running: true, phase: 'downloading', total, done, redownloaded, cleared });
@@ -202,7 +202,7 @@ async function reloadImage(k: CatalogContext, m: MissingImage): Promise<boolean>
     await k.cdnDrossel.acquire();
     try {
       // An error counts like a fruitless fetch; the counter names both.
-      const r = await attempts('teile-enrich:downloadFile', k.externalSources.quellen.downloadFile(m.image_url, m.fp));
+      const r = await attempts('teile-enrich:downloadFile', k.externalSources.sources.downloadFile(m.image_url, m.fp));
       ok = r.ok && r.wert === true;
     } finally {
       k.cdnDrossel.release();

@@ -20,7 +20,7 @@ export type { InventoryDependencies, InventoryContext } from './context';
 export function createInventory(a: InventoryDependencies, inspect?: Inspect<InventoryContext>) {
   return buildArea(
     a,
-    (db: Db) => access(db, a.lesevertrag),
+    (db: Db) => access(db, a.readContract),
     (k: InventoryContext) => ({
       bookDailyEntry: bound(k)(acquisitions.addPurchaseAtTag),
       entryAtSameTag: bound(k)(acquisitions.purchaseAtSameTag),

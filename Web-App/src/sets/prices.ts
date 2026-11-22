@@ -15,8 +15,8 @@ export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht 
   // The currency from the setting: the app sent its local start value before it knew
   // the setting.
   const currency = await currencyOf(sk, uid);
-  const guideType = String(await sk.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
-  const ttlHours = String(await sk.einstellungen.userValue(uid, 'price_cache_ttl', '24'));
+  const guideType = String(await sk.settings.userValue(uid, 'price_guide_type', 'sold'));
+  const ttlHours = String(await sk.settings.userValue(uid, 'price_cache_ttl', '24'));
   const price = await attempts('sets:preis', async () =>
     sk.finances.fetchPrice(sn, await sk.finances.setState(scope, sn), guideType, currency, ttlHours, null),
   );
@@ -29,7 +29,7 @@ export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht 
       max_price: null,
       qty_avg_price: null,
       no_price: true,
-      error: price.fehler.grund,
+      error: price.error.reason,
     };
   const pd = price.wert;
   return {
@@ -47,7 +47,7 @@ export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht 
 /** The currency from the settings, not from the request: two sources
  * would drift apart at the next change. */
 export async function currencyOf(sk: SetsContext, uid: number): Promise<string> {
-  return String(await sk.einstellungen.userValue(uid, 'currency', 'EUR'));
+  return String(await sk.settings.userValue(uid, 'currency', 'EUR'));
 }
 
 export function readSetAlerts(sk: SetsContext, uid: number, sn: string) {
@@ -70,7 +70,7 @@ export function deleteAlarmOfSets(sk: SetsContext, uid: number, sn: string, cond
 export async function startAlarmCsvImport(sk: SetsContext, uid: number, text: string) {
   return sk.jobQueue.waitOnJob<CsvImportReport, 'csv_import'>(
     'csv_import',
-    { user_id: uid, quelle: 'alarme_csv', eingabe: { waehrung: await currencyOf(sk, uid), text } },
+    { user_id: uid, source: 'alarme_csv', eingabe: { currency: await currencyOf(sk, uid), text } },
     { userId: uid },
   );
 }

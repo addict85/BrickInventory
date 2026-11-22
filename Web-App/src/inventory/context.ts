@@ -18,14 +18,14 @@ import type { FinancesServices } from '../finances';
 import type { Clock } from '../infra/clock';
 
 export interface InventoryDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   household: HouseholdServices;
   account: AccountServices;
   catalog: CatalogServices;
   finances: FinancesServices;
-  lesevertrag: InventoryReadContract;
+  readContract: InventoryReadContract;
 }
 
 export const access = (db: Db, l: InventoryReadContract) => ({

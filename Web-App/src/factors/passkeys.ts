@@ -11,7 +11,7 @@ import {
   type WebAuthnCredential,
 } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
-import { basisUrl } from '../infra/baseUrl';
+import { baseUrl } from '../infra/baseUrl';
 import { errorMessage } from '../infra/error';
 import { failDomain } from '../infra/errorTexts';
 import { searchValue } from '../infra/secret';
@@ -40,7 +40,7 @@ const CHALLENGE_MS = 5 * 60 * 1000;
 /** A browser only allows WebAuthn for a domain name, not an IP address;
  * without a name there are no passkeys. */
 export function relyingParty(): { rpID: string; origin: string; rpName: string } | null {
-  const basis = basisUrl();
+  const basis = baseUrl();
   if (!basis) return null;
   const u = new URL(basis);
   if (/^\d+\.\d+\.\d+\.\d+$/.test(u.hostname) || u.hostname.startsWith('[')) return null;
@@ -88,11 +88,11 @@ async function rememberChallenge(
       hash(challenge),
       purpose,
       uid,
-      new Date(k.uhr.jetzt() + CHALLENGE_MS),
+      new Date(k.clock.now() + CHALLENGE_MS),
       MAX_OPEN_CHALLENGES,
     ))
   )
-    failDomain('nicht_verfuegbar', 'server_ausgelastet');
+    failDomain('nicht_verfuegbar', 'server_busy');
 }
 
 /** Exactly once: a repeated response no longer finds its row. */
@@ -172,7 +172,7 @@ export async function authenticationOptions(k: FactorsContext, purpose: 'anmelde
   return generateAuthenticationOptions({
     rpID: rp.rpID,
     userVerification: purpose === 'anmelden' ? 'required' : 'preferred',
-    challenge: signedChallenge(purpose, k.uhr.jetzt() + CHALLENGE_MS),
+    challenge: signedChallenge(purpose, k.clock.now() + CHALLENGE_MS),
   });
 }
 
@@ -194,7 +194,7 @@ export async function verifyAuthentication(
   } catch (e) {
     return rejected(e);
   }
-  const until = signedDeadline(challenge, purpose, kx.uhr.jetzt());
+  const until = signedDeadline(challenge, purpose, kx.clock.now());
   if (until === null) return null;
   const k = await kx.passkeys.byCredentialId(reply.id, uid);
   if (!k) return null;
@@ -202,7 +202,7 @@ export async function verifyAuthentication(
     // Registration only happens in the browser; logging in may also use the enrolled app.
     response: reply,
     expectedChallenge: challenge,
-    expectedOrigin: [rp.origin, ...androidOrigins(kx.konfig)],
+    expectedOrigin: [rp.origin, ...androidOrigins(kx.config)],
     expectedRPID: rp.rpID,
     credential: {
       id: reply.id,

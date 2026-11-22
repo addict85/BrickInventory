@@ -19,10 +19,10 @@ export type { FinancesDependencies, FinancesContext } from './context';
 
 export function createFinances(a: Omit<FinancesDependencies, 'faecher'>, inspect?: Inspect<FinancesContext>) {
   // The price cache applies per currency: a change requires a full price run.
-  a.einstellungen.onCurrencyChange(() => a.jobQueue.pullPlanBefore('preise'));
+  a.settings.onCurrencyChange(() => a.jobQueue.pullPlanBefore('prices'));
   return buildArea(
     { ...a, faecher: new Compartments() },
-    (db: Db) => access(db, a.lesevertrag),
+    (db: Db) => access(db, a.readContract),
     (k: FinancesContext) => ({
       // The price alerts are services; the price run calls them via the context.
       preisalarm: {

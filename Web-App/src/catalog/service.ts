@@ -166,6 +166,6 @@ export async function catalogSet(k: CatalogContext, userId: number, raw: string)
     theme_name: tree.pathName.get(set.theme_id) || null,
     minifigs: m?.n || 0,
     bricklink,
-    preisvergleich_url: forSet(set.set_number, set.name),
+    price_comparison_url: forSet(set.set_number, set.name),
   };
 }

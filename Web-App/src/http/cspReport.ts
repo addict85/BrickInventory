@@ -11,15 +11,15 @@ const WINDOW_MS = 60_000;
 const JE_ADDRESS = 10;
 /** The minute does not remember more senders; whoever comes after that is discarded. */
 const AT_MOST_ADDRESSES = 1000;
-const F = processWide('cspBericht', () => ({ seit: Date.now(), gedrosselt: 0, jeAddress: new Map<string, number>() }));
+const F = processWide('cspBericht', () => ({ since: Date.now(), gedrosselt: 0, jeAddress: new Map<string, number>() }));
 
 export function cspMessageFree(address: string, now = Date.now()): boolean {
   const _jeAddress = F.jeAddress;
-  if (now - F.seit >= WINDOW_MS) {
+  if (now - F.since >= WINDOW_MS) {
     if (F.gedrosselt) console.warn(`[csp] ${F.gedrosselt} gedrosselt`);
     _jeAddress.clear();
     F.gedrosselt = 0;
-    F.seit = now;
+    F.since = now;
   }
   // Per sender instead of shared, otherwise real reports would drown in a foreign flood; IPv6 per /64.
   const a = throttleAddress(address);

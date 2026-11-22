@@ -20,7 +20,7 @@ const THUMB_MAX_PARALLEL = 1;
  * the server would stubbornly compute half the catalog. */
 const THUMB_MAX_QUEUE = 40;
 /** Queue and lock connection per set of services; the lock itself applies to the server. */
-const stand = (k: ImagesContext) =>
+const state = (k: ImagesContext) =>
   k.faecher.slot('vorschauen', () => ({
     laufend: 0,
     _thumbQueue: [] as [string, string][],
@@ -29,7 +29,7 @@ const stand = (k: ImagesContext) =>
   }));
 
 export function queueThumb(k: ImagesContext, srcFile: string, thumbFile: string) {
-  const { _thumbQueue, _thumbInFlight } = stand(k);
+  const { _thumbQueue, _thumbInFlight } = state(k);
   if (_thumbInFlight.has(thumbFile)) return;
   // Do not repeat failed resizes (webp) on every view.
   if (isKnownMissing(k, 'thumb:' + thumbFile)) return;
@@ -42,7 +42,7 @@ export function queueThumb(k: ImagesContext, srcFile: string, thumbFile: string)
 }
 
 export function drainThumbQueue(k: ImagesContext) {
-  const st = stand(k);
+  const st = state(k);
   const { _thumbQueue, _thumbInFlight } = st;
   while (st.laufend < THUMB_MAX_PARALLEL && _thumbQueue.length) {
     const [src, dst] = _thumbQueue.shift()!;
@@ -62,7 +62,7 @@ const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 export async function withPreviewLock<T>(k: ImagesContext, work: () => Promise<T>): Promise<T | false> {
   // NOT from the pool: a lock held there took the connection from ordinary
   // requests.
-  const st = stand(k);
+  const st = state(k);
   if (!st.lockClient) {
     try {
       st.lockClient = await k.db.ownConnection();
@@ -103,7 +103,7 @@ export async function createProxyPreview(k: ImagesContext, srcFile: string, thum
         return false;
       }
       // Write ATOMICALLY: first next to it, then rename.
-      const tmpThumb = `${thumbFile}.${process.pid}.${k.uhr.jetzt()}.tmp.jpg`;
+      const tmpThumb = `${thumbFile}.${process.pid}.${k.clock.now()}.tmp.jpg`;
       await jimpPreview(srcFile, tmpThumb, PROXY_THUMB_SIZE);
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;

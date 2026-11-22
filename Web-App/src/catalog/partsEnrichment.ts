@@ -26,7 +26,7 @@ async function apiGet(k: CatalogContext, url: string, rbKey: string) {
   while (true) {
     if (!(await k.externalSources.consumeRebrickableDaily())) return null;
     await k.externalSources.drossel.hintergrund.waitForSlot();
-    const result: JobHttpResult = await k.externalSources.quellen.rebrickableRaw(url, rbKey);
+    const result: JobHttpResult = await k.externalSources.sources.rebrickableRaw(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
       k.externalSources.drossel.hintergrund.throttle(wait);
@@ -81,7 +81,7 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
 
   if (!missing.length) return;
 
-  const rbKey = await k.externalSources.quellen.getRbKey();
+  const rbKey = await k.externalSources.sources.getRbKey();
   if (!rbKey) {
     console.log('[parts-enrich] No API key');
     return;
@@ -207,7 +207,7 @@ async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string
 
 async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
   const n = withVersion(setNumber);
-  const rbKey = await k.externalSources.quellen.getRbKey();
+  const rbKey = await k.externalSources.sources.getRbKey();
   if (!rbKey) return;
 
   const figs = await k.partsEnrichment.minifigsOfSets(n);

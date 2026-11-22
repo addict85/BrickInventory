@@ -12,9 +12,9 @@ import type { Compartments } from '../infra/cache';
 import type { Clock } from '../infra/clock';
 
 export interface VoucherDependencies {
-  uhr: Clock;
+  clock: Clock;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   account: AccountServices;
   throttle: ThrottleServices;
   externalSources: ForeignSourcesServices;

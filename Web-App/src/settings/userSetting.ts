@@ -17,7 +17,7 @@ export function onCurrencyChange(k: SettingsContext, fn: () => unknown): () => v
 export async function setUserSetting(k: SettingsContext, userId: number, key: string, value: unknown) {
   if (key !== 'currency') return writeUserSetting(k, userId, key, value);
   const v = String(value).trim();
-  if (!isValidUserValue(key, v)) failDomain('ungueltig', 'wert_ungueltig');
+  if (!isValidUserValue(key, v)) failDomain('ungueltig', 'value_invalid');
   return setHouseholdCurrency(k, userId, v);
 }
 
@@ -33,17 +33,17 @@ async function setHouseholdCurrency(k: SettingsContext, userId: number, currency
     k.transact(async t => {
       await lockHouseholdCurrency(t.db);
       const old = await repo.storedCurrencyOf(t.db, userId);
-      const subAccount = await repo.hasMainAccount(t.db, t.lesevertrag, userId);
+      const subAccount = await repo.hasMainAccount(t.db, t.readContract, userId);
       if (old !== currency) {
-        if (subAccount) failDomain('verboten', 'waehrung_nur_hauptkonto');
+        if (subAccount) failDomain('verboten', 'currency_main_account_only');
         // Every change triggers a full price run.
         const rate = await t.throttle.countInWindow(`waehrung|konto:${userId}`, 60);
-        if (rate.count > 5) failDomain('zu_viele', 'zu_viele_anfragen', { minuten: rate.waitMin });
+        if (rate.count > 5) failDomain('zu_viele', 'too_many_requests', { minutes: rate.waitMin });
       }
       if (subAccount) return old;
-      const household = await repo.ownHousehold(t.db, t.lesevertrag, userId);
-      if ((await repo.sharedWithForeignMain(t.db, t.lesevertrag, household, currency)).length) {
-        if (old !== currency) failDomain('konflikt', 'waehrung_geteiltes_unterkonto');
+      const household = await repo.ownHousehold(t.db, t.readContract, userId);
+      if ((await repo.sharedWithForeignMain(t.db, t.readContract, household, currency)).length) {
+        if (old !== currency) failDomain('konflikt', 'currency_shared_sub_account');
         return old;
       }
       await repo.setCurrencyFor(t.db, household, currency);

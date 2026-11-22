@@ -1,5 +1,5 @@
 // First: an invalid value ends the start with a message before any module reads it.
-import { konfig } from './startup/checkConfig';
+import { config } from './startup/checkConfig';
 // Logging first: from here on every console line is a JSON line and goes
 // to app_logs as soon as the pool is up.
 import { installLog, logToDatabase, emptyLog } from './src/infra/log';
@@ -45,21 +45,21 @@ const PLACEHOLDER_SECRETS = [
 /** The development secret only with an explicit NODE_ENV=development/test;
  * without NODE_ENV the same rules as in production apply. */
 function sessionSecret(): string {
-  const assigned = konfig().sessionSecret?.trim();
-  if (konfig().entwicklung) return assigned || 'brickinventory-manager-dev-secret';
-  const grund = !assigned
+  const assigned = config().sessionSecret?.trim();
+  if (config().entwicklung) return assigned || 'brickinventory-manager-dev-secret';
+  const reason = !assigned
     ? 'SESSION_SECRET ist nicht gesetzt — Start verweigert. Bitte in compose.yaml/ENV setzen' +
-      (konfig().production ? '.' : ', oder für die Entwicklung NODE_ENV=development.')
+      (config().production ? '.' : ', oder für die Entwicklung NODE_ENV=development.')
     : PLACEHOLDER_SECRETS.includes(assigned)
       ? 'SESSION_SECRET steht noch auf dem Beispielwert aus compose.yaml — Start verweigert. Bitte einen eigenen Zufallswert eintragen, z. B. `openssl rand -base64 48`.'
       : assigned.length < 32
         ? 'SESSION_SECRET ist zu kurz (nötig sind mindestens 32 Zeichen) — Start verweigert.'
         : null;
-  if (grund) {
-    console.error(`❌ [session] ${grund}`);
+  if (reason) {
+    console.error(`❌ [session] ${reason}`);
     process.exit(1);
   }
-  return konfig().sessionSecret!;
+  return config().sessionSecret!;
 }
 
 /** End SSE streams first: they never end by themselves and would hold up close().
@@ -111,7 +111,7 @@ async function shutdown(
 
 /** One process per role (ROLE=web|jobs|beides); initSchemaOnce lets only one migrate. */
 async function start(): Promise<void> {
-  const k = konfig();
+  const k = config();
   if (k.operation) {
     const bans = startBans();
     if (bans.length) {
@@ -170,7 +170,7 @@ async function start(): Promise<void> {
     ? http
         .createServer(
           { ...HTTP_DEADLINES },
-          buildApp({ pool: access.systemWebPool, konfig: k, sitzungsGeheimnis: secret, dienste }),
+          buildApp({ pool: access.systemWebPool, config: k, sitzungsGeheimnis: secret, dienste }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);

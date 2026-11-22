@@ -20,39 +20,39 @@ function translated<T extends { error?: unknown; error_code?: unknown }>(
 
 export function buildFinanceRouter(d: Pick<Services, 'account' | 'finances'>) {
   const { requireToken } = guardFor(d.account);
-  const router = contractRouter('/api/v1');
+  const router = contractRouter('/api/v2');
 
-  router.endpoint('GET /api/v1/finance/valuation', requireToken, async req => {
+  router.endpoint('GET /api/v2/finance/valuation', requireToken, async req => {
     const data = await d.finances.valueSets(req.apiUser.user_id, viewOf(req));
     // No `rate_limit` in the response: it cost three queries per call and
     // is shown in the monitoring.
-    const { eintraege: sets, ...page } = pageFrom(translated(data.sets, req), req.abfrage);
-    return { total_value: data.totals.qty_avg, wert_gesamt: Number(data.totals.qty_avg), ...data, sets, ...page };
+    const { entries: sets, ...page } = pageFrom(translated(data.sets, req), req.queryArgs);
+    return { total_value: data.totals.qty_avg, value_total: Number(data.totals.qty_avg), ...data, sets, ...page };
   });
 
-  router.endpoint('GET /api/v1/finance/parts-valuation', requireToken, async req => {
+  router.endpoint('GET /api/v2/finance/parts-valuation', requireToken, async req => {
     const data = await d.finances.valueParts(req.apiUser.user_id, viewOf(req));
-    const { eintraege: parts, ...page } = pageFrom(translated(data.parts, req), req.abfrage);
+    const { entries: parts, ...page } = pageFrom(translated(data.parts, req), req.queryArgs);
     return { ...data, parts, ...page };
   });
 
-  router.endpoint('GET /api/v1/finance/minifigs-valuation', requireToken, async req => {
+  router.endpoint('GET /api/v2/finance/minifigs-valuation', requireToken, async req => {
     const data = await d.finances.valueMinifigs(req.apiUser.user_id, viewOf(req));
-    const { eintraege: figs, ...page } = pageFrom(translated(data.figs, req), req.abfrage);
+    const { entries: figs, ...page } = pageFrom(translated(data.figs, req), req.queryArgs);
     return { ...data, figs, ...page };
   });
 
-  router.endpoint('GET /api/v1/finance/pnl', requireToken, async req => {
+  router.endpoint('GET /api/v2/finance/pnl', requireToken, async req => {
     const data = await d.finances.gainAndLoss(req.apiUser.user_id, viewOf(req));
-    const { eintraege: sets, ...page } = pageFrom(data.sets, req.abfrage);
+    const { entries: sets, ...page } = pageFrom(data.sets, req.queryArgs);
     return { ...data, sets, ...page };
   });
 
-  router.endpoint('GET /api/v1/finance/portfolio-history', requireToken, async req => {
+  router.endpoint('GET /api/v2/finance/portfolio-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
     // einzelwert(): ?period=a&period=b arrives as an array and would otherwise go
     // back into the response unchanged.
-    const period = singleValue(req.abfrage.period, 'week');
+    const period = singleValue(req.queryArgs.period, 'week');
     return { ...(await d.finances.portfolioHistory(uid, viewOf(req), period)) };
   });
   return router;

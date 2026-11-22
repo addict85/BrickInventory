@@ -33,8 +33,8 @@ async function token() {
 
 (async () => {
   const t = await token();
-  /** @type {[string, { antwort?: import('zod').ZodType }][]} */
-  const routen = Object.entries(CONTRACT).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.antwort);
+  /** @type {[string, { response?: import('zod').ZodType }][]} */
+  const routen = Object.entries(CONTRACT).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.response);
   let wrong = 0;
   for (const [key, r] of routen) {
     const path = key.slice(4);
@@ -42,7 +42,7 @@ async function token() {
     let error;
     try {
       const a = await fetch(BASE + path, { headers: { Authorization: `Bearer ${t}` } });
-      const result = a.ok ? r.antwort?.safeParse(await a.json()) : undefined;
+      const result = a.ok ? r.response?.safeParse(await a.json()) : undefined;
       error = !a.ok
         ? [`HTTP ${a.status}`]
         : result && !result.success

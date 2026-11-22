@@ -14,12 +14,12 @@ const ROOT = path.join(__dirname, '..');
 const ALLOWED = new Map([
   // Diagnostic endpoints: for operators and curl, not for the UI.
   ['body_check', 'Selbstprüfung /v1/admin'],
-  ['datenbank', 'Selbstprüfung'],
+  ['database', 'Selbstprüfung'],
   ['db_pool', 'Verbindungspool im Gesundheitsbericht'],
   ['probes', 'Selbstprüfung'],
   ['proxy_failures', 'Selbstprüfung'],
-  ['merker', 'Selbstprüfung'],
-  ['hinweis', 'Selbstprüfung'],
+  ['marker', 'Selbstprüfung'],
+  ['hint', 'Selbstprüfung'],
   ['rate_limit', 'nur noch im Admin-Bericht, nicht mehr in der Bewertung'],
   // Export file: it is read by the import of THIS server, not by a client.
   ['tokens', 'Einstellungs-Export'],
@@ -32,8 +32,8 @@ const ALLOWED = new Map([
   ['instruction', 'Einzelanleitung; die Liste kommt über instructions'],
   ['missingImages', 'PDF-Job: die Oberfläche zeigt etaSeconds, nicht die Zahl'],
   // Hidden until 14.11.2026, because the check counted every word in the Kotlin source as a reader.
-  ['blickfeld', 'Haushaltsstand: die Clients lesen parents und sub_accounts'],
-  ['geloescht', 'Merkposten löschen: die Clients laden die Liste danach neu'],
+  ['view', 'Haushaltsstand: die Clients lesen parents und sub_accounts'],
+  ['deleted', 'Merkposten löschen: die Clients laden die Liste danach neu'],
 ]);
 
 /** Technical envelopes that stand in almost every response. */
@@ -154,7 +154,12 @@ if (!Array.isArray(appFields) || appFields.length < 100) {
   console.error('❌ shared/app-schnittstelle.json nennt kaum Antwortfelder der App — erzeugt?');
   process.exit(1);
 }
-const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields].join('\n');
+// The app reads API v1: its German names stand for the v2 fields they are mapped from.
+const { V1_FIELDS } = require(path.join(ROOT, 'dist', 'src', 'contract', 'v1Names.js'));
+/** @type {Map<string, string>} */
+const fromV1 = new Map(Object.entries(/** @type {Record<string, string>} */ (V1_FIELDS)).map(([v2, v1]) => [v1, v2]));
+const appV2 = appFields.map((/** @type {string} */ f) => fromV1.get(f) ?? f);
+const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields, ...appV2].join('\n');
 
 const error = [];
 for (const [k, filesList] of [...whence].sort()) {

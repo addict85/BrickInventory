@@ -38,18 +38,18 @@ export async function adminOrJustBeen(db: DbInterface, target: number, hours: nu
 
 /** Due and still backed by the admin who announced it. Not password and factor if the
  * target has been deactivated since or is being deactivated now: it could no longer log in to cancel. */
-export async function takeDue(db: DbInterface): Promise<{ gilt: Takeover[]; verworfen: number }> {
+export async function takeDue(db: DbInterface): Promise<{ gilt: Takeover[]; discarded: number }> {
   const route = await db.all<Takeover & { gilt: boolean }>(
     `WITH weg AS (DELETE FROM admin_takeovers WHERE effective_at <= NOW() RETURNING *)
      SELECT w.target_id, w.type, w.initiated_by, w.password_hash,
        EXISTS (SELECT 1 FROM users d WHERE d.id = w.initiated_by AND d.is_admin AND d.is_active)
        AND (w.type NOT IN ('passwort', 'zweiter_faktor') OR NOT (
          EXISTS (SELECT 1 FROM admin_log p WHERE p.target_id = w.target_id
-                   AND p.action = 'konto_deaktiviert' AND p.occurred_at >= w.created_at)
+                   AND p.action = 'account_deactivated' AND p.occurred_at >= w.created_at)
          OR EXISTS (SELECT 1 FROM weg x WHERE x.target_id = w.target_id AND x.type = 'deaktivieren'))) AS gilt
        FROM weg w`,
   );
-  return { gilt: route.filter(z => z.gilt), verworfen: route.filter(z => !z.gilt).length };
+  return { gilt: route.filter(z => z.gilt), discarded: route.filter(z => !z.gilt).length };
 }
 
 export async function abortTakeovers(db: DbInterface, target: number): Promise<TakeoverKind[]> {

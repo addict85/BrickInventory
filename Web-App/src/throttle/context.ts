@@ -7,7 +7,7 @@ import * as repository from './repository';
 export interface ThrottleDependencies {
   db: Db;
   /** The in-memory fallback's clock. */
-  uhr: Clock;
+  clock: Clock;
 }
 
 export const access = (db: Db) => ({

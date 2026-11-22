@@ -18,14 +18,14 @@ export type Confidence =
   | 'korrigiert';
 
 export interface Resolution {
-  posten: WantedItem;
+  items: WantedItem;
   rbId: string | null;
-  rbFarbe: number | null;
+  rbColor: number | null;
   /** Travel along, because the parts list reads the color name from the row. */
   rbFarbName: string | null;
   rbFarbHex: string | null;
-  sicherheit: Confidence | null;
-  farbeOffen: boolean;
+  confidence: Confidence | null;
+  colorPending: boolean;
 }
 
 /** Without a third-party fetch; the three levels stay separate because they are differently
@@ -39,9 +39,9 @@ export async function resolveLocalOn(
 
   // Three queries for the whole list instead of one per item.
   const numbers = [...new Set(item.map(p => p.blId))];
-  const colors = [...new Set(item.map(p => p.blFarbe).filter((f): f is number => f !== null))];
+  const colors = [...new Set(item.map(p => p.blColor).filter((f): f is number => f !== null))];
 
-  const mapping = new Map<string, { rbId: string; sicherheit: Confidence }>();
+  const mapping = new Map<string, { rbId: string; confidence: Confidence }>();
   const own = new Set<string>();
   for (const z of await k.wantedList.mappings(numbers, uid)) {
     const key = `${z.type}:${z.bl_id ?? z.rb_id}`;
@@ -49,14 +49,14 @@ export async function resolveLocalOn(
     const already = mapping.get(key);
     if (z.eigen) own.add(key);
     else if (own.has(key)) continue;
-    if (!already || (already.sicherheit !== 'zuordnung' && level === 'zuordnung')) {
-      mapping.set(key, { rbId: z.rb_id, sicherheit: level });
+    if (!already || (already.confidence !== 'zuordnung' && level === 'zuordnung')) {
+      mapping.set(key, { rbId: z.rb_id, confidence: level });
     }
   }
 
   const catalog = new Set<string>();
-  for (const art of ['part', 'fig', 'set'] as const) {
-    for (const n of await k.wantedList.numbersInCatalog(art, numbers)) catalog.add(`${art}:${n}`);
+  for (const kind of ['part', 'fig', 'set'] as const) {
+    for (const n of await k.wantedList.numbersInCatalog(kind, numbers)) catalog.add(`${kind}:${n}`);
   }
 
   const colorMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
@@ -69,26 +69,26 @@ export async function resolveLocalOn(
   }
 
   return item.map(p => {
-    const hits = mapping.get(`${p.art}:${p.blId}`);
+    const hits = mapping.get(`${p.kind}:${p.blId}`);
     let rbId: string | null = null;
-    let sicherheit: Confidence | null = null;
+    let confidence: Confidence | null = null;
     if (hits) {
       rbId = hits.rbId;
-      sicherheit = hits.sicherheit;
-    } else if (catalog.has(`${p.art}:${p.blId}`)) {
+      confidence = hits.confidence;
+    } else if (catalog.has(`${p.kind}:${p.blId}`)) {
       rbId = p.blId;
-      sicherheit = 'katalogtreffer';
+      confidence = 'katalogtreffer';
     }
 
-    const color = p.blFarbe === null ? null : (colorMap.get(p.blFarbe) ?? null);
+    const color = p.blColor === null ? null : (colorMap.get(p.blColor) ?? null);
     return {
-      posten: p,
+      items: p,
       rbId,
-      rbFarbe: color?.id ?? null,
+      rbColor: color?.id ?? null,
       rbFarbName: color?.name ?? null,
       rbFarbHex: color?.hex ?? null,
-      sicherheit,
-      farbeOffen: rbId !== null && p.blFarbe !== null && color === null,
+      confidence,
+      colorPending: rbId !== null && p.blColor !== null && color === null,
     };
   });
 }
@@ -99,59 +99,59 @@ export type RebrickableAbort = 'kontingent' | 'kein_schluessel' | 'stoerung';
 export type WantedProgress = {
   phase: 'rebrickable' | 'schreiben';
   fertig: number;
-  gesamt: number;
+  total: number;
 };
 
 export async function resolveViaRebrickableOn(
   k: WantedContext,
   auf: Resolution[],
   limit = 250,
-  progress?: (stand: WantedProgress) => void,
+  progress?: (state: WantedProgress) => void,
 ): Promise<{
   auf: Resolution[];
-  gefragt: number;
-  gefunden: number;
-  filterWirkungslos: boolean;
-  abgebrochen?: RebrickableAbort;
+  asked: number;
+  found: number;
+  filterIneffective: boolean;
+  aborted?: RebrickableAbort;
 }> {
-  let gefragt = 0,
-    gefunden = 0;
+  let asked = 0,
+    found = 0;
 
   const result = [...auf];
   // Exactly the conditions of the loop below, otherwise the bar counts against
   // a different number than it fills.
-  const gesamt = Math.min(limit, result.filter(a => a.rbId === null && a.posten.art === 'part').length);
+  const total = Math.min(limit, result.filter(a => a.rbId === null && a.items.kind === 'part').length);
   for (let i = 0; i < result.length; i++) {
     const a = result[i]!;
     if (a.rbId !== null) continue;
-    if (a.posten.art !== 'part') continue;
-    if (gefragt >= limit) break;
+    if (a.items.kind !== 'part') continue;
+    if (asked >= limit) break;
 
-    gefragt++;
+    asked++;
     let rbId: string | null;
     // An error other than "unknown" also affects all following items; the report
     // names the reason instead of silently counting them as "not found".
     try {
-      rbId = await k.externalSources.quellen.blPartToRb(a.posten.blId);
+      rbId = await k.externalSources.sources.blPartToRb(a.items.blId);
     } catch (e) {
       if (!(e instanceof RebrickableLocked)) reportError('wanted:rebrickable', e);
-      const abgebrochen = e instanceof RebrickableLocked ? e.grund : 'stoerung';
+      const aborted = e instanceof RebrickableLocked ? e.reason : 'stoerung';
       return {
         auf: result,
-        gefragt,
-        gefunden,
-        filterWirkungslos: k.externalSources.quellen.blFilterIneffective(),
-        abgebrochen,
+        asked,
+        found,
+        filterIneffective: k.externalSources.sources.blFilterIneffective(),
+        aborted,
       };
     }
     if (rbId) {
-      gefunden++;
-      result[i] = { ...a, rbId, sicherheit: 'rebrickable' };
+      found++;
+      result[i] = { ...a, rbId, confidence: 'rebrickable' };
     }
     // After the fetch: "37 of 50" means 37 done.
-    progress?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
+    progress?.({ phase: 'rebrickable', fertig: asked, total });
   }
-  return { auf: result, gefragt, gefunden, filterWirkungslos: k.externalSources.quellen.blFilterIneffective() };
+  return { auf: result, asked, found, filterIneffective: k.externalSources.sources.blFilterIneffective() };
 }
 
 /** Addressed via the index: the same number may appear several times in the list. */
@@ -159,14 +159,14 @@ export interface Correction {
   index: number;
   /** Cross-check — must match the item at [index]. */
   blId: string;
-  art: WantedArt;
+  kind: WantedArt;
   rbId?: string | null | undefined;
-  rbFarbe?: number | null | undefined;
+  rbColor?: number | null | undefined;
   /** The values from the file, changed by hand, so that a typo does not force
    * reading the file in again. */
-  menge?: number | undefined;
+  quantity?: number | undefined;
   /** null means "the account's default". */
-  zustand?: string | null | undefined;
+  condition?: string | null | undefined;
   /** null means "none, fetch the market price". */
   kaufpreis?: number | null | undefined;
 }
@@ -175,19 +175,19 @@ export interface Correction {
 export async function describeItem(
   k: WantedContext,
   auf: Resolution[],
-): Promise<Map<number, { name: string | null; bild: string | null; geraten: boolean }>> {
-  const out = new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
+): Promise<Map<number, { name: string | null; image: string | null; geraten: boolean }>> {
+  const out = new Map<number, { name: string | null; image: string | null; geraten: boolean }>();
 
   // Without a Rebrickable number the BrickLink number serves as the key.
   const parts: { i: number; nr: string; farbe: number | null; geraten: boolean }[] = [];
   const minifigs: { i: number; nr: string; geraten: boolean }[] = [];
   const sets: { i: number; nr: string; geraten: boolean }[] = [];
   auf.forEach((a, i) => {
-    const nr = a.rbId ?? a.posten.blId;
+    const nr = a.rbId ?? a.items.blId;
     const geraten = a.rbId === null;
     if (!nr) return;
-    if (a.posten.art === 'part') parts.push({ i, nr, farbe: a.rbFarbe, geraten });
-    else if (a.posten.art === 'fig') minifigs.push({ i, nr, geraten });
+    if (a.items.kind === 'part') parts.push({ i, nr, farbe: a.rbColor, geraten });
+    else if (a.items.kind === 'fig') minifigs.push({ i, nr, geraten });
     else sets.push({ i, nr, geraten });
   });
 
@@ -202,15 +202,15 @@ export async function describeItem(
         pairs.map(t => t.nr),
         pairs.map(t => t.farbe as number),
       );
-      for (const z of colorRows) if (z.bild) images.set(`${z.part_number}|${z.color_id}`, z.bild);
+      for (const z of colorRows) if (z.image) images.set(`${z.part_number}|${z.color_id}`, z.image);
     }
     for (const t of parts) {
       const z = afterNumber.get(t.nr);
       const name = z?.name ?? null;
-      const bild = images.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
+      const image = images.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
       // `geraten` only on a find: calling an empty row "guessed" would be
       // a claim about nothing.
-      out.set(t.i, { name, bild, geraten: t.geraten && !!(name || bild) });
+      out.set(t.i, { name, image, geraten: t.geraten && !!(name || image) });
     }
   }
 
@@ -220,8 +220,8 @@ export async function describeItem(
     for (const f of minifigs) {
       const z = nach.get(f.nr);
       const name = z?.fig_name ?? null,
-        bild = z?.bild ?? null;
-      out.set(f.i, { name, bild, geraten: f.geraten && !!(name || bild) });
+        image = z?.image ?? null;
+      out.set(f.i, { name, image, geraten: f.geraten && !!(name || image) });
     }
   }
 
@@ -232,8 +232,8 @@ export async function describeItem(
     for (const x of sets) {
       const z = nach.get(x.nr);
       const name = z?.name ?? null,
-        bild = z?.bild ?? null;
-      out.set(x.i, { name, bild, geraten: x.geraten && !!(name || bild) });
+        image = z?.image ?? null;
+      out.set(x.i, { name, image, geraten: x.geraten && !!(name || image) });
     }
   }
 
@@ -245,89 +245,90 @@ export async function describeItem(
 export function applyCorrections(
   auf: Resolution[],
   corrections: Correction[],
-): { auf: Resolution[]; angewandt: number; abgewiesen: Correction[] } {
+): { auf: Resolution[]; applied: number; rejected: Correction[] } {
   const result = [...auf];
-  const abgewiesen: Correction[] = [];
-  let angewandt = 0;
+  const rejected: Correction[] = [];
+  let applied = 0;
   for (const k of corrections) {
     const a = result[k.index];
-    if (!a || a.posten.art !== k.art || a.posten.blId !== k.blId) {
-      abgewiesen.push(k);
+    if (!a || a.items.kind !== k.kind || a.items.blId !== k.blId) {
+      rejected.push(k);
       continue;
     }
     // `undefined` means "not touched", `null` "explicitly cleared" — otherwise
     // a correction of the color would delete the number as well.
     const rbId = k.rbId === undefined ? a.rbId : k.rbId || null;
-    const rbFarbe = k.rbFarbe === undefined ? a.rbFarbe : (k.rbFarbe ?? null);
+    const rbColor = k.rbColor === undefined ? a.rbColor : (k.rbColor ?? null);
 
     // An unusable value rejects the whole correction instead of silently
     // bending it into shape: quantity 0 is a typo, not a 1.
-    let menge = a.posten.menge;
-    if (k.menge !== undefined) {
-      const m = Math.trunc(Number(k.menge));
+    let quantity = a.items.quantity;
+    if (k.quantity !== undefined) {
+      const m = Math.trunc(Number(k.quantity));
       if (!Number.isFinite(m) || m < 1) {
-        abgewiesen.push(k);
+        rejected.push(k);
         continue;
       }
-      menge = m;
+      quantity = m;
     }
-    let zustand = a.posten.zustand;
-    if (k.zustand !== undefined) {
+    let condition = a.items.condition;
+    if (k.condition !== undefined) {
       // null/'' means "the account's default" like CONDITION=X; anything other than N/U
       // is an error, not "any".
-      if (k.zustand === null || k.zustand === '') zustand = null;
-      else if (k.zustand === 'N' || k.zustand === 'U') zustand = k.zustand;
+      if (k.condition === null || k.condition === '') condition = null;
+      else if (k.condition === 'N' || k.condition === 'U') condition = k.condition;
       else {
-        abgewiesen.push(k);
+        rejected.push(k);
         continue;
       }
     }
-    let maxPreis = a.posten.maxPreis;
+    let maxPrice = a.items.maxPrice;
     if (k.kaufpreis !== undefined) {
-      if (k.kaufpreis === null || (k.kaufpreis as unknown) === '') maxPreis = null;
+      if (k.kaufpreis === null || (k.kaufpreis as unknown) === '') maxPrice = null;
       else {
         const p = Number(k.kaufpreis);
         // 0 means "none", like MAXPRICE in the reader.
         if (!Number.isFinite(p) || p < 0) {
-          abgewiesen.push(k);
+          rejected.push(k);
           continue;
         }
-        maxPreis = p > 0 ? p : null;
+        maxPrice = p > 0 ? p : null;
       }
     }
 
-    const numberChanged = rbId !== a.rbId || rbFarbe !== a.rbFarbe;
-    const itemChanged = menge !== a.posten.menge || zustand !== a.posten.zustand || maxPreis !== a.posten.maxPreis;
+    const numberChanged = rbId !== a.rbId || rbColor !== a.rbColor;
+    const itemChanged =
+      quantity !== a.items.quantity || condition !== a.items.condition || maxPrice !== a.items.maxPrice;
     if (!numberChanged && !itemChanged) continue; // nothing changed
 
     result[k.index] = {
       ...a,
       rbId,
-      rbFarbe,
-      ...(itemChanged ? { posten: { ...a.posten, menge, zustand, maxPreis } } : {}),
+      rbColor,
+      ...(itemChanged ? { items: { ...a.items, quantity, condition, maxPrice } } : {}),
       // The color name belonged to the old number and is fetched again below.
-      rbFarbName: rbFarbe === a.rbFarbe ? a.rbFarbName : null,
-      rbFarbHex: rbFarbe === a.rbFarbe ? a.rbFarbHex : null,
+      rbFarbName: rbColor === a.rbColor ? a.rbFarbName : null,
+      rbFarbHex: rbColor === a.rbColor ? a.rbFarbHex : null,
       // `korrigiert` only for a changed number: the level decides whether the
       // mapping is remembered; a changed quantity says nothing about the number.
-      sicherheit: numberChanged ? 'korrigiert' : a.sicherheit,
-      farbeOffen: rbId !== null && a.posten.blFarbe !== null && rbFarbe === null,
+      confidence: numberChanged ? 'korrigiert' : a.confidence,
+      colorPending: rbId !== null && a.items.blColor !== null && rbColor === null,
     };
-    angewandt++;
+    applied++;
   }
-  return { auf: result, angewandt, abgewiesen };
+  return { auf: result, applied, rejected };
 }
 
 /** A color entered by hand was not part of the resolution; without
  * this step it would go to the creator without a name. */
 export async function backfillColors(k: WantedContext, auf: Resolution[]): Promise<Resolution[]> {
-  const open = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null).map(a => a.rbFarbe as number);
+  const open = auf.filter(a => a.rbColor !== null && a.rbFarbName === null).map(a => a.rbColor as number);
   if (!open.length) return auf;
   const rows = await k.wantedList.colorsToIds([...new Set(open)]);
   const nach = new Map(rows.map(z => [Number(z.id), z]));
   return auf.map(a => {
-    if (a.rbFarbe === null || a.rbFarbName !== null) return a;
-    const z = nach.get(a.rbFarbe);
+    if (a.rbColor === null || a.rbFarbName !== null) return a;
+    const z = nach.get(a.rbColor);
     return z ? { ...a, rbFarbName: z.name ?? null, rbFarbHex: z.rgb ?? null } : a;
   });
 }

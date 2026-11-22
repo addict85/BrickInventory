@@ -17,9 +17,9 @@ import { requireRelease } from '../../src/account/http/stepGuard';
 import type { Sicht } from '../../src/household';
 
 /** Who is asking and which accounts they chose; the service resolves the scope. */
-export const viewOf = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht => ({
+export const viewOf = (req: AuthedRequest & { queryArgs: { accounts?: string | undefined } }): Sicht => ({
   nutzer: req.apiUser.user_id,
-  konten: req.abfrage.accounts,
+  konten: req.queryArgs.accounts,
 });
 import { sendError } from '../../src/http/httpResponse';
 import { DomainError, failDomain } from '../../src/infra/errorTexts';
@@ -37,43 +37,43 @@ export function bearerToken(req: { headers: { authorization?: string | undefined
 export const PUBLIC_ROUTES: ReadonlyArray<string> = [
   'GET /settings/theme',
   // The login page uses it to check what is still missing before the first account.
-  'GET /einrichtung/stand',
+  'GET /setup/state',
   'GET /auth/me',
   'GET /auth/registration-status',
   'POST /auth/login',
   'POST /auth/logout',
   'POST /auth/qr-login',
-  'POST /auth/qr-login/abholen',
-  'POST /auth/qr-login/verwerfen',
+  'POST /auth/qr-login/collect',
+  'POST /auth/qr-login/discard',
   'POST /auth/register',
   'POST /auth/forgot-password',
   'POST /auth/reset-password',
-  'POST /auth/bestaetigung-erneut',
-  'POST /auth/email-bestaetigen',
-  'POST /auth/email-bestaetigen/vorschau',
+  'POST /auth/resend-confirmation',
+  'POST /auth/confirm-email',
+  'POST /auth/confirm-email/preview',
   // Checks itself: an unlimited token after the mandatory deadline only applies there.
-  'POST /auth/token-rotieren',
-  'POST /auth/uebernahme-abbrechen',
-  'POST /auth/anmeldung-freigeben',
-  'POST /auth/passkey/anmelden',
-  'POST /auth/passkey/anmelden/optionen',
+  'POST /auth/rotate-token',
+  'POST /auth/cancel-takeover',
+  'POST /auth/approve-login',
+  'POST /auth/passkey/login',
+  'POST /auth/passkey/login/options',
 ];
 const PUBLIC = new Set(PUBLIC_ROUTES);
 
-/** `pfad` relative to /api/v1; HEAD counts as GET. */
+/** `pfad` relative to /api/v2; HEAD counts as GET. */
 export function isPublicRoute(method: string, path: string): boolean {
   return PUBLIC.has(`${method === 'HEAD' ? 'GET' : method} ${path}`);
 }
 
 /** Start password or one set by an administrator: until it is replaced, only the change works.
  * The server only accepts the device key right after login, so here as well. */
-const BEFORE_SWITCH = /^\/(auth\/(change-password|logout)|geraet\/schluessel)$/;
+const BEFORE_SWITCH = /^\/(auth\/(change-password|logout)|device\/key)$/;
 /** An administrator without a second factor only gets as far as setting it up. */
 const TO_SETUP: ReadonlyArray<readonly [string, RegExp]> = [
-  ['GET', /^\/auth\/(me|zweiter-faktor)$/],
-  ['POST', /^\/auth\/(change-password|zweiter-faktor\/(einrichten|bestaetigen))$/],
+  ['GET', /^\/auth\/(me|second-factor)$/],
+  ['POST', /^\/auth\/(change-password|second-factor\/(setup|confirm))$/],
   // Setting it up in the app requires the step guard (src/account/http/stepGuard.ts).
-  ['POST', /^\/geraet\/(schluessel|schritt\/(challenge|freigabe))$/],
+  ['POST', /^\/device\/(key|step\/(challenge|approval))$/],
 ];
 
 /** The guards of the entrance, built from the account services: the entrance
@@ -113,9 +113,9 @@ function inboxFor(konto: AccountServices) {
   async function inboundLock(req: Request, _res: Response, next: NextFunction) {
     const method = req.method === 'HEAD' ? 'GET' : req.method;
     if (!(method === 'POST' && BEFORE_SWITCH.test(req.path)) && (await switchMust(req)))
-      failDomain('verboten', 'passwort_wechsel_noetig');
+      failDomain('verboten', 'password_change_required');
     if (!TO_SETUP.some(([m, re]) => m === method && re.test(req.path)) && (await secondFactorRequired(konto, req)))
-      failDomain('verboten', 'zweiter_faktor_pflicht');
+      failDomain('verboten', 'second_factor_mandatory');
     next();
   }
 
@@ -138,13 +138,13 @@ function tokenGuardFor(konto: AccountServices) {
     konto
       .userForToken(token, { ip: req.ip })
       .then(user => {
-        if (!user) return next(new DomainError('nicht_angemeldet', 'token_ungueltig'));
+        if (!user) return next(new DomainError('not_signed_in', 'token_invalid'));
         req.apiUser = { ...user, is_admin: user.is_admin === true };
         next();
       })
       .catch((e: unknown) => {
         reportError('eingang:token', e);
-        next(new DomainError('nicht_angemeldet', 'auth_fehler'));
+        next(new DomainError('not_signed_in', 'auth_error'));
       });
   });
 
@@ -154,9 +154,9 @@ function tokenGuardFor(konto: AccountServices) {
     requireApiAdmin: guard<AuthedRequest>((req, res, next) => {
       requireToken(req, res, (e?: unknown) => {
         if (e) return next(e);
-        if (!req.apiUser?.is_admin) return next(new DomainError('verboten', 'nur_admins'));
+        if (!req.apiUser?.is_admin) return next(new DomainError('verboten', 'admins_only'));
         // Here instead of in a path list: this way no administrator route gets past the device lock.
-        requireRelease(konto, req, res, next, 'verwaltung');
+        requireRelease(konto, req, res, next, 'admin');
       });
     }),
   };
@@ -177,7 +177,7 @@ function bodyDeadline(req: Request, res: Response, next: NextFunction) {
   const clock = setTimeout(() => {
     if (req.complete || res.headersSent) return;
     res.setHeader('Connection', 'close');
-    sendError(req, res, 'zu_langsam', 'anfrage_zu_langsam');
+    sendError(req, res, 'zu_langsam', 'request_too_slow');
   }, BODY_DEADLINE_MS);
   res.once('close', () => clearTimeout(clock));
   req.once('end', () => clearTimeout(clock));
@@ -186,7 +186,7 @@ function bodyDeadline(req: Request, res: Response, next: NextFunction) {
 
 /** Behind loginAtInbox: without an account (login, registration, reset)
  * 16 KB suffice, otherwise 256 KB; only the PDF job carries the whole part list.
- * Path ids are checked by vertragsRouter('/api/v1'), those in body and query by the last step. */
+ * Path ids are checked by vertragsRouter('/api/v2'), those in body and query by the last step. */
 export const readBody: RequestHandler[] = [
   onlyIf(anonymous, bodyDeadline),
   onlyIf(anonymous, express.json({ limit: '16kb' })),
@@ -199,18 +199,18 @@ export const readBody: RequestHandler[] = [
     next();
   }, // Express 5: otherwise undefined
   (req, _res, next) => {
-    if (toLargeId(req.body) || toLargeId(req.query)) failDomain('ungueltig', 'id_ungueltig');
+    if (toLargeId(req.body) || toLargeId(req.query)) failDomain('ungueltig', 'id_invalid');
     next();
   },
 ];
 
 /** Before receiving the body: at the limit the file is not even read. */
-export function accountGate(art: Gate) {
+export function accountGate(kind: Gate) {
   return (req: Request, res: Response, next: NextFunction) => {
     const uid = userId(req);
     if (uid === null) return next();
-    const free = receiptsAccountSpace(art, uid);
-    if (!free) failDomain('zu_viele', art === 'strom' ? 'zu_viele_verbindungen' : 'upload_laeuft');
+    const free = receiptsAccountSpace(kind, uid);
+    if (!free) failDomain('zu_viele', kind === 'stream' ? 'too_many_connections' : 'upload_running');
     res.once('finish', free); // an immediately following upload would otherwise arrive before 'close'
     res.once('close', free);
     next();

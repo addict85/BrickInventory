@@ -4,21 +4,21 @@ import { Cache } from '../infra/cache';
 import type { ImagesContext } from './context';
 
 /** Data, not a queue: one row per address. Processed by the ONE
- * job 'bildbedarf', which fetches in batches with consideration for the CDN. */
+ * job 'image_demand', which fetches in batches with consideration for the CDN. */
 
 /** Ten images per pass, every 20 seconds: thirty requests per minute. */
 export const BATCH = 10;
 export const TICK_MS = 20_000;
 /** What nobody has looked at for days is not urgent. */
 export const NOTE_VALID_MS = 3 * 24 * 60 * 60 * 1000;
-export const IMAGE_DEMAND_KEY = 'bildbedarf';
+export const IMAGE_DEMAND_KEY = 'image_demand';
 
 export function requestsJeMinute(): number {
   return BATCH * (60_000 / TICK_MS);
 }
 
 const setImageLoaded = (k: ImagesContext) =>
-  k.faecher.slot('setBildGeladen', () => event<[setNummer: string, quelle: string | null]>('setBildGeladen'));
+  k.faecher.slot('setBildGeladen', () => event<[setNummer: string, source: string | null]>('setBildGeladen'));
 /** The entry on the set is made by the catalog (higher); it listens here instead of the images calling it. */
 export function atSetImageLoaded(k: ImagesContext, fn: (setNumber: string, source: string | null) => unknown) {
   return setImageLoaded(k).listen(fn);
@@ -31,18 +31,18 @@ export function reportSetImageLoaded(k: ImagesContext, setNumber: string, source
 
 /** If one is already open, it stays at one. */
 export async function imageDemandKick(k: ImagesContext): Promise<void> {
-  await k.jobQueue.placeJobOne('bildbedarf', {}, { schluessel: IMAGE_DEMAND_KEY, maxAttempts: 3 });
+  await k.jobQueue.placeJobOne('image_demand', {}, { schluessel: IMAGE_DEMAND_KEY, maxAttempts: 3 });
 }
 
 /** One INSERT per image request drained the pool with a tile wall. Whatever is in the buffer
  * during a crash is requested again by the next call. */
-const puffer = (k: ImagesContext) => k.faecher.slot('bildbedarf:puffer', () => new Map<string, string>()); // url → set_number
-const ticks = (k: ImagesContext) => k.faecher.slot('bildbedarf:takte', (): NodeJS.Timeout[] => []);
+const puffer = (k: ImagesContext) => k.faecher.slot('image_demand:puffer', () => new Map<string, string>()); // url → set_number
+const ticks = (k: ImagesContext) => k.faecher.slot('image_demand:takte', (): NodeJS.Timeout[] => []);
 
 /** Once per set in 15 minutes, at most 5000 remembered: the image proxy asks for every
  * tile, and an account with invented numbers would otherwise fill the notes. */
 export function imageOnceReserve(k: ImagesContext, url: string, setNumber: string): void {
-  const remembered = k.faecher.slot('bildbedarf:vorgemerkt', () => new Cache<string, true>(5000, 15 * 60_000));
+  const remembered = k.faecher.slot('image_demand:vorgemerkt', () => new Cache<string, true>(5000, 15 * 60_000));
   if (remembered.hole(setNumber)) return;
   remembered.set(setNumber, true);
   rememberUsed(k, url, setNumber);

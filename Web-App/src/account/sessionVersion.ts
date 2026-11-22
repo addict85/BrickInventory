@@ -9,11 +9,11 @@ const CACHE_MS = 5_000;
 /** Per access; `stand` counts every clearing so that an older read state does not get back in. */
 const store = (k: AccountContext) =>
   k.faecher.slot('sitzungsVersion', () => ({
-    eintraege: new Map<number, { version: number | null; bis: number }>(),
-    stand: 0,
+    entries: new Map<number, { version: number | null; bis: number }>(),
+    state: 0,
     verteilt: false,
   }));
-const remembered = (k: AccountContext) => store(k).eintraege;
+const remembered = (k: AccountContext) => store(k).entries;
 
 /** A second web process would otherwise keep the old version for up to five seconds: every increment
  * is announced via NOTIFY. Without a standing listen connection only the database counts (fail closed). */
@@ -26,8 +26,8 @@ const increased = (k: AccountContext) =>
   });
 function forgetAllSessionVersions(k: AccountContext): void {
   const s = store(k);
-  s.eintraege.clear();
-  s.stand++;
+  s.entries.clear();
+  s.state++;
 }
 export function listenOnSessionVersion(k: AccountContext): void {
   store(k).verteilt = true;
@@ -50,10 +50,10 @@ export function sessionVersionFromDb(k: AccountContext, uid: number): Promise<nu
 export async function currentSessionVersion(k: AccountContext, uid: number): Promise<number | null> {
   if (!usable(k)) return k.accesses.sessionVersion(uid);
   const g = remembered(k).get(uid);
-  if (g && g.bis > k.uhr.jetzt()) return g.version;
-  const before = store(k).stand;
+  if (g && g.bis > k.clock.now()) return g.version;
+  const before = store(k).state;
   const version = await k.accesses.sessionVersion(uid);
-  if (store(k).stand === before) remembered(k).set(uid, { version, bis: k.uhr.jetzt() + CACHE_MS });
+  if (store(k).state === before) remembered(k).set(uid, { version, bis: k.clock.now() + CACHE_MS });
   return version;
 }
 

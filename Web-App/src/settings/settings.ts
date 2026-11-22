@@ -64,7 +64,7 @@ export async function writeUserSetting(k: SettingsContext, userId: number, key: 
   const v = String(value).trim();
   if (key === 'currency') throw new Error('Currency only via setUserSetting');
   const rule = USER_RULES[key];
-  if (rule && !rule(v)) failDomain('ungueltig', 'wert_ungueltig');
+  if (rule && !rule(v)) failDomain('ungueltig', 'value_invalid');
   await k.repository.writeUserValue(userId, key, v);
 }
 
@@ -122,8 +122,8 @@ export async function setGlobalSetting(k: SettingsContext, key: string, value: u
   const r = ruleFor(key)?.safeParse(value);
   if (!r?.success)
     throw (
-      (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ??
-      fileError('ungueltig', 'wert_ungueltig')
+      (r?.error.issues[0] as { params?: { error?: unknown } } | undefined)?.params?.error ??
+      fileError('ungueltig', 'value_invalid')
     );
   await k.repository.writeGlobalValue(key, SECRET_KEYS.has(key) ? encrypt(r.data, globalContext(key)) : r.data);
   await notifyGlobalChange(k);
@@ -221,10 +221,10 @@ export async function globalValuesWithoutSecrets(k: SettingsContext): Promise<Re
 export async function themeFor(
   k: SettingsContext,
   userId?: number | null,
-): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
+): Promise<{ theme: string; preset: string; own: string | null }> {
   const g = await getGlobalSetting(k, 'app_theme');
-  const vorgabe = g && DESIGNS.includes(g) ? g : 'classic';
+  const preset = g && DESIGNS.includes(g) ? g : 'classic';
   const u = userId ? await k.repository.userValue(userId, 'app_theme') : null;
-  const eigenes = u && DESIGNS.includes(u) ? u : null;
-  return { theme: eigenes ?? vorgabe, vorgabe, eigenes };
+  const own = u && DESIGNS.includes(u) ? u : null;
+  return { theme: own ?? preset, preset, own };
 }
