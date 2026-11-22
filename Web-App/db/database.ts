@@ -12,6 +12,7 @@ import { inTransactionPath, rowsContext } from '../src/infra/accountContext';
 import {
   runningTx,
   contextSql,
+  contextCheckSql,
   txQueries,
   commitCompanion,
   withCommitCompanion,
@@ -196,10 +197,10 @@ function wache(r: Rahmen): void {
 }
 
 /** Outside a transaction: without account and system frame directly over the
- * pool, otherwise in a short one of its own so set_config(…, true) applies. The three
- * parts go out in the pipeline at once; if the query fails, the
- * COMMIT ends the aborted transaction as ROLLBACK. The connection only goes back
- * into the pool when idle, i.e. without context. */
+ * pool, otherwise in a short one of its own so set_config(…, true) applies and the
+ * check before COMMIT (contextCheckSql) holds. The parts go out in the pipeline at once;
+ * if the query fails, the COMMIT ends the aborted transaction as ROLLBACK. The
+ * connection only goes back into the pool when idle, i.e. without context. */
 async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<QueryResult> {
   wache(r);
   const kontext = contextSql();
@@ -212,13 +213,14 @@ async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<Quer
   };
   client.on('error', teardown);
   try {
-    const [anfang, ergebnis, ende] = await Promise.allSettled([
+    const [anfang, ergebnis, pruefung, ende] = await Promise.allSettled([
       client.query(`BEGIN; ${kontext}`),
       client.query(sql, params),
+      client.query(contextCheckSql(kontext)),
       client.query('COMMIT'),
     ]);
     if (client.getTransactionStatus() !== 'I') kaputt ??= new Error('Verbindung nach COMMIT nicht im Leerlauf');
-    for (const x of [anfang, ergebnis, ende]) if (x.status === 'rejected') throw x.reason;
+    for (const x of [anfang, ergebnis, pruefung, ende]) if (x.status === 'rejected') throw x.reason;
     return (ergebnis as PromiseFulfilledResult<QueryResult>).value;
   } finally {
     client.off('error', teardown);
@@ -248,6 +250,7 @@ async function oneTimeTransaction<T>(
     const result = await inTransactionPath(stand, () => fn(griff(stand)));
     await commitCompanion()?.(griff(stand));
     stand.offen = false;
+    if (!rowsContext().system) await client.query(contextCheckSql(stand.kontext));
     await client.query('COMMIT');
     return result;
   } catch (e) {

@@ -1,4 +1,3 @@
-import { fachfehler } from './errorTexts';
 /** Read once instead of in three places with their own spelling. */
 import { konfig } from './config';
 import { prozessweit } from './prozessweit';
@@ -23,11 +22,7 @@ export function mailBasisUrl(): string | null {
   return basis;
 }
 
-/** Does the app reach the server encrypted? Only then are there unlimited accesses and CA pinning. */
+/** Does the app reach the server encrypted? Only then is there CA pinning. */
 export function viaTls(basis: string | null): boolean {
   return /^https:\/\//i.test(basis ?? '');
-}
-
-export function unlimitedOnlyWithTls(basis: string | null): void {
-  if (!viaTls(basis)) fachfehler('ungueltig', 'unbegrenzt_nur_https');
 }

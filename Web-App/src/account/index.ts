@@ -7,6 +7,7 @@ export { USERNAME_RE, emailValid, devicesNameValid, devicesNameContentValid, nam
 export { reportLogin } from './loginLimiter';
 export { QR_TTL_MS } from './qrPairing';
 export { touchMs, touchThrottle } from './sessionTouch';
+export { hashSessionIds, sessionDigest } from './sessionStore';
 export {
   sessionIdleMs,
   sessionIdleSec,

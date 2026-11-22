@@ -79,34 +79,42 @@ export type NewToken = {
   label: string;
   scope: TokenScope;
   bereich: string | null;
-  /** 'kurz' = seven fixed days */
-  art: 'unbegrenzt' | 'gleitend' | 'kurz';
+  /** 'kurz' = seven fixed days (or fewer, if fixedDays is smaller) */
+  art: 'gleitend' | 'kurz';
   idleDays: number;
-  fixedDays: number | null;
+  /** The fixed end (hard_expires_at) in days; every token has one. */
+  fixedDays: number;
 };
 
 export async function putTokenAn(db: DbInterface, t: NewToken): Promise<void> {
-  if (t.art === 'unbegrenzt') {
-    await db.run(
-      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires, scope, ip_range)
-       VALUES ($1,$2,$3,NULL,FALSE,NULL,TRUE,$4,$5) ON CONFLICT DO NOTHING`,
-      [t.hash, t.userId, t.label, t.scope, t.bereich],
-    );
-  } else if (t.art === 'gleitend') {
+  if (t.art === 'gleitend') {
     await db.run(
       `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_range)
-       VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE,
-               CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $5::int) END, $6, $7)
+       VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE, NOW() + make_interval(days => $5), $6, $7)
        ON CONFLICT DO NOTHING`,
       [t.hash, t.userId, t.label, t.idleDays, t.fixedDays, t.scope, t.bereich],
     );
   } else {
     await db.run(
-      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, scope, ip_range)
-       VALUES ($1,$2,$3, NOW() + INTERVAL '7 days', FALSE, $4, $5) ON CONFLICT DO NOTHING`,
-      [t.hash, t.userId, t.label, t.scope, t.bereich],
+      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_range)
+       VALUES ($1,$2,$3, NOW() + make_interval(days => LEAST(7, $4)), FALSE, NOW() + make_interval(days => LEAST(7, $4)),
+               $5, $6) ON CONFLICT DO NOTHING`,
+      [t.hash, t.userId, t.label, t.fixedDays, t.scope, t.bereich],
     );
   }
+}
+
+/** Rows from before migration 0126 or from an older process: a fixed end from now on. */
+export async function boundUnlimited(db: DbInterface, maxDays: number): Promise<number> {
+  return (
+    (
+      await db.run(
+        `UPDATE api_tokens SET hard_expires_at = NOW() + make_interval(days => $1), never_expires = FALSE
+          WHERE hard_expires_at IS NULL`,
+        [maxDays],
+      )
+    ).changes || 0
+  );
 }
 
 export type SwapSource = {
@@ -234,7 +242,7 @@ export async function deleteTokensOfAccount(
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
-/** Keeps the `behalten` most recently used besides `eigene`; the others fall. */
+/** Keeps the `behalten` most recently used besides `eigene` (the hash of the id); the others fall. */
 export async function capSessions(db: DbInterface, userId: number, eigene: string, behalten: number): Promise<number> {
   return (
     (

@@ -1,6 +1,7 @@
 /** End sessions and accesses of an account when something about its protection changes. */
 import { increaseSessionVersion, listenOnSessionVersion, forgetSessionVersion } from './sessionVersion';
 import { tokenDigest, ACCESSES_AT_MOST } from './deviceToken';
+import { sessionDigest } from './sessionStore';
 import { listenOnTokenRevocation, emptyTokenCache } from './tokenCache';
 import { inSystemContext } from '../infra/accountContext';
 import { imSystemrahmen } from '../infra/area';
@@ -12,8 +13,11 @@ export function listenOnRevocation(k: AccountContext): void {
   listenOnSessionVersion(k);
 }
 
-export function limitSessions(k: AccountContext, userId: number, eigene: string): Promise<number> {
-  return k.zugaenge.capSessions(userId, eigene, ACCESSES_AT_MOST - 1);
+/** `eigene` is the plaintext id (req.sessionID); the table holds the hash. Without an id
+ * (a store without ids, as in tests) there is no own row to spare: nothing falls. */
+export function limitSessions(k: AccountContext, userId: number, eigene: string | undefined): Promise<number> {
+  if (!eigene) return Promise.resolve(0);
+  return k.zugaenge.capSessions(userId, sessionDigest(eigene), ACCESSES_AT_MOST - 1);
 }
 
 /** In user_sessions, where the session store really lives. */
@@ -53,7 +57,7 @@ export async function endOther(
   return withAccessEnd(k, uid, async t => {
     const zugaenge = o.zugaenge ? await t.konten.deleteOtherAccesses(uid, o.token ? tokenDigest(o.token) : null) : 0;
     const version = await increaseSessionVersion(t, uid);
-    const sitzungen = await t.konten.deleteOtherSessions(uid, o.sitzung ?? '');
+    const sitzungen = await t.konten.deleteOtherSessions(uid, o.sitzung ? sessionDigest(o.sitzung) : '');
     return { sitzungen, zugaenge, version };
   });
 }

@@ -1,15 +1,16 @@
 /**
  * An administrator resets password or second factor of another account, deactivates it,
  * revokes the role or deletes it (routes/auth/users.ts, src/account/adminActions.ts).
- * If the target is an administrator (or just was), this only applies after 24 hours, in the cleanup run;
- * a login of the target (password, passkey, QR collection) or the link from its mail cancels
- * it. Via the real routes and the runtime role.
+ * Password and factor only apply after 24 hours for every account, the rest if the target is
+ * an administrator (or just was), in the cleanup run; a login of the target (password, passkey,
+ * QR collection) or the link from its mail cancels it. Via the real routes and the runtime role.
  *
  * Counter-checks (measured 14.11.2026, each alone):
- *   A  in removeSecondFactor `endAccesses` deleted → red: “a normal account:
- *      immediately, sessions and tokens end” (token and session of the target stayed)
- *   B  passwordByAdmin without the administrator check (always immediate) → red:
- *      “an administrator account: announced …” (no effective_at, hash new immediately)
+ *   A  (22.11.2026) factorByAdmin removes the factor immediately again for a non-administrator
+ *      (adminOrJustBeen check back) → red: “a normal account: password and factor also only
+ *      after the deadline …” (no effective_at, factor gone at once)
+ *   B  (22.11.2026) passwordByAdmin sets the password immediately (setForeignPassword) → red:
+ *      the same check, “an administrator account: announced …” and eight more (no effective_at)
  *   C  in adminOrJustBeen only is_admin → red (measured anew 16.11.): “deactivating,
  *      revoking the role and deleting …” (after revocation a password immediately instead of announced)
  *   D  in signedInResponses (routes/auth.ts) cancelTakeovers deleted → red:
@@ -146,16 +147,31 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     return m()?.abbruch;
   };
 
-  await t.test('a normal account: immediately, sessions and tokens end', async () => {
+  await t.test('a normal account: password and factor also only after the deadline, with mail and link', async () => {
+    mails.length = 0;
     await faktor(nutzer);
     await zugaenge(nutzer);
     const f = await ruf('DELETE', `/users/${nutzer}/zweiter-faktor`, { admin_password: PASS });
-    assert.deepEqual([f.status, f.body.effective_at], [200, undefined]);
-    assert.deepEqual(await stand(nutzer), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: false });
-    await zugaenge(nutzer);
     const p = await ruf('PUT', `/users/${nutzer}/password`, { password: NEU, admin_password: PASS });
-    assert.deepEqual([p.status, p.body.effective_at], [200, undefined]);
+    for (const r of [p, f]) inFrist(r);
+    assert.deepEqual(await stand(nutzer), { tokens: 1, sitzungen: 1, faktor: 1, neuesPasswort: false });
+    const link = await abortLink(nutzer);
+    assert.ok(link, 'das Ziel bekommt Mail und Abbruch-Link');
+    const anAdmin = mails.filter(m => m.type === 'verwaltung_uebernahme_angekuendigt');
+    assert.ok(anAdmin.length >= 1 && anAdmin.every(m => !m.abbruch), 'die Verwalter erfahren davon, ohne Link');
+    assert.equal(await faellig(nutzer), 2);
     assert.deepEqual(await stand(nutzer), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
+    // The link of a normal account cancels like that of an administrator.
+    mails.length = 0;
+    inFrist(await ruf('PUT', `/users/${nutzer}/password`, { password: PASS, admin_password: PASS }));
+    const r = await fetch(`${base}/api/v1/auth/uebernahme-abbrechen`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: '' },
+      body: JSON.stringify({ token: await abortLink(nutzer) }),
+    });
+    assert.equal(r.status, 200, await r.text());
+    assert.deepEqual(await offen(nutzer), []);
+    // Deactivating a normal account takes nothing over: it stays immediate.
     const a = await ruf('PUT', `/users/${nutzer2}/aktiv`, { is_active: false, admin_password: PASS });
     assert.deepEqual([a.status, a.body.effective_at, (await konten(nutzer2)).is_active], [200, undefined, false]);
   });

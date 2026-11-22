@@ -2,11 +2,11 @@
  * create QR access. The routes in routes/auth.ts check, call and respond;
  * session and cookie stay there, because they hang on the request. */
 import * as K from './accounts';
-import { createToken, runtimeDays, UNLIMITED } from './deviceToken';
-import { APP_MAX_DURATION_DAYS, tokenDetails, tokenLabel, tokenScope } from './tokenRequest';
+import { createToken, runtimeDays, tokenDays } from './deviceToken';
+import { tokenDetails, tokenLabel, tokenScope } from './tokenRequest';
 import { hintInBackground } from './accountNotice';
 import * as QR from './qrPairing';
-import { basisUrl, hintWithoutBaseUrl, viaTls, unlimitedOnlyWithTls } from '../infra/basisUrl';
+import { basisUrl, hintWithoutBaseUrl, viaTls } from '../infra/basisUrl';
 import { tlsStand } from '../infra/tlsWurzel';
 import { fachfehler } from '../infra/errorTexts';
 import { passwordLack } from '../infra/passwordRule';
@@ -33,14 +33,10 @@ export async function loginResponse(
     // A token the database never saw would run into a 401 in the SSE channel.
     const neu = await versuche(
       'login:token',
-      createToken(
-        k,
-        uid,
-        tokenLabel(wish.label, 'webapp-session'),
-        dauerhaft,
-        dauerhaft ? APP_MAX_DURATION_DAYS : null,
-        { scope: tokenScope(wish.scope), ip },
-      ),
+      createToken(k, uid, tokenLabel(wish.label, 'webapp-session'), dauerhaft, null, {
+        scope: tokenScope(wish.scope),
+        ip,
+      }),
     );
     token = valueOr(neu, null);
     if (!token) fachfehler('intern', 'token_nicht_ausgestellt');
@@ -84,8 +80,8 @@ export async function createQrAccess(k: AccountContext, uid: number, gueltigkeit
     hintWithoutBaseUrl('auth:qr', 'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
     fachfehler('nicht_verfuegbar', 'qr_ohne_basis_url');
   }
-  const tage = runtimeDays(gueltigkeit) ?? APP_MAX_DURATION_DAYS;
-  if (tage === UNLIMITED) unlimitedOnlyWithTls(basis);
+  // The QR code says how long the access will run: the bound applies here already.
+  const tage = tokenDays(k, runtimeDays(gueltigkeit));
   const { token, kopplung } = await QR.create(k, uid, tage);
   hintInBackground(k, uid, 'qr_zugang_neu');
   // `fp` only with TLS: the app pins the root of the internal CA with it.

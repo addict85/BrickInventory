@@ -22,22 +22,33 @@ export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'account' | 
   const { inboundLock, requireLoginOrToken } = guardFor(d.account);
   const router = express.Router();
 
+  // Invoices and vouchers: never into a cache, not even a rejection. Hence before the
+  // guards; /data is not under /api and gets no no-store from the app.
+  const noStore = (_req: Request, res: Response, next: () => void) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    next();
+  };
+
   // The main account sees the uploads of its sub-accounts, not the other way round. A
   // first segment without a user id is rejected.
-  router.get('/data/uploads/*pfad', requireLoginOrToken, inboundLock, async (req: WildcardRequest, res: Response) => {
-    const userId = signedInUserId(req);
-    // Invoices and vouchers: never into a cache, not even a rejection.
-    res.setHeader('Cache-Control', 'private, no-store');
-    const segments = pathSegments(req, 'pfad');
-    const filePath = safeDataPath('uploads', segments);
-    if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
-    const besitzer = Number(segments[0]);
-    // Even administrators do not read foreign uploads (invoices, vouchers). Foreign
-    // answers like missing, so one cannot tell which accounts have files.
-    if (!(await d.household.seesAccount(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
-    asAttachment(res, filePath);
-    deliverFile(res, filePath);
-  });
+  router.get(
+    '/data/uploads/*pfad',
+    noStore,
+    requireLoginOrToken,
+    inboundLock,
+    async (req: WildcardRequest, res: Response) => {
+      const userId = signedInUserId(req);
+      const segments = pathSegments(req, 'pfad');
+      const filePath = safeDataPath('uploads', segments);
+      if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
+      const besitzer = Number(segments[0]);
+      // Even administrators do not read foreign uploads (invoices, vouchers). Foreign
+      // answers like missing, so one cannot tell which accounts have files.
+      if (!(await d.household.seesAccount(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
+      asAttachment(res, filePath);
+      deliverFile(res, filePath);
+    },
+  );
 
   // Stored shared, but under the set number: only for sets in the own scope,
   // otherwise the same 404 as for a missing file.

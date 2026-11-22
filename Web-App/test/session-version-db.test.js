@@ -64,7 +64,9 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
   app.use(express.json());
   app.use(
     session({
-      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      store: _req('src/account/sessionStore.js').hashSessionIds(
+        new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      ),
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -92,7 +94,9 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
     assert.equal(r.status, 200, await r.text());
     return (r.headers.get('set-cookie') || '').split(';')[0];
   };
-  const sid = cookie => decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0];
+  // The table holds the hash of the id from the cookie (src/account/sessionStore.ts).
+  const sid = cookie =>
+    _req('src/account/sessionStore.js').sessionDigest(decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0]);
   const zeile = async cookie => db.get('SELECT sid, sess, expire FROM user_sessions WHERE sid = $1', [sid(cookie)]);
   // What a request does that began before the deletion and saves afterwards.
   const writeBack = z =>

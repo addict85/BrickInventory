@@ -6,6 +6,9 @@
  * Passwort"
  * Counter-check (measured on 03.11.): in /qr-token `?? APP_MAX_DURATION_DAYS`
  * removed → red „Ohne Wahl gilt die Höchstdauer von 180 Tagen"
+ * Counter-check (22.11.2026): tokenDays() without Math.min (a choice above TOKEN_MAX_DAYS
+ * applies) → red in 3b („12m“ gives 365); the cleanup step `boundUnlimited` deleted → red in 3c
+ * (both measured: red “QR access: the lifetime is chosen by the creator …”)"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,6 +24,8 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 // else — here the precondition is only fulfilled, not checked. That is done by
 // test/qr-address.test.js.
 process.env.APP_BASE_URL = 'https://lego.example.org';
+// The bound of every access (src/infra/config.ts); 180 here, so the choices below it stay distinct.
+process.env.TOKEN_MAX_DAYS = '180';
 
 const { buildAndRequire, einhaengung, ohneKommentare, testData } = require('./helpers/sources');
 const { pairQr } = require('./helpers/qr');
@@ -55,7 +60,9 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
   app.use(express.json());
   app.use(
     session({
-      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      store: _req('src/account/sessionStore.js').hashSessionIds(
+        new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      ),
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -77,7 +84,9 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     pairQr((p, body, kopf) => ruf(p, { method: 'POST', headers: kopf, body }), qr, { cookie: keks });
   /** The api_tokens row for an issued plaintext token. */
   const zeile = token =>
-    db.get('SELECT expires_at, hard_expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
+    db.get('SELECT expires_at, hard_expires_at, sliding, never_expires FROM api_tokens WHERE token = $1', [
+      auth.tokenDigest(token),
+    ]);
 
   try {
     const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, ohne_token: true } });
@@ -154,36 +163,35 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     );
     assert.ok(zv.expires_at, 'Und erst recht keine unbegrenzte: Der Zugang muss die gewoehnliche Gleitfrist tragen');
 
-    // 3b. „Unlimited" really means unlimited
-    const ewig = await ruf('/qr-token', {
-      method: 'POST',
-      headers: { cookie: keks },
-      body: { gueltigkeit: 'unbegrenzt', password: PASS },
-    });
-    assert.equal(ewig.body.token_days, 0, '„unbegrenzt" reist als 0 mit — null hiesse „nichts gewaehlt"');
-    const accessForever = await koppeln(ewig.body, keks);
-    const rawForever = accessForever.body.token;
-    const ze = await zeile(rawForever);
-    assert.equal(ze.expires_at, null, 'Unbegrenzt heisst: keine gleitende Frist');
-    assert.equal(ze.hard_expires_at, null, 'Unbegrenzt heisst: auch keine feste Frist');
-    assert.equal(ze.sliding, false, 'Ohne Datum darf die Zeile auch nicht gleiten');
+    // 3b. There is no "unlimited" any more: the old choice and one above the bound give the bound.
+    for (const [wahl, tage] of [
+      ['unbegrenzt', 180],
+      ['12m', 180],
+    ]) {
+      const r = await ruf('/qr-token', {
+        method: 'POST',
+        headers: { cookie: keks },
+        body: { gueltigkeit: wahl, password: PASS },
+      });
+      assert.equal(r.body.token_days, tage, `„${wahl}" ergibt die Höchstdauer aus TOKEN_MAX_DAYS`);
+      const ze = await zeile((await koppeln(r.body, keks)).body.token);
+      assert.ok(
+        Math.abs(daysAhead(ze.hard_expires_at) - Number(tage)) < 1,
+        `${wahl}: feste Frist ${ze.hard_expires_at}`,
+      );
+      assert.equal(ze.never_expires, false);
+    }
 
+    // 3c. A row from before (no end, as "unlimited" was): the cleanup run gives it one.
+    const alt = await auth.createToken(uid, 'Altgerät', true);
     await db.run(
-      `UPDATE api_tokens SET last_used = NOW() - INTERVAL '400 days',
-                             created_at = NOW() - INTERVAL '400 days'
-        WHERE token = $1`,
-      [auth.tokenDigest(rawForever)],
+      'UPDATE api_tokens SET hard_expires_at = NULL, expires_at = NULL, sliding = FALSE, never_expires = TRUE WHERE token = $1',
+      [auth.tokenDigest(alt)],
     );
     await auth.tokensCleanup();
-    const nachher = await zeile(rawForever);
-    assert.ok(nachher, 'Der unbegrenzte Zugang darf vom Aufraeumjob nicht geloescht werden');
-    assert.equal(
-      nachher.expires_at,
-      null,
-      'Der Aufraeumjob darf ihm auch kein Ablaufdatum verpassen — sonst waere die Wahl still weg',
-    );
-    tokenCache.tokenForgotten(rawForever);
-    assert.ok(await auth.nutzerZumToken(rawForever), 'Und er muss nach dem Aufraeumen noch gelten');
+    const begrenzt = await zeile(alt);
+    assert.ok(begrenzt && Math.abs(daysAhead(begrenzt.hard_expires_at) - 180) < 1, JSON.stringify(begrenzt));
+    assert.equal(begrenzt.never_expires, false);
 
     // ── 4. A value outside the list does not reject, it chooses nothing ──
     //
@@ -252,5 +260,6 @@ test('QR access: the UI chooses when CREATING, not when redeeming', () => {
   const markupList = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)].map(m => m[1]);
   assert.deepEqual(markupList, serverList, 'Die Auswahl im Markup und die Liste in TOKEN_RUNTIMES laufen auseinander');
   assert.ok(serverList.length >= 5, 'Die Liste des Servers ist zu kurz');
-  assert.ok(serverList.includes('unbegrenzt'), 'Die Wahl „unbegrenzt" fehlt auf der Serverseite');
+  // Still accepted while the UI offers it; it means the bound (3b above).
+  assert.equal(auth.runtimeDays('unbegrenzt'), 0);
 });

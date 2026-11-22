@@ -4,7 +4,7 @@
  * opens no account, and the owner sees every device before it gets access. */
 import crypto from 'node:crypto';
 import { createToken, tokenDigest, ipArea } from './deviceToken';
-import { APP_MAX_DURATION_DAYS, tokenLabel } from './tokenRequest';
+import { tokenLabel } from './tokenRequest';
 import { fachfehler } from '../infra/errorTexts';
 import type { AccountContext } from './context';
 
@@ -72,7 +72,7 @@ export async function holeQrTokenAb(
   if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
   if (vorschau) return { stand: 'bereit', uid: z.user_id };
   if (!(await k.qrKopplung.markPickedUp(z.id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
-  const token = await createToken(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_MAX_DURATION_DAYS, {
+  const token = await createToken(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? null, {
     scope: 'app',
     ip,
   });

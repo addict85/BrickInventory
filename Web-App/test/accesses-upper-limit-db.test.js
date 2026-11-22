@@ -89,7 +89,9 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
     const app = express();
     app.use(
       session({
-        store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+        store: _req('src/account/sessionStore.js').hashSessionIds(
+          new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+        ),
         secret: 'grenze-test-geheimnis-lang-genug',
         resave: false,
         saveUninitialized: false,
@@ -101,7 +103,9 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
     });
     const srv = app.listen(0);
     t.after(() => new Promise(r => srv.close(r)));
-    const { sid } = await (await fetch(`http://127.0.0.1:${srv.address().port}/an`, { method: 'POST' })).json();
+    const klar = (await (await fetch(`http://127.0.0.1:${srv.address().port}/an`, { method: 'POST' })).json()).sid;
+    // The table holds the hash of the id (src/account/sessionStore.ts).
+    const sid = _req('src/account/sessionStore.js').sessionDigest(klar);
     const rest = (await sitzungen(uid)).map(z => z.sid);
     assert.equal(rest.length, 50, 'höchstens 50 Sitzungen …');
     assert.ok(rest.includes(sid), 'die neue Sitzung bleibt');

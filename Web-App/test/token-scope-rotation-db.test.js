@@ -1,5 +1,5 @@
 /**
- * Tokens: scope, sliding expiry, rotation, „unbegrenzt“ only over HTTPS,
+ * Tokens: scope, sliding expiry, rotation, a fixed end for every token,
  * device list and the migration of existing tokens — against a real
  * database and the login path as in the server (entrance, api_v1, settings, auth).
  *
@@ -14,15 +14,16 @@
  *      “rotation: …” (B still applies after the second exchange)
  *   E  in pruefeToken() the predecessor not deleted on the first use →
  *      red: “rotation: …” (the old one still applies after use of the new one)
- *   F  the https check for „unbegrenzt“ removed in /qr-token → red:
- *      “unlimited only over HTTPS, and then with mandatory rotation”
+ *   F  (22.11.2026) in putTokenAn() no fixed end at the bound (hard_expires_at NULL for
+ *      TOKEN_MAX_DAYS, as „unbegrenzt“ was) → red: “app login: fixed maximum duration …” and
+ *      “no access without an end, …”
  *   G  rotationRequired() always false → red: the same check (status 200 instead of 401)
  *   H  never_expires not reset in migration 0080 → red:
  *      “migration 0080: …”
  *   I  `replaced_by IS NULL` removed in accessesOfAccount() → red:
  *      “device list: …” (the exchanged device stood there twice)
- *   J  (02.11.2026) in /login again `null` instead of APP_MAX_DURATION_DAYS → red:
- *      “app login: fixed maximum duration …” (hard_expires_at null)
+ *   J  (22.11.2026) the cleanup step `boundUnlimited` deleted → red: “no access without an
+ *      end, …” (the legacy row keeps never_expires)
  *   K  (02.11.2026) in putSuccessorAn() hard_expires_at set to NOW() + 180
  *      days → red: the same check („der Tausch verlängert …“)
  *   L  (09.11.2026) in deleteAccess() the predecessor (`left(replaced_by, 16)`)
@@ -83,7 +84,9 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
   app.use(express.json());
   app.use(
     session({
-      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      store: _req('src/account/sessionStore.js').hashSessionIds(
+        new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      ),
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -237,15 +240,15 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     assert.equal((await ruf('/auth/token-rotieren', { method: 'POST', token: 'f'.repeat(64) })).status, 401);
   });
 
-  await t.test('app login: fixed maximum duration of 180 days that the exchange does not extend', async () => {
+  await t.test('app login: fixed maximum duration (TOKEN_MAX_DAYS, 90) that the exchange does not extend', async () => {
     const a = (await anmelden({ never_expires: true, label: 'Höchstdauer' })).body.token;
     const z = await zeile(a);
     assert.ok(
-      z.hard_expires_at && Math.abs(daysUntil(z.hard_expires_at) - 180) < 0.01,
-      `feste Frist 180 Tage, gemessen: ${z.hard_expires_at}`,
+      z.hard_expires_at && Math.abs(daysUntil(z.hard_expires_at) - 90) < 0.01,
+      `feste Frist 90 Tage, gemessen: ${z.hard_expires_at}`,
     );
     assert.ok(Math.abs(daysUntil(z.expires_at) - 90) < 0.01, 'die Gleitfrist bleibt daneben');
-    // 170 days after the login: an exchange inherits the remaining ten days.
+    // 80 days after the login: an exchange inherits the remaining ten days.
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() + INTERVAL '10 days' WHERE token = $1`, [
       auth.tokenDigest(a),
     ]);
@@ -260,21 +263,31 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     assert.ok(daysUntil(r.body.token_info.expires_at) <= 10.01, 'die Antwort nennt das frühere Ende');
   });
 
-  await t.test('unlimited only over HTTPS, and then with mandatory rotation', async () => {
-    const http = await qrToken('unbegrenzt');
-    assert.equal(http.status, 400);
-    assert.equal(http.body.code, 'unbegrenzt_nur_https');
-
+  await t.test('no access without an end, not even over HTTPS; old rows still must rotate', async () => {
     environment({ APP_BASE_URL: 'https://lego.test' });
     try {
       const qr = await qrLogin('unbegrenzt');
       const u = qr.body.token;
-      assert.equal(qr.body.token_info.never_expires, true);
-      assert.equal(qr.body.token_info.expires_at, null);
+      assert.equal(qr.body.token_info.never_expires, false);
+      assert.ok(
+        Math.abs(daysUntil(qr.body.token_info.hard_expires_at) - 90) < 0.01,
+        JSON.stringify(qr.body.token_info),
+      );
+      const t2 = (
+        await ruf('/auth/token-create', {
+          method: 'POST',
+          cookie: sitzung,
+          body: { password: PASS, code: await code() },
+        })
+      ).body;
+      assert.ok(Math.abs(daysUntil(t2.token_info.hard_expires_at) - 90) < 0.01, 'token-create endet auch');
 
-      await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '31 days' WHERE token = $1`, [
-        auth.tokenDigest(u),
-      ]);
+      // A row from before migration 0126 (never_expires, no date) until the cleanup run bounds it.
+      await db.run(
+        `UPDATE api_tokens SET never_expires = TRUE, expires_at = NULL, hard_expires_at = NULL, sliding = FALSE,
+                rotated_at = NOW() - INTERVAL '31 days' WHERE token = $1`,
+        [auth.tokenDigest(u)],
+      );
       tokenCache.emptyTokenCache();
       const faellig = await ruf('/auth/me', { token: u });
       assert.equal(faellig.status, 200);
@@ -289,14 +302,14 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
       const gesperrt = await ruf('/settings/tokens', { token: u });
       assert.equal(gesperrt.status, 401);
       assert.equal(gesperrt.body.code, 'token_rotation_noetig');
-      assert.equal((await ruf('/auth/me', { token: u })).body.code, 'token_rotation_noetig');
 
       const neu = await ruf('/auth/token-rotieren', { method: 'POST', token: u });
       assert.equal(neu.status, 200, JSON.stringify(neu.body));
-      assert.equal(neu.body.token_info.never_expires, true, 'Unbegrenzt bleibt unbegrenzt');
-      const ok = await ruf('/settings/tokens', { token: neu.body.token });
-      assert.equal(ok.status, 200);
-      assert.equal(ok.kopf.get('x-token-rotation'), null);
+      assert.equal((await ruf('/settings/tokens', { token: neu.body.token })).status, 200);
+      await auth.tokensCleanup();
+      const begrenzt = await zeile(neu.body.token);
+      assert.equal(begrenzt.never_expires, false, 'der Aufräumlauf nimmt dem Nachfolger das „unbegrenzt“');
+      assert.ok(Math.abs(daysUntil(begrenzt.hard_expires_at) - 90) < 0.01, `${begrenzt.hard_expires_at}`);
     } finally {
       environment({ APP_BASE_URL: 'http://lego.test:3000' });
     }

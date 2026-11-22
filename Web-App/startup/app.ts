@@ -13,6 +13,7 @@ import { sitzungsKeksName, sessionCookieOptions } from '../src/http/sitzungsKeks
 import {
   touchMs,
   touchThrottle,
+  hashSessionIds,
   sitzungsfristen,
   sessionIdleMs,
   sessionIdleSec,
@@ -208,6 +209,8 @@ function sessionInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHan
 
   // Written throttled (src/account/sessionTouch.ts).
   touchThrottle(sessionStorage, touchMs(sessionIdleMs(k)));
+  // Outermost, so that the throttle's memory also only keys by the hash.
+  hashSessionIds(sessionStorage);
 
   return session({
     store: sessionStorage,

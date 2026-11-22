@@ -86,6 +86,7 @@ export function buildQrRouter(d: Pick<Dienste, 'account'>) {
     'POST /api/v1/auth/qr-login/verwerfen',
     ipThrottle(d.account, 'qr-abholen', 600, 60 * 60 * 1000),
     async req => {
+      if (!req.eingabe.abholung) fachfehler('ungueltig', 'token_ungueltig');
       if (!(await d.account.discardPickup(req.eingabe.abholung))) fachfehler('nicht_angemeldet', 'token_ungueltig');
       return {};
     },

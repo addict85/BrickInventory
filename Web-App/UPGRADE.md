@@ -2444,3 +2444,20 @@ Daten, keine Bezeichner, und bleiben unverändert.
   `MerklisteViewModel.kt`), und `shared/app-schnittstelle.json` sind **nicht** mitgezogen –
   das ist ausdrücklich Aufgabe der Android-Phase (4/5) dieses Plans, mit Gradle-Build und
   echter Kompilierprüfung, die hier nicht zur Verfügung stand.
+
+## 69. Sicherheit – Sitzungs-IDs gehasht, Tokens mit festem Ende, Verwalterübernahme für alle Konten (Migrationen 0125–0126)
+
+- **Sitzungs-IDs** stehen in `user_sessions` nur noch als SHA-256. Migration 0125 hasht
+  die bestehenden Zeilen; niemand wird abgemeldet.
+- **Kein Gerätezugang ohne Ende.** Jeder Token bekommt ein festes Ende ab der Anmeldung,
+  `TOKEN_MAX_DAYS` (Vorgabe `90`, `1` bis `365`); der Tausch erbt es, danach meldet sich die
+  App neu an. „Unbegrenzt“ und Wahlen über der Grenze beim QR-Code ergeben die Grenze.
+  Migration 0126 gibt bestehenden Tokens ohne festes Ende eines in 90 Tagen ab dem Update;
+  der Aufräumlauf begrenzt Zeilen, die noch ohne Ende kommen, auf `TOKEN_MAX_DAYS`.
+- **Passwort und zweiter Faktor eines anderen Kontos** setzt ein Verwalter jetzt bei
+  *jedem* Konto erst nach 24 Stunden, mit Mail und Abbruchlink an das Konto (bisher nur bei
+  Verwalterkonten). Wer sein Passwort vergessen hat, wartet also einen Tag oder nutzt
+  „Passwort vergessen“ per Mail.
+- **Caddy:** Alle Anmeldewege ohne Sitzung (auch Abmelden, E-Mail bestätigen, das Nein
+  der App beim QR-Code, Abbruch- und Freigabelink) haben die Rumpfgrenze von 16 KB.
+  Wer ein eigenes Caddyfile pflegt, übernimmt den Block `(anmeldung)`.

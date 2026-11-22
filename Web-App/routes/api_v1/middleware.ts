@@ -31,20 +31,39 @@ export function bearerToken(req: { headers: { authorization?: string | undefined
 }
 
 /** Everything else requires login right at the entrance: a new route that
- * forgets its own protection is thereby closed, not open. */
-const PUBLIC: ReadonlyArray<readonly [string, RegExp]> = [
-  ['GET', /^\/settings\/theme$/],
+ * forgets its own protection is thereby closed, not open. Exact paths instead of
+ * patterns, so the Caddyfile (`@anmeldung`) and the app's sign-in screens can be held
+ * against this list (test/public-entrance-db.test.js). */
+export const PUBLIC_ROUTES: ReadonlyArray<string> = [
+  'GET /settings/theme',
   // The login page uses it to check what is still missing before the first account.
-  ['GET', /^\/einrichtung\/stand$/],
-  ['GET', /^\/auth\/(me|registration-status)$/],
-  // token-rotieren checks itself: an unlimited token after the mandatory deadline
-  // only applies there, and the entrance cannot know that.
-  [
-    'POST',
-    /^\/auth\/(login|logout|qr-login(?:\/abholen)?|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen(?:\/vorschau)?|token-rotieren|uebernahme-abbrechen|anmeldung-freigeben)$/,
-  ],
-  ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
+  'GET /einrichtung/stand',
+  'GET /auth/me',
+  'GET /auth/registration-status',
+  'POST /auth/login',
+  'POST /auth/logout',
+  'POST /auth/qr-login',
+  'POST /auth/qr-login/abholen',
+  'POST /auth/qr-login/verwerfen',
+  'POST /auth/register',
+  'POST /auth/forgot-password',
+  'POST /auth/reset-password',
+  'POST /auth/bestaetigung-erneut',
+  'POST /auth/email-bestaetigen',
+  'POST /auth/email-bestaetigen/vorschau',
+  // Checks itself: an unlimited token after the mandatory deadline only applies there.
+  'POST /auth/token-rotieren',
+  'POST /auth/uebernahme-abbrechen',
+  'POST /auth/anmeldung-freigeben',
+  'POST /auth/passkey/anmelden',
+  'POST /auth/passkey/anmelden/optionen',
 ];
+const PUBLIC = new Set(PUBLIC_ROUTES);
+
+/** `pfad` relative to /api/v1; HEAD counts as GET. */
+export function isPublicRoute(methode: string, pfad: string): boolean {
+  return PUBLIC.has(`${methode === 'HEAD' ? 'GET' : methode} ${pfad}`);
+}
 
 /** Start password or one set by an administrator: until it is replaced, only the change works.
  * The server only accepts the device key right after login, so here as well. */
@@ -72,8 +91,7 @@ function inboxFor(konto: AccountServices) {
   }
 
   async function loginAtInbox(req: Request, res: Response, next: NextFunction) {
-    const methode = req.method === 'HEAD' ? 'GET' : req.method;
-    if (PUBLIC.some(([m, re]) => m === methode && re.test(req.path))) return next();
+    if (isPublicRoute(req.method, req.path)) return next();
     if (req.session?.userId) {
       req.apiUser = {
         user_id: req.session.userId,

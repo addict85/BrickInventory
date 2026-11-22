@@ -90,7 +90,9 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
   app.use(express.json());
   app.use(
     session({
-      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      store: _req('src/account/sessionStore.js').hashSessionIds(
+        new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      ),
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -269,6 +271,9 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     );
     assert.equal(await zf.isActive(idV), true);
     assert.equal((await entfernen(idS)).status, 200, 'fremder Faktor lässt sich nicht mehr entfernen');
+    // Announced like every takeover (src/account/adminActions.ts); effective in the cleanup run.
+    assert.equal(await zf.isActive(idS), true);
+    assert.equal(await require('./helpers/admin').takeoverNow(_req, db, idS), 1);
     assert.equal(await zf.isActive(idS), false);
   } finally {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BRAKE, VERWALTER]]).catch(() => {});

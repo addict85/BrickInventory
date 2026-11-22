@@ -152,6 +152,7 @@ const sitzungszugang = (db: Db) => ({
     deleteSessionsOfAccount: imSystem(db, NUR_SYSTEMROLLE, zugaenge.deleteSessionsOfAccount),
     sitzungsVersion: imSystem(db, WITHOUT_ACCOUNT, zugaenge.sitzungsVersion),
     countSessionVersionHigh: imSystem(db, ACCESS, zugaenge.countSessionVersionHigh),
+    boundUnlimited: imSystem(db, ALL_ACCOUNTS, zugaenge.boundUnlimited),
     pullAltzeilenAfter: imSystem(db, ALL_ACCOUNTS, zugaenge.pullAltzeilenAfter),
     deleteExpired: imSystem(db, ALL_ACCOUNTS, zugaenge.deleteExpiredAccesses),
     deleteUnused: imSystem(db, ALL_ACCOUNTS, zugaenge.deleteUnused),

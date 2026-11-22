@@ -30,6 +30,7 @@ const { catalogSet } = require('./helpers/inventory');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { mailAttrappe } = require('./helpers/mail-fake');
+const { example } = require('./helpers/contract-example');
 mailAttrappe();
 const db = S.testData();
 const auth = _req('src/account/deviceToken.js');
@@ -61,59 +62,6 @@ function pdfWith(rows) {
     for (const z of rows) doc.text(z);
     doc.end();
   });
-}
-
-/** A sample value for a zod schema; `name` is the field name, `wert` delivers the victim's values. */
-function beispiel(schema, name, wert, alle) {
-  const d = schema?._zod?.def;
-  if (!d) return undefined;
-  if (name && wert(name) !== undefined) return wert(name);
-  switch (d.type) {
-    case 'optional':
-    case 'nullable':
-    case 'default':
-    case 'prefault':
-    case 'readonly':
-    case 'catch':
-      return beispiel(d.innerType, name, wert, alle);
-    case 'pipe':
-      return beispiel(d.in, name, wert, alle);
-    case 'union':
-      for (const o of d.options) {
-        const v = beispiel(o, name, wert, alle);
-        if (v !== undefined) return v;
-      }
-      return undefined;
-    case 'enum':
-      return Object.values(d.entries)[0];
-    case 'literal':
-      return d.values[0];
-    case 'string':
-      return 'x';
-    case 'number':
-    case 'int':
-      return 1;
-    case 'boolean':
-      return true;
-    case 'array': {
-      const e = beispiel(d.element, null, wert, alle);
-      return e === undefined ? [] : [e];
-    }
-    case 'record':
-      return {};
-    case 'object': {
-      const aus = {};
-      for (const [k, s] of Object.entries(d.shape)) {
-        const optional = ['optional', 'default', 'prefault'].includes(s?._zod?.def?.type);
-        if (optional && !alle && wert(k) === undefined) continue;
-        const v = beispiel(s, k, wert, alle);
-        if (v !== undefined) aus[k] = v;
-      }
-      return aus;
-    }
-    default:
-      return undefined;
-  }
 }
 
 test('a foreign account sees and changes no data of another via any route', {
@@ -373,7 +321,7 @@ test('a foreign account sees and changes no data of another via any route', {
       const rumpfe =
         methode === 'GET' || route.formular
           ? [undefined]
-          : [beispiel(route.eingabe, null, w, false), beispiel(route.eingabe, null, w, true)];
+          : [example(route.eingabe, w, false), example(route.eingabe, w, true)];
       for (const rumpf of rumpfe)
         for (const q of abfrage ? [abfrage, ''] : ['']) {
           const r = await ruf(methode, weg + (q ? '?' + q : ''), rumpf);

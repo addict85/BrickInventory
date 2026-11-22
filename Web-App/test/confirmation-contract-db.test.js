@@ -198,6 +198,8 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
       code: codes[0],
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.ok(r.body.effective_at, 'angekündigt, nicht sofort');
+    assert.equal(await require('./helpers/admin').takeoverNow(_req, db, ziel), 1);
     assert.equal(await zf.isActive(ziel), false);
     const withoutFactor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
     const tok = await ruf(withoutFactor, 'POST /api/v1/auth/token-create', { password: PASS });
