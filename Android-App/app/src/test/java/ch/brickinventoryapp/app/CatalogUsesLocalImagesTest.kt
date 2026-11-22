@@ -10,16 +10,9 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Catalog images use the user-independent local file determined by the server
- * instead of hard-setting it to null.
- *
- * Previously CatalogScreen.kt/CatalogDetailScreen.kt always passed `null` as
- * imageLocal to resolveThumbUrl()/resolveFullUrl() — with the reasoning that the
- * catalog knows no local images. That was only half right: a
- * DIFFERENT user (or the same one with an earlier set) may already have downloaded
- * the same image file, because it is named after the set number
- * and is user-independent. The server checks that now and delivers
- * `image_local` if the file exists.
+ * Catalog models carry the server's `image_local`, and every function that resolves an
+ * image address declares `serverUrl` itself. That the catalog screens use the local file
+ * is rendered in CatalogLocalImagesTest (feature-catalog).
  *
  * Counter-check: in CatalogSetItem.asView `imageLocal =
  * null` → red “catalog models know image_local”.
@@ -35,10 +28,6 @@ class CatalogUsesLocalImagesTest {
         return f.readText()
     }
 
-    private fun code(src: String) = src.lines().joinToString("\n") { line ->
-        if (line.trim().startsWith("//")) "" else line
-    }
-
     @Test
     fun `catalog models know image_local`() {
         // What the server sends is read, and it arrives in the view.
@@ -48,69 +37,6 @@ class CatalogUsesLocalImagesTest {
         val detail = BrickJson.decodeFromString(CatalogSetDetail.serializer(),
             """{"set_number": "75192-1", "image_local": "/images/sets/75192-1_thumb.jpg"}""").asView()
         assertEquals("/images/sets/75192-1_thumb.jpg", detail.imageLocal)
-    }
-
-    @Test
-    fun `catalog screens pass the field through instead of forcing null`() {
-        val list = code(Sources.screen("catalog/ui/screens/CatalogScreen.kt"))
-        // rememberTileImageWithFallback(...) counts as well:
-        assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
-               list.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
-            "the catalog list must pass set.imageLocal on, not null"
-        }
-        assert(!list.contains("resolveThumbUrl(serverUrl, null, set.imageUrl)")) {
-            "a hard-wired null prevents using files that already exist"
-        }
-
-        val detail = code(read("catalog/ui/screens/CatalogDetailScreen.kt"))
-        assert(detail.contains("resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)")) {
-            "the catalog detail dialog must pass detail.imageLocal to resolveFullUrl()"
-        }
-        assert(!detail.contains("resolveFullUrl(serverUrl, null, detail.imageUrl)")) {
-            "a hard-wired null prevents using files that already exist"
-        }
-    }
-
-    @Test
-    fun `CatalogDetailScreen declares and receives serverUrl`() {
-        // Regression: resolveFullUrl() was built in without the
-        // function knowing serverUrl as a parameter at all — compile error
-        // "Unresolved reference 'serverUrl'". Now in the signature AND
-        // supplied with state.serverUrl at the only call site.
-        val screenSrc = read("catalog/ui/screens/CatalogDetailScreen.kt").replace("\n", " ")
-        assert(Regex("""fun CatalogDetailScreen\([^)]*serverUrl: String""").containsMatchIn(screenSrc)) {
-            "serverUrl is missing in the function signature"
-        }
-        val graphSrc = code(read("catalog/ui/CatalogGraph.kt"))
-        assert(graphSrc.contains("serverUrl = state.serverUrl")) {
-            "the caller in CatalogGraph.kt must pass serverUrl"
-        }
-    }
-
-    @Test
-    fun `CatalogSetCard is called with serverUrl`() {
-        // The generic check above covers the SIGNATURE; here additionally
-        // the concrete call that was actually missing in the reported error.
-        //
-        // ── Checked for the RULE, not for the wording ────
-        //
-        // Previously a contains() on the whole call stood here, closing
-        // bracket included. This assertion fell when the design
-        // `noppe` needed a fifth argument (the position of the tile for
-        // the stud color) — although serverUrl stood unchanged in third place
-        // and the matter this is about was not touched at all.
-        //
-        // The statement is „serverUrl stands in third place“, not „the call has exactly four arguments“
-        // . The character after it may therefore
-        // be a comma.
-        val src = read("catalog/ui/screens/CatalogScreen.kt")
-        assert(Regex("""CatalogSetCard\(set, imageLoader, serverUrl, onSetClick[,)]""")
-                .containsMatchIn(src)) {
-            "the call must pass serverUrl in third position"
-        }
-        assert(!src.contains("CatalogSetCard(set, imageLoader, onSetClick)")) {
-            "the old call without serverUrl must no longer occur"
-        }
     }
 
     @Test

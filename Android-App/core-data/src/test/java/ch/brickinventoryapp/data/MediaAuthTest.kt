@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
-import java.io.File
 
 /**
  * Images and PDFs need sign-in on the server side — the app must send it
@@ -22,7 +21,8 @@ import java.io.File
  * — without an error message, because DownloadManager does not check the
  * status code.
  *
- * These tests pin down the chain.
+ * These tests pin down the bans along the chain; the download button (PdfDownloadTest,
+ * feature-finances) and the instruction client (InstructionDownloadTest) run.
  */
 class MediaAuthTest {
 
@@ -33,18 +33,12 @@ class MediaAuthTest {
         check(Sources.all().size >= 60) { "Too few Kotlin files — path outdated?" }
     }
 
-    private fun read(rel: String): String {
-        val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "File not found: $rel" }
-        return f.readText()
-    }
-
     private fun code(src: String): String {
         val s = src.replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    // ── Bilder ───────────────────────────────────────────────────────────────
+    // ── Images ───────────────────────────────────────────────────────────────
 
     @Test
     fun `images are not loaded bypassing the ImageLoader`() {
@@ -61,59 +55,7 @@ class MediaAuthTest {
 
     // That signing out clears the image cache is checked, executed, by LogoutCleansEverythingTest (app).
 
-    // ── PDFs ─────────────────────────────────────────────────────────────────
-
-    @Test
-    fun `the PDF download copies the loaded file instead of loading again`() {
-        val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
-        assert(!viewer.contains("DownloadManager")) {
-            "DownloadManager does not know the bearer token — the fetch ends in a 401, " +
-            "which is saved as a PDF"
-        }
-        assert(viewer.contains("savePdfToDownloads")) { "Copy function missing" }
-        assert(viewer.contains("MediaStore.Downloads")) {
-            "From Android 10 direct write access to Downloads/ is blocked"
-        }
-    }
-
-    @Test
-    fun `the download button appears only once the file is loaded`() {
-        val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
-        val actions = viewer.substringAfter("actions = {").substringBefore("            )")
-        // Both buttons work on the loaded source of the Ready state and may
-        // only be visible there. The field is read from Ready, not named fixed.
-        // Counter-check: counter-checks/pdf-download-ausserhalb-ready.patch → red here.
-        val condition = code(read("finances/ui/pdf/PdfSource.kt"))
-        val field = Regex("""class Ready\(val (\w+): \w+,""").find(condition)?.groupValues?.get(1)
-        assert(field != null) { "PdfLoadState.Ready no longer carries a loaded source" }
-        assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready check missing" }
-        val ready = actions.substringAfter("if (s is PdfLoadState.Ready)")
-        assert(ready.contains("savePdfToDownloads(ctx, s.$field, title)")) {
-            "The download button must be inside the Ready branch — " +
-            "before, it stood outside and reloaded on its own"
-        }
-    }
-
-    @Test
-    fun `the display itself runs via the authenticated client`() {
-        // Loading happens in the data layer (InstructionRepository), not in the screen.
-        val viewer = code(read("data/InstructionRepository.kt"))
-        // What is checked is the statement, not the wording of the call: the download runs
-        // via the injected client, no matter how the arguments wrap.
-        val call = Sources.window(viewer, "downloadPdfWithResume(", 8)
-        assert(call.isNotEmpty()) { "The download call is missing entirely" }
-        assert(call.contains("httpClient")) {
-            "The PDF must be loaded via the injected OkHttpClient, not freely"
-        }
-        assert(!viewer.contains("OkHttpClient()")) {
-            "A freely built client does not know the bearer token"
-        }
-        assert(viewer.contains("""@param:ApiClient private val httpClient: OkHttpClient""")) {
-            "The loader does not get the api client with token and plaintext ban"
-        }
-    }
-
-    // ── Pfade ────────────────────────────────────────────────────────────────
+    // ── Paths ────────────────────────────────────────────────────────────────
 
     @Test
     fun `the app does not assemble image paths itself`() {

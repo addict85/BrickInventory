@@ -52,6 +52,7 @@ import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.collection.ui.BarcodeUiState
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.collection.ui.dialogs.BarcodeDialogState

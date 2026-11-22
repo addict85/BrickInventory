@@ -63,6 +63,7 @@ import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.collection.ui.CollectionTarget

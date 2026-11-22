@@ -60,8 +60,6 @@ import java.io.File
  */
 class ScreenStateTest {
 
-    private val uiRoot = File(Sources.root, "ui")
-
     // All UI files: every module has its ui/ under its own package root.
     private fun kotlinFiles(): List<File> = Sources.below("ui")
 
@@ -251,21 +249,5 @@ class ScreenStateTest {
         }
         assertTrue("No password fields found — does the search apply?", "pwNew" in found && "password" in found)
         assertTrue("remember instead of rememberSaveable:\n  " + secured.joinToString("\n  "), secured.isEmpty())
-    }
-
-    @Test
-    fun `ScrollMemory deliberately uses remember and sticks to it`() {
-        // Not for completeness's sake: this file has already had the bug
-        // once before. A later batch conversion shouldn't
-        // accidentally pick it up again.
-        val f = File(uiRoot, "ScrollMemory.kt")
-        assertTrue("ScrollMemory.kt no longer exists — adapt this check", f.exists())
-        val rows = stateRows(f)
-        assertTrue("ScrollMemory.kt no longer has a remember state", rows.isNotEmpty())
-        assertTrue(
-            "ScrollMemory.kt was switched to rememberSaveable. Exactly that " +
-                "switched off the restoring for good after the first visit.",
-            rows.none { "rememberSaveable" in it.second },
-        )
     }
 }

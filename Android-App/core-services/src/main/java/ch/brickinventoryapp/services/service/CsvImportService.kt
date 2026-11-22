@@ -52,7 +52,6 @@ class CsvImportService : Service() {
         private const val POLL_INTERVAL_MS = 1500L
         private const val POLL_WINDOW      = 10   // queries per window, then a new SSE attempt
         private const val MAX_ERRORS       = 10
-        private const val GRACE_MS         = 10_000L  // Anlauffenster, siehe applyStatus()
 
         fun start(context: Context) {
             // startForegroundService can, on Android 12+, already throw at the
@@ -89,7 +88,7 @@ class CsvImportService : Service() {
     private val serviceScope by lazy { CoroutineScope(SupervisorJob() + areas.io) }
     private var pollJob: Job? = null
 
-    // Anlaufschutz, siehe applyStatus()
+    // Startup grace period, see importGoesOn()
     private val startedAtMs = System.currentTimeMillis()
     @Volatile private var sawRunning = false
 
@@ -175,12 +174,7 @@ class CsvImportService : Service() {
         val total   = s.total
         val current = s.current ?: ""
         if (!running) {
-            // Startup grace period: the server reports "idle" until the import job has actually
-            // been created.
-            // The service starts with the upload; without this window the first
-            // idle response would end it before any progress could come in.
-            if (!sawRunning && System.currentTimeMillis() - startedAtMs < GRACE_MS) return true
-            return false
+            return importGoesOn(sawRunning, System.currentTimeMillis() - startedAtMs)
         }
         sawRunning = true
         val text = if (total > 0)
@@ -236,3 +230,13 @@ class CsvImportService : Service() {
         serviceScope.cancel()
     }
 }
+
+/** How long after the start an idle answer still means "the import job is not created yet". */
+internal const val CSV_GRACE_MS = 10_000L
+
+/**
+ * Does the import go on although the server reports idle? The service starts with the upload, and
+ * until the import job exists the server says "idle"; without this window the first idle answer
+ * would end the service before any progress came in. After a running state, idle is the end.
+ */
+internal fun importGoesOn(sawRunning: Boolean, sinceStartMs: Long): Boolean = !sawRunning && sinceStartMs < CSV_GRACE_MS

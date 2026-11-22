@@ -1,17 +1,18 @@
-Gegenprobe: TabellenZeile reicht onClickLabel nicht an clickable weiter
-Modul: app
-Test: ch.brickinventoryapp.app.ComposeLayoutRulesTest
+Gegenprobe: TableRow reicht onClickLabel nicht an clickable weiter
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.TableRowClickLabelTest
 Rot: the table row tells the screen reader what tapping does
 
-diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt
---- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt
-+++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt
-@@ -76,7 +76,7 @@
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TableRow.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TableRow.kt
+index a5f9a94c..d584819b 100644
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TableRow.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TableRow.kt
+@@ -77,7 +77,7 @@ fun TableRow(
      Surface(
          modifier = modifier.fillMaxWidth()
              .let {
--                if (onClick != null) it.focusFrame(Formen.etikett).clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
-+                if (onClick != null) it.focusFrame(Formen.etikett).clickable(role = Role.Button, onClick = onClick)
+-                if (onClick != null) it.focusFrame(Shapes.tag).clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
++                if (onClick != null) it.focusFrame(Shapes.tag).clickable(role = Role.Button, onClick = onClick)
                  else it
              },
          color = MaterialTheme.colorScheme.surface,

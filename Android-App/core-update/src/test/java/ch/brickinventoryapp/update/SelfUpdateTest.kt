@@ -8,57 +8,14 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The app updates itself — and does it carefully.
- *
- * ── Why this test carries more weight than others ─────────────────────────────
- * A self-updater is the only path in this app through which FOREIGN CODE
- * reaches the device. Every rule below is the answer to one way
- * this can go wrong; if one drops out, it drops out silently.
- *
- * Two of the checks run real code (isNew, isAllowedApkAddress
- * are pure functions). The rest read source text: wiring and network config.
- * UpdateViewModelTest (signature, checksum, offer, "later"),
- * UpdateLoaderTest (upper bounds), UpdateClientTest (the bare client) and
- * UpdateDialogTest (loading only on click) check it executed.
+ * The app updates itself — the only path through which foreign code reaches the device, so every
+ * rule here answers one way that could go wrong. The pure rules run; network config, manifest and
+ * workflow are structure. Signature lookup (SignatureFitsTest), the app-wide hint (AppWideUpdateTest),
+ * the ViewModel (UpdateViewModelTest) and the dialog (UpdateDialogTest) are run elsewhere.
  */
 class SelfUpdateTest {
 
-    // ── Die reinen Regeln, ausgefuehrt ──────────────────────────────────────
-
-    /**
-     * A finding no one gets to see is no finding.
-     *
-     * The silent check on start alone isn't enough: AppNavigation.kt triggers it on start
-     * (`checkOnUpdate(still = true)`), and the comment there says
-     * explicitly that the question "is there anything newer?" applies to THE WHOLE APP.
-     *
-     * VERIFIED, the answer was nonetheless known only to one screen:
-     * `updateState` was read at EXACTLY ONE place in the whole main tree,
-     * in account/ui/screens/SettingsScreen.kt — and that screen was at the time
-     * unreachable from anywhere (see ReachableRoutesTest). So the check
-     * found something, put it in the ViewModel, and no one drew it.
-     *
-     * The path was made app-wide, the display wasn't carried along. Exactly
-     * this gap should be caught here before someone reports it again.
-     */
-    @Test
-    fun `the result of the silent check is shown outside the settings too`() {
-        // What's searched for is SUBSCRIBING, not the mere occurrence of the name: whoever
-        // sets or holds the state also names it and draws nothing.
-        //
-        // Only a composable can call `collectAsStateWithLifecycle`, and a
-        // composable that subscribes to it also draws it.
-        val reader = Sources.all()
-            .filter { Sources.withoutComments(it.readText()).contains("updateState.collectAsStateWithLifecycle") }
-            .map { it.name }
-            .toSet()
-        val show = reader - setOf("SettingsScreen.kt")
-        assert(show.isNotEmpty()) {
-            "Apart from SettingsScreen.kt nobody reads updateState. The check at start " +
-                "(AppNavigation.kt, checkOnUpdate(still = true)) then finds something, " +
-                "but it is visible nowhere — exactly the state Marco reported."
-        }
-    }
+    // ── The pure rules, run ─────────────────────────────────────────────────
 
     @Test
     fun `only a truly higher version counts as newer`() {
@@ -93,40 +50,7 @@ class SelfUpdateTest {
         }
     }
 
-    // ── The rules that live in the source text ─────────────────────────────────
-
-    private fun source(rel: String) = Sources.withoutComments(Sources.read(rel))
-
-    @Test
-    fun `when unclear nothing is installed`() {
-        val help = source("update/util/AppUpdate.kt")
-        // Every `return null` in the signature lookup leads, via the
-        // `?: return false` in signatureFits, to "do not install".
-        assert(help.contains("val newValue = fingerprints(ctx, apk) ?: return false")) {
-            "an unreadable or unsigned APK no longer counts as inadmissible"
-        }
-        assert(help.contains("if (info.packageName != ctx.packageName) return null")) {
-            "The package name is not checked — a FOREIGN package with the same " +
-                "key would get through"
-        }
-    }
-
-    @Test
-    fun `the check at start is silent`() {
-        // Check on start, never load on its own: loading is a decision the user makes.
-        val nav = source("app/AppNavigation.kt")
-        // The start asks via checkOnStart(), which only checks silently when the switch is set; that
-        // sign-in triggers it is checked by UpdateViewModelTest on the running ViewModel.
-        val vm = Sources.function(Sources.withoutComments(Sources.read("account/ui/viewmodel/UpdateViewModel.kt")), "fun checkOnStart(")
-        assert(vm.contains("checkOnUpdate(still = true)")) {
-            "at start there is no (longer a) silent look for an update"
-        }
-        // And it loads nothing: loadUpdate() has exactly one trigger, the button.
-        assert(!nav.contains("loadUpdate()")) {
-            "The start triggers the download — Marco's requirement was explicitly " +
-                "“never load on its own”"
-        }
-    }
+    // ── Structure: network config, manifest and workflow ─────────────────────
 
     @Test
     fun `the update trusts only system certificates`() {
@@ -206,10 +130,7 @@ class SelfUpdateTest {
         // forges it along with it. Integrity is carried by signatureFits() against the
         // INSTALLED app, together with HTTPS.
         //
-        // BOTH sides are checked: the workflow that writes the field,
-        // and the data model that reads it. Checking only one side lets in
-        // exactly the kind of drift this tree otherwise guards against
-        // everywhere.
+        // The data model's side, that it reads `commit`, runs in UpdateDescriptionTest.
         val workflow = Sources.workflow("android-signieren.yml")
         assert(workflow.contains("commit:${'$'}commit")) {
             "the description no longer carries the origin field as `commit`"
@@ -217,23 +138,6 @@ class SelfUpdateTest {
         assert(!workflow.contains("sha:${'$'}sha")) {
             "The field is called `sha` again — next to apkUrl and apkSize that reads " +
                 "as a checksum of the APK, and no such check exists"
-        }
-        // Quellen.read() is relative to ch/brickinventoryapp/ — see there.
-        val model = Sources.read("update/util/AppUpdate.kt")
-        assert(model.contains("@SerialName(\"commit\")")) {
-            "the data model does not read the field as `commit` — then it stays empty"
-        }
-    }
-
-    // What the start dialog does and doesn't do, UpdateDialogTest checks rendered; here only
-    // that it hangs over the whole app.
-    @Test
-    fun `the dialog hangs over the whole app, not on one screen`() {
-        val nav = Sources.withoutComments(Sources.read("app/AppNavigation.kt"))
-        assert(nav.contains("UpdateRoute(selfUpdate)")) {
-            "The update hint is shown nowhere. Called in a single screen, " +
-                "only whoever sits there anyway would get it — exactly the error " +
-                "that the item in the settings already had once."
         }
     }
 }

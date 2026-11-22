@@ -8,6 +8,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -15,17 +16,25 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.util.resolveThumbUrl
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import coil3.ImageLoader
+import coil3.intercept.Interceptor
+import coil3.request.ErrorResult
+import kotlinx.coroutines.Dispatchers
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -36,6 +45,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.IOException
 import java.util.Locale
 
 /**
@@ -50,6 +60,8 @@ import java.util.Locale
  *   preisalarm-zeile-immer-offen   every row clickable → red “a row opens …”
  *   preisalarm-zustand-gleich      the badge always says „Aktiv“ → red “a row opens …”
  *   preisalarm-texte-gleich        alerts_fired equal to alerts_armed (de) → red “the two states …”
+ * Counter-checks (run here): FinanceImage removed from the row → red “a row shows the set's preview …”;
+ * “Done” without `number != a.threshold` → red “Done saves only a changed threshold”.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -85,14 +97,18 @@ class PriceAlertsDisplayTest {
         }))
 
     /** Shows the overview and waits until it has fetched its alerts; [opened] collects clicks on sets. */
-    private fun show(opened: MutableList<String> = mutableListOf()): SettingsViewModel {
+    private fun show(
+        opened: MutableList<String> = mutableListOf(),
+        images: ImageLoader = ImageLoader.Builder(ctx).build(),
+        server: String = "",
+    ): SettingsViewModel {
         world.paths.responses["/api/v1/alerts"] = alerts
         world.paths.responses["/api/v1/sets/75192-1/alert"] = """{"success":true}"""
         val vm = settings()
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    PriceAlarmsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
+                    PriceAlarmsRoute(vm = vm, imageLoader = images, serverUrl = server,
                         snackbarHostState = remember { SnackbarHostState() }, onSetClick = { opened += it },
                         onBack = {}, reportToggle = {})
                 }
@@ -156,5 +172,28 @@ class PriceAlertsDisplayTest {
             val explanation = c.getString(R.string.detail_alert_fired)
             assertTrue("“$explanation” ($language) does not explain what happens next", explanation.trim().contains(' '))
         }
+    }
+
+    @Test
+    fun `a row shows the set's preview from the server like the finances`() {
+        val asked = mutableListOf<String>()
+        val images = ImageLoader.Builder(ctx).components {
+            add(Interceptor { chain -> asked += chain.request.data.toString(); ErrorResult(null, chain.request, IOException("test")) })
+        }.coroutineContext(Dispatchers.Main.immediate).interceptorCoroutineContext(Dispatchers.Main.immediate).build()
+        show(images = images, server = "http://nas:3000")
+        wait("image") { asked.isNotEmpty() }
+        assertTrue("asked for $asked", resolveThumbUrl("http://nas:3000", "/beispiel/set1_thumb.png", null) in asked)
+    }
+
+    @Test
+    fun `Done saves only a changed threshold`() {
+        show()
+        val field = compose.onAllNodes(hasSetTextAction())[0]
+        field.performImeAction()
+        wait("done") { true }
+        assertEquals("an unchanged threshold was sent", emptyList<String>(), requests("PUT"))
+        field.performTextReplacement("700")
+        field.performImeAction()
+        wait("saved") { requests("PUT").isNotEmpty() }
     }
 }

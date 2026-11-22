@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.finances
 
 import ch.brickinventoryapp.finances.ui.FinanceUiState
-import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 
 /**
@@ -26,8 +25,8 @@ import org.junit.Test
  * ── Two halves, because one alone can quietly become wrong ────────────────
  *  1. ON BEHAVIOR: the quantity math is correct — adding, removing, and
  *     an empty selection shows everything.
- *  2. ON THE SOURCE: the screen does not hold the filter itself again.
- *     Half 1 would stay green while the filter got lost again.
+ *  2. IN THE APP: the chosen category survives a trip away from the tab
+ *     (FinanceCategoryStaysTest, app). Half 1 would stay green while the filter got lost again.
  */
 class FinanceFilterStaysTest {
 
@@ -64,26 +63,6 @@ class FinanceFilterStaysTest {
         // blank page.
         assert(z.shows("sets") && z.shows("parts") && z.shows("figs")) {
             "the empty selection must show everything again"
-        }
-    }
-
-    @Test
-    fun `the screen does not hold the filter itself`() {
-        val src = Sources.withoutComments(
-            Sources.read("finances/ui/screens/FinanceScreen.kt"))
-
-        assert(!Regex("""remember\s*\{\s*mutableStateOf\("all"\)""").containsMatchIn(src)) {
-            "The category filter lies in a remember of the screen again — " +
-                "so it is gone after every trip into a detail screen"
-        }
-        assert(src.contains("financeState.shows(")) {
-            "the screen should read the visibility from the state"
-        }
-        // The rule "empty means all" may be written down only ONCE. Previously
-        // it stood three times in the screen (showSets/showParts/showFigs).
-        assert(!src.contains("categories.isEmpty() ||")) {
-            "The rule “empty selection means all” stands in the screen again instead of " +
-                "in FinanceUiState.shows()"
         }
     }
 }

@@ -21,6 +21,7 @@ import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
+import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions

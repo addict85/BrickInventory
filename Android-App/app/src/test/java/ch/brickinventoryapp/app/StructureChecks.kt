@@ -66,6 +66,8 @@ internal val structureChecks: Map<String, String> = mapOf(
     "NumberPadTest.kt: whoever filters numbers also shows the number pad" to "rule over every field",
     "NumberPadTest.kt: whoever shows the number pad also filters" to "rule over every field",
     "ResourceAndCacheTest.kt: debug builds have a fixed version" to "build script",
+    "ResourceAndCacheTest.kt: both camera screens release executor and ML Kit client" to
+        "rule over every camera screen; ML Kit clients cannot be created under Robolectric",
     "ResourceAndCacheTest.kt: the version comes from Git, not from the clock" to "build script and workflow",
     "ResourceAndCacheTest.kt: the CSV service shares the SSE client with the ViewModel" to "one implementation",
     "MediaAuthTest.kt: images are not loaded bypassing the ImageLoader" to "ban",
@@ -74,6 +76,7 @@ internal val structureChecks: Map<String, String> = mapOf(
     "MediaAuthTest.kt: every AsyncImage uses the injected ImageLoader" to "ban",
     "MediaAuthTest.kt: no UNUSED_PARAMETER suppress on an ImageLoader" to "ban",
     "PreviewStoreTest.kt: the manifest allows reading the network state" to "manifest",
+    "PreviewStoreTest.kt: writing goes via a side file" to "atomic write; an abort in the middle cannot be produced in a test",
     "RejectedTest.kt: no snackbar gets the sentence past the rule" to "rule over every snackbar",
     "RejectedTest.kt: no file reads authToken or serverUrl bypassing the DataStore" to "ban",
     "SessionAndLifecycleTest.kt: the ImageLoader is a singleton from the DI module" to "DI module",
@@ -83,6 +86,9 @@ internal val structureChecks: Map<String, String> = mapOf(
     "SelfUpdateTest.kt: the update trusts only system certificates" to "network_security_config.xml",
     "SelfUpdateTest.kt: the manifest allows installing, no provider exposes the update directory" to "manifest",
     "SelfUpdateTest.kt: the workflow puts the description next to the APK" to "workflow",
+    "SelfUpdateTest.kt: no field promises a check that does not exist" to "the field name the signing workflow writes",
     "ListFilterInStateTest.kt: no loader takes a list filter as a parameter" to "ban",
     "ListFilterInStateTest.kt: no search in the screen over a loaded list" to "ban",
+    "OcrSetNumberTest.kt: text recognition runs ONLY when adding, not in the price comparison" to
+        "which call sites switch it on; the camera with ML Kit cannot run under Robolectric, ScanDeciderTest runs the switch",
 )

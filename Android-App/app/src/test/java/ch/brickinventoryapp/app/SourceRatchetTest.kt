@@ -112,9 +112,9 @@ class SourceRatchetTest {
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 207
-        val ONLY_SOURCE_TEXT = 33
-        val BEHAVIOR = 64
+        val FUNCTIONS = 151
+        val ONLY_SOURCE_TEXT = 32
+        val BEHAVIOR = 4
         // Every module and build-logic, with device tests and test fixtures: a check that moves does not vanish.
         val all = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
             m.walkTopDown().onEnter { it.name != "build" }
@@ -266,7 +266,7 @@ class SourceRatchetTest {
     @Test
     fun `long comments in the workflow and in tests become fewer`() {
         val WORKFLOW = 1
-        val TESTS = 49
+        val TESTS = 42
         val DATE_AND_ID = 0
         val HISTORY = 0
         val wf = File(Sources.project, "../.github/workflows/android.yml").readLines()

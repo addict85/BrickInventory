@@ -50,6 +50,8 @@ ksp {
 android {
     // Robolectric reads the app's resources, fonts and manifest.
     testOptions.unitTests.isIncludeAndroidResources = true
+    // The app's graphs with sample world and test ViewModels, for every test that runs a destination.
+    testFixtures.enable = true
     // ModuleBoundariesTest runs the same edge rule as the task moduleEdgesCheck.
     sourceSets.getByName("test").kotlin.directories.add("../build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges")
 
@@ -239,6 +241,24 @@ dependencies {
     implementation(project(":feature-management"))
     testImplementation(project(":core-testing"))
     testImplementation(testFixtures(project(":core-state")))
+    // The fixtures compile against what the unit tests bring anyway; compileOnly, so the device
+    // tests (which see test fixtures too) get no Robolectric or test server on their classpath.
+    testFixturesCompileOnly(testFixtures(project(":core-state")))
+    testFixturesCompileOnly(platform(libs.androidx.compose.bom))
+    for (lib in listOf(libs.robolectric, libs.androidx.ui.test.junit4, libs.androidx.test.ext.junit,
+        libs.androidx.navigation.compose, libs.coil.compose, libs.hilt.android)) {
+        testFixturesCompileOnly(lib)
+    }
+    for (m in listOf(":core-model", ":core-resources", ":core-data", ":core-security", ":core-update", ":core-services", ":core-ui",
+        ":core-state", ":core-session", ":feature-collection", ":feature-parts", ":feature-finances", ":feature-account")) {
+        testFixturesCompileOnly(project(m))
+    }
+    // The same lower bounds as for the module's other classpaths (build-logic, androidxAtLeast).
+    for (lib in listOf(libs.androidx.arch.core.common, libs.androidx.arch.core.runtime, libs.androidx.tracing,
+        libs.androidx.emoji2, libs.androidx.emoji2.views.helper, libs.androidx.activity.ktx)) {
+        constraints.add("testFixturesCompileOnly", lib)
+    }
+    constraints.add("testFixturesCompileOnly", "com.google.guava:guava:${libs.versions.guavaAtLeast.get()}")
     // The test servers respond in wire format.
     testImplementation(project(":core-contract"))
     androidTestImplementation(libs.androidx.test.ext.junit)

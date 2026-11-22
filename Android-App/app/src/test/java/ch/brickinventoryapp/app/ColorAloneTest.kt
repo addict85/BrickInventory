@@ -43,21 +43,9 @@ import org.junit.Test
  *
  * ── Counter-checks ─────────────────────────────────────
  *
- * Branch claude/counter-checks-farbe, two interventions:
- *
- *   a) WantedListScreen newly colors with LocalStatusColors — a
- *      SEVENTH file, without anyone having asked what the place says
- *        → “whoever uses status colors is on the checked list" red
- *   b) the warning symbol removed from RateLimitRow, but `val tight` left in place
- *        → “the quota row does not warn with color alone" red
- *
- * Result: 503 tests, EXACTLY 2 red. The baseline run 295 on the same state
- * was green.
- *
- * In b) `val tight` was left in place on purpose. Had the intervention removed threshold
- * AND symbol at once, one could no longer tell from the red test
- * what it depends on — and a counter-check that breaks two things at once
- * proves neither of them.
+ *   WantedListScreen newly colors with LocalStatusColors — a file nobody has
+ *   checked → “whoever uses status colors is on the checked list" red.
+ *   The quota row itself is rendered in feature-management (QuotaWarningTest).
  */
 class ColorAloneTest {
 
@@ -102,27 +90,6 @@ class ColorAloneTest {
         assert(gone.isEmpty()) {
             "These entries in `checked` no longer color that way: " +
                 gone.joinToString(", ") + " — remove them."
-        }
-    }
-
-    /**
-     * The one place that really depended only on color during the review.
-     *
-     * It stands here on its own because the list above only says „someone looked“
-     * . What came out of it must hold too.
-     */
-    @Test
-    fun `the quota row does not warn with color alone`() {
-        val s = Sources.withoutComments(Sources.read("management/ui/screens/MonitoringKontingente.kt"))
-        val i = s.indexOf("private fun RateLimitRow(")
-        assert(i > 0) { "RateLimitRow is missing — pattern outdated?" }
-        val body = s.substring(i, minOf(i + 2400, s.length))
-        assert(body.contains("val tight = pct >")) {
-            "The row no longer knows the threshold as a value of its own."
-        }
-        assert(Regex("""if \(tight\) Icon\(Icons\.Default\.Warning""").containsMatchIn(body)) {
-            "Without a symbol only the color remains — and yellow against red is exactly " +
-                "the pair that merges with red-green color blindness."
         }
     }
 }
