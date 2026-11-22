@@ -1,0 +1,810 @@
+package ch.brickinventoryapp.app
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
+import ch.brickinventoryapp.testing.Sources
+
+/**
+ * Ratchets: numbers that may only sink. Each stands exactly at the measured value;
+ * if it rises, the test is red, if it sinks, it demands to adjust the limit.
+ * A regex on the source only confirms that a line is there; counted is
+ * how many test functions still do that. Counterpart to Web-App/test/ratschen.test.js.
+ *
+ * Counter-checks (patches under counter-checks/):
+ *   schranke-zu-hoch           limit of the source-reading functions +1 → red “test functions
+ *                              that read source …” (sunk, adjust)
+ *   helfer-zaehlt-nicht        a reading helper no longer counts → red, the same test
+ *   werkzeugausgabe-zaehlt     the output of a tool counts as source again → red “the output
+ *                              of a tool …” and “test functions that read source …”
+ *   geschichte-im-testkopf     addendum number and reporter in the header of TabOpensAtTopTest → red “long
+ *                              comments in the workflow and in tests …”
+ *   kuerzel-im-bau             a check abbreviation again in the comment of settings.gradle.kts → red, the same test
+ *   kommentar-zu-lang          six lines of prose above AppViewModel → red “no comment has …”
+ *   bau-kommentar-zu-lang      six lines in gradle.properties → red “no comment in build files …”
+ *   verweis-aufs-archiv        an „Ausführlich: docs/begruendungen/…“ in TokenVault.kt → red “no reference
+ *                              to the reasoning archive …”
+ *   kdoc-doppelt               an orphaned KDoc block before Alarmabholung → red, the same test
+ *   detekt-baseline-waechst    upper limit one below the entries → red “the detekt baseline …”
+ *   detekt-baseline-fremde-regel  a MagicNumber entry → red, the same test
+ *   start-schluckt-abbruch     makes “no broad catch …” red
+ *   runcatching-um-suspend     BrickInventoryApp takes over the old token in runCatching again
+ *                              → red “no runCatching swallows …”
+ *   runcatching-um-suspend-lambda  Offlineablage calls the suspend source (a field of type
+ *                              `suspend () -> String?`) in runCatching → red, the same test
+ *   voll-qualifiziert          `ch.brickinventoryapp.model.util.catchUnlessCancelled` written out → red
+ *                              “no fully qualified project name …” and “fully qualified names …”
+ *   warten-in-echtzeit         PartsViewModelTest sleeps 200 ms again → red “real-time waiting …”
+ *   core-data-oeffentlich      isBelow without internal → red “the public surface of the data modules …”
+ *   bereich-oeffentlich        qrSwitchesServer without internal → red “the public surface of the areas …”
+ *   erfassung-an-der-activity  EntryViewModel again via `by viewModels()` in MainActivity
+ *                              → red “the activity no longer holds ViewModels …”
+ *   padding-feste-zahl         DetailRow2 again `padding(vertical = 5.dp)` → red “fixed numbers in padding …”
+ *   abstand-zwischen-feste-zahl  storage locations again `Spacer(Modifier.width(8.dp))` → red, the same test
+ *   dialog-ohne-fenstername    UpdateDialog without paneTitle → red “no AlertDialog without window name …”
+ *   dialog-graue-flaeche       UpdateDialog without windowSurface() → red “every AlertDialog lies on the window surface“
+ *   gutschein-eigene-knopfreihe  voucher form again with its own row Save | Cancel
+ *                              → red “Cancel and main button stand together only in the button row …”
+ *   string-format-ohne-locale  MonitoringScreen again `String.format(fmt, sn)` → red “no String-format …”
+ *   laden-im-bildschirm        SetDetailScreen loads via LaunchedEffect(setNumber) again
+ *                              → red “screens do not trigger loading …”
+ *   merkliste-laedt-wieder     WantedUiState again with a field `nochLaedt: Boolean` → red
+ *                              “screens do not trigger loading …, states carry loading …”
+ *   merkliste-fehler-als-text  WantedUiState with `errorText: String?` → red, the same test
+ *   konto-speichert-wieder     AccountUiState again with `saves: Boolean` → red, the same test
+ *   galerie-fehler-als-text    GalleryUiState with `galleryFehlerSatz: String?` → red, the same test
+ *   fachtyp-preis-als-double   `val betragAlt: Double?` in PurchaseSumsView → red „Beträge als Double …“
+ *   fachtyp-datum-als-text     `val geaendertAm: String?` in PurchaseView → red „Daten als String …“
+ * Language (word list app/src/test/resources/german-words.txt; local JUnit, no patch yet):
+ *   `fun ladeDaten()` in GalleryViewModel → red „German declarations …: ladeDaten“
+ *   a file data/repository/Ergebnis.kt → red „German file names …: [Ergebnis.kt]“
+ *   „// Lädt die Liste neu“ in OutboxWorker.kt → red „German comment words: 560, erlaubt 559“
+ */
+class SourceRatchetTest {
+
+    private val string = Regex("\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\\n])*\"")
+
+    /** Without comments and strings: a file name like "GalleryScreen.kt" is not a call. */
+    private fun code(raw: String) = string.replace(Sources.withoutComments(raw), "\"\"")
+
+    /** Equality: if the number rises, that is an error; if it sinks, the limit is adjusted. */
+    private fun ratchet(was: String, limit: Number, measured: Number, hint: String = "") {
+        assertTrue("$was: $measured, erlaubt $limit. $hint", measured.toDouble() <= limit.toDouble())
+        assertEquals("$was ist auf $measured gesunken — die Schranke von $limit auf $measured senken",
+            limit.toDouble(), measured.toDouble(), 0.0)
+    }
+
+    /**
+     * What counts as reading source: Quellen.*, paths under src/main, workflow, resources,
+     * file text. The output of a started tool (`bufferedReader().readText()`) is
+     * a result, not source.
+     */
+    private val readsSource = Regex("""Sources\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|(?<!bufferedReader\(\)\.)readText\(\)|readLines\(\)""")
+
+    /**
+     * (test functions, of which reading) of a file. A function reads source if its body
+     * does or uses a value or function of the file that does.
+     */
+    internal fun sourceTextFunctions(raw: String): Pair<Int, Int> {
+        val c = Sources.withoutComments(raw)
+        val helper = Regex("""(?:val|fun)\s+(\w+)[^\n]*""").findAll(c).filter { m ->
+            val piece = c.substring(m.range.first, minOf(c.length, m.range.first + 400)).substringBefore("\n\n")
+            readsSource.containsMatchIn(m.value) || (m.value.startsWith("fun") && readsSource.containsMatchIn(piece))
+        }.map { it.groupValues[1] }.toSet()
+        // The name in backticks is prose, not code: "the workflow …" does not call a helper `workflow`.
+        val tests = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n").replace(Regex("`[^`\n]*`"), "``") }
+        val reading = tests.count { t -> readsSource.containsMatchIn(t) || helper.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(t) } }
+        return tests.size to reading
+    }
+
+    @Test
+    fun `test functions that read source become fewer, never more`() {
+        val FUNCTIONS = 209
+        val ONLY_SOURCE_TEXT = 33
+        val all = Sources.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
+            .filter { it.name != "SourceRatchetTest.kt" }.toList()
+        val tally = all.associate { it.name to sourceTextFunctions(it.readText()) }
+        val total = tally.values.sumOf { it.first }
+        assertTrue("Nur ${all.size} Testdateien, $total Tests — greift die Suche noch?", all.size >= 200 && total >= 1000)
+        val only = tally.filterValues { (n, l) -> n > 0 && l == n }.keys.sorted()
+        ratchet("Testfunktionen, die Quelltext lesen", FUNCTIONS, tally.values.sumOf { it.second },
+            "Prüft der neue Test Verhalten, soll er den Code ausführen statt nachzusehen, ob eine Zeile dasteht.")
+        ratchet("Testdateien, die nur Quelltext lesen", ONLY_SOURCE_TEXT, only.size, only.joinToString())
+    }
+
+    @Test
+    fun `a reading helper counts for every function that uses it`() {
+        val file = "private val src = Sources.read(\"x.kt\")\n" +
+            "@Test\nfun a() {\n    assert(\"y\" in src)\n    }\n" +
+            "@Test\nfun b() {\n    assert(1 + 1 == 2)\n    }\n"
+        assertEquals(2 to 1, sourceTextFunctions(file))
+    }
+
+    @Test
+    fun `the output of a tool is not source`() {
+        val file = "private fun jobRun() = ProcessBuilder(\"python3\").start().inputStream.bufferedReader().readText()\n" +
+            "@Test\nfun a() {\n    assert(\"ok\" in jobRun())\n    }\n\n" +
+            "@Test\nfun b() {\n    assert(\"x\" in File(\"y\").readText())\n    }\n"
+        assertEquals(2 to 1, sourceTextFunctions(file))
+    }
+
+    /** The Kotlin files under src/main of all modules, without those generated from the design tokens. */
+    private fun productionFiles(): List<File> = Sources.module.flatMap { m ->
+        File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+    }.filterNot { "GENERATED from shared/design-tokens.json" in it.readText() }
+
+    private val counterCheck = Regex("Gegenprobe|Counter-check", RegexOption.IGNORE_CASE)
+
+    private fun isComment(t: String) = t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
+
+    /** Prose lines per comment block (// sequence of equal indentation or /* … */), without KDoc tags. */
+    private fun blocks(rows: List<String>): List<Pair<Int, Int>> {
+        val outcome = mutableListOf<Pair<Int, Int>>()
+        var i = 0
+        while (i < rows.size) {
+            val t = rows[i].trim()
+            val indent = rows[i].length - rows[i].trimStart().length
+            var j = i
+            val text = mutableListOf<String>()
+            when {
+                t.startsWith("//") -> {
+                    while (j + 1 < rows.size && rows[j + 1].trim().startsWith("//") &&
+                        rows[j + 1].length - rows[j + 1].trimStart().length == indent) j++
+                    (i..j).mapTo(text) { rows[it].trim().removePrefix("//").trim() }
+                }
+                t.startsWith("/*") && !t.contains("*/") -> {
+                    while (j + 1 < rows.size && !rows[j].contains("*/")) j++
+                    (i..j).mapTo(text) { rows[it].trim().removePrefix("/**").removePrefix("/*").removeSuffix("*/").removePrefix("*").trim() }
+                }
+                else -> { i++; continue }
+            }
+            outcome += (i + 1) to prose(text)
+            i = j + 1
+        }
+        return outcome
+    }
+
+    /** Prose lines without KDoc tags; a tag applies up to the next empty line. */
+    private fun prose(text: List<String>): Int {
+        var inTag = false
+        return text.count { z ->
+            if (z.startsWith("@")) inTag = true else if (z.isEmpty()) inTag = false
+            z.isNotEmpty() && !inTag
+        }
+    }
+
+    @Test
+    fun `the comment share sinks, never rises`() {
+        // A share, not a number: it may sink without anyone having to adjust.
+        val BARRIER = 22.7
+        var rows = 0
+        var comment = 0
+        for (f in productionFiles()) for (z in f.readLines()) {
+            val t = z.trim()
+            if (t.isEmpty()) continue
+            rows++
+            if (isComment(t)) comment++
+        }
+        assert(rows > 30_000) { "Nur $rows Zeilen gefunden — greift die Suche noch?" }
+        val share = Math.round(1000.0 * comment / rows) / 10.0
+        assert(share <= BARRIER) { "Kommentaranteil $share %, erlaubt $BARRIER %" }
+    }
+
+    @Test
+    fun `no comment has more than five lines of prose`() {
+        var counted = 0
+        val lang = productionFiles().flatMap { f ->
+            blocks(f.readLines()).also { counted += it.size }
+                .filter { it.second > 5 }.map { "${f.name}:${it.first} (${it.second} Zeilen)" }
+        }
+        assert(counted > 1000) { "Nur $counted Kommentarblöcke gefunden — greift die Suche noch?" }
+        assert(lang.isEmpty()) { "Kommentare über fünf Zeilen; das Warum kürzen, die Geschichte in den Commit:\n  " + lang.joinToString("\n  ") }
+    }
+
+    /** Prose lines per `#` block (equal indentation); empty `#` lines do not count. */
+    private fun hashesBlocks(rows: List<String>): List<Pair<Int, Int>> {
+        val outcome = mutableListOf<Pair<Int, Int>>()
+        var i = 0
+        while (i < rows.size) {
+            val indent = rows[i].length - rows[i].trimStart().length
+            if (!rows[i].trimStart().startsWith("#")) { i++; continue }
+            var j = i
+            while (j + 1 < rows.size && rows[j + 1].trimStart().startsWith("#") &&
+                rows[j + 1].length - rows[j + 1].trimStart().length == indent) j++
+            outcome += (i + 1) to (i..j).count { rows[it].trim().trimStart('#').isNotBlank() }
+            i = j + 1
+        }
+        return outcome
+    }
+
+    /** Build scripts of all modules, build-logic, catalog and gradle.properties. */
+    private fun buildFiles(): List<File> =
+        Sources.module.map { File(it, "build.gradle.kts") }.filter { it.isFile } +
+            listOf("build.gradle.kts", "settings.gradle.kts", "gradle/libs.versions.toml", "gradle.properties")
+                .map { File(Sources.project, it) }.filter { it.isFile } +
+            File(Sources.project, "build-logic").walkTopDown()
+                .filter { it.isFile && (it.extension == "kt" || it.name.endsWith(".gradle.kts")) && "/build/" !in it.invariantSeparatorsPath }
+
+    @Test
+    fun `no comment in build files has more than five lines of prose`() {
+        var counted = 0
+        val lang = buildFiles().flatMap { f ->
+            val z = f.readLines()
+            val blocks = if (f.extension in setOf("toml", "properties")) hashesBlocks(z) else blocks(z)
+            blocks.also { counted += it.size }.filter { it.second > 5 }.map { "${f.name}:${it.first} (${it.second} Zeilen)" }
+        }
+        assertTrue("Nur $counted Kommentarblöcke in Build-Dateien — greift die Suche noch?", counted > 30)
+        assertTrue("Kommentare über fünf Zeilen; das Warum kürzen, die Geschichte in den Commit:\n  " + lang.joinToString("\n  "),
+            lang.isEmpty())
+    }
+
+    @Test
+    fun `long comments in the workflow and in tests become fewer`() {
+        val WORKFLOW = 1
+        val TESTS = 50
+        val DATE_AND_ID = 0
+        val HISTORY = 0
+        val wf = File(Sources.project, "../.github/workflows/android.yml").readLines()
+        val wfLang = hashesBlocks(wf).filter { it.second > 5 }
+        // In tests a paragraph may only be longer if it enumerates the counter-checks.
+        val files = Sources.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        val testLang = files.flatMap { f -> longParagraphs(f.readLines()).map { "${f.name}:$it" } }
+        val identifier = Regex("""[0-9]{2}\.[0-9]{2}\.20[0-9]{2}|\b(?:arch|sec|ux|perf)[0-9]+\b|\bhardened-[0-9]+""")
+        val history = files.flatMap { f ->
+            f.readLines().filter { z ->
+                val t = z.trim()
+                (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) &&
+                    identifier.containsMatchIn(t) && !counterCheck.containsMatchIn(t)
+            }.map { "${f.name}: ${it.trim()}" }
+        }
+        // Who reported what and in which addendum belongs in the commit, not in the test header.
+        val narrative = Regex("""Nachtr[aä]g\w*\s+[0-9]|\bMarcos?\b|Woher dies|\bLauf [0-9]{2,}|CI-Lauf|\bRunde [0-9]+|Addendum\w*\s+[0-9]|\bRun [0-9]{2,}|CI run|\bRound [0-9]+""")
+        val tells = files.flatMap { f ->
+            f.readLines().filter { z ->
+                val t = z.trim()
+                (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) && narrative.containsMatchIn(t)
+            }.map { "${f.name}: ${it.trim()}" }
+        }
+        assertTrue("Nur ${wf.size} Zeilen Workflow — Pfad veraltet?", wf.size > 500)
+        ratchet("Workflow-Kommentare über fünf Zeilen", WORKFLOW, wfLang.size, wfLang.joinToString())
+        ratchet("Absätze über fünf Zeilen in Tests ohne Gegenproben", TESTS, testLang.size, testLang.take(20).joinToString())
+        ratchet("Datum oder Prüfkennung in Testkommentaren ausserhalb der Gegenproben", DATE_AND_ID, history.size,
+            history.take(20).joinToString("\n  "))
+        ratchet("Geschichte (Nachtrag, Melder, Herkunft) in Testkommentaren", HISTORY, tells.size,
+            tells.take(20).joinToString("\n  "))
+        // In code and build files a comment names the why, not the check that found it.
+        val abbreviation = Regex("""\((?:sec|arch|ux|perf)[0-9]+[^)]*\)|\((?:[HMN][0-9]{1,2})\)|\bNachtrag [0-9]+""")
+        val truncated = (productionFiles() + buildFiles()).flatMap { f ->
+            f.readLines().filter { z -> z.trim().let { isComment(it) || it.startsWith("#") } && abbreviation.containsMatchIn(z) }
+                .map { "${f.name}: ${it.trim()}" }
+        }
+        ratchet("Prüfungskürzel in Kommentaren von Code und Bau", 0, truncated.size, truncated.take(20).joinToString("\n  "))
+    }
+
+    /** Line numbers of comment paragraphs over five prose lines that do not begin with „Gegenprobe“ or „Counter-check“. */
+    private fun longParagraphs(rows: List<String>): List<Int> {
+        val findings = mutableListOf<Int>()
+        var begin = -1
+        val paragraph = mutableListOf<String>()
+        fun close() {
+            if (paragraph.size > 5 && !paragraph.first().let { it.startsWith("Gegenprobe") || it.startsWith("Counter-check") }) findings += begin + 1
+            paragraph.clear()
+        }
+        for ((i, z) in rows.withIndex()) {
+            val t = z.trim()
+            val comment = t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
+            val text = t.removePrefix("/**").removePrefix("/*").removePrefix("//").removeSuffix("*/").removePrefix("*").trim()
+            if (!comment || text.isEmpty() || text.startsWith("@")) { close(); continue }
+            if (paragraph.isEmpty()) begin = i
+            paragraph += text
+        }
+        close()
+        return findings
+    }
+
+    @Test
+    fun `no reference to the reasoning archive, and no KDoc hangs on nothing`() {
+        // The archive docs/begruendungen is no longer in the tree; the why stands in the comment,
+        // the history in the commit. A second KDoc block directly before hangs on nothing.
+        var kdocs = 0
+        val findings = productionFiles().flatMap { f ->
+            val z = f.readLines()
+            z.indices.mapNotNull { i ->
+                if (z[i].trim().startsWith("/**")) kdocs++
+                when {
+                    "docs/begruendungen/" in z[i] -> "${f.name}:${i + 1} verweist auf das Archiv"
+                    z[i].trim().startsWith("/**") && i > 0 && z[i - 1].trim().endsWith("*/") -> "${f.name}:${i + 1} zweite KDoc"
+                    else -> null
+                }
+            }
+        }
+        assert(kdocs >= 500) { "Nur $kdocs KDoc-Blöcke gefunden — greift die Suche noch?" }
+        assert(findings.isEmpty()) { "Das Warum in den Kommentar, die Geschichte in den Commit:\n  " + findings.joinToString("\n  ") }
+    }
+
+    /** Index of the opening bracket for the closing one at [too], -1 if none. */
+    private fun openingBracket(c: String, too: Int): Int {
+        var depth = 0
+        for (i in too downTo 0) {
+            if (c[i] == '}') depth++
+            if (c[i] == '{' && --depth == 0) return i
+        }
+        return -1
+    }
+
+    private val widerCatch = Regex("""\}\s*catch\s*\(\s*\w+\s*:\s*(?:Exception|Throwable)\s*\)""")
+    private val catchClause = Regex("""\}\s*catch\s*\(\s*\w+\s*:\s*([\w.]+)\s*\)$""")
+
+    /** true if the catch has no cancellation branch and its try body contains [call]; null without try. */
+    private fun swallowsAbort(c: String, catch: MatchResult, call: Regex): Boolean? {
+        var too = catch.range.first
+        var abort = false
+        var on = openingBracket(c, too)
+        var clause = if (on < 0) null else catchClause.find(c.substring(maxOf(0, on - 200), on).trimEnd())
+        while (on >= 0 && clause != null) {
+            if (clause.groupValues[1].endsWith("CancellationException")) abort = true
+            too = c.lastIndexOf('}', on - 1)
+            on = openingBracket(c, too)
+            clause = if (on < 0) null else catchClause.find(c.substring(maxOf(0, on - 200), on).trimEnd())
+        }
+        if (on < 0 || !c.substring(0, on).trimEnd().endsWith("try")) return null
+        return !abort && call.containsMatchIn(c.substring(on + 1, too))
+    }
+
+    /** The app's sources and a pattern for calling one of its suspend functions. */
+    private val suspendCalls: Pair<Map<File, String>, Pair<Set<String>, Regex>> by lazy {
+        val texts = productionFiles().associateWith { code(it.readText()) }
+        val names = texts.values.flatMap { c ->
+            Regex("""\bsuspend\s+fun\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""").findAll(c).map { it.groupValues[1] }.toList()
+        }.toSet() + setOf("collect", "withContext", "withLock", "delay", "await", "join", "emit", "first")
+        texts to (names to Regex("""\b(?:${names.joinToString("|")})\s*[({]"""))
+    }
+
+    /** Parameters and fields with a suspend function type (`source: suspend () -> T`); a name only in their file. */
+    private val suspendType = Regex("""\b(\w+)\s*:\s*\(?\s*suspend\b""")
+
+    /** The call pattern for [c]: the app's suspend functions and the file's suspend lambdas. */
+    private fun callIn(c: String): Regex {
+        val (names, _) = suspendCalls.second
+        val all = names + suspendType.findAll(c).map { it.groupValues[1] }
+        return Regex("""\b(?:${all.joinToString("|")})\s*[({]""")
+    }
+
+    private val coroutinesBlock = Regex("""\b(?:launch|async|runBlocking|withContext\([^()]*\)|coroutineScope|supervisorScope|flow|runTest)\s*(?:\([^()]*\))?\s*$""")
+
+    /** Does the place [ab] run in a suspend function or a coroutine block? Only there is there a cancellation to swallow. */
+    private fun inCoroutine(c: String, ab: Int): Boolean {
+        val before = c.substring(maxOf(0, ab - 300), ab)
+        val instruction = before.substring(maxOf(before.lastIndexOf('{'), before.lastIndexOf('}')) + 1)
+        // Also `= valid(runCatching {`: the expression of a suspend fun runs entirely in it.
+        if (Regex("""\bsuspend\s+fun\b[^=]*=[^{};]*$""").containsMatchIn(instruction)) return true
+        var depth = 0
+        for (j in ab - 1 downTo 0) {
+            when (c[j]) {
+                '}' -> depth++
+                '{' -> if (depth > 0) depth-- else {
+                    val header = c.substring(maxOf(0, j - 300), j)
+                    if (coroutinesBlock.containsMatchIn(header)) return true
+                    val fn = header.lastIndexOf("fun ")
+                    if (fn >= 0 && !header.substring(fn).contains('{') && !header.substring(fn).contains('}'))
+                        return Regex("""\bsuspend\s+(?:\w+\s+)*$""").containsMatchIn(header.substring(0, fn))
+                }
+            }
+        }
+        return false
+    }
+
+    @Test
+    fun `no runCatching swallows the cancellation of a suspending call`() {
+        // runCatching also catches the CancellationException like a broad catch; the
+        // cancelled caller would keep running. catchUnlessCancelled exists for that.
+        val texts = suspendCalls.first
+        var checked = 0
+        val findings = texts.flatMap { (f, c) ->
+            val call = callIn(c)
+            Regex("""\brunCatching\s*\{""").findAll(c).mapNotNull { m ->
+                checked++
+                var depth = 1
+                var i = m.range.last + 1
+                while (i < c.length && depth > 0) { if (c[i] == '{') depth++ else if (c[i] == '}') depth--; i++ }
+                if (inCoroutine(c, m.range.first) && call.containsMatchIn(c.substring(m.range.last + 1, i - 1)))
+                    "${f.name}:${c.substring(0, m.range.first).count { it == '\n' } + 1}" else null
+            }.toList()
+        }
+        assert(checked >= 10) { "Nur $checked runCatching gefunden — greift die Suche noch?" }
+        assert(findings.isEmpty()) {
+            "runCatching um einen suspendierenden Aufruf; fangeAusserAbbruch verwenden:\n  " + findings.joinToString("\n  ")
+        }
+    }
+
+    @Test
+    fun `no broad catch swallows the cancellation of a suspending call`() {
+        // A `catch (_: Exception)` around a suspending call also catches the
+        // CancellationException; the cancelled caller would keep running. For that there
+        // is catchUnlessCancelled or a preceding cancellation branch.
+        val (texts, search) = suspendCalls
+        val names = search.first
+        var checked = 0
+        val findings = texts.flatMap { (f, c) ->
+            val call = callIn(c)
+            widerCatch.findAll(c).mapNotNull { m ->
+                val swallows = swallowsAbort(c, m, call) ?: return@mapNotNull null
+                checked++
+                if (swallows) "${f.name}:${c.substring(0, m.range.first).count { it == '\n' } + 1}" else null
+            }.toList()
+        }
+        assert(names.size > 100 && checked >= 15) { "Nur ${names.size} suspend-Funktionen, $checked Fänge — greift die Suche noch?" }
+        assert(findings.isEmpty()) {
+            "Breiter Fang um einen suspendierenden Aufruf ohne Abbruch-Zweig; fangeAusserAbbruch verwenden:\n  " +
+                findings.joinToString("\n  ")
+        }
+    }
+
+    @Test
+    fun `the detekt baseline holds only length and branching and shrinks`() {
+        val baseline = File(Sources.project, "config/detekt/baseline.xml").readText()
+        val ids = Regex("""<ID>(\w+):""").findAll(baseline).map { it.groupValues[1] }.toList()
+        val limit = File(Sources.project, "tools/detekt-limit.txt").readLines()
+            .first { it.isNotBlank() && !it.startsWith("#") }.trim().toInt()
+        assert(ids.size >= 10) { "Nur ${ids.size} Einträge in der Baseline — Muster veraltet?" }
+        val foreign = ids.filter { it !in setOf("LongMethod", "CyclomaticComplexMethod") }.distinct()
+        assert(foreign.isEmpty()) { "Die Baseline verschweigt andere Regeln: $foreign. Den Fund beheben, nicht eintragen." }
+        ratchet("Funktionen in der detekt-Baseline (tools/detekt-limit.txt)", limit, ids.size,
+            "Eine neue lange oder verzweigte Funktion zerlegen, statt sie einzutragen.")
+    }
+
+    @Test
+    fun `real-time waiting in tests becomes less, never more`() {
+        // A test that sleeps is slow and brittle on a busy runner. ViewModel tests
+        // run in ticks (PathServer.onTick, test dispatcher); counted is what still waits.
+        val SLEEP = 2
+        val WAIT = 13
+        val files = (Sources.tests.walkTopDown() + File(Sources.project, "core-testing/src/main").walkTopDown())
+            .filter { it.isFile && it.extension == "kt" }.toList()
+        val texts = files.map { code(it.readText()) }
+        val sleep = texts.sumOf { Regex("""\bThread\.sleep\(""").findAll(it).count() }
+        val wait = texts.sumOf { Regex("""\bpollUntil\(""").findAll(it).count() }
+        assert(files.size > 200) { "Nur ${files.size} Testdateien gefunden — greift die Suche noch?" }
+        val hint = "Neue Tests laufen im Takt: PathServer.onTick() oder FakeApi mit Test-Dispatcher."
+        ratchet("Thread.sleep in Tests", SLEEP, sleep, hint)
+        ratchet("warteBis in Tests", WAIT, wait, hint)
+    }
+
+    private val publicDecl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
+
+    /** Public top-level declarations in the main code of the [module]. */
+    private fun public(module: List<File>, atLeast: Int): Int {
+        val files = module.flatMap { m ->
+            File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        }
+        assert(files.size > atLeast) { "Nur ${files.size} Dateien in ${module.map { it.name }} — greift die Suche noch?" }
+        return files.sumOf { f ->
+            publicDecl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
+        }
+    }
+
+    @Test
+    fun `the public surface of the data modules does not grow`() {
+        // What only the own module needs is internal: every public declaration is
+        // interface for all areas. Counted at the top level, across core-data and
+        // everything split off from it; otherwise the number would sink spuriously when moving.
+        // Among them UPDATE_FOLDER: public because core-data and core-update share it.
+        val LIMIT_AREAS = 222
+        val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
+            "core-testing")
+        val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }
+        assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
+        ratchet("öffentliche Deklarationen in ${module.joinToString { it.name }}", LIMIT_AREAS, public(module, 100),
+            "Was nur das Modul braucht, wird internal.")
+    }
+
+    @Test
+    fun `the public surface of the areas does not grow`() {
+        // An area shows the app routes and destinations; what only it needs itself is internal.
+        // Much is still public because graphs and UI tests live in app.
+        val LIMIT_AREAS = 142
+        val module = Sources.module.filter { it.name.startsWith("feature-") }
+        assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
+        ratchet("öffentliche Deklarationen der Bereiche", LIMIT_AREAS, public(module, 100),
+            "Was nur der Bereich braucht, wird internal.")
+    }
+
+    /** All Kotlin files under src/main, without comments and strings. */
+    private fun mainCode(): List<Pair<File, String>> = Sources.module.map { File(it, "src/main") }.filter { it.isDirectory }
+        .flatMap { d -> d.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
+        .map { it to code(it.readText()) }
+
+    @Test
+    fun `fixed numbers in padding do not increase`() {
+        // Spacings have names (ui/theme/Abstaende); a bare `padding(… 14.dp)` keeps to
+        // no scale, and two cards side by side are indented differently.
+        val LIMIT_AREAS = 46
+        // Likewise the spacings between siblings: spacedBy and Spacer.
+        val BETWEEN = 40
+        val fixed = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
+        val between = Regex("""\bspacedBy\(\d+(?:\.\d+)?\.dp\)|\bSpacer\(Modifier\.(?:height|width)\(\d+(?:\.\d+)?\.dp\)\)""")
+        val code = mainCode()
+        ratchet("padding mit fester dp-Zahl", LIMIT_AREAS, code.sumOf { (_, text) -> fixed.findAll(text).count() },
+            "Einen Abstand aus Abstaende nehmen.")
+        ratchet("spacedBy und Spacer mit fester dp-Zahl", BETWEEN, code.sumOf { (_, text) -> between.findAll(text).count() },
+            "Einen Abstand aus Abstaende nehmen.")
+    }
+
+    @Test
+    fun `no String-format without Locale`() {
+        // Without a Locale String.format formats by the device, not by the app's language;
+        // stringResource(id, …) or appNumberLocale() name it explicitly.
+        val without = Regex("""\bString\.format\(\s*(?!Locale|appNumberLocale|locale\b|java\.util\.Locale)""")
+        val places = mainCode().filter { (_, text) -> without.containsMatchIn(text) }.map { it.first.name }
+        assertEquals("String.format ohne Locale in $places", emptyList<String>(), places)
+    }
+
+    /** The arguments of a call up to the matching bracket; [on] points to the opening one. */
+    private fun arguments(text: String, on: Int): String {
+        var depth = 0
+        var i = on
+        while (i < text.length) {
+            if (text[i] == '(') depth++ else if (text[i] == ')' && --depth == 0) break
+            i++
+        }
+        return text.substring(on, minOf(i + 1, text.length))
+    }
+
+    @Test
+    fun `no AlertDialog without window name and heading`() {
+        // Without paneTitle TalkBack only says „Dialog“ when opening, without heading() the
+        // heading navigation does not find the title. Rueckfrage and AddDialog set both.
+        val call = Regex("""\bAlertDialog\(""")
+        var seen = 0
+        val without = mainCode().flatMap { (f, text) ->
+            call.findAll(text).mapNotNull { m ->
+                seen++
+                val args = arguments(text, m.range.last)
+                val missing = listOf("paneTitle", "heading()").filter { it !in args }
+                val row = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if (missing.isEmpty()) null else "${f.name}:$row ohne ${missing.joinToString()}"
+            }.toList()
+        }
+        assertTrue("Nur $seen AlertDialogs gefunden — greift die Suche noch?", seen >= 8)
+        assertEquals("AlertDialogs ohne Fenstername oder Überschrift", emptyList<String>(), without)
+    }
+
+    @Test
+    fun `every AlertDialog lies on the window surface`() {
+        // Material's surfaceContainerHigh stood gray on the dimmed background in light mode;
+        // windowSurface() takes surface there (contrast proven by LockedContrastTest).
+        val call = Regex("""\bAlertDialog\(""")
+        var seen = 0
+        val without = mainCode().flatMap { (f, text) ->
+            call.findAll(text).mapNotNull { m ->
+                seen++
+                val row = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if ("containerColor = windowSurface()" in arguments(text, m.range.last)) null else "${f.name}:$row"
+            }.toList()
+        }
+        assertTrue("Nur $seen AlertDialogs gefunden — greift die Suche noch?", seen >= 8)
+        assertEquals("AlertDialogs ohne windowSurface()", emptyList<String>(), without)
+    }
+
+    /** Call including trailing block: `Row(…) { … }` or `Row { … }`; [on] points to `(` or `{`. */
+    private fun callWithBlock(text: String, on: Int): String {
+        val args = if (text[on] == '(') arguments(text, on) else ""
+        var i = on + args.length
+        while (i < text.length && text[i].isWhitespace()) i++
+        if (i >= text.length || text[i] != '{') return args
+        var depth = 0
+        var j = i
+        while (j < text.length) {
+            if (text[j] == '{') depth++ else if (text[j] == '}' && --depth == 0) break
+            j++
+        }
+        return args + text.substring(i, minOf(j + 1, text.length))
+    }
+
+    @Test
+    fun `Cancel and main button stand together only in the button row`() {
+        // In the voucher form Save stood on the left and Cancel on the right, everywhere else
+        // the other way round. AlertDialog orders itself; every other button row takes Knopfzeile. A
+        // close cross next to „OK“ when editing in the row is not a cancel button.
+        val series = Regex("""\b(?:Row|FlowRow)\s*[({]""")
+        val main = Regex("""(?<![\w.])(?:Button|FilledTonalButton)\(""")
+        var seen = 0
+        val own = mainCode().filter { (f, _) -> f.name != "Dialogs.kt" }.flatMap { (f, text) ->
+            series.findAll(text).mapNotNull { m ->
+                seen++
+                val content = callWithBlock(text, m.range.last)
+                val row = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if ("Text(stringResource(R.string.common_cancel))" in content && main.containsMatchIn(content)) "${f.name}:$row" else null
+            }.toList()
+        }
+        assertTrue("Nur $seen Zeilen gefunden — greift die Suche noch?", seen >= 100)
+        assertEquals("Eigene Knopfreihe mit Abbrechen und Hauptknopf; Knopfzeile nehmen",
+            emptyList<String>(), own)
+    }
+
+    @Test
+    fun `the activity no longer holds ViewModels`() {
+        // Activity-wide only what lies above every destination (ActivityState) and the mandatory forms;
+        // everything else gets its destination with hiltViewModel() at its entry.
+        val LIMIT_AREAS = 6
+        val activity = Sources.module.map { File(it, "src/main") }.filter { it.isDirectory }
+            .flatMap { d -> d.walkTopDown().filter { it.isFile && it.name == "MainActivity.kt" }.toList() }
+        assertEquals("genau eine MainActivity", 1, activity.size)
+        val number = Regex("""\bby\s+viewModels\s*\(""").findAll(code(activity.single().readText())).count()
+        ratchet("ViewModels an der Activity", LIMIT_AREAS, number, "Ein ViewModel gehört an sein Ziel.")
+    }
+
+    @Test
+    fun `no fully qualified project name in the code`() {
+        // An import shows the dependency at the head of the file; inline it stays
+        // invisible and the line long. Comments and strings do not count.
+        val full = Regex("""(?<![\w.])ch\.brickinventoryapp(?:\.[a-z]\w*)+\.[A-Za-z_]\w*""")
+        val files = productionFiles() + Sources.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }
+        assert(files.size > 500) { "Nur ${files.size} Dateien gefunden — greift die Suche noch?" }
+        val findings = files.flatMap { f ->
+            code(f.readText()).lines().map { it.replace(Regex("//.*"), "") }
+                .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
+                .filter { full.containsMatchIn(it) }.map { "${f.name}: ${it.trim()}" }
+        }
+        assert(findings.isEmpty()) { "Voll qualifizierte Namen; importieren statt ausschreiben:\n  " + findings.joinToString("\n  ") }
+    }
+
+    @Test
+    fun `fully qualified names of foreign packages become fewer`() {
+        // Written out only for a real name clash, and then better with `import … as`.
+        val MAIN = 187
+        val TESTS = 0
+        val full = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
+        fun count(files: Sequence<File>) = files.sumOf { f ->
+            code(f.readText()).lines().map { it.replace(Regex("//.*"), "") }
+                .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
+                .sumOf { full.findAll(it).count() }
+        }
+        val main = count(productionFiles().asSequence())
+        val tests = count(Sources.tests.walkTopDown().filter { it.isFile && it.extension == "kt" })
+        assertTrue("Keine voll qualifizierten Namen gefunden — greift das Muster noch?", main + tests > 0)
+        ratchet("voll qualifizierte Namen im Hauptcode", MAIN, main)
+        ratchet("voll qualifizierte Namen in Tests", TESTS, tests)
+    }
+
+    @Test
+    fun `screens do not trigger loading via LaunchedEffect, states carry loading and message`() {
+        // Target 0: the ViewModel loads itself (init, observeLoadOn); the screen calls
+        // at most aktualisiere() in response to a gesture. Counted: LaunchedEffect with a lade…/load… call.
+        val LOADING = 0
+        val effect = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
+        val loader = Regex("""\b(?:load|load)[A-Z]\w*\s*\(""")
+        val findings = productionFiles().flatMap { f ->
+            effect.findAll(code(f.readText())).filter { loader.containsMatchIn(it.groupValues[1]) }.map { f.name }.toList()
+        }
+        assertTrue("Kein LaunchedEffect gefunden — greift das Muster noch?",
+            productionFiles().any { "LaunchedEffect(" in it.readText() })
+        ratchet("LaunchedEffect, die laden", LOADING, findings.size, findings.joinToString())
+        // A screen state carries Laden<T> (fetch) or Vorgang (action) instead of a pair
+        // of `running: Boolean` and `error: String?`, and Meldung or error class instead of a
+        // translated sentence: the sentence arises when drawing, in the language of then.
+        val OLD = 0
+        val TEXT = 0
+        val load = Regex("""(?i)^(loading\w*|load|\w*loading|\w*loading|\w*running|saves|sendet|prueft|\w*ing)$""")
+        val text = Regex("""(?i)(error|error|message|message|hint)""")
+        val condition = Regex("""data class [A-Za-z0-9_]*(UiState|State)\b""")
+        var old = 0
+        var states = 0
+        var texts = 0
+        for ((module, rows) in rowsPerModule()) {
+            if (presentation.none { module.startsWith(it) }) continue
+            val isState = condition.containsMatchIn(rows.joinToString("\n"))
+            if (isState) states++
+            for (z in rows) {
+                val m = property.find(z) ?: continue
+                val (name, type) = m.destructured
+                if (type == "Boolean" && load.matches(name)) old++
+                if (isState && type != "Boolean" && text.containsMatchIn(name)) texts++
+            }
+        }
+        // Both numbers stand at 0; that the pattern still applies is shown by an old form.
+        val unrecognized = listOf("galleryLoading", "stockRunning", "isExporting", "saves", "loadingCheck")
+            .filterNot { recognized(load, it) }
+        assertTrue("Das Muster erkennt $unrecognized nicht mehr", unrecognized.isEmpty())
+        assertTrue("Nur $states Zustandsdateien — greift die Suche noch?", states >= 10)
+        ratchet("alte Ladeformen (Boolean laedt/…laeuft/speichert/…ing)", OLD, old,
+            "Laden<T> (model/ui/Load.kt) für Abrufe, Vorgang (model/ui/Operation.kt) für Handlungen nehmen.")
+        ratchet("fertige Texte im Zustand (String fehler/meldung/…)", TEXT, texts,
+            "Meldung (model/ui/Message.kt) oder Fehlerklasse ablegen, den Satz bildet der Bildschirm.")
+    }
+
+    @Test
+    fun `domain types carry amounts as Money and points in time as Instant, not as Double and String`() {
+        // Target 0, both reached: counted are properties in core-model whose name names an amount
+        // or a date. Percentages are not amounts.
+        val AMOUNTS = 0
+        val DATA = 0
+        val propertyType = Regex("""\bva[lr]\s+(\w+)\s*:\s*(Double|String)\b""")
+        val amount = Regex("""(?i)(price|price|amount|amount|value|threshold|value|kosten)""")
+        val share = Regex("""(?i)(percent|pct|frac)""")
+        val datum = Regex("""(At|Am|Datum|Date)$|^(datum|date|tag)$""")
+        fun count(rows: List<String>): Pair<List<String>, List<String>> {
+            val hits = rows.flatMap { z -> propertyType.findAll(z).map { it.groupValues[1] to it.groupValues[2] }.toList() }
+            return hits.filter { (n, t) -> t == "Double" && amount.containsMatchIn(n) && !share.containsMatchIn(n) }.map { it.first } to
+                hits.filter { (n, t) -> t == "String" && datum.containsMatchIn(n) }.map { it.first }
+        }
+        val probe = count(listOf("    val avgPrice: Double? = null,", "    val createdAt: String? = null,", "    val pnlPercent: Double? = null,"))
+        assertEquals("Das Muster erkennt die alten Formen nicht mehr", listOf("avgPrice") to listOf("createdAt"), probe)
+        val (money, days) = count(rowsPerModule().filter { it.first == "core-model" }.flatMap { it.second })
+        ratchet("Beträge als Double in core-model", AMOUNTS, money.size, "Geld nehmen (model/domain/Money.kt): $money")
+        ratchet("Daten als String in core-model", DATA, days.size, "Instant nehmen, gelesen mit parseInstant(): $days")
+    }
+    /** Whether [pattern] counts a Boolean property of this name as an old loading form. */
+    private fun recognized(pattern: Regex, name: String): Boolean =
+        property.find("    val $name: Boolean = false,")?.destructured?.component1()?.let(pattern::matches) == true
+
+    /** The main sources of a module, line by line; the rules below read only line starts. */
+    private fun rowsPerModule(): List<Pair<String, List<String>>> = Sources.module.flatMap { m ->
+        File(m, "src/main/java").walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .map { m.name to it.readText().split("\n") }.toList()
+    }
+
+    private val property = Regex("""^\s*(?:(?:private|internal|public|override)\s+)*(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(Boolean|String\?|String)(?![A-Za-z0-9_<?])""")
+    private val presentation = listOf("feature-", "core-state", "core-session", "app")
+
+    // ── Language: source code is English ─────────────────────────────────────
+
+    private val germanWords: Set<String> by lazy {
+        File(Sources.project, "app/src/test/resources/german-words.txt").readLines()
+            .map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toSet()
+    }
+
+    /** German endings that English identifiers do not have. */
+    private val germanEnding = Regex("""(ungen|ung|keit|heit|schaft|lich)$""")
+    private val englishWithGermanEnding = setOf("young", "lung", "sung", "hung", "flung", "rung", "stung", "swung", "strung", "wrung")
+    private val umlaut = Regex("[äöüÄÖÜß]")
+
+    private fun nameParts(name: String) = Regex("""[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[äöüÄÖÜß]+\w*""").findAll(name).map { it.value.lowercase() }
+
+    private fun german(name: String): Boolean = umlaut.containsMatchIn(name) || nameParts(name).any { p ->
+        p in germanWords || (p.length >= 7 && germanEnding.containsMatchIn(p) && p !in englishWithGermanEnding)
+    }
+
+    private val declaration = Regex(
+        """\b(?:class|interface|object|fun|val|var|typealias)\s+(?:<[^>]*>\s*)?(?:[A-Za-z_][\w.]*\.)?([A-Za-z_]\w*)""" +
+            """|[(,]\s*(?:vararg\s+)?(?:@[\w.]+(?:\([^)]*\))?\s+)*([a-z]\w*)\s*:""")
+
+    private fun declaredNames(code: String) =
+        declaration.findAll(code).map { it.groupValues[1].ifEmpty { it.groupValues[2] } } +
+            Regex("""\benum\s+class\s+\w+[^{]*\{([^;}]*)""").findAll(code)
+                .flatMap { e -> Regex("""(?:^|,)\s*([A-Z][A-Z0-9_]*)""").findAll(e.groupValues[1]).map { it.groupValues[1] } }
+
+    @Test
+    fun `file names and declarations are English, German comment words only become fewer`() {
+        // Kotlin of all modules and of build-logic, main and test.
+        val files = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
+            m.walkTopDown().onEnter { it.name != "build" }.filter { it.isFile && it.extension in setOf("kt", "kts") }.toList()
+        }
+        assertTrue("Nur ${files.size} Kotlin-Dateien gefunden — greift die Suche noch?", files.size > 800)
+        // The only exception until API v2: what the generated contract declares, and its bridges.
+        val contract = files.single { it.name == "Vertrag.kt" }
+        val bridges = files.filter { it.name == "ContractNames.kt" }
+        val allowed = (listOf(contract) + bridges).flatMap { declaredNames(Sources.strip(it.readText())).toList() }.toSet() +
+            setOf("NEU", "KEINE", "UNBEKANNT", "RUHT", "UNTER")
+        val names = files.filter { it != contract && german(it.nameWithoutExtension) }.map { it.name }
+        assertEquals("German file names (Kotlin): $names", emptyList<String>(), names)
+        val declared = files.filter { it != contract && it !in bridges }.flatMap { f ->
+            declaredNames(Sources.strip(f.readText())).filter { it !in allowed && german(it) }.map { "${f.name}: $it" }.toList()
+        }.distinct()
+        assertEquals("German declarations (only the contract keeps them until API v2):\n  " + declared.joinToString("\n  "),
+            emptyList<String>(), declared)
+        // Comments: German words outside quotes; quoted UI texts and patch names (with hyphens) do not count.
+        val COMMENT_WORDS = 559
+        val prose = Regex("""(?<![\w-])(der|die|das|und|nicht|wird|werden|auch|noch|wenn|weil|oder|sich)(?![\w-])""")
+        val word = Regex("""(?<![\w-])[a-zäöüß]{4,}(?![\w-])""")
+        val quoted = Regex("""„[^“\n]*“|"[^"\n]*"|`[^`\n]*`|«[^»\n]*»""")
+        val comments = files.filter { it != contract }.sumOf { f ->
+            Regex("""//[^\n]*|/\*[\s\S]*?\*/""").findAll(f.readText()).sumOf { c ->
+                val t = quoted.replace(c.value, "")
+                prose.findAll(t).count() + word.findAll(t).count { it.value in germanWords || umlaut.containsMatchIn(it.value) }
+            }
+        }
+        ratchet("German comment words", COMMENT_WORDS, comments, "Comments are English (CLAUDE.md).")
+    }
+}
