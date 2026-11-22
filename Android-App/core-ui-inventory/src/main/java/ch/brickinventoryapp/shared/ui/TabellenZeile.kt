@@ -130,7 +130,8 @@ private fun TablesText(nummer: String, name: String?, farbe: Color?, secondRow: 
                 fontFamily = FontFamily.Monospace,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary,
+                // A number, not a link: primary blue is for what can be tapped.
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

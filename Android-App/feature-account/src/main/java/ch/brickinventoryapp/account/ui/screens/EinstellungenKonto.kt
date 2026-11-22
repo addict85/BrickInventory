@@ -127,7 +127,7 @@ internal fun AccountCard(
     // The server confirms every profile change with the password: otherwise the
     // password could be reset via a new address. It's only asked on save.
     if (asksPassword) PasswordPrompt(
-        titel = stringResource(R.string.konto_save),
+        titel = stringResource(R.string.konto_save_title),
         text = stringResource(R.string.konto_profil_password_needed),
         bestaetigen = stringResource(R.string.konto_save),
         codeNoetig = false, fehler = null, laeuft = kontoZustand.speichern.laeuft,

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.shared.ui.MetricsSeries
 import ch.brickinventoryapp.shared.ui.StatChipV2
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.CatalogNameHint
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
@@ -60,6 +61,8 @@ internal fun PartDetailHeader(
                 fallbackSize = 64.dp,
             )
         }
+        // The name above (bar or sheet title) comes from the catalog and stays English.
+        if (titel != null) CatalogNameHint()
         if (metrics.isNotEmpty()) MetricsSeries {
             metrics.forEach { (label, wert) -> StatChipV2(label = label, value = wert) }
         }

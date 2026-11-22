@@ -133,8 +133,9 @@ internal fun PartListRow(
         Column(Modifier.weight(1f)) {
             // BL-ID (primary) and RB-ID (secondary)
             val displayId = part.blPartNumber ?: part.partNumber
+            // Not tappable on its own, hence not in the color of links (as on the set tile).
             Text(displayId, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
             if (part.blPartNumber != null && part.blPartNumber != part.partNumber) {
                 Text(stringResource(R.string.partslist_rb_prefix, part.partNumber), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)

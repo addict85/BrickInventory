@@ -236,7 +236,7 @@ private fun VoucherPrompt(
     val loeschen = frage.schritt == VoucherStep.DELETE
     val pdf = frage.schritt == VoucherStep.PDF || frage.schritt == VoucherStep.EXPORT
     PasswordPrompt(
-        titel = stringResource(if (loeschen) R.string.common_delete else R.string.vouchers_confirm_title),
+        titel = stringResource(if (loeschen) R.string.vouchers_delete_title else R.string.vouchers_confirm_title),
         text = when {
             loeschen -> stringResource(R.string.vouchers_delete_confirm, nummer)
             pdf -> stringResource(R.string.vouchers_confirm_pdf)

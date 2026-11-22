@@ -53,7 +53,8 @@ fun NavGraphBuilder.financesGraph(navigation: FinancesNavigation) {
                 onManualClick = { type, id, colorId, name ->
                     navigation.openSinglePiece(type, id, colorId, name ?: id)
                 },
-                listState = financeListState
+                listState = financeListState,
+                onOpenVouchers = { navController.navigate(FinanzZiel.Gutscheine) },
             )
         }
     }

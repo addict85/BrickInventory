@@ -167,8 +167,9 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                         Text(barcodeState.setName, fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
+                        // The recognized set number is shown, not tapped: no link color.
                         Text(barcodeState.result, style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                         if (barcodeState.theme != null)
                             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
                                 Text(barcodeState.theme, Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline),

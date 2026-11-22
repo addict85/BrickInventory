@@ -331,7 +331,7 @@ private fun CacheDurationRow(
 private fun CacheClearQuestion(alles: Boolean, onSchliessen: () -> Unit, clearOn: () -> Unit) {
     // The shared confirmation prompt: it names its title as the heading and window name.
     Prompt(
-        titel = stringResource(if (alles) R.string.monitoring_cache_clear_all else R.string.monitoring_cache_clear_prices),
+        titel = stringResource(if (alles) R.string.monitoring_cache_clear_all_title else R.string.monitoring_cache_clear_prices_title),
         text = stringResource(R.string.monitoring_cache_clear_hint),
         bestaetigen = stringResource(R.string.monitoring_cache_clear_confirm),
         onBestaetigen = clearOn,

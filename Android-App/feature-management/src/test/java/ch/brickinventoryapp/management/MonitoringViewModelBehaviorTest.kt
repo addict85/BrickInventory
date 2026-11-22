@@ -3,6 +3,7 @@ package ch.brickinventoryapp.management
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.testing.BrickApiService
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.testManagementRepository
@@ -109,7 +110,7 @@ class MonitoringViewModelBehaviorTest {
         // anticipated state is then already the correct one, and a second
         // fetch per deletion would be pure load.
         server.enqueue(antwort("""{"success":true}"""))
-        val ok = vm.removeEntry("75192")
+        val ok = vm.removeEntry("75192") is Ergebnis.Erfolg
 
         assert(ok) { "Der Server hat zugestimmt, das Ergebnis müsste true sein" }
         assert(server.requestCount == 2) {
@@ -132,7 +133,7 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
         server.enqueue(antwort("""{"success":true,"count":2,"entries":[
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
-        val ok = vm.removeEntry("75192")
+        val ok = vm.removeEntry("75192") is Ergebnis.Erfolg
 
         assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
         // THIS is the proof: the anticipated state was rolled back.
@@ -182,10 +183,10 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(antwort("""{"success":true,"theme":"noppe","vorgabe":"noppe"}"""))
         vm.loadDesignDefault()
         server.enqueue(antwort("""{"success":true}"""))
-        assert(vm.setzeDesign(Design.BRICK))
+        assert(vm.setzeDesign(Design.BRICK) is Ergebnis.Erfolg)
         assert(vm.state.value.defaultDesign == Design.BRICK) { "Steht: ${vm.state.value.defaultDesign}" }
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
-        assert(!vm.setzeDesign(Design.HOCHGLANZ))
+        assert(vm.setzeDesign(Design.HOCHGLANZ) is Ergebnis.Fehler)
         assert(vm.state.value.defaultDesign == Design.BRICK) { "Steht: ${vm.state.value.defaultDesign}" }
     }
 
@@ -194,7 +195,7 @@ class MonitoringViewModelBehaviorTest {
     @Test
     fun `the default state switches immediately and stays if the server agrees`() = runTest {
         server.enqueue(antwort("""{"success":true}"""))
-        val ok = vm.setDefaultState(Zustand.GEBRAUCHT)
+        val ok = vm.setDefaultState(Zustand.GEBRAUCHT) is Ergebnis.Erfolg
         assert(ok)
         assert(vm.state.value.defaultState == Zustand.GEBRAUCHT) { "Steht: ${vm.state.value.defaultState}" }
     }
@@ -203,7 +204,7 @@ class MonitoringViewModelBehaviorTest {
     fun `if setting fails, the default state falls BACK`() = runTest {
         val vorher = vm.state.value.defaultState
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
-        val ok = vm.setDefaultState(Zustand.GEBRAUCHT)
+        val ok = vm.setDefaultState(Zustand.GEBRAUCHT) is Ergebnis.Erfolg
 
         assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
         assert(vm.state.value.defaultState == vorher) {

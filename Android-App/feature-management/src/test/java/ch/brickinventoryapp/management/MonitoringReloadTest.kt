@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.management
 
 import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestApi
@@ -41,14 +42,14 @@ class MonitoringReloadTest {
 
     @Test
     fun `after setting a schedule what the server makes of it applies`() = runTest {
-        assertTrue(vm.setzeJobZeitplan("prices", "7:5", null))
+        assertTrue(vm.setzeJobZeitplan("prices", "7:5", null) is Ergebnis.Erfolg)
         assertEquals(listOf("POST /api/v1/admin/job-schedule", "GET /api/v1/admin/jobs"), paths.requests.toList())
         assertEquals("07:05", vm.state.value.jobSchedules["prices"]?.time)
     }
 
     @Test
     fun `after clearing the cache the numbers come anew`() = runTest {
-        assertTrue(vm.emptyCache(alles = true))
+        assertTrue(vm.emptyCache(alles = true) is Ergebnis.Erfolg)
         val danach = paths.requests.toList().drop(1)
         assertEquals("POST /api/v1/admin/cache-clear", paths.requests.first())
         assertTrue("Die Cache-Zahlen werden nicht neu geholt: $danach", "GET /api/v1/admin/cache-stats" in danach)

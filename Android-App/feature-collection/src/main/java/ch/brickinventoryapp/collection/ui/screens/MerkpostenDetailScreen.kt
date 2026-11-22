@@ -61,6 +61,8 @@ internal fun MerkpostenDetailScreen(
     condition: Zustand,
     imageLoader: coil3.ImageLoader,
     onBack: () -> Unit,
+    /** From one item's alert to all of them (Settings → Preisalarme). */
+    onOpenPriceAlerts: (() -> Unit)? = null,
 ) {
     val appState = ansicht.appState
     val blick = ansicht.blick
@@ -193,7 +195,7 @@ internal fun MerkpostenDetailScreen(
             // The same section as in the set detail: the same entry in price_alerts under the same
             // key, and /sets/:sn/alert requires no ownership.
             setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, aktionen::setPriceAlert,
-                outerGap = false)
+                outerGap = false, onAllAlerts = onOpenPriceAlerts)
 
             item {
                 AppKarte(Modifier.centeredUntil(Lesebreite.formular)) {

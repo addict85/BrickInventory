@@ -61,8 +61,8 @@ import androidx.compose.material3.CircularProgressIndicator
 /**
  * The follow-up question before an action with no way back: icon, title, a sentence, the
  * action in error color on the right. One shape for deleting a set, deleting a storage location,
- * unlinking an account and signing out — previously only the set asked first.
- * The caller has to close it themselves in [onBestaetigen].
+ * unlinking an account and signing out. [titel] is a question („Set löschen?“): „löschen“
+ * for what is gone for good, „entfernen“ for what only leaves a list. The caller closes it in [onBestaetigen].
  */
 @Composable
 fun Prompt(

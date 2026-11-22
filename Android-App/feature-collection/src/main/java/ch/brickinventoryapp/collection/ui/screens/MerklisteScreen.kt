@@ -83,6 +83,8 @@ fun WantedRoute(
     onScan: () -> Unit,
     onOpenSingle: (String, Zustand) -> Unit,
     sideBySide: Boolean = false,
+    /** The account's list of all price alerts; null where there is no way there (tests). */
+    onOpenPriceAlerts: (() -> Unit)? = null,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
@@ -90,7 +92,7 @@ fun WantedRoute(
     val detail by vm.wantedItemDetailState.collectAsStateWithLifecycle()
     val lagerZustand by vm.storageState.collectAsStateWithLifecycle()
     val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
-    WantedAndDetail(ansicht, vm, imageLoader, sideBySide, onScan, onOpenSingle)
+    WantedAndDetail(ansicht, vm, imageLoader, sideBySide, onScan, onOpenSingle, onOpenPriceAlerts)
 }
 
 /**
@@ -123,6 +125,7 @@ internal fun WantedItemDetailRoute(
     condition: Zustand,
     imageLoader: coil3.ImageLoader,
     onBack: () -> Unit,
+    onOpenPriceAlerts: (() -> Unit)? = null,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
@@ -130,7 +133,7 @@ internal fun WantedItemDetailRoute(
     val detail by remember(setNumber) { vm.wantedItemDetailOf(setNumber) }.collectAsStateWithLifecycle()
     val lagerZustand by vm.storageState.collectAsStateWithLifecycle()
     val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
-    MerkpostenDetailScreen(ansicht, vm, setNumber, condition, imageLoader, onBack)
+    MerkpostenDetailScreen(ansicht, vm, setNumber, condition, imageLoader, onBack, onOpenPriceAlerts)
 }
 
 /**
@@ -303,6 +306,7 @@ internal fun WantedAndDetail(
     sideBySide: Boolean,
     onScan: () -> Unit,
     onOpenSingle: (String, Zustand) -> Unit,
+    onOpenPriceAlerts: (() -> Unit)? = null,
 ) {
     var offen by rememberSaveable { mutableStateOf<List<String>?>(null) }
     val selection = offen?.let { it[0] to (Zustand.aus(it[1]) ?: Zustand.NEU) }
@@ -319,7 +323,7 @@ internal fun WantedAndDetail(
                 androidx.compose.runtime.key(selection) {
                     val detail by remember { aktionen.wantedItemDetailOf(selection.first) }.collectAsStateWithLifecycle()
                     MerkpostenDetailScreen(ansicht = ansicht.copy(detail = detail), aktionen = aktionen, setNumber = selection.first, condition = selection.second,
-                        imageLoader = imageLoader, onBack = { offen = null })
+                        imageLoader = imageLoader, onBack = { offen = null }, onOpenPriceAlerts = onOpenPriceAlerts)
                 }
             },
         )

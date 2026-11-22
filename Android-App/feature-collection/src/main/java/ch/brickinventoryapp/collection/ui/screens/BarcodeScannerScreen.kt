@@ -28,6 +28,8 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.BorderStroke
 import ch.brickinventoryapp.ui.components.withFont
 import androidx.compose.ui.unit.dp
@@ -60,10 +62,16 @@ fun BarcodeScannerScreen(
     val cameraPermission = rememberCameraPermission()
     val defaultHint = stringResource(R.string.scanner_hint_default)
     val detectedHintFmt = stringResource(R.string.scanner_hint_detected)
+    val confirmingHint = stringResource(R.string.scanner_hint_confirming)
     var statusText by rememberSaveable { mutableStateOf(defaultHint) }
     var frozen    by rememberSaveable { mutableStateOf(false) }
     var torchOn   by rememberSaveable { mutableStateOf(false) }
     var cameraCtrl by remember { mutableStateOf<CameraControl?>(null) }
+    var cameraFailed by rememberSaveable { mutableStateOf(false) }
+    // Bumped by "Try again": a new key rebuilds the preview and binds the camera afresh.
+    var bindAttempt by rememberSaveable { mutableIntStateOf(0) }
+    // Not without a camera (screenshots), where nothing can be found anyway.
+    val slow = slowScan(bindAttempt, active = !ohneKamera && cameraPermission.granted)
 
     LaunchedEffect(Unit) {
         if (!ohneKamera && !cameraPermission.granted) cameraPermission.requests()
@@ -96,28 +104,27 @@ fun BarcodeScannerScreen(
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
             ohneKamera || cameraPermission.granted -> {
-                if (!ohneKamera) CameraPreviewBarcode(
-                    frozen = frozen,
-                    ocrEnabled = ocrEnabled,
-                    onBarcodeFound = { gefunden(it, onResult) },
-                    // Separate return path: what arrives here is already the set number and must not
-                    // run through EAN resolution like one — that would fail and cost
-                    // quota.
-                    onSetNumberFound = { gefunden(it, onSetNumberResult) },
-                    onStatus   = { if (!frozen) statusText = it },
-                    onCamera   = { cameraCtrl = it }
-                )
+                if (!ohneKamera && !cameraFailed) key(bindAttempt) {
+                    CameraPreviewBarcode(
+                        frozen = frozen,
+                        ocrEnabled = ocrEnabled,
+                        onBarcodeFound = { gefunden(it, onResult) },
+                        // Separate return path: what arrives here is already the set number and must not
+                        // run through EAN resolution like one — that would fail and cost quota.
+                        onSetNumberFound = { gefunden(it, onSetNumberResult) },
+                        onStatus   = { if (!frozen) statusText = it },
+                        onCamera   = { cameraCtrl = it },
+                        onCameraError = { cameraFailed = true },
+                    )
+                }
 
-                // Frame, badge and weighting in the shared
-                // overlay — see KameraErlaubnis.kt. What stays its own here are
-                // the wide rectangle with the corner angles and the torch button.
-                CameraOverlay(
-                    hinweis = statusText,
-                    unten = {
-                        Spacer(Modifier.height(Abstaende.gross))
-                        LightButton(torchOn) { torchOn = !torchOn }
-                    },
-                ) { ScanFrame(borderColor) }
+                ScannerOverlay(
+                    hint = scannerHint(frozen, cameraFailed, slow, statusText == confirmingHint),
+                    statusText = statusText, borderColor = borderColor, torchOn = torchOn,
+                    onTorch = { torchOn = !torchOn },
+                    onRetry = { cameraFailed = false; bindAttempt++ },
+                    typeInOn = typeInOn,
+                )
             }
             else -> {
                 CameraPermissionHint(stringResource(R.string.scanner_camera_zweck_barcode),
@@ -131,6 +138,86 @@ fun BarcodeScannerScreen(
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
             }
         }
+    }
+}
+
+/** After this long without a hit, the scanner names light, distance and typing. */
+internal const val SLOW_HINT_MS = 10_000L
+
+/**
+ * A hint that never changes stops being read: true once the camera has run [SLOW_HINT_MS]
+ * without a hit. A new [attempt] (camera bound again) starts the wait anew.
+ */
+@Composable
+private fun slowScan(attempt: Int, active: Boolean): Boolean {
+    var slow by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(attempt, active) {
+        slow = false
+        if (!active) return@LaunchedEffect
+        kotlinx.coroutines.delay(SLOW_HINT_MS)
+        slow = true
+    }
+    return slow
+}
+
+/** Which sentence the badge under the frame shows. */
+internal enum class ScannerHint { STATUS, SLOW, CAMERA_ERROR }
+
+/**
+ * A camera that does not open beats everything; a hit and an ongoing confirmation are
+ * never covered by the slow-scan advice, which would read like a failure.
+ */
+internal fun scannerHint(frozen: Boolean, cameraFailed: Boolean, slow: Boolean, confirming: Boolean): ScannerHint = when {
+    cameraFailed -> ScannerHint.CAMERA_ERROR
+    frozen || confirming || !slow -> ScannerHint.STATUS
+    else -> ScannerHint.SLOW
+}
+
+/**
+ * Frame, badge and buttons in the shared overlay (KameraErlaubnis.kt). Typing the number stays
+ * visible the whole time, not only once the camera is refused; a failed camera offers a retry.
+ */
+@Composable
+private fun ScannerOverlay(
+    hint: ScannerHint,
+    statusText: String,
+    borderColor: Color,
+    torchOn: Boolean,
+    onTorch: () -> Unit,
+    onRetry: () -> Unit,
+    typeInOn: () -> Unit,
+) {
+    CameraOverlay(
+        hinweis = when (hint) {
+            ScannerHint.CAMERA_ERROR -> stringResource(R.string.scanner_camera_error)
+            ScannerHint.SLOW -> stringResource(R.string.scanner_hint_slow)
+            ScannerHint.STATUS -> statusText
+        },
+        unten = {
+            Spacer(Modifier.height(Abstaende.gross))
+            if (hint == ScannerHint.CAMERA_ERROR) {
+                OverlayButton(Icons.Default.Refresh, stringResource(R.string.common_retry), onRetry)
+            } else LightButton(torchOn, onTorch)
+            Spacer(Modifier.height(Abstaende.klein))
+            OverlayButton(Icons.Default.Keyboard, stringResource(R.string.scanner_nummer_eintippen), typeInOn)
+        },
+    ) { ScanFrame(borderColor) }
+}
+
+/** A secondary action on the camera image: the same white outline as the torch button. */
+@Composable
+private fun OverlayButton(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        border = BorderStroke(1.dp, Color.White),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.Black.copy(alpha = 0.72f),
+            contentColor = Color.White,
+        ),
+    ) {
+        Icon(icon, null, Modifier.size(withFont(18.dp)))
+        Spacer(Modifier.width(Abstaende.klein))
+        Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -250,6 +337,8 @@ internal fun CameraPreviewBarcode(
     onSetNumberFound: (String) -> Unit,
     onStatus: (String) -> Unit,
     onCamera: (CameraControl) -> Unit,
+    /** The camera could not be opened (busy, hardware error). */
+    onCameraError: () -> Unit,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val confirmingHint = stringResource(R.string.scanner_hint_confirming)
@@ -278,11 +367,8 @@ internal fun CameraPreviewBarcode(
                 previewView = previewView,
                 lifecycleOwner = lifecycleOwner,
                 analyse = imageAnalyzer,
-                atError = {
-                    // Camera not available (busy, hardware error): show a
-                    // notice instead of a black image with no explanation.
-                    onStatus(errorHint)
-                },
+                // Camera not available: the screen says why and offers to retry or type.
+                atError = onCameraError,
             ) { camera ->
                 onCamera(camera.cameraControl)
                 // Provide camera control for the tap. Only one listener:

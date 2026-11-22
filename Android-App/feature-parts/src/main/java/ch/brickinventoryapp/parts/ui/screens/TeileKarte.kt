@@ -139,9 +139,10 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
         Column(column.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             if (zeile) menge()
             val nummer = part.blPartNumber ?: part.partNumber
+            // A number, not a link: primary blue is for what can be tapped.
             Text(nummer, Modifier.readAloudAs(stringResource(R.string.cd_teil_nummer, nummer)),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold)
             Text(part.partName?.let { catalogName(it) }
                     ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),

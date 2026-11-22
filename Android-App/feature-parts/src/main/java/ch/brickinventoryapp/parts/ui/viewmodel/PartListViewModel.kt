@@ -20,6 +20,7 @@ import ch.brickinventoryapp.parts.ui.TeilelisteUiState
 import ch.brickinventoryapp.parts.ui.PartListsSource
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.PlSet
+import ch.brickinventoryapp.parts.ui.RemovedSet
 import ch.brickinventoryapp.parts.ui.normalized
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -82,11 +83,31 @@ class PartListViewModel @Inject constructor(
     }
 
     fun entferne(index: Int) = setList { z ->
-        z.copy(sets = z.sets.filterIndexed { i, _ -> i != index }, generated = false)
+        val set = z.sets.getOrNull(index) ?: return@setList z
+        z.copy(sets = z.sets.filterIndexed { i, _ -> i != index }, generated = false,
+            removed = RemovedSet(set, z.sets, z.generated))
     }
 
+    /**
+     * „Undo“ after removing. Unchanged since then: the old list comes back, generated or not.
+     * Changed: the set returns to its place, and the list has to be created anew.
+     */
+    fun undoRemove(r: RemovedSet) = setList { z ->
+        when {
+            z.sets == r.before.filter { it != r.set } -> z.copy(sets = r.before, generated = r.wasGenerated, removed = null)
+            z.sets.any { it.setNumber == r.set.setNumber } -> z.copy(removed = null)
+            else -> {
+                val platz = r.before.indexOf(r.set).coerceIn(0, z.sets.size)
+                z.copy(sets = z.sets.toMutableList().apply { add(platz, r.set) }, generated = false, removed = null)
+            }
+        }
+    }
+
+    /** The snackbar ended without „Undo“; a newer removal keeps its own. */
+    fun removalSeen(r: RemovedSet) = _zustand.update { if (it.removed == r) it.copy(removed = null) else it }
+
     /** "Zurücksetzen" on the list: sets and parts gone, the switches' choice stays. */
-    fun leere() = setList { it.copy(sets = emptyList(), parts = emptyList(), status = null, generated = false) }
+    fun leere() = setList { it.copy(sets = emptyList(), parts = emptyList(), status = null, generated = false, removed = null) }
 
     private fun reset() {
         _zustand.value = TeilelisteUiState()
