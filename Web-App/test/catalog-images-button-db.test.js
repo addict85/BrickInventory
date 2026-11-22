@@ -2,13 +2,14 @@
  * Button “fetch catalog images" and the preview for it.
  *
  * Counter-check: in src/management/service.ts skipped counts all candidates → red “the button queues, without known negative results”.
+ * Counter-checks (22.11.2026): queueCatalogImages removed from registerActions() in admin.js → red “the button is wired
+ * in the tile” (no message); the imgDl button removed from actions() in monitor.js → red the same test.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Intercept download and downscaling — what counts here is WHAT is called.
@@ -211,30 +212,40 @@ test('catalog images at the push of a button', { concurrency: 1 }, async t => {
   }
 });
 
-test('the button is wired in the tile', () => {
-  // Without registration a click does nothing — and that only shows on the device.
-  const core = require('./helpers/sources').coreSource();
-  assert.match(core, /data-click="queueCatalogImages"/, 'Der Knopf fehlt in der Kachel');
-  const admin = require('./helpers/sources').adminSource();
-  assert.match(admin, /export async function queueCatalogImages/, 'Kein Klick-Handler');
-  assert.match(admin, /^\s+queueCatalogImages,$/m, 'Der Handler ist nicht in der Aktions-Liste registriert');
-  for (const loc of ['de', 'en']) {
-    const l = fs.readFileSync(path.join(ROOT, 'public', 'locales', `${loc}.js`), 'utf8');
-    assert.match(l, /'monitor\.catalog_images':/, `Beschriftung fehlt in ${loc}`);
-    assert.match(l, /'monitor\.catalog_images_queued':/, `Rückmeldung fehlt in ${loc}`);
-    // Second version for the case that something was already present: without it
-    // “0 images in the queue" would look like a failure although
-    // it is the best of all messages.
-    assert.match(l, /'monitor\.catalog_images_queued_skipped':/, `Rückmeldung für „schon vorhanden" fehlt in ${loc}`);
-    // The button now takes back miss markers and estimates the
-    // duration. Without both numbers it would stay unclear why images are suddenly
-    // pending again that last counted as missing — and whether that takes minutes or
-    // hours.
-    assert.match(
-      l,
-      /'monitor\.catalog_images_retried':/,
-      `Rückmeldung für zurückgenommene Fehlanzeigen fehlt in ${loc}`,
-    );
-    assert.match(l, /'monitor\.catalog_images_eta':/, `Dauerabschätzung fehlt in ${loc}`);
+test('the button is wired in the tile', async () => {
+  // In the real bundle: the image tile carries the button, a click queues and names both numbers.
+  const { openUi, reiter } = require('./helpers/ui');
+  const { de } = require('./helpers/sources').loadTranslations();
+  const { w, d, warte, ruhig, aufrufe } = await openUi({
+    '/v2/admin/job-status': { success: true, job: { running: false } },
+    '/v2/admin/jobs': {
+      success: true,
+      jobs: { imgDl: { status: 'idle', label: 'Bilder', done: 0, total: 0 } },
+      schedules: {},
+      db: { csvCache: {}, blMapping: {} },
+    },
+    '/v2/admin/job-queue': {
+      success: true,
+      jobs: [],
+      summary: [],
+      job_process: { running: true },
+      image_demand: 0,
+      pauses: [],
+    },
+    '/v2/admin/catalog-images': { success: true, pending: 12, skipped: 3, discarded: 2, duration_minutes: 4 },
+  });
+  try {
+    await reiter(w, 'monitor');
+    await ruhig();
+    assert.ok(await warte(() => d.querySelector('[data-click="queueCatalogImages"]')), 'the button is missing');
+    d.querySelector('[data-click="queueCatalogImages"]').click();
+    const toasts = () => d.getElementById('toasts')?.textContent || '';
+    const expected = de['monitor.catalog_images_queued_skipped'].replace('{n}', '12').replace('{done}', '3');
+    assert.ok(await warte(() => toasts().includes(expected)), `message: ${toasts()}`);
+    assert.ok(toasts().includes(de['monitor.catalog_images_retried'].replace('{n}', '2')), toasts());
+    assert.ok(toasts().includes(de['monitor.catalog_images_eta'].replace('{n}', '4')), toasts());
+    assert.ok(aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/api/v2/admin/catalog-images')));
+  } finally {
+    w.close();
   }
 });

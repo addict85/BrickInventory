@@ -7,6 +7,8 @@
  * Counter-check: `if (requested) return;` removed in public/js/scrollbar.js → red “redrawing is throttled”.
  * Counter-check: `label.style.display = ''` after dragging removed → red “the label disappears again after dragging”.
  * Counter-check: without a registered function the label shows '1999' → red “the label stays empty as long as nobody registers it”.
+ * Counter-check (22.11.2026): `if (tab !== 'catalog') setScrollLabel(null)` removed in navigation.js → red
+ * “the label is unregistered when leaving the catalog”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -108,11 +110,32 @@ test('the label stays empty as long as nobody registers it', () => {
   assert.equal(label.textContent, '', 'an unregistered function still delivers its text');
 });
 
-test('the label is unregistered when leaving the catalog', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'navigation.js'), 'utf8');
-  assert.match(
-    gal,
-    /if \(tab !== 'catalog'\) setScrollLabel\(null\)/,
-    'Beim Reiterwechsel wird die Etikett-Funktion nicht abgemeldet',
-  );
+test('the label is unregistered when leaving the catalog', async () => {
+  // In the real bundle: the catalog registers the year label, the gallery must not keep it.
+  const { openUi, reiter, warte } = require('./helpers/ui');
+  const set = (sn, year) => ({ set_number: sn, name: sn, year, theme: 'City', num_parts: 10 });
+  const years = [
+    { year: 2020, n: 1 },
+    { year: 2000, n: 1 },
+  ];
+  const { w, d } = await openUi({
+    '/v2/catalog/meta': { success: true, themes: [], year_min: 2000, year_max: 2020, year_counts: years },
+    '/v2/catalog/sets': { success: true, total: 2, sets: [set('1-1', 2020), set('2-1', 2000)] },
+    '/v2/catalog/year-distribution': { success: true, years },
+  });
+  const drag = () => {
+    const bar = d.getElementById('app-scrollbar');
+    bar.dispatchEvent(new w.MouseEvent('mousedown', { clientY: 1, bubbles: true }));
+    const text = d.getElementById('app-scrollbar-label').textContent;
+    w.dispatchEvent(new w.MouseEvent('mouseup', { bubbles: true }));
+    return text;
+  };
+  try {
+    await reiter(w, 'catalog');
+    assert.ok(await warte(() => /^20\d\d$/.test(drag())), `the catalog shows no year: '${drag()}'`);
+    await reiter(w, 'gallery');
+    assert.equal(drag(), '', 'the gallery still shows the catalog year');
+  } finally {
+    w.close();
+  }
 });

@@ -4,6 +4,12 @@
  * “every handler from the markup is registered” has run since 08.11.2026 on the
  * running bundle in actions-dispatcher-ui.test.js (counter-check:
  * `closePwModal,` deleted from registerActions() → red there).
+ *
+ * Counter-checks (22.11.2026, each alone):
+ *   A  bindGlobalErrorHandlers() without the 'unhandledrejection' listener → red “unhandled errors …”
+ *   B  the same without the 'error' listener → red the same test (script error)
+ *   C  in apiRaw `if (res.status === 401) emit('sessionEnded', path)` removed → red “a 401 leads back …”
+ *   D  showLogin() called without `expired: true` on sessionEnded → red the same test (no reason)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -137,48 +143,44 @@ test('api() delivers an object on every failure instead of throwing', async () =
   }
 });
 
-test('unhandled errors do not only end up in the console', () => {
-  // Addition to the test above: api() covers the normal case, but not an
-  // error in a callback or a promise that nobody collects. Without a
-  // safety net the user sees nothing of it — they click, and simply
-  // nothing happens.
-  const init = fs.readFileSync(path.join(ROOT, 'public', 'js', 'error-capture.js'), 'utf8');
-  assert.match(init, /addEventListener\('unhandledrejection'/, 'Abgewiesene Zusagen brauchen ein Auffangnetz');
-  assert.match(init, /addEventListener\('error'/, 'Skriptfehler ebenso');
-  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'session.js'), 'utf8');
-  assert.match(
-    sitzung,
-    /startApp\(\)\s*\{\s*\n\s*bindGlobalErrorHandlers\(\);/,
-    'Die Handler müssen VOR allem anderen hängen, sonst fehlt gerade der Startfehler',
-  );
+test('unhandled errors do not only end up in the console', async () => {
+  // In the real bundle: a rejected promise and a script error from our own code show a message.
+  const { openUi, warte } = require('./helpers/ui');
+  const { de } = require('./helpers/sources').loadTranslations();
+  const { w, d } = await openUi();
+  const toasts = () => d.getElementById('toasts')?.textContent || '';
+  const ours = { stack: 'Error: kaputt\n    at http://localhost/js/app.bundle.js:1:1' };
+  w.console.error = () => {};
+  try {
+    const rejection = new w.Event('unhandledrejection');
+    Object.assign(rejection, { reason: ours });
+    w.dispatchEvent(rejection);
+    assert.ok(await warte(() => toasts().includes(de['api.unexpected'])), `promise: ${toasts()}`);
+    for (const el of d.querySelectorAll('#toasts > *')) el.remove();
+    await new Promise(r => setTimeout(r, 5100)); // one message per five seconds
+    w.dispatchEvent(new w.ErrorEvent('error', { error: ours, message: 'kaputt' }));
+    assert.ok(await warte(() => toasts().includes(de['api.unexpected'])), `script: ${toasts()}`);
+  } finally {
+    w.close();
+  }
 });
 
-test('a 401 leads back to the login, not into a dead UI', () => {
-  // Where this test comes from
-  const core = require('./helpers/sources').coreSource();
-  assert.match(
-    core,
-    /if \(res\.status === 401\) emit\('sessionEnded', path\);/,
-    'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen',
-  );
-  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'session.js'), 'utf8');
-  const von = sitzung.indexOf("subscribe('sessionEnded'");
-  assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
-  const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));
-  assert.match(fn, /if \(!loggedInAccount\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
-  assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');
-  assert.match(fn, /\/auth\/login/, 'Ein falsches Passwort ist kein Sitzungsende');
-  assert.match(fn, /showLogin\(\{ expired: true[,}]/, 'Die Anmeldemaske muss zurückkommen');
-  // The message appears once in the login card (showLogin), not as a toast.
-  assert.match(
-    core,
-    /o\.expired \? (o\.hint \|\| )?tRaw\('auth\.session_expired'\)/,
-    'Ohne Meldung wüsste niemand, warum',
-  );
-
-  // The text must exist in both languages — otherwise the key is shown.
-  for (const lang of ['de', 'en']) {
-    const dict = fs.readFileSync(path.join(ROOT, 'public', 'locales', `${lang}.js`), 'utf8');
-    assert.ok(dict.includes("'auth.session_expired'"), `${lang}.js: Text fehlt`);
+test('a 401 leads back to the login, not into a dead UI', async () => {
+  const { openUi, reiter, warte } = require('./helpers/ui');
+  const { de } = require('./helpers/sources').loadTranslations();
+  const { w, d } = await openUi({
+    '/v2/parts': { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' },
+  });
+  try {
+    assert.equal(d.getElementById('login-screen').style.display, 'none', 'Vorbedingung: angemeldet');
+    await reiter(w, 'parts');
+    assert.ok(await warte(() => d.getElementById('login-screen').style.display === 'flex'), 'no login after 401');
+    assert.equal(d.getElementById('app').style.display, 'none');
+    assert.ok(
+      await warte(() => (d.getElementById('login-hint')?.textContent || '').includes(de['auth.session_expired'])),
+      `no reason given: ${d.getElementById('login-hint')?.textContent}`,
+    );
+  } finally {
+    w.close();
   }
 });
