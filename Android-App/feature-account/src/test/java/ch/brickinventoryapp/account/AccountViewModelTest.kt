@@ -49,15 +49,15 @@ import java.time.Instant
  *    "code" in the body).
  *  - In setUpSecondFactorOne() `d.otpauth` taken unchecked:
  *    "a foreign address instead of otpauth is not opened" red.
- *  - Patch counter-checks/profil-ohne-passwort.patch (the check
+ *  - Patch counter-checks/profile-without-password.patch (the check
  *    `password.isNullOrBlank()` removed from saveProfile()): "ohne Passwort fragt das Profil den Server nicht" red.
- *  - Patch counter-checks/profil-mail-nicht-gesendet-still.patch (`emailSent` not
+ *  - Patch counter-checks/profile-mail-not-sent-silent.patch (`emailSent` not
  *    evaluated): "eine neue E-Mail ohne gesendete Mail …" red. Patch
- *    counter-checks/profil-neu-laden-loescht-fehler.patch (fetchProfile() clears the
+ *    counter-checks/profile-reload-clears-error.patch (fetchProfile() clears the
  *    error with withoutError()): same check red on "übersteht das Neuladen".
- *  - Patch counter-checks/konto-laedt-nicht-beim-beobachten.patch (observeLoadOn for
+ *  - Patch counter-checks/account-does-not-load-on-observe.patch (observeLoadOn for
  *    devices and second factor removed): "Geräte und zweiter Faktor laden, sobald …" red.
- *  - Patch counter-checks/kontoseite-laedt-nicht.patch (observeLoadOn of the account page
+ *  - Patch counter-checks/account-page-does-not-load.patch (observeLoadOn of the account page
  *    removed): "Profil und Design laden mit der Kontoseite …" red.
  */
 @OptIn(ExperimentalCoroutinesApi::class)

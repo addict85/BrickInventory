@@ -1,0 +1,16 @@
+Gegenprobe: Kachel nur so hoch wie ihr Inhalt (die fehlende Namenszeile wird nicht ausgeglichen)
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetTileTest
+Rot: tiles of a row are equally high
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
+@@ -304,7 +304,6 @@
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+             }
+             TileAmountRows(set, row, money.price, money.amount, money.currency)
+-            if (!row) TileBalance(2 - namedRows)
+         }
+         // Without a surface: only the image badges' announcement, after the price.
+         val badges = announce.takeIf { !row && it.isNotEmpty() }

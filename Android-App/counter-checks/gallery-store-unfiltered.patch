@@ -1,0 +1,18 @@
+Gegenprobe: Die Galerie aus der Ablage übergeht Suche, Thema und Lagerort
+Modul: core-data
+Test: ch.brickinventoryapp.data.WithoutNetworkFilterTest
+Rot: the gallery filters in Room, the fetch only fills the store
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
+@@ -75,8 +75,7 @@
+ 
+     /** The gallery from the store, by the display's filters; also changes through things edited offline. */
+     override fun observeSets(search: String?, theme: String?, storageLocation: String?, sort: SetSort?): Flow<Local<SetView>> =
+-        store.observe(Slots.SETS, FilterColumns(searchText = search?.ifBlank { null }, theme = theme?.ifBlank { null },
+-            storageLocation = storageLocation?.ifBlank { null })).map { l -> l.copy(list = l.list.sorted(setOrder(sort))) }
++        store.observe(Slots.SETS, FilterColumns()).map { l -> l.copy(list = l.list.sorted(setOrder(sort))) }
+ 
+     override suspend fun refreshSets(): Outcome<Unit> =
+         store.refreshPaged(Slots.SETS, { r -> r.sets.map { it.asView() } }, { it.total }, retry) { page ->

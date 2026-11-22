@@ -16,7 +16,7 @@ import org.junit.Test
  * Creating a set via the stream: an unreadable event is an error. It could be the
  * completion event, and without completion the user never learns whether the set is there.
  *
- * Counter-check (patch counter-checks/anlegen-unlesbar-verschluckt.patch): verarbeite() silently returns
+ * Counter-check (patch counter-checks/create-unreadable-swallowed.patch): verarbeite() silently returns
  * false again on an unreadable payload → red “an unreadable event
  * ends as an error” (the stream ends after the master data without completion).
  */

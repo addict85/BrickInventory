@@ -1,0 +1,17 @@
+Gegenprobe: Wertachse des Preisverlaufs ohne runden Schritt
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.AxesRoundTest
+Rot: value axis of the price history is on round values
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/PriceChartMath.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/PriceChartMath.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/PriceChartMath.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/PriceChartMath.kt
+@@ -112,7 +112,7 @@
+         val pad = if (spread > 0) spread * 0.15 else (rawMax * 0.1).takeIf { it > 0 } ?: 1.0
+         val bottom = (rawMin - pad).coerceAtLeast(0.0)
+         val top = rawMax + pad
+-        val s = step((top - bottom) / 4)
++        val s = (top - bottom) / 4
+         val minValue = kotlin.math.floor(bottom / s) * s
+         var maxValue = kotlin.math.ceil(top / s) * s
+         // An even number of steps, so the middle too lands on a round value.

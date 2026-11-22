@@ -14,7 +14,7 @@ import java.io.File
  * The SDK levels stand in build-logic (Sdk.kt); a module script must not
  * override them, otherwise this class would check a number that does not apply.
  * Counter-checks (patches under counter-checks/, red as stated on 04.11.2026):
- *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt to 31 → red “minSdk is Android 11“
+ *   sdk-minsdk-raised.patch   minSdk in Sdk.kt to 31 → red “minSdk is Android 11“
  */
 class TargetSdkConfigTest {
 

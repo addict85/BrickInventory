@@ -11,7 +11,7 @@ import org.junit.Test
  * gets the cursor. With a PDF the server reads what is empty.
  *
  * Counter-check (measured locally, JVM):
- *   gutschein-pdf-verlangt-nummer  the number mandatory even with a PDF → red “with a PDF …”
+ *   voucher-pdf-requires-number  the number mandatory even with a PDF → red “with a PDF …”
  */
 class VoucherFormCheckTest {
 

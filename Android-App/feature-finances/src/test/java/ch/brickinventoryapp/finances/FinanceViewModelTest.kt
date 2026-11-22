@@ -35,7 +35,7 @@ import org.junit.Test
  *      tab's account filter travels along …”
  *   D  in zuruecksetzen() the clearing of the state removed → red “after
  *      signing out nothing is left”
- *   finanzen-laden-ohne-verlauf  only the valuation loaded when observed → red “whoever
+ *   finances-load-without-history  only the valuation loaded when observed → red “whoever
  *      opens finances …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)

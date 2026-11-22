@@ -38,9 +38,9 @@ import java.util.Locale
  * way forward are shown: catalog detail in error, camera permanently denied.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   katalog-detail-ewig-laden      detail without error branch, only the spinner → red “if the catalog detail fails, the reason …”
- *   kamera-hinweis-ohne-weg        hint shows only „Erlauben“ despite the block → red “if the camera is permanently …”
- *   kamera-hinweis-ohne-zweck      hint without purpose and without typing → red “if the camera is missing, the hint …”
+ *   catalog-detail-loads-forever      detail without error branch, only the spinner → red “if the catalog detail fails, the reason …”
+ *   camera-hint-without-way        hint shows only „Erlauben“ despite the block → red “if the camera is permanently …”
+ *   camera-hint-without-purpose      hint without purpose and without typing → red “if the camera is missing, the hint …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")

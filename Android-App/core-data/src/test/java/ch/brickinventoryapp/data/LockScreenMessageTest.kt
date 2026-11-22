@@ -19,9 +19,9 @@ import org.robolectric.RobolectricTestRunner
  * a public version with the title alone.
  *
  * Counter-checks (Robolectric, only measurable in CI; job `counter-checks`):
- *   abmeldung-meldung-oeffentlich  onlyUnlocked() struck from RedemptionWorker.message()
+ *   logout-message-public  onlyUnlocked() struck from RedemptionWorker.message()
  *                                  → red “the failed sign-out names the server …”
- *   sperrbildschirm-mit-text       the public version takes over the text → red “the public version …”
+ *   lock-screen-with-text       the public version takes over the text → red “the public version …”
  */
 @RunWith(RobolectricTestRunner::class)
 class LockScreenMessageTest {

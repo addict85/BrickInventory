@@ -28,10 +28,10 @@ import java.io.File
  * UPDATE_FOLDER removed → red “sign-out clears …” („Das geladene Update bleibt liegen“).
  * Counter-check: in
  * cleanOldPartListOn() the age check reversed (`<` instead of `>=`) → red “after
- * the deadline the parts list disappears …”; counter-checks/teileliste-bleibt-liegen.patch
+ * the deadline the parts list disappears …”; counter-checks/part-list-stays-behind.patch
  * Counter-check: PartListVault's write
  * writes the plaintext instead of the ciphertext → red “the parts list lies only
- * encrypted …”; counter-checks/teileliste-im-klartext.patch
+ * encrypted …”; counter-checks/part-list-in-plaintext.patch
  */
 class PartListsStoreTest {
 

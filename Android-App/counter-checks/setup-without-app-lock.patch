@@ -1,0 +1,17 @@
+Gegenprobe: Die Einrichtung bietet die App-Sperre nicht mehr an
+Modul: feature-login
+Test: ch.brickinventoryapp.login.SetupAppLockTest
+Rot: the setup offers the app lock, with an explanation
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
+@@ -253,7 +253,7 @@
+ private fun ColumnScope.SetupFooter() {
+     // Offered here because hardly anyone searches the settings after setup.
+     // Without a provider (preview, test) the card is missing, as in the settings.
+-    LocalAppLock.current?.let { lock ->
++    LocalAppLock.current?.takeIf { false }?.let { lock ->
+         Spacer(Modifier.height(Spacing.large))
+         AppCard {
+             Column(Modifier.padding(Spacing.large), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {

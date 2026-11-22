@@ -1,0 +1,17 @@
+Gegenprobe: Jede vorhandene Signatur hebt die App-Sperre auf, ohne dass sie signiert
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppUnlockingTest
+Rot: foreign-signed does not unlock and asks only once more
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
+@@ -29,7 +29,7 @@
+         val signature = runCatching { key.signature() }.getOrNull() ?: return
+         question(signature) { released ->
+             when {
+-                approval.applies(released) -> next()
++                released != null -> next()
+                 released != null && again -> {
+                     runCatching { key.discard() }
+                     attempts(next, again = false)

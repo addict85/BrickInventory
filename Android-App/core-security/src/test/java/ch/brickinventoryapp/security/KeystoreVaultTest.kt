@@ -13,7 +13,7 @@ import org.robolectric.annotation.Config
  * and whatever the Keystore can't open never comes back as plaintext.
  *
  * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
- *   token-schluessel-ohne-sperre    vaultSpec() without setUnlockedDeviceRequired → red
+ *   token-key-without-lock    vaultSpec() without setUnlockedDeviceRequired → red
  *                                   „der Schluessel des Tokens arbeitet nur entsperrt …“
  */
 @RunWith(RobolectricTestRunner::class)

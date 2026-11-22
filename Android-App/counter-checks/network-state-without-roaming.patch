@@ -1,0 +1,16 @@
+Gegenprobe: Roaming wird nie erkannt
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewDeviceTest
+Rot: abroad mobile is roaming
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
+@@ -97,6 +97,6 @@
+         }
+ 
+         fun isRoaming(capable: NetworkCapabilities): Boolean =
+-            !capable.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
++            false
+     }
+ }

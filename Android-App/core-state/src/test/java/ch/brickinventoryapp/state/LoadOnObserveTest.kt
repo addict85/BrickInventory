@@ -24,8 +24,8 @@ import org.junit.Test
  * once per server address and again after a pause without an observer.
  *
  * Counter-checks (counter-checks/, :core-state:test):
- *   jeserver-ohne-distinct       loadPerServer without distinctUntilChanged → red „loadPerServer lädt je Adresse …“
- *   beobachtet-ruft-jedes-mal    Beobachtet calls observeOn on every collector → red „Beobachtet zählt …“
+ *   per-server-without-distinct       loadPerServer without distinctUntilChanged → red „loadPerServer lädt je Adresse …“
+ *   observed-calls-every-time    Beobachtet calls observeOn on every collector → red „Beobachtet zählt …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoadOnObserveTest {

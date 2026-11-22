@@ -69,9 +69,9 @@ import java.util.Locale
  * Replaces the source search for small IconButtons (TouchTargetSizeTest).
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   tippziel-klein         „Nach Update suchen“ without heightIn, Material button 40 dp → red “settings”
+ *   tap-target-small         „Nach Update suchen“ without heightIn, Material button 40 dp → red “settings”
  *                          (a 40 dp row without its own shape stayed green: touchBoundsInRoot stretches it to 48 dp)
- *   tippziel-ohne-namen    add button without description → red “gallery” (without name)
+ *   tap-target-without-name    add button without description → red “gallery” (without name)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

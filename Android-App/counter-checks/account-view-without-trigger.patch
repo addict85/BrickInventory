@@ -1,0 +1,16 @@
+Gegenprobe: Die Kontosicht fragt nach einem Schreibvorgang nicht neu
+Modul: core-data
+Test: ch.brickinventoryapp.data.AccountViewTest
+Rot: a write shows up in the account view too
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
+@@ -76,7 +76,6 @@
+ 
+         /** Never loaded means state null, as in the store; a response for a different account does not count. */
+         fun observe(query: A): Flow<Local<T>> = channelFlow {
+-            launch { store.altered(*trigger).collectLatest { refresh(query) } }
+             launch {
+                 last.map { e ->
+                     if (e == null || e.query != query || e.area != store.area()) Local(emptyList(), null) else e.list

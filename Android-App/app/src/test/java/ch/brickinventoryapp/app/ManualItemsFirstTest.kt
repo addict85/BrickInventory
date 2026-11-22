@@ -50,10 +50,10 @@ import java.util.Locale
  * leaves saved positions and own gestures alone.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   manuelle-teile-unten           the section of manual parts behind the set parts → red “parts - the manually …”
- *   nachzuegler-ohne-korrektur     the correction no longer scrolls to the start → red “without a saved position …”
- *   korrektur-ueber-gespeicherte   the correction without !hadSaved → red “a saved position …”
- *   korrektur-ueber-geste          the correction without !userGesture → red “after an own gesture …”
+ *   manual-parts-at-bottom           the section of manual parts behind the set parts → red “parts - the manually …”
+ *   straggler-without-correction     the correction no longer scrolls to the start → red “without a saved position …”
+ *   correction-over-saved   the correction without !hadSaved → red “a saved position …”
+ *   correction-via-gesture          the correction without !userGesture → red “after an own gesture …”
  * That the graph waits for both lists before jumping back runs in TabScrollPositionTest.
  */
 @RunWith(RobolectricTestRunner::class)

@@ -1,0 +1,17 @@
+Gegenprobe: Der beobachtete Bereich kommt aus der Punktabfrage statt aus dem Fluss der Sitzung
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.OfflineStoreLockTest
+Rot: the observed area follows the session without anyone writing
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+@@ -218,7 +218,7 @@
+         }
+     }
+ 
+-    private val current: Flow<String?> = areaFlow.map { valid(it) }.distinctUntilChanged()
++    private val current: Flow<String?> = flow { emit(valid(areaSource())) }
+ 
+     /**
+      * One lock per area and list: reading, changing and writing a list

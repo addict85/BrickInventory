@@ -1,0 +1,17 @@
+Gegenprobe: ein Aufräumschritt beim Start fängt wieder Exception und schluckt so das Abbrechen
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no broad catch swallows the cancellation of a suspending call
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -274,7 +274,7 @@
+                 catchUnlessCancelled { bindLegacyStock() }
+                 catchUnlessCancelled { dataStore.edit { adoptDetails(it) } }
+                 // Cleaning up is secondary: if it fails, the app starts anyway.
+-                catchUnlessCancelled { dataStore.edit { PlaintextRemainder.remove(it) } }
++                try { dataStore.edit { PlaintextRemainder.remove(it) } } catch (_: Exception) { }
+             } finally {
+                 readStart.countDown()
+             }

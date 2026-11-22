@@ -12,7 +12,7 @@ import org.junit.Test
  * next occasion.
  *
  * Counter-check (measured locally via an excerpt): nochmal() with `NOT_SIGNED_IN -> false` → red “without a token on a
- * locked device …”; counter-checks/ausgang-ohne-token-fertig.patch
+ * locked device …”; counter-checks/outbox-without-token-done.patch
  */
 class OutboxLockTest {
 

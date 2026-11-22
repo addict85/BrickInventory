@@ -1,0 +1,16 @@
+Gegenprobe: Ein unlesbarer Posten wird entfernt, ohne dass ein Hinweis bleibt
+Modul: core-data
+Test: ch.brickinventoryapp.data.ReconcileOnRoomTest
+Rot: an unreadable item is reported, never silently deleted, and does not block
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomStores.kt
+@@ -96,7 +96,6 @@
+         for (z in unreadable) {
+             // First record the hint, then remove: if the process dies in between, the hint stays.
+             val target = InitialForm.targetFrom(json, z.editing) ?: "?"
+-            rememberDiscarded(area, DiscardedItem(z.key.ifBlank { "posten-${z.id}" }, target, "", null, unreadable = true))
+             dao.remove(z.id)
+         }
+         return unreadable.size

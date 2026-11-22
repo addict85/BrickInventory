@@ -38,17 +38,17 @@ import java.net.UnknownHostException
  *
  * Counter-checks:
  *   A  in open() the check `pdfUrl == address` removed
- *      (counter-checks/pdf-drehung-laedt-neu.patch) → red “a rotation does not reload”
+ *      (counter-checks/pdf-rotation-reloads.patch) → red “a rotation does not reload”
  *   B  the progress not passed on (`{ }` instead of `{ _state.value = it }`) →
  *      red “the progress arrives in the state …”
  *   C  the check pdfInViewer() removed → red “a foreign address is not loaded …”
  *   D  in PdfHolder.halte() the check `if (too)` removed → red “a source that arrives
  *      after leaving is closed right away”
- *   E  counter-checks/pdf-seite-am-renderer-vorbei.patch → red “the loader
+ *   E  counter-checks/pdf-page-bypasses-renderer.patch → red “the loader
  *      renders a page …”
- *   F  counter-checks/pdf-fehler-ohne-klasse.patch: the error without a class (only the raw
+ *   F  counter-checks/pdf-error-without-class.patch: the error without a class (only the raw
  *      text) → red “an error carries its class …”
- *   G  counter-checks/pdf-erneut-tot.patch: again() does not load → red “after an error
+ *   G  counter-checks/pdf-retry-dead.patch: again() does not load → red “after an error
  *      Erneut versuchen loads …”
  *   H  onCleared() without `open.close()` → red “leaving the viewer closes …”
  */

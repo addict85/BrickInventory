@@ -11,7 +11,7 @@ import org.junit.Test
  * gets the cursor.
  *
  * Counter-check (measured locally, JVM):
- *   profil-email-ungeprueft  empty email not reported → red "leer …"
+ *   profile-email-unchecked  empty email not reported → red "leer …"
  */
 class ProfileCheckTest {
 

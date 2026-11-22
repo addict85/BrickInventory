@@ -1,0 +1,16 @@
+Gegenprobe: Postenart.aus() liest die Kennung nicht, jede Route meint ein Set
+Modul: app
+Test: ch.brickinventoryapp.app.RoutesRoundTripTest
+Rot: every item kind arrives as the same one
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/ItemKind.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/ItemKind.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/ItemKind.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/ItemKind.kt
+@@ -13,6 +13,6 @@
+ 
+     companion object {
+         /** Throws on an unknown text: the identifiers come from the own code. */
+-        fun from(identifier: String): ItemKind = entries.first { it.identifier == identifier }
++        fun from(identifier: String): ItemKind = SET
+     }
+ }

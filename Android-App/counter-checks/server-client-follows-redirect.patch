@@ -1,0 +1,16 @@
+Gegenprobe: die Server-Clients folgen Umleitungen selbst, am Wächter vorbei
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: no server client follows a redirect itself
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
+@@ -151,7 +151,6 @@
+         }
+         // No redirect past the guard: it only sees what it sends itself, and
+         // follows only within the same origin (ServerGuard's send).
+-        .followRedirects(false)
+         .followSslRedirects(false)
+         .addInterceptor(ServerGuard(DevicesAccess(prefs.token), isApiClient, NetworkPolicy.development,
+             sessionExpired = { sessionExpired.notifyExpired() }, versionsMessage = versionsMessage,

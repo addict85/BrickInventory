@@ -1,0 +1,24 @@
+Gegenprobe: der Token gilt erst nach der Plattenschreibung
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenStoredValueTest
+Rot: token and address apply already while writing to disk
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -370,7 +370,6 @@
+         // Not carried over (tampered): the old seal stays, does not match, and the next start signs out.
+         val sealed = datum?.let { sealLoggedIn(it, token) }
+         _tokenOriginState.value = origin
+-        _authTokenState.value = token
+         dataStore.edit {
+             it[AUTH_TOKEN_ENC] = secret
+             it.remove(AUTH_TOKEN)
+@@ -423,6 +422,7 @@
+                 restoring.set(false)
+             }
+         }
++        _authTokenState.value = token
+     }
+ 
+     /** For the guard (di/ServerGuard): the generation, read before the token. */

@@ -57,10 +57,10 @@ import java.io.File
  * module-internal; the order around it (server, widget, session) is LogoutOrderTest in core-state.
  *
  * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
- *   abmelden-laesst-vorschau     preview.clearAll() removed → red "… preview"
- *   abmelden-laesst-teileliste   cleanUpAccountFiles removed → red „… Teileliste“
- *   abmelden-laesst-meldungen    cancelAll() removed → red „… Preisalarm-Meldung“
- *   abmelden-ohne-neuen-schluessel  store.renew() removed → red "… old key"
+ *   logout-leaves-preview     preview.clearAll() removed → red "… preview"
+ *   logout-leaves-part-list   cleanUpAccountFiles removed → red „… Teileliste“
+ *   logout-leaves-messages    cancelAll() removed → red „… Preisalarm-Meldung“
+ *   logout-without-new-key  store.renew() removed → red "… old key"
  * Counter-check (run here): cleanUpConfidentialPdfs removed from cleanUp() → red "… Voucher PDF".
  */
 @RunWith(RobolectricTestRunner::class)

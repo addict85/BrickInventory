@@ -1,0 +1,16 @@
+Gegenprobe: Ein Token älterer Fassungen bleibt beim Start ohne Bindung
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenBindingLockedTest
+Rot: a token of older versions is bound to the registered server at start
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -271,7 +271,6 @@
+         prefsScope.launch {
+             try {
+                 device.prepareBefore()
+-                catchUnlessCancelled { bindLegacyStock() }
+                 catchUnlessCancelled { dataStore.edit { adoptDetails(it) } }
+                 // Cleaning up is secondary: if it fails, the app starts anyway.
+                 catchUnlessCancelled { dataStore.edit { PlaintextRemainder.remove(it) } }

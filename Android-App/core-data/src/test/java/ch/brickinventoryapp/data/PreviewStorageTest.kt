@@ -17,10 +17,10 @@ import java.io.RandomAccessFile
  * sparse file (setLength), so that the test does not write 150 MB.
  *
  * Counter-checks (patches under counter-checks/):
- *   vorschau-nimmt-alles          isPreview() always true → red “only thumbnails …”
- *   vorschau-ohne-obergrenze      write() does not call cleanupIfNeeded() → red
+ *   preview-takes-everything          isPreview() always true → red “only thumbnails …”
+ *   preview-without-upper-limit      write() does not call cleanupIfNeeded() → red
  *                                 “above the upper limit the oldest goes …”
- *   vorschau-spekulativ-frisch    setLastModified for prewarmed images removed → red
+ *   preview-speculative-fresh    setLastModified for prewarmed images removed → red
  *                                 “a warmed image goes before a viewed one”
  */
 class PreviewStorageTest {

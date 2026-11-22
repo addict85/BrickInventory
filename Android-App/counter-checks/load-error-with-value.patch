@@ -1,0 +1,15 @@
+Gegenprobe: datenOderNull() liefert auch ohne Daten einen Wert
+Modul: core-model
+Test: ch.brickinventoryapp.model.LoadTest
+Rot: only data carries a value
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Load.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Load.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Load.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Load.kt
+@@ -24,4 +24,5 @@
+ val Load<*>.errorKind: ErrorClass? get() = (this as? Load.Failure)?.kind
+ 
+ /** The data, as long as there is any; while loading and after an error null. */
+-fun <T> Load<T>.dataOrNull(): T? = (this as? Load.Data<T>)?.value
++@Suppress("UNCHECKED_CAST")
++fun <T> Load<T>.dataOrNull(): T? = (this as? Load.Data<T>)?.value ?: (listOf(1) as T)

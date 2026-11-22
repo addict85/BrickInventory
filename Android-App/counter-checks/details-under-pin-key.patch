@@ -1,0 +1,17 @@
+Gegenprobe: Die Angaben liegen wieder unter dem Schlüssel der Pins, der auch gesperrt arbeitet
+Modul: core-security
+Test: ch.brickinventoryapp.security.TrustCipherTest
+Rot: locked an entry is readable later, not gone
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+@@ -16,7 +16,7 @@
+ ) {
+     private val cipher = StoreCipher(key)
+     private val trust = key
+-    private val info: () -> ByteArray = info ?: key
++    private val info: () -> ByteArray = key
+ 
+     fun encrypt(value: String, binding: String): String? = runCatching {
+         Base64.getEncoder().encodeToString(cipher.encrypt(value.toByteArray(Charsets.UTF_8), PURPOSE + binding))

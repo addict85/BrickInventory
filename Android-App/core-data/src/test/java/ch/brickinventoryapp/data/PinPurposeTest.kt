@@ -16,7 +16,7 @@ import java.util.Base64
  *
  * Counter-check: in fitsToPin() `|| !forServer(chain[0])` removed → red “a
  * certificate for a different purpose does not match the pin”;
- * counter-checks/pin-ohne-zweck.patch
+ * counter-checks/pin-without-purpose.patch
  */
 class PinPurposeTest {
 

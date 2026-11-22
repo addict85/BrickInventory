@@ -1,0 +1,16 @@
+Gegenprobe: App-Leiste ohne scrollBehavior
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: app bar yields when scrolling and comes back when scrolling back
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -212,7 +212,6 @@
+             actionIconContentColor = accent.onBar,
+             scrolledContainerColor = accent.bar,
+         ),
+-        scrollBehavior = collapse,
+     )
+ }
+ 

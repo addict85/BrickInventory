@@ -17,7 +17,7 @@ import java.nio.ByteBuffer
  * it set, and only if the memory is exactly that size.
  *
  * Counter-check (Robolectric, measured by CI):
- *   pdf-puffer-ungeprueft  bitmapFromBuffer() without a size check → red “memory of a different
+ *   pdf-buffer-unchecked  bitmapFromBuffer() without a size check → red “memory of a different
  *                          size yields no page”
  */
 @RunWith(RobolectricTestRunner::class)

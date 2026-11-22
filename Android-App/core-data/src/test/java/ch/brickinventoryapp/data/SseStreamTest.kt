@@ -23,7 +23,7 @@ import org.junit.Test
  * caller waits for a completion event that never comes.
  *
  * Counter-checks (patches under counter-checks/):
- *   sse-unlesbar-verschluckt  onEvent silently ignores an unreadable payload again (no
+ *   sse-unreadable-swallowed  onEvent silently ignores an unreadable payload again (no
  *                             trySend/close) → red “an unreadable event ends the
  *                             stream visibly” (the third event arrives) and “the
  *                             CSV client reports …” (reason is „stream closed by server“)

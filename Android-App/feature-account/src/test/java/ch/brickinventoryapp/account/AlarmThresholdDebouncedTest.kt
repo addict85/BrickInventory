@@ -26,7 +26,7 @@ import org.junit.Test
  * The price-alert overview saves on typing like the set and watchlist detail,
  * debounced in the ViewModel: one request with the last value, only after the quiet period.
  *
- * Counter-check (counter-checks/alarmschwelle-ohne-entprellung.patch, measured only in
+ * Counter-check (counter-checks/alarm-threshold-without-debounce.patch, measured only in
  * CI): in setAlarmThreshold() the pending job not canceled → red
  * "getippte Schwelle speichert nach der Ruhezeit einmal" (two PUTs, "4" included).
  */

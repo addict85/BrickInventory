@@ -20,11 +20,11 @@ import java.security.MessageDigest
  * Counter-checks:
  *   A  write() stores the bytes unencrypted again and read() returns them raw
  *      → red “a thumbnail does not lie in plaintext …”;
- *      counter-checks/vorschau-klartext.patch
+ *      counter-checks/preview-plaintext.patch
  *   B  in the folder setup the deleting of the plaintext files removed → red “plaintext
  *      of older versions disappears …”
  *   C  key() again as SHA-256 of the address → red “the file name does not reveal the address
- *      …”; counter-checks/vorschau-namen-ungestreut.patch
+ *      …”; counter-checks/preview-names-unhashed.patch
  */
 class PreviewEncryptedTest {
 

@@ -1,0 +1,16 @@
+Gegenprobe: Erneut versuchen im PDF-Betrachter lädt nicht neu (dieselbe Adresse lädt nur einmal)
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfViewerViewModelTest
+Rot: after an error Retry loads the same address once more
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfViewerViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfViewerViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfViewerViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfViewerViewModel.kt
+@@ -72,7 +72,6 @@
+     fun again() {
+         val previous = address ?: return
+         if (_state.value !is PdfLoadState.Error) return
+-        address = null
+         open(previous, server)
+     }
+ 

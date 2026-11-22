@@ -46,8 +46,8 @@ import java.util.Locale
  * below its label.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   wertkacheln-immer-drei          value tiles always three side by side → red „Wert-Kacheln … 100 Prozent“
- *   grosse-schrift-kaufpreis-daneben purchase price next to the label → red „Kaufpreis …“
+ *   value-tiles-always-three          value tiles always three side by side → red „Wert-Kacheln … 100 Prozent“
+ *   large-font-purchase-price-beside purchase price next to the label → red „Kaufpreis …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

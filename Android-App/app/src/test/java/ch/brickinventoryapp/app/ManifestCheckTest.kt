@@ -11,14 +11,14 @@ import java.util.concurrent.TimeUnit
  * `aapt2 dump xmltree --file AndroidManifest.xml`, with the real allow list.
  *
  * Counter-checks:
- *   manifest-export-ungeprueft  the comparison with the allow list deleted → red
+ *   manifest-export-unchecked  the comparison with the allow list deleted → red
  *                               “a foreign exported component …”
- *   manifest-debuggable-egal    the check for debuggable deleted → red “a debuggable …”
+ *   manifest-debuggable-ignored    the check for debuggable deleted → red “a debuggable …”
  * ProfileInstallReceiver again in manifest-exported.txt →
  *                               red “removed library components …”
  * the loop over uses-permission deleted →
  *                               red “a permission outside the list …”
- *   manifest-telemetrie-ungeprueft  the check of the datatransport backends deleted →
+ *   manifest-telemetry-unchecked  the check of the datatransport backends deleted →
  *                               red “a telemetry backend of ML Kit …”
  */
 class ManifestCheckTest {

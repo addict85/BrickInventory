@@ -1,0 +1,17 @@
+Gegenprobe: Kopierzeilen der Gutscheine ohne Mindesthöhe
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: voucher buttons name the number and the PIN has 48 dp
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherCard.kt
+@@ -151,7 +151,7 @@
+     content: @Composable RowScope.() -> Unit,
+ ) {
+     Row(
+-        modifier.heightIn(min = 48.dp)
++        modifier
+             .clickable(role = Role.Button, onClickLabel = description, onClick = onCopy)
+             .semantics(mergeDescendants = true) { contentDescription = description }
+             .padding(end = Spacing.small),

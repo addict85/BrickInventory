@@ -1,0 +1,17 @@
+Gegenprobe: Die Protokollzeile zeigt die Uhrzeit nicht
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringLogDisplayTest
+Rot: every line names its time
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringLog.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringLog.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringLog.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringLog.kt
+@@ -172,7 +172,7 @@
+         // `logged_at` has been there all along and was never
+         // shown; without it a log row is barely
+         // usable.
+-        Text(fmtClockTime(row.loggedAt, appNumberLocale(), twentyFourHours()) ?: "",
++        Text("",
+             style = MaterialTheme.typography.bodySmall,
+             fontFamily = FontFamily.Monospace,
+             color = MaterialTheme.colorScheme.onSurfaceVariant,

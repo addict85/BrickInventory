@@ -49,21 +49,21 @@ import java.util.Base64
  * network and virtual time.
  *
  * Counter-checks:
- *   update-angebot-ohne-frische  offer with isNew instead of offerableVersion →
+ *   update-offer-without-freshness  offer with isNew instead of offerableVersion →
  *                                red "a reset description offers nothing"
- *   update-vm-abgelaufen-ohne-angebot  offer only on AKTUELL → red "eine abgelaufene, neuere Beschreibung bietet die Fassung mit Hinweis an"
- *   update-signatur-ungeprueft   the signature check after the download removed →
+ *   update-vm-expired-without-offer  offer only on AKTUELL → red "eine abgelaufene, neuere Beschreibung bietet die Fassung mit Hinweis an"
+ *   update-signature-unchecked   the signature check after the download removed →
  *                                red "eine fremde Signatur loescht das APK …"
- *   update-zweiter-weg-ungeprueft  startInstallation() without signatureFits →
+ *   update-second-path-unchecked  startInstallation() without signatureFits →
  *                                red "ohne Erlaubnis wartet das APK …"
- *   update-ohne-obergrenze       the limit never reached in the download →
+ *   update-without-upper-limit       the limit never reached in the download →
  *                                red "more than announced is not written"
- *   update-still-mit-fehler      the silent check reports errors →
+ *   update-silent-on-error      the silent check reports errors →
  *                                red "an unsigned description reports only on button press"
- *   update-start-ohne-schalter   checkOnStart() doesn't ask the switch →
+ *   update-start-without-switch   checkOnStart() doesn't ask the switch →
  *                                red "ausgeschaltet fragt der Start nicht bei GitHub"
- *   update-abmelden-behaelt      no reset on sign-out → red "beim Abmelden verfaellt …"
- *   update-ohne-anmeldefolge     the check on sign-in removed from init →
+ *   update-logout-keeps      no reset on sign-out → red "beim Abmelden verfaellt …"
+ *   update-without-login-sequence     the check on sign-in removed from init →
  *                                red "die Anmeldung prueft still"
  */
 @OptIn(ExperimentalCoroutinesApi::class)

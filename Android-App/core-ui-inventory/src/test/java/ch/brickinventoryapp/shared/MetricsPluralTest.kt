@@ -27,7 +27,7 @@ import java.util.Locale
  * German and English: at 1 the singular is shown („1 Exemplar“, „1 copy“), never „1 Sets“.
  *
  * Counter-check (patch under counter-checks/, measured only in CI — Robolectric):
- *   kennzahl-immer-mehrzahl   GalleryStatChip always asks for the plural with 2 → red „bei 1 …“ (de and en)
+ *   metric-always-plural   GalleryStatChip always asks for the plural with 2 → red „bei 1 …“ (de and en)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

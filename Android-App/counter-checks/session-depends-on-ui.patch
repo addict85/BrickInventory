@@ -1,0 +1,16 @@
+Gegenprobe: core-session bindet core-ui ein; die Sitzung liegt unter Zustand und Oberfläche
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-session/build.gradle.kts b/Android-App/core-session/build.gradle.kts
+--- a/Android-App/core-session/build.gradle.kts
++++ b/Android-App/core-session/build.gradle.kts
+@@ -19,6 +19,7 @@
+     // NetworkPolicy: address of a failed sign-out, plaintext legacy stock.
+     implementation(project(":core-network"))
+     implementation(project(":core-resources"))
++    implementation(project(":core-ui"))
+     // Own flows (the session's StateFlow); without this entry Gradle resolves to an old version.
+     implementation(libs.kotlinx.coroutines.android)
+ 

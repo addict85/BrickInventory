@@ -454,7 +454,10 @@ und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 - `counter-checks/` enthält Patches, die etwas kaputt machen; der CI-Job
   `counter-checks` misst, dass der im Kopf genannte Test dann rot wird
   (`tools/counter-checks.py`). Nicht jede Testklasse hat einen; wer einen Test
-  schreibt, legt seinen dazu.
+  schreibt, legt seinen dazu. Ob alle Patches noch auf den Stand passen, prüft
+  `python3 tools/counter-checks.py --check counter-checks` ohne Gradle in Sekunden
+  (in der CI der Job `counter-checks-fit` bei jedem Push); einzelne Patches misst
+  `python3 tools/counter-checks.py counter-checks <name>.patch …`.
 - ViewModel- und Oberflächentests laufen im Takt: `PfadServer.imTakt()` antwortet
   ohne Netz im aufrufenden Faden und liest jede Antwort gegen das DTO der Methode.
 

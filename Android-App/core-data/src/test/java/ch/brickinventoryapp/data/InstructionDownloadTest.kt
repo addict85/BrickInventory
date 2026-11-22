@@ -34,10 +34,10 @@ import java.util.Collections
  * with its headers (token). Under Robolectric (context, Wi-Fi lock), in ticks.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   anleitung-direkt-ins-ziel   the download writes directly into the finished file → red
+ *   instruction-straight-to-target   the download writes directly into the finished file → red
  *                               “a broken download …” (the rest counts as finished)
- *   anleitung-ohne-range        the Range header is missing when resuming → red, the same test
- *   anleitung-eigener-client    an own OkHttpClient instead of the api client → red, the same test
+ *   instruction-without-range        the Range header is missing when resuming → red, the same test
+ *   instruction-own-client    an own OkHttpClient instead of the api client → red, the same test
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)

@@ -1,0 +1,17 @@
+Gegenprobe: ein Projektname steht wieder voll qualifiziert im Code
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no fully qualified project name in the code
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
+@@ -92,7 +92,7 @@
+             delay(PreviewPrewarmer.RAMP_UP_MS)
+             // Check network state and space first, otherwise every start costs four list fetches for nothing.
+             if (!prewarmer.mayStart()) return@launch
+-            val basis = catchUnlessCancelled { prefs.serverUrlNow() }.getOrNull().orEmpty()
++            val basis = ch.brickinventoryapp.model.util.catchUnlessCancelled { prefs.serverUrlNow() }.getOrNull().orEmpty()
+             if (basis.isBlank()) return@launch
+             prewarmer.prewarm(imageAddressesTheCollection(sets, parts, figures, accountView, viewport, basis))
+         }

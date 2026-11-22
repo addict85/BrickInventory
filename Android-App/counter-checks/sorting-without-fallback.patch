@@ -1,0 +1,17 @@
+Gegenprobe: Eine unbekannte Sortierung fällt nicht auf die Vorgabe des Servers zurück
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.DomainTypesTest
+Rot: an unknown sorting counts as the default as on the server
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
+@@ -20,7 +20,7 @@
+ 
+     companion object {
+         val DEFAULT = NEWEST
+-        fun from(identifier: String?): SetSort = entries.firstOrNull { it.identifier == identifier } ?: DEFAULT
++        fun from(identifier: String?): SetSort = entries.firstOrNull { it.identifier == identifier } ?: NAME
+     }
+ }
+ 

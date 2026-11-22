@@ -1,0 +1,17 @@
+Gegenprobe: Die Kantenregel lässt jeden Bereich an Netz und Tresor
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: the edge rule forbids area to area, wrong layering, api and core-testing in main code
+
+diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
+--- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
++++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
+@@ -113,8 +113,6 @@
+                 "${k.of} knows the wire format: only ${wireMarker.sorted().joinToString(" and ")} maps it"
+             k.after == "core-testing" -> "${k.of} includes core-testing not only for tests"
+             k.of.startsWith("feature-") && !k.after.startsWith("core-") -> "${k.of} depends on ${k.after}"
+-            k.of.startsWith("feature-") && k.after in depthCores && k.of !in depthCores.getValue(k.after) ->
+-                "${k.of} depends on ${k.after}, which lies below the state"
+             k.of.startsWith("core-") && k.after !in cores[k.of].orEmpty() ->
+                 "layering of the core modules: ${k.of} depends on ${k.after}" +
+                     if (k.of in cores) "" else " (${k.of} has no rule in ModuleEdges.cores)"

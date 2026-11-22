@@ -32,7 +32,7 @@ import java.util.UUID
  * dependency. Runs only in CI (Room needs Android).
  *
  * Counter-checks are measured by the CI job `counter-checks` (Android-App/counter-checks/, it
- * requires red): bestand-migration-entfernt, -spalte-falsch, -ohne-schluessel,
+ * requires red): stock-migration-removed, -spalte-falsch, -ohne-schluessel,
  * -ohne-filterspalten (2 → 3 does not fill the filter columns). How 2 → 3 reads version-2 JSON
  * is checked by ColumnsVersion2Test without Android.
  * Counter-checks for 3 → 4 (Robolectric, local): the loop over KINDS_RENAMED_IN_4 left out →

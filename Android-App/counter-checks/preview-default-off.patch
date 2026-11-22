@@ -1,0 +1,17 @@
+Gegenprobe: Die Vorschau in der App-Übersicht ist ohne Wahl wieder sichtbar
+Modul: app
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
+Rot: a new installation hides the preview until the user turns it off
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -393,7 +393,7 @@
+      * on: the overview shows stock, prices and account to anyone who briefly
+      * holds the phone. Whoever needs screenshots turns it off.
+      */
+-    override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, true)
++    override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, false)
+     override fun applyPreviewHidden(an: Boolean) {
+         designMirror.edit { putBoolean(PREVIEW_HIDE, an) }
+     }

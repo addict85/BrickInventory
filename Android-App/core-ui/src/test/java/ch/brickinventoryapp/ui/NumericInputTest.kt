@@ -25,11 +25,11 @@ import org.junit.Test
  *
  * Since Nov 8 the set number also lets letters through (llca30, comcon001), like
  * the web app's normalizeSetNumber; its fields show the text keyboard for that.
- * Counter-check (counter-checks/setnummer-nur-ziffern.patch): the filter back to only
+ * Counter-check (counter-checks/set-number-digits-only.patch): the filter back to only
  * digits and "-" → red „die Setnummer laesst Buchstaben und Ziffern durch …“.
  *
  * Amount and quantity: readAmount follows the web app's readAmount (`format.js`).
- * Counter-check (counter-checks/betrag-tausenderpunkt.patch): price() cuts off again at the
+ * Counter-check (counter-checks/amount-thousands-dot.patch): price() cuts off again at the
  * second separator → red „a pasted number with thousands separator keeps its value“.
  */
 class NumericInputTest {

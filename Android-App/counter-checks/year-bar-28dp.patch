@@ -1,0 +1,17 @@
+Gegenprobe: Spur der Jahresleiste wieder 28 dp
+Modul: app
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: year bar is 48 dp wide
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScrubber.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScrubber.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScrubber.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScrubber.kt
+@@ -214,7 +214,7 @@
+     type == KeyEventType.KeyUp && (key == Key.Enter || key == Key.Spacebar || key == Key.DirectionCenter)
+ 
+ /** Width of the tap track: the minimum size of a tap target. */
+-internal val TRACK_WIDTH = 48.dp
++internal val TRACK_WIDTH = 28.dp
+ 
+ private val HANDLE_WIDTH = 24.dp
+ private val HANDLE_HEIGHT = 48.dp

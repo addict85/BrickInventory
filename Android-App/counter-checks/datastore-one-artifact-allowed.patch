@@ -1,0 +1,17 @@
+Gegenprobe: Ein DataStore-Artefakt ist nicht mehr festgenagelt
+Modul: app
+Test: ch.brickinventoryapp.app.SixteenKbAlignmentTest
+Rot: DataStore is pinned to ONE version
+
+diff --git a/Android-App/app/build.gradle.kts b/Android-App/app/build.gradle.kts
+--- a/Android-App/app/build.gradle.kts
++++ b/Android-App/app/build.gradle.kts
+@@ -170,7 +170,7 @@
+ configurations.configureEach {
+     resolutionStrategy {
+         listOf(
+-            "datastore", "datastore-android", "datastore-core", "datastore-core-android",
++            "datastore", "datastore-android", "datastore-core",
+             "datastore-preferences", "datastore-preferences-android",
+         ).forEach { force("androidx.datastore:$it:$datastore") }
+     }

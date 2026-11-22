@@ -1,0 +1,20 @@
+Gegenprobe: currencyAdopted setzt auch die Bedingung
+Modul: app
+Test: ch.brickinventoryapp.app.StateDomainBoundaryTest
+Rot: every step of the session sets only its fields
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+@@ -116,7 +116,10 @@
+         }
+     }
+ 
+-    override fun currencyAdopted(currency: CurrencyCode) = values.setCurrency(currency)
++    override fun currencyAdopted(currency: CurrencyCode) {
++        values.setCurrency(currency)
++        _state.update { it.copy(priceCondition = Condition.GEBRAUCHT) }
++    }
+ 
+     override fun languageChanged(language: String) = _state.update { it.copy(language = language) }
+ 

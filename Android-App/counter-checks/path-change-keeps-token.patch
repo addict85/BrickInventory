@@ -1,0 +1,18 @@
+Gegenprobe: saveServerUrl() vergleicht beim Token nur die Herkunft (Stand vor sec7 N2)
+Modul: app
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
+Rot: a different path on the same host discards the token
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -307,8 +307,7 @@
+             val origin = value(plate, ORIGIN) ?: _tokenOriginState.value ?: oldAddress
+             val hasToken = plate[AUTH_TOKEN_ENC] != null || tokenNow().isNotBlank()
+             val other = hasToken &&
+-                (!NetworkPolicy.sameOrigin(origin, normalized) ||
+-                    !NetworkPolicy.sameServer(oldAddress, normalized))
++                !NetworkPolicy.sameOrigin(herkunft, normalized)
+             if (other) {
+                 orphanedToken(plate, oldAddress)?.let { runCatching { redemption.get().plane(it) } }
+                 _authTokenState.value = ""; _tokenOriginState.value = null

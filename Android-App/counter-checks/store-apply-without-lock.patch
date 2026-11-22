@@ -1,0 +1,17 @@
+Gegenprobe: wendeAn ohne Sperre: Zwei gleichzeitige Änderungen verlieren eine
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.OfflineStoreLockTest
+Rot: two simultaneous applyChange both count
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+@@ -331,7 +331,7 @@
+     suspend fun applyChange(effect: Effect, area: String? = null) {
+         val b = area ?: area() ?: return
+         // One list after another, never two locks at once: this way nothing can deadlock.
+-        for (kind in effect.kinds) lock(b, kind).withLock { applyAnLocked(kind, effect, b) }
++        for (art in effect.kinds) applyAnLocked(art, effect, b)
+     }
+ 
+     private suspend fun applyAnLocked(kind: StockKind, w: Effect, b: String) = when (kind) {

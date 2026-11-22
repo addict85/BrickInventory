@@ -29,10 +29,10 @@ import java.util.Locale
  * sample world, with a part and a figure including purchase price.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   finanz-manuelle-zeile-ohne-kauf  ManualFinanceRow does not show the purchase price → red “parts and figures …”
- *   finanz-teilzeile-ohne-kauf       the parts do not pass the purchase price through → red, the same test
- *   finanz-figurzeile-ohne-kauf      the figures do not pass it through → red, the same test
- *   finanz-setzeile-ohne-kauf        the set row does not show it → red “the set row …”
+ *   finance-manual-row-without-purchase  ManualFinanceRow does not show the purchase price → red “parts and figures …”
+ *   finance-part-row-without-purchase       the parts do not pass the purchase price through → red, the same test
+ *   finance-figure-row-without-purchase      the figures do not pass it through → red, the same test
+ *   finance-set-row-without-purchase        the set row does not show it → red “the set row …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

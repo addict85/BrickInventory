@@ -13,8 +13,8 @@ import java.util.concurrent.Executors
  * acknowledged instead of replacing it. Writing happens only via show() and quittiere().
  *
  * Counter-checks:
- *   meldung-ueberschreibt   show() sets the value directly → red “the second …”
- *   meldung-doppelt         without comparison with the last one → red “the same …” and
+ *   message-overwrites   show() sets the value directly → red “the second …”
+ *   message-twice         without comparison with the last one → red “the same …” and
  *                           “a resource stays …” (measured with kotlinc: the same
  *                           resource comes twice)
  */

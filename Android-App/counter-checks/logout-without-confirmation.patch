@@ -1,0 +1,17 @@
+Gegenprobe: „Abmelden“ unter Mehr meldet sofort ab, ohne Rückfrage
+Modul: app
+Test: ch.brickinventoryapp.app.SubpagesTest
+Rot: sign-out asks first
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MoreScreen.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MoreScreen.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MoreScreen.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MoreScreen.kt
+@@ -96,7 +96,7 @@
+                 Column(Modifier.weight(1f)) { listOf(0, 1, 4).filter { it < groups }.forEachIndexed { i, g -> Group(g, separator = i > 0) } }
+                 Column(Modifier.weight(1f)) { Group(2, separator = false); Group(3, separator = true) }
+             } else for (i in 0 until groups) Group(i, separator = i > 0)
+-            LogoutEntry { logoutAsks = true }
++            LogoutEntry(onLogout)
+         }
+     }
+ }

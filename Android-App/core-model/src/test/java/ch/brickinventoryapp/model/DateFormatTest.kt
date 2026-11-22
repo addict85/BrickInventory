@@ -23,7 +23,7 @@ import java.util.Locale
  * treated like VOLL → red as well; in fmtStatus the date again fixed as
  * dd.MM.yyyy → red “the state follows the same form”. English again „$t/$m/$jj“
  * → red “one form per language …”. timeOfDayFormat() again fixed „HH:mm“ → red “the time
- * follows the device's 12 or 24 hour setting” (counter-checks/uhrzeit-fest-24-stunden.patch,
+ * follows the device's 12 or 24 hour setting” (counter-checks/time-fixed-24-hours.patch,
  * measured with kotlinc).
  */
 class DateFormatTest {

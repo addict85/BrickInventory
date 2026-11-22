@@ -1,0 +1,25 @@
+Gegenprobe: Ein 401 vor dem ersten Sammler geht verloren (Ereignis statt Zustand)
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
+Rot: a 401 before the start is not lost
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+@@ -21,6 +21,7 @@
+ import kotlinx.coroutines.flow.collectLatest
+ import kotlinx.coroutines.flow.combine
+ import kotlinx.coroutines.flow.distinctUntilChanged
++import kotlinx.coroutines.flow.drop
+ import kotlinx.coroutines.flow.filter
+ import kotlinx.coroutines.launch
+ import java.util.concurrent.atomic.AtomicBoolean
+@@ -91,7 +92,7 @@
+         // failed sign-in attempt doesn't trigger a sign-out. The store instead of the session:
+         // on a cold start the 401 can arrive before the session's first sync.
+         area.launch {
+-            sessionExpired.expired.filter { it }.collect {
++            sessionExpired.expired.drop(1).filter { it }.collect {
+                 sessionExpired.acknowledge()
+                 if (prefs.tokenNow().isNotBlank()) {
+                     messages.show(Message.Resource(R.string.vm_session_expired))

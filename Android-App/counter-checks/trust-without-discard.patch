@@ -1,0 +1,16 @@
+Gegenprobe: Ein bestätigtes Zertifikat lässt die Verbindungen mit dem alten Vertrauen offen
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
+Rot: a confirmed first contact remembers the pin and discards the open connections
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
+@@ -36,7 +36,6 @@
+      */
+     fun trustCertificate(input: String? = null, deviceConfirmed: Boolean = false): Boolean {
+         if (!certificateQuestion.confirm(prefs, input, deviceConfirmed)) return false
+-        drop.discard()
+         return true
+     }
+ 

@@ -23,7 +23,7 @@ import java.io.IOException
  *
  * Counter-checks (05.11.2026, measured with kotlinc locally):
  *   A  in UpdateRedirects the check `allowed(request.url)` removed
- *      (counter-checks/update-umleitung-ueberall.patch) → red “a redirect to a foreign host …”
+ *      (counter-checks/update-redirect-anywhere.patch) → red “a redirect to a foreign host …”
  *   B  updateTargetAllowed() with `url.host.endsWith("githubusercontent.com")` without dot →
  *      red “only GitHub and its CDN …”
  *   C  MAX_REDIRECTS = 1 (Counter-check of 12.11.2026) → red “the fixed link via

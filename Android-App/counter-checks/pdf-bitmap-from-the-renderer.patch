@@ -1,0 +1,22 @@
+Gegenprobe: Der Hauptprozess packt wieder ein Bitmap-Parcel aus dem isolierten Renderer aus
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: PdfRenderer lives only in the isolated render service
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderService.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderService.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderService.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderService.kt
+@@ -127,12 +127,7 @@
+                 writeInt(index); writeInt(dimensions.width); writeInt(dimensions.height); memory.writeToParcel(this, 0)
+             }, ::numbers) != null
+             if (!rendered) return null
+-            val buffer = memory.mapReadOnly()
+-            try {
+-                bitmapFromBuffer(buffer, dimensions)
+-            } finally {
+-                SharedMemory.unmap(buffer)
+-            }
++            Bitmap.CREATOR.createFromParcel(Parcel.obtain())
+         }
+     }.getOrNull()
+ 

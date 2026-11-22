@@ -26,7 +26,7 @@ import org.junit.Test
  * back unchanged, a row in the format of the server model stays readable, and an
  * unreadable row does not silently disappear.
  *
- * Counter-checks (counter-checks/ablageform-felder-vertauscht.patch, verworfen-still.patch):
+ * Counter-checks (counter-checks/store-form-fields-swapped.patch, discarded-silent.patch):
  *   in Ablagezeilen.set avg and max of the purchase price swapped → red “every field …”
  *   in OfflineStore's decode discarded = 0 → red “an unreadable row is counted …”
  */

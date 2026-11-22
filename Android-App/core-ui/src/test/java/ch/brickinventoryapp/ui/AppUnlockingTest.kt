@@ -18,11 +18,11 @@ import java.security.spec.ECGenParameterSpec
  *
  * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
  *   A  any existing signature unlocks without signing → red „fremd signiert …“ and
- *      „ungueltiger Schluessel …“; counter-checks/app-sperre-ohne-krypto.patch
+ *      „ungueltiger Schluessel …“; counter-checks/app-lock-without-crypto.patch
  *   B  no new key after a failed signature → red „ungueltiger Schluessel …“;
- *      counter-checks/app-sperre-ohne-neuen-schluessel.patch
+ *      counter-checks/app-lock-without-new-key.patch
  *   C  asking without end → red „fremd signiert …“ (third retry);
- *      counter-checks/app-sperre-fragt-ohne-ende.patch
+ *      counter-checks/app-lock-asks-endlessly.patch
  */
 class AppUnlockingTest {
 

@@ -1,0 +1,27 @@
+Gegenprobe: Das Kästchen schaltet wieder selbst, die Zeile nicht mehr (Text und Kästchen getrennt)
+Modul: app
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: checkboxes of the build list carry names and toggle via the row
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SwitchRow.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SwitchRow.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SwitchRow.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SwitchRow.kt
+@@ -41,7 +41,7 @@
+     text: String, an: Boolean, toggleOn: (Boolean) -> Unit, modifier: Modifier = Modifier,
+     hint: String? = null, textStyle: TextStyle = MaterialTheme.typography.bodyMedium, enabled: Boolean = true,
+ ) = SwitchRow(text, an, toggleOn, modifier, hint, SwitchLook(Role.Checkbox, front = true, textStyle, Color.Unspecified, enabled)) {
+-    Checkbox(checked = an, onCheckedChange = null, enabled = enabled)
++    Checkbox(checked = an, onCheckedChange = toggleOn, enabled = enabled)
+ }
+ 
+ /** How a [SwitchRow] looks: its role, whether the control comes first, text style and hint color. */
+@@ -55,8 +55,7 @@
+     val front = look.front
+     val hintColor = look.hintColor
+     Row(
+-        modifier.fillMaxWidth().heightIn(min = 48.dp)
+-            .toggleable(value = an, enabled = look.enabled, role = look.role, onValueChange = toggleOn),
++        modifier.fillMaxWidth().heightIn(min = 48.dp),
+         verticalAlignment = Alignment.CenterVertically,
+         horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
+     ) {

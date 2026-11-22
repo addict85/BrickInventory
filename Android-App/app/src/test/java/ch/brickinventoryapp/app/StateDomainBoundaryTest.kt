@@ -16,7 +16,7 @@ import org.junit.Test
  * so that a step does not silently open a second path to a foreign field.
  *
  * Counter-check: in currencyAdopted() `priceCondition` written along
- * (counter-checks/zustand-schritt-zu-breit.patch) → red “every step of the session sets only its fields“.
+ * (counter-checks/state-step-too-wide.patch) → red “every step of the session sets only its fields“.
  */
 class StateDomainBoundaryTest {
 

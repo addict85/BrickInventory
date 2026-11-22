@@ -11,7 +11,7 @@ import org.junit.Test
  * gets the cursor (account and start password).
  *
  * Counter-check (measured locally, JVM):
- *   passwort-wiederholung-ungeprueft  repetition check removed → red „verschiedene Wiederholung …“ and „leer …“
+ *   password-repeat-unchecked  repetition check removed → red „verschiedene Wiederholung …“ and „leer …“
  */
 class PasswordSwitchTest {
 

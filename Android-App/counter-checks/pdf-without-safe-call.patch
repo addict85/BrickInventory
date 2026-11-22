@@ -1,0 +1,25 @@
+Gegenprobe: Der PDF-Auftrag ruft wieder selbst ab und macht aus einem Netzfehler „unbekannt“
+Modul: core-data
+Test: ch.brickinventoryapp.data.PdfAndCsvFetchTest
+Rot: a network error is temporary, for every fetch of job and status
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetFilesRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetFilesRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetFilesRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetFilesRepositoryImpl.kt
+@@ -24,9 +24,13 @@
+ internal class SetFilesRepositoryImpl @Inject constructor(private val api: SetsApi) : SetFilesRepository {
+ 
+     override suspend fun startPdfJob(job: PartListJob): Outcome<String> =
+-        when (val r = safeCall { api.startPdfJob(job.asRequest()) }) {
+-            is Outcome.Success -> if (r.data.jobId.isNotBlank()) Outcome.Success(r.data.jobId) else Outcome.Failure.EmptyResponse()
+-            is Outcome.Failure -> r
++        try {
++            val antwort = api.startPdfJob(job.asRequest())
++            val jobId = antwort.body()?.jobId.orEmpty()
++            if (!antwort.isSuccessful) Outcome.Failure.Server(antwort.code())
++            else if (jobId.isNotBlank()) Outcome.Success(jobId) else Outcome.Failure.EmptyResponse()
++        } catch (e: java.io.IOException) {
++            Outcome.Failure.Unbekannt(technical = e.message)
+         }
+ 
+     override suspend fun getPdfJobStatus(jobId: String): Outcome<PdfJobStatus> =

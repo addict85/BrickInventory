@@ -1,0 +1,17 @@
+Gegenprobe: Knöpfe auch bei grosser Schrift neben dem Suchfeld
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: search placeholder of the gallery is shown in full at 200 percent too
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
+@@ -124,7 +124,7 @@
+         // was left of the placeholder. A filter button alone stays next to it; on its own row
+         // it stood lost above the grid (parts, figures).
+         val stacked = large && (scanOn != null || sorting != null || addHere != null)
+-        if (stacked) Column {
++        if (false) Column {
+             SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.fillMaxWidth())
+             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
+                 verticalAlignment = Alignment.CenterVertically) { buttons() }

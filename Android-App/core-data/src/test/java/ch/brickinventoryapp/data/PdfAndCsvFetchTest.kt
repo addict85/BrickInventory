@@ -22,7 +22,7 @@ import java.io.File
  * network error is temporary, a 401 a rejection, and none carries token or
  * address itself — those are set by the guard (here replaced by the test server).
  *
- * Counter-check (counter-checks/pdf-ohne-sicheraufrufen.patch, only measurable in CI):
+ * Counter-check (counter-checks/pdf-without-safe-call.patch, only measurable in CI):
  *   startPdfJob catches exceptions itself again and turns them into Unbekannt → red
  *   “a network error is temporary …”
  */

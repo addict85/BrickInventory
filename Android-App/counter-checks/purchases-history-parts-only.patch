@@ -1,0 +1,17 @@
+Gegenprobe: Der Preisverlauf manueller Posten fragt auch für Figuren den Teile-Pfad
+Modul: core-state
+Test: ch.brickinventoryapp.state.PurchasesViewModelTest
+Rot: the price history for parts and figures comes from the matching path
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
+@@ -105,7 +105,7 @@
+     fun loadManualPriceHistory(type: ItemKind, id: String, colorId: Int = NO_COLOR) {
+         viewModelScope.launch {
+             _manDetailState.update { it.copy(historyFetch = Load.Loads) }
+-            val r = if (type == ItemKind.FIG) finances.getFigPriceHistory(id) else finances.getPartPriceHistory(id, colorId)
++            val r = finances.getPartPriceHistory(id, colorId)
+             when (r) {
+                 is Outcome.Success -> _manDetailState.update { it.copy(priceHistory = r.data, historyFetch = Load.Data(Unit)) }
+                 is Outcome.Failure -> _manDetailState.update { it.copy(historyFetch = loadError(r)) }

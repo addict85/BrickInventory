@@ -1,0 +1,17 @@
+Gegenprobe: Die nachgeholte Entwertung behandelt den alten Server als fremden Host, nur System-CAs (Stand vor sec8 N2)
+Modul: core-data
+Test: ch.brickinventoryapp.data.OldServerPinTest
+Rot: the old server with its own CA is reached with its pin
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -388,7 +388,7 @@
+         override fun pin(key: String): String? = pin.takeIf { key == job }
+         override fun rememberPin(key: String, fingerprint: String) = Unit
+     }
+-    return PinTrust(userCaTrust, store, ownServer = { job }, question = CertificateQuestion(), foreignHosts = system)
++    return PinTrust(userCaTrust, store, ownServer = { null }, question = CertificateQuestion(), foreignHosts = system)
+ }
+ 
+ /**

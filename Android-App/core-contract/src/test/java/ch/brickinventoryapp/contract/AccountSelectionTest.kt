@@ -13,7 +13,7 @@ import org.junit.Test
  * the choice and again the value for `accounts=`; the direction reads and writes the
  * server's words.
  *
- * Counter-checks (counter-checks/kontoauswahl-konto-falsch.patch, alarmrichtung-ueber-falsch.patch):
+ * Counter-checks (counter-checks/account-picker-account-wrong.patch, alarm-direction-above-wrong.patch):
  *   Account.request with prefix „konto“ → red “every saved choice becomes the same value again”
  *   UEBER with the identifier „über“ → red “the direction reads and writes the server's words”
  */

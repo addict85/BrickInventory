@@ -1,0 +1,17 @@
+Gegenprobe: Geld.aus rundet schon beim Lesen auf Rappen
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.UiModelFigureTest
+Rot: amounts come as Money to four places, points in time as Instant, the origin as enumeration
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
+@@ -34,7 +34,7 @@
+         val NULL = Money(0)
+ 
+         /** Like the server's inZehntel4(); what is not a finite number is not an amount. */
+-        fun from(amount: Double): Money? = if (amount.isFinite()) Money(Math.round(amount * FACTOR)) else null
++        fun from(amount: Double): Money? = if (amount.isFinite()) Money(Math.round(amount * 100) * 100) else null
+ 
+         fun from(amount: BigDecimal): Money = Money(amount.setScale(PLACES, RoundingMode.HALF_UP).unscaledValue().toLong())
+ 

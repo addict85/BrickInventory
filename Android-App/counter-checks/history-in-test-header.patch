@@ -1,0 +1,17 @@
+Gegenprobe: Ein Testkopf erzählt wieder, aus welchem Nachtrag er stammt
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: long comments in the workflow and in tests become fewer
+
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt
+@@ -33,7 +33,7 @@
+ import org.robolectric.annotation.GraphicsMode
+ 
+ /**
+- * A tapped tab starts at the top: the scaffold reports the tap before it
++ * A tapped tab starts at the top (addendum 114, as Marco asked): the scaffold reports the tap before it
+  * navigates, so that the scroll memory discards the position before the screen reads it.
+  * “I come back” keeps the position; this can only be distinguished in the scaffold.
+  *

@@ -19,8 +19,8 @@ import org.junit.Test
  * to http. What would go out is caught by an attached interceptor before the network.
  *
  * Counter-checks (patches under counter-checks/, measured locally with kotlinc):
- *   update-client-mit-token       an interceptor sets Authorization → red “the update client …”
- *   update-client-folgt-http      followSslRedirects(true) → red “the update client …”
+ *   update-client-with-token       an interceptor sets Authorization → red “the update client …”
+ *   update-client-follows-http      followSslRedirects(true) → red “the update client …”
  */
 class UpdateClientTest {
 

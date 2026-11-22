@@ -1,0 +1,17 @@
+Gegenprobe: Widget rechnet die G und V wieder aus allen Positionen neben der Prozentzahl der Basis
+Modul: app
+Test: ch.brickinventoryapp.app.WidgetNumbersTest
+Rot: with a basis value and P&L stand as in the finance card
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
+@@ -40,7 +40,7 @@
+         ?: history?.points?.lastOrNull()?.value?.asDouble()
+     val purchase = t?.purchase?.toDoubleOrNull()
+     val total = when {
+-        withBase -> t.basisPnlAmount?.toDoubleOrNull()
++        withBase -> wert?.let { w -> purchase?.let { w - it } }
+         t?.basisCostBasis != null -> null
+         value != null && purchase != null -> value - purchase
+         else -> null

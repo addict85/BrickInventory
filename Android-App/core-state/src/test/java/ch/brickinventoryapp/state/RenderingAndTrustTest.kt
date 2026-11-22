@@ -32,10 +32,10 @@ import org.junit.Test
  * instead of PreferencesManager and in virtual time.
  *
  * Counter-checks:
- *   design-spaet-gesetzt        StoreAccountValues starts with the default instead of the remembered theme → red „der Zustand wird mit …“
- *   widget-nicht-angestossen    `widget.refresh()` removed → red „eine Wahl wird gemerkt …“
- *   vertrauen-ohne-abwurf       after trustCertificate() no `drop.discard()` → red „ein bestätigter …“
- *   unbekannte-ca-ohne-abtippen in CertificateQuestion.confirm() the typing-in requirement removed → red „ohne bekannte CA …“
+ *   theme-set-late        StoreAccountValues starts with the default instead of the remembered theme → red „der Zustand wird mit …“
+ *   widget-not-triggered    `widget.refresh()` removed → red „eine Wahl wird gemerkt …“
+ *   trust-without-discard       after trustCertificate() no `drop.discard()` → red „ein bestätigter …“
+ *   unknown-ca-without-typing in CertificateQuestion.confirm() the typing-in requirement removed → red „ohne bekannte CA …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RenderingAndTrustTest {

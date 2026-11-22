@@ -22,8 +22,8 @@ import org.robolectric.RobolectricTestRunner
  * below that via FLAG_SECURE. Without the lock both stay free.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   uebersicht-ohne-sperrschutz    AppOverviewProtection() does nothing → red in both tests
- *   uebersicht-flag-ab-33          only FLAG_SECURE even from Android 13 → red „ab Android 13 …“
+ *   overview-without-lock-protection    AppOverviewProtection() does nothing → red in both tests
+ *   overview-flag-from-33          only FLAG_SECURE even from Android 13 → red „ab Android 13 …“
  */
 @RunWith(RobolectricTestRunner::class)
 class AppOverviewProtectionTest {

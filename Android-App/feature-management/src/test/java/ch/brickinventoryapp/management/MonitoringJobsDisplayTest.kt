@@ -36,8 +36,8 @@ import org.robolectric.annotation.Config
  * different things — reloading stock images versus queuing catalog images.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   monitoring-ohne-zeitplan          the card does not get the schedule → red “the schedule …”
- *   monitoring-bilderknoepfe-gleich   the catalog button loads stock images → red “the two image buttons …”
+ *   monitoring-without-schedule          the card does not get the schedule → red “the schedule …”
+ *   monitoring-image-buttons-equal   the catalog button loads stock images → red “the two image buttons …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

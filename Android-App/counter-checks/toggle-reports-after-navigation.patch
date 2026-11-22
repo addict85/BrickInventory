@@ -1,0 +1,18 @@
+Gegenprobe: Der Sammlungs-Umschalter auf dem Telefon meldet erst nach der Navigation
+Modul: app
+Test: ch.brickinventoryapp.app.TabOpensAtTopTest
+Rot: the collection switcher reports the tab before it navigates
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -128,8 +128,8 @@
+         navController.toTab(screen)
+     }
+     val toggle: (Any) -> Unit = { target ->
++        navController.toTab(target)
+         onTabTapped(target)
+-        navController.toTab(target)
+     }
+ 
+     // The icon of a destination, on “More” with the dot for a new version.

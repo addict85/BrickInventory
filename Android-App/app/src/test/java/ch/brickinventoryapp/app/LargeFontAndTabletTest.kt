@@ -70,15 +70,15 @@ import java.util.Locale
  * on the phone.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   reiter-bricht-um          label again as text without line limit → red “tab bar …”
- *   reiter-schrumpft-bis-7sp  lower bound again fixed 7 sp → red “tab bar never shrinks …”
- *   reiter-boden-normalgroesse  lower bound again the normal size → red “tab label grows …”
- *   reiter-eigene-groesse     all labelled, each in its own size → red “tab bar breaks …”
- *   suche-neben-filtertext    filter button with text already from 360 dp → red “search placeholder …”
- *   verlauf-ab-zwei-punkten   line already from two points → red “price history …”
- *   teile-detail-als-dialog   parts detail as a dialog on the tablet too → red “tablet shows part …”
- *   teile-detail-schliessen-rechts  close again to the right of the title → red “tablet shows part …”
- *   teile-kachel-ohne-auswahl  open tile not marked → red “tablet shows part …”
+ *   tab-wraps          label again as text without line limit → red “tab bar …”
+ *   tab-shrinks-to-7sp  lower bound again fixed 7 sp → red “tab bar never shrinks …”
+ *   tab-floor-normal-size  lower bound again the normal size → red “tab label grows …”
+ *   tab-own-size     all labelled, each in its own size → red “tab bar breaks …”
+ *   search-beside-filter-text    filter button with text already from 360 dp → red “search placeholder …”
+ *   history-from-two-points   line already from two points → red “price history …”
+ *   parts-detail-as-dialog   parts detail as a dialog on the tablet too → red “tablet shows part …”
+ *   parts-detail-close-on-right  close again to the right of the title → red “tablet shows part …”
+ *   parts-tile-without-selection  open tile not marked → red “tablet shows part …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -227,7 +227,7 @@ class LargeFontAndTabletTest {
         }
     }
 
-    // Counter-check zustand-feste-spalte: label at every font in the fixed
+    // Counter-check state-fixed-column: label at every font in the fixed
     // 90 dp column → red „Zustandszeile: „Zustand“ steht in 2 Zeilen“.
     @Test
     fun `state row breaks no word at 200 percent`() {
@@ -238,7 +238,7 @@ class LargeFontAndTabletTest {
     @Test
     fun `search placeholder of the gallery is shown in full on the phone`() = suchPlaceholderWhole(1f)
 
-    // Counter-check suche-gross-neben-knoepfen: buttons next to the field even at large
+    // Counter-check search-large-beside-buttons: buttons next to the field even at large
     // font → red „Such-Platzhalter 200 %: … sichtbar bis 5/7“.
     @Test
     fun `search placeholder of the gallery is shown in full at 200 percent too`() = suchPlaceholderWhole(2f)

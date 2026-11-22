@@ -1,0 +1,17 @@
+Gegenprobe: Das Katalog-Detail kennt den Merkposten nicht
+Modul: app
+Test: ch.brickinventoryapp.app.AreaFlowsTest
+Rot: the catalog detail shows the wishlist item and opens it
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+@@ -218,7 +218,7 @@
+         val info: @Composable ColumnScope.() -> Unit = {
+             CatalogDetails(
+                 detail = detail,
+-                wanted = wanted,
++                wanted = null,
+                 rememberOn = events.rememberOn,
+                 captureOn = events.captureOn,
+                 onOpenInGallery = events.onOpenInGallery,

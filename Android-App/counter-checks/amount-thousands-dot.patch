@@ -1,0 +1,17 @@
+Gegenprobe: price() schneidet einen eingefügten Betrag mit Tausendertrennung wieder am zweiten Trenner ab
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.NumericInputTest
+Rot: a pasted number with thousands separator keeps its value
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
+@@ -43,7 +43,7 @@
+      */
+     fun price(input: String, group: Char = groupSeparator()): String {
+         val raw = input.filter { it.isDigit() || it == '.' || it == ',' }
+-        if (raw.count { it == '.' || it == ',' } > 1) {
++        if (raw.count { it == '.' || it == ',' } > 99) {
+             split(raw, group)?.let { (whole, decimal, after) -> return whole + (decimal?.toString() ?: "") + after }
+         }
+         val sb = StringBuilder()

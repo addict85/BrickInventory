@@ -21,9 +21,9 @@ import org.junit.Test
  * need.
  *
  * Counter-checks:
- *   fehlertext-zeit-wie-netz      timeout mapped onto err_network → red
+ *   error-text-timeout-as-network      timeout mapped onto err_network → red
  *                                 „every error kind has its own text“
- *   fehlerklasse-401-unbekannt    Rejected in errorClass() mapped onto UNKNOWN → red
+ *   error-class-401-unknown    Rejected in errorClass() mapped onto UNKNOWN → red
  *                                 „every error kind has a matching class“
  */
 class ErrorTextsTest {
@@ -91,7 +91,7 @@ class ErrorTextsTest {
     /**
      * Every kind ends up in the class whose advice fits it; a 5xx even with its own
      * text, a 4xx with text is information. For the counter-check, see the header
-     * (fehlerklasse-401-unbekannt).
+     * (error-class-401-unknown).
      */
     @Test
     fun `every error kind has a matching class`() {

@@ -50,7 +50,7 @@ import org.junit.Test
  *
  * Counter-checks:
  *   A  `collectLatest` replaced by `collect`
- *      (counter-checks/sichtfenster-ohne-entprellung.patch) → red "der Sichtfenster-Lader wartet …" (every window of the drag gets loaded)
+ *      (counter-checks/viewport-without-debounce.patch) → red "der Sichtfenster-Lader wartet …" (every window of the drag gets loaded)
  *   B  `delay(restMs)` removed → red, the same case (loads before the stillness)
  *   C  the lead `(of - 1)..(until + 1)` shortened to `of..until` → red, the same case
  */

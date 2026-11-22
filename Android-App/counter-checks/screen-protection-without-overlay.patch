@@ -1,0 +1,16 @@
+Gegenprobe: Sichtschutz ohne Schutz vor Überlagerung (Stand vor sec8 H8)
+Modul: app
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
+Rot: sensitive pages are protected against overlays
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PrivacyShield.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PrivacyShield.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PrivacyShield.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PrivacyShield.kt
+@@ -22,7 +22,6 @@
+  */
+ @Composable
+ fun PrivacyShield(coverage: Boolean = true) {
+-    if (coverage) OverlayGuard()
+     val view = LocalView.current
+     val activity = LocalContext.current.findActivity()
+     DisposableEffect(view, activity) {

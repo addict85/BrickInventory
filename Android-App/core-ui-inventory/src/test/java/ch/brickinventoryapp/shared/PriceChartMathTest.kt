@@ -25,7 +25,7 @@ import java.util.Locale
  * Plus the description for TalkBack. Counter-checks:
  *   A  in summary() start and end by index instead of by day → red „die Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
  *   B  the semantics on the canvas is checked by PriceChartDescriptionTest (app), drawn;
- *      counter-checks/preisdiagramm-stumm.patch
+ *      counter-checks/price-chart-silent.patch
  */
 class PriceChartMathTest {
 

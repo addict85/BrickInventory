@@ -1,0 +1,16 @@
+Gegenprobe: Der Kachelausgleich steht nur da, wenn eine Namenszeile fehlt (dann kostet er einen Abstand mehr)
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetTileTest
+Rot: tiles of a row are equally high
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TileBalance.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TileBalance.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TileBalance.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TileBalance.kt
+@@ -14,6 +14,7 @@
+  */
+ @Composable
+ fun TileBalance(rows: Int) {
++    if (rows <= 0) return
+     val height = with(LocalDensity.current) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
+     // Also a child of the column even without a missing line: with spacedBy every child costs the
+     // spacing, and only the compensated tile would be taller by it.

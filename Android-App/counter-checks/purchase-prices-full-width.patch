@@ -1,0 +1,17 @@
+Gegenprobe: Kaufpreise ohne mittige Formularbreite
+Modul: app
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: purchase prices stand in form width on the tablet
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt
+@@ -129,7 +129,7 @@
+         // Centered at form width on the tablet, like settings: above 1200 dp
+         // quantity and price in one row sat too far apart to read together.
+         LazyColumn(
+-            Modifier.fillMaxSize().padding(innerPadding).centeredUntil(ReadingWidth.form),
++            Modifier.fillMaxSize().padding(innerPadding),
+             contentPadding = PaddingValues(Spacing.large),
+             verticalArrangement = Arrangement.spacedBy(Spacing.medium)
+         ) {

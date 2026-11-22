@@ -15,9 +15,9 @@ import org.junit.Test
  * never red in any design or version.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI):
- *   noppe-container-rot        `noppe`'s primaryContainer back to StudRedLight
+ *   stud-container-red        `noppe`'s primaryContainer back to StudRedLight
  *                              → red „value and state surfaces are never red“ (`noppe`.primaryContainer)
- *   noppe-dunkel-container-rot `noppe` in the dark without its own primaryContainer (back to #2a1415)
+ *   stud-dark-container-red `noppe` in the dark without its own primaryContainer (back to #2a1415)
  *                              → red „value and state surfaces are never red“ (`noppe/dunkel`.primaryContainer)
  */
 class RedOnlyForWarningTest {

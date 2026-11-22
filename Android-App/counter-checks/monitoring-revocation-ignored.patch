@@ -1,0 +1,17 @@
+Gegenprobe: Ein 403 nur_admins setzt zugriffEntzogen nicht
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringViewModelBehaviorTest
+Rot: a 403 only_admins ends the polling, another error does not
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+@@ -213,7 +213,7 @@
+         _state.update {
+             if (r is Outcome.Success)
+                 it.copy(jobs = r.data.jobs, jobSchedules = r.data.schedules, updated = false)
+-            else it.copy(updated = false, accessRevoked = it.accessRevoked || revoked(r))
++            else it.copy(updated = false, accessRevoked = it.accessRevoked)
+         }
+     }
+ 

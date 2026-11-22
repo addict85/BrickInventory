@@ -1,0 +1,22 @@
+Gegenprobe: Vertrauenschiffre bindet den Namen des Eintrags nicht als AAD
+Modul: core-data
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: a ciphertext under a foreign name does not count
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+@@ -19,11 +19,11 @@
+     private val info: () -> ByteArray = info ?: key
+ 
+     fun encrypt(value: String, binding: String): String? = runCatching {
+-        Base64.getEncoder().encodeToString(cipher.encrypt(value.toByteArray(Charsets.UTF_8), PURPOSE + binding))
++        Base64.getEncoder().encodeToString(cipher.encrypt(value.toByteArray(Charsets.UTF_8), PURPOSE))
+     }.getOrNull()
+ 
+     fun decrypt(saved: String, binding: String): String? = runCatching {
+-        cipher.decrypt(Base64.getDecoder().decode(saved), PURPOSE + binding)?.toString(Charsets.UTF_8)
++        cipher.decrypt(Base64.getDecoder().decode(saved), PURPOSE)?.toString(Charsets.UTF_8)
+     }.getOrNull()
+ 
+     /**

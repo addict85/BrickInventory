@@ -47,11 +47,11 @@ import java.util.concurrent.TimeUnit
  * via exactly this image client. Under Robolectric with a real store.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   server-client-folgt-umleitung  followRedirects(false) in buildInterceptorClient removed → red “no server client …”
- *   bild-client-ohne-waechter      ImageHostGuard not hooked in → red “the image client talks …”
- *   bild-client-ohne-token         the ServerGuard taken out of the image client → red “both clients …”
- *   bild-client-ohne-rueckfall     the FORCE_CACHE fallback keeps throwing → red “if the server is …”
- *   coil-ohne-bild-client          Coil without the image client's fetcher → red “Coil loads …”
+ *   server-client-follows-redirect  followRedirects(false) in buildInterceptorClient removed → red “no server client …”
+ *   image-client-without-guard      ImageHostGuard not hooked in → red “the image client talks …”
+ *   image-client-without-token         the ServerGuard taken out of the image client → red “both clients …”
+ *   image-client-without-fallback     the FORCE_CACHE fallback keeps throwing → red “if the server is …”
+ *   coil-without-image-client          Coil without the image client's fetcher → red “Coil loads …”
  * Counter-check (run here): `if (isApiClient && BuildConfig.DEBUG)` around the recording → red
  * “both clients are logged …” (image client).
  * Counter-checks (run here): previewTap no longer hooked in → red “… a preview comes from the preview

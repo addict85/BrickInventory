@@ -1,0 +1,17 @@
+Gegenprobe: das Wegräumen eines Fehlers beendet auch einen laufenden Vorgang
+Modul: core-model
+Test: ch.brickinventoryapp.model.OperationTest
+Rot: clearing an error does not stop a running operation
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
+@@ -16,7 +16,7 @@
+ val Operation.errorMessage: Message? get() = (this as? Operation.Failed)?.message
+ 
+ /** Take away the reason when nobody shall see it any more; a running operation keeps running. */
+-fun Operation.withoutError(): Operation = if (this is Operation.Failed) Operation.Done else this
++fun Operation.withoutError(): Operation = Operation.Done
+ 
+ /** A finished operation: failed with a reason, without finished. */
+ fun ended(error: Message?): Operation = error?.let(Operation::Failed) ?: Operation.Done

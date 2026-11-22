@@ -27,14 +27,14 @@ import org.junit.Test
  *   A  in vorbereitet(), let every request through → red “a foreign host is
  *      not requested” and “a redirect to a foreign host …”
  *   C  the CDN allowance built back in
- *      (counter-checks/bild-cdn-wieder-frei.patch) → red “an image CDN …”
+ *      (counter-checks/image-cdn-allowed-again.patch) → red “an image CDN …”
  *   D  removed the `ownServer(r.url) -> r` branch → red “the own server
  *      gets the request unchanged” and both redirect tests
  *   E  isOwnImageServer() without `development &&` → red “localhost counts as own server
  *      only in the debug build” (200 instead of 403)
  *   F  in intercept(), nextRedirect called without basePath() (the state before
  *      the same host used to be enough) → red “a redirect out of the base path
- *      goes without a token”; counter-checks/bild-umleitung-verlaesst-basispfad.patch
+ *      goes without a token”; counter-checks/image-redirect-leaves-base-path.patch
  */
 class ImageHostGuardTest {
 

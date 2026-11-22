@@ -1,0 +1,17 @@
+Gegenprobe: Der Abmeldeauftrag gibt auch bei gesperrtem Gerät nach den Höchstversuchen auf
+Modul: core-data
+Test: ch.brickinventoryapp.data.RedemptionTest
+Rot: with a locked device the job does not give up
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Redemption.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Redemption.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Redemption.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Redemption.kt
+@@ -140,7 +140,7 @@
+     when (finding) {
+         VaultFinding.Gone -> RedemptionStep.GIVEN_UP
+         VaultFinding.LockedState ->
+-            if (!deviceLocked && attempt + 1 >= REDEMPTION_MAX_ATTEMPTS) RedemptionStep.GIVEN_UP
++            if (attempt + 1 >= REDEMPTION_MAX_ATTEMPTS) RedemptionStep.GIVEN_UP
+             else RedemptionStep.AGAIN
+         is VaultFinding.Readable -> when (redeem(finding.plaintext)) {
+             RedemptionOutcome.REDEEMED -> RedemptionStep.DONE

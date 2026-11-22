@@ -1,0 +1,17 @@
+Gegenprobe: dekodiere() liest jede Fassung mit dem heutigen Leser
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.StoreVersionTest
+Rot: an unknown version is unreadable instead of misread
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreShape.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreShape.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreShape.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreShape.kt
+@@ -30,7 +30,7 @@
+     fun decode(json: Json, text: String): T {
+         val row = json.parseToJsonElement(text).jsonObject
+         val of = row[FIELD]?.jsonPrimitive?.intOrNull ?: 1
+-        if (of == version) return her(json.decodeFromJsonElement(serializer, JsonObject(row - FIELD)))
++        if (of == fassung || true) return her(json.decodeFromJsonElement(serializer, JsonObject(row - FIELD)))
+         val reader = older[of] ?: throw SerializationException("Ablagezeile in Fassung $of, gelesen wird $version")
+         return reader(json, JsonObject(row - FIELD))
+     }

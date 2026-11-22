@@ -1,0 +1,16 @@
+Gegenprobe: Die Wiederholung wartet immer gleich lang
+Modul: core-data
+Test: ch.brickinventoryapp.data.RetryTest
+Rot: a temporary error is retried with growing pause
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
+@@ -48,7 +48,6 @@
+                 val r = call()
+                 if (r !is Outcome.Failure || !r.transient || network() == Kind.NO_NETWORK) return r
+                 wait(pause)
+-                pause = (pause * 2).coerceAtMost(HIGHEST_PAUSE_MS)
+             }
+             return call()
+         }

@@ -47,13 +47,13 @@ import org.junit.Test
  * as soon as the session is signed in; no screen triggers it.
  *
  * Counter-checks:
- *   csv-zustand-zuerst  decided with the already new state → red “a running import …”
- *   csv-ohne-nachladen  NACHLADEN without `sync.stock()` → red “a running import …”
- *   csv-rueckzug-fest   the delay no longer grows → red “a broken stream …”
- *   csv-abbruch-still   cancelCsvImport() does not report an error → red “the cancellation reports …”
- *   csv-folgt-doppelt   follow() without the lock `follows` → red “a running import …”
+ *   csv-state-first  decided with the already new state → red “a running import …”
+ *   csv-without-reload  NACHLADEN without `sync.stock()` → red “a running import …”
+ *   csv-backoff-fixed   the delay no longer grows → red “a broken stream …”
+ *   csv-cancel-silent   cancelCsvImport() does not report an error → red “the cancellation reports …”
+ *   csv-follows-twice   follow() without the lock `follows` → red “a running import …”
  *                       (two connections, service started twice)
- *   csv-abmelden-laesst-dienst  no service.stop() on sign-out → red “after sign-out …”
+ *   csv-logout-leaves-service  no service.stop() on sign-out → red “after sign-out …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CsvImportViewModelTest {

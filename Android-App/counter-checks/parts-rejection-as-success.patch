@@ -1,0 +1,17 @@
+Gegenprobe: ein success false beim Anlegen eines Lagerorts gilt wieder als Erfolg
+Modul: core-data
+Test: ch.brickinventoryapp.data.PartsSlotValuesTest
+Rot: a success false is a refusal
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
+@@ -150,7 +150,7 @@
+     override suspend fun createLocation(name: String): Outcome<Unit> =
+         store.caughtUp({ r -> r.location?.takeIf { r.success }?.let { FollowUp.LocationCreated(it.asView()) } }) {
+             safeCall { api.createLocation(StorageNameRequest(name = name)) }
+-        }.promised({ it.success }) { }
++        }.mapData { }
+ 
+     override suspend fun renameLocation(id: Int, old: String, name: String): Outcome<Unit> =
+         store.caughtUp({ r -> r.location?.takeIf { r.success }?.let { FollowUp.LocationRenamed(old, it.asView()) } }) {

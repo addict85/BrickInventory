@@ -38,10 +38,10 @@ import java.util.Locale
  * name, color and second line stand in at least 12 sp (not labelSmall).
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   teilekachel-bild-mit-namen    image of the parts tile again described with the name → red “parts tile …”
- *   menge-als-zeichen             readAloudAs() does nothing → red in the four read-aloud tests („×“ or „✓“)
- *   teilename-klein               part name again labelSmall (11 sp) → red “name, color and second line …”
- *   katalog-teile-ohne-wort       parts count again only as a number → red “catalog tile shows the parts count …”
+ *   part-tile-image-with-name    image of the parts tile again described with the name → red “parts tile …”
+ *   quantity-as-character             readAloudAs() does nothing → red in the four read-aloud tests („×“ or „✓“)
+ *   part-name-small               part name again labelSmall (11 sp) → red “name, color and second line …”
+ *   catalog-parts-without-word       parts count again only as a number → red “catalog tile shows the parts count …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

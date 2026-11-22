@@ -1,0 +1,17 @@
+Gegenprobe: die Figuren werden nicht mehr vorgewärmt
+Modul: core-state
+Test: ch.brickinventoryapp.state.CollectionWarmUpTest
+Rot: every tab of the collection in view is warmed, not the catalog
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
+@@ -47,8 +47,6 @@
+         .mapTo(raw) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
+ 
+     val minifigsQuery = viewport.accountFor(ScopeFilter.View.MINIFIGS)?.let { AccountView.MinifigsQuery(it, null) }
+-    list(minifigsQuery, accountView.figureList, figures::refreshMinifigs, figures.observeMinifigs())
+-        .mapTo(raw) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
+     // refreshParts resp. refreshMinifigs has already fetched the manual lists along.
+     list(partsAccount?.let { AccountView.ManualQuery(it, null, null) }, accountView.manualParts,
+         { Outcome.Success(Unit) }, parts.observeManualParts())

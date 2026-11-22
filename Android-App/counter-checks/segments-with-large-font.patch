@@ -1,0 +1,17 @@
+Gegenprobe: Einfachwahl auch bei 200 Prozent als Segmente in einer Zeile
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: single choice breaks no word at 200 percent
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
+@@ -75,7 +75,7 @@
+     /** Off, when the choice currently has no effect; the caller says why next to it. */
+     enabled: Boolean = true,
+ ) {
+-    if (LocalDensity.current.fontScale >= LARGE_FONT_SCALE_MIN) {
++    if (LocalDensity.current.fontScale >= 99f) {
+         SegmentColumn(options, chosen, onChoice, modifier, enabled)
+         return
+     }

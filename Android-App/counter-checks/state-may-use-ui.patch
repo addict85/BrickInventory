@@ -1,0 +1,17 @@
+Gegenprobe: core-state fehlt in Modulkanten.ohneOberflaeche und dürfte Compose einschalten
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: the edge rule forbids area to area, wrong layering, api and core-testing in main code
+
+diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
+--- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
++++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
+@@ -54,7 +54,7 @@
+      */
+     val withoutUi: Set<String> = setOf(
+         "core-model", "core-contract", "core-network", "core-security", "core-offline", "core-data", "core-update", "core-services",
+-        "core-session", "core-state",
++        "core-session",
+     )
+ 
+     /** Who includes core-contract: only the repositories translate; the store holds domain types. */

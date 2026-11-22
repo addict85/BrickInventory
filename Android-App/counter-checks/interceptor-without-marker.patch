@@ -1,0 +1,17 @@
+Gegenprobe: der Abgriff legt auch Vorgewärmtes als gebraucht ab
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewTapTest
+Rot: a request of the warmer is stored speculatively, a call as used
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+@@ -277,7 +277,7 @@
+                     val speculative = request.tag(
+                         WarmUp::class.java
+                     ) != null
+-                    preview.write(address, bytes, speculative)
++                    preview.write(address, bytes, speculative && false)
+                 }
+                 response
+             }

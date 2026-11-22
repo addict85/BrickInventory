@@ -1,0 +1,17 @@
+Gegenprobe: Eine Angabe gilt bei gesperrtem Gerät als weg statt als „später“
+Modul: core-security
+Test: ch.brickinventoryapp.security.TrustCipherTest
+Rot: locked an entry is readable later, not gone
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+@@ -44,7 +44,7 @@
+     /** Readable, gone (altered, bound to something else, different key), or locked (try again later). */
+     fun openDetail(saved: String, binding: String): VaultFinding {
+         // The key outside the check: if it just can't work right now, the value isn't gone.
+-        val k = runCatching { info() }.getOrElse { return VaultFinding.LockedState }
++        val k = runCatching { info() }.getOrElse { return VaultFinding.Gone }
+         val raw = runCatching { Base64.getDecoder().decode(saved) }.getOrElse { return VaultFinding.Gone }
+         return StoreCipher { k }.decrypt(raw, INFO + binding)
+             ?.let { VaultFinding.Readable(it.toString(Charsets.UTF_8)) } ?: VaultFinding.Gone

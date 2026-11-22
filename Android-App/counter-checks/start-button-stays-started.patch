@@ -1,0 +1,16 @@
+Gegenprobe: ein Startknopf stellt nach dem Start nicht mehr zurück
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringStartButtonsTest
+Rot: a start button shows starting, then started, after four seconds its label again
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+@@ -289,7 +289,6 @@
+                 is Outcome.Success -> {
+                     setButton(job, r.data)
+                     delay(STARTED_MS)
+-                    setButton(job, null)
+                 }
+             }
+         }

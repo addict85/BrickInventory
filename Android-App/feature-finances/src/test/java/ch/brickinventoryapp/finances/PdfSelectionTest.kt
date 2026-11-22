@@ -10,7 +10,7 @@ import org.junit.Test
  * The PDF viewer's route carries only one key; the address along with its ticket and
  * title live in the PdfSelection and come back from there unchanged.
  *
- * Counter-check (counter-checks/pdf-auswahl-vergisst.patch): hole() always returns null →
+ * Counter-check (counter-checks/pdf-selection-forgets.patch): hole() always returns null →
  * red “address and title come back unchanged”.
  */
 class PdfSelectionTest {

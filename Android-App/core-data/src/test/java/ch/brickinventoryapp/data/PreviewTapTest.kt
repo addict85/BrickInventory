@@ -25,10 +25,10 @@ import java.io.File
  * warmer's requests as speculative.
  *
  * Counter-checks (patches under counter-checks/):
- *   abgriff-ohne-rueckfall     in the catch throw again instead of from the store → red “without a server …”
- *   abgriff-504-durchgereicht  the 504 branch removed → red “a 504 …”
- *   abgriff-liest-rumpf        body.bytes() instead of peekBody → red “a fetched preview …”
- *   abgriff-ohne-marke         speculative always false → red “a request of the warmer …”
+ *   interceptor-without-fallback     in the catch throw again instead of from the store → red “without a server …”
+ *   interceptor-passes-504  the 504 branch removed → red “a 504 …”
+ *   interceptor-reads-body        body.bytes() instead of peekBody → red “a fetched preview …”
+ *   interceptor-without-marker         speculative always false → red “a request of the warmer …”
  */
 class PreviewTapTest {
 

@@ -1,0 +1,16 @@
+Gegenprobe: Der Tausch läuft auch bei gesperrtem Gerät; den neuen Token nimmt dann kein Schlüssel auf
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenSwapTest
+Rot: with a locked device there is no swap, after unlocking there is
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+@@ -161,7 +161,6 @@
+     private suspend fun swapLocked(oldToken: String): ExchangeOutcome {
+         val before = state()
+         if (before.token != oldToken) return ExchangeOutcome.ALREADY_SWAPPED
+-        if (!ready()) return ExchangeOutcome.LATER
+         val begin = clock()
+         for (attempt in 0..pauses.size) {
+             // Signed out or different server: the old token does not go out once more.

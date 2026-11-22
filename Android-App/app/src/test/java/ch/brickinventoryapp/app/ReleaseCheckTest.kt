@@ -24,10 +24,10 @@ import java.util.concurrent.TimeUnit
  *      signed description must name exactly this APK” (another APK got through)
  *   F  in description() the line `wrong += deadline(…)` deleted → red
  *      “a description without a valid deadline is not published“;
- *      counter-checks/beschreibung-ohne-frist.patch
+ *      counter-checks/description-without-deadline.patch
  *   G  in key() the line `if geliefert[0] not in app`
  *      including return deleted → red “a description key the app does not
- *      know is rejected”; counter-checks/beschreibungsschluessel-ungeprueft.patch
+ *      know is rejected”; counter-checks/description-key-unchecked.patch
  *   H the transition path again with exit 0 →
  *      red “a description key the app does not know …” (transition invisible)
  */

@@ -1,0 +1,17 @@
+Gegenprobe: catchUnlessCancelled fängt das Abbrechen wieder mit
+Modul: core-data
+Test: ch.brickinventoryapp.data.AbortByTest
+Rot: catchUnlessCancelled passes the cancellation on and catches only exceptions
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Cancellation.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Cancellation.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Cancellation.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/Cancellation.kt
+@@ -11,8 +11,6 @@
+ inline fun <T> catchUnlessCancelled(block: () -> T): kotlin.Result<T> =
+     try {
+         kotlin.Result.success(block())
+-    } catch (abort: CancellationException) {
+-        throw abort
+     } catch (e: Exception) {
+         kotlin.Result.failure(e)
+     }

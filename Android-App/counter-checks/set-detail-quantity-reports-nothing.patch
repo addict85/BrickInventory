@@ -1,0 +1,17 @@
+Gegenprobe: Die Ablage nimmt die gewünschte Menge statt der des Servers
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetDetailViewModelTest
+Rot: a changed quantity is shown immediately and in the store
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
+@@ -59,7 +59,7 @@
+ 
+     override suspend fun setQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Condition?): Outcome<Int?> =
+         // The server may cap (foreign copies stay): its number applies.
+-        store.caughtUp({ r -> FollowUp.SetQuantitySet(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
++        store.caughtUp({ r -> FollowUp.SetQuantitySet(setNumber, quantity).takeIf { r.success } }) {
+             safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity = quantity, quantityDelta = null, purchasePrice = purchasePrice, condition = condition)) }
+         }.promised({ it.success }) { it.quantity }
+ 

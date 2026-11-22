@@ -33,9 +33,9 @@ import java.util.concurrent.atomic.AtomicInteger
  * that halts every write until the test releases it.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   token-nach-der-schreibung    _authTokenState set only after dataStore.edit → red “token and address …”
- *   adresse-nach-der-schreibung  _serverUrlState set only after dataStore.edit → red, the same test
- *   token-ohne-nachlauf          the mirror for _authTokenState removed → red “a new process …”
+ *   token-after-typing    _authTokenState set only after dataStore.edit → red “token and address …”
+ *   address-after-typing  _serverUrlState set only after dataStore.edit → red, the same test
+ *   token-without-lag          the mirror for _authTokenState removed → red “a new process …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

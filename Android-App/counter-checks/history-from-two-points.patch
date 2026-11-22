@@ -1,0 +1,17 @@
+Gegenprobe: Preisverlauf zeichnet schon zwei Punkte als Linie
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: price history shows no line below three points and names low and high
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+@@ -271,7 +271,7 @@
+     endMarker(color, style, pts.last(), 2.5.dp.toPx())
+ }
+ /** From this many data points in a series onward, PriceChart shows a line. */
+-const val MIN_POINTS_HISTORY = 3
++const val MIN_POINTS_HISTORY = 2
+ 
+ /** Width of the price lines: 3 px were barely a stroke on a high-density phone. */
+ val PRICE_LINE_WIDTH = 2.dp

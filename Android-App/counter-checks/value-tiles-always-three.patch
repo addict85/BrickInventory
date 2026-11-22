@@ -1,0 +1,17 @@
+Gegenprobe: Wert-Kacheln immer zu dritt nebeneinander, wie vor H1
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.ValueTilesTest
+Rot: value tiles show four-digit amounts fully on a narrow phone at 100 percent
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+@@ -449,7 +449,7 @@
+         val pnlText = if (width(pnlSingleLine) > maxWidth) pnlParts.joinToString("\n") else pnlSingleLine
+         val spacing = Spacing.small
+         val equalHigh = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+-        when (tileArrangement(maxWidth, demand, spacing)) {
++        when (TileArrangement.THREE) {
+             TileArrangement.THREE -> Row(equalHigh, horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                 marketTile(Modifier.weight(1f).fillMaxHeight())
+                 purchaseTile(Modifier.weight(1f).fillMaxHeight())

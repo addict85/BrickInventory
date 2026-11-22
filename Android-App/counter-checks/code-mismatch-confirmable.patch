@@ -1,0 +1,16 @@
+Gegenprobe: Eine Abweichung vom Code lässt sich wie ein geänderter Schlüssel abgetippt bestätigen
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: a code with a system root must hit exactly this root, a deviation aborts
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -216,7 +216,6 @@
+      */
+     override fun confirm(pins: PinStore, input: String?, deviceConfirmed: Boolean): Boolean {
+         val f = _open.value ?: return false
+-        if (f.kind == CertificateUnresolved.Kind.CODE_MISMATCH) return false
+         val verify = f.transcriptNeeded || f.kind == CertificateUnresolved.Kind.FIRST_CONTACT && !input.isNullOrBlank()
+         if (verify && !Transcript.confirmed(input, f.fingerprint)) return false
+         // Without a screen lock there is nothing to confirm with; then the transcript counts instead.

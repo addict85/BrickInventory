@@ -1,0 +1,17 @@
+Gegenprobe: Der Preisalarm zeigt Set und Preis auf dem Sperrbildschirm
+Modul: app
+Test: ch.brickinventoryapp.app.PriceAlertMessageTest
+Rot: on the lock screen neither set nor price is shown
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PriceAlarmWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PriceAlarmWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PriceAlarmWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PriceAlarmWorker.kt
+@@ -86,8 +86,6 @@
+                 .setSmallIcon(android.R.drawable.ic_dialog_info)
+                 .setContentTitle(context.getString(R.string.detail_alert))
+                 .setContentText(text)
+-                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+-                .setPublicVersion(public)
+                 .setGroup(CHANNEL)
+                 .setAutoCancel(true)
+                 .setContentIntent(tap)

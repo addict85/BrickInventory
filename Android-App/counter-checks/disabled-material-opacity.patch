@@ -1,0 +1,24 @@
+Gegenprobe: Gesperrte Knöpfe wieder mit Materials fester Deckkraft (12 % Fläche, 38 % Schrift)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.LockedContrastTest
+Rot: disabled buttons keep 4,5 to 1 for text and 3 to 1 for surface and border
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/LockedState.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/LockedState.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/LockedState.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/LockedState.kt
+@@ -27,10 +27,11 @@
+ 
+ fun lockedColors(s: ColorScheme): LockedColors {
+     val reasons = listOf(s.surface, s.background)
+-    val surface = elevated(lerp(s.surface, s.onSurface, LOCKED_SURFACE), reasons, GRAPHIC_CONTRAST_LOCKED)
+-    val onSurface = there(surface, s.onSurface, surface, TEXT_CONTRAST_LOCKED)
+-    val font = elevated(lerp(s.surface, s.onSurface, LOCKED_FONT), reasons, TEXT_CONTRAST_LOCKED)
+-    val edge = elevated(lerp(s.surface, s.onSurface, LOCKED_SURFACE), reasons, GRAPHIC_CONTRAST_LOCKED)
++    val surface = lerp(s.surface, s.onSurface, 0.12f)
++    val onSurface = lerp(surface, s.onSurface, 0.48f)
++    val font = lerp(s.surface, s.onSurface, 0.48f)
++    val edge = lerp(s.surface, s.onSurface, 0.12f)
++    check(reasons.isNotEmpty())
+     return LockedColors(surface, onSurface, font, edge)
+ }
+ 

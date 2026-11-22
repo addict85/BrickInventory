@@ -1,0 +1,16 @@
+Gegenprobe: Die Gutscheinseite setzt keinen Sichtschutz
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherPrivacyScreenDisplayTest
+Rot: the voucher page is protected as long as it is shown
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersUnterseite.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersUnterseite.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersUnterseite.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersUnterseite.kt
+@@ -28,7 +28,6 @@
+     onBack: () -> Unit,
+ ) {
+     val voucherState by gvm.state.collectAsStateWithLifecycle()
+-    PrivacyShield()
+     // Copy the PIN and delete vouchers: no tap through an overlay.
+     OverlayGuard()
+     // Copying goes via SecretClipboard (empty again after one minute); the

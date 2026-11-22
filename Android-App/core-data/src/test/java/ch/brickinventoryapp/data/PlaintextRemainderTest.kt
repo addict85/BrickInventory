@@ -13,7 +13,7 @@ import org.junit.Test
  *
  * Counter-checks: „klartext_netze“ taken out of the list → red (the key stayed);
  * „lager_“ taken out of FILTER → red “the filters of earlier versions go …”
- * (kotlinc locally; counter-checks/filter-bleiben-im-klartext.patch).
+ * (kotlinc locally; counter-checks/filters-stay-in-plaintext.patch).
  */
 class PlaintextRemainderTest {
 

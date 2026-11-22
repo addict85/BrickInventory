@@ -1,0 +1,17 @@
+Gegenprobe: Kaufpreis auch bei grosser Schrift neben seiner Bezeichnung
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.ValueTilesTest
+Rot: purchase price at 200 percent stands below the label in one line
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
+@@ -62,7 +62,7 @@
+ ) {
+     // With large text, the purchases go UNDER the label: next to it there was
+     // so little width left for „CHF 700.00“ that the amount wrapped digit by digit.
+-    val stacked = largeFont()
++    val stacked = false
+     val alignment = if (stacked) Alignment.Start else Alignment.End
+     val purchases: @Composable () -> Unit = {
+         Column(horizontalAlignment = alignment) {

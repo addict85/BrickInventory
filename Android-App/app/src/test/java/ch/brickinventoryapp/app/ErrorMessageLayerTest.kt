@@ -7,7 +7,7 @@ import java.io.File
 /**
  * Error messages arise in ONE place, and that place can translate.
  *
- * Counter-check: counter-checks/fehler-satz-in-datenschicht.patch — safeCall()
+ * Counter-check: counter-checks/error-sentence-in-data-layer.patch — safeCall()
  * puts a fixed sentence into Ergebnis.Fehler.Server → red “the data layer builds
  * no message …”.
  */

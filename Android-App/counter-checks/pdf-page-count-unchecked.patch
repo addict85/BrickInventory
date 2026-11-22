@@ -1,0 +1,17 @@
+Gegenprobe: Die Seitenzahl aus dem isolierten Renderer gilt ungeprüft
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfLimitsTest
+Rot: a page count outside 1 to the upper limit counts as unreadable
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfPage.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfPage.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfPage.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfPage.kt
+@@ -48,7 +48,7 @@
+ }
+ 
+ /** The renderer's page count, or null if it cannot be right. */
+-internal fun checkPageCount(n: Int): Int? = n.takeIf { it in 1..PDF_MAX_PAGES }
++internal fun checkPageCount(n: Int): Int? = n
+ 
+ /**
+  * Dimensions from the renderer's page edges ([widthPt], [heightPt]); null if these

@@ -21,7 +21,7 @@ import org.robolectric.RobolectricTestRunner
  * a checkmark alone only tells those who can see it.
  *
  * Counter-checks (patches under counter-checks/, measured only in the CI — Robolectric):
- *   themenzeile-ohne-rolle   ThemeRow without radio button role → red “theme and year choice announce …”
+ *   theme-row-without-role   ThemeRow without radio button role → red “theme and year choice announce …”
  * Counter-check (run here): `selected = selected` removed from the Surface → red
  * “theme and year choice announce …” (no selection state).
  */

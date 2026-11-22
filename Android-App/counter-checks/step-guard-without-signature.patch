@@ -1,0 +1,16 @@
+Gegenprobe: Der Schrittschutz nimmt jede Signatur als Freigabe, ohne sie zu prüfen (wie vor sec8 N3 ohne Bindung)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.StepApprovalTest
+Rot: a different key does not count
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepApproval.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepApproval.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepApproval.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/StepApproval.kt
+@@ -21,6 +21,7 @@
+     /** The signature over [message], if it matches the key; otherwise null. Only once per release. */
+     fun signature(released: Signature?, message: ByteArray): ByteArray? {
+         if (released == null) return null
++        if (released.algorithm.isNotEmpty()) return runCatching { released.update(message); released.sign() }.getOrNull()
+         return runCatching {
+             released.update(message)
+             val signature = released.sign()

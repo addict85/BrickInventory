@@ -1,0 +1,17 @@
+Gegenprobe: Die Abschrift bekommt keine Doppelpunkte mehr wie in der Webapp
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.TranscriptShapeTest
+Rot: the transcript gets colons, the cursor stays behind the same character
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TranscriptShape.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TranscriptShape.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TranscriptShape.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TranscriptShape.kt
+@@ -11,7 +11,7 @@
+ internal fun pairTranscriptIn(text: String, cursor: Int): Pair<String, Int> {
+     if (text.any { it.uppercaseChar() !in HEX && it != ':' && !it.isWhitespace() }) return text to cursor
+     val before = text.take(cursor.coerceIn(0, text.length)).count { it.uppercaseChar() in HEX }
+-    val paired = text.uppercase().filter { it in HEX }.chunked(2).joinToString(":")
++    val paired = text.uppercase().filter { it in HEX }
+     return paired to if (before == 0) 0 else before + (before - 1) / 2
+ }
+ 

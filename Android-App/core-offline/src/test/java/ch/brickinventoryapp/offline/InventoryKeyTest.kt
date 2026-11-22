@@ -15,7 +15,7 @@ import java.io.File
  * plaintext legacy stock is recognized by its file header.
  *
  * Counter-check (measured locally on the cut-out StockEncryption.kt):
- * counter-checks/bestand-kopf-ungeprueft.patch,
+ * counter-checks/stock-header-unchecked.patch,
  * isPlaintextDatabase() without comparison with the header → red “the database gets a
  * ready key …” (the encrypted file would count as plaintext).
  */

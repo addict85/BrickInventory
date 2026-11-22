@@ -1,0 +1,17 @@
+Gegenprobe: auf Rappen halb zur geraden Zahl statt von der Null weg
+Modul: core-model
+Test: ch.brickinventoryapp.model.MoneyTest
+Rot: rounding to centimes goes half away from zero
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Money.kt
+@@ -21,7 +21,7 @@
+     fun asBigDecimal(): BigDecimal = BigDecimal.valueOf(tenThousandths, PLACES)
+ 
+     /** To centimes, halves away from zero like the server's aufRappen(). */
+-    fun onRappen(): BigDecimal = asBigDecimal().setScale(2, RoundingMode.HALF_UP)
++    fun onRappen(): BigDecimal = asBigDecimal().setScale(2, RoundingMode.HALF_EVEN)
+ 
+     /** For the wire format and for chart heights; calculation uses [tenThousandths]. */
+     fun asDouble(): Double = tenThousandths / FACTOR.toDouble()

@@ -1,0 +1,18 @@
+Gegenprobe: Das Katalog-Detail zeigt ohne Detail immer den Kringel, auch wenn das Laden gescheitert ist
+Modul: app
+Test: ch.brickinventoryapp.app.ErrorHintsTest
+Rot: if the catalog detail fails, the reason with Retry is shown instead of the spinner
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+@@ -130,9 +130,6 @@
+         topBar = { DetailTopAppBar(title = detail?.name ?: setNumber, onBack = actions::back) }
+     ) { padding ->
+         when {
+-            loaded is Load.Failure -> StateHint(Modifier.padding(padding)) {
+-                ErrorHint(loaded.message.sentence(), { actions.load(setNumber) }, loaded.kind)
+-            }
+             detail == null -> LoadCircle(Modifier.padding(padding))
+             else -> CatalogDetailContent(
+                 detail, serverUrl, imageLoader, wanted, roles, Modifier.padding(padding),

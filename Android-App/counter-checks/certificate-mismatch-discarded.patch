@@ -1,0 +1,17 @@
+Gegenprobe: Ein Tipp neben den Zertifikatsdialog schliesst ihn wieder und verwirft die Abschrift
+Modul: app
+Test: ch.brickinventoryapp.app.CertificateDialogTest
+Rot: tapping outside never closes the dialog, back only without input
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+@@ -188,7 +188,7 @@
+  * nothing is typed; tapping outside never — Cancel stays the explicit way.
+  */
+ internal fun closable(input: String) =
+-    DialogProperties(dismissOnBackPress = input.isEmpty(), dismissOnClickOutside = false)
++    DialogProperties(dismissOnBackPress = input.isEmpty(), dismissOnClickOutside = true)
+ 
+ /** “Too short” says how much is missing; “does not match” means the characters are wrong. */
+ @Composable

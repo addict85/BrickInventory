@@ -30,7 +30,7 @@ import java.util.Locale
  * The purchase date in purchase price management: with a label, in the date format of the
  * app language, as a button in full tap size, that says what it does.
  *
- * Counter-check (counter-checks/kaufdatum-klein-ohne-etikett.patch, only in the CI — Robolectric):
+ * Counter-check (counter-checks/purchase-date-small-without-label.patch, only in the CI — Robolectric):
  *   without minimumInteractiveComponentSize and without onClickLabel → red “the purchase date is a
  *   labelled button …”
  */

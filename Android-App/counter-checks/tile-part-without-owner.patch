@@ -1,0 +1,17 @@
+Gegenprobe: ManualPartTile reicht die Besitzer nicht an die gemeinsame Kachel weiter
+Modul: app
+Test: ch.brickinventoryapp.app.ManualTileDisplayTest
+Rot: the manual part shows conditions, owners and the averaged purchase price
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
+@@ -67,7 +67,7 @@
+             quantity = part.quantity,
+             states = part.conditions,
+             condition = part.condition,
+-            owner = part.owners,
++            owner = emptyList(),
+             price = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
+         ),
+         currency = currency,

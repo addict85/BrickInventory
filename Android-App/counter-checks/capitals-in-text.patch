@@ -1,0 +1,17 @@
+Gegenprobe: Ein Abschnittstitel steht wieder in Versalien im Text
+Modul: app
+Test: ch.brickinventoryapp.app.StringResourceParityTest
+Rot: one term per thing in both languages
+
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
+@@ -363,7 +363,7 @@
+     <string name="monitoring_icon_retry">Erneut versuchen</string>
+     <string name="monitoring_hide_error">Fehler ausblenden</string>
+     <string name="monitoring_show_error">Letzten Fehler anzeigen</string>
+-    <string name="monitoring_price_cache">Preisspeicher</string>
++    <string name="monitoring_price_cache">PREISSPEICHER</string>
+     <string name="monitoring_cache_prices">Preise</string>
+     <string name="monitoring_cache_stale">Veraltet</string>
+     <string name="monitoring_cache_subsets">Teilsets</string>

@@ -18,7 +18,7 @@ import org.junit.Test
 class PurchasePriceDisplayTest {
 
     // Counter-checks: displayPurchasePrice set to maxPurchasePrice → red “the display rule …”;
-    // counter-checks/setitem-liest-purchase-price.patch (the field back in SetItem) → red, the same test.
+    // counter-checks/setitem-reads-purchase-price.patch (the field back in SetItem) → red, the same test.
     @Test
     fun `the display rule is in the model and prefers the average`() {
         val set = BrickJson.decodeFromString(SetItem.serializer(),

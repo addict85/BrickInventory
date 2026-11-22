@@ -1,0 +1,16 @@
+Gegenprobe: core-offline bindet das Wire-Format wieder ein
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-offline/build.gradle.kts b/Android-App/core-offline/build.gradle.kts
+--- a/Android-App/core-offline/build.gradle.kts
++++ b/Android-App/core-offline/build.gradle.kts
+@@ -25,6 +25,7 @@
+ 
+ dependencies {
+     api(project(":core-model"))
++    implementation(project(":core-contract"))
+     // The database key comes from the store key.
+     implementation(project(":core-security"))
+     implementation(libs.androidx.core.ktx)

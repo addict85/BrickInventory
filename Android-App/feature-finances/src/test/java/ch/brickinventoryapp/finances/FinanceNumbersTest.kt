@@ -41,10 +41,10 @@ import java.math.BigDecimal
  *      figures read the same number fields” (1 instead of 4)
  *   D  in voucherSum() `distinct().singleOrNull()` replaced with `firstOrNull()`
  *      → red “vouchers in two currencies give no sum”
- *   E  patch finanzen-kauf-je-stueck: purchaseTotal without quantity → red “purchase and profit
+ *   E  patch finances-purchase-per-piece: purchaseTotal without quantity → red “purchase and profit
  *      stand on the same basis as the market value” (400.0 instead of 800.0); CI only
  *   F  financeHeader takes purchase and grand_total instead of the basis (as with patch
- *      finanzen-kopf-ohne-basis, measured there against UisRulesTest) → red
+ *      finances-header-without-base, measured there against UisRulesTest) → red
  *      “the header card computes on the server's basis” (cost basis 1680 instead of 1500);
  *      played through by hand, no Android SDK in the session
  *   G  in financeHeader() the early return for older servers removed → red “without

@@ -1,0 +1,17 @@
+Gegenprobe: Die Kaufpreis-Kachel zeigt den höchsten Kauf statt des Schnitts
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetDetailDisplayTest
+Rot: the purchase price tile shows the quantity-weighted average, not the last purchase
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
+@@ -261,7 +261,7 @@
+     item(key = "wertkacheln") {
+         // avg_price first: the market price is the plain average, not the quantity-weighted one.
+         val marketPrice = price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }
+-        val purchasePrice = set.displayPurchasePrice
++        val purchasePrice = set.maxPurchasePrice
+         val difference = if (marketPrice != null && purchasePrice != null) marketPrice - purchasePrice else null
+         ValueTiles(
+             // The same words as finances and watchlist instead of a dash that looked like a value.

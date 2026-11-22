@@ -17,7 +17,7 @@ import java.io.IOException
  * The CSV stream swallows network errors and falls back to polling, but not
  * cancellation: a cancelled import would otherwise keep running.
  *
- * Counter-check: strom-schluckt-abbruch — followStream with `catch (_: Exception)`
+ * Counter-check: stream-swallows-cancellation — followStream with `catch (_: Exception)`
  *   → red „followStream reicht …“
  */
 class CsvStreamAbortTest {

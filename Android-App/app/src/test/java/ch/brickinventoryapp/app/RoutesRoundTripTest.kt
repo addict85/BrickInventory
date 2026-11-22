@@ -26,9 +26,9 @@ import org.robolectric.RobolectricTestRunner
  * brings along, `toRoute()` reads back exactly so in the destination — also special characters
  * and the default “no color”. PDF addresses do not travel in the route (PdfSelection).
  *
- * Counter-check (counter-checks/route-feld-transient.patch, measurable only in CI):
+ * Counter-check (counter-checks/route-field-transient.patch, measurable only in CI):
  *   ManualItemDetail.title as @Transient → red “titles with special characters arrive unchanged“
- * Counter-check (counter-checks/postenart-aus-fest.patch, measurable only in CI):
+ * Counter-check (counter-checks/item-kind-fixed-off.patch, measurable only in CI):
  *   Postenart.from() always returns SET → red “every item kind arrives as the same one“
  * Counter-check (measurable only in CI, not performed): StateSerializer with
  *   PrimitiveKind.STRING instead of SerialKind.ENUM → red “set numbers and wishlist items

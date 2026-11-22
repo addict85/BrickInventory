@@ -1,0 +1,17 @@
+Gegenprobe: Das Fingerabdruckfeld setzt beim Tippen keine Doppelpunkte
+Modul: app
+Test: ch.brickinventoryapp.app.CertificateDialogTest
+Rot: the transcript gets colons and a character counter while typing
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FingerprintField.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FingerprintField.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FingerprintField.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FingerprintField.kt
+@@ -43,7 +43,7 @@
+         shape = Shapes.field,
+         value = TextFieldValue(input, TextRange(cursor)),
+         onValueChange = { newValue ->
+-            val (text, place) = pairTranscriptIn(newValue.text, newValue.selection.end)
++            val (text, place) = newValue.text to newValue.selection.end
+             cursor = place
+             onInput(text)
+         },

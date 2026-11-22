@@ -1,0 +1,17 @@
+Gegenprobe: Farbfeld ohne Namen zeigt wieder die Farbnummer
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.ColorChoiceFieldTest
+Rot: without a name Unknown color stands in the font of the other values
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ColorChoiceField.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ColorChoiceField.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ColorChoiceField.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ColorChoiceField.kt
+@@ -53,7 +53,7 @@
+     // number means nothing to anyone.
+     val noColor = stringResource(R.string.parts_no_color)
+     val name = colorName(colors, current, currentName, noColor)
+-        ?: stringResource(R.string.parts_color_unknown)
++        ?: (stringResource(R.string.parts_color_unknown) + " $current")
+     val hex = if (current == WITHOUT_COLOR) null else colors.firstOrNull { it.id == current }?.hex ?: currentHex
+     // "Keine Farbe" is offered as a choice, so that a wrongly taken-over color can also be removed.
+     val choice = listOf(ColorView(WITHOUT_COLOR, noColor, null)) + withoutNoColor(colors)

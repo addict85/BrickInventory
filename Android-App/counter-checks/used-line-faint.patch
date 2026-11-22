@@ -1,0 +1,17 @@
+Gegenprobe: Gebraucht-Linie von Noppe und Hochglanz wieder #FF7A00 wie die Web-App
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.TextContrastTest
+Rot: chart text and lines are readable
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -503,7 +503,7 @@
+         // blue, used amber/orange, so the color systems don't get confused.
+         Design.COLOR_FAN -> ChartColors(ChartNewColorFan, ChartUsedColorFan, muted = muted)
+         // The web's orange (ChartUsedStud) reaches only 2.6:1 on white; as a line it needs 3:1.
+-        Design.STUD, Design.GLOSSY -> ChartColors(ChartNewStud, ChartUsedStud.let { withContrast(it, s.surface, GRAPHIC_CONTRAST) },
++        Design.STUD, Design.GLOSSY -> ChartColors(ChartNewStud, ChartUsedStud,
+             raster = Color(0xFFE4E8EF), muted = muted)
+         Design.CLASSIC -> ChartColors(ChartNewClassic, ChartUsedClassic, muted = muted)
+     }

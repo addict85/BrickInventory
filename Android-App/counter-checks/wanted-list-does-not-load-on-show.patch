@@ -1,0 +1,16 @@
+Gegenprobe: Die Merkliste lädt nicht mehr, wenn jemand sie zeigt
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.WantedViewModelTest
+Rot: list and detail load as soon as someone shows them
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
+@@ -124,7 +124,6 @@
+ 
+     init {
+         // Whoever shows the list gets it fresh; the source after that follows the store itself.
+-        observeLoadOn(wantedObserved) { loadWanted() }
+     }
+ 
+     private val _wantedItemDetailState = MutableStateFlow(WantedItemDetailUiState())

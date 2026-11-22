@@ -9,7 +9,7 @@ import java.io.File
  * tab with a scroll area is in the list, and only the ScrollMemory holds the position. That each tab
  * is back at its row and reports it runs in TabScrollPositionTest and CatalogGridTest.
  *
- * Counter-check: counter-checks/rolle-zweite-quelle.patch (the gallery again with
+ * Counter-check: counter-checks/role-second-source.patch (the gallery again with
  * rememberLazyGridState()) → red “only the ScrollMemory holds the scroll position“.
  */
 class ListScrollPositionTest {

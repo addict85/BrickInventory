@@ -1,0 +1,17 @@
+Gegenprobe: Ein Gerät ohne Attestation schickt sein selbstsigniertes Zertifikat doch an den Server
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.KeyBindingTest
+Rot: a device without attestation gets a message and sends nothing
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyBinding.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyBinding.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyBinding.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyBinding.kt
+@@ -40,7 +40,7 @@
+             ?: return Outbox.Rejected(null)
+         val chain = withContext(keystore) { runCatching { key.createWithAttestation(challenge) }.getOrNull() }
+         // Without attestation, the Keystore only supplies the key's self-signed certificate.
+-        if (chain == null || chain.size < 2) return Outbox.WithoutAttestation
++        if (chain == null) return Outbox.WithoutAttestation
+         return when (val r = binding.depositChain(chain)) {
+             StepResponse.Free -> Outbox.Bound
+             is StepResponse.Rejected -> Outbox.Rejected(r.message)

@@ -1,0 +1,16 @@
+Gegenprobe: core-state bindet core-ui ein; der Zustand liegt unter der Oberfläche
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-state/build.gradle.kts b/Android-App/core-state/build.gradle.kts
+--- a/Android-App/core-state/build.gradle.kts
++++ b/Android-App/core-state/build.gradle.kts
+@@ -17,6 +17,7 @@
+     api(project(":core-model"))
+     // Internal: the areas name core-data themselves.
+     implementation(project(":core-data"))
++    implementation(project(":core-ui"))
+     implementation(project(":core-session"))
+     implementation(project(":core-security"))
+     // NetworkPolicy and the rule for who reports a 401.

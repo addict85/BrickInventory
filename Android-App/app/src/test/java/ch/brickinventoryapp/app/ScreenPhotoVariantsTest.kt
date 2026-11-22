@@ -193,7 +193,7 @@ import java.util.Locale
  * Counter-check as with ScreenPhotoTest only possible with checked-in references
  * (change a color in Theme.kt → verifyRoborazziDebug red); not measurable
  * here without the Android SDK. The dialogs at 200 % additionally check that the font
- * arrives in the dialog window — counter-check dialog-schrift-nur-lokal: without
+ * arrives in the dialog window — counter-check dialog-font-local-only: without
  * setFontScale → red “dialogSetAddFont200” (font does not reach the dialog).
  */
 @RunWith(RobolectricTestRunner::class)

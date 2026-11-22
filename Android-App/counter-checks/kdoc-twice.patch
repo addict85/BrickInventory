@@ -1,0 +1,16 @@
+Gegenprobe: Ein KDoc-Block steht direkt vor einem zweiten und hängt an nichts
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no reference to the reasoning archive, and no KDoc hangs on nothing
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
+@@ -14,6 +14,7 @@
+  */
+ typealias Question = suspend (String?) -> FetchOutcome<AlarmFetchView>
+ 
++/** A orphaned Block. */
+ /**
+  * What is decided when fetching triggered price alerts — outside of the
+  * worker, because a ListenableWorker can only be tested with Android running.

@@ -1,0 +1,16 @@
+Gegenprobe: die Unit-Test-Konvention schaltet isReturnDefaultValues wieder ein; Android-Methoden liefern still 0 oder null
+Modul: core-network
+Test: ch.brickinventoryapp.network.LogWithoutAndroidTest
+Rot: an Android method throws in the JVM test instead of silently returning a default value
+
+diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Conventions.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Conventions.kt
+--- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Conventions.kt
++++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Conventions.kt
+@@ -62,6 +62,7 @@
+     override fun apply(target: Project) {
+         target.atAndroid { android ->
+             val unitTests = android.testOptions.unitTests
++            unitTests.isReturnDefaultValues = true
+             unitTests.isIncludeAndroidResources = false
+             unitTests.all { test ->
+                 testLog(test)

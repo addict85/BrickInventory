@@ -1,0 +1,17 @@
+Gegenprobe: die Teile werden ohne den Kontofilter des Blickfelds vorgewärmt
+Modul: core-state
+Test: ch.brickinventoryapp.state.CollectionWarmUpTest
+Rot: every tab of the collection in view is warmed, not the catalog
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Prewarm.kt
+@@ -41,7 +41,7 @@
+     list(gallery, accountView.gallery, sets::refreshSets, sets.observeSets())
+         .mapTo(raw) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
+ 
+-    val partsAccount = viewport.accountFor(ScopeFilter.View.PARTS)
++    val partsAccount: ch.brickinventoryapp.model.domain.AccountSelection? = null
+     val partsQuery = partsAccount?.let { AccountView.PartsQuery(it, null, ColorPicker.All, CategoryChoice.All, SparePartChoice.ALL, false, null) }
+     list(partsQuery, accountView.partList, parts::refreshParts, parts.observeParts())
+         .mapTo(raw) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }

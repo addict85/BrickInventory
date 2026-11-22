@@ -1,0 +1,21 @@
+Gegenprobe: Jede Reiterbeschriftung in eigener Grösse, alle Ziele beschriftet
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: tab bar breaks no word at 200 percent
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -337,10 +337,10 @@
+             }
+             Row(Modifier.fillMaxWidth().heightIn(min = BAR_HEIGHT).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+                 targets.forEachIndexed { i, (screen, icon, name) ->
+-                    val labeled = sentence.all || i == sentence.chosen
++                    val labeled = true
+                     val space = Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)
+                     val target: @Composable (Modifier) -> Unit = { m ->
+-                        TabTarget(chosen(screen), name, if (labeled) style.fontSize * sentence.factor else null, colors,
++                        TabTarget(chosen(screen), name, if (labeled) style.fontSize * sentence.factor * (1f - 0.05f * i) else null, colors,
+                             { onChoice(screen) }, m) { symbol(screen, icon) }
+                     }
+                     if (labeled) target(space) else WithTooltip(name, space) { target(Modifier.fillMaxWidth()) }

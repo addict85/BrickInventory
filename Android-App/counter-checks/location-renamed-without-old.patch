@@ -1,0 +1,17 @@
+Gegenprobe: Ohne den alten Namen bleibt der umbenannte Ort an den Sets stehen
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SettingsViewModelTest
+Rot: a renamed storage location also gets the new name on the sets in the store
+
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
+@@ -244,7 +244,7 @@
+ 
+     /** Renaming changes what's on sets, parts and figures; the repository pulls the cache along. */
+     override fun renameLocation(id: Int, name: String) {
+-        val old = filter.storageState.value.own.firstOrNull { it.id == id }?.name.orEmpty()
++        val old = ""
+         locationLock { parts.renameLocation(id, old, name).evaluate() }
+     }
+ 

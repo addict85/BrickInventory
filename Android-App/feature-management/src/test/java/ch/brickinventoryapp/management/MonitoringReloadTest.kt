@@ -20,8 +20,8 @@ import java.io.File
  * and after clearing the cache the numbers come anew. Against a test server.
  *
  * Counter-checks (patches under counter-checks/, not compilable locally, measured by CI):
- *   zeitplan-ohne-nachladen   loadJobs() removed after setJobSchedule → red “after setting …”
- *   cache-leeren-ohne-zahlen  loadCacheAndLimits() removed after clearCache → red “after clearing …”
+ *   schedule-without-reload   loadJobs() removed after setJobSchedule → red “after setting …”
+ *   cache-clear-without-numbers  loadCacheAndLimits() removed after clearCache → red “after clearing …”
  */
 class MonitoringReloadTest {
 

@@ -129,7 +129,7 @@ class AlarmFetchTest {
     }
 
     /**
-     * Counter-check: counter-checks/alarm-betrag-fest-us.patch (`Locale.US` again) → red
+     * Counter-check: counter-checks/alarm-amount-fixed-us.patch (`Locale.US` again) → red
      * „the amounts are in the number format of the app language“.
      */
     @Test

@@ -1,0 +1,16 @@
+Gegenprobe: KontoUiState trägt wieder ein speichert-Boolean
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: screens do not trigger loading via LaunchedEffect, states carry loading and message
+
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/AccountStates.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/AccountStates.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/AccountStates.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/AccountStates.kt
+@@ -25,6 +25,7 @@
+     val profile: ProfileView? = null,
+     /** Save profile, password or design; if it fails, the reason is here. */
+     val save: Operation = Operation.Done,
++    val speichert: Boolean = false,
+     /** What saving achieved. */
+     val message: Message? = null,
+     /** The server requires the second factor (zweiter_faktor_noetig): show the code field. */

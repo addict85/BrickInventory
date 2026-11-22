@@ -122,27 +122,27 @@ import android.graphics.Color as Color
  * help lines, distances to the window edge, tablet side by side.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   kaufpreise-spaltenkoepfe        column header „Zustand“ again above the rows → red “the purchase prices carry field labels …”
- *   barcode-felder-ohne-hinweis     barcode dialog without help line below the quantity → red “barcode names the number …”
- *   barcode-plakette-vor-nummer     „Schon in deiner Sammlung“ again between name and number
+ *   purchase-prices-column-headers        column header „Zustand“ again above the rows → red “the purchase prices carry field labels …”
+ *   barcode-fields-without-hint     barcode dialog without help line below the quantity → red “barcode names the number …”
+ *   barcode-badge-before-number     „Schon in deiner Sammlung“ again between name and number
  *                                   → red “barcode names the number …”
- *   preisspeicher-eingerueckt       price cache again with its own page margin → red “background work with a title, …” (indent)
- *   hintergrund-titel-doppelt       card again with the page name → red “background work with a title, …” (twice)
- *   hintergrund-titel-im-inhalt     page name again above the content → red “background work with a title, …”
- *   netze-ohne-schalter             networks without switch role → red “background work with a title, …”
- *   gutscheine-anlegen-oben         „Gutschein hinzufügen“ again above the list → red “creating vouchers floats, balance …” (does not float)
- *   bauliste-zahl-im-text           „(2 Sets)“ again as a second text in the button → red “creating a build list stays on …”
- *   alarm-feld-nennt-richtung       threshold field again labelled „Fällt unter“ → red “price alerts name the direction …”
- *   alarm-feld-schmal               fields also on the phone at most 320 dp wide → red “price alerts name the direction …” (edge)
- *   gutschein-anlegen-ohne-text     button again with text/icon (text taken from the semantics)
+ *   price-store-indented       price cache again with its own page margin → red “background work with a title, …” (indent)
+ *   background-title-twice       card again with the page name → red “background work with a title, …” (twice)
+ *   background-title-in-content     page name again above the content → red “background work with a title, …”
+ *   networks-without-switch             networks without switch role → red “background work with a title, …”
+ *   vouchers-create-on-top         „Gutschein hinzufügen“ again above the list → red “creating vouchers floats, balance …” (does not float)
+ *   build-list-number-in-text           „(2 Sets)“ again as a second text in the button → red “creating a build list stays on …”
+ *   alarm-field-names-direction       threshold field again labelled „Fällt unter“ → red “price alerts name the direction …”
+ *   alarm-field-narrow               fields also on the phone at most 320 dp wide → red “price alerts name the direction …” (edge)
+ *   voucher-create-without-text     button again with text/icon (text taken from the semantics)
  *                                   → red “creating vouchers floats, balance …”
- *   bildflaeche-hell-im-dunkeln     image background white in the dark too → red “in the dark the image lies …”
- *   leiste-ohne-rand                bar again without margin → red “the bar keeps distance to the screen edge at 200 percent …”
- *   scanner-schliessen-rechts       close again at the top right → red “the scanner closes top left …”
- *   dialog-ohne-rand                confirmation and adding without own margin → red “confirmation and adding keep …” (borderless)
- *   sprache-uebersetzt              in German again „Englisch“ → red “the languages are called in …”
- *   portfolio-im-titel              „Wertentwicklung Portfolio“ back → red “the value development is named after …”
- *   galerie-ohne-detailflaeche      next to an open set only the detail → red “on the tablet gallery …”
+ *   image-surface-light-in-dark     image background white in the dark too → red “in the dark the image lies …”
+ *   bar-without-border                bar again without margin → red “the bar keeps distance to the screen edge at 200 percent …”
+ *   scanner-close-on-right       close again at the top right → red “the scanner closes top left …”
+ *   dialog-without-border                confirmation and adding without own margin → red “confirmation and adding keep …” (borderless)
+ *   language-translated              in German again „Englisch“ → red “the languages are called in …”
+ *   portfolio-in-title              „Wertentwicklung Portfolio“ back → red “the value development is named after …”
+ *   gallery-without-detail-pane      next to an open set only the detail → red “on the tablet gallery …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

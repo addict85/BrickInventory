@@ -1,0 +1,27 @@
+Gegenprobe: Eine gewählte Datei wird ganz gelesen und erst danach an der Grenze gemessen
+Modul: core-data
+Test: ch.brickinventoryapp.data.FileLimitTest
+Rot: an endless stream is not read beyond the limit
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt
+@@ -56,15 +56,6 @@
+ internal const val FILE_AT_MOST = 50L * 1024 * 1024
+ 
+ /** Up to [limit] bytes and one more as a probe; null if the stream is longer. The rest stays unread. */
+-internal fun readLimited(one: InputStream, limit: Long): ByteArray? {
+-    val from = ByteArrayOutputStream()
+-    val buffer = ByteArray(64 * 1024)
+-    var read = 0L
+-    while (true) {
+-        val n = one.read(buffer, 0, minOf(buffer.size.toLong(), limit + 1 - read).toInt())
+-        if (n < 0) return from.toByteArray()
+-        read += n
+-        if (read > limit) return null
+-        from.write(buffer, 0, n)
+-    }
+-}
++internal fun readLimited(one: InputStream, limit: Long): ByteArray? =
++    one.readBytes().takeIf { it.size <= limit }
++

@@ -24,7 +24,7 @@ import java.io.File
  *
  * Counter-checks:
  *   A  in pdfStore() `confidential` ignored (always cacheDir) → red “a voucher PDF gets no file …”;
- *      counter-checks/gutschein-pdf-auf-platte.patch
+ *      counter-checks/voucher-pdf-on-disk.patch
  *   D  pdfMaySavedBecome() always true → red “a voucher PDF cannot be downloaded …”
  *   F  in pdfStore() back to `pdfUrl.hashCode()` as the name → red “the file name depends …”
  *   G  showsVouchers() back to `"/api/v2/vouchers/" in pdfUrl` → red “the path recognizes vouchers …”

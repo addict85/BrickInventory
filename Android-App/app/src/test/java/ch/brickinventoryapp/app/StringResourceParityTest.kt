@@ -284,9 +284,9 @@ class StringResourceParityTest {
     /**
      * One word per thing (glossary): „Setnummer“, list footers „Total“, „Kaufsumme“ for the
      * cost; English „Sign in/out“, „Profit/loss“, „administrator rights“.
-     * Counter-check (counter-checks/begriff-set-nummer.patch): gallery_set_number again
-     * „Set-Nummer“ → red. Likewise versalien-im-text (PREISSPEICHER) and
-     * vorgabe-mit-strichen („— Global default —“).
+     * Counter-check (counter-checks/term-set-number.patch): gallery_set_number again
+     * „Set-Nummer“ → red. Likewise capitals-in-text (PREISSPEICHER) and
+     * default-with-dashes („— Global default —“).
      */
     @Test
     fun `one term per thing in both languages`() {
@@ -310,7 +310,7 @@ class StringResourceParityTest {
     /**
      * The roles are called as on the web „Standard“ and „Administrator“, also in compounds
      * („Administratorrechte“); „Verwalter“ and „Benutzer“ as a role are superseded.
-     * Counter-check (counter-checks/rolle-verwalter.patch): zf_required_short again „Verwalterrechte …“ → red.
+     * Counter-check (counter-checks/role-manager.patch): zf_required_short again „Verwalterrechte …“ → red.
      */
     private fun checkRolesNames() {
         val de = texts("values-de/strings.xml")

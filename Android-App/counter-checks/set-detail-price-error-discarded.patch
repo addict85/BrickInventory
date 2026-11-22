@@ -1,0 +1,26 @@
+Gegenprobe: Preis und Preisverlauf verwerfen ihren Fehler still
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetDetailViewModelTest
+Rot: if price and history fail, the error is in the state until a new fetch succeeds
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
+@@ -154,7 +154,7 @@
+         _setDetailState.update { it.copy(priceFetch = Load.Loads) }
+         when (val r = finances.getSetPrice(setNumber)) {
+             is Outcome.Success -> _setDetailState.update { it.copy(setPrice = r.data, priceFetch = Load.Data(Unit)) }
+-            is Outcome.Failure -> _setDetailState.update { it.copy(priceFetch = loadError(r)) }
++            is Outcome.Failure -> _setDetailState.update { it.copy(priceFetch = Load.Data(Unit)) }
+         }
+     }
+ 
+@@ -162,7 +162,7 @@
+         _setDetailState.update { it.copy(historyFetch = Load.Loads) }
+         when (val r = finances.getSetPriceHistory(setNumber)) {
+             is Outcome.Success -> _setDetailState.update { it.copy(priceHistory = r.data, historyFetch = Load.Data(Unit)) }
+-            is Outcome.Failure -> _setDetailState.update { it.copy(historyFetch = loadError(r)) }
++            is Outcome.Failure -> _setDetailState.update { it.copy(historyFetch = Load.Data(Unit)) }
+         }
+     }
+ 

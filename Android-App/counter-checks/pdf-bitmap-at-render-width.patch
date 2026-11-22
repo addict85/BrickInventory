@@ -1,0 +1,17 @@
+Gegenprobe: Bitmap-Zustand einer PDF-Seite hängt auch an der Renderbreite
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfGestureTest
+Rot: a zoom step keeps the old page
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfPages.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfPages.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfPages.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfPages.kt
+@@ -187,7 +187,7 @@
+ 
+ @Composable
+ private fun PdfPage(source: PdfSource, index: Int, renderWidthPx: Int, render: PagesRenderer) {
+-    var bitmap by remember(source, index) { mutableStateOf<Bitmap?>(null) }
++    var bitmap by remember(source, index, renderWidthPx) { mutableStateOf<Bitmap?>(null) }
+ 
+     // remember without, LaunchedEffect with renderWidthPx: on a step change the
+     // old bitmap stays up until the new one is there. A loading spinner would have a different height

@@ -1,0 +1,17 @@
+Gegenprobe: Vormerken loescht den Kauf gleich
+Modul: app
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: deleting a purchase offers undo and deletes only afterwards
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/PurchasesViewModel.kt
+@@ -155,7 +155,7 @@
+     }
+ 
+     override fun purchaseDeleteReserve(type: ItemKind, id: String, colorId: Int, acqId: Int) =
+-        purchaseRoute.reserve(ReservedPurchase(type, id, colorId, acqId))
++        if (type == ItemKind.SET) deleteAcquisition(id, acqId) else deleteManualAcquisition(type, id, colorId, acqId)
+ 
+     /** If the store has already taken over the set's new total, the tile follows; otherwise the state is fetched. */
+     private suspend fun setChanged(adopted: Boolean) {

@@ -55,14 +55,14 @@ import org.junit.Test
  *   I  in galleryState the filtering out of the pending set removed → red
  *      “pending deletion removes the tile right away …”
  *   J in galleryState the key figures not adjusted
- *      (counter-checks/galerie-kennzahlen-beim-loeschen.patch) → red “the key figures
+ *      (counter-checks/gallery-metrics-on-delete.patch) → red “the key figures
  *      do not count the pending set …” (2 instead of 1 set)
  *   K  in executeDelete() the check for [only] removed
- *      (counter-checks/galerie-abgeloestes-loeschen.patch) → red “the snackbar of a
+ *      (counter-checks/gallery-superseded-delete.patch) → red “the snackbar of a
  *      superseded deletion does not carry out the next one” (DELETE for 75192-1)
  *   L  in loadIfEmpty() the check for an empty list removed → red “on
  *      show the gallery only loads if it is empty” (two fetches)
- *   galerie-laedt-nicht-beim-zeigen  (counter-checks/) loadPerServer of the gallery removed → red
+ *   gallery-does-not-load-on-show  (counter-checks/) loadPerServer of the gallery removed → red
  *      “whoever shows the gallery triggers the loading …”
  *   K, L and the last only measurable in the CI (Android classes in the test run).
  */

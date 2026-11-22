@@ -94,20 +94,20 @@ import java.util.Locale
  * after deleting, list rows from large font on and a year bar for all.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   kaufpreise-volle-breite       purchase prices without centeredUntil → red “purchase prices stand in form width on the tablet …”
- *   hintergrund-volle-breite      background work without centeredUntil → red “background work stands …”
- *   galerie-kachel-bei-130        list row again only via largeFont() → red “gallery shows list rows at 130 …”
- *   jahresleiste-28dp             track again 28 dp → red “year bar is 48 dp wide …”
- *   jahresleiste-ohne-sprung      TalkBack tap opens no menu → red “year bar jumps …”
- *   thema-wieder-blau             theme of the tile again in primary → red “theme and numbers …”
- *   teil-erfassen-titel           parts_add_title again „Teil erfassen“ → red “texts say add …”
- *   galerie-ohne-filterchips      gallery passes no active filters → red “active filter stands as a chip …”
- *   figuren-nummer-unsortiert     NUMMER does not sort → red “minifigures can be sorted“
- *   teil-loescht-sofort           marking deletes right away → red “deleting a part offers undo …”
- *   lagerort-gleich-geloescht     marking deletes right away → red “deleting a storage location offers undo …”
- *   kauf-loescht-sofort           marking deletes right away → red “deleting a purchase offers undo …”
- *   teil-ohne-preis-strich        market value without price again „—“ → red “part without market price …”
- *   setitem-eigener-kopf          part from sets again with 140 dp image → red “part from sets has the same header …”
+ *   purchase-prices-full-width       purchase prices without centeredUntil → red “purchase prices stand in form width on the tablet …”
+ *   background-full-width      background work without centeredUntil → red “background work stands …”
+ *   gallery-tile-at-130        list row again only via largeFont() → red “gallery shows list rows at 130 …”
+ *   year-bar-28dp             track again 28 dp → red “year bar is 48 dp wide …”
+ *   year-bar-without-jump      TalkBack tap opens no menu → red “year bar jumps …”
+ *   theme-blue-again             theme of the tile again in primary → red “theme and numbers …”
+ *   part-capture-title           parts_add_title again „Teil erfassen“ → red “texts say add …”
+ *   gallery-without-filter-chips      gallery passes no active filters → red “active filter stands as a chip …”
+ *   figures-number-unsorted     NUMMER does not sort → red “minifigures can be sorted“
+ *   part-deletes-immediately           marking deletes right away → red “deleting a part offers undo …”
+ *   location-deleted-at-once     marking deletes right away → red “deleting a storage location offers undo …”
+ *   purchase-deletes-immediately           marking deletes right away → red “deleting a purchase offers undo …”
+ *   part-without-price-dash        market value without price again „—“ → red “part without market price …”
+ *   setitem-own-header          part from sets again with 140 dp image → red “part from sets has the same header …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

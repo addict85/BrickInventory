@@ -1,0 +1,17 @@
+Gegenprobe: die Bildfläche bleibt auch im Dunkeln weiss
+Modul: app
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
+Rot: in the dark the image lies on a dark surface
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProductImage.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProductImage.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProductImage.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProductImage.kt
+@@ -65,7 +65,7 @@
+     // area across the whole tile glared and looked the same in every dark theme.
+     val reason = when {
+         !imageBackground || !loaded -> Modifier
+-        dark -> Modifier.background(MaterialTheme.colorScheme.surfaceContainerHighest)
++        dark -> Modifier.background(IMAGE_BACKGROUND)
+         else -> Modifier.background(IMAGE_BACKGROUND)
+     }
+     Box(modifier.then(reason), contentAlignment = Alignment.Center) {

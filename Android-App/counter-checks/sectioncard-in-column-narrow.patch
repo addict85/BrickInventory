@@ -1,0 +1,17 @@
+Gegenprobe: Die Abschnittskarte bleibt auch in einer Tablet-Spalte auf Lesebreite, mittig mit leerem Rand
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.SectionCardWidthTest
+Rot: in a column the card takes the full width
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+@@ -88,7 +88,7 @@
+     // The card limits the width, not every element inside it: otherwise values, fields
+     // and buttons on the tablet ended at different points in the middle of the card. In a
+     // single column, the column is the limit; narrower, the card stood centered inside a margin.
+-    val width = if (LocalColumnMap.current) Modifier.fillMaxWidth() else Modifier.centeredUntil(ReadingWidth.form)
++    val width = Modifier.centeredUntil(ReadingWidth.form)
+     AppCard(width
+         .then(if (outerGap) Modifier.padding(horizontal = Spacing.large, vertical = Spacing.tiny) else Modifier)) {
+         Column(Modifier.padding(horizontal = Spacing.large, vertical = Spacing.medium)) {

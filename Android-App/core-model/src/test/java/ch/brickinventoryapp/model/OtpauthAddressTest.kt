@@ -9,7 +9,7 @@ import org.junit.Test
  * What goes to the authenticator app: only `otpauth://totp|hotp/…`. Used to lie in
  * core-network; the rule needs no network, and this way feature-account does not know core-network.
  *
- * Counter-check (kotlinc and JUnit against Otpauth.kt, counter-checks/otpauth-jedes-schema.patch):
+ * Counter-check (kotlinc and JUnit against Otpauth.kt, counter-checks/otpauth-any-scheme.patch):
  *   the scheme check in otpauthAddress() removed → red “only otpauth goes to the
  *   authenticator app” (https let through)
  */

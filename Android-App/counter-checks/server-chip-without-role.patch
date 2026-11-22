@@ -1,0 +1,16 @@
+Gegenprobe: Server-Fläche ohne Rolle Schaltfläche (TalkBack hört nur die Adresse)
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: server chip names its task as a button
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
+@@ -77,7 +77,6 @@
+                 if (payload != null) {
+                     qrSuggestion = payload
+                 } else {
+-                    scanInvalid = true
+                 }
+             },
+             onDismiss = { showScanner = false }

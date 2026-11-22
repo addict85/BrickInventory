@@ -1,0 +1,17 @@
+Gegenprobe: der Abgriff liest den Rumpf selbst, statt ihn nur anzusehen
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewTapTest
+Rot: a fetched preview is stored, and the caller gets it whole
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+@@ -268,7 +268,7 @@
+                 // it. A preview is small enough to take it along
+                 // on the side.
+                 val bytes = runCatching {
+-                    response.peekBody(2L * 1024 * 1024).bytes()
++                    response.body.bytes()
+                 }.getOrNull()
+                 if (bytes != null && bytes.isNotEmpty()) {
+                     // Speculative or used? Only the warmer's requests carry

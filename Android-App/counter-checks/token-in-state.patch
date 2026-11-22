@@ -1,0 +1,16 @@
+Gegenprobe: Der Token steht wieder als Feld im gemeinsamen UI-Zustand
+Modul: core-session
+Test: ch.brickinventoryapp.session.NoTokenInStateTest
+Rot: no field of AppUiState carries a token
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AppUiState.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AppUiState.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AppUiState.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AppUiState.kt
+@@ -13,6 +13,7 @@
+ data class AppUiState(
+     val serverUrl: String = "",
+     val isLoggedIn: Boolean = false,
++    val authToken: String = "",
+     val isAdmin: Boolean = false,
+     // No token here: only the interceptor (TokenStore) reads it; in
+     // the state it would be exposed to every screen, as a second source of truth.

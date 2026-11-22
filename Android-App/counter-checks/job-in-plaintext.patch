@@ -1,0 +1,17 @@
+Gegenprobe: Der Abmeldeauftrag liegt wieder lesbar in der Warteschlange von WorkManager
+Modul: core-data
+Test: ch.brickinventoryapp.data.JobStoreTest
+Rot: the job lies in the queue only encrypted and comes back whole
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/RedemptionJob.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/RedemptionJob.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/RedemptionJob.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/RedemptionJob.kt
+@@ -36,7 +36,7 @@
+     private val open: (secret: String, binding: String) -> VaultFinding,
+ ) {
+     /** null: currently not encryptable (locked); then nothing is put into the queue. */
+-    fun put(job: RedemptionJob): String? = encrypt(asText(job), BINDING)
++    fun put(job: RedemptionJob): String? = asText(job).also { encrypt(it, BINDING) }
+ 
+     fun read(secret: String): JobState = when (val b = open(secret, BINDING)) {
+         is VaultFinding.Readable -> fromText(b.plaintext)?.let { JobState.Da(it) } ?: JobState.Unreadable

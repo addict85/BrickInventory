@@ -1,0 +1,17 @@
+Gegenprobe: fmtMoney setzt Währungssymbol und Betrag von Hand zusammen, das Symbol steht immer vorn
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.NumberFormatTest
+Rot: the opposite direction stays the platform's business
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumberFormatUtils.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumberFormatUtils.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumberFormatUtils.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumberFormatUtils.kt
+@@ -48,7 +48,7 @@
+         nf.currency = Currency.getInstance((currencyCode ?: CurrencyCode.EUR).code)
+         nf.minimumFractionDigits = 2
+         nf.maximumFractionDigits = 2
+-        withCurrencyGap(nf.format(amount))
++        withCurrencyGap(nf.currency.getSymbol(loc) + fmtAmount(amount))
+     } catch (_: Exception) {
+         "${currencyCode?.code.orEmpty()}\u00A0${fmtAmount(amount)}".trim()
+     }

@@ -1,0 +1,17 @@
+Gegenprobe: Markenkopf auch bei 200 % gross und zweizeilig
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: brand header at 200 percent takes at most an eighth of the height
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
+@@ -41,7 +41,7 @@
+ fun BrandsHeader(modifier: Modifier = Modifier, subtitle: String? = null) {
+     // With large text, small on one line: tile and two-line name took up
+     // a quarter of the page at 200%, and the first field sat below the fold.
+-    if (largeFont()) {
++    if (false && largeFont()) {
+         Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
+             verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
+             Row(verticalAlignment = Alignment.CenterVertically,

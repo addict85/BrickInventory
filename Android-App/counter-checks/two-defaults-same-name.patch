@@ -1,0 +1,22 @@
+Gegenprobe: Beide Vorgaben heissen wieder „Standard-Zustand“
+Modul: app
+Test: ch.brickinventoryapp.app.DefaultStateTermsTest
+Rot: the own default and the one for all accounts have different names
+
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
+@@ -6,11 +6,11 @@
+     <!-- ══════════════ Settings screen ══════════════ -->
+     <string name="settings_currency">Währung</string>
+     <string name="settings_price_condition">Preiszustand</string>
+-    <string name="settings_default_condition">Mein Zustand beim Hinzufügen</string>
++    <string name="settings_default_condition">Standard-Zustand</string>
+     <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
+     <string name="settings_default_condition_hint">Damit beginnt ein neu hinzugefügtes Set. „Allgemein“ übernimmt die Vorgabe für alle Konten.</string>
+     <string name="settings_default_condition_global">Allgemein</string>
+-    <string name="monitoring_default_condition">Zustand beim Hinzufügen für alle Konten</string>
++    <string name="monitoring_default_condition">Standard-Zustand</string>
+     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
+     <string name="settings_condition_new">Neuware</string>
+     <string name="settings_condition_used">Gebraucht</string>

@@ -1,0 +1,16 @@
+Gegenprobe: Eine abgelehnte Bearbeitung wird entfernt, ohne sie festzuhalten
+Modul: core-state
+Test: ch.brickinventoryapp.state.OutboxSyncTest
+Rot: a rejection discards and records it, even without an observer, the rest continues
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Reconcile.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Reconcile.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Reconcile.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Reconcile.kt
+@@ -143,7 +143,6 @@
+ 
+     private suspend fun discard(area: String, p: OutboxItem, message: String, code: Int?, affected: MutableSet<StockKind>) {
+         // First record, then remove: if the process dies in between, the hint stays.
+-        outbox.rememberDiscarded(area, DiscardedItem(p.key.ifBlank { "posten-${p.id}" }, p.editing.target, message, code))
+         outbox.remove(p.id)
+         // The local list still carries the edit; reloading restores the server state.
+         affected += p.editing.kind

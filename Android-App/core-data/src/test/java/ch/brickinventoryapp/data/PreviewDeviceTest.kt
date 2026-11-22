@@ -28,10 +28,10 @@ import java.io.File
  * happens only on Wi-Fi. Under Robolectric, with set network capabilities.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   vorschau-im-cache           the store under cacheDir → red “the store lies under filesDir”
- *   netzlage-hotspot-als-wlan   a metered Wi-Fi counts as Wi-Fi → red “a metered Wi-Fi …”
- *   netzlage-ohne-roaming       roaming never detected → red “abroad …”
- *   vorwaermen-vorgabe-mobil    default for mobile true → red “by default warming happens only on Wi-Fi”
+ *   preview-in-cache           the store under cacheDir → red “the store lies under filesDir”
+ *   network-state-hotspot-as-wifi   a metered Wi-Fi counts as Wi-Fi → red “a metered Wi-Fi …”
+ *   network-state-without-roaming       roaming never detected → red “abroad …”
+ *   prewarm-default-mobile    default for mobile true → red “by default warming happens only on Wi-Fi”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

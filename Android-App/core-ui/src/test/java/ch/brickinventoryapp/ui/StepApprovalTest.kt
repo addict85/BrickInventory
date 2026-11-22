@@ -26,11 +26,11 @@ import java.security.spec.ECGenParameterSpec
  *
  * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
  *   A  Schrittfreigabe.unterschrift() accepts any existing signature → red „ein anderer Schluessel zaehlt nicht“
- * ; counter-checks/schrittschutz-ohne-signatur.patch
+ * ; counter-checks/step-guard-without-signature.patch
  *   B  step flow continues past the lock without asking the server → red
- *      „lehnt der Server die Signatur ab …“; counter-checks/schrittablauf-ohne-server.patch
+ *      „lehnt der Server die Signatur ab …“; counter-checks/step-flow-without-server.patch
  *   C  a server refusal falls back to the on-device check → red „ohne Schluessel am Server …“
- * ; counter-checks/schrittablauf-absage-im-geraet.patch
+ * ; counter-checks/step-flow-rejection-on-device.patch
  */
 class StepApprovalTest {
 

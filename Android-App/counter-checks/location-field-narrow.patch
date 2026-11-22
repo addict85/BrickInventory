@@ -1,0 +1,18 @@
+Gegenprobe: Lagerortfeld im Erfassen-Dialog wieder ohne volle Breite
+Modul: app
+Test: ch.brickinventoryapp.app.ScreenPhotoVariantsTest
+Rot: addDialogSet
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
+@@ -78,8 +78,7 @@
+             // As wide as the caller dictates: without a width the field stuck at Materials'
+             // 280 dp — narrower than the others in the dialog, half as wide in the detail.
+             modifier = Modifier.menuAnchor(
+-                ExposedDropdownMenuAnchorType.PrimaryEditable, true)
+-                .fillMaxWidth(),
++                ExposedDropdownMenuAnchorType.PrimaryEditable, true),
+         )
+         ExposedDropdownMenu(
+             expanded = open && matching.isNotEmpty(),

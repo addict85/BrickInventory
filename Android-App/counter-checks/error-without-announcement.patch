@@ -1,0 +1,17 @@
+Gegenprobe: Formularfehler ohne Live-Region
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: errors of the sign-in and of the mandatory forms are announced
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FormFields.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FormFields.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FormFields.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/FormFields.kt
+@@ -36,7 +36,7 @@
+  * A text that appears after an action is announced: without a live region, a
+  * blind person hears nothing after „Sign in“ and doesn't know it failed.
+  */
+-fun Modifier.announce(): Modifier = semantics { liveRegion = LiveRegionMode.Polite }
++fun Modifier.announce(): Modifier = this
+ 
+ /**
+  * Sits above a locked main button and says what's missing: pale alone left you

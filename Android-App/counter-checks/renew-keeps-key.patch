@@ -1,0 +1,16 @@
+Gegenprobe: Ablageschluessel.erneuere() vergisst den Schlüssel im Speicher nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.StoreEncryptionTest
+Rot: after renewal everything old is unreadable, even after a restart
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
+@@ -103,7 +103,6 @@
+         file.delete()
+         runCatching { vault.forgetNow() }
+         known?.fill(0)
+-        known = null
+         state++
+         // Locked, the new one is only created on the next access: a sign-out in the background
+         // should not fail just because the device isn't letting anything be encrypted right now.

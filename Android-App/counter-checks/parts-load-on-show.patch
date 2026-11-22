@@ -1,0 +1,17 @@
+Gegenprobe: Der Teile-Reiter holt beim Zeigen den Farbkatalog nicht mehr
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsViewModelTest
+Rot: whoever shows the tab gets list, colors and filter values, the figures only once
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
+@@ -162,7 +162,7 @@
+         wanted.get<PartsFilter>(F_FILTER)?.let(parts::placeFilterAgain)
+         // Whoever shows the tab or a single item gets the list, color catalog and filter lists;
+         // the two filter lists come from two addresses (PartsApi.getPartsFilterColors).
+-        loadPerServer(session, partsObserved) { loadParts(); loadPartsColors(); loadPartsFilters() }
++        loadPerServer(session, partsObserved) { loadParts(); loadPartsFilters() }
+     }
+ 
+     // ── List and filter ─────────────────────────────────────────────────────

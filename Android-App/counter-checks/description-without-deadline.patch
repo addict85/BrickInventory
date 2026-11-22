@@ -1,0 +1,16 @@
+Gegenprobe: apk-pruefen prüft ausgestellt und gueltigBis der signierten Beschreibung nicht
+Modul: app
+Test: ch.brickinventoryapp.app.ReleaseCheckTest
+Rot: a description without a valid deadline is not published
+
+diff --git a/Android-App/tools/release-check.py b/Android-App/tools/release-check.py
+--- a/Android-App/tools/release-check.py
++++ b/Android-App/tools/release-check.py
+@@ -138,7 +138,6 @@
+         'apkUrl': f"{ablage.rstrip('/')}/BrickInventory-{element.get('versionCode')}.apk",
+     }
+     falsch = [f'{k}: {daten.get(k)!r} statt {v!r}' for k, v in soll.items() if daten.get(k) != v]
+-    falsch += frist(daten.get('ausgestellt'), daten.get('gueltigBis'), int(time.time()))
+     if falsch:
+         print('Die Beschreibung passt nicht zum APK: ' + '; '.join(falsch))
+         return 1

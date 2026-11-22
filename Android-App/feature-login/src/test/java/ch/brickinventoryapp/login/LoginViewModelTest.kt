@@ -95,20 +95,20 @@ import java.util.concurrent.ConcurrentHashMap
  *   X  mustTypeIn() without a pin back to `false` (the state before: a tap
  *      was enough on first setup) → red “a private key from the
  *      QR code only counts, on first setup, once typed off”;
- *      counter-checks/qr-pin-ohne-abtippen.patch
+ *      counter-checks/qr-pin-without-typing.patch
  *   Y  in pairQr() the question about the account skipped (always yes) →
- *      red “a QR sign-in shows the account and server …”; counter-checks/qr-ohne-kontofrage.patch
+ *      red “a QR sign-in shows the account and server …”; counter-checks/qr-without-account-question.patch
  *   Z  on a no, discardQr() not called → red “a no to the shown
- *      account …”; counter-checks/qr-nein-ohne-verwerfen.patch
+ *      account …”; counter-checks/qr-no-without-discard.patch
  * Counter-checks for the server switch via QR (added 12.11.2026; measurable only in CI without Gradle):
  *   AC loginWithQrToken() back to calling setUpOne() before the fetch (sign out right away) → red
  *      “a no to a different server's account …” and “… only after the yes …”;
- *      counter-checks/qr-wechsel-meldet-sofort-ab.patch
+ *      counter-checks/qr-switch-logs-out-immediately.patch
  *   AD in qrFailed() without `!pairingWithSwitch` → red “if the pairing fails with
- *      a different server …” (error swallowed); counter-checks/qr-wechsel-fehler-verschluckt.patch
+ *      a different server …” (error swallowed); counter-checks/qr-switch-error-swallowed.patch
  *   AE in leavePreviousServer() without `pairingTarget(null)` → red “… only after the yes …”
  *      (signed out while requests were still going to the new server);
- *      counter-checks/qr-wechsel-abmelden-am-neuen.patch
+ *      counter-checks/qr-switch-logout-on-new.patch
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {

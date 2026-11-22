@@ -13,7 +13,7 @@ import org.junit.Test
  * app settings. Opening the scanner always only asks the system.
  *
  * Counter-check:
- *   CameraPermission.allow() always asks the system (counter-checks/kamera-gesperrt-toter-knopf.patch)
+ *   CameraPermission.allow() always asks the system (counter-checks/camera-denied-dead-button.patch)
  *   → red „if the question is blocked, the button leads into the settings“
  */
 class CameraPermissionTest {

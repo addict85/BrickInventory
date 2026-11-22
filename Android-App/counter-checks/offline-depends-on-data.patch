@@ -1,0 +1,16 @@
+Gegenprobe: core-offline bindet core-ui ein; die Ablage kennte die Oberfläche
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-offline/build.gradle.kts b/Android-App/core-offline/build.gradle.kts
+--- a/Android-App/core-offline/build.gradle.kts
++++ b/Android-App/core-offline/build.gradle.kts
+@@ -27,6 +27,7 @@
+     api(project(":core-model"))
+     // The database key comes from the store key.
+     implementation(project(":core-security"))
++    implementation(project(":core-ui"))
+     implementation(libs.androidx.core.ktx)
+     implementation(libs.kotlinx.coroutines.android)
+     implementation(libs.androidx.room.runtime)

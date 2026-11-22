@@ -24,7 +24,7 @@ import org.robolectric.RobolectricTestRunner
  *
  * Counter-check: in DevicesStepProtection.confirm() without lock again `next()`
  * instead of `withoutLock.question(…)` → red “without a screen lock the step guard warns
- * …” (the step went on silently); counter-checks/ohne-sperre-still.patch
+ * …” (the step went on silently); counter-checks/without-lock-silent.patch
  */
 @RunWith(RobolectricTestRunner::class)
 class WithoutLockTest {

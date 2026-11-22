@@ -17,8 +17,8 @@ import org.junit.Test
  * fits the case, and clearing an error does not stop a running operation.
  *
  * Counter-checks (counter-checks/, :core-model:test):
- *   vorgang-wegraeumen-haelt-an  withoutError() always returns Fertig → red “clearing an error …”
- *   vorgang-beendet-ohne-grund   ended(null) gives a failure → red “ended without a reason …”
+ *   operation-cleanup-stops  withoutError() always returns Fertig → red “clearing an error …”
+ *   operation-ended-without-reason   ended(null) gives a failure → red “ended without a reason …”
  */
 class OperationTest {
 

@@ -19,7 +19,7 @@ import retrofit2.http.PUT
  * that only stands in the detail of its set can only be found if one already knows the set.
  * The web app checks the opposite direction (test/webapp-endpoints.test.js).
  *
- * Counter-check (counter-checks/alarm-besitzt-vorgabe-falsch.patch): default of `owns`
+ * Counter-check (counter-checks/alarm-owns-default-false.patch): default of `owns`
  * to false → red “a missing owns field …”. Loading, changing, deleting after confirmation,
  * click, state words, preview image and saving on “Done” are checked, drawn, by PriceAlertsDisplayTest.
  */

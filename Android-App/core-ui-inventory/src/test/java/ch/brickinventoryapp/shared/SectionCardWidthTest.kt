@@ -28,7 +28,7 @@ import org.robolectric.annotation.Config
  * centered in a 640 dp wide column, with an empty margin left and right.
  *
  * Counter-check (measured only in CI — Robolectric):
- *   sectioncard-in-spalte-schmal  SectionCard doesn't read LocalColumnMap (always centeredUntil)
+ *   sectioncard-in-column-narrow  SectionCard doesn't read LocalColumnMap (always centeredUntil)
  *                                 → red „in a column the card takes the full width“
  */
 @RunWith(RobolectricTestRunner::class)

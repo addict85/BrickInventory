@@ -11,7 +11,7 @@ import org.junit.Test
  *
  * Counter-check (14.11.2026, kotlinc and local JUnit):
  *   A  qrAdoptable() without `targetConfirmed &&` → red “without a yes to the destination …”;
- *      counter-checks/qr-ziel-ohne-ja.patch
+ *      counter-checks/qr-target-without-yes.patch
  */
 class QrTargetTest {
 

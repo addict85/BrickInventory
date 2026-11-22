@@ -1,0 +1,17 @@
+Gegenprobe: Barcode-Dialog wieder ohne Hilfezeile unter der Anzahl
+Modul: app
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
+Rot: barcode names the number by its name and has the same help lines
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
+@@ -138,7 +138,7 @@
+                 glance.householdMembers, barcodeOwner, { barcodeOwner = it }
+             )
+             // The same fields as "Add set": label, help line, check.
+-            CountField(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
++                    CountField(barcodeQuantity, { barcodeQuantity = it }, "")
+             PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
+             ConditionRow(
+                 condition = barcodeUiState,

@@ -38,10 +38,10 @@ import org.robolectric.shadows.ShadowDialog
  * closes neither by tapping beside it nor by back without a confirmation prompt (AddDialog).
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   teil-erfassen-schliesst-still  "Hinzufügen" calls submit() and onDismiss() again → red “without a part number …”
- *   figur-erfassen-schliesst-still the same in the figures dialog → red “without a figure number …”
- *   erfassen-verwirft-ohne-frage   back also closes filled-in input right away → red “back asks …”
- *   erfassen-daneben-schliesst     addClosable always allows tapping beside it → red “tapping beside it …”
+ *   part-capture-closes-silently  "Hinzufügen" calls submit() and onDismiss() again → red “without a part number …”
+ *   figure-capture-closes-silently the same in the figures dialog → red “without a figure number …”
+ *   capture-discards-without-asking   back also closes filled-in input right away → red “back asks …”
+ *   capture-outside-closes     addClosable always allows tapping beside it → red “tapping beside it …”
  */
 @RunWith(RobolectricTestRunner::class)
 class AddDialogTest {

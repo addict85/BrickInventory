@@ -18,7 +18,7 @@ import org.junit.Test
  *
  * Counter-check: in ManagementApi `@GET("api/v2/startup-status")`
  * to "…/startstatus" → red “the app queries the startup state”.
- * Counter-check: counter-checks/startstatus-ganzzahl.patch
+ * Counter-check: counter-checks/start-status-integer.patch
  * makes progress an Int again → red “a progress with share is read”.
  */
 class ServerStartTest {

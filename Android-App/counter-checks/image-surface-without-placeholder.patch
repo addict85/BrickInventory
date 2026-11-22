@@ -1,0 +1,17 @@
+Gegenprobe: ProductImage zeichnet kein Ersatzbild mehr
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: gallery without image shows the placeholder image on every tile
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProductImage.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProductImage.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProductImage.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProductImage.kt
+@@ -69,7 +69,7 @@
+         else -> Modifier.background(IMAGE_BACKGROUND)
+     }
+     Box(modifier.then(reason), contentAlignment = Alignment.Center) {
+-        if (!loaded) ImageFallback(Modifier.matchParentSize(), fallbackSize)
++        if (false && !loaded) ImageFallback(Modifier.matchParentSize(), fallbackSize)
+         if (model != null) {
+             AsyncImage(
+                 model = model,

@@ -1,0 +1,16 @@
+Gegenprobe: die Vorschau-Ablage räumt über der Obergrenze nicht mehr auf
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewStorageTest
+Rot: above the upper limit the oldest goes until four fifths are free
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+@@ -130,7 +130,6 @@
+             // Prewarmed entries age at once; the reason is at SPECULATIVE_TIME.
+             else if (speculative) target.setLastModified(SPECULATIVE_TIME)
+         }
+-        cleanupIfNeeded()
+     }
+ 
+     /** How much lies here? For the display in the settings. */

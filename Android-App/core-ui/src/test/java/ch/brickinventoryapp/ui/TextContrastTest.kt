@@ -38,12 +38,12 @@ import org.junit.Test
  *      `brick/dunkel.leiste` 0.45, `.detailBar` 0.63, `.markt` 0.17
  *
  * Counter-checks for the color roles (`thema.py` against Compose Desktop; patches under counter-checks/):
- *   container-ohne-stauchung   → red classic.primary/surfaceContainerHighest 4.18
- *   primarycontainer-blau50    → red classic.primary/primaryContainer 4.24
- *   inverseprimary-ungeprueft  → red `farbfaecher`.inversePrimary/inverseSurface 3.73
- *   gebraucht-linie-blass      → red `noppe.gebraucht`/surface 2.61
- *   reiteranzeige-blass        → red `classic.anzeige/leiste` 1.02
- *   warnfarbe-hell             → red `classic.warnung`/surface 1.95
+ *   container-without-squeeze   → red classic.primary/surfaceContainerHighest 4.18
+ *   primarycontainer-blue50    → red classic.primary/primaryContainer 4.24
+ *   inverseprimary-unchecked  → red `farbfaecher`.inversePrimary/inverseSurface 3.73
+ *   used-line-faint      → red `noppe.gebraucht`/surface 2.61
+ *   tab-indicator-faint        → red `classic.anzeige/leiste` 1.02
+ *   warning-color-light             → red `classic.warnung`/surface 1.95
  */
 class TextContrastTest {
 

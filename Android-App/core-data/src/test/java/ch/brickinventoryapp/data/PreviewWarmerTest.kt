@@ -32,12 +32,12 @@ import java.util.Collections
  * allowed network after the running batch, and leaves air between the batches.
  *
  * Counter-checks (patches under counter-checks/):
- *   vorwaermen-holt-alles          filter on isPreview/hat removed → red “it fetches only …”
- *   vorwaermen-ohne-marke          the tag Vorwaermung removed → red “it fetches only …”
- *   vorwaermen-ueber-die-grenze    space per batch no longer asked → red “when the limit …”
- *   vorwaermen-netz-nur-anfangs    network state per batch no longer asked → red “when the device leaves …”
- *   vorwaermen-mobil-ungefragt     MOBILE without the permission → red “it starts only …”
- *   vorwaermen-ohne-pause          delay(PAUSE_MS) removed → red “between batches …”
+ *   prewarm-fetches-everything          filter on isPreview/hat removed → red “it fetches only …”
+ *   prewarm-without-marker          the tag Vorwaermung removed → red “it fetches only …”
+ *   prewarm-beyond-the-limit    space per batch no longer asked → red “when the limit …”
+ *   prewarm-network-only-at-start    network state per batch no longer asked → red “when the device leaves …”
+ *   prewarm-mobile-unasked     MOBILE without the permission → red “it starts only …”
+ *   prewarm-without-pause          delay(PAUSE_MS) removed → red “between batches …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PreviewWarmerTest {
@@ -121,7 +121,7 @@ class PreviewWarmerTest {
     /**
      * Every state asks its own permission. A new state is missing in the mapping and turns
      * the test red instead of silently falling under an existing answer.
-     * Counter-check (patch vorwaermen-roaming-wie-mobil): ROAMING asks the permission of MOBILE → red here.
+     * Counter-check (patch prewarm-roaming-as-mobile): ROAMING asks the permission of MOBILE → red here.
      */
     @Test
     fun `every network state follows its own permission`() = runTest {

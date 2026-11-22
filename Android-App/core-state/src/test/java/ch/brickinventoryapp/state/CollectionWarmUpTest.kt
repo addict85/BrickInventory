@@ -45,8 +45,8 @@ import java.io.File
  * catalog, whose roughly 25,000 sets would blow past the limit many times over.
  *
  * Counter-checks (patches under counter-checks/):
- *   vorwaermen-ohne-blickfeld  the parts fetched without the account filter → red „vorgewärmt wird …“
- *   vorwaermen-ohne-figuren    the figures no longer collected → red „vorgewärmt wird …“
+ *   prewarm-without-viewport  the parts fetched without the account filter → red „vorgewärmt wird …“
+ *   prewarm-without-figures    the figures no longer collected → red „vorgewärmt wird …“
  * Counter-checks (run here): `delay(RAMP_UP_MS)` removed from CollectionWarmUp.kick → red “the app start
  * waits …”; the `mayStart()` question removed → red, the same test.
  */

@@ -7,15 +7,15 @@ diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/sh
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/HouseholdComposables.kt
 +++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/HouseholdComposables.kt
 @@ -188,7 +188,8 @@
-     // FlowRow statt Row: Zwei Besitzer mit langen Namen sind breiter als die Kachel,
-     // in einer Row schöben sich die Etiketten übereinander. FlowRow bricht um, damit
-     // alle lesbar bleiben.
+     // FlowRow instead of Row: two owners with long names are wider than the tile,
+     // in a Row the labels would overlap. FlowRow wraps, so
+     // all of them stay readable.
 -    FlowRow(
 +    Row(Modifier) {
 +        FlowRow(
          modifier,
          horizontalArrangement = Arrangement.spacedBy(3.dp),
-         verticalArrangement = Arrangement.spacedBy(Abstaende.hairline),
+         verticalArrangement = Arrangement.spacedBy(Spacing.hairline),
 @@ -208,6 +209,7 @@
              }
          }

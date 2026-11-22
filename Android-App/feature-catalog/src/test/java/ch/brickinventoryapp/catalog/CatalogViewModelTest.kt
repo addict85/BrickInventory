@@ -54,16 +54,16 @@ import org.junit.Test
  * virtual time. The search debounce is thus checkable without waiting.
  *
  * Counter-checks:
- *   katalog-suche-ohne-entprellen  setCatalogQuery() loads right away → red "die Suche wartet …"
- *   katalog-seite-doppelt          ensureCatalogPage() without the "already loading" check → red "eine Seite …"
- *   katalog-filter-behaelt-rolle   loadCatalogSets() without `scrollMemory.forgetNow` → red "ein Filterwechsel …"
- *   katalog-merkt-ohne-alarm       track() without setPriceAlarm → red "merken legt den Posten an …"
- *   katalog-alarm-falsche-richtung track() always sends "below" → red "merken legt den Posten an …"
- *   katalog-merkposten-unbekannt   wanted() doesn't compare the set number → red "das Detail kennt …"
- *   katalog-verteilung-ohne-filter loadYearDistribution() without `themeId` → red "die Jahresverteilung …"
- *   katalog-detail-fehler-verschluckt loadCatalogDetail() doesn't put the error into the
+ *   catalog-search-without-debounce  setCatalogQuery() loads right away → red "die Suche wartet …"
+ *   catalog-page-twice          ensureCatalogPage() without the "already loading" check → red "eine Seite …"
+ *   catalog-filter-keeps-role   loadCatalogSets() without `scrollMemory.forgetNow` → red "ein Filterwechsel …"
+ *   catalog-wants-without-alarm       track() without setPriceAlarm → red "merken legt den Posten an …"
+ *   catalog-alarm-wrong-direction track() always sends "below" → red "merken legt den Posten an …"
+ *   catalog-wanted-item-unknown   wanted() doesn't compare the set number → red "das Detail kennt …"
+ *   catalog-distribution-without-filter loadYearDistribution() without `themeId` → red "die Jahresverteilung …"
+ *   catalog-detail-error-swallowed loadCatalogDetail() doesn't put the error into the
  *                                  state → red "scheitert das Detail, steht der Grund …"
- *   katalog-laedt-nicht-beim-beobachten  only the metadata loaded on observing → red "wer den Katalog sieht …"
+ *   catalog-does-not-load-on-observe  only the metadata loaded on observing → red "wer den Katalog sieht …"
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogViewModelTest {

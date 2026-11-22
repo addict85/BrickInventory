@@ -52,12 +52,12 @@ import org.junit.Test
  * Counter-check:
  *   K  due() swaps with runBlocking in the caller instead of in the passed scope →
  *      red “due swaps in the application scope and returns immediately”
- * Counter-check (05.11.2026, measured with kotlinc locally; tausch-noetig-ohne-frist.patch):
+ * Counter-check (05.11.2026, measured with kotlinc locally; exchange-needed-without-deadline.patch):
  *   L  neededWaiting() waits for the swap without withTimeoutOrNull → red “needed
  *      waits at most the deadline, the swap keeps running” (no return after the deadline)
  * Counter-check:
  *   M  in swapLocked() the check `ready()` removed → red “with a locked device
- *      there is no swap …”; counter-checks/tausch-trotz-sperre.patch
+ *      there is no swap …”; counter-checks/exchange-despite-lock.patch
  */
 class TokenSwapTest {
 

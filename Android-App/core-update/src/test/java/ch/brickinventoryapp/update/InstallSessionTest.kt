@@ -27,8 +27,8 @@ import java.io.File
  * an implicit intent; the system's response lands in our own receiver.
  *
  * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
- *   the STATUS_PENDING_USER_ACTION branch in the receiver has no effect → red „verlangt das System eine Bestaetigung …“ (counter-checks/installer-ohne-bestaetigung.patch)
- *   EXTRA_INTENT in the receiver launched unchecked again → red „eine Bestaetigung, die nicht zum System-Installer fuehrt …“ (counter-checks/installer-ziel-ungeprueft.patch)
+ *   the STATUS_PENDING_USER_ACTION branch in the receiver has no effect → red „verlangt das System eine Bestaetigung …“ (counter-checks/installer-without-confirmation.patch)
+ *   EXTRA_INTENT in the receiver launched unchecked again → red „eine Bestaetigung, die nicht zum System-Installer fuehrt …“ (counter-checks/installer-target-unchecked.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class InstallSessionTest {

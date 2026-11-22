@@ -1,0 +1,17 @@
+Gegenprobe: Ein gescheiterter Abbruch des CSV-Imports bleibt still
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
+Rot: the cancellation reports success and error
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
+@@ -40,7 +40,7 @@
+         viewModelScope.launch {
+             when (val r = csvImport.cancel()) {
+                 is Outcome.Success -> messages.show(Message.Resource(R.string.csv_cancel_requested))
+-                is Outcome.Failure -> messages.show(texts.messageForSnackbar(r))
++                is Outcome.Failure -> Unit
+             }
+         }
+     }

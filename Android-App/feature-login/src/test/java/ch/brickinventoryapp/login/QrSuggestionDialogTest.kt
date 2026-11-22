@@ -23,7 +23,7 @@ import org.robolectric.RobolectricTestRunner
  *
  * Counter-check (Robolectric, measurable only in the CI; job `counter-checks`):
  *   (a) the button free again without the checkbox → red “taken over only after the yes …”
- *       (counter-checks/qr-dialog-ohne-ja.patch)
+ *       (counter-checks/qr-dialog-without-yes.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class QrSuggestionDialogTest {

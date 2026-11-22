@@ -36,10 +36,10 @@ import java.util.Locale
  * so that passing the fields into each of the two tiles is checked too.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   kachel-teil-ohne-besitzer       ManualPartTile does not pass on the owners → red “the manual part shows …”
- *   kachel-figur-ohne-zustaende     ManualFigTile does not pass on the conditions → red “the manual figure shows …”
- *   kachel-preis-zuletzt-geschrieben  unit_price before avg_purchase_price → red “the manual part shows …”
- *   figuren-kennzahlen-an-liste     the figures' key figures hang on the set list → red “the key figures …”
+ *   tile-part-without-owner       ManualPartTile does not pass on the owners → red “the manual part shows …”
+ *   tile-figure-without-states     ManualFigTile does not pass on the conditions → red “the manual figure shows …”
+ *   tile-price-last-written  unit_price before avg_purchase_price → red “the manual part shows …”
+ *   figures-metrics-on-list     the figures' key figures hang on the set list → red “the key figures …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

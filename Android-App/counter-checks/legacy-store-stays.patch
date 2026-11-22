@@ -1,0 +1,15 @@
+Gegenprobe: raeumeAlteAntwortablage() räumt nichts
+Modul: core-data
+Test: ch.brickinventoryapp.data.CacheAreaTest
+Rot: the old storage location is cleared, other things stay
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheOwner.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheOwner.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheOwner.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheOwner.kt
+@@ -32,5 +32,5 @@
+  * held responses of an account; what nobody reads any more should not be left lying around.
+  */
+ internal fun cleanOldResponseStore(vararg folder: File) {
+-    for (o in folder) o.listFiles()?.filter { it.isDirectory && it.name.startsWith("api-") }?.forEach { it.deleteRecursively() }
++    for (o in folder) o.listFiles()?.filter { it.isDirectory && it.name.startsWith("api-") }?.forEach { }
+ }

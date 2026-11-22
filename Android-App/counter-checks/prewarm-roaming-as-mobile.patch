@@ -1,0 +1,17 @@
+Gegenprobe: im Roaming fragt das Vorwärmen die Erlaubnis für Mobilfunk statt der eigenen
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewWarmerTest
+Rot: every network state follows its own permission
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewPrewarmer.kt
+@@ -61,7 +61,7 @@
+         NetworkState.Kind.NO_NETWORK -> false
+         NetworkState.Kind.WIFI      -> prefs.warmUpAllowed(PrewarmNetwork.WIFI).first()
+         NetworkState.Kind.MOBILE     -> prefs.warmUpAllowed(PrewarmNetwork.MOBILE).first()
+-        NetworkState.Kind.ROAMING   -> prefs.warmUpAllowed(PrewarmNetwork.ROAMING).first()
++        NetworkState.Kind.ROAMING   -> prefs.warmUpAllowed(PrewarmNetwork.MOBILE).first()
+     }
+ 
+     /**

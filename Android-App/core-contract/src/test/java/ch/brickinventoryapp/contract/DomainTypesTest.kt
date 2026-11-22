@@ -19,12 +19,12 @@ import org.junit.Test
  * wire stays text, unknown values discard no response.
  *
  * Counter-checks (patches under counter-checks/, measured with kotlinc over core-model):
- *   design-unbekannt-wird-vorgabe   DesignOrNothing reads unknown as default
+ *   theme-unknown-becomes-default   DesignOrNothing reads unknown as default
  *                                   → red “an empty or unknown design …”
- *   sortierung-ohne-rueckfall       Setsortierung.aus does not fall back to the default
+ *   sorting-without-fallback       Setsortierung.aus does not fall back to the default
  *                                   → red “an unknown sorting …”
- *   waehrung-als-objekt             Waehrung without value class → red “a currency travels …”
- *   farbwahl-leer-ist-farbe         Farbwahl.aus also takes empty as a color → red “empty means all …”
+ *   currency-as-object             Waehrung without value class → red “a currency travels …”
+ *   color-choice-empty-is-color         Farbwahl.aus also takes empty as a color → red “empty means all …”
  */
 class DomainTypesTest {
 

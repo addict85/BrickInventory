@@ -1,0 +1,26 @@
+Gegenprobe: Der Ausgang prüft den Bereich erst nach dem Senden
+Modul: core-state
+Test: ch.brickinventoryapp.state.OutboxSyncTest
+Rot: an account switch before sending sends no item with the new account
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Reconcile.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Reconcile.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Reconcile.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Reconcile.kt
+@@ -119,9 +119,6 @@
+     private suspend fun jobRun(area: String, affected: MutableSet<StockKind>): ReconcileOutcome {
+         var p = outbox.first(area)
+         while (p != null) {
+-            // Immediately before every send: the guard attaches the token that applies
+-            // NOW. After an account switch the item would otherwise go out under a foreign account.
+-            if (store.area() != area) return ReconcileOutcome.NOT_SIGNED_IN
+             when (val e = sender.send(p.editing, p.key)) {
+                 SendOutcome.Accepted -> {
+                     outbox.remove(p.id)
+@@ -136,6 +133,7 @@
+                     discard(area, p, "", null, affected)
+                 }
+             }
++            if (store.area() != area) return ReconcileOutcome.NOT_SIGNED_IN
+             p = outbox.first(area)
+         }
+         return ReconcileOutcome.DONE

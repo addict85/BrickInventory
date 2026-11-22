@@ -44,18 +44,18 @@ import java.io.File
  *
  * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
  *   (a) OverlayGuard() does not install the filter → red “a partially
- *       obscured window …” (counter-checks/teilweise-verdeckt-durchgelassen.patch)
+ *       obscured window …” (counter-checks/partially-obscured-let-through.patch)
  *   (b) hidePreview() with default false → red “a new installation
- *       hides the preview …” (counter-checks/vorschau-vorgabe-aus.patch)
+ *       hides the preview …” (counter-checks/preview-default-off.patch)
  *   (c) Schrittsperre shows the content without confirmation (`if (unlocked || reason.isNotEmpty())`) →
  *       red “the management shows itself only after the device lock”
- *       (counter-checks/verwaltung-ohne-geraetesperre.patch)
+ *       (counter-checks/management-without-device-lock.patch)
  *   (d) saveServerUrl() does not call the listeners → red “a different server cancels
- *       running calls …” (counter-checks/serverwechsel-ohne-abbruch.patch)
+ *       running calls …” (counter-checks/server-switch-without-cancel.patch)
  *   (e) saveServerUrl() compares only the origin for the token → red “a different
- *       path on the same host discards the token” (counter-checks/pfadwechsel-behaelt-token.patch)
+ *       path on the same host discards the token” (counter-checks/path-change-keeps-token.patch)
  *   (f) PrivacyShield() without OverlayGuard() → red “sensitive pages are
- *       protected against overlays” (counter-checks/sichtschutz-ohne-ueberdeckung.patch)
+ *       protected against overlays” (counter-checks/screen-protection-without-overlay.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class DevicesProtectionTest {

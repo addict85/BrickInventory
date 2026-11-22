@@ -35,9 +35,9 @@ import org.robolectric.annotation.Config
  * nothing. Every button tells TalkBack what it acts on (job kind, set).
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   auftraege-leeren-ohne-frage   „Leeren“ calls clearOn right away → red “Leeren asks …”
- *   brickset-loeschen-ohne-frage  the delete icon deletes right away → red “deleting a Brickset entry …”
- *   auftrag-knopf-ohne-art        job buttons without contentDescription → red “every button tells …”
+ *   jobs-clear-without-asking   „Leeren“ calls clearOn right away → red “Leeren asks …”
+ *   brickset-delete-without-asking  the delete icon deletes right away → red “deleting a Brickset entry …”
+ *   job-button-without-kind        job buttons without contentDescription → red “every button tells …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")

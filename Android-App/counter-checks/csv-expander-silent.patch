@@ -1,0 +1,19 @@
+Gegenprobe: Zustand und Aufklappen am CSV-Balken entfernt
+Modul: app
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: CSV bar names state, expanding and progress
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
+@@ -77,10 +77,6 @@
+             modifier = Modifier.fillMaxWidth()
+                 .clickable(role = Role.Button, onClickLabel = target) {
+                     expanded = !expanded
+-                }
+-                .semantics {
+-                    stateDescription = condition
+-                    if (expanded) collapse { expanded = false; true } else expand { expanded = true; true }
+                 }
+         ) {
+             Column(Modifier.padding(horizontal = Spacing.large, vertical = Spacing.small)) {

@@ -42,7 +42,7 @@ import java.util.Collections
  *   F  in Reconcile.send `p.key` → `java.util.UUID.randomUUID().toString()`
  *      → red „Die Wiederholung trägt denselben Schlüssel“
  *   G  in deleteClassify the 404 exception removed → red „beim Löschen …“
- *   H  in Reconcile.send the scope check removed before sending → red „ein Konto-Wechsel vor dem Senden …“ (counter-checks/ausgang-ohne-pruefung-vor-senden.patch)
+ *   H  in Reconcile.send the scope check removed before sending → red „ein Konto-Wechsel vor dem Senden …“ (counter-checks/outbox-without-check-before-send.patch)
  */
 class OutboxSyncTest {
 

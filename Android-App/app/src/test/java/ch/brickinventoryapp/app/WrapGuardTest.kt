@@ -78,16 +78,16 @@ import java.util.Locale
  * than words, a line end between two letters, a line wider than the text.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   preisalarm-zeile-gequetscht      badge and „zuletzt …“ again in one Row, the badge
+ *   price-alarm-row-squeezed      badge and „zuletzt …“ again in one Row, the badge
  *                                    again with the long text → red “price alerts at 100 percent”
  *                                    („zuletzt CHF 449.95“ in 17 lines for 3 words)
- *   katalog-knoepfe-nebeneinander    add and remember again side by side, each one line with
+ *   catalog-buttons-side-by-side    add and remember again side by side, each one line with
  *                                    ellipsis → red “catalog detail at 100 percent”
  *                                    („Zur Sammlung hinzufügen“ truncated)
- *   standard-zustand-in-der-zeile    „Standard-Zustand“ again next to the choice → red
+ *   default-state-in-the-row    „Standard-Zustand“ again next to the choice → red
  *                                    “background work at 100 percent” (on 360 dp „Gebraucht“
  *                                    broken within the word)
- *   gewinn-in-einer-zeile            profit/loss again always single-line → red “narrow set detail
+ *   profit-in-one-row            profit/loss again always single-line → red “narrow set detail
  *                                    at 200 percent” („+CHF 20’200.90 · +19.2%“ protrudes beyond the tile,
  *                                    measured at the natural width)
  */

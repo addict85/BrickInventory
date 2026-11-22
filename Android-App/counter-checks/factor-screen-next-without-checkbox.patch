@@ -1,0 +1,17 @@
+Gegenprobe: „Weiter“ nach den Notfallcodes auch ohne Haken frei
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SecondFactorMaskTest
+Rot: after confirmation the emergency codes are shown, continuing only with the saved check
+
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
+@@ -153,7 +153,7 @@
+         border = secondaryButtonRand(),
+     ) { Text(stringResource(R.string.zf_share)) }
+     CodesSecured(secured) { secured = it }
+-    Button(onClick = onNext, enabled = secured, modifier = Modifier.fillMaxWidth()) {
++    Button(onClick = onNext, enabled = secured || true, modifier = Modifier.fillMaxWidth()) {
+         Text(stringResource(R.string.zf_required_next))
+     }
+ }

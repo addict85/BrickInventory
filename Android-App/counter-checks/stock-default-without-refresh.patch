@@ -1,0 +1,17 @@
+Gegenprobe: Der Stern eines Lagerorts erreicht den Vorrat in der Ablage nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.AlarmAndStockStoreTest
+Rot: creating, renaming and the star change the supply in the store
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+@@ -180,7 +180,7 @@
+             if (list.any { it.location.id == b.location.id }) list else list + StockLocationView(location = b.location, default = false)
+         is FollowUp.LocationRenamed -> list.map { if (it.location.id == b.newValue.id) it.copy(location = b.newValue) else it }
+         is FollowUp.LocationDeleted -> list.filterNot { it.location.id == b.id }
+-        is FollowUp.LocationDefault -> list.map { it.copy(default = it.location.id == b.id) }
++        is FollowUp.LocationDefault -> list
+         is Editing, is FollowUp.SetQuantitySet, is FollowUp.SetLocation, is FollowUp.SetRemoved, is FollowUp.SetMoved,
+         is FollowUp.SetSummary, is FollowUp.WantedItemMoved, is FollowUp.WantedItemAdopted,
+         is FollowUp.PartLocation, is FollowUp.PartColor, is FollowUp.MinifigLocation, is FollowUp.AlarmSet,

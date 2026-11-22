@@ -25,7 +25,7 @@ import org.robolectric.shadows.ShadowDialog
  * window, which would only pick up the page's protection on its next rebuild.
  *
  * Counter-check (Robolectric, measured by CI; job `counter-checks`):
- *   sichtschutz-ohne-dialogfenster  PrivacyShield() only sets the Activity's window →
+ *   screen-protection-without-dialog-window  PrivacyShield() only sets the Activity's window →
  *                                   red „ein aufgedecktes Passwort im Dialog …“
  */
 @RunWith(RobolectricTestRunner::class)

@@ -1,0 +1,17 @@
+Gegenprobe: Set-Detail ohne Wert-Kacheln
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: set detail shows market value, purchase price and P&L at the top in the classic design
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
+@@ -167,7 +167,7 @@
+         SetDetailColumns(Modifier.padding(padding), left = {
+             setDetailHeroImage(set, imageUrl, imageLoader, detailRetryState, detailScope) { showImageZoom = true }
+             setDetailStatChips(set)
+-            setDetailValueTiles(set, price, pnlPct, ::fmtPrice)
++            // ohne Kacheln
+             setDetailPriceSection(detailState, price, history, currency, actions::refresh)
+         }) {
+             setDetailDetailsSection(set, setNumber, condition.storageUiState, actions,

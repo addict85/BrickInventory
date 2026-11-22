@@ -135,7 +135,7 @@ class TileDimensionsTest {
 
     /**
      * The tile image sits flush at the top of the card: its top corners have the
-     * bar's radius, none at the bottom. Counter-check kachelbild-eigener-radius (12.dp; kotlinc) → red here.
+     * bar's radius, none at the bottom. Counter-check tile-image-own-radius (12.dp; kotlinc) → red here.
      */
     @Test
     fun `image corner and card shape share the radius`() {

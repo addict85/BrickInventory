@@ -1,0 +1,15 @@
+Gegenprobe: Knöpfe an einem Auftrag wieder ohne Namen mit Art und Set
+Modul: feature-management
+Test: ch.brickinventoryapp.management.BackgroundButtonsTest
+Rot: every button names the job kind and the set to TalkBack
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringBackground.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringBackground.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringBackground.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringBackground.kt
+@@ -156,5 +156,5 @@
+ @Composable
+ private fun JobButton(action: String, who: String, onClick: () -> Unit) {
+     val name = stringResource(R.string.action_for, action, who)
+-    TextButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = name }) { Text(action) }
++    TextButton(onClick = onClick) { Text(action) }
+ }

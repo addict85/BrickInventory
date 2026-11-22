@@ -50,14 +50,14 @@ import java.io.File
  * Counter-checks:
  *   A  in createNow() the key `"${p.blPartNumber ?: p.partNumber}|${p.colorName}"`
  *      replaced with `"${p.partNumber}|${p.colorName}|${combined.size}"`
- *      (counter-checks/bauliste-ohne-zusammenfassen.patch) → red “identical parts
+ *      (counter-checks/build-list-without-merging.patch) → red “identical parts
  *      across several sets are counted together”
  *   B  in applyChangeTo() the remembering in the SavedStateHandle removed → red “the set numbers
  *      survive a process end …”
  *   C  zuruecksetzen() not overridden → red “a sign-out empties the build list”
  *   D  in export() the file not taken into the state → red “a finished
  *      PDF is offered once …”
- *   E  counter-checks/pdf-fehler-leer.patch: errorText() for a failed
+ *   E  counter-checks/pdf-error-empty.patch: errorText() for a failed
  *      job again returns only the server's sentence (even empty) → red “an error always has
  *      a sentence …” (measurable only in the CI)
  *   F  undoRemove() without the branch for an unchanged list (always re-inserting with

@@ -1,0 +1,17 @@
+Gegenprobe: ein Prüfungskürzel steht wieder in einem Bau-Kommentar
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: long comments in the workflow and in tests become fewer
+
+diff --git a/Android-App/settings.gradle.kts b/Android-App/settings.gradle.kts
+--- a/Android-App/settings.gradle.kts
++++ b/Android-App/settings.gradle.kts
+@@ -4,7 +4,7 @@
+     includeBuild("build-logic")
+     repositories {
+         // Google's Android groups only from Google: a package of the same name from mavenCentral
+-        // or the plugin portal would not even be requested.
++        // or the Plugin-Portal portal would not even angefragt (sec17 B-N4).
+         exclusiveContent {
+             forRepository { google() }
+             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }

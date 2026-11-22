@@ -1,0 +1,17 @@
+Gegenprobe: das Kachelbild bekommt einen eigenen Eckenradius statt des Radius der Leiste
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.TileDimensionsTest
+Rot: image corner and card shape share the radius
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Shapes.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Shapes.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Shapes.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Shapes.kt
+@@ -55,7 +55,7 @@
+     val stroke = RoundedCornerShape(2.dp)
+ 
+     /** The top corners of a tile image — must match [bar]. */
+-    val tileImageCorners = RoundedCornerShape(topStart = barRadius, topEnd = barRadius)
++    val tileImageCorners = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+ 
+     /**
+      * Dimensions of an inventory tile (parts and minifig tabs): both show

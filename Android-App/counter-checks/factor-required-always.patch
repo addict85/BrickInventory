@@ -1,0 +1,17 @@
+Gegenprobe: Jedes /auth/me meldet die Pflicht, auch ohne Feld
+Modul: core-state
+Test: ch.brickinventoryapp.state.SecondFactorTakeoverTest
+Rot: auth me without obligation leaves the app open
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+@@ -172,7 +172,7 @@
+     if (me !is Outcome.Success) return null
+     val user = me.data
+     adminChanged(user?.admin == true)
+-    if (user?.secondFactorRequired == true) factorRequired.report()
++    factorRequired.report()
+     return user
+ }
+ 

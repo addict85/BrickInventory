@@ -68,20 +68,20 @@ import org.robolectric.annotation.GraphicsMode
  *   (d) voucher PIN always visible → red “a voucher shows the PIN …”
  *   (e) in VouchersCard revealing without step guard (`switchOnPin(g.id)`
  *       directly) → red “without confirming the device lock the PIN stays hidden”
- *       (counter-checks/gutschein-pin-ohne-geraetesperre.patch)
+ *       (counter-checks/voucher-pin-without-device-lock.patch)
  *   (f) the number copied without step guard → red “without device lock the
- *       number is not copied either” (counter-checks/gutschein-nummer-ohne-geraetesperre.patch)
+ *       number is not copied either” (counter-checks/voucher-number-without-device-lock.patch)
  *   (g) in PasswordPrompt the code field never shown → red “the confirmation shows the
- *       code field only on demand” (counter-checks/gutschein-rueckfrage-ohne-code.patch)
+ *       code field only on demand” (counter-checks/voucher-confirmation-without-code.patch)
  *   (g2) the refusal does not scroll into view → the same red, „Bitte den Code eingeben.“ is
- *       not visible (counter-checks/rueckfrage-meldung-ausser-sicht.patch; the state before
+ *       not visible (counter-checks/confirmation-message-out-of-sight.patch; the state before
  *       the fix, red in CI on 0223f52)
  *   (h) in the set detail the trash always with confirmation → red “a set deletes
- *       immediately with undo …” (counter-checks/set-loeschen-doppelt-gesichert.patch)
+ *       immediately with undo …” (counter-checks/set-delete-double-confirmed.patch)
  *   (i) adding without a number does not mark the field → red “a set without a number says …”
- *       (counter-checks/erfassen-ohne-grund.patch)
+ *       (counter-checks/capture-without-reason.patch)
  *   (j) VouchersCard without SecretCopyWarning() → red “below Android 13 the
- *       voucher page warns …” (counter-checks/gutschein-kopieren-ohne-warnung.patch)
+ *       voucher page warns …” (counter-checks/voucher-copy-without-warning.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 // NATIVE as for the screenshots: ATF's contrast check reads a
@@ -150,7 +150,7 @@ class FlowTest {
      * Every field of “Add set” carries a help line; without it the fields stood
      * unevenly far apart, and the hint about the price vanished as a placeholder while typing.
      * Counter-check: quantity field again without help line (only on error) → red, „Anzahl“ missing
-     * (counter-checks/erfassen-menge-ohne-hilfezeile.patch).
+     * (counter-checks/capture-quantity-without-help-line.patch).
      */
     @Test
     fun `every field when adding a set has a help line, also while typing`() {

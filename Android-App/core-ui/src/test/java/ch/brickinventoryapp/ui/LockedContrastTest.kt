@@ -20,8 +20,8 @@ import org.junit.Test
  * behind it. Measured beforehand in the `noppe` design: locked text 2.29:1, surface 1.28:1.
  *
  * Counter-checks (measured locally, JVM):
- *   gesperrt-material-deckkraft  Material's fixed opacity (12% / 38%) → red „gesperrte Knoepfe …“
- *   dialog-flaeche-grau          dialog surface at outlineVariant in the light → red „Dialogschrift haelt …“
+ *   disabled-material-opacity  Material's fixed opacity (12% / 38%) → red „gesperrte Knoepfe …“
+ *   dialog-surface-grey          dialog surface at outlineVariant in the light → red „Dialogschrift haelt …“
  */
 class LockedContrastTest {
 

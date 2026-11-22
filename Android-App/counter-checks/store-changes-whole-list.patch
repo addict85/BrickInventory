@@ -1,0 +1,17 @@
+Gegenprobe: Eine lokale Bearbeitung ersetzt wieder die ganze Liste statt nur die geänderten Zeilen
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.InventoryDatabaseTest
+Rot: a local edit writes only the affected row
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+@@ -358,7 +358,7 @@
+     /** Call only under the lock of ([b], slot kind). */
+     private suspend fun <T : Any> applyChangeTo(domain: Domain<T>, b: String, w: Effect) {
+         val old = decode(domain, stock.read(b, domain.kind))
+-        stock.syncRows(b, domain.kind, encode(domain, domain.apply(old.list, w)))
++        stock.replace(b, fach.art, encode(fach, fach.apply(old.list, w)), null)
+     }
+ 
+     private fun <T : Any> encode(domain: Domain<T>, list: List<T>) =

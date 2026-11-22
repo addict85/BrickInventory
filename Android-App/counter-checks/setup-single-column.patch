@@ -1,0 +1,17 @@
+Gegenprobe: Einrichtung auch im Querformat einspaltig
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: setup in landscape shows Next without scrolling
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/TwoPartLayout.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/TwoPartLayout.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/TwoPartLayout.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/TwoPartLayout.kt
+@@ -40,7 +40,7 @@
+     BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).outsideTheSystemBars()) {
+         // In Row and Column lambdas, BoxWithConstraints's receiver is locked (DslMarker).
+         val height = maxHeight
+-        if (maxWidth > height && maxWidth >= ACROSS_TWO_COLUMN) {
++        if (false && maxWidth > height && maxWidth >= ACROSS_TWO_COLUMN) {
+             Row(
+                 Modifier.fillMaxSize().centeredUntil(ReadingWidth.form * 2)
+                     .padding(horizontal = Spacing.huge),

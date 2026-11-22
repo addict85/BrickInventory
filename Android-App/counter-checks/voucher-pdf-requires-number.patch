@@ -1,0 +1,17 @@
+Gegenprobe: Gutscheinnummer auch mit PDF Pflicht
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherFormCheckTest
+Rot: with PDF what the server reads may stay empty, an unreadable amount may not
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherForm.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherForm.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherForm.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherForm.kt
+@@ -107,7 +107,7 @@
+  * what is empty; an unreadable amount stays an error regardless.
+  */
+ internal fun voucherError(number: String, amount: String, withPdf: Boolean): List<VoucherField> = buildList {
+-    if (!withPdf && number.isBlank()) add(VoucherField.NUMBER)
++    if (number.isBlank()) add(VoucherField.NUMBER)
+     val unreadable = amount.replace(',', '.').trim().toDoubleOrNull() == null
+     if (if (withPdf) amount.isNotBlank() && unreadable else unreadable) add(VoucherField.AMOUNT)
+ }

@@ -1,0 +1,16 @@
+Gegenprobe: Die Vorschau-Ablage wird beim Leeren nicht geleert
+Modul: core-state
+Test: ch.brickinventoryapp.state.DevicesSettingsViewModelTest
+Rot: the preview store can be viewed and cleared
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DevicesSettingsViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DevicesSettingsViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DevicesSettingsViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/DevicesSettingsViewModel.kt
+@@ -65,7 +65,6 @@
+ 
+     /** Fills up again while scrolling; nothing is left offline afterwards. */
+     fun clearStore() {
+-        preview.clearAll()
+         _storeBytes.value = preview.occupied()
+         messages.show(Message.Resource(R.string.monitoring_cache_saved))
+     }

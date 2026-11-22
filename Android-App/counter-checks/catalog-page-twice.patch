@@ -1,0 +1,17 @@
+Gegenprobe: Eine Katalogseite, die gerade lädt, wird noch einmal angefordert
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
+Rot: a page is fetched only once, even if it becomes visible several times
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+@@ -151,7 +151,7 @@
+     fun ensureCatalogPage(page: Int) {
+         if (page < 1) return
+         val s = _catalogState.value
+-        if (s.loadedPages.containsKey(page) || s.loadingPages.contains(page)) return
++        if (s.loadedPages.containsKey(page)) return
+         val gen = catalogGeneration
+         _catalogState.update { it.copy(loadingPages = it.loadingPages + page) }
+         viewModelScope.launch {

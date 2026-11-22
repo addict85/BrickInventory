@@ -1,0 +1,24 @@
+Gegenprobe: Filterknopf wieder mit Text neben dem Suchfeld (wie vorher auf dem Tablet)
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: search placeholder of the gallery is shown in full
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
+@@ -192,12 +192,13 @@
+         modifier = modifier,
+     ) {
+         WithTooltip(stringResource(R.string.filter_button)) {
+-            OutlinedIconButton(
++            androidx.compose.material3.OutlinedButton(
+                 onClick = onClick,
+                 modifier = Modifier.semantics { if (active > 0) stateDescription = condition },
+                 border = edge,
+             ) {
+-                Icon(Icons.Default.FilterAlt, stringResource(R.string.filter_button))
++                Icon(Icons.Default.FilterAlt, null)
++                Text(stringResource(R.string.filter_button))
+             }
+         }
+     }
