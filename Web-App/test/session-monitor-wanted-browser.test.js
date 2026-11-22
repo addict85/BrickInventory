@@ -94,20 +94,18 @@ async function financesOffline(_t, a) {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
   await b.auswerten(`document.querySelector('#fin-tbl [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 450);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
 }
 
 async function rechenbasis(_t, a) {
   const { b, bis } = a;
   await reiter(b, 'finance');
-  // Die erste Ladezeit der Finanzen schwankt im CI; grosszügiger als bis()'s Vorgabe (10 s).
   await bis(
-    `!!document.querySelector('#fin-tbl [data-fin-type="sets"] tbody tr') && !document.getElementById('fin-basis').hidden`,
+    `!!document.querySelector('#fin-tbl [data-fin-art="sets"] tbody tr') && !document.getElementById('fin-basis').hidden`,
     'Basiszeile',
-    450,
   );
   const z = await b.auswerten(`({ basis: ${text('#fin-basis')},
-    zeilen: [...document.querySelectorAll('#fin-tbl [data-fin-type] tbody tr')].length })`);
+    zeilen: [...document.querySelectorAll('#fin-tbl [data-fin-art] tbody tr')].length })`);
   const von = Number(/von (\d+) Positionen/.exec(z.basis)?.[1]);
   assert.ok(von > 0, `keine Zahl in „${z.basis}“`);
   assert.ok(z.zeilen > von, `Testaufbau: ${z.zeilen} Zeilen, ${von} Positionen`);

@@ -52,10 +52,10 @@ async function groesse(b, breite, telefon) {
   });
 }
 
-async function geh(a, hash, bereit, was, versuche = 200) {
+async function geh(a, hash, bereit, was) {
   await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-  await a.bis(bereit, was, versuche);
+  await a.bis(bereit, was, 200);
   await a.ruhig(5000);
 }
 
@@ -332,18 +332,17 @@ async function tabellenansicht(_t, a) {
 
 async function financeColumns(_t, a) {
   const { b } = a;
-  // Die erste Ladezeit der Finanzen schwankt im CI; grosszügiger als die übrigen Reiter.
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="parts"] tbody tr')`, 'Finanzen', 450);
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-art="parts"] tbody tr')`, 'Finanzen');
   const m =
     await b.auswerten(`(() => { const sichtbar = z => { const k = z.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove());
       return k.textContent.trim() || (k.querySelector('img, svg') ? 'Bild' : ''); };
-    const leer = [...document.querySelectorAll('#fin-tbl [data-fin-type] table')].flatMap(t => {
+    const leer = [...document.querySelectorAll('#fin-tbl [data-fin-art] table')].flatMap(t => {
       const kopf = [...t.querySelectorAll('thead th')].map(k => k.textContent.trim());
       const zeilen = [...t.querySelectorAll('tbody tr')];
       return kopf.filter((k, i) => zeilen.length && zeilen.every(z => !sichtbar(z.children[i] || z))).map(k => t.getAttribute('aria-label') + ': ' + (k || '(ohne Kopf)'));
     });
-    const teil = [...document.querySelectorAll('[data-fin-type="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
-    return { leer, headers: [...document.querySelectorAll('[data-fin-type="sets"] thead th')].map(k => k.textContent.trim()),
+    const teil = [...document.querySelectorAll('[data-fin-art="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
+    return { leer, headers: [...document.querySelectorAll('[data-fin-art="sets"] thead th')].map(k => k.textContent.trim()),
       teil: teil && [...teil.children].map(sichtbar).filter(x => /0,12/.test(x)) }; })()`);
   assert.ok(!m.headers.includes('Stückpreis'), `Spalte „Stückpreis“ steht noch da: ${m.headers.join(' | ')}`);
   assert.deepEqual(m.leer, [], 'Spalte ohne einen Wert');

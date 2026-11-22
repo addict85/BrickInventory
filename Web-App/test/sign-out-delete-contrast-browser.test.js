@@ -54,10 +54,10 @@ async function groesse(b, breite, telefon) {
   });
 }
 
-async function geh(a, hash, bereit, was, versuche = 200) {
+async function geh(a, hash, bereit, was) {
   await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-  await a.bis(bereit, was, versuche);
+  await a.bis(bereit, was, 200);
   await a.ruhig(5000);
 }
 
@@ -166,11 +166,10 @@ async function hintergrund(_t, a) {
 
 async function finanzen(_t, a) {
   const { b } = a;
-  // Die erste Ladezeit der Finanzen schwankt im CI; grosszügiger als die übrigen Reiter.
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="sets"] tbody tr')`, 'Finanzen', 450);
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-art="sets"] tbody tr')`, 'Finanzen');
   // Since UX check 25 the unit price stands below the market value („je …“), only for more than one piece.
   const f = await b.auswerten(`(() => {
-    const zeilen = [...document.querySelectorAll('[data-fin-type="sets"] tbody tr')].map(z => ({
+    const zeilen = [...document.querySelectorAll('[data-fin-art="sets"] tbody tr')].map(z => ({
       menge: z.querySelector('.qbadge')?.textContent, je: z.querySelector('.fin-wert .fin-je')?.textContent || '' }));
     return { zeilen, karte: document.getElementById('fin-einstand-sub').textContent, linie: ${text('#portfolio-chart')} }; })()`);
   const einzeln = f.zeilen.filter(z => z.menge === '×1');

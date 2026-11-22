@@ -66,7 +66,7 @@ async function financesOffline(_t, a) {
   }
   // Back on the network the list loads by itself; otherwise the button helps.
   await b.auswerten(`document.querySelector('#tab-finance [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 450);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
   await bis(
     `[...document.querySelectorAll('.zeitraum-wahl .period-btn')].every(k => !k.disabled)`,
     'Zeitraum wieder frei',
@@ -127,7 +127,7 @@ async function financesPhone(_t, a) {
   await groesse(b, 390, 844);
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    await bis(`!!document.querySelector('#fin-tbl [data-fin-type="figs"] tbody tr')`, 'Finanzen mit Figuren', 450);
+    await bis(`!!document.querySelector('#fin-tbl [data-fin-art="figs"] tbody tr')`, 'Finanzen mit Figuren', 200);
     await ruhig();
     const zeile = name =>
       b.auswerten(`(() => { const r = [...document.querySelectorAll('#fin-tbl tbody tr')].find(x => x.textContent.includes(${JSON.stringify(name)}));
@@ -142,7 +142,7 @@ async function financesPhone(_t, a) {
     assert.equal(doc.guv, null, 'zweiter Strich neben dem Wert');
     // N1: between “Brick 2 x 4” and “(Schwarz)” there is a word space.
     const abstand =
-      await b.auswerten(`(() => { const k = [...document.querySelectorAll('#fin-tbl [data-fin-type="parts"] .zeile-oeffnen')].find(x => x.textContent.includes('(Schwarz)'));
+      await b.auswerten(`(() => { const k = [...document.querySelectorAll('#fin-tbl [data-fin-art="parts"] .zeile-oeffnen')].find(x => x.textContent.includes('(Schwarz)'));
       const farbe = [...k.querySelectorAll('span')].find(s => s.textContent.trim() === '(Schwarz)');
       const w = document.createTreeWalker(k, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.includes('Brick'));
       const r = document.createRange(); const i = n.textContent.indexOf('4'); r.setStart(n, i); r.setEnd(n, i + 1);
