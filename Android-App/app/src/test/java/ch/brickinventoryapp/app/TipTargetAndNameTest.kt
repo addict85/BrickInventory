@@ -204,10 +204,10 @@ class TipTargetAndNameTest {
     }
 
     @Test
-    fun logIn() = check("Anmelden") { login(LoginForm.LOGIN) }
+    fun logIn() = check("Anmelden") { LoginContent(LoginForm.LOGIN) }
 
     @Test
-    fun register() = check("Registrieren") { login(LoginForm.REGISTER) }
+    fun register() = check("Registrieren") { LoginContent(LoginForm.REGISTER) }
 
     @Test
     fun setUp() = check("Einrichten") { SetupScreen(currentUrl = "https://brick.example.org", onSave = {}, development = false) }
@@ -219,7 +219,7 @@ class TipTargetAndNameTest {
     fun secondFactor() = check("Zweiter Faktor") { SecondFactorRequiredMask(SecondFactorUiState(active = false), {}, {}, {}, {}) }
 
     @Composable
-    private fun login(form: LoginForm) = LoginScreen(
+    private fun LoginContent(form: LoginForm) = LoginScreen(
         serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNeeded = false,
         form = form, registrationOpen = true, accountRunning = false,
         accountMessage = null, accountError = null, onLogin = { _, _, _ -> }, onForm = {},

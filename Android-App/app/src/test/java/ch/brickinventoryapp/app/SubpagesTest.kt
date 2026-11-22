@@ -131,7 +131,7 @@ class SubpagesTest {
 
     /** The build list as the graph shows it: route with ViewModel, without network. */
     @Composable
-    private fun buildList(vm: PartListViewModel) =
+    private fun PartsList(vm: PartListViewModel) =
         PartsListRoute(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
             onScanBarcode = {}, hasSubAccounts = false, barcodeSetNumber = null, onBarcodeConsumed = {},
             listState = androidx.compose.foundation.lazy.rememberLazyListState(), requestManualEntry = false,
@@ -399,7 +399,7 @@ class SubpagesTest {
     @Test
     fun `build list takes sets via the plus in the field and resets them only after confirmation`() {
         val vm = world.buildList()
-        show { buildList(vm) }
+        show { PartsList(vm) }
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number)))
             .performSemanticsAction(SemanticsActions.SetText) { it(AnnotatedString("21318")) }
         compose.waitForIdle()
@@ -422,7 +422,7 @@ class SubpagesTest {
     fun `build list is created in one step from the typed number`() {
         val resolved = mutableListOf<String>()
         val vm = world.buildList { nr -> resolved += nr; "Baumhaus" to emptyList() }
-        show { buildList(vm) }
+        show { PartsList(vm) }
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number))).performTextInput("21318")
         compose.onNode(hasText(ctx.getString(R.string.partslist_generate)) and hasClickAction()).assertIsEnabled().performClick()
         wait("Bauliste") { resolved.isNotEmpty() }
