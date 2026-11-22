@@ -7,7 +7,7 @@ export function collectionJobKinds(k: CollectionContext): Login[] {
   return [
     jobKind({
       art: 'csv_import',
-      nutzlast: CsvImportPayload,
+      payload: CsvImportPayload,
       discardPayload: true,
       ausfuehren: (n, l, a) => ('quelle' in n ? runImportFrom(k, n, l, a) : k.sets.runCsvImportFrom(n, l)),
       givenUp: async (n, error) => {

@@ -19,7 +19,7 @@ declare module '../jobQueue/jobs' {
 
 /** The kind's type and registration live here, where it is queued; the run is provided by the catalog, which knows the sets. */
 export function bricksetJobType(ausfuehren: Handler<'brickset'>['ausfuehren']): Login {
-  return jobKind({ art: 'brickset', nutzlast: BricksetPayload, ausfuehren, exklusiv: true });
+  return jobKind({ art: 'brickset', payload: BricksetPayload, ausfuehren, exklusiv: true });
 }
 
 const key = (sn: string) => `brickset:${sn}`;

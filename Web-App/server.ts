@@ -68,7 +68,7 @@ const SHUTDOWN_TIMEOUT_MS = 8000;
 
 /** What the start holds and the shutdown needs; a second signal finds `endedBecomes`. */
 interface Lauf {
-  endedBecomes: boolean;
+  ending: boolean;
   jobs: JobsLauf | null;
 }
 
@@ -81,8 +81,8 @@ async function shutdown(
   dienste: Services,
   webLockFree: (() => Promise<void>) | null,
 ): Promise<void> {
-  if (lauf.endedBecomes) return;
-  lauf.endedBecomes = true;
+  if (lauf.ending) return;
+  lauf.ending = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
   // Emergency brake for a hanging connection; exit code 0, because it is not an error.
   const emergencyBrake = setTimeout(() => {
@@ -181,7 +181,7 @@ async function start(): Promise<void> {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
         })
     : null;
-  const lauf: Lauf = { endedBecomes: false, jobs: null };
+  const lauf: Lauf = { ending: false, jobs: null };
   process.on('SIGTERM', () => {
     void shutdown(lauf, 'SIGTERM', httpServer, jobs, access, dienste, webLockFree);
   });

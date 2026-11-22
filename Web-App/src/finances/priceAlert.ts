@@ -112,7 +112,7 @@ export async function triggeredSince(k: FinancesContext, userId: number, seit: D
   // The database's time: Postgres stores micro-, JavaScript only
   // milliseconds; with the JS clock a notification would come twice.
   const nowRow = await repo.databaseNow(k.db);
-  const now = nowRow?.jetzt ?? k.uhr.datum();
+  const now = nowRow?.now ?? k.uhr.datum();
 
   // `instanceof Date` FIRST: String(date) loses the milliseconds, and a
   // notification from the same second would come a second time.

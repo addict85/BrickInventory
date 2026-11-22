@@ -17,10 +17,10 @@ declare module '../jobQueue/jobs' {
 
 export function financesJobTypes(k: FinancesContext): Login[] {
   return [
-    jobKind({ art: 'wechselkurse', nutzlast: LEER, ausfuehren: (_n, l) => rateJob(k, undefined, l) }),
+    jobKind({ art: 'wechselkurse', payload: LEER, ausfuehren: (_n, l) => rateJob(k, undefined, l) }),
     jobKind({
       art: 'preise',
-      nutzlast: LEER,
+      payload: LEER,
       ausfuehren: (_n, l) => runPriceRefresh(k, l),
       exklusiv: true,
       kontouebergreifend: 'Preise aller Sets',
@@ -28,7 +28,7 @@ export function financesJobTypes(k: FinancesContext): Login[] {
     }),
     jobKind({
       art: 'preise_nachladen',
-      nutzlast: PricesReload,
+      payload: PricesReload,
       ausfuehren: (n, l) => reloadPrices(k, n, l),
       exklusiv: true,
     }),

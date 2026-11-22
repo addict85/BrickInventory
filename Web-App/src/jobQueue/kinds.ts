@@ -15,7 +15,7 @@ export interface Handler<A extends JobKind = JobKind> {
 
 export interface Login<A extends JobKind = JobKind> extends Handler<A> {
   art: A;
-  nutzlast: PayloadSchema<A>;
+  payload: PayloadSchema<A>;
   /** Without an account in the system frame, bypassing row security; the reason is here. */
   kontouebergreifend?: string;
   zeitplan?: Schedule;
@@ -47,7 +47,7 @@ export class Kinds {
   }
 
   check<A extends JobKind>(art: A, raw: unknown): Payload<A> {
-    const schema: z.ZodType | undefined = this.je.get(art)?.nutzlast;
+    const schema: z.ZodType | undefined = this.je.get(art)?.payload;
     if (!schema) throw new PayloadInvalid(`unbekannte Auftragsart ${art}`);
     const r = schema.safeParse(raw);
     if (r.success) return r.data as Payload<A>;

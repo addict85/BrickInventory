@@ -19,13 +19,13 @@ export function managementJobTypes(k: ManagementContext): Login[] {
   return [
     jobKind({
       art: 'nachlauf',
-      nutzlast: FollowUpPayload,
+      payload: FollowUpPayload,
       ausfuehren: (n, l) => runFollowUp(k, n, l),
       kontouebergreifend: 'Altbestand und Katalog aller Konten',
     }),
     jobKind({
       art: 'aufraeumen',
-      nutzlast: EMPTY,
+      payload: EMPTY,
       ausfuehren: (_n, l) => cleanup(k, l),
       exklusiv: true,
       kontouebergreifend: 'Reste aller Konten',
@@ -33,7 +33,7 @@ export function managementJobTypes(k: ManagementContext): Login[] {
     }),
     jobKind({
       art: 'aufraeumen_taeglich',
-      nutzlast: EMPTY,
+      payload: EMPTY,
       ausfuehren: (_n, l) => cleanupDaily(k, l),
       exklusiv: true,
       kontouebergreifend: 'Reste aller Konten',

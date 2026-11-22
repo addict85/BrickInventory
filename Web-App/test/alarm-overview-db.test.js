@@ -32,7 +32,7 @@ const db = testData();
 test('price alert overview: own alerts, with names, changeable, deletable', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const { alleAlarme, setzeAlarm, loescheAlarm } = {
+  const { allAlerts, setAlert, deleteAlert } = {
     ..._req('src/finances/priceAlert.js'),
     ...require('./helpers/sources').testArea('finances').preisalarm,
   };
@@ -87,9 +87,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   // The first draft of this test had made it up and ran
   // straight into “Die Richtung muss unter oder ueber sein" — the values landed
   // in the wrong places.
-  await setzeAlarm(ich.id, '70002-1', 'CHF', { direction: 'unter', threshold: 30, condition: 'N' });
-  await setzeAlarm(ich.id, '99999-9', 'CHF', { direction: 'ueber', threshold: 500, condition: 'U' }); // set unknown
-  await setzeAlarm(fremd.id, '70002-1', 'CHF', { direction: 'unter', threshold: 10, condition: 'N' }); // fremd
+  await setAlert(ich.id, '70002-1', 'CHF', { direction: 'unter', threshold: 30, condition: 'N' });
+  await setAlert(ich.id, '99999-9', 'CHF', { direction: 'ueber', threshold: 500, condition: 'U' }); // set unknown
+  await setAlert(fremd.id, '70002-1', 'CHF', { direction: 'unter', threshold: 10, condition: 'N' }); // fremd
 
   // The CHILD's set — I do not own it, but I see it in the view.
   await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
@@ -102,7 +102,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     [kind.id],
   );
   await catalogSet(db, '60000-1', { name: 'Feuerwehreinsatz', image_local: '/uploads/60000-1_thumb.jpg' });
-  await setzeAlarm(ich.id, '60000-1', 'CHF', { direction: 'unter', threshold: 40, condition: 'N' });
+  await setAlert(ich.id, '60000-1', 'CHF', { direction: 'unter', threshold: 40, condition: 'N' });
 
   // The same set TWICE in the household — with me and with the child. Since the
   // join goes via the view, it can hit several rows;
@@ -115,7 +115,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   );
 
   await t.test('1. all own alerts come', async () => {
-    const a = await alleAlarme(ich.id);
+    const a = await allAlerts(ich.id);
     assert.equal(a.length, 3, `Erwartet 3 eigene Alarme, bekommen: ${a.length}`);
     // numeric comes from the driver as a string — the overview computes
     // with it (field, comparison), so a NUMBER must arrive here.
@@ -123,17 +123,17 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test('2. and NO foreign one', async () => {
-    const a = await alleAlarme(ich.id);
+    const a = await allAlerts(ich.id);
     assert.ok(
       !a.some(x => Number(x.threshold) === 10),
       'Der Alarm des anderen Kontos steht in meiner Übersicht — das fehlende ' +
         'user_id-Kriterium sieht im Quelltext harmlos aus und ist der ganze Fehler.',
     );
-    assert.equal((await alleAlarme(fremd.id)).length, 1, 'Das andere Konto sieht plötzlich mehr.');
+    assert.equal((await allAlerts(fremd.id)).length, 1, 'Das andere Konto sieht plötzlich mehr.');
   });
 
   await t.test('3. with set name — and an unknown set does not drop out', async () => {
-    const a = await alleAlarme(ich.id);
+    const a = await allAlerts(ich.id);
     const bekannt = a.find(x => x.set_number === '70002-1');
     const unbekannt = a.find(x => x.set_number === '99999-9');
     assert.equal(
@@ -172,7 +172,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test('5. image and ownership come along — for the tile and for the click', async () => {
-    const a = await alleAlarme(ich.id);
+    const a = await allAlerts(ich.id);
     const meins = a.find(x => x.set_number === '70002-1');
     const fremdes = a.find(x => x.set_number === '99999-9');
     // Order as in the finances: downloaded copy first. Without it
@@ -222,7 +222,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test('7. every delivered field also arrives in the app', async () => {
-    const a = await alleAlarme(ich.id);
+    const a = await allAlerts(ich.id);
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
     // The app's model (shared/app-schnittstelle.json, generated from its source text).
@@ -293,7 +293,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   await t.test("9. a set of the HOUSEHOLD counts too — Marco's finding from 26.09.", async () => {
     // “The image in the Android app is visible but the entries in the
     // price alerts are not clickable."
-    const a = await alleAlarme(ich.id);
+    const a = await allAlerts(ich.id);
     const fromKind = a.find(x => x.set_number === '60000-1');
     assert.ok(fromKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');
     assert.equal(
@@ -326,9 +326,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test('10. deleting works', async () => {
-    const vorher = (await alleAlarme(ich.id)).length;
-    await loescheAlarm(ich.id, '99999-9', 'U');
-    const a = await alleAlarme(ich.id);
+    const vorher = (await allAlerts(ich.id)).length;
+    await deleteAlert(ich.id, '99999-9', 'U');
+    const a = await allAlerts(ich.id);
     // Against the number measured BEFORE and not against a fixed one: whoever adds
     // an alert above should not fail here. Exactly that just
     // happened when the household case was added.

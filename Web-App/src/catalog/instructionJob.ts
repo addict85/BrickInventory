@@ -5,10 +5,10 @@ import type { CatalogContext } from './context';
 export async function enqueueInstruction(
   k: CatalogContext,
   setNumber: string,
-  o: { nurAusweichquelle?: boolean; jetzt?: boolean } = {},
+  o: { nurAusweichquelle?: boolean; now?: boolean } = {},
 ): Promise<string | null> {
   const n = withVersion(setNumber);
-  if (o.jetzt) await k.jobQueue.wiedervorlage.now('anleitung', `anleitung:${n}`);
+  if (o.now) await k.jobQueue.wiedervorlage.now('anleitung', `anleitung:${n}`);
   return k.jobQueue.placeJobOne(
     'anleitung',
     { set_number: n, ...(o.nurAusweichquelle ? { nur_ausweichquelle: true } : {}) },

@@ -179,7 +179,7 @@ export async function changeAcquisition(
         ...(hasQuantity ? { menge: inventoryQuantity(quantity, 1) } : {}),
         ...(rawPrice !== undefined ? { preis: { wert: priceVal, geschaetzt: targetEstimated } } : {}),
         ...(hasCondition ? { zustand: targetCondition } : {}),
-        ...(newDate ? { datum: newDate } : {}),
+        ...(newDate ? { date: newDate } : {}),
       });
       if (hasQuantity && isEmpty(await holdingQuantity(t, art, ownerId, keys)))
         await a.cleanupWhenEmpty(t, ownerId, keys);

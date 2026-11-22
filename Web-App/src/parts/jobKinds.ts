@@ -16,7 +16,7 @@ export function partsJobKinds(k: PartsContext): Login[] {
   return [
     jobKind({
       art: 'katalog_nachzug',
-      nutzlast: LEER,
+      payload: LEER,
       ausfuehren: async () => void (await runCatalogFollowUp(k)),
       kontouebergreifend: 'Parts summary of all accounts',
     }),

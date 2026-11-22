@@ -57,21 +57,21 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
   return [
     jobKind({
       art: 'pdf',
-      nutzlast: PdfPayload,
+      payload: PdfPayload,
       ausfuehren: (n, l) => pdfGeneration.createPdf(k, n, l),
       givenUp: (n, error) => pdfGeneration.pdfGivenUp(n, error),
       discardPayload: true,
     }),
     jobKind({
       art: 'anleitung',
-      nutzlast: InstructionPayload,
+      payload: InstructionPayload,
       ausfuehren: (n, l) => loadInstruction.loadInstruction(k, n, l),
       exklusiv: true,
     }),
     bricksetJobType((n, l) => bricksetFollowUp.bricksetFollowUp(k, n, l)),
     jobKind({
       art: 'bilder_neu_laden',
-      nutzlast: LEER,
+      payload: LEER,
       ausfuehren: async (_n, l) => {
         await reloadImages.redownloadMissingImages(k, l);
       },
@@ -80,7 +80,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
     }),
     jobKind({
       art: 'csv_sync',
-      nutzlast: CatalogSyncPayload,
+      payload: CatalogSyncPayload,
       ausfuehren: (n, l) => csvReconcile.csvReconcile(k, n, l, importProcess),
       exklusiv: true,
       kontouebergreifend: 'BrickLink-Nummern der Teile aller Konten',
@@ -88,7 +88,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
     }),
     jobKind({
       art: 'bild_nachlauf',
-      nutzlast: LEER,
+      payload: LEER,
       ausfuehren: (_n, l) => imageFollowUp.imageFollowUp(k, l),
       exklusiv: true,
       kontouebergreifend: 'Bilder aller Bestände',
@@ -96,7 +96,7 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Login
     }),
     jobKind({
       art: 'widerrufsliste',
-      nutzlast: LEER,
+      payload: LEER,
       ausfuehren: (_n, l) => revocationList.loadRevocationList(k, l),
       zeitplan: { minuten: { vorgabe: 6 * 60 } },
     }),

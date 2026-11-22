@@ -56,7 +56,7 @@ export async function loadInstructionsNew(sk: SetsContext, uid: number, raw: str
     if (!(await sk.catalog.instructionNewLoadAllowed(sn)))
       failDomain('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
-  const auftrag = await sk.catalog.enqueueInstruction(sn, { jetzt: true });
+  const auftrag = await sk.catalog.enqueueInstruction(sn, { now: true });
   const instructions = mergeInstructions(await sk.catalog.instructionsToSet(sn), []);
   return { instructions, auftrag };
 }

@@ -15,7 +15,7 @@ export function imagesJobTypes(k: ImagesContext): Login[] {
   return [
     jobKind({
       art: 'bildbedarf',
-      nutzlast: LEER,
+      payload: LEER,
       ausfuehren: (_n, l) => processImageDemand(k, l),
       exklusiv: true,
       kontouebergreifend: 'Bildbedarf aller Bestände',

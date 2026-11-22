@@ -23,12 +23,12 @@ export function setsJobTypes(sk: SetsContext): Login[] {
   return [
     jobKind({
       art: 'nacharbeit',
-      nutzlast: ReworkPayload,
+      payload: ReworkPayload,
       ausfuehren: (n, l) => afterAcquisition.pullAfter(sk, n.set_number, n.user_id, n.art ?? 'neu', l),
     }),
     jobKind({
       art: 'bilder',
-      nutzlast: ImagesPayload,
+      payload: ImagesPayload,
       ausfuehren: async (n, l) => {
         if (n.only_images) await sk.catalog.loadSetImages(n.set_number);
         else await afterAcquisition.loadSetImages(sk, n.set_number, l);

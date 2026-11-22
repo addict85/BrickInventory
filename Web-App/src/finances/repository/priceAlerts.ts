@@ -91,7 +91,7 @@ export function alertsInScope(db: DbInterface, l: FinancesReadContract, userId: 
 }
 
 export function databaseNow(db: DbInterface) {
-  return db.get<{ jetzt: Date }>('SELECT NOW() AS jetzt');
+  return db.get<{ now: Date }>('SELECT NOW() AS now');
 }
 
 export function alertsOfAccount(db: DbInterface, l: FinancesReadContract, userId: number, mark: Date, scope: number[]) {

@@ -54,7 +54,7 @@ test('job table', { concurrency: 1 }, async t => {
   for (const type of [ART, `${ART}-ex`]) {
     require('./helpers/sources')
       .testServices()
-      .jobQueue.registerKind({ art: type, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
+      .jobQueue.registerKind({ art: type, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
     await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [type]);
   }
   const leeren = () => db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]);

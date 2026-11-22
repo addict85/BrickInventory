@@ -75,7 +75,7 @@ type SetEntry = Awaited<ReturnType<typeof loadSetEntries>>[number];
 /** What every row needs: the viewer's settings and the preloaded tables. */
 type Bewertungslage = {
   ttl: number;
-  jetzt: number;
+  now: number;
   pre: Parameters<typeof setPriceFromStock>[4];
   fehlt: Item[];
   withoutAccess: string | null;
@@ -88,7 +88,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   const fallbackCond: ConditionState = 'N';
   const needed: ConditionState[] = acqs.length ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
   const preise = new Map<ConditionState, PriceData>(
-    needed.map(c => [c, setPriceFromStock(set.set_number, c, l.ttl, l.jetzt, l.pre)]),
+    needed.map(c => [c, setPriceFromStock(set.set_number, c, l.ttl, l.now, l.pre)]),
   );
   const preisMap = new Map<string, number>();
   for (const [cond, p] of preise) {
@@ -217,7 +217,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
       );
   const situation: Bewertungslage = {
     ttl,
-    jetzt: kx.uhr.jetzt(),
+    now: kx.uhr.jetzt(),
     fehlt: [],
     withoutAccess,
     pre: {

@@ -11,7 +11,7 @@ export interface EntryChange {
   menge?: number;
   preis?: { wert: number | null; geschaetzt: boolean };
   zustand?: string;
-  datum?: string;
+  date?: string;
 }
 
 /** Only in the passed accounts: a second line behind the caller's check. */
@@ -19,7 +19,7 @@ async function change(k: InventoryContext, art: AcquisitionKind, id: number, kon
   if (a.menge !== undefined) await acquisitions.setEntryQuantity(k.db, art, id, a.menge, konten);
   if (a.preis) await acquisitions.setEntryPrice(k.db, art, id, a.preis.wert, a.preis.geschaetzt, konten);
   if (a.zustand !== undefined) await acquisitions.setEntryState(k.db, art, id, a.zustand, konten);
-  if (a.datum) await acquisitions.setEntryDate(k.db, art, id, a.datum, konten);
+  if (a.date) await acquisitions.setEntryDate(k.db, art, id, a.date, konten);
 }
 
 export const writePaths = (k: InventoryContext) => ({

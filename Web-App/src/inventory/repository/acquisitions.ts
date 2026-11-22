@@ -74,13 +74,13 @@ export async function setEntryDate(
   tx: DbInterface,
   art: AcquisitionKind,
   id: number,
-  datum: string,
+  date: string,
   konten: number[],
 ): Promise<void> {
   await tx.run(
     `UPDATE ${SHAPES[art].table} SET created_at=$1::date + interval '12 hours', day=$1::date
                  WHERE id=$2 AND user_id = ANY($3)`,
-    [datum, id, konten],
+    [date, id, konten],
   );
 }
 
