@@ -7,9 +7,9 @@ package ch.brickinventoryapp.login.ui.screens
  * both — on red, fix the code, not the test.
  */
 
-import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.fensterFlaeche
-import ch.brickinventoryapp.ui.theme.LocalStatusFarben
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.windowSurface
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
@@ -35,7 +35,7 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.Transcript
-import ch.brickinventoryapp.ui.components.Fingerabdruckfeld
+import ch.brickinventoryapp.ui.components.FingerprintField
 import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.security.fingerprintStart
 import ch.brickinventoryapp.security.fingerprintReadable
@@ -43,135 +43,135 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.login.ui.QrLoginPayload
-import ch.brickinventoryapp.login.ui.qrUebernehmbar
+import ch.brickinventoryapp.login.ui.qrAdoptable
 import ch.brickinventoryapp.login.ui.qrSwitchesServer
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.Sichtschutz
-import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.PrivacyShield
+import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.screens.CameraOverlay
 import ch.brickinventoryapp.ui.screens.imageAnalyse
-import ch.brickinventoryapp.ui.screens.kameraBinden
+import ch.brickinventoryapp.ui.screens.cameraBind
 import ch.brickinventoryapp.ui.screens.cameraPreview
 import ch.brickinventoryapp.ui.screens.rememberCameraPermission
-import ch.brickinventoryapp.ui.screens.tippZumFokus
+import ch.brickinventoryapp.ui.screens.tapToFocus
 
 /**
  * Confirmation prompt for a scanned code: it can come from anyone, so it names the
- * destination and lets the fingerprint be typed off if needed. [onUebernehmen] gets the
+ * destination and lets the fingerprint be typed off if needed. [onAdopt] gets the
  * typed-off value, or null if there was nothing to type off.
  */
 @Composable
-internal fun QrVorschlagDialog(
-    vorschlag: QrLoginPayload,
+internal fun QrSuggestionDialog(
+    suggestion: QrLoginPayload,
     currentUrl: String,
-    entwicklung: Boolean,
-    bisherigerPin: (url: String, fingerabdruck: String?) -> String?,
-    mussAbtippen: (url: String, fingerabdruck: String?) -> Boolean,
-    onAbbrechen: () -> Unit,
-    onUebernehmen: (abgetippt: String?) -> Unit,
+    development: Boolean,
+    previousPin: (url: String, fingerprint: String?) -> String?,
+    mustTypeIn: (url: String, fingerprint: String?) -> Boolean,
+    onCancel: () -> Unit,
+    onAdopt: (typed: String?) -> Unit,
 ) {
-    val qrLocked = NetworkPolicy.addressError(vorschlag.url, entwicklung) != null
+    val qrLocked = NetworkPolicy.addressError(suggestion.url, development) != null
     // A code with a different key than the confirmed one: like "certificate changed", with both values.
-    val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
-    val abtippen = remember(vorschlag) { mussAbtippen(vorschlag.url, vorschlag.fingerabdruck) }
+    val previous = remember(suggestion) { previousPin(suggestion.url, suggestion.fingerprint) }
+    val type = remember(suggestion) { mustTypeIn(suggestion.url, suggestion.fingerprint) }
     // Like CertificateDialog: a code can come from anyone, so have the new value typed off.
-    var eingabe by remember(vorschlag) { mutableStateOf("") }
-    var finding by remember(vorschlag) { mutableStateOf<Transcript?>(null) }
-    var targetConfirmed by remember(vorschlag) { mutableStateOf(false) }
-    val titel = stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)
+    var input by remember(suggestion) { mutableStateOf("") }
+    var finding by remember(suggestion) { mutableStateOf<Transcript?>(null) }
+    var targetConfirmed by remember(suggestion) { mutableStateOf(false) }
+    val title = stringResource(if (previous != null) R.string.cert_title_changed else R.string.setup_qr_title)
     AlertDialog(
-        containerColor = fensterFlaeche(),
-        onDismissRequest = onAbbrechen,
-        modifier = Modifier.semantics { paneTitle = titel },
+        containerColor = windowSurface(),
+        onDismissRequest = onCancel,
+        modifier = Modifier.semantics { paneTitle = title },
         // Like CertificateDialog: tapping next to it discards nothing typed off, back only clears the field.
-        properties = DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = false),
-        title = { Text(titel, Modifier.semantics { heading() }) },
+        properties = DialogProperties(dismissOnBackPress = input.isEmpty(), dismissOnClickOutside = false),
+        title = { Text(title, Modifier.semantics { heading() }) },
         text = {
             // The confirmation sends the sign-in to this server: no tap through an overlay.
-            Ueberdeckungsschutz()
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                // Parsed instead of raw: a code like `https://mein.server@fremd.example` or with
+            OverlayGuard()
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+                // Parsed instead of raw: a code like `https://mein.server@foreign.example` or with
                 // a line break would otherwise show a name that is not the destination.
-                val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
-                val sofarHost = remember(vorschlag, currentUrl) { qrSwitchesServer(currentUrl, vorschlag.url) }
-                Text(stringResource(R.string.setup_qr_ziel))
-                if (ansicht != null) {
-                    Text(ansicht.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
+                val view = remember(suggestion) { NetworkPolicy.view(suggestion.url) }
+                val sofarHost = remember(suggestion, currentUrl) { qrSwitchesServer(currentUrl, suggestion.url) }
+                Text(stringResource(R.string.setup_qr_target))
+                if (view != null) {
+                    Text(view.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium)
-                    Text(ansicht.adresse, fontFamily = FontFamily.Monospace,
+                    Text(view.address, fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
+                    if (view.international) Text(stringResource(R.string.setup_qr_international),
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Row(
                         Modifier.fillMaxWidth().toggleable(targetConfirmed, role = Role.Checkbox) { targetConfirmed = it },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(checked = targetConfirmed, onCheckedChange = null)
-                        Text(stringResource(R.string.setup_qr_ziel_bestaetigen, ansicht.host), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.setup_qr_target_confirm, view.host), fontWeight = FontWeight.Bold)
                     }
                 }
-                Text(stringResource(R.string.setup_qr_hinweis))
-                if (sofarHost != null) Text(stringResource(R.string.setup_qr_anderer_server, sofarHost),
+                Text(stringResource(R.string.setup_qr_hint))
+                if (sofarHost != null) Text(stringResource(R.string.setup_qr_other_server, sofarHost),
                     color = MaterialTheme.colorScheme.error)
-                val fp = vorschlag.fingerabdruck
-                if (bisher != null && fp != null) {
-                    Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
-                    Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerprintReadable(bisher), fontFamily = FontFamily.Monospace,
+                val fp = suggestion.fingerprint
+                if (previous != null && fp != null) {
+                    Text(stringResource(R.string.setup_qr_pin_changed), color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.cert_previous), style = MaterialTheme.typography.labelMedium)
+                    Text(fingerprintReadable(previous), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // Like CertificateDialog: the code itself names the new value, it is typed off
                     // from the web app; only its start stands here.
-                    Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.cert_starts_with), style = MaterialTheme.typography.labelMedium)
                     Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 } else if (fp != null) {
                     // First setup: without typing it off, only a system root applies; a code
                     // from someone else could just as well name its own key.
-                    Text(stringResource(if (abtippen) R.string.setup_qr_pin_abtippen else R.string.setup_qr_pin),
+                    Text(stringResource(if (type) R.string.setup_qr_pin_type else R.string.setup_qr_pin),
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.cert_starts_with), style = MaterialTheme.typography.labelMedium)
                     Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall)
                 }
-                if (abtippen && fp != null) {
-                    Fingerabdruckfeld(
-                        eingabe = eingabe,
-                        onInput = { eingabe = it; finding = null },
-                        noetig = Transcript.NEEDED,
-                        help = stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe),
-                        fehler = { gezaehlt ->
+                if (type && fp != null) {
+                    FingerprintField(
+                        input = input,
+                        onInput = { input = it; finding = null },
+                        needed = Transcript.NEEDED,
+                        help = stringResource(if (previous != null) R.string.cert_changed_input else R.string.cert_unknown_input),
+                        error = { counted ->
                             when (finding) {
-                                null, Transcript.PASST -> null
-                                Transcript.LEER, Transcript.TO_SHORT ->
-                                    stringResource(R.string.zert_eingabe_zu_kurz, gezaehlt, Transcript.NEEDED)
-                                Transcript.FITS_NOT -> stringResource(R.string.zert_eingabe_falsch)
+                                null, Transcript.MATCHES -> null
+                                Transcript.EMPTY, Transcript.TO_SHORT ->
+                                    stringResource(R.string.cert_input_too_short, counted, Transcript.NEEDED)
+                                Transcript.FITS_NOT -> stringResource(R.string.cert_input_wrong)
                             }
                         },
                     )
                 }
-                if (qrLocked) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
+                if (qrLocked) Text(stringResource(R.string.setup_qr_plaintext_declined), color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
-            TextButton(enabled = qrUebernehmbar(qrLocked, targetConfirmed, abtippen, eingabe), onClick = {
-                val fp = vorschlag.fingerabdruck
-                val check = if (abtippen) fp?.let { Transcript.von(eingabe, it) } ?: Transcript.FITS_NOT else Transcript.PASST
-                if (check != Transcript.PASST) {
+            TextButton(enabled = qrAdoptable(qrLocked, targetConfirmed, type, input), onClick = {
+                val fp = suggestion.fingerprint
+                val check = if (type) fp?.let { Transcript.of(input, it) } ?: Transcript.FITS_NOT else Transcript.MATCHES
+                if (check != Transcript.MATCHES) {
                     finding = check
                 } else {
-                    onUebernehmen(eingabe.takeIf { abtippen })
+                    onAdopt(input.takeIf { type })
                 }
             }) {
-                Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),
-                    color = if (bisher != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
+                Text(stringResource(if (previous != null) R.string.setup_qr_pin_adopt else R.string.setup_qr_adopt),
+                    color = if (previous != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
             }
         },
         dismissButton = {
-            TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -186,7 +186,7 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
         if (!cameraPermission.granted) cameraPermission.requests()
     }
     // The image shows a sign-in code: in a photo it would sign in a foreign device.
-    Sichtschutz()
+    PrivacyShield()
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
@@ -199,9 +199,9 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                     }
                 )
                 // Frame and hint in the shared overlay — see
-                // KameraErlaubnis.kt. Only the square stays its own.
+                // CameraPermission.kt. Only the square stays its own.
                 CameraOverlay(
-                    hinweis = if (frozen) stringResource(R.string.setup_qr_detected)
+                    hint = if (frozen) stringResource(R.string.setup_qr_detected)
                               else stringResource(R.string.setup_qr_scan_hint),
                 ) {
                     Box(
@@ -209,20 +209,20 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                             .fillMaxWidth(0.75f)
                             .aspectRatio(1f)
                             .border(2.dp,
-                                if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
-                                Formen.feld)
+                                if (frozen) LocalStatusColors.current.success else MaterialTheme.colorScheme.primary,
+                                Shapes.field)
                     )
                 }
             }
             else -> {
                 // Typing it in means back to setup: that is where the address field is.
-                CameraPermissionHint(stringResource(R.string.scanner_camera_zweck_qr),
-                    stringResource(R.string.scanner_adresse_eintippen), onDismiss,
-                    cameraPermission.permanentDenied) { cameraPermission.erlauben() }
+                CameraPermissionHint(stringResource(R.string.scanner_camera_purpose_qr),
+                    stringResource(R.string.scanner_address_type_in), onDismiss,
+                    cameraPermission.permanentDenied) { cameraPermission.allow() }
             }
         }
-        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
-            IconButton(onClick = onDismiss, Modifier.padding(Abstaende.gross)) {
+        WithTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = onDismiss, Modifier.padding(Spacing.large)) {
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
             }
         }
@@ -257,7 +257,7 @@ internal fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     }
 
     val imageAnalyzer = remember {
-        // Setup including AF mode: ui/screens/KameraAufbau.kt. 1280x720 instead of 1920x1080 as
+        // Setup including AF mode: ui/screens/CameraSetup.kt. 1280x720 instead of 1920x1080 as
         // in the barcode scanner: here a QR code with large modules is read, and
         // less resolution leaves the camera and preview more compute time.
         imageAnalyse(1280, 720)
@@ -281,15 +281,15 @@ internal fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     AndroidView(
         factory = { ctx ->
             val previewView = cameraPreview(ctx)
-            // Fetch the provider, build the preview, bind it: KameraAufbau.kt. No
+            // Fetch the provider, build the preview, bind it: CameraSetup.kt. No
             // atError: if the camera is not available, the preview deliberately
             // stays empty — unlike in the scanner, which shows a hint.
-            kameraBinden(
+            cameraBind(
                 ctx = ctx,
                 previewView = previewView,
                 lifecycleOwner = lifecycleOwner,
                 analyse = imageAnalyzer,
-            ) { camera -> tippZumFokus(previewView) { camera.cameraControl } }
+            ) { camera -> tapToFocus(previewView) { camera.cameraControl } }
             previewView
         },
         modifier = Modifier.fillMaxSize()

@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.model.domain.Gutscheinangabe
-import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.VoucherInfo
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.data.repository.VouchersRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import java.io.File
 import org.json.JSONObject
 import ch.brickinventoryapp.testing.testVouchersRepository
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -35,7 +35,7 @@ import ch.brickinventoryapp.testing.TestApi
  * the app uses the same services and builds none of its own — that drifts apart
  * most easily.
  *
- * Counter-checks: in VouchersRepository.liste() the fetch
+ * Counter-checks: in VouchersRepository.list() the fetch
  * wrapped with cached("gutscheine", …) → red “the list is not
  * cached”; @PUT("api/v1/vouchers/{id}") to POST → red “the app
  * calls the same addresses as the web app”.
@@ -45,13 +45,13 @@ import ch.brickinventoryapp.testing.TestApi
  *    “deleting, plaintext and PDF release carry password and code”.
  *  - pdfRelease() calls the route of the single PDF (with id 0) for id=null → red
  *    “the app calls the same addresses as the web app”.
- *  - plaintext in liste() stored with cached("gutscheine-klartext", …) → red
+ *  - plaintext in list() stored with cached("gutscheine-klartext", …) → red
  *    “the plaintext is not cached”.
  */
 class VouchersContractTest {
 
-    private fun lies(rel: String): String {
-        val f = File(Quellen.root, rel)
+    private fun read(rel: String): String {
+        val f = File(Sources.root, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -61,20 +61,20 @@ class VouchersContractTest {
         if (z.trim().startsWith("//") || z.trim().startsWith("*")) "" else z
     }
 
-    private val repo by lazy { code(lies("data/repository/GutscheineRepositoryImpl.kt")) }
-    private val feature by lazy { code(lies("finances/ui/viewmodel/GutscheinViewModel.kt")) }
+    private val repo by lazy { code(read("data/repository/VouchersRepositoryImpl.kt")) }
+    private val feature by lazy { code(read("finances/ui/viewmodel/VoucherViewModel.kt")) }
     // The card including its sibling files: list, form and single card.
-    private val karte by lazy {
-        code(listOf("GutscheineCard.kt", "GutscheinFormular.kt", "GutscheinKarte.kt").joinToString("\n") { lies("finances/ui/screens/$it") })
+    private val card by lazy {
+        code(listOf("VouchersCard.kt", "VoucherForm.kt", "VoucherCard.kt").joinToString("\n") { read("finances/ui/screens/$it") })
     }
 
     /** Vouchers against a test server, with disk storage in a throwaway folder. */
-    private fun <T> withServer(block: (PfadServer, VouchersRepository, File) -> T): T {
-        val paths = PfadServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
+    private fun <T> withServer(block: (PathServer, VouchersRepository, File) -> T): T {
+        val paths = PathServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
         val folder = File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
         try {
-            return block(paths, testVouchersRepository(TestApi.fuer(paths.server)), folder)
+            return block(paths, testVouchersRepository(TestApi.forTarget(paths.server)), folder)
         } finally {
             paths.server.shutdown(); folder.deleteRecursively()
         }
@@ -86,15 +86,15 @@ class VouchersContractTest {
      */
     @Test
     fun `the app calls the same addresses as the web app`() = withServer { paths, repo, _ ->
-        val g = Gutscheinangabe(nummer = "1234-5678", pin = "9876", betrag = Geld.aus(50.0)!!, waehrung = Waehrung.CHF)
-        val b = Confirmation(passwort = "geheim")
+        val g = VoucherInfo(number = "1234-5678", pin = "9876", amount = Money.from(50.0)!!, currency = CurrencyCode.CHF)
+        val b = Confirmation(password = "geheim")
         runBlocking {
-            repo.liste()
-            repo.anlegen(g)
-            repo.aendern(5, g)
-            repo.loeschen(5, b)
+            repo.list()
+            repo.create(g)
+            repo.edit(5, g)
+            repo.deleteVoucher(5, b)
             repo.fromPdf("karte.pdf", "application/pdf", byteArrayOf(1, 2, 3))
-            repo.klartext(5, b)
+            repo.plaintext(5, b)
             repo.pdfRelease(5, b)
             repo.pdfRelease(null, b)
         }
@@ -106,15 +106,15 @@ class VouchersContractTest {
     /** Without a body the server answers with 400: deleting and plaintext require the confirmation. */
     @Test
     fun `deleting, plaintext and PDF release carry password and code`() = withServer { paths, repo, _ ->
-        val b = Confirmation(passwort = "geheim", code = "123456")
+        val b = Confirmation(password = "geheim", code = "123456")
         runBlocking {
-            repo.loeschen(5, b)
-            repo.klartext(5, b)
+            repo.deleteVoucher(5, b)
+            repo.plaintext(5, b)
             repo.pdfRelease(5, b)
             repo.pdfRelease(null, b)
         }
-        assertEquals(4, paths.koerper.size)
-        for ((i, k) in paths.koerper.withIndex()) {
+        assertEquals(4, paths.bodyBytes.size)
+        for ((i, k) in paths.bodyBytes.withIndex()) {
             val o = JSONObject(k)
             assertEquals("${paths.requests[i]}: Passwort", "geheim", o.getString("password"))
             assertEquals("${paths.requests[i]}: Code", "123456", o.getString("code"))
@@ -123,13 +123,13 @@ class VouchersContractTest {
 
     @Test
     fun `the plaintext is not cached`() = withServer { paths, repo, folder ->
-        paths.antworten["/api/v1/vouchers/5/klartext"] =
+        paths.responses["/api/v1/vouchers/5/klartext"] =
             """{"success":true,"id":5,"number":"6000111122223333","pin":"9876"}"""
-        val r = runBlocking { repo.liste(); repo.klartext(5, Confirmation(passwort = "geheim")) }
-        assertEquals("6000111122223333", (r as Ergebnis.Erfolg).data.number)
-        val abgelegt = folder.walkTopDown().filter { it.isFile }
+        val r = runBlocking { repo.list(); repo.plaintext(5, Confirmation(password = "geheim")) }
+        assertEquals("6000111122223333", (r as Outcome.Success).data.number)
+        val stored = folder.walkTopDown().filter { it.isFile }
             .filter { it.readText().let { t -> "6000111122223333" in t || "9876" in t } }.toList()
-        assertTrue("Klartext liegt auf der Platte: $abgelegt", abgelegt.isEmpty())
+        assertTrue("Klartext liegt auf der Platte: $stored", stored.isEmpty())
     }
 
     @Test
@@ -140,9 +140,9 @@ class VouchersContractTest {
         assert(repo.contains("MultipartBody.Part.createFormData(\"file\"")) {
             "Die Datei muss als multipart zum Server gehen."
         }
-        for (verboten in listOf("PdfRenderer", "inflate", "Tj", "zlib")) {
-            assert(!feature.contains(verboten) && !repo.contains(verboten)) {
-                "Die App versucht, das PDF SELBST zu lesen ($verboten). Das gehoert " +
+        for (forbidden in listOf("PdfRenderer", "inflate", "Tj", "zlib")) {
+            assert(!feature.contains(forbidden) && !repo.contains(forbidden)) {
+                "Die App versucht, das PDF SELBST zu lesen ($forbidden). Das gehoert " +
                     "auf den Server — sonst gibt es zwei Fassungen derselben Regel."
             }
         }
@@ -158,9 +158,9 @@ class VouchersContractTest {
         // The one exception is `toDoubleOrNull`: that is no rule but
         // the conversion of text into a number before it can be
         // sent at all.
-        for (verboten in listOf("Regex(", "matches(", "length in ", "startsWith(\"50")) {
-            assert(!feature.contains(verboten)) {
-                "In der App steht eine eigene Pruefung der Gutscheinwerte ($verboten)."
+        for (forbidden in listOf("Regex(", "matches(", "length in ", "startsWith(\"50")) {
+            assert(!feature.contains(forbidden)) {
+                "In der App steht eine eigene Pruefung der Gutscheinwerte ($forbidden)."
             }
         }
     }
@@ -171,7 +171,7 @@ class VouchersContractTest {
         // this takeover the user would face empty fields although the
         // number was in the PDF after all — and would have to type nineteen digits
         // that the server already knows.
-        assert(feature.contains("Gutscheinspeicherung.Incomplete") && repo.contains("a.gelesen")) {
+        assert(feature.contains("VoucherStorage.Incomplete") && repo.contains("a.gelesen")) {
             "Die aus dem PDF gelesenen Werte werden nicht uebernommen."
         }
         assert(repo.contains("422")) {
@@ -186,8 +186,8 @@ class VouchersContractTest {
         // signed in — but against the shoulder next to you. The reverse
         // is stated as well: it must also be revealable, otherwise the
         // PIN is useless.
-        assert(karte.contains("\"••••\"")) { "Der PIN steht unverdeckt in der Liste." }
-        assert(karte.contains("pinSichtbar")) { "Der PIN laesst sich nicht aufdecken." }
+        assert(card.contains("\"••••\"")) { "Der PIN steht unverdeckt in der Liste." }
+        assert(card.contains("pinVisible")) { "Der PIN laesst sich nicht aufdecken." }
     }
 
     @Test
@@ -196,9 +196,9 @@ class VouchersContractTest {
         // existing PdfViewerScreen loads the address with the signed-in
         // client; an own copy in the cache would be a second place for
         // the same numbers — and one that survives sign-out at that.
-        for (verboten in listOf("cacheDir", "writeBytes", "getExternalFilesDir", "MediaStore")) {
-            assert(!feature.contains(verboten) && !repo.contains(verboten)) {
-                "Das Gutschein-PDF wird auf dem Geraet abgelegt ($verboten)."
+        for (forbidden in listOf("cacheDir", "writeBytes", "getExternalFilesDir", "MediaStore")) {
+            assert(!feature.contains(forbidden) && !repo.contains(forbidden)) {
+                "Das Gutschein-PDF wird auf dem Geraet abgelegt ($forbidden)."
             }
         }
     }
@@ -208,18 +208,18 @@ class VouchersContractTest {
         // Tapping copies, because number and PIN mostly go into a payment field.
         // Both rows are KopierZeilen: whole row tappable (clickable), 48 dp high, with
         // copy icon. Height and description are checked by UisRulesTest on the screen.
-        assert(karte.contains("clickable(role = Role.Button, onClickLabel = beschreibung, onClick = onKopieren)")) {
+        assert(card.contains("clickable(role = Role.Button, onClickLabel = description, onClick = onCopy)")) {
             "Die Kopierzeile ist nicht mehr antippbar."
         }
-        assert(karte.contains("{ onKopieren(true) }")) {
+        assert(card.contains("{ onCopy(true) }")) {
             "Die Gutscheinnummer laesst sich nicht durch Antippen kopieren."
         }
-        assert(karte.contains("{ onKopieren(false) }")) {
+        assert(card.contains("{ onCopy(false) }")) {
             "Der PIN laesst sich nicht durch Antippen kopieren."
         }
         // The RAW number, not the one shown in groups of four: the
         // grouping is a reading aid, a payment field does not accept it.
-        assert(!karte.contains("onKopieren(g.number.chunked")) {
+        assert(!card.contains("onCopy(g.number.chunked")) {
             "Kopiert wird die gruppierte Anzeige statt der echten Nummer."
         }
     }
@@ -228,28 +228,28 @@ class VouchersContractTest {
     fun `the voucher no longer has a note`() {
         // The server no longer knows a note; a remainder in the app would be a row
         // it does not answer.
-        for (datei in listOf(karte, feature)) {
-            assert(!datei.contains("notiz") && !datei.contains(".note")) {
+        for (file in listOf(card, feature)) {
+            assert(!file.contains("notiz") && !file.contains(".note")) {
                 "In der App steht noch eine Notiz am Gutschein."
             }
         }
     }
 
     /**
-     * The vouchers are the first entry of the „Mehr“ page (MehrBildschirm.kt), so that
+     * The vouchers are the first entry of the „Mehr“ page (MoreScreen.kt), so that
      * one finds them at the checkout without searching. Checked is the order, not merely
      * the occurrence: whoever builds in something new likes to put it at the top.
      */
     @Test
     fun `the vouchers are at the very top of the More page`() {
         // The page draws the groups from 0; the first entry is the first of group 0.
-        val quelle = code(lies("app/MehrBildschirm.kt"))
-        val seite = quelle.substringAfter("fun MehrBildschirm(").substringBefore("fun MehrGruppeInhalt(")
-        assert(Regex("""for \(i in 0 until""").containsMatchIn(seite)) { "Die Seite Mehr beginnt nicht mit Gruppe 0" }
-        val groupNull = quelle.substringAfter("fun MehrGruppeInhalt(").substringAfter("0 ->")
-        val erste = Regex("""MehrEintrag\(R\.string\.(\w+)""").find(groupNull)?.groupValues?.get(1)
-        assert(erste == "vouchers_title") {
-            "Der erste Eintrag der Seite Mehr fuehrt zu $erste statt zu den " +
+        val source = code(read("app/MoreScreen.kt"))
+        val page = source.substringAfter("fun MoreScreen(").substringBefore("fun MoreGroupContent(")
+        assert(Regex("""for \(i in 0 until""").containsMatchIn(page)) { "Die Seite Mehr beginnt nicht mit Gruppe 0" }
+        val groupNull = source.substringAfter("fun MoreGroupContent(").substringAfter("0 ->")
+        val first = Regex("""MoreItem\(R\.string\.(\w+)""").find(groupNull)?.groupValues?.get(1)
+        assert(first == "vouchers_title") {
+            "Der erste Eintrag der Seite Mehr fuehrt zu $first statt zu den " +
                 "GUTSCHEINEN — dann muss man fuer die Karten wieder suchen."
         }
     }
@@ -265,9 +265,9 @@ class VouchersContractTest {
      */
     @Test
     fun `the settings no longer lead to the sections themselves`() {
-        val once = code(lies("account/ui/screens/SettingsScreen.kt"))
-        for (route in listOf("FinanzZiel.Gutscheine", "KontoZiel.Preisalarme", "KontoZiel.Lagerorte",
-                             "KontoZiel.Haushalt", "KontoZiel.CsvImport", "KontoZiel.Konto")) {
+        val once = code(read("account/ui/screens/SettingsScreen.kt"))
+        for (route in listOf("FinanceTarget.Gutscheine", "AccountTarget.Preisalarme", "AccountTarget.Lagerorte",
+                             "AccountTarget.Haushalt", "AccountTarget.CsvImport", "AccountTarget.Konto")) {
             assert(!once.contains(route)) {
                 "SettingsScreen.kt fuehrt noch selbst zu $route — dann gibt es die " +
                     "Rubrik zweimal, auf „Mehr“ und in den Einstellungen."
@@ -285,8 +285,8 @@ class VouchersContractTest {
      */
     @Test
     fun `the list is not cached`() = withServer { _, repo, folder ->
-        runBlocking { repo.liste() }
-        val abgelegt = folder.walkTopDown().filter { it.isFile }.filter { it.readText().contains("9876") }.toList()
-        assertTrue("Nummer und PIN liegen auf der Platte: $abgelegt", abgelegt.isEmpty())
+        runBlocking { repo.list() }
+        val stored = folder.walkTopDown().filter { it.isFile }.filter { it.readText().contains("9876") }.toList()
+        assertTrue("Nummer und PIN liegen auf der Platte: $stored", stored.isEmpty())
     }
 }

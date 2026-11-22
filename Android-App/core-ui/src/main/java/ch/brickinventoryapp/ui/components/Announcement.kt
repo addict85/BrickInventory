@@ -29,12 +29,12 @@ fun Announcement(text: String?, modifier: Modifier = Modifier) {
  */
 @Composable
 fun ThrottledAnnouncement(text: String, gapMs: Long = ANNOUNCEMENT_GAP_MS) {
-    val aktuell by rememberUpdatedState(text)
+    val current by rememberUpdatedState(text)
     var announcementProgress by remember { mutableStateOf(text) }
     LaunchedEffect(gapMs) {
         while (true) {
             delay(gapMs)
-            announcementProgress = aktuell
+            announcementProgress = current
         }
     }
     Announcement(announcementProgress)

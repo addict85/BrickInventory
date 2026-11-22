@@ -1,48 +1,48 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.Kaufaenderung
-import ch.brickinventoryapp.model.domain.Kaufkorrektur
+import ch.brickinventoryapp.model.domain.PurchaseChange
+import ch.brickinventoryapp.model.domain.PurchaseCorrection
 import ch.brickinventoryapp.model.domain.InvitationView
 import ch.brickinventoryapp.model.domain.HouseholdStatusView
 import ch.brickinventoryapp.model.domain.PurchasesView
 import ch.brickinventoryapp.model.domain.MemberView
 
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.Condition
 /**
  * The household: members, invitations, accounts.
  * An interface so that ViewModels and tests do not depend on the implementation with
- * Retrofit and store (HaushaltRepositoryImpl).
+ * Retrofit and store (HouseholdRepositoryImpl).
  */
 interface HouseholdRepository {
-    suspend fun getHousehold(): Ergebnis<HouseholdStatusView>
+    suspend fun getHousehold(): Outcome<HouseholdStatusView>
 
-    suspend fun getHouseholdMembers(): Ergebnis<List<MemberView>>
+    suspend fun getHouseholdMembers(): Outcome<List<MemberView>>
 
-    suspend fun createHouseholdInvite(): Ergebnis<InvitationView>
+    suspend fun createHouseholdInvite(): Outcome<InvitationView>
 
-    suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null): Ergebnis<Unit>
+    suspend fun redeemHouseholdInvite(code: String, password: String, factorCode: String? = null): Outcome<Unit>
 
-    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Ergebnis<Unit>
+    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Outcome<Unit>
 
-    suspend fun discardSeparateAccount(subUserId: Int): Ergebnis<Unit>
+    suspend fun discardSeparateAccount(subUserId: Int): Outcome<Unit>
 
-    suspend fun getAcquisitions(setNumber: String): Ergebnis<PurchasesView>
+    suspend fun getAcquisitions(setNumber: String): Outcome<PurchasesView>
 
     suspend fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null,
-                                  condition: Zustand? = null, quantity: Int? = null, date: String? = null,
-                                  ownerUserId: Int? = null): Ergebnis<Kaufaenderung>
+                                  condition: Condition? = null, quantity: Int? = null, date: String? = null,
+                                  ownerUserId: Int? = null): Outcome<PurchaseChange>
 
-    suspend fun deleteAcquisition(setNumber: String, acqId: Int): Ergebnis<Kaufaenderung>
+    suspend fun deleteAcquisition(setNumber: String, acqId: Int): Outcome<PurchaseChange>
 
-    suspend fun getPartAcquisitions(partNumber: String, colorId: Int): Ergebnis<PurchasesView>
+    suspend fun getPartAcquisitions(partNumber: String, colorId: Int): Outcome<PurchasesView>
 
-    suspend fun updatePartAcquisition(partNumber: String, colorId: Int, id: Int, correction: Kaufkorrektur): Ergebnis<Kaufaenderung>
+    suspend fun updatePartAcquisition(partNumber: String, colorId: Int, id: Int, correction: PurchaseCorrection): Outcome<PurchaseChange>
 
-    suspend fun deletePartAcquisition(partNumber: String, colorId: Int, id: Int): Ergebnis<Unit>
+    suspend fun deletePartAcquisition(partNumber: String, colorId: Int, id: Int): Outcome<Unit>
 
-    suspend fun getFigAcquisitions(figNumber: String): Ergebnis<PurchasesView>
+    suspend fun getFigAcquisitions(figNumber: String): Outcome<PurchasesView>
 
-    suspend fun updateFigAcquisition(figNumber: String, id: Int, correction: Kaufkorrektur): Ergebnis<Kaufaenderung>
+    suspend fun updateFigAcquisition(figNumber: String, id: Int, correction: PurchaseCorrection): Outcome<PurchaseChange>
 
-    suspend fun deleteFigAcquisition(figNumber: String, id: Int): Ergebnis<Unit>
+    suspend fun deleteFigAcquisition(figNumber: String, id: Int): Outcome<Unit>
 }

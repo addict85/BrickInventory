@@ -20,22 +20,22 @@ internal object SecurityModule {
      * Provide token encryption as an interface, not as a concrete
      * class: the implementation needs the Android Keystore and only runs on a
      * device. Bound tightly to it, the takeover logic of
-     * TokenAblage could not be tested on the JVM.
+     * TokenStore could not be tested on the JVM.
      */
     @Provides
     @Singleton
     fun provideTokenEncryption(): TokenEncryption =
-        EntsperrVault(
+        UnlockVault(
             KeystoreTokenVault(KeystoreTokenVault.ALIAS_UNLOCKED, onlyUnlocked = true),
             KeystoreTokenVault(readOnly = true),
         )
 
-    /** Locked here means: the token's key is currently releasing nothing (EntsperrVault). */
+    /** Locked here means: the token's key is currently releasing nothing (UnlockVault). */
     @Provides
     @Singleton
-    fun provideGeraetesperre(@ApplicationContext context: Context): Geraetesperre {
+    fun provideDeviceLock(@ApplicationContext context: Context): DeviceLock {
         val guard = context.getSystemService(KeyguardManager::class.java)
-        return Geraetesperre { guard?.isDeviceLocked == true }
+        return DeviceLock { guard?.isDeviceLocked == true }
     }
 
     /**
@@ -45,10 +45,10 @@ internal object SecurityModule {
      */
     @Provides
     @Singleton
-    fun provideAblageschluessel(@ApplicationContext context: Context, lockWipe: LockWipe): Ablageschluessel =
-        Ablageschluessel(
+    fun provideStoreKey(@ApplicationContext context: Context, lockWipe: LockWipe): StoreKey =
+        StoreKey(
             File(context.noBackupFilesDir, "ablage.schluessel"),
-            EntsperrVault(
+            UnlockVault(
                 KeystoreTokenVault(ALIAS_STORE_UNLOCKED, onlyUnlocked = true),
                 KeystoreTokenVault(ALIAS_STORE, readOnly = true),
             ),
@@ -62,17 +62,17 @@ internal object SecurityModule {
      */
     @Provides
     @Singleton
-    fun provideVertrauenschiffre(@ApplicationContext context: Context, lockWipe: LockWipe): Vertrauenschiffre {
-        val schluessel = Ablageschluessel(
+    fun provideTrustCipher(@ApplicationContext context: Context, lockWipe: LockWipe): TrustCipher {
+        val key = StoreKey(
             File(context.noBackupFilesDir, "vertrauen.schluessel"), KeystoreTokenVault("brickinventory_vertrauen"),
         )
-        val angaben = Ablageschluessel(
+        val info = StoreKey(
             File(context.noBackupFilesDir, "angaben.schluessel"),
             KeystoreTokenVault(ALIAS_DETAILS, onlyUnlocked = true),
         )
         // The pins' key stays: TLS needs it locked too, and it reveals no account.
-        lockWipe.register(angaben::forgetInMemory)
-        return Vertrauenschiffre(angaben = { angaben.fuer("angaben") }) { schluessel.fuer("vertrauen") }
+        lockWipe.register(info::forgetInMemory)
+        return TrustCipher(info = { info.forTarget("angaben") }) { key.forTarget("vertrauen") }
     }
 
     @Provides

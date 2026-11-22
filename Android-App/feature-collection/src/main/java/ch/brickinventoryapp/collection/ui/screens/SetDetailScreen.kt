@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.collection.ui.screens
 
 import java.time.Instant
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.ui.satz
-import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.model.domain.Postenart
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailAktionen
-import ch.brickinventoryapp.model.domain.SetAnsicht
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailActions
+import ch.brickinventoryapp.model.domain.SetView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import ch.brickinventoryapp.resources.R
@@ -19,29 +19,29 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
-import ch.brickinventoryapp.shared.ui.LocalSpaltenkarte
+import ch.brickinventoryapp.shared.ui.LocalColumnMap
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.collection.ui.SetDetailUiState
-import ch.brickinventoryapp.ui.titel
-import ch.brickinventoryapp.ui.twoSpaltig
-import ch.brickinventoryapp.state.ui.LagerUiState
+import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.ui.twoColumn
+import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import coil3.ImageLoader
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.ReadingWidth
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.LoadCircle
-import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.StateHint
-import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
+import ch.brickinventoryapp.ui.theme.LocalAccentSurfaces
 import ch.brickinventoryapp.collection.ui.viewmodel.INSTRUCTION_TYPES
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
@@ -52,43 +52,43 @@ import ch.brickinventoryapp.model.file.FileRef
 fun SetDetailRoute(
     setNumber: String,
     vm: SetDetailViewModel,
-    vorschau: SetAnsicht? = null,
+    preview: SetView? = null,
     serverUrl: String,
     imageLoader: ImageLoader,
     onBack: () -> Unit,
     onDelete: (String) -> Unit,
-    rueckgaengigMoeglich: Boolean = false,
-    onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
+    undoPossible: Boolean = false,
+    onNavigateToAcqMgmt: (type: ItemKind, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val detailState by vm.setDetailState.collectAsStateWithLifecycle()
-    val lagerZustand by vm.storageState.collectAsStateWithLifecycle()
+    val storageUiState by vm.storageState.collectAsStateWithLifecycle()
     SetDetailScreen(
-        setNumber = setNumber, zustand = SetDetailZustand(state, detailState, lagerZustand), aktionen = vm,
-        vorschau = vorschau, serverUrl = serverUrl, imageLoader = imageLoader, onBack = onBack, onDelete = onDelete,
-        rueckgaengigMoeglich = rueckgaengigMoeglich, onNavigateToAcqMgmt = onNavigateToAcqMgmt, onOpenPdf = onOpenPdf,
+        setNumber = setNumber, condition = SetDetailState(state, detailState, storageUiState), actions = vm,
+        preview = preview, serverUrl = serverUrl, imageLoader = imageLoader, onBack = onBack, onDelete = onDelete,
+        undoPossible = undoPossible, onNavigateToAcqMgmt = onNavigateToAcqMgmt, onOpenPdf = onOpenPdf,
     )
 }
 
 /** What the set detail shows. */
-internal data class SetDetailZustand(
+internal data class SetDetailState(
     val state: AppUiState,
     val detailState: SetDetailUiState,
-    val lagerZustand: LagerUiState,
+    val storageUiState: StorageUiState,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SetDetailScreen(
     setNumber: String,
-    zustand: SetDetailZustand,
-    aktionen: SetDetailAktionen,
+    condition: SetDetailState,
+    actions: SetDetailActions,
     /** The set from the loaded gallery — visible right away, until the detail is there. */
-    vorschau: SetAnsicht? = null,
+    preview: SetView? = null,
     serverUrl: String,
     // The AsyncImage calls need this loader: Coil's default loader doesn't attach the
-    // bearer token (only the client from di/NetzModule.kt sets that), and the
+    // bearer token (only the client from di/NetworkModule.kt sets that), and the
     // server requires sign-in for every image — otherwise the dialog would silently
     // stay empty with a 401.
     imageLoader: ImageLoader,
@@ -98,47 +98,47 @@ internal fun SetDetailScreen(
      * Does the list below catch the deletion with "Undo"? Then the trash icon deletes
      * without a confirmation — one safeguard is enough. Without a list (entry from outside), it asks.
      */
-    rueckgaengigMoeglich: Boolean = false,
-    onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
+    undoPossible: Boolean = false,
+    onNavigateToAcqMgmt: (type: ItemKind, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
-    val state       = zustand.state
-    val detailState = zustand.detailState
+    val state       = condition.state
+    val detailState = condition.detailState
     // The gallery list only serves as a fallback here, while the detail is still
     // loading — hence its own flow instead of the whole app state.
     val set       = detailState.setDetail?.takeIf { it.setNumber == setNumber }
-                 ?: vorschau?.takeIf { it.setNumber == setNumber }
+                 ?: preview?.takeIf { it.setNumber == setNumber }
     val price     = detailState.setPrice?.takeIf { it.setNumber == setNumber }
     val history   = detailState.priceHistory
-    val pnlPct    = history?.pnlProzent
-    val currency  = detailState.setPrice?.currency?.takeIf { it.bekannt } ?: state.currency
+    val pnlPct    = history?.pnlPercent
+    val currency  = detailState.setPrice?.currency?.takeIf { it.known } ?: state.currency
     val coroutineScope = rememberCoroutineScope()
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     var showSetDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
     val acquisitions = detailState.acquisitions
 
-    fun fmtPrice(v: Geld?) = if (v == null) "—"
+    fun fmtPrice(v: Money?) = if (v == null) "—"
         else fmtMoney(v, currency)
 
     // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
     // MinifigsScreen in einer zweiten, abweichenden Fassung.
-    fun fmtDate(zeit: Instant?) = fmtTag(zeit) ?: "—"
+    fun fmtDate(time: Instant?) = fmtTag(time) ?: "—"
 
-    val accent = LocalAkzentflaechen.current
+    val accent = LocalAccentSurfaces.current
     // Snackbar in its own scaffold instead of Toast: stays readable until TalkBack is done.
-    val meldungen = remember { SnackbarHostState() }
+    val messages = remember { SnackbarHostState() }
     val noAppText = stringResource(R.string.common_no_app_to_open)
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Scaffold(
-        snackbarHost = { SnackbarHost(meldungen) },
+        snackbarHost = { SnackbarHost(messages) },
         topBar = {
             // The same header as in catalog, watchlist and parts (DetailTopAppBar).
             DetailTopAppBar(
-                titel = set?.name ?: setNumber,
-                onZurueck = onBack,
-                farben = TopAppBarDefaults.topAppBarColors(
-                    containerColor = accent.detailLeiste,
+                title = set?.name ?: setNumber,
+                onBack = onBack,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = accent.detailBar,
                     titleContentColor = accent.onDetailBar,
                     navigationIconContentColor = accent.onDetailBar,
                     actionIconContentColor = accent.onDetailBar,
@@ -147,10 +147,10 @@ internal fun SetDetailScreen(
                     // No move button: moving happens via the purchase price, row by row —
                     // a set with three entries is three purchases that can belong to different
                     // children. The server enforces the same (move without acquisition_ids: 400).
-                    MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
+                    WithTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
                         IconButton(onClick = {
                             haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
+                            if (undoPossible) onDelete(setNumber) else showSetDeleteConfirm = true
                         }) {
                             Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
                         }
@@ -163,10 +163,10 @@ internal fun SetDetailScreen(
 
         if (set == null) {
             // Without a detail and without a preview: loading or failed — never a spinner with no end.
-            val fehler = detailState.detailFetch as? Laden.Fehler
-            if (fehler != null) {
+            val error = detailState.detailFetch as? Load.Failure
+            if (error != null) {
                 StateHint(Modifier.padding(padding)) {
-                    ErrorHint(fehler.meldung.satz(), aktionen::refresh, fehler.art)
+                    ErrorHint(error.message.sentence(), actions::refresh, error.kind)
                 }
             } else LoadCircle(Modifier.padding(padding))
             return@Scaffold
@@ -189,26 +189,26 @@ internal fun SetDetailScreen(
         // SetDetailFeature — the same one the server accepts.
         val instructionSelection = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-        ) { uri -> if (uri != null) aktionen.loadInstructionHigh(setNumber, FileRef(uri.toString())) }
+        ) { uri -> if (uri != null) actions.loadInstructionHigh(setNumber, FileRef(uri.toString())) }
 
-        val kopf: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+        val header: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailHeroImage(set, imageUrl, imageLoader, detailRetryState, detailScope) { showImageZoom = true }
             setDetailStatChips(set)
             setDetailValueTiles(set, price, pnlPct, ::fmtPrice)
         }
-        val angaben: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-            setDetailDetailsSection(set, setNumber, zustand.lagerZustand, aktionen, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
-            setDetailAlarmSection(setNumber, detailState.preisalarme, currency, aktionen::setPriceAlert)
+        val info: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+            setDetailDetailsSection(set, setNumber, condition.storageUiState, actions, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
+            setDetailAlarmSection(setNumber, detailState.priceAlarms, currency, actions::setPriceAlert)
         }
-        val preise: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-            setDetailPriceSection(detailState, price, history, currency, aktionen::refresh)
+        val prices: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+            setDetailPriceSection(detailState, price, history, currency, actions::refresh)
         }
-        val anleitungen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+        val instructions: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,
                 onInstructionChoose = { instructionSelection.launch(INSTRUCTION_TYPES) },
-                onAnleitungLoeschen = { aktionen.loescheAnleitung(setNumber, it) },
-                onNoApp = { coroutineScope.launch { meldungen.showSnackbar(noAppText) } },
+                onInstructionDelete = { actions.deleteInstruction(setNumber, it) },
+                onNoApp = { coroutineScope.launch { messages.showSnackbar(noAppText) } },
             )
         }
         // Two columns from "expanded" on — image and prices on the left, details, alert and
@@ -216,22 +216,22 @@ internal fun SetDetailScreen(
         // arm's length apart on the tablet. Single-column, the prices come before the details:
         // the value is the first question about a set, not the entry date.
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
-            val edge = PaddingValues(bottom = Abstaende.veryLarge)
-            if (twoSpaltig(maxWidth.value)) {
+            val edge = PaddingValues(bottom = Spacing.veryLarge)
+            if (twoColumn(maxWidth.value)) {
                 Row(Modifier.fillMaxSize()) {
-                    CompositionLocalProvider(LocalSpaltenkarte provides true) {
-                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge) { kopf(); preise() }
-                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge) { angaben(); anleitungen() }
+                    CompositionLocalProvider(LocalColumnMap provides true) {
+                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge) { header(); prices() }
+                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge) { info(); instructions() }
                     }
                 }
             } else {
                 // One column with a max width for all cards: in portrait on the tablet,
                 // the price history (SectionCard, Lesebreite) sat narrower than the tiles above it.
                 val lateral = ((maxWidth - DETAIL_COLUMN) / 2).coerceAtLeast(0.dp)
-                CompositionLocalProvider(LocalSpaltenkarte provides true) {
+                CompositionLocalProvider(LocalColumnMap provides true) {
                     LazyColumn(Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = lateral, end = lateral, bottom = Abstaende.veryLarge)) {
-                        kopf(); preise(); angaben(); anleitungen()
+                        contentPadding = PaddingValues(start = lateral, end = lateral, bottom = Spacing.veryLarge)) {
+                        header(); prices(); info(); instructions()
                     }
                 }
             }
@@ -240,13 +240,13 @@ internal fun SetDetailScreen(
         if (showSetDeleteConfirm) {
             val name = set.name ?: setNumber
             Prompt(
-                titel = stringResource(R.string.gallery_delete_title),
+                title = stringResource(R.string.gallery_delete_title),
                 // With several copies, the sentence says all of them are meant.
-                text = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_exemplare, set.quantity, set.quantity, name)
+                text = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_copies, set.quantity, set.quantity, name)
                        else stringResource(R.string.gallery_delete_text, name),
-                bestaetigen = stringResource(R.string.common_delete),
-                onBestaetigen = { showSetDeleteConfirm = false; onDelete(setNumber) },
-                onAbbrechen = { showSetDeleteConfirm = false },
+                confirm = stringResource(R.string.common_delete),
+                onConfirm = { showSetDeleteConfirm = false; onDelete(setNumber) },
+                onCancel = { showSetDeleteConfirm = false },
                 symbol = Icons.Default.Delete,
             )
         }
@@ -266,4 +266,4 @@ internal fun SetDetailScreen(
 }
 
 /** Max width of the single-column detail page: the reading width plus the cards' margin. */
-private val DETAIL_COLUMN = Lesebreite.formular + Abstaende.gross * 2
+private val DETAIL_COLUMN = ReadingWidth.form + Spacing.large * 2

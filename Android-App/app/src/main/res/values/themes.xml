@@ -3,13 +3,13 @@
     <!-- Fensterhintergrund = Grundfläche des Designs, damit bis zum ersten
          Compose-Bild nichts in einer fremden Farbe aufblitzt. -->
     <style name="Theme.BrickInventoryManager" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/fenster_hintergrund</item>
+        <item name="android:windowBackground">@color/window_background</item>
     </style>
 
     <!-- Startbild (core-splashscreen): steht, bis Compose das erste Bild hat,
          und wechselt dann auf das App-Theme. -->
     <style name="Theme.BrickInventoryManager.Start" parent="Theme.SplashScreen.IconBackground">
-        <item name="windowSplashScreenBackground">@color/fenster_hintergrund</item>
+        <item name="windowSplashScreenBackground">@color/window_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
         <item name="postSplashScreenTheme">@style/Theme.BrickInventoryManager</item>

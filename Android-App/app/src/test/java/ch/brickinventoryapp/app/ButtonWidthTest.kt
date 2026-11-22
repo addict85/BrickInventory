@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * A working button must not lose its label.
@@ -39,8 +39,8 @@ class ButtonWidthTest {
      * bracket balance. Line breaks stay so that the reported
      * line number is right.
      */
-    private fun code(roh: String): String {
-        val withoutComment = roh.lines().joinToString("\n") {
+    private fun code(raw: String): String {
+        val withoutComment = raw.lines().joinToString("\n") {
             val t = it.trim()
             if (t.startsWith("//") || t.startsWith("*")) "" else it
         }
@@ -49,22 +49,22 @@ class ButtonWidthTest {
         while (i < withoutComment.length) {
             val c = withoutComment[i]
             if (c == '"') {
-                val ende: Int
+                val end: Int
                 if (withoutComment.startsWith("\"\"\"", i)) {
                     val j = withoutComment.indexOf("\"\"\"", i + 3)
-                    ende = if (j < 0) withoutComment.length else j + 3
+                    end = if (j < 0) withoutComment.length else j + 3
                 } else {
                     var j = i + 1
                     while (j < withoutComment.length && withoutComment[j] != '"') {
                         if (withoutComment[j] == '\\') j++
                         j++
                     }
-                    ende = minOf(j + 1, withoutComment.length)
+                    end = minOf(j + 1, withoutComment.length)
                 }
                 sb.append("\"\"")
                 // Keep line breaks from multi-line strings.
-                repeat(withoutComment.substring(i, ende).count { z -> z == '\n' }) { sb.append('\n') }
-                i = ende
+                repeat(withoutComment.substring(i, end).count { z -> z == '\n' }) { sb.append('\n') }
+                i = end
                 continue
             }
             sb.append(c)
@@ -73,14 +73,14 @@ class ButtonWidthTest {
         return sb.toString()
     }
 
-    /** The end of the bracket or block group that begins at [auf]. */
-    private fun groupEnd(s: String, auf: Int, zu: Char): Int {
-        val offen = s[auf]
-        var tiefe = 0
-        var i = auf
+    /** The end of the bracket or block group that begins at [on]. */
+    private fun groupEnd(s: String, on: Int, too: Char): Int {
+        val open = s[on]
+        var depth = 0
+        var i = on
         while (i < s.length) {
-            if (s[i] == offen) tiefe++
-            else if (s[i] == zu) { tiefe--; if (tiefe == 0) return i }
+            if (s[i] == open) depth++
+            else if (s[i] == too) { depth--; if (depth == 0) return i }
             i++
         }
         return s.length - 1
@@ -90,20 +90,20 @@ class ButtonWidthTest {
      * Is the label EXCLUSIVELY in the other branch than the spinner from [spinner]?
      * Then it disappears during work; if it stands next to it, all is well.
      */
-    private fun losesLabel(inhalt: String, spinner: Int): Boolean {
-        val sonst = inhalt.indexOf("else", spinner)
-        if (sonst < 0 || inhalt.substring(spinner, sonst).contains("Text(")) return false
-        return branchAfter(inhalt, sonst)?.contains("Text(") == true
+    private fun losesLabel(content: String, spinner: Int): Boolean {
+        val otherwise = content.indexOf("else", spinner)
+        if (otherwise < 0 || content.substring(spinner, otherwise).contains("Text(")) return false
+        return branchAfter(content, otherwise)?.contains("Text(") == true
     }
 
-    /** The branch after `else` from [sonst]: block or single call. */
-    private fun branchAfter(inhalt: String, sonst: Int): String? {
-        var p = sonst + 4
-        while (p < inhalt.length && inhalt[p].isWhitespace()) p++
-        if (p >= inhalt.length) return null
-        if (inhalt[p] == '{') return inhalt.substring(p, groupEnd(inhalt, p, '}') + 1)
-        val a = inhalt.indexOf('(', p)
-        return if (a < 0) inhalt.substring(p) else inhalt.substring(p, groupEnd(inhalt, a, ')') + 1)
+    /** The branch after `else` from [otherwise]: block or single call. */
+    private fun branchAfter(content: String, otherwise: Int): String? {
+        var p = otherwise + 4
+        while (p < content.length && content[p].isWhitespace()) p++
+        if (p >= content.length) return null
+        if (content[p] == '{') return content.substring(p, groupEnd(content, p, '}') + 1)
+        val a = content.indexOf('(', p)
+        return if (a < 0) content.substring(p) else content.substring(p, groupEnd(content, a, ')') + 1)
     }
 
     /** The next `Button(` call from [from]; a declaration such as `fun LoadButton(` is none. */
@@ -121,16 +121,16 @@ class ButtonWidthTest {
 
     @Test
     fun `no button hides its label behind the spinner`() {
-        val dateien = Quellen.root
+        val files = Sources.root
             .walkTopDown().filter { it.extension == "kt" }.toList()
         // Lower bound: an empty file walk would let the check pass
         // silently.
-        check(dateien.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${dateien.size}) — Pfad veraltet?" }
+        check(files.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${files.size}) — Pfad veraltet?" }
 
         val flicker = mutableListOf<String>()
-        var geprueft = 0
-        for (datei in dateien) {
-            val s = code(datei.readText())
+        var checked = 0
+        for (file in files) {
+            val s = code(file.readText())
             var pos = 0
             while (true) {
                 val i = nextButtonCall(s, pos)
@@ -144,17 +144,17 @@ class ButtonWidthTest {
                 var m = bracketTo + 1
                 while (m < s.length && s[m].isWhitespace()) m++
                 if (m >= s.length || s[m] != '{') continue
-                val inhalt = s.substring(m, groupEnd(s, m, '}') + 1)
+                val content = s.substring(m, groupEnd(s, m, '}') + 1)
 
-                val spinner = inhalt.indexOf("CircularProgressIndicator")
+                val spinner = content.indexOf("CircularProgressIndicator")
                 if (spinner < 0) continue
-                geprueft++
-                if (losesLabel(inhalt, spinner) && !fixedWidth(brackets)) {
-                    flicker += "${datei.name}:${s.substring(0, i).count { z -> z == '\n' } + 1}"
+                checked++
+                if (losesLabel(content, spinner) && !fixedWidth(brackets)) {
+                    flicker += "${file.name}:${s.substring(0, i).count { z -> z == '\n' } + 1}"
                 }
             }
         }
-        check(geprueft >= 3) { "Nur $geprueft Knoepfe mit Kreisel gefunden — greift die Suche noch?" }
+        check(checked >= 3) { "Nur $checked Knoepfe mit Kreisel gefunden — greift die Suche noch?" }
         assert(flicker.isEmpty()) {
             "Diese Knoepfe verlieren beim Druck ihre Beschriftung und schrumpfen dabei: " +
                 "${flicker.joinToString(", ")} — der Kreisel gehoert NEBEN die Beschriftung, " +

@@ -37,7 +37,7 @@ object ColorGerman {
 
     /** „Dark Bluish Gray“ → „Dunkelbläulichgrau“, „Trans-Clear“ → „Trans-Klar“. */
     fun translate(en: String): String {
-        val raus = wordsAndSeparator(en).map { t ->
+        val out = wordsAndSeparator(en).map { t ->
             when {
                 t.isNotEmpty() && t.isBlank() -> " "
                 t == "-" -> "-"
@@ -45,29 +45,29 @@ object ColorGerman {
             }
         }
         val sb = StringBuilder()
-        var anhaengen = false
-        for (t in raus) {
+        var append = false
+        for (t in out) {
             if (t == " ") {
-                if (!anhaengen) sb.append(' ')
+                if (!append) sb.append(' ')
                 continue
             }
-            if (t == "-") { sb.append('-'); anhaengen = false; continue }
-            sb.append(if (anhaengen) t.replaceFirstChar { it.lowercaseChar() } else t)
-            anhaengen = t in prefixes
+            if (t == "-") { sb.append('-'); append = false; continue }
+            sb.append(if (append) t.replaceFirstChar { it.lowercaseChar() } else t)
+            append = t in prefixes
         }
         return sb.toString().replace(Regex("""\s{2,}"""), " ").trim()
     }
 
     /** Like `split(/(\s+|-)/)` in JavaScript: words AND separators, in their order. */
     private fun wordsAndSeparator(s: String): List<String> {
-        val aus = mutableListOf<String>()
+        val from = mutableListOf<String>()
         var rest = 0
         for (m in Regex("""\s+|-""").findAll(s)) {
-            aus += s.substring(rest, m.range.first)
-            aus += m.value
+            from += s.substring(rest, m.range.first)
+            from += m.value
             rest = m.range.last + 1
         }
-        aus += s.substring(rest)
-        return aus
+        from += s.substring(rest)
+        return from
     }
 }

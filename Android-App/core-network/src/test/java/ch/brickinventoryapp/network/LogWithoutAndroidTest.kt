@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.network
 
 import android.util.Log
-import ch.brickinventoryapp.network.util.Protokoll
+import ch.brickinventoryapp.network.util.AppLog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -13,7 +13,7 @@ import java.io.PrintStream
  * that throws, since the unit tests run without isReturnDefaultValues.
  *
  * Counter-checks:
- *   protokoll-immer-logcat: vorgabe() always picks the Logcat branch → red “without Android a warning ends up …”
+ *   protokoll-immer-logcat: default() always picks the Logcat branch → red “without Android a warning ends up …”
  *     (locally with kotlinc against android-all: UnsatisfiedLinkError from Log.w; in CI "not mocked")
  *   unittests-mit-vorgabewerten: isReturnDefaultValues = true in the convention → red “an
  *     Android method throws …” (only measurable in CI: locally there is no android.jar from AGP)
@@ -22,18 +22,18 @@ class LogWithoutAndroidTest {
 
     @Test
     fun `without Android a warning ends up on stderr, not in logcat`() {
-        val vorher = System.err
-        val puffer = ByteArrayOutputStream()
-        System.setErr(PrintStream(puffer, true, "UTF-8"))
+        val before = System.err
+        val buffer = ByteArrayOutputStream()
+        System.setErr(PrintStream(buffer, true, "UTF-8"))
         try {
-            Protokoll.vorgabe()(Protokoll.Stufe.WARNUNG, "Abmelden", "Token nicht entwertet", IllegalStateException("weg"))
-            Protokoll.vorgabe()(Protokoll.Stufe.NOTIZ, "OkHttp", "--> GET", null)
+            AppLog.default()(AppLog.Level.WARNING, "Abmelden", "Token nicht entwertet", IllegalStateException("weg"))
+            AppLog.default()(AppLog.Level.NOTE, "OkHttp", "--> GET", null)
         } finally {
-            System.setErr(vorher)
+            System.setErr(before)
         }
         assertEquals(
-            listOf("WARNUNG Abmelden: Token nicht entwertet (java.lang.IllegalStateException: weg)", "NOTIZ OkHttp: --> GET"),
-            puffer.toString("UTF-8").lines().filter { it.isNotBlank() },
+            listOf("WARNING Abmelden: Token nicht entwertet (java.lang.IllegalStateException: weg)", "NOTE OkHttp: --> GET"),
+            buffer.toString("UTF-8").lines().filter { it.isNotBlank() },
         )
     }
 

@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.di
 import ch.brickinventoryapp.data.file.AppFileReader
 import ch.brickinventoryapp.data.util.AppTextSource
 import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.util.Textquelle
+import ch.brickinventoryapp.model.util.TextSource
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -14,5 +14,5 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 internal abstract class FileModule {
     @Binds abstract fun fileReader(l: AppFileReader): FileReader
-    @Binds abstract fun textSource(q: AppTextSource): Textquelle
+    @Binds abstract fun textSource(q: AppTextSource): TextSource
 }

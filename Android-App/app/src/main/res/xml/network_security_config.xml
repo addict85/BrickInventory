@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Kein Klartext, nirgends: Der Server läuft hinter Caddy mit https. Diese Datei
-  ist die zweite Linie hinter dem Wächter (di/ServerWaechter.kt), der eine
+  ist die zweite Linie hinter dem Wächter (di/ServerGuard.kt), der eine
   http-Anfrage schon vor dem Netz abbricht. Der Debug-Build hat eine eigene
   Fassung unter src/debug/ mit dem Emulator und dem Gerät selbst.
 
   Nur System-CAs. Nutzer-CAs und Pins des eigenen Servers entscheidet
-  util/ServerVertrauen.kt zur Laufzeit.
+  util/ServerTrust.kt zur Laufzeit.
 
   Certificate Transparency (ab Android 16): Ein Zertifikat einer öffentlichen CA
   gilt nur, wenn es in den öffentlichen Logs steht. Für einen Server ohne eigenen

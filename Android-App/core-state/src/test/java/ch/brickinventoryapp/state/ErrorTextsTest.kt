@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.state.ui.errorTextArgument
 import ch.brickinventoryapp.state.ui.errorClass
-import ch.brickinventoryapp.state.ui.fehlerTextId
+import ch.brickinventoryapp.state.ui.errorTextId
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 
 /**
  * Every error cause gets its own string — run, not read.
@@ -15,7 +15,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis
  * would break as soon as someone rephrases the function.
  *
  * The real test became possible because the mapping has been
- * extracted from `meldung()`: `fehlerTextId()` needs no `Context` and is thus
+ * extracted from `message()`: `errorTextId()` needs no `Context` and is thus
  * a completely ordinary function. The lesson from point 1 of the small-scale
  * review — whatever is hard to test is usually just entangled with something it doesn't
  * need.
@@ -30,48 +30,48 @@ class ErrorTextsTest {
 
     /** One example per kind; [name] is exhaustive, a new kind breaks the build there. */
     private val examples = listOf(
-        Ergebnis.Fehler.Netz(), Ergebnis.Fehler.Zeitueberschreitung, Ergebnis.Fehler.Abgebrochen,
-        Ergebnis.Fehler.LeereAntwort(), Ergebnis.Fehler.Abgewiesen(), Ergebnis.Fehler.Server(500),
-        Ergebnis.Fehler.Klartext, Ergebnis.Fehler.Unbekannt(), Ergebnis.Fehler.Absage(),
+        Outcome.Failure.Network(), Outcome.Failure.Timeout, Outcome.Failure.Cancelled,
+        Outcome.Failure.EmptyResponse(), Outcome.Failure.Rejected(), Outcome.Failure.Server(500),
+        Outcome.Failure.Plaintext, Outcome.Failure.Unknown(), Outcome.Failure.Refusal(),
     )
 
-    private fun name(f: Ergebnis.Fehler): String = when (f) {
-        is Ergebnis.Fehler.Netz -> "Netz"
-        Ergebnis.Fehler.Zeitueberschreitung -> "Zeitueberschreitung"
-        Ergebnis.Fehler.Abgebrochen -> "Abgebrochen"
-        is Ergebnis.Fehler.LeereAntwort -> "LeereAntwort"
-        is Ergebnis.Fehler.Abgewiesen -> "Abgewiesen"
-        is Ergebnis.Fehler.Server -> "Server"
-        Ergebnis.Fehler.Klartext -> "Klartext"
-        is Ergebnis.Fehler.Unbekannt -> "Unbekannt"
-        is Ergebnis.Fehler.Absage -> "Absage"
+    private fun name(f: Outcome.Failure): String = when (f) {
+        is Outcome.Failure.Network -> "Netz"
+        Outcome.Failure.Timeout -> "Zeitueberschreitung"
+        Outcome.Failure.Cancelled -> "Abgebrochen"
+        is Outcome.Failure.EmptyResponse -> "EmptyResponse"
+        is Outcome.Failure.Rejected -> "Abgewiesen"
+        is Outcome.Failure.Server -> "Server"
+        Outcome.Failure.Plaintext -> "Klartext"
+        is Outcome.Failure.Unknown -> "Unbekannt"
+        is Outcome.Failure.Refusal -> "Absage"
     }
 
     @Test
     fun `every error kind has its own text`() {
         assert(examples.map { name(it) }.toSet().size == 9) { "Nicht jede Art hat ein Beispiel" }
-        val zuordnung = examples.associate { name(it) to fehlerTextId(it) }
+        val assignment = examples.associate { name(it) to errorTextId(it) }
 
-        zuordnung.forEach { (art, id) ->
-            assert(id != 0) { "$art hat keine Textressource" }
+        assignment.forEach { (kind, id) ->
+            assert(id != 0) { "$kind hat keine Textressource" }
         }
 
         // A break in the middle of the stream means the same thing to the user as no network
         // and therefore shares its text; all others must be distinguishable.
         // Two causes with the same text would be indistinguishable for the user.
-        val withoutTeardown = zuordnung.filterKeys { it != "Abgebrochen" }
-        val doppelt = withoutTeardown.entries
+        val withoutTeardown = assignment.filterKeys { it != "Abgebrochen" }
+        val double = withoutTeardown.entries
             .groupBy { it.value }
             .filterValues { it.size > 1 }
-            .values.map { gruppe -> gruppe.joinToString { it.key } }
-        assert(doppelt.isEmpty()) {
-            "Diese Fehlerarten zeigen denselben Text: ${doppelt.joinToString(" | ")}"
+            .values.map { group -> group.joinToString { it.key } }
+        assert(double.isEmpty()) {
+            "Diese Fehlerarten zeigen denselben Text: ${double.joinToString(" | ")}"
         }
     }
 
     @Test
     fun `a break in the stream shows the network text`() {
-        assert(fehlerTextId(Ergebnis.Fehler.Abgebrochen) == fehlerTextId(Ergebnis.Fehler.Netz())) {
+        assert(errorTextId(Outcome.Failure.Cancelled) == errorTextId(Outcome.Failure.Network())) {
             "Abgebrochen hiess bisher „kein Netz“ — ein neuer Satz wäre eine Änderung, kein Umbau"
         }
     }
@@ -82,8 +82,8 @@ class ErrorTextsTest {
         // silently returns the same text — a wrong argument here
         // would thus go unnoticed anywhere. Conversely, a missing one in the
         // server-error case showed the placeholder „%1$d" as plain text.
-        assert(errorTextArgument(Ergebnis.Fehler.Server(503)) == 503) { "Server braucht den Status" }
-        examples.filter { it !is Ergebnis.Fehler.Server }.forEach {
+        assert(errorTextArgument(Outcome.Failure.Server(503)) == 503) { "Server braucht den Status" }
+        examples.filter { it !is Outcome.Failure.Server }.forEach {
             assert(errorTextArgument(it) == null) { "${name(it)} braucht keinen Code" }
         }
     }
@@ -95,17 +95,17 @@ class ErrorTextsTest {
      */
     @Test
     fun `every error kind has a matching class`() {
-        val erwartet = mapOf(
-            "Netz" to Fehlerklasse.OFFLINE, "Zeitueberschreitung" to Fehlerklasse.OFFLINE,
-            "Abgebrochen" to Fehlerklasse.OFFLINE, "Server" to Fehlerklasse.SERVER,
-            "LeereAntwort" to Fehlerklasse.SERVER, "Abgewiesen" to Fehlerklasse.LOGIN,
-            "Klartext" to Fehlerklasse.UNBEKANNT, "Unbekannt" to Fehlerklasse.UNBEKANNT, "Absage" to Fehlerklasse.UNBEKANNT,
+        val expected = mapOf(
+            "Netz" to ErrorClass.OFFLINE, "Zeitueberschreitung" to ErrorClass.OFFLINE,
+            "Abgebrochen" to ErrorClass.OFFLINE, "Server" to ErrorClass.SERVER,
+            "EmptyResponse" to ErrorClass.SERVER, "Abgewiesen" to ErrorClass.LOGIN,
+            "Klartext" to ErrorClass.UNKNOWN, "Unbekannt" to ErrorClass.UNKNOWN, "Absage" to ErrorClass.UNKNOWN,
         )
-        assert(erwartet.keys == examples.map { name(it) }.toSet()) { "neue Fehlerart ohne Klasse" }
-        examples.forEach { f -> assert(errorClass(f) == erwartet[name(f)]) { "${name(f)} ergab ${errorClass(f)}" } }
-        assert(errorClass(Ergebnis.Fehler.Abgewiesen("Satz")) == Fehlerklasse.LOGIN)
-        assert(errorClass(Ergebnis.Fehler.Server(503, "Satz")) == Fehlerklasse.SERVER)
-        assert(errorClass(Ergebnis.Fehler.Server(409, "Satz")) == Fehlerklasse.UNBEKANNT)
-        assert(errorClass(Ergebnis.Fehler.Server(409)) == Fehlerklasse.SERVER)
+        assert(expected.keys == examples.map { name(it) }.toSet()) { "neue Fehlerart ohne Klasse" }
+        examples.forEach { f -> assert(errorClass(f) == expected[name(f)]) { "${name(f)} ergab ${errorClass(f)}" } }
+        assert(errorClass(Outcome.Failure.Rejected("Satz")) == ErrorClass.LOGIN)
+        assert(errorClass(Outcome.Failure.Server(503, "Satz")) == ErrorClass.SERVER)
+        assert(errorClass(Outcome.Failure.Server(409, "Satz")) == ErrorClass.UNKNOWN)
+        assert(errorClass(Outcome.Failure.Server(409)) == ErrorClass.SERVER)
     }
 }

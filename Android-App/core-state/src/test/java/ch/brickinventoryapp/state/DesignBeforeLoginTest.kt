@@ -38,11 +38,11 @@ class CacheClearTest {
     @Test
     fun `the app knows the address and both scopes`() = withRepo(::testManagementRepository) { paths, admin ->
         runBlocking {
-            admin.clearCache(alles = false)
-            admin.clearCache(alles = true)
+            admin.clearCache(everything = false)
+            admin.clearCache(everything = true)
         }
         assertEquals(listOf("POST /api/v1/admin/cache-clear", "POST /api/v1/admin/cache-clear"), paths.requests.toList())
         assertEquals("Der Umfang (nur Preise / alles) wird nicht unterschieden",
-            listOf("{}", """{"all":true}"""), paths.koerper.toList())
+            listOf("{}", """{"all":true}"""), paths.bodyBytes.toList())
     }
 }

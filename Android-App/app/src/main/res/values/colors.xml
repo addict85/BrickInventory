@@ -2,9 +2,9 @@
 <resources>
     <color name="ic_launcher_background">#2563EB</color>
     <!-- background des Grunddesigns (Theme.kt, LightColors) -->
-    <color name="fenster_hintergrund">#F1F5F9</color>
+    <color name="window_background">#F1F5F9</color>
     <!-- Vorschau des Widgets in der Auswahl des Startbildschirms (widget_vorschau.xml) -->
-    <color name="widget_vorschau_flaeche">#FFFFFF</color>
-    <color name="widget_vorschau_schrift">#0F172A</color>
-    <color name="widget_vorschau_neben">#475569</color>
+    <color name="widget_preview_surface">#FFFFFF</color>
+    <color name="widget_preview_font">#0F172A</color>
+    <color name="widget_preview_secondary">#475569</color>
 </resources>

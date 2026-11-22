@@ -8,16 +8,16 @@ package ch.brickinventoryapp.management.ui.viewmodel
 interface MonitoringActions {
     fun refresh()
     fun showQueue()
-    fun chooseLog(minuten: Int)
-    fun wiederhole(setNummer: String)
-    fun entferne(setNummer: String)
-    fun starte(job: Jobstart)
-    fun setSchedule(name: String, zeit: String? = null, minuten: Int? = null)
+    fun chooseLog(minutes: Int)
+    fun retry(setNumber: String)
+    fun remove(setNumber: String)
+    fun launch(job: Jobstart)
+    fun setSchedule(name: String, time: String? = null, minutes: Int? = null)
     fun cancelJob(id: String)
     fun retryJob(id: String)
-    fun auftragsArtStarten(art: String, name: String)
-    fun clearJobKind(art: String)
+    fun jobKindStart(kind: String, name: String)
+    fun clearJobKind(kind: String)
 }
 
 /** The job cards' start buttons; each calls exactly one endpoint. */
-enum class Jobstart { CSV_ABGLEICH, PREISLAUF, BESTANDSBILDER, KATALOGBILDER, INSTRUCTIONS }
+enum class Jobstart { CSV_RECONCILE, PRICE_RUN, STOCK_IMAGES, CATALOG_IMAGES, INSTRUCTIONS }

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
@@ -11,11 +11,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * fangeAusserAbbruch catches errors like runCatching, but passes on the cancellation
+ * catchUnlessCancelled catches errors like runCatching, but passes on the cancellation
  * of a coroutine: a cancelled job does not keep running as an error
  * case.
  *
- * Counter-check (gegenproben/abbruch-verschluckt.patch): the branch
+ * Counter-check (counter-checks/abbruch-verschluckt.patch): the branch
  * `catch (abort: CancellationException) { throw abort }` removed → red
  * “a cancelled job does not keep running” and “the cancellation goes through“.
  */
@@ -23,43 +23,43 @@ class AbortTest {
 
     @Test
     fun `an ordinary error becomes the result`() {
-        val r = fangeAusserAbbruch { error("kaputt") }
+        val r = catchUnlessCancelled { error("kaputt") }
         assertEquals("kaputt", r.exceptionOrNull()?.message)
-        assertEquals(3, fangeAusserAbbruch { 3 }.getOrNull())
+        assertEquals(3, catchUnlessCancelled { 3 }.getOrNull())
     }
 
     @Test
     fun `the cancellation goes through`() {
-        var durch = false
+        var through = false
         try {
-            fangeAusserAbbruch { throw CancellationException("weg") }
+            catchUnlessCancelled { throw CancellationException("weg") }
         } catch (_: CancellationException) {
-            durch = true
+            through = true
         }
-        assertTrue("CancellationException wurde als Fehler verschluckt", durch)
+        assertTrue("CancellationException wurde als Fehler verschluckt", through)
     }
 
     @Test
     fun `an Error is not caught`() {
-        var durch = false
+        var through = false
         try {
-            fangeAusserAbbruch { throw AssertionError("hart") }
+            catchUnlessCancelled { throw AssertionError("hart") }
         } catch (_: AssertionError) {
-            durch = true
+            through = true
         }
-        assertTrue("Ein Error darf nicht im Ergebnis verschwinden", durch)
+        assertTrue("Ein Error darf nicht im Ergebnis verschwinden", through)
     }
 
     @Test
     fun `a cancelled job does not keep running`() = runTest {
-        val schritte = mutableListOf<String>()
+        val steps = mutableListOf<String>()
         val job = launch(start = CoroutineStart.UNDISPATCHED) {
-            fangeAusserAbbruch { delay(10_000) }.onFailure { schritte += "Fehlerzweig" }
-            schritte += "danach"
+            catchUnlessCancelled { delay(10_000) }.onFailure { steps += "Fehlerzweig" }
+            steps += "danach"
         }
         job.cancel()
         job.join()
-        assertEquals(emptyList<String>(), schritte)
+        assertEquals(emptyList<String>(), steps)
         assertTrue(job.isCancelled)
     }
 }

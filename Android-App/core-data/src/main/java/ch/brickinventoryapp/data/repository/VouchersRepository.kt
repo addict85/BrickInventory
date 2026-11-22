@@ -1,39 +1,39 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.domain.Confirmation
-import ch.brickinventoryapp.model.domain.Guthabenauskunft
-import ch.brickinventoryapp.model.domain.Gutscheinangabe
-import ch.brickinventoryapp.model.domain.Gutscheinspeicherung
+import ch.brickinventoryapp.model.domain.BalanceInfo
+import ch.brickinventoryapp.model.domain.VoucherInfo
+import ch.brickinventoryapp.model.domain.VoucherStorage
 import ch.brickinventoryapp.model.domain.VoucherView
 import ch.brickinventoryapp.model.domain.PlaintextView
 
 /**
  * Vouchers including PDF and balance query.
  * An interface so that ViewModels and tests do not depend on the implementation with
- * Retrofit and store (GutscheineRepositoryImpl).
+ * Retrofit and store (VouchersRepositoryImpl).
  */
 interface VouchersRepository {
-    suspend fun liste(): Ergebnis<List<VoucherView>>
+    suspend fun list(): Outcome<List<VoucherView>>
 
-    suspend fun anlegen(angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung>
+    suspend fun create(info: VoucherInfo): Outcome<VoucherStorage>
 
-    suspend fun aendern(id: Int, angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung>
+    suspend fun edit(id: Int, info: VoucherInfo): Outcome<VoucherStorage>
 
-    suspend fun loeschen(id: Int, confirmation: Confirmation): Ergebnis<Unit>
+    suspend fun deleteVoucher(id: Int, confirmation: Confirmation): Outcome<Unit>
 
-    suspend fun klartext(id: Int, confirmation: Confirmation): Ergebnis<PlaintextView>
+    suspend fun plaintext(id: Int, confirmation: Confirmation): Outcome<PlaintextView>
 
-    suspend fun pdfRelease(id: Int?, confirmation: Confirmation): Ergebnis<String>
+    suspend fun pdfRelease(id: Int?, confirmation: Confirmation): Outcome<String>
 
-    suspend fun guthaben(id: Int): Ergebnis<Guthabenauskunft>
+    suspend fun balance(id: Int): Outcome<BalanceInfo>
 
     suspend fun fromPdf(
         fileName: String,
-        typ: String,
-        inhalt: ByteArray,
-        nummer: String? = null,
+        type: String,
+        content: ByteArray,
+        number: String? = null,
         pin: String? = null,
-        betrag: String? = null,
-        waehrung: String? = null,
-    ): Ergebnis<Gutscheinspeicherung>
+        amount: String? = null,
+        currency: String? = null,
+    ): Outcome<VoucherStorage>
 }

@@ -6,7 +6,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import ch.brickinventoryapp.ui.util.NumericInput
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Number fields: number pad and allowed characters — one version.
@@ -25,11 +25,11 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * Since Nov 8 the set number also lets letters through (llca30, comcon001), like
  * the web app's normalizeSetNumber; its fields show the text keyboard for that.
- * Counter-check (gegenproben/setnummer-nur-ziffern.patch): the filter back to only
+ * Counter-check (counter-checks/setnummer-nur-ziffern.patch): the filter back to only
  * digits and "-" → red „die Setnummer laesst Buchstaben und Ziffern durch …".
  *
  * Amount and quantity: readAmount follows the web app's readAmount (format.js).
- * Counter-check (gegenproben/betrag-tausenderpunkt.patch): price() cuts off again at the
+ * Counter-check (counter-checks/betrag-tausenderpunkt.patch): price() cuts off again at the
  * second separator → red „a pasted number with thousands separator keeps its value".
  */
 class NumericInputTest {
@@ -72,7 +72,7 @@ class NumericInputTest {
      */
     @Test
     fun `a set number has digits and at most one variant`() {
-        for (gut in listOf("10294", "10294-1", "75192-12", " 75192 ")) assertEquals(gut, true, NumericInput.isSetNumber(gut))
+        for (good in listOf("10294", "10294-1", "75192-12", " 75192 ")) assertEquals(good, true, NumericInput.isSetNumber(good))
         for (bad in listOf("", "-", "--", "10294-", "-1", "1-2-3", "10294-1234", "abc!!")) {
             assertEquals(bad, false, NumericInput.isSetNumber(bad))
         }
@@ -121,8 +121,8 @@ class NumericInputTest {
 
     @Test
     fun `an unreadable amount is null, an empty one too, but only the unreadable one is invalid`() {
-        for (roh in listOf("", " ", ".", ",", "12.3.4", "1.29.900", "12,50.1", "abc", "1,2,3")) {
-            assertEquals("'$roh'", null, NumericInput.readAmount(roh, '.'))
+        for (raw in listOf("", " ", ".", ",", "12.3.4", "1.29.900", "12,50.1", "abc", "1,2,3")) {
+            assertEquals("'$raw'", null, NumericInput.readAmount(raw, '.'))
         }
         assertEquals(false, NumericInput.priceInvalid("", '.'))
         assertEquals(false, NumericInput.priceInvalid("1.299,00", '.'))
@@ -167,35 +167,35 @@ class NumericInputTest {
      * would be enough, and the rule would be satisfied.
      */
     private fun textFields(): List<Triple<String, Int, String>> {
-        val dateien = Quellen.root
+        val files = Sources.root
             .walkTopDown().filter { it.extension == "kt" }.toList()
             .also {
                 // Lower bound: an empty file run would let any
                 // collective check below it pass silently.
                 check(it.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${it.size}) — Pfad veraltet?" }
             }
-        val treffer = mutableListOf<Triple<String, Int, String>>()
-        for (datei in dateien) {
-            val s = code(datei.readText())
+        val hits = mutableListOf<Triple<String, Int, String>>()
+        for (file in files) {
+            val s = code(file.readText())
             var pos = 0
             while (true) {
                 val i = s.indexOf("OutlinedTextField(", pos)
                 if (i < 0) break
-                var tiefe = 0
+                var depth = 0
                 var j = i + "OutlinedTextField".length
                 var k = j
                 while (k < s.length) {
-                    if (s[k] == '(') tiefe++
-                    else if (s[k] == ')') { tiefe--; if (tiefe == 0) { j = k; break } }
+                    if (s[k] == '(') depth++
+                    else if (s[k] == ')') { depth--; if (depth == 0) { j = k; break } }
                     k++
                 }
-                val zeile = s.substring(0, i).count { c -> c == '\n' } + 1
-                treffer += Triple(datei.name, zeile, s.substring(i, minOf(j + 1, s.length)))
+                val row = s.substring(0, i).count { c -> c == '\n' } + 1
+                hits += Triple(file.name, row, s.substring(i, minOf(j + 1, s.length)))
                 pos = j + 1
             }
         }
-        check(treffer.size >= 10) { "Nur ${treffer.size} Textfelder gefunden — greift die Suche noch?" }
-        return treffer
+        check(hits.size >= 10) { "Nur ${hits.size} Textfelder gefunden — greift die Suche noch?" }
+        return hits
     }
 
     // ── Here stood „kein Zahlenfeld steht ohne Tastaturwahl da" ──────────────
@@ -216,24 +216,24 @@ class NumericInputTest {
     fun `every set number field takes filter and number pad`() {
         // Also a field that isn't built as a number field; recognized by the label,
         // which survives a rename of the state variable.
-        val felder = textFields().filter { (_, _, block) ->
+        val fields = textFields().filter { (_, _, block) ->
             Regex("""R\.string\.[A-Za-z0-9_]*set_number[A-Za-z0-9_]*""").containsMatchIn(block)
         }
         // Three today: gallery ("Add set"), watchlist and
         // parts list. Fewer means: the search no longer catches it.
-        assert(felder.size >= 3) {
-            "Nur ${felder.size} Setnummernfelder gefunden — greift die Suche noch?"
+        assert(fields.size >= 3) {
+            "Nur ${fields.size} Setnummernfelder gefunden — greift die Suche noch?"
         }
-        val luecken = mutableListOf<String>()
-        for ((datei, zeile, block) in felder) {
+        val gaps = mutableListOf<String>()
+        for ((file, row, block) in fields) {
             if (!block.contains("NumericInput.setNumber("))
-                luecken += "$datei:$zeile (ohne Filter)"
+                gaps += "$file:$row (ohne Filter)"
             if (!block.contains("keyboardOptions"))
-                luecken += "$datei:$zeile (ohne Tastaturwahl)"
+                gaps += "$file:$row (ohne Tastaturwahl)"
         }
-        assert(luecken.isEmpty()) {
+        assert(gaps.isEmpty()) {
             "Setnummernfelder ohne das Paar aus NumericInput: " +
-                "${luecken.joinToString(", ")} — dort geht die Buchstabentastatur auf"
+                "${gaps.joinToString(", ")} — dort geht die Buchstabentastatur auf"
         }
     }
 
@@ -241,15 +241,15 @@ class NumericInputTest {
     fun `no view filters numbers itself any more`() {
         // Otherwise there would again be several versions of the same rule — and the
         // price version with only ONE separator would be missing from the others.
-        val dateien = Quellen.root
+        val files = Sources.root
             .walkTopDown().filter { it.extension == "kt" && it.name != "NumericInput.kt" }
-        for (datei in dateien) {
-            val s = code(datei.readText())
+        for (file in files) {
+            val s = code(file.readText())
             assert(!s.contains("filter(Char::isDigit)")) {
-                "${datei.name} filtert Ziffern selbst — das gehört in NumericInput"
+                "${file.name} filtert Ziffern selbst — das gehört in NumericInput"
             }
             assert(!s.contains("c.isDigit() || c == '.'")) {
-                "${datei.name} filtert Preise selbst — das gehört in NumericInput"
+                "${file.name} filtert Preise selbst — das gehört in NumericInput"
             }
         }
     }

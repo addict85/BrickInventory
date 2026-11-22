@@ -36,7 +36,7 @@ include(":app")
 // knows another. Among the core modules: core-update and core-services →
 // core-data → core-offline → core-security → core-network → core-contract → core-model; core-navigation →
 // core-state → core-session → core-data.
-// The rule: build-logic/…/kanten/Modulkanten.kt (task modulkantenPruefen, ModulgrenzenTest).
+// The rule: build-logic/…/edges/ModuleEdges.kt (task moduleEdgesCheck, ModuleBoundariesTest).
 include(":core-model")
 include(":core-contract")
 include(":core-resources")

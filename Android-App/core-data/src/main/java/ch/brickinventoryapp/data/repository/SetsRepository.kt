@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetRecorded
-import ch.brickinventoryapp.model.domain.SetAnsicht
-import ch.brickinventoryapp.model.domain.Setsortierung
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.local.Local
 import kotlinx.coroutines.flow.Flow
 
@@ -14,30 +14,30 @@ import kotlinx.coroutines.flow.Flow
  * a screen depends only on what it needs.
  */
 interface SetsRepository {
-    suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Geld? = null,
-                       condition: Zustand? = null, ownerUserId: Int? = null,
-                       storage: String? = null): Ergebnis<SetRecorded>
+    suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Money? = null,
+                       condition: Condition? = null, ownerUserId: Int? = null,
+                       storage: String? = null): Outcome<SetRecorded>
 
-    suspend fun setQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<Int?>
+    suspend fun setQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Condition? = null): Outcome<Int?>
 
-    suspend fun changeQuantityUm(setNumber: String, schritt: Int): Ergebnis<Int?>
+    suspend fun changeQuantityBy(setNumber: String, step: Int): Outcome<Int?>
 
-    suspend fun deleteSet(setNumber: String): Ergebnis<Unit>
+    suspend fun deleteSet(setNumber: String): Outcome<Unit>
 
     /**
      * The gallery from the store by search, theme and storage location, sorted as on the
-     * server — the source of the display; [aktualisiereSets] fills it. The view over
+     * server — the source of the display; [refreshSets] fills it. The view over
      * selected accounts is its own read model (Kontosicht).
      */
-    fun observeSets(suche: String? = null, thema: String? = null, lagerort: String? = null,
-                      sort: Setsortierung? = null): Flow<Local<SetAnsicht>>
+    fun observeSets(search: String? = null, theme: String? = null, storageLocation: String? = null,
+                      sort: SetSort? = null): Flow<Local<SetView>>
 
     /** All pages of the unfiltered gallery into the store; the store is shown. */
-    suspend fun aktualisiereSets(): Ergebnis<Unit>
+    suspend fun refreshSets(): Outcome<Unit>
 
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
-                        acquisitionIds: List<Int>? = null): Ergebnis<Unit>
+                        acquisitionIds: List<Int>? = null): Outcome<Unit>
 
     /** Set the storage location of a set. Empty text deletes it. */
-    suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<Unit>
+    suspend fun setSetStorage(setNumber: String, location: String): Outcome<Unit>
 }

@@ -13,9 +13,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.composable
 import androidx.navigation.createGraph
-import ch.brickinventoryapp.services.alarm.PreisalarmWorker
+import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.state.ui.Meldungseingang
+import ch.brickinventoryapp.state.ui.MessageInbox
 import ch.brickinventoryapp.app.ui.components.UserCaDialog
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
@@ -28,9 +28,9 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowDialog
-import ch.brickinventoryapp.data.service.TeilelistenProvider
+import ch.brickinventoryapp.data.service.PartListsProvider
 import ch.brickinventoryapp.data.service.partListsSelection
-import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.OverlayGuard
 import androidx.core.content.IntentCompat
 
 /**
@@ -38,22 +38,22 @@ import androidx.core.content.IntentCompat
  * exported MainActivity only without a target. Plus the confirmation for user CAs with
  * protection against overlaid windows (tapjacking).
  *
- * Counter-checks (Robolectric, measurable only in CI; job `gegenproben`):
- *   (a) MeldungsEinstieg exported="true" → red “the entry point of the notifications is
- *       not exported” (gegenproben/einstieg-exportiert.patch)
- *   (b) Ueberdeckungsschutz() removed from UserCaDialog → red “the confirmation
- *       …” (gegenproben/nutzerca-ohne-ueberdeckungsschutz.patch)
+ * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
+ *   (a) MessageEntryPoint exported="true" → red “the entry point of the notifications is
+ *       not exported” (counter-checks/einstieg-exportiert.patch)
+ *   (b) OverlayGuard() removed from UserCaDialog → red “the confirmation
+ *       …” (counter-checks/nutzerca-ohne-ueberdeckungsschutz.patch)
  *   (c) forwardMessage() attaches the extra to the app's start → red “the
- *       own notification opens its set …” (gegenproben/einstieg-reicht-extra-durch.patch)
- *   (d) Ueberdeckungsschutz() does not reset when leaving → red “a
+ *       own notification opens its set …” (counter-checks/einstieg-reicht-extra-durch.patch)
+ *   (d) OverlayGuard() does not reset when leaving → red “a
  *       protected screen protects the activity only while it is shown”
- *       (gegenproben/ueberdeckung-bleibt-an.patch)
+ *       (counter-checks/ueberdeckung-bleibt-an.patch)
  *   (e) OnlyLauncherStart.onCreate removes nothing any more → red “a foreign
- *       start …” (gegenproben/start-behaelt-extras.patch)
+ *       start …” (counter-checks/start-behaelt-extras.patch)
  *   (f) removeForeignDetails() leaves the extras → red “without extras
- *       a foreign deep link …” and “a foreign start …” (gegenproben/extras-bleiben.patch)
+ *       a foreign deep link …” and “a foreign start …” (counter-checks/extras-bleiben.patch)
  *   (g) partListsSelection() returns the view without createChooser → red
- *       “the parts list goes out only via the system's chooser” (gegenproben/teileliste-ohne-auswahl.patch)
+ *       “the parts list goes out only via the system's chooser” (counter-checks/teileliste-ohne-auswahl.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class ForeignEntryTest {
@@ -66,52 +66,52 @@ class ForeignEntryTest {
     @Test
     fun `the entry point of the notifications is not exported`() {
         val pm = ctx.packageManager
-        assertFalse(pm.getActivityInfo(ComponentName(ctx, MeldungsEinstieg::class.java), 0).exported)
+        assertFalse(pm.getActivityInfo(ComponentName(ctx, MessageEntryPoint::class.java), 0).exported)
         assertTrue("Der Launcher braucht MainActivity", pm.getActivityInfo(ComponentName(ctx, MainActivity::class.java), 0).exported)
     }
 
     @Test
     fun `the own notification opens its set, the app gets no extras`() {
-        val inbox = Meldungseingang()
-        val weiter = forwardMessage(ctx, Intent().putExtra(PreisalarmWorker.EXTRA_SET, "75192-1"), inbox)
-        assertEquals(MainActivity::class.java.name, weiter.component?.className)
-        assertNull("MainActivity liest keine Extras; es gibt auch keine", weiter.extras)
-        assertEquals("75192-1", inbox.abholen())
+        val inbox = MessageInbox()
+        val next = forwardMessage(ctx, Intent().putExtra(PriceAlarmWorker.EXTRA_SET, "75192-1"), inbox)
+        assertEquals(MainActivity::class.java.name, next.component?.className)
+        assertNull("MainActivity liest keine Extras; es gibt auch keine", next.extras)
+        assertEquals("75192-1", inbox.pickUp())
     }
 
     @Test
     fun `an invalid or missing target opens nothing, the app starts anyway`() {
-        val inbox = Meldungseingang()
-        for (arrival in listOf(null, Intent(), Intent().putExtra(PreisalarmWorker.EXTRA_SET, "1/../konto"))) {
-            val weiter = forwardMessage(ctx, arrival, inbox)
-            assertEquals(MainActivity::class.java.name, weiter.component?.className)
-            assertNull(inbox.abholen())
+        val inbox = MessageInbox()
+        for (arrival in listOf(null, Intent(), Intent().putExtra(PriceAlarmWorker.EXTRA_SET, "1/../konto"))) {
+            val next = forwardMessage(ctx, arrival, inbox)
+            assertEquals(MainActivity::class.java.name, next.component?.className)
+            assertNull(inbox.pickUp())
         }
     }
 
     @Test
     fun `the confirmation is protected against overlays and passes the yes on`() {
-        var ja = 0
-        var nein = 0
-        compose.setContent { BrickInventoryManagerTheme { UserCaDialog(onJa = { ja++ }, onAbbrechen = { nein++ }) } }
+        var yes = 0
+        var no = 0
+        compose.setContent { BrickInventoryManagerTheme { UserCaDialog(onYes = { yes++ }, onCancel = { no++ }) } }
         compose.waitForIdle()
         val dialog = ShadowDialog.getLatestDialog()
         assertTrue("Berührungen durch ein fremdes Fenster kämen an", dialog.window!!.decorView.filterTouchesWhenObscured)
-        compose.onNodeWithText(ctx.getString(R.string.nutzer_ca_frage_ja)).performClick()
-        assertEquals(1, ja)
-        assertEquals(0, nein)
+        compose.onNodeWithText(ctx.getString(R.string.user_ca_question_yes)).performClick()
+        assertEquals(1, yes)
+        assertEquals(0, no)
     }
 
     @Test
     fun `a protected screen protects the activity only while it is shown`() {
-        val zeigen = androidx.compose.runtime.mutableStateOf(true)
-        compose.setContent { if (zeigen.value) Ueberdeckungsschutz() }
+        val show = androidx.compose.runtime.mutableStateOf(true)
+        compose.setContent { if (show.value) OverlayGuard() }
         compose.waitForIdle()
-        val fenster = compose.activity.window.decorView
-        assertTrue("Berührungen durch ein fremdes Fenster kämen an", fenster.filterTouchesWhenObscured)
-        zeigen.value = false
+        val window = compose.activity.window.decorView
+        assertTrue("Berührungen durch ein fremdes Fenster kämen an", window.filterTouchesWhenObscured)
+        show.value = false
         compose.waitForIdle()
-        assertFalse("Nach dem Bildschirm bleibt die übrige App ohne", fenster.filterTouchesWhenObscured)
+        assertFalse("Nach dem Bildschirm bleibt die übrige App ohne", window.filterTouchesWhenObscured)
     }
 
     // How navigation expects the path to the target in the start intent: root graph, then the target.
@@ -130,9 +130,9 @@ class ForeignEntryTest {
 
     @Test
     fun `without extras a foreign deep link does not navigate`() {
-        val offen = navigation()
-        assertTrue("Ohne Entfernen springt der fremde Start ins Ziel", offen.handleDeepLink(attack(offen)))
-        assertEquals("konto", offen.currentDestination?.route)
+        val open = navigation()
+        assertTrue("Ohne Entfernen springt der fremde Start ins Ziel", open.handleDeepLink(attack(open)))
+        assertEquals("konto", open.currentDestination?.route)
 
         val nav = navigation()
         val cleaned = attack(nav).also { removeForeignDetails(it) }
@@ -145,12 +145,12 @@ class ForeignEntryTest {
         val nav = navigation()
         val start = attack(nav).setClass(ctx, ProbeStart::class.java)
         val probe = Robolectric.buildActivity(ProbeStart::class.java, start).create()
-        assertNull("Extras beim Start", probe.get().gesehen?.extras)
-        assertNull("Daten beim Start", probe.get().gesehen?.data)
+        assertNull("Extras beim Start", probe.get().seen?.extras)
+        assertNull("Daten beim Start", probe.get().seen?.data)
 
         probe.start().resume().newIntent(attack(nav).setClass(ctx, ProbeStart::class.java))
-        assertNull("Extras bei onNewIntent", probe.get().neu?.extras)
-        assertNull("Daten bei onNewIntent", probe.get().neu?.data)
+        assertNull("Extras bei onNewIntent", probe.get().newValue?.extras)
+        assertNull("Daten bei onNewIntent", probe.get().newValue?.data)
         assertTrue("MainActivity entfernt nicht", OnlyLauncherStart::class.java.isAssignableFrom(MainActivity::class.java))
     }
 
@@ -158,29 +158,29 @@ class ForeignEntryTest {
     fun `the parts list goes out only via the system's chooser`() {
         val selection = partListsSelection(ctx, "Teileliste")
         assertEquals("Ohne Auswahl bekäme die Standard-App das Inventar", Intent.ACTION_CHOOSER, selection.action)
-        val ziel = IntentCompat.getParcelableExtra(selection, Intent.EXTRA_INTENT, Intent::class.java)!!
-        assertEquals(Intent.ACTION_VIEW, ziel.action)
-        assertEquals("content", ziel.data?.scheme)
-        assertTrue("Ohne Leserecht öffnet keine App die Datei", (ziel.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0)
-        val provider = ctx.packageManager.resolveContentProvider(ziel.data!!.authority!!, 0)
+        val target = IntentCompat.getParcelableExtra(selection, Intent.EXTRA_INTENT, Intent::class.java)!!
+        assertEquals(Intent.ACTION_VIEW, target.action)
+        assertEquals("content", target.data?.scheme)
+        assertTrue("Ohne Leserecht öffnet keine App die Datei", (target.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0)
+        val provider = ctx.packageManager.resolveContentProvider(target.data!!.authority!!, 0)
         assertEquals("Die Uri zeigt auf den Teilelisten-Provider des Manifests",
-            TeilelistenProvider::class.java.name, provider?.name)
+            PartListsProvider::class.java.name, provider?.name)
         assertFalse("Der Teilelisten-Provider ist exportiert", provider!!.exported)
     }
 }
 
 /** Records what arrives at the own code after OnlyLauncherStart. */
 class ProbeStart : OnlyLauncherStart() {
-    var gesehen: Intent? = null
-    var neu: Intent? = null
+    var seen: Intent? = null
+    var newValue: Intent? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        gesehen = Intent(intent)
+        seen = Intent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        neu = Intent(intent)
+        newValue = Intent(intent)
     }
 }

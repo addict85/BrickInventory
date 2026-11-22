@@ -12,9 +12,9 @@ internal fun interface PasskeyQuery {
 
 internal sealed interface PasskeyResult {
     /** The authenticator's answer as WebAuthn JSON, for the server. */
-    data class Antwort(val json: String) : PasskeyResult
+    data class Response(val json: String) : PasskeyResult
     /** Dialog closed: that is a decision, not an error. */
-    data object Abgebrochen : PasskeyResult
+    data object Cancelled : PasskeyResult
     data object NoPasskey : PasskeyResult
-    data class Fehler(val grund: String?) : PasskeyResult
+    data class Failure(val reason: String?) : PasskeyResult
 }

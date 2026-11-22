@@ -5,7 +5,7 @@ import ch.brickinventoryapp.update.util.isAllowedApkAddress
 import ch.brickinventoryapp.update.util.isNew
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * The app updates itself — and does it carefully.
@@ -29,7 +29,7 @@ class SelfUpdateTest {
      * A finding no one gets to see is no finding.
      *
      * The silent check on start alone isn't enough: AppNavigation.kt triggers it on start
-     * (`pruefeAufUpdate(still = true)`), and the comment there says
+     * (`checkOnUpdate(still = true)`), and the comment there says
      * explicitly that the question "is there anything newer?" applies to THE WHOLE APP.
      *
      * VERIFIED, the answer was nonetheless known only to one screen:
@@ -48,14 +48,14 @@ class SelfUpdateTest {
         //
         // Only a composable can call `collectAsStateWithLifecycle`, and a
         // composable that subscribes to it also draws it.
-        val reader = Quellen.alle()
-            .filter { Quellen.withoutComments(it.readText()).contains("updateState.collectAsStateWithLifecycle") }
+        val reader = Sources.all()
+            .filter { Sources.withoutComments(it.readText()).contains("updateState.collectAsStateWithLifecycle") }
             .map { it.name }
             .toSet()
-        val anzeigen = reader - setOf("SettingsScreen.kt")
-        assert(anzeigen.isNotEmpty()) {
+        val show = reader - setOf("SettingsScreen.kt")
+        assert(show.isNotEmpty()) {
             "Ausser SettingsScreen.kt liest niemand updateState. Die Pruefung beim Start " +
-                "(AppNavigation.kt, pruefeAufUpdate(still = true)) findet dann zwar etwas, " +
+                "(AppNavigation.kt, checkOnUpdate(still = true)) findet dann zwar etwas, " +
                 "aber es ist nirgends zu sehen — genau der Zustand, den Marco gemeldet hat."
         }
     }
@@ -95,14 +95,14 @@ class SelfUpdateTest {
 
     // ── The rules that live in the source text ─────────────────────────────────
 
-    private fun quelle(rel: String) = Quellen.withoutComments(Quellen.lies(rel))
+    private fun source(rel: String) = Sources.withoutComments(Sources.read(rel))
 
     @Test
     fun `when unclear nothing is installed`() {
-        val help = quelle("update/util/AppUpdate.kt")
+        val help = source("update/util/AppUpdate.kt")
         // Every `return null` in the signature lookup leads, via the
         // `?: return false` in signatureFits, to "do not install".
-        assert(help.contains("val neu = fingerabdruecke(ctx, apk) ?: return false")) {
+        assert(help.contains("val newValue = fingerprints(ctx, apk) ?: return false")) {
             "Ein unlesbares oder unsigniertes APK gilt nicht mehr als unzulaessig"
         }
         assert(help.contains("if (info.packageName != ctx.packageName) return null")) {
@@ -114,15 +114,15 @@ class SelfUpdateTest {
     @Test
     fun `the check at start is silent`() {
         // Check on start, never load on its own: loading is a decision the user makes.
-        val nav = quelle("app/AppNavigation.kt")
-        // The start asks via pruefeBeimStart(), which only checks silently when the switch is set; that
+        val nav = source("app/AppNavigation.kt")
+        // The start asks via checkOnStart(), which only checks silently when the switch is set; that
         // sign-in triggers it is checked by UpdateViewModelTest on the running ViewModel.
-        val vm = Quellen.function(Quellen.withoutComments(Quellen.lies("account/ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
-        assert(vm.contains("pruefeAufUpdate(still = true)")) {
+        val vm = Sources.function(Sources.withoutComments(Sources.read("account/ui/viewmodel/UpdateViewModel.kt")), "fun checkOnStart(")
+        assert(vm.contains("checkOnUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
         }
-        // And it loads nothing: ladeUpdate() has exactly one trigger, the button.
-        assert(!nav.contains("ladeUpdate()")) {
+        // And it loads nothing: loadUpdate() has exactly one trigger, the button.
+        assert(!nav.contains("loadUpdate()")) {
             "Der Start stoesst das Herunterladen an — Marcos Vorgabe war ausdruecklich " +
                 "„nie von allein laden\""
         }
@@ -131,7 +131,7 @@ class SelfUpdateTest {
     @Test
     fun `the update trusts only system certificates`() {
         // An APK comes from GitHub: system CAs only, no plaintext.
-        val cfg = File(Quellen.res, "xml/network_security_config.xml").readText()
+        val cfg = File(Sources.res, "xml/network_security_config.xml").readText()
         val ab = cfg.indexOf("<domain-config")
         assert(ab > 0) {
             "Es gibt keinen eigenen domain-config-Block mehr — dann gilt fuer GitHub " +
@@ -160,7 +160,7 @@ class SelfUpdateTest {
 
     @Test
     fun `the manifest allows installing, no provider exposes the update directory`() {
-        val manifest = Quellen.manifest.readText()
+        val manifest = Sources.manifest.readText()
         assert(manifest.contains("android.permission.REQUEST_INSTALL_PACKAGES")) {
             "Ohne die Berechtigung kann die App den Installer nicht oeffnen"
         }
@@ -176,7 +176,7 @@ class SelfUpdateTest {
         // Releases are immutable: the description comes in the same `gh release create`
         // as the APK, and only `--latest` puts it under UPDATE_VERSION_URL.
         // Counter-check: `"$BESCHREIBUNG"` from the call, or `--latest=false` → red „Der Workflow legt die Release ohne …“.
-        val text = Quellen.workflow("android-release.yml")
+        val text = Sources.workflow("android-release.yml")
         assert(Regex("""BESCHREIBUNG=app/build/outputs/version-signiert\.json\n""").containsMatchIn(text) &&
             Regex("""gh release create "\${'$'}QUELLE" [^\n]*"\${'$'}APK" "\${'$'}BESCHREIBUNG" [^\n]*\n\s*--verify-tag --latest """)
                 .containsMatchIn(text)) {
@@ -191,7 +191,7 @@ class SelfUpdateTest {
         assert(text.contains("output-metadata.json")) {
             "Die Versionswerte werden nicht aus AGPs output-metadata.json gelesen"
         }
-        assert(Quellen.workflow("android-signieren.yml").contains("{versionCode:${'$'}code, versionName:${'$'}name,")) {
+        assert(Sources.workflow("android-signieren.yml").contains("{versionCode:${'$'}code, versionName:${'$'}name,")) {
             "Die Beschreibung traegt nicht beide Versionsangaben"
         }
     }
@@ -210,7 +210,7 @@ class SelfUpdateTest {
         // and the data model that reads it. Checking only one side lets in
         // exactly the kind of drift this tree otherwise guards against
         // everywhere.
-        val workflow = Quellen.workflow("android-signieren.yml")
+        val workflow = Sources.workflow("android-signieren.yml")
         assert(workflow.contains("commit:${'$'}commit")) {
             "Die Beschreibung traegt das Herkunftsfeld nicht mehr als `commit`"
         }
@@ -218,8 +218,8 @@ class SelfUpdateTest {
             "Das Feld heisst wieder `sha` — neben apkUrl und apkSize liest sich das " +
                 "als Pruefsumme des APK, und eine solche Pruefung gibt es nicht"
         }
-        // Quellen.lies() is relative to ch/brickinventoryapp/ — see there.
-        val model = Quellen.lies("update/util/AppUpdate.kt")
+        // Quellen.read() is relative to ch/brickinventoryapp/ — see there.
+        val model = Sources.read("update/util/AppUpdate.kt")
         assert(model.contains("@SerialName(\"commit\")")) {
             "Das Datenmodell liest das Feld nicht als `commit` — dann bleibt es leer"
         }
@@ -229,8 +229,8 @@ class SelfUpdateTest {
     // that it hangs over the whole app.
     @Test
     fun `the dialog hangs over the whole app, not on one screen`() {
-        val nav = Quellen.withoutComments(Quellen.lies("app/AppNavigation.kt"))
-        assert(nav.contains("UpdateRoute(selbstUpdate)")) {
+        val nav = Sources.withoutComments(Sources.read("app/AppNavigation.kt"))
+        assert(nav.contains("UpdateRoute(selfUpdate)")) {
             "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
                 "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
                 "den der Punkt in den Einstellungen schon einmal hatte."

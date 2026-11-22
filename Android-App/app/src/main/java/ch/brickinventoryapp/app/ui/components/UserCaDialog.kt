@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app.ui.components
 
 import androidx.compose.foundation.rememberScrollState
-import ch.brickinventoryapp.ui.theme.fensterFlaeche
+import ch.brickinventoryapp.ui.theme.windowSurface
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -15,30 +15,30 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.OverlayGuard
 
 /**
  * The confirmation before turning on user CAs. Cancel is the default
  * (also tapping away); the yes is in the error color because it takes a risk.
  */
 @Composable
-fun UserCaDialog(onJa: () -> Unit, onAbbrechen: () -> Unit) {
-    val titel = stringResource(R.string.nutzer_ca_frage_titel)
+fun UserCaDialog(onYes: () -> Unit, onCancel: () -> Unit) {
+    val title = stringResource(R.string.user_ca_question_title)
     AlertDialog(
-        containerColor = fensterFlaeche(),
-        onDismissRequest = onAbbrechen,
-        modifier = Modifier.semantics { paneTitle = titel },
-        title = { Text(titel, modifier = Modifier.semantics { heading() }) },
+        containerColor = windowSurface(),
+        onDismissRequest = onCancel,
+        modifier = Modifier.semantics { paneTitle = title },
+        title = { Text(title, modifier = Modifier.semantics { heading() }) },
         text = {
-            Ueberdeckungsschutz()
-            Text(stringResource(R.string.nutzer_ca_frage_text), modifier = Modifier.verticalScroll(rememberScrollState()))
+            OverlayGuard()
+            Text(stringResource(R.string.user_ca_question_text), modifier = Modifier.verticalScroll(rememberScrollState()))
         },
         confirmButton = {
             TextButton(
-                onClick = onJa,
+                onClick = onYes,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) { Text(stringResource(R.string.nutzer_ca_frage_ja)) }
+            ) { Text(stringResource(R.string.user_ca_question_yes)) }
         },
-        dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) } },
     )
 }

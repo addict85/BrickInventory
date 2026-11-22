@@ -1,0 +1,13 @@
+Gegenprobe: core-network bindet Room ein und hängt damit wieder an der Ablage
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-network/build.gradle.kts b/Android-App/core-network/build.gradle.kts
+--- a/Android-App/core-network/build.gradle.kts
++++ b/Android-App/core-network/build.gradle.kts
+@@ -21,3 +21,4 @@ dependencies {
+     // OkHttp nur als implementation: Kein Modul darüber soll es sehen (wie in core-data).
+     implementation(libs.okhttp)
++    implementation(libs.androidx.room.runtime)
+ }

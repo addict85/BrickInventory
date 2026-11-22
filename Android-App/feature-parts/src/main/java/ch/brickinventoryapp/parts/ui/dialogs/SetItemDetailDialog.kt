@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.parts.ui.dialogs
 
-import ch.brickinventoryapp.ui.satz
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.state.ui.LagerUiState
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.parts.ui.SetItemUiState
-import ch.brickinventoryapp.parts.ui.viewmodel.SetItemAktionen
+import ch.brickinventoryapp.parts.ui.viewmodel.SetItemActions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -26,15 +26,15 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.shared.ui.TabellenZeile
+import ch.brickinventoryapp.shared.ui.TableRow
 import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.BackButton
-import ch.brickinventoryapp.ui.components.farbTranslator
+import ch.brickinventoryapp.ui.components.colorTranslator
 import ch.brickinventoryapp.ui.components.categoryTranslator
-import ch.brickinventoryapp.shared.ui.mengeAusSet
+import ch.brickinventoryapp.shared.ui.quantityFromSet
 import ch.brickinventoryapp.shared.ui.LocationField
 import ch.brickinventoryapp.parts.ui.screens.PartDetailHeader
 
@@ -46,14 +46,14 @@ import ch.brickinventoryapp.parts.ui.screens.PartDetailHeader
  */
 @Composable
 internal fun SetItemDetailDialog(
-    zustand: SetItemUiState,
-    lagerZustand: LagerUiState,
-    aktionen: SetItemAktionen,
+    condition: SetItemUiState,
+    storageUiState: StorageUiState,
+    actions: SetItemActions,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
 ) {
-    SetItemDetail(zustand, lagerZustand, aktionen, imageLoader, serverUrl, onOpenSet, alsDialog = true)
+    SetItemDetail(condition, storageUiState, actions, imageLoader, serverUrl, onOpenSet, asDialog = true)
 }
 
 /**
@@ -62,30 +62,30 @@ internal fun SetItemDetailDialog(
  */
 @Composable
 internal fun SetItemDetailArea(
-    zustand: SetItemUiState,
-    lagerZustand: LagerUiState,
-    aktionen: SetItemAktionen,
+    condition: SetItemUiState,
+    storageUiState: StorageUiState,
+    actions: SetItemActions,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
 ) {
-    SetItemDetail(zustand, lagerZustand, aktionen, imageLoader, serverUrl, onOpenSet, alsDialog = false)
+    SetItemDetail(condition, storageUiState, actions, imageLoader, serverUrl, onOpenSet, asDialog = false)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SetItemDetail(
-    zustand: SetItemUiState,
-    lagerZustand: LagerUiState,
-    aktionen: SetItemAktionen,
+    condition: SetItemUiState,
+    storageUiState: StorageUiState,
+    actions: SetItemActions,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
-    alsDialog: Boolean,
+    asDialog: Boolean,
 ) {
-    val farbe = farbTranslator()
+    val color = colorTranslator()
     // The selection list belongs to the part's owner; it comes with the header (PartsViewModel).
-    if (!zustand.offen) return
+    if (!condition.open) return
 
     // rememberSaveable, not remember: the opened zoom is a decision of the
     // user and must survive a rotation — as at the other zoom spots.
@@ -94,73 +94,73 @@ private fun SetItemDetail(
     // no Composable context is needed for every item, and reading it once
     // is enough.
     val openLabel = stringResource(R.string.setitem_open_set)
-    val kopf = zustand.kopf
+    val header = condition.header
     // Full resolution VIA the server proxy — for parts and figures this is
     // deliberately decided this way (see resolveFullUrlViaProxy), so that no
     // device talks directly to the CDN past the server. The dialog for manually
     // entered parts makes exactly the same choice.
-    val bild = kopf?.let { resolveFullUrlViaProxy(serverUrl, it.imageLocal, it.imageUrl) }
+    val image = header?.let { resolveFullUrlViaProxy(serverUrl, it.imageLocal, it.imageUrl) }
 
-    val titel: @Composable () -> Unit = {
+    val title: @Composable () -> Unit = {
             Column {
-                Text(kopf?.name ?: zustand.nummer, fontWeight = FontWeight.SemiBold)
+                Text(header?.name ?: condition.number, fontWeight = FontWeight.SemiBold)
                 Text(
-                    zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
+                    condition.number + (header?.colorName?.let { " · " + color(it) } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
     }
-    val inhalt: @Composable () -> Unit = {
+    val content: @Composable () -> Unit = {
             Column(Modifier.fillMaxWidth()) {
                 when {
-                    zustand.abruf.laedt -> Box(Modifier.fillMaxWidth().padding(Abstaende.veryLarge), Alignment.Center) {
+                    condition.fetch.loading -> Box(Modifier.fillMaxWidth().padding(Spacing.veryLarge), Alignment.Center) {
                         CircularProgressIndicator(Modifier.size(28.dp))
                     }
-                    zustand.abruf is Laden.Fehler -> Text(
-                        zustand.abruf.meldung.satz(),
+                    condition.fetch is Load.Failure -> Text(
+                        condition.fetch.message.sentence(),
                         color = MaterialTheme.colorScheme.error,
                     )
                     else -> {
                         // The same header as for a self-entered part; only the sections below it
                         // depend on the origin.
-                        val kategorie = categoryTranslator()
+                        val category = categoryTranslator()
                         val chips = buildList {
-                            add(stringResource(R.string.setitem_total_qty) to mengeAusSet(kopf?.totalQuantity ?: 0))
-                            kopf?.colorName?.let { add(stringResource(R.string.setitem_color) to farbe(it)) }
-                            kopf?.categoryName?.let { add(stringResource(R.string.setitem_category) to kategorie(it)) }
-                            if (kopf?.isSpare == true) add(stringResource(R.string.parts_spare_tag) to "✓")
+                            add(stringResource(R.string.setitem_total_qty) to quantityFromSet(header?.totalQuantity ?: 0))
+                            header?.colorName?.let { add(stringResource(R.string.setitem_color) to color(it)) }
+                            header?.categoryName?.let { add(stringResource(R.string.setitem_category) to category(it)) }
+                            if (header?.isSpare == true) add(stringResource(R.string.parts_spare_tag) to "✓")
                         }
-                        PartDetailHeader(bild, imageLoader, kopf?.name, chips, onZoom = { showZoom = true })
-                        Spacer(Modifier.height(Abstaende.klein))
+                        PartDetailHeader(image, imageLoader, header?.name, chips, onZoom = { showZoom = true })
+                        Spacer(Modifier.height(Spacing.small))
                         // Only for parts (kopf.colorId is null for figures): a minifigure
                         // is stuck in its set, whose location stands in the set detail — a second
                         // location could drift apart. Editable as in the web app; the
                         // field writes to every row of this part-color pair.
-                        val headerColor = kopf?.colorId
-                        if (kopf != null && headerColor != null) {
-                            Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.hairline),
+                        val headerColor = header?.colorId
+                        if (header != null && headerColor != null) {
+                            Row(Modifier.fillMaxWidth().padding(vertical = Spacing.hairline),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.detail_storage),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyMedium)
                                 LocationField(
-                                    wert = kopf.storage ?: "",
-                                    stock = lagerZustand.stock.map { it.name },
-                                    onValue = { aktionen.setPartLocation(kopf.nummer, headerColor, it) },
-                                    modifier = Modifier.padding(start = Abstaende.gross)
+                                    value = header.storage ?: "",
+                                    stock = storageUiState.stock.map { it.name },
+                                    onValue = { actions.setPartLocation(header.number, headerColor, it) },
+                                    modifier = Modifier.padding(start = Spacing.large)
                                         .weight(1f).widthIn(max = 320.dp),
                                 )
                             }
                         }
-                        Spacer(Modifier.height(Abstaende.mittel))
+                        Spacer(Modifier.height(Spacing.medium))
                         Text(
                             stringResource(R.string.setitem_used_in),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyMedium,
                         )
-                        if (zustand.sets.isEmpty()) {
+                        if (condition.sets.isEmpty()) {
                             Text(
                                 stringResource(R.string.setitem_used_in_none),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -172,22 +172,22 @@ private fun SetItemDetail(
                             // beyond the screen edge can no longer be
                             // closed.
                             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
-                                items(zustand.sets, key = { it.setNumber + "-" + it.ownerUserId }) { s ->
+                                items(condition.sets, key = { it.setNumber + "-" + it.ownerUserId }) { s ->
                                     // ── Image, number, name, quantity ──
                                     //
                                     // First the small image, then number, then name — as in the
-                                    // finances tab. TabellenZeile exists for that; a row of its
+                                    // finances tab. TableRow exists for that; a row of its
                                     // own would have a fixed corner radius and no fallback to the full
                                     // resolution without a thumbnail.
-                                    val (bildUrl, onBildFehler) =
+                                    val (imageUrl, onImageError) =
                                         rememberTileImageWithFallback(serverUrl, s.imageLocal, s.imageUrl)
-                                    TabellenZeile(
-                                        bildUrl = bildUrl,
-                                        nummer = s.setNumber,
+                                    TableRow(
+                                        imageUrl = imageUrl,
+                                        number = s.setNumber,
                                         name = s.setName,
-                                        menge = s.quantity,
+                                        quantity = s.quantity,
                                         imageLoader = imageLoader,
-                                        onBildFehler = onBildFehler,
+                                        onImageError = onImageError,
                                         // onClickLabel tells the screen reader what tapping does
                                         // — without it, it only reads out the set number. In the web app
                                         // the same text is the title attribute.
@@ -196,7 +196,7 @@ private fun SetItemDetail(
                                             // Close first, then open:
                                             // otherwise the dialog would lie
                                             // over the set detail.
-                                            aktionen.closeSetItem()
+                                            actions.closeSetItem()
                                             onOpenSet(s.setNumber)
                                         },
                                     )
@@ -209,42 +209,42 @@ private fun SetItemDetail(
     }
 
     // Close on the left as in every detail header (DetailTopAppBar), in the sheet as next to the list.
-    val schliessen = { aktionen.closeSetItem() }
-    if (alsDialog) {
-        ModalBottomSheet(onDismissRequest = schliessen) {
+    val close = { actions.closeSetItem() }
+    if (asDialog) {
+        ModalBottomSheet(onDismissRequest = close) {
             Column(
-                Modifier.padding(start = Abstaende.gross, end = Abstaende.veryLarge, bottom = Abstaende.veryLarge)
+                Modifier.padding(start = Spacing.large, end = Spacing.veryLarge, bottom = Spacing.veryLarge)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+                verticalArrangement = Arrangement.spacedBy(Spacing.medium),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    BackButton(schliessen, schliessen = true)
+                    BackButton(close, close = true)
                     Box(Modifier.weight(1f)) {
-                        ProvideTextStyle(MaterialTheme.typography.titleLarge) { titel() }
+                        ProvideTextStyle(MaterialTheme.typography.titleLarge) { title() }
                     }
                 }
-                inhalt()
+                content()
             }
         }
     } else {
         Column(Modifier.fillMaxSize()) {
             DetailTopAppBar(
-                titel = kopf?.name ?: zustand.nummer,
-                subtitle = zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
-                onZurueck = schliessen,
-                schliessen = true,
+                title = header?.name ?: condition.number,
+                subtitle = condition.number + (header?.colorName?.let { " · " + color(it) } ?: ""),
+                onBack = close,
+                close = true,
             )
             Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.gross),
-                verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-            ) { inhalt() }
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.large),
+                verticalArrangement = Arrangement.spacedBy(Spacing.medium),
+            ) { content() }
         }
     }
 
-    if (showZoom && bild != null) {
+    if (showZoom && image != null) {
         ZoomableImageDialog(
-            imageUrl = bild,
-            contentDescription = kopf.name,
+            imageUrl = image,
+            contentDescription = header.name,
             imageLoader = imageLoader,
             onDismiss = { showZoom = false },
         )

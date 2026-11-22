@@ -2,7 +2,7 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Every text stands in BOTH languages, and no text stands in the source.
@@ -18,15 +18,15 @@ class StringResourceParityTest {
     private val EXPRESSION_LANG = "\\$DOLLAR\\{[^}]*\\}"
     private val EXPRESSION_SHORT = "\\$DOLLAR\\w+"
 
-    private fun schluessel(datei: String): Set<String> =
+    private fun key(file: String): Set<String> =
         Regex("""<string name="([^"]+)"""")
-            .findAll(File(Quellen.res, "$datei").readText())
+            .findAll(File(Sources.res, "$file").readText())
             .map { it.groupValues[1] }.toSet()
 
     @Test
     fun `every text is in both language files`() {
-        val en = schluessel("values/strings.xml")
-        val de = schluessel("values-de/strings.xml")
+        val en = key("values/strings.xml")
+        val de = key("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
 
         val onlyEn = (en - de).sorted()
@@ -44,9 +44,9 @@ class StringResourceParityTest {
     }
 
     /** Name → Mengenklassen („one", „other", …) einer `<plurals>`. */
-    private fun mengenformen(datei: String): Map<String, Set<String>> =
+    private fun quantityShapes(file: String): Map<String, Set<String>> =
         Regex("""<plurals name="([^"]+)">(.*?)</plurals>""", RegexOption.DOT_MATCHES_ALL)
-            .findAll(File(Quellen.res, "$datei").readText())
+            .findAll(File(Sources.res, "$file").readText())
             .associate { m ->
                 m.groupValues[1] to Regex("""quantity="([^"]+)"""")
                     .findAll(m.groupValues[2]).map { it.groupValues[1] }.toSet()
@@ -77,8 +77,8 @@ class StringResourceParityTest {
      */
     @Test
     fun `every plural form is in both language files with the same classes`() {
-        val en = mengenformen("values/strings.xml")
-        val de = mengenformen("values-de/strings.xml")
+        val en = quantityShapes("values/strings.xml")
+        val de = quantityShapes("values-de/strings.xml")
 
         // Self-proof against the silent zero: without hits everything below would run
         // into nothing and still be green.
@@ -141,7 +141,7 @@ class StringResourceParityTest {
      * The list is instead a claim that every entry carries
      * individually: „this text reads the same in both languages, and that is
      * intended". New texts do not get in by themselves — that is exactly the
-     * purpose. And as with `erlaubt` further below the test checks the list
+     * purpose. And as with `allowed` further below the test checks the list
      * itself too: an entry that no longer applies is thrown out instead of
      * staying as an old decision that nobody looks at any more.
      */
@@ -149,20 +149,20 @@ class StringResourceParityTest {
     fun `no text stays untranslated in both languages`() {
         // Terms, proper names and format templates that read the same in both
         // languages. Every entry is a decision, not an indulgence.
-        val gewolltGleich = setOf(
+        val intendedEqual = setOf(
             // Pure format „Aktion: Name“ for screen readers, without words.
-            "aktion_fuer",
+            "action_for",
             "acq_total_quantity", "app_name", "catalog_sort_name", "chart_period_max",
             "comparison_barcode_label", "csv_ok_count",
             "detail_section_item", "finance_filter_sets",
             "finance_grand_total", "finance_section_sets", "finance_total_sets",
             "gallery_quantity_badge", "gallery_sort_name", "nav_sets",
             // List footer like finance_grand_total; „Set 10305-1“ for TalkBack.
-            "vouchers_total", "cd_set_nummer",
+            "vouchers_total", "cd_set_number",
             "monitoring_theme",
-            "monitoring_vorwaermen_roaming",
+            "monitoring_prewarm_roaming",
             // System and server are called so in both languages.
-            "nav_group_server", "settings_hell_system",
+            "nav_group_server", "settings_light_system",
             "common_ok", "common_pdf", "common_hours_short", "common_times",
             "partslist_rb_prefix",
             "setup_build",
@@ -186,7 +186,7 @@ class StringResourceParityTest {
             // „Filter“ is also in German the word for the button and the sheet.
             "filter_button", "filter_title",
             // Counter „5/24“ below the fingerprint field: only numbers.
-            "zert_eingabe_zaehler",
+            "cert_input_counter",
             // A language is called in the selection what it calls itself (FormsAndMarginsTest).
             "settings_language_en", "settings_language_de",
         )
@@ -195,18 +195,18 @@ class StringResourceParityTest {
         val de = texts("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
 
-        val gleich = en.keys.filter { it in de && en[it] == de[it] }.toSet()
-        val untranslated = (gleich - gewolltGleich).sorted()
+        val equal = en.keys.filter { it in de && en[it] == de[it] }.toSet()
+        val untranslated = (equal - intendedEqual).sorted()
         assert(untranslated.isEmpty()) {
             "Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr " +
                 "wahrscheinlich beim Anlegen kopiert und nicht uebersetzt:\n  " +
                 untranslated.joinToString("\n  ") { "$it = \"${en[it]}\"" } +
                 "\nIst er wirklich in beiden Sprachen gleich, gehoert er in `gewolltGleich`."
         }
-        val veraltet = (gewolltGleich - gleich).sorted()
-        assert(veraltet.isEmpty()) {
-            "Diese Eintraege in `gewolltGleich` stimmen nicht mehr (Text unterscheidet " +
-                "sich inzwischen oder Name ist weg): " + veraltet.joinToString(", ") + " — raus damit."
+        val stale = (intendedEqual - equal).sorted()
+        assert(stale.isEmpty()) {
+            "Diese Eintraege in `intendedEqual` stimmen nicht mehr (Text unterscheidet " +
+                "sich inzwischen oder Name ist weg): " + stale.joinToString(", ") + " — raus damit."
         }
     }
 
@@ -221,9 +221,9 @@ class StringResourceParityTest {
      * very much to be translated. It now falls into the comparison below and is
      * harmless there because "en" and "de" differ.
      */
-    private fun texts(datei: String): Map<String, String> =
+    private fun texts(file: String): Map<String, String> =
         Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
-            .findAll(File(Quellen.res, "$datei").readText())
+            .findAll(File(Sources.res, "$file").readText())
             .associate { it.groupValues[1] to it.groupValues[2] }
 
     /**
@@ -254,15 +254,15 @@ class StringResourceParityTest {
      * Counter-check: nav_monitoring in English again „Monitoring“ → red.
      */
     @Test
-    fun `the area is called Hintergrundarbeiten everywhere`() {
+    fun `the area is called BackgroundWork everywhere`() {
         val en = texts("values/strings.xml")
         val de = texts("values-de/strings.xml")
         for (k in listOf("nav_monitoring", "main_menu_monitoring")) {
             assert(de[k] == "Hintergrundarbeiten") { "$k (de) = ${de[k]}" }
             assert(en[k] == "Background jobs") { "$k (en) = ${en[k]}" }
         }
-        val alt = (en + de.mapKeys { "de:" + it.key }).filterValues { it.contains("Monitoring") }
-        assert(alt.isEmpty()) { "Noch „Monitoring“ in: ${alt.keys}" }
+        val old = (en + de.mapKeys { "de:" + it.key }).filterValues { it.contains("Monitoring") }
+        assert(old.isEmpty()) { "Noch „Monitoring“ in: ${old.keys}" }
     }
 
     /**
@@ -274,8 +274,8 @@ class StringResourceParityTest {
     @Test
     fun `German texts in Swiss spelling and unambiguous`() {
         val de = texts("values-de/strings.xml")
-        val falsch = de.filterValues { "ß" in it || "ggü." in it || Regex("""\bFassung\b""").containsMatchIn(it) }
-        assert(falsch.isEmpty()) { "Nicht in Schweizer Schreibung oder mit altem Begriff: ${falsch.keys}" }
+        val wrong = de.filterValues { "ß" in it || "ggü." in it || Regex("""\bFassung\b""").containsMatchIn(it) }
+        assert(wrong.isEmpty()) { "Nicht in Schweizer Schreibung oder mit altem Begriff: ${wrong.keys}" }
         for (t in listOf(de, texts("values/strings.xml"))) {
             assert(t["login_title"] != t["login_button"]) { "Überschrift und Knopf der Anmeldung gleich: ${t["login_title"]}" }
         }
@@ -284,13 +284,13 @@ class StringResourceParityTest {
     /**
      * One word per thing (glossary): „Setnummer“, list footers „Total“, „Kaufsumme“ for the
      * cost; English „Sign in/out“, „Profit/loss“, „administrator rights“.
-     * Counter-check (gegenproben/begriff-set-nummer.patch): gallery_set_number again
+     * Counter-check (counter-checks/begriff-set-nummer.patch): gallery_set_number again
      * „Set-Nummer“ → red. Likewise versalien-im-text (PREISSPEICHER) and
      * vorgabe-mit-strichen („— Global default —“).
      */
     @Test
     fun `one term per thing in both languages`() {
-        val verboten = mapOf(
+        val forbidden = mapOf(
             // Kinds as in the web app, not „Teileart“; „Stück gesamt“ was called „Teile“ in the gallery.
             "values-de/strings.xml" to listOf(Regex("Set-Nummer"), Regex("""\bSumme\b"""), Regex("Kauf gesamt"),
                 Regex("Teileart|Figurenart|Stück gesamt|Webapp|Android App")),
@@ -300,8 +300,8 @@ class StringResourceParityTest {
         // No form in the word either: capitals are set by section titles (read out as written),
         // and a choice in dashes read like a placeholder.
         val form = listOf(Regex("""^\p{Lu}[\p{Lu}\- ]{4,}$"""), Regex("""^— .* —$"""))
-        val findings = verboten.flatMap { (datei, pattern) ->
-            texts(datei).filterValues { t -> (pattern + form).any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
+        val findings = forbidden.flatMap { (file, pattern) ->
+            texts(file).filterValues { t -> (pattern + form).any { it.containsMatchIn(t) } }.map { "$file ${it.key}: ${it.value}" }
         }
         assert(findings.isEmpty()) { "Abweichender Begriff:\n  " + findings.joinToString("\n  ") }
         checkRolesNames()
@@ -310,15 +310,15 @@ class StringResourceParityTest {
     /**
      * The roles are called as on the web „Standard“ and „Administrator“, also in compounds
      * („Administratorrechte“); „Verwalter“ and „Benutzer“ as a role are superseded.
-     * Counter-check (gegenproben/rolle-verwalter.patch): zf_pflicht_kurz again „Verwalterrechte …“ → red.
+     * Counter-check (counter-checks/rolle-verwalter.patch): zf_required_short again „Verwalterrechte …“ → red.
      */
     private fun checkRolesNames() {
         val de = texts("values-de/strings.xml")
         val en = texts("values/strings.xml")
-        assert(de["zf_pflicht_kurz"]?.startsWith("Administratorrechte") == true) { "zf_pflicht_kurz = ${de["zf_pflicht_kurz"]}" }
-        val alt = de.filterValues { Regex("""Verwalter|\bBenutzer(?!name)""").containsMatchIn(it) }.keys +
+        assert(de["zf_required_short"]?.startsWith("Administratorrechte") == true) { "zf_required_short = ${de["zf_required_short"]}" }
+        val old = de.filterValues { Regex("""Verwalter|\bBenutzer(?!name)""").containsMatchIn(it) }.keys +
             en.filterValues { Regex("""\b[Aa]dmins?\b""").containsMatchIn(it) }.keys
-        assert(alt.isEmpty()) { "Alter Rollenname in: $alt" }
+        assert(old.isEmpty()) { "Alter Rollenname in: $old" }
     }
 
     @Test
@@ -326,22 +326,22 @@ class StringResourceParityTest {
         val en = texts("values/strings.xml")
         val de = texts("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
-        val gemeinsam = en.keys.filter { it.startsWith("common_") }
-        assert(gemeinsam.size >= 3) { "Nur ${gemeinsam.size} common_-Namen — Konvention aufgegeben?" }
+        val shared = en.keys.filter { it.startsWith("common_") }
+        assert(shared.size >= 3) { "Nur ${shared.size} common_-Namen — Konvention aufgegeben?" }
 
-        val doppelt = mutableListOf<String>()
-        for (g in gemeinsam.sorted()) {
+        val double = mutableListOf<String>()
+        for (g in shared.sorted()) {
             for (k in en.keys.sorted()) {
                 if (k == g || k.startsWith("common_")) continue
                 // The same in BOTH languages. Comparing only English
                 // would find accidental homophones („Sets"/„Sets"), which
                 // differ in German.
-                if (en[k] == en[g] && de[k] == de[g]) doppelt += "$k = $g (\"${en[g]}\")"
+                if (en[k] == en[g] && de[k] == de[g]) double += "$k = $g (\"${en[g]}\")"
             }
         }
-        assert(doppelt.isEmpty()) {
+        assert(double.isEmpty()) {
             "Diese Namen tragen denselben Text wie ein common_-Name; nimm den common_-Namen:\n  " +
-                doppelt.joinToString("\n  ")
+                double.joinToString("\n  ")
         }
     }
 
@@ -357,16 +357,16 @@ class StringResourceParityTest {
             Regex("""Toast\.makeText\([^,]+,\s*"([^"]{3,})"""),
         )
         // Proper names and abbreviations that read the same in every language (e.g. PDF: common_pdf).
-        val erlaubt = emptySet<String>()
+        val allowed = emptySet<String>()
         val allowedSeen = mutableSetOf<String>()
 
-        val fehler = mutableListOf<String>()
-        for (datei in Quellen.alle()) {
-            val s = Quellen.withoutComments(datei.readText())
+        val error = mutableListOf<String>()
+        for (file in Sources.all()) {
+            val s = Sources.withoutComments(file.readText())
             for (m in pattern) {
-                m.findAll(s).forEach { treffer ->
-                    val text = treffer.groupValues[1]
-                    if (text in erlaubt) { allowedSeen += text; return@forEach }
+                m.findAll(s).forEach { hits ->
+                    val text = hits.groupValues[1]
+                    if (text in allowed) { allowedSeen += text; return@forEach }
                     // An open bracket without a closing one means: the
                     // expression itself contains a string, and the
                     // match breaks off at its quotation mark. Such a
@@ -383,19 +383,19 @@ class StringResourceParityTest {
                     // At least two consecutive letters — that
                     // separates language from symbols and number formats.
                     if (!Regex("""\p{L}\p{L}""").containsMatchIn(onlyText)) return@forEach
-                    val zeile = s.substring(0, treffer.range.first).count { it == '\n' } + 1
-                    fehler += "${datei.name}:$zeile  \"$text\""
+                    val row = s.substring(0, hits.range.first).count { it == '\n' } + 1
+                    error += "${file.name}:$row  \"$text\""
                 }
             }
         }
-        assert(fehler.isEmpty()) {
+        assert(error.isEmpty()) {
             "Oberflächentext als Literal statt aus den Sprachdateien:\n  " +
-                fehler.joinToString("\n  ")
+                error.joinToString("\n  ")
         }
-        val veraltet = (erlaubt - allowedSeen).sorted()
-        assert(veraltet.isEmpty()) {
+        val stale = (allowed - allowedSeen).sorted()
+        assert(stale.isEmpty()) {
             "Diese Eintraege in `erlaubt` beschreiben nichts mehr: " +
-                veraltet.joinToString(", ") +
+                stale.joinToString(", ") +
                 " — der Text steht nirgends mehr im Quelltext. Raus damit."
         }
     }

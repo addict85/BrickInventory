@@ -1,78 +1,78 @@
 package ch.brickinventoryapp.offline
 
 import ch.brickinventoryapp.model.local.StockKind
-import ch.brickinventoryapp.model.domain.Erfassungswunsch
-import ch.brickinventoryapp.model.domain.Figurenerfassung
-import ch.brickinventoryapp.model.domain.Merkwunsch
-import ch.brickinventoryapp.model.domain.Stueckaenderung
-import ch.brickinventoryapp.model.domain.Teilerfassung
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.EntryRequest
+import ch.brickinventoryapp.model.domain.FigureEntry
+import ch.brickinventoryapp.model.domain.WantedRequest
+import ch.brickinventoryapp.model.domain.QuantityChange
+import ch.brickinventoryapp.model.domain.PartEntry
+import ch.brickinventoryapp.model.domain.Condition
 
 /**
  * A change that waits in the outbox without connection, in domain values; the request from it
  * is built only by core-data when sending. Quantities of sets go as a step, so that two devices
  * together give +2. On disk it lies as [InitialForm].
  */
-sealed class Editing : Offlineablage.Wirkung {
+sealed class Editing : OfflineStore.Effect {
     /** Which local list the change concerns. */
-    abstract val art: StockKind
+    abstract val kind: StockKind
 
-    override val kinds: Set<StockKind> get() = setOf(art)
+    override val kinds: Set<StockKind> get() = setOf(kind)
 
     /** What the change applies to (set, part or figure number) — for the hint. */
-    abstract val ziel: String
+    abstract val target: String
 
-    data class SetMenge(val setNumber: String, val schritt: Int) : Editing() {
-        override val art get() = StockKind.SETS
-        override val ziel get() = setNumber
+    data class SetQuantity(val setNumber: String, val step: Int) : Editing() {
+        override val kind get() = StockKind.SETS
+        override val target get() = setNumber
     }
 
-    data class SetErfassen(val wish: Erfassungswunsch) : Editing() {
-        override val art get() = StockKind.SETS
-        override val ziel get() = wish.setNumber
+    data class RecordSet(val wish: EntryRequest) : Editing() {
+        override val kind get() = StockKind.SETS
+        override val target get() = wish.setNumber
     }
 
-    data class MerkpostenAnlegen(val wish: Merkwunsch) : Editing() {
-        override val art get() = StockKind.MERKLISTE
-        override val ziel get() = wish.setNumber
+    data class CreateWantedItem(val wish: WantedRequest) : Editing() {
+        override val kind get() = StockKind.WANTED_LIST
+        override val target get() = wish.setNumber
     }
 
-    data class MerkpostenLoeschen(val setNumber: String, val zustand: Zustand, val besitzer: Int?) : Editing() {
-        override val art get() = StockKind.MERKLISTE
-        override val ziel get() = setNumber
+    data class DeleteWantedItem(val setNumber: String, val condition: Condition, val owner: Int?) : Editing() {
+        override val kind get() = StockKind.WANTED_LIST
+        override val target get() = setNumber
     }
 
-    data class TeilErfassen(val erfassung: Teilerfassung) : Editing() {
-        override val art get() = StockKind.MANUELLE_TEILE
-        override val ziel get() = erfassung.nummer
+    data class RecordPart(val entry: PartEntry) : Editing() {
+        override val kind get() = StockKind.MANUAL_PARTS
+        override val target get() = entry.number
     }
 
     /** The change carries the new quantity and, if the previous one was known, the step there. */
-    data class TeilAendern(val partNumber: String, val colorId: Int, val aenderung: Stueckaenderung,
-                           val besitzer: Int?) : Editing() {
-        override val art get() = StockKind.MANUELLE_TEILE
-        override val ziel get() = partNumber
+    data class EditPart(val partNumber: String, val colorId: Int, val change: QuantityChange,
+                           val owner: Int?) : Editing() {
+        override val kind get() = StockKind.MANUAL_PARTS
+        override val target get() = partNumber
     }
 
     /** Deleting waits like every change; what the server no longer knows counts as deleted. */
-    data class TeilLoeschen(val partNumber: String, val colorId: Int, val besitzer: Int?) : Editing() {
-        override val art get() = StockKind.MANUELLE_TEILE
-        override val ziel get() = partNumber
+    data class DeletePart(val partNumber: String, val colorId: Int, val owner: Int?) : Editing() {
+        override val kind get() = StockKind.MANUAL_PARTS
+        override val target get() = partNumber
     }
 
-    data class FigurErfassen(val erfassung: Figurenerfassung) : Editing() {
-        override val art get() = StockKind.MANUELLE_FIGUREN
-        override val ziel get() = erfassung.nummer
+    data class RecordFigure(val entry: FigureEntry) : Editing() {
+        override val kind get() = StockKind.MANUAL_FIGURES
+        override val target get() = entry.number
     }
 
-    data class FigurAendern(val figNumber: String, val aenderung: Stueckaenderung,
-                            val besitzer: Int?) : Editing() {
-        override val art get() = StockKind.MANUELLE_FIGUREN
-        override val ziel get() = figNumber
+    data class EditFigure(val figNumber: String, val change: QuantityChange,
+                            val owner: Int?) : Editing() {
+        override val kind get() = StockKind.MANUAL_FIGURES
+        override val target get() = figNumber
     }
 
-    data class FigurLoeschen(val figNumber: String, val besitzer: Int?) : Editing() {
-        override val art get() = StockKind.MANUELLE_FIGUREN
-        override val ziel get() = figNumber
+    data class DeleteFigure(val figNumber: String, val owner: Int?) : Editing() {
+        override val kind get() = StockKind.MANUAL_FIGURES
+        override val target get() = figNumber
     }
 }

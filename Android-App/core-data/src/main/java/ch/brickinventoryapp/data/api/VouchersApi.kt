@@ -31,7 +31,7 @@ interface VouchersApi {
     suspend fun getVouchers(): Response<GutscheinListe>
 
     @POST("api/v1/vouchers")
-    suspend fun putVoucherAn(@Body request: GutscheinRequest): Response<GutscheinAntwort>
+    suspend fun createVoucher(@Body request: GutscheinRequest): Response<GutscheinAntwort>
 
     @PUT("api/v1/vouchers/{id}")
     suspend fun changeVoucher(
@@ -70,16 +70,16 @@ interface VouchersApi {
      * read; if the PDF is not enough, the server answers with 422 and what it
      * could read. The parts are optional because an empty field would overwrite
      * what was read. If the file contains several vouchers, the same route answers with
-     * `mehrere`.
+     * `several`.
      */
     @Multipart
     @POST("api/v1/vouchers/pdf")
     suspend fun loadVoucherPdfHigh(
-        @Part datei: okhttp3.MultipartBody.Part,
-        @Part("number") nummer: okhttp3.RequestBody? = null,
+        @Part file: okhttp3.MultipartBody.Part,
+        @Part("number") number: okhttp3.RequestBody? = null,
         @Part("pin") pin: okhttp3.RequestBody? = null,
-        @Part("amount") betrag: okhttp3.RequestBody? = null,
-        @Part("currency") waehrung: okhttp3.RequestBody? = null,
+        @Part("amount") amount: okhttp3.RequestBody? = null,
+        @Part("currency") currency: okhttp3.RequestBody? = null,
     ): Response<GutscheinAntwort>
 
     /**
@@ -89,9 +89,9 @@ interface VouchersApi {
      * this route.
      */
     @POST("api/v1/vouchers/{id}/guthaben")
-    suspend fun questionBalanceAb(@Path("id") id: Int): Response<GuthabenAntwort>
+    suspend fun queryBalance(@Path("id") id: Int): Response<GuthabenAntwort>
 
     // No method for `GET /vouchers/{id}/pdf` and `GET /vouchers/export/pdf`:
     // the PdfViewerScreen fetches the PDF itself via its address (with ticket),
-    // with the app's signed-in client. See ui/viewmodel/GutscheinAdressen.kt.
+    // with the app's signed-in client. See ui/viewmodel/VoucherAddresses.kt.
 }

@@ -120,15 +120,15 @@ private val BrickBlueColors = lightColorScheme(
  * Colors of the history lines from the theme, like --chart-new/--chart-used on the
  * web. In the brick theme, sage green and sand, the same colors as the
  * condition badges, as a solid tone, because the containers would barely be visible on a white
- * background. The defaults of [linie] and [raster] are the classic values; [gedaempft] is
- * for text (axes, hints) and therefore comes from [diagrammFarben].
+ * background. The defaults of [line] and [raster] are the classic values; [muted] is
+ * for text (axes, hints) and therefore comes from [chartColors].
  */
 data class ChartColors(
     val new: Color,
     val used: Color,
-    val linie: Color = Color(0xFF2563EB),
+    val line: Color = Color(0xFF2563EB),
     val raster: Color = Color(0xFFE2E8F0),
-    val gedaempft: Color = Color(0xFF56616E),
+    val muted: Color = Color(0xFF56616E),
 )
 
 // The four Chart*-colors live in DesignTokens.kt (generated, see above) —
@@ -136,12 +136,12 @@ data class ChartColors(
 
 // Werkbank (dark): darkColorScheme, because some components (text-field borders,
 // ripple) read their brightness from it. Values as in themes/werkbank.css: warm graphite
-// and brass instead of anthracite with blue, otherwise it would match „Classic dark“ (DunkelTokens.kt).
-private val WerkbankColors = darkColorScheme(
-    primary              = WerkbankAzur,
+// and brass instead of anthracite with blue, otherwise it would match „Classic dark“ (DarkTokens.kt).
+private val WorkbenchColors = darkColorScheme(
+    primary              = WorkbenchAzure,
     onPrimary            = Color(0xFF1E1608),
-    primaryContainer     = WerkbankAzurDunkel,
-    onPrimaryContainer   = WerkbankAzurHell,
+    primaryContainer     = WorkbenchAzureDark,
+    onPrimaryContainer   = WorkbenchAzureLight,
     secondary            = Color(0xFFC9963F),
     onSecondary          = Color(0xFF1E1608),
     secondaryContainer   = Color(0xFF2A2418),
@@ -166,13 +166,13 @@ private val WerkbankColors = darkColorScheme(
 // ── Color fan ─────────────────────────────────────────────────────────────
 //
 // Gray control: the brand color here is near-black, so the
-// theme colors (FaecherFarben in DesignTokens.kt) are the only colorful
+// theme colors (FanColors in DesignTokens.kt) are the only colorful
 // surfaces and thus mean something.
 private val ColorSlotsColors = lightColorScheme(
-    primary              = FaecherTinte,
+    primary              = FanInk,
     onPrimary            = Color.White,
-    primaryContainer     = FaecherTinteHell,
-    onPrimaryContainer   = FaecherTinteDunkel,
+    primaryContainer     = FanInkLight,
+    onPrimaryContainer   = FanInkDark,
     secondary            = Color(0xFF5A5A5A),
     onSecondary          = Color.White,
     secondaryContainer   = Color(0xFFE8E8E8),
@@ -198,27 +198,27 @@ private val ColorSlotsColors = lightColorScheme(
 private val StudBlue = Color(0xFF1A5FB8)
 private val StudBlueLight = Color(0xFFE3EDFA)
 private val StudYellowLight = Color(0xFFFFF3C4)
-private val StudOcker = Color(0xFF7A5200)
+private val StudOchre = Color(0xFF7A5200)
 
 private val StudColors = lightColorScheme(
     primary              = StudBlue,
     onPrimary            = Color.White,
     primaryContainer     = StudBlueLight,
-    onPrimaryContainer   = NoppeTinte,
-    secondary            = NoppeTinte,
+    onPrimaryContainer   = StudInk,
+    secondary            = StudInk,
     onSecondary          = Color.White,
     secondaryContainer   = Color(0xFFEEF1F6),
-    onSecondaryContainer = NoppeTinte,
-    tertiary             = StudOcker,
+    onSecondaryContainer = StudInk,
+    tertiary             = StudOchre,
     onTertiary           = Color.White,
     tertiaryContainer    = StudYellowLight,
-    onTertiaryContainer  = NoppeTinte,
+    onTertiaryContainer  = StudInk,
     background           = Color(0xFFEEF1F6),
     surface              = Color.White,
     surfaceVariant       = Color(0xFFF7F9FC),
-    onSurface            = NoppeTinte,
+    onSurface            = StudInk,
     onSurfaceVariant     = Color(0xFF5A6270),
-    outline              = NoppeTinte,
+    outline              = StudInk,
     // The same value that supplementRoles() previously blended from surface and onSurface.
     outlineVariant       = Color(0xFFD7D8DA),
     error                = Color(0xFFB91C1C),
@@ -251,7 +251,7 @@ private val JakartaFamily = FontFamily(
 /**
  * The Material scale with a different family. Only the family is
  * swapped, no size and no weight — otherwise a theme change would shift the
- * whole UI, and AbstandsskalaTest would be right to report it.
+ * whole UI, and SpacingScaleTest would be right to report it.
  */
 private fun withFamily(f: FontFamily): Typography = Typography().let { t ->
     Typography(
@@ -285,7 +285,7 @@ private val BrandsTypography: Typography = withFamily(JakartaFamily)
  * [slotsTone] below, where the color IS the theme.
  */
 fun brickTone(position: Int): Color =
-    SteinFarben[((position % SteinFarben.size) + SteinFarben.size) % SteinFarben.size]
+    BrickColors[((position % BrickColors.size) + BrickColors.size) % BrickColors.size]
 
 /**
  * The tone of a LEGO theme in the "farbfaecher" design.
@@ -295,7 +295,7 @@ fun brickTone(position: Int): Color =
  * wrong one (the same rule as applyTheme(): no information changes nothing).
  */
 fun slotsTone(themeNumber: Int?): Color? =
-    themeNumber?.let { FaecherFarben[((it % FaecherFarben.size) + FaecherFarben.size) % FaecherFarben.size] }
+    themeNumber?.let { FanColors[((it % FanColors.size) + FanColors.size) % FanColors.size] }
 
 val LocalChartColors = staticCompositionLocalOf {
     ChartColors(new = ChartNewClassic, used = ChartUsedClassic)
@@ -304,11 +304,11 @@ val LocalChartColors = staticCompositionLocalOf {
 /** Colors of the brick decoration (studs, slate tile) — light or dark, see darkBrickDecor(). */
 data class BrickDecor(val studs: Color, val slate: Color, val onSlate: Color)
 
-val LocalBrickDecor = staticCompositionLocalOf { BrickDecor(SlateBlueNoppe, SlateBlue, Color.White) }
+val LocalBrickDecor = staticCompositionLocalOf { BrickDecor(SlateBlueStud, SlateBlue, Color.White) }
 
 /**
- * The dark version of a design from the tokens (DunkelTokens.kt). Same
- * mapping as WerkbankColors, only with the design's brand colors.
+ * The dark version of a design from the tokens (DarkTokens.kt). Same
+ * mapping as WorkbenchColors, only with the design's brand colors.
  */
 private fun darkSchema(theme: Design): ColorScheme = darkRoles(theme).let { r ->
     darkColorScheme(
@@ -329,24 +329,24 @@ private fun darkSchema(theme: Design): ColorScheme = darkRoles(theme).let { r ->
  * The complete color scheme of a design, light or in its dark version.
  * `when` instead of nested conditions: another design costs one line.
  */
-internal fun farbschema(theme: Design, dunkel: Boolean = false): ColorScheme =
-    if (dunkel && hatDarkVersion(theme)) supplementRoles(darkSchema(theme).let {
+internal fun colorScheme(theme: Design, dark: Boolean = false): ColorScheme =
+    if (dark && hasDarkVersion(theme)) supplementRoles(darkSchema(theme).let {
         // Like light: noppe red is barely distinguishable from the error color in the dark.
         // Main color becomes the blue of the chart line, the containers take the blue steps
         // from classic, and the accent stays the amber of the base.
-        if (theme == Design.NOPPE || theme == Design.HOCHGLANZ) it.copy(primary = Color(0xFF6AA8FF),
+        if (theme == Design.STUD || theme == Design.GLOSSY) it.copy(primary = Color(0xFF6AA8FF),
             primaryContainer = Color(argb(darkToken(Design.CLASSIC, "b50") ?: "#13233d")),
             onPrimaryContainer = Color(argb(darkToken(Design.CLASSIC, "b700") ?: "#a9caff")))
         else it
-    }, dunkel = true)
+    }, dark = true)
     else when (theme) {
         Design.BRICK -> BrickBlueColors
-        Design.WERKBANK -> WerkbankColors
-        Design.FARBFAECHER -> ColorSlotsColors
+        Design.WORKBENCH -> WorkbenchColors
+        Design.COLOR_FAN -> ColorSlotsColors
         // Glossy is noppe in a different material, not in different colors (`inherits`).
-        Design.NOPPE, Design.HOCHGLANZ -> StudColors
+        Design.STUD, Design.GLOSSY -> StudColors
         Design.CLASSIC -> LightColors
-    }.let { supplementRoles(it, dunkel = theme == Design.WERKBANK) }
+    }.let { supplementRoles(it, dark = theme == Design.WORKBENCH) }
 
 /**
  * Surfaces with their own color that don't follow from a single material role:
@@ -354,11 +354,11 @@ internal fun farbschema(theme: Design, dunkel: Boolean = false): ColorScheme =
  * In the dark always container roles (Material 3): the light brand tones as a
  * surface would glow on black, and the purchase price tile outshone the market value.
  */
-data class Akzentflaechen(
-    val leiste: Color, val onBar: Color,
-    val detailLeiste: Color, val onDetailBar: Color,
-    val markt: Color, val onMarket: Color,
-    val kauf: Color, val onPurchase: Color,
+data class AccentSurfaces(
+    val bar: Color, val onBar: Color,
+    val detailBar: Color, val onDetailBar: Color,
+    val market: Color, val onMarket: Color,
+    val purchase: Color, val onPurchase: Color,
 )
 
 /**
@@ -367,46 +367,46 @@ data class Akzentflaechen(
  * purchase price neutral, so that the page's most important value also stands
  * out most (primaryContainer was as pale as the neutral tile in farbfaecher and noppe).
  */
-internal fun akzentflaechen(theme: Design, dunkel: Boolean, s: ColorScheme): Akzentflaechen {
-    val stein = theme == Design.BRICK && !dunkel
+internal fun accentSurfaces(theme: Design, dark: Boolean, s: ColorScheme): AccentSurfaces {
+    val brick = theme == Design.BRICK && !dark
     // In the dark, primaryContainer (--b50) barely sits above surface; a quarter of the
     // main color mixed into surface gives a mid-dark tone like Material 3's step 30.
     val night = s.surface.luminance() < 0.2f
-    val markt = when {
-        stein -> Petrol
+    val market = when {
+        brick -> Petrol
         night -> lerp(s.surface, s.primary, 0.28f)
         else -> s.primary
     }
-    return Akzentflaechen(
-        leiste = if (stein) s.primary else s.surface, onBar = if (stein) s.onPrimary else s.onSurface,
-        detailLeiste = if (stein) s.secondary else s.surface, onDetailBar = if (stein) s.onSecondary else s.onSurface,
-        markt = markt, onMarket = if (stein) Color.White else if (night) s.onSurface else s.onPrimary,
+    return AccentSurfaces(
+        bar = if (brick) s.primary else s.surface, onBar = if (brick) s.onPrimary else s.onSurface,
+        detailBar = if (brick) s.secondary else s.surface, onDetailBar = if (brick) s.onSecondary else s.onSurface,
+        market = market, onMarket = if (brick) Color.White else if (night) s.onSurface else s.onPrimary,
         // Purchase price like P&L on surface with border: two steps (market value highlighted,
         // the rest calm) instead of three card styles side by side.
-        kauf = s.surface, onPurchase = s.onSurface,
+        purchase = s.surface, onPurchase = s.onSurface,
     )
 }
 
-val LocalAkzentflaechen = staticCompositionLocalOf { akzentflaechen(Design.CLASSIC, false, LightColors) }
+val LocalAccentSurfaces = staticCompositionLocalOf { accentSurfaces(Design.CLASSIC, false, LightColors) }
 
 /**
- * Status colors per design. `erfolg` (success) also colors profit figures and
+ * Status colors per design. `success` (success) also colors profit figures and
  * needs 4.5:1 as text on the surface.
  * Muted in the brick design, so it doesn't stick out next to sage green and sand.
  */
-internal fun statusColorsFor(theme: Design, dunkel: Boolean = false): StatusFarben = if (dunkel && hatDarkVersion(theme)) {
-    darkRoles(theme).let { StatusFarben(erfolg = Color(it.erfolg), warnung = Color(it.warnung), fehler = Color(it.error)) }
+internal fun statusColorsFor(theme: Design, dark: Boolean = false): StatusColors = if (dark && hasDarkVersion(theme)) {
+    darkRoles(theme).let { StatusColors(success = Color(it.success), warning = Color(it.warning), error = Color(it.error)) }
 } else when (theme) {
     // Warning draws bars and icons: 3:1 on every light surface (WCAG 1.4.11).
-    Design.BRICK -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFF8C6A28), fehler = Color(0xFFA34B3C))
-    Design.WERKBANK -> StatusFarben(erfolg = Color(0xFF6FBF7F), warnung = Color(0xFFD9A84E), fehler = Color(0xFFE07A72))
-    else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFF9A6B00), fehler = Color(0xFFB91C1C))
+    Design.BRICK -> StatusColors(success = Color(0xFF4E7058), warning = Color(0xFF8C6A28), error = Color(0xFFA34B3C))
+    Design.WORKBENCH -> StatusColors(success = Color(0xFF6FBF7F), warning = Color(0xFFD9A84E), error = Color(0xFFE07A72))
+    else -> StatusColors(success = Color(0xFF166534), warning = Color(0xFF9A6B00), error = Color(0xFFB91C1C))
 }
 
 /** Colors of the navigation bar and side bar (MainScaffold). */
 data class TabColors(
-    val leiste: Color, val anzeige: Color, val aufAnzeige: Color,
-    val gewaehlt: Color, val ungewaehlt: Color,
+    val bar: Color, val display: Color, val onDisplay: Color,
+    val chosen: Color, val unselected: Color,
 )
 
 /**
@@ -415,8 +415,8 @@ data class TabColors(
  * surface carries the difference, not the icon's hue alone (WCAG 1.4.11).
  */
 fun tabColors(s: ColorScheme) = TabColors(
-    leiste = s.surfaceContainer, anzeige = s.primary, aufAnzeige = s.onPrimary,
-    gewaehlt = s.primary, ungewaehlt = s.onSurfaceVariant,
+    bar = s.surfaceContainer, display = s.primary, onDisplay = s.onPrimary,
+    chosen = s.primary, unselected = s.onSurfaceVariant,
 )
 
 /**
@@ -434,30 +434,30 @@ fun skeletonTone(s: ColorScheme, share: Float = 0.12f): Color = lerp(s.backgroun
  * therefore tinted purple in every design. The steps lie between surface and
  * onSurface: darker in the light, lighter in the dark — as Material intends.
  */
-internal fun supplementRoles(s: ColorScheme, dunkel: Boolean): ColorScheme {
-    fun stufe(share: Float) = lerp(s.surface, s.onSurface, share)
+internal fun supplementRoles(s: ColorScheme, dark: Boolean): ColorScheme {
+    fun level(share: Float) = lerp(s.surface, s.onSurface, share)
     // Dialogs and menus sit on the container steps and carry text in primary,
     // error and onSurfaceVariant; the steps are compressed until all hold 4.5:1.
-    val schrift = listOf(s.primary, s.error, s.onSurfaceVariant)
+    val font = listOf(s.primary, s.error, s.onSurfaceVariant)
     var mass = 1f
-    while (mass > 0.3f && schrift.any { contrast(it, stufe(LEVEL_HIGHEST * mass)) < TEXT_CONTRAST }) mass -= 0.05f
-    fun container(share: Float) = stufe(share * mass)
+    while (mass > 0.3f && font.any { contrast(it, level(LEVEL_HIGHEST * mass)) < TEXT_CONTRAST }) mass -= 0.05f
+    fun container(share: Float) = level(share * mass)
     return s.copy(
         onBackground = s.onSurface,
         surfaceTint = s.primary,
-        surfaceContainerLowest = if (dunkel) s.background else s.surface,
+        surfaceContainerLowest = if (dark) s.background else s.surface,
         surfaceContainerLow = container(0.025f),
         surfaceContainer = container(0.05f),
         surfaceContainerHigh = container(0.075f),
         surfaceContainerHighest = container(LEVEL_HIGHEST),
-        surfaceDim = if (dunkel) s.background else stufe(0.08f),
-        surfaceBright = if (dunkel) stufe(0.12f) else s.surface,
+        surfaceDim = if (dark) s.background else level(0.08f),
+        surfaceBright = if (dark) level(0.12f) else s.surface,
         inverseSurface = s.onSurface,
         inverseOnSurface = s.surface,
         // Die Snackbar-Aktion: so weit aufgehellt bzw. abgedunkelt, bis sie 4,5:1 erreicht.
-        inversePrimary = withContrast(lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f), s.onSurface),
+        inversePrimary = withContrast(lerp(s.primary, if (dark) Color.Black else Color.White, 0.45f), s.onSurface),
         // Material sets #690005 in the dark, only 4.48:1 on the light error tones.
-        onError = if (dunkel) s.background else Color.White,
+        onError = if (dark) s.background else Color.White,
         errorContainer = lerp(s.error, s.surface, 0.85f),
         onErrorContainer = lerp(s.error, s.onSurface, 0.5f),
     )
@@ -473,86 +473,86 @@ fun contrast(a: Color, b: Color): Float {
     return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
 }
 
-/** [farbe], schrittweise von [gegen] weg gemischt, bis sie [ziel]:1 erreicht. */
-fun withContrast(farbe: Color, gegen: Color, ziel: Float = TEXT_CONTRAST): Color {
-    val weg = if (gegen.luminance() > 0.5f) Color.Black else Color.White
+/** [color], schrittweise von [against] weg gemischt, bis sie [target]:1 erreicht. */
+fun withContrast(color: Color, against: Color, target: Float = TEXT_CONTRAST): Color {
+    val gone = if (against.luminance() > 0.5f) Color.Black else Color.White
     var share = 0f
-    var c = farbe
-    while (contrast(c, gegen) < ziel && share < 1f) { share += 0.05f; c = lerp(farbe, weg, share) }
+    var c = color
+    while (contrast(c, against) < target && share < 1f) { share += 0.05f; c = lerp(color, gone, share) }
     return c
 }
 
 /**
  * Chart colors of a design for its color scheme [s]. The axis text
- * ([ChartColors.gedaempft]) is onSurfaceVariant: the former slate gray #94A3B8
+ * ([ChartColors.muted]) is onSurfaceVariant: the former slate gray #94A3B8
  * reached only 2.1:1 on white, and text must hit 4.5:1 like everything else.
  */
-internal fun diagrammFarben(theme: Design, dunkel: Boolean, s: ColorScheme): ChartColors {
-    val gedaempft = s.onSurfaceVariant
-    return if (dunkel && hatDarkVersion(theme)) darkRoles(theme).let {
-        ChartColors(Color(it.chartNew), Color(it.chartUsed), linie = Color(it.chartNew),
-            raster = Color(it.chartRaster), gedaempft = gedaempft)
+internal fun chartColors(theme: Design, dark: Boolean, s: ColorScheme): ChartColors {
+    val muted = s.onSurfaceVariant
+    return if (dark && hasDarkVersion(theme)) darkRoles(theme).let {
+        ChartColors(Color(it.chartNew), Color(it.chartUsed), line = Color(it.chartNew),
+            raster = Color(it.chartRaster), muted = muted)
     } else when (theme) {
         Design.BRICK -> ChartColors(ChartNewBrick, ChartUsedBrick,
-            linie = ChartNewBrick, raster = Color(0xFFE0DACE), gedaempft = gedaempft)
+            line = ChartNewBrick, raster = Color(0xFFE0DACE), muted = muted)
         // On a dark background the grid must be LIGHTER than the background, not
         // darker — otherwise it disappears.
-        Design.WERKBANK -> ChartColors(ChartNewWerkbank, ChartUsedWerkbank,
-            linie = ChartNewWerkbank, raster = Color(0xFF2C261E), gedaempft = gedaempft)
+        Design.WORKBENCH -> ChartColors(ChartNewWorkbench, ChartUsedWorkbench,
+            line = ChartNewWorkbench, raster = Color(0xFF2C261E), muted = muted)
         // Farbfaecher and noppe color themes or tiles, NOT states: new stays
         // blue, used amber/orange, so the color systems don't get confused.
-        Design.FARBFAECHER -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)
-        // The web's orange (ChartUsedNoppe) reaches only 2.6:1 on white; as a line it needs 3:1.
-        Design.NOPPE, Design.HOCHGLANZ -> ChartColors(ChartNewNoppe, ChartUsedNoppe.let { withContrast(it, s.surface, GRAPHIC_CONTRAST) },
-            raster = Color(0xFFE4E8EF), gedaempft = gedaempft)
-        Design.CLASSIC -> ChartColors(ChartNewClassic, ChartUsedClassic, gedaempft = gedaempft)
+        Design.COLOR_FAN -> ChartColors(ChartNewColorFan, ChartUsedColorFan, muted = muted)
+        // The web's orange (ChartUsedStud) reaches only 2.6:1 on white; as a line it needs 3:1.
+        Design.STUD, Design.GLOSSY -> ChartColors(ChartNewStud, ChartUsedStud.let { withContrast(it, s.surface, GRAPHIC_CONTRAST) },
+            raster = Color(0xFFE4E8EF), muted = muted)
+        Design.CLASSIC -> ChartColors(ChartNewClassic, ChartUsedClassic, muted = muted)
     }
 }
 
 /**
- * [systemfarben]: Material You — colors from the system, shapes and text from
+ * [systemColors]: Material You — colors from the system, shapes and text from
  * the design. The charts then take the scheme's roles so their colors match
  * the surface; the status colors stay, because profit must stay green.
  */
 @Composable
 fun BrickInventoryManagerTheme(
-    theme: Design = Design.DEFAULT, dunkel: Boolean = false, systemfarben: Boolean = false,
+    theme: Design = Design.DEFAULT, dark: Boolean = false, systemColors: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val isBrick = theme == Design.BRICK
     val context = androidx.compose.ui.platform.LocalContext.current
-    val dynamisch = systemfarben && android.os.Build.VERSION.SDK_INT >= SYSTEMFARBEN_AB_SDK
-    val colors = remember(theme, dunkel, dynamisch) {
-        if (dynamisch) systemSchema(context, dunkel) else farbschema(theme, dunkel)
+    val dynamic = systemColors && android.os.Build.VERSION.SDK_INT >= SYSTEM_COLORS_AB_SDK
+    val colors = remember(theme, dark, dynamic) {
+        if (dynamic) systemSchema(context, dark) else colorScheme(theme, dark)
     }
-    val chartColors = if (dynamisch) ChartColors(colors.primary, colors.tertiary, linie = colors.primary,
-        raster = colors.outlineVariant, gedaempft = colors.onSurfaceVariant)
-    else diagrammFarben(theme, dunkel, colors)
+    val chartColors = if (dynamic) ChartColors(colors.primary, colors.tertiary, line = colors.primary,
+        raster = colors.outlineVariant, muted = colors.onSurfaceVariant)
+    else chartColors(theme, dark, colors)
     // Dark system colors under a design with no dark version: the dark
     // status colors from classic, otherwise dark green would stand on a dark background.
-    val statusColors = if (dynamisch && dunkel && !hatDarkVersion(theme)) statusColorsFor(Design.CLASSIC, true)
-                       else statusColorsFor(theme, dunkel)
-    val brickDecor = if (dunkel && isBrick) darkBrickDecor().let { BrickDecor(Color(it.studs), Color(it.slate), Color(it.onSlate)) }
-                     else BrickDecor(SlateBlueNoppe, SlateBlue, Color.White)
+    val statusColors = if (dynamic && dark && !hasDarkVersion(theme)) statusColorsFor(Design.CLASSIC, true)
+                       else statusColorsFor(theme, dark)
+    val brickDecor = if (dark && isBrick) darkBrickDecor().let { BrickDecor(Color(it.studs), Color(it.slate), Color(it.onSlate)) }
+                     else BrickDecor(SlateBlueStud, SlateBlue, Color.White)
     CompositionLocalProvider(
         LocalIsBrickTheme provides isBrick,
-        LocalIsColorSlotsTheme provides (theme == Design.FARBFAECHER),
-        LocalIsStudTheme provides (theme == Design.NOPPE || theme == Design.HOCHGLANZ),
-        LocalIsGloss provides (theme == Design.HOCHGLANZ),
+        LocalIsColorSlotsTheme provides (theme == Design.COLOR_FAN),
+        LocalIsStudTheme provides (theme == Design.STUD || theme == Design.GLOSSY),
+        LocalIsGloss provides (theme == Design.GLOSSY),
         LocalChartColors  provides chartColors,
-        LocalStatusFarben provides statusColors,
+        LocalStatusColors provides statusColors,
         LocalBrickDecor provides brickDecor,
-        LocalAkzentflaechen provides akzentflaechen(theme, dunkel, colors),
+        LocalAccentSurfaces provides accentSurfaces(theme, dark, colors),
     ) {
         MaterialTheme(
             colorScheme = colors,
-            typography  = if (theme == Design.NOPPE || theme == Design.HOCHGLANZ) StudTypography else BrandsTypography,
+            typography  = if (theme == Design.STUD || theme == Design.GLOSSY) StudTypography else BrandsTypography,
             content     = content
         )
     }
 }
 
-/** Only call from Android 12 on ([SYSTEMFARBEN_AB_SDK]); the caller checks that. */
+/** Only call from Android 12 on ([SYSTEM_COLORS_AB_SDK]); the caller checks that. */
 @android.annotation.SuppressLint("NewApi")
-private fun systemSchema(context: android.content.Context, dunkel: Boolean): ColorScheme =
-    if (dunkel) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+private fun systemSchema(context: android.content.Context, dark: Boolean): ColorScheme =
+    if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

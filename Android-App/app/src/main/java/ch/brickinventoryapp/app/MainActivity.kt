@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.os.Bundle
 import android.widget.Toast
 import androidx.glance.appwidget.updateAll
-import ch.brickinventoryapp.app.widget.SammlungsWidget
+import ch.brickinventoryapp.app.widget.CollectionWidget
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -19,7 +19,7 @@ import androidx.compose.runtime.*
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.state.ui.AppViewModel
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.ui.theme.darstellung
+import ch.brickinventoryapp.ui.theme.appearance
 import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
 import androidx.compose.runtime.CompositionLocalProvider
@@ -33,10 +33,10 @@ import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import ch.brickinventoryapp.services.alarm.PriceAlertRepository
-import ch.brickinventoryapp.state.ui.Meldungseingang
+import ch.brickinventoryapp.state.ui.MessageInbox
 import ch.brickinventoryapp.ui.components.DevicesStepProtection
-import ch.brickinventoryapp.model.step.Schrittbindung
-import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.model.step.StepBinding
+import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.AppLock
 import ch.brickinventoryapp.ui.components.AppLockScreen
 import ch.brickinventoryapp.ui.components.AppOverviewProtection
@@ -49,58 +49,58 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import ch.brickinventoryapp.app.ui.components.UserCaDialog
 import ch.brickinventoryapp.ui.components.WithoutLockWarning
-import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
-import ch.brickinventoryapp.account.ui.screens.ZweiterFaktorPflichtMaske
-import ch.brickinventoryapp.state.ui.viewmodel.DarstellungViewModel
+import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
 import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.ActivityState
 import ch.brickinventoryapp.ui.util.SecretClipboard
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.network.util.Protokoll
+import ch.brickinventoryapp.network.util.AppLog
 import ch.brickinventoryapp.BuildConfig
 
 @AndroidEntryPoint
 class MainActivity : OnlyLauncherStart() {
     private val vm: AppViewModel by viewModels()
-    private val darstellung: DarstellungViewModel by viewModels()
-    private val vertrauen: VertrauenViewModel by viewModels()
-    private val selbstUpdate: UpdateViewModel by viewModels()
+    private val appearance: AppearanceViewModel by viewModels()
+    private val trust: TrustViewModel by viewModels()
+    private val selfUpdate: UpdateViewModel by viewModels()
     private val csvImport: CsvImportViewModel by viewModels()
 
     /** Fetched here once so that no destination searches the activity's ViewModelStore itself. */
     private fun activityState() = ActivityState(
-        app = vm, update = selbstUpdate, csvImport = csvImport, darstellung = darstellung, vertrauen = vertrauen,
+        app = vm, update = selfUpdate, csvImport = csvImport, appearance = appearance, trust = trust,
     )
 
     // Only for the mandatory forms (start password, second factor) that lie above everything.
     private val startAccountVm: AccountViewModel by viewModels()
 
-    // ImageLoader as a Hilt singleton from NetzModule — one instance per process instead of per
+    // ImageLoader as a Hilt singleton from NetworkModule — one instance per process instead of per
     // activity: otherwise every rotation would lose the memory cache, and two
     // DiskCache instances would run on the same directory.
     @Inject lateinit var imageLoader: ImageLoader
 
     /** Confirmation via device lock before sensitive steps; valid until the app goes to the background. */
-    private val schrittschutz by lazy {
+    private val stepGuard by lazy {
         DevicesStepProtection(this, noKey = {
-            android.widget.Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
+            android.widget.Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.step_no_key),
                 android.widget.Toast.LENGTH_LONG).show()
-        }, bindung = schrittbindung, abgelehnt = { meldung ->
+        }, binding = stepBinding, declined = { message ->
             // The server's sentence says what to do (sign in again, set up a screen lock).
-            Toast.makeText(this, meldung ?: LanguageManager.localizedContext(this).getString(R.string.schritt_server_fehler),
+            Toast.makeText(this, message ?: LanguageManager.localizedContext(this).getString(R.string.step_server_error),
                 Toast.LENGTH_LONG).show()
         }, withoutAttestation = {
-            Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.schritt_ohne_attestation),
+            Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.step_without_attestation),
                 Toast.LENGTH_LONG).show()
         }) {
             LanguageManager.localizedContext(this)
-                .getString(R.string.schritt_untertitel)
+                .getString(R.string.step_subtitle)
         }
     }
 
@@ -108,12 +108,12 @@ class MainActivity : OnlyLauncherStart() {
     private val appLock by lazy { AppLock(SystemClock::elapsedRealtime, AppLockStore(this)) { devicesStarts(this) } }
 
     /** Binds the step guard to the server (routes/api_v1/device.ts). */
-    @Inject lateinit var schrittbindung: Schrittbindung
+    @Inject lateinit var stepBinding: StepBinding
 
-    /** The target of a tapped notification; stored only by the non-exported MeldungsEinstieg. */
-    @Inject lateinit var meldungseingang: Meldungseingang
+    /** The target of a tapped notification; stored only by the non-exported MessageEntryPoint. */
+    @Inject lateinit var messageInbox: MessageInbox
 
-    @Inject lateinit var preisalarme: PriceAlertRepository
+    @Inject lateinit var priceAlarms: PriceAlertRepository
 
     /**
      * A tapped notification while the app is already running (singleTop). The
@@ -128,7 +128,7 @@ class MainActivity : OnlyLauncherStart() {
 
     /** Carries the stored set into the state — the NavHost picks it up there. */
     private fun adoptMessageTarget() {
-        vm.setFromMessageRequest(meldungseingang.abholen())
+        vm.setFromMessageRequest(messageInbox.pickUp())
     }
 
     /**
@@ -141,8 +141,8 @@ class MainActivity : OnlyLauncherStart() {
         appLock.inForeground()
         drawWidgetNew()
         lifecycleScope.launch {
-            fangeAusserAbbruch { preisalarme.pass() }
-                .onFailure { Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
+            catchUnlessCancelled { priceAlarms.pass() }
+                .onFailure { AppLog.warning("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
         }
     }
 
@@ -153,7 +153,7 @@ class MainActivity : OnlyLauncherStart() {
 
     override fun onStop() {
         super.onStop()
-        schrittschutz.vergiss()
+        stepGuard.forgetNow()
         appLock.inBackground()
         drawWidgetNew()
     }
@@ -164,12 +164,12 @@ class MainActivity : OnlyLauncherStart() {
      * A new server key from Android 16: the yes counts only after the screen lock (signature
      * of the app lock's key). The dialog stays open until then; cancelling changes nothing.
      */
-    private fun trustCertificate(frage: CertificateUnresolved, eingabe: String?): Boolean {
-        if (!frage.deviceConfirmationNeeded || !deviceSecure()) return vertrauen.trustCertificate(eingabe)
+    private fun trustCertificate(question: CertificateUnresolved, input: String?): Boolean {
+        if (!question.deviceConfirmationNeeded || !deviceSecure()) return trust.trustCertificate(input)
         val texts = LanguageManager.localizedContext(this)
-        unlockWithDevicesLock(this, texts.getString(R.string.zert_geraet_titel), frage.schluessel.substringBeforeLast(':')) {
+        unlockWithDevicesLock(this, texts.getString(R.string.cert_device_title), question.key.substringBeforeLast(':')) {
             // Without a lock unlockWithDevicesLock lets through unasked; then the transcript must count.
-            vertrauen.trustCertificate(eingabe, deviceConfirmed = deviceSecure())
+            trust.trustCertificate(input, deviceConfirmed = deviceSecure())
         }
         return true
     }
@@ -178,15 +178,15 @@ class MainActivity : OnlyLauncherStart() {
     private fun drawWidgetNew() {
         val ctx = applicationContext
         lifecycleScope.launch {
-            fangeAusserAbbruch { SammlungsWidget().updateAll(ctx) }
-                .onFailure { Protokoll.warnung("Widget", "Neuzeichnen fehlgeschlagen", it) }
+            catchUnlessCancelled { CollectionWidget().updateAll(ctx) }
+                .onFailure { AppLog.warning("Widget", "Neuzeichnen fehlgeschlagen", it) }
         }
     }
 
     /** From Android 10 an expired secret can be removed from the clipboard only with focus. */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) SecretClipboard.pruefe(this)
+        if (hasFocus) SecretClipboard.check(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -195,11 +195,11 @@ class MainActivity : OnlyLauncherStart() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // The app was closed: the MeldungsEinstieg stored the target before the start.
+        // The app was closed: the MessageEntryPoint stored the target before the start.
         adoptMessageTarget()
         // Register the device key right after the sign-in: later the server accepts none.
         lifecycleScope.launch {
-            vm.state.map { it.isLoggedIn }.distinctUntilChanged().filter { it }.collect { schrittschutz.bindAnServer() }
+            vm.state.map { it.isLoggedIn }.distinctUntilChanged().filter { it }.collect { stepGuard.bindAnServer() }
         }
 
         setContent {
@@ -207,82 +207,82 @@ class MainActivity : OnlyLauncherStart() {
             // the complete AppUiState at this place would have invalidated the root
             // of the composition on every state change
             // and recomposed the whole app through it.
-            val theme by darstellung.appTheme.collectAsStateWithLifecycle()
-            val helligkeit by darstellung.helligkeit.collectAsStateWithLifecycle()
-            val systemfarben by darstellung.systemfarben.collectAsStateWithLifecycle()
+            val theme by appearance.appTheme.collectAsStateWithLifecycle()
+            val brightness by appearance.brightness.collectAsStateWithLifecycle()
+            val systemColors by appearance.systemColors.collectAsStateWithLifecycle()
             // Via the privacy screen counter, so that a screen that sets it itself
             // does not cancel the user's wish when leaving.
-            val hidePreview by darstellung.hidePreview.collectAsStateWithLifecycle()
-            if (hidePreview) Sichtschutz(coverage = false)
+            val hidePreview by appearance.hidePreview.collectAsStateWithLifecycle()
+            if (hidePreview) PrivacyShield(coverage = false)
             AppOverviewProtection(appLock)
-            val view = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
-            BrickInventoryManagerTheme(theme = view.design, dunkel = view.dunkel, systemfarben = view.systemfarben) {
+            val view = appearance(theme, brightness, isSystemInDarkTheme(), systemColors, android.os.Build.VERSION.SDK_INT)
+            BrickInventoryManagerTheme(theme = view.design, dark = view.dark, systemColors = view.systemColors) {
                 // Only this module knows the version; the areas read it here.
                 CompositionLocalProvider(
                     LocalAppVersion provides AppVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
-                    LocalSchrittschutz provides schrittschutz,
+                    LocalStepGuard provides stepGuard,
                     LocalAppLock provides appLock,
                 ) { KeyboardWithoutLearn {
                     // App-wide: voucher number and PIN, passwords, codes and
                     // invitations; the keyboard therefore does not learn set names either.
-                    val gesperrt by appLock.gesperrt.collectAsStateWithLifecycle()
+                    val locked by appLock.locked.collectAsStateWithLifecycle()
                     // Locked, TalkBack reads nothing underneath either.
-                    Box(if (gesperrt) Modifier.clearAndSetSemantics {} else Modifier) {
+                    Box(if (locked) Modifier.clearAndSetSemantics {} else Modifier) {
                         BrickInventoryRoute(activityState(), imageLoader)
                     }
                     // Without a screen lock the step guard asks here instead of silently letting through.
-                    WithoutLockWarning(schrittschutz.withoutLock)
+                    WithoutLockWarning(stepGuard.withoutLock)
                     // With a start password the server rejects everything: only the form until it is replaced.
-                    val startpasswort by vm.startPasswordNeeded.collectAsStateWithLifecycle()
+                    val startPassword by vm.startPasswordNeeded.collectAsStateWithLifecycle()
                     // Initial value false: the form appears only with both states,
                     // and Lint forbids StateFlow.value in the composition.
-                    val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
+                    val loggedIn by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
                         .collectAsStateWithLifecycle(false)
                     // Likewise admin rights without a second factor; the start password comes first.
                     val factorRequired by vm.secondFactorNeeded.collectAsStateWithLifecycle()
-                    if (startpasswort && angemeldet) {
-                        val kontoZustand by startAccountVm.kontoState.collectAsStateWithLifecycle()
+                    if (startPassword && loggedIn) {
+                        val accountUiState by startAccountVm.accountState.collectAsStateWithLifecycle()
                         StartPasswordMask(
-                            kontoZustand = kontoZustand,
-                            onReplace = { alt, neu, code -> startAccountVm.aenderePasswort(alt, neu, code) },
-                            onAbmelden = { vm.logout() },
+                            accountUiState = accountUiState,
+                            onReplace = { old, newValue, code -> startAccountVm.changePassword(old, newValue, code) },
+                            onLogout = { vm.logout() },
                         )
-                    } else if (factorRequired && angemeldet) {
+                    } else if (factorRequired && loggedIn) {
                         val factorState by startAccountVm.secondFactorState.collectAsStateWithLifecycle()
-                        ZweiterFaktorPflichtMaske(
-                            zustand = factorState,
-                            onEinrichten = startAccountVm::setUpSecondFactorOne,
-                            onBestaetigen = startAccountVm::bestaetigeZweitenFaktor,
-                            onWeiter = { startAccountVm.secondFactorBack(); vm.secondFactorConfigured() },
-                            onAbmelden = { startAccountVm.secondFactorBack(); vm.logout() },
+                        SecondFactorRequiredMask(
+                            condition = factorState,
+                            onSetUp = startAccountVm::setUpSecondFactorOne,
+                            onConfirm = startAccountVm::confirmSecondFactor,
+                            onNext = { startAccountVm.secondFactorBack(); vm.secondFactorConfigured() },
+                            onLogout = { startAccountVm.secondFactorBack(); vm.logout() },
                         )
                     }
                     // Above everything: any fetch can hit an unknown certificate.
-                    val zertifikat by vertrauen.zertifikat.collectAsStateWithLifecycle()
-                    val userCa by vertrauen.userCa.an.collectAsStateWithLifecycle()
-                    zertifikat?.let { frage ->
+                    val certificate by trust.certificate.collectAsStateWithLifecycle()
+                    val userCa by trust.userCa.an.collectAsStateWithLifecycle()
+                    certificate?.let { question ->
                         CertificateDialog(
-                            frage = frage,
-                            userCaAn = userCa,
-                            trustOn = { eingabe -> trustCertificate(frage, eingabe) },
-                            onNutzerCa = { vertrauen.userCa.requests(); vertrauen.discardCertificate() },
-                            onAbbrechen = vertrauen::discardCertificate,
+                            question = question,
+                            userCaEnabled = userCa,
+                            trustOn = { input -> trustCertificate(question, input) },
+                            onUserCa = { trust.userCa.requests(); trust.discardCertificate() },
+                            onCancel = trust::discardCertificate,
                             deviceSecure = deviceSecure(),
                         )
                     }
                     // Here and not in the settings: the certificate dialog asks too.
-                    val userCaQuestion by vertrauen.userCa.frage.collectAsStateWithLifecycle()
+                    val userCaQuestion by trust.userCa.question.collectAsStateWithLifecycle()
                     if (userCaQuestion) {
                         UserCaDialog(
-                            onJa = vertrauen.userCa::bestaetigen,
-                            onAbbrechen = vertrauen.userCa::abbrechen,
+                            onYes = trust.userCa::confirm,
+                            onCancel = trust.userCa::cancel,
                         )
                     }
                     // Topmost: the app lock also covers the mandatory forms.
-                    if (gesperrt) AppLockScreen {
+                    if (locked) AppLockScreen {
                         val texts = LanguageManager.localizedContext(this@MainActivity)
-                        unlockWithDevicesLock(this@MainActivity, texts.getString(R.string.app_sperre_gesperrt),
-                            texts.getString(R.string.schritt_untertitel)) { appLock.entsperrt(); drawWidgetNew() }
+                        unlockWithDevicesLock(this@MainActivity, texts.getString(R.string.app_lock_locked),
+                            texts.getString(R.string.step_subtitle)) { appLock.unlocked(); drawWidgetNew() }
                     }
                 } }
             }

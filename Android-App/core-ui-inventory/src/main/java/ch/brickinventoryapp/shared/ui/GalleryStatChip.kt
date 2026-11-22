@@ -12,8 +12,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.components.largeFont
 
@@ -23,24 +23,24 @@ import ch.brickinventoryapp.ui.components.largeFont
  * plural, otherwise it read „1 Exemplare“; read out together as one finding.
  */
 @Composable
-fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
-    val zahl = fmtInt(anzahl)
-    val text = pluralStringResource(plural, anzahl, zahl)
+fun GalleryStatChip(count: Int, plural: Int, detail: String? = null) {
+    val number = fmtInt(count)
+    val text = pluralStringResource(plural, count, number)
     // With large text, the breakdown goes on its own row: in the row it broke
     // right in the middle of the parenthesis („40 /einzeln“).
     val separator = if (largeFont()) "\n(" else "\u2002("
     // The breakdown small in the same row: as a second row below, the
     // key figure was wider than its value and left a gap before the next one.
-    val klein = MaterialTheme.typography.labelSmall.fontSize
-    val place = text.indexOf(zahl)
+    val small = MaterialTheme.typography.labelSmall.fontSize
+    val place = text.indexOf(number)
     Text(
         buildAnnotatedString {
             if (place < 0) append(text) else {
                 append(text, 0, place)
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) { append(zahl) }
-                append(text, place + zahl.length, text.length)
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) { append(number) }
+                append(text, place + number.length, text.length)
             }
-            if (detail != null) withStyle(SpanStyle(fontSize = klein)) {
+            if (detail != null) withStyle(SpanStyle(fontSize = small)) {
                 append(separator); append(detail.split(DIVIDER).joinToString(DIVIDER) { inseparable(it) }); append(')')
             }
         },
@@ -63,13 +63,13 @@ private const val DIVIDER = " · "
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MetricsSeries(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {
-    Surface(modifier.fillMaxWidth(), shape = Formen.leiste, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+fun MetricsSeries(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Surface(modifier.fillMaxWidth(), shape = Shapes.bar, color = MaterialTheme.colorScheme.surfaceContainerLow) {
         FlowRow(
-            Modifier.padding(horizontal = Abstaende.edge, vertical = Abstaende.klein),
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.tiny),
-        ) { inhalt() }
+            Modifier.padding(horizontal = Spacing.edge, vertical = Spacing.small),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.large),
+            verticalArrangement = Arrangement.spacedBy(Spacing.tiny),
+        ) { content() }
     }
 }
 
@@ -78,7 +78,7 @@ fun MetricsSeries(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit)
  * there are individually captured parts; otherwise the row would just be the number above it again.
  */
 @Composable
-fun partsBreakdown(fromSets: Int?, einzeln: Int?): String? =
-    if (fromSets != null && einzeln != null && einzeln > 0)
-        stringResource(R.string.parts_breakdown, fmtInt(fromSets), fmtInt(einzeln))
+fun partsBreakdown(fromSets: Int?, single: Int?): String? =
+    if (fromSets != null && single != null && single > 0)
+        stringResource(R.string.parts_breakdown, fmtInt(fromSets), fmtInt(single))
     else null

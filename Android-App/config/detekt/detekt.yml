@@ -54,7 +54,7 @@ naming:
     variablePattern: '(_)?([a-z][A-Za-z0-9]*|[A-Z][A-Z0-9_]*)'
     privateVariablePattern: '(_)?([a-z][A-Za-z0-9]*|[A-Z][A-Z0-9_]*)'
   MatchingDeclarationName:
-    # Dateien heissen nach ihrem Bereich (ZustandKatalog.kt), nicht nach der
+    # Dateien heissen nach ihrem Bereich (CatalogStates.kt), nicht nach der
     # ersten Klasse darin.
     active: false
 
@@ -141,4 +141,4 @@ formatting:
   NoConsecutiveBlankLines:
     # Die beiden Dateien schreibt `npm run design:tokens` (Web-App); ihre Form
     # prüft design-transcript.test.js Zeichen für Zeichen.
-    excludes: ['**/ui/theme/DesignTokens.kt', '**/ui/theme/DunkelTokens.kt']
+    excludes: ['**/ui/theme/DesignTokens.kt', '**/ui/theme/DarkTokens.kt']

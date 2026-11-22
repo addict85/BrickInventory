@@ -15,7 +15,7 @@
  *      body of the app is the generated body of its route” (dead body)
  *   E  (05.11.2026) in the contract the query of GET /api/v1/sets without `page_size` → red:
  *      “every query parameter of the app is in the contract”
- *   F  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") → red: “every error code
+ *   F  in ErrorCode.kt BARCODE_KEIN_SET("barcode_kein_satz") → red: “every error code
  *      of the app is in the contract” names barcode_kein_satz
  *   G  (14.11.2026) in KontoApi.kt "api/v1/settings/default-condition" with an appended x →
  *      red: “shared/app-schnittstelle.json is up to date” (and “every route of the app …”)
@@ -138,10 +138,10 @@ test('every error code of the app is in the contract', () => {
     'brickinventoryapp',
     'model',
     'domain',
-    'Fehlercode.kt',
+    'ErrorCode.kt',
   );
   const kennungen = kotlinFehlercodes(datei);
-  assert.ok(kennungen.length >= 10, `nur ${kennungen.length} Fehlercodes in Fehlercode.kt gelesen`);
+  assert.ok(kennungen.length >= 10, `nur ${kennungen.length} Fehlercodes in ErrorCode.kt gelesen`);
   const imVertrag = new Set(dok.components.schemas.Fehlercode?.enum ?? []);
   assert.deepEqual(
     kennungen.filter(k => !imVertrag.has(k)),

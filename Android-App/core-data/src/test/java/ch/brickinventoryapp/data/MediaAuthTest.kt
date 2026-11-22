@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Images and PDFs need sign-in on the server side — the app must send it
@@ -30,11 +30,11 @@ class MediaAuthTest {
         // Lower bound: all checks here run over their
         // own file walk and collect violations. If it found nothing, they would
         // all be green without having checked anything.
-        check(Quellen.alle().size >= 60) { "Zu wenige Kotlin-Dateien — Pfad veraltet?" }
+        check(Sources.all().size >= 60) { "Zu wenige Kotlin-Dateien — Pfad veraltet?" }
     }
 
     private fun read(rel: String): String {
-        val f = File(Quellen.root, "$rel")
+        val f = File(Sources.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -50,7 +50,7 @@ class MediaAuthTest {
     fun `images are not loaded bypassing the ImageLoader`() {
         // An own HttpURLConnection or OkHttp call for images would not have the
         // interceptor and would thus run without a token.
-        for (rel in Quellen.root.walkTopDown()
+        for (rel in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
             assert(!src.contains("HttpURLConnection")) {
@@ -59,7 +59,7 @@ class MediaAuthTest {
         }
     }
 
-    // That signing out clears the image cache is checked, executed, by SignOutCleansEverythingTest (app).
+    // That signing out clears the image cache is checked, executed, by LogoutCleansEverythingTest (app).
 
     // ── PDFs ─────────────────────────────────────────────────────────────────
 
@@ -82,13 +82,13 @@ class MediaAuthTest {
         val actions = viewer.substringAfter("actions = {").substringBefore("            )")
         // Both buttons work on the loaded source of the Ready state and may
         // only be visible there. The field is read from Ready, not named fixed.
-        // Counter-check: gegenproben/pdf-download-ausserhalb-ready.patch → red here.
-        val zustand = code(read("finances/ui/pdf/PdfQuelle.kt"))
-        val feld = Regex("""class Ready\(val (\w+): \w+,""").find(zustand)?.groupValues?.get(1)
-        assert(feld != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
+        // Counter-check: counter-checks/pdf-download-ausserhalb-ready.patch → red here.
+        val condition = code(read("finances/ui/pdf/PdfSource.kt"))
+        val field = Regex("""class Ready\(val (\w+): \w+,""").find(condition)?.groupValues?.get(1)
+        assert(field != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
         assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready-Prüfung fehlt" }
         val ready = actions.substringAfter("if (s is PdfLoadState.Ready)")
-        assert(ready.contains("savePdfToDownloads(ctx, s.$feld, title)")) {
+        assert(ready.contains("savePdfToDownloads(ctx, s.$field, title)")) {
             "Der Herunterladen-Knopf muss innerhalb des Ready-Zweigs stehen — " +
             "vorher stand er ausserhalb und lud eigenständig neu"
         }
@@ -96,11 +96,11 @@ class MediaAuthTest {
 
     @Test
     fun `the display itself runs via the authenticated client`() {
-        // Loading happens in the data layer (AnleitungsRepository), not in the screen.
-        val viewer = code(read("data/AnleitungsRepository.kt"))
+        // Loading happens in the data layer (InstructionRepository), not in the screen.
+        val viewer = code(read("data/InstructionRepository.kt"))
         // What is checked is the statement, not the wording of the call: the download runs
         // via the injected client, no matter how the arguments wrap.
-        val call = Quellen.fenster(viewer, "downloadPdfWithResume(", 8)
+        val call = Sources.window(viewer, "downloadPdfWithResume(", 8)
         assert(call.isNotEmpty()) { "Der Download-Aufruf fehlt ganz" }
         assert(call.contains("httpClient")) {
             "Das PDF muss über den injizierten OkHttpClient geladen werden, nicht frei"
@@ -121,7 +121,7 @@ class MediaAuthTest {
         // (/images/parts/, /images/minifigs/) instead of together in
         // /data/part_images/. The address comes ready from the API — whoever
         // assembles it themselves breaks at the next re-sorting.
-        for (rel in Quellen.root.walkTopDown()
+        for (rel in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
             assert(!src.contains("/data/part_images") && !src.contains("instructions/shared")) {
@@ -143,7 +143,7 @@ class MediaAuthTest {
         // PdfExportManager for the retry loop), the when lacks the
         // null case. The temptation is then an else — exactly that shall stand
         // out here. Correct is an explicit `null ->` branch.
-        for (f in Quellen.root.walkTopDown()
+        for (f in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             var idx = src.indexOf("is Ergebnis.Erfolg")
@@ -160,8 +160,8 @@ class MediaAuthTest {
                 // flagged and could only be fixed by pointless rebuilding of the
                 // code.
                 val nextWhen = body.indexOf("when ", 1)
-                val bereich = if (nextWhen > 0) body.substring(0, nextWhen) else body
-                assert(!bereich.contains("else ->")) {
+                val area = if (nextWhen > 0) body.substring(0, nextWhen) else body
+                assert(!area.contains("else ->")) {
                     "${f.name}: else-Zweig in einem when über Result — " +
                     "stattdessen einen expliziten null-Zweig ergänzen"
                 }
@@ -176,7 +176,7 @@ class MediaAuthTest {
         // which does not attach the bearer token; the server then answers with 401,
         // and the area stays empty without an error message.
         val offenders = mutableListOf<String>()
-        for (f in Quellen.root.walkTopDown()
+        for (f in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             var i = src.indexOf("AsyncImage(")
@@ -199,7 +199,7 @@ class MediaAuthTest {
     fun `no UNUSED_PARAMETER suppress on an ImageLoader`() {
         // The suppress was the symptom: it removed the warning that would have
         // pointed to exactly this error.
-        for (f in Quellen.root.walkTopDown()
+        for (f in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             assert(!Regex("""@Suppress\("UNUSED_PARAMETER"\)\s*imageLoader""").containsMatchIn(src)) {

@@ -5,7 +5,7 @@ import ch.brickinventoryapp.contract.AcquisitionsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * The surfaces do not calculate — they display. Totals and key figures come from the
@@ -19,7 +19,7 @@ import ch.brickinventoryapp.testing.Quellen
 class ServerComputedValuesTest {
 
     private fun read(rel: String) =
-        File(Quellen.root, "$rel").readText()
+        File(Sources.root, "$rel").readText()
 
     /** Hide comments line by line — otherwise the own explanatory text keeps the check green. */
     private fun code(s: String) = s.lines()
@@ -53,18 +53,18 @@ class ServerComputedValuesTest {
      */
     @Test
     fun `the response carries the total, with a safe default`() {
-        val neu = BrickJson.decodeFromString(AcquisitionsResponse.serializer(),
+        val newValue = BrickJson.decodeFromString(AcquisitionsResponse.serializer(),
             """{"success":true,"acquisitions":[],"totals":{"quantity":3,"amount":42.5,"priced_rows":2}}""")
-        assertEquals(3, neu.totals.quantity)
-        assertEquals(42.5, neu.totals.amount ?: 0.0, 0.0)
+        assertEquals(3, newValue.totals.quantity)
+        assertEquals(42.5, newValue.totals.amount ?: 0.0, 0.0)
         // Older server versions send no total; the response does not fail because of it.
-        val alt = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), """{"success":true,"acquisitions":[]}""")
-        assertEquals(0, alt.totals.quantity)
+        val old = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), """{"success":true,"acquisitions":[]}""")
+        assertEquals(0, old.totals.quantity)
     }
 
     @Test
     fun `the minifigure tiles come from the server, not from the filtered list`() {
-        val s = code(Quellen.bildschirm("parts/ui/screens/MinifigsScreen.kt"))
+        val s = code(Sources.screen("parts/ui/screens/MinifigsScreen.kt"))
         for (pattern in listOf("figs.size", "figs.sumOf", "figs.count")) {
             assert(!s.contains(pattern)) {
                 "MinifigsScreen rechnet die Kacheln aus `figs` ($pattern). Diese Liste ist " +

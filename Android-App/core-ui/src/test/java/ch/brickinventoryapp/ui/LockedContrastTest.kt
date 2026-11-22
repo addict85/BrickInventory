@@ -6,10 +6,10 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.ui.theme.fensterFlaeche
-import ch.brickinventoryapp.ui.theme.farbschema
+import ch.brickinventoryapp.ui.theme.windowSurface
+import ch.brickinventoryapp.ui.theme.colorScheme
 import ch.brickinventoryapp.ui.theme.lockedColors
-import ch.brickinventoryapp.ui.theme.hatDarkVersion
+import ch.brickinventoryapp.ui.theme.hasDarkVersion
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -26,44 +26,44 @@ import org.junit.Test
 class LockedContrastTest {
 
     private val versions: List<Pair<String, ColorScheme>> =
-        Design.entries.map { it.kennung to farbschema(it) } +
-            Design.entries.filter { hatDarkVersion(it) }.map { "${it.kennung}/dunkel" to farbschema(it, dunkel = true) }
+        Design.entries.map { it.identifier to colorScheme(it) } +
+            Design.entries.filter { hasDarkVersion(it) }.map { "${it.identifier}/dunkel" to colorScheme(it, dark = true) }
 
-    private fun k(a: Color, b: Color) = Contrast.verhaeltnis(a.toArgb(), b.toArgb())
+    private fun k(a: Color, b: Color) = Contrast.ratio(a.toArgb(), b.toArgb())
 
     @Test
     fun `disabled buttons keep 4,5 to 1 for text and 3 to 1 for surface and border`() {
-        val fehler = mutableListOf<String>()
+        val error = mutableListOf<String>()
         for ((name, s) in versions) {
             val g = lockedColors(s)
-            if (k(g.aufFlaeche, g.flaeche) < TEXT) fehler += "$name Schrift/Fläche %.2f".format(k(g.aufFlaeche, g.flaeche))
-            for ((grund, farbe) in listOf("surface" to s.surface, "background" to s.background)) {
-                if (k(g.flaeche, farbe) < GRAPHIC) fehler += "$name Fläche/$grund %.2f".format(k(g.flaeche, farbe))
-                if (k(g.edge, farbe) < GRAPHIC) fehler += "$name Rand/$grund %.2f".format(k(g.edge, farbe))
-                if (k(g.schrift, farbe) < TEXT) fehler += "$name Schrift/$grund %.2f".format(k(g.schrift, farbe))
+            if (k(g.onSurface, g.surface) < TEXT) error += "$name Schrift/Fläche %.2f".format(k(g.onSurface, g.surface))
+            for ((reason, color) in listOf("surface" to s.surface, "background" to s.background)) {
+                if (k(g.surface, color) < GRAPHIC) error += "$name Fläche/$reason %.2f".format(k(g.surface, color))
+                if (k(g.edge, color) < GRAPHIC) error += "$name Rand/$reason %.2f".format(k(g.edge, color))
+                if (k(g.font, color) < TEXT) error += "$name Schrift/$reason %.2f".format(k(g.font, color))
             }
         }
-        assertTrue("Gesperrte Knöpfe zu blass: $fehler", fehler.isEmpty())
+        assertTrue("Gesperrte Knöpfe zu blass: $error", error.isEmpty())
     }
 
     @Test
     fun `dialog text keeps 4,5 to 1 and the dialog stands out with 3 to 1 from the background`() {
-        val fehler = mutableListOf<String>()
+        val error = mutableListOf<String>()
         for ((name, s) in versions) {
-            val flaeche = fensterFlaeche(s)
-            for ((rolle, farbe) in listOf("onSurface" to s.onSurface, "onSurfaceVariant" to s.onSurfaceVariant,
+            val surface = windowSurface(s)
+            for ((role, color) in listOf("onSurface" to s.onSurface, "onSurfaceVariant" to s.onSurfaceVariant,
                                           "primary" to s.primary, "error" to s.error)) {
-                if (k(farbe, flaeche) < TEXT) fehler += "$name $rolle %.2f".format(k(farbe, flaeche))
+                if (k(color, surface) < TEXT) error += "$name $role %.2f".format(k(color, surface))
             }
             // Behind the dialog: the page under the window's dimming. Only in the light: in the
             // dark the dimming barely carries, there the tone value is the deciding factor (open, no finding).
             if (s.surface.luminance() < 0.5f) continue
-            for ((grund, farbe) in listOf("surface" to s.surface, "background" to s.background)) {
-                val behind = Color.Black.copy(alpha = DIMMING).compositeOver(farbe)
-                if (k(flaeche, behind) < GRAPHIC) fehler += "$name Dialog/$grund %.2f".format(k(flaeche, behind))
+            for ((reason, color) in listOf("surface" to s.surface, "background" to s.background)) {
+                val behind = Color.Black.copy(alpha = DIMMING).compositeOver(color)
+                if (k(surface, behind) < GRAPHIC) error += "$name Dialog/$reason %.2f".format(k(surface, behind))
             }
         }
-        assertTrue("Dialoge zu blass: $fehler", fehler.isEmpty())
+        assertTrue("Dialoge zu blass: $error", error.isEmpty())
     }
 
     private companion object {

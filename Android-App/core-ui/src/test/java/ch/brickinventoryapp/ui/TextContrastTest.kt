@@ -5,11 +5,11 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.ui.theme.ChartColors
-import ch.brickinventoryapp.ui.theme.StatusFarben
-import ch.brickinventoryapp.ui.theme.akzentflaechen
-import ch.brickinventoryapp.ui.theme.diagrammFarben
-import ch.brickinventoryapp.ui.theme.farbschema
-import ch.brickinventoryapp.ui.theme.hatDarkVersion
+import ch.brickinventoryapp.ui.theme.StatusColors
+import ch.brickinventoryapp.ui.theme.accentSurfaces
+import ch.brickinventoryapp.ui.theme.chartColors
+import ch.brickinventoryapp.ui.theme.colorScheme
+import ch.brickinventoryapp.ui.theme.hasDarkVersion
 import ch.brickinventoryapp.ui.theme.tabColors
 import ch.brickinventoryapp.ui.theme.statusColorsFor
 import org.junit.Assert.assertTrue
@@ -26,18 +26,18 @@ import org.junit.Test
  *      noppe.primary/background 4.44, onError/error in all dark versions 4.48;
  *      the third red with noppe 0.03 and noppe/dunkel 0.13.
  *   B  brick.onSurfaceVariant back to #6B7785 → red (3.91 on background)
- *   C  noppe.primary back to NoppeRot → red: „Hauptfarbe zu nah …“ (0.13)
+ *   C  noppe.primary back to StudRed → red: „Hauptfarbe zu nah …“ (0.13)
  *
  * Chart colors:
- *   D  gedaempft hardcoded back to #94A3B8 in diagrammFarben() → red „Diagrammschrift …“
+ *   D  gedaempft hardcoded back to #94A3B8 in chartColors() → red „Diagrammschrift …“
  *      with classic 2.56 on surface and 2.07 on surfaceContainerHighest
  *
  * Accent surfaces:
- *   E  the brick surfaces also in the dark in akzentflaechen() (as before M5: bars in
+ *   E  the brick surfaces also in the dark in accentSurfaces() (as before M5: bars in
  *      primary/secondary, market value petrol) → red „im Dunkeln leuchtet …“ with
- *      brick/dunkel.leiste 0.45, .detailLeiste 0.63, .markt 0.17
+ *      brick/dunkel.leiste 0.45, .detailBar 0.63, .markt 0.17
  *
- * Counter-checks for the color roles (thema.py against Compose Desktop; patches under gegenproben/):
+ * Counter-checks for the color roles (thema.py against Compose Desktop; patches under counter-checks/):
  *   container-ohne-stauchung   → red classic.primary/surfaceContainerHighest 4.18
  *   primarycontainer-blau50    → red classic.primary/primaryContainer 4.24
  *   inverseprimary-ungeprueft  → red farbfaecher.inversePrimary/inverseSurface 3.73
@@ -49,13 +49,13 @@ class TextContrastTest {
 
     private val designs = Design.entries
 
-    private data class Fassung(val name: String, val s: ColorScheme, val status: StatusFarben, val chart: ChartColors)
+    private data class Version(val name: String, val s: ColorScheme, val status: StatusColors, val chart: ChartColors)
 
-    private val versions: List<Fassung> = designs.map {
-        Fassung(it.kennung, farbschema(it), statusColorsFor(it), diagrammFarben(it, false, farbschema(it)))
-    } + designs.filter { hatDarkVersion(it) }.map {
-        val s = farbschema(it, dunkel = true)
-        Fassung("${it.kennung}/dunkel", s, statusColorsFor(it, dunkel = true), diagrammFarben(it, true, s))
+    private val versions: List<Version> = designs.map {
+        Version(it.identifier, colorScheme(it), statusColorsFor(it), chartColors(it, false, colorScheme(it)))
+    } + designs.filter { hasDarkVersion(it) }.map {
+        val s = colorScheme(it, dark = true)
+        Version("${it.identifier}/dunkel", s, statusColorsFor(it, dark = true), chartColors(it, true, s))
     }
 
     /**
@@ -65,19 +65,19 @@ class TextContrastTest {
      */
     @Test
     fun `chart text and lines are readable`() {
-        val fehler = versions.flatMap { f ->
+        val error = versions.flatMap { f ->
             val s = f.s; val d = f.chart
             val surfaces = listOf("surface" to s.surface, "background" to s.background,
                 "surfaceContainerHighest" to s.surfaceContainerHighest)
-            surfaces.mapNotNull { (n, fl) -> k(d.gedaempft, fl).takeIf { it < 4.5 }?.let { "${f.name}.gedaempft/$n %.2f".format(it) } } +
-                listOf("linie" to d.linie, "neu" to d.new, "gebraucht" to d.used).mapNotNull { (n, c) ->
+            surfaces.mapNotNull { (n, fl) -> k(d.muted, fl).takeIf { it < 4.5 }?.let { "${f.name}.gedaempft/$n %.2f".format(it) } } +
+                listOf("linie" to d.line, "neu" to d.new, "gebraucht" to d.used).mapNotNull { (n, c) ->
                     k(c, s.surface).takeIf { it < Contrast.FRAME }?.let { "${f.name}.$n/surface %.2f".format(it) } }
         }
-        assertTrue("Diagrammschrift oder -linie zu schwach: $fehler", fehler.isEmpty())
+        assertTrue("Diagrammschrift oder -linie zu schwach: $error", error.isEmpty())
     }
 
     /** Text on surface, the way Material3 pairs the roles; plus text in main, error and profit color. */
-    private fun textPairs(f: Fassung): Map<String, Pair<Color, Color>> {
+    private fun textPairs(f: Version): Map<String, Pair<Color, Color>> {
         val s = f.s
         val surfaces = mapOf("surface" to s.surface, "background" to s.background,
             "surfaceVariant" to s.surfaceVariant, "surfaceContainerLow" to s.surfaceContainerLow,
@@ -94,8 +94,8 @@ class TextContrastTest {
             pairs["error/$n"] = s.error to fl
         }
         for (n in listOf("surface", "background", "surfaceContainer")) {
-            pairs["erfolg/$n"] = f.status.erfolg to surfaces.getValue(n)
-            pairs["fehler/$n"] = f.status.fehler to surfaces.getValue(n)
+            pairs["erfolg/$n"] = f.status.success to surfaces.getValue(n)
+            pairs["fehler/$n"] = f.status.error to surfaces.getValue(n)
         }
         pairs["primary/primaryContainer"] = s.primary to s.primaryContainer
         pairs["inversePrimary/inverseSurface"] = s.inversePrimary to s.inverseSurface
@@ -111,20 +111,20 @@ class TextContrastTest {
         return pairs
     }
 
-    private fun k(a: Color, b: Color) = Contrast.verhaeltnis(a.toArgb(), b.toArgb())
+    private fun k(a: Color, b: Color) = Contrast.ratio(a.toArgb(), b.toArgb())
 
-    private fun accent(f: Fassung) = akzentflaechen(checkNotNull(Design.aus(f.name.substringBefore('/'))), f.name.endsWith("/dunkel"), f.s)
+    private fun accent(f: Version) = accentSurfaces(checkNotNull(Design.from(f.name.substringBefore('/'))), f.name.endsWith("/dunkel"), f.s)
 
     /** App bars and value tiles: text on their surface like any other role. */
     @Test
     fun `bars and value tiles carry readable text`() {
-        val fehler = versions.flatMap { f ->
+        val error = versions.flatMap { f ->
             val a = accent(f)
-            listOf("leiste" to (a.onBar to a.leiste), "detailLeiste" to (a.onDetailBar to a.detailLeiste),
-                "markt" to (a.onMarket to a.markt), "kauf" to (a.onPurchase to a.kauf))
+            listOf("leiste" to (a.onBar to a.bar), "detailBar" to (a.onDetailBar to a.detailBar),
+                "markt" to (a.onMarket to a.market), "kauf" to (a.onPurchase to a.purchase))
                 .mapNotNull { (n, p) -> k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) } }
         }
-        assertTrue("Unter 4,5:1: $fehler", fehler.isEmpty())
+        assertTrue("Unter 4,5:1: $error", error.isEmpty())
     }
 
     /**
@@ -134,67 +134,67 @@ class TextContrastTest {
      */
     @Test
     fun `in the dark no bar and no tile glows`() {
-        val fehler = versions.filter { it.name.endsWith("/dunkel") || it.name == "werkbank" }.flatMap { f ->
+        val error = versions.filter { it.name.endsWith("/dunkel") || it.name == "werkbank" }.flatMap { f ->
             val a = accent(f)
-            listOf("leiste" to a.leiste, "detailLeiste" to a.detailLeiste, "markt" to a.markt, "kauf" to a.kauf)
+            listOf("leiste" to a.bar, "detailBar" to a.detailBar, "markt" to a.market, "kauf" to a.purchase)
                 .mapNotNull { (n, c) -> Contrast.luminance(c.toArgb()).takeIf { it > 0.1 }?.let { "${f.name}.$n %.2f".format(it) } }
         }
-        assertTrue("Helle Fläche im Dunkeln: $fehler", fehler.isEmpty())
+        assertTrue("Helle Fläche im Dunkeln: $error", error.isEmpty())
     }
 
     /** The market value is the detail page's most important value; its tile stands out more than the purchase price. */
     @Test
     fun `the market value tile is more prominent than the purchase price tile`() {
-        val fehler = versions.mapNotNull { f ->
+        val error = versions.mapNotNull { f ->
             val a = accent(f)
-            val markt = k(a.markt, f.s.surface); val kauf = k(a.kauf, f.s.surface)
-            if (markt < kauf * 1.2) "${f.name} %.2f gegen %.2f".format(markt, kauf) else null
+            val market = k(a.market, f.s.surface); val purchase = k(a.purchase, f.s.surface)
+            if (market < purchase * 1.2) "${f.name} %.2f gegen %.2f".format(market, purchase) else null
         }
-        assertTrue("Kaufpreis-Kachel kräftiger als der Marktwert: $fehler", fehler.isEmpty())
+        assertTrue("Kaufpreis-Kachel kräftiger als der Marktwert: $error", error.isEmpty())
     }
 
     @Test
     fun `every text role reaches 4,5 to 1 on its surface`() {
-        val fehler = versions.flatMap { f ->
+        val error = versions.flatMap { f ->
             textPairs(f).mapNotNull { (n, p) -> k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) } }
         }
-        assertTrue("Unter 4,5:1: $fehler", fehler.isEmpty())
+        assertTrue("Unter 4,5:1: $error", error.isEmpty())
     }
 
     /** The navigation's selected destination is recognizable by its indicator's surface, not only by its hue. */
     @Test
     fun `the indicator of the selected tab stands out from bar and side bar`() {
-        val fehler = versions.flatMap { f ->
+        val error = versions.flatMap { f ->
             val r = tabColors(f.s)
-            listOf("leiste" to r.leiste, "seitenleiste" to f.s.surface).mapNotNull { (n, fl) ->
-                k(r.anzeige, fl).takeIf { it < Contrast.FRAME }?.let { "${f.name}.anzeige/$n %.2f".format(it) }
-            } + listOf("aufAnzeige" to (r.aufAnzeige to r.anzeige), "gewaehlt" to (r.gewaehlt to r.leiste),
-                "ungewaehlt" to (r.ungewaehlt to r.leiste)).mapNotNull { (n, p) ->
+            listOf("leiste" to r.bar, "seitenleiste" to f.s.surface).mapNotNull { (n, fl) ->
+                k(r.display, fl).takeIf { it < Contrast.FRAME }?.let { "${f.name}.anzeige/$n %.2f".format(it) }
+            } + listOf("onDisplay" to (r.onDisplay to r.display), "gewaehlt" to (r.chosen to r.bar),
+                "ungewaehlt" to (r.unselected to r.bar)).mapNotNull { (n, p) ->
                 k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) }
             }
         }
-        assertTrue("Gewählter Reiter kaum erkennbar: $fehler", fehler.isEmpty())
+        assertTrue("Gewählter Reiter kaum erkennbar: $error", error.isEmpty())
     }
 
     /** Warning color draws bars and icons (monitoring, CSV report): graphics need 3:1. */
     @Test
     fun `warning color is visible as a graphic on every surface`() {
-        val fehler = versions.flatMap { f ->
+        val error = versions.flatMap { f ->
             listOf("surface" to f.s.surface, "background" to f.s.background, "surfaceContainer" to f.s.surfaceContainer)
-                .mapNotNull { (n, fl) -> k(f.status.warnung, fl).takeIf { it < Contrast.FRAME }?.let { "${f.name}.warnung/$n %.2f".format(it) } }
+                .mapNotNull { (n, fl) -> k(f.status.warning, fl).takeIf { it < Contrast.FRAME }?.let { "${f.name}.warnung/$n %.2f".format(it) } }
         }
-        assertTrue("Unter 3:1: $fehler", fehler.isEmpty())
+        assertTrue("Unter 3:1: $error", error.isEmpty())
     }
 
     @Test
     fun `borders of controls reach 3 to 1`() {
-        val fehler = versions.flatMap { f ->
+        val error = versions.flatMap { f ->
             val s = f.s
             listOf("surface" to s.surface, "background" to s.background, "surfaceVariant" to s.surfaceVariant,
                 "surfaceContainerHighest" to s.surfaceContainerHighest, "primaryContainer" to s.primaryContainer)
                 .mapNotNull { (n, fl) -> k(s.outline, fl).takeIf { it < Contrast.FRAME }?.let { "${f.name}.outline/$n %.2f".format(it) } }
         }
-        assertTrue("Unter 3:1: $fehler", fehler.isEmpty())
+        assertTrue("Unter 3:1: $error", error.isEmpty())
     }
 
     /**
@@ -204,12 +204,12 @@ class TextContrastTest {
      */
     @Test
     fun `error color deviates clearly from the primary color`() {
-        val fehler = versions.mapNotNull { f ->
+        val error = versions.mapNotNull { f ->
             val a = f.s.primary; val b = f.s.error
             val d = kotlin.math.sqrt(((a.red - b.red) * (a.red - b.red) + (a.green - b.green) * (a.green - b.green) +
                 (a.blue - b.blue) * (a.blue - b.blue)).toDouble())
             if (d < 0.15) "${f.name} %.2f".format(d) else null
         }
-        assertTrue("Hauptfarbe zu nah an der Fehlerfarbe: $fehler", fehler.isEmpty())
+        assertTrue("Hauptfarbe zu nah an der Fehlerfarbe: $error", error.isEmpty())
     }
 }

@@ -70,7 +70,7 @@ interface AccountApi {
     suspend fun passkeyOptions(@Body request: PasskeyOptionenAnfrage): Response<PasskeyOptionen>
 
     @POST("api/v1/auth/passkey/anmelden")
-    suspend fun signInPasskey(@Body request: PasskeyAnmeldungAnfrage): Response<LoginResponse>
+    suspend fun loginPasskey(@Body request: PasskeyAnmeldungAnfrage): Response<LoginResponse>
 
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericResponse>
@@ -107,7 +107,7 @@ interface AccountApi {
     suspend fun setUpSecondFactor(@Body request: ZweiterFaktorAnfrage): Response<ZweiterFaktorEinrichtung>
 
     @POST("api/v1/auth/zweiter-faktor/bestaetigen")
-    suspend fun zweiterFaktorBestaetigen(@Body request: ZweiterFaktorAnfrage): Response<ZweiterFaktorCodes>
+    suspend fun secondFactorConfirm(@Body request: ZweiterFaktorAnfrage): Response<ZweiterFaktorCodes>
 
     @POST("api/v1/auth/zweiter-faktor/abschalten")
     suspend fun disableSecondFactor(@Body request: ZweiterFaktorAnfrage): Response<GenericResponse>
@@ -135,7 +135,7 @@ interface AccountApi {
 
     /** All other sign-ins and app accesses in one request: a code applies only once. */
     @POST("api/v1/settings/sessions/andere-beenden")
-    suspend fun endOther(@Body anfrage: AndereBeendenAnfrage): Response<AndereBeendet>
+    suspend fun endOther(@Body request: AndereBeendenAnfrage): Response<AndereBeendet>
 
     /**
      * Swap the token (rotation). The old one explicitly goes along because the
@@ -148,7 +148,7 @@ interface AccountApi {
 
     /**
      * The design — without sign-in the admin's default (sign-in screen),
-     * with a token the account's. The ServerWaechter attaches the token.
+     * with a token the account's. The ServerGuard attaches the token.
      */
     @GET("api/v1/settings/theme")
     suspend fun getAppTheme(): Response<AppThemeResponse>

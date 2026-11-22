@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.account.ui.screens
 
-import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.ui.components.ToggleRow
 import ch.brickinventoryapp.ui.components.AppLockChoice
 import ch.brickinventoryapp.ui.components.LocalAppLock
-import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.DarstellungViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.DarstellungAktionen
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateAktionen
-import ch.brickinventoryapp.account.ui.viewmodel.EinstellungenAktionen
-import ch.brickinventoryapp.ui.components.nebenKnopfFarben
-import ch.brickinventoryapp.ui.components.nebenKnopfRand
+import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceActions
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.toggleable
@@ -38,10 +38,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.account.ui.UpdateUiState
-import ch.brickinventoryapp.ui.satz
-import ch.brickinventoryapp.ui.titel
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.model.ui.theme.Helligkeit
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.model.ui.theme.Brightness
 import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.components.SelectionField
 import ch.brickinventoryapp.ui.components.SegmentChoice
@@ -50,20 +50,20 @@ import ch.brickinventoryapp.update.util.sourceStale
 import ch.brickinventoryapp.ui.components.versionsName
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.theme.Lesebreite
-import ch.brickinventoryapp.ui.theme.SYSTEMFARBEN_AB_SDK
+import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.SYSTEM_COLORS_AB_SDK
 import ch.brickinventoryapp.ui.theme.brightnessSelectable
 import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.permissionIntent
 import ch.brickinventoryapp.ui.components.SettingsCard
 
 /** What settings shows; the route gathers it from four flows of three ViewModels. */
-data class EinstellungenZustand(
+data class SettingsState(
     val appState: AppUiState,
-    val updateZustand: UpdateUiState,
-    val helligkeit: String,
+    val updateUiState: UpdateUiState,
+    val brightness: String,
     val design: Design,
-    val systemfarben: Boolean,
+    val systemColors: Boolean,
     val hidePreview: Boolean,
     val widgetValues: Boolean,
     val userCa: Boolean,
@@ -74,42 +74,42 @@ data class EinstellungenZustand(
 internal fun SettingsRoute(
     vm: SettingsViewModel,
     onLogout: () -> Unit,
-    onServerWechseln: () -> Unit,
+    onServerSwitch: () -> Unit,
     scrollState: ScrollState,
-    selbstUpdate: UpdateViewModel,
-    darstellung: DarstellungViewModel,
-    vertrauen: VertrauenViewModel,
+    selfUpdate: UpdateViewModel,
+    appearance: AppearanceViewModel,
+    trust: TrustViewModel,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
-    val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
-    val helligkeit by darstellung.helligkeit.collectAsStateWithLifecycle()
-    val design by darstellung.appTheme.collectAsStateWithLifecycle()
-    val systemfarben by darstellung.systemfarben.collectAsStateWithLifecycle()
-    val hidePreview by darstellung.hidePreview.collectAsStateWithLifecycle()
-    val widgetValues by darstellung.widgetValues.collectAsStateWithLifecycle()
-    val userCa by vertrauen.userCa.an.collectAsStateWithLifecycle()
+    val updateUiState by selfUpdate.updateState.collectAsStateWithLifecycle()
+    val brightness by appearance.brightness.collectAsStateWithLifecycle()
+    val design by appearance.appTheme.collectAsStateWithLifecycle()
+    val systemColors by appearance.systemColors.collectAsStateWithLifecycle()
+    val hidePreview by appearance.hidePreview.collectAsStateWithLifecycle()
+    val widgetValues by appearance.widgetValues.collectAsStateWithLifecycle()
+    val userCa by trust.userCa.an.collectAsStateWithLifecycle()
     SettingsScreen(
-        zustand = EinstellungenZustand(appState, updateZustand, helligkeit, design, systemfarben,
+        condition = SettingsState(appState, updateUiState, brightness, design, systemColors,
             hidePreview, widgetValues, userCa),
-        aktionen = vm, update = selbstUpdate, darstellung = darstellung,
+        actions = vm, update = selfUpdate, appearance = appearance,
         // Turning it on asks first (UserCaDialog in MainActivity).
-        onNutzerCa = { if (it) vertrauen.userCa.requests() else vertrauen.userCa.turnOff() },
-        onLogout = onLogout, onServerWechseln = onServerWechseln, scrollState = scrollState,
+        onUserCa = { if (it) trust.userCa.requests() else trust.userCa.turnOff() },
+        onLogout = onLogout, onServerSwitch = onServerSwitch, scrollState = scrollState,
     )
 }
 
 /**
  * Settings — a few cards instead of a stack: display & prices (every
  * choice applies right away), server and update. The categories with their own page sit on "More"
- * (MehrBildschirm.kt) and in EinstellungenUnterseiten.kt.
+ * (MoreScreen.kt) and in SettingsUnterseiten.kt.
  */
 @Composable
 fun SettingsScreen(
-    zustand: EinstellungenZustand,
-    aktionen: EinstellungenAktionen,
-    update: UpdateAktionen,
-    darstellung: DarstellungAktionen,
-    onNutzerCa: (Boolean) -> Unit,
+    condition: SettingsState,
+    actions: SettingsActions,
+    update: UpdateActions,
+    appearance: AppearanceActions,
+    onUserCa: (Boolean) -> Unit,
     /** Sign out — only the graph knows the NavController. */
     onLogout: () -> Unit,
     /**
@@ -117,7 +117,7 @@ fun SettingsScreen(
      * knows the NavController. No default value, so a forgotten pass-through
      * fails to compile instead of producing a button with no effect.
      */
-    onServerWechseln: () -> Unit,
+    onServerSwitch: () -> Unit,
     /**
      * Scroll position — from OUTSIDE, for the same reason as in finances:
      * the route into the detail view discards this destination, and a
@@ -125,8 +125,8 @@ fun SettingsScreen(
      */
     scrollState: ScrollState,
 ) {
-    val appState = zustand.appState
-    val updateZustand = zustand.updateZustand
+    val appState = condition.appState
+    val updateUiState = condition.updateUiState
 
     val currency = appState.currency
     val priceCondition = appState.priceCondition
@@ -144,11 +144,11 @@ fun SettingsScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .centeredUntil(Lesebreite.formular)
-            .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
+            .centeredUntil(ReadingWidth.form)
+            .padding(horizontal = Spacing.large, vertical = Spacing.large),
         // gross instead of the bare 10 dp from before: the cards are now
         // few and large, and there should be air between them.
-        verticalArrangement = Arrangement.spacedBy(Abstaende.gross)
+        verticalArrangement = Arrangement.spacedBy(Spacing.large)
     ) {
         // Here stands only what a setting is in the narrow sense: display & prices,
         // server, update check. The categories with their own page sit in the
@@ -165,55 +165,55 @@ fun SettingsScreen(
                 listOf("system" to stringResource(R.string.settings_language_system),
                        "en" to stringResource(R.string.settings_language_en),
                        "de" to stringResource(R.string.settings_language_de)),
-                gewaehlt = language, onWahl = { darstellung.setLanguage(it) },
+                chosen = language, onChoice = { appearance.setLanguage(it) },
                 modifier = Modifier.fillMaxWidth(),
             )
 
             // Display per device: System follows the phone, Light and Dark always apply.
             Signature(stringResource(R.string.settings_dark_label))
-            val helligkeit = zustand.helligkeit
-            val design = zustand.design
-            val colorsOfSystems = zustand.systemfarben
+            val brightness = condition.brightness
+            val design = condition.design
+            val colorsOfSystems = condition.systemColors
             val selectable = brightnessSelectable(design, colorsOfSystems, android.os.Build.VERSION.SDK_INT)
             SegmentChoice(
-                listOf(Helligkeit.SYSTEM to stringResource(R.string.settings_hell_system),
-                       Helligkeit.LIGHT to stringResource(R.string.settings_hell_hell),
-                       Helligkeit.DARK to stringResource(R.string.settings_hell_dunkel)),
-                gewaehlt = helligkeit, onWahl = { darstellung.setHelligkeit(it) },
+                listOf(Brightness.SYSTEM to stringResource(R.string.settings_light_system),
+                       Brightness.LIGHT to stringResource(R.string.settings_light_light),
+                       Brightness.DARK to stringResource(R.string.settings_light_dark)),
+                chosen = brightness, onChoice = { appearance.setBrightness(it) },
                 enabled = selectable,
             )
             // Werkbank is already dark: the choice is off, and the sentence says why.
-            if (!selectable) Text(stringResource(R.string.settings_hell_fest), style = MaterialTheme.typography.bodySmall,
+            if (!selectable) Text(stringResource(R.string.settings_light_fixed), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             // Material You: in addition to the six designs, per device. System colors only
             // exist from Android 12; below that the switch is missing entirely.
-            if (android.os.Build.VERSION.SDK_INT >= SYSTEMFARBEN_AB_SDK) {
-                val systemfarben = zustand.systemfarben
+            if (android.os.Build.VERSION.SDK_INT >= SYSTEM_COLORS_AB_SDK) {
+                val systemColors = condition.systemColors
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        .toggleable(value = systemfarben, role = Role.Switch, onValueChange = { darstellung.setSystemfarben(it) }),
+                        .toggleable(value = systemColors, role = Role.Switch, onValueChange = { appearance.setSystemColors(it) }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_systemfarben), style = MaterialTheme.typography.bodyMedium)
-                        Text(stringResource(R.string.settings_systemfarben_hint), style = MaterialTheme.typography.bodySmall,
+                        Text(stringResource(R.string.settings_system_colors), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.settings_system_colors_hint), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(checked = systemfarben, onCheckedChange = null)
+                    Switch(checked = systemColors, onCheckedChange = null)
                 }
             }
 
             // Per device, default off: whoever shows the overview to others wants no preview.
-            val hidePreview = zustand.hidePreview
+            val hidePreview = condition.hidePreview
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .toggleable(value = hidePreview, role = Role.Switch, onValueChange = { darstellung.setVorschauVerbergen(it) }),
+                    .toggleable(value = hidePreview, role = Role.Switch, onValueChange = { appearance.setPreviewHidden(it) }),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_vorschau_verbergen), style = MaterialTheme.typography.bodyMedium)
-                    Text(stringResource(R.string.settings_vorschau_verbergen_hint), style = MaterialTheme.typography.bodySmall,
+                    Text(stringResource(R.string.settings_preview_hide), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_preview_hide_hint), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Switch(checked = hidePreview, onCheckedChange = null)
@@ -223,15 +223,15 @@ fun SettingsScreen(
             LocalAppLock.current?.let { AppLockChoice(it) }
 
             // Per device, default off: the widget sits on the home screen without unlocking.
-            val widgetValues = zustand.widgetValues
+            val widgetValues = condition.widgetValues
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .toggleable(value = widgetValues, role = Role.Switch, onValueChange = { darstellung.setWidgetValues(it) }),
+                    .toggleable(value = widgetValues, role = Role.Switch, onValueChange = { appearance.setWidgetValues(it) }),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_widget_werte), style = MaterialTheme.typography.bodyMedium)
-                    Text(stringResource(R.string.settings_widget_werte_hint), style = MaterialTheme.typography.bodySmall,
+                    Text(stringResource(R.string.settings_widget_values), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_widget_values_hint), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Switch(checked = widgetValues, onCheckedChange = null)
@@ -242,8 +242,8 @@ fun SettingsScreen(
             // Currency and pricing basis go to the server together (one endpoint).
             SelectionField(
                 stringResource(R.string.settings_currency),
-                Waehrung.SELECTABLE.map { it to it.code },
-                gewaehlt = currency, onWahl = { aktionen.saveSettings(it, priceCondition) },
+                CurrencyCode.SELECTABLE.map { it to it.code },
+                chosen = currency, onChoice = { actions.saveSettings(it, priceCondition) },
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -252,9 +252,9 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             SegmentChoice(
-                listOf(Zustand.NEU to stringResource(R.string.settings_condition_new),
-                       Zustand.GEBRAUCHT to stringResource(R.string.settings_condition_used)),
-                gewaehlt = priceCondition, onWahl = { aktionen.saveSettings(currency, it) },
+                listOf(Condition.NEW to stringResource(R.string.settings_condition_new),
+                       Condition.USED to stringResource(R.string.settings_condition_used)),
+                chosen = priceCondition, onChoice = { actions.saveSettings(currency, it) },
             )
 
             // ── My state when adding ──
@@ -262,17 +262,17 @@ fun SettingsScreen(
             // Three options, so there's a way back to the server's default; the
             // hint names what it's based on.
             Signature(stringResource(R.string.settings_default_condition))
-            val wirkt = if (effectiveUserDefault == Zustand.GEBRAUCHT) stringResource(R.string.condition_used)
+            val works = if (effectiveUserDefault == Condition.USED) stringResource(R.string.condition_used)
                         else stringResource(R.string.condition_new)
             Text(stringResource(R.string.settings_default_condition_hint) + " " +
-                    stringResource(R.string.settings_default_condition_effective, wirkt),
+                    stringResource(R.string.settings_default_condition_effective, works),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             SegmentChoice(
-                listOf<Pair<Zustand?, String>>(null to stringResource(R.string.settings_default_condition_global),
-                       Zustand.NEU to stringResource(R.string.condition_new),
-                       Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
-                gewaehlt = ownDefault, onWahl = { aktionen.saveUserDefaultCondition(it) },
+                listOf<Pair<Condition?, String>>(null to stringResource(R.string.settings_default_condition_global),
+                       Condition.NEW to stringResource(R.string.condition_new),
+                       Condition.USED to stringResource(R.string.condition_used)),
+                chosen = ownDefault, onChoice = { actions.saveUserDefaultCondition(it) },
             )
         }
 
@@ -280,43 +280,43 @@ fun SettingsScreen(
         //
         // The server address is a setting like currency and language, not an action
         // on the running session.
-        val userCa = zustand.userCa
+        val userCa = condition.userCa
         ServerCard(
             serverUrl = appState.serverUrl,
-            switchOn = onServerWechseln,
+            switchOn = onServerSwitch,
             userCa = userCa,
-            onNutzerCa = onNutzerCa,
+            onUserCa = onUserCa,
         )
 
         UpdateCard(
-            updateZustand = updateZustand,
-            onPruefen = { update.pruefeAufUpdate() },
-            onLaden = { update.ladeUpdate() },
-            onInstallieren = { update.startInstallation() },
+            updateUiState = updateUiState,
+            onCheck = { update.checkOnUpdate() },
+            onLoad = { update.loadUpdate() },
+            onInstall = { update.startInstallation() },
         )
 
-        PrivacyCard(updateZustand.startpruefung) { update.setStartpruefung(it) }
+        PrivacyCard(updateUiState.startCheck) { update.setStartCheck(it) }
 
-        Spacer(Modifier.height(Abstaende.klein))
+        Spacer(Modifier.height(Spacing.small))
 
         // The same confirmation as under "More": signing out is equally hard from either place.
-        var signOutAsks by rememberSaveable { mutableStateOf(false) }
-        if (signOutAsks) Prompt(
-            titel = stringResource(R.string.logout_confirm_title),
+        var logoutAsks by rememberSaveable { mutableStateOf(false) }
+        if (logoutAsks) Prompt(
+            title = stringResource(R.string.logout_confirm_title),
             text = stringResource(R.string.logout_confirm_text),
-            bestaetigen = stringResource(R.string.settings_logout),
-            onBestaetigen = { signOutAsks = false; onLogout() },
-            onAbbrechen = { signOutAsks = false },
+            confirm = stringResource(R.string.settings_logout),
+            onConfirm = { logoutAsks = false; onLogout() },
+            onCancel = { logoutAsks = false },
             symbol = Icons.AutoMirrored.Filled.Logout,
         )
         OutlinedButton(
-            onClick = { signOutAsks = true },
+            onClick = { logoutAsks = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         ) {
             Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(withFont(18.dp)))
-            Spacer(Modifier.width(Abstaende.klein))
+            Spacer(Modifier.width(Spacing.small))
             Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
         }
     }
@@ -338,7 +338,7 @@ private fun Signature(text: String) {
  */
 @Composable
 private fun ServerCard(
-    serverUrl: String, switchOn: () -> Unit, userCa: Boolean, onNutzerCa: (Boolean) -> Unit,
+    serverUrl: String, switchOn: () -> Unit, userCa: Boolean, onUserCa: (Boolean) -> Unit,
 ) {
     SettingsCard(title = stringResource(R.string.main_menu_change_server), icon = Icons.Default.Cloud) {
         Text(
@@ -346,17 +346,17 @@ private fun ServerCard(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(Abstaende.klein))
-        OutlinedButton(onClick = switchOn, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+        Spacer(Modifier.height(Spacing.small))
+        OutlinedButton(onClick = switchOn, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
             Icon(Icons.Default.Cloud, null, modifier = Modifier.size(withFont(18.dp)))
-            Spacer(Modifier.width(Abstaende.klein))
+            Spacer(Modifier.width(Spacing.small))
             Text(stringResource(R.string.main_menu_change_server))
         }
-        // Per device and effective right away (util/ServerVertrauen.kt); switched off, only system CAs.
+        // Per device and effective right away (util/ServerTrust.kt); switched off, only system CAs.
         // Only for one's own server; updates and foreign hosts always check against the system.
         // Notice in the error color: it's a risk, not a convenience setting.
-        ToggleRow(stringResource(R.string.settings_nutzer_ca), userCa, onNutzerCa,
-            hinweis = stringResource(R.string.settings_nutzer_ca_hint), hintColor = MaterialTheme.colorScheme.error)
+        ToggleRow(stringResource(R.string.settings_user_ca), userCa, onUserCa,
+            hint = stringResource(R.string.settings_user_ca_hint), hintColor = MaterialTheme.colorScheme.error)
     }
 }
 
@@ -369,12 +369,12 @@ private fun ServerCard(
  */
 @Composable
 private fun UpdateCard(
-    // `updateZustand`, not `zustand`: the check "which name carries which
+    // `updateUiState`, not `condition`: the check "which name carries which
     // state type in this file" doesn't distinguish scopes.
-    updateZustand: UpdateUiState,
-    onPruefen: () -> Unit,
-    onLaden: () -> Unit,
-    onInstallieren: () -> Unit,
+    updateUiState: UpdateUiState,
+    onCheck: () -> Unit,
+    onLoad: () -> Unit,
+    onInstall: () -> Unit,
 ) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     SettingsCard(title = stringResource(R.string.update_title), icon = Icons.Default.SystemUpdate) {
@@ -383,12 +383,12 @@ private fun UpdateCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(Abstaende.klein))
+        Spacer(Modifier.height(Spacing.small))
 
-        val neuere = updateZustand.newerVersion
+        val newer = updateUiState.newerVersion
         when {
-            neuere != null -> Text(
-                stringResource(R.string.update_available, neuere.versionName),
+            newer != null -> Text(
+                stringResource(R.string.update_available, newer.versionName),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -396,74 +396,74 @@ private fun UpdateCard(
             // Only after a check: beforehand "current" would be a claim
             // about something no one has looked at. A stale source
             // is never "current" (notice below).
-            updateZustand.geprueft && !sourceStale(updateZustand.frische) -> Text(
+            updateUiState.checked && !sourceStale(updateUiState.freshness) -> Text(
                 stringResource(R.string.update_current, versionsName()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (sourceStale(updateZustand.frische)) {
-            Spacer(Modifier.height(Abstaende.klein))
+        if (sourceStale(updateUiState.freshness)) {
+            Spacer(Modifier.height(Spacing.small))
             Text(
-                stringResource(if (updateZustand.frische == UpdateFresh.ABGELAUFEN)
-                    R.string.update_quelle_abgelaufen else R.string.update_quelle_zurueckgesetzt),
+                stringResource(if (updateUiState.freshness == UpdateFresh.EXPIRED)
+                    R.string.update_source_expired else R.string.update_source_reset),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
         }
 
-        updateZustand.fortschritt?.let { p ->
-            Spacer(Modifier.height(Abstaende.klein))
+        updateUiState.progress?.let { p ->
+            Spacer(Modifier.height(Spacing.small))
             Text(stringResource(R.string.update_downloading, p),
                 style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(Abstaende.tiny))
+            Spacer(Modifier.height(Spacing.tiny))
             LinearProgressIndicator(
                 progress = { p / 100f },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
 
-        if (updateZustand.permissionAbsent) {
-            Spacer(Modifier.height(Abstaende.klein))
+        if (updateUiState.permissionAbsent) {
+            Spacer(Modifier.height(Spacing.small))
             Text(
                 stringResource(R.string.update_permission_needed),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(Abstaende.tiny))
+            Spacer(Modifier.height(Spacing.tiny))
             TextButton(onClick = {
                 ctx.startActivity(permissionIntent(ctx))
             }) { Text(stringResource(R.string.update_permission_grant)) }
         }
 
-        updateZustand.fehler?.let { f ->
-            Spacer(Modifier.height(Abstaende.klein))
-            Text(f.satz(), style = MaterialTheme.typography.bodySmall,
+        updateUiState.error?.let { f ->
+            Spacer(Modifier.height(Spacing.small))
+            Text(f.sentence(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
 
-        Spacer(Modifier.height(Abstaende.mittel))
+        Spacer(Modifier.height(Spacing.medium))
         // 48 dp high like "Sign out": Material draws 40 dp, and the node for tapping and
         // reading would only be as tall as the drawing.
         val buttonHeight = Modifier.heightIn(min = 48.dp)
-        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
             verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onPruefen, modifier = buttonHeight, enabled = !updateZustand.check.laeuft && updateZustand.fortschritt == null, colors = nebenKnopfFarben(), border = nebenKnopfRand(!updateZustand.check.laeuft && updateZustand.fortschritt == null)) {
-                if (updateZustand.check.laeuft) {
+            OutlinedButton(onClick = onCheck, modifier = buttonHeight, enabled = !updateUiState.check.running && updateUiState.progress == null, colors = secondaryButtonColors(), border = secondaryButtonRand(!updateUiState.check.running && updateUiState.progress == null)) {
+                if (updateUiState.check.running) {
                     CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(Abstaende.klein))
+                    Spacer(Modifier.width(Spacing.small))
                 }
                 Text(stringResource(R.string.update_check))
             }
             // Download only if there's something to fetch; Install
             // only once it's already on disk.
-            if (neuere != null && !updateZustand.readyToInstallation) {
-                Button(onClick = onLaden, modifier = buttonHeight, enabled = updateZustand.fortschritt == null) {
+            if (newer != null && !updateUiState.readyToInstallation) {
+                Button(onClick = onLoad, modifier = buttonHeight, enabled = updateUiState.progress == null) {
                     Text(stringResource(R.string.update_download))
                 }
             }
-            if (updateZustand.readyToInstallation) {
-                Button(onClick = onInstallieren, modifier = buttonHeight) {
+            if (updateUiState.readyToInstallation) {
+                Button(onClick = onInstall, modifier = buttonHeight) {
                     Text(stringResource(R.string.update_install))
                 }
             }
@@ -473,15 +473,15 @@ private fun UpdateCard(
 
 /** Per device: the check on start is a request to GitHub (privacy). */
 @Composable
-private fun StartpruefungRow(an: Boolean, onSwitch: (Boolean) -> Unit) {
+private fun StartCheckRow(an: Boolean, onSwitch: (Boolean) -> Unit) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = an, role = Role.Switch, onValueChange = onSwitch),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.update_beim_start), style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.update_beim_start_hint), style = MaterialTheme.typography.bodySmall,
+            Text(stringResource(R.string.update_at_start), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.update_at_start_hint), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = an, onCheckedChange = null)
@@ -490,9 +490,9 @@ private fun StartpruefungRow(an: Boolean, onSwitch: (Boolean) -> Unit) {
 
 /** Who the app talks to (MASVS-PRIVACY): the same list as in PLAYSTORE.md. */
 @Composable
-private fun PrivacyCard(startpruefung: Boolean, onStartpruefung: (Boolean) -> Unit) {
-    SettingsCard(title = stringResource(R.string.datenschutz_titel), icon = Icons.Default.PrivacyTip) {
-        Text(stringResource(R.string.datenschutz_text), style = MaterialTheme.typography.bodyMedium)
-        StartpruefungRow(startpruefung, onStartpruefung)
+private fun PrivacyCard(startCheck: Boolean, onStartCheck: (Boolean) -> Unit) {
+    SettingsCard(title = stringResource(R.string.privacy_title), icon = Icons.Default.PrivacyTip) {
+        Text(stringResource(R.string.privacy_text), style = MaterialTheme.typography.bodyMedium)
+        StartCheckRow(startCheck, onStartCheck)
     }
 }

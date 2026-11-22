@@ -12,9 +12,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
-import ch.brickinventoryapp.data.VorwaermNetwork
+import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.model.domain.LogRowView
-import ch.brickinventoryapp.model.util.fmtUhrzeit
+import ch.brickinventoryapp.model.util.fmtClockTime
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import android.text.format.DateFormat
 import ch.brickinventoryapp.resources.R
@@ -38,7 +38,7 @@ import org.robolectric.annotation.Config
  * web app, and can be filtered by level and text. Filtering happens on the device: the
  * rows are already loaded, a fetch per keystroke would just be a wait.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   protokoll-ohne-uhrzeit          the row does not show loggedAt → red “every row names …”
  *   protokoll-stufe-filtert-nicht   a deselected level chip hides nothing → red “a deselected level …”
  *   protokoll-suche-filtert-nicht   the search text hides nothing → red “the search …”
@@ -54,57 +54,57 @@ class MonitoringLogDisplayTest {
 
     private var logFetches = 0
 
-    private val aktionen = object : SilentActions() {
-        override fun chooseLog(minuten: Int) { logFetches++ }
+    private val actions = object : SilentActions() {
+        override fun chooseLog(minutes: Int) { logFetches++ }
     }
 
     private val info = LogRowView(1, "info", "Preislauf gestartet", Instant.parse("2026-11-10T08:15:30Z"))
-    private val fehler = LogRowView(2, "error", "Abruf bei BrickLink gescheitert", Instant.parse("2026-11-10T09:42:07Z"))
+    private val error = LogRowView(2, "error", "Abruf bei BrickLink gescheitert", Instant.parse("2026-11-10T09:42:07Z"))
 
     /** Renders monitoring with two log rows and expands the log. */
     private fun openShow() {
-        val zustand = MonitoringState(MonitoringUiState(), BackgroundUiState(), ManagementUiState(protokoll = listOf(info, fehler)),
-            mapOf(VorwaermNetwork.WLAN to true, VorwaermNetwork.MOBILE to false, VorwaermNetwork.ROAMING to false), Design.CLASSIC, 0L)
-        val cache = CacheEvents(defaultState = {}, clearStore = {}, netz = { _, _ -> }, design = {},
-            cacheDuration = {}, cacheLeeren = {}, limits = { _, _, _ -> })
-        compose.setContent { BrickInventoryManagerTheme { MonitoringScreen(zustand, aktionen, cache) } }
+        val condition = MonitoringState(MonitoringUiState(), BackgroundUiState(), ManagementUiState(log = listOf(info, error)),
+            mapOf(PrewarmNetwork.WIFI to true, PrewarmNetwork.MOBILE to false, PrewarmNetwork.ROAMING to false), Design.CLASSIC, 0L)
+        val cache = CacheEvents(defaultState = {}, clearStore = {}, network = { _, _ -> }, design = {},
+            cacheDuration = {}, cacheClear = {}, limits = { _, _, _ -> })
+        compose.setContent { BrickInventoryManagerTheme { MonitoringScreen(condition, actions, cache) } }
         compose.waitForIdle()
         roleTo(hasText(text(R.string.admin_log_title)))
         compose.onNodeWithContentDescription(text(R.string.common_expand)).performClick()
         compose.waitForIdle()
-        roleTo(hasText(fehler.message!!))
+        roleTo(hasText(error.message!!))
         assertEquals("Geladene Zeilen holt das Aufklappen nicht noch einmal", 0, logFetches)
     }
 
-    /** Scrolls the list containing [ziel]; smaller rows next to it scroll along. */
-    private fun roleTo(ziel: SemanticsMatcher) {
-        val listen = compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size
-        assertTrue("Nichts gefunden, das zu ${ziel.description} rollt", (0 until listen).any { i ->
-            runCatching { compose.onAllNodes(hasScrollAction())[i].performScrollToNode(ziel) }.isSuccess
+    /** Scrolls the list containing [target]; smaller rows next to it scroll along. */
+    private fun roleTo(target: SemanticsMatcher) {
+        val lists = compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size
+        assertTrue("Nichts gefunden, das zu ${target.description} rollt", (0 until lists).any { i ->
+            runCatching { compose.onAllNodes(hasScrollAction())[i].performScrollToNode(target) }.isSuccess
         })
         compose.waitForIdle()
     }
 
-    private fun anzahl(text: String) = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes().size
+    private fun count(text: String) = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes().size
 
     @Test
     fun `every line names its time`() {
         openShow()
-        for (zeile in listOf(info, fehler)) {
+        for (row in listOf(info, error)) {
             // The way the row shows it: by the device's 12/24-hour setting.
-            val timeOfDay = fmtUhrzeit(zeile.loggedAt, appNumberLocale(), DateFormat.is24HourFormat(compose.activity))!!
-            assertEquals("Uhrzeit $timeOfDay zu „${zeile.message}“", 1, anzahl(timeOfDay))
+            val timeOfDay = fmtClockTime(row.loggedAt, appNumberLocale(), DateFormat.is24HourFormat(compose.activity))!!
+            assertEquals("Uhrzeit $timeOfDay zu „${row.message}“", 1, count(timeOfDay))
         }
     }
 
     @Test
     fun `a deselected level hides its lines`() {
         openShow()
-        assertEquals(1, anzahl(info.message!!))
+        assertEquals(1, count(info.message!!))
         compose.onNode(hasText("INFO") and hasClickAction()).performClick()
         compose.waitForIdle()
-        assertEquals("Die INFO-Zeile steht noch da", 0, anzahl(info.message!!))
-        assertEquals("Die ERROR-Zeile ist mit verschwunden", 1, anzahl(fehler.message!!))
+        assertEquals("Die INFO-Zeile steht noch da", 0, count(info.message!!))
+        assertEquals("Die ERROR-Zeile ist mit verschwunden", 1, count(error.message!!))
     }
 
     @Test
@@ -112,7 +112,7 @@ class MonitoringLogDisplayTest {
         openShow()
         compose.onNodeWithContentDescription(text(R.string.admin_log_search)).performTextInput("BrickLink")
         compose.waitForIdle()
-        assertEquals("Die Zeile ohne den Suchtext steht noch da", 0, anzahl(info.message!!))
-        assertEquals("Die passende Zeile ist mit verschwunden", 1, anzahl(fehler.message!!))
+        assertEquals("Die Zeile ohne den Suchtext steht noch da", 0, count(info.message!!))
+        assertEquals("Die passende Zeile ist mit verschwunden", 1, count(error.message!!))
     }
 }

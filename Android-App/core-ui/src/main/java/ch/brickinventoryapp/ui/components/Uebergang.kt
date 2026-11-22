@@ -23,16 +23,16 @@ val LocalTargetVisibility = compositionLocalOf<AnimatedVisibilityScope?> { null 
 /** Around the NavHost: the shared space in which elements travel between destinations. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun TransitionFrame(inhalt: @Composable () -> Unit) {
+fun TransitionFrame(content: @Composable () -> Unit) {
     SharedTransitionLayout {
-        CompositionLocalProvider(LocalTransition provides this) { inhalt() }
+        CompositionLocalProvider(LocalTransition provides this) { content() }
     }
 }
 
 /** In a navigation destination: its appearing and disappearing drives the transition. */
 @Composable
-fun WithTarget(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalTargetVisibility provides ziel) { inhalt() }
+fun WithTarget(target: AnimatedVisibilityScope, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalTargetVisibility provides target) { content() }
 }
 
 /**
@@ -42,13 +42,13 @@ fun WithTarget(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun SharedImage(setNumber: String, inhalt: @Composable (Modifier) -> Unit) {
+fun SharedImage(setNumber: String, content: @Composable (Modifier) -> Unit) {
     val transition = LocalTransition.current
-    val ziel = LocalTargetVisibility.current
+    val target = LocalTargetVisibility.current
     // Without motion, only the crossfade of the navigation destination remains.
-    val ruhig = movementReduced()
-    if (transition == null || ziel == null || ruhig) return inhalt(Modifier)
+    val calm = movementReduced()
+    if (transition == null || target == null || calm) return content(Modifier)
     with(transition) {
-        inhalt(Modifier.sharedElement(rememberSharedContentState("set-bild-$setNumber"), ziel))
+        content(Modifier.sharedElement(rememberSharedContentState("set-bild-$setNumber"), target))
     }
 }

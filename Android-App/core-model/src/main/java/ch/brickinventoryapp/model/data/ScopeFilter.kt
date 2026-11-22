@@ -16,7 +16,7 @@ object ScopeFilter {
      */
     enum class View(val key: String) {
         GALLERY("gallery"), PARTS("parts"), MINIFIGS("minifigs"), FINANCE("finance"),
-        MERKLISTE("merkliste")
+        WANTED_LIST("merkliste")
     }
 
     const val ALL = "all"

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.login.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import ch.brickinventoryapp.ui.theme.fensterFlaeche
+import ch.brickinventoryapp.ui.theme.windowSurface
 import androidx.compose.foundation.verticalScroll
 import ch.brickinventoryapp.ui.theme.centeredUntil
 import androidx.compose.foundation.rememberScrollState
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -28,17 +28,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.login.ui.AnmeldeFormular
+import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.QrAccount
 import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.components.outsideTheSystemBars
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.components.LoginCard
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
-import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.ReadingWidth
 
 /**
  * Sign in, create an account, request a reset link — like the web app. Three
@@ -51,25 +51,25 @@ fun LoginScreen(
     serverUrl: String,
     isLoading: Boolean,
     error: String?,
-    codeNoetig: Boolean,
-    formular: AnmeldeFormular,
-    registrierungOffen: Boolean?,
-    kontoLaeuft: Boolean,
-    kontoMeldung: String?,
-    kontoFehler: String?,
+    codeNeeded: Boolean,
+    form: LoginForm,
+    registrationOpen: Boolean?,
+    accountRunning: Boolean,
+    accountMessage: String?,
+    accountError: String?,
     onLogin: (String, String, String?) -> Unit,
-    onFormular: (AnmeldeFormular) -> Unit,
-    onRegistrieren: (String, String, String, String, String) -> Unit,
-    onPasswortVergessen: (String) -> Unit,
+    onForm: (LoginForm) -> Unit,
+    onRegister: (String, String, String, String, String) -> Unit,
+    onPasswordForget: (String) -> Unit,
     onChangeServer: () -> Unit,
-    vollerZugriff: Boolean = false,
-    onVollerZugriff: (Boolean) -> Unit = {},
+    fullAccess: Boolean = false,
+    onFullAccess: (Boolean) -> Unit = {},
     /** null: no passkey button (for instance in preview and test). */
     onPasskey: (() -> Unit)? = null,
-    passkeyStattCode: Boolean = false,
-    onPasskeyStattCode: (String, String) -> Unit = { _, _ -> },
+    passkeyInsteadOfCode: Boolean = false,
+    onPasskeyInsteadOfCode: (String, String) -> Unit = { _, _ -> },
     /** After a QR scan: the code one types into the browser. */
-    qrBestaetigung: String? = null,
+    qrConfirmation: String? = null,
 ) {
     var username by rememberSaveable { mutableStateOf("") }
     // remember, not rememberSaveable: saved state ends up in the bundle and on a
@@ -79,19 +79,19 @@ fun LoginScreen(
     val focusMgr = LocalFocusManager.current
     // A planted tap can sign in here or confirm a passkey. The
     // visual protection for a revealed password is brought along by the PasswordField itself.
-    Ueberdeckungsschutz()
+    OverlayGuard()
 
     // The keyboard does not learn password, code or address.
     KeyboardWithoutLearn {
-    val kopf: @Composable ColumnScope.() -> Unit = {
+    val header: @Composable ColumnScope.() -> Unit = {
             // The same header as during setup, which comes right before this.
             BrandsHeader()
-            Spacer(Modifier.height(Abstaende.mittel))
+            Spacer(Modifier.height(Spacing.medium))
 
             // The chip switches the server: TalkBack names that along with the address (the surface
             // combines the description with its role „Schaltfläche“). The address wraps
             // instead of being truncated: it is exactly what one checks before signing in.
-            val changeServer = stringResource(R.string.login_server_aendern, serverUrl)
+            val changeServer = stringResource(R.string.login_server_edit, serverUrl)
             Surface(
                 onClick = onChangeServer,
                 // Surface(onClick) sets no role: TalkBack would otherwise only read the address.
@@ -99,14 +99,14 @@ fun LoginScreen(
                     role = Role.Button
                     contentDescription = changeServer
                 },
-                shape = Formen.chip,
+                shape = Shapes.chip,
                 color = MaterialTheme.colorScheme.surface,
                 // outline: the border is the chip's only boundary and needs 3:1.
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
-                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.tiny),
+                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Spacing.small, vertical = Spacing.tiny),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
                     Icon(Icons.Default.Cloud, null, Modifier.size(withFont(16.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                     Text(serverUrl, Modifier.weight(1f, fill = false),
@@ -115,36 +115,36 @@ fun LoginScreen(
                         tint = MaterialTheme.colorScheme.primary)
                 }
             }
-            if (qrBestaetigung != null) {
-                Spacer(Modifier.height(Abstaende.mittel))
-                Text(stringResource(R.string.login_qr_bestaetigen_hinweis), style = MaterialTheme.typography.bodyMedium)
-                Text(qrBestaetigung.chunked(3).joinToString(" "), Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            if (qrConfirmation != null) {
+                Spacer(Modifier.height(Spacing.medium))
+                Text(stringResource(R.string.login_qr_confirm_hint), style = MaterialTheme.typography.bodyMedium)
+                Text(qrConfirmation.chunked(3).joinToString(" "), Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     style = MaterialTheme.typography.headlineMedium)
             }
     }
-    val karte: @Composable (breit: Boolean) -> Unit = { breit ->
+    val card: @Composable (wide: Boolean) -> Unit = { wide ->
             LoginCard {
-                when (formular) {
-                    AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
+                when (form) {
+                    LoginForm.LOGIN -> LoginFields(
                         username = username, onUsername = { username = it },
                         password = password, onPassword = { password = it },
-                        codeNoetig = codeNoetig, code = code, onCode = { code = it },
+                        codeNeeded = codeNeeded, code = code, onCode = { code = it },
                         isLoading = isLoading, error = error,
-                        registrierungOffen = registrierungOffen,
+                        registrationOpen = registrationOpen,
                         focusMgr = focusMgr,
-                        onLogin = onLogin, onFormular = onFormular,
-                        vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff,
+                        onLogin = onLogin, onForm = onForm,
+                        fullAccess = fullAccess, onFullAccess = onFullAccess,
                         onPasskey = onPasskey,
-                        onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
+                        onPasskeyInsteadOfCode = onPasskeyInsteadOfCode.takeIf { passkeyInsteadOfCode && onPasskey != null })
 
-                    AnmeldeFormular.REGISTER -> RegistrierFields(
-                        laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                        focusMgr = focusMgr, namesSideBySide = breit,
-                        onRegistrieren = onRegistrieren, onFormular = onFormular)
+                    LoginForm.REGISTER -> RegisterFields(
+                        running = accountRunning, message = accountMessage, error = accountError,
+                        focusMgr = focusMgr, namesSideBySide = wide,
+                        onRegister = onRegister, onForm = onForm)
 
-                    AnmeldeFormular.PASSWORD_FORGOTTEN -> ForgottenFields(
-                        laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                        sendOn = onPasswortVergessen, onFormular = onFormular)
+                    LoginForm.FORGOT_PASSWORD -> ForgotPasswordFields(
+                        running = accountRunning, message = accountMessage, error = accountError,
+                        sendOn = onPasswordForget, onForm = onForm)
                 }
             }
     }
@@ -152,33 +152,33 @@ fun LoginScreen(
     // main button would otherwise sit unreachably below the fold. In landscape, brand and form
     // sit side by side as during setup, otherwise „Registrieren“ was below the fold.
     BoxWithConstraints(Modifier.fillMaxSize().outsideTheSystemBars()) {
-        val hoehe = maxHeight
-        if (maxWidth > hoehe && maxWidth >= ACROSS_TWO_COLUMN) {
+        val height = maxHeight
+        if (maxWidth > height && maxWidth >= ACROSS_TWO_COLUMN) {
             Row(
-                Modifier.fillMaxSize().centeredUntil(Lesebreite.formular * 2)
-                    .padding(horizontal = Abstaende.huge),
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.huge),
+                Modifier.fillMaxSize().centeredUntil(ReadingWidth.form * 2)
+                    .padding(horizontal = Spacing.huge),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.huge),
             ) {
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                    .padding(vertical = Abstaende.gross),
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = height)
+                    .padding(vertical = Spacing.large),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-                    content = kopf)
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                    .padding(vertical = Abstaende.gross),
+                    content = header)
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = height)
+                    .padding(vertical = Spacing.large),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    karte(true)
+                    card(true)
                 }
             }
         } else Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                .centeredUntil(Lesebreite.formular)
-                .padding(horizontal = 28.dp, vertical = Abstaende.gross),
+            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = height)
+                .centeredUntil(ReadingWidth.form)
+                .padding(horizontal = 28.dp, vertical = Spacing.large),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            kopf()
+            header()
             Spacer(Modifier.height(28.dp))
-            karte(false)
+            card(false)
         }
     }
 }
@@ -190,19 +190,19 @@ fun LoginScreen(
  * else's account, and everything entered would end up there. Tapping away means no.
  */
 @Composable
-internal fun QrAccountQuestion(konto: QrAccount, onQrAccount: (uebernehmen: Boolean) -> Unit) {
-    val titel = stringResource(R.string.login_qr_konto_titel)
+internal fun QrAccountQuestion(account: QrAccount, onQrAccount: (adopt: Boolean) -> Unit) {
+    val title = stringResource(R.string.login_qr_account_title)
     AlertDialog(
-        containerColor = fensterFlaeche(),
+        containerColor = windowSurface(),
         onDismissRequest = { onQrAccount(false) },
-        modifier = Modifier.semantics { paneTitle = titel },
-        title = { Text(titel, Modifier.semantics { heading() }) },
+        modifier = Modifier.semantics { paneTitle = title },
+        title = { Text(title, Modifier.semantics { heading() }) },
         text = {
-            Ueberdeckungsschutz()
-            Text(stringResource(R.string.login_qr_konto_text, konto.benutzer, konto.server))
+            OverlayGuard()
+            Text(stringResource(R.string.login_qr_account_text, account.user, account.server))
         },
         confirmButton = {
-            TextButton(onClick = { onQrAccount(true) }) { Text(stringResource(R.string.login_qr_konto_ja)) }
+            TextButton(onClick = { onQrAccount(true) }) { Text(stringResource(R.string.login_qr_account_yes)) }
         },
         dismissButton = {
             TextButton(onClick = { onQrAccount(false) }) { Text(stringResource(R.string.common_cancel)) }
@@ -219,28 +219,28 @@ private val ACROSS_TWO_COLUMN = 840.dp
  * same everywhere.
  */
 @Composable
-internal fun FormMessage(text: String, fehler: Boolean) {
+internal fun FormMessage(text: String, error: Boolean) {
     Surface(
-        shape = Formen.kachel,
-        color = if (fehler) MaterialTheme.colorScheme.errorContainer
+        shape = Shapes.tile,
+        color = if (error) MaterialTheme.colorScheme.errorContainer
                 else MaterialTheme.colorScheme.secondaryContainer
     ) {
         Row(
             Modifier.fillMaxWidth().padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                if (fehler) Icons.Default.Warning else Icons.Default.CheckCircle, null,
+                if (error) Icons.Default.Warning else Icons.Default.CheckCircle, null,
                 Modifier.size(16.dp),
-                tint = if (fehler) MaterialTheme.colorScheme.onErrorContainer
+                tint = if (error) MaterialTheme.colorScheme.onErrorContainer
                        else MaterialTheme.colorScheme.onSecondaryContainer
             )
             Text(
                 text,
                 // Announced: after „Anmelden“ a blind person otherwise heard nothing.
                 modifier = Modifier.announce(),
-                color = if (fehler) MaterialTheme.colorScheme.onErrorContainer
+                color = if (error) MaterialTheme.colorScheme.onErrorContainer
                         else MaterialTheme.colorScheme.onSecondaryContainer,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -250,16 +250,16 @@ internal fun FormMessage(text: String, fehler: Boolean) {
 
 /** A button that loads: a spinner instead of a label while something is running. */
 @Composable
-internal fun LoadButton(text: String, laeuft: Boolean, aktiv: Boolean, fehlt: String? = null, onClick: () -> Unit) {
+internal fun LoadButton(text: String, running: Boolean, active: Boolean, missing: String? = null, onClick: () -> Unit) {
     // Ein gesperrter Hauptknopf sagt, was fehlt: Blass allein liess raten, warum.
-    if (!aktiv && !laeuft && fehlt != null) Text(fehlt, style = MaterialTheme.typography.bodySmall,
+    if (!active && !running && missing != null) Text(missing, style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-        enabled = !laeuft && aktiv
+        enabled = !running && active
     ) {
-        if (laeuft) {
+        if (running) {
             CircularProgressIndicator(Modifier.size(18.dp),
                 color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
         } else {

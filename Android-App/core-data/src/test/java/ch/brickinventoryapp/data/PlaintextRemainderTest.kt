@@ -13,7 +13,7 @@ import org.junit.Test
  *
  * Counter-checks: „klartext_netze“ taken out of the list → red (the key stayed);
  * „lager_“ taken out of FILTER → red “the filters of earlier versions go …”
- * (kotlinc locally; gegenproben/filter-bleiben-im-klartext.patch).
+ * (kotlinc locally; counter-checks/filter-bleiben-im-klartext.patch).
  */
 class PlaintextRemainderTest {
 
@@ -25,7 +25,7 @@ class PlaintextRemainderTest {
             booleanPreferencesKey("klartext_alt_uebernommen") to true,
             stringPreferencesKey("server_url") to "https://brick.example.org",
         )
-        PlaintextRemainder.entferne(prefs)
+        PlaintextRemainder.remove(prefs)
         assertEquals(setOf("server_url"), prefs.asMap().keys.map { it.name }.toSet())
     }
 
@@ -38,7 +38,7 @@ class PlaintextRemainderTest {
             stringPreferencesKey("server_url_geheim") to "x",
             stringPreferencesKey("currency") to "CHF",
         )
-        PlaintextRemainder.entferne(prefs)
+        PlaintextRemainder.remove(prefs)
         assertEquals(setOf("server_url_geheim", "currency"), prefs.asMap().keys.map { it.name }.toSet())
     }
 }

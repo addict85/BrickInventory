@@ -3,18 +3,18 @@ package ch.brickinventoryapp.app.di
 import android.content.Context
 import androidx.glance.appwidget.updateAll
 import ch.brickinventoryapp.BuildConfig
-import ch.brickinventoryapp.app.MeldungsEinstieg
+import ch.brickinventoryapp.app.MessageEntryPoint
 import ch.brickinventoryapp.model.util.AppVersion
-import ch.brickinventoryapp.data.Startziel
-import ch.brickinventoryapp.state.ui.Abmeldehaken
-import ch.brickinventoryapp.app.widget.SammlungsWidget
+import ch.brickinventoryapp.data.StartDestination
+import ch.brickinventoryapp.state.ui.LogoutHook
+import ch.brickinventoryapp.app.widget.CollectionWidget
 import ch.brickinventoryapp.app.widget.WidgetStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import ch.brickinventoryapp.state.ui.Widgetanstoss
+import ch.brickinventoryapp.state.ui.WidgetKick
 
 /**
  * What only the app knows: its activity and its widget. The modules below see
@@ -29,19 +29,19 @@ object AppModule {
      * The class itself, not its name: for R8 only a class reference is a call.
      */
     @Provides
-    fun provideStartziel(): Startziel = Startziel(MeldungsEinstieg::class.java)
+    fun provideStartDestination(): StartDestination = StartDestination(MessageEntryPoint::class.java)
 
     @Provides
     fun provideAppVersion(): AppVersion = AppVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
 
     /** Otherwise after sign-out the widget shows the numbers of the old account. */
     @Provides
-    fun provideWidgetanstoss(@ApplicationContext ctx: Context): Widgetanstoss =
-        Widgetanstoss { SammlungsWidget().updateAll(ctx) }
+    fun provideWidgetKick(@ApplicationContext ctx: Context): WidgetKick =
+        WidgetKick { CollectionWidget().updateAll(ctx) }
 
     @Provides
-    fun provideAbmeldehaken(@ApplicationContext ctx: Context): Abmeldehaken = Abmeldehaken {
-        WidgetStore.leeren(ctx)
-        SammlungsWidget().updateAll(ctx)
+    fun provideLogoutHook(@ApplicationContext ctx: Context): LogoutHook = LogoutHook {
+        WidgetStore.clearAll(ctx)
+        CollectionWidget().updateAll(ctx)
     }
 }

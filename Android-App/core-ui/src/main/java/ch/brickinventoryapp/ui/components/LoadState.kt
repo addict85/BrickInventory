@@ -32,9 +32,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.ui.LoadingIndicator
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * Loading, error, empty, no results and content — the same building block for every
@@ -43,22 +43,22 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  */
 @Composable
 fun LoadState(
-    anzeige: LoadingIndicator,
-    fehler: String?,
-    onErneut: () -> Unit,
-    leer: @Composable ColumnScope.() -> Unit,
+    display: LoadingIndicator,
+    error: String?,
+    onAgain: () -> Unit,
+    empty: @Composable ColumnScope.() -> Unit,
     modifier: Modifier = Modifier,
     noHits: @Composable ColumnScope.() -> Unit = { NoHitsHint() },
-    laedt: @Composable () -> Unit = { LoadCircle() },
-    errorClass: Fehlerklasse?,
-    inhalt: @Composable () -> Unit,
+    loading: @Composable () -> Unit = { LoadCircle() },
+    errorClass: ErrorClass?,
+    content: @Composable () -> Unit,
 ) {
-    when (anzeige) {
-        LoadingIndicator.LISTE -> inhalt()
-        LoadingIndicator.LOADS -> laedt()
-        LoadingIndicator.FEHLER -> StateHint(modifier) { ErrorHint(fehler, onErneut, errorClass) }
+    when (display) {
+        LoadingIndicator.LIST -> content()
+        LoadingIndicator.LOADS -> loading()
+        LoadingIndicator.ERROR -> StateHint(modifier) { ErrorHint(error, onAgain, errorClass) }
         LoadingIndicator.NO_HITS -> StateHint(modifier, noHits)
-        LoadingIndicator.LEER -> StateHint(modifier, leer)
+        LoadingIndicator.EMPTY -> StateHint(modifier, empty)
     }
 }
 
@@ -76,20 +76,20 @@ fun LoadCircle(modifier: Modifier = Modifier) {
  * buttons otherwise don't fit, and PullToRefresh needs something to pull.
  */
 @Composable
-fun StateHint(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.() -> Unit) {
+fun StateHint(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.huge),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.huge),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Abstaende.mittel, Alignment.CenterVertically),
-        content = inhalt,
+        verticalArrangement = Arrangement.spacedBy(Spacing.medium, Alignment.CenterVertically),
+        content = content,
     )
 }
 
 /** Icon, heading and an explanatory sentence — the shape of every hint. */
 @Composable
-fun HintText(symbol: ImageVector, titel: String, text: String? = null) {
+fun HintText(symbol: ImageVector, title: String, text: String? = null) {
     EmptySymbol(symbol)
-    Text(titel, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+    Text(title, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
         modifier = Modifier.semantics { heading() })
     if (text != null) Text(text, style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
@@ -98,30 +98,30 @@ fun HintText(symbol: ImageVector, titel: String, text: String? = null) {
 /**
  * The error is announced (liveRegion) as soon as it appears. Without a receiver,
  * so any surface can embed it, including a card in settings.
- * With [klasse], icon, heading and advice of that class are shown; the data layer's
+ * With [kind], icon, heading and advice of that class are shown; the data layer's
  * sentence only where it says more than the heading (code, server text).
- * [klasse] with no default: whoever left it out showed a server error without advice.
+ * [kind] with no default: whoever left it out showed a server error without advice.
  */
 @Composable
-fun ErrorHint(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse?) {
-    val (symbol, titel, rat) = when (klasse) {
-        Fehlerklasse.OFFLINE -> Triple(Icons.Default.CloudOff, R.string.fehler_offline_titel, R.string.fehler_offline_text)
-        Fehlerklasse.SERVER -> Triple(Icons.Default.Dns, R.string.fehler_server_titel, R.string.fehler_server_text)
-        Fehlerklasse.LOGIN -> Triple(Icons.Default.Lock, R.string.fehler_anmeldung_titel, R.string.fehler_anmeldung_text)
-        Fehlerklasse.UNBEKANNT, null -> Triple(Icons.Default.ErrorOutline, R.string.common_load_failed, null)
+fun ErrorHint(error: String?, onAgain: () -> Unit, kind: ErrorClass?) {
+    val (symbol, title, advice) = when (kind) {
+        ErrorClass.OFFLINE -> Triple(Icons.Default.CloudOff, R.string.error_offline_title, R.string.error_offline_text)
+        ErrorClass.SERVER -> Triple(Icons.Default.Dns, R.string.error_server_title, R.string.error_server_text)
+        ErrorClass.LOGIN -> Triple(Icons.Default.Lock, R.string.error_login_title, R.string.error_login_text)
+        ErrorClass.UNKNOWN, null -> Triple(Icons.Default.ErrorOutline, R.string.common_load_failed, null)
     }
-    val showSet = klasse == null || klasse == Fehlerklasse.SERVER || klasse == Fehlerklasse.UNBEKANNT
+    val showSet = kind == null || kind == ErrorClass.SERVER || kind == ErrorClass.UNKNOWN
     Column(
         Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+        verticalArrangement = Arrangement.spacedBy(Spacing.medium),
     ) {
-        HintText(symbol, stringResource(titel), rat?.let { stringResource(it) })
-        if (showSet && !fehler.isNullOrBlank()) {
-            Text(fehler, style = MaterialTheme.typography.bodySmall,
+        HintText(symbol, stringResource(title), advice?.let { stringResource(it) })
+        if (showSet && !error.isNullOrBlank()) {
+            Text(error, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
-        Button(onClick = onErneut) { Text(stringResource(R.string.common_retry)) }
+        Button(onClick = onAgain) { Text(stringResource(R.string.common_retry)) }
     }
 }
 

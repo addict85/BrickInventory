@@ -23,7 +23,7 @@ import javax.crypto.SecretKey
  * restore, root) to „unlocked“ or „0 minutes“ breaks the seal, and a broken seal locks
  * (fail closed). Only the signature of the app lock's key opens it again (AppUnlocking).
  */
-internal class AppLockStore(context: Context, private val seal: LockSeal = KeystoreLockSeal) : AppLock.Ablage {
+internal class AppLockStore(context: Context, private val seal: LockSeal = KeystoreLockSeal) : AppLock.Store {
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
@@ -55,8 +55,8 @@ internal class AppLockStore(context: Context, private val seal: LockSeal = Keyst
 
     // Without a usable key no seal: the next start then counts the state as tampered and locks.
     private fun reseal() = prefs.edit(commit = true) {
-        val neu = sealOf()
-        if (neu == null) remove(SEAL) else putString(SEAL, neu)
+        val newValue = sealOf()
+        if (newValue == null) remove(SEAL) else putString(SEAL, newValue)
     }
 
     private fun write(change: SharedPreferences.Editor.() -> Unit) {
@@ -66,9 +66,9 @@ internal class AppLockStore(context: Context, private val seal: LockSeal = Keyst
     }
 
     /** Set once on first read (AppLock.vorgabe) so that a later update changes nothing. */
-    override fun minuten(): Int {
+    override fun minutes(): Int {
         checkSeal()
-        if (!prefs.contains(MINUTES)) write { putInt(MINUTES, AppLock.vorgabe(newInstalled(), secured())) }
+        if (!prefs.contains(MINUTES)) write { putInt(MINUTES, AppLock.default(newInstalled(), secured())) }
         return prefs.getInt(MINUTES, 0)
     }
 
@@ -79,12 +79,12 @@ internal class AppLockStore(context: Context, private val seal: LockSeal = Keyst
 
     private fun secured(): Boolean = app.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
 
-    override fun setMinutes(minuten: Int) = write { putInt(MINUTES, minuten) }
+    override fun setMinutes(minutes: Int) = write { putInt(MINUTES, minutes) }
     override fun backgroundSince(): Long? { checkSeal(); return prefs.getLong(SINCE, -1L).takeIf { it >= 0 } }
-    override fun rememberBackground(seit: Long?) = write { if (seit == null) remove(SINCE) else putLong(SINCE, seit) }
+    override fun rememberBackground(since: Long?) = write { if (since == null) remove(SINCE) else putLong(SINCE, since) }
     override fun backgroundStart(): Int? { checkSeal(); return prefs.getInt(START, -1).takeIf { it >= 0 } }
     override fun rememberBackgroundStart(start: Int?) = write { if (start == null) remove(START) else putInt(START, start) }
-    override fun gesperrt(): Boolean { checkSeal(); return prefs.getBoolean(LOCKED, false) }
+    override fun locked(): Boolean { checkSeal(); return prefs.getBoolean(LOCKED, false) }
     // commit instead of apply: a process end right afterwards must not lose the lock.
     override fun setLocked(an: Boolean) = write { putBoolean(LOCKED, an) }
 

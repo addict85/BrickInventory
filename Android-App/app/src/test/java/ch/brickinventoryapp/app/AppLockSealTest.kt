@@ -54,8 +54,8 @@ class AppLockSealTest {
     fun `regular writes keep the seal, a new instance reads the same state`() {
         store().apply { setMinutes(15); setLocked(false); rememberBackground(1234L) }
         val again = store()
-        assertFalse(again.gesperrt())
-        assertEquals(15, again.minuten())
+        assertFalse(again.locked())
+        assertEquals(15, again.minutes())
         assertEquals(1234L, again.backgroundSince())
     }
 
@@ -63,7 +63,7 @@ class AppLockSealTest {
     fun `an edited file to unlocked locks the app`() {
         store().apply { setMinutes(5); setLocked(true) }
         file.edit(commit = true) { putBoolean("gesperrt", false) }
-        assertTrue("Ein gebrochenes Siegel sperrt", store().gesperrt())
+        assertTrue("Ein gebrochenes Siegel sperrt", store().locked())
     }
 
     @Test
@@ -71,19 +71,19 @@ class AppLockSealTest {
         store().apply { setMinutes(5); setLocked(false) }
         file.edit(commit = true) { putInt("minuten", 0); remove("hintergrund_seit") }
         val s = store()
-        assertTrue(s.gesperrt())
-        assertEquals(AppLock.DEFAULT_MINUTES, s.minuten())
+        assertTrue(s.locked())
+        assertEquals(AppLock.DEFAULT_MINUTES, s.minutes())
         s.setLocked(false)
-        assertEquals("Nach dem Entsperren gilt das neue Siegel", false, store().gesperrt())
+        assertEquals("Nach dem Entsperren gilt das neue Siegel", false, store().locked())
     }
 
     @Test
     fun `a state of an older version without a seal is taken over once`() {
         file.edit(commit = true) { putInt("minuten", 0); putBoolean("gesperrt", false) }
         val s = store()
-        assertFalse("Ein Update sperrt nicht", s.gesperrt())
-        assertEquals(0, s.minuten())
+        assertFalse("Ein Update sperrt nicht", s.locked())
+        assertEquals(0, s.minutes())
         file.edit(commit = true) { remove("siegel") }
-        assertTrue("Danach zählt ein fehlendes Siegel als verändert", store().gesperrt())
+        assertTrue("Danach zählt ein fehlendes Siegel als verändert", store().locked())
     }
 }

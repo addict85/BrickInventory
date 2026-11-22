@@ -2,11 +2,11 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.cache.areaName
 import ch.brickinventoryapp.data.cache.cleanOldResponseStore
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.CatalogRepository
 import ch.brickinventoryapp.model.local.StockKind
-import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.offline.StorageExit
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.testing.TestApi
@@ -23,10 +23,10 @@ import java.io.File
 /**
  * The store belongs to server and session: after an account switch or on another
  * server the data of another account never appears offline. The vehicle is
- * CatalogRepository.getCatalogMeta() (compartment KATALOG_META) with a real test server; the
+ * CatalogRepository.getCatalogMeta() (compartment CATALOG_META) with a real test server; the
  * area comes from a variable instead of from the prefs.
  *
- * Counter-checks (gegenproben/):
+ * Counter-checks (counter-checks/):
  *   ablage-ein-bereich           uebernimm() without cleanOther() → red “whoever writes clears …”
  *   einzeln-ohne-bereichsvergleich  in reconciledSingle() the before/after comparison
  *                                removed → red “if the account changes during the fetch …”
@@ -43,54 +43,54 @@ class CacheAreaTest {
      */
     @Test
     fun `the offline store knows exactly the classified compartments`() {
-        assertEquals(setOf("SETS", "MERKLISTE", "TEILE", "FIGUREN", "MANUELLE_TEILE", "MANUELLE_FIGUREN", "GUTSCHEINE",
-            "PREISALARME", "LAGERORTE", "KENNZAHLEN", "KATALOG_META"),
+        assertEquals(setOf("SETS", "WANTED_LIST", "PARTS", "FIGURES", "MANUAL_PARTS", "MANUAL_FIGURES", "VOUCHERS",
+            "PRICE_ALARMS", "STORAGE_LOCATIONS", "METRICS", "CATALOG_META"),
             StockKind.entries.map { it.name }.toSet())
     }
 
     private lateinit var server: MockWebServer
     private lateinit var root: File
-    private val bestand = StorageInventory()
+    private val stock = StorageInventory()
     private var areas = ArrayDeque<String?>()
-    private var bereich: String? = "http://heim:3000\ntoken-a"
+    private var area: String? = "http://heim:3000\ntoken-a"
 
     /** One area per query from the queue, otherwise the fixed one. */
-    private val quelle: suspend () -> String? = { if (areas.isEmpty()) bereich else areas.removeFirst() }
+    private val source: suspend () -> String? = { if (areas.isEmpty()) area else areas.removeFirst() }
 
-    private fun repo() = testCatalogRepository(TestApi.fuer(server), Offlineablage(bestand, StorageExit(), quelle))
+    private fun repo() = testCatalogRepository(TestApi.forTarget(server), OfflineStore(stock, OutboxStorage(), source))
 
-    private fun antwort(jahr: Int) =
-        """{"success":true,"themes":[],"year_min":$jahr,"year_max":$jahr,"year_counts":[]}"""
+    private fun response(year: Int) =
+        """{"success":true,"themes":[],"year_min":$year,"year_max":$year,"year_counts":[]}"""
 
     @Before
-    fun auf() {
+    fun setUp() {
         server = MockWebServer()
         server.start()
         root = File(System.getProperty("java.io.tmpdir"), "bim-bereich-${System.nanoTime()}").apply { mkdirs() }
     }
 
     @After
-    fun zu() {
+    fun tearDown() {
         runCatching { server.shutdown() }
         root.deleteRecursively()
     }
 
-    private suspend fun fill(r: CatalogRepository, jahr: Int) {
-        server.enqueue(TestApi.antwort(antwort(jahr)))
-        assertTrue(r.getCatalogMeta() is Ergebnis.Erfolg)
+    private suspend fun fill(r: CatalogRepository, year: Int) {
+        server.enqueue(TestApi.response(response(year)))
+        assertTrue(r.getCatalogMeta() is Outcome.Success)
     }
 
     private suspend fun offlineYear(r: CatalogRepository): Int? {
         runCatching { server.shutdown() }
         return when (val x = r.getCatalogMeta()) {
-            is Ergebnis.Erfolg -> x.data.jahrMin
-            is Ergebnis.Fehler -> null
+            is Outcome.Success -> x.data.yearMin
+            is Outcome.Failure -> null
         }
     }
 
     /** Die Bereiche, in denen etwas liegt. */
-    private suspend fun belegt(vararg candidates: String) =
-        candidates.filter { bestand.lies(it, StockKind.KATALOG_META).liste.isNotEmpty() }
+    private suspend fun occupied(vararg candidates: String) =
+        candidates.filter { stock.read(it, StockKind.CATALOG_META).list.isNotEmpty() }
 
     @Test
     fun `the own account sees its data offline`() = runTest {
@@ -103,7 +103,7 @@ class CacheAreaTest {
     fun `a different account sees nothing of the previous one offline`() = runTest {
         val r = repo()
         fill(r, 1999)
-        bereich = "http://heim:3000\ntoken-b"
+        area = "http://heim:3000\ntoken-b"
         assertEquals(null, offlineYear(r))
     }
 
@@ -111,7 +111,7 @@ class CacheAreaTest {
     fun `a different server sees nothing offline`() = runTest {
         val r = repo()
         fill(r, 1999)
-        bereich = "https://anders.example\ntoken-a"
+        area = "https://anders.example\ntoken-a"
         assertEquals(null, offlineYear(r))
     }
 
@@ -121,10 +121,10 @@ class CacheAreaTest {
         val a = "http://heim:3000\ntoken-a"
         val b = "http://heim:3000\ntoken-b"
         fill(r, 1999)
-        bereich = b
+        area = b
         fill(r, 2024)
-        assertEquals("Nur das Fach des aktuellen Kontos bleibt", listOf(b), belegt(a, b))
-        bereich = a
+        assertEquals("Nur das Fach des aktuellen Kontos bleibt", listOf(b), occupied(a, b))
+        area = a
         assertEquals(null, offlineYear(r))
     }
 
@@ -135,14 +135,14 @@ class CacheAreaTest {
         val b = "http://heim:3000\ntoken-b"
         areas.addAll(listOf(a, b))
         fill(r, 1999)
-        assertEquals("Abgelegt trotz Wechsel", emptyList<String>(), belegt(a, b))
+        assertEquals("Abgelegt trotz Wechsel", emptyList<String>(), occupied(a, b))
     }
 
     @Test
     fun `without sign-in nothing is stored`() = runTest {
-        bereich = null
+        area = null
         fill(repo(), 1999)
-        bereich = "http://heim:3000\ntoken-a"
+        area = "http://heim:3000\ntoken-a"
         assertEquals(null, offlineYear(repo()))
     }
 
@@ -150,12 +150,12 @@ class CacheAreaTest {
     fun `the old storage location is cleared, other things stay`() {
         val noBackup = File(root, "nobackup")
         val cache = File(root, "cache")
-        val alt = listOf(File(noBackup, "api-4/abc"), File(noBackup, "api-3"), File(cache, "api-1"))
-        alt.forEach { File(it.apply { mkdirs() }, "sets.json").writeText("{}") }
-        val fremd = File(noBackup, "bestand.db").apply { parentFile!!.mkdirs(); writeText("x") }
+        val old = listOf(File(noBackup, "api-4/abc"), File(noBackup, "api-3"), File(cache, "api-1"))
+        old.forEach { File(it.apply { mkdirs() }, "sets.json").writeText("{}") }
+        val foreign = File(noBackup, "bestand.db").apply { parentFile!!.mkdirs(); writeText("x") }
         cleanOldResponseStore(noBackup, cache)
-        assertEquals("Der alte Antwortspeicher liegt noch", emptyList<File>(), alt.filter { it.exists() })
-        assertTrue("Was nicht dazugehört, bleibt", fremd.exists())
+        assertEquals("Der alte Antwortspeicher liegt noch", emptyList<File>(), old.filter { it.exists() })
+        assertTrue("Was nicht dazugehört, bleibt", foreign.exists())
     }
 
     @Test

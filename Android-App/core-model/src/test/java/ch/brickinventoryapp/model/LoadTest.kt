@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.model.ui.Fehlerklasse
-import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.dataOrNull
 import ch.brickinventoryapp.model.ui.errorKind
 import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.loading
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -18,34 +18,34 @@ import org.junit.Test
  * fits the case.
  *
  * Counter-checks (measured 14.11.2026, :core-model:test):
- *   A  `offline` delivers `stand == null` → red “data from the store is offline …”
- *   B  dataOrNull() returns a value even on error (`as? Laden.Daten<T>` replaced by
+ *   A  `offline` delivers `state == null` → red “data from the store is offline …”
+ *   B  dataOrNull() returns a value even on error (`as? Load.Data<T>` replaced by
  *      default) → red “only data carries a value”
  */
 class LoadTest {
 
-    private val fehler = Laden.Fehler(Fehlerklasse.OFFLINE, Meldung.Resource(7))
+    private val error = Load.Failure(ErrorClass.OFFLINE, Message.Resource(7))
 
     @Test
     fun `data from the store is offline, fresh data is not`() {
-        assertTrue(Laden.Daten(listOf(1), stand = 1000L).offline)
-        assertFalse(Laden.Daten(listOf(1)).offline)
+        assertTrue(Load.Data(listOf(1), state = 1000L).offline)
+        assertFalse(Load.Data(listOf(1)).offline)
     }
 
     @Test
     fun `only data carries a value`() {
-        assertEquals(listOf(1), Laden.Daten(listOf(1)).dataOrNull())
-        assertNull((Laden.Loads as Laden<List<Int>>).dataOrNull())
-        assertNull((fehler as Laden<List<Int>>).dataOrNull())
+        assertEquals(listOf(1), Load.Data(listOf(1)).dataOrNull())
+        assertNull((Load.Loads as Load<List<Int>>).dataOrNull())
+        assertNull((error as Load<List<Int>>).dataOrNull())
     }
 
     @Test
     fun `loading and error say what they are`() {
-        assertTrue(Laden.Loads.laedt)
-        assertFalse(fehler.laedt)
-        assertEquals(Meldung.Resource(7), fehler.errorMessage)
-        assertEquals(Fehlerklasse.OFFLINE, fehler.errorKind)
-        assertNull(Laden.Daten(Unit).errorMessage)
-        assertNull(Laden.Loads.errorKind)
+        assertTrue(Load.Loads.loading)
+        assertFalse(error.loading)
+        assertEquals(Message.Resource(7), error.errorMessage)
+        assertEquals(ErrorClass.OFFLINE, error.errorKind)
+        assertNull(Load.Data(Unit).errorMessage)
+        assertNull(Load.Loads.errorKind)
     }
 }

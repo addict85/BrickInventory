@@ -53,7 +53,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
 
     testImplementation(project(":core-testing"))
-    // SignOutCleansEverythingTest checks sign-out including session and view.
+    // LogoutCleansEverythingTest checks sign-out including session and view.
     testImplementation(project(":core-state"))
     testImplementation(project(":core-session"))
     // Robolectric-Tests (InventoryDatabaseTest, Ablagen, Netz-Clients).

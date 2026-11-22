@@ -7,9 +7,9 @@
 
 # Navigation lädt den Typ eines Enum-Felds einer Route über seinen Namen (Class.forName);
 # umbenannt fände es ihn nicht. core-model ist reines Kotlin und kennt kein @Keep.
--keep enum ch.brickinventoryapp.model.domain.Postenart { *; }
--keep enum ch.brickinventoryapp.model.domain.Zustand { *; }
--keep enum ch.brickinventoryapp.model.ui.Scannerherkunft { *; }
+-keep enum ch.brickinventoryapp.model.domain.ItemKind { *; }
+-keep enum ch.brickinventoryapp.model.domain.Condition { *; }
+-keep enum ch.brickinventoryapp.model.ui.ScannerOrigin { *; }
 
 # ── ML Kit / Play Services ────────────────────────────────────────────────────
 # ML Kit ist Closed Source und stark reflexionsbasiert (Registrar-Discovery über
@@ -19,12 +19,12 @@
 #   2. NPE auf internem Feld in BarcodeScanning.getClient()
 # Chirurgische Regeln (nur Registrar-Konstruktoren) reichten nicht — daher werden
 # die ML-Kit-Pakete komplett vom Shrinking/Optimieren ausgenommen. Kostet etwas
-# APK-Grösse, ist aber der zuverlässige, etablierte Weg für ML Kit + R8 full mode.
+# APK-Grösse, ist aber der zuverlässige, etablierte Gone für ML Kit + R8 full mode.
 -keep class com.google.mlkit.** { *; }
 -keep class com.google.android.gms.internal.mlkit_vision_barcode.** { *; }
 -keep class com.google.android.gms.internal.mlkit_vision_common.** { *; }
 -keep class com.google.android.gms.internal.mlkit_common.** { *; }
-# Bewusst breit: Code von Google, kein eigener; sein Klartext verrät
+# Bewusst breit: Code von Google, kein eigener; sein Plaintext verrät
 # nichts über die App. Enger gefasst kamen die beiden Abstürze oben.
 -keep class com.google.android.gms.common.** { *; }
 -keep class * implements com.google.firebase.components.ComponentRegistrar {
@@ -33,7 +33,7 @@
 -dontwarn com.google.mlkit.**
 -dontwarn com.google.android.gms.**
 
-# ── Eigene Worker: Konstruktor UND doWork() ──────────────────────────────────
+# ── Own Worker: Konstruktor UND doWork() ──────────────────────────────────
 # WorkManagers eigene Regel hält nur den Konstruktor; doWork() ruft allein das
 # Framework, und R8 nahm es einmal samt allem Dahinter heraus (Preisalarm stumm).
 # Nur diese beiden Glieder, nur im eigenen Baum: Der Rest wird geschrumpft und
@@ -45,33 +45,33 @@
 
 # ── Rooms erzeugte Datenbank-Implementierungen ────────────────────────────────
 #
-# GEMESSEN auf Marcos Geraet, Release-APK vom 25.09. Die App zeigte beim
+# GEMESSEN auf Marcos Device, Release-APK vom 25.09. Die App zeigte beim
 # Umlegen des Preisalarm-Schalters:
 #
 #     Preisalarm konnte nicht eingeplant werden:
 #     androidx.work.impl.WorkDatabase_Impl.<init> []
 #
-# Das ist die Meldung einer NoSuchMethodException, und sie sagt praezise, was
-# fehlt. Room laedt seine erzeugte Implementierung ueber den NAMEN:
+# Das ist die Message einer NoSuchMethodException, und sie sagt praezise, was
+# fehlt. Room laedt seine erzeugte Implementierung ueber den NAMES:
 #
 #     Class.forName("androidx.work.impl.WorkDatabase_Impl")
 #         .getDeclaredConstructor()      <- hier fliegt es
 #         .newInstance()
 #
 # Die Klasse war also DA — sonst haette es eine ClassNotFoundException gegeben.
-# Weg war allein ihr parameterloser Konstruktor. Statisch ruft ihn niemand auf,
+# Gone war allein ihr parameterloser Konstruktor. Statisch ruft ihn niemand auf,
 # und unter R8 full mode (Vorgabe seit AGP 8, hier 9.2.1) reicht die
 # mitgelieferte Regel von Room dafuer nicht aus.
 #
-# ── Warum das die ANTWORT auf eine alte offene Frage ist ─────────────────────
+# ── Warum das die ANTWORT auf eine alte offene Question ist ─────────────────────
 #
-# Im Manifest steht seit Monaten, WorkManager sei auf Marcos Geraet beim
+# Im Manifest steht seit Monaten, WorkManager sei auf Marcos Device beim
 # Hochfahren gescheitert, und: „WARUM er gescheitert ist, weiss bis heute
 # niemand, und es wird sich auch nicht mehr herausfinden lassen."
 #
 # Doch, jetzt schon. WorkManager oeffnet beim Hochfahren genau diese Datenbank.
 # Der Absturz beim App-Start und der Fehlschlag am Schalter sind DERSELBE
-# Fehler an zwei Stellen — nur hat ihn beim zweiten Mal jemand angezeigt,
+# Failure an zwei Stellen — nur hat ihn beim zweiten Mal jemand angezeigt,
 # statt ihn die App mitreissen zu lassen.
 #
 # ── Die dritte Ausprägung derselben Falle ───────────────────────────────────
@@ -87,8 +87,8 @@
 -keep class * extends androidx.room.RoomDatabase { <init>(); }
 
 # ── Kein Logcat im Release ───────────────────────────────────────────────────
-# util/Protokoll.kt schreibt im Release ohnehin nichts. Diese Regel nimmt auch
-# die Aufrufe der Bibliotheken heraus: Deren Texte nennen Adressen samt Abfrage
+# util/AppLog.kt schreibt im Release ohnehin nichts. Diese Regel nimmt auch
+# die Aufrufe der Bibliotheken heraus: Deren Texts nennen Adressen samt Abfrage
 # und Ausnahmen, und Logcat liest jeder mit adb oder einem Fehlerbericht mit.
 -assumenosideeffects class android.util.Log {
     public static int v(...);

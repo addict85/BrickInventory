@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * State belongs in an instance, not at file level.
@@ -52,15 +52,15 @@ class NoFileWideStateTest {
      * The second test below reports every entry that is no longer
      * needed. An entry here is a reminder, not a carte blanche.
      */
-    private val openStill = emptySet<String>()
+    private val stillOpen = emptySet<String>()
 
     @Test
     fun `no feature file holds mutable state at file level`() {
-        val dateien = Quellen.unter("ui")
+        val files = Sources.below("ui")
         val findings = mutableListOf<String>()
-        for (f in dateien) {
-            if (f.name in openStill) continue
-            Quellen.withoutComments(f.readText()).lines().forEachIndexed { i, z ->
+        for (f in files) {
+            if (f.name in stillOpen) continue
+            Sources.withoutComments(f.readText()).lines().forEachIndexed { i, z ->
                 // Column 0 AND no `remember`. Indentation alone is not enough in
                 // this tree: BarcodeResultDialog.kt was extracted from
                 // AppNavigation.kt without reindenting the body
@@ -84,17 +84,17 @@ class NoFileWideStateTest {
     fun `the exception list contains nothing dead`() {
         // The same rule as in StateDomainBoundaryTest: an exception that
         // nobody needs any more is a permission that nobody checks any more.
-        val tot = openStill.filter { name ->
-            val f = Quellen.alle().firstOrNull { it.name == name } ?: return@filter true
-            Quellen.withoutComments(f.readText()).lines().none {
+        val dead = stillOpen.filter { name ->
+            val f = Sources.all().firstOrNull { it.name == name } ?: return@filter true
+            Sources.withoutComments(f.readText()).lines().none {
                 Regex("""^(?:private |internal |public )?var \w+""").containsMatchIn(it) &&
                     !it.contains("remember")
             }
         }
-        assert(tot.isEmpty()) {
+        assert(dead.isEmpty()) {
             "Diese Dateien stehen als offen in der Liste, halten aber keinen " +
                 "dateiweiten Zustand mehr — Eintrag loeschen, dann gilt die Regel " +
-                "auch fuer sie: ${tot.joinToString()}"
+                "auch fuer sie: ${dead.joinToString()}"
         }
     }
 }

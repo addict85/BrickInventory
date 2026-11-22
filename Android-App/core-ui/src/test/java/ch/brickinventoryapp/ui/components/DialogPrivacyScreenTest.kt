@@ -24,8 +24,8 @@ import org.robolectric.shadows.ShadowDialog
  * if the app overview isn't hidden: the dialog has its own
  * window, which would only pick up the page's protection on its next rebuild.
  *
- * Counter-check (Robolectric, measured by CI; job `gegenproben`):
- *   sichtschutz-ohne-dialogfenster  Sichtschutz() only sets the Activity's window →
+ * Counter-check (Robolectric, measured by CI; job `counter-checks`):
+ *   sichtschutz-ohne-dialogfenster  PrivacyShield() only sets the Activity's window →
  *                                   red „ein aufgedecktes Passwort im Dialog …“
  */
 @RunWith(RobolectricTestRunner::class)
@@ -37,8 +37,8 @@ class DialogPrivacyScreenTest {
 
     private fun text(id: Int) = compose.activity.getString(id)
 
-    private fun geschuetzt(fenster: Window?) =
-        (checkNotNull(fenster).attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+    private fun guarded(window: Window?) =
+        (checkNotNull(window).attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
 
     private fun dialogWindow() = checkNotNull(ShadowDialog.getLatestDialog()) { "Kein Dialog offen" }.window
 
@@ -46,22 +46,22 @@ class DialogPrivacyScreenTest {
     fun `a revealed password in the dialog is protected immediately and free again afterwards`() {
         compose.setContent {
             BrickInventoryManagerTheme {
-                PasswordPrompt(titel = "Bestätigen", text = "Passwort", bestaetigen = "OK", codeNoetig = false,
-                    fehler = null, laeuft = false, onBestaetigen = { _, _ -> }, onAbbrechen = {})
+                PasswordPrompt(title = "Bestätigen", text = "Passwort", confirm = "OK", codeNeeded = false,
+                    error = null, running = false, onConfirm = { _, _ -> }, onCancel = {})
             }
         }
         // Tapping rebuilds the dialog; after that only the eye changes its content.
         compose.onNode(hasSetTextAction()).performTextInput("geheim-123")
         compose.waitForIdle()
-        assertFalse("Verdeckt braucht der Dialog keinen Schutz", geschuetzt(dialogWindow()))
+        assertFalse("Verdeckt braucht der Dialog keinen Schutz", guarded(dialogWindow()))
 
         compose.onNodeWithContentDescription(text(R.string.cd_password_show)).performClick()
         compose.waitForIdle()
-        assertTrue("Das aufgedeckte Passwort stand ungeschützt im Dialogfenster", geschuetzt(dialogWindow()))
+        assertTrue("Das aufgedeckte Passwort stand ungeschützt im Dialogfenster", guarded(dialogWindow()))
 
         compose.onNodeWithContentDescription(text(R.string.cd_password_hide)).performClick()
         compose.waitForIdle()
-        assertFalse("Wieder verdeckt bleibt der Dialog geschützt", geschuetzt(dialogWindow()))
-        assertFalse("Die Seite darunter bleibt geschützt", geschuetzt(compose.activity.window))
+        assertFalse("Wieder verdeckt bleibt der Dialog geschützt", guarded(dialogWindow()))
+        assertFalse("Die Seite darunter bleibt geschützt", guarded(compose.activity.window))
     }
 }

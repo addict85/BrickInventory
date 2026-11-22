@@ -17,7 +17,7 @@ plugins {
 // CI compares against them as soon as some are checked in, and
 // records otherwise (android.yml, step „Bildschirmfotos vergleichen oder aufnehmen?“).
 roborazzi {
-    outputDir.set(file("src/test/bildschirmfotos"))
+    outputDir.set(file("src/test/screenshots"))
 }
 
 // Version from Git so that the same state yields the same version: versionName from
@@ -26,11 +26,11 @@ roborazzi {
 // CI clones the full history for that (android.yml: fetch-depth: 0).
 val VERSION_CODE_BASE = 200_000_000
 fun git(vararg args: String): String? = runCatching {
-    val lauf = providers.exec {
+    val jobRun = providers.exec {
         commandLine("git", *args)
         isIgnoreExitValue = true
     }
-    if (lauf.result.get().exitValue == 0) lauf.standardOutput.asText.get().trim().ifEmpty { null } else null
+    if (jobRun.result.get().exitValue == 0) jobRun.standardOutput.asText.get().trim().ifEmpty { null } else null
 }.getOrNull()
 val commitCount: Int? = git("rev-list", "--count", "HEAD")?.toIntOrNull()
 val generatedVersionName: String =
@@ -50,8 +50,8 @@ ksp {
 android {
     // Robolectric reads the app's resources, fonts and manifest.
     testOptions.unitTests.isIncludeAndroidResources = true
-    // ModulgrenzenTest runs the same edge rule as the task modulkantenPruefen.
-    sourceSets.getByName("test").kotlin.directories.add("../build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten")
+    // ModuleBoundariesTest runs the same edge rule as the task moduleEdgesCheck.
+    sourceSets.getByName("test").kotlin.directories.add("../build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges")
 
     namespace  = "ch.brickinventoryapp"
 
@@ -242,7 +242,7 @@ dependencies {
     testImplementation(project(":core-contract"))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
-    // DevicesProtectionTest builds the TokenAblage on its own DataStore.
+    // DevicesProtectionTest builds the TokenStore on its own DataStore.
     testImplementation(libs.androidx.datastore)
     implementation(libs.androidx.core.ktx)
     // Splash screen instead of a white window on cold start (MainActivity.installSplashScreen).

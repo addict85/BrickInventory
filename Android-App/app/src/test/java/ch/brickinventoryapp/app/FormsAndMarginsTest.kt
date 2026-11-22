@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.ui.loading
 import android.content.Context
-import android.graphics.Color as Farbe
+import android.graphics.Color as Color
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
@@ -31,13 +31,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.shared.ui.ErfassungsFelder
-import ch.brickinventoryapp.model.domain.Postenart
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.shared.ui.EntryFields
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.collection.ui.BarcodeUiState
-import ch.brickinventoryapp.collection.ui.dialogs.BarcodeDialogZustand
+import ch.brickinventoryapp.collection.ui.dialogs.BarcodeDialogState
 import ch.brickinventoryapp.collection.ui.dialogs.BarcodeResultDialog
 import ch.brickinventoryapp.collection.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
@@ -53,8 +53,8 @@ import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.state.ui.ScopeUiState
-import ch.brickinventoryapp.state.ui.LagerUiState
-import ch.brickinventoryapp.state.ui.viewmodel.KaeufeViewModel
+import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.junit.After
@@ -71,7 +71,7 @@ import org.robolectric.shadows.ShadowDialog
 import java.util.Locale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.state.ToggleableState
-import ch.brickinventoryapp.data.VorwaermNetwork
+import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.testManagementRepository
 import ch.brickinventoryapp.management.ui.ManagementUiState
@@ -91,8 +91,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.AppTarget
-import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.collection.ui.SammlungZiel
+import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.collection.ui.screens.BarcodeScannerScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.foundation.layout.size
@@ -100,10 +100,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.ProductImage
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
-import ch.brickinventoryapp.account.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
@@ -112,7 +112,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.SemanticsMatcher
 import ch.brickinventoryapp.parts.ui.PlSet
-import ch.brickinventoryapp.parts.ui.TeilelisteUiState
+import ch.brickinventoryapp.parts.ui.PartListUiState
 import ch.brickinventoryapp.parts.ui.screens.PartsListScreen
 import ch.brickinventoryapp.collection.ui.screens.GalleryAndDetail
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
@@ -122,7 +122,7 @@ import org.robolectric.RuntimeEnvironment
  * Forms, margins and bars, checked as behavior — phone 411 dp, de-CH: field labels,
  * help lines, distances to the window edge, tablet side by side.
  *
- * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
  *   kaufpreise-spaltenkoepfe        column header „Zustand“ again above the rows → red “the purchase prices carry field labels …”
  *   barcode-felder-ohne-hinweis     barcode dialog without help line below the quantity → red “barcode names the number …”
  *   barcode-plakette-vor-nummer     „Schon in deiner Sammlung“ again between name and number
@@ -153,35 +153,35 @@ class FormsAndMarginsTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val vorher = Locale.getDefault()
+    private val before = Locale.getDefault()
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val world = Examples.Welt(ContextTexts())
+    private val world = Examples.World(ContextTexts())
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() {
-        Locale.setDefault(vorher)
+    fun tearDown() {
+        Locale.setDefault(before)
         world.close()
     }
 
-    private fun text(id: Int, vararg werte: Any): String = if (werte.isEmpty()) ctx.getString(id) else ctx.getString(id, *werte)
+    private fun text(id: Int, vararg values: Any): String = if (values.isEmpty()) ctx.getString(id) else ctx.getString(id, *values)
 
-    private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
+    private fun show(font: Float = 1f, content: @Composable () -> Unit) {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
-                    Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
+                CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
+                    Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
         }
         compose.waitForIdle()
     }
 
-    /** Drive the main looper until [fertig] holds; the world responds in ticks. */
-    private fun wait(name: String, fertig: () -> Boolean) {
-        driveUntil(name, requests = { world.paths.requests.size }, bereit = fertig)
+    /** Drive the main looper until [done] holds; the world responds in ticks. */
+    private fun wait(name: String, done: () -> Boolean) {
+        driveUntil(name, requests = { world.paths.requests.size }, ready = done)
         compose.waitForIdle()
     }
 
@@ -191,19 +191,19 @@ class FormsAndMarginsTest {
      * (like ScreenPhotoVariantsTest.showDialog).
      */
     private fun openDialog(dialog: @Composable () -> Unit): SemanticsNode {
-        val offen = mutableStateOf(false)
-        zeige { if (offen.value) dialog() }
+        val open = mutableStateOf(false)
+        show { if (open.value) dialog() }
         compose.mainClock.autoAdvance = false
         compose.runOnUiThread {
-            offen.value = true
+            open.value = true
             Snapshot.sendApplyNotifications()
         }
         repeat(5) {
             compose.mainClock.advanceTimeBy(200)
             shadowOf(Looper.getMainLooper()).idle()
         }
-        val fenster = ShadowDialog.getLatestDialog().window!!.decorView
-        return checkNotNull(composeRoot(fenster)) { "kein Compose im Dialogfenster" }.semanticsOwner.unmergedRootSemanticsNode
+        val window = ShadowDialog.getLatestDialog().window!!.decorView
+        return checkNotNull(composeRoot(window)) { "kein Compose im Dialogfenster" }.semanticsOwner.unmergedRootSemanticsNode
     }
 
     private fun composeRoot(v: View): ViewRootForTest? = when (v) {
@@ -217,13 +217,13 @@ class FormsAndMarginsTest {
         n.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text to n.boundsInRoot } +
             n.children.flatMap { texts(it) }
 
-    private fun situation(texts: List<Pair<String, Rect>>, gesucht: String): Rect =
-        texts.firstOrNull { it.first == gesucht }?.second ?: error("„$gesucht“ fehlt in ${texts.map { it.first }}")
+    private fun situation(texts: List<Pair<String, Rect>>, searched: String): Rect =
+        texts.firstOrNull { it.first == searched }?.second ?: error("„$searched“ fehlt in ${texts.map { it.first }}")
 
-    private fun erfassung() = world.t.merke(EntryViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise,
-        testSetsRepository(world.t.api), world.t.setCatalog(), world.t.merkliste(), testCatalogRepository(world.t.api),
+    private fun entryVm() = world.t.track(EntryViewModel(world.t.session, world.t.filter(), world.t.hints,
+        testSetsRepository(world.t.api), world.t.setCatalog(), world.t.wantedList(), testCatalogRepository(world.t.api),
         object : SetCreator {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
+            override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
         }))
 
@@ -231,17 +231,17 @@ class FormsAndMarginsTest {
 
     @Test
     fun `the purchase prices carry field labels instead of column headers`() {
-        val vm = world.t.merke(KaeufeViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, world.t.changes,
+        val vm = world.t.track(PurchasesViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.changes,
             testHouseholdRepository(world.t.api), world.t.sets(), testFinancesRepository(world.t.api), testPartsRepository(world.t.api),
             testMinifigsRepository(world.t.api)))
-        zeige {
-            AcquisitionManagementRoute(vm, type = Postenart.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {})
+        show {
+            AcquisitionManagementRoute(vm, type = ItemKind.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {})
         }
         wait("Kaufpreise") { vm.manDetailState.value.acquisitions.isNotEmpty() }
-        val zeilen = vm.manDetailState.value.acquisitions.size
-        assertEquals("Anzahl als Beschriftung je Zeile", zeilen,
+        val rows = vm.manDetailState.value.acquisitions.size
+        assertEquals("Anzahl als Beschriftung je Zeile", rows,
             compose.onAllNodes(hasSetTextAction() and hasText(text(R.string.common_quantity))).fetchSemanticsNodes().size)
-        assertEquals("Kaufpreis als Beschriftung je Zeile", zeilen,
+        assertEquals("Kaufpreis als Beschriftung je Zeile", rows,
             compose.onAllNodes(hasSetTextAction() and hasText(text(R.string.detail_purchase_price))).fetchSemanticsNodes().size)
         assertEquals("Spaltenkopf „Zustand“ steht noch da", 0,
             compose.onAllNodesWithText(text(R.string.common_condition)).fetchSemanticsNodes().size)
@@ -251,72 +251,72 @@ class FormsAndMarginsTest {
 
     /** What every form says below quantity, price and storage location; the quantity per item. */
     private fun checkHints(name: String, texts: List<String>, countHint: Int) {
-        for (hinweis in listOf(text(countHint), text(R.string.common_unit_price_placeholder), text(R.string.detail_storage_ph)))
-            assertTrue("$name: Hinweis „$hinweis“ fehlt", hinweis in texts)
+        for (hint in listOf(text(countHint), text(R.string.common_unit_price_placeholder), text(R.string.detail_storage_ph)))
+            assertTrue("$name: Hinweis „$hint“ fehlt", hint in texts)
     }
 
     @Test
     fun `adding a set names quantity, price and storage location with a help line`() {
-        val root = openDialog { AddSetDialog(onDismiss = {}, onAdd = {}, lagerorte = listOf("Keller"), immediatelyFocus = false) }
+        val root = openDialog { AddSetDialog(onDismiss = {}, onAdd = {}, storageLocations = listOf("Keller"), immediatelyFocus = false) }
         checkHints("Set", texts(root).map { it.first }, R.string.gallery_quantity_hint)
     }
 
     @Test
     fun `adding parts names quantity, price per piece and storage location with a help line`() {
-        zeige {
+        show {
             Column {
-                ErfassungsFelder(anzahl = "1", onCount = {}, countHint = text(R.string.parts_quantity_hint),
-                    preis = "", onPrice = {}, zustand = Zustand.NEU, onZustand = {})
+                EntryFields(count = "1", onCount = {}, countHint = text(R.string.parts_quantity_hint),
+                    price = "", onPrice = {}, condition = Condition.NEW, onUiState = {})
             }
         }
-        val alle = texts(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode()).map { it.first }
-        checkHints("Teil", alle, R.string.parts_quantity_hint)
-        assertTrue("Preis je Stück ausgeschrieben", text(R.string.common_unit_price) in alle)
+        val all = texts(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode()).map { it.first }
+        checkHints("Teil", all, R.string.parts_quantity_hint)
+        assertTrue("Preis je Stück ausgeschrieben", text(R.string.common_unit_price) in all)
     }
 
     @Test
     fun `barcode names the number by its name and has the same help lines`() {
-        val zustand = BarcodeDialogZustand(AppUiState(), ScopeUiState(),
-            BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", ownershipQuantity = 1), LagerUiState())
-        val root = openDialog { BarcodeResultDialog(zustand, erfassung(), SampleImages.loader(ctx)) }
-        val alle = texts(root)
-        checkHints("Barcode", alle.map { it.first }, R.string.gallery_quantity_hint)
-        val name = situation(alle, "Millennium Falcon")
-        val nummer = situation(alle, "75192-1")
-        val badge = situation(alle, text(R.string.barcode_schon_besessen, 1))
-        assertTrue("Barcode: Nummer gleich unter dem Namen ($name / $nummer / $badge)",
-            name.bottom <= nummer.top && nummer.bottom <= badge.top)
+        val condition = BarcodeDialogState(AppUiState(), ScopeUiState(),
+            BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", ownershipQuantity = 1), StorageUiState())
+        val root = openDialog { BarcodeResultDialog(condition, entryVm(), SampleImages.loader(ctx)) }
+        val all = texts(root)
+        checkHints("Barcode", all.map { it.first }, R.string.gallery_quantity_hint)
+        val name = situation(all, "Millennium Falcon")
+        val number = situation(all, "75192-1")
+        val badge = situation(all, text(R.string.barcode_already_owned, 1))
+        assertTrue("Barcode: Nummer gleich unter dem Namen ($name / $number / $badge)",
+            name.bottom <= number.top && number.bottom <= badge.top)
     }
 
     // ── Hintergrundarbeiten ──
 
     @Test
     fun `background work with a title, flush cards, own display and switches`() {
-        world.paths.antworten["/api/v1/admin/auftraege"] = """{"success":true,
+        world.paths.responses["/api/v1/admin/auftraege"] = """{"success":true,
             "auftraege":[{"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,
                "due_at":"2026-10-30T10:00:00Z","deadline_at":null,"started_at":null,"created_at":"2026-10-30T09:59:00Z",
                "updated_at":null,"progress":null,"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
             "zusammenfassung":[],"pausen":[],"bildbedarf":0,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
-        val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.meldungen)
+        val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
         runBlocking { vm.loadBackground() }
-        val networks = mapOf(VorwaermNetwork.WLAN to true, VorwaermNetwork.MOBILE to false, VorwaermNetwork.ROAMING to false)
-        zeige {
-            MonitoringScreen(MonitoringState(MonitoringUiState(), vm.hintergrund.value, ManagementUiState(),
+        val networks = mapOf(PrewarmNetwork.WIFI to true, PrewarmNetwork.MOBILE to false, PrewarmNetwork.ROAMING to false)
+        show {
+            MonitoringScreen(MonitoringState(MonitoringUiState(), vm.background.value, ManagementUiState(),
                 networks, Design.CLASSIC, 0L), vm, CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> }))
         }
         // The one title stands in the bar (VerwaltungGraph); the content does not repeat it.
         assertEquals("„Hintergrundarbeiten“ unter der Leiste noch einmal", 0,
             compose.onAllNodesWithText(text(R.string.nav_monitoring)).fetchSemanticsNodes().size)
         fun links(id: Int) = compose.onNode(hasText(text(id)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
-        val auftraege = links(R.string.hintergrund_auftraege)
-        for (id in listOf(R.string.monitoring_price_cache, R.string.monitoring_darstellung_vorgabe))
-            assertEquals("Einzug von „${text(id)}“", auftraege, links(id), 1f)
-        for ((netz, an) in listOf(R.string.monitoring_vorwaermen_wlan to ToggleableState.On,
-                                  R.string.monitoring_vorwaermen_mobil to ToggleableState.Off)) {
-            val node = compose.onNode(hasText(text(netz))).fetchSemanticsNode()
-            assertEquals("${text(netz)} ist kein Schalter", Role.Switch, node.config.getOrNull(SemanticsProperties.Role))
-            assertEquals("${text(netz)} zeigt nicht, ob an", an, node.config.getOrNull(SemanticsProperties.ToggleableState))
+        val jobs = links(R.string.background_jobs)
+        for (id in listOf(R.string.monitoring_price_cache, R.string.monitoring_appearance_default))
+            assertEquals("Einzug von „${text(id)}“", jobs, links(id), 1f)
+        for ((network, an) in listOf(R.string.monitoring_prewarm_wifi to ToggleableState.On,
+                                  R.string.monitoring_prewarm_mobile to ToggleableState.Off)) {
+            val node = compose.onNode(hasText(text(network))).fetchSemanticsNode()
+            assertEquals("${text(network)} ist kein Schalter", Role.Switch, node.config.getOrNull(SemanticsProperties.Role))
+            assertEquals("${text(network)} zeigt nicht, ob an", an, node.config.getOrNull(SemanticsProperties.ToggleableState))
         }
     }
 
@@ -324,12 +324,12 @@ class FormsAndMarginsTest {
 
     @Test
     fun `creating vouchers floats, balance and PDF are in the bar's menu`() {
-        zeige { Gutscheine() }
+        show { Vouchers() }
         for (id in listOf(R.string.vouchers_balance_all, R.string.vouchers_export))
             assertEquals("„${text(id)}“ steht ohne Menü da", 0, compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().size)
-        val anlegen = compose.onNode(hasText(text(R.string.vouchers_add)) and hasClickAction()).fetchSemanticsNode().boundsInRoot
-        val hoehe = ctx.resources.displayMetrics.heightPixels
-        assertTrue("Anlegen schwebt nicht unten (${anlegen.bottom} von $hoehe)", anlegen.bottom > hoehe * 0.8f)
+        val create = compose.onNode(hasText(text(R.string.vouchers_add)) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+        val height = ctx.resources.displayMetrics.heightPixels
+        assertTrue("Anlegen schwebt nicht unten (${create.bottom} von $height)", create.bottom > height * 0.8f)
         compose.onNodeWithContentDescription(text(R.string.vouchers_menu_cd)).performClick()
         compose.waitForIdle()
         for (id in listOf(R.string.vouchers_balance_all, R.string.vouchers_export))
@@ -338,39 +338,39 @@ class FormsAndMarginsTest {
 
     // ── Tablet with list and detail ──
 
-    /** Gallery and set detail on the tablet (1280 dp); without [offen] the hint stands on the right. */
-    private fun galleryAndDetail(offen: String?) {
+    /** Gallery and set detail on the tablet (1280 dp); without [open] the hint stands on the right. */
+    private fun galleryAndDetail(open: String?) {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
-        val galerie = world.galerie().also { it.loadSets(); it.loadStats() }
+        val gallery = world.gallery().also { it.loadSets(); it.loadStats() }
         val detail = world.setDetail()
-        zeige {
-            GalleryAndDetail(galerie, erfassung(), SampleImages.loader(ctx), offen = offen, onSetClick = {}, onScanBarcode = {}) {
+        show {
+            GalleryAndDetail(gallery, entryVm(), SampleImages.loader(ctx), open = open, onSetClick = {}, onScanBarcode = {}) {
                 SetDetailRoute(setNumber = Examples.SET, vm = detail, serverUrl = "", imageLoader = SampleImages.loader(ctx),
                     onBack = {}, onDelete = {})
             }
         }
         wait("Galerie und Detail") {
-            galerie.galleryState.value.sets.isNotEmpty() &&
-                (offen == null || detail.setDetailState.value.let { it.setDetail != null && !it.detailFetch.laedt })
+            gallery.galleryState.value.sets.isNotEmpty() &&
+                (open == null || detail.setDetailState.value.let { it.setDetail != null && !it.detailFetch.loading })
         }
     }
 
     @Test
     fun `on the tablet gallery and set detail stand side by side at the same time`() {
         galleryAndDetail(Examples.SET)
-        val breite = ctx.resources.displayMetrics.widthPixels
-        val kachel = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
-        val wert = compose.onNode(hasText(text(R.string.detail_pnl_tile)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        assertTrue("Detail nicht rechts der Liste ($kachel / $wert)", kachel.right <= wert.left)
-        assertTrue("Detail ausserhalb des Fensters ($wert / $breite)", wert.right <= breite + 1f && kachel.left >= 0f)
+        val width = ctx.resources.displayMetrics.widthPixels
+        val tile = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+        val value = compose.onNode(hasText(text(R.string.detail_pnl_tile)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("Detail nicht rechts der Liste ($tile / $value)", tile.right <= value.left)
+        assertTrue("Detail ausserhalb des Fensters ($value / $width)", value.right <= width + 1f && tile.left >= 0f)
     }
 
     @Test
     fun `on the tablet without a selected set a hint stands next to the gallery on the right`() {
         galleryAndDetail(null)
-        val kachel = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
-        val hinweis = compose.onNode(hasText(text(R.string.gallery_detail_leer))).fetchSemanticsNode().boundsInRoot
-        assertTrue("Hinweis nicht rechts der Liste ($kachel / $hinweis)", kachel.right <= hinweis.left)
+        val tile = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+        val hint = compose.onNode(hasText(text(R.string.gallery_detail_empty))).fetchSemanticsNode().boundsInRoot
+        assertTrue("Hinweis nicht rechts der Liste ($tile / $hint)", tile.right <= hint.left)
     }
 
     // ── Build list at 200 % ──
@@ -378,52 +378,52 @@ class FormsAndMarginsTest {
     @Test
     fun `creating a build list stays on one line at 200 percent and names the number of sets`() {
         val sets = listOf(PlSet("75192-1", "Millennium Falcon"), PlSet("21318-1", "Baumhaus"))
-        zeige(schrift = 2f) { PartsListScreen(TeilelisteUiState(sets = sets), serverUrl = "", imageLoader = SampleImages.loader(ctx), onScanBarcode = {}) }
+        show(font = 2f) { PartsListScreen(PartListUiState(sets = sets), serverUrl = "", imageLoader = SampleImages.loader(ctx), onScanBarcode = {}) }
         val button = compose.onNode(hasText(text(R.string.partslist_generate)) and hasClickAction()).fetchSemanticsNode()
-        fun zeilen(n: SemanticsNode): List<Int> {
+        fun rows(n: SemanticsNode): List<Int> {
             val layouts = mutableListOf<TextLayoutResult>()
             n.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(layouts)
-            return layouts.map { it.lineCount } + n.children.flatMap { zeilen(it) }
+            return layouts.map { it.lineCount } + n.children.flatMap { rows(it) }
         }
-        val unten = compose.onNode(hasText(text(R.string.partslist_generate)), useUnmergedTree = true).fetchSemanticsNode()
-        assertTrue("„Bauliste erstellen“ bricht um: ${zeilen(unten)}", zeilen(unten).all { it == 1 })
-        val anzahl = ctx.resources.getQuantityString(R.plurals.partslist_generate_anzahl, 2, 2)
+        val bottom = compose.onNode(hasText(text(R.string.partslist_generate)), useUnmergedTree = true).fetchSemanticsNode()
+        assertTrue("„Bauliste erstellen“ bricht um: ${rows(bottom)}", rows(bottom).all { it == 1 })
+        val count = ctx.resources.getQuantityString(R.plurals.partslist_generate_count, 2, 2)
         assertTrue("Zahl der Sets fehlt am Knopf",
-            compose.onAllNodes(hasContentDescription(anzahl), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
+            compose.onAllNodes(hasContentDescription(count), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
         assertTrue("Zahl steht als zweiter Text im Knopf",
-            button.config.getOrNull(SemanticsProperties.Text).orEmpty().none { it.text == anzahl })
+            button.config.getOrNull(SemanticsProperties.Text).orEmpty().none { it.text == count })
     }
 
     // ── Preisalarme ──
 
     @Test
     fun `price alerts name the direction once and end at the edge of the card`() {
-        world.paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
+        world.paths.responses["/api/v1/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}]}"""
-        val vm = world.t.merke(SettingsViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, world.t.sync,
+        val vm = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
             testAccountRepository(world.t.api, world.t.io), testManagementRepository(world.t.api), world.t.alerts(), testPartsRepository(world.t.api),
             object : FileReader {
-                override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null
+                override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
             })).also { it.loadAlarmOverview() }
-        zeige {
-            PreisalarmeRoute(vm = vm, imageLoader = SampleImages.loader(ctx), serverUrl = "",
-                snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, reportToggle = {})
+        show {
+            PriceAlarmsRoute(vm = vm, imageLoader = SampleImages.loader(ctx), serverUrl = "",
+                snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onBack = {}, reportToggle = {})
         }
-        wait("Preisalarme") { vm.alarmOverview.value.geladen && vm.alarmOverview.value.alerts.isNotEmpty() }
+        wait("Preisalarme") { vm.alarmOverview.value.loaded && vm.alarmOverview.value.alerts.isNotEmpty() }
         // One choice each in the alert and in the creation form, not once more as a field name.
         assertEquals("„Fällt unter“ doppelt", 2,
             compose.onAllNodes(hasText(text(R.string.detail_alert_chip_below)), useUnmergedTree = true)
                 .fetchSemanticsNodes().count { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null })
-        val vorn = text(R.string.alerts_delete_fuer, "§").substringBefore("§")
-        val loeschen = compose.onAllNodes(SemanticsMatcher("Löschen eines Alarms") { n ->
-            n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { it.startsWith(vorn) }
+        val front = text(R.string.alerts_delete_for, "§").substringBefore("§")
+        val delete = compose.onAllNodes(SemanticsMatcher("Löschen eines Alarms") { n ->
+            n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { it.startsWith(front) }
         }).fetchSemanticsNodes().first().boundsInRoot
-        val feld = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
+        val field = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
         // The edge is the end of the 48 dp tap area of the delete button; its visible area
         // (40 dp, centered within) ends 4 dp before.
-        val dichte = ctx.resources.displayMetrics.density
-        val edge = loeschen.center.x + 24 * dichte
-        assertEquals("Feld endet nicht am Rand der Karte (${feld.right} / $edge)", edge, feld.right, dichte)
+        val density = ctx.resources.displayMetrics.density
+        val edge = delete.center.x + 24 * density
+        assertEquals("Feld endet nicht am Rand der Karte (${field.right} / $edge)", edge, field.right, density)
     }
 
     // ── dunkle Designs ──
@@ -431,74 +431,74 @@ class FormsAndMarginsTest {
     @Test
     fun `in the dark the image lies on a dark surface`() {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = Design.CLASSIC, dunkel = true) {
-                ProduktBild(model = "/beispiel/set1.png", imageLoader = SampleImages.loader(ctx), contentDescription = "Bild",
-                    modifier = Modifier.size(300.dp, 100.dp), bildgrund = true)
+            BrickInventoryManagerTheme(theme = Design.CLASSIC, dark = true) {
+                ProductImage(model = "/beispiel/set1.png", imageLoader = SampleImages.loader(ctx), contentDescription = "Bild",
+                    modifier = Modifier.size(300.dp, 100.dp), imageBackground = true)
             }
         }
         compose.waitForIdle()
-        val bild = compose.onNodeWithContentDescription("Bild").captureToImage().asAndroidBitmap()
+        val image = compose.onNodeWithContentDescription("Bild").captureToImage().asAndroidBitmap()
         // Left of the image, which stands centered with „Fit“: only the surface.
-        val point = bild.getPixel(2, bild.height / 2)
-        val hell = (Farbe.red(point) + Farbe.green(point) + Farbe.blue(point)) / 3
-        assertTrue("Bildfläche im Dunkeln hell (Grauwert $hell)", hell < 80)
+        val point = image.getPixel(2, image.height / 2)
+        val light = (Color.red(point) + Color.green(point) + Color.blue(point)) / 3
+        assertTrue("Bildfläche im Dunkeln hell (Grauwert $light)", light < 80)
     }
 
     // ── Bar at 200 %, scanner ──
 
     @Test
     fun `the bar keeps distance to the screen edge at 200 percent`() {
-        zeige(schrift = 2f) {
+        show(font = 2f) {
             val nav = rememberNavController()
             val tab = remember {
-                listOf(Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Reiter(AppTarget.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"))
+                listOf(Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Tab(AppTarget.More, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = tab,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, onTabAngetippt = {},
+                onCsvCancel = {}, onTabTapped = {},
             ) {
-                NavHost(nav, startDestination = SammlungZiel.Gallery) { composable<SammlungZiel.Gallery> { } }
+                NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
             }
         }
-        val dichte = ctx.resources.displayMetrics.density
-        val breite = ctx.resources.displayMetrics.widthPixels
-        val mehr = compose.onNode((hasText("Mehr") or hasContentDescription("Mehr")) and hasClickAction())
+        val density = ctx.resources.displayMetrics.density
+        val width = ctx.resources.displayMetrics.widthPixels
+        val more = compose.onNode((hasText("Mehr") or hasContentDescription("Mehr")) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
-        assertTrue("„Mehr“ endet ${(breite - mehr.right) / dichte} dp vor dem Rand", breite - mehr.right >= 6 * dichte)
+        assertTrue("„Mehr“ endet ${(width - more.right) / density} dp vor dem Rand", width - more.right >= 6 * density)
     }
 
     @Test
     fun `the scanner closes top left and switches the light via a button`() {
-        zeige { BarcodeScannerScreen(onResult = {}, onDismiss = {}, ohneKamera = true) }
-        val breite = ctx.resources.displayMetrics.widthPixels
-        val zu = compose.onNodeWithContentDescription(text(R.string.scanner_close)).fetchSemanticsNode().boundsInRoot
-        assertTrue("Schliessen nicht links (${zu.left} von $breite)", zu.right < breite / 2f)
+        show { BarcodeScannerScreen(onResult = {}, onDismiss = {}, withoutCamera = true) }
+        val width = ctx.resources.displayMetrics.widthPixels
+        val too = compose.onNodeWithContentDescription(text(R.string.scanner_close)).fetchSemanticsNode().boundsInRoot
+        assertTrue("Schliessen nicht links (${too.left} von $width)", too.right < width / 2f)
         compose.onNode(hasText(text(R.string.scanner_torch_on)) and hasClickAction()).fetchSemanticsNode("Licht ist kein Knopf")
     }
 
     // ── Dialogs with margin ──
 
     /** The frame of the dialog: the node with its window name. */
-    private fun frame(n: SemanticsNode, titel: String): Rect? =
-        if (n.config.getOrNull(SemanticsProperties.PaneTitle) == titel) n.boundsInRoot
-        else n.children.firstNotNullOfOrNull { frame(it, titel) }
+    private fun frame(n: SemanticsNode, title: String): Rect? =
+        if (n.config.getOrNull(SemanticsProperties.PaneTitle) == title) n.boundsInRoot
+        else n.children.firstNotNullOfOrNull { frame(it, title) }
 
-    private fun checkEdge(name: String, root: SemanticsNode, titel: String) {
-        val dichte = ctx.resources.displayMetrics.density
-        val breite = ctx.resources.displayMetrics.widthPixels
-        val r = checkNotNull(frame(root, titel)) { "$name: kein Fenster „$titel“" }
-        assertTrue("$name randlos (${r.left / dichte} / ${(breite - r.right) / dichte} dp)",
-            r.left >= 23 * dichte && breite - r.right >= 23 * dichte)
+    private fun checkEdge(name: String, root: SemanticsNode, title: String) {
+        val density = ctx.resources.displayMetrics.density
+        val width = ctx.resources.displayMetrics.widthPixels
+        val r = checkNotNull(frame(root, title)) { "$name: kein Fenster „$title“" }
+        assertTrue("$name randlos (${r.left / density} / ${(width - r.right) / density} dp)",
+            r.left >= 23 * density && width - r.right >= 23 * density)
     }
 
     @Test
     fun `confirmation and adding keep distance to the window edge`() {
         val root = openDialog {
-            Prompt(titel = "Set löschen?", text = "Millennium Falcon wird entfernt.", bestaetigen = "Löschen",
-                onBestaetigen = {}, onAbbrechen = {})
+            Prompt(title = "Set löschen?", text = "Millennium Falcon wird entfernt.", confirm = "Löschen",
+                onConfirm = {}, onCancel = {})
         }
         checkEdge("Rückfrage", root, "Set löschen?")
     }
@@ -514,9 +514,9 @@ class FormsAndMarginsTest {
     /** Whoever has set the wrong language finds theirs by its own name. */
     @Test
     fun `the languages are called in both languages what they call themselves`() {
-        for (sprache in listOf("de-rCH", "en-rGB")) {
-            RuntimeEnvironment.setQualifiers(sprache)
-            assertEquals("($sprache)", listOf("English", "Deutsch"),
+        for (language in listOf("de-rCH", "en-rGB")) {
+            RuntimeEnvironment.setQualifiers(language)
+            assertEquals("($language)", listOf("English", "Deutsch"),
                 listOf(text(R.string.settings_language_en), text(R.string.settings_language_de)))
         }
     }

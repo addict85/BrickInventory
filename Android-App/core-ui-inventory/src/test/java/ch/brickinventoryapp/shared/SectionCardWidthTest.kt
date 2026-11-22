@@ -10,9 +10,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.shared.ui.LocalSpaltenkarte
+import ch.brickinventoryapp.shared.ui.LocalColumnMap
 import ch.brickinventoryapp.shared.ui.SectionCard
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -28,7 +28,7 @@ import org.robolectric.annotation.Config
  * centered in a 640 dp wide column, with an empty margin left and right.
  *
  * Counter-check (measured only in CI — Robolectric):
- *   sectioncard-in-spalte-schmal  SectionCard doesn't read LocalSpaltenkarte (always centeredUntil)
+ *   sectioncard-in-spalte-schmal  SectionCard doesn't read LocalColumnMap (always centeredUntil)
  *                                 → red „in a column the card takes the full width“
  */
 @RunWith(RobolectricTestRunner::class)
@@ -39,10 +39,10 @@ class SectionCardWidthTest {
     val compose = createComposeRule()
 
     /** The width of the card content in dp; it fills the card up to its inner margin. */
-    private fun inhaltsbreite(column: Boolean): Float {
+    private fun contentWidth(column: Boolean): Float {
         compose.setContent {
             BrickInventoryManagerTheme {
-                CompositionLocalProvider(LocalSpaltenkarte provides column) {
+                CompositionLocalProvider(LocalColumnMap provides column) {
                     Box(Modifier.width(800.dp)) {
                         SectionCard("Angaben") { Box(Modifier.fillMaxWidth().height(8.dp).testTag("inhalt")) }
                     }
@@ -55,12 +55,12 @@ class SectionCardWidthTest {
 
     @Test
     fun `single-column the card stays at reading width`() {
-        assertTrue("Breiter als die Lesebreite", inhaltsbreite(column = false) <= 560f)
+        assertTrue("Breiter als die Lesebreite", contentWidth(column = false) <= 560f)
     }
 
     @Test
     fun `in a column the card takes the full width`() {
-        val erwartet = 800f - 4 * Abstaende.gross.value
-        assertEquals(erwartet, inhaltsbreite(column = true), 1f)
+        val expected = 800f - 4 * Spacing.large.value
+        assertEquals(expected, contentWidth(column = true), 1f)
     }
 }

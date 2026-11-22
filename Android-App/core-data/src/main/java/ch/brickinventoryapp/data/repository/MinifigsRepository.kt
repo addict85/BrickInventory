@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.model.domain.Erfasst
-import ch.brickinventoryapp.model.domain.Kontoauswahl
-import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.Recorded
+import ch.brickinventoryapp.model.domain.AccountSelection
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.domain.FigurAnsicht
+import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.UsageView
@@ -14,31 +14,31 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Minifigures: stock and manually added figures.
  * An interface so that ViewModels and tests do not depend on the implementation with
- * Retrofit and store (FigurenRepositoryImpl).
+ * Retrofit and store (FiguresRepositoryImpl).
  */
 interface MinifigsRepository {
     /** The figures from the store by search text; [refreshMinifigs] fills them. */
-    fun observeMinifigs(suche: String? = null): Flow<Local<FigurAnsicht>>
+    fun observeMinifigs(search: String? = null): Flow<Local<FigureView>>
 
-    fun observeManualMinifigs(suche: String? = null): Flow<Local<ManualMinifigView>>
+    fun observeManualMinifigs(search: String? = null): Flow<Local<ManualMinifigView>>
 
     /** Set figures and manual figures into the store; the store is shown. */
-    suspend fun refreshMinifigs(): Ergebnis<Unit>
+    suspend fun refreshMinifigs(): Outcome<Unit>
 
     /** The saved location, as with PartsRepository.setPartStorage. */
-    suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<String?>
+    suspend fun setFigStorage(figNumber: String, location: String): Outcome<String?>
 
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
-                           unitPrice: Geld? = null, condition: Zustand? = null,
+                           unitPrice: Money? = null, condition: Condition? = null,
                            ownerUserId: Int? = null,
-                           storage: String? = null): Ergebnis<Erfasst>
+                           storage: String? = null): Outcome<Recorded>
 
-    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: Zustand? = null, owner: Int? = null): Ergebnis<Unit>
+    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: Condition? = null, owner: Int? = null): Outcome<Unit>
 
-    suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Ergebnis<Unit>
+    suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Outcome<Unit>
 
-    suspend fun getMinifigStats(konten: Kontoauswahl? = null): Ergebnis<MinifigsMetricsView>
+    suspend fun getMinifigStats(accounts: AccountSelection? = null): Outcome<MinifigsMetricsView>
 
     suspend fun getSetsWithMinifig(figNumber: String,
-                                konten: Kontoauswahl? = null): Ergebnis<UsageView>
+                                accounts: AccountSelection? = null): Outcome<UsageView>
 }

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.contract.AcquisitionsResponse
 import org.junit.Assert.assertEquals
@@ -21,7 +21,7 @@ import org.junit.Test
  *      “estimate flag and currency arrive"
  */
 class EntryFieldsTest {
-    private val antwort = """
+    private val response = """
         {"success":true,"acquisitions":[
           {"id":7,"quantity":2,"unit_price":3.5,"condition":"U","price_estimated":true,
            "currency":"CHF","created_at":"2026-10-28T08:00:00Z","owner_user_id":3},
@@ -32,17 +32,17 @@ class EntryFieldsTest {
 
     @Test
     fun `estimate flag and currency arrive`() {
-        val r = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), antwort)
+        val r = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), response)
         assertTrue(r.acquisitions[0].priceEstimated)
-        assertEquals(Waehrung.CHF, r.acquisitions[0].currency)
+        assertEquals(CurrencyCode.CHF, r.acquisitions[0].currency)
         assertFalse(r.acquisitions[1].priceEstimated)
-        assertEquals(Waehrung.EUR, r.acquisitions[1].currency)
+        assertEquals(CurrencyCode.EUR, r.acquisitions[1].currency)
     }
 
     @Test
     fun `an older server without the fields counts as paid and without currency`() {
-        val alt = """{"success":true,"acquisitions":[{"id":1,"quantity":1,"purchase_price":10.0}]}"""
-        val a = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), alt).acquisitions.single()
+        val old = """{"success":true,"acquisitions":[{"id":1,"quantity":1,"purchase_price":10.0}]}"""
+        val a = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), old).acquisitions.single()
         assertFalse(a.priceEstimated)
         assertNull(a.currency)
     }

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.account.ui.screens
 
-import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.model.ui.errorMessage
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,66 +31,66 @@ import ch.brickinventoryapp.ui.components.LoginTitle
 import ch.brickinventoryapp.ui.components.ErrorRow
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.SecondFactorCodeField
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.components.PasswordSwitchFields
 import ch.brickinventoryapp.ui.components.rememberPasswordSwitchCheck
 import ch.brickinventoryapp.ui.theme.mainButtonColors
-import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.OverlayGuard
 
 /**
  * The account still has its start password: the server rejects every
- * request with 403 `passwort_wechsel_noetig` until it's changed. Instead of an
+ * request with 403 `password_switch_needed` until it's changed. Instead of an
  * app full of error messages, only this mask stands there, built like the
  * second-factor mask (brand header, reading width). The change ends all access
  * tokens, after which you sign in with the new password ([onReplace] signs out on success).
  */
 @Composable
 fun StartPasswordMask(
-    kontoZustand: AccountUiState,
-    onReplace: (aktuell: String, neu: String, code: String?) -> Unit,
-    onAbmelden: () -> Unit,
+    accountUiState: AccountUiState,
+    onReplace: (current: String, newValue: String, code: String?) -> Unit,
+    onLogout: () -> Unit,
 ) {
     // remember, not rememberSaveable: saved state lands in the Bundle and, on
     // process death, on disk (ActivityManager) — no place for passwords and codes.
     var pwCurrent by remember { mutableStateOf("") }
-    var pwNeu by remember { mutableStateOf("") }
+    var pwNew by remember { mutableStateOf("") }
     var pwRepeated by remember { mutableStateOf("") }
-    var faktorCode by remember { mutableStateOf("") }
+    var factorCode by remember { mutableStateOf("") }
     val check = rememberPasswordSwitchCheck()
-    val fokus = LocalFocusManager.current
-    val weiter = KeyboardActions(onNext = { fokus.moveFocus(FocusDirection.Down) })
+    val focus = LocalFocusManager.current
+    val next = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) })
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // A slipped-in tap set the account's password here.
-        Ueberdeckungsschutz()
+        OverlayGuard()
         Column(
-            Modifier.verticalScroll(rememberScrollState()).centeredUntil(Lesebreite.formular)
-                .padding(horizontal = Abstaende.veryLarge, vertical = Abstaende.huge),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+            Modifier.verticalScroll(rememberScrollState()).centeredUntil(ReadingWidth.form)
+                .padding(horizontal = Spacing.veryLarge, vertical = Spacing.huge),
+            verticalArrangement = Arrangement.spacedBy(Spacing.medium),
         ) {
             BrandsHeader(Modifier.fillMaxWidth())
             // The same card as sign-in and registration, sign-out below like "Back" there.
             LoginCard {
-                LoginTitle(stringResource(R.string.startpasswort_titel))
-                Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
-                PasswordSwitchFields(pwCurrent, { pwCurrent = it }, pwNeu, { pwNeu = it },
-                    pwRepeated, { pwRepeated = it }, check, weiter)
-                kontoZustand.speichern.errorMessage?.let { ErrorRow(it) }
-                if (kontoZustand.codeNoetig) SecondFactorCodeField(faktorCode) { faktorCode = it }
+                LoginTitle(stringResource(R.string.start_password_title))
+                Text(stringResource(R.string.start_password_text), style = MaterialTheme.typography.bodyMedium)
+                PasswordSwitchFields(pwCurrent, { pwCurrent = it }, pwNew, { pwNew = it },
+                    pwRepeated, { pwRepeated = it }, check, next)
+                accountUiState.save.errorMessage?.let { ErrorRow(it) }
+                if (accountUiState.codeNeeded) SecondFactorCodeField(factorCode) { factorCode = it }
                 Button(
                     onClick = {
-                        check.submit(pwCurrent, pwNeu, pwRepeated) {
-                            onReplace(pwCurrent, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() })
+                        check.submit(pwCurrent, pwNew, pwRepeated) {
+                            onReplace(pwCurrent, pwNew, factorCode.takeIf { accountUiState.codeNeeded && it.isNotBlank() })
                         }
                     },
-                    enabled = !kontoZustand.speichern.laeuft,
+                    enabled = !accountUiState.save.running,
                     colors = mainButtonColors(),
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.konto_password_button)) }
+                ) { Text(stringResource(R.string.account_password_button)) }
             }
             // Centered, full width like "Back to sign-in": indented it stood next to nothing.
-            TextButton(onClick = onAbmelden, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
+            TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
         }
     }
 }

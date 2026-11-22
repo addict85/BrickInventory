@@ -2,7 +2,7 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Text recognition reads the set number from the INSTRUCTION. There is no barcode there,
@@ -27,21 +27,21 @@ class OcrSetNumberTest {
     @Test
     fun `text recognition runs ONLY when adding, not in the price comparison`() {
         // The switch is OFF: that way no future caller inherits text recognition.
-        val screen = code(File(Quellen.root,
+        val screen = code(File(Sources.root,
             "collection/ui/screens/BarcodeScannerScreen.kt").readText())
         assert(screen.contains("ocrEnabled: Boolean = false")) {
             "Der Standard muss AUS sein — sonst bekommt jeder Aufrufer die Texterkennung ungefragt"
         }
 
         // The scanner for gallery and parts list switches it on …
-        val tools = code(File(Quellen.root,
-            "collection/ui/SammlungGraph.kt").readText())
+        val tools = code(File(Sources.root,
+            "collection/ui/CollectionGraph.kt").readText())
         assert(tools.contains("ocrEnabled = true")) {
             "Beim Erfassen fehlt die Texterkennung — genau dort ist sie gewollt"
         }
 
         // … the price comparison does not.
-        val comparison = code(File(Quellen.root,
+        val comparison = code(File(Sources.root,
             "collection/ui/screens/ComparisonScreen.kt").readText())
         assert(!comparison.contains("ocrEnabled")) {
             "Der Preisvergleich schaltet die Texterkennung ein — dort ist sie ausdrücklich nicht gewollt"

@@ -1,0 +1,18 @@
+Gegenprobe: Der Name eines Pin-Eintrags ist wieder Host und Port selbst
+Modul: core-security
+Test: ch.brickinventoryapp.security.TrustCipherTest
+Rot: a name does not reveal the server and stays the same
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
+index 25f2ada..1b60ed6 100644
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
+@@ -39,7 +39,7 @@ class Vertrauenschiffre(
+      */
+     fun name(bindung: String): String? = runCatching {
+         val namensschluessel = hmac(vertrauen(), NAMEN)
+-        Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(namensschluessel, bindung)).take(NAME_LENGTH)
++        bindung.also { namensschluessel.size }
+     }.getOrNull()
+ 
+     /** null, wenn der Schlüssel gerade nicht arbeitet (gesperrt): Dann wird nichts abgelegt. */

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.management.ui.screens
 
 import ch.brickinventoryapp.model.domain.QuotaView
-import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.AppKarte
-import ch.brickinventoryapp.ui.theme.LocalStatusFarben
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.AppCard
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -19,9 +19,9 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.components.SectionTitle
-import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
 
 /** The daily quotas with the editing state of their limits. */
@@ -52,13 +52,13 @@ internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
     // ── API Rate Limits ───────────────────────────────────────────────────────
     QuotaCard(
         quotas = cacheStats?.rateLimits,
-        bearbeiten = editingLimits,
+        edit = editingLimits,
         toggleOnEdit = { editingLimits = !editingLimits },
         inputs = Triple(bsInput, blInput, rbInput),
         onBrickset = { bsInput = it },
         onBricklink = { blInput = it },
         onRebrickable = { rbInput = it },
-        onSpeichern = {
+        onSave = {
             // Reloading the limits lives in the ViewModel.
             events.limits(rbInput.toIntOrNull() ?: 0, blInput.toIntOrNull() ?: 0, bsInput.toIntOrNull() ?: 0)
             editingLimits = false
@@ -73,37 +73,37 @@ internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
 @Composable
 private fun QuotaCard(
     quotas: QuotasView?,
-    bearbeiten: Boolean,
+    edit: Boolean,
     toggleOnEdit: () -> Unit,
     inputs: Triple<String, String, String>,
     onBrickset: (String) -> Unit,
     onBricklink: (String) -> Unit,
     onRebrickable: (String) -> Unit,
-    onSpeichern: () -> Unit,
+    onSave: () -> Unit,
 ) {
     val (bsInput, blInput, rbInput) = inputs
-    AppKarte {
-        Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+    AppCard {
+        Column(Modifier.padding(Spacing.large), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 SectionTitle(stringResource(R.string.monitoring_api_calls))
-                MitTooltip(stringResource(R.string.cd_edit_limits)) {
+                WithTooltip(stringResource(R.string.cd_edit_limits)) {
                     FilledTonalIconButton(
                         onClick = toggleOnEdit,
-                    ) { Icon(if (bearbeiten) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(withFont(14.dp))) }
+                    ) { Icon(if (edit) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(withFont(14.dp))) }
                 }
             }
 
             quotas?.let { rl ->
-                RateLimitRow("Brickset",    rl.brickset,    if (bearbeiten) bsInput else null, onBrickset)
-                RateLimitRow("BrickLink",   rl.bricklink,   if (bearbeiten) blInput else null, onBricklink)
-                RateLimitRow("Rebrickable", rl.rebrickable, if (bearbeiten) rbInput else null, onRebrickable)
+                RateLimitRow("Brickset",    rl.brickset,    if (edit) bsInput else null, onBrickset)
+                RateLimitRow("BrickLink",   rl.bricklink,   if (edit) blInput else null, onBricklink)
+                RateLimitRow("Rebrickable", rl.rebrickable, if (edit) rbInput else null, onRebrickable)
             }
 
-            if (bearbeiten) {
+            if (edit) {
                 FilledTonalButton(
-                    onClick = onSpeichern,
+                    onClick = onSave,
                     modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(vertical = Abstaende.klein)
+                    contentPadding = PaddingValues(vertical = Spacing.small)
                 ) {
                     Icon(Icons.Default.Save, null, Modifier.size(withFont(16.dp)))
                     Spacer(Modifier.width(6.dp))
@@ -124,7 +124,7 @@ private fun RateLimitRow(
     val pct = if (rl.limit > 0) (rl.count.toFloat() / rl.limit).coerceIn(0f, 1f) else 0f
     val color = when {
         pct > 0.9f -> MaterialTheme.colorScheme.error
-        pct > 0.7f -> LocalStatusFarben.current.warnung
+        pct > 0.7f -> LocalStatusColors.current.warning
         else       -> MaterialTheme.colorScheme.primary
     }
     // ── The symbol, not just the color ──
@@ -132,27 +132,27 @@ private fun RateLimitRow(
     // Yellow against red collapses for red-green color blindness; but the color should
     // say at a glance "it's getting tight here". A symbol in front of it carries that without color.
     // One threshold is enough — the number next to it says how tight.
-    val eng = pct > 0.7f
+    val tight = pct > 0.7f
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.bodyMedium)
             if (editValue != null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
                     Text("${rl.count} /", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = editValue,
                         onValueChange = { onEdit(NumericInput.quantity(it)) },
                         modifier = Modifier.width(80.dp),
                         singleLine = true,
-                        shape = Formen.etikett,
+                        shape = Shapes.tag,
                         textStyle = MaterialTheme.typography.bodyMedium,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
+                    keyboardOptions = NumericInput.integerKeyboard()
                 )
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
-                    if (eng) Icon(Icons.Default.Warning, stringResource(R.string.monitoring_kontingent_eng),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
+                    if (tight) Icon(Icons.Default.Warning, stringResource(R.string.monitoring_quota_tight),
                         Modifier.size(14.dp), tint = color)
                     Text("${rl.count} / ${rl.limit}",
                         style = MaterialTheme.typography.bodySmall,

@@ -2,7 +2,7 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Safeguarding of the 16 KB memory page compatibility.
@@ -28,7 +28,7 @@ class SixteenKbAlignmentTest {
     }
 
     private val manifest: String by lazy {
-        val f = Quellen.manifest
+        val f = Sources.manifest
         assert(f.exists()) { "AndroidManifest.xml nicht gefunden" }
         f.readText().replace(Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL), "")
     }

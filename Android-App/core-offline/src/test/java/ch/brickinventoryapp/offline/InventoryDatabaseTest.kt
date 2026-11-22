@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.model.local.StockKind
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.local.Abgleich
-import ch.brickinventoryapp.data.local.Abgleichsergebnis
-import ch.brickinventoryapp.data.local.Sendeergebnis
-import ch.brickinventoryapp.offline.Ausgang.DiscardedItem
-import ch.brickinventoryapp.offline.room.ExitRow
+import ch.brickinventoryapp.data.local.Reconcile
+import ch.brickinventoryapp.data.local.ReconcileOutcome
+import ch.brickinventoryapp.data.local.SendOutcome
+import ch.brickinventoryapp.offline.Outbox.DiscardedItem
+import ch.brickinventoryapp.offline.room.OutboxRow
 import ch.brickinventoryapp.offline.room.InventoryDatabase
-import ch.brickinventoryapp.offline.room.RoomExit
+import ch.brickinventoryapp.offline.room.RoomOutbox
 import ch.brickinventoryapp.offline.room.RoomInventory
 import ch.brickinventoryapp.contract.SetItem
 import kotlinx.coroutines.flow.first
@@ -28,13 +28,13 @@ import org.robolectric.RobolectricTestRunner
  *
  * Counter-checks: to be measured in CI as soon as the run is green —
  *   A  in InventoryDao.beobachte remove `ORDER BY position` → “keeps the order”
- *   B  in ExitDao.alle `ORDER BY id` → `ORDER BY id DESC` → “sends in order”
- *   C  in RoomExit.cleanUnreadable strike the rememberDiscarded → “an unreadable item is
- *      reported …” (no hint); in RoomExit.alle remove again → same place (reading writes)
- *   D  in RoomExit.lies `z.schluessel` → `""` → “an unreadable item …” (key does not come back)
- *   gegenproben/ablage-aendert-ganze-liste.patch (Offlineablage.aendere replaces the
+ *   B  in OutboxDao.alle `ORDER BY id` → `ORDER BY id DESC` → “sends in order”
+ *   C  in RoomOutbox.cleanUnreadable strike the rememberDiscarded → “an unreadable item is
+ *      reported …” (no hint); in RoomOutbox.alle remove again → same place (reading writes)
+ *   D  in RoomOutbox.lies `z.key` → `""` → “an unreadable item …” (key does not come back)
+ *   counter-checks/ablage-aendert-ganze-liste.patch (Offlineablage.aendere replaces the
  *      whole list again) → red “a local edit writes only the affected row”
- *   gegenproben/verworfen-nie-quittiert.patch (RoomExit.acknowledgeDiscarded deletes nothing)
+ *   counter-checks/verworfen-nie-quittiert.patch (RoomOutbox.acknowledgeDiscarded deletes nothing)
  *      → red “a discarded item stays in the database until …”
  */
 @RunWith(RobolectricTestRunner::class)
@@ -42,62 +42,62 @@ class InventoryDatabaseTest {
 
     private val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), InventoryDatabase::class.java)
         .allowMainThreadQueries().build()
-    private val bestand = RoomInventory(db)
-    private val ausgang = RoomExit(db)
+    private val stock = RoomInventory(db)
+    private val outbox = RoomOutbox(db)
 
     @After
-    fun zu() = db.close()
+    fun tearDown() = db.close()
 
     @Test
     fun `keeps the order and the state per area`() = runBlocking {
-        bestand.ersetze("a", StockKind.SETS, listOf(LocalRow("2", "{}"), LocalRow("1", "{}")), 42L)
-        bestand.ersetze("b", StockKind.SETS, listOf(LocalRow("9", "{}")), 7L)
-        val a = bestand.observe("a", StockKind.SETS).first()
-        assertEquals(listOf("2", "1"), a.liste.map { it.schluessel })
-        assertEquals(42L, a.stand)
-        bestand.cleanOther("a")
-        assertEquals(emptyList<LocalRow>(), bestand.lies("b", StockKind.SETS).liste)
-        assertNull(bestand.lies("b", StockKind.SETS).stand)
+        stock.replace("a", StockKind.SETS, listOf(LocalRow("2", "{}"), LocalRow("1", "{}")), 42L)
+        stock.replace("b", StockKind.SETS, listOf(LocalRow("9", "{}")), 7L)
+        val a = stock.observe("a", StockKind.SETS).first()
+        assertEquals(listOf("2", "1"), a.list.map { it.key })
+        assertEquals(42L, a.state)
+        stock.cleanOther("a")
+        assertEquals(emptyList<LocalRow>(), stock.read("b", StockKind.SETS).list)
+        assertNull(stock.read("b", StockKind.SETS).state)
     }
 
     @Test
     fun `a local change keeps the server state`() = runBlocking {
-        bestand.ersetze("a", StockKind.SETS, listOf(LocalRow("1", "{}")), 42L)
-        bestand.ersetze("a", StockKind.SETS, listOf(LocalRow("1", "{}"), LocalRow("2", "{}")), null)
-        assertEquals(42L, bestand.lies("a", StockKind.SETS).stand)
+        stock.replace("a", StockKind.SETS, listOf(LocalRow("1", "{}")), 42L)
+        stock.replace("a", StockKind.SETS, listOf(LocalRow("1", "{}"), LocalRow("2", "{}")), null)
+        assertEquals(42L, stock.read("a", StockKind.SETS).state)
     }
 
     @Test
     fun `sends in order and counts attempts`() = runBlocking {
-        val ablage = Offlineablage(bestand, ausgang, { "a" })
-        ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1)).map { it.alsAnsicht() })
-        for (n in 1..3) ablage.buffer(Editing.SetMenge("1-1", n))
-        assertEquals(3, ausgang.anzahl("a").first())
-        assertEquals(7, ablage.lies(Slots.SETS)!!.liste.single().quantity)
-        val gesendet = mutableListOf<Int>()
-        var netz = false
-        val schluessel = mutableSetOf<String>()
-        val sync = Abgleich(ablage, ausgang) { b, k ->
-            schluessel += k
-            if (!netz) Sendeergebnis.Later else { gesendet += (b as Editing.SetMenge).schritt; Sendeergebnis.Angenommen }
+        val store = OfflineStore(stock, outbox, { "a" })
+        store.adopt(Slots.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1)).map { it.asView() })
+        for (n in 1..3) store.buffer(Editing.SetQuantity("1-1", n))
+        assertEquals(3, outbox.count("a").first())
+        assertEquals(7, store.read(Slots.SETS)!!.list.single().quantity)
+        val sent = mutableListOf<Int>()
+        var network = false
+        val key = mutableSetOf<String>()
+        val sync = Reconcile(store, outbox) { b, k ->
+            key += k
+            if (!network) SendOutcome.Later else { sent += (b as Editing.SetQuantity).step; SendOutcome.Accepted }
         }
-        assertEquals(Abgleichsergebnis.LATER, sync.send())
-        assertEquals(1, ausgang.erster("a")!!.versuche)
-        netz = true
-        assertEquals(Abgleichsergebnis.FERTIG, sync.send())
-        assertEquals(listOf(1, 2, 3), gesendet)
-        assertEquals("der erste Posten trug bei beiden Versuchen denselben Schlüssel", 3, schluessel.size)
-        assertEquals(0, ausgang.anzahl("a").first())
+        assertEquals(ReconcileOutcome.LATER, sync.send())
+        assertEquals(1, outbox.first("a")!!.attempts)
+        network = true
+        assertEquals(ReconcileOutcome.DONE, sync.send())
+        assertEquals(listOf(1, 2, 3), sent)
+        assertEquals("der erste Posten trug bei beiden Versuchen denselben Schlüssel", 3, key.size)
+        assertEquals(0, outbox.count("a").first())
     }
 
-    /** Writes every INSERT, UPDATE and DELETE on `bestand` into a log table. */
+    /** Writes every INSERT, UPDATE and DELETE on `stock` into a log table. */
     private fun writeLog(): () -> List<String> {
         val sql = db.openHelper.writableDatabase
         sql.execSQL("CREATE TABLE protokoll (was TEXT NOT NULL)")
-        for (art in listOf("INSERT", "UPDATE", "DELETE")) {
-            val zeile = if (art == "DELETE") "old" else "new"
-            sql.execSQL("CREATE TRIGGER protokoll_$art AFTER $art ON bestand BEGIN " +
-                "INSERT INTO protokoll VALUES ('$art ' || $zeile.schluessel); END")
+        for (kind in listOf("INSERT", "UPDATE", "DELETE")) {
+            val row = if (kind == "DELETE") "old" else "new"
+            sql.execSQL("CREATE TRIGGER protokoll_$kind AFTER $kind ON stock BEGIN " +
+                "INSERT INTO protokoll VALUES ('$kind ' || $row.`key`); END")
         }
         return {
             sql.query("SELECT was FROM protokoll ORDER BY rowid").use { c ->
@@ -108,43 +108,43 @@ class InventoryDatabaseTest {
 
     @Test
     fun `a local edit writes only the affected row`() = runBlocking {
-        val ablage = Offlineablage(bestand, ausgang, { "a" })
-        ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1), SetItem(setNumber = "2-1", quantity = 1), SetItem(setNumber = "3-1", quantity = 1)).map { it.alsAnsicht() })
-        val geschrieben = writeLog()
-        ablage.buffer(Editing.SetMenge("2-1", 1))
-        assertEquals(listOf("UPDATE 2-1"), geschrieben())
-        assertEquals(listOf("1-1", "2-1", "3-1"), ablage.lies(Slots.SETS)!!.liste.map { it.setNumber })
-        assertEquals(listOf(1, 2, 1), ablage.lies(Slots.SETS)!!.liste.map { it.quantity })
+        val store = OfflineStore(stock, outbox, { "a" })
+        store.adopt(Slots.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1), SetItem(setNumber = "2-1", quantity = 1), SetItem(setNumber = "3-1", quantity = 1)).map { it.asView() })
+        val written = writeLog()
+        store.buffer(Editing.SetQuantity("2-1", 1))
+        assertEquals(listOf("UPDATE 2-1"), written())
+        assertEquals(listOf("1-1", "2-1", "3-1"), store.read(Slots.SETS)!!.list.map { it.setNumber })
+        assertEquals(listOf(1, 2, 1), store.read(Slots.SETS)!!.list.map { it.quantity })
     }
 
     @Test
     fun `a discarded item stays in the database until it is acknowledged, and sign-out clears it`() = runBlocking {
-        val posten = DiscardedItem("k1", "10001-1", "gibt es nicht", 404)
-        ausgang.rememberDiscarded("a", posten)
+        val item = DiscardedItem("k1", "10001-1", "gibt es nicht", 404)
+        outbox.rememberDiscarded("a", item)
         // A second access to the same database, as after a restart of the app.
-        assertEquals(listOf(posten), RoomExit(db).discarded("a").first())
-        assertEquals(emptyList<DiscardedItem>(), ausgang.discarded("b").first())
-        assertEquals("keine Liste des Bestands sieht ihn", emptyList<LocalRow>(), bestand.lies("a", StockKind.SETS).liste)
-        ausgang.acknowledgeDiscarded("a", "k1")
-        assertEquals(emptyList<DiscardedItem>(), ausgang.discarded("a").first())
-        ausgang.rememberDiscarded("a", posten.copy(id = "k2"))
-        bestand.leere()
-        assertEquals(emptyList<DiscardedItem>(), ausgang.discarded("a").first())
+        assertEquals(listOf(item), RoomOutbox(db).discarded("a").first())
+        assertEquals(emptyList<DiscardedItem>(), outbox.discarded("b").first())
+        assertEquals("keine Liste des Bestands sieht ihn", emptyList<LocalRow>(), stock.read("a", StockKind.SETS).list)
+        outbox.acknowledgeDiscarded("a", "k1")
+        assertEquals(emptyList<DiscardedItem>(), outbox.discarded("a").first())
+        outbox.rememberDiscarded("a", item.copy(id = "k2"))
+        stock.empty()
+        assertEquals(emptyList<DiscardedItem>(), outbox.discarded("a").first())
     }
 
     @Test
     fun `an unreadable item is reported, never silently deleted, and does not block`() = runBlocking {
-        db.ausgang().addOne(ExitRow(bereich = "a", bearbeitung = "{\"type\":\"gibt_es_nicht\",\"setNumber\":\"10001-1\"}",
-            erstellt = 1, schluessel = "k0"))
-        ausgang.einreihen("a", Editing.SetMenge("1-1", 1), 2, "k1")
-        assertEquals(Editing.SetMenge("1-1", 1), ausgang.erster("a")!!.bearbeitung)
-        assertEquals("der Schlüssel kommt so zurück, wie er abgelegt wurde", "k1", ausgang.erster("a")!!.schluessel)
-        assertEquals(1, ausgang.alle("a").size)
-        assertEquals("Lesen schreibt nicht: der unlesbare Posten liegt noch da", 2, ausgang.anzahl("a").first())
+        db.outbox().addOne(OutboxRow(area = "a", editing = "{\"type\":\"gibt_es_nicht\",\"setNumber\":\"10001-1\"}",
+            created = 1, key = "k0"))
+        outbox.enqueue("a", Editing.SetQuantity("1-1", 1), 2, "k1")
+        assertEquals(Editing.SetQuantity("1-1", 1), outbox.first("a")!!.editing)
+        assertEquals("der Schlüssel kommt so zurück, wie er abgelegt wurde", "k1", outbox.first("a")!!.key)
+        assertEquals(1, outbox.all("a").size)
+        assertEquals("Lesen schreibt nicht: der unlesbare Posten liegt noch da", 2, outbox.count("a").first())
 
-        val sync = Abgleich(Offlineablage(bestand, ausgang, { "a" }), ausgang) { _, _ -> Sendeergebnis.Angenommen }
-        assertEquals(Abgleichsergebnis.FERTIG, sync.send())
-        assertEquals(listOf(DiscardedItem("k0", "10001-1", "", null, unlesbar = true)), ausgang.discarded("a").first())
-        assertEquals(0, ausgang.anzahl("a").first())
+        val sync = Reconcile(OfflineStore(stock, outbox, { "a" }), outbox) { _, _ -> SendOutcome.Accepted }
+        assertEquals(ReconcileOutcome.DONE, sync.send())
+        assertEquals(listOf(DiscardedItem("k0", "10001-1", "", null, unreadable = true)), outbox.discarded("a").first())
+        assertEquals(0, outbox.count("a").first())
     }
 }

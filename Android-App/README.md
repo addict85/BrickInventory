@@ -103,7 +103,7 @@ jedem Push, der `Android-App/` berührt. Der Job `build` macht nacheinander:
 6. `detekt` gegen `config/detekt/baseline.xml`
 7. Rückstand der Abhängigkeiten melden (`tools/versions-check.py`)
 
-Daneben misst der Job `gegenproben` die Patches unter `gegenproben/`: auf einem
+Daneben misst der Job `counter-checks` die Patches unter `counter-checks/`: auf einem
 Push nur die betroffenen, nachts und von Hand alle. Die Test- und Lint-Berichte
 hängen als Artefakt am Lauf (auch bei rotem Lauf — gerade dann werden sie gebraucht).
 
@@ -174,7 +174,7 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
 ## Datenschutz: mit wem die App spricht
 
 - **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
-  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`network/util/BildHosts.kt`).
+  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`network/util/ImageHosts.kt`).
 - **GitHub** — nur die Update-Prüfung (`update/util/AppUpdate.kt`): beim Start, solange
   der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
   Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
@@ -191,7 +191,7 @@ Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
 ## Sicherheit im Netz
 
 **Nur https.** Die Release-App sendet nichts unverschlüsselt. Zwei Linien:
-der Wächter (`network/di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
+der Wächter (`network/di/ServerGuard.kt`) bricht jede http-Anfrage vor dem Netz ab,
 und die Network-Security-Config (`app/src/main/res/xml/`) verbietet Klartext
 für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 `10.0.2.2` (Emulator), festgelegt in `app/src/debug/res/xml/` und
@@ -199,7 +199,7 @@ für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 führt beim Start in die Einrichtung mit einer Anleitung (QR neu scannen oder
 https-Adresse eintragen).
 
-**Wem die App beim eigenen Server vertraut** (`security/ServerVertrauen.kt`):
+**Wem die App beim eigenen Server vertraut** (`security/ServerTrust.kt`):
 
 | Weg | Was passiert |
 | --- | --- |
@@ -225,7 +225,7 @@ wählbaren `O=` des Subjekts. Andere Hosts
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.
 
-**Logcat.** Die App schreibt nur über `network/util/Protokoll.kt`, und das nur im
+**Logcat.** Die App schreibt nur über `network/util/AppLog.kt`, und das nur im
 Debug-Build; dort zeigt der Netzmitschnitt Anfrage- und Statuszeile, nie Rümpfe,
 und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
@@ -234,7 +234,7 @@ zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 ## Daten auf dem Gerät
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
-(`security/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
+(`security/StoreKey.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
 Zweck gebunden). Der Ablageschlüssel ist wie das Token unter einem Keystore-Schlüssel
 mit `setUnlockedDeviceRequired` umhüllt (`EntsperrVault`, Alias
 `brickinventory_ablage_entsperrt`): Ein Prozess, der bei gesperrtem Gerät neu startet,
@@ -358,7 +358,7 @@ Berechtigungen, Dateien, Token und Ablageschlüssel. Er bekommt den Deskriptor
 nur lesend (memfd versiegelt, Datei `O_RDONLY`) und schreibt Pixel in einen
 `SharedMemory`, dessen Grösse der Hauptprozess aus eigenen Massen festlegt;
 das Bitmap baut der Hauptprozess selbst. Seitenzahl und Seitenkanten aus dem
-Renderer gelten als fremd und werden begrenzt (`PdfSeite.kt`). Anleitungen
+Renderer gelten als fremd und werden begrenzt (`PdfPage.kt`). Anleitungen
 stammen inhaltlich von Dritten; eine pdfium-Lücke träfe so nur den leeren
 Render-Prozess und reichte nicht über ein Bitmap-Parcel zurück.
 
@@ -376,9 +376,9 @@ Geheimnis nur, wenn man sie dort auswählt.
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
 `core-ui-inventory`. Die Regel steht einmal in
-`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt`:
-Die Aufgabe `modulkantenPruefen` (an `check`, in der CI für alle Module) führt sie
-gegen die aufgelösten Kanten aus, `ModulgrenzenTest` gegen die Build-Dateien.
+`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt`:
+Die Aufgabe `moduleEdgesCheck` (an `check`, in der CI für alle Module) führt sie
+gegen die aufgelösten Kanten aus, `ModuleBoundariesTest` gegen die Build-Dateien.
 
 Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
 (ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
@@ -404,7 +404,7 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
 | `core-model` | `ch.brickinventoryapp.model` | Fachtypen in `model.fach` (Beträge als `Geld` in Zehntausendsteln, Zeitpunkte als `Instant`), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAddress`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
-| `core-contract` | `ch.brickinventoryapp.contract` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/contract-kotlin-mapping.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
+| `core-contract` | `ch.brickinventoryapp.contract` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/contract-kotlin-mapping.js`), abgeleitete Werte in `Supplements.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
 | `core-resources` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.resources.R` |
 | `core-network` | `ch.brickinventoryapp.network` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
 | `core-security` | `ch.brickinventoryapp.security` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
@@ -432,7 +432,7 @@ Unterpfad (`ui.screens` in `feature-collection` heisst
 `ch.brickinventoryapp.collection.ui.screens`); `core-ui` und `core-data` beginnen
 schon mit ihrem Stamm (`ch.brickinventoryapp.ui.*`, `ch.brickinventoryapp.data.*`).
 Die Tests eines Moduls liegen direkt im Stamm. Aus einem Import ist so das Modul
-ablesbar, und kein Paket verteilt sich auf zwei Module; `ModulgrenzenTest` prüft
+ablesbar, und kein Paket verteilt sich auf zwei Module; `ModuleBoundariesTest` prüft
 es an jeder Kotlin-Datei. Die R-Klassen folgen dem `namespace` des Moduls
 (`ch.brickinventoryapp.core.ui.R`, `ch.brickinventoryapp.resources.R`), die der
 App bleibt `ch.brickinventoryapp.R`. Was ein Modul dem anderen zeigt, ist
@@ -448,12 +448,12 @@ Die Tests liegen neben dem Code ihres Moduls; was mehrere Bereiche zusammen
 prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`. Robolectric
 und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
-- `QuelltextRatscheTest` hält fest, wie viele Testfunktionen Quelltext lesen,
+- `SourceRatchetTest` hält fest, wie viele Testfunktionen Quelltext lesen,
   wie oft Tests in Echtzeit warten und wie viele Namen voll qualifiziert stehen;
   jede Zahl steht genau auf dem gemessenen Wert und darf nur sinken.
-- `gegenproben/` enthält Patches, die etwas kaputt machen; der CI-Job
-  `gegenproben` misst, dass der im Kopf genannte Test dann rot wird
-  (`tools/gegenproben.py`). Nicht jede Testklasse hat einen; wer einen Test
+- `counter-checks/` enthält Patches, die etwas kaputt machen; der CI-Job
+  `counter-checks` misst, dass der im Kopf genannte Test dann rot wird
+  (`tools/counter-checks.py`). Nicht jede Testklasse hat einen; wer einen Test
   schreibt, legt seinen dazu.
 - ViewModel- und Oberflächentests laufen im Takt: `PfadServer.imTakt()` antwortet
   ohne Netz im aufrufenden Faden und liest jede Antwort gegen das DTO der Methode.
@@ -572,7 +572,7 @@ meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es nicht
 braucht. `fehlerTextId()` und die Bereichsquelle der `Offlineablage` sind
 beides Beispiele dafür.
 
-Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Quellen.kt` —
+Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Sources.kt` —
 insbesondere `fenster()` (misst ZEILEN, nicht Zeichen) und `withoutComments()`.
 `Quellen.wurzel` legt die Quellen aller Module zu einem Baum zusammen.
 
@@ -788,11 +788,11 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 
 Ein Schlüssel signiert Daten nur für einen Zweck: Der APK-Schlüssel signiert
 APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
-App einen solchen Schlüssel (`core-resources/src/main/res/raw/beschreibungs_schluessel.pem`),
+App einen solchen Schlüssel (`core-resources/src/main/res/raw/description_key.pem`),
 nimmt sie nur dessen Signatur an. Ist die Datei leer, nimmt sie keine Beschreibung an.
 
 **Stand:** Eingerichtet (10.11.2026): ein Schlüssel in
-`beschreibungs_schluessel.pem`. Das Secret `BESCHREIBUNG_SCHLUESSEL` gehört
+`description_key.pem`. Das Secret `BESCHREIBUNG_SCHLUESSEL` gehört
 verschlüsselt, mit eigener Passphrase `BESCHREIBUNG_PASS`, in die Environment
 `release-beschreibung` (Umzug: `docs/ANDROID-RELEASE.md`). Ein Release ohne die
 Secrets bricht in *APK prüfen* ab.
@@ -807,7 +807,7 @@ Einrichten (einmalig, in dieser Reihenfolge):
    Environment `release-beschreibung` legen. Fehlt eines davon, bricht der Job
    *Beschreibung signieren* ab.
 3. Den öffentlichen Teil (`openssl pkey -in beschreibung.pem -pubout`) an
-   `beschreibungs_schluessel.pem` anhängen und veröffentlichen. Ab dieser
+   `description_key.pem` anhängen und veröffentlichen. Ab dieser
    Fassung gilt für die App nur noch die Beschreibungssignatur. Fehlt das Secret
    bei einem Etikett, obwohl die App einen Schlüssel nennt, bricht `apk-pruefen`
    ab, statt eine Beschreibung zu veröffentlichen, die die Geräte ablehnen.

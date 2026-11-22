@@ -9,7 +9,7 @@ import org.junit.Test
  * hyphens stay, unknown words stand there in English.
  *
  * Counter-check: in uebersetze() the dictionary not
- * asked (`val de = wort`) → red “known categories …” („Bricks“ instead of „Steine“).
+ * asked (`val de = word`) → red “known categories …” („Bricks“ instead of „Steine“).
  */
 class CategoryGermanTest {
 

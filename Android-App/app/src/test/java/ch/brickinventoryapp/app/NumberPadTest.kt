@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Where a number belongs, the number pad appears.
@@ -84,31 +84,31 @@ class NumberPadTest {
      * version in NumericInputTest could do that; that should not get lost
      * in the move.
      */
-    private fun textFields(quelle: String): List<Pair<Int, String>> {
+    private fun textFields(source: String): List<Pair<Int, String>> {
         val blocks = mutableListOf<Pair<Int, String>>()
-        var i = Regex("""\b(Outlined)?TextField\(""").find(quelle)?.range?.first ?: return blocks
+        var i = Regex("""\b(Outlined)?TextField\(""").find(source)?.range?.first ?: return blocks
         while (true) {
-            var tiefe = 0
-            var j = quelle.indexOf('(', i)
-            var ende = j
-            while (ende < minOf(j + 4000, quelle.length)) {
-                when (quelle[ende]) {
-                    '(' -> tiefe++
-                    ')' -> { tiefe--; if (tiefe == 0) break }
+            var depth = 0
+            var j = source.indexOf('(', i)
+            var end = j
+            while (end < minOf(j + 4000, source.length)) {
+                when (source[end]) {
+                    '(' -> depth++
+                    ')' -> { depth--; if (depth == 0) break }
                 }
-                ende++
+                end++
             }
-            val zeile = quelle.substring(0, i).count { c -> c == '\n' } + 1
-            blocks += zeile to quelle.substring(i, minOf(ende + 1, quelle.length))
+            val row = source.substring(0, i).count { c -> c == '\n' } + 1
+            blocks += row to source.substring(i, minOf(end + 1, source.length))
             i = Regex("""\b(Outlined)?TextField\(""")
-                .find(quelle, minOf(ende + 1, quelle.length))?.range?.first ?: break
+                .find(source, minOf(end + 1, source.length))?.range?.first ?: break
         }
         return blocks
     }
 
     private val filter = Regex("""NumericInput\.(setNumber|quantity|price)\b""")
     private val keyboard = Regex(
-        """keyboardType\s*=\s*KeyboardType\.\w+|NumericInput\.(ganzzahl|preis|setnummer)Tastatur|NumericInput\.(integer|price|setNumber)Keyboard""")
+        """keyboardType\s*=\s*KeyboardType\.\w+|NumericInput\.(ganzzahl|price|setNumber)Tastatur|NumericInput\.(integer|price|setNumber)Keyboard""")
 
     /**
      * Only the NUMBER keyboards — Email, Password and Phone do not belong
@@ -116,26 +116,26 @@ class NumberPadTest {
      * outputs.
      */
     private val numberPad = Regex(
-        """KeyboardType\.(Number|Decimal)\b|NumericInput\.(ganzzahl|preis)Tastatur|NumericInput\.(integer|price)Keyboard""")
+        """KeyboardType\.(Number|Decimal)\b|NumericInput\.(ganzzahl|price)Tastatur|NumericInput\.(integer|price)Keyboard""")
 
     @Test
     fun `whoever filters numbers also shows the number pad`() {
-        val fehler = mutableListOf<String>()
-        var gesehen = 0
-        for (datei in Quellen.alle()) {
-            val s = Quellen.withoutComments(datei.readText())
-            for ((zeile, blk) in textFields(s)) {
+        val error = mutableListOf<String>()
+        var seen = 0
+        for (file in Sources.all()) {
+            val s = Sources.withoutComments(file.readText())
+            for ((row, blk) in textFields(s)) {
                 if (!filter.containsMatchIn(blk)) continue
-                gesehen++
-                if (!keyboard.containsMatchIn(blk)) fehler += "${datei.name}:$zeile"
+                seen++
+                if (!keyboard.containsMatchIn(blk)) error += "${file.name}:$row"
             }
         }
         // Self-proof against the silent zero: does the search find any
         // fields at all? Without that an empty error list would be green forever.
-        assert(gesehen >= 15) { "Nur $gesehen gefilterte Felder gefunden — Muster veraltet?" }
-        assert(fehler.isEmpty()) {
+        assert(seen >= 15) { "Nur $seen gefilterte Felder gefunden — Muster veraltet?" }
+        assert(error.isEmpty()) {
             "Diese Felder lassen nur Ziffern zu, bieten aber die Texttastatur an:\n  " +
-                fehler.joinToString("\n  ") +
+                error.joinToString("\n  ") +
                 "\nDer Filter aus NumericInput gehoert mit der passenden Tastatur zusammen."
         }
     }
@@ -166,21 +166,21 @@ class NumberPadTest {
      */
     @Test
     fun `whoever shows the number pad also filters`() {
-        val fehler = mutableListOf<String>()
-        var gesehen = 0
-        for (datei in Quellen.alle()) {
-            val s = Quellen.withoutComments(datei.readText())
-            for ((zeile, blk) in textFields(s)) {
+        val error = mutableListOf<String>()
+        var seen = 0
+        for (file in Sources.all()) {
+            val s = Sources.withoutComments(file.readText())
+            for ((row, blk) in textFields(s)) {
                 if (!numberPad.containsMatchIn(blk)) continue
-                gesehen++
-                if (!filter.containsMatchIn(blk)) fehler += "${datei.name}:$zeile"
+                seen++
+                if (!filter.containsMatchIn(blk)) error += "${file.name}:$row"
             }
         }
         // Self-proof against the silent zero, measured on 28.09.: 21.
-        assert(gesehen >= 15) { "Nur $gesehen Felder mit Zahlentastatur — Muster veraltet?" }
-        assert(fehler.isEmpty()) {
+        assert(seen >= 15) { "Nur $seen Felder mit Zahlentastatur — Muster veraltet?" }
+        assert(error.isEmpty()) {
             "Diese Felder zeigen die Zahlentastatur, lassen aber alles herein:\n  " +
-                fehler.joinToString("\n  ") +
+                error.joinToString("\n  ") +
                 "\nDie Tastaturwahl ist eine Bitte, keine Zusicherung — der Filter fehlt."
         }
     }
@@ -209,11 +209,11 @@ class NumberPadTest {
      */
     @Test
     fun `the price comparison takes digits and hyphen`() {
-        val s = Quellen.withoutComments(Quellen.lies("collection/ui/screens/ComparisonScreen.kt"))
+        val s = Sources.withoutComments(Sources.read("collection/ui/screens/ComparisonScreen.kt"))
         assert(s.contains("NumericInput.setNumber(")) {
             "Das Suchfeld filtert nicht mehr auf Ziffern und Bindestrich."
         }
-        assert(s.contains("NumericInput.ganzzahlTastatur(")) {
+        assert(s.contains("NumericInput.integerKeyboard(")) {
             "Das Suchfeld zeigt nicht mehr die Zahlentastatur — genau das hat " +
                 "Marco am 28.09. verlangt."
         }

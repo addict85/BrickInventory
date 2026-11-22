@@ -3,12 +3,12 @@ package ch.brickinventoryapp.app.csv
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportRepository
-import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.session.Sitzung
-import ch.brickinventoryapp.state.ui.viewmodel.Texte
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -24,23 +24,23 @@ import javax.inject.Inject
 class CsvImportViewModel @Inject constructor(
     private val coordinator: CsvImportCoordinator,
     private val csvImport: CsvImportRepository,
-    private val texts: Texte,
-    private val meldungen: MeldungsKanal,
-    sitzung: Sitzung,
+    private val texts: Texts,
+    private val messages: MessageChannel,
+    session: Session,
 ) : ViewModel() {
 
-    val csvImportState: StateFlow<CsvImportUiState> = coordinator.zustand
+    val csvImportState: StateFlow<CsvImportUiState> = coordinator.uiState
 
     init {
-        viewModelScope.launch { coordinator.sequence(sitzung.state.map { it.isLoggedIn }) }
+        viewModelScope.launch { coordinator.sequence(session.state.map { it.isLoggedIn }) }
     }
 
     /** Cancelling means “no further from here”; created sets stay. */
     fun cancelCsvImport() {
         viewModelScope.launch {
-            when (val r = csvImport.abbrechen()) {
-                is Ergebnis.Erfolg -> meldungen.zeige(Meldung.Resource(R.string.csv_cancel_requested))
-                is Ergebnis.Fehler -> meldungen.zeige(texts.meldungFuerSnackbar(r))
+            when (val r = csvImport.cancel()) {
+                is Outcome.Success -> messages.show(Message.Resource(R.string.csv_cancel_requested))
+                is Outcome.Failure -> messages.show(texts.messageForSnackbar(r))
             }
         }
     }

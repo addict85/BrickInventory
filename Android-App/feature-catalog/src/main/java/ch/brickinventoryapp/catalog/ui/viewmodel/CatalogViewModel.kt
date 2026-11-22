@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.catalog.ui.viewmodel
 
-import ch.brickinventoryapp.model.domain.Katalogsortierung
+import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.Fehlerklasse
-import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.model.domain.KatalogSetAnsicht
+import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.data.repository.CatalogRepository
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -21,14 +21,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.state.ui.viewmodel.Texte
-import ch.brickinventoryapp.data.alarm.Alarmeingabe
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.data.alarm.AlarmInput
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.data.repository.WantedRepository
-import ch.brickinventoryapp.catalog.ui.KatalogZiel
-import ch.brickinventoryapp.catalog.ui.Merkwunsch
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.catalog.ui.CatalogTarget
+import ch.brickinventoryapp.catalog.ui.WantedRequest
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.model.domain.WantedItemView
 import kotlinx.coroutines.flow.Flow
@@ -50,15 +50,15 @@ internal const val VIEWPORT_REST_MS = 150L
  */
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
-    private val katalog: CatalogRepository,
-    private val meldungen: MeldungsKanal,
-    /** Texts in the app's language and error messages like everywhere else (AppTexte). */
-    private val texts: Texte,
+    private val catalog: CatalogRepository,
+    private val messages: MessageChannel,
+    /** Texts in the app's language and error messages like everywhere else (AppTexts). */
+    private val texts: Texts,
     /** Watchlist and price alert: the detail shows the item and creates it, without knowing the collection. */
-    private val merkliste: WantedRepository,
+    private val wantedList: WantedRepository,
     private val alerts: AlarmRepository,
-    private val rollgedaechtnis: ScrollMemory,
-) : ViewModel(), KatalogAktionen {
+    private val scrollMemory: ScrollMemory,
+) : ViewModel(), CatalogActions {
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
     val state = _catalogState.asStateFlow()
@@ -67,7 +67,7 @@ class CatalogViewModel @Inject constructor(
         // Only whoever sees the catalog loads it; returning only loads what's still missing.
         observeLoadOn(_catalogState) {
             val s = _catalogState.value
-            if (s.loadedPages.isEmpty() && !s.abruf.laedt) { loadCatalogMeta(); loadCatalogSets() }
+            if (s.loadedPages.isEmpty() && !s.fetch.loading) { loadCatalogMeta(); loadCatalogSets() }
         }
     }
 
@@ -90,11 +90,11 @@ class CatalogViewModel @Inject constructor(
 
     override fun loadCatalogMeta() {
         viewModelScope.launch {
-            when (val r = katalog.getCatalogMeta()) {
-                is Ergebnis.Erfolg -> _catalogState.update {
-                    it.copy(themes = r.data.themen, yearMin = r.data.jahrMin, yearMax = r.data.jahrMax)
+            when (val r = catalog.getCatalogMeta()) {
+                is Outcome.Success -> _catalogState.update {
+                    it.copy(themes = r.data.themes, yearMin = r.data.yearMin, yearMax = r.data.yearMax)
                 }
-                is Ergebnis.Fehler -> { /* Meta is optional — filters stay empty, the list still works */ }
+                is Outcome.Failure -> { /* Meta is optional — filters stay empty, the list still works */ }
             }
         }
     }
@@ -109,29 +109,29 @@ class CatalogViewModel @Inject constructor(
         catalogListJob = viewModelScope.launch {
             // Also forget the remembered position: after a filter change it pointed to
             // sets that no longer exist in the new list.
-            rollgedaechtnis.vergiss(KatalogZiel.Catalog.rollSchluessel)
+            scrollMemory.forgetNow(CatalogTarget.Catalog.rollKey)
             _catalogState.update {
-                it.copy(abruf = Laden.Loads,
+                it.copy(fetch = Load.Loads,
                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,
                         yearDistribution = emptyList())
             }
             loadYearDistribution(gen)
             val s = _catalogState.value
             // Retrying happens in the repository, briefly: the error state has its own button.
-            val r = katalog.getCatalogSets(
+            val r = catalog.getCatalogSets(
                 q = s.query.ifBlank { null }, themeId = s.themeId,
                 yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
             )
             if (gen != catalogGeneration) return@launch   // inzwischen neuer Filter
             when (r) {
-                is Ergebnis.Erfolg -> {
+                is Outcome.Success -> {
                     _catalogState.update {
-                        it.copy(abruf = Laden.Daten(Unit), loadedPages = mapOf(1 to r.data.sets), total = r.data.gesamt)
+                        it.copy(fetch = Load.Data(Unit), loadedPages = mapOf(1 to r.data.sets), total = r.data.total)
                     }
                 }
-                is Ergebnis.Fehler -> {
-                    _catalogState.update { it.copy(abruf = loadError(r)) }
-                    if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texts.meldungFuerSnackbar(r))
+                is Outcome.Failure -> {
+                    _catalogState.update { it.copy(fetch = loadError(r)) }
+                    if (_catalogState.value.loadedPages.isNotEmpty()) messages.show(texts.messageForSnackbar(r))
                 }
             }
         }
@@ -143,31 +143,31 @@ class CatalogViewModel @Inject constructor(
      * skipped; responses from an older filter generation are discarded, otherwise
      * a late page of the old filter would hang around in the new list.
      */
-    private val viewport = Sichtfensterlader(viewModelScope, VIEWPORT_REST_MS, ::ensureCatalogPage)
+    private val viewport = ViewportLoader(viewModelScope, VIEWPORT_REST_MS, ::ensureCatalogPage)
 
     /** What the grid currently shows (pages, 1-based); only loaded once it's still. */
-    override fun catalogVisible(firstPage: Int, lastPage: Int) = viewport.sichtbar(firstPage, lastPage)
+    override fun catalogVisible(firstPage: Int, lastPage: Int) = viewport.visible(firstPage, lastPage)
 
-    fun ensureCatalogPage(seite: Int) {
-        if (seite < 1) return
+    fun ensureCatalogPage(page: Int) {
+        if (page < 1) return
         val s = _catalogState.value
-        if (s.loadedPages.containsKey(seite) || s.loadingPages.contains(seite)) return
+        if (s.loadedPages.containsKey(page) || s.loadingPages.contains(page)) return
         val gen = catalogGeneration
-        _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
+        _catalogState.update { it.copy(loadingPages = it.loadingPages + page) }
         viewModelScope.launch {
             // Retrying happens in the repository, briefly: the error state has its own button.
-            val r = katalog.getCatalogSets(
+            val r = catalog.getCatalogSets(
                 q = s.query.ifBlank { null }, themeId = s.themeId,
-                yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
+                yearFrom = s.year, yearTo = s.year, sort = s.sort, page = page
             )
             if (gen != catalogGeneration) return@launch
             _catalogState.update { st ->
-                val ohne = st.loadingPages - seite
+                val without = st.loadingPages - page
                 when (r) {
-                    is Ergebnis.Erfolg ->
-                        st.copy(loadingPages = ohne, loadedPages = st.loadedPages + (seite to r.data.sets),
-                            total = if (r.data.gesamt > 0) r.data.gesamt else st.total)
-                    is Ergebnis.Fehler -> st.copy(loadingPages = ohne)
+                    is Outcome.Success ->
+                        st.copy(loadingPages = without, loadedPages = st.loadedPages + (page to r.data.sets),
+                            total = if (r.data.total > 0) r.data.total else st.total)
+                    is Outcome.Failure -> st.copy(loadingPages = without)
                 }
             }
         }
@@ -181,10 +181,10 @@ class CatalogViewModel @Inject constructor(
     private fun loadYearDistribution(gen: Int) {
         viewModelScope.launch {
             val s = _catalogState.value
-            val r = katalog.getCatalogYearVerteilung(
+            val r = catalog.getCatalogYearDistribution(
                 q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
             if (gen != catalogGeneration) return@launch
-            if (r is Ergebnis.Erfolg) {
+            if (r is Outcome.Success) {
                 // Drop years WITHOUT a year — exactly as the web app does.
                 // Their count stays included in `total`; see
                 // CatalogYearMath.yearAnPosition.
@@ -198,8 +198,8 @@ class CatalogViewModel @Inject constructor(
      * view through the state, because scrolling happens there; catalogScrollConsumed() resets
      * it, otherwise the same spot couldn't be jumped to a second time.
      */
-    override fun scrollCatalogTo(nummer: Int) {
-        _catalogState.update { it.copy(scrollTo = nummer) }
+    override fun scrollCatalogTo(number: Int) {
+        _catalogState.update { it.copy(scrollTo = number) }
     }
 
     /** The view reports that it has jumped. */
@@ -226,25 +226,25 @@ class CatalogViewModel @Inject constructor(
         loadCatalogSets()
     }
 
-    override fun setCatalogSort(sort: Katalogsortierung) {
+    override fun setCatalogSort(sort: CatalogSort) {
         _catalogState.update { it.copy(sort = sort) }
         loadCatalogSets()
     }
 
     // ── Detail ────────────────────────────────────────────────────────────────────
     /** The watchlist item for [setNumber] from the watchlist cache; null as long as the set isn't on it. */
-    fun gemerkt(setNumber: String): Flow<WantedItemView?> =
-        merkliste.observeWanted().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
+    fun wanted(setNumber: String): Flow<WantedItemView?> =
+        wantedList.observeWanted().map { l -> l.list.firstOrNull { it.setNumber == setNumber } }
 
     /** Watchlist, and if a threshold is given, the price alert right along with it. */
-    fun merke(w: Merkwunsch) {
+    fun track(w: WantedRequest) {
         viewModelScope.launch {
-            when (val r = merkliste.legeMerkpostenAn(w.setNumber, w.zustand, w.konto)) {
-                is Ergebnis.Fehler ->
-                    meldungen.zeige(texts.meldungFuerSnackbar(r)?.let { Meldung.Resource(R.string.vm_error, listOf(it)) })
-                is Ergebnis.Erfolg -> {
-                    Alarmeingabe.zahl(w.thresholdRaw)?.let { alerts.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
-                    meldungen.zeige(Meldung.Resource(if (r.data) R.string.wanted_added else R.string.wanted_already))
+            when (val r = wantedList.createWantedItem(w.setNumber, w.condition, w.account)) {
+                is Outcome.Failure ->
+                    messages.show(texts.messageForSnackbar(r)?.let { Message.Resource(R.string.vm_error, listOf(it)) })
+                is Outcome.Success -> {
+                    AlarmInput.number(w.thresholdRaw)?.let { alerts.setPriceAlarm(w.setNumber, w.direction, it, w.condition) }
+                    messages.show(Message.Resource(if (r.data) R.string.wanted_added else R.string.wanted_already))
                 }
             }
         }
@@ -253,19 +253,19 @@ class CatalogViewModel @Inject constructor(
     fun loadCatalogDetail(setNumber: String) {
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
-            // The watchlist into the cache, so [gemerkt] knows the item; silent, the detail counts.
-            launch { merkliste.refreshWanted() }
-            _catalogState.update { it.copy(detail = Laden.Loads) }
+            // The watchlist into the cache, so [wanted] knows the item; silent, the detail counts.
+            launch { wantedList.refreshWanted() }
+            _catalogState.update { it.copy(detail = Load.Loads) }
             // The error belongs in the state, not in a snackbar: the screen has
             // nothing to show without the detail and needs a reason and "Try again".
-            when (val r = katalog.getCatalogSetDetail(setNumber)) {
-                is Ergebnis.Erfolg -> {
+            when (val r = catalog.getCatalogSetDetail(setNumber)) {
+                is Outcome.Success -> {
                     val detail = r.data
-                    val geladen = if (detail != null) Laden.Daten(detail)
-                    else Laden.Fehler(Fehlerklasse.UNBEKANNT, Meldung.Resource(R.string.err_set_not_found))
-                    _catalogState.update { it.copy(detail = geladen) }
+                    val loaded = if (detail != null) Load.Data(detail)
+                    else Load.Failure(ErrorClass.UNKNOWN, Message.Resource(R.string.err_set_not_found))
+                    _catalogState.update { it.copy(detail = loaded) }
                 }
-                is Ergebnis.Fehler -> _catalogState.update { it.copy(detail = loadError(r)) }
+                is Outcome.Failure -> _catalogState.update { it.copy(detail = loadError(r)) }
             }
         }
     }
@@ -279,15 +279,15 @@ class CatalogViewModel @Inject constructor(
         // Set the "I own this" badge right away, without reloading — across all
         // loaded pages, because the tile can sit on any of them.
         _catalogState.update { st ->
-            val mark: (KatalogSetAnsicht) -> KatalogSetAnsicht = {
+            val mark: (CatalogSetView) -> CatalogSetView = {
                 if (it.setNumber == setNumber)
                     it.copy(owned = true, ownedQuantity = it.ownedQuantity + quantity) else it
             }
             st.copy(
-                loadedPages = st.loadedPages.mapValues { (_, seite) -> seite.map(mark) },
+                loadedPages = st.loadedPages.mapValues { (_, page) -> page.map(mark) },
                 detail = st.detail.let {
-                    if (it is Laden.Daten && it.wert.setNumber == setNumber)
-                        Laden.Daten(it.wert.copy(owned = true, ownedQuantity = it.wert.ownedQuantity + quantity)) else it
+                    if (it is Load.Data && it.value.setNumber == setNumber)
+                        Load.Data(it.value.copy(owned = true, ownedQuantity = it.value.ownedQuantity + quantity)) else it
                 }
             )
         }

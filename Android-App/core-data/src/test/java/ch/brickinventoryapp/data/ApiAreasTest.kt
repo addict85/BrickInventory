@@ -13,16 +13,16 @@ import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.PartsQueryApi
 import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.ManagementApi
-import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
-import ch.brickinventoryapp.data.repository.FinanzenRepositoryImpl
-import ch.brickinventoryapp.data.repository.KatalogRepositoryImpl
-import ch.brickinventoryapp.data.repository.KontoRepositoryImpl
-import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
-import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
-import ch.brickinventoryapp.data.repository.SchrittbindungImpl
-import ch.brickinventoryapp.data.repository.HaushaltRepositoryImpl
+import ch.brickinventoryapp.data.repository.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.repository.FinancesRepositoryImpl
+import ch.brickinventoryapp.data.repository.CatalogRepositoryImpl
+import ch.brickinventoryapp.data.repository.AccountRepositoryImpl
+import ch.brickinventoryapp.data.repository.AdminRepositoryImpl
+import ch.brickinventoryapp.data.repository.VouchersRepositoryImpl
+import ch.brickinventoryapp.data.repository.StepBindingImpl
+import ch.brickinventoryapp.data.repository.HouseholdRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
-import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
+import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
@@ -62,46 +62,46 @@ class ApiAreasTest {
 
     @Test
     fun `every repository sees only its area`() {
-        val erwartet = mapOf(
-            KontoRepositoryImpl::class to AccountApi::class.java, VerwaltungRepositoryImpl::class to ManagementApi::class.java,
-            KatalogRepositoryImpl::class to CatalogApi::class.java, FigurenRepositoryImpl::class to MinifigsApi::class.java,
+        val expected = mapOf(
+            AccountRepositoryImpl::class to AccountApi::class.java, AdminRepositoryImpl::class to ManagementApi::class.java,
+            CatalogRepositoryImpl::class to CatalogApi::class.java, FiguresRepositoryImpl::class to MinifigsApi::class.java,
             SetsRepositoryImpl::class to SetsApi::class.java,
-            TeileRepositoryImpl::class to PartsApi::class.java, HaushaltRepositoryImpl::class to HouseholdApi::class.java,
-            FinanzenRepositoryImpl::class to FinancesApi::class.java, GutscheineRepositoryImpl::class to VouchersApi::class.java,
-            SchrittbindungImpl::class to DeviceApi::class.java,
+            PartsRepositoryImpl::class to PartsApi::class.java, HouseholdRepositoryImpl::class to HouseholdApi::class.java,
+            FinancesRepositoryImpl::class to FinancesApi::class.java, VouchersRepositoryImpl::class to VouchersApi::class.java,
+            StepBindingImpl::class to DeviceApi::class.java,
         )
-        for ((repo, api) in erwartet) {
+        for ((repo, api) in expected) {
             // With a default value (Offlineablage) Kotlin generates a second constructor;
             // the area stands first in both.
-            val typ = repo.java.constructors.map { it.parameterTypes.first() }.distinct().single()
-            assertEquals(repo.simpleName, api, typ)
+            val type = repo.java.constructors.map { it.parameterTypes.first() }.distinct().single()
+            assertEquals(repo.simpleName, api, type)
         }
     }
 
     @Test
     fun `every address is in exactly one area`() {
         // Without the helper methods Kotlin generates for default values (…$default).
-        fun adressen(m: Array<Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
-        val namen = areas.flatMap { b -> adressen(b.java.declaredMethods) }
-        val doppelt = namen.groupingBy { it }.eachCount().filterValues { it > 1 }
-        assertTrue("Doppelt deklariert: $doppelt", doppelt.isEmpty())
-        assertTrue("Nur ${namen.size} Adressen — Bereiche verloren?", namen.size >= 140)
-        assertEquals("Die Summe deckt alle Bereiche", namen.toSet(),
-            adressen(BrickApiService::class.java.methods).toSet())
+        fun addresses(m: Array<Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
+        val names = areas.flatMap { b -> addresses(b.java.declaredMethods) }
+        val double = names.groupingBy { it }.eachCount().filterValues { it > 1 }
+        assertTrue("Doppelt deklariert: $double", double.isEmpty())
+        assertTrue("Nur ${names.size} Adressen — Bereiche verloren?", names.size >= 140)
+        assertEquals("Die Summe deckt alle Bereiche", names.toSet(),
+            addresses(BrickApiService::class.java.methods).toSet())
     }
 
     @Test
     fun `Retrofit builds an area including inherited addresses`() {
         val server = MockWebServer()
-        server.enqueue(TestApi.antwort("""{"success":true,"parts":[],"total":0}"""))
+        server.enqueue(TestApi.response("""{"success":true,"parts":[],"total":0}"""))
         server.start()
         try {
             val sets = Retrofit.Builder().baseUrl(server.url("/"))
                 .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
                 .build().create(SetsApi::class.java)
             runBlocking { sets.getParts(page = 1, pageSize = 5, setNumber = "75192-1") }
-            val pfad = server.takeRequest().path.orEmpty()
-            assertTrue(pfad, pfad.startsWith("/api/v1/parts") && "set_number=75192-1" in pfad)
+            val path = server.takeRequest().path.orEmpty()
+            assertTrue(path, path.startsWith("/api/v1/parts") && "set_number=75192-1" in path)
         } finally {
             server.shutdown()
         }

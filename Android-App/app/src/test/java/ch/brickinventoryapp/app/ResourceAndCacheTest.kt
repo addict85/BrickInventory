@@ -2,17 +2,17 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * Construction rules that without a device only stand in the source: camera resources, PDF cache budget,
  * fixed debug version and one CSV status path. That sign-out empties all caches is checked by
- * SignOutCleansEverythingTest, executed.
+ * LogoutCleansEverythingTest, executed.
  */
 class ResourceAndCacheTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.root, "$rel")
+        val f = File(Sources.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -22,8 +22,8 @@ class ResourceAndCacheTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /** Camera screen including analysis and common setup — see [Quellen.cameraSource]. */
-    private fun withAnalyse(rel: String): String = Quellen.cameraSource(rel)
+    /** Camera screen including analysis and common setup — see [Sources.cameraSource]. */
+    private fun withAnalyse(rel: String): String = Sources.cameraSource(rel)
 
     // ── Kamera-Ressourcen ────────────────────────────────────────────────────
 
@@ -52,7 +52,7 @@ class ResourceAndCacheTest {
 
     @Test
     fun `the PDF view cache has an upper limit`() {
-        val src = code(read("data/AnleitungsRepository.kt"))
+        val src = code(read("data/InstructionRepository.kt"))
         assert(src.contains("private fun prunePdfCache")) {
             "Kein Aufräumen des PDF-Caches. Angesehene Anleitungen bleiben absichtlich " +
                 "liegen (Resume, erneutes Öffnen ohne Neudownload) — bei bis zu 300 MB " +
@@ -98,8 +98,8 @@ class ResourceAndCacheTest {
             "versionCode/-Name kommen nicht aus Git"
         }
         assert(!src.contains("LocalDateTime.now()")) { "Die Version hängt wieder an der Bauzeit" }
-        val bau = Quellen.workflow().substringAfter("  build:").substringBefore("  release:")
-        assert(Regex("""actions/checkout@\S+.*\n\s+with:\n\s+fetch-depth: 0""").containsMatchIn(bau)) {
+        val build = Sources.workflow().substringAfter("  build:").substringBefore("  release:")
+        assert(Regex("""actions/checkout@\S+.*\n\s+with:\n\s+fetch-depth: 0""").containsMatchIn(build)) {
             "Der Bau-Job klont flach: Jeder Bau wäre Commit Nummer 1"
         }
     }

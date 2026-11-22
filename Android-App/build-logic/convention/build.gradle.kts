@@ -33,35 +33,35 @@ gradlePlugin {
     plugins {
         register("androidApplication") {
             id = libs.plugins.brickinventory.android.application.get().pluginId
-            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidApplicationKonvention"
+            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidApplicationConvention"
         }
         register("androidLibrary") {
             id = libs.plugins.brickinventory.android.library.get().pluginId
-            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidLibraryKonvention"
+            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidLibraryConvention"
         }
         register("androidUnittests") {
             id = libs.plugins.brickinventory.android.unittests.get().pluginId
-            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidUnittestKonvention"
+            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidUnittestConvention"
         }
         register("androidCompose") {
             id = libs.plugins.brickinventory.android.compose.get().pluginId
-            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidComposeKonvention"
+            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidComposeConvention"
         }
         register("androidHilt") {
             id = libs.plugins.brickinventory.android.hilt.get().pluginId
-            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidHiltKonvention"
+            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidHiltConvention"
         }
         register("androidFeature") {
             id = libs.plugins.brickinventory.android.feature.get().pluginId
-            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidFeatureKonvention"
+            implementationClass = "ch.brickinventoryapp.buildlogic.AndroidFeatureConvention"
         }
         register("jvmLibrary") {
             id = libs.plugins.brickinventory.jvm.library.get().pluginId
-            implementationClass = "ch.brickinventoryapp.buildlogic.JvmLibraryKonvention"
+            implementationClass = "ch.brickinventoryapp.buildlogic.JvmLibraryConvention"
         }
         register("detekt") {
             id = libs.plugins.brickinventory.detekt.get().pluginId
-            implementationClass = "ch.brickinventoryapp.buildlogic.DetektKonvention"
+            implementationClass = "ch.brickinventoryapp.buildlogic.DetektConvention"
         }
     }
 }

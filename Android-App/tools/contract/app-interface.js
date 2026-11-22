@@ -39,12 +39,12 @@ function ohneToken() {
   ))
     api.set(m[3], `${m[1]} /${m[2]}`);
   const repo = new Map(
-    lies('core-data', ...KT, 'data', 'repository', 'KontoRepositoryImpl.kt')
+    lies('core-data', ...KT, 'data', 'repository', 'AccountRepositoryImpl.kt')
       .split(/\n\s*override (?:suspend )?fun /)
       .slice(1)
       .map(t => [t.match(/^(\w+)/)?.[1] ?? '', [...t.matchAll(/\bapi\.(\w+)\(/g)].map(m => m[1])]),
   );
-  const vm = lies('feature-login', ...KT, 'login', 'ui', 'viewmodel', 'AnmeldungViewModel.kt');
+  const vm = lies('feature-login', ...KT, 'login', 'ui', 'viewmodel', 'LoginViewModel.kt');
   const routen = new Set();
   for (const [, name] of vm.matchAll(/\bkonto\.(\w+)\(/g))
     for (const a of repo.get(name ?? '') ?? []) {

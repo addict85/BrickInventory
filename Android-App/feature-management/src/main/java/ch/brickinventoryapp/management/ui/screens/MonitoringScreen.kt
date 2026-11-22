@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.management.ui.screens
 
-import ch.brickinventoryapp.model.domain.Laufstatus
+import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.data.VorwaermNetwork
+import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.management.ui.viewmodel.BackgroundUiState
 import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
-import ch.brickinventoryapp.state.ui.viewmodel.GeraeteEinstellungenViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.DevicesSettingsViewModel
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringActions
-import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.domain.BricksetEntryView
 import ch.brickinventoryapp.model.domain.JobStateView
 import ch.brickinventoryapp.model.domain.ScheduleView
-import ch.brickinventoryapp.ui.theme.AppKarte
-import ch.brickinventoryapp.ui.theme.LocalStatusFarben
+import ch.brickinventoryapp.ui.theme.AppCard
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,20 +37,20 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.management.ui.ManagementUiState
-import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.ui.sentence
 import androidx.lifecycle.repeatOnLifecycle
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.centeredUntil
-import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
 
 /** What the management page shows; the route collects it from the flows. */
 data class MonitoringState(
     val monState: MonitoringUiState,
-    val hintergrund: BackgroundUiState,
-    val verwaltung: ManagementUiState,
-    val networks: Map<VorwaermNetwork, Boolean>,
+    val background: BackgroundUiState,
+    val admin: ManagementUiState,
+    val networks: Map<PrewarmNetwork, Boolean>,
     val appTheme: Design,
     val storeBytes: Long,
 )
@@ -65,60 +65,60 @@ internal fun MonitoringRoute(
     /** Theme or default state changed: the app reloads its settings. */
     onSettingsNew: () -> Unit,
     mon: MonitoringViewModel = hiltViewModel(),
-    geraet: GeraeteEinstellungenViewModel = hiltViewModel(),
+    device: DevicesSettingsViewModel = hiltViewModel(),
 ) {
     val monState by mon.state.collectAsStateWithLifecycle()
-    val hintergrund by mon.hintergrund.collectAsStateWithLifecycle()
-    val verwaltung by mon.managementState.collectAsStateWithLifecycle()
-    val networks by geraet.vorwaermen.collectAsStateWithLifecycle()
-    val storeBytes by geraet.storeBytes.collectAsStateWithLifecycle()
+    val background by mon.background.collectAsStateWithLifecycle()
+    val admin by mon.managementState.collectAsStateWithLifecycle()
+    val networks by device.prewarm.collectAsStateWithLifecycle()
+    val storeBytes by device.storeBytes.collectAsStateWithLifecycle()
     val settingsNew by mon.settingsNew.collectAsStateWithLifecycle()
-    val lebenszyklus = LocalLifecycleOwner.current
+    val lifecycle = LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
-        lebenszyklus.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            mon.haltAktuell()
+        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            mon.holdCurrent()
         }
     }
     LaunchedEffect(settingsNew) {
-        if (settingsNew) { onSettingsNew(); mon.einstellungenGeladen() }
+        if (settingsNew) { onSettingsNew(); mon.settingsLoaded() }
     }
-    val cacheEvents = remember(mon, geraet) {
+    val cacheEvents = remember(mon, device) {
         CacheEvents(
             defaultState = mon::defaultStateChoose,
-            clearStore = geraet::clearStore,
-            netz = geraet::vorwaermen,
+            clearStore = device::clearStore,
+            network = device::prewarm,
             design = mon::designChoose,
             cacheDuration = mon::saveCacheDuration,
-            cacheLeeren = mon::cacheLeeren,
+            cacheClear = mon::cacheClear,
             limits = mon::saveLimits,
         )
     }
     MonitoringScreen(
-        MonitoringState(monState, hintergrund, verwaltung, networks, appTheme, storeBytes),
+        MonitoringState(monState, background, admin, networks, appTheme, storeBytes),
         mon, cacheEvents,
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MonitoringScreen(zustand: MonitoringState, aktionen: MonitoringActions, cacheEvents: CacheEvents) {
-    val monState = zustand.monState
+fun MonitoringScreen(condition: MonitoringState, actions: MonitoringActions, cacheEvents: CacheEvents) {
+    val monState = condition.monState
     // Expanded belongs to the person: rememberSaveable survives a process death too.
     var queueOpen by rememberSaveable { mutableStateOf(false) }
 
     // Centered at form width like the settings: on the tablet the cards otherwise
     // stretched across the whole width, and a job's button and state ended up far apart.
     LazyColumn(
-        modifier = Modifier.fillMaxSize().centeredUntil(Lesebreite.formular),
-            contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
+        modifier = Modifier.fillMaxSize().centeredUntil(ReadingWidth.form),
+            contentPadding = PaddingValues(horizontal = Spacing.large, vertical = Spacing.medium),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // No title of its own: the bar above already names the page (VerwaltungGraph).
             item {
                 Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
-                    if (monState.aktualisiert) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else MitTooltip(stringResource(R.string.monitoring_refresh)) {
-                        IconButton(onClick = aktionen::refresh) {
+                    if (monState.updated) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else WithTooltip(stringResource(R.string.monitoring_refresh)) {
+                        IconButton(onClick = actions::refresh) {
                             Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_refresh))
                         }
                     }
@@ -126,18 +126,18 @@ fun MonitoringScreen(zustand: MonitoringState, aktionen: MonitoringActions, cach
             }
 
             item {
-                BackgroundSection(zustand.hintergrund, aktionen::auftragsArtStarten, aktionen::clearJobKind,
-                    aktionen::cancelJob, aktionen::retryJob)
+                BackgroundSection(condition.background, actions::jobKindStart, actions::clearJobKind,
+                    actions::cancelJob, actions::retryJob)
             }
 
             item {
-                CacheAndLimitsSection(monState, zustand.networks, zustand.appTheme,
-                    zustand.storeBytes, cacheEvents)
+                CacheAndLimitsSection(monState, condition.networks, condition.appTheme,
+                    condition.storeBytes, cacheEvents)
             }
 
             // No rights check of its own: the server is authoritative (otherwise 403); a
             // third place that decides "is this an admin" would be a second truth.
-            item { LogSection(zustand.verwaltung, aktionen) }
+            item { LogSection(condition.admin, actions) }
 
             items(monState.jobs.entries.toList(), key = { it.key }) { (key, job) ->
                 JobCard(
@@ -147,10 +147,10 @@ fun MonitoringScreen(zustand: MonitoringState, aktionen: MonitoringActions, cach
                     queueOpen = queueOpen,
                     queue    = monState.queue,
                     buttons  = monState.buttons,
-                    aktionen = aktionen,
+                    actions = actions,
                     onToggleQueue = {
                         queueOpen = !queueOpen
-                        if (queueOpen) aktionen.showQueue()
+                        if (queueOpen) actions.showQueue()
                     },
                 )
             }
@@ -164,33 +164,33 @@ private fun JobCard(
     /** This job's schedule, or null — then the row is not shown. */
     schedule: ScheduleView?,
     queueOpen: Boolean,
-    queue: Laden<List<BricksetEntryView>>,
-    buttons: Map<Jobstart, Meldung>,
-    aktionen: MonitoringActions,
+    queue: Load<List<BricksetEntryView>>,
+    buttons: Map<Jobstart, Message>,
+    actions: MonitoringActions,
     onToggleQueue: () -> Unit,
 ) {
-    AppKarte {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+    AppCard {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
             JobHeader(jobKey, job)
-            schedule?.let { ScheduleRow(jobKey, it, aktionen) }
+            schedule?.let { ScheduleRow(jobKey, it, actions) }
 
-            val starte = { j: Jobstart -> aktionen.starte(j) }
+            val launch = { j: Jobstart -> actions.launch(j) }
             when (jobKey) {
-                "csvImport" -> StartButton(Jobstart.CSV_ABGLEICH, buttons, Icons.Default.Sync, R.string.monitoring_sync_now, starte)
-                "priceJob" -> StartButton(Jobstart.PREISLAUF, buttons, Icons.Default.Refresh, R.string.monitoring_price_update, starte)
+                "csvImport" -> StartButton(Jobstart.CSV_RECONCILE, buttons, Icons.Default.Sync, R.string.monitoring_sync_now, launch)
+                "priceJob" -> StartButton(Jobstart.PRICE_RUN, buttons, Icons.Default.Refresh, R.string.monitoring_price_update, launch)
                 "imgDl" -> {
                     // The first one fetches the stock's images, the second the catalog's (as in the web app).
-                    StartButton(Jobstart.BESTANDSBILDER, buttons, Icons.Default.Download, R.string.monitoring_redownload_missing, starte)
-                    StartButton(Jobstart.KATALOGBILDER, buttons, Icons.Default.Download, R.string.monitoring_catalog_images, starte)
+                    StartButton(Jobstart.STOCK_IMAGES, buttons, Icons.Default.Download, R.string.monitoring_redownload_missing, launch)
+                    StartButton(Jobstart.CATALOG_IMAGES, buttons, Icons.Default.Download, R.string.monitoring_catalog_images, launch)
                 }
                 "instrQueue" ->
-                    StartButton(Jobstart.INSTRUCTIONS, buttons, Icons.Default.Download, R.string.monitoring_import_missing_instr, starte)
+                    StartButton(Jobstart.INSTRUCTIONS, buttons, Icons.Default.Download, R.string.monitoring_import_missing_instr, launch)
             }
 
             if (jobKey == "bricksetRetry" && job.total > 0) {
                 FilledTonalButton(
                     onClick = onToggleQueue,
-                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = Spacing.medium, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(if (queueOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -199,7 +199,7 @@ private fun JobCard(
                     Text(if (queueOpen) stringResource(R.string.monitoring_queue_collapse) else stringResource(R.string.monitoring_queue_show, job.total), style = MaterialTheme.typography.labelMedium)
                 }
 
-                AnimatedVisibility(queueOpen) { Warteschlange(queue, aktionen) }
+                AnimatedVisibility(queueOpen) { Queue(queue, actions) }
             }
         }
     }
@@ -209,15 +209,15 @@ private fun JobCard(
 @Composable
 private fun JobHeader(jobKey: String, job: JobStateView) {
     val statusColor = when (job.status) {
-        Laufstatus.LAEUFT -> MaterialTheme.colorScheme.primary
-        Laufstatus.FERTIG -> LocalStatusFarben.current.erfolg
-        Laufstatus.FEHLER -> MaterialTheme.colorScheme.error
+        RunStatus.RUNNING -> MaterialTheme.colorScheme.primary
+        RunStatus.DONE -> LocalStatusColors.current.success
+        RunStatus.ERROR -> MaterialTheme.colorScheme.error
         else              -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val statusIcon = when (job.status) {
-        Laufstatus.LAEUFT -> Icons.Default.HourglassTop
-        Laufstatus.FERTIG -> Icons.Default.CheckCircle
-        Laufstatus.FEHLER -> Icons.Default.Error
+        RunStatus.RUNNING -> Icons.Default.HourglassTop
+        RunStatus.DONE -> Icons.Default.CheckCircle
+        RunStatus.ERROR -> Icons.Default.Error
         else              -> Icons.Default.PauseCircle
     }
     val pct = if (job.total > 0) (job.progress.toFloat() / job.total).coerceIn(0f, 1f) else 0f
@@ -226,9 +226,9 @@ private fun JobHeader(jobKey: String, job: JobStateView) {
         Text(job.label.ifBlank { jobKey }, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+            horizontalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
             Icon(statusIcon, null, Modifier.size(withFont(14.dp)), tint = statusColor)
-            Text(job.status.kennung, color = statusColor,
+            Text(job.status.identifier, color = statusColor,
                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
         }
     }
@@ -252,11 +252,11 @@ private fun JobHeader(jobKey: String, job: JobStateView) {
 
 /** A start button: its label while it is not running, otherwise "starting…" or what it started. */
 @Composable
-private fun StartButton(job: Jobstart, buttons: Map<Jobstart, Meldung>, icon: ImageVector, beschriftung: Int, onStart: (Jobstart) -> Unit) {
-    val text = buttons[job]?.satz() ?: stringResource(beschriftung)
+private fun StartButton(job: Jobstart, buttons: Map<Jobstart, Message>, icon: ImageVector, label: Int, onStart: (Jobstart) -> Unit) {
+    val text = buttons[job]?.sentence() ?: stringResource(label)
     FilledTonalButton(
         onClick = { onStart(job) },
-        contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = Spacing.medium, vertical = 6.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Icon(icon, null, Modifier.size(withFont(16.dp)))
@@ -266,17 +266,17 @@ private fun StartButton(job: Jobstart, buttons: Map<Jobstart, Meldung>, icon: Im
 }
 
 @Composable
-private fun Warteschlange(queue: Laden<List<BricksetEntryView>>, aktionen: MonitoringActions) {
+private fun Queue(queue: Load<List<BricksetEntryView>>, actions: MonitoringActions) {
     when (queue) {
-        Laden.Loads -> Box(Modifier.fillMaxWidth().padding(Abstaende.klein), Alignment.Center) {
+        Load.Loads -> Box(Modifier.fillMaxWidth().padding(Spacing.small), Alignment.Center) {
             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         }
-        is Laden.Fehler -> Text(queue.meldung.satz(), color = MaterialTheme.colorScheme.error,
+        is Load.Failure -> Text(queue.message.sentence(), color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall)
-        is Laden.Daten -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Spacer(Modifier.height(Abstaende.tiny))
-            queue.wert.forEach { entry ->
-                BricksetQueueRow(entry, aktionen::wiederhole, aktionen::entferne)
+        is Load.Data -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Spacer(Modifier.height(Spacing.tiny))
+            queue.value.forEach { entry ->
+                BricksetQueueRow(entry, actions::retry, actions::remove)
             }
         }
     }

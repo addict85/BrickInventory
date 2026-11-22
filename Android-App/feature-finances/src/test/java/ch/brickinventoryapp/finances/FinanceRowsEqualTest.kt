@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.ValuationPurchaseView
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
@@ -22,12 +22,12 @@ class FinanceRowsEqualTest {
     fun `both call sites pass the purchase price through`() {
         // The entry takes priority over the item: with several purchases, every row has
         // its own purchase price, exactly as with the sets.
-        val kaeufe = listOf(ValuationPurchaseView(id = 1, purchasePrice = Geld.aus(120.0)),
-                            ValuationPurchaseView(id = 2, purchasePrice = Geld.aus(80.0)))
-        val teil = ManualPartView(id = 1, partNumber = "3001", purchasePrice = Geld.aus(150.0), acquisitions = kaeufe)
-        val figur = ManualMinifigView(id = 2, figNumber = "sw0001", purchasePrice = Geld.aus(150.0), acquisitions = kaeufe)
-        assertEquals(listOf(Geld.aus(120.0), Geld.aus(80.0)), partRows(listOf(teil)).map { it.second.kaufpreis })
-        assertEquals(listOf(Geld.aus(120.0), Geld.aus(80.0)), minifigRows(listOf(figur)).map { it.second.kaufpreis })
-        assertEquals(listOf(Geld.aus(150.0)), partRows(listOf(teil.copy(acquisitions = emptyList()))).map { it.second.kaufpreis })
+        val purchases = listOf(ValuationPurchaseView(id = 1, purchasePrice = Money.from(120.0)),
+                            ValuationPurchaseView(id = 2, purchasePrice = Money.from(80.0)))
+        val part = ManualPartView(id = 1, partNumber = "3001", purchasePrice = Money.from(150.0), acquisitions = purchases)
+        val figure = ManualMinifigView(id = 2, figNumber = "sw0001", purchasePrice = Money.from(150.0), acquisitions = purchases)
+        assertEquals(listOf(Money.from(120.0), Money.from(80.0)), partRows(listOf(part)).map { it.second.purchasePrice })
+        assertEquals(listOf(Money.from(120.0), Money.from(80.0)), minifigRows(listOf(figure)).map { it.second.purchasePrice })
+        assertEquals(listOf(Money.from(150.0)), partRows(listOf(part.copy(acquisitions = emptyList()))).map { it.second.purchasePrice })
     }
 }

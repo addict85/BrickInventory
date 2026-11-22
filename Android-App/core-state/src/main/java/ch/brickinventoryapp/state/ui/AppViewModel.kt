@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.session.Sitzung
-import ch.brickinventoryapp.session.SitzungsRepository
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.session.SessionRepository
 import ch.brickinventoryapp.session.AppUiState
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.SecondFactorRequired
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,50 +17,50 @@ import ch.brickinventoryapp.model.ui.ScrollMemory
 
 /**
  * What MainActivity displays: session, snackbar, the mandatory screens and the target of a
- * tapped notification. The session's work is done by [SitzungsRepository]; it
+ * tapped notification. The session's work is done by [SessionRepository]; it
  * lives in the app's scope and starts with it (BrickInventoryApp), not with this ViewModel.
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    private val sessionService: SitzungsRepository,
-    private val meldungen: MeldungsKanal,
-    sitzung: Sitzung,
+    private val sessionService: SessionRepository,
+    private val messages: MessageChannel,
+    session: Session,
     scopeService: Scope,
     val scrollMemory: ScrollMemory,
-    ausgangsmelder: Ausgangsmelder,
+    outboxNotifier: OutboxNotifier,
     passwordRequired: PasswordRequired,
-    zweiterFaktorPflicht: SecondFactorRequired,
+    secondFactorRequired: SecondFactorRequired,
 ) : ViewModel() {
 
-    val state: StateFlow<AppUiState> = sitzung.state
+    val state: StateFlow<AppUiState> = session.state
 
-    val snackbar = meldungen.meldung
+    val snackbar = messages.message
 
     /** Changes stored offline that still need to reach the server — for the bar in the scaffold. */
-    val offeneAenderungen: StateFlow<Int> = ausgangsmelder.offene
-    fun clearSnackbar() { meldungen.acknowledge() }
+    val pendingChanges: StateFlow<Int> = outboxNotifier.pending
+    fun clearSnackbar() { messages.acknowledge() }
 
     /** With a starting password, MainActivity shows the replacement screen instead of the app. */
-    val startPasswordNeeded: StateFlow<Boolean> = passwordRequired.noetig
+    val startPasswordNeeded: StateFlow<Boolean> = passwordRequired.needed
 
     /** Admin rights without a second factor: MainActivity shows its setup. */
-    val secondFactorNeeded: StateFlow<Boolean> = zweiterFaktorPflicht.noetig
+    val secondFactorNeeded: StateFlow<Boolean> = secondFactorRequired.needed
 
-    val blickfeld = scopeService.konten
-    val storageState = scopeService.lager
+    val viewport = scopeService.accounts
+    val storageState = scopeService.storage
 
     private val _messageTarget = MutableStateFlow(MessageTargetUiState())
     val messageTarget: StateFlow<MessageTargetUiState> = _messageTarget.asStateFlow()
 
     fun secondFactorConfigured() = sessionService.secondFactorConfigured()
 
-    fun logout(): Job = sessionService.abmelden()
+    fun logout(): Job = sessionService.logout()
 
     fun loadHouseholdMembers() = sessionService.loadMembers()
 
-    fun loadLagerorte() = sessionService.ladeLagerorte()
+    fun loadStorageLocations() = sessionService.fetchStorageLocations()
 
-    fun loadSettings() = sessionService.ladeEinstellungen()
+    fun loadSettings() = sessionService.loadSettings()
 
     /**
      * Back in the foreground: a default state changed in the web app then also takes
@@ -71,15 +71,15 @@ class AppViewModel @Inject constructor(
         if (!state.value.isLoggedIn) return
         loadSettings()
         loadHouseholdMembers()
-        loadLagerorte()
+        loadStorageLocations()
     }
 
     // ── Meldung angetippt ────────────────────────────────────────────────────
 
     /** The intent arrives at the edge of the app, and that edge is the activity. */
-    fun setFromMessageRequest(setNummer: String?) {
+    fun setFromMessageRequest(setNumber: String?) {
         // Also checked here: the number becomes part of a navigation route.
-        val sn = setNumberFromMessage(setNummer) ?: return
+        val sn = setNumberFromMessage(setNumber) ?: return
         _messageTarget.value = MessageTargetUiState(sn)
     }
 

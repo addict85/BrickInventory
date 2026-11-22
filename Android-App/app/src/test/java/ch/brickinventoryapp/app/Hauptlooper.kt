@@ -4,21 +4,21 @@ import android.os.Looper
 import org.robolectric.Shadows.shadowOf
 
 /**
- * Drives the main looper until [bereit] holds and three further rounds change neither requests
- * nor state. The sample world responds in ticks (PfadServer.imTakt), the
+ * Drives the main looper until [ready] holds and three further rounds change neither requests
+ * nor state. The sample world responds in ticks (PathServer.onTick), the
  * sample images load on the main looper: everything runs in these rounds, without a wall clock.
  */
-fun driveUntil(name: String, requests: () -> Int = { 0 }, zustand: () -> Any? = { null }, bereit: () -> Boolean) {
-    var ruhig = 0
-    var zuletzt = requests()
+fun driveUntil(name: String, requests: () -> Int = { 0 }, condition: () -> Any? = { null }, ready: () -> Boolean) {
+    var calm = 0
+    var last = requests()
     repeat(AT_MOST_ROUNDS) {
         shadowOf(Looper.getMainLooper()).idle()
-        val jetzt = requests()
-        ruhig = if (jetzt == zuletzt && bereit()) ruhig + 1 else 0
-        zuletzt = jetzt
-        if (ruhig >= CALM_ROUNDS) return
+        val now = requests()
+        calm = if (now == last && ready()) calm + 1 else 0
+        last = now
+        if (calm >= CALM_ROUNDS) return
     }
-    throw AssertionError("$name: nach $AT_MOST_ROUNDS Runden des Hauptloopers nicht bereit: ${zustand()}")
+    throw AssertionError("$name: nach $AT_MOST_ROUNDS Runden des Hauptloopers nicht bereit: ${condition()}")
 }
 
 private const val AT_MOST_ROUNDS = 200

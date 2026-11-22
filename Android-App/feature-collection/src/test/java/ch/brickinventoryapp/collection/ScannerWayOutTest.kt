@@ -35,17 +35,17 @@ class ScannerWayOutTest {
 
     @Test
     fun `typing the number is offered while the camera is running`() {
-        var getippt = 0
+        var typed = 0
         compose.setContent {
             BrickInventoryManagerTheme {
-                BarcodeScannerScreen(onResult = {}, onDismiss = {}, typeInOn = { getippt++ }, ohneKamera = true)
+                BarcodeScannerScreen(onResult = {}, onDismiss = {}, typeInOn = { typed++ }, withoutCamera = true)
             }
         }
         compose.waitForIdle()
-        compose.onNode(hasText(compose.activity.getString(R.string.scanner_nummer_eintippen)) and hasClickAction())
+        compose.onNode(hasText(compose.activity.getString(R.string.scanner_number_type_in)) and hasClickAction())
             .performClick()
         compose.waitForIdle()
-        assertEquals(1, getippt)
+        assertEquals(1, typed)
     }
 
     @Test

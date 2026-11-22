@@ -38,7 +38,7 @@ import java.io.File
 class SetNumberCorpusTest {
 
     /** Path relative to the module directory `Android-App/app` — as in ApkNameTest. */
-    private val korpus by lazy {
+    private val corpus by lazy {
         JSONObject(File("../../shared/setnummer-korpus.json").readText())
             .getJSONArray("faelle")
     }
@@ -48,24 +48,24 @@ class SetNumberCorpusTest {
         var withExpectation = 0
         var withoutCandidate = 0
         var threeDigit = 0
-        for (i in 0 until korpus.length()) {
-            val fall = korpus.getJSONObject(i)
+        for (i in 0 until corpus.length()) {
+            val fall = corpus.getJSONObject(i)
             val text = fall.getString("text")
-            val erwartet = if (fall.isNull("erwartet")) null else fall.getString("erwartet")
-            val warum = fall.getString("warum")
+            val expected = if (fall.isNull("erwartet")) null else fall.getString("erwartet")
+            val why = fall.getString("warum")
             val k = setNumberCandidates(text)
-            val ist = k.firstOrNull()
-            assert(ist == erwartet) {
+            val actual = k.firstOrNull()
+            assert(actual == expected) {
                 "Korpusfall $i: ${text.replace("\n", "\\n")}\n" +
-                "  erwartet: $erwartet\n  bekommen: $ist  (alle: $k)\n  warum: $warum"
+                "  erwartet: $expected\n  bekommen: $actual  (alle: $k)\n  warum: $why"
             }
-            if (erwartet == null) withoutCandidate++ else withExpectation++
-            if (erwartet != null && erwartet.length == 3) threeDigit++
+            if (expected == null) withoutCandidate++ else withExpectation++
+            if (expected != null && expected.length == 3) threeDigit++
         }
 
         // Self-proof 1: the corpus was really read and is not empty.
-        assert(korpus.length() >= 15) {
-            "Nur ${korpus.length()} Faelle im Korpus — Datei geschrumpft oder falscher Pfad?"
+        assert(corpus.length() >= 15) {
+            "Nur ${corpus.length()} Faelle im Korpus — Datei geschrumpft oder falscher Pfad?"
         }
         // Self-proof 2: both directions are represented. Without this the
         // corpus could degrade into nothing but misses and still be green.

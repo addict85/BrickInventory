@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app
 
 import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
-import ch.brickinventoryapp.model.domain.Teilelistenauftrag
-import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.PartListJob
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.testing.testMinifigsRepository
 import ch.brickinventoryapp.testing.testFinancesRepository
@@ -14,12 +14,12 @@ import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.MerklisteViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.parts.ui.PartListsSource
 import ch.brickinventoryapp.parts.ui.PlPart
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.ExportResult
 import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
@@ -36,18 +36,18 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.finances.ui.finanzSummen
+import ch.brickinventoryapp.finances.ui.financeTotals
 import ch.brickinventoryapp.shared.ui.localAxis
 import ch.brickinventoryapp.shared.ui.localValues
 import ch.brickinventoryapp.finances.ui.setRows
-import ch.brickinventoryapp.state.ui.viewmodel.Texte
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import java.util.Locale
 import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.TestServices
 
 /**
- * Sample data for screenshots and UI tests: a PfadServer in ticks with
+ * Sample data for screenshots and UI tests: a PathServer in ticks with
  * real responses and the ViewModels of the main screens against it. This test
  * checks on the JVM that every list really arrives — a screenshot of an
  * empty list showed nothing.
@@ -74,50 +74,50 @@ import ch.brickinventoryapp.testing.TestDienste
 @OptIn(ExperimentalCoroutinesApi::class)
 class SampleDataTest {
 
-    private lateinit var world: Examples.Welt
+    private lateinit var world: Examples.World
 
     @Before
-    fun auf() {
+    fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        world = Examples.Welt()
+        world = Examples.World()
     }
 
     @After
-    fun zu() {
+    fun tearDown() {
         world.close()
         Dispatchers.resetMain()
     }
 
     /** In ticks everything is already loaded when the call returns. */
-    private fun da(was: String, bedingung: () -> Boolean) = assertTrue(was, bedingung())
+    private fun da(was: String, condition: () -> Boolean) = assertTrue(was, condition())
 
     @Test
     fun `every main screen gets content`() {
-        val galerie = world.galerie().also { it.loadSets() }
-        val teile = world.teile().also { it.loadParts() }
-        val figuren = world.figuren().also { it.loadMinifigs() }
-        val finanzen = world.finanzen().also { it.loadValuation() }
-        val merkliste = world.merkliste().also { it.loadWanted() }
+        val gallery = world.gallery().also { it.loadSets() }
+        val parts = world.parts().also { it.loadParts() }
+        val figures = world.figures().also { it.loadMinifigs() }
+        val finances = world.finances().also { it.loadValuation() }
+        val wantedList = world.wantedList().also { it.loadWanted() }
         val detail = world.setDetail()
-        da("Galerie") { galerie.galleryState.value.sets.size == 3 }
-        da("Teile") { teile.teileState.value.parts.isNotEmpty() }
-        da("Figuren") { figuren.minifigsState.value.minifigs.isNotEmpty() }
-        da("Finanzen") { finanzen.financeState.value.valuation != null }
-        da("Merkliste") { merkliste.wantedState.value.merkposten.isNotEmpty() }
+        da("Galerie") { gallery.galleryState.value.sets.size == 3 }
+        da("Teile") { parts.partsState.value.parts.isNotEmpty() }
+        da("Figuren") { figures.minifigsState.value.minifigs.isNotEmpty() }
+        da("Finanzen") { finances.financeState.value.valuation != null }
+        da("Merkliste") { wantedList.wantedState.value.wantedItem.isNotEmpty() }
         da("Detail") { detail.setDetailState.value.setDetail != null }
         assertEquals("Millennium Falcon", detail.setDetailState.value.setDetail?.name)
-        assertTrue(finanzen.financeState.value.valuation!!.sets.isNotEmpty())
+        assertTrue(finances.financeState.value.valuation!!.sets.isNotEmpty())
     }
 
     /** The photos of parts and figures show names and key figures, not „Name unbekannt“. */
     @Test
     fun `parts and figures carry real names`() {
-        val teile = world.teile().also { it.loadParts() }
-        val figuren = world.figuren().also { it.loadMinifigs() }
-        da("Teile und Figuren") { teile.teileState.value.parts.isNotEmpty() && figuren.minifigsState.value.let {
+        val parts = world.parts().also { it.loadParts() }
+        val figures = world.figures().also { it.loadMinifigs() }
+        da("Teile und Figuren") { parts.partsState.value.parts.isNotEmpty() && figures.minifigsState.value.let {
             it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
-        val z = teile.teileState.value
-        val f = figuren.minifigsState.value
+        val z = parts.partsState.value
+        val f = figures.minifigsState.value
         assertTrue(z.parts.toString(), z.parts.all { !it.partName.isNullOrBlank() })
         assertTrue(f.minifigs.toString(), f.minifigs.all { !it.figName.isNullOrBlank() })
         assertTrue("Ein Name ist lang genug zum Kürzen", f.minifigs.any { (it.figName?.length ?: 0) > 30 })
@@ -129,17 +129,17 @@ class SampleDataTest {
      */
     @Test
     fun `the samples are consistent`() {
-        val finanzen = world.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
+        val finances = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         val detail = world.setDetail()
-        da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
+        da("Finanzen") { finances.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
         da("Detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
-        val falcon = finanzen.financeState.value.valuation!!.sets.first { it.setNumber == Examples.SET }
+        val falcon = finances.financeState.value.valuation!!.sets.first { it.setNumber == Examples.SET }
         assertEquals(falcon.avgPrice, detail.setDetailState.value.setPrice?.avgPrice)
-        assertEquals(listOf(Waehrung.CHF), listOf(world.t.sitzung.state.value.currency))
+        assertEquals(listOf(CurrencyCode.CHF), listOf(world.t.session.state.value.currency))
         assertTrue("jeder Kauf hat einen Betrag", detail.setDetailState.value.acquisitions.all { it.effectivePrice != null })
         // The axis carries dates, not weekdays — chart.x matches point by point, and
         // translating happens only in the display language.
-        val f = finanzen.financeState.value
+        val f = finances.financeState.value
         val de = localAxis(f.historyPoints, f.historyDays, Locale.forLanguageTag("de-CH"))
         val en = localAxis(f.historyPoints, f.historyDays, Locale.forLanguageTag("en-GB"))
         assertEquals(listOf("27.10.", "29.10."), de.map { it.xLabel }.filter { it.isNotBlank() })
@@ -152,19 +152,19 @@ class SampleDataTest {
      */
     @Test
     fun `the finance axis is formatted only when drawing`() {
-        val vorher = Locale.getDefault()
+        val before = Locale.getDefault()
         Locale.setDefault(Locale.US)
         try {
-            val finanzen = world.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-            da("Verlauf") { finanzen.financeState.value.historyPoints.isNotEmpty() }
-            val f = finanzen.financeState.value
+            val finances = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
+            da("Verlauf") { finances.financeState.value.historyPoints.isNotEmpty() }
+            val f = finances.financeState.value
             assertEquals(listOf("27.10", "", "29.10"), f.historyPoints.map { it.xLabel })
-            assertEquals(Waehrung.CHF, f.historyCurrency)
+            assertEquals(CurrencyCode.CHF, f.historyCurrency)
             val y = localValues(f.historyYAxis, f.historyCurrency!!, Locale.forLanguageTag("de-CH"))
             val label = y.last().label.replace(' ', ' ')
             assertTrue(label, label == "CHF 1’720" || label == "CHF 1'720")
         } finally {
-            Locale.setDefault(vorher)
+            Locale.setDefault(before)
         }
     }
 
@@ -174,23 +174,23 @@ class SampleDataTest {
      */
     @Test
     fun `every tile has a sample image`() {
-        val galerie = world.galerie().also { it.loadSets() }
-        val teile = world.teile().also { it.loadParts() }
-        val figuren = world.figuren().also { it.loadMinifigs() }
-        val merkliste = world.merkliste().also { it.loadWanted() }
-        val finanzen = world.finanzen().also { it.loadValuation() }
+        val gallery = world.gallery().also { it.loadSets() }
+        val parts = world.parts().also { it.loadParts() }
+        val figures = world.figures().also { it.loadMinifigs() }
+        val wantedList = world.wantedList().also { it.loadWanted() }
+        val finances = world.finances().also { it.loadValuation() }
         da("alles") {
-            galerie.galleryState.value.sets.isNotEmpty() && teile.teileState.value.parts.isNotEmpty() &&
-                figuren.minifigsState.value.minifigs.isNotEmpty() && merkliste.wantedState.value.merkposten.isNotEmpty() &&
-                finanzen.financeState.value.valuation != null
+            gallery.galleryState.value.sets.isNotEmpty() && parts.partsState.value.parts.isNotEmpty() &&
+                figures.minifigsState.value.minifigs.isNotEmpty() && wantedList.wantedState.value.wantedItem.isNotEmpty() &&
+                finances.financeState.value.valuation != null
         }
-        val adressen = galerie.galleryState.value.sets.map { it.setNumber to it.imageLocal } +
-            teile.teileState.value.parts.map { it.partNumber to it.imageLocal } +
-            figuren.minifigsState.value.minifigs.map { it.figNumber to it.imageLocal } +
-            merkliste.wantedState.value.merkposten.map { it.setNumber to it.imageLocal } +
-            finanzen.financeState.value.valuation!!.sets.map { it.setNumber to it.imageLocal }
-        val ohne = adressen.filter { (_, a) -> a == null || SampleImages.resource(a) == null }
-        assertTrue("Ohne Beispielbild: $ohne", adressen.size >= 12 && ohne.isEmpty())
+        val addresses = gallery.galleryState.value.sets.map { it.setNumber to it.imageLocal } +
+            parts.partsState.value.parts.map { it.partNumber to it.imageLocal } +
+            figures.minifigsState.value.minifigs.map { it.figNumber to it.imageLocal } +
+            wantedList.wantedState.value.wantedItem.map { it.setNumber to it.imageLocal } +
+            finances.financeState.value.valuation!!.sets.map { it.setNumber to it.imageLocal }
+        val without = addresses.filter { (_, a) -> a == null || SampleImages.resource(a) == null }
+        assertTrue("Ohne Beispielbild: $without", addresses.size >= 12 && without.isEmpty())
     }
 
     /**
@@ -199,10 +199,10 @@ class SampleDataTest {
      */
     @Test
     fun `the parts tiles add up to the total`() {
-        val teile = world.teile().also { it.loadParts() }
-        da("Teile") { teile.teileState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
-        val z = teile.teileState.value
-        assertEquals(z.partsStats!!.teileGesamt, z.parts.sumOf { it.totalQuantity })
+        val parts = world.parts().also { it.loadParts() }
+        da("Teile") { parts.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
+        val z = parts.partsState.value
+        assertEquals(z.partsStats!!.partsTotal, z.parts.sumOf { it.totalQuantity })
     }
 
     /**
@@ -211,18 +211,18 @@ class SampleDataTest {
      */
     @Test
     fun `every finance row carries price, purchase price, condition and P&L`() {
-        val finanzen = world.finanzen().also { it.loadValuation() }
-        da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
-        val z = finanzen.financeState.value
-        val zeilen = setRows(z.valuation!!.sets).map { it.second }
+        val finances = world.finances().also { it.loadValuation() }
+        da("Finanzen") { finances.financeState.value.let { it.valuation != null && it.pnl != null } }
+        val z = finances.financeState.value
+        val rows = setRows(z.valuation!!.sets).map { it.second }
         // Two valued rows and the tree house without market price — the case of the basis row.
-        assertEquals(3, zeilen.size)
-        val valued = zeilen.filter { it.wert != null }
+        assertEquals(3, rows.size)
+        val valued = rows.filter { it.value != null }
         assertEquals(2, valued.size)
-        assertTrue(valued.toString(), valued.all { it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
-        assertTrue("ohne Marktpreis, mit Kaufpreis", zeilen.single { it.wert == null }.kaufpreis != null)
-        val kopf = finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
-        assertEquals(0, kopf.compareTo(valued.sumOf { it.wert!!.asBigDecimal() }))
+        assertTrue(valued.toString(), valued.all { it.purchasePrice != null && it.condition != null && it.pnlPercent != null })
+        assertTrue("ohne Marktpreis, mit Kaufpreis", rows.single { it.value == null }.purchasePrice != null)
+        val header = financeTotals(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).total
+        assertEquals(0, header.compareTo(valued.sumOf { it.value!!.asBigDecimal() }))
     }
 }
 
@@ -305,36 +305,36 @@ object Examples {
     )
 
     /** One server per test; [close] tears it down again. */
-    class Welt(texts: Texte = NumbersTexts) : AutoCloseable {
-        val paths = PfadServer(*RESPONSES)
-        val t = TestDienste(paths.imTakt(), texts, io = Dispatchers.Main).also { d -> d.sitzung.waehrungUebernommen(Waehrung.CHF) }
+    class World(texts: Texts = NumbersTexts) : AutoCloseable {
+        val paths = PathServer(*RESPONSES)
+        val t = TestServices(paths.onTick(), texts, io = Dispatchers.Main).also { d -> d.session.currencyAdopted(CurrencyCode.CHF) }
 
-        fun galerie() = t.merke(GalleryViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.scrollMemory, testSetsRepository(t.api),
-            t.kontosicht, testFinancesRepository(t.api), SavedStateHandle()))
-        fun teile() = t.merke(PartsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.scrollMemory, testPartsRepository(t.api), t.kontosicht, SavedStateHandle()))
-        fun figuren() = t.merke(MinifigsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, testMinifigsRepository(t.api), t.kontosicht, SavedStateHandle()))
-        fun finanzen() = t.merke(FinanceViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, testFinancesRepository(t.api), SavedStateHandle()))
-        fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alerts(), t.kontosicht,
+        fun gallery() = t.track(GalleryViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testSetsRepository(t.api),
+            t.accountView, testFinancesRepository(t.api), SavedStateHandle()))
+        fun parts() = t.track(PartsViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testPartsRepository(t.api), t.accountView, SavedStateHandle()))
+        fun figures() = t.track(MinifigsViewModel(t.session, t.filter(), t.hints, t.changes, testMinifigsRepository(t.api), t.accountView, SavedStateHandle()))
+        fun finances() = t.track(FinanceViewModel(t.session, t.filter(), t.hints, t.changes, testFinancesRepository(t.api), SavedStateHandle()))
+        fun wantedList() = t.track(WantedListViewModel(t.session, t.filter(), t.hints, t.wantedList(), t.alerts(), t.accountView,
             testCatalogRepository(t.api), testFinancesRepository(t.api), SavedStateHandle()))
-        fun setDetail() = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setCatalog(), t.alerts(), t.setFiles(),
+        fun setDetail() = t.track(SetDetailViewModel(t.session, t.filter(), t.hints, t.sets(), t.setCatalog(), t.alerts(), t.setFiles(),
             testFinancesRepository(t.api), testHouseholdRepository(t.api),
-            object : FileReader { override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null },
+            object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
 
         /** The build list without network: [resolve] delivers name and parts per set number. */
-        fun bauliste(resolve: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
-            t.merke(PartListViewModel(t.sitzung, t.hinweise, object : PartListsSource {
+        fun buildList(resolve: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
+            t.track(PartListViewModel(t.session, t.hints, object : PartListsSource {
                 override suspend fun resolveSetOn(setNumber: String, serverUrl: String) = resolve(setNumber)
-                override suspend fun withInventory(teile: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = teile
-                override fun sortiert(teile: Collection<PlPart>) = teile.toList()
+                override suspend fun withInventory(parts: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = parts
+                override fun sorted(parts: Collection<PlPart>) = parts.toList()
             }, object : PartListsExport {
-                override val fortschritt = flowOf<PdfProgress?>(null)
-                override suspend fun erzeuge(job: Teilelistenauftrag): ExportResult =
-                    ExportResult.Fehler(PdfFailure.Abruf(Ergebnis.Fehler.Netz()))
+                override val progress = flowOf<PdfProgress?>(null)
+                override suspend fun generate(job: PartListJob): ExportResult =
+                    ExportResult.Failure(PdfFailure.Fetch(Outcome.Failure.Network()))
             }, SavedStateHandle()))
 
         override fun close() {
-            t.aufraeumen()
+            t.cleanUp()
             paths.server.shutdown()
         }
     }

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
 import kotlinx.coroutines.test.advanceTimeBy
-import ch.brickinventoryapp.model.domain.Fehlercode
+import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.contract.TokenRotation
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,7 +25,7 @@ import org.junit.Test
  * store here uses the same [TokenLimit] as the PreferencesManager.
  *
  * Counter-checks:
- *   A  in TokenSwap `speichere(neu)` moved behind the `return` (not
+ *   A  in TokenSwap `persist(newValue)` moved behind the `return` (not
  *      saved) → red “the new token is saved before the swap ends”
  *   B  the lock removed (`lock.withLock` → direct) → red “two requests with
  *      the header swap once” (both GETAUSCHT, thus rotated twice)
@@ -33,193 +33,193 @@ import org.junit.Test
  *      lost response is retried with the old token”
  *   D  the 401 branch removed → red “if the old one is no longer valid, pairing must be redone”
  * Counter-checks:
- *   E  in swapLocked() the check `stand() != vorher` before the retry
+ *   E  in swapLocked() the check `state() != before` before the retry
  *      removed → red “a server switch during the retry …” (the old
  *      token still went out three times)
- *   F  in TokenLimit.replaceIf() `|| jetzt() != vorher` removed → red
+ *   F  in TokenLimit.replaceIf() `|| now() != before` removed → red
  *      “sign-out during the swap …” and “… even if the same token comes back”
- *   G  there `requestOrigin != vorher.herkunft` removed → red “a token from
+ *   G  there `requestOrigin != before.origin` removed → red “a token from
  *      a different origin is not saved”
- *   H  in TokenLimit.schreibe() `generation++` removed → red “… even if
+ *   H  in TokenLimit.write() `generation++` removed → red “… even if
  *      the same token comes back”
  *   I  loginOverdue() with `TOKEN_MAX_DURATION_DAYS * 24 * 60 * 1000`
  *      (minutes instead of hours) → red “after 90 days the sign-in is overdue …”
  * Counter-check:
- *   J  noetig() again without origin and generation (`stand().token.takeIf …`) →
+ *   J  needed() again without origin and generation (`state().token.takeIf …`) →
  *      red “already swapped does not mean taking the token of another session”
  * Counter-check:
  *   N  loginDueSoon() without `!loginOverdue(…)` → red “in the last week the app asks …”
  * Counter-check:
- *   K  faellig() swaps with runBlocking in the caller instead of in the passed scope →
+ *   K  due() swaps with runBlocking in the caller instead of in the passed scope →
  *      red “due swaps in the application scope and returns immediately”
  * Counter-check (05.11.2026, measured with kotlinc locally; tausch-noetig-ohne-frist.patch):
  *   L  neededWaiting() waits for the swap without withTimeoutOrNull → red “needed
  *      waits at most the deadline, the swap keeps running” (no return after the deadline)
  * Counter-check:
- *   M  in swapLocked() the check `bereit()` removed → red “with a locked device
- *      there is no swap …”; gegenproben/tausch-trotz-sperre.patch
+ *   M  in swapLocked() the check `ready()` removed → red “with a locked device
+ *      there is no swap …”; counter-checks/tausch-trotz-sperre.patch
  */
 class TokenSwapTest {
 
-    /** [hintergrund] takes up faellig(); without it a scope that nobody processes. */
-    private class Welt(
-        hintergrund: CoroutineScope = CoroutineScope(Job()),
-        warten: Long = TokenSwap.NEEDED_WAIT_MS,
-        bereit: () -> Boolean = { true },
+    /** [background] takes up due(); without it a scope that nobody processes. */
+    private class World(
+        background: CoroutineScope = CoroutineScope(Job()),
+        wait: Long = TokenSwap.NEEDED_WAIT_MS,
+        ready: () -> Boolean = { true },
     ) {
-        var gespeichert = "alt"
-        var herkunft: String? = HERE
+        var saved = "alt"
+        var origin: String? = HERE
         var responseOrigin: String? = HERE
         val limit = TokenLimit()
-        val protokoll = mutableListOf<String>()
-        var antworten: MutableList<Ergebnis<TokenRotation>> = mutableListOf()
+        val log = mutableListOf<String>()
+        var responses: MutableList<Outcome<TokenRotation>> = mutableListOf()
         var brake: CompletableDeferred<Unit>? = null
         /** Runs in every call of the server, after the brake. */
         var rotateOn: suspend () -> Unit = {}
 
-        fun stand() = TokenStatus(gespeichert, herkunft, limit.generation)
+        fun state() = TokenStatus(saved, origin, limit.generation)
 
         /** Like PreferencesManager.clearSession() and saveServerUrl() with another server. */
-        suspend fun abmelden() = limit.schreibe { gespeichert = ""; herkunft = null }
-        suspend fun anmelden(token: String, bei: String) = limit.schreibe { gespeichert = token; herkunft = bei }
+        suspend fun logout() = limit.write { saved = ""; origin = null }
+        suspend fun logIn(token: String, at: String) = limit.write { saved = token; origin = at }
 
-        val tausch = TokenSwap(
-            stand = { stand() },
-            ersetze = { vorher, neu, h ->
-                limit.replaceIf(vorher, h, { stand() }) { protokoll += "speichere $neu"; gespeichert = neu; herkunft = h }
+        val swapping = TokenSwap(
+            state = { state() },
+            replace = { before, newValue, h ->
+                limit.replaceIf(before, h, { state() }) { log += "speichere $newValue"; saved = newValue; origin = h }
             },
-            rotiere = { alt ->
-                protokoll += "rotiere $alt"
+            rotate = { old ->
+                log += "rotiere $old"
                 brake?.await()
                 rotateOn()
-                when (val r = antworten.removeFirstOrNull() ?: Ergebnis.Erfolg(TokenRotation(success = true, token = "neu"))) {
-                    is Ergebnis.Erfolg -> Ergebnis.Erfolg(SwappedToken(r.data.token, responseOrigin))
-                    is Ergebnis.Fehler -> r
+                when (val r = responses.removeFirstOrNull() ?: Outcome.Success(TokenRotation(success = true, token = "neu"))) {
+                    is Outcome.Success -> Outcome.Success(SwappedToken(r.data.token, responseOrigin))
+                    is Outcome.Failure -> r
                 }
             },
-            pausen = listOf(1, 1, 1),
-            hintergrund = hintergrund,
-            warten = warten,
-            bereit = bereit,
+            pauses = listOf(1, 1, 1),
+            background = background,
+            wait = wait,
+            ready = ready,
         )
     }
 
-    private val verloren: Ergebnis.Fehler = Ergebnis.Fehler.Netz()
+    private val lost: Outcome.Failure = Outcome.Failure.Network()
 
     @Test
     fun `with a locked device there is no swap, after unlocking there is`() = runTest {
-        var gesperrt = true
-        val w = Welt(bereit = { !gesperrt })
-        assertEquals(Tauschergebnis.LATER, w.tausch.tausche("alt"))
-        assertEquals("Der Server sah keinen Tausch", emptyList<String>(), w.protokoll)
-        assertEquals("alt", w.gespeichert)
-        gesperrt = false
-        assertEquals(Tauschergebnis.GETAUSCHT, w.tausch.tausche("alt"))
-        assertEquals("neu", w.gespeichert)
+        var locked = true
+        val w = World(ready = { !locked })
+        assertEquals(ExchangeOutcome.LATER, w.swapping.swap("alt"))
+        assertEquals("Der Server sah keinen Tausch", emptyList<String>(), w.log)
+        assertEquals("alt", w.saved)
+        locked = false
+        assertEquals(ExchangeOutcome.EXCHANGED, w.swapping.swap("alt"))
+        assertEquals("neu", w.saved)
     }
 
     @Test
     fun `the new token is saved before the swap ends`() = runTest {
-        val w = Welt()
-        assertEquals(Tauschergebnis.GETAUSCHT, w.tausch.tausche("alt"))
-        assertEquals(listOf("rotiere alt", "speichere neu"), w.protokoll)
-        assertEquals("neu", w.gespeichert)
-        assertEquals(HERE, w.herkunft)
+        val w = World()
+        assertEquals(ExchangeOutcome.EXCHANGED, w.swapping.swap("alt"))
+        assertEquals(listOf("rotiere alt", "speichere neu"), w.log)
+        assertEquals("neu", w.saved)
+        assertEquals(HERE, w.origin)
     }
 
     @Test
     fun `two requests with the header swap once`() = runTest {
-        val w = Welt().apply { brake = CompletableDeferred() }
-        val a = async { w.tausch.tausche("alt") }
-        val b = async { w.tausch.tausche("alt") }
+        val w = World().apply { brake = CompletableDeferred() }
+        val a = async { w.swapping.swap("alt") }
+        val b = async { w.swapping.swap("alt") }
         repeat(5) { yield() }
         w.brake!!.complete(Unit)
-        assertEquals(setOf(Tauschergebnis.GETAUSCHT, Tauschergebnis.ALREADY_SWAPPED), setOf(a.await(), b.await()))
-        assertEquals(listOf("rotiere alt", "speichere neu"), w.protokoll)
+        assertEquals(setOf(ExchangeOutcome.EXCHANGED, ExchangeOutcome.ALREADY_SWAPPED), setOf(a.await(), b.await()))
+        assertEquals(listOf("rotiere alt", "speichere neu"), w.log)
     }
 
     @Test
     fun `a lost response is retried with the old token`() = runTest {
-        val w = Welt().apply { antworten = mutableListOf(verloren, verloren) }
-        assertEquals(Tauschergebnis.GETAUSCHT, w.tausch.tausche("alt"))
-        assertEquals(listOf("rotiere alt", "rotiere alt", "rotiere alt", "speichere neu"), w.protokoll)
+        val w = World().apply { responses = mutableListOf(lost, lost) }
+        assertEquals(ExchangeOutcome.EXCHANGED, w.swapping.swap("alt"))
+        assertEquals(listOf("rotiere alt", "rotiere alt", "rotiere alt", "speichere neu"), w.log)
     }
 
     @Test
     fun `if the old one is no longer valid, pairing must be redone`() = runTest {
-        val w = Welt().apply { antworten = mutableListOf(verloren, Ergebnis.Fehler.Abgewiesen(code = Fehlercode.TOKEN_UNGUELTIG)) }
-        assertEquals(Tauschergebnis.NEW_PAIR, w.tausch.tausche("alt"))
-        assertEquals("alt", w.gespeichert)
+        val w = World().apply { responses = mutableListOf(lost, Outcome.Failure.Rejected(code = ErrorCode.TOKEN_INVALID)) }
+        assertEquals(ExchangeOutcome.NEW_PAIR, w.swapping.swap("alt"))
+        assertEquals("alt", w.saved)
     }
 
     @Test
     fun `if the server stays silent, the old token stays`() = runTest {
-        val w = Welt().apply { antworten = MutableList(10) { verloren } }
-        assertEquals(Tauschergebnis.LATER, w.tausch.tausche("alt"))
-        assertEquals("alt", w.gespeichert)
-        assertEquals(4, w.protokoll.count { it == "rotiere alt" })
+        val w = World().apply { responses = MutableList(10) { lost } }
+        assertEquals(ExchangeOutcome.LATER, w.swapping.swap("alt"))
+        assertEquals("alt", w.saved)
+        assertEquals(4, w.log.count { it == "rotiere alt" })
     }
 
     @Test
     fun `a server switch during the retry aborts the swap`() = runTest {
-        val w = Welt().apply { antworten = MutableList(10) { verloren } }
-        w.rotateOn = { if (w.herkunft == HERE) w.abmelden() }
-        assertEquals(Tauschergebnis.DISCARDED, w.tausch.tausche("alt"))
-        assertEquals("Der alte Token ging nach dem Wechsel nochmals hinaus", listOf("rotiere alt"), w.protokoll)
-        assertEquals("", w.gespeichert)
+        val w = World().apply { responses = MutableList(10) { lost } }
+        w.rotateOn = { if (w.origin == HERE) w.logout() }
+        assertEquals(ExchangeOutcome.DISCARDED, w.swapping.swap("alt"))
+        assertEquals("Der alte Token ging nach dem Wechsel nochmals hinaus", listOf("rotiere alt"), w.log)
+        assertEquals("", w.saved)
     }
 
     @Test
     fun `sign-out during the swap discards the new token`() = runTest {
-        val w = Welt().apply { brake = CompletableDeferred() }
-        val tausch = async { w.tausch.tausche("alt") }
+        val w = World().apply { brake = CompletableDeferred() }
+        val swapping = async { w.swapping.swap("alt") }
         repeat(5) { yield() }
-        w.abmelden()
+        w.logout()
         w.brake!!.complete(Unit)
-        assertEquals(Tauschergebnis.DISCARDED, tausch.await())
-        assertEquals("Nach dem Abmelden ist niemand angemeldet", "", w.gespeichert)
-        assertFalse(w.protokoll.toString(), w.protokoll.any { it.startsWith("speichere") })
-        assertEquals(null, w.tausch.noetig("alt", HERE, w.limit.generation))
+        assertEquals(ExchangeOutcome.DISCARDED, swapping.await())
+        assertEquals("Nach dem Abmelden ist niemand angemeldet", "", w.saved)
+        assertFalse(w.log.toString(), w.log.any { it.startsWith("speichere") })
+        assertEquals(null, w.swapping.needed("alt", HERE, w.limit.generation))
     }
 
     @Test
     fun `a swap that outlasts a sign-out does not save, even if the same token comes back`() = runTest {
-        val w = Welt()
-        w.rotateOn = { w.abmelden(); w.anmelden("alt", HERE) }
-        assertEquals(Tauschergebnis.DISCARDED, w.tausch.tausche("alt"))
-        assertEquals("alt", w.gespeichert)
+        val w = World()
+        w.rotateOn = { w.logout(); w.logIn("alt", HERE) }
+        assertEquals(ExchangeOutcome.DISCARDED, w.swapping.swap("alt"))
+        assertEquals("alt", w.saved)
     }
 
     @Test
     fun `a token from a different origin is not saved`() = runTest {
-        val w = Welt().apply { responseOrigin = "https://anders.example:443" }
-        assertEquals(Tauschergebnis.DISCARDED, w.tausch.tausche("alt"))
-        assertEquals("alt", w.gespeichert)
+        val w = World().apply { responseOrigin = "https://anders.example:443" }
+        assertEquals(ExchangeOutcome.DISCARDED, w.swapping.swap("alt"))
+        assertEquals("alt", w.saved)
         w.responseOrigin = null
-        assertEquals(Tauschergebnis.DISCARDED, w.tausch.tausche("alt"))
-        assertEquals("alt", w.gespeichert)
+        assertEquals(ExchangeOutcome.DISCARDED, w.swapping.swap("alt"))
+        assertEquals("alt", w.saved)
     }
 
     /** Review 6 M1: „already swapped“ was also „meanwhile signed in to the new server“. */
     @Test
     fun `already swapped does not mean taking the token of another session`() = runTest {
-        val w = Welt()
+        val w = World()
         val g = w.limit.generation
-        w.abmelden(); w.anmelden("vom-neuen", "https://neu.example:443")
-        assertEquals("Andere Herkunft und Generation", null, w.tausch.noetig("alt", HERE, g))
-        assertEquals("Andere Generation", null, w.tausch.noetig("alt", "https://neu.example:443", g))
-        assertEquals("Andere Herkunft", null, w.tausch.noetig("alt", HERE, w.limit.generation))
+        w.logout(); w.logIn("vom-neuen", "https://neu.example:443")
+        assertEquals("Andere Herkunft und Generation", null, w.swapping.needed("alt", HERE, g))
+        assertEquals("Andere Generation", null, w.swapping.needed("alt", "https://neu.example:443", g))
+        assertEquals("Andere Herkunft", null, w.swapping.needed("alt", HERE, w.limit.generation))
         // The same session: another request has just swapped, its token counts.
-        assertEquals("vom-neuen", w.tausch.noetig("alt", "https://neu.example:443", w.limit.generation))
-        assertFalse(w.protokoll.toString(), w.protokoll.any { it.startsWith("rotiere") })
+        assertEquals("vom-neuen", w.swapping.needed("alt", "https://neu.example:443", w.limit.generation))
+        assertFalse(w.log.toString(), w.log.any { it.startsWith("rotiere") })
     }
 
     /** A silent server does not hold the network thread longer than the deadline; it is saved anyway. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `needed waits at most the deadline, the swap keeps running`() = runTest {
-        val w = Welt(CoroutineScope(StandardTestDispatcher(testScheduler)), warten = 1_000).apply { brake = CompletableDeferred() }
-        val waiting = async { w.tausch.neededWaiting("alt", HERE, w.limit.generation) }
+        val w = World(CoroutineScope(StandardTestDispatcher(testScheduler)), wait = 1_000).apply { brake = CompletableDeferred() }
+        val waiting = async { w.swapping.neededWaiting("alt", HERE, w.limit.generation) }
         advanceTimeBy(999)
         assertFalse("Vor der Frist wartet noetig noch", waiting.isCompleted)
         advanceTimeBy(2)
@@ -227,39 +227,39 @@ class TokenSwapTest {
         assertEquals(null, waiting.await())
         w.brake?.complete(Unit)
         advanceUntilIdle()
-        assertEquals("Der Tausch lief im Anwendungsbereich weiter", "neu", w.gespeichert)
+        assertEquals("Der Tausch lief im Anwendungsbereich weiter", "neu", w.saved)
     }
 
     /** With the test clock instead of waiting: the swap runs only when the scope processes it. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `due swaps in the application scope and returns immediately`() = runTest {
-        val w = Welt(CoroutineScope(StandardTestDispatcher(testScheduler))).apply { antworten = mutableListOf(verloren) }
-        w.tausch.faellig("alt")
-        assertEquals("faellig() hat im Aufrufer getauscht", emptyList<String>(), w.protokoll)
+        val w = World(CoroutineScope(StandardTestDispatcher(testScheduler))).apply { responses = mutableListOf(lost) }
+        w.swapping.due("alt")
+        assertEquals("due() hat im Aufrufer getauscht", emptyList<String>(), w.log)
         advanceUntilIdle()
-        assertEquals(listOf("rotiere alt", "rotiere alt", "speichere neu"), w.protokoll)
-        assertEquals("neu", w.gespeichert)
+        assertEquals(listOf("rotiere alt", "rotiere alt", "speichere neu"), w.log)
+        assertEquals("neu", w.saved)
     }
 
     @Test
     fun `after 90 days the sign-in is overdue, not before`() {
         val tag = 24L * 60 * 60 * 1000
-        val am = 1_700_000_000_000L
-        assertFalse(loginOverdue(am, am + 89 * tag))
-        assertFalse(loginOverdue(am, am + 90 * tag))
-        assertTrue(loginOverdue(am, am + 90 * tag + 1))
-        assertFalse("Eine zurückgestellte Uhr meldet nicht ab", loginOverdue(am, am - tag))
+        val at = 1_700_000_000_000L
+        assertFalse(loginOverdue(at, at + 89 * tag))
+        assertFalse(loginOverdue(at, at + 90 * tag))
+        assertTrue(loginOverdue(at, at + 90 * tag + 1))
+        assertFalse("Eine zurückgestellte Uhr meldet nicht ab", loginOverdue(at, at - tag))
     }
 
     @Test
     fun `in the last week the app asks for a new sign-in, not earlier and not after the end`() {
         val tag = 24L * 60 * 60 * 1000
-        val am = 1_700_000_000_000L
-        assertFalse(loginDueSoon(am, am + 83 * tag))
-        assertTrue(loginDueSoon(am, am + 83 * tag + 1))
-        assertTrue(loginDueSoon(am, am + 90 * tag))
-        assertFalse("Abgelaufen ist kein Hinweis mehr, sondern Abmelden", loginDueSoon(am, am + 90 * tag + 1))
+        val at = 1_700_000_000_000L
+        assertFalse(loginDueSoon(at, at + 83 * tag))
+        assertTrue(loginDueSoon(at, at + 83 * tag + 1))
+        assertTrue(loginDueSoon(at, at + 90 * tag))
+        assertFalse("Abgelaufen ist kein Hinweis mehr, sondern Abmelden", loginDueSoon(at, at + 90 * tag + 1))
     }
 
     private companion object {

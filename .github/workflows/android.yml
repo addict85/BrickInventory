@@ -40,7 +40,7 @@ on:
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
-  # Nachts alle Gegenproben (Job `gegenproben`); auf einem Push nur die betroffenen.
+  # Nachts alle Gegenproben (Job `counter-checks`); auf einem Push nur die betroffenen.
   schedule:
     - cron: '23 3 * * *'
   workflow_dispatch:
@@ -49,7 +49,7 @@ on:
         description: 'Prüfsummen der Gradle-Abhängigkeiten neu erzeugen (verification-metadata.xml als Artefakt)'
         type: boolean
         default: false
-      bildschirmfotos:
+      screenshots:
         description: 'Bildschirmfotos neu aufnehmen und als Referenz einchecken (nicht auf main)'
         type: boolean
         default: false
@@ -60,14 +60,14 @@ on:
 concurrency:
   # Prüfsummen, Referenzbilder und der Nachtlauf haben eigene Gruppen: Ein Push
   # bräche sie sonst ab.
-  group: android-${{ github.ref }}${{ inputs.pruefsummen && '-pruefsummen' || '' }}${{ inputs.bildschirmfotos && '-bildschirmfotos' || '' }}${{ github.event_name == 'schedule' && '-nacht' || '' }}
+  group: android-${{ github.ref }}${{ inputs.pruefsummen && '-pruefsummen' || '' }}${{ inputs.screenshots && '-screenshots' || '' }}${{ github.event_name == 'schedule' && '-nacht' || '' }}
   cancel-in-progress: true
 
 jobs:
   build:
     # Ein Lauf nur für die Prüfsummen, die Referenzbilder oder die nächtlichen
     # Gegenproben (Jobs unten) baut nicht mit.
-    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.screenshots }}
     # Festes Image wie im Signierjob: Ein Wechsel des Runner-Images ändert sonst still die Werkzeuge.
     runs-on: ubuntu-24.04
     # Grün 15–23 min; mehr als 60 heisst: Gradle hängt.
@@ -99,7 +99,7 @@ jobs:
           # abgelegter Token wäre für jeden davon lesbar. Gebraucht wird er nicht.
           persist-credentials: false
 
-      # JDK 17 wie Java- und Kotlin-Ziel der Konventionen (build-logic, Gemeinsam.kt).
+      # JDK 17 wie Java- und Kotlin-Ziel der Konventionen (build-logic, Shared.kt).
       # Verlangt AGP eine neuere Fassung, steht das im Protokoll; dann hier '21'.
       - name: JDK einrichten
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
@@ -164,17 +164,17 @@ jobs:
 
       # Bildschirmfotos: Liegen Referenzbilder im Repository, vergleicht der
       # Testlauf gegen sie und wird bei einer Abweichung rot; sonst nimmt er nur
-      # auf. Eingecheckt werden sie mit workflow_dispatch bildschirmfotos=true
-      # (Jobs `bildschirmfotos` und `bildschirmfotos-einchecken` unten).
+      # auf. Eingecheckt werden sie mit workflow_dispatch screenshots=true
+      # (Jobs `screenshots` und `screenshots-commit` unten).
       - name: Bildschirmfotos vergleichen oder aufnehmen?
         id: fotos
         run: |
-          if [ -n "$(git ls-files 'app/src/test/bildschirmfotos/*.png')" ]; then
+          if [ -n "$(git ls-files 'app/src/test/screenshots/*.png')" ]; then
             echo "aufgabe=verifyRoborazziDebug" >> "$GITHUB_OUTPUT"
             echo "Referenzbilder eingecheckt: verglichen wird."
           else
             echo "aufgabe=recordRoborazziDebug" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Bildschirmfotos::Keine Referenzbilder eingecheckt — nur aufgenommen. Einchecken: Workflow von Hand mit bildschirmfotos=true starten."
+            echo "::notice title=Bildschirmfotos::Keine Referenzbilder eingecheckt — nur aufgenommen. Einchecken: Workflow von Hand mit screenshots=true starten."
           fi
 
       # Zuerst die Tests (JVM, Robolectric, Bildschirmfotos): Sie fangen das meiste ab,
@@ -195,7 +195,7 @@ jobs:
           for neu in app/build/outputs/roborazzi/*_actual.png; do
             [ -f "$neu" ] || continue
             name=$(basename "$neu" _actual.png)
-            ref="app/src/test/bildschirmfotos/$name.png"
+            ref="app/src/test/screenshots/$name.png"
             [ -f "$ref" ] || continue
             pixel=$(compare -metric AE "$ref" "$neu" null: 2>&1 || true)
             feld=$(compare "$ref" "$neu" -compose src -highlight-color white -lowlight-color black miff:- 2>/dev/null \
@@ -204,9 +204,9 @@ jobs:
           done
 
       # Gradle bricht nur bei einem Zyklus ab, nicht bei einer Kante in die falsche
-      # Richtung; die Regel steht in build-logic (kanten/Modulkanten.kt).
+      # Richtung; die Regel steht in build-logic (edges/ModuleEdges.kt).
       - name: Modulkanten prüfen
-        run: ./gradlew --no-daemon modulkantenPruefen
+        run: ./gradlew --no-daemon moduleEdgesCheck
 
       # Room schreibt das Schema beim Übersetzen nach core-offline/schemas und lässt eine
       # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
@@ -360,9 +360,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: bildschirmfotos
+          name: screenshots
           path: |
-            Android-App/app/src/test/bildschirmfotos/
+            Android-App/app/src/test/screenshots/
             Android-App/app/build/outputs/roborazzi/
           if-no-files-found: warn
           retention-days: 30
@@ -448,7 +448,7 @@ jobs:
   # Die Typen in core-contract sind aus dem Vertrag erzeugt; ein Android-Lauf soll selbst rot
   # sein, wenn die Datei veraltet ist oder eine Route nicht den erzeugten Typ nimmt.
   vertrag:
-    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.screenshots }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -481,7 +481,7 @@ jobs:
   # Device pixel6Api34, ATD-Abbild): Hilt, Room mit SQLCipher und Keystore laufen nur
   # auf Android. Nur die Debug-Fassung, nichts wird signiert oder veröffentlicht.
   geraetetests:
-    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.screenshots }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -521,11 +521,11 @@ jobs:
           path: Android-App/app/build/outputs/androidTest-results
 
   # ── Gegenproben ────────────────────────────────────────────────────────────
-  # Jeder Patch unter gegenproben/ macht etwas kaputt; die Testklasse aus seinem Kopf
-  # muss danach ROT sein (tools/gegenproben.py). Auf einem Push nur die Patches, deren
+  # Jeder Patch unter counter-checks/ macht etwas kaputt; die Testklasse aus seinem Kopf
+  # muss danach ROT sein (tools/counter-checks.py). Auf einem Push nur die Patches, deren
   # Ziel, Test oder Patch sich geändert hat; nachts und von Hand (workflow_dispatch) alle.
-  gegenproben:
-    if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
+  counter-checks:
+    if: ${{ !inputs.pruefsummen && !inputs.screenshots }}
     runs-on: ubuntu-24.04
     # Vier Teile mit je jedem vierten Patch; seriell dauerte der Volllauf über 180 min.
     strategy:
@@ -555,10 +555,10 @@ jobs:
           cache-read-only: true
       - name: Gegenproben messen
         env:
-          GEGENPROBE_BASIS: ${{ github.event_name == 'push' && github.event.before || github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          COUNTER_CHECK_BASIS: ${{ github.event_name == 'push' && github.event.before || github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
         run: |
           chmod +x gradlew
-          GEGENPROBE_TEIL="${{ matrix.teil }}/4" python3 tools/gegenproben.py gegenproben
+          COUNTER_CHECK_TEIL="${{ matrix.teil }}/4" python3 tools/counter-checks.py counter-checks
 
   # ── Prüfsummen der Abhängigkeiten ──────────────────────────────────────────
   # verification-metadata.xml hält die SHA-256 jeder Abhängigkeit fest. Erzeugen lässt
@@ -723,8 +723,8 @@ jobs:
   # Der erste Job nimmt mit Lesezugriff auf, der zweite checkt die PNGs auf dem Zweig
   # ein, nie auf main. Ohne eigenen Pull-Request: Ein Bild wird nie ausgeführt und
   # entscheidet nicht, was der Bau annimmt; der Merge nach main zeigt es im Review.
-  bildschirmfotos:
-    if: github.event_name == 'workflow_dispatch' && inputs.bildschirmfotos
+  screenshots:
+    if: github.event_name == 'workflow_dispatch' && inputs.screenshots
     runs-on: ubuntu-24.04
     # Gemessen 8–17 min; doppelt so lange heisst: hängt.
     timeout-minutes: 40
@@ -750,40 +750,40 @@ jobs:
       - name: Bildschirmfotos aufnehmen
         run: |
           chmod +x gradlew
-          rm -f app/src/test/bildschirmfotos/*.png
+          rm -f app/src/test/screenshots/*.png
           ./gradlew --no-daemon :app:recordRoborazziDebug
-          anzahl=$(ls app/src/test/bildschirmfotos/*.png 2>/dev/null | wc -l)
+          anzahl=$(ls app/src/test/screenshots/*.png 2>/dev/null | wc -l)
           echo "$anzahl Bilder aufgenommen."
           test "$anzahl" -gt 0
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: bildschirmfotos-referenz
-          path: Android-App/app/src/test/bildschirmfotos/*.png
+          name: screenshots-reference
+          path: Android-App/app/src/test/screenshots/*.png
           if-no-files-found: error
 
-  bildschirmfotos-einchecken:
-    needs: bildschirmfotos
-    if: github.event_name == 'workflow_dispatch' && inputs.bildschirmfotos && github.ref != 'refs/heads/main'
+  screenshots-commit:
+    needs: screenshots
+    if: github.event_name == 'workflow_dispatch' && inputs.screenshots && github.ref != 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Alte Referenzen entfernen
-        run: git rm -q --ignore-unmatch 'Android-App/app/src/test/bildschirmfotos/*.png'
+        run: git rm -q --ignore-unmatch 'Android-App/app/src/test/screenshots/*.png'
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: bildschirmfotos-referenz
-          path: Android-App/app/src/test/bildschirmfotos
+          name: screenshots-reference
+          path: Android-App/app/src/test/screenshots
       - name: Einchecken
         run: |
           set -euo pipefail
-          for f in Android-App/app/src/test/bildschirmfotos/*; do
+          for f in Android-App/app/src/test/screenshots/*; do
             [ "$(head -c 8 "$f" | od -An -tx1 | tr -d ' \n')" = "89504e470d0a1a0a" ] || { echo "::error::$f ist kein PNG"; exit 1; }
           done
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Android-App/app/src/test/bildschirmfotos/*.png
+          git add Android-App/app/src/test/screenshots/*.png
           if git diff --cached --quiet; then echo "Bildschirmfotos unverändert."; exit 0; fi
           echo "## Bildschirmfotos" >> "$GITHUB_STEP_SUMMARY"
           git diff --cached --stat >> "$GITHUB_STEP_SUMMARY"

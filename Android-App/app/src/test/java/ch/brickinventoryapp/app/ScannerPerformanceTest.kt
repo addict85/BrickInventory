@@ -2,7 +2,7 @@ package ch.brickinventoryapp.app
 
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * The scanner must not slow down the camera.
@@ -12,12 +12,12 @@ class ScannerPerformanceTest {
     // Both files of the scanner: the screen carries the tap-to-focus, the
     // throttling of text recognition stands in BarcodeAnalyzer.kt.
     // The order checks below stay valid — barcodeScanner.process(),
-    // letzteOcr and textRecognizer.process() stand exclusively in the
+    // lastOcr and textRecognizer.process() stand exclusively in the
     // analysis file, prepending does not change their order relative to each other.
     private val src: String by lazy {
         val w = "collection/ui/screens/"
-        File(Quellen.root, w + "BarcodeScannerScreen.kt").readText() + "\n" +
-            File(Quellen.root, w + "BarcodeAnalyzer.kt").readText()
+        File(Sources.root, w + "BarcodeScannerScreen.kt").readText() + "\n" +
+            File(Sources.root, w + "BarcodeAnalyzer.kt").readText()
     }
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
@@ -25,11 +25,11 @@ class ScannerPerformanceTest {
     @Test
     fun `text recognition is throttled, the barcode reader is not`() {
         val c = code(src)
-        assert(c.contains("OCR_INTERVALL_MS")) {
+        assert(c.contains("OCR_INTERVAL_MS")) {
             "Ohne Drosselung läuft die Texterkennung auf jedem Bild und blockiert den " +
                 "Analyse-Thread — Vorschau und Autofokus werden dadurch träge"
         }
-        val throttle = c.indexOf("letzteOcr.get() < OCR_INTERVALL_MS")
+        val throttle = c.indexOf("lastOcr.get() < OCR_INTERVAL_MS")
         val ocr = c.indexOf("textRecognizer.process(")
         assert(throttle in 1 until ocr) {
             "Die Zeitschranke muss VOR dem Aufruf der Texterkennung greifen"
@@ -45,7 +45,7 @@ class ScannerPerformanceTest {
     @Test
     fun `tapping focuses`() {
         val c = code(src)
-        assert(c.contains("tippZumFokus(")) {
+        assert(c.contains("tapToFocus(")) {
             "Ohne Tippen zum Scharfstellen bleibt nur der kontinuierliche Autofokus, " +
                 "der bei nahen Vorlagen lange braucht"
         }
@@ -55,7 +55,7 @@ class ScannerPerformanceTest {
         // an enumerated selection — exactly that is what the SetupScreen
         // slipped past. What remains here is what belongs to this file's topic: that
         // tapping exists at all.
-        assert(c.contains("_kameraCtrl.set(")) {
+        assert(c.contains("_cameraCtrl.set(")) {
             "Die Kamerasteuerung wird dem Listener nie übergeben — Tippen bliebe wirkungslos"
         }
     }

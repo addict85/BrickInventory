@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.di
 
 import kotlinx.serialization.json.Json
-import ch.brickinventoryapp.offline.Ausgang
-import ch.brickinventoryapp.offline.ExitPlanner
-import ch.brickinventoryapp.data.local.Abgleich
+import ch.brickinventoryapp.offline.Outbox
+import ch.brickinventoryapp.offline.OutboxPlanner
+import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.Baseline
-import ch.brickinventoryapp.data.local.Bearbeitungssender
+import ch.brickinventoryapp.data.local.EditingSender
 import ch.brickinventoryapp.offline.LocalInventory
-import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.data.cache.CacheOwner
 import ch.brickinventoryapp.data.cache.areaName
 import ch.brickinventoryapp.data.cache.cleanOldResponseStore
@@ -19,7 +19,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.data.local.ServerSender
 import ch.brickinventoryapp.data.local.WorkManagerPlanner
-import ch.brickinventoryapp.network.util.Protokoll
+import ch.brickinventoryapp.network.util.AppLog
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -36,31 +36,31 @@ import ch.brickinventoryapp.data.CsvImportStream
 import ch.brickinventoryapp.data.CsvImportObserver
 import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.DevicesCleanup
-import ch.brickinventoryapp.data.SitzungsBereinigung
-import ch.brickinventoryapp.data.Darstellungsablage
-import ch.brickinventoryapp.data.Widgetablage
+import ch.brickinventoryapp.data.SessionCleanup
+import ch.brickinventoryapp.data.AppearanceStore
+import ch.brickinventoryapp.data.WidgetStatusStore
 import ch.brickinventoryapp.data.DevicesSettings
 import ch.brickinventoryapp.data.DevicesStore
 import ch.brickinventoryapp.data.AccountStore
-import ch.brickinventoryapp.data.TokenAblage
-import ch.brickinventoryapp.data.AnleitungsDownload
-import ch.brickinventoryapp.data.AnleitungsRepository
-import ch.brickinventoryapp.data.Tokenspiegel
-import ch.brickinventoryapp.data.Tokenuebernahme
-import ch.brickinventoryapp.data.Netzvertrauen
-import ch.brickinventoryapp.data.Alarmablage
-import ch.brickinventoryapp.data.Entwertungsprotokoll
-import ch.brickinventoryapp.data.Sprachablage
-import ch.brickinventoryapp.data.Sitzungsablage
-import ch.brickinventoryapp.data.Vertrauensablage
+import ch.brickinventoryapp.data.TokenStore
+import ch.brickinventoryapp.data.InstructionDownload
+import ch.brickinventoryapp.data.InstructionRepository
+import ch.brickinventoryapp.data.TokenMirror
+import ch.brickinventoryapp.data.TokenAdoption
+import ch.brickinventoryapp.data.NetworkTrust
+import ch.brickinventoryapp.data.AlarmStore
+import ch.brickinventoryapp.data.RedemptionLog
+import ch.brickinventoryapp.data.LanguageStore
+import ch.brickinventoryapp.data.SessionStore
+import ch.brickinventoryapp.data.TrustStore
 import ch.brickinventoryapp.data.Credentials
-import ch.brickinventoryapp.data.Anmeldestand
+import ch.brickinventoryapp.data.LoginState
 import ch.brickinventoryapp.data.SessionEnd
 import ch.brickinventoryapp.data.local.WorkManagerRedemption
 import ch.brickinventoryapp.data.RedemptionPlanner
-import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.data.cache.Vorschauablage
-import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.cache.PreviewMemory
+import ch.brickinventoryapp.data.cache.PreviewStore
+import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.MessageQueue
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.PasswordRequiredState
@@ -75,30 +75,30 @@ import ch.brickinventoryapp.data.SecondFactorState
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class LocalModule {
-    @Binds abstract fun planner(p: WorkManagerPlanner): ExitPlanner
+    @Binds abstract fun planner(p: WorkManagerPlanner): OutboxPlanner
     @Binds abstract fun redemption(p: WorkManagerRedemption): RedemptionPlanner
-    @Binds abstract fun sender(s: ServerSender): Bearbeitungssender
-    @Binds abstract fun baseline(a: Abgleich): Baseline
-    @Binds abstract fun geraet(p: DevicesStore): DevicesSettings
-    @Binds abstract fun sitzungsablage(p: AccountStore): Sitzungsablage
-    @Binds abstract fun darstellung(p: DevicesStore): Darstellungsablage
-    @Binds abstract fun widgetablage(p: DevicesStore): Widgetablage
-    @Binds abstract fun vertrauensablage(p: DevicesStore): Vertrauensablage
-    @Binds abstract fun netzvertrauen(p: DevicesStore): Netzvertrauen
-    @Binds abstract fun alarmablage(p: DevicesStore): Alarmablage
-    @Binds abstract fun entwertungsprotokoll(p: DevicesStore): Entwertungsprotokoll
-    @Binds abstract fun sprachablage(p: DevicesStore): Sprachablage
-    @Binds abstract fun access(p: TokenAblage): Credentials
-    @Binds abstract fun anmeldestand(p: TokenAblage): Anmeldestand
-    @Binds abstract fun sessionEnd(p: TokenAblage): SessionEnd
-    @Binds abstract fun tokenspiegel(p: TokenAblage): Tokenspiegel
-    @Binds abstract fun tokenuebernahme(p: TokenAblage): Tokenuebernahme
-    @Binds abstract fun anleitungen(d: AnleitungsDownload): AnleitungsRepository
+    @Binds abstract fun sender(s: ServerSender): EditingSender
+    @Binds abstract fun baseline(a: Reconcile): Baseline
+    @Binds abstract fun device(p: DevicesStore): DevicesSettings
+    @Binds abstract fun sessionStore(p: AccountStore): SessionStore
+    @Binds abstract fun appearance(p: DevicesStore): AppearanceStore
+    @Binds abstract fun widgetStatusStore(p: DevicesStore): WidgetStatusStore
+    @Binds abstract fun trustStore(p: DevicesStore): TrustStore
+    @Binds abstract fun networkTrust(p: DevicesStore): NetworkTrust
+    @Binds abstract fun alarmStore(p: DevicesStore): AlarmStore
+    @Binds abstract fun redemptionLog(p: DevicesStore): RedemptionLog
+    @Binds abstract fun languageStore(p: DevicesStore): LanguageStore
+    @Binds abstract fun access(p: TokenStore): Credentials
+    @Binds abstract fun loginState(p: TokenStore): LoginState
+    @Binds abstract fun sessionEnd(p: TokenStore): SessionEnd
+    @Binds abstract fun tokenMirror(p: TokenStore): TokenMirror
+    @Binds abstract fun tokenAdoption(p: TokenStore): TokenAdoption
+    @Binds abstract fun instructions(d: InstructionDownload): InstructionRepository
     @Binds abstract fun csvStream(c: CsvImportSseClient): CsvImportStream
     @Binds abstract fun csvImport(b: CsvImportObserver): CsvImportRepository
-    @Binds abstract fun cleanup(b: DevicesCleanup): SitzungsBereinigung
-    @Binds abstract fun vorschauablage(v: VorschauSpeicher): Vorschauablage
-    @Binds abstract fun meldungen(m: MessageQueue): MeldungsKanal
+    @Binds abstract fun cleanup(b: DevicesCleanup): SessionCleanup
+    @Binds abstract fun previewStore(v: PreviewMemory): PreviewStore
+    @Binds abstract fun messages(m: MessageQueue): MessageChannel
     @Binds abstract fun passwordRequired(p: PasswordRequiredState): PasswordRequired
     @Binds abstract fun factorRequired(z: SecondFactorState): SecondFactorRequired
 
@@ -110,15 +110,15 @@ internal abstract class LocalModule {
          */
         @Provides
         @Singleton
-        fun offlineablage(bestand: LocalInventory, ausgang: Ausgang, besitzer: CacheOwner, planner: ExitPlanner,
-                          @ApplicationScope bereich: CoroutineScope, json: Json, @ApplicationContext ctx: Context,
-                          @Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher): Offlineablage {
-            bereich.launch(io) { runCatching { cleanOldResponseStore(ctx.noBackupFilesDir, ctx.cacheDir) } }
-            return Offlineablage(bestand, ausgang, areaSource = { besitzer.accountArea()?.let(::areaName) },
+        fun offlineStore(stock: LocalInventory, outbox: Outbox, owner: CacheOwner, planner: OutboxPlanner,
+                          @ApplicationScope area: CoroutineScope, json: Json, @ApplicationContext ctx: Context,
+                          @Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher): OfflineStore {
+            area.launch(io) { runCatching { cleanOldResponseStore(ctx.noBackupFilesDir, ctx.cacheDir) } }
+            return OfflineStore(stock, outbox, areaSource = { owner.accountArea()?.let(::areaName) },
                 planner = planner,
-                areaFlow = besitzer.accountAreaFlow().map { it?.let(::areaName) }
-                    .stateIn(bereich, SharingStarted.Eagerly, null),
-                protokoll = { Protokoll.warnung("Ablage", it) }, json = json)
+                areaFlow = owner.accountAreaFlow().map { it?.let(::areaName) }
+                    .stateIn(area, SharingStarted.Eagerly, null),
+                log = { AppLog.warning("Ablage", it) }, json = json)
         }
     }
 }

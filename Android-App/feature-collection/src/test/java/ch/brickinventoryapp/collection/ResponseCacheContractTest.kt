@@ -11,11 +11,11 @@ import org.junit.Test
 import ch.brickinventoryapp.contract.FigValuationItem
 import ch.brickinventoryapp.contract.Minifig
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 
 /**
  * The server's answers pass through serialization without loss; how they lie in the
- * store is checked by AblageformTest and StoreVersionTest with their own row form.
+ * store is checked by StoreShapeTest and StoreVersionTest with their own row form.
  */
 class ResponseCacheContractTest {
 
@@ -127,11 +127,11 @@ class MinifigImageFieldTest {
 
         // Resolution as in the screen: local wins, otherwise absolute CDN address
         val serverUrl = "https://lego.example.org"
-        val bild = fig.imageUrl
+        val image = fig.imageUrl
         val resolved = when {
             fig.imageLocal != null -> "$serverUrl${fig.imageLocal}"
-            bild != null && bild.startsWith("/") -> "$serverUrl$bild"
-            else -> bild
+            image != null && image.startsWith("/") -> "$serverUrl$image"
+            else -> image
         }
         assertEquals("https://lego.example.org/images/sets/fig-000140.jpg", resolved)
     }
@@ -168,14 +168,14 @@ class MinifigImageFieldTest {
 class GalleryImageRetryTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.root, rel)
+        val f = File(Sources.root, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
 
     @Test
     fun `SetCard retries a failed image exactly once`() {
-        val src = read("collection/ui/screens/GalerieKarte.kt")
+        val src = read("collection/ui/screens/GalleryCard.kt")
 
         assert(src.contains("var retryNonce by remember(set.setNumber, imageUrl)")) {
             "Der Wiederholzähler fehlt oder ist nicht je Kachel/Bild gebunden"

@@ -4,8 +4,8 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.PathServer
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.testing.testSetCatalogRepository
 import ch.brickinventoryapp.testing.TestApi
 
@@ -36,9 +36,9 @@ class AddExistingSetTest {
      */
     @Test
     fun `the existence check sends no account filter`() {
-        val paths = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
+        val paths = PathServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
         try {
-            val sets = testSetCatalogRepository(TestApi.fuer(paths.server))
+            val sets = testSetCatalogRepository(TestApi.forTarget(paths.server))
             runBlocking { sets.getSetExists("75192-1") }
             assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), paths.requests.toList())
         } finally {
@@ -51,16 +51,16 @@ class AddExistingSetTest {
         // A set trigger without a receiver would be ineffective — and without
         // resetting the same set could not be opened a second time.
         // The adding frame evaluates, the graph navigates.
-        val nav = code(File(Quellen.root, "collection/ui/Erfassungsrahmen.kt").readText() + "\n" +
-            File(Quellen.root, "collection/ui/SammlungGraph.kt").readText())
+        val nav = code(File(Sources.root, "collection/ui/EntryFrame.kt").readText() + "\n" +
+            File(Sources.root, "collection/ui/CollectionGraph.kt").readText())
         // The FIELD is checked, not the name of the state before.
-        assert(Regex("""\w+\.gefundenesSet""").containsMatchIn(nav)) {
+        assert(Regex("""\w+\.foundSet""").containsMatchIn(nav)) {
             "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"
         }
         assert(nav.contains("gallerySearchFoundConsumed()")) {
             "der Auslöser wird nicht zurückgesetzt"
         }
-        assert(nav.contains("SammlungZiel.SetDetail(")) {
+        assert(nav.contains("CollectionTarget.SetDetail(")) {
             "es wird nicht zur Detailansicht navigiert"
         }
     }

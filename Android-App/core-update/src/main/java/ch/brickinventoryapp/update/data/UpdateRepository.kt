@@ -7,7 +7,7 @@ import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.update.util.UPDATE_JSON_MAX_BYTES
 import ch.brickinventoryapp.update.util.UPDATE_MAX_BYTES
 import ch.brickinventoryapp.update.util.UPDATE_VERSION_URL
-import ch.brickinventoryapp.update.util.UpdateBeschreibung
+import ch.brickinventoryapp.update.util.UpdateDescription
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.currentCoroutineContext
@@ -32,10 +32,10 @@ interface UpdateRepository {
     suspend fun fetchDescription(): String
 
     /**
-     * Loads the APK to [ziel] and reports progress in percent, only on change.
+     * Loads the APK to [target] and reports progress in percent, only on change.
      * An abort or error deletes the partial file; a half APK must not stick around.
      */
-    fun loadApk(beschreibung: UpdateBeschreibung, ziel: File): Flow<Int>
+    fun loadApk(description: UpdateDescription, target: File): Flow<Int>
 }
 
 /** Via the bare update client; both fetches go through [fetch]. */
@@ -46,38 +46,38 @@ class UpdateLoader @Inject constructor(
 ) : UpdateRepository {
 
     override suspend fun fetchDescription(): String = withContext(io) {
-        fetch(UPDATE_VERSION_URL).use { antwort ->
+        fetch(UPDATE_VERSION_URL).use { response ->
             // peekBody reads at most this much: a tampered response must not
             // crash the app, without ever having to touch an APK.
-            antwort.peekBody(UPDATE_JSON_MAX_BYTES).string()
+            response.peekBody(UPDATE_JSON_MAX_BYTES).string()
         }
     }
 
-    override fun loadApk(beschreibung: UpdateBeschreibung, ziel: File): Flow<Int> = flow {
+    override fun loadApk(description: UpdateDescription, target: File): Flow<Int> = flow {
         try {
-            fetch(beschreibung.apkUrl).use { antwort ->
+            fetch(description.apkUrl).use { response ->
                 // Preferred from the description: behind the redirect contentLength is often -1.
-                val gesamt = if (beschreibung.apkSize > 0) beschreibung.apkSize else antwort.body.contentLength()
-                val obergrenze =
-                    if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
+                val total = if (description.apkSize > 0) description.apkSize else response.body.contentLength()
+                val upperLimit =
+                    if (total in 1..UPDATE_MAX_BYTES) minOf(total + 1024 * 1024, UPDATE_MAX_BYTES)
                     else UPDATE_MAX_BYTES
-                antwort.body.byteStream().use { ein ->
-                    ziel.outputStream().use { aus ->
-                        val puffer = ByteArray(64 * 1024)
-                        var geladen = 0L
-                        var zuletzt = -1
+                response.body.byteStream().use { one ->
+                    target.outputStream().use { from ->
+                        val buffer = ByteArray(64 * 1024)
+                        var loaded = 0L
+                        var last = -1
                         while (true) {
                             // Without this check an abandoned download would keep running to the end.
                             currentCoroutineContext().ensureActive()
-                            val n = ein.read(puffer)
+                            val n = one.read(buffer)
                             if (n < 0) break
-                            geladen += n
+                            loaded += n
                             // Abort BEFORE writing: otherwise the excess is already on disk.
-                            if (geladen > obergrenze) throw IOException("Update groesser als erlaubt ($geladen > $obergrenze)")
-                            aus.write(puffer, 0, n)
-                            val p = if (gesamt > 0) ((geladen * 100) / gesamt).toInt().coerceIn(0, 100) else zuletzt
-                            if (p != zuletzt) {
-                                zuletzt = p
+                            if (loaded > upperLimit) throw IOException("Update groesser als erlaubt ($loaded > $upperLimit)")
+                            from.write(buffer, 0, n)
+                            val p = if (total > 0) ((loaded * 100) / total).toInt().coerceIn(0, 100) else last
+                            if (p != last) {
+                                last = p
                                 emit(p)
                             }
                         }
@@ -85,10 +85,10 @@ class UpdateLoader @Inject constructor(
                 }
             }
         } catch (e: CancellationException) {
-            ziel.delete()
+            target.delete()
             throw e
         } catch (e: IOException) {
-            ziel.delete()
+            target.delete()
             throw e
         }
     }.flowOn(io)
@@ -97,12 +97,12 @@ class UpdateLoader @Inject constructor(
      * The one place where the self-update talks to the network: one check of the
      * response (status, redirect target) covers description and APK equally.
      */
-    private fun fetch(adresse: String): Response {
-        val antwort = client.newCall(Request.Builder().url(adresse).build()).execute()
-        if (!antwort.isSuccessful) {
-            antwort.close()
-            throw IOException("HTTP ${antwort.code}")
+    private fun fetch(address: String): Response {
+        val response = client.newCall(Request.Builder().url(address).build()).execute()
+        if (!response.isSuccessful) {
+            response.close()
+            throw IOException("HTTP ${response.code}")
         }
-        return antwort
+        return response
     }
 }

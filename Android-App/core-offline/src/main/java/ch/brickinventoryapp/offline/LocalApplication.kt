@@ -5,11 +5,11 @@ import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
 import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.PriceAlertView
-import ch.brickinventoryapp.model.domain.SetAnsicht
-import ch.brickinventoryapp.model.domain.Stueckaenderung
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.domain.QuantityChange
 import ch.brickinventoryapp.model.domain.StockLocationView
-import ch.brickinventoryapp.offline.Offlineablage.FollowUp
-import ch.brickinventoryapp.offline.Offlineablage.Wirkung
+import ch.brickinventoryapp.offline.OfflineStore.FollowUp
+import ch.brickinventoryapp.offline.OfflineStore.Effect
 
 /**
  * How an edit changes the local list before the server has seen
@@ -18,181 +18,181 @@ import ch.brickinventoryapp.offline.Offlineablage.Wirkung
  */
 internal object LocalApplication {
 
-    fun sets(liste: List<SetAnsicht>, b: Wirkung): List<SetAnsicht> = when (b) {
-        is Editing.SetMenge -> liste.mapNotNull {
+    fun sets(list: List<SetView>, b: Effect): List<SetView> = when (b) {
+        is Editing.SetQuantity -> list.mapNotNull {
             if (it.setNumber != b.setNumber) it
-            else (it.quantity + b.schritt).takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
+            else (it.quantity + b.step).takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
         }
-        is Editing.SetErfassen -> erfasst(liste, b)
-        is FollowUp.WantedItemAdopted -> sets(liste, Editing.SetErfassen(b.wish))
-        is FollowUp.SetQuantitySet -> liste.mapNotNull {
-            if (it.setNumber != b.setNumber) it else b.menge.takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
+        is Editing.RecordSet -> recorded(list, b)
+        is FollowUp.WantedItemAdopted -> sets(list, Editing.RecordSet(b.wish))
+        is FollowUp.SetQuantitySet -> list.mapNotNull {
+            if (it.setNumber != b.setNumber) it else b.quantity.takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
         }
-        is FollowUp.SetLocation -> liste.map { if (it.setNumber == b.setNumber) it.copy(storage = b.ort?.ifBlank { null }) else it }
-        is FollowUp.SetRemoved -> liste.filterNot { it.setNumber == b.setNumber }
-        is FollowUp.SetMoved -> liste.map { if (it.setNumber == b.setNumber) verschoben(it, b) else it }
-        is FollowUp.SetSummary -> liste.map { if (it.setNumber == b.agg.setNumber) zusammengefasst(it, b) else it }
-        is FollowUp.LocationRenamed -> liste.map { if (b.alt.isNotBlank() && it.storage == b.alt) it.copy(storage = b.neu.name) else it }
-        is Editing.MerkpostenAnlegen, is Editing.MerkpostenLoeschen, is Editing.TeilErfassen,
-        is Editing.TeilAendern, is Editing.TeilLoeschen, is Editing.FigurErfassen, is Editing.FigurAendern,
-        is Editing.FigurLoeschen, is FollowUp.WantedItemMoved, is FollowUp.PartLocation, is FollowUp.PartColor,
+        is FollowUp.SetLocation -> list.map { if (it.setNumber == b.setNumber) it.copy(storage = b.location?.ifBlank { null }) else it }
+        is FollowUp.SetRemoved -> list.filterNot { it.setNumber == b.setNumber }
+        is FollowUp.SetMoved -> list.map { if (it.setNumber == b.setNumber) moved(it, b) else it }
+        is FollowUp.SetSummary -> list.map { if (it.setNumber == b.agg.setNumber) summarized(it, b) else it }
+        is FollowUp.LocationRenamed -> list.map { if (b.old.isNotBlank() && it.storage == b.old) it.copy(storage = b.newValue.name) else it }
+        is Editing.CreateWantedItem, is Editing.DeleteWantedItem, is Editing.RecordPart,
+        is Editing.EditPart, is Editing.DeletePart, is Editing.RecordFigure, is Editing.EditFigure,
+        is Editing.DeleteFigure, is FollowUp.WantedItemMoved, is FollowUp.PartLocation, is FollowUp.PartColor,
         is FollowUp.MinifigLocation, is FollowUp.LocationCreated, is FollowUp.LocationDeleted, is FollowUp.LocationDefault,
-        is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> liste
+        is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> list
     }
 
-    private fun erfasst(liste: List<SetAnsicht>, b: Editing.SetErfassen): List<SetAnsicht> {
+    private fun recorded(list: List<SetView>, b: Editing.RecordSet): List<SetView> {
         val a = b.wish
-        if (liste.none { it.setNumber == a.setNumber })
-            return listOf(SetAnsicht(setNumber = a.setNumber, quantity = a.menge, condition = a.zustand, storage = a.lagerort)) + liste
-        return liste.map { if (it.setNumber == a.setNumber) it.copy(quantity = it.quantity + a.menge) else it }
+        if (list.none { it.setNumber == a.setNumber })
+            return listOf(SetView(setNumber = a.setNumber, quantity = a.quantity, condition = a.condition, storage = a.storageLocation)) + list
+        return list.map { if (it.setNumber == a.setNumber) it.copy(quantity = it.quantity + a.quantity) else it }
     }
 
     /** The summary is complete: a price null means „none recorded“, not „unknown“;
      * otherwise the stored one would still apply after deleting the last purchase. */
-    private fun zusammengefasst(s: SetAnsicht, b: FollowUp.SetSummary): SetAnsicht {
+    private fun summarized(s: SetView, b: FollowUp.SetSummary): SetView {
         val agg = b.agg
-        return s.copy(condition = agg.zustand, conditions = agg.states, usedCount = agg.gebraucht,
+        return s.copy(condition = agg.condition, conditions = agg.states, usedCount = agg.used,
             maxPurchasePrice = agg.highestPurchasePrice, avgPurchasePrice = agg.purchasePriceCut)
     }
 
     /** The name of the new owner is known only to the next sync; until then the number without a name. */
-    private fun verschoben(s: SetAnsicht, b: FollowUp.SetMoved): SetAnsicht {
+    private fun moved(s: SetView, b: FollowUp.SetMoved): SetView {
         if (s.owners.isEmpty()) return s
-        val ohne = if (b.alle) s.owners.filterNot { it.id == b.von } else s.owners
-        return s.copy(owners = if (ohne.any { it.id == b.zu }) ohne else ohne + AccountView(id = b.zu))
+        val without = if (b.all) s.owners.filterNot { it.id == b.of } else s.owners
+        return s.copy(owners = if (without.any { it.id == b.too }) without else without + AccountView(id = b.too))
     }
 
-    fun merkliste(liste: List<WantedItemView>, b: Wirkung): List<WantedItemView> = when (b) {
-        is Editing.MerkpostenAnlegen -> {
+    fun wantedList(list: List<WantedItemView>, b: Effect): List<WantedItemView> = when (b) {
+        is Editing.CreateWantedItem -> {
             val a = b.wish
-            val neu = WantedItemView(setNumber = a.setNumber, condition = a.zustand, userId = a.besitzer ?: 0)
-            if (liste.any { rememberKey(it) == rememberKey(neu) }) liste else listOf(neu) + liste
+            val newValue = WantedItemView(setNumber = a.setNumber, condition = a.condition, userId = a.owner ?: 0)
+            if (list.any { rememberKey(it) == rememberKey(newValue) }) list else listOf(newValue) + list
         }
-        is Editing.MerkpostenLoeschen -> liste.filterNot {
-            it.setNumber == b.setNumber && it.condition == b.zustand && (b.besitzer == null || it.userId == b.besitzer)
+        is Editing.DeleteWantedItem -> list.filterNot {
+            it.setNumber == b.setNumber && it.condition == b.condition && (b.owner == null || it.userId == b.owner)
         }
-        is FollowUp.WantedItemAdopted -> merkliste(liste, Editing.MerkpostenLoeschen(b.setNumber, b.zustand, b.besitzer))
+        is FollowUp.WantedItemAdopted -> wantedList(list, Editing.DeleteWantedItem(b.setNumber, b.condition, b.owner))
         is FollowUp.WantedItemMoved -> {
-            val ziel = rememberKey(WantedItemView(setNumber = b.setNumber, condition = b.zustand, userId = b.zu))
+            val target = rememberKey(WantedItemView(setNumber = b.setNumber, condition = b.condition, userId = b.too))
             // If the target already had the item, the server merges: one remains.
-            val vorhanden = liste.any { rememberKey(it) == ziel }
-            liste.mapNotNull {
-                if (it.setNumber != b.setNumber || it.condition != b.zustand || it.userId != b.von) it
-                else if (vorhanden) null else it.copy(userId = b.zu)
+            val present = list.any { rememberKey(it) == target }
+            list.mapNotNull {
+                if (it.setNumber != b.setNumber || it.condition != b.condition || it.userId != b.of) it
+                else if (present) null else it.copy(userId = b.too)
             }
         }
-        is Editing.SetMenge, is Editing.SetErfassen, is Editing.TeilErfassen, is Editing.TeilAendern,
-        is Editing.TeilLoeschen, is Editing.FigurErfassen, is Editing.FigurAendern, is Editing.FigurLoeschen,
+        is Editing.SetQuantity, is Editing.RecordSet, is Editing.RecordPart, is Editing.EditPart,
+        is Editing.DeletePart, is Editing.RecordFigure, is Editing.EditFigure, is Editing.DeleteFigure,
         is FollowUp.SetQuantitySet, is FollowUp.SetLocation, is FollowUp.SetRemoved, is FollowUp.SetMoved,
         is FollowUp.SetSummary, is FollowUp.PartLocation, is FollowUp.PartColor, is FollowUp.MinifigLocation,
         is FollowUp.LocationRenamed, is FollowUp.LocationCreated, is FollowUp.LocationDeleted, is FollowUp.LocationDefault,
-        is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> liste
+        is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> list
     }
 
-    fun manuelleTeile(liste: List<ManualPartView>, b: Wirkung): List<ManualPartView> = when (b) {
-        is Editing.TeilErfassen -> partRecorded(liste, b)
-        is Editing.TeilAendern -> liste.map {
-            if (it.partNumber == b.partNumber && it.colorId == b.colorId && (b.besitzer == null || it.userId == b.besitzer))
-                it.copy(quantity = newQuantity(it.quantity, b.aenderung), unitPrice = b.aenderung.stueckpreis ?: it.unitPrice)
+    fun manualParts(list: List<ManualPartView>, b: Effect): List<ManualPartView> = when (b) {
+        is Editing.RecordPart -> partRecorded(list, b)
+        is Editing.EditPart -> list.map {
+            if (it.partNumber == b.partNumber && it.colorId == b.colorId && (b.owner == null || it.userId == b.owner))
+                it.copy(quantity = newQuantity(it.quantity, b.change), unitPrice = b.change.unitPrice ?: it.unitPrice)
             else it
         }
-        is Editing.TeilLoeschen -> liste.filterNot {
-            it.partNumber == b.partNumber && it.colorId == b.colorId && (b.besitzer == null || it.userId == b.besitzer)
+        is Editing.DeletePart -> list.filterNot {
+            it.partNumber == b.partNumber && it.colorId == b.colorId && (b.owner == null || it.userId == b.owner)
         }
-        is FollowUp.PartLocation -> liste.map {
-            if (it.partNumber == b.partNumber && it.colorId == b.colorId) it.copy(storage = b.ort?.ifBlank { null }) else it
+        is FollowUp.PartLocation -> list.map {
+            if (it.partNumber == b.partNumber && it.colorId == b.colorId) it.copy(storage = b.location?.ifBlank { null }) else it
         }
-        is FollowUp.PartColor -> recolored(liste, b)
-        is FollowUp.LocationRenamed -> liste.map { if (b.alt.isNotBlank() && it.storage == b.alt) it.copy(storage = b.neu.name) else it }
-        is Editing.SetMenge, is Editing.SetErfassen, is Editing.MerkpostenAnlegen,
-        is Editing.MerkpostenLoeschen, is Editing.FigurErfassen, is Editing.FigurAendern,
-        is Editing.FigurLoeschen, is FollowUp.SetQuantitySet, is FollowUp.SetLocation, is FollowUp.SetRemoved,
+        is FollowUp.PartColor -> recolored(list, b)
+        is FollowUp.LocationRenamed -> list.map { if (b.old.isNotBlank() && it.storage == b.old) it.copy(storage = b.newValue.name) else it }
+        is Editing.SetQuantity, is Editing.RecordSet, is Editing.CreateWantedItem,
+        is Editing.DeleteWantedItem, is Editing.RecordFigure, is Editing.EditFigure,
+        is Editing.DeleteFigure, is FollowUp.SetQuantitySet, is FollowUp.SetLocation, is FollowUp.SetRemoved,
         is FollowUp.SetMoved, is FollowUp.SetSummary, is FollowUp.WantedItemMoved,
         is FollowUp.WantedItemAdopted, is FollowUp.MinifigLocation, is FollowUp.LocationCreated,
-        is FollowUp.LocationDeleted, is FollowUp.LocationDefault, is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> liste
+        is FollowUp.LocationDeleted, is FollowUp.LocationDefault, is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> list
     }
 
-    private fun partRecorded(liste: List<ManualPartView>, b: Editing.TeilErfassen): List<ManualPartView> {
-        val a = b.erfassung
-        fun gleich(p: ManualPartView) = p.partNumber == a.nummer && p.colorId == a.farbId
-        if (liste.none(::gleich))
-            return listOf(ManualPartView(partNumber = a.nummer, colorId = a.farbId, colorName = a.farbname,
-                colorHex = a.farbHex, quantity = a.menge, unitPrice = a.stueckpreis, condition = a.zustand,
-                userId = a.besitzer, storage = a.lagerort)) + liste
-        return liste.map { if (gleich(it)) it.copy(quantity = it.quantity + a.menge) else it }
+    private fun partRecorded(list: List<ManualPartView>, b: Editing.RecordPart): List<ManualPartView> {
+        val a = b.entry
+        fun equal(p: ManualPartView) = p.partNumber == a.number && p.colorId == a.colorId
+        if (list.none(::equal))
+            return listOf(ManualPartView(partNumber = a.number, colorId = a.colorId, colorName = a.colorName,
+                colorHex = a.colorHex, quantity = a.quantity, unitPrice = a.unitPrice, condition = a.condition,
+                userId = a.owner, storage = a.storageLocation)) + list
+        return list.map { if (equal(it)) it.copy(quantity = it.quantity + a.quantity) else it }
     }
 
-    private fun recolored(liste: List<ManualPartView>, b: FollowUp.PartColor): List<ManualPartView> {
-        fun gemeint(p: ManualPartView, farbe: Int) =
-            p.partNumber == b.partNumber && p.colorId == farbe && (b.besitzer == null || p.userId == b.besitzer)
-        val alt = liste.firstOrNull { gemeint(it, b.colorId) } ?: return liste
-        val ziel = liste.firstOrNull { gemeint(it, b.neueFarbe) }
-        if (ziel != null) return liste.filterNot { it === alt }.map { if (it === ziel) it.copy(quantity = it.quantity + alt.quantity) else it }
-        return liste.map { if (it === alt) it.copy(colorId = b.neueFarbe, colorName = b.farbName, colorHex = b.farbHex) else it }
+    private fun recolored(list: List<ManualPartView>, b: FollowUp.PartColor): List<ManualPartView> {
+        fun meant(p: ManualPartView, color: Int) =
+            p.partNumber == b.partNumber && p.colorId == color && (b.owner == null || p.userId == b.owner)
+        val old = list.firstOrNull { meant(it, b.colorId) } ?: return list
+        val target = list.firstOrNull { meant(it, b.newColor) }
+        if (target != null) return list.filterNot { it === old }.map { if (it === target) it.copy(quantity = it.quantity + old.quantity) else it }
+        return list.map { if (it === old) it.copy(colorId = b.newColor, colorName = b.colorName, colorHex = b.colorHex) else it }
     }
 
-    fun manualMinifigs(liste: List<ManualMinifigView>, b: Wirkung): List<ManualMinifigView> = when (b) {
-        is Editing.FigurErfassen -> {
-            val a = b.erfassung
-            if (liste.any { it.figNumber == a.nummer })
-                liste.map { if (it.figNumber == a.nummer) it.copy(quantity = it.quantity + a.menge) else it }
-            else listOf(ManualMinifigView(figNumber = a.nummer, blFigNumber = a.blNumber, quantity = a.menge,
-                unitPrice = a.stueckpreis, condition = a.zustand, userId = a.besitzer, storage = a.lagerort)) + liste
+    fun manualMinifigs(list: List<ManualMinifigView>, b: Effect): List<ManualMinifigView> = when (b) {
+        is Editing.RecordFigure -> {
+            val a = b.entry
+            if (list.any { it.figNumber == a.number })
+                list.map { if (it.figNumber == a.number) it.copy(quantity = it.quantity + a.quantity) else it }
+            else listOf(ManualMinifigView(figNumber = a.number, blFigNumber = a.blNumber, quantity = a.quantity,
+                unitPrice = a.unitPrice, condition = a.condition, userId = a.owner, storage = a.storageLocation)) + list
         }
-        is Editing.FigurAendern -> liste.map {
-            if (it.figNumber == b.figNumber && (b.besitzer == null || it.userId == b.besitzer))
-                it.copy(quantity = newQuantity(it.quantity, b.aenderung), unitPrice = b.aenderung.stueckpreis ?: it.unitPrice)
+        is Editing.EditFigure -> list.map {
+            if (it.figNumber == b.figNumber && (b.owner == null || it.userId == b.owner))
+                it.copy(quantity = newQuantity(it.quantity, b.change), unitPrice = b.change.unitPrice ?: it.unitPrice)
             else it
         }
-        is Editing.FigurLoeschen -> liste.filterNot {
-            it.figNumber == b.figNumber && (b.besitzer == null || it.userId == b.besitzer)
+        is Editing.DeleteFigure -> list.filterNot {
+            it.figNumber == b.figNumber && (b.owner == null || it.userId == b.owner)
         }
-        is FollowUp.MinifigLocation -> liste.map { if (it.figNumber == b.figNumber) it.copy(storage = b.ort?.ifBlank { null }) else it }
-        is FollowUp.LocationRenamed -> liste.map { if (b.alt.isNotBlank() && it.storage == b.alt) it.copy(storage = b.neu.name) else it }
-        is Editing.SetMenge, is Editing.SetErfassen, is Editing.MerkpostenAnlegen,
-        is Editing.MerkpostenLoeschen, is Editing.TeilErfassen, is Editing.TeilAendern,
-        is Editing.TeilLoeschen, is FollowUp.SetQuantitySet, is FollowUp.SetLocation, is FollowUp.SetRemoved,
+        is FollowUp.MinifigLocation -> list.map { if (it.figNumber == b.figNumber) it.copy(storage = b.location?.ifBlank { null }) else it }
+        is FollowUp.LocationRenamed -> list.map { if (b.old.isNotBlank() && it.storage == b.old) it.copy(storage = b.newValue.name) else it }
+        is Editing.SetQuantity, is Editing.RecordSet, is Editing.CreateWantedItem,
+        is Editing.DeleteWantedItem, is Editing.RecordPart, is Editing.EditPart,
+        is Editing.DeletePart, is FollowUp.SetQuantitySet, is FollowUp.SetLocation, is FollowUp.SetRemoved,
         is FollowUp.SetMoved, is FollowUp.SetSummary, is FollowUp.WantedItemMoved,
         is FollowUp.WantedItemAdopted, is FollowUp.PartLocation, is FollowUp.PartColor, is FollowUp.LocationCreated,
-        is FollowUp.LocationDeleted, is FollowUp.LocationDefault, is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> liste
+        is FollowUp.LocationDeleted, is FollowUp.LocationDefault, is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> list
     }
 
     /** A set alert replaces that of the set in the same condition; new ones stand in front as at the server. */
-    fun preisalarme(liste: List<PriceAlertView>, b: Wirkung): List<PriceAlertView> = when (b) {
+    fun priceAlarms(list: List<PriceAlertView>, b: Effect): List<PriceAlertView> = when (b) {
         is FollowUp.AlarmSet -> {
-            val alt = liste.firstOrNull { it.setNumber == b.alarm.setNumber && it.condition == b.alarm.condition }
+            val old = list.firstOrNull { it.setNumber == b.alarm.setNumber && it.condition == b.alarm.condition }
             // The single route sends neither name nor image; those of the overview stay.
-            val neu = if (alt == null) b.alarm else b.alarm.copy(name = b.alarm.name ?: alt.name,
-                imageLocal = b.alarm.imageLocal ?: alt.imageLocal, imageUrl = b.alarm.imageUrl ?: alt.imageUrl,
-                setImgUrl = b.alarm.setImgUrl ?: alt.setImgUrl)
-            if (alt == null) listOf(neu) + liste else liste.map { if (it === alt) neu else it }
+            val newValue = if (old == null) b.alarm else b.alarm.copy(name = b.alarm.name ?: old.name,
+                imageLocal = b.alarm.imageLocal ?: old.imageLocal, imageUrl = b.alarm.imageUrl ?: old.imageUrl,
+                setImgUrl = b.alarm.setImgUrl ?: old.setImgUrl)
+            if (old == null) listOf(newValue) + list else list.map { if (it === old) newValue else it }
         }
-        is FollowUp.AlarmRemoved -> liste.filterNot { it.setNumber == b.setNumber && it.condition == b.zustand }
+        is FollowUp.AlarmRemoved -> list.filterNot { it.setNumber == b.setNumber && it.condition == b.condition }
         is Editing, is FollowUp.SetQuantitySet, is FollowUp.SetLocation, is FollowUp.SetRemoved, is FollowUp.SetMoved,
         is FollowUp.SetSummary, is FollowUp.WantedItemMoved, is FollowUp.WantedItemAdopted,
         is FollowUp.PartLocation, is FollowUp.PartColor, is FollowUp.MinifigLocation, is FollowUp.LocationRenamed,
-        is FollowUp.LocationCreated, is FollowUp.LocationDeleted, is FollowUp.LocationDefault -> liste
+        is FollowUp.LocationCreated, is FollowUp.LocationDeleted, is FollowUp.LocationDefault -> list
     }
 
     /** The supply follows creating, renaming, deleting and the star; at most one place carries it. */
-    fun lagerorte(liste: List<StockLocationView>, b: Wirkung): List<StockLocationView> = when (b) {
+    fun storageLocations(list: List<StockLocationView>, b: Effect): List<StockLocationView> = when (b) {
         is FollowUp.LocationCreated ->
-            if (liste.any { it.ort.id == b.ort.id }) liste else liste + StockLocationView(ort = b.ort, vorgabe = false)
-        is FollowUp.LocationRenamed -> liste.map { if (it.ort.id == b.neu.id) it.copy(ort = b.neu) else it }
-        is FollowUp.LocationDeleted -> liste.filterNot { it.ort.id == b.id }
-        is FollowUp.LocationDefault -> liste.map { it.copy(vorgabe = it.ort.id == b.id) }
+            if (list.any { it.location.id == b.location.id }) list else list + StockLocationView(location = b.location, default = false)
+        is FollowUp.LocationRenamed -> list.map { if (it.location.id == b.newValue.id) it.copy(location = b.newValue) else it }
+        is FollowUp.LocationDeleted -> list.filterNot { it.location.id == b.id }
+        is FollowUp.LocationDefault -> list.map { it.copy(default = it.location.id == b.id) }
         is Editing, is FollowUp.SetQuantitySet, is FollowUp.SetLocation, is FollowUp.SetRemoved, is FollowUp.SetMoved,
         is FollowUp.SetSummary, is FollowUp.WantedItemMoved, is FollowUp.WantedItemAdopted,
         is FollowUp.PartLocation, is FollowUp.PartColor, is FollowUp.MinifigLocation, is FollowUp.AlarmSet,
-        is FollowUp.AlarmRemoved -> liste
+        is FollowUp.AlarmRemoved -> list
     }
 
     /**
      * With a step the change counts on top of what the list shows now — even
      * if a newer server response lies underneath. Without a step the quantity applies.
      */
-    private fun newQuantity(bisher: Int, a: Stueckaenderung) =
-        a.schritt?.let { bisher + it } ?: a.menge
+    private fun newQuantity(previous: Int, a: QuantityChange) =
+        a.step?.let { previous + it } ?: a.quantity
 
-    fun rememberKey(m: WantedItemView) = "${m.setNumber}|${m.condition.kennung}|${m.userId}"
+    fun rememberKey(m: WantedItemView) = "${m.setNumber}|${m.condition.identifier}|${m.userId}"
 }

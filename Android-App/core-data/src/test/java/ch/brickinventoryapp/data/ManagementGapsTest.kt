@@ -7,7 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.PfadServer
+import ch.brickinventoryapp.testing.PathServer
 import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.testManagementRepository
 
@@ -32,18 +32,18 @@ class ManagementGapsTest {
      */
     @Test
     fun `the app calls all three addresses`() {
-        val paths = PfadServer()
+        val paths = PathServer()
         try {
-            val admin = testManagementRepository(TestApi.fuer(paths.server))
+            val admin = testManagementRepository(TestApi.forTarget(paths.server))
             runBlocking {
-                admin.setJobSchedule("prices", zeit = "07:05")
+                admin.setJobSchedule("prices", time = "07:05")
                 admin.queueCatalogImages()
-                admin.setAppTheme(Design.NOPPE)
+                admin.setAppTheme(Design.STUD)
             }
             assertEquals(listOf("POST /api/v1/admin/job-schedule", "POST /api/v1/admin/catalog-images",
                 "POST /api/v1/settings/admin/theme"), paths.requests.toList())
-            assertTrue(paths.koerper[0], "\"time\":\"07:05\"" in paths.koerper[0] && "\"name\":\"prices\"" in paths.koerper[0])
-            assertEquals("""{"theme":"noppe"}""", paths.koerper[2])
+            assertTrue(paths.bodyBytes[0], "\"time\":\"07:05\"" in paths.bodyBytes[0] && "\"name\":\"prices\"" in paths.bodyBytes[0])
+            assertEquals("""{"theme":"noppe"}""", paths.bodyBytes[2])
         } finally {
             paths.server.shutdown()
         }

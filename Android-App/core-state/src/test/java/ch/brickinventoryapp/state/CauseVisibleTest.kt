@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.state.ui.withTechnicalCause
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -21,22 +21,22 @@ class CauseVisibleTest {
 
     @Test
     fun `with an unknown cause the technical message is included`() {
-        val satz = withTechnicalCause("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt("unexpected end of stream"))
+        val sentence = withTechnicalCause("Etwas ist schiefgelaufen", Outcome.Failure.Unknown("unexpected end of stream"))
         assertTrue(
-            "Die technische Ursache fehlt — dann sagt die Meldung wieder nichts: $satz",
-            satz.contains("unexpected end of stream")
+            "Die technische Ursache fehlt — dann sagt die Meldung wieder nichts: $sentence",
+            sentence.contains("unexpected end of stream")
         )
-        assertTrue("Der verständliche Satz muss erhalten bleiben: $satz",
-            satz.startsWith("Etwas ist schiefgelaufen"))
+        assertTrue("Der verständliche Satz muss erhalten bleiben: $sentence",
+            sentence.startsWith("Etwas ist schiefgelaufen"))
     }
 
     @Test
     fun `without a cause the sentence stays unchanged`() {
         // No technical text present: no empty parenthesis must result.
         assertEquals("Etwas ist schiefgelaufen",
-            withTechnicalCause("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt(null)))
+            withTechnicalCause("Etwas ist schiefgelaufen", Outcome.Failure.Unknown(null)))
         assertEquals("Etwas ist schiefgelaufen",
-            withTechnicalCause("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt("   ")))
+            withTechnicalCause("Etwas ist schiefgelaufen", Outcome.Failure.Unknown("   ")))
     }
 
     @Test
@@ -44,16 +44,16 @@ class CauseVisibleTest {
         // The opposite direction, and it's the more important one: a test that only
         // checks point 1 would also be green if the cause were appended
         // EVERYWHERE — i.e. it would break exactly the rule this is about.
-        for (art in listOf(Ergebnis.Fehler.Netz("Socket closed"), Ergebnis.Fehler.Zeitueberschreitung,
-                           Ergebnis.Fehler.Server(500), Ergebnis.Fehler.Abgewiesen(),
-                           Ergebnis.Fehler.LeereAntwort("Socket closed"), Ergebnis.Fehler.Abgebrochen,
-                           Ergebnis.Fehler.Klartext)) {
-            // Netz and LeereAntwort already carry a technical text themselves; the rest
+        for (kind in listOf(Outcome.Failure.Network("Socket closed"), Outcome.Failure.Timeout,
+                           Outcome.Failure.Server(500), Outcome.Failure.Rejected(),
+                           Outcome.Failure.EmptyResponse("Socket closed"), Outcome.Failure.Cancelled,
+                           Outcome.Failure.Plaintext)) {
+            // Netz and EmptyResponse already carry a technical text themselves; the rest
             // are listed so a future cause with a text stands out here.
             assertEquals(
-                "Bei $art darf kein englischer Bibliothekstext an den Satz geraten",
+                "Bei $kind darf kein englischer Bibliothekstext an den Satz geraten",
                 "Keine Verbindung",
-                withTechnicalCause("Keine Verbindung", art)
+                withTechnicalCause("Keine Verbindung", kind)
             )
         }
     }

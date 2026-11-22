@@ -25,10 +25,10 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.account.ui.ZweiterFaktorUiState
-import ch.brickinventoryapp.ui.components.LocalSchrittschutz
-import ch.brickinventoryapp.ui.components.Schrittschutz
-import ch.brickinventoryapp.account.ui.screens.ZweiterFaktorPflichtMaske
+import ch.brickinventoryapp.account.ui.SecondFactorUiState
+import ch.brickinventoryapp.ui.components.LocalStepGuard
+import ch.brickinventoryapp.ui.components.StepGuard
+import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
 import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import ch.brickinventoryapp.ui.util.secretCopyable
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -59,7 +59,7 @@ import android.os.Build
  * the announced hint without an authenticator app, sign-out at every step, and at
  * 200% font size no text wraps mid-word.
  *
- * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
  *   faktormaske-ohne-passwort      setup also without a password → red "ohne Passwort richtet …"
  *   faktormaske-schluessel-am-stueck  key without groups → red "waehrend der Einrichtung …"
  *   faktormaske-ohne-codes         the codes never shown → red "nach der Bestaetigung …"
@@ -82,39 +82,39 @@ class SecondFactorMaskTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private val vorher = Locale.getDefault()
-    private val zustand = mutableStateOf(ZweiterFaktorUiState())
-    private val eingerichtet = mutableListOf<String>()
+    private val before = Locale.getDefault()
+    private val condition = mutableStateOf(SecondFactorUiState())
+    private val setUp = mutableListOf<String>()
     private val confirmed = mutableListOf<String>()
     private var nextTapped = 0
-    private var abgemeldet = 0
+    private var loggedOut = 0
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = Locale.setDefault(vorher)
+    fun tearDown() = Locale.setDefault(before)
 
     private fun text(id: Int) = compose.activity.getString(id)
 
     /** The Android level the mask picks by; Robolectric itself runs against API 35. */
-    private val stufe = mutableStateOf(Build.VERSION.SDK_INT)
+    private val level = mutableStateOf(Build.VERSION.SDK_INT)
 
-    private fun zeige(schrift: Float = 1f) {
+    private fun show(font: Float = 1f) {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(
-                    LocalDensity provides Density(d.density, schrift),
-                    LocalSdkLevel provides stufe.value,
+                    LocalDensity provides Density(d.density, font),
+                    LocalSdkLevel provides level.value,
                     // The device lock counts as confirmed; the mask is what's checked.
-                    LocalSchrittschutz provides Schrittschutz { _, dann -> dann() },
+                    LocalStepGuard provides StepGuard { _, dann -> dann() },
                 ) {
-                    ZweiterFaktorPflichtMaske(
-                        zustand = zustand.value,
-                        onEinrichten = { eingerichtet += it },
-                        onBestaetigen = { confirmed += it },
-                        onWeiter = { nextTapped++ },
-                        onAbmelden = { abgemeldet++ },
+                    SecondFactorRequiredMask(
+                        condition = condition.value,
+                        onSetUp = { setUp += it },
+                        onConfirm = { confirmed += it },
+                        onNext = { nextTapped++ },
+                        onLogout = { loggedOut++ },
                     )
                 }
             }
@@ -124,31 +124,31 @@ class SecondFactorMaskTest {
 
     private fun button(id: Int): SemanticsNodeInteraction = compose.onNode(hasText(text(id)) and hasClickAction())
 
-    private fun geschuetzt() =
+    private fun guarded() =
         (compose.activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
 
-    private val schluessel = "JBSWY3DPEHPK3PXP"
-    private val setup = ZweiterFaktorUiState(aktiv = false, geheimnis = schluessel,
-        otpauth = "otpauth://totp/Brick:marco?secret=$schluessel")
-    private val codes = ZweiterFaktorUiState(aktiv = true, codes = listOf("aaaa-bbbb", "cccc-dddd"))
+    private val key = "JBSWY3DPEHPK3PXP"
+    private val setup = SecondFactorUiState(active = false, secret = key,
+        otpauth = "otpauth://totp/Brick:marco?secret=$key")
+    private val codes = SecondFactorUiState(active = true, codes = listOf("aaaa-bbbb", "cccc-dddd"))
 
     @Test
     fun `without a password the form sets up nothing, with a password it does`() {
-        zustand.value = ZweiterFaktorUiState(aktiv = false)
-        zeige()
+        condition.value = SecondFactorUiState(active = false)
+        show()
         button(R.string.setup_continue).assertIsNotEnabled()
         compose.onNode(hasSetTextAction()).performTextInput("geheim-123")
         button(R.string.setup_continue).assertIsEnabled().performScrollTo().performClick()
         compose.waitForIdle()
-        assertEquals(listOf("geheim-123"), eingerichtet)
+        assertEquals(listOf("geheim-123"), setUp)
     }
 
     @Test
     fun `during the setup the key stands in groups and only digits go out`() {
-        zustand.value = setup
-        zeige()
+        condition.value = setup
+        show()
         compose.onNodeWithText("JBSW Y3DP EHPK 3PXP").assertExists()
-        assertTrue("Der Schlüssel steht im Klartext da: kein Bildschirmfoto", geschuetzt())
+        assertTrue("Der Schlüssel steht im Klartext da: kein Bildschirmfoto", guarded())
         button(R.string.zf_confirm).assertIsNotEnabled()
         compose.onNode(hasSetTextAction()).performTextInput("12 34 56")
         button(R.string.zf_confirm).performScrollTo().performClick()
@@ -158,15 +158,15 @@ class SecondFactorMaskTest {
 
     @Test
     fun `after confirmation the emergency codes are shown, continuing only with the saved check`() {
-        zustand.value = codes
-        zeige()
+        condition.value = codes
+        show()
         // The code text reads character by character (readAloudAs); its text isn't in the tree.
         compose.onNodeWithContentDescription("a a a a - b b b b, c c c c - d d d d").assertExists()
-        assertTrue("Die Codes stehen im Klartext da: kein Bildschirmfoto", geschuetzt())
-        button(R.string.zf_pflicht_weiter).assertIsNotEnabled()
-        button(R.string.zf_codes_gesichert).performScrollTo().performClick()
+        assertTrue("Die Codes stehen im Klartext da: kein Bildschirmfoto", guarded())
+        button(R.string.zf_required_next).assertIsNotEnabled()
+        button(R.string.zf_codes_saved).performScrollTo().performClick()
         compose.waitForIdle()
-        button(R.string.zf_pflicht_weiter).assertIsEnabled().performScrollTo().performClick()
+        button(R.string.zf_required_next).assertIsEnabled().performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(1, nextTapped)
     }
@@ -177,51 +177,51 @@ class SecondFactorMaskTest {
      */
     @Test
     fun `the emergency codes can be shared without filling the clipboard`() {
-        zustand.value = codes
-        zeige()
+        condition.value = codes
+        show()
         assertEquals("Vor dem Tipp wird nichts geteilt", null,
             Shadows.shadowOf(compose.activity).peekNextStartedActivity())
         button(R.string.zf_share).performScrollTo().performClick()
         compose.waitForIdle()
         val selection = Shadows.shadowOf(compose.activity).nextStartedActivity
         assertEquals(Intent.ACTION_CHOOSER, selection?.action)
-        val senden = IntentCompat.getParcelableExtra(selection!!, Intent.EXTRA_INTENT,
+        val send = IntentCompat.getParcelableExtra(selection!!, Intent.EXTRA_INTENT,
             Intent::class.java)
-        assertEquals(Intent.ACTION_SEND, senden?.action)
-        assertEquals("aaaa-bbbb\ncccc-dddd", senden?.getStringExtra(Intent.EXTRA_TEXT))
-        val ablage = compose.activity.getSystemService(ClipboardManager::class.java)
-        assertTrue("Teilen legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
+        assertEquals(Intent.ACTION_SEND, send?.action)
+        assertEquals("aaaa-bbbb\ncccc-dddd", send?.getStringExtra(Intent.EXTRA_TEXT))
+        val store = compose.activity.getSystemService(ClipboardManager::class.java)
+        assertTrue("Teilen legt nichts in die Zwischenablage", !store.hasPrimaryClip())
     }
 
     /** Prefers a file at a location of choice: when sharing, the target app would read along. */
     @Test
     fun `the emergency codes can be saved as a file, that checks saved`() {
-        zustand.value = codes
-        zeige()
-        button(R.string.zf_pflicht_weiter).assertIsNotEnabled()
-        button(R.string.zf_codes_speichern).performScrollTo().performClick()
+        condition.value = codes
+        show()
+        button(R.string.zf_required_next).assertIsNotEnabled()
+        button(R.string.zf_codes_save).performScrollTo().performClick()
         compose.waitForIdle()
-        val gestartet = Shadows.shadowOf(compose.activity).nextStartedActivityForResult
-        assertEquals(Intent.ACTION_CREATE_DOCUMENT, gestartet?.intent?.action)
-        assertEquals("text/plain", gestartet?.intent?.type)
-        assertEquals(CODES_FILE, gestartet?.intent?.getStringExtra(Intent.EXTRA_TITLE))
+        val started = Shadows.shadowOf(compose.activity).nextStartedActivityForResult
+        assertEquals(Intent.ACTION_CREATE_DOCUMENT, started?.intent?.action)
+        assertEquals("text/plain", started?.intent?.type)
+        assertEquals(CODES_FILE, started?.intent?.getStringExtra(Intent.EXTRA_TITLE))
 
-        val ziel = Uri.parse("content://dokumente.test/codes.txt")
-        val datei = ByteArrayOutputStream()
-        Shadows.shadowOf(compose.activity.contentResolver).registerOutputStream(ziel, datei)
-        Shadows.shadowOf(compose.activity).receiveResult(gestartet!!.intent, Activity.RESULT_OK, Intent().setData(ziel))
+        val target = Uri.parse("content://dokumente.test/codes.txt")
+        val file = ByteArrayOutputStream()
+        Shadows.shadowOf(compose.activity.contentResolver).registerOutputStream(target, file)
+        Shadows.shadowOf(compose.activity).receiveResult(started!!.intent, Activity.RESULT_OK, Intent().setData(target))
         compose.waitForIdle()
-        assertEquals("aaaa-bbbb\ncccc-dddd\n", datei.toString(Charsets.UTF_8.name()))
-        button(R.string.zf_pflicht_weiter).assertIsEnabled()
-        val ablage = compose.activity.getSystemService(ClipboardManager::class.java)
-        assertTrue("Speichern legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
+        assertEquals("aaaa-bbbb\ncccc-dddd\n", file.toString(Charsets.UTF_8.name()))
+        button(R.string.zf_required_next).assertIsEnabled()
+        val store = compose.activity.getSystemService(ClipboardManager::class.java)
+        assertTrue("Speichern legt nichts in die Zwischenablage", !store.hasPrimaryClip())
     }
 
     /** Every button of the code step tapped (sign-out excepted): the clipboard stays empty. */
     @Test
     fun `no button of the codes puts them into the clipboard`() {
-        zustand.value = codes
-        zeige()
+        condition.value = codes
+        show()
         val buttons = compose.onAllNodes(hasClickAction()).fetchSemanticsNodes()
             .mapNotNull { it.config.getOrNull(SemanticsProperties.Text)?.joinToString() }
             .filter { it != text(R.string.settings_logout) }
@@ -230,46 +230,46 @@ class SecondFactorMaskTest {
             compose.onNode(hasText(k) and hasClickAction()).performScrollTo().performClick()
             compose.waitForIdle()
         }
-        val ablage = compose.activity.getSystemService(ClipboardManager::class.java)
-        assertTrue("Ein Knopf legte die Codes in die Zwischenablage: $buttons", !ablage.hasPrimaryClip())
+        val store = compose.activity.getSystemService(ClipboardManager::class.java)
+        assertTrue("Ein Knopf legte die Codes in die Zwischenablage: $buttons", !store.hasPrimaryClip())
     }
 
     @Test
     fun `the key is copyable only from API 33, and then marked as confidential`() {
         assertTrue("Unter API 33 zeigt das System kopierte Geheimnisse an", !secretCopyable(32))
         assertTrue(secretCopyable(33))
-        zustand.value = setup
-        stufe.value = 32
-        zeige()
+        condition.value = setup
+        level.value = 32
+        show()
         assertEquals("Unter API 33 kein Knopf zum Kopieren", 0,
             compose.onAllNodes(hasText(text(R.string.zf_copy_key))).fetchSemanticsNodes().size)
-        stufe.value = 33
+        level.value = 33
         compose.waitForIdle()
         button(R.string.zf_copy_key).performScrollTo().performClick()
         compose.waitForIdle()
         val clip = compose.activity.getSystemService(ClipboardManager::class.java).primaryClip
-        assertEquals(schluessel, clip?.getItemAt(0)?.text?.toString())
+        assertEquals(key, clip?.getItemAt(0)?.text?.toString())
         assertEquals(true, clip?.description?.extras?.getBoolean("android.content.extra.IS_SENSITIVE"))
     }
 
     @Test
     fun `the step indicator names step and name`() {
-        val je = listOf(ZweiterFaktorUiState(aktiv = false) to (1 to R.string.zf_schritt_passwort),
-            setup to (2 to R.string.zf_schritt_app), codes to (3 to R.string.zf_schritt_codes))
-        zeige()
-        for ((schritt, erwartet) in je) {
-            zustand.value = schritt
+        val je = listOf(SecondFactorUiState(active = false) to (1 to R.string.zf_step_password),
+            setup to (2 to R.string.zf_step_app_title), codes to (3 to R.string.zf_step_codes))
+        show()
+        for ((step, expected) in je) {
+            condition.value = step
             compose.waitForIdle()
-            val (nummer, name) = erwartet
-            compose.onNodeWithText(compose.activity.resources.getQuantityString(R.plurals.zf_schritt, 3, nummer, 3, text(name)))
+            val (number, name) = expected
+            compose.onNodeWithText(compose.activity.resources.getQuantityString(R.plurals.zf_step, 3, number, 3, text(name)))
                 .assertExists()
         }
     }
 
     @Test
     fun `without an authenticator app the hint is announced`() {
-        zustand.value = setup
-        zeige()
+        condition.value = setup
+        show()
         button(R.string.zf_open_app).performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNode(hasText(text(R.string.zf_no_app)) and SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion),
@@ -278,35 +278,35 @@ class SecondFactorMaskTest {
 
     @Test
     fun `sign-out stays possible in every step`() {
-        val schritte = listOf(ZweiterFaktorUiState(aktiv = false), setup, codes, ZweiterFaktorUiState(aktiv = true))
-        zeige()
-        schritte.forEachIndexed { i, schritt ->
-            zustand.value = schritt
+        val steps = listOf(SecondFactorUiState(active = false), setup, codes, SecondFactorUiState(active = true))
+        show()
+        steps.forEachIndexed { i, step ->
+            condition.value = step
             compose.waitForIdle()
             button(R.string.settings_logout).performScrollTo().performClick()
             compose.waitForIdle()
-            assertEquals("Schritt $i", i + 1, abgemeldet)
+            assertEquals("Schritt $i", i + 1, loggedOut)
         }
     }
 
     @Test
     fun `at 200 percent font no text wraps in the middle of a word`() {
         val je = listOf(
-            ZweiterFaktorUiState(aktiv = false) to listOf(R.string.zf_pflicht_titel, R.string.zf_pflicht_kurz,
-                R.string.common_learn_more, R.string.zf_pflicht_passwort, R.string.setup_continue, R.string.settings_logout),
-            setup to listOf(R.string.zf_pflicht_titel, R.string.zf_step_app, R.string.zf_open_app,
+            SecondFactorUiState(active = false) to listOf(R.string.zf_required_title, R.string.zf_required_short,
+                R.string.common_learn_more, R.string.zf_required_password, R.string.setup_continue, R.string.settings_logout),
+            setup to listOf(R.string.zf_required_title, R.string.zf_step_app, R.string.zf_open_app,
                 R.string.zf_copy_key, R.string.zf_confirm),
-            codes to listOf(R.string.zf_pflicht_codes_titel, R.string.zf_codes_hint,
-                R.string.zf_share, R.string.zf_codes_gesichert, R.string.zf_pflicht_weiter),
+            codes to listOf(R.string.zf_required_codes_title, R.string.zf_codes_hint,
+                R.string.zf_share, R.string.zf_codes_saved, R.string.zf_required_next),
         )
-        zeige(schrift = 2f)
-        val gebrochen = mutableListOf<String>()
-        for ((schritt, texts) in je) {
-            zustand.value = schritt
+        show(font = 2f)
+        val broken = mutableListOf<String>()
+        for ((step, texts) in je) {
+            condition.value = step
             compose.waitForIdle()
-            for (t in texts.map(::text)) if (brichtInWord(layout(t))) gebrochen += t
+            for (t in texts.map(::text)) if (breaksInWord(layout(t))) broken += t
         }
-        assertTrue("Mitten im Wort umgebrochen: $gebrochen", gebrochen.isEmpty())
+        assertTrue("Mitten im Wort umgebrochen: $broken", broken.isEmpty())
     }
 
     /** The layout of the text node with exactly [text] (not a field that carries it). */
@@ -314,17 +314,17 @@ class SecondFactorMaskTest {
         val node = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
             .first { n -> n.config.getOrNull(SemanticsProperties.EditableText) == null &&
                 n.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
-        val ergebnis = mutableListOf<TextLayoutResult>()
-        node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-        return ergebnis.single()
+        val outcome = mutableListOf<TextLayoutResult>()
+        node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
+        return outcome.single()
     }
 
     /** A line ends between two letters — neither at whitespace nor after a hyphen. */
-    private fun brichtInWord(t: TextLayoutResult): Boolean {
+    private fun breaksInWord(t: TextLayoutResult): Boolean {
         val s = t.layoutInput.text.text
-        return (0 until t.lineCount - 1).any { zeile ->
-            val ende = t.getLineEnd(zeile)
-            ende in 1 until s.length && !s[ende - 1].isWhitespace() && s[ende - 1] != '-' && !s[ende].isWhitespace()
+        return (0 until t.lineCount - 1).any { row ->
+            val end = t.getLineEnd(row)
+            end in 1 until s.length && !s[end - 1].isWhitespace() && s[end - 1] != '-' && !s[end].isWhitespace()
         }
     }
 }
