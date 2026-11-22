@@ -40,6 +40,8 @@ import java.time.Instant
  *      → red “amounts come as Money to four places …”
  *   H  counter-checks/kauf-ohne-zeitpunkt.patch: Acquisition.asView does not pass createdAt on → red, the same test
  *      and “every mapping carries every field of the same name unchanged“ not (filler values are no points in time)
+ *   I  SampleFiller.instanceGetters without the static filter → red “the counterpart of a getter is never the
+ *      static annotation holder” (Merkposten.getWaehrung-…$annotations is listed)
  */
 class UiModelFigureTest {
 
@@ -136,6 +138,13 @@ class UiModelFigureTest {
         }
         assertTrue("nur $compared Felder verglichen", compared >= 300)
         assertEquals("Getter ohne Gegenstück im Server-Modell", WITHOUT_COUNTERPART, without)
+    }
+
+    @Test
+    fun `the counterpart of a getter is never the static annotation holder`() {
+        val getters = SampleFiller.instanceGetters(Merkposten::class.java).map { it.name }
+        assertTrue("getWaehrung is missing: $getters", getters.any { it.startsWith("getWaehrung-") })
+        assertEquals("static holders listed", emptyList<String>(), getters.filter { it.endsWith("\$annotations") })
     }
 
     @Test

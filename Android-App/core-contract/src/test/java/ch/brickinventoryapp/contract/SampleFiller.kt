@@ -109,10 +109,20 @@ object SampleFiller {
     }
 
     /** A getter on a value class carries a suffix (getAmount-…); Money and Double have different ones. */
-    private fun counterpart(dto: Any, g: Method): Method? =
-        dto.javaClass.methods.firstOrNull { it.name == g.name && it.parameterCount == 0 }
-            ?: dto.javaClass.methods.firstOrNull { it.parameterCount == 0 && "-" in g.name && it.name == g.name.substringBefore('-') }
-            ?: dto.javaClass.methods.firstOrNull { it.parameterCount == 0 && english(it.name) == g.name.substringBefore('-') }
+    private fun counterpart(dto: Any, g: Method): Method? {
+        val own = instanceGetters(dto.javaClass)
+        return own.firstOrNull { it.name == g.name }
+            ?: own.firstOrNull { "-" in g.name && it.name == g.name.substringBefore('-') }
+            ?: own.firstOrNull { english(it.name) == g.name.substringBefore('-') }
+    }
+
+    /**
+     * Getters that read a value. The static `getX-hash$annotations()` holder has the same name
+     * up to the suffix and returns null; `methods` comes in no fixed order, so it won at random.
+     */
+    fun instanceGetters(k: Class<*>): List<Method> = k.methods.filter {
+        it.parameterCount == 0 && !Modifier.isStatic(it.modifiers) && it.returnType != Void.TYPE
+    }
 
     /** The contract keeps German property names until API v2; the view carries the English one. */
     private val contractNames: Map<String, String> = File("src/test/resources/contract-property-names.txt").readLines()
