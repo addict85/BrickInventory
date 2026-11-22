@@ -333,10 +333,10 @@ BEGIN
   IF pg_catalog.to_regclass('public.admin_log') IS NOT NULL THEN
     EXECUTE pg_catalog.format('REVOKE UPDATE, DELETE, TRUNCATE ON public.admin_log FROM %I, %I', rolle, sysrolle);
   END IF;
-  IF pg_catalog.to_regprocedure('public.verwaltungsprotokoll_aufraeumen()') IS NOT NULL THEN
-    EXECUTE 'REVOKE ALL ON FUNCTION public.verwaltungsprotokoll_aufraeumen() FROM PUBLIC';
-    EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION public.verwaltungsprotokoll_aufraeumen() FROM %I', rolle);
-    EXECUTE pg_catalog.format('GRANT EXECUTE ON FUNCTION public.verwaltungsprotokoll_aufraeumen() TO %I', sysrolle);
+  IF pg_catalog.to_regprocedure('public.admin_log_cleanup()') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.admin_log_cleanup() FROM PUBLIC';
+    EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION public.admin_log_cleanup() FROM %I', rolle);
+    EXECUTE pg_catalog.format('GRANT EXECUTE ON FUNCTION public.admin_log_cleanup() TO %I', sysrolle);
   END IF;
   FOR r IN SELECT c.oid::pg_catalog.regclass AS name FROM pg_catalog.pg_class c
              JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
@@ -365,7 +365,7 @@ BEGIN
   EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', sysweb);
   EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I REVOKE ALL ON TABLES FROM %I', migration, sysweb);
   EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I REVOKE ALL ON SEQUENCES FROM %I', migration, sysweb);
-  FOREACH schreiber IN ARRAY ARRAY['public.konto_aus_sicherungen_loeschen(integer)', 'public.konten_mit_set(text)'] LOOP
+  FOREACH schreiber IN ARRAY ARRAY['public.delete_account_from_backups(integer)', 'public.accounts_with_set(text)'] LOOP
     CONTINUE WHEN pg_catalog.to_regprocedure(schreiber) IS NULL;
     EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, %I', schreiber, rolle);
     EXECUTE pg_catalog.format('GRANT EXECUTE ON FUNCTION %s TO %I, %I', schreiber, sysrolle, sysweb);

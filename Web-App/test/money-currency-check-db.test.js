@@ -6,7 +6,7 @@
  * Counter-checks (measured on 28.10.2026, each on a fresh database):
  *   A  the check set_acquisitions_currency_iso removed in db/base.sql
  *      → red: “a currency in lower case is rejected”
- *   B  the check vouchers_amount_nicht_negativ removed in db/base.sql
+ *   B  the check vouchers_amount_not_negative removed in db/base.sql
  *      → red: “a negative amount is rejected”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.

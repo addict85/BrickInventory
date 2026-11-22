@@ -11,7 +11,7 @@
 function rollen(vorlage) {
   /** @param {string} art */
   const r = art => ({ name: `${vorlage}_rolle_${art}`, passwort: `test-${vorlage}-${art}` });
-  return { eigen: r('eigen'), app: r('app'), system: r('system'), systemweb: r('systemweb'), lesen: r('lesen') };
+  return { eigen: r('eigen'), app: r('app'), system: r('system'), systemweb: r('systemweb'), lesen: r('read') };
 }
 
 /** The same address with another role. @param {string} url @param {{ name: string, passwort: string }} rolle */

@@ -13,7 +13,7 @@ export interface VoucherRow {
   updated_at: string | Date;
   guthaben_geprueft_am: string | Date | null;
 }
-/** currency null: the database sets the account's currency (trigger vouchers_waehrung). */
+/** currency null: the database sets the account's currency (trigger vouchers_currency). */
 export interface VoucherFields {
   number: string;
   pin: string | null;

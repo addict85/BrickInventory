@@ -229,7 +229,7 @@ async function catalogSet(db, setNumber, f = {}) {
   }
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, source)
-                VALUES (set_nummer_mit_version($1), COALESCE($2, 'Set ' || set_nummer_mit_version($1)), $3, $4, $5, $6)
+                VALUES (set_number_with_version($1), COALESCE($2, 'Set ' || set_number_with_version($1)), $3, $4, $5, $6)
                 ON CONFLICT (set_num) DO UPDATE SET name = COALESCE($2, rb_sets.name),
                   year = COALESCE($3, rb_sets.year), theme_id = COALESCE($4, rb_sets.theme_id),
                   num_parts = COALESCE($5, rb_sets.num_parts), source = $6`,
@@ -237,7 +237,7 @@ async function catalogSet(db, setNumber, f = {}) {
   );
   await db.run(
     `INSERT INTO set_catalog (set_number, minifigs, image_url, image_local, brickset_id)
-                VALUES (set_nummer_mit_version($1), $2, $3, $4, $5)
+                VALUES (set_number_with_version($1), $2, $3, $4, $5)
                 ON CONFLICT (set_number) DO UPDATE SET minifigs = COALESCE($2, set_catalog.minifigs),
                   image_url = COALESCE($3, set_catalog.image_url), image_local = COALESCE($4, set_catalog.image_local),
                   brickset_id = COALESCE($5, set_catalog.brickset_id)`,

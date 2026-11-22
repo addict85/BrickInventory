@@ -91,7 +91,7 @@
  *      after the migration” (the runtime role sets is_admin, the log is deletable)
  *   AI in app-role.sh the REVOKE on users deleted → red: “… and after every run …”
  *      (GRANT ON ALL TABLES gives INSERT/UPDATE/DELETE back)
- *   AJ verwaltungsprotokoll_aufraeumen() as SECURITY INVOKER → red: both (the system role
+ *   AJ admin_log_cleanup() as SECURITY INVOKER → red: both (the system role
  *      may not delete itself, the cleanup fails)
  *   AK in app-role.sh the REVOKE on admin_log only for the runtime role → red:
  *      “… and after every run …” (the system role deletes log lines)
@@ -386,12 +386,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       for (const tabelle of ['users', 'global_settings', 'admin_log'])
         for (const type of ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'])
           ist[`${kurz} ${tabelle} ${type}`] = await frage(rolle, `public.${tabelle}`, type);
-      ist[`${kurz} aufraeumen EXECUTE`] = await frage(
-        rolle,
-        'public.verwaltungsprotokoll_aufraeumen()',
-        'EXECUTE',
-        true,
-      );
+      ist[`${kurz} aufraeumen EXECUTE`] = await frage(rolle, 'public.admin_log_cleanup()', 'EXECUTE', true);
     }
     const soll = {};
     for (const k of Object.keys(ist)) soll[k] = false;
@@ -424,13 +419,13 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         'DELETE FROM admin_log WHERE target_id = $1',
         "UPDATE admin_log SET action = 'x' WHERE target_id = $1",
         "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1::text)",
-        'SELECT verwaltungsprotokoll_aufraeumen() WHERE $1::int > 0',
+        'SELECT admin_log_cleanup() WHERE $1::int > 0',
       ])
         await assert.rejects(app.query(sql, [konto]), /permission denied/, `Laufzeitrolle: ${sql}`);
       // The name only on the own account (0121): without an account no row, with an account the own one.
       assert.equal((await app.query(`UPDATE users SET first_name = 'Neu' WHERE id = $1`, [konto])).rowCount, 0);
       await app.query('BEGIN');
-      await app.query(`SELECT set_config('app.konto', $1, true)`, [String(konto)]);
+      await app.query(`SELECT set_config('app.account', $1, true)`, [String(konto)]);
       assert.equal((await app.query(`UPDATE users SET first_name = 'Neu' WHERE id = $1`, [konto])).rowCount, 1);
       await app.query('COMMIT');
       await app.query(`INSERT INTO admin_log (target_id, action) VALUES ($1, 'probe')`, [konto]);
@@ -445,7 +440,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         "UPDATE admin_log SET action = 'x' WHERE target_id = $1",
       ])
         await assert.rejects(sys.query(sql, [konto]), /permission denied/, `Systemrolle: ${sql}`);
-      assert.ok((await sys.query('SELECT verwaltungsprotokoll_aufraeumen() AS n')).rows[0].n >= 1);
+      assert.ok((await sys.query('SELECT admin_log_cleanup() AS n')).rows[0].n >= 1);
       assert.deepEqual(
         (await sys.query('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY action', [konto])).rows,
         [{ action: 'probe' }],
@@ -489,14 +484,14 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       assert.equal((await app.query('SELECT username FROM users WHERE id = $1', [A])).rowCount, 0);
       await app.query('BEGIN');
       try {
-        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(A)]);
+        await app.query(`SELECT set_config('app.account', $1, true)`, [String(A)]);
         assert.equal((await app.query('SELECT username FROM users WHERE id = $1', [A])).rows[0].username, 'kt_a');
       } finally {
         await app.query('ROLLBACK');
       }
       await app.query('BEGIN');
       try {
-        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
+        await app.query(`SELECT set_config('app.account', $1, true)`, [String(C)]);
         // Entering oneself into a foreign household would mean seeing its rows.
         await assert.rejects(
           app.query('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [C, A]),
@@ -507,12 +502,12 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       }
       await app.query('BEGIN');
       try {
-        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
+        await app.query(`SELECT set_config('app.account', $1, true)`, [String(C)]);
         assert.equal((await app.query('DELETE FROM account_links WHERE main_user_id = $1', [A])).rowCount, 0);
         // C no longer sees foreign links (0121), not even for reading.
         assert.equal((await app.query('SELECT 1 FROM account_links WHERE main_user_id = $1', [A])).rowCount, 0);
         assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 1, 'eigene Einladung');
-        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(A)]);
+        await app.query(`SELECT set_config('app.account', $1, true)`, [String(A)]);
         assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 0, 'fremde Einladung');
         assert.equal((await app.query('DELETE FROM account_links WHERE sub_user_id = $1', [B])).rowCount, 1);
       } finally {
@@ -625,7 +620,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
           'CREATE VIEW public.probe AS SELECT 1 AS x',
           'CREATE FUNCTION public.probe() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$',
           `ALTER DATABASE ${id(neu)} SET search_path = public`,
-          'DROP FUNCTION IF EXISTS public.erfassung_tag() CASCADE',
+          'DROP FUNCTION IF EXISTS public.acquisition_day() CASCADE',
           'ALTER TABLE users DISABLE TRIGGER ALL',
           'CREATE TRIGGER probe BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION suppress_redundant_updates_trigger()',
         ])
@@ -872,7 +867,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     await als(neu, ROLE, PASSWORT, async app => {
       assert.equal(await zaehle(app), 0, 'ohne Konto sieht die Laufzeitrolle keine Zeile');
       await app.query('BEGIN');
-      await app.query(`SELECT set_config('app.konto', $1::text, true)`, [konto]);
+      await app.query(`SELECT set_config('app.account', $1::text, true)`, [konto]);
       assert.equal(await zaehle(app), 1, 'mit Konto sieht sie dessen Zeile');
       await app.query('COMMIT');
     });
@@ -973,7 +968,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     };
     const environment = {
       DB_APP_PASSWORD_FILE: datei('app', PASSWORT),
-      PGWEB_DB_PASSWORD_FILE: datei('lesen', READ_PW),
+      PGWEB_DB_PASSWORD_FILE: datei('read', READ_PW),
       DB_MIGRATION_PASSWORD_FILE: datei('mig', MIG_PW),
       DB_SYSTEM_PASSWORD_FILE: datei('sys', SYS_PW),
       PGPASSWORD_FILE: datei('su', decodeURIComponent(BASIS.password)),

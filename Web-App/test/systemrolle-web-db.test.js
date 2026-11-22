@@ -110,9 +110,9 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     const ist = Object.fromEntries(zeilen.filter(z => z.r !== null).map(z => [z.t, z.r]));
     assert.deepEqual(ist, SOLL);
     const fn = await db.get(
-      `SELECT has_function_privilege($1, 'konto_aus_sicherungen_loeschen(integer)', 'EXECUTE') AS kopien,
-              has_function_privilege($1, 'konten_mit_set(text)', 'EXECUTE') AS zahl,
-              has_function_privilege($1, 'verwaltungsprotokoll_aufraeumen()', 'EXECUTE') AS aufraeumen,
+      `SELECT has_function_privilege($1, 'delete_account_from_backups(integer)', 'EXECUTE') AS kopien,
+              has_function_privilege($1, 'accounts_with_set(text)', 'EXECUTE') AS zahl,
+              has_function_privilege($1, 'admin_log_cleanup()', 'EXECUTE') AS aufraeumen,
               (SELECT rolbypassrls FROM pg_roles WHERE rolname = $1) AS bypass`,
       [WEB],
     );

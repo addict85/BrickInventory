@@ -105,7 +105,7 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
   // and silently create invisible rows there.
   await assert.rejects(
     () => db.run(`INSERT INTO bl_mapping (type, rb_id) VALUES ('teil','x')`),
-    /bl_zuordnung_art|check constraint/,
+    /bl_mapping_type|check constraint/,
     'Eine erfundene Art wird angenommen — dann liegen Zeilen da, die keine ' + 'Leseabfrage je findet',
   );
   for (const type of ['part', 'fig', 'set']) {
@@ -120,7 +120,7 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
 
   // The index for the uniqueness check of the latch.
   const idx = (await db.all(`SELECT indexname FROM pg_indexes WHERE tablename='bl_mapping'`)).map(r => r.indexname);
-  assert.ok(idx.includes('idx_bl_zuordnung_bl'), `idx_bl_zuordnung_bl fehlt — gefunden: ${idx.join(', ')}`);
+  assert.ok(idx.includes('idx_bl_mapping_bl'), `idx_bl_mapping_bl fehlt — gefunden: ${idx.join(', ')}`);
 });
 
 test('the read paths deliver the BrickLink number from the mapping', { concurrency: 1 }, async t => {

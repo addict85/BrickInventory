@@ -5,7 +5,7 @@
  * one from the same morning (migration 0070, ACQUISITION_TIME_ZONE).
  *
  * Counter-checks (measured on 29.10.2026, each on a fresh database):
- *   A  the trigger erfassung_tag() computes in 'UTC' again → red: “a purchase
+ *   A  the trigger acquisition_day() computes in 'UTC' again → red: “a purchase
  *      at 00:30 belongs to the same day as one at noon”
  *   B  the branch for UPDATE removed in the trigger → red: “a changed
  *      date is the new day” (the day stayed the old one)

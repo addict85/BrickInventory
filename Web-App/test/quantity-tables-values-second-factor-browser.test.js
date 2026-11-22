@@ -117,7 +117,7 @@ async function putImages(t, db, uid, req) {
     fs.writeFileSync(path.join(ordner, `${nr}.jpg`), png(w, h, f));
     assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), `Vorschau ${nr}`);
     await catalogSet(db, nr, { name: `Bildprobe ${nr}`, year: 2020, theme: 'Bildprobe', pieces: 100 });
-    await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_nummer_mit_version($1)', [
+    await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_number_with_version($1)', [
       nr,
       `/images/sets/${nr}.jpg`,
     ]);

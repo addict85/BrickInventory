@@ -188,7 +188,7 @@ export async function openMigrations(client: ClientBase): Promise<string[]> {
  * outlives the account. Through the owner's function (migration 0119): the web system role
  * may not read the copies itself. */
 export async function removeAccountFromBackups(c: Querier, uid: number): Promise<number> {
-  return (await c.all<{ n: number }>('SELECT konto_aus_sicherungen_loeschen($1) AS n', [uid]))[0]?.n ?? 0;
+  return (await c.all<{ n: number }>('SELECT delete_account_from_backups($1) AS n', [uid]))[0]?.n ?? 0;
 }
 
 /** Before open migrations, copy the user data (users, tables with user_id or

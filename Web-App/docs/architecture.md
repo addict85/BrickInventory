@@ -129,7 +129,7 @@ dem einzigen Kanal über `AsyncLocalStorage` (`test/ratschen.test.js` verbietet
 weitere). Die Anfrage setzt ihn einmal (`merkeAnfrage`, aus Sitzung oder Token), ein
 Auftrag ebenso (`imNamenDesAuftrags`), Arbeit über Konten betritt ausdrücklich den
 Systemrahmen (`imSystemkontext`). Die Datenbankschicht setzt daraus je Transaktion
-`app.konto` für den Zeilenschutz.
+`app.account` für den Zeilenschutz.
 
 Warum dieser eine Kanal bleibt: Das Konto des Zeilenschutzes gehört zur Verbindung,
 nicht zu einem Dienst. Es ausdrücklich durch jeden Dienst bis zu jeder Abfrage zu
@@ -180,16 +180,16 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 Der Zeilenschutz (Migrationen 0111, 0112) fängt einen **vergessenen Filter** auf
 `user_id`: In 34 Tabellen mit Kontodaten (Bestand, Käufe, Merkliste, Einstellungen
 je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `second_factor`, Aufträge)
-sieht und ändert die Laufzeitrolle nur Zeilen von `app.konto` und dessen direkten
+sieht und ändert die Laufzeitrolle nur Zeilen von `app.account` und dessen direkten
 Unterkonten, ohne Konto keine. Zugangsdaten (Passkeys, zweiter Faktor, Tokens,
 Geräteschlüssel, Schrittfreigaben) sieht nur das Konto selbst, kein Hauptkonto
-(Migration 0114). Die Datenbankschicht setzt `app.konto` je
+(Migration 0114). Die Datenbankschicht setzt `app.account` je
 Transaktion (`set_config(…, true)`) aus dem Konto der Anfrage. Den Systemrahmen
 trägt die Systemrolle (`BYPASSRLS`), keine Einstellung.
 
 Er ist **keine Grenze gegen eingeschleustes SQL**:
 
-- `app.konto` ist eine Sitzungseinstellung. `set_config('app.konto', …)` darf jede
+- `app.account` ist eine Sitzungseinstellung. `set_config('app.account', …)` darf jede
   Rolle aufrufen; wer SQL über die Laufzeitrolle ausführen kann, setzt sich jedes
   Konto und sieht dessen Zeilen. Dagegen schützen nur Parameter statt
   zusammengesetzter Abfragen.
@@ -209,7 +209,7 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
   Sitzungsspeicher, Passwort, Rechte, Adresse, Sitzungsversion und globale
   Einstellungen laufen über die Systemrolle (`imSystem(…)` im Kontext des
   Bereichs). `admin_log` ist für beide Rollen nur anfügbar; aufgeräumt
-  wird über `verwaltungsprotokoll_aufraeumen()` (feste Frist, Eigentümerin).
+  wird über `admin_log_cleanup()` (feste Frist, Eigentümerin).
 - Gutscheine und Idempotenzeinträge sieht wie die Zugangsdaten nur das eigene
   Konto (Migration 0118). Kopien vor Migrationen (`vor_migration_*`) haben RLS ohne Policy und
   sind damit nur für die Systemrolle und die Eigentümerin lesbar.

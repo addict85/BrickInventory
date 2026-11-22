@@ -35,17 +35,17 @@ export function runningTx(): TxStand | null {
 export function contextSql(): string {
   const { system, konto } = rowsContext();
   if (system || konto === null) return '';
-  return `SELECT set_config('app.konto', '${konto}', true)`;
+  return `SELECT set_config('app.account', '${konto}', true)`;
 }
-const CONTEXT_EMPTY = "SELECT set_config('app.konto', '', true)";
+const CONTEXT_EMPTY = "SELECT set_config('app.account', '', true)";
 
-/** Any SQL can set app.konto (an injection): before COMMIT it must still be what `kontext` set,
+/** Any SQL can set app.account (an injection): before COMMIT it must still be what `kontext` set,
  * otherwise this fails and the transaction ends as ROLLBACK. */
 export function contextCheckSql(context: string): string {
-  const konto = /'app\.konto', '(\d*)'/.exec(context)?.[1] ?? '';
+  const konto = /'app\.account', '(\d*)'/.exec(context)?.[1] ?? '';
   return (
-    `DO $$BEGIN IF COALESCE(current_setting('app.konto', true), '') <> '${konto}' THEN ` +
-    `RAISE EXCEPTION 'app.konto changed within the transaction' USING ERRCODE = '42501'; END IF; END$$`
+    `DO $$BEGIN IF COALESCE(current_setting('app.account', true), '') <> '${konto}' THEN ` +
+    `RAISE EXCEPTION 'app.account changed within the transaction' USING ERRCODE = '42501'; END IF; END$$`
   );
 }
 

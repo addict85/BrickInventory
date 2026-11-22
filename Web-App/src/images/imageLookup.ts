@@ -3,7 +3,7 @@ import type { ImagesContext } from './context';
 
 /** Redirecting to the CDN address heals web and app without having to clean up orphaned
  * image_local entries. Looked up via the indexed
- * file name stem (bild_stamm()). */
+ * file name stem (image_master()). */
 const CACHE_MS = 10 * 60 * 1000;
 const cdnStorage = (k: ImagesContext) =>
   k.faecher.slot('cdnZuPfad', () => new Cache<string, { url: string | null }>(5000, CACHE_MS));

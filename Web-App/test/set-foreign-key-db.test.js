@@ -96,7 +96,7 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
     );
     await assert.rejects(
       db.run(`INSERT INTO import_status (user_id, status) VALUES ($1, 'fertig')`, [uid]),
-      /csv_import_jobs_status_check/,
+      /import_status_status_check/,
     );
   });
 
@@ -108,6 +108,10 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
       await c.query(`CREATE TABLE instruction_queue (set_number TEXT, status TEXT,
                        CONSTRAINT instruction_queue_status_check CHECK (status IN ('pending','done','failed')))`);
       await c.query('ALTER TABLE import_status RENAME TO csv_import_jobs');
+      // The constraint name of that time; 0127 gave it the name of the table.
+      await c.query(
+        'ALTER TABLE csv_import_jobs RENAME CONSTRAINT import_status_status_check TO csv_import_jobs_status_check',
+      );
       for (const [tab, name] of SCHLUESSEL) await c.query(`ALTER TABLE ${tab} DROP CONSTRAINT ${name}`);
       await c.query(
         `INSERT INTO parts (user_id, set_number, part_number, color_id) VALUES ($1, 'verwaist-1', '3001', 0)`,

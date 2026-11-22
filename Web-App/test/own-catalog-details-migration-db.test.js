@@ -71,6 +71,15 @@ test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
     `INSERT INTO minifigs_catalog (fig_number, fig_name, image_url, name_von) VALUES ('f1', 'Geheimfigur', NULL, $1)`,
     [anna],
   );
+  // 0093 calls the trigger functions by their names of that time (0127 renamed them).
+  for (const [alt, neu] of [
+    ['merke_teilekatalog_alt', 'remember_parts_catalog_old'],
+    ['merke_teilekatalog_neu', 'remember_parts_catalog_new'],
+    ['merke_teilekatalog_beide', 'remember_parts_catalog_both'],
+  ]) {
+    const def = (await c.query(`SELECT pg_get_functiondef('public.${neu}()'::regprocedure) AS d`)).rows[0].d;
+    await c.query(def.replace(`public.${neu}(`, `${SCHEMA}.${alt}(`));
+  }
   await c.query(MIGRATION);
 
   await t.test('inputs are stored with the account', async () => {

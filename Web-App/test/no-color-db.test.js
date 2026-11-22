@@ -39,8 +39,8 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
       await c.query('BEGIN');
       // State before 0071: color_id may be NULL, the index folds NULL to 0.
       await c.query(`ALTER TABLE parts ALTER COLUMN color_id DROP NOT NULL;
-                     DROP INDEX idx_parts_eindeutig;
-                     CREATE UNIQUE INDEX idx_parts_eindeutig ON parts (user_id, COALESCE(set_number, ''), part_number, COALESCE(color_id, 0))`);
+                     DROP INDEX idx_parts_unique;
+                     CREATE UNIQUE INDEX idx_parts_unique ON parts (user_id, COALESCE(set_number, ''), part_number, COALESCE(color_id, 0))`);
       // The origin columns until migration 0093.
       await c.query('ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer');
       const konto = async n =>
@@ -103,11 +103,11 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
       // renamed it right afterwards, as with a real order of the migrations.
       // The trigger (migration 0070/0124) only knows the respective current column;
       // so switch it off during the renaming, otherwise it fails on NEW.day or NEW.tag.
-      await c.query('ALTER TABLE part_acquisitions DISABLE TRIGGER part_acquisitions_tag');
+      await c.query('ALTER TABLE part_acquisitions DISABLE TRIGGER part_acquisitions_day');
       await c.query('ALTER TABLE part_acquisitions RENAME COLUMN day TO tag');
       await c.query(fs.readFileSync(MIGRATION, 'utf8'));
       await c.query('ALTER TABLE part_acquisitions RENAME COLUMN tag TO day');
-      await c.query('ALTER TABLE part_acquisitions ENABLE TRIGGER part_acquisitions_tag');
+      await c.query('ALTER TABLE part_acquisitions ENABLE TRIGGER part_acquisitions_day');
 
       const farben = async (u, nr) =>
         (

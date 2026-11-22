@@ -79,7 +79,7 @@ test('context per query in the pipeline', { concurrency: 1 }, async t => {
     B = await konto('b');
   for (const u of [A, B]) await eigen.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1')`, [u]);
   const allSets = () => app.all('SELECT user_id FROM sets');
-  const account_ = () => app.get(`SELECT current_setting('app.konto', true) AS k`);
+  const account_ = () => app.get(`SELECT current_setting('app.account', true) AS k`);
 
   await t.test('after a request with an account the next one without an account sees nothing', async () => {
     assert.deepEqual(ids(await als(A, allSets)), [A]);

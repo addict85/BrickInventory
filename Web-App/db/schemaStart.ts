@@ -81,7 +81,7 @@ export async function initSchemaOnce(
   }
 }
 
-/** The configured time zone for the trigger erfassung_tag() (migration
+/** The configured time zone for the trigger acquisition_day() (migration
  * 0078) — in the database, so every connection computes the same day. */
 async function writeEntryTimeZone(client: import('pg').ClientBase, timeZone: string): Promise<void> {
   await client.query(

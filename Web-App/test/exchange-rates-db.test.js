@@ -7,9 +7,9 @@
  *
  * Counter-checks (measured on 30.10.2026):
  *   A  in purchasePriceIn() again `CASE WHEN currency = w THEN spalte END`
- *      instead of in_waehrung(…) → red: “set” (purchase_price null instead of 65.25),
+ *      instead of in_currency(…) → red: “set” (purchase_price null instead of 65.25),
  *      “price history”, “part”
- *   B  in kurs_je_eur() `k.tag <= t` replaced by `k.tag = t` (no
+ *   B  in rate_per_eur() `k.tag <= t` replaced by `k.tag = t` (no
  *      fallback to the previous day) → red: “set” (purchase_price 38 instead of 65.25),
  *      “price history” (null instead of 92.5)
  *   C  ecbFetch without checking the scheme → red: “only HTTPS to the ECB host”

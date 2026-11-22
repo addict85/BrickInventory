@@ -120,7 +120,7 @@ test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, asy
       fs.writeFileSync(path.join(ordner, `${nr}.jpg`), checkerboard());
       assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), 'Vorschau');
       await catalogSet(db, nr, { name: 'Durchsichtig', year: 2020, theme: 'Bildprobe', pieces: 10 });
-      await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_nummer_mit_version($1)', [
+      await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_number_with_version($1)', [
         nr,
         `/images/sets/${nr}.jpg`,
       ]);

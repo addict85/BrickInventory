@@ -28,7 +28,7 @@ export async function accountImageRows(db: DbInterface, sn: string): Promise<Acc
   const z = await db.get<AccountImageRow>(
     `SELECT n.anzahl AS anzahl_konten, CASE WHEN n.anzahl > 0 THEN c.image_local END AS image_local,
             CASE WHEN n.anzahl > 0 THEN c.image_url END AS image_url
-       FROM (SELECT konten_mit_set($1) AS anzahl) n LEFT JOIN set_catalog c ON c.set_number = $1`,
+       FROM (SELECT accounts_with_set($1) AS anzahl) n LEFT JOIN set_catalog c ON c.set_number = $1`,
     [sn],
   );
   return z ?? { anzahl_konten: 0, image_local: null, image_url: null };

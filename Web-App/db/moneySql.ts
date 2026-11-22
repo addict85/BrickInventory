@@ -8,7 +8,7 @@
  * at the rate of the purchase day or before (0077). Without a rate NULL: the price then
  * counts as "foreign currency, not included". */
 export function purchasePriceIn(column: string, w: string): string {
-  return `in_waehrung(${column}, currency, ${w}, COALESCE(day, (created_at AT TIME ZONE 'UTC')::date))`;
+  return `in_currency(${column}, currency, ${w}, COALESCE(day, (created_at AT TIME ZONE 'UTC')::date))`;
 }
 
 /** The three columns of every acquisition query of the valuation: price, foreign, converted. */

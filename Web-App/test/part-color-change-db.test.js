@@ -16,7 +16,7 @@
  *      color_id`)
  *      → `pass 4 / fail 4`. Cases 2, 3 and 4 are red, all three with
  *        `duplicate key value violates unique constraint
- *        "idx_parts_eindeutig"` — every case in which the target color already
+ *        "idx_parts_unique"` — every case in which the target color already
  *        stands there. Marco's normal case.
  *   C  rememberPartColor() not called
  *      → `pass 6 / fail 2`. Case 1 is red: „Der Farbkatalog nennt die Farbe

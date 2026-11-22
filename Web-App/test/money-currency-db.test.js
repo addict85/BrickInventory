@@ -8,7 +8,7 @@
  *      ((unitAvg * qty).toFixed(2)) → red: “120.3333 × 3 is 361.00” (360.99)
  *   B  kaufpreise_fremde_waehrung fixed to 0 in valueSets → red:
  *      “a purchase price in EUR is counted”
- *   C  erfassung_waehrung() in the database reset to the old body (account, otherwise
+ *   C  acquisition_currency() in the database reset to the old body (account, otherwise
  *      EUR) → red: “without an account currency the installation's applies”
  *   D  tileValues() not attached in gewinnVerlust.ts → red: “the tile
  *      comes ready-made from the server”

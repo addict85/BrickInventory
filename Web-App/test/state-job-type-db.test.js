@@ -125,11 +125,11 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
         tab === 'wanted'
           ? `INSERT INTO wanted (user_id, set_number, condition) VALUES ((SELECT min(id) FROM users), '9-1', 'n')`
           : `INSERT INTO price_cache (set_number, condition, currency_code) VALUES ('9-1', 'n', 'EUR')`;
-      await assert.rejects(db.run(sql), new RegExp(`${tab}_zustand`));
+      await assert.rejects(db.run(sql), new RegExp(`${tab}_condition`));
     }
   });
 
   await t.test('an unknown job kind is rejected', async () => {
-    await assert.rejects(db.run(`INSERT INTO jobs (type) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
+    await assert.rejects(db.run(`INSERT INTO jobs (type) VALUES ('gibt_es_nicht')`), /jobs_type_fkey/);
   });
 });

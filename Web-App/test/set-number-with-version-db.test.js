@@ -31,6 +31,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { holdsPart } = require('./helpers/inventory');
+const { before0127, after0127 } = require('./helpers/names-0127');
 const MIG = n => fs.readFileSync(path.join(__dirname, '..', 'db/migrations', n), 'utf8');
 const PID = process.pid;
 
@@ -45,9 +46,9 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       await c.query('BEGIN');
       // State before 0074: no triggers, no CHECK rule.
       await c.query(`DO $$ DECLARE r record; BEGIN
-        FOR r IN SELECT tgname, tgrelid::regclass AS t FROM pg_trigger WHERE tgname LIKE '%\\_setnummer' LOOP
+        FOR r IN SELECT tgname, tgrelid::regclass AS t FROM pg_trigger WHERE tgname LIKE '%\\_set\\_number' LOOP
           EXECUTE format('DROP TRIGGER %I ON %s', r.tgname, r.t); END LOOP;
-        FOR r IN SELECT conname, conrelid::regclass AS t FROM pg_constraint WHERE conname LIKE '%\\_setnummer\\_mit\\_version' LOOP
+        FOR r IN SELECT conname, conrelid::regclass AS t FROM pg_constraint WHERE conname LIKE '%\\_set\\_number\\_with\\_version' LOOP
           EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.t, r.conname); END LOOP; END $$`);
       // And before 0105: set_catalog with its own master columns, without reference to rb_sets.
       await c.query(`ALTER TABLE set_catalog DROP CONSTRAINT set_catalog_rb_sets_fkey,
@@ -104,7 +105,8 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       // renamed it right afterwards, as with a real order of the migrations.
       // The trigger (0070/0124) only knows the respective current column, so switch it off
       // during the renaming.
-      await c.query('ALTER TABLE set_acquisitions DISABLE TRIGGER set_acquisitions_tag');
+      await c.query('ALTER TABLE set_acquisitions DISABLE TRIGGER set_acquisitions_day');
+      await before0127(c);
       await c.query('ALTER TABLE set_acquisitions RENAME COLUMN day TO tag');
       await c.query('ALTER TABLE set_parts RENAME TO set_teile');
       await c.query('ALTER TABLE set_minifigs RENAME TO set_figuren');
@@ -112,7 +114,8 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       await c.query('ALTER TABLE set_teile RENAME TO set_parts');
       await c.query('ALTER TABLE set_figuren RENAME TO set_minifigs');
       await c.query('ALTER TABLE set_acquisitions RENAME COLUMN tag TO day');
-      await c.query('ALTER TABLE set_acquisitions ENABLE TRIGGER set_acquisitions_tag');
+      await after0127(c);
+      await c.query('ALTER TABLE set_acquisitions ENABLE TRIGGER set_acquisitions_day');
 
       assert.deepEqual(
         await q('SELECT set_number, storage_id FROM sets WHERE user_id=$1 ORDER BY 1', [A]),

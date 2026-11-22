@@ -8,7 +8,7 @@
  *   A  in runCatalogFollowUp() instead of the groups the whole account deleted and
  *      rebuilt (`nurGruppen` false, DELETE without part_key) → red: “other
  *      accounts and other groups stay”
- *   B  in the trigger merke_teilekatalog_beide() only `neu` read (the old
+ *   B  in the trigger remember_parts_catalog_both() only `neu` read (the old
  *      BrickLink number is missing) → red: “a new BrickLink mapping …”
  *      (the group of W keeps counting X: 3 instead of 1)
  *   C  the follow-up left out in summaryFresh() → red: “a changed

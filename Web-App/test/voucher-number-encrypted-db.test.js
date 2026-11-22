@@ -213,8 +213,8 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
   await t.test('a legacy stock is re-encrypted at startup, including a backup copy', async () => {
     // The state before 0087: number in plain text, unique via (user_id, number).
     await db.run('DELETE FROM vouchers');
-    await db.run(`ALTER TABLE vouchers DROP CONSTRAINT vouchers_nummer_verschluesselt,
-      DROP CONSTRAINT vouchers_user_id_nummer_suche_key, DROP COLUMN number_search,
+    await db.run(`ALTER TABLE vouchers DROP CONSTRAINT vouchers_number_encrypted,
+      DROP CONSTRAINT vouchers_user_id_number_search_key, DROP COLUMN number_search,
       ADD CONSTRAINT vouchers_user_id_number_key UNIQUE (user_id, number)`);
     await db.run(
       `DELETE FROM schema_migrations WHERE name IN ('0087-gutscheinnummer-verschluesselt.sql', '0088-geheimnisse-mit-kontext.sql')`,

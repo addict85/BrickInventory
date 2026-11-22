@@ -12,7 +12,7 @@
  *      red: “copies older than the period …”
  *   D  cleanLogOn() with 3650 instead of 365 days → red: “log lines
  *      older than a year …”
- *   Since migration 0117 the function verwaltungsprotokoll_aufraeumen() cleans up (repeated
+ *   Since migration 0117 the function admin_log_cleanup() cleans up (repeated
  *   14.11.2026): there `target_name = target_name` → red like B; 3650 instead of 365 days → red like D.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.

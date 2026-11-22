@@ -13,7 +13,7 @@
  *
  * Counter-check (06.11.2026): createShadow again with INCLUDING ALL without
  * EXCLUDING CONSTRAINTS → red: “set numbers without version suffix get it
- * on swap” (rb_inventories_setnummer_mit_version in the shadow table).
+ * on swap” (rb_inventories_set_number_with_version in the shadow table).
  *
  * Counter-checks for “rb_sets reproduces the dump” (10.11.2026, in
  * syncSets(), src/catalog/repository/csvSwap.ts, each alone):

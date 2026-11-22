@@ -1,5 +1,5 @@
 /**
- * Row security follows app.konto, and any SQL can set it. Whoever moves it to another account
+ * Row security follows app.account, and any SQL can set it. Whoever moves it to another account
  * inside a request (single query or transaction) gets an error instead of data, and the
  * ROLLBACK also takes back a setting forged at session level (contextCheckSql in
  * db/transaction.ts). Runtime role with one connection: each request inherits the previous one's.
@@ -28,9 +28,9 @@ const { asRequest } = _req('src/infra/accountContext.js');
 
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
-const GEFAELSCHT = /app\.konto changed within the transaction/;
+const GEFAELSCHT = /app\.account changed within the transaction/;
 
-test('app.konto cannot be switched unnoticed within a request', { concurrency: 1 }, async t => {
+test('app.account cannot be switched unnoticed within a request', { concurrency: 1 }, async t => {
   const zugang = await accessOrSkip(t, _req);
   if (!zugang) return;
   t.after(() => zugang.pool.end().catch(() => {}));
@@ -55,7 +55,7 @@ test('app.konto cannot be switched unnoticed within a request', { concurrency: 1
   for (const u of [A, B]) await eigen.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1')`, [u]);
   const setsOf = async uid =>
     (await eigen.all(`SELECT set_number FROM sets WHERE user_id = $1 ORDER BY 1`, [uid])).map(z => z.set_number);
-  const wechsel = `SELECT set_config('app.konto', '${B}', true)`;
+  const wechsel = `SELECT set_config('app.account', '${B}', true)`;
 
   await t.test('a switch inside a transaction ends it as an error', async () => {
     let gesehen = null;
@@ -88,7 +88,7 @@ test('app.konto cannot be switched unnoticed within a request', { concurrency: 1
 
   await t.test('a setting forged at session level does not stick to the connection', async () => {
     await assert.rejects(
-      als(A, () => app.run(`SELECT set_config('app.konto', '${B}', false)`)),
+      als(A, () => app.run(`SELECT set_config('app.account', '${B}', false)`)),
       GEFAELSCHT,
     );
     assert.deepEqual(await app.all('SELECT user_id FROM sets'), [], 'ohne Konto sieht die nächste Anfrage nichts');

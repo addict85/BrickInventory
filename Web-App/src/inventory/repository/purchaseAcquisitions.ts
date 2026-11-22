@@ -128,7 +128,7 @@ export async function setPriceEstimated(
   ]);
 }
 
-/** Amounts into the account's currency, at the day's rate (in_waehrung, 0077); null without a rate. */
+/** Amounts into the account's currency, at the day's rate (in_currency, 0077); null without a rate. */
 export async function inCurrencyOfAccount(
   db: DbInterface,
   uid: number,
@@ -137,11 +137,11 @@ export async function inCurrencyOfAccount(
   days: (string | null)[],
 ) {
   const rows = await db.all<{ i: string; k: number | null }>(
-    `SELECT t.i, in_waehrung(t.b, COALESCE(t.c, konto_waehrung($1)), konto_waehrung($1), COALESCE(t.d, CURRENT_DATE))::float8 AS k
+    `SELECT t.i, in_currency(t.b, COALESCE(t.c, account_currency($1)), account_currency($1), COALESCE(t.d, CURRENT_DATE))::float8 AS k
        FROM unnest($2::numeric[], $3::text[], $4::date[]) WITH ORDINALITY AS t(b, c, d, i)`,
     [uid, amounts, currencies, days],
   );
-  const waehrung = (await db.get<{ w: string }>('SELECT konto_waehrung($1) AS w', [uid]))?.w ?? 'EUR';
+  const waehrung = (await db.get<{ w: string }>('SELECT account_currency($1) AS w', [uid]))?.w ?? 'EUR';
   const from: (number | null)[] = amounts.map(() => null);
   for (const z of rows) from[Number(z.i) - 1] = z.k == null ? null : Number(z.k);
   return { waehrung, amounts: from };

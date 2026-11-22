@@ -48,5 +48,5 @@ export async function lastEntries(db: DbInterface, count = 200) {
 /** No app role has UPDATE and DELETE (0117): the retention period (one year) and the rule are fixed in
  * the owner's function. */
 export async function cleanLogOn(db: DbInterface): Promise<number> {
-  return (await db.get<{ n: number }>('SELECT verwaltungsprotokoll_aufraeumen() AS n'))?.n ?? 0;
+  return (await db.get<{ n: number }>('SELECT admin_log_cleanup() AS n'))?.n ?? 0;
 }

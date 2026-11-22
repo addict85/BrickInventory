@@ -32,7 +32,7 @@
  *      in pdfAuftragZeile → red: “a PDF job of a foreign account …”
  *
  * Counter-check credentials only of the own account (migration 0114, measured 14.11.2026):
- *   T  in 0114 again `user_id = ANY (zeilenschutz_konten())` instead of `= zeilenschutz_konto()`
+ *   T  in 0114 again `user_id = ANY (row_security_accounts())` instead of `= row_security_account()`
  *      → red: “credentials of the sub-account stay …” (A saw the passkey of B)
  *   U  (migration 0118) `vouchers` deleted from the list in 0118 → red: “… vouchers and
  *      idempotency entries of the sub-account” (A saw the voucher of B); likewise with `idempotency`
@@ -44,9 +44,9 @@
  *      „inSystemContext mitten …“, “a signal handler …”, “a request inherits …”;
  *      only the policy removed (RLS on) → the same and “a job …” (0 rows)
  *   B  in contextSql() (db/database.ts) always '' → red: all subtests
- *   C  set_config(…, false) instead of true for app.konto → red: „ohne Konto …“ (the
+ *   C  set_config(…, false) instead of true for app.account → red: „ohne Konto …“ (the
  *      connection carries account A on) and “in the system context …”
- *   D  zeilenschutz_konten() without the sub-accounts → red: “with account A …”,
+ *   D  row_security_accounts() without the sub-accounts → red: “with account A …”,
  *      „ohne Konto …“, “foreign user_id …”, “a signal handler …”
  *   E  in inJobFrame() the marker KONTOUEBERGREIFEND not respected → red: “a job …”
  *   F  after ROLLBACK TO SAVEPOINT stand.kontext not reset → red:

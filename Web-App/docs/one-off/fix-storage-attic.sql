@@ -126,7 +126,7 @@ SELECT u.username                                        AS konto,
 
 -- ── Schritt 1: Der Zielort kommt in den Vorrat ─────────────────────────────
 --
--- ON CONFLICT auf den Index storage_locations_konto_name (user_id,
+-- ON CONFLICT auf den Index storage_locations_account_name (user_id,
 -- lower(name)): „Estrich" und „estrich" sind dasselbe Regal, und ein zweiter
 -- Eintrag waere eine Falle in der Auswahlliste, keine Wahlmoeglichkeit.
 INSERT INTO storage_locations (user_id, name)

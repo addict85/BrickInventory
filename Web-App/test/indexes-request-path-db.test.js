@@ -14,7 +14,7 @@ const db = testData();
 // parts.bl_part_number, and migration 0037 deleted the column (the
 // BrickLink number now stands in bl_mapping). Postgres removes
 // dependent indexes itself on DROP COLUMN.
-const EXPECTED = ['idx_set_figuren_fig', 'idx_sets_setnum'];
+const EXPECTED = ['idx_set_minifigs_fig', 'idx_sets_set_num'];
 
 /**
  * Fetch the plan of a query — without the table scan escape.
@@ -95,10 +95,10 @@ test('request path: the three indexes exist and the planner can take them', asyn
     );
 
     const minifigPlan = await plan(`SELECT set_number FROM set_minifigs_catalog WHERE fig_number = 'x' LIMIT 1`);
-    assert.match(minifigPlan, /idx_set_figuren_fig/, `Plan:\n${minifigPlan}`);
+    assert.match(minifigPlan, /idx_set_minifigs_fig/, `Plan:\n${minifigPlan}`);
 
     const setPlan = await plan(`SELECT user_id FROM sets WHERE set_number = 'x' ORDER BY user_id`);
-    assert.match(setPlan, /idx_sets_setnum/, `Plan:\n${setPlan}`);
+    assert.match(setPlan, /idx_sets_set_num/, `Plan:\n${setPlan}`);
 
     // COUNTER-CHECK for the BrickLink lookup: a column with NO index on it
     // must lead to a table scan. Otherwise the

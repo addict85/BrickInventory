@@ -32,7 +32,7 @@ test('an inventory is found under both spellings', { concurrency: 1 }, async t =
 
   try {
     // 1. Written BLANK: the database stores the number with a suffix.
-    //    Counter-check (30.10.2026): trigger rb_inventories_setnummer removed
+    //    Counter-check (30.10.2026): trigger rb_inventories_set_number removed
     //    → red (“is stored with a version suffix”: 9xxxxxx instead of 9xxxxxx-1).
     await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,1)', [idBlank, NR]);
     assert.equal(

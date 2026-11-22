@@ -182,7 +182,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     await db.run('DELETE FROM second_factor WHERE user_id = ANY($1)', [ids]);
     fs.rmSync(dateien.VOUCHER_DIR, { recursive: true, force: true });
     // Number and PIN v1, as before the context; the CHECK of the table now requires v2.
-    await db.run('ALTER TABLE vouchers DROP CONSTRAINT vouchers_nummer_verschluesselt');
+    await db.run('ALTER TABLE vouchers DROP CONSTRAINT vouchers_number_encrypted');
     const nr = '5045076374450044444';
     const id = (
       await db.get(
@@ -191,7 +191,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
         [a, alsV1(nr), gr.numberSearch(a, nr), alsV1('4444')],
       )
     ).id;
-    await db.run(`ALTER TABLE vouchers ADD CONSTRAINT vouchers_nummer_verschluesselt
+    await db.run(`ALTER TABLE vouchers ADD CONSTRAINT vouchers_number_encrypted
       CHECK (number LIKE 'v2:%' AND number_search IS NOT NULL) NOT VALID`);
     await db.run("UPDATE global_settings SET value = $1 WHERE key = 'smtp_pass'", [alsV1('Smtp-Alt-2')]);
     const totp = zf.base32(crypto.randomBytes(20));

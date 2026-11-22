@@ -1,12 +1,12 @@
 /**
  * The version rule of the set number stands twice: withVersion() in src/infra/setNumber.ts and
- * set_nummer_mit_version() in the database (migration 0074, trigger on set_number/set_num).
+ * set_number_with_version() in the database (migration 0074, trigger on set_number/set_num).
  * Both run here over the same inputs: the candidates of the shared corpus
  * (shared/setnummer-korpus.json), the same with a version suffix, and edge cases.
  *
  * Counter-checks (measured 15.11.2026, each on its own):
  *   A  withVersion checks `/-\d+/` without `$` → red: “both versions attach the same” ('10179-1b: SQL 10179-1b-1')
- *   B  in the test database set_nummer_mit_version switched to `n ~ '-'` (CREATE OR REPLACE
+ *   B  in the test database set_number_with_version switched to `n ~ '-'` (CREATE OR REPLACE
  *      before the comparison) → red: the same check ('10179-', '10179-1b', 'a-b')
  *
  * REQUIRE_DB=1.
@@ -41,7 +41,7 @@ test('both versions attach the same', { concurrency: 1 }, async t => {
   assert.ok(alle.length >= 40, `nur ${alle.length} Eingaben — liest der Test den Korpus noch?`);
   assert.ok(alle.some(x => withVersion(x) === x) && alle.some(x => withVersion(x) !== x), 'beide Zweige');
   const zeilen = await db.all(
-    'SELECT e AS ein, set_nummer_mit_version(e) AS aus FROM unnest($1::text[]) WITH ORDINALITY AS u(e, i) ORDER BY i',
+    'SELECT e AS ein, set_number_with_version(e) AS aus FROM unnest($1::text[]) WITH ORDINALITY AS u(e, i) ORDER BY i',
     [alle],
   );
   assert.equal(zeilen.length, alle.length);

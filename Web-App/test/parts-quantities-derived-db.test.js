@@ -136,17 +136,17 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
   // every repeated import of the same set created new rows. From 0038 on …
   const ix = await indizes();
   for (const name of [
-    'idx_parts_eindeutig',
-    'idx_minifigs_eindeutig',
-    'idx_part_acq_erfassungstag',
-    'idx_minifig_acq_erfassungstag',
+    'idx_parts_unique',
+    'idx_minifigs_unique',
+    'idx_part_acq_acquisition_day',
+    'idx_minifig_acq_acquisition_day',
   ]) {
     assert.ok(ix.includes(name), `${name} fehlt (Migration 0038, Schritt 5/6)`);
   }
 
   // And they really are UNIQUE — an index with the same name but
   // without UNIQUE could not be told apart here otherwise.
-  for (const name of ['idx_parts_eindeutig', 'idx_minifigs_eindeutig']) {
+  for (const name of ['idx_parts_unique', 'idx_minifigs_unique']) {
     const r = await db.get(
       `SELECT indisunique FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
         WHERE c.relname = $1`,

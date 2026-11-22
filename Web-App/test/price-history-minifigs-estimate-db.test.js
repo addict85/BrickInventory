@@ -110,8 +110,8 @@ test('price history per day and marked estimates', { concurrency: 1 }, async t =
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
-      await c.query('DROP INDEX idx_part_price_history_tag');
-      await c.query('DROP INDEX idx_minifig_price_history_tag');
+      await c.query('DROP INDEX idx_part_price_history_day');
+      await c.query('DROP INDEX idx_minifig_price_history_day');
       for (const [p, zeit] of [
         [3, '08:00'],
         [4, '12:00'],

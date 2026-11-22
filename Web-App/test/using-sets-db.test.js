@@ -98,7 +98,7 @@ test('the list of using sets follows the viewport', async t => {
   // ── A second row for the same key is rejected ──────────
   //
   // The setup above claims it cannot exist. Without this probe
-  // that would only be a claim in the comment; if idx_parts_eindeutig falls
+  // that would only be a claim in the comment; if idx_parts_unique falls
   // away, the old duplication would come back — and with it two piece counts for
   // the same position, one of which is wrong.
   await assert.rejects(
@@ -108,7 +108,7 @@ test('the list of using sets follows the viewport', async t => {
                   VALUES ($1,'75192-1','3001',4,'set')`,
         [haupt],
       ),
-    /idx_parts_eindeutig|duplicate key/,
+    /idx_parts_unique|duplicate key/,
     'Eine zweite parts-Zeile fuer dasselbe Konto, Set, Teil und dieselbe Farbe ' +
       'wurde angenommen — dann gibt es die Stueckzahl wieder zweimal',
   );
