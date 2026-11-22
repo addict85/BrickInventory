@@ -138,7 +138,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   });
 
   await t.test('valuation: numbers per account', async () => {
-    const repo = require('./helpers/sources').testArea('finances').bewertung;
+    const repo = require('./helpers/sources').testArea('finances').valuation;
     // Every account values its stock; two foreign accounts are never in one valuation.
     const je2 = async f => [...(await asAccount(ANNA, () => f([ANNA]))), ...(await asAccount(BRUNO, () => f([BRUNO])))];
     const figuren = await je2(ids => repo.manualMinifigsToValuation(ids));

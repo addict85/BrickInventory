@@ -30,7 +30,7 @@ async function seriesFor(
   currency: string,
   cond: 'N' | 'U',
 ): Promise<PricePoint[]> {
-  return k.preisverlauf.dailyPricesOfSets(setNumber, currency, cond);
+  return k.priceHistory.dailyPricesOfSets(setNumber, currency, cond);
 }
 
 /** Market versus purchase price in one condition; pnl_pct is the old text form. */
@@ -57,7 +57,7 @@ export async function priceHistorySet(
     seriesFor(k, setNumber, currency, 'U'),
   ]);
 
-  const currentRows = await k.preisverlauf.cachePricesOfSets(setNumber, currency);
+  const currentRows = await k.priceHistory.cachePricesOfSets(setNumber, currency);
   const now = (c: string) => {
     const r = currentRows.find(z => z.condition === c);
     return r ? { ...r, avg_price: marketPriceFrom(r) } : null;
@@ -65,7 +65,7 @@ export async function priceHistorySet(
   const current = { N: now('N'), U: now('U') };
 
   // Purchase price from the FIRST acquisition; every set row has at least one.
-  const set = await k.preisverlauf.firstPurchaseOfSets(uids, setNumber, currency);
+  const set = await k.priceHistory.firstPurchaseOfSets(uids, setNumber, currency);
 
   const hasCost = set?.purchase_price != null; // 0 counts as captured
   const purchasePrice = Number(set?.purchase_price ?? 0);
@@ -98,7 +98,7 @@ export async function priceHistorySet(
   const pnlPct = baselineHas ? (developmentPercent(baselinePrice, currentPrice)?.toFixed(1) ?? null) : null;
 
   // Only conditions with an acquisition, otherwise a percentage against nothing would stand there.
-  const acqByCond = await k.preisverlauf.purchaseAverageOfSets(uids, setNumber, currency);
+  const acqByCond = await k.priceHistory.purchaseAverageOfSets(uids, setNumber, currency);
 
   const byCondition: Record<string, StateComparison> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -150,8 +150,8 @@ export async function conditionRows(
   const uids = asIds(uid);
   // DESC: since the figure history queries both numbers, there can be two rows
   // per condition, and `.find()` should take the newest.
-  const cacheRows = await k.preisverlauf.cachePricesAfterKey(art, keySql, keyVals, currency);
-  const acqRows = await k.preisverlauf.purchaseAveragesByKey(art, acqKeySql, acqKeyVals, uids, currency);
+  const cacheRows = await k.priceHistory.cachePricesAfterKey(art, keySql, keyVals, currency);
+  const acqRows = await k.priceHistory.purchaseAveragesByKey(art, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, StateComparison> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -183,8 +183,8 @@ async function manualPriceHistory(
   acqKeyVals: unknown[] = keyVals,
 ) {
   const [historyNew, historyUsed, by_condition] = await Promise.all([
-    k.preisverlauf.manualSeries(art, keySql, keyVals, currency, 'N'),
-    k.preisverlauf.manualSeries(art, keySql, keyVals, currency, 'U'),
+    k.priceHistory.manualSeries(art, keySql, keyVals, currency, 'N'),
+    k.priceHistory.manualSeries(art, keySql, keyVals, currency, 'U'),
     conditionRows(k, art, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Only conditions with an acquisition are drawn; the raw series stay complete.
@@ -259,6 +259,6 @@ async function priceNumbersForMinifig(
 export async function deleteOldPrices(k: FinancesContext): Promise<number> {
   const days = k.konfig.priceHistoryDays;
   if (days <= 0) return 0;
-  const r = await k.preisverlauf.deleteOldHistory(String(days));
+  const r = await k.priceHistory.deleteOldHistory(String(days));
   return r?.changes || 0;
 }

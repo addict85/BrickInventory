@@ -12,13 +12,13 @@ export async function rememberBefore<A extends JobKind>(
   payload: (versuch: number) => PayloadInput<A>,
   o: { dueAb: Date; fehler: string; hoechstens: number },
 ): Promise<{ versuch: number; vorgemerkt: boolean }> {
-  const versuch = (await k.auftraege.highestCounter(key, 'versuch')) + 1;
+  const versuch = (await k.jobs.highestCounter(key, 'versuch')) + 1;
   if (versuch > o.hoechstens) {
-    await k.auftraege.openDelete(key);
+    await k.jobs.openDelete(key);
     return { versuch, vorgemerkt: false };
   }
   const n = k.arten.check(art, payload(versuch));
-  await k.auftraege.writeResubmission(art, key, n as object, {
+  await k.jobs.writeResubmission(art, key, n as object, {
     dueAb: o.dueAb,
     fehler: o.fehler,
     maxAttempts: 3,
@@ -28,7 +28,7 @@ export async function rememberBefore<A extends JobKind>(
 }
 
 export async function forget(k: JobsContext, key: string): Promise<void> {
-  await k.auftraege.openDelete(key);
+  await k.jobs.openDelete(key);
 }
 
 /** Due right away, without a key the whole kind; a pause of the kind stays. */
@@ -37,14 +37,14 @@ export async function now(k: JobsContext, art: JobKind, key?: string): Promise<n
 }
 
 export async function prefer(k: JobsContext, art: JobKind, bis: Date): Promise<void> {
-  await k.auftraege.pullAppointmentsBefore(art, bis);
+  await k.jobs.pullAppointmentsBefore(art, bis);
 }
 
 export function waiting(k: JobsContext, art: JobKind) {
-  return k.auftraege.waitingTheKind(art);
+  return k.jobs.waitingTheKind(art);
 }
 
 export async function numbers(k: JobsContext, art: JobKind): Promise<{ wartend: number; faellig: number }> {
-  const z = await k.auftraege.numbersTheKind(art);
+  const z = await k.jobs.numbersTheKind(art);
   return { wartend: z?.wartend ?? 0, faellig: z?.faellig ?? 0 };
 }

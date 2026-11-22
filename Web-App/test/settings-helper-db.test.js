@@ -26,7 +26,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { getGlobalSetting, setGlobalSetting, deleteGlobalValues } = _req('src/settings/settings.js');
-const { setState, readState, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+const { setState, readState, deleteState } = require('./helpers/sources').testArea('jobQueue').runState;
 
 test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;

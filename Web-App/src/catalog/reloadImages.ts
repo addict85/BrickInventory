@@ -45,7 +45,7 @@ async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
   // Lock on an OWN connection: advisory locks are bound to the session.
   let lockClient: PoolClient;
   try {
-    lockClient = await k.teileAnreicherung.lockConnection();
+    lockClient = await k.partsEnrichment.lockConnection();
   } catch (e) {
     return { error: errorMessage(e) || 'keine Verbindung' };
   }
@@ -124,7 +124,7 @@ const givesFile = (fp: string) =>
 /** Missing previews too: otherwise they only arise on capture and would have
  * no second chance. */
 async function searchMissingFiles(k: CatalogContext) {
-  const rows = await k.teileAnreicherung.localImagesWithAddress();
+  const rows = await k.partsEnrichment.localImagesWithAddress();
   const missing: MissingImage[] = [];
   const withoutPreview: string[] = [];
   for (const r of rows) {
@@ -183,9 +183,7 @@ async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: 
       else {
         // The list MUST match the tables that really have the column.
         for (const tbl of repo.CATALOGS_WITH_IMAGE) {
-          await k.teileAnreicherung
-            .forgetLocalImage(tbl, m.image_local)
-            .catch(logAndContinue(`img-redl:leeren ${tbl}`));
+          await k.partsEnrichment.forgetLocalImage(tbl, m.image_local).catch(logAndContinue(`img-redl:leeren ${tbl}`));
         }
         cleared++;
       }

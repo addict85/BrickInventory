@@ -55,7 +55,7 @@ export function rememberUsed(k: ImagesContext, url: string, setNumber: string | 
 }
 
 export async function noteImageDemand(k: ImagesContext, urls: string[], sets: (string | null)[]): Promise<void> {
-  await k.bildbedarf.rememberImageRequests(urls, sets);
+  await k.imageDemand.rememberImageRequests(urls, sets);
 }
 
 /** Written via the context of whoever started the tick (setUpImageDemand). */
@@ -94,21 +94,21 @@ export async function stopImageDemand(k: ImagesContext): Promise<void> {
 
 // Otherwise old notes remain.
 export async function deleteExpired(k: ImagesContext): Promise<number> {
-  const r = await k.bildbedarf.deleteOldImageRequests(String(NOTE_VALID_MS));
+  const r = await k.imageDemand.deleteOldImageRequests(String(NOTE_VALID_MS));
   return r?.changes || 0;
 }
 
 /** Reserve catalog images for the image demand; returns how many were newly added. */
 export async function catalogImagesReserve(k: ImagesContext, urls: string[], sets: string[]): Promise<number> {
-  return (await k.bildbedarf.seriesCatalogImagesOne(urls, sets))?.n ?? 0;
+  return (await k.imageDemand.seriesCatalogImagesOne(urls, sets))?.n ?? 0;
 }
 
 export async function openImageDemand(k: ImagesContext): Promise<number> {
-  return (await k.bildbedarf.countImageRequests())?.n ?? 0;
+  return (await k.imageDemand.countImageRequests())?.n ?? 0;
 }
 
 export async function emptyImageDemand(k: ImagesContext): Promise<number> {
-  return (await k.bildbedarf.deleteAllImageRequests())?.changes ?? 0;
+  return (await k.imageDemand.deleteAllImageRequests())?.changes ?? 0;
 }
 
 /** Taken out in one step so that two runs do not fetch the same images. */
@@ -117,5 +117,5 @@ export function takeImageRequests(
   validMs: number,
   count: number,
 ): Promise<{ url: string; set_number: string | null }[]> {
-  return k.bildbedarf.takeImageRequests(String(validMs), count);
+  return k.imageDemand.takeImageRequests(String(validMs), count);
 }

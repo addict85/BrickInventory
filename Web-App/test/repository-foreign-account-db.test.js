@@ -29,7 +29,7 @@ const { dataOrSkip } = require('./helpers/db');
 const erf = _req('src/inventory/repository/acquisitions.js');
 const manuell = {
   ..._req('src/inventory/repository/manualQuantities.js'),
-  ...require('./helpers/sources').testArea('inventory').manuelleMengen,
+  ...require('./helpers/sources').testArea('inventory').manualQuantities,
 };
 const versch = {
   ..._req('src/inventory/repository/reassign.js'),

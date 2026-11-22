@@ -90,7 +90,7 @@ export interface TokenCheck {
  * mandatory deadline — only for the swap itself. */
 /** For the stream: is the access still alive? Asked with the plaintext; the hash stays in the account. */
 export async function tokenGilt(k: AccountContext, plaintext: string): Promise<boolean> {
-  return !!(await k.zugaenge.validToken(tokenDigest(plaintext)));
+  return !!(await k.accesses.validToken(tokenDigest(plaintext)));
 }
 
 export async function checkToken(
@@ -120,7 +120,7 @@ export async function checkToken(
   // Only after the cache: whoever has a valid token in the cache is never slowed down.
   if (toManyFailedAttempts(o.ip)) return { nutzer: null, grund: 'zu_viele_anfragen' };
   const hashed = tokenDigest(token);
-  const row: TokenUser | undefined = await k.zugaenge.validToken(hashed);
+  const row: TokenUser | undefined = await k.accesses.validToken(hashed);
   if (!row) {
     forgetEntry(k, token);
     if (!(await reportReuse(k, hashed))) await countFailedAttempt(k, o.ip);
@@ -130,7 +130,7 @@ export async function checkToken(
   // so all guards see it the same way.
   row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
   if (row.previous_token) {
-    await k.zugaenge.endOverlap(row.previous_token, hashed);
+    await k.accesses.endOverlap(row.previous_token, hashed);
     row.previous_token = null;
     emptyTokenCache(k);
   }
@@ -143,7 +143,7 @@ export async function checkToken(
 
 /** A replaced token came back after the grace period: lock the family, notify the owner. */
 async function reportReuse(k: AccountContext, hash: string): Promise<boolean> {
-  const z = await k.zugaenge.lockFamily(hash, REUSE_GRACE_PERIOD_S);
+  const z = await k.accesses.lockFamily(hash, REUSE_GRACE_PERIOD_S);
   if (!z) return false;
   emptyTokenCache(k);
   console.warn(`[tokens] ersetzter Token erneut benutzt — Familie von Konto ${z.user_id} gesperrt`);
@@ -170,7 +170,7 @@ function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null
   const deadlineLags = u.sliding === true && !!u.expires_at && new Date(u.expires_at).getTime() < target - TAG_MS;
   if ((now - lastUsed < TAG_MS && !deadlineLags) || entry.schreibt) return;
   entry.schreibt = true;
-  void k.zugaenge
+  void k.accesses
     .touchToken(entry.dbKey, k.konfig.tokenIdleDays, ipArea(ip))
     .then(() => {
       // Update the cache too, otherwise the hit branch would once reject a just
@@ -241,7 +241,7 @@ export async function createToken(
 ): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
   const hash = tokenDigest(token);
-  await k.zugaenge.createToken({
+  await k.accesses.createToken({
     hash,
     userId,
     label,
@@ -251,7 +251,7 @@ export async function createToken(
     idleDays: k.konfig.tokenIdleDays,
     fixedDays: tokenDays(k, fixedDays),
   });
-  if (await k.zugaenge.capTokens(userId, hash, ACCESSES_AT_MOST - 1)) emptyTokenCache(k);
+  if (await k.accesses.capTokens(userId, hash, ACCESSES_AT_MOST - 1)) emptyTokenCache(k);
   return token;
 }
 
@@ -314,14 +314,14 @@ export async function rotateToken(kx: AccountContext, alt: string, ip?: string |
 
 export async function deleteToken(k: AccountContext, token: string): Promise<void> {
   if (!token) return;
-  await k.zugaenge.deleteToken(tokenDigest(token));
+  await k.accesses.deleteToken(tokenDigest(token));
   tokenForgotten(k, token);
 }
 
 /** No catch: a security step. If it failed silently, the caller would report
  * success while the old tokens stay valid. */
 export async function revokeAllTokens(k: AccountContext, userId: number): Promise<void> {
-  await k.zugaenge.deleteTokensOfAccount(userId);
+  await k.accesses.deleteTokensOfAccount(userId);
   emptyTokenCache(k);
 }
 
@@ -335,14 +335,14 @@ export async function tokensCleanup(k: AccountContext) {
     return r.ok ? r.wert : 0;
   };
   // Safety net beside migration 0126: a row without a fixed end gets one.
-  const g = await step('ohne Ende', () => k.zugaenge.boundUnlimited(k.konfig.tokenMaxDays));
+  const g = await step('ohne Ende', () => k.accesses.boundUnlimited(k.konfig.tokenMaxDays));
   if (g) console.log(`[tokens] ${g} Token ohne festes Ende auf ${k.konfig.tokenMaxDays} Tage begrenzt`);
-  const m = await step('Altzeilen nachziehen', () => k.zugaenge.pullOldRowsAfter(k.konfig.tokenIdleDays));
+  const m = await step('Altzeilen nachziehen', () => k.accesses.pullOldRowsAfter(k.konfig.tokenIdleDays));
   if (m)
     console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenIdleDays} Tagen gesetzt`);
-  const expired = await step('abgelaufene', () => k.zugaenge.deleteExpired());
-  const n = await step('ungenutzte', () => k.zugaenge.deleteUnused(k.konfig.tokenIdleDays));
-  await step('verbrauchte', () => k.zugaenge.deleteOrphanedConsumed());
+  const expired = await step('abgelaufene', () => k.accesses.deleteExpired());
+  const n = await step('ungenutzte', () => k.accesses.deleteUnused(k.konfig.tokenIdleDays));
+  await step('verbrauchte', () => k.accesses.deleteOrphanedConsumed());
   if (n) console.log(`[tokens] ${n} Token seit über ${k.konfig.tokenIdleDays} Tagen ungenutzt — entfernt`);
   if (without.length) throw new Error(`Token-Aufräumen ohne: ${without.join(', ')}`);
   return expired + n;

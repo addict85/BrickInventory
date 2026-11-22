@@ -20,10 +20,10 @@ export async function create(
   uid: number,
   days: number | null,
 ): Promise<{ token: string; kopplung: number }> {
-  await k.qrKopplung.cleanQrPairingsOn();
+  await k.qrPairing.cleanQrPairingsOn();
   const nonce = crypto.randomBytes(32).toString('base64url');
   const bis = new Date(k.uhr.jetzt() + QR_TTL_MS);
-  const kopplung = await k.qrKopplung.createQrPairing(tokenDigest(nonce), uid, bis, days, OPEN_PAIRINGS_AT_MOST);
+  const kopplung = await k.qrPairing.createQrPairing(tokenDigest(nonce), uid, bis, days, OPEN_PAIRINGS_AT_MOST);
   if (kopplung === null) failDomain('nicht_verfuegbar', 'server_ausgelastet');
   return { token: `bim:${nonce}`, kopplung };
 }
@@ -37,7 +37,7 @@ export async function reportDevice(
   if (typeof token !== 'string' || !token.startsWith('bim:')) return null;
   const abholung = crypto.randomBytes(32).toString('base64url');
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-  const z = await k.qrKopplung.report(tokenDigest(token.slice(4)), {
+  const z = await k.qrPairing.report(tokenDigest(token.slice(4)), {
     abholung: tokenDigest(abholung),
     codeHash: tokenDigest(code),
     geraet: tokenLabel(device, 'Android App'),
@@ -54,7 +54,7 @@ export type Pickup =
 
 const rowTo = (k: AccountContext, abholung: string | null | undefined) =>
   typeof abholung === 'string' && abholung
-    ? k.qrKopplung.afterPickup(tokenDigest(abholung))
+    ? k.qrPairing.afterPickup(tokenDigest(abholung))
     : Promise.resolve(undefined);
 
 /** With [vorschau] only the account: the app shows it and picks up the token only after the yes.
@@ -71,7 +71,7 @@ export async function fetchQrToken(
   if (z?.stand === 'abgelehnt') failDomain('verboten', 'qr_abgelehnt');
   if (z?.stand !== 'bestaetigt' || !(await may(z.user_id))) failDomain('nicht_angemeldet', 'token_ungueltig');
   if (preview) return { stand: 'bereit', uid: z.user_id };
-  if (!(await k.qrKopplung.markPickedUp(z.id))) failDomain('nicht_angemeldet', 'token_ungueltig');
+  if (!(await k.qrPairing.markPickedUp(z.id))) failDomain('nicht_angemeldet', 'token_ungueltig');
   const token = await createToken(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? null, {
     scope: 'app',
     ip,
@@ -84,12 +84,12 @@ export async function fetchQrToken(
 export async function discardPickup(k: AccountContext, abholung: string | null | undefined): Promise<boolean> {
   const z = await rowTo(k, abholung);
   if (z?.stand !== 'bestaetigt' && z?.stand !== 'wartet') return false;
-  await k.qrKopplung.markRejected(z.id);
+  await k.qrPairing.markRejected(z.id);
   return true;
 }
 
 export async function pairingState(k: AccountContext, kopplung: number, uid: number) {
-  const z = await k.qrKopplung.qrPairingOfAccount(kopplung, uid);
+  const z = await k.qrPairing.qrPairingOfAccount(kopplung, uid);
   return z ? { stand: z.stand, geraet: z.geraet, ip_range: z.ip_range } : null;
 }
 
@@ -106,19 +106,19 @@ export async function confirmPairing(
   uid: number,
   code: string | number | null | undefined,
 ): Promise<void> {
-  const z = await k.qrKopplung.qrPairingOfAccount(kopplung, uid);
+  const z = await k.qrPairing.qrPairingOfAccount(kopplung, uid);
   if (!z) failDomain('nicht_gefunden', 'nicht_gefunden');
   if (z.stand !== 'wartet') failDomain('konflikt', 'qr_nicht_wartend');
   if (!codeFits(z.code_hash, code)) {
-    if ((await k.qrKopplung.countQrFailedAttempt(z.id)) < QR_FAILED_ATTEMPTS) failDomain('ungueltig', 'qr_code_falsch');
-    await k.qrKopplung.markRejected(z.id);
+    if ((await k.qrPairing.countQrFailedAttempt(z.id)) < QR_FAILED_ATTEMPTS) failDomain('ungueltig', 'qr_code_falsch');
+    await k.qrPairing.markRejected(z.id);
     failDomain('verboten', 'qr_abgelehnt');
   }
-  if (!(await k.qrKopplung.markConfirmed(z.id))) failDomain('konflikt', 'qr_nicht_wartend');
+  if (!(await k.qrPairing.markConfirmed(z.id))) failDomain('konflikt', 'qr_nicht_wartend');
 }
 
 export async function rejectPairing(k: AccountContext, kopplung: number, uid: number): Promise<boolean> {
-  const z = await k.qrKopplung.qrPairingOfAccount(kopplung, uid);
-  if (z) await k.qrKopplung.markRejected(z.id);
+  const z = await k.qrPairing.qrPairingOfAccount(kopplung, uid);
+  if (z) await k.qrPairing.markRejected(z.id);
   return !!z;
 }

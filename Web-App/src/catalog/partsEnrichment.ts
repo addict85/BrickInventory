@@ -55,10 +55,10 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
   const invId = await newestInventory(k, setNumber);
   if (!invId) return;
 
-  const csvParts = await k.teileAnreicherung.partsOfInventory(invId);
+  const csvParts = await k.partsEnrichment.partsOfInventory(invId);
   if (!csvParts.length) return;
 
-  const catalogRows = await k.teileAnreicherung.setPartsCatalog(n);
+  const catalogRows = await k.partsEnrichment.setPartsCatalog(n);
   const catalogMap: Record<
     string,
     { image_url: string | null; image_local: string | null; bl_part_number?: string | null }
@@ -67,7 +67,7 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
 
   // The ROW in bl_mapping counts, not its value: empty means "looked up,
   // no differing number".
-  const lookedUp = await k.teileAnreicherung.blMappings(csvParts.map(p => p.part_num));
+  const lookedUp = await k.partsEnrichment.blMappings(csvParts.map(p => p.part_num));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
   // Only parts that were never looked up — every fetch costs quota.
@@ -163,7 +163,7 @@ async function rememberPartsOfSets(
   csvParts: Awaited<ReturnType<typeof repo.partsOfInventory>>,
   apiParts: Record<string, ApiTeil>,
 ): Promise<void> {
-  const blMapRows = await k.teileAnreicherung.blMappings(csvParts.map(p => p.part_num));
+  const blMapRows = await k.partsEnrichment.blMappings(csvParts.map(p => p.part_num));
   const blMap: Record<string, string | null> = {};
   for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
@@ -181,7 +181,7 @@ async function rememberPartsOfSets(
 }
 
 async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string): Promise<void> {
-  const existingFigs = await k.teileAnreicherung.minifigsInSetCatalog(n);
+  const existingFigs = await k.partsEnrichment.minifigsInSetCatalog(n);
 
   if (!existingFigs) {
     const figsData = await apiGet(
@@ -210,11 +210,11 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
   const rbKey = await k.externalSources.quellen.getRbKey();
   if (!rbKey) return;
 
-  const figs = await k.teileAnreicherung.minifigsOfSets(n);
+  const figs = await k.partsEnrichment.minifigsOfSets(n);
   if (!figs.length) return;
 
   const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
-  const invRows = await k.teileAnreicherung.inventoriesTheMinifigs(figNums);
+  const invRows = await k.partsEnrichment.inventoriesTheMinifigs(figNums);
 
   // Per set_num the highest version (first because of ORDER BY DESC).
   const invMap: Record<string, number> = {};
@@ -229,7 +229,7 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
     const invId = invMap[fig.fig_number];
     if (!invId) continue;
 
-    const parts = await k.teileAnreicherung.partsOfInventory(invId);
+    const parts = await k.partsEnrichment.partsOfInventory(invId);
 
     figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
     for (const p of parts) allPartNums.add(p.part_num);
@@ -238,7 +238,7 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
   if (!allPartNums.size) return;
 
   // bl_mapping: the number, once per part.
-  const rbBlRows = await k.teileAnreicherung.blMappings([...allPartNums]);
+  const rbBlRows = await k.partsEnrichment.blMappings([...allPartNums]);
   const rbBlMap: Record<string, string> = {};
   for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
 

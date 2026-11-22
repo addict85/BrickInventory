@@ -43,7 +43,7 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   const D_ = _req('src/jobQueue/service.js');
   const { rememberPricesBefore } = _req('src/finances/priceItems.js');
   const D = { ...D_, rememberPricesBefore: n => asAccount(uid, () => rememberPricesBefore(n)) };
-  const repo = require('./helpers/sources').testArea('jobQueue').auftraege;
+  const repo = require('./helpers/sources').testArea('jobQueue').jobs;
   const { createWorker } = _req('jobs/jobWorker.js');
   const leeren = () => db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
   const zeilen = () =>

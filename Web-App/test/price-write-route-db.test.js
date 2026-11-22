@@ -124,13 +124,13 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
     /** The same context, whose history is not writable — outside and in the transaction. */
     const kaputt = z => ({
       ...z,
-      preisCache: {
-        ...z.preisCache,
+      priceCache: {
+        ...z.priceCache,
         rememberSetHistory: async () => {
           throw new Error('Verlauf nicht schreibbar (Probe)');
         },
       },
-      transaction: fn => z.transact(t => fn(kaputt(t))),
+      transact: fn => z.transact(t => fn(kaputt(t))),
     });
     const k = kaputt(fk);
     const guide = { min_price: '8', avg_price: '10', max_price: '12', qty_avg_price: '9', total_quantity: '4' };

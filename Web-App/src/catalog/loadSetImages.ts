@@ -104,7 +104,7 @@ async function fetchImageLock(
   let lockClient: import('pg').PoolClient | null = null,
     haveXlock = false;
   try {
-    lockClient = await k.teileAnreicherung.lockConnection();
+    lockClient = await k.partsEnrichment.lockConnection();
   } catch (_) {
     lockClient = null;
   }
@@ -161,7 +161,7 @@ async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBus
   let _flushed = 0; // of which already reported to the counter (rest in finally)
   let _lastFlush = k.uhr.jetzt();
   try {
-    const needsImg = await k.teileAnreicherung.imagesWithoutFile(n);
+    const needsImg = await k.partsEnrichment.imagesWithoutFile(n);
     if (!needsImg.length) return;
 
     console.log(`[img-dl] ${n}: lade ${needsImg.length} Bilder`);

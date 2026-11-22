@@ -107,7 +107,7 @@ test('aborted client requests release the CDN connection', () => {
   // back pressure control held it, and the queue starved.
   assert.match(
     SERVER,
-    /res\.on\('close', \(\) => \{[\s\S]{0,400}?roh\.destroy\(\)/,
+    /res\.on\('close', \(\) => \{[\s\S]{0,400}?raw\.destroy\(\)/,
     'Der Abbruch muss die laufende CDN-Anfrage beenden',
   );
   // `!writableFinished` alone is too strict: depending on what sits between server
@@ -126,7 +126,7 @@ test('aborted client requests release the CDN connection', () => {
   );
   assert.match(
     SERVER,
-    /r\.verwerfen\(\);\s*r = await holen\(HEADER_SETS\[1\]\)/,
+    /r\.(?:verwerfen|discard)\(\);\s*r = await openCdn\(HEADER_SETS\[1\]\)/,
     'Beim Rückfall ohne Referer muss die erste Antwort freigegeben werden',
   );
 });

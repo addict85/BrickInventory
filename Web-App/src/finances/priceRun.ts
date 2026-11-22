@@ -103,8 +103,8 @@ interface RunState {
 
 /** Wishlist items too: /price-history only reads the cache; without this run their history would stay empty. */
 async function pricePlacesJeAccount(k: FinancesContext): Promise<Map<number, string[]>> {
-  const own = await k.preisLauf.inventoryPlaces();
-  const wanted = await attempts('preis-job:gewuenschte', k.preisLauf.wantedListsPlaces());
+  const own = await k.priceRun.inventoryPlaces();
+  const wanted = await attempts('preis-job:gewuenschte', k.priceRun.wantedListsPlaces());
   if (!wanted.ok) log('Merkliste nicht lesbar — nur eigene Sets');
   const jeAccount = new Map<number, string[]>();
   for (const r of [...own, ...(wanted.ok ? wanted.wert : [])].sort((a, b) => a.user_id - b.user_id)) {
@@ -175,10 +175,10 @@ async function refreshAccount(kx: FinancesContext, userId: number, setNumbers: s
 /** Once per run, not per fetch; a failure is recorded in the state, throwing it would repeat the whole run. */
 async function afterTheRun(k: FinancesContext, job?: JobContext) {
   log('Writing daily price_history snapshot from price_cache...');
-  const stand = await attempts('preis-job:tagesstand', k.preisLauf.writeDailyStatus());
+  const stand = await attempts('preis-job:tagesstand', k.priceRun.writeDailyStatus());
   if (stand.ok) log(`Daily snapshot: ${stand.wert} price history entries inserted`);
   const alerts = await attempts('preis-job:preisalarme', async () => {
-    const waiting = await k.preisLauf.setsWithAlarm();
+    const waiting = await k.priceRun.setsWithAlarm();
     let reported = 0;
     for (const sn of waiting) reported += await checkSet(k, sn, k.mail);
     if (waiting?.length) log(`Preisalarm: ${waiting.length} Sets geprueft, ${reported} gemeldet`);
@@ -262,8 +262,8 @@ async function statesJeSet(
     return m;
   };
 
-  const recorded = await collect(k.preisLauf.recordedStates(userId, setNumbers));
-  const wanted = await collect(k.preisLauf.desiredStates(userId, setNumbers));
+  const recorded = await collect(k.priceRun.recordedStates(userId, setNumbers));
+  const wanted = await collect(k.priceRun.desiredStates(userId, setNumbers));
 
   for (const sn of setNumbers) {
     // Without an acquisition the hint is the only source: the new set's acquisition is not yet

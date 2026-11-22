@@ -181,7 +181,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
         () =>
           Object.assign({}, _req('src/jobQueue/jobs.js'), {
             ..._req('src/jobQueue/service.js'),
-            ...require('./helpers/sources').testArea('jobQueue').auftraege,
+            ...require('./helpers/sources').testArea('jobQueue').jobs,
           }).done({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
         300,
       );

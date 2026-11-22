@@ -214,7 +214,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
   });
 
   await t.test('in the system context the cleanup sees all accounts', async () => {
-    const { papierkorb } = buildWith(app).contexts.inventory;
+    const { trash: papierkorb } = buildWith(app).contexts.inventory;
     assert.equal(await papierkorb.removeOlder(30), 0);
     assert.equal(await inSystemContext('test', () => papierkorb.removeOlder(30)), 3);
     assert.deepEqual(await su.all('SELECT id FROM trash'), []);

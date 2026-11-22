@@ -226,7 +226,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   // /admin/jobs delivers no empty lists.
   const auftrag = await {
     ..._req('src/jobQueue/service.js'),
-    ...require('./helpers/sources').testArea('jobQueue').auftraege,
+    ...require('./helpers/sources').testArea('jobQueue').jobs,
   }.placeJobOne('anleitung', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE jobs SET progress = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [
     auftrag,

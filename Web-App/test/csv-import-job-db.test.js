@@ -79,7 +79,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
   const b = await konto(`csvauftrag-b-${process.pid}`);
   const { placeJobOne } = Object.assign({}, _req('src/jobQueue/jobs.js'), {
     ..._req('src/jobQueue/service.js'),
-    ...require('./helpers/sources').testArea('jobQueue').auftraege,
+    ...require('./helpers/sources').testArea('jobQueue').jobs,
   });
   const { jobSet } = _req('src/jobQueue/importJob.js');
   const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {

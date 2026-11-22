@@ -23,7 +23,7 @@ function withFallback(echt: Sources, ersatz: Partial<Sources> | undefined): Sour
 export function createForeignSources(a: ForeignSourcesDependencies, inspect?: Inspect<ForeignSourcesContext>) {
   const k: ForeignSourcesContext = buildContext(a, access);
   inspect?.(k);
-  const drossel = rateLimiter.throttleRebrickable(k.apiTakt, k.uhr);
+  const drossel = rateLimiter.throttleRebrickable(k.apiTick, k.uhr);
   const quota = {
     quotaStatus: bound(k)(apiQuotaService.quotaOverview),
     quotaFree: bound(k)(apiQuotaService.quotaFree),

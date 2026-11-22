@@ -41,7 +41,7 @@ Module.prototype.require = function (name) {
 test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const { readState, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+  const { readState, deleteState } = require('./helpers/sources').testArea('jobQueue').runState;
   const { HEARTBEAT_KEY } = _req('startup/jobsProcess.js');
   await deleteState(HEARTBEAT_KEY);
   t.after(() => db.pool.end().catch(() => {}));

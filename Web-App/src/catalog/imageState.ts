@@ -8,11 +8,11 @@ import type { CatalogContext } from './context';
 
 export async function imagesForFollowUp(k: CatalogContext) {
   const [sets, teile, figuren] = await Promise.all([
-    k.bildlage.setsWithMissingCatalogImages(),
+    k.imageState.setsWithMissingCatalogImages(),
     // The shared catalog only lists verified addresses: the file applies to all accounts.
-    k.bildlage.manualPartsWithoutImage(),
+    k.imageState.manualPartsWithoutImage(),
     // All figures, not only manual ones: otherwise every tile would go through the proxy.
-    k.bildlage.minifigsWithoutImage(),
+    k.imageState.minifigsWithoutImage(),
   ]);
   return { sets, teile, figuren };
 }
@@ -22,7 +22,7 @@ export async function fillFromBrickset(k: CatalogContext, setNumber: string): Pr
   const info = await k.externalSources.quellen.setDetails(setNumber);
   if (!info) return false;
   // If it fails, it throws: the job tries again instead of leaving the set nameless.
-  await k.bildlage.fillSetGaps(setNumber, info);
+  await k.imageState.fillSetGaps(setNumber, info);
   return true;
 }
 
@@ -47,7 +47,7 @@ export async function imagesFromCatalog<T extends ImageItem>(
   const teile = item.filter(p => !isMinifig(p)),
     figuren = item.filter(isMinifig);
   if (teile.length) {
-    const rows = await k.bildlage.partImages([...new Set(teile.map(p => String(p.part_number)))]);
+    const rows = await k.imageState.partImages([...new Set(teile.map(p => String(p.part_number)))]);
     const m = new Map(rows.map(r => [`${r.part_number}|${r.color_id}`, r] as const));
     for (const p of teile) {
       const z = m.get(`${p.part_number}|${p.color_id ?? NO_COLOR}`);
@@ -58,7 +58,7 @@ export async function imagesFromCatalog<T extends ImageItem>(
     }
   }
   if (!figuren.length) return;
-  const rows = await k.bildlage.minifigImages([...new Set(figuren.map(p => String(p.part_number)))]);
+  const rows = await k.imageState.minifigImages([...new Set(figuren.map(p => String(p.part_number)))]);
   const m = new Map(rows.map(r => [r.fig_number, r] as const));
   for (const p of figuren) {
     const z = m.get(String(p.part_number));
@@ -72,7 +72,7 @@ export async function imagesFromCatalog<T extends ImageItem>(
 /** Not while a fetch is waiting or recently ran without a result — again
  * afterwards, as soon as the finished jobs expire. */
 export async function backfillInstructions(k: CatalogContext): Promise<void> {
-  const missing = await k.bildlage.setsWithoutInstructionFetch();
+  const missing = await k.imageState.setsWithoutInstructionFetch();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
   for (const set_number of missing) await enqueueInstruction(k, set_number);
 }
@@ -85,11 +85,11 @@ export async function enterSetImageLocal(
   source: string | null = null,
 ): Promise<void> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
-  await k.bildlage.rememberSetImageLocal(setNumber, `/images/sets/${safe}.jpg`, source);
+  await k.imageState.rememberSetImageLocal(setNumber, `/images/sets/${safe}.jpg`, source);
 }
 
 export async function reloadSetImages(k: CatalogContext): Promise<void> {
-  const missing = await k.bildlage.setImagesWithoutFile();
+  const missing = await k.imageState.setImagesWithoutFile();
   if (!missing.length) return;
   console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
   let failed = 0;
@@ -105,7 +105,10 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
       break;
     }
     // A failure counts in the summary; the next run finds the image without an entry again.
-    if (local && !(await attempts(`bilder:set ${set_number}`, k.bildlage.rememberSetImageLocal(set_number, local))).ok)
+    if (
+      local &&
+      !(await attempts(`bilder:set ${set_number}`, k.imageState.rememberSetImageLocal(set_number, local))).ok
+    )
       failed++;
     if (local && !(await attempts('nachlauf:vorschauErzeugenAus', k.images.createPreview(local))).ok) failed++;
     await new Promise(r => setTimeout(r, 300));
@@ -115,7 +118,7 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
 
 /** Checked asynchronously so that the run does not block the event loop. */
 export async function backfillThumbnails(k: CatalogContext): Promise<void> {
-  const paths = await k.bildlage.localCatalogImages();
+  const paths = await k.imageState.localCatalogImages();
   let generated = 0,
     failed = 0;
   const exists = (fp: string) =>

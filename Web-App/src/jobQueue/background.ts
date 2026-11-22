@@ -24,10 +24,10 @@ export async function jobsInOverview(
   );
   const art = filter.art ? checkKind(k, filter.art) : null;
   const [auftraege, zusammenfassung, pausen, lebenszeichen] = await Promise.all([
-    k.auftraege.jobList(status, art),
-    k.auftraege.numbersJeKindAndStatus(),
-    k.auftraege.runningPauses(),
-    k.laufzustand.readState('jobs_lebenszeichen'),
+    k.jobs.jobList(status, art),
+    k.jobs.numbersJeKindAndStatus(),
+    k.jobs.runningPauses(),
+    k.runState.readState('jobs_lebenszeichen'),
   ]);
   const alterSec = lebenszeichen ? Math.round((k.uhr.jetzt() - new Date(lebenszeichen).getTime()) / 1000) : null;
   return {
@@ -61,7 +61,7 @@ export async function retryJob(k: JobsContext, key: number) {
 /** Scheduled appointments stay. */
 export async function emptyJobKind(k: JobsContext, kindRaw: string) {
   const art = checkKind(k, kindRaw);
-  return { art, entfernt: await k.auftraege.emptyKind(art) };
+  return { art, entfernt: await k.jobs.emptyKind(art) };
 }
 
 export async function jobKindNow(k: JobsContext, kindRaw: string) {

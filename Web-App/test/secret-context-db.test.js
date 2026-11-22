@@ -206,7 +206,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
 
     // A legacy stock does not carry the re-encryption marker yet (the test template does).
-    await require('./helpers/sources').testArea('jobQueue').laufzustand.deleteState('altbestand_v2');
+    await require('./helpers/sources').testArea('jobQueue').runState.deleteState('altbestand_v2');
     await _req('startup/database.js').prepareDatabaseBefore(testAccess(), require('./helpers/sources').testServices());
 
     const v = await db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);

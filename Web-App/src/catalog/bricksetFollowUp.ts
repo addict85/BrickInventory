@@ -40,7 +40,7 @@ const tag = (d: Date) =>
 async function bricksetList(k: CatalogContext) {
   const waiting = await k.externalSources.brickset.waiting();
   const names = new Map(
-    (await k.bildlage.setNames([...new Set(waiting.map(w => w.set_number))])).map(z => [z.set_num, z.name]),
+    (await k.imageState.setNames([...new Set(waiting.map(w => w.set_number))])).map(z => [z.set_num, z.name]),
   );
   return waiting.map(w => ({
     set_number: w.set_number,

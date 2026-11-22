@@ -43,8 +43,8 @@ async function setMarketValues(
   const numbers = sets.map(s => s.set_number);
   if (!numbers.length) return w;
   const [current, history] = await Promise.all([
-    k.gewinnVerlust.freshMarketPrices(numbers, currency, ttl),
-    k.gewinnVerlust.lastMarketPricesFromHistory(numbers, currency),
+    k.profitLoss.freshMarketPrices(numbers, currency, ttl),
+    k.profitLoss.lastMarketPricesFromHistory(numbers, currency),
   ]);
   type PriceRow = { set_number: string; condition: string; avg_price?: unknown; qty_avg_price?: unknown };
   const afterKey = (rows: PriceRow[]) => new Map(rows.map(r => [`${r.set_number}|${r.condition}`, r]));
@@ -128,9 +128,9 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
-  const sets = await k.gewinnVerlust.setsWithEntries(uids);
+  const sets = await k.profitLoss.setsWithEntries(uids);
   // From the acquisitions, so that gallery, detail and finances show the same numbers.
-  const acqRows = sets.length ? await k.erfassungen.loadSetEntries(uids, currency) : [];
+  const acqRows = sets.length ? await k.acquisitions.loadSetEntries(uids, currency) : [];
   const jeSet = new Map<string, Acquisition[]>();
   for (const a of acqRows) {
     const l = jeSet.get(a.set_number);

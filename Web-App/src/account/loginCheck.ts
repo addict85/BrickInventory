@@ -135,12 +135,12 @@ export async function checkCredentials(
   if (locked) {
     reportLoginEvent('anmeldung_gesperrt', {
       ip,
-      konto: (await k.zugaenge.accountToLogin(name))?.id ?? null,
+      konto: (await k.accesses.accountToLogin(name))?.id ?? null,
     });
     return refusal('zu_viele', locked.code, locked.vars);
   }
 
-  const user = await k.zugaenge.accountToLogin(name);
+  const user = await k.accesses.accountToLogin(name);
   const withFactor = (passkeyResponse !== undefined && passkeyResponse !== null) || !!String(code ?? '').trim();
   if (await onlyStillWithFactor(k, ip, name, user?.id, withFactor))
     return refusal('zu_viele', 'konto_tagesgrenze', undefined, false, true);
@@ -192,7 +192,7 @@ export async function checkCredentials(
   }
   // Only now, after password and second factor: the plaintext only exists on a login.
   if (needsNewHash(user.password_hash))
-    await k.zugaenge.replacePasswordHash(user.id, user.password_hash, await hashPassword(password));
+    await k.accesses.replacePasswordHash(user.id, user.password_hash, await hashPassword(password));
   await loginSucceeded(k, ip, name);
   reportLogin({ ip, konto: Number(user.id), zugang });
   return { ok: true, user };

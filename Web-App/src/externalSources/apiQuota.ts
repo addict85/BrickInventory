@@ -56,7 +56,7 @@ export async function checkAndCountQuota(k: ForeignSourcesContext, apiName: ApiN
 
 export async function quotaOverview(k: ForeignSourcesContext, apiName: ApiName) {
   const tag = today(k);
-  const [z, limit] = await Promise.all([k.apiKontingent.callsToday(tag, apiName), limitTheSource(k, apiName)]);
+  const [z, limit] = await Promise.all([k.apiQuota.callsToday(tag, apiName), limitTheSource(k, apiName)]);
   const count = Number(z?.count || 0);
   return { count, limit, remaining: Math.max(0, limit - count), date: tag };
 }
@@ -67,7 +67,7 @@ export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
   const s = await quotaOverview(kx, apiName);
   const konto = currentAccount();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
-  const z = await kx.apiKontingent.callsJeAccount(s.date, apiName, konto.id, ALL_ACCOUNTS);
+  const z = await kx.apiQuota.callsJeAccount(s.date, apiName, konto.id, ALL_ACCOUNTS);
   const stand = (k: number) => Number(z.find(r => Number(r.account_id) === k)?.count || 0);
   return {
     allowed: stand(konto.id) < limitJeAccount(s.limit) && stand(ALL_ACCOUNTS) < limitAllAccounts(s.limit),
@@ -76,5 +76,5 @@ export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
 }
 
 export async function setQuotaBack(k: ForeignSourcesContext, apiName: ApiName): Promise<void> {
-  await k.apiKontingent.setApiCounterBack(today(k), apiName);
+  await k.apiQuota.setApiCounterBack(today(k), apiName);
 }

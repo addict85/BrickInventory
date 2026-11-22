@@ -17,13 +17,13 @@ export function listenOnRevocation(k: AccountContext): void {
  * (a store without ids, as in tests) there is no own row to spare: nothing falls. */
 export function limitSessions(k: AccountContext, userId: number, own: string | undefined): Promise<number> {
   if (!own) return Promise.resolve(0);
-  return k.zugaenge.capSessions(userId, sessionDigest(own), ACCESSES_AT_MOST - 1);
+  return k.accesses.capSessions(userId, sessionDigest(own), ACCESSES_AT_MOST - 1);
 }
 
 /** In user_sessions, where the session store really lives. */
 export async function endAllSessions(k: AccountContext, userId: number): Promise<void> {
   await increaseSessionVersion(k, userId);
-  await k.zugaenge.deleteSessionsOfAccount(userId);
+  await k.accesses.deleteSessionsOfAccount(userId);
 }
 
 /** A transaction over credentials in the system frame (login looks for them before there is

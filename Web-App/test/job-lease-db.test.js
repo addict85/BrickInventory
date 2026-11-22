@@ -54,7 +54,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
   if (!db) return;
   const A = Object.assign(
     {},
-    { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege },
+    { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').jobs },
   );
   const { createWorker } = _req('jobs/jobWorker.js');
   t.after(async () => {

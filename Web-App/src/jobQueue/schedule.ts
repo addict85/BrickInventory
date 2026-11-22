@@ -65,7 +65,7 @@ export async function planeAll(k: JobsContext): Promise<void> {
 }
 
 export async function scheduleChanged(k: JobsContext, art: JobKind): Promise<void> {
-  await k.auftraege.setDueDate(planKey(art), await nextRun(k, art));
+  await k.jobs.setDueDate(planKey(art), await nextRun(k, art));
   await wakeWorker(k, art);
 }
 
@@ -77,11 +77,11 @@ export async function pullPlanBefore<A extends JobKind>(
   payload: PayloadInput<A> = {} as PayloadInput<A>,
 ): Promise<boolean> {
   planOf(k, art);
-  if (await k.auftraege.pullAppointmentBefore(planKey(art), seconds, k.arten.check(art, payload))) {
+  if (await k.jobs.pullAppointmentBefore(planKey(art), seconds, k.arten.check(art, payload))) {
     await wakeWorker(k, art);
     return true;
   }
-  if (await k.auftraege.runningKind(art)) return false;
+  if (await k.jobs.runningKind(art)) return false;
   await placeJobOne(k, art, payload, { schluessel: planKey(art), afterSeconds: seconds, maxAttempts: 3 });
   return true;
 }

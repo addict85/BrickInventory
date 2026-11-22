@@ -19,13 +19,13 @@ export interface ForeignSourcesDependencies {
 }
 
 export const access = (db: Db) => ({
-  apiKontingent: {
+  apiQuota: {
     countApiCall: bound(db)(apiQuota.countApiCall),
     callsToday: bound(db)(apiQuota.callsToday),
     callsJeAccount: bound(db)(apiQuota.callsJeAccount),
     setApiCounterBack: bound(db)(apiQuota.setApiCounterBack),
   },
-  apiTakt: {
+  apiTick: {
     receiptsTick: bound(db)(apiTick.receiptsTick),
     pushTick: bound(db)(apiTick.pushTick),
   },

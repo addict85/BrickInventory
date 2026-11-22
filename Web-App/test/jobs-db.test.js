@@ -43,7 +43,7 @@ test('job table', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const A = Object.assign({}, _req('src/jobQueue/jobs.js'), {
     ..._req('src/jobQueue/service.js'),
-    ...require('./helpers/sources').testArea('jobQueue').auftraege,
+    ...require('./helpers/sources').testArea('jobQueue').jobs,
   });
   const { createWorker } = _req('jobs/jobWorker.js');
   // Only rows of this test: an own kind that no other worker knows.

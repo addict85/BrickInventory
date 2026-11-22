@@ -75,7 +75,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
     const { createWorker } = _req('jobs/jobWorker.js');
     const { placeJobOne } = Object.assign({}, _req('src/jobQueue/jobs.js'), {
       ..._req('src/jobQueue/service.js'),
-      ...require('./helpers/sources').testArea('jobQueue').auftraege,
+      ...require('./helpers/sources').testArea('jobQueue').jobs,
     });
     const results = [];
     const w = createWorker(

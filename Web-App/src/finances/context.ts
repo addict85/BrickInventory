@@ -39,22 +39,22 @@ export interface FinancesDependencies {
 
 /** Valuation, acquisitions, profit and market prices. */
 const holdingAccess = (db: Db, l: FinancesReadContract) => ({
-  bewertung: {
+  valuation: {
     manualEntries: withContract(db, l)(valuation.manualEntries),
     setsToValuation: withContract(db, l)(valuation.setsToValuation),
     catalogFeatures: bound(db)(valuation.catalogFeatures),
     manualMinifigsToValuation: withContract(db, l)(valuation.manualMinifigsToValuation),
     manualPartsToValuation: withContract(db, l)(valuation.manualPartsToValuation),
   },
-  erfassungen: {
+  acquisitions: {
     loadSetEntries: withContract(db, l)(acquisitions.loadSetEntries),
   },
-  gewinnVerlust: {
+  profitLoss: {
     setsWithEntries: withContract(db, l)(profitLoss.setsWithEntries),
     freshMarketPrices: bound(db)(profitLoss.freshMarketPrices),
     lastMarketPricesFromHistory: bound(db)(profitLoss.lastMarketPricesFromHistory),
   },
-  marktpreise: {
+  marketPrices: {
     setPriceFromCache: bound(db)(marketPrices.setPriceFromCache),
     partEntryState: withContract(db, l)(marketPrices.partEntryState),
     minifigEntryState: withContract(db, l)(marketPrices.minifigEntryState),
@@ -65,7 +65,7 @@ const holdingAccess = (db: Db, l: FinancesReadContract) => ({
     rememberEstimatedMinifigsPrice: bound(db)(marketPrices.rememberEstimatedMinifigsPrice),
     rememberEstimatedMinifigsHistory: bound(db)(marketPrices.rememberEstimatedMinifigsHistory),
   },
-  portfolioKurve: {
+  portfolioCurve: {
     dailyValuesFromHistory: bound(db)(portfolioCurve.dailyValuesFromHistory),
     cachePricesTheSets: bound(db)(portfolioCurve.cachePricesTheSets),
     lastValuesBeforeStart: bound(db)(portfolioCurve.lastValuesBeforeStart),
@@ -75,7 +75,7 @@ const holdingAccess = (db: Db, l: FinancesReadContract) => ({
 
 /** Alerts, price cache, price run and exchange rates. */
 const priceAccess = (db: Db, l: FinancesReadContract) => ({
-  preisalarme: {
+  priceAlerts: {
     transferAlarm: bound(db)(priceAlerts.transferAlarm),
     writeAlarm: bound(db)(priceAlerts.writeAlarm),
     removeAlarm: bound(db)(priceAlerts.removeAlarm),
@@ -90,7 +90,7 @@ const priceAccess = (db: Db, l: FinancesReadContract) => ({
     setNameFromMaster: bound(db)(priceAlerts.setNameFromMaster),
     alertsForExport: bound(db)(priceAlerts.alertsForExport),
   },
-  preisCache: {
+  priceCache: {
     setStateCounter: withContract(db, l)(priceCache.setStateCounter),
     deleteAllSetPrices: bound(db)(priceCache.deleteAllSetPrices),
     setPriceFresh: bound(db)(priceCache.setPriceFresh),
@@ -109,7 +109,7 @@ const priceAccess = (db: Db, l: FinancesReadContract) => ({
     rememberMinifigPrice: bound(db)(priceCache.rememberMinifigPrice),
     rememberMinifigHistory: bound(db)(priceCache.rememberMinifigHistory),
   },
-  preisLauf: {
+  priceRun: {
     inventoryPlaces: withContract(db, l)(priceRun.inventoryPlaces),
     wantedListsPlaces: withContract(db, l)(priceRun.wantedListsPlaces),
     recordedStates: withContract(db, l)(priceRun.recordedStates),
@@ -117,7 +117,7 @@ const priceAccess = (db: Db, l: FinancesReadContract) => ({
     writeDailyStatus: bound(db)(priceRun.writeDailyStatus),
     setsWithAlarm: bound(db)(priceRun.setsWithAlarm),
   },
-  preisverlauf: {
+  priceHistory: {
     dailyPricesOfSets: bound(db)(priceHistory.dailyPricesOfSets),
     cachePricesOfSets: bound(db)(priceHistory.cachePricesOfSets),
     firstPurchaseOfSets: withContract(db, l)(priceHistory.firstPurchaseOfSets),
@@ -131,7 +131,7 @@ const priceAccess = (db: Db, l: FinancesReadContract) => ({
     cachePricesForSets: bound(db)(setWert.cachePricesForSets),
     setEntriesToValue: withContract(db, l)(setWert.setEntriesToValue),
   },
-  wechselkurse: {
+  exchangeRates: {
     writeRates: bound(db)(exchangeRates.writeRates),
     givesEsRates: bound(db)(exchangeRates.givesEsRates),
   },

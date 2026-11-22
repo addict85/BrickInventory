@@ -53,7 +53,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   const Z = _req('src/jobQueue/schedule.js');
   const A = Object.assign({}, _req('src/jobQueue/jobs.js'), {
     ..._req('src/jobQueue/service.js'),
-    ...require('./helpers/sources').testArea('jobQueue').auftraege,
+    ...require('./helpers/sources').testArea('jobQueue').jobs,
   });
   t.after(async () => {
     await db.run('DELETE FROM jobs');

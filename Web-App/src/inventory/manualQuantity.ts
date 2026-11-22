@@ -42,7 +42,7 @@ export async function adjustManualQuantity(
   marketPrice: () => Promise<number | null>,
   ab = new Degradations(),
 ): Promise<number> {
-  const upfront = await k.manuelleMengen.sumTheEntries(art, uid, key);
+  const upfront = await k.manualQuantities.sumTheEntries(art, uid, key);
   const mp = target(wish, upfront) > upfront ? await ab.orElse('kaufpreis', marketPrice, null) : null;
   const sperren = [{ konto: uid, schluessel: inventoryKey(art, key) }];
   return k.transact(

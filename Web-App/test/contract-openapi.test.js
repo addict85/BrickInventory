@@ -99,7 +99,7 @@ test('every long list takes pages', () => {
 /** The contract file of each area key (the keys are tags in openapi.json and stay). */
 const CONTRACT_FILE = {
   grund: 'base',
-  gemeinsam: 'shared',
+  shared: 'shared',
   bestand: 'inventory',
   einstellungen: 'settings',
   figuren: 'minifigs',
@@ -175,7 +175,7 @@ test('response fields are required where the server always delivers them: option
     einstellungen: { frei: 14, nullbar: 11 },
     figuren: { frei: 21, nullbar: 27 },
     finanzen: { frei: 62, nullbar: 125 },
-    gemeinsam: { frei: 35, nullbar: 50 },
+    shared: { frei: 35, nullbar: 50 },
     geraet: { frei: 0, nullbar: 0 },
     gutscheine: { frei: 10, nullbar: 17 },
     haushalt: { frei: 1, nullbar: 4 },

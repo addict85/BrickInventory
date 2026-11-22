@@ -60,7 +60,7 @@ export async function setManualCondition<R extends Key>(
   const isPart = kind === 'part';
   const keyOf = (r: Key) => (isPart ? `${r.part_number}|${r.color_id ?? NO_COLOR}` : String(r.fig_number));
 
-  const acq = await k.gemeinsam.entryMetrics(isPart ? 'part' : 'fig', uids);
+  const acq = await k.shared.entryMetrics(isPart ? 'part' : 'fig', uids);
 
   const byKey = new Map(acq.map(a => [keyOf(a), a]));
 
@@ -119,7 +119,7 @@ export async function usingSets(
   key: Record<string, string | number>,
 ): Promise<ComponentResponse> {
   const uids = await k.household.scopeFrom(uidsChoice);
-  const rows = await k.gemeinsam.setsWithComponent(uids, table, key);
+  const rows = await k.shared.setsWithComponent(uids, table, key);
 
   const sets: UsingSet[] = rows.map(r => ({
     set_number: String(r.set_number),

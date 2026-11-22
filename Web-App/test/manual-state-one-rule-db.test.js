@@ -35,11 +35,11 @@ test('manual parts and figures: list and valuation state the same condition', { 
     // The rule: as soon as ONE acquisition is used, the piece counts as
     // used. Without an acquisition „Neu" applies.
     const faelle = [
-      { nr: '3001', erfassungen: [], erwartet: 'N' },
-      { nr: '3002', erfassungen: ['N'], erwartet: 'N' },
-      { nr: '3003', erfassungen: ['U'], erwartet: 'U' },
-      { nr: '3004', erfassungen: ['N', 'U'], erwartet: 'U' },
-      { nr: '3005', erfassungen: ['N', 'N'], erwartet: 'N' },
+      { nr: '3001', acquisitions: [], erwartet: 'N' },
+      { nr: '3002', acquisitions: ['N'], erwartet: 'N' },
+      { nr: '3003', acquisitions: ['U'], erwartet: 'U' },
+      { nr: '3004', acquisitions: ['N', 'U'], erwartet: 'U' },
+      { nr: '3005', acquisitions: ['N', 'N'], erwartet: 'N' },
     ];
     for (const f of faelle) {
       // Name and color label into the catalogs (migration 0034).
@@ -61,16 +61,16 @@ test('manual parts and figures: list and valuation state the same condition', { 
       );
       await holdsMinifig(db, uid, 'fig' + f.nr, { menge: 0 }); // quantity 0: the acquisition behind it carries it
       // Different days, so that „the newest acquisition" is unambiguous.
-      for (const [i, z] of f.erfassungen.entries()) {
+      for (const [i, z] of f.acquisitions.entries()) {
         await db.run(
           `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
                       VALUES ($1,$2,4,1,0.5,$3, NOW() - make_interval(days => $4))`,
-          [uid, f.nr, z, f.erfassungen.length - i],
+          [uid, f.nr, z, f.acquisitions.length - i],
         );
         await db.run(
           `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition,created_at)
                       VALUES ($1,$2,1,0.5,$3, NOW() - make_interval(days => $4))`,
-          [uid, 'fig' + f.nr, z, f.erfassungen.length - i],
+          [uid, 'fig' + f.nr, z, f.acquisitions.length - i],
         );
       }
     }
@@ -96,7 +96,7 @@ test('manual parts and figures: list and valuation state the same condition', { 
 
     for (const f of faelle) {
       const beschreibung =
-        `Teil ${f.nr} (` + (f.erfassungen.length ? `Erfassungen ${f.erfassungen.join('+')}` : 'ohne Erfassung') + ')';
+        `Teil ${f.nr} (` + (f.acquisitions.length ? `Erfassungen ${f.acquisitions.join('+')}` : 'ohne Erfassung') + ')';
 
       const fromList = zustand(liste, 'part_number', f.nr);
       const fromValuation = zustand(bewertung.parts, 'part_number', f.nr);

@@ -27,7 +27,7 @@ async function jeRow<Z>(art: string, rows: Z[], f: (z: Z) => Promise<boolean>): 
 }
 
 async function backfillAcquisitions(k: InventoryContext) {
-  await jeRow('Erfassungen', await k.nachtrag.setEntriesWithoutPrice(), async row => {
+  await jeRow('Erfassungen', await k.backfill.setEntriesWithoutPrice(), async row => {
     const price = await k.finances.currentMarketPrice(row.set_number, row.user_id, row.condition || null);
     return !!price && (await setEstimatedPrice(k, 'set', row.id, price));
   });
@@ -35,7 +35,7 @@ async function backfillAcquisitions(k: InventoryContext) {
 
 // The same gap as for the sets, for part and figure acquisitions.
 async function backfillPartsEntries(k: InventoryContext) {
-  await jeRow('Teile-Erfassungen', await k.nachtrag.partEntriesWithoutPrice(), async row => {
+  await jeRow('Teile-Erfassungen', await k.backfill.partEntriesWithoutPrice(), async row => {
     const price = await k.finances.currentPartMarketPrice(
       row.part_number,
       row.color_id,
@@ -47,7 +47,7 @@ async function backfillPartsEntries(k: InventoryContext) {
 }
 
 async function backfillMinifigsEntries(k: InventoryContext) {
-  await jeRow('Figuren-Erfassungen', await k.nachtrag.minifigEntriesWithoutPrice(), async row => {
+  await jeRow('Figuren-Erfassungen', await k.backfill.minifigEntriesWithoutPrice(), async row => {
     // The account's own BrickLink number before the shared one.
     const price = await k.finances.currentMinifigMarketPrice(
       row.fig_number,

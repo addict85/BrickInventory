@@ -38,7 +38,7 @@ type MinifigPrice = PriceData & { estimated_from_parts?: true; abdeckung?: numbe
 async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
   // A main account values the whole household; the currency is forced to be
   // the same when linking, otherwise this would sum two currencies.
-  const rows = await k.bewertung.manualEntries(kind, asIds(uid), waehrung);
+  const rows = await k.valuation.manualEntries(kind, asIds(uid), waehrung);
   const out = new Map<string, repo.ManualEntry[]>();
   for (const r of rows) {
     const key =
@@ -188,7 +188,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
     // ttl_hours stays text for older clients.
     ttl_stunden: Number(ttlHours) || 24,
   };
-  const sets = await kx.bewertung.setsToValuation(uids);
+  const sets = await kx.valuation.setsToValuation(uids);
   if (!sets.length)
     return {
       ...header,
@@ -204,9 +204,9 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
   const [catRows, cacheRows, acqRows] = await Promise.all([
     // catalog_cache lists numbers with the version suffix, price_cache under the caller's spelling.
-    kx.bewertung.catalogFeatures(setNumbers.map(withVersion)),
-    kx.preisCache.setPricesFresh(setNumbers, currency, ttl),
-    kx.erfassungen.loadSetEntries(uids, currency),
+    kx.valuation.catalogFeatures(setNumbers.map(withVersion)),
+    kx.priceCache.setPricesFresh(setNumbers, currency, ttl),
+    kx.acquisitions.loadSetEntries(uids, currency),
   ]);
   // Without BrickLink access the job can fetch nothing: that is then shown on the row.
   const withoutAccess = (await kx.einstellungen.globalValue('bricklink_consumer_key'))
@@ -308,7 +308,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
     k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
-  const manualFigs = await k.bewertung.manualMinifigsToValuation(uids);
+  const manualFigs = await k.valuation.manualMinifigsToValuation(uids);
   if (!manualFigs.length)
     return {
       currency,
@@ -328,7 +328,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
       currency,
       ttlHours,
     ),
-    k.marktpreise.estimatedMinifigsPrices(
+    k.marketPrices.estimatedMinifigsPrices(
       manualFigs.filter(f => !f.bl_fig_number).map(f => f.fig_number),
       currency,
       ttl,
@@ -391,7 +391,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
-  const manualParts = await k.bewertung.manualPartsToValuation(uids);
+  const manualParts = await k.valuation.manualPartsToValuation(uids);
   if (!manualParts.length)
     return {
       currency,

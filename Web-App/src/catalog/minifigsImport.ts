@@ -5,7 +5,7 @@ import type { CatalogContext } from './context';
 
 // Ask with and without the version suffix, not twice the same spelling.
 export async function minifigsFromCatalog(k: CatalogContext, setNumber: string) {
-  return k.setInhalt.minifigsOfSetCatalog(withVersion(setNumber)).catch((e: unknown) => {
+  return k.setContent.minifigsOfSetCatalog(withVersion(setNumber)).catch((e: unknown) => {
     logAndContinue('minifiguren:katalog lesen')(e);
     return [];
   });

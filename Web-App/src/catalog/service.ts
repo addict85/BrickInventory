@@ -20,7 +20,7 @@ const themesStorage = (k: CatalogContext) =>
 async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
   const remembered = themesStorage(k).hole(0);
   if (remembered) return remembered;
-  const rows = await k.katalogSuche.themes();
+  const rows = await k.catalogSearch.themes();
   const byId = new Map<number, ThemeNode>();
   const children = new Map<number, number[]>();
   for (const r of rows) {
@@ -71,9 +71,9 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
 export async function catalogMeta(k: CatalogContext) {
   const tree = await getThemeTree(k);
   const [counts, years, yearCounts] = await Promise.all([
-    k.katalogSuche.setsJeThema(),
-    k.katalogSuche.yearRange(),
-    k.katalogSuche.setsJeYear(),
+    k.catalogSearch.setsJeThema(),
+    k.catalogSearch.yearRange(),
+    k.catalogSearch.setsJeYear(),
   ]);
   const direct = new Map<number, number>();
   for (const c of counts) direct.set(c.theme_id, c.n);
@@ -105,7 +105,7 @@ async function choose(k: CatalogContext, f: CatalogFilter): Promise<repo.Catalog
 
 /** NULL years come first in descending order, as in the list. */
 export async function yearDistribution(k: CatalogContext, f: CatalogFilter, descending: boolean) {
-  return k.katalogSuche.setsJeYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), descending);
+  return k.catalogSearch.setsJeYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), descending);
 }
 
 export async function catalogPage(
@@ -118,8 +118,8 @@ export async function catalogPage(
 ) {
   const choice = await choose(k, f);
   const [total, sets] = await Promise.all([
-    k.katalogSuche.catalogCount(choice),
-    k.katalogSuche.catalogRows(await k.household.scopeIds(userId), choice, sortRaw, limit, (page - 1) * limit),
+    k.catalogSearch.catalogCount(choice),
+    k.catalogSearch.catalogRows(await k.household.scopeIds(userId), choice, sortRaw, limit, (page - 1) * limit),
   ]);
   const tree = await getThemeTree(k);
   // The list triggers no image work; missing images are fetched by the image proxy.
@@ -136,14 +136,14 @@ export async function catalogPage(
   };
 }
 
-export const catalogLoaded = async (k: CatalogContext) => !(await k.katalogSuche.catalogEmpty());
+export const catalogLoaded = async (k: CatalogContext) => !(await k.catalogSearch.catalogEmpty());
 
 export async function catalogSet(k: CatalogContext, userId: number, raw: string) {
   const n = withVersion(raw.trim());
-  const set = await k.katalogSuche.catalogRow(await k.household.scopeIds(userId), n);
+  const set = await k.catalogSearch.catalogRow(await k.household.scopeIds(userId), n);
   if (!set) return null;
   const invId = await newestInventory(k, n);
-  const m = invId ? await k.katalogSuche.minifigsInInventory(invId) : undefined;
+  const m = invId ? await k.catalogSearch.minifigsInInventory(invId) : undefined;
   const tree = await getThemeTree(k);
   // Checking against BrickLink happens only here, on an opened page.
   let bricklink = await resolveSingle(k, set.set_number);

@@ -104,7 +104,7 @@ const accountAccess = (db: Db) => ({
 
 /** Pairing, start administrator and tokens. */
 const sessionAccess = (db: Db) => ({
-  qrKopplung: {
+  qrPairing: {
     cleanQrPairingsOn: imSystem(db, ALL_ACCOUNTS, qrPairing.cleanQrPairingsOn),
     createQrPairing: imSystem(db, 'Das Gerät ohne Konto legt die Kopplung an', qrPairing.createQrPairing),
     report: imSystem(db, WITHOUT_ACCOUNT, qrPairing.report),
@@ -128,7 +128,7 @@ const sessionAccess = (db: Db) => ({
     openStartPassword: imSystem(db, ALL_NAMES, startAdmin.openStartPassword),
     createAdmin: imSystem(db, ACCESS, startAdmin.createAdmin),
   },
-  zugaenge: {
+  accesses: {
     validToken: imSystem(db, WITHOUT_ACCOUNT, accesses.validToken),
     endOverlap: imSystem(db, WITHOUT_ACCOUNT, accesses.endOverlap),
     touchToken: imSystem(db, WITHOUT_ACCOUNT, accesses.touchToken),

@@ -127,7 +127,7 @@ export async function acquisitionsInAccountCurrency<T extends WithPrice>(
     const d = r.created_at ? new Date(String(r.created_at)) : null;
     return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
   });
-  const converted = await k.kaufErfassungen.inCurrencyOfAccount(
+  const converted = await k.purchaseAcquisitions.inCurrencyOfAccount(
     viewer,
     prices,
     rows.map(r => r.currency ?? null),

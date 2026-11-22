@@ -85,7 +85,7 @@ function fetchPage(k: CatalogContext, url: string, rbKey: string): Promise<{ sta
 export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
   const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
   if (!rbKey) return;
-  const missing = await k.setInhalt.partsWithoutBlMapping();
+  const missing = await k.setContent.partsWithoutBlMapping();
   if (!missing.length) return;
 
   const stand = (n: number) =>

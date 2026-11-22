@@ -53,7 +53,7 @@ export function isKnownMissing(k: ImagesContext, key: string): boolean {
 
 async function refresh(k: ImagesContext): Promise<void> {
   // Not readable: the previous state in memory stays until the next reconciliation succeeds.
-  const r = await attempts('bild-fehlanzeige:rows', k.bildFehlschlaege.freshFailures(String(AGAIN_CHECK_MS)));
+  const r = await attempts('bild-fehlanzeige:rows', k.imageFailures.freshFailures(String(AGAIN_CHECK_MS)));
   if (!r.ok) return;
   const rows = r.wert;
   const { vorne: _front, reasons: _reasons } = stand(k);
@@ -79,9 +79,7 @@ export function reasonFor(k: ImagesContext, key: string): string {
 
 // The way back out of the block.
 export async function forgetMissing(kx: ImagesContext, keys?: string[]): Promise<number> {
-  const r = keys?.length
-    ? await kx.bildFehlschlaege.forgetFailures(keys)
-    : await kx.bildFehlschlaege.forgetAllFailures();
+  const r = keys?.length ? await kx.imageFailures.forgetFailures(keys) : await kx.imageFailures.forgetAllFailures();
   const { vorne: _front, reasons: _reasons, writeTo: _writeTo } = stand(kx);
   if (keys?.length)
     for (const k of keys) {
@@ -103,7 +101,7 @@ async function writeBuffer(kx: ImagesContext): Promise<void> {
   const keys = [..._writeTo.keys()];
   const reasons = keys.map(k => _writeTo.get(k) || '');
   _writeTo.clear();
-  await kx.bildFehlschlaege.rememberFailures(keys, reasons).catch(() => {
+  await kx.imageFailures.rememberFailures(keys, reasons).catch(() => {
     for (let i = 0; i < keys.length; i++) {
       const k = keys[i];
       if (k) _writeTo.set(k, reasons[i] ?? '');

@@ -109,7 +109,7 @@ Absicht, solange es nur von unten gebraucht wird:
   Kontingent und Drossel seines Zugangs (`clients/access.ts`); einen Zugang des
   Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
 - Den Rumpf `k.transaktion(async t => …)` prüft vorher die Lint-Regel
-  `biome/transaktionsrumpf.grit`: kein `k`, `sk`, `kx` oder Empfänger darin.
+  `biome/transaction-body.grit`: kein `k`, `sk`, `kx` oder Empfänger darin.
 - Fragt mitten in einer Transaktion jemand über den ungebundenen Zugang (`k` statt
   `t`), wirft die Datenbankschicht `UngebundeneAbfrage`: Sie liefe sonst über eine
   zweite Verbindung neben der Transaktion. Erkannt wird das am Aufrufrahmen; ein Weg

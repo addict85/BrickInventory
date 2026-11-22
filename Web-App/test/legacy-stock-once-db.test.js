@@ -26,7 +26,7 @@ test('legacy data once per database', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { legacyStockUpgrade, LEGACY_STOCK_BRAND } = _req('startup/database.js');
-  const { readState, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+  const { readState, deleteState } = require('./helpers/sources').testArea('jobQueue').runState;
   await deleteState(LEGACY_STOCK_BRAND);
 
   await t.test('the first start upgrades and sets the marker', async () => {

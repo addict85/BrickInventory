@@ -36,7 +36,7 @@ export const access = (db: Db) => ({
   // Cross-reference lookups for the BrickLink wanted-list XML import (BL→RB
   // number mapping); left under their established German names, same as
   // wantedResolution.ts/wantedListe.ts that call them — see the Phase 2a report.
-  wantedListe: {
+  wantedList: {
     mappings: bound(db)(wantedList.mappings),
     numbersInCatalog: bound(db)(wantedList.numbersInCatalog),
     colorsToBlColors: bound(db)(wantedList.colorsToBlColors),

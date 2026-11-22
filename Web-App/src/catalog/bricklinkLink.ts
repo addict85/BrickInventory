@@ -65,7 +65,7 @@ export async function resolveMany(kx: CatalogContext, setNumbers: string[]): Pro
   const keys = [...new Set((setNumbers || []).filter(Boolean).map(withVariant))];
   if (keys.length === 0) return out;
 
-  const rows = await kx.katalogCache.blTypesTheSets(keys);
+  const rows = await kx.catalogCache.blTypesTheSets(keys);
 
   const byNumber = new Map<string, string | null>();
   for (const r of rows) byNumber.set(r.set_number, r.bl_type);
@@ -114,6 +114,6 @@ export async function resolveViaInterface(k: CatalogContext, setNumber: string):
     return toLink(n, null);
   }
 
-  await k.katalogCache.rememberBlType(n, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
+  await k.catalogCache.rememberBlType(n, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

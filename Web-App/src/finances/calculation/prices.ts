@@ -25,9 +25,13 @@ type Hours = string | number;
 
 /** THE condition resolution for a set — one, because several versions of their own
  * had drifted apart. */
-export async function conditionOfSet(k: FinancesContext, uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
+export async function conditionOfSet(
+  k: FinancesContext,
+  uid: number | number[],
+  setNumber: string,
+): Promise<'N' | 'U'> {
   // Scope instead of a bare ID: the set often belongs to a sub-account.
-  const row = await k.preisCache.setStateCounter(asIds(uid), setNumber);
+  const row = await k.priceCache.setStateCounter(asIds(uid), setNumber);
   return effectiveCondition(row);
 }
 
@@ -41,7 +45,7 @@ const ZERO_PRICE_TTL_HOURS = 6;
 
 /** The one place that defines "fresh". */
 export function emptyPriceCache(k: FinancesContext): Promise<void> {
-  return k.preisCache.deleteAllSetPrices();
+  return k.priceCache.deleteAllSetPrices();
 }
 
 export async function priceFromCache(
@@ -51,7 +55,7 @@ export async function priceFromCache(
   currency: string,
   ttlHours: number,
 ) {
-  return k.preisCache.setPriceFresh(setNumber, condition, currency, ttlHours);
+  return k.priceCache.setPriceFresh(setNumber, condition, currency, ttlHours);
 }
 
 export function cacheUsable(row: PriceRow, ttlHours: number, now: number) {
@@ -92,11 +96,11 @@ export async function savePrice(
   // Cache and history together: a cache without its history point would hold back
   // the next fetch, and nobody would fill the gap in the history any more.
   await k.transact(async t => {
-    await t.preisCache.rememberSetPrice(setNumber, condition, currency, price);
+    await t.priceCache.rememberSetPrice(setNumber, condition, currency, price);
     // The same rule as the job's daily snapshot: a history with two
     // recording rules would have gaps.
     if (hatPrice({ avg_price: avg, qty_avg_price: qavg }))
-      await t.preisCache.rememberSetHistory(setNumber, condition, currency, price);
+      await t.priceCache.rememberSetHistory(setNumber, condition, currency, price);
   });
   return price;
 }
@@ -321,7 +325,7 @@ export async function colorChart(k: FinancesContext): Promise<Map<number, number
   if (st.karte && now - st.zeit < SUPPLEMENT_TTL_MS) return st.karte;
   if (st.load) return st.load;
   st.load = (async () => {
-    const rows = await k.preisCache.blColors();
+    const rows = await k.priceCache.blColors();
     const karte = new Map<number, number>();
     for (const r of rows) karte.set(Number(r.id), r.bl_color_id);
     // An EMPTY table is NOT remembered: before the first reconciliation it is empty,
@@ -389,7 +393,7 @@ export async function preloadPartPrices(
   }
   const stock = new Map<string, Preiszeile>();
   if (!numbers.length) return stock;
-  const rows = await k.preisCache.partsPricesFresh(numbers, colors, currency, ttl);
+  const rows = await k.priceCache.partsPricesFresh(numbers, colors, currency, ttl);
   for (const z of rows) stock.set(`${z.part_number}|${z.color_id}|${z.condition}`, z);
   return stock;
 }
@@ -404,7 +408,7 @@ export async function preloadMinifigPrices(
   const ttl = Math.max(1, parseInt(String(ttlHours), 10));
   const stock = new Map<string, Preiszeile>();
   if (!minifigs.length) return stock;
-  const rows = await k.preisCache.minifigsPricesFresh([...new Set(minifigs)], currency, ttl);
+  const rows = await k.priceCache.minifigsPricesFresh([...new Set(minifigs)], currency, ttl);
   for (const z of rows) stock.set(`${z.fig_number}|${z.condition}`, z);
   return stock;
 }
@@ -455,7 +459,7 @@ export async function fetchPartPrice(
   const number = await resolveBlPartNumber(k, partNumber, konto);
   const f = Number(color) || 0;
   const ttl = hours(ttlHours);
-  const cache = k.preisCache;
+  const cache = k.priceCache;
   const source: PriceSource = {
     name: `Part price ${partNumber}${number !== partNumber ? ` (bl ${number})` : ''} color ${color} (rb color ${rbColorId})`,
     lies: c => (stock ? (stock.get(`${number}|${f}|${c}`) ?? null) : cache.partPriceFresh(number, f, c, currency, ttl)),
@@ -483,7 +487,7 @@ export async function fetchMinifigPrice(
   stock: Map<string, Preiszeile> | null = null,
 ): Promise<PriceData> {
   const ttl = hours(ttlHours);
-  const cache = k.preisCache;
+  const cache = k.priceCache;
   const source: PriceSource = {
     name: `Minifig price ${figNumber}`,
     lies: c =>

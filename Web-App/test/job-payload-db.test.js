@@ -27,7 +27,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const A = { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege };
+  const A = { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').jobs };
   const { PayloadInvalid } = _req('src/jobQueue/kinds.js');
   const { createWorker } = _req('jobs/jobWorker.js');
   await db.run(`DELETE FROM jobs WHERE type = 'brickset'`);

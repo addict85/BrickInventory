@@ -36,19 +36,19 @@ export interface ImagesDependencies {
 }
 
 export const access = (db: Db, l: ImagesReadContract) => ({
-  bildBlickfeld: {
+  imageScope: {
     setsInScope: withContract(db, l)(imageScope.setsInScope),
   },
-  bildFehlschlaege: {
+  imageFailures: {
     freshFailures: bound(db)(imageFailures.freshFailures),
     forgetFailures: bound(db)(imageFailures.forgetFailures),
     forgetAllFailures: bound(db)(imageFailures.forgetAllFailures),
     rememberFailures: bound(db)(imageFailures.rememberFailures),
   },
-  bildStammCdn: {
+  imageMasterCdn: {
     cdnToImageMaster: bound(db)(imageMasterCdn.cdnToImageMaster),
   },
-  bildbedarf: {
+  imageDemand: {
     rememberImageRequests: bound(db)(imageDemand.rememberImageRequests),
     deleteOldImageRequests: bound(db)(imageDemand.deleteOldImageRequests),
     countImageRequests: bound(db)(imageDemand.countImageRequests),

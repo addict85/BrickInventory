@@ -94,7 +94,7 @@ export interface TrashEntry {
 
 export async function listTrash(k: InventoryContext, uidsChoice: Writer | number[]): Promise<TrashEntry[]> {
   const uids = await k.household.writeAreaFrom(uidsChoice);
-  const rows = await k.papierkorb.entries(uids, RETENTION_DAYS);
+  const rows = await k.trash.entries(uids, RETENTION_DAYS);
   return rows.map(r => {
     const acquisitions = r.rows?.[ACQUISITIONS[r.type]] ?? [];
     const { rows: _z, ...rest } = r;
@@ -132,14 +132,14 @@ export async function restore(k: InventoryContext, uidsChoice: Writer | number[]
 
 export async function deleteFinal(k: InventoryContext, uidsChoice: Writer | number[], id: number): Promise<void> {
   const uids = await k.household.writeAreaFrom(uidsChoice);
-  if (!(await k.papierkorb.removeEntryOfAccount(id, uids))) notFound();
+  if (!(await k.trash.removeEntryOfAccount(id, uids))) notFound();
 }
 
 export async function emptyTrash(k: InventoryContext, uidsChoice: Writer | number[]): Promise<number> {
   const uids = await k.household.writeAreaFrom(uidsChoice);
-  return k.papierkorb.removeAll(uids);
+  return k.trash.removeAll(uids);
 }
 
 export async function cleanTrashOn(k: InventoryContext): Promise<number> {
-  return k.papierkorb.removeOlder(RETENTION_DAYS);
+  return k.trash.removeOlder(RETENTION_DAYS);
 }

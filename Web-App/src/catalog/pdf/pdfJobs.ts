@@ -103,7 +103,7 @@ async function fehlendeBilder(
   }
   if (!numbers.size) return absent;
   try {
-    const r = await k.bildlage.missingCatalogImages([...numbers]);
+    const r = await k.imageState.missingCatalogImages([...numbers]);
     const c = Number(r?.c);
     if (Number.isFinite(c)) absent = c;
   } catch (e) {

@@ -661,7 +661,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         w.id = String(
           await {
             ..._req('src/jobQueue/service.js'),
-            ...require('./helpers/sources').testArea('jobQueue').auftraege,
+            ...require('./helpers/sources').testArea('jobQueue').jobs,
           }.placeJobOne('anleitung', { set_number: SET }, { schluessel: `vertrag:${process.pid}:${Date.now()}` }),
         );
       },

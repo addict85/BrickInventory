@@ -18,7 +18,7 @@ export async function saveRates(kx: FinancesContext, rates: Kurs[]): Promise<num
   let n = 0;
   for (let i = 0; i < rates.length; i += BLOCK) {
     const teil = rates.slice(i, i + BLOCK);
-    const r = await kx.wechselkurse.writeRates(
+    const r = await kx.exchangeRates.writeRates(
       teil.map(k => k.tag),
       teil.map(k => k.waehrung),
       teil.map(k => String(k.je_eur)),
@@ -33,7 +33,7 @@ export async function reloadRates(
   download: Abruf = k.externalSources.quellen.ecbFetch,
   signal?: AbortSignal,
 ): Promise<{ quelle: 'historie' | 'tag'; rates: number }> {
-  const leer = !(await k.wechselkurse.givesEsRates());
+  const leer = !(await k.exchangeRates.givesEsRates());
   const rates = leer
     ? readHistory(firstZipFile(await download(ECB_HISTORY, signal)).toString('utf8'))
     : readDailyRates((await download(ECB_DAILY_RATES, signal)).toString('utf8'));

@@ -8,13 +8,13 @@ export async function getStats(k: InventoryContext, userIdChoice: Sicht | number
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, singleRow] = await Promise.all([
     // COUNT(DISTINCT set_number): in the household several accounts own the same set.
-    k.kennzahlen.setNumbers(uids),
-    k.kennzahlen.instructionNumbers(uids, uids),
+    k.metrics.setNumbers(uids),
+    k.metrics.instructionNumbers(uids, uids),
     // `fehlt = 1` in a multiplication: a manual part without a set simply counts.
-    k.kennzahlen.partsInInventory(uids),
-    k.kennzahlen.minifigsInInventory(uids),
+    k.metrics.partsInInventory(uids),
+    k.metrics.minifigsInInventory(uids),
     k.einstellungen.valueInView(uids, 'currency').then(value => (value === null ? undefined : { value })),
-    k.kennzahlen.partsSingle(uids),
+    k.metrics.partsSingle(uids),
   ]);
   const ownState = await k.einstellungen.valueInView(uids, 'user_default_condition');
   const globalCond = await k.einstellungen.globalValue('default_price_condition');

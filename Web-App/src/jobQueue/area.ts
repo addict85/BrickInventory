@@ -89,21 +89,21 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
 function fromTheTable(k: JobsContext) {
   return {
     // Lease, claim and return for the worker (jobs/jobWorker.ts).
-    heartbeat: k.auftraege.heartbeat,
-    claimJob: k.auftraege.claimJob,
-    giveBack: k.auftraege.giveBack,
-    rememberExclusive: k.auftraege.rememberExclusive,
+    heartbeat: k.jobs.heartbeat,
+    claimJob: k.jobs.claimJob,
+    giveBack: k.jobs.giveBack,
+    rememberExclusive: k.jobs.rememberExclusive,
     // Pauses of a kind (throttling CDN, Brickset) and cleaning up finished ones.
-    pauseKind: k.auftraege.pauseKind,
-    liesPause: k.auftraege.liesPause,
-    cleanCompletedOn: k.auftraege.cleanCompletedOn,
+    pauseKind: k.jobs.pauseKind,
+    liesPause: k.jobs.liesPause,
+    cleanCompletedOn: k.jobs.cleanCompletedOn,
     // Markers across process boundaries (sign of life, legacy data, reconciliation); read by the admin.
-    readState: k.laufzustand.readState,
-    setState: k.laufzustand.setState,
-    deleteState: k.laufzustand.deleteState,
-    countState: k.laufzustand.countState,
+    readState: k.runState.readState,
+    setState: k.runState.setState,
+    deleteState: k.runState.deleteState,
+    countState: k.runState.countState,
     // Per kind the running job, otherwise the most recently finished one: the admin's tiles.
-    lastPerKind: k.auftraege.lastPerKind,
+    lastPerKind: k.jobs.lastPerKind,
   };
 }
 

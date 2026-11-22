@@ -25,7 +25,7 @@ const { warte } = require('./helpers/time');
 
 test('switching off during a claim', async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const A = { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege };
+  const A = { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').jobs };
   const { createWorker } = _req('jobs/jobWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;

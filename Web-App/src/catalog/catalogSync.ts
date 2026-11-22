@@ -21,7 +21,7 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
   // number would never be checked.
   const n = withVersion(setNumber);
 
-  const stand = await k.csvKatalog.catalogImageStatus(n);
+  const stand = await k.csvCatalog.catalogImageStatus(n);
   const total = stand.total,
     withImg = stand.withImage;
   if (total > 0 && withImg >= total) {
@@ -32,7 +32,7 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
     return;
   }
 
-  const parts = await k.csvKatalog.inventoryPartsWithoutFallback(invId);
+  const parts = await k.csvCatalog.inventoryPartsWithoutFallback(invId);
 
   if (!parts.length) {
     return;
@@ -77,7 +77,7 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
     }
   }
 
-  const figs = await k.csvKatalog.inventoryMinifigs(invId);
+  const figs = await k.csvCatalog.inventoryMinifigs(invId);
 
   await rememberMinifigs(
     k,
@@ -91,13 +91,13 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
 }
 
 async function syncAllMissing(k: CatalogContext) {
-  const sets = await k.csvKatalog.setsWithoutPartCatalog();
+  const sets = await k.csvCatalog.setsWithoutPartCatalog();
   for (const s of sets) await syncSetCatalog(k, s);
 }
 
 /** The chosen color, not the often wrongly colored default image. */
 async function backfillPartColorsImages(k: CatalogContext) {
-  const rows = await k.csvKatalog.manualColorParts();
+  const rows = await k.csvCatalog.manualColorParts();
   if (!rows.length) return;
   console.log(`  [purchase-price-backfill] Teile mit Farbbild zu prüfen: ${rows.length}`);
   let done = 0;
@@ -105,7 +105,7 @@ async function backfillPartColorsImages(k: CatalogContext) {
     try {
       const info = await k.externalSources.quellen.lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
-        await k.csvKatalog.replacePartColorsImage(row.part_number, row.color_id, info.image_url);
+        await k.csvCatalog.replacePartColorsImage(row.part_number, row.color_id, info.image_url);
         done++;
       }
     } catch (e) {

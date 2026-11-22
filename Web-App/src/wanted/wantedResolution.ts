@@ -43,7 +43,7 @@ export async function resolveLocalOn(
 
   const mapping = new Map<string, { rbId: string; sicherheit: Confidence }>();
   const own = new Set<string>();
-  for (const z of await k.wantedListe.mappings(numbers, uid)) {
+  for (const z of await k.wantedList.mappings(numbers, uid)) {
     const key = `${z.type}:${z.bl_id ?? z.rb_id}`;
     const level: Confidence = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
     const already = mapping.get(key);
@@ -56,11 +56,11 @@ export async function resolveLocalOn(
 
   const catalog = new Set<string>();
   for (const art of ['part', 'fig', 'set'] as const) {
-    for (const n of await k.wantedListe.numbersInCatalog(art, numbers)) catalog.add(`${art}:${n}`);
+    for (const n of await k.wantedList.numbersInCatalog(art, numbers)) catalog.add(`${art}:${n}`);
   }
 
   const colorMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
-  for (const z of await k.wantedListe.colorsToBlColors(colors)) {
+  for (const z of await k.wantedList.colorsToBlColors(colors)) {
     colorMap.set(Number(z.bl_color_id), {
       id: Number(z.id),
       name: z.name ?? null,
@@ -193,12 +193,12 @@ export async function describeItem(
 
   if (parts.length) {
     const numbers = [...new Set(parts.map(t => t.nr))];
-    const rows = await k.wantedListe.partsDescription(numbers);
+    const rows = await k.wantedList.partsDescription(numbers);
     const afterNumber = new Map(rows.map(z => [z.part_number, z]));
     const pairs = parts.filter(t => t.farbe !== null);
     const images = new Map<string, string>();
     if (pairs.length) {
-      const colorRows = await k.wantedListe.partColorImages(
+      const colorRows = await k.wantedList.partColorImages(
         pairs.map(t => t.nr),
         pairs.map(t => t.farbe as number),
       );
@@ -215,7 +215,7 @@ export async function describeItem(
   }
 
   if (minifigs.length) {
-    const rows = await k.wantedListe.minifigsDescription([...new Set(minifigs.map(f => f.nr))]);
+    const rows = await k.wantedList.minifigsDescription([...new Set(minifigs.map(f => f.nr))]);
     const nach = new Map(rows.map(z => [z.fig_number, z]));
     for (const f of minifigs) {
       const z = nach.get(f.nr);
@@ -227,7 +227,7 @@ export async function describeItem(
 
   if (sets.length) {
     const numbers = [...new Set(sets.map(x => x.nr))];
-    const rows = await k.wantedListe.setsDescription(numbers);
+    const rows = await k.wantedList.setsDescription(numbers);
     const nach = new Map(rows.map(z => [z.set_number, z]));
     for (const x of sets) {
       const z = nach.get(x.nr);
@@ -323,7 +323,7 @@ export function applyCorrections(
 export async function backfillColors(k: WantedContext, auf: Resolution[]): Promise<Resolution[]> {
   const open = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null).map(a => a.rbFarbe as number);
   if (!open.length) return auf;
-  const rows = await k.wantedListe.colorsToIds([...new Set(open)]);
+  const rows = await k.wantedList.colorsToIds([...new Set(open)]);
   const nach = new Map(rows.map(z => [Number(z.id), z]));
   return auf.map(a => {
     if (a.rbFarbe === null || a.rbFarbName !== null) return a;

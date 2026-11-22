@@ -37,7 +37,7 @@ export async function currentMarketPrice(
   }
 
   // Requested condition first; the other one only if there is no price there.
-  const cached = await k.marktpreise.setPriceFromCache(setNumber, effectiveCond, currency);
+  const cached = await k.marketPrices.setPriceFromCache(setNumber, effectiveCond, currency);
   return cached ? Number(cached.marktpreis) : null;
 }
 
@@ -47,7 +47,7 @@ export async function currentMarketPrice(
 /** 'U' as soon as one acquisition is used; without an acquisition the default. */
 export async function partState(k: FinancesContext, userId: number, partNumber: string, colorId: number) {
   try {
-    const row = await k.marktpreise.partEntryState(userId, partNumber, colorId);
+    const row = await k.marketPrices.partEntryState(userId, partNumber, colorId);
     if (row && parseInt(row.cnt, 10) > 0) return Number(row.any_used) > 0 ? 'U' : 'N';
   } catch (e) {
     reportError('teile:zustand-ermitteln', e);
@@ -76,7 +76,7 @@ export async function marketPricesFromCacheForMinifigs(
   if (!key.length) return hits;
 
   // No catch: the list treats the error as `degradiert` (reduced) and shows them without a price.
-  const rows = await kx.marktpreise.minifigsPricesFromCache(key, String(currency), ttl);
+  const rows = await kx.marketPrices.minifigsPricesFromCache(key, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of rows) {
@@ -144,7 +144,7 @@ export async function marketPricesFromCacheForParts(
 
   const numbers = [...new Set([...resolution.values()].map(a => a.nummer))];
   if (!numbers.length) return hits;
-  const rows = await k.marktpreise.partsPricesFromCache(numbers, String(currency), ttl);
+  const rows = await k.marketPrices.partsPricesFromCache(numbers, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of rows) {
@@ -224,7 +224,7 @@ export async function estimateMinifigsPrice(
 
     // Look in the cache first: otherwise every figure would cost one fetch per part.
     const ttl = Math.max(1, parseInt(await k.einstellungen.globalValue('price_cache_ttl', '24'), 10));
-    const cached = await k.marktpreise.estimatedMinifigsPrice(figNumber, cond0, currency, ttl);
+    const cached = await k.marketPrices.estimatedMinifigsPrice(figNumber, cond0, currency, ttl);
     const zwischengespeichert = Number(cached?.marktpreis) || 0;
     if (zwischengespeichert > 0)
       return {
@@ -274,8 +274,8 @@ export async function estimateMinifigsPrice(
     // Together, as for sets (savePrice): a cache without a history point would hold back
     // the next estimate. An error ends below as a message without an estimate.
     await k.transact(async t => {
-      await t.marktpreise.rememberEstimatedMinifigsPrice(figNumber, cond, currency, total, abdeckung);
-      await t.marktpreise.rememberEstimatedMinifigsHistory(figNumber, cond, currency, total, abdeckung);
+      await t.marketPrices.rememberEstimatedMinifigsPrice(figNumber, cond, currency, total, abdeckung);
+      await t.marketPrices.rememberEstimatedMinifigsHistory(figNumber, cond, currency, total, abdeckung);
     });
 
     return { preis: total, abdeckung };
@@ -298,7 +298,7 @@ export async function figMarketPriceWithOrigin(
   let effCond = condition;
   if (!effCond) {
     try {
-      const row = await k.marktpreise.minifigEntryState(userId, figNumber);
+      const row = await k.marketPrices.minifigEntryState(userId, figNumber);
       if (row && parseInt(row.cnt, 10) > 0) effCond = Number(row.any_used) > 0 ? 'U' : 'N';
     } catch (e) {
       reportError('minifiguren:zustand-ermitteln', e);

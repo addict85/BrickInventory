@@ -26,7 +26,7 @@ export async function removeAccount(k: AccountContext, target: number, through: 
       if (!route) notFound('benutzer_nicht_gefunden_oder_eigenes');
       // user_sessions has no foreign key to users.
       await increaseSessionVersion(t, target);
-      await t.zugaenge.deleteSessionsOfAccount(target);
+      await t.accesses.deleteSessionsOfAccount(target);
     });
   await inSystemContext('kontenverwaltung', remove);
   // After committing: caches and neighbor processes should forget the account only once it is gone.

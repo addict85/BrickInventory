@@ -47,7 +47,7 @@ export async function portfolioHistory(
   const condition = DEFAULT_PRICE_CONDITION;
 
   // One set, ONE row, even with two owners — otherwise it would enter the sum twice.
-  const sets = await k.portfolioKurve.setsWithPurchaseTotal(uids);
+  const sets = await k.portfolioCurve.setsWithPurchaseTotal(uids);
   if (!sets.length) {
     return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
   }

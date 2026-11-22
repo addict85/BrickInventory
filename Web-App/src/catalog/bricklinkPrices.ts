@@ -25,12 +25,12 @@ export function hatPrice(row: PriceRecord): boolean {
 export type { CatalogEntry };
 
 export function setKnownInCatalog(k: CatalogContext, setNumber: string): Promise<boolean> {
-  return k.katalogCache.setInCatalog(withVersion(setNumber));
+  return k.catalogCache.setInCatalog(withVersion(setNumber));
 }
 
 /** Under the spelling it is stored under. */
 export function catalogEntry(k: CatalogContext, setNumber: string): Promise<CatalogEntry | null> {
-  return k.katalogCache.catalogEntryTo(withVersion(setNumber));
+  return k.catalogCache.catalogEntryTo(withVersion(setNumber));
 }
 
 /** Not found or invalid: then the next kind. */
@@ -68,13 +68,13 @@ async function getPriceGuideRaw(
         `/items/${art.toLowerCase()}/${bare}/price`,
         params,
       );
-      await k.katalogCache.rememberBricklinkKind(n, art);
+      await k.catalogCache.rememberBricklinkKind(n, art);
       return result;
     } catch (e) {
       if (!tryNext(e)) throw e;
     }
   }
-  await k.katalogCache.rememberBricklinkKind(n, 'NONE');
+  await k.catalogCache.rememberBricklinkKind(n, 'NONE');
   throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
 }
 
@@ -102,11 +102,11 @@ export async function priceGuideQuery(
 
 // Without a number, the whole store.
 export async function clearSubsetsCache(k: CatalogContext, sn: string | null = null) {
-  await k.katalogCache.emptySubsetsCache(sn ? withVersion(sn) : null);
+  await k.catalogCache.emptySubsetsCache(sn ? withVersion(sn) : null);
 }
 
 export async function clearCatalogCache(k: CatalogContext, sn: string | null = null) {
-  await k.katalogCache.emptyCatalogCache(sn ? withVersion(sn) : null);
+  await k.catalogCache.emptyCatalogCache(sn ? withVersion(sn) : null);
 }
 
-export const getCacheStats = (k: CatalogContext) => k.katalogCache.cacheNumbers();
+export const getCacheStats = (k: CatalogContext) => k.catalogCache.cacheNumbers();

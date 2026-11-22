@@ -168,12 +168,12 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     const konto = testContext('account');
     await asRequest({ apiUser: { user_id: uid } }, () =>
       konto.transact(async tt => {
-        await assert.rejects(async () => tt.zugaenge.validToken('gibt-es-nicht'), SystemFrameInTransaction);
+        await assert.rejects(async () => tt.accesses.validToken('gibt-es-nicht'), SystemFrameInTransaction);
       }),
     );
     // Opened in the system context, it also applies to the service.
     assert.equal(
-      await inSystemContext('probe', () => konto.transact(tt => tt.zugaenge.validToken('gibt-es-nicht'))),
+      await inSystemContext('probe', () => konto.transact(tt => tt.accesses.validToken('gibt-es-nicht'))),
       undefined,
     );
   });

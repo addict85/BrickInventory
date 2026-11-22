@@ -44,22 +44,22 @@ function reportIncrease(k: AccountContext): void {
 
 /** null: account missing or locked. */
 export function sessionVersionFromDb(k: AccountContext, uid: number): Promise<number | null> {
-  return k.zugaenge.sessionVersion(uid);
+  return k.accesses.sessionVersion(uid);
 }
 
 export async function currentSessionVersion(k: AccountContext, uid: number): Promise<number | null> {
-  if (!usable(k)) return k.zugaenge.sessionVersion(uid);
+  if (!usable(k)) return k.accesses.sessionVersion(uid);
   const g = remembered(k).get(uid);
   if (g && g.bis > k.uhr.jetzt()) return g.version;
   const before = store(k).stand;
-  const version = await k.zugaenge.sessionVersion(uid);
+  const version = await k.accesses.sessionVersion(uid);
   if (store(k).stand === before) remembered(k).set(uid, { version, bis: k.uhr.jetzt() + CACHE_MS });
   return version;
 }
 
 /** Call before deleting the rows; returns the new version. */
 export async function increaseSessionVersion(k: AccountContext, uid: number): Promise<number> {
-  const version = await k.zugaenge.countSessionVersionHigh(uid);
+  const version = await k.accesses.countSessionVersionHigh(uid);
   forgetAllSessionVersions(k);
   reportAccessChange();
   reportIncrease(k);

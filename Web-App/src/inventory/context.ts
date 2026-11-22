@@ -29,25 +29,25 @@ export interface InventoryDependencies {
 }
 
 export const access = (db: Db, l: InventoryReadContract) => ({
-  bestandExport: {
+  holdingExport: {
     partsForCsv: withContract(db, l)(holdingExport.partsForCsv),
     minifigsForCsv: withContract(db, l)(holdingExport.minifigsForCsv),
   },
-  gemeinsam: {
+  shared: {
     entryMetrics: withContract(db, l)(shared.entryMetrics),
     setsWithComponent: withContract(db, l)(shared.setsWithComponent),
   },
-  kaufErfassungen: {
+  purchaseAcquisitions: {
     inCurrencyOfAccount: bound(db)(purchaseAcquisitions.inCurrencyOfAccount),
   },
-  kennzahlen: {
+  metrics: {
     setNumbers: withContract(db, l)(metrics.setNumbers),
     instructionNumbers: withContract(db, l)(metrics.instructionNumbers),
     partsInInventory: withContract(db, l)(metrics.partsInInventory),
     partsSingle: withContract(db, l)(metrics.partsSingle),
     minifigsInInventory: withContract(db, l)(metrics.minifigsInInventory),
   },
-  lagerort: {
+  storage: {
     otherLocationSameNamed: bound(db)(storage.otherLocationSameNamed),
     removeLocation: bound(db)(storage.removeLocation),
     addLocationOne: bound(db)(storage.addLocationOne),
@@ -59,15 +59,15 @@ export const access = (db: Db, l: InventoryReadContract) => ({
     locationsWithInventory: withContract(db, l)(storage.locationsWithInventory),
     writeLocationNames: bound(db)(storage.writeLocationNames),
   },
-  manuelleMengen: {
+  manualQuantities: {
     sumTheEntries: bound(db)(manualQuantities.sumTheEntries),
   },
-  nachtrag: {
+  backfill: {
     setEntriesWithoutPrice: withContract(db, l)(backfill.setEntriesWithoutPrice),
     partEntriesWithoutPrice: withContract(db, l)(backfill.partEntriesWithoutPrice),
     minifigEntriesWithoutPrice: withContract(db, l)(backfill.minifigEntriesWithoutPrice),
   },
-  papierkorb: {
+  trash: {
     entries: bound(db)(trash.entries),
     removeOlder: bound(db)(trash.removeOlder),
     removeAll: bound(db)(trash.removeAll),

@@ -206,7 +206,7 @@ test('jobs with an external quota have a cross-process lock', () => {
   // Own connection, not transaction-bound: the run takes minutes.
   assert.match(
     job,
-    /(?:db|zugang)\.pool\.connect\(\)/,
+    /(?:db|access)\.pool\.connect\(\)/,
     'Die Sperre muss über die ganze Laufzeit gehalten werden — eigene Verbindung',
   );
   assert.doesNotMatch(

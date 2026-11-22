@@ -12,7 +12,7 @@ export type { BlArt };
 /** Only for verified sources (Rebrickable, BrickLink); the same number means
  * "no differing one". What an account enters goes to rememberOwnBlNumber. */
 export function rememberBlNumber(k: CatalogContext, art: BlArt, rbId: string, blId: string): Promise<void> {
-  return k.blZuordnung.writeBlNumber(art, rbId, blId);
+  return k.blMapping.writeBlNumber(art, rbId, blId);
 }
 
 /** Applies only to this account, in all read paths before the shared mapping. */
@@ -23,7 +23,7 @@ export function rememberOwnBlNumber(
   rbId: string,
   blId: string,
 ): Promise<void> {
-  return k.blZuordnung.writeBlNumberOwn(uid, art, rbId, blId || rbId);
+  return k.blMapping.writeBlNumberOwn(uid, art, rbId, blId || rbId);
 }
 
 const konten = (k: number | number[] | null | undefined): number[] => (k == null ? [] : Array.isArray(k) ? k : [k]);
@@ -48,7 +48,7 @@ export async function rememberBlNumbers(
 /** So that the same part is not queried again and again; a mapping
  * once found stays. */
 export function rememberBlNumberUnchanged(k: CatalogContext, art: BlArt, rbId: string): Promise<void> {
-  return k.blZuordnung.noteLookedUp(art, rbId);
+  return k.blMapping.noteLookedUp(art, rbId);
 }
 
 /** null for "no differing one known" — no row and row without value
@@ -59,7 +59,7 @@ export function blNumberOf(
   rbId: string,
   konto?: number | number[] | null,
 ): Promise<string | null> {
-  return k.blZuordnung.differingNumber(art, rbId, konten(konto));
+  return k.blMapping.differingNumber(art, rbId, konten(konto));
 }
 
 /** null only if it was never looked up: preloading prices does not remember
@@ -70,7 +70,7 @@ export function blFetchNumber(
   rbId: string,
   konto?: number | number[] | null,
 ): Promise<string | null> {
-  return k.blZuordnung.effectiveNumber(art, rbId, konten(konto));
+  return k.blMapping.effectiveNumber(art, rbId, konten(konto));
 }
 
 // One query for many numbers; every row comes back so that nothing is asked twice.
@@ -82,13 +82,13 @@ export async function blFetchNumbers(
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!rbIds.length) return out;
-  const rows = await k.blZuordnung.effectiveNumbers(art, rbIds, konten(konto));
+  const rows = await k.blMapping.effectiveNumbers(art, rbIds, konten(konto));
   for (const z of rows) out.set(String(z.rb_id), String(z.nr));
   return out;
 }
 
 export function rememberBlColorNumber(k: CatalogContext, colorId: number, blColorId: number): Promise<void> {
-  return k.blZuordnung.writeBlColorNumber(colorId, blColorId);
+  return k.blMapping.writeBlColorNumber(colorId, blColorId);
 }
 
 /** Rebrickable delivers `ext_ids` as a list or the list directly. */

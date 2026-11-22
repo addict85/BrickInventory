@@ -32,7 +32,7 @@ export async function reconstructCurve(
   {
     const quantities = setNumbers.map(sn => setQty[sn] || 1);
     const mainQuery = (bExpr: string) =>
-      kx.portfolioKurve.dailyValuesFromHistory(
+      kx.portfolioCurve.dailyValuesFromHistory(
         currency,
         condition,
         setNumbers,
@@ -54,7 +54,7 @@ export async function reconstructCurve(
     }
     // Last resort price_cache; one row per set, the detour via SQL is not worth it.
     if (!rows.length) {
-      const raw = await kx.portfolioKurve.cachePricesTheSets(currency, condition, setNumbers, placeholders);
+      const raw = await kx.portfolioCurve.cachePricesTheSets(currency, condition, setNumbers, placeholders);
       const buckets: Record<string, { day: string; month: string; sets: Record<string, number> }> = {};
       for (const r of raw) {
         const k = r.day;
@@ -92,7 +92,7 @@ export async function reconstructCurve(
     if (monthResolution && erster) {
       const firstTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;
       erster.fullDay = firstTag;
-      const start = await kx.portfolioKurve.lastValuesBeforeStart(
+      const start = await kx.portfolioCurve.lastValuesBeforeStart(
         currency,
         condition,
         setNumbers,

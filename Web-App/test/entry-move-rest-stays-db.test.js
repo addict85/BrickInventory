@@ -94,9 +94,9 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     return { status: r.status, body: await r.json() };
   };
   const zaehle = async uid => ({
-    erfassungen: (await db.all(`SELECT quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY quantity`, [uid])).map(
-      r => Number(r.quantity),
-    ),
+    acquisitions: (
+      await db.all(`SELECT quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY quantity`, [uid])
+    ).map(r => Number(r.quantity)),
     zeilen: (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='3001'`, [uid])).c,
   });
 
@@ -107,9 +107,9 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
 
     const sender = await zaehle(MAIN);
     assert.deepEqual(
-      sender.erfassungen,
+      sender.acquisitions,
       [3],
-      `Der Absender hat ${sender.erfassungen.length} Erfassungen uebrig (${sender.erfassungen}), ` +
+      `Der Absender hat ${sender.acquisitions.length} Erfassungen uebrig (${sender.acquisitions}), ` +
         'erwartet 1 mit Menge 3. Sind es 0, hat das Verschieben ALLE geloescht — ' +
         'genau der Fehler, um den es hier geht.',
     );
@@ -121,7 +121,7 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     );
 
     const ziel = await zaehle(KIND);
-    assert.deepEqual(ziel.erfassungen, [2], `Das Ziel hat ${ziel.erfassungen} statt [2]`);
+    assert.deepEqual(ziel.acquisitions, [2], `Das Ziel hat ${ziel.acquisitions} statt [2]`);
     assert.equal(ziel.zeilen, 1, 'Das Ziel hat keine Bestandszeile bekommen');
   });
 
@@ -142,7 +142,7 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     );
 
     const sender = await zaehle(MAIN);
-    assert.deepEqual(sender.erfassungen, [], 'Beim Absender darf keine Erfassung bleiben');
+    assert.deepEqual(sender.acquisitions, [], 'Beim Absender darf keine Erfassung bleiben');
     assert.equal(
       sender.zeilen,
       0,
@@ -152,9 +152,9 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
 
     const ziel = await zaehle(KIND);
     assert.deepEqual(
-      ziel.erfassungen,
+      ziel.acquisitions,
       [2, 3],
-      `Das Ziel muss beide Mengen halten, hat ${JSON.stringify(ziel.erfassungen)}`,
+      `Das Ziel muss beide Mengen halten, hat ${JSON.stringify(ziel.acquisitions)}`,
     );
   });
 });

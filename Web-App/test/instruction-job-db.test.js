@@ -53,7 +53,7 @@ test('instructions as a job', { concurrency: 1 }, async t => {
   const Q = _req('src/catalog/loadInstruction.js');
   const A = Object.assign({}, _req('src/jobQueue/jobs.js'), {
     ..._req('src/jobQueue/service.js'),
-    ...require('./helpers/sources').testArea('jobQueue').auftraege,
+    ...require('./helpers/sources').testArea('jobQueue').jobs,
   });
   const { JobMove } = _req('jobs/jobWorker.js');
   const pause = () => A.liesPause('anleitung');

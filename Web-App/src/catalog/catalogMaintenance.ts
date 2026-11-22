@@ -256,7 +256,7 @@ export async function catalogPart(
   forUser: From = null,
 ): Promise<CatalogPart | null> {
   if (!partNumber) return null;
-  const z = await k.katalogStamm.partFromCatalog(partNumber, colorId, forUser);
+  const z = await k.catalogMaster.partFromCatalog(partNumber, colorId, forUser);
   if (!z) return null;
 
   const source: CatalogPart['bildQuelle'] =
@@ -280,7 +280,7 @@ export async function catalogMinifig(
   forUser: From = null,
 ): Promise<{ name: string | null; bild: string | null; hatImage: boolean } | null> {
   if (!figNumber) return null;
-  const z = await k.katalogStamm.minifigFromCatalog(figNumber, forUser);
+  const z = await k.catalogMaster.minifigFromCatalog(figNumber, forUser);
   if (!z) return null;
   return {
     name: z.fig_name ?? null,

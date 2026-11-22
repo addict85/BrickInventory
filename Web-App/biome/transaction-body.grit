@@ -1,9 +1,9 @@
-// Im Rumpf von k.transaktion(async t => …) ist k noch sichtbar; eine Abfrage darüber
-// liefe neben der Transaktion (zur Laufzeit: UngebundeneAbfrage). Der Rumpf fragt über t.
+// In the body of k.transact(async t => …) k is still visible; a query through it
+// would run beside the transaction (at runtime an unbound query). The body asks via t.
 language js
 
 `$z.$m($rumpf, $...)` where {
-  $m <: or { `transaktion`, `transaction` },
+  $m <: or { `transact`, `transaction` },
   $rumpf <: or {
     `async ($p) => $b`,
     `($p) => $b`,

@@ -26,7 +26,7 @@ const QUEUE = 'Job-Prozess und Einstellen: Aufträge aller Konten und solche ohn
 const MANAGEMENT = 'Verwaltung: Übersicht über die Aufträge aller Konten';
 
 export const access = (db: Db, l: JobsReadContract) => ({
-  auftraege: {
+  jobs: {
     addJobOne: imSystem(db, QUEUE, jobs.addJobOne),
     addOwnJobOne: bound(db)(jobs.addOwnJobOne),
     enqueueList: imSystem(db, QUEUE, jobs.enqueueList),
@@ -72,7 +72,7 @@ export const access = (db: Db, l: JobsReadContract) => ({
     changeImportStatus: bound(db)(importStand.changeImportStatus),
     setRunFort: bound(db)(importStand.setRunFort),
   },
-  laufzustand: {
+  runState: {
     readState: bound(db)(runState.readState),
     setState: bound(db)(runState.setState),
     deleteState: bound(db)(runState.deleteState),

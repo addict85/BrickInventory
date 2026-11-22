@@ -47,7 +47,7 @@ const instructionAccess = (db: Db, l: CatalogReadContract) => ({
     rememberInstruction: bound(db)(anleitungen.storeInstruction),
     setInstructionFile: bound(db)(anleitungen.setInstructionFile),
   },
-  blZuordnung: {
+  blMapping: {
     writeBlNumber: bound(db)(blMapping.writeBlNumber),
     writeBlNumberOwn: bound(db)(blMapping.writeBlNumberOwn),
     noteLookedUp: bound(db)(blMapping.noteLookedUp),
@@ -56,7 +56,7 @@ const instructionAccess = (db: Db, l: CatalogReadContract) => ({
     effectiveNumbers: bound(db)(blMapping.effectiveNumbers),
     writeBlColorNumber: bound(db)(blMapping.writeBlColorNumber),
   },
-  csvKatalog: {
+  csvCatalog: {
     catalogImageStatus: bound(db)(csvCatalog.catalogImageStatus),
     inventoryPartsWithoutFallback: bound(db)(csvCatalog.inventoryPartsWithoutFallback),
     inventoryMinifigs: bound(db)(csvCatalog.inventoryMinifigs),
@@ -64,7 +64,7 @@ const instructionAccess = (db: Db, l: CatalogReadContract) => ({
     manualColorParts: withContract(db, l)(csvCatalog.manualColorParts),
     replacePartColorsImage: bound(db)(csvCatalog.replacePartColorsImage),
   },
-  katalogCache: {
+  catalogCache: {
     catalogEntryTo: bound(db)(catalogCache.catalogEntryTo),
     setInCatalog: bound(db)(catalogCache.setInCatalog),
     rememberBricklinkKind: bound(db)(catalogCache.rememberBricklinkKind),
@@ -78,13 +78,13 @@ const instructionAccess = (db: Db, l: CatalogReadContract) => ({
 
 /** Master data, search, cache and contents of the sets. */
 const masterAccess = (db: Db, l: CatalogReadContract) => ({
-  katalogStamm: {
+  catalogMaster: {
     inventoryAfterCandidates: bound(db)(catalogMaster.inventoryAfterCandidates),
     loadedColors: bound(db)(catalogMaster.loadedColors),
     partFromCatalog: bound(db)(catalogMaster.partFromCatalog),
     minifigFromCatalog: bound(db)(catalogMaster.minifigFromCatalog),
   },
-  katalogSuche: {
+  catalogSearch: {
     themes: bound(db)(catalogSearch.themes),
     setsJeThema: bound(db)(catalogSearch.setsJeThema),
     yearRange: bound(db)(catalogSearch.yearRange),
@@ -106,11 +106,11 @@ const masterAccess = (db: Db, l: CatalogReadContract) => ({
     rememberMinifigsParts: bound(db)(rebrickableCache.rememberMinifigsParts),
     inventoryParts: bound(db)(rebrickableCache.inventoryParts),
   },
-  setInhalt: {
+  setContent: {
     minifigsOfSetCatalog: bound(db)(setContent.minifigsOfSetCatalog),
     partsWithoutBlMapping: withContract(db, l)(setContent.partsWithoutBlMapping),
   },
-  teileAnreicherung: {
+  partsEnrichment: {
     partsOfInventory: bound(db)(partsEnrichment.partsOfInventory),
     setPartsCatalog: bound(db)(partsEnrichment.setPartsCatalog),
     blMappings: bound(db)(partsEnrichment.blMappings),
@@ -125,7 +125,7 @@ const masterAccess = (db: Db, l: CatalogReadContract) => ({
 });
 
 const imageAccess = (db: Db, l: CatalogReadContract) => ({
-  bildlage: {
+  imageState: {
     setsWithMissingCatalogImages: bound(db)(imageState.setsWithMissingCatalogImages),
     manualPartsWithoutImage: withContract(db, l)(imageState.manualPartsWithoutImage),
     minifigsWithoutImage: withContract(db, l)(imageState.minifigsWithoutImage),

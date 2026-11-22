@@ -16,12 +16,12 @@ type Stored = {
 };
 
 export async function setResult(k: JobsContext, id: string, ergebnis: Record<string, unknown>): Promise<void> {
-  await k.auftraege.writeResult(id, { ergebnis } satisfies Stored);
+  await k.jobs.writeResult(id, { ergebnis } satisfies Stored);
 }
 
 /** A domain error (wrong file, missing right) arrives at the request with a code. */
 export async function setSlotError(k: JobsContext, id: string, e: DomainError): Promise<void> {
-  await k.auftraege.writeResult(id, {
+  await k.jobs.writeResult(id, {
     fachfehler: { code: e.code, art: e.art, ...(e.vars ? { vars: e.vars } : {}) },
   } satisfies Stored);
 }
@@ -40,7 +40,7 @@ export async function waitOnJob<T, A extends JobKind>(
   const bis = k.uhr.jetzt() + (o.wartenMs ?? IMPORT_WAIT_MS);
   let lastUsed = '';
   for (;;) {
-    const s = await k.auftraege.jobStatus(id, uid);
+    const s = await k.jobs.jobStatus(id, uid);
     if (s?.progress && o.progress) {
       const j = JSON.stringify(s.progress);
       if (j !== lastUsed) {
@@ -53,7 +53,7 @@ export async function waitOnJob<T, A extends JobKind>(
       throw new DomainError(stored.fachfehler.art ?? 'ungueltig', stored.fachfehler.code, stored.fachfehler.vars);
     if (s?.status === 'erledigt') {
       // Read is read: the result carries names and numbers from the file.
-      await k.auftraege.writeResult(id, null);
+      await k.jobs.writeResult(id, null);
       return (stored.ergebnis ?? {}) as T;
     }
     if (!s || s.status === 'abgebrochen') failDomain('konflikt', 'import_abgebrochen');

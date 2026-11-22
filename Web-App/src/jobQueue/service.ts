@@ -41,7 +41,7 @@ export async function placeJobOne<A extends JobKind>(
   payload: PayloadInput<A>,
   o: Enqueue = {},
 ): Promise<string | null> {
-  const id = await k.auftraege.addJobOne(art, k.arten.check(art, payload), o);
+  const id = await k.jobs.addJobOne(art, k.arten.check(art, payload), o);
   await wakeWorker(k, art);
   return id;
 }
@@ -54,7 +54,7 @@ export async function placeOwnJobOne<A extends JobKind>(
   payload: PayloadInput<A>,
   o: Enqueue & { userId: number },
 ): Promise<string | null> {
-  const id = await k.auftraege.addOwnJobOne(art, k.arten.check(art, payload), o);
+  const id = await k.jobs.addOwnJobOne(art, k.arten.check(art, payload), o);
   await wakeWorker(k, art);
   return id;
 }
@@ -68,7 +68,7 @@ export async function supplementListenJob<A extends JobKind>(
   o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
   const n = k.arten.check(art, payload);
-  const id = await k.auftraege.enqueueList(art, n as object, o);
+  const id = await k.jobs.enqueueList(art, n as object, o);
   await wakeWorker(k, art);
   return id;
 }
@@ -81,13 +81,13 @@ export async function setProgress(kx: JobsContext, a: Claim, f: Progress, deadli
     const x = f[k];
     if (typeof x === 'number' && Number.isFinite(x)) stand[k] = Math.floor(x);
   }
-  const z = await kx.auftraege.writeProgress(a, stand, deadlineSec);
+  const z = await kx.jobs.writeProgress(a, stand, deadlineSec);
   await reportStatus(kx, z);
   return !!z;
 }
 
 export async function done(k: JobsContext, a: Claim & Pick<JobRow, 'type'>): Promise<boolean> {
-  const z = await k.auftraege.setDone(a, !!k.arten.fromValue(a.type)?.discardPayload);
+  const z = await k.jobs.setDone(a, !!k.arten.fromValue(a.type)?.discardPayload);
   await reportStatus(k, z);
   return !!z;
 }
@@ -95,7 +95,7 @@ export async function done(k: JobsContext, a: Claim & Pick<JobRow, 'type'>): Pro
 /** @returns true if it was the last attempt and the job is now 'fehler' */
 export async function failed(k: JobsContext, a: JobRow, error: string, immediatelyFinal = false): Promise<boolean> {
   const final = immediatelyFinal || a.attempts >= a.max_attempts;
-  const z = await k.auftraege.setFailed(a, final, error, waitTimeSec(a.attempts));
+  const z = await k.jobs.setFailed(a, final, error, waitTimeSec(a.attempts));
   await reportStatus(k, z);
   return final && !!z;
 }
@@ -104,31 +104,31 @@ export async function failed(k: JobsContext, a: JobRow, error: string, immediate
  * @returns true if the attempt counted and it was the last one (then 'fehler') */
 export async function moved(k: JobsContext, a: JobRow, bis: Date, grund: string, counts: boolean): Promise<boolean> {
   const final = counts && a.attempts >= a.max_attempts;
-  const z = await k.auftraege.setMoved(a, final, bis, grund, counts);
+  const z = await k.jobs.setMoved(a, final, bis, grund, counts);
   await reportStatus(k, z);
   return final && !!z;
 }
 
 export async function endPause(k: JobsContext, art: JobKind): Promise<void> {
-  await k.auftraege.deletePause(art);
+  await k.jobs.deletePause(art);
   await wakeWorker(k, art);
 }
 
 /** A running one stops at its next sign of life. */
 export async function abortAb(k: JobsContext, id: string): Promise<JobRow | null> {
-  const a = await k.auftraege.setAborted(id);
+  const a = await k.jobs.setAborted(id);
   if (a) await reportStatus(k, { s: a.dedupe_key ?? a.id });
   return a;
 }
 
 export async function repeat(k: JobsContext, id: string): Promise<boolean> {
-  const ja = await k.auftraege.placeAgainOne(id);
+  const ja = await k.jobs.placeAgainOne(id);
   if (ja) await wakeWorker(k, 'wiederholt');
   return ja;
 }
 
 export async function pullBefore(k: JobsContext, art: JobKind, key?: string): Promise<number> {
-  const n = await k.auftraege.makeDue(art, key);
+  const n = await k.jobs.makeDue(art, key);
   if (n > 0) await wakeWorker(k, art);
   return n;
 }
@@ -136,7 +136,7 @@ export async function pullBefore(k: JobsContext, art: JobKind, key?: string): Pr
 /** Every status with a number, even 0. */
 export async function countKind(k: JobsContext, art: JobKind): Promise<Record<JobStatus, number>> {
   const from = { offen: 0, laeuft: 0, erledigt: 0, fehler: 0, abgebrochen: 0 };
-  for (const z of await k.auftraege.statusNumbers(art)) from[z.status] = z.n;
+  for (const z of await k.jobs.statusNumbers(art)) from[z.status] = z.n;
   return from;
 }
 
@@ -149,7 +149,7 @@ export async function inNamesOfJob<T>(
   f: () => Promise<T>,
 ): Promise<T> {
   if (a.user_id == null) return inJobFrame(k, a, f);
-  const u = await k.auftraege.accountRole(a.user_id);
+  const u = await k.jobs.accountRole(a.user_id);
   return asRequest({ apiUser: { user_id: a.user_id, is_admin: !!u?.is_admin } }, f);
 }
 
@@ -179,7 +179,7 @@ export function checkMembership(
 ): void {
   for (const { a, ac } of runs) {
     if (ac.signal.aborted || (key !== undefined && key !== (a.dedupe_key ?? a.id))) continue;
-    void k.auftraege.belongsStill(a).then(
+    void k.jobs.belongsStill(a).then(
       ja => {
         if (!ja && !ac.signal.aborted) ac.abort(new JobLost());
       },

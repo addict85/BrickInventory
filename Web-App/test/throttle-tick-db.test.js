@@ -36,7 +36,7 @@ test('shared rhythm via the database', { concurrency: 1 }, async t => {
   await t.test('two throttles share the rhythm', async () => {
     // The own throttle lets through immediately (window 0) — every distance that
     // shows comes from the shared rhythm.
-    const apiTakt = require('./helpers/sources').testContext('externalSources').apiTakt;
+    const apiTakt = require('./helpers/sources').testContext('externalSources').apiTick;
     const a = new RateLimiter(1, 0, { api: API, gapMs: GAP, apiTakt, disruptedUntil: 0 });
     const b = new RateLimiter(1, 0, { api: API, gapMs: GAP, apiTakt, disruptedUntil: 0 });
     const times = [];

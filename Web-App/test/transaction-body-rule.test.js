@@ -1,5 +1,5 @@
 /**
- * The lint rule biome/transaktionsrumpf.grit: in the body of `k.transact(async t => …)`
+ * The lint rule biome/transaction-body.grit: in the body of `k.transact(async t => …)`
  * nobody queries via the outer access. Checked with the real Biome and the real
  * biome.json on a sample tree with allowed and forbidden forms.
  *

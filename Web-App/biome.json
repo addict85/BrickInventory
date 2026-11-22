@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "plugins": [
     {
-      "path": "./biome/transaktionsrumpf.grit",
+      "path": "./biome/transaction-body.grit",
       "includes": ["server.ts", "src/**", "jobs/**", "routes/**", "db/**", "startup/**", "clients/**"]
     }
   ],

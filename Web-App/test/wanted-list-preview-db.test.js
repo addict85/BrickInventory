@@ -91,7 +91,7 @@ const db = testData();
 testSources(null, {
   // At Rebrickable 98765 is called 12345 — a DEVIATING number, as only listed
   // there. Nothing else knows this pair.
-  blTeilZuRb: async blId => (blId === '98765' ? '12345' : null),
+  blPartToRb: async blId => (blId === '98765' ? '12345' : null),
   blFilterIneffective: () => false,
   lookupPart: async () => null,
   getMinifigInfo: async () => null,

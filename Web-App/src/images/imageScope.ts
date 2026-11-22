@@ -20,7 +20,7 @@ const HITS_MS = 60_000,
   ACCOUNTS_AT_MOST = 1000;
 
 async function lade(k: ImagesContext, uid: number): Promise<Stand> {
-  const rows = await k.bildBlickfeld.setsInScope(await k.household.scopeIds(uid));
+  const rows = await k.imageScope.setsInScope(await k.household.scopeIds(uid));
   const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: k.uhr.jetzt() };
   for (const z of rows) {
     s.nummern.add(fileMaster(z.set_number));

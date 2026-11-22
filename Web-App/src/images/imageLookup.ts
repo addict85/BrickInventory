@@ -19,7 +19,7 @@ export async function cdnForMissingImage(k: ImagesContext, webPath: string): Pro
   const master = imageMasterFromPath(webPath);
   let url: string | null = null;
   if (master) {
-    const z = await k.bildStammCdn.cdnToImageMaster(master);
+    const z = await k.imageMasterCdn.cdnToImageMaster(master);
     url = z?.url ?? null;
   }
   cdnStorage(k).set(webPath, { url });

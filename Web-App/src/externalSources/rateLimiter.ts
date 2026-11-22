@@ -90,7 +90,7 @@ function suspendTick({ api, apiTakt, disruptedUntil, uhr = systemClock }: Tick, 
 export interface Tick {
   api: string;
   gapMs: number;
-  apiTakt: ForeignSourcesContext['apiTakt'];
+  apiTakt: ForeignSourcesContext['apiTick'];
   /** After a database error one minute without a shared tick: otherwise every call would
    * first run into the connection timeout. The own throttle stays. */
   disruptedUntil: number;
