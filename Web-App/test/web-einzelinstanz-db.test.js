@@ -49,8 +49,8 @@ test('one web process per database', { concurrency: 1 }, async t => {
     };
   };
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
-  const a = modul.createDb(modul.dbKonfigFromEnvironment()),
-    b = modul.createDb(modul.dbKonfigFromEnvironment());
+  const a = modul.createDb(modul.dbConfigFromEnvironment()),
+    b = modul.createDb(modul.dbConfigFromEnvironment());
   t.after(async () => {
     for (const f of offen) await f();
     await a.pool.end();

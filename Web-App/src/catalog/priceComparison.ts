@@ -12,9 +12,9 @@ export function suchUrl(term: string): string {
 /** Number AND name: "75192-1" alone often finds nothing. The variant "-1" is
  * a Rebrickable peculiarity and appears on no packaging. */
 export function forSet(setNumber: string, name?: string | null): string {
-  const nummer = String(setNumber ?? '')
+  const number = String(setNumber ?? '')
     .replace(/-\d+$/, '')
     .trim();
-  if (!nummer) return '';
-  return suchUrl(['LEGO', nummer, String(name ?? '').trim()].filter(Boolean).join(' '));
+  if (!number) return '';
+  return suchUrl(['LEGO', number, String(name ?? '').trim()].filter(Boolean).join(' '));
 }

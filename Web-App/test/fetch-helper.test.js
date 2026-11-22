@@ -2,16 +2,16 @@
  * src/infra/fetch.ts against a real TLS server on 127.0.0.1: redirects
  * with relative, http and foreign addresses, loops, too large bodies and
  * silence must not end the process; they become AbrufFehler.
- * setBildHerunterladen runs via an agent that directs every host to the test server
+ * downloadSetImage runs via an agent that directs every host to the test server
  * — so the test sees the real caller, not only the helper.
  *
  * Counter-checks (measured on 01.11.2026):
  *   A  in src/images/setImages.ts the old fetch (https.get with
- *      tryGet(res.headers.location)) brought back → red: “setBildHerunterladen
+ *      tryGet(res.headers.location)) brought back → red: “downloadSetImage
  *      survives every redirect" (uncaughtException ERR_INVALID_URL)
  *   B  in abruf.ts the host list only checked for the start address
  *      (nextRedirect without o.hosts, sprung() only at u === start) → red:
- *      “foreign host is rejected" and “setBildHerunterladen survives …"
+ *      “foreign host is rejected" and “downloadSetImage survives …"
  *   C  in abruf.ts the count in the data handler of holeHttps removed → red:
  *      “body without length over the limit"
  *   D  in fremdeAdressen.ts the header filter on host change removed → red:
@@ -26,8 +26,8 @@ const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
-const { holeHttps, openHttps, AbrufFehler } = _req('src/infra/fetch.js');
-const { setBildHerunterladen } = _req('src/images/setImages.js');
+const { holeHttps, openHttps, FetchError } = _req('src/infra/fetch.js');
+const { downloadSetImage } = _req('src/images/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 const FIX = path.join(__dirname, 'fixtures');
@@ -104,7 +104,7 @@ async function grund(promise) {
   try {
     await promise;
   } catch (e) {
-    assert.ok(e instanceof AbrufFehler, `kein AbrufFehler: ${e}`);
+    assert.ok(e instanceof FetchError, `kein AbrufFehler: ${e}`);
     return e.grund;
   }
   assert.fail('kein Fehler');
@@ -191,7 +191,7 @@ test('a silent server runs into the timeout', async () => {
   assert.equal(await grund(holeHttps(`${basis()}/still`, opt({ zeitlimitMs: 300 }))), 'zeitlimit');
 });
 
-test('setBildHerunterladen survives every redirect', async t => {
+test('downloadSetImage survives every redirect', async t => {
   const echt = https.globalAgent;
   https.globalAgent = new Umlenker();
   const nr = `abruftest-${process.pid}`;
@@ -203,8 +203,8 @@ test('setBildHerunterladen survives every redirect', async t => {
     fs.rmSync(datei, { force: true });
   });
   for (const pfad of ['/http', '/fremd', '/ohne-ziel', '/kaputt', '/schleife'])
-    assert.equal(await setBildHerunterladen(`https://cdn.rebrickable.com${pfad}`, nr), null, pfad);
+    assert.equal(await downloadSetImage(`https://cdn.rebrickable.com${pfad}`, nr), null, pfad);
   assert.equal(fs.existsSync(datei), false);
-  assert.equal(await setBildHerunterladen('https://cdn.rebrickable.com/relativ', nr), `/images/sets/${nr}.jpg`);
+  assert.equal(await downloadSetImage('https://cdn.rebrickable.com/relativ', nr), `/images/sets/${nr}.jpg`);
   assert.equal(fs.readFileSync(datei).length, IMAGE.length);
 });

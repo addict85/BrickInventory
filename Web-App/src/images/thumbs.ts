@@ -1,6 +1,6 @@
 // sharp computes outside the event loop.
 
-import { reportError, fehlertext, withoutMissingFile } from '../infra/error';
+import { reportError, errorMessage, withoutMissingFile } from '../infra/error';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -77,7 +77,7 @@ async function shrink(source: string, target: string): Promise<void> {
   await jimpPreview(source, target, THUMB_SIZE);
 }
 
-export async function vorschauErzeugenAus(localPath: string) {
+export async function previewFrom(localPath: string) {
   if (!localPath) return null;
 
   // /images/… points to data/images/ (volume), not to public/.
@@ -106,7 +106,7 @@ export async function vorschauErzeugenAus(localPath: string) {
   } catch (e) {
     // Do NOT fail silently.
     console.error(
-      `[thumb] Vorschau fehlgeschlagen für ${localPath}: ${fehlertext(e)}`
+      `[thumb] Vorschau fehlgeschlagen für ${localPath}: ${errorMessage(e)}`
         .replace(/\r?\n/g, ' ⏎ ')
         .replace(/\n|\r/g, ''),
     );

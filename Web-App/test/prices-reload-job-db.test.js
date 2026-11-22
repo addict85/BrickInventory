@@ -103,7 +103,7 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   await t.test('while one runs, at most one follow-up job is added', async () => {
     await leeren();
     await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
-    const lauf = await repo.belegeAuftrag(['preise_nachladen'], 60);
+    const lauf = await repo.claimJob(['preise_nachladen'], 60);
     assert.ok(lauf);
     await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(2)] });
     await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(3)] });
@@ -119,13 +119,13 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   await t.test('the running one goes back while its follow-up job waiting', async () => {
     const bis = new Date(Date.now() + 6 * 3600_000);
     for (const zurueck of [
-      a => D.verschoben(a, bis, 'BrickLink-Tageskontingent erschöpft', false),
-      a => D.fehlgeschlagen(a, 'Quelle weg'),
+      a => D.moved(a, bis, 'BrickLink-Tageskontingent erschöpft', false),
+      a => D.failed(a, 'Quelle weg'),
       a => repo.giveBack(a),
     ]) {
       await leeren();
       await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
-      const lauf = await repo.belegeAuftrag(['preise_nachladen'], 60);
+      const lauf = await repo.claimJob(['preise_nachladen'], 60);
       const sequence = await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1), set(2)] });
       await zurueck(lauf);
       const z = await zeilen();
@@ -142,13 +142,13 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
   await t.test('postponed waiting, no longer occupies', async () => {
     await leeren();
     await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
-    const lauf = await repo.belegeAuftrag(['preise_nachladen'], 60);
-    await D.verschoben(lauf, new Date(Date.now() - 1000), 'BrickLink-Tageskontingent erschöpft', false);
+    const lauf = await repo.claimJob(['preise_nachladen'], 60);
+    await D.moved(lauf, new Date(Date.now() - 1000), 'BrickLink-Tageskontingent erschöpft', false);
     assert.deepEqual(
       (await zeilen()).map(x => [x.status, x.waiting]),
       [['offen', true]],
     );
-    await repo.belegeAuftrag(['preise_nachladen'], 60);
+    await repo.claimJob(['preise_nachladen'], 60);
     assert.deepEqual(
       (await zeilen()).map(x => [x.status, x.waiting]),
       [['laeuft', false]],
@@ -163,11 +163,11 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
     const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
       preise_nachladen: {
         ausfuehren: async (_n, k) => {
-          await k.fortschritt({ erledigt: 5.532, gesamt: 8 });
+          await k.progress({ erledigt: 5.532, gesamt: 8 });
           gesehen.push(await stand());
           // BigInt cannot be written as JSON: this one report fails.
-          await assert.rejects(k.fortschritt({ erledigt: 6, gross: 1n }));
-          gesehen.push(await k.fortschritt({ erledigt: 7, gesamt: 8 }));
+          await assert.rejects(k.progress({ erledigt: 6, gross: 1n }));
+          gesehen.push(await k.progress({ erledigt: 7, gesamt: 8 }));
           gesehen.push(await stand());
         },
       },

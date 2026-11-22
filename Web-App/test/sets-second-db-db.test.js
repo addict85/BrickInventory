@@ -9,7 +9,7 @@
  *      red: “currency from the second database”, “price alert …” (currency of the
  *      alert) and “the process access stayed untouched”
  *   B  deleteSetFor() in src/sets/delete.ts with
- *      haushaltBereich().schreibbereich(s.nutzer) → red: “the
+ *      haushaltBereich().writeScope(s.nutzer) → red: “the
  *      process access stayed untouched”
  *   C  setLocationOfSets() again via bestandBereich().locationService →
  *      red: “storage location in the second database” and “the process access …”
@@ -61,7 +61,7 @@ function zaehle(zugang) {
     n.anfragen++;
     return echt.connect(...a);
   };
-  n.zurueck = () => Object.assign(pool, echt);
+  n.back = () => Object.assign(pool, echt);
   return n;
 }
 
@@ -113,7 +113,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   const alle = buildServices(zweite, { contexts });
   const sets = alle.sets;
   const prozess = zaehle(quellen.testAccess());
-  t.after(() => prozess.zurueck());
+  t.after(() => prozess.back());
 
   await t.test('currency from the second database', async () => {
     assert.equal(await require(path.join(ROOT, 'dist/src/sets/prices.js')).currencyOf(contexts.sets, uid), 'CHF');

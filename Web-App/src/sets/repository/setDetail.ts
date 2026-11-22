@@ -1,4 +1,4 @@
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 import { quantityScalar } from '../../../db/stockQuantity';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
 import type { CatalogPart, ListenTeil, SetMaster } from '../rows';
@@ -6,7 +6,7 @@ import { setMasterJoin, SET } from '../../../db/catalogView';
 
 /** Details from rb_sets, image and figures from set_catalog (0108). A placeholder
  * "Set …" only says that some account captured the number. */
-export function setStamm(db: DbInterface, setNumber: string) {
+export function setMaster(db: DbInterface, setNumber: string) {
   return db.get<SetMaster>(
     `SELECT ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme,
            ${SET.teile} AS pieces, c.minifigs, c.image_url, c.image_local,
@@ -82,7 +82,7 @@ export function inventoryMinifigsOfSets(db: DbInterface, invId: number) {
 }
 
 export function setInField(db: DbInterface, setNumber: string, scope: number[]) {
-  return db.get<Treffer>('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [
+  return db.get<Hit>('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [
     setNumber,
     scope,
   ]);
@@ -96,7 +96,7 @@ export function setsWithQuantity(db: DbInterface, uid: number) {
 }
 
 export function setOfAccount(db: DbInterface, uid: number, setNumber: string) {
-  return db.get<Treffer>('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, setNumber]);
+  return db.get<Hit>('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, setNumber]);
 }
 
 export function addInstructionOne(
@@ -125,5 +125,5 @@ export function deleteInstruction(db: DbInterface, id: number, uid: number) {
 }
 
 export function instructionFileUsed(db: DbInterface, path: string) {
-  return db.get<Treffer>('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [path]);
+  return db.get<Hit>('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [path]);
 }

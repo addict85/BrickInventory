@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { processWide } from '../../infra/prozessweit';
 import type { AccountServices } from '../../account';
 import { userIdTheRequest } from '../../account/http/login';
-import { beforeThe, withoutMissingFile, fehlertext, reportError } from '../../infra/error';
+import { beforeThe, withoutMissingFile, errorMessage, reportError } from '../../infra/error';
 import { streamFileToResponse } from '../../http/httpResponse';
 import { rememberCacheGrowth, imageType } from '../imgCacheServe';
 import { deliverFromCache } from './imageCacheDelivery';
@@ -16,7 +16,7 @@ import { imgProxyFailures, countProxyError } from '../imgProxyStats';
 import { proxyAddress, proxyCacheKey } from '../images';
 import type { Request, Response } from 'express';
 import type { Readable } from 'node:stream';
-import { AbrufFehler, type FetchStream } from '../../infra/fetch';
+import { FetchError, type FetchStream } from '../../infra/fetch';
 import { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../externalSources';
 import zlib from 'node:zlib';
 import { setImageComplete } from '../setImages';
@@ -73,24 +73,24 @@ async function fromCdn(
     { ...IMAGE_HEADERS_WITHOUT_REFERER, 'Accept-Encoding': 'identity' },
   ] as const;
 
-  const holen = (kopfzeilen: Record<string, string>) =>
+  const openCdn = (kopfzeilen: Record<string, string>) =>
     d.images.openImage(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
   let r: FetchStream;
   try {
-    r = await holen(HEADER_SETS[0]);
+    r = await openCdn(HEADER_SETS[0]);
     // Follow up once without referer BEFORE the address counts as dead: the
     // hotlink protection likes to answer an unsuitable referer with 404.
     if (r.status === 404 || r.status === 403) {
       r.verwerfen();
-      r = await holen(HEADER_SETS[1]);
+      r = await openCdn(HEADER_SETS[1]);
     }
   } catch (e) {
-    const time = e instanceof AbrufFehler && e.grund === 'zeitlimit';
+    const time = e instanceof FetchError && e.grund === 'zeitlimit';
     if (time) imgProxyFailures.timeout++;
     else imgProxyFailures.error++;
-    imgProxyFailures.lastError = fehlertext(e);
+    imgProxyFailures.lastError = errorMessage(e);
     console.error(
-      `[img-proxy] ${time ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${fehlertext(e)}`
+      `[img-proxy] ${time ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${errorMessage(e)}`
         .replace(/\r?\n/g, ' ⏎ ')
         .replace(/\n|\r/g, ''),
     );
@@ -108,9 +108,9 @@ async function fromCdn(
     else imgProxyFailures.other++;
     imgProxyFailures.lastError = `HTTP ${r.status} — ${url}`;
     // 404 is information, not an error: as `error` it would clog the log.
-    const meldung = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
-    if (r.status === 404) console.info(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
-    else console.error(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    const message = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
+    if (r.status === 404) console.info(message.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    else console.error(message.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     if (await ersatz()) return null;
     void (r.status === 404 ? sendPlaceholder(res) : res.status(r.status || 502).end());
     return null;
@@ -120,8 +120,8 @@ async function fromCdn(
 
 /** What the proxy has completely becomes the set image: a second fetch from the CDN
  * failed where the first worked. The preview is created by the job bildbedarf. */
-async function storeAsSetImage(d: ImageServices, cacheFile: string, setNummer: string): Promise<void> {
-  const target = path.join(SET_IMAGES_DIR, `${setNummer.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
+async function storeAsSetImage(d: ImageServices, cacheFile: string, setNumber: string): Promise<void> {
+  const target = path.join(SET_IMAGES_DIR, `${setNumber.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
   const teil = `${target}.${process.pid}-${randomUUID()}.teil`;
   await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
   await fs.promises.copyFile(cacheFile, teil);
@@ -253,11 +253,11 @@ const liesDa = (file: string) =>
   );
 
 /** @returns true if image or preview are still missing under images/sets */
-async function setImageMissing(d: ImageServices, setNummer: string, source: string): Promise<boolean> {
-  if (!(await setImageComplete(setNummer))) return true;
+async function setImageMissing(d: ImageServices, setNumber: string, source: string): Promise<boolean> {
+  if (!(await setImageComplete(setNumber))) return true;
   // If both are already there, often only the entry is missing: afterwards the UI no longer
   // asks here. Without waiting — a write error must not hold up delivery.
-  void d.images.reportSetImageLoaded(setNummer, source).then(ok => {
+  void d.images.reportSetImageLoaded(setNumber, source).then(ok => {
     if (!ok) countProxyError('img-proxy:setBildLokal', new Error('Eintrag des Set-Bilds gescheitert'));
   });
   return false;
@@ -266,18 +266,18 @@ async function setImageMissing(d: ImageServices, setNummer: string, source: stri
 /** Only what the proxy has as an image (cache or throttled fetch) is reserved,
  * and once per set within a period (imageOnceReserve): otherwise an account with
  * invented set numbers would fill the image job's notes. */
-function reserveOnce(d: ImageServices, url: string, setNummer: string): void {
-  d.images.imageOnceReserve(url, setNummer);
+function reserveOnce(d: ImageServices, url: string, setNumber: string): void {
+  d.images.imageOnceReserve(url, setNumber);
 }
 
 function fromSetImages(
   d: ImageServices,
   req: Request,
   res: Response,
-  setNummer: string,
+  setNumber: string,
   wantThumb: boolean,
 ): Promise<boolean> {
-  const master = path.join(SET_IMAGES_DIR, setNummer.replace(/[^a-z0-9-]/gi, '_'));
+  const master = path.join(SET_IMAGES_DIR, setNumber.replace(/[^a-z0-9-]/gi, '_'));
   return deliverFromCache(d.images, {
     res,
     req,
@@ -291,13 +291,13 @@ function fromSetImages(
 }
 
 /** From the proxy's cache to images/sets, then reserve; without a cache file nothing. */
-async function setImageFromCache(d: ImageServices, url: string, setNummer: string, cacheFile: string): Promise<void> {
+async function setImageFromCache(d: ImageServices, url: string, setNumber: string, cacheFile: string): Promise<void> {
   try {
-    await storeAsSetImage(d, cacheFile, setNummer);
+    await storeAsSetImage(d, cacheFile, setNumber);
   } catch (e) {
     return withoutMissingFile('img-proxy:setbild')(e);
   }
-  reserveOnce(d, url, setNummer);
+  reserveOnce(d, url, setNumber);
 }
 
 export async function passThroughImage(d: ImageServices, req: Request, res: Response) {
@@ -316,26 +316,26 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
   // gen=0: the request computes nothing, it leaves a note for the
   // job 'bildbedarf' — throttled and only in the job process.
   const createMay = req.query.gen !== '0';
-  const setNummer = setNumberFromImageAddress(String(url || ''));
+  const setNumber = setNumberFromImageAddress(String(url || ''));
   const thumbFile = cacheFile + '_thumb.jpg';
   // A set image including preview belongs in images/sets; the image job fetches it
   // as soon as it was requested once via the proxy.
-  const setMissing = setNummer ? await setImageMissing(d, setNummer, url) : false;
+  const setMissing = setNumber ? await setImageMissing(d, setNumber, url) : false;
   // images/sets applies to all accounts and has no cap: store and reserve only for a set
   // in the account's scope, otherwise an account would fill the disk with invented numbers.
-  const store = setMissing && !!setNummer && (await d.images.setNumberInScope(proxyUserId, setNummer));
+  const store = setMissing && !!setNumber && (await d.images.setNumberInScope(proxyUserId, setNumber));
   const note = () => {
-    if (store && setNummer) d.images.rememberUsed(String(url), setNummer);
+    if (store && setNumber) d.images.rememberUsed(String(url), setNumber);
   };
   // If only the preview is left in the cache (maintenance deletes the unused original
   // after 30 days), the proxy fetches the original anew: the CDN rejects the image job's fetch
   // with its own identifier; without this path the set would never get a file.
   const originalMissing = store && !(await liesDa(cacheFile));
-  if (store && setNummer && !originalMissing) await setImageFromCache(d, url, setNummer, cacheFile);
+  if (store && setNumber && !originalMissing) await setImageFromCache(d, url, setNumber, cacheFile);
 
   // If the set image including preview lies in images/sets, it comes from there instead of from
   // cache or CDN: maintenance clears the proxy cache after 30 days, images/sets not.
-  if (setNummer && !setMissing && (await fromSetImages(d, req, res, setNummer, wantThumb))) return;
+  if (setNumber && !setMissing && (await fromSetImages(d, req, res, setNumber, wantThumb))) return;
   const fromCache = () =>
     deliverFromCache(d.images, {
       res,
@@ -366,7 +366,7 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
 
   const r = await fromCdn(d, url, cacheKey, res, ersatz);
   if (!r) return;
-  const setTarget = store ? setNummer : null;
+  const setTarget = store ? setNumber : null;
   return forward(d, r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, createMay, note, setTarget });
 }
 

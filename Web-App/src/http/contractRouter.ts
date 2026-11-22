@@ -3,24 +3,24 @@ import express from 'express';
 import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/config';
-import { routeZu, type Key, type ResponseBody, type Input, type Query } from '../contract';
-import { unbekannteFelder } from '../contract/unknownFields';
-import { FLAT_INPUT, Fehler, PATH, type PathOf, type Route } from '../contract/base';
+import { routeFor, type Key, type ResponseBody, type Input, type Query } from '../contract';
+import { unknownFields } from '../contract/unknownFields';
+import { FLAT_INPUT, ErrorBody, PATH, type PathOf, type Route } from '../contract/base';
 import { LARGEST_ID, idWert } from '../infra/validate';
 import { handleRouteError, sendError } from './httpResponse';
 
 /** The type of `res` in a route: tsc reports where the response deviates from the contract. */
 export type Reply<K extends Key> = [ResponseBody<K>] extends [never]
   ? Response
-  : Response<ResponseBody<K> | z.input<typeof Fehler>>;
+  : Response<ResponseBody<K> | z.input<typeof ErrorBody>>;
 /** The type of `req` in a route: `eingabe`, `abfrage` and `pfad` as the contract checked them. */
-export type Anfrage<K extends Key, R extends Request = AuthedRequest> = R & {
+export type Request0<K extends Key, R extends Request = AuthedRequest> = R & {
   eingabe: Input<K>;
   abfrage: Query<K>;
   pfad: PathOf<K>;
 };
 /** The same without requireToken. */
-export type OpenRequest<K extends Key> = Anfrage<K, Request>;
+export type OpenRequest<K extends Key> = Request0<K, Request>;
 
 /** A query value is a text: repeated (?a=1&a=2) it becomes a list, and
  * `.trim()` or a regex on it would mistake the type. */
@@ -77,8 +77,8 @@ function validateInput(route: Route, req: Request, res: Response, next: NextFunc
 }
 
 /** The validators from validate.ts report their own error, an unknown field its code. */
-function reportDeviation(req: Request, res: Response, fehler: z.ZodError): void {
-  const first = fehler.issues[0];
+function reportDeviation(req: Request, res: Response, error: z.ZodError): void {
+  const first = error.issues[0];
   const own = (first as { params?: { fehler?: unknown } } | undefined)?.params?.fehler;
   if (own) {
     handleRouteError(res, own, 400, req);
@@ -104,32 +104,32 @@ function responseAgainstContract(req: Request, res: Response, next: NextFunction
   const send = res.json.bind(res);
   res.json = (body: unknown) => {
     const key = String(res.locals.contractKey ?? `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`);
-    const route = res.statusCode < 300 && req.route ? routeZu(key) : undefined;
-    const fehler: string[] = [];
+    const route = res.statusCode < 300 && req.route ? routeFor(key) : undefined;
+    const error: string[] = [];
     const check = (teil: string, schema: import('zod').ZodType | undefined, wert: unknown) => {
       const r = schema?.safeParse(wert);
       if (r && !r.success)
-        fehler.push(...r.error.issues.slice(0, 8).map(i => `${teil} ${i.path.join('.') || '$'}: ${i.message}`));
+        error.push(...r.error.issues.slice(0, 8).map(i => `${teil} ${i.path.join('.') || '$'}: ${i.message}`));
     };
     if (route) {
       // What goes out is checked: a Date only becomes ISO text in res.json.
       const sent = JSON.parse(JSON.stringify(body ?? null));
       check('Antwort', route.antwort, sent);
       // Strict only here: a field outside the contract would be missing in OpenAPI and the UI's types.
-      const fremd = !fehler.length && route.antwort ? unbekannteFelder(route.antwort, sent) : [];
-      if (fremd.length) fehler.push(`Antwort: nicht im Vertrag: ${fremd.join(', ')}`);
+      const fremd = !error.length && route.antwort ? unknownFields(route.antwort, sent) : [];
+      if (fremd.length) error.push(`Antwort: nicht im Vertrag: ${fremd.join(', ')}`);
       if (!route.formular) check('Anfrage', route.eingabe, req.body ?? {});
     }
     // The error path has a shape too; without a check a 404 without a code went unnoticed.
-    if (res.statusCode >= 400) check('Fehlerantwort', Fehler, JSON.parse(JSON.stringify(body ?? null)));
-    if (!fehler.length) return send(body);
-    console.error(`[vertrag] ${key}: ${fehler.join(' | ')}`);
+    if (res.statusCode >= 400) check('Fehlerantwort', ErrorBody, JSON.parse(JSON.stringify(body ?? null)));
+    if (!error.length) return send(body);
+    console.error(`[vertrag] ${key}: ${error.join(' | ')}`);
     res.status(500);
     return send({
       success: false,
       error: `API-Vertrag verletzt: ${key}`,
       code: 'vertrag_verletzt',
-      deviations: fehler,
+      deviations: error,
     });
   };
   next();
@@ -144,10 +144,10 @@ export function checkContract(): ((req: Request, res: Response, next: NextFuncti
 /** Middleware that guarantees the rest of the chain a narrower request (AuthedRequest behind requireToken);
  * only what waechter() builds has the brand `sichert`, not any function in first position. */
 export type Guard<R extends Request> = ((req: Request, res: Response, next: NextFunction) => void) & {
-  readonly sichert: (r: R) => R;
+  readonly ensures: (r: R) => R;
 };
 export function guard<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Guard<R> {
-  return Object.assign(f, { sichert: (r: R) => r });
+  return Object.assign(f, { ensures: (r: R) => r });
 }
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -159,7 +159,7 @@ export type KeyBelow<P extends string> = Key extends infer K
   : never;
 /** What a route returns is put by the router into the envelope `{ success: true, … }`. Only
  * routes whose contract names `success` have one; the others answer themselves. */
-export type Ergebnis<K extends Key> =
+export type Result<K extends Key> =
   ResponseBody<K> extends infer R
     ? [keyof R] extends [never]
       ? [R] extends [never]
@@ -170,12 +170,12 @@ export type Ergebnis<K extends Key> =
         : never
     : never;
 // biome-ignore lint/suspicious/noConfusingVoidType: a route also answers itself (`return sendError(…)`), and that is void.
-type ReturnValue<K extends Key> = Ergebnis<K> | Response | undefined | void;
+type ReturnValue<K extends Key> = Result<K> | Response | undefined | void;
 /** An event of a stream in the same envelope as the query's response (contract: `ereignis`). */
 export const inShell = <T extends object>(data: T) => ({ success: true as const, ...data });
 
 export type Handler<K extends Key, R extends Request> = (
-  req: Anfrage<K, R>,
+  req: Request0<K, R>,
   res: Reply<K>,
 ) => ReturnValue<K> | Promise<ReturnValue<K>>;
 type IntermediateStep = (req: Request, res: Response, next: NextFunction) => unknown;
@@ -184,16 +184,16 @@ interface ContractRoutes<P extends string> {
   readonly praefix: P;
   /** Registers the route of the contract key: method, path and types come from it.
    * If a guard comes first, the route gets its request type. */
-  endpunkt<K extends KeyBelow<P>, R extends Request>(
+  endpoint<K extends KeyBelow<P>, R extends Request>(
     key: K,
     w: Guard<R>,
     ...steps: [...IntermediateStep[], Handler<K, R>]
   ): ContractRouter<P>;
-  endpunkt<K extends KeyBelow<P>>(key: K, ...steps: [...IntermediateStep[], Handler<K, Request>]): ContractRouter<P>;
+  endpoint<K extends KeyBelow<P>>(key: K, ...steps: [...IntermediateStep[], Handler<K, Request>]): ContractRouter<P>;
   /** Mounts a router with the same or a longer prefix. */
   attachOne<Q extends `${P}${string}`>(kind: ContractRouter<Q>): ContractRouter<P>;
 }
-/** Like express.Router, but routes only via `endpunkt`: a path without a contract key does not compile. */
+/** Like express.Router, but routes only via `endpoint`: a path without a contract key does not compile. */
 export type ContractRouter<P extends string> = Omit<
   express.Router,
   'get' | 'post' | 'put' | 'patch' | 'delete' | 'route'
@@ -210,7 +210,7 @@ export class WrongMounted extends Error {
 }
 
 /** Checks inputs in production and responses in tests, even without being mounted in routes/api_v1/index.ts. */
-export function vertragsRouter<P extends string>(praefix: P, o: { largeIds?: boolean } = {}): ContractRouter<P> {
+export function contractRouter<P extends string>(praefix: P, o: { largeIds?: boolean } = {}): ContractRouter<P> {
   // As in the contract: a different spelling is a different route (404), not the same one without an entry.
   const router = express.Router({ caseSensitive: true });
   const check = checkContract();
@@ -229,8 +229,8 @@ export function vertragsRouter<P extends string>(praefix: P, o: { largeIds?: boo
     );
   return Object.assign(router, {
     praefix,
-    endpunkt(key: string, ...steps: unknown[]) {
-      const route = routeZu(key);
+    endpoint(key: string, ...steps: unknown[]) {
+      const route = routeFor(key);
       const [method = '', path = ''] = key.split(' ');
       if (!route || !(path === praefix || path.startsWith(`${praefix}/`)))
         throw new Error(`${key} steht nicht im Vertrag unter ${praefix}`);

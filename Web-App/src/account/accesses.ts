@@ -9,8 +9,8 @@ export function accessesList(k: AccountContext, uid: number) {
 }
 
 /** The owner learns about a foreign access by mail; the own one they ended themselves. */
-export async function endAccess(k: AccountContext, uid: number, kennung: string, ownDevice: boolean): Promise<number> {
-  const { anzahl, label } = await k.konten.deleteAccess(uid, kennung);
+export async function endAccess(k: AccountContext, uid: number, key: string, ownDevice: boolean): Promise<number> {
+  const { anzahl, label } = await k.konten.deleteAccess(uid, key);
   if (anzahl) {
     emptyTokenCache(k);
     if (!ownDevice) hintInBackground(k, uid, 'zugang_beendet', label ?? undefined);

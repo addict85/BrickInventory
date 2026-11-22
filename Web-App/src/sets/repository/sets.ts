@@ -2,7 +2,7 @@ import { storages } from '../../../db/inventoryView';
 import {
   quantitySumSql,
   acquisitionDaySql,
-  mengeAus,
+  quantityFrom,
   mengeJoin,
   inAccountCurrency,
   accountCurrencyJoin,
@@ -175,7 +175,7 @@ function setsSource(uids: number[]): string {
                -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
                -- sets.quantity geloescht). Die gruppierte Quelle haengt
                -- db/stockQuantity.ts an — hier stand SUM(s.quantity).
-               SUM(${mengeAus('sm', 0)})::int AS quantity,
+               SUM(${quantityFrom('sm', 0)})::int AS quantity,
                MIN(c.image_url) AS image_url, MIN(c.image_local) AS image_local,
                MIN(s.added_at) AS added_at,
                -- Lagerort: string_agg statt MIN, und das ist kein Zierrat.
@@ -195,7 +195,7 @@ function setsSource(uids: number[]): string {
                -- Nur Konten, die ein Exemplar halten: Eine Zeile mit Menge 0
                -- bleibt nach dem Löschen der letzten Erfassung stehen, ihr
                -- Konto besitzt aber nichts mehr.
-               array_agg(DISTINCT s.user_id) FILTER (WHERE ${mengeAus('sm', 0)} > 0) AS owner_ids
+               array_agg(DISTINCT s.user_id) FILTER (WHERE ${quantityFrom('sm', 0)} > 0) AS owner_ids
           FROM sets s
           -- Der JOIN steht ausgeschrieben, nicht hinter einer Sicht: So sagt
           -- die Abfrage selbst, dass Name, Jahr und Bild aus dem Katalog
@@ -210,7 +210,7 @@ function setsSource(uids: number[]): string {
     : // Subquery only because of the storage location: everything below expects the NAME in
       // `storage`, the table carries the ID.
       `(SELECT s.id, s.user_id, s.set_number,
-               ${mengeAus('sm', 0)}::int AS quantity,
+               ${quantityFrom('sm', 0)}::int AS quantity,
                s.added_at, s.updated_at, s.storage_id,
                lo.name AS storage,
                ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.teile} AS pieces,

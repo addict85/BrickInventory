@@ -5,7 +5,7 @@
  * https.get, the quota over the real database.
  *
  * Counter-checks (measured 11.11.2026):
- *   A  in blTeilZuRb() `.catch(() => null)` again on both rbGet calls →
+ *   A  in blPartToRb() `.catch(() => null)` again on both rbGet calls →
  *      red: “without a key …”, “server error 500 …”, “daily limit …”
  *   B  in resolveViaRebrickableOn() `catch { rbId = null; }` again → red:
  *      the same three

@@ -6,15 +6,15 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import type { Pool } from 'pg';
-import type { Konfig } from '../src/infra/config';
-import { requestContext, anfrageKennung } from '../src/infra/log';
+import type { AppConfig } from '../src/infra/config';
+import { requestContext, requestId } from '../src/infra/log';
 import { errorResponse, unknownApiPath } from '../src/http/httpResponse';
-import { sitzungsKeksName, sessionCookieOptions } from '../src/http/sitzungsKeks';
+import { sessionCookieName, sessionCookieOptions } from '../src/http/sitzungsKeks';
 import {
   touchMs,
   touchThrottle,
   hashSessionIds,
-  sitzungsfristen,
+  sessionDeadlines,
   sessionIdleMs,
   sessionIdleSec,
   sessionMaxDuration,
@@ -23,8 +23,8 @@ import { startPageStyleHash, type ProfileServices } from '../src/profile';
 import { checkSessionVersion } from '../src/account/http/sessionCheck';
 import type { AccountServices } from '../src/account';
 import { rememberRequest } from '../src/http/rememberAccount';
-import { proxyVertrauen } from '../src/infra/proxyTrust';
-import { proxyHinweis } from '../src/http/proxyHint';
+import { proxyTrust } from '../src/infra/proxyTrust';
+import { proxyHint } from '../src/http/proxyHint';
 import { onlyOwnOrigin, onlyOwnHost } from '../src/http/origin';
 import { API_VERSION, API_MIN_APP, checkAppVersion } from '../src/http/apiVersion';
 import { PUBLIC_DIR } from '../src/infra/appPaths';
@@ -32,7 +32,7 @@ import { sendStartPage } from '../src/profile/http/startPage';
 import { registerImgProxy } from '../routes/imgProxy';
 import { guardFor, readBody } from '../routes/api_v1/middleware';
 import { stepProtectionAtInbox } from '../src/account/http/stepGuard';
-import { apiDrossel } from '../src/http/apiThrottle';
+import { apiThrottle } from '../src/http/apiThrottle';
 import { idempotency } from '../src/idempotency/http/middleware';
 import { buildDataFilesRouter } from '../routes/dataFiles';
 import { buildApiRouter } from '../routes/api_v1/index';
@@ -43,37 +43,43 @@ import { buildWellKnownRouter } from '../routes/wellKnown';
 import { buildGesundheitRouter } from '../routes/health';
 import { buildPagesRouter } from '../routes/pages';
 import { checkContract } from '../src/http/contractRouter';
-import type { Dienste } from './wiring';
+import type { Services } from './wiring';
 
 export interface AppIngredients {
   /** For the session store (user_sessions): the system role's pool; the runtime role does not read it. */
   pool: Pool;
-  konfig: Konfig;
+  konfig: AppConfig;
   /** Checked in server.ts: a placeholder ends the startup there. */
   sitzungsGeheimnis: string;
   /** The routes get their services from here (startup/wiring.ts, buildServices). */
-  dienste: Dienste;
+  dienste: Services;
   /** Sets req.session; without a value express-session via user_sessions. A test provides
    * its session here; the checks after it (version, maximum duration) stay the real ones. */
   sessionStorage?: RequestHandler;
 }
 
 /** The sections are in the order of the middleware. */
-export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste, sessionStorage }: AppIngredients): express.Express {
+export function buildApp({
+  pool,
+  konfig,
+  sitzungsGeheimnis,
+  dienste,
+  sessionStorage,
+}: AppIngredients): express.Express {
   const app = express();
   // Only reveals what the server is built with — whoever searches should not get it for free.
   app.disable('x-powered-by');
   // Before the first app.use: an /API/… would otherwise hit the same route, but no contract entry.
   app.set('case sensitive routing', true);
   baselineProtection(app, konfig);
-  sitzung(app, sessionStorage ?? sessionInPostgres(pool, sitzungsGeheimnis, konfig), dienste.account, konfig);
+  sessionRow(app, sessionStorage ?? sessionInPostgres(pool, sitzungsGeheimnis, konfig), dienste.account, konfig);
   filesAndImages(app, dienste, konfig);
   apiRoutes(app, dienste);
   fallbacks(app, dienste.profile);
   return app;
 }
 
-function baselineProtection(app: express.Express, k: Konfig): void {
+function baselineProtection(app: express.Express, k: AppConfig): void {
   // Gzip/Brotli for everything from 1 KB; index.html shrinks by about 80 %.
   app.use(
     compression({
@@ -98,11 +104,11 @@ function baselineProtection(app: express.Express, k: Konfig): void {
 
   // Otherwise Express never believes X-Forwarded-Proto and sets no secure cookie (src/infra/proxyTrust.ts).
   if (k.operation) {
-    app.set('trust proxy', proxyVertrauen(k.trustProxy, k.proxyNetworkConfirmed));
+    app.set('trust proxy', proxyTrust(k.trustProxy, k.proxyNetworkConfirmed));
   }
   // Outside production too: it reports a discarded X-Forwarded-For.
-  app.locals.proxyHinweis = proxyHinweis(k.trustProxy, console.warn, Date.now, k.proxyNetworkConfirmed);
-  app.use(app.locals.proxyHinweis);
+  app.locals.proxyHint = proxyHint(k.trustProxy, console.warn, Date.now, k.proxyNetworkConfirmed);
+  app.use(app.locals.proxyHint);
 
   // `//api/…` would otherwise fall through to the SPA catch-all and get index.html with 200.
   app.use((req, _res, next) => {
@@ -134,7 +140,7 @@ function baselineProtection(app: express.Express, k: Konfig): void {
 
   // One identifier per request for its log lines; the proxy's only if it passes src/infra/log.ts.
   app.use((req, res, next) => {
-    const rid = anfrageKennung(req.headers['x-request-id']);
+    const rid = requestId(req.headers['x-request-id']);
     res.setHeader('X-Request-Id', rid);
     requestContext.run({ rid }, () => next());
   });
@@ -190,7 +196,7 @@ const securityHeaders =
     next();
   };
 
-function sessionInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHandler {
+function sessionInPostgres(pool: Pool, secret: string, k: AppConfig): RequestHandler {
   // In PostgreSQL, so that sessions survive a restart; the schema creates the table.
   const PgSession = connectPgSimple(session);
   const sessionStorage = new PgSession({
@@ -214,21 +220,21 @@ function sessionInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHan
 
   return session({
     store: sessionStorage,
-    secret: geheimnis,
+    secret: secret,
     resave: false,
     saveUninitialized: false,
-    name: sitzungsKeksName(),
+    name: sessionCookieName(),
     cookie: sessionCookieOptions(),
   });
 }
 
-function sitzung(app: express.Express, speicher: RequestHandler, konto: AccountServices, k: Konfig): void {
+function sessionRow(app: express.Express, speicher: RequestHandler, konto: AccountServices, k: AppConfig): void {
   app.use(speicher);
   app.use(checkSessionVersion(konto));
-  app.use(sessionMaxDuration(sitzungsfristen(k)));
+  app.use(sessionMaxDuration(sessionDeadlines(k)));
 }
 
-function filesAndImages(app: express.Express, d: Dienste, konfig: Konfig): void {
+function filesAndImages(app: express.Express, d: Services, konfig: AppConfig): void {
   app.use(buildDataFilesRouter(d));
   app.use(buildCertificateRouter());
   app.use(buildWellKnownRouter(konfig));
@@ -250,7 +256,7 @@ function filesAndImages(app: express.Express, d: Dienste, konfig: Konfig): void 
   );
 }
 
-function apiRoutes(app: express.Express, d: Dienste): void {
+function apiRoutes(app: express.Express, d: Services): void {
   const check = checkContract();
   if (check) app.use('/api/v1', check);
   // Express would find `/vouchers/1/klartext/` under `/vouchers/:id/klartext`; everything before it (throttle,
@@ -266,14 +272,14 @@ function apiRoutes(app: express.Express, d: Dienste): void {
 }
 
 /** The entrance in front of all /api/v1 routers. */
-function apiInbox(app: express.Express, d: Dienste): void {
+function apiInbox(app: express.Express, d: Services): void {
   // ONE entrance: loginAtInbox requires a session or token for everything under
   // /api/v1 except the explicitly public paths. The protection per route
   // stays as a second line.
   app.use('/api/v1', guardFor(d.account).loginAtInbox);
   // Then the budget per account, BEFORE the body: a rejected request should
   // no longer read its body (src/http/apiThrottle.ts).
-  app.use('/api/v1', apiDrossel);
+  app.use('/api/v1', apiThrottle);
   // Sensitive steps of an app token only after the device lock (src/account/http/stepGuard.ts).
   app.use('/api/v1', stepProtectionAtInbox(d.account));
   // Read bodies only after login: unauthenticated there are only 16 KB (readBody).

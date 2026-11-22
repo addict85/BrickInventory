@@ -1,6 +1,6 @@
 /** A process of its own for the catalog import, so the import's large heap
  * does not hit the job process. The work is done by src/catalog/csvImport.ts. */
-import { fehlertext, logAndContinue } from '../src/infra/error';
+import { errorMessage, logAndContinue } from '../src/infra/error';
 import { LESEVERTRAG } from '../src/services';
 import { createImportAccess, createCatalogImports, csvRow } from '../src/catalog';
 
@@ -38,7 +38,7 @@ process.on('message', async (msg: { task?: string } | null) => {
     await pool.end();
     process.exit(0);
   } catch (e) {
-    post({ type: 'error', task, error: fehlertext(e) });
+    post({ type: 'error', task, error: errorMessage(e) });
     await endWithError();
   }
 });

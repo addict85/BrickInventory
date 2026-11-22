@@ -56,8 +56,8 @@ export const routen = {
       search: Q.text(),
       source: Q.text(20),
       set_number: Q.text(64),
-      page: Q.zahl(),
-      page_size: Q.zahl(),
+      page: Q.number(),
+      page_size: Q.number(),
     }),
   },
   'GET /api/v1/minifigs/:figNumber/sets': {
@@ -74,8 +74,8 @@ export const routen = {
     antwort: AddMinifigResponse,
     eingabe: z.strictObject({
       fig_number: input.itemNumber('fig_number'),
-      quantity: input.stueckzahl(),
-      condition: input.zustand(),
+      quantity: input.pieceCount(),
+      condition: input.condition(),
       unit_price: input.geld('Stückpreis'),
       fig_name: input.text(200),
       image_url: input.imageUrl(),

@@ -1,14 +1,14 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
 import type { Db } from '../../db/database';
-import { withValue, buildArea, type Inspect } from '../infra/area';
-import { Faecher } from '../infra/cache';
+import { bound, buildArea, type Inspect } from '../infra/area';
+import { Compartments } from '../infra/cache';
 import { Kinds, type Login } from './kinds';
 import * as service from './service';
 import * as own from './own';
 import * as background from './background';
 import * as importAsJob from './importAsJob';
 import * as importJob from './importJob';
-import * as prozess from './process';
+import * as process from './process';
 import * as startState from './startState';
 import * as resubmission from './resubmission';
 import * as schedule from './schedule';
@@ -20,65 +20,65 @@ export type { JobsDependencies, JobsContext } from './context';
 export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspect?: Inspect<JobsContext>) {
   const arten = new Kinds();
   return buildArea(
-    { ...a, faecher: new Faecher(), arten },
+    { ...a, faecher: new Compartments(), arten },
     (db: Db) => access(db, a.lesevertrag),
     (k: JobsContext) => ({
-      reportKindAn: (an: Login) => arten.report(an),
+      registerKind: (an: Login) => arten.report(an),
       signedInKinds: () => arten.all(),
       checkPayload: arten.check.bind(arten) as Kinds['check'],
-      supplementListenJob: withValue(k)(service.supplementListenJob),
-      setProgress: withValue(k)(service.setProgress),
-      erledigt: withValue(k)(service.done),
-      fehlgeschlagen: withValue(k)(service.fehlgeschlagen),
-      verschoben: withValue(k)(service.verschoben),
-      endPause: withValue(k)(service.endPause),
-      countKind: withValue(k)(service.countKind),
-      atJobStatus: withValue(k)(service.atJobStatus),
-      atNewJob: withValue(k)(service.atNewJob),
-      checkMembership: withValue(k)(service.checkMembership),
-      placeJobOne: withValue(k)(service.placeJobOne),
-      placeOwnJobOne: withValue(k)(service.placeOwnJobOne),
-      inNamesOfJob: withValue(k)(service.inNamesOfJob),
-      jobsInOverview: withValue(k)(background.jobsInOverview),
-      emptyJobKind: withValue(k)(background.emptyJobKind),
-      auftragsArtJetzt: withValue(k)(background.jobKindNow),
-      auftragAbbrechen: withValue(k)(background.auftragAbbrechen),
-      retryJob: withValue(k)(background.retryJob),
-      setResult: withValue(k)(importAsJob.setResult),
-      setSlotError: withValue(k)(importAsJob.setSlotError),
-      waitOnJob: withValue(k)(importAsJob.waitOnJob),
-      reportJobStatus: withValue(k)(importJob.emitJobStatus),
-      jobGet: withValue(k)(importJob.jobGet),
-      jobSet: withValue(k)(importJob.jobSet),
-      jobUpdate: withValue(k)(importJob.jobUpdate),
-      setImportFort: withValue(k)(importJob.setImportFort),
-      atImportStatus: withValue(k)(importJob.atImportStatus),
-      startJob: withValue(k)(importJob.startJob),
-      reportJob: withValue(k)(importJob.reportJob),
-      beendeAuftrag: withValue(k)(importJob.finishJob),
-      isAborted: withValue(k)(importJob.isAborted),
+      supplementListenJob: bound(k)(service.supplementListenJob),
+      setProgress: bound(k)(service.setProgress),
+      done: bound(k)(service.done),
+      failed: bound(k)(service.failed),
+      moved: bound(k)(service.moved),
+      endPause: bound(k)(service.endPause),
+      countKind: bound(k)(service.countKind),
+      atJobStatus: bound(k)(service.atJobStatus),
+      atNewJob: bound(k)(service.atNewJob),
+      checkMembership: bound(k)(service.checkMembership),
+      placeJobOne: bound(k)(service.placeJobOne),
+      placeOwnJobOne: bound(k)(service.placeOwnJobOne),
+      inNamesOfJob: bound(k)(service.inNamesOfJob),
+      jobsInOverview: bound(k)(background.jobsInOverview),
+      emptyJobKind: bound(k)(background.emptyJobKind),
+      jobKindNow: bound(k)(background.jobKindNow),
+      cancelJob: bound(k)(background.auftragAbbrechen),
+      retryJob: bound(k)(background.retryJob),
+      setResult: bound(k)(importAsJob.setResult),
+      setSlotError: bound(k)(importAsJob.setSlotError),
+      waitOnJob: bound(k)(importAsJob.waitOnJob),
+      reportJobStatus: bound(k)(importJob.emitJobStatus),
+      jobGet: bound(k)(importJob.jobGet),
+      jobSet: bound(k)(importJob.jobSet),
+      jobUpdate: bound(k)(importJob.jobUpdate),
+      setImportFort: bound(k)(importJob.setImportFort),
+      atImportStatus: bound(k)(importJob.atImportStatus),
+      startJob: bound(k)(importJob.startJob),
+      reportJob: bound(k)(importJob.reportJob),
+      finishJob: bound(k)(importJob.finishJob),
+      isAborted: bound(k)(importJob.isAborted),
       /** Jobs that an account tracks via their key. */
-      ownJob: withValue(k)(own.ownJob),
-      deleteOwn: withValue(k)(own.deleteOwn),
-      countRunning: withValue(k)(own.countRunning),
-      deleteEnded: withValue(k)(own.deleteEnded),
+      ownJob: bound(k)(own.ownJob),
+      deleteOwn: bound(k)(own.deleteOwn),
+      countRunning: bound(k)(own.countRunning),
+      deleteEnded: bound(k)(own.deleteEnded),
       wiedervorlage: {
-        rememberBefore: withValue(k)(resubmission.rememberBefore),
-        vergiss: withValue(k)(resubmission.forget),
-        jetzt: withValue(k)(resubmission.now),
-        prefer: withValue(k)(resubmission.prefer),
-        wartende: withValue(k)(resubmission.waiting),
-        zahlen: withValue(k)(resubmission.numbers),
+        rememberBefore: bound(k)(resubmission.rememberBefore),
+        forget: bound(k)(resubmission.forget),
+        now: bound(k)(resubmission.now),
+        prefer: bound(k)(resubmission.prefer),
+        waiting: bound(k)(resubmission.waiting),
+        numbers: bound(k)(resubmission.numbers),
       },
-      reportStartState: withValue(k)(startState.reportStartState),
-      currentStartState: withValue(k)(startState.currentStartState),
-      scheduleChanged: withValue(k)(schedule.scheduleChanged),
-      pullPlanBefore: withValue(k)(schedule.pullPlanBefore),
-      planeNext: withValue(k)(schedule.planeNext),
-      planeAll: withValue(k)(schedule.planeAll),
-      dailyTimeOfDay: withValue(k)(schedule.dailyTimeOfDay),
-      reportProcessAn: withValue(k)(prozess.reportProcessAn),
-      reportProcessAb: withValue(k)(prozess.reportProcessAb),
+      reportStartState: bound(k)(startState.reportStartState),
+      currentStartState: bound(k)(startState.currentStartState),
+      scheduleChanged: bound(k)(schedule.scheduleChanged),
+      pullPlanBefore: bound(k)(schedule.pullPlanBefore),
+      planeNext: bound(k)(schedule.planeNext),
+      planeAll: bound(k)(schedule.planeAll),
+      dailyTimeOfDay: bound(k)(schedule.dailyTimeOfDay),
+      registerProcess: bound(k)(process.registerProcess),
+      deregisterProcess: bound(k)(process.deregisterProcess),
       ...fromTheTable(k),
     }),
     inspect,
@@ -89,8 +89,8 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
 function fromTheTable(k: JobsContext) {
   return {
     // Lease, claim and return for the worker (jobs/jobWorker.ts).
-    lebenszeichen: k.auftraege.lebenszeichen,
-    belegeAuftrag: k.auftraege.belegeAuftrag,
+    heartbeat: k.auftraege.heartbeat,
+    claimJob: k.auftraege.claimJob,
     giveBack: k.auftraege.giveBack,
     rememberExclusive: k.auftraege.rememberExclusive,
     // Pauses of a kind (throttling CDN, Brickset) and cleaning up finished ones.
@@ -98,12 +98,12 @@ function fromTheTable(k: JobsContext) {
     liesPause: k.auftraege.liesPause,
     cleanCompletedOn: k.auftraege.cleanCompletedOn,
     // Markers across process boundaries (sign of life, legacy data, reconciliation); read by the admin.
-    liesZustand: k.laufzustand.liesZustand,
-    setzeZustand: k.laufzustand.setzeZustand,
+    readState: k.laufzustand.readState,
+    setState: k.laufzustand.setState,
     deleteState: k.laufzustand.deleteState,
     countState: k.laufzustand.countState,
     // Per kind the running job, otherwise the most recently finished one: the admin's tiles.
-    letzteJeArt: k.auftraege.letzteJeArt,
+    lastPerKind: k.auftraege.lastPerKind,
   };
 }
 

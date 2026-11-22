@@ -7,7 +7,7 @@
  * Counter-checks (measured 03.11.2026, each on its own):
  *   A  in endOverlap() only delete, not mark → red:
  *      “the predecessor is marked as used”
- *   B  reportReuse() not called in pruefeToken() → red:
+ *   B  reportReuse() not called in checkToken() → red:
  *      “the exchange with the used one locks the family” (B still applies)
  *   C  in lockFamily() `a.created_at = v.token_family` deleted → red:
  *      “the other device stays logged in”

@@ -1,14 +1,14 @@
 import crypto from 'node:crypto';
 import { input } from '../infra/validate';
-import { fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { failDomain, type ErrorCode } from '../infra/errorTexts';
 
 /** The same list as ALLOWED in public/js/theme-boot.js (theme.test.js). */
 export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 /** A global value is stored as text, even if it comes as a number. */
 const wert = (valid: (v: string) => boolean, json: Record<string, unknown>, code: ErrorCode = 'wert_ungueltig') =>
-  input.regel((v): string => {
-    if ((typeof v !== 'string' && typeof v !== 'number') || !valid(String(v))) fachfehler('ungueltig', code);
+  input.rule((v): string => {
+    if ((typeof v !== 'string' && typeof v !== 'number') || !valid(String(v))) failDomain('ungueltig', code);
     return String(v);
   }, json);
 const integer = (min: number, max: number, code?: ErrorCode) =>
@@ -20,8 +20,8 @@ const integer = (min: number, max: number, code?: ErrorCode) =>
 const text = (max: number) =>
   // biome-ignore lint/suspicious/noControlCharactersInRegex: filtering out control characters is the purpose of this spot.
   wert(v => v.length <= max && !/[\u0000-\u001f\u007f]/.test(v), { type: 'string', maxLength: max });
-const selection = (werte: readonly string[], code?: ErrorCode) =>
-  wert(v => werte.includes(v), { enum: [...werte] }, code);
+const selection = (values: readonly string[], code?: ErrorCode) =>
+  wert(v => values.includes(v), { enum: [...values] }, code);
 const JA_NO_VALUE = selection(['0', '1']);
 const TIME_OF_DAY = wert(v => /^([01]\d|2[0-3]):[0-5]\d$/.test(v), {
   type: 'string',

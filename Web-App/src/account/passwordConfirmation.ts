@@ -74,7 +74,7 @@ export async function checkConfirmation(
     uid,
     zugang,
     async () => {
-      const u = await k.zugaenge.passwortHash(uid);
+      const u = await k.zugaenge.passwordHash(uid);
       return !!u && typeof password === 'string' && password !== '' && passwordFits(password, u.password_hash);
     },
     'aktuelles_passwort_falsch',

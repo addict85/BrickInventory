@@ -6,14 +6,14 @@
  *   a) preisalarme.csv removed from the ZIP      → 1, 2, 3, 4 red
  *   b) currency from the FILE instead of settings → 5 red
  *   c) `triggered` exported too                 → 3 red
- *   d) setzeAlarm replaced by a raw INSERT      → 6 and 6b red
+ *   d) setAlert replaced by a raw INSERT      → 6 and 6b red
  *   e) `WHERE user_id` removed from the export   → 2 and 4 red
  *
  * Three things about it did not turn out the way I had written them down
  * beforehand, and all three stand here because they say something about the test:
  *
  * (d) turned NOTHING AT ALL red on the FIRST attempt. Case 6 claimed it checked
- * that the route uses setzeAlarm() — it did not: the table has its own
+ * that the route uses setAlert() — it did not: the table has its own
  * CHECK conditions on `direction` and `threshold` (measured), they caught
  * the raw INSERT just the same. Case 6 now carries the condition „X", for which there is
  * NO CHECK, and 6b the resetting of `triggered`, which the table does not
@@ -349,7 +349,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
       0,
       'Ein Alarm mit einem anderen Zustand als N oder U ist in der Tabelle gelandet. ' +
         'Die Tabelle hat darauf KEINE CHECK — das fängt allein die Prüfung in ' +
-        'src/finances/priceAlert.ts, und die bekommt man nur über setzeAlarm().',
+        'src/finances/priceAlert.ts, und die bekommt man nur über setAlert().',
     );
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [MAIN])).c,
@@ -372,7 +372,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
   });
 
   await t.test('6b. a repeated import resets the flag', async () => {
-    // setzeAlarm() promises: „The marker triggered is RESET when
+    // setAlert() promises: „The marker triggered is RESET when
     // changing: a new threshold is a new question, and it should
     // be answered, even if the old one has already reported once."
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);

@@ -1,10 +1,10 @@
 /** Set for a barcode: own catalog, Rebrickable, Brickset and EAN sources. */
-import { isGuess, setnummerCandidates } from '../catalog';
+import { isGuess, setNumberCandidates } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { RbSet, RbSetMinifig, rbPage } from '../externalSources';
-import { withVersion, normalisiereSetNummer } from '../infra/setNumber';
+import { withVersion, normalizeSetNumber } from '../infra/setNumber';
 import * as repo from './repository/setDetail';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { SetsContext } from './context';
 
 export interface BarcodeHits {
@@ -62,7 +62,7 @@ async function barcodeResult(
   }
   if (rbData?.set_num) {
     // Into the catalog like every fetch; the hit applies even if storing fails.
-    await versuche(
+    await attempts(
       'sets:katalog schreiben',
       sk.catalog.rememberSetCatalog(
         setNumber,
@@ -137,12 +137,12 @@ export async function setToBarcode(sk: SetsContext, rawBarcode: string): Promise
     // marked guess.
     const title = await sk.externalSources.quellen.productTitle(ean13);
     if (title) {
-      const candidates = setnummerCandidates(title, sk.uhr.datum().getFullYear());
+      const candidates = setNumberCandidates(title, sk.uhr.datum().getFullYear());
       for (const k of candidates) {
-        const known = await inCatalog(sk, k, normalisiereSetNummer(k));
+        const known = await inCatalog(sk, k, normalizeSetNumber(k));
         if (known) return barcodeResult(sk, known.set_number, title, 'upcitemdb');
       }
-      if (candidates[0]) return barcodeResult(sk, normalisiereSetNummer(candidates[0]), title, 'upcitemdb');
+      if (candidates[0]) return barcodeResult(sk, normalizeSetNumber(candidates[0]), title, 'upcitemdb');
     }
   }
 

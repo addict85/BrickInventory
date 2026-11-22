@@ -34,7 +34,7 @@ test('services resolve the view', { concurrency: 1 }, async t => {
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const { setsLesen } = require('./helpers/sources').areaPage('sets');
+  const { readSets } = require('./helpers/sources').areaPage('sets');
   const { deleteSetFor } = require('./helpers/sources').areaPage('sets');
   const [MAIN, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, SUB]]);
@@ -44,7 +44,7 @@ test('services resolve the view', { concurrency: 1 }, async t => {
   H.reportHouseholdChange();
   await holdsSet(db, haupt, '10179-1');
   await holdsSet(db, sub, '75192-1');
-  const nummern = async sicht => (await setsLesen(sicht, {})).sets.map(s => s.set_number).sort();
+  const nummern = async sicht => (await readSets(sicht, {})).sets.map(s => s.set_number).sort();
 
   await t.test('a view selects the accounts in the service', async () => {
     assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1', '75192-1']);
@@ -74,10 +74,10 @@ test('services resolve the view', { concurrency: 1 }, async t => {
   });
 
   await t.test('a sub-account does not write for its main account', async () => {
-    assert.equal(await H.schreibziel(haupt, sub), sub);
-    assert.equal(await H.schreibziel(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
+    assert.equal(await H.writeTarget(haupt, sub), sub);
+    assert.equal(await H.writeTarget(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
     await assert.rejects(
-      H.schreibziel(sub, haupt),
+      H.writeTarget(sub, haupt),
       (/** @type {any} */ e) => e.code === 'kein_schreibrecht' && e.art === 'verboten',
     );
   });

@@ -110,8 +110,8 @@ export function csvReadIn(csvText: string): {
   const usable: CsvRow[] = [];
   const zeilen: number[] = [];
   records.forEach(({ record: r, info }) => {
-    const werte = Object.values(r).map(v => String(v ?? '').trim());
-    if (werte.some(v => v !== '')) {
+    const values = Object.values(r).map(v => String(v ?? '').trim());
+    if (values.some(v => v !== '')) {
       usable.push(r);
       zeilen.push(info.lines);
     } else uebersprungen.push(info.lines);
@@ -154,12 +154,12 @@ export function csvRowsFromRequest(text: string): {
   cleaned: CsvRow[];
   uebersprungen: number[];
 } {
-  const gelesen = csvReadIn(text);
+  const read = csvReadIn(text);
   return {
-    records: gelesen.records,
+    records: read.records,
     // The apostrophe before formula characters is set by the own export; it is removed here.
-    cleaned: csvRowsClean(gelesen.records),
-    uebersprungen: gelesen.uebersprungen,
+    cleaned: csvRowsClean(read.records),
+    uebersprungen: read.uebersprungen,
   };
 }
 

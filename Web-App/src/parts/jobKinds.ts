@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { runCatalogFollowUp } from './summary';
 import type { PartsContext } from './context';
 
@@ -12,9 +12,9 @@ declare module '../jobQueue/jobs' {
 }
 
 /** The web process doesn't change the catalog outside system scope; the follow-up for the summary is the job's. */
-export function partsJobKinds(k: PartsContext): Anmeldung[] {
+export function partsJobKinds(k: PartsContext): Login[] {
   return [
-    auftragsart({
+    jobKind({
       art: 'katalog_nachzug',
       nutzlast: LEER,
       ausfuehren: async () => void (await runCatalogFollowUp(k)),

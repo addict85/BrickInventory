@@ -162,7 +162,7 @@ async function main() {
   target.pathname = '/' + name;
   process.env.DATABASE_URL = target.toString();
   const dbModule = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
-  const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+  const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
   try {
     await db.initSchemaOnce();
     fs.writeFileSync(DATEI, await schemaText(db));

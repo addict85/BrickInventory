@@ -24,7 +24,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
-const { routeZu } = _req('src/contract/index.js');
+const { routeFor } = _req('src/contract/index.js');
 const { z } = require('zod');
 
 /** Does a key occur anywhere in the JSON? */
@@ -35,7 +35,7 @@ const containsKey = (wert, name) =>
 
 test('no admin response schema names user_id', () => {
   for (const r of ['GET /api/v1/admin/auftraege', 'GET /api/v1/admin/image-diag/:setNumber']) {
-    const schema = JSON.stringify(z.toJSONSchema(routeZu(r).antwort, { io: 'output', unrepresentable: 'any' }));
+    const schema = JSON.stringify(z.toJSONSchema(routeFor(r).antwort, { io: 'output', unrepresentable: 'any' }));
     assert.doesNotMatch(schema, /"user_id"/, r);
   }
 });

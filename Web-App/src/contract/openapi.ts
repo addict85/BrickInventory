@@ -1,7 +1,7 @@
 /** docs/openapi.json from the contract. Every named schema of an area becomes
  * a component; that way a set appears once in the file, not in every route. */
 import { z } from 'zod';
-import { type Route, Fehler, Fehlercode, PATH } from './base';
+import { type Route, ErrorBody, Fehlercode, PATH } from './base';
 import { AREAS } from './index';
 import { API_VERSION } from './version';
 
@@ -17,13 +17,13 @@ const URI = (id: string) => `#/components/schemas/${id}`;
 /** All named schemas: export name → schema. A duplicate name is an error. */
 export function namedSchemas(): Map<string, z.ZodType> {
   const from = new Map<string, z.ZodType>([
-    ['Fehler', Fehler],
+    ['Fehler', ErrorBody],
     ['Fehlercode', Fehlercode],
   ]);
-  for (const [bereich, modul] of Object.entries(AREAS)) {
+  for (const [area, modul] of Object.entries(AREAS)) {
     for (const [name, wert] of Object.entries(modul)) {
       if (!(wert instanceof z.ZodType) || from.get(name) === wert) continue;
-      if (from.has(name)) throw new Error(`Schema ${name} gibt es zweimal (zuletzt in ${bereich})`);
+      if (from.has(name)) throw new Error(`Schema ${name} gibt es zweimal (zuletzt in ${area})`);
       from.set(name, wert);
     }
   }
@@ -63,7 +63,7 @@ export function openapi(): Record<string, unknown> {
   }
 
   const paths: Record<string, Record<string, unknown>> = {};
-  for (const [bereich, modul] of Object.entries(AREAS)) {
+  for (const [area, modul] of Object.entries(AREAS)) {
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
       const [method = '', path = ''] = schluessel.split(' ');
       const parameters: Record<string, unknown>[] = [...path.matchAll(/:(\w+)/g)].map(m => {
@@ -76,19 +76,19 @@ export function openapi(): Record<string, unknown> {
       });
       if (r.abfrage) {
         const s = z.toJSONSchema(r.abfrage, { io: 'input', unrepresentable: 'any' });
-        const pflicht = new Set(s.required ?? []);
+        const mandatory = new Set(s.required ?? []);
         for (const [name, schema] of Object.entries(s.properties ?? {}))
           parameters.push({
             name,
             in: 'query',
-            required: pflicht.has(name),
+            required: mandatory.has(name),
             schema,
             ...((schema as { deprecated?: boolean }).deprecated ? { deprecated: true } : {}),
           });
       }
       const ok = success(r, benannt);
       const op: Record<string, unknown> = {
-        tags: [bereich],
+        tags: [area],
         ...(parameters.length ? { parameters } : {}),
         responses: {
           200: ok,

@@ -98,7 +98,7 @@ export async function priceHistorySet(
   const pnlPct = baselineHas ? (developmentPercent(baselinePrice, currentPrice)?.toFixed(1) ?? null) : null;
 
   // Only conditions with an acquisition, otherwise a percentage against nothing would stand there.
-  const acqByCond = await k.preisverlauf.purchaseChnittOfSets(uids, setNumber, currency);
+  const acqByCond = await k.preisverlauf.purchaseAverageOfSets(uids, setNumber, currency);
 
   const byCondition: Record<string, StateComparison> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -151,7 +151,7 @@ export async function conditionRows(
   // DESC: since the figure history queries both numbers, there can be two rows
   // per condition, and `.find()` should take the newest.
   const cacheRows = await k.preisverlauf.cachePricesAfterKey(art, keySql, keyVals, currency);
-  const acqRows = await k.preisverlauf.purchaseChnitteAfterKey(art, acqKeySql, acqKeyVals, uids, currency);
+  const acqRows = await k.preisverlauf.purchaseAveragesByKey(art, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, StateComparison> = {};
   for (const cond of ['N', 'U'] as const) {

@@ -115,7 +115,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
                                  WHERE dedupe_key = 'x1' RETURNING id`);
       assert.equal(ra.rowCount, 1);
       assert.equal(
-        await A.belegeAuftrag(['csv_sync'], 60, 'B', ['csv_sync']),
+        await A.claimJob(['csv_sync'], 60, 'B', ['csv_sync']),
         null,
         'B belegt, solange A noch nicht festgeschrieben hat',
       );
@@ -123,11 +123,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     } finally {
       a.release();
     }
-    assert.equal(
-      await A.belegeAuftrag(['csv_sync'], 60, 'B', ['csv_sync']),
-      null,
-      'B belegt nach dem Festschreiben von A',
-    );
+    assert.equal(await A.claimJob(['csv_sync'], 60, 'B', ['csv_sync']), null, 'B belegt nach dem Festschreiben von A');
     const laufend = await db.all("SELECT locked_by FROM jobs WHERE type = 'csv_sync' AND status = 'laeuft'");
     assert.deepEqual(
       laufend.map(z => z.locked_by),
@@ -149,12 +145,12 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     downloadRunning = false;
     w.starte();
     t.after(() => w.stop(0));
-    await bis(() => w.laufend() > 0);
-    assert.equal(w.laufend(), 1, 'der Abgleich läuft');
+    await bis(() => w.running() > 0);
+    assert.equal(w.running(), 1, 'der Abgleich läuft');
     assert.ok(await bis(() => downloadRunning), 'der Download hat begonnen');
     const start = Date.now();
     assert.ok(await A.abortAb(id));
-    await bis(() => w.laufend() === 0);
+    await bis(() => w.running() === 0);
     const duration = Date.now() - start;
     assert.ok(duration <= 2000, `Abbruch eines csv_sync im Download dauerte ${duration} ms`);
     assert.equal((await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status, 'abgebrochen');

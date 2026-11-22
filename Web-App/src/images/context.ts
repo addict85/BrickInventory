@@ -1,9 +1,9 @@
 /** What the image services receive: access, compartments, jobs, household, external sources and the
  * image works. Separate from area.ts so that a service knows its type without an import cycle. */
-import type { Konfig } from '../infra/config';
-import { withValue, withContract, type Context } from '../infra/area';
+import type { AppConfig } from '../infra/config';
+import { bound, withContract, type Context } from '../infra/area';
 import type { ImagesReadContract } from './readContract';
-import type { Faecher } from '../infra/cache';
+import type { Compartments } from '../infra/cache';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
@@ -18,16 +18,16 @@ import type { Clock } from '../infra/clock';
  * test replaces network and sharp at the wiring (buildServices) instead of bending modules. */
 export interface ImageWorker {
   /** Loads the set image into images/sets; null if it fails (`info.status` names the HTTP code). */
-  setBildLaden(url: string, setNumber: string, info?: { status?: number }): Promise<string | null>;
+  loadSetImage(url: string, setNumber: string, info?: { status?: number }): Promise<string | null>;
   /** Puts the preview next to the image and returns its path; null if it did not work. */
   createPreview(relPath: string): Promise<string | null>;
 }
 
 export interface ImagesDependencies {
   uhr: Clock;
-  konfig: Readonly<Konfig>;
+  konfig: Readonly<AppConfig>;
   db: Db;
-  faecher: Faecher;
+  faecher: Compartments;
   bildwerk: ImageWorker;
   externalSources: ForeignSourcesServices;
   jobQueue: JobsServices;
@@ -40,21 +40,21 @@ export const access = (db: Db, l: ImagesReadContract) => ({
     setsInScope: withContract(db, l)(imageScope.setsInScope),
   },
   bildFehlschlaege: {
-    freshFailures: withValue(db)(imageFailures.freshFailures),
-    forgetFailures: withValue(db)(imageFailures.forgetFailures),
-    forgetAllFailures: withValue(db)(imageFailures.forgetAllFailures),
-    rememberFailures: withValue(db)(imageFailures.rememberFailures),
+    freshFailures: bound(db)(imageFailures.freshFailures),
+    forgetFailures: bound(db)(imageFailures.forgetFailures),
+    forgetAllFailures: bound(db)(imageFailures.forgetAllFailures),
+    rememberFailures: bound(db)(imageFailures.rememberFailures),
   },
   bildStammCdn: {
-    cdnZuBildstamm: withValue(db)(imageMasterCdn.cdnToImageMaster),
+    cdnToImageMaster: bound(db)(imageMasterCdn.cdnToImageMaster),
   },
   bildbedarf: {
-    rememberImageRequests: withValue(db)(imageDemand.rememberImageRequests),
-    deleteOldImageRequests: withValue(db)(imageDemand.deleteOldImageRequests),
-    countImageRequests: withValue(db)(imageDemand.countImageRequests),
-    deleteAllImageRequests: withValue(db)(imageDemand.deleteAllImageRequests),
-    entnimmBildwuensche: withValue(db)(imageDemand.takeImageRequests),
-    seriesCatalogImagesOne: withValue(db)(imageDemand.seriesCatalogImagesOne),
+    rememberImageRequests: bound(db)(imageDemand.rememberImageRequests),
+    deleteOldImageRequests: bound(db)(imageDemand.deleteOldImageRequests),
+    countImageRequests: bound(db)(imageDemand.countImageRequests),
+    deleteAllImageRequests: bound(db)(imageDemand.deleteAllImageRequests),
+    takeImageRequests: bound(db)(imageDemand.takeImageRequests),
+    seriesCatalogImagesOne: bound(db)(imageDemand.seriesCatalogImagesOne),
   },
 });
 export type ImagesContext = Context<ImagesDependencies, ReturnType<typeof access>>;

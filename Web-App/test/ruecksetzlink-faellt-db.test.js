@@ -46,7 +46,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
       )
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
-    assert.ok(await K.setRuecksetzTokenIfFree(uid, tokenDigest(token), 60, 15));
+    assert.ok(await K.setResetTokenIfFree(uid, tokenDigest(token), 60, 15));
     await wechsel(uid);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const r = await fetch(`${base}/api/v1/auth/reset-password`, {
@@ -65,7 +65,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
   await t.test('own password, admin reset, new address: the link falls', async () => {
     assert.deepEqual(
       [
-        await afterSwitch(`link_eigen_${p}`, uid => K.aendereEigenesPasswort(uid, 'Eigenes-Neu-2026')),
+        await afterSwitch(`link_eigen_${p}`, uid => K.changeOwnPassword(uid, 'Eigenes-Neu-2026')),
         await afterSwitch(`link_fremd_${p}`, uid => K.setForeignPassword(uid, 'Verwalter-Neu-2026')),
         await afterSwitch(`link_mail_${p}`, async uid => {
           await K.rememberEmailNew(uid, `neu_${p}@example.org`, tokenDigest(`mail${p}`), new Date(Date.now() + 60_000));
@@ -98,7 +98,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
       )
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
-    assert.ok(await K.setRuecksetzTokenIfFree(uid, tokenDigest(token), 60, 15));
+    assert.ok(await K.setResetTokenIfFree(uid, tokenDigest(token), 60, 15));
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const setze = password =>
       fetch(`${base}/api/v1/auth/reset-password`, {

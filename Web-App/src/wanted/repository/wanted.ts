@@ -1,5 +1,5 @@
 import { setBestand } from '../../../db/inventoryView';
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 import { marketPriceSql } from '../../../db/geldSql';
 import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSearch';
 import { fromTable } from '../../infra/validate';
@@ -20,7 +20,7 @@ export function removeWantedEntry(db: DbInterface, userId: number, setNumber: st
 }
 
 export function isWanted(db: DbInterface, zuId: number, sn: string, c: string) {
-  return db.get<Treffer>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
+  return db.get<Hit>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
 }
 
 export function transferWantedEntry(db: DbInterface, zuId: number, ofId: number, sn: string, c: string) {
@@ -68,26 +68,26 @@ export type WantedRow = {
 };
 
 export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedSelection, currency: string) {
-  const werte: unknown[] = [userIds];
+  const values: unknown[] = [userIds];
   let wo = '';
   if (f.setOnly) {
-    werte.push(f.setOnly);
-    wo += ` AND w.set_number = $${werte.length}`;
+    values.push(f.setOnly);
+    wo += ` AND w.set_number = $${values.length}`;
   }
   // Number AND name, as in the gallery; the name comes from the JOIN on rb_sets.
   if (f.search) {
-    werte.push(containsPattern(f.search));
+    values.push(containsPattern(f.search));
     wo +=
-      ` AND (w.set_number ILIKE $${werte.length}${LIKE_ESCAPE}` + ` OR rb.name ILIKE $${werte.length}${LIKE_ESCAPE})`;
+      ` AND (w.set_number ILIKE $${values.length}${LIKE_ESCAPE}` + ` OR rb.name ILIKE $${values.length}${LIKE_ESCAPE})`;
   }
   if (f.condition) {
-    werte.push(f.condition);
-    wo += ` AND w.condition = $${werte.length}`;
+    values.push(f.condition);
+    wo += ` AND w.condition = $${values.length}`;
   }
   // fromTable(): direct access would also find inherited properties like "constructor".
   const order = fromTable(WANTED_SORTS, f.sort, WANTED_SORTS.added_desc);
-  werte.push(currency);
-  const pCurrency = `$${werte.length}`;
+  values.push(currency);
+  const pCurrency = `$${values.length}`;
   return db.all<WantedRow>(
     `SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
@@ -112,7 +112,7 @@ export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedS
                                AND pc.currency_code = ${pCurrency}
       WHERE w.user_id = ANY($1)${wo}
       ORDER BY ${order}, w.set_number, w.condition`,
-    werte,
+    values,
   );
 }
 

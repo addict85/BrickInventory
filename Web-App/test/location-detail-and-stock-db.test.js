@@ -65,7 +65,7 @@ test('storage location: detail and stock against a real database', async t => {
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const writable = await household.schreibbereich(MAIN);
+  const writable = await household.writeScope(MAIN);
   // Precondition: the scope really covers BOTH accounts, otherwise
   // finding 2 below checks nothing.
   assert.ok(
@@ -90,7 +90,7 @@ test('storage location: detail and stock against a real database', async t => {
 
     // List and detail must say the same. Exactly between these two
     // the QUANTITY already drifted apart (see readSet in src/sets/read.ts).
-    const liste = await S.setsLesen(writable, { page: 1, page_size: 10 });
+    const liste = await S.readSets(writable, { page: 1, page_size: 10 });
     const zeile = (liste.sets || []).find(s => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Liste');
     assert.equal(

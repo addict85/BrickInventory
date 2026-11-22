@@ -200,7 +200,7 @@ test('delivery order of the image cache', async t => {
     aufraeumen();
     datei(orig, 5000);
     fs.writeFileSync(orig + '.ct', 'image/png');
-    const { cacheTreffer } = _req('src/images/imgCacheServe.js');
+    const { cacheHit: cacheTreffer } = _req('src/images/imgCacheServe.js');
     const treffer = await cacheTreffer({
       cacheFile: orig,
       thumbFile: thumb,

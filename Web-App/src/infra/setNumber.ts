@@ -8,7 +8,7 @@ export function withVersion(setNumber: string | number): string {
 }
 
 // One version for barcode, field, CSV.
-export function normalisiereSetNummer(input: unknown): string {
+export function normalizeSetNumber(input: unknown): string {
   let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '').trim().replace(/[^a-zA-Z0-9-]/g, '');
   if (!/-\d+$/.test(s)) s = s + '-1';
   return s;
@@ -16,8 +16,8 @@ export function normalisiereSetNummer(input: unknown): string {
 
 /** At least one digit: "abc" otherwise silently became "abc-1" and was created as a set without
  * data; real numbers like "comcon001" all carry a digit. */
-export function possibleSetNumber(normalisiert: string): boolean {
-  return /^(?=[A-Za-z]*\d)[A-Za-z0-9]{1,20}-\d{1,3}$/.test(normalisiert);
+export function possibleSetNumber(normalized: string): boolean {
+  return /^(?=[A-Za-z]*\d)[A-Za-z0-9]{1,20}-\d{1,3}$/.test(normalized);
 }
 
 export function withoutVersion(setNumber: string | number): string {

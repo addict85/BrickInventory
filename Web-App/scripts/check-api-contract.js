@@ -39,22 +39,22 @@ async function token() {
   for (const [key, r] of routen) {
     const path = key.slice(4);
     /** @type {string[]} */
-    let fehler;
+    let error;
     try {
       const a = await fetch(BASE + path, { headers: { Authorization: `Bearer ${t}` } });
-      const ergebnis = a.ok ? r.antwort?.safeParse(await a.json()) : undefined;
-      fehler = !a.ok
+      const result = a.ok ? r.antwort?.safeParse(await a.json()) : undefined;
+      error = !a.ok
         ? [`HTTP ${a.status}`]
-        : ergebnis && !ergebnis.success
-          ? ergebnis.error.issues.map(i => `$.${i.path.join('.')}: ${i.message}`)
+        : result && !result.success
+          ? result.error.issues.map(i => `$.${i.path.join('.')}: ${i.message}`)
           : [];
     } catch (e) {
-      fehler = [`Anfrage fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`];
+      error = [`Anfrage fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`];
     }
-    if (fehler.length) {
+    if (error.length) {
       wrong++;
       console.error(`✗ ${key}`);
-      [...new Set(fehler.map(f => f.replace(/\.\d+\./g, '.i.')))].slice(0, 10).forEach(f => {
+      [...new Set(error.map(f => f.replace(/\.\d+\./g, '.i.')))].slice(0, 10).forEach(f => {
         console.error(`    ${f}`);
       });
     } else console.log(`✓ ${key}`);

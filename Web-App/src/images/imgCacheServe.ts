@@ -26,7 +26,7 @@ export interface CacheHits {
 }
 
 /** null means: not in the cache, the caller fetches from the CDN. */
-export async function cacheTreffer(
+export async function cacheHit(
   k: ImagesContext,
   opts: {
     cacheFile: string;

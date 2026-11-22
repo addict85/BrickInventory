@@ -1,5 +1,5 @@
 /**
- * Previews of the own images (vorschauErzeugenAus) arise with sharp:
+ * Previews of the own images (previewFrom) arise with sharp:
  * at most 200 per side, aspect ratio preserved (UX check 25, B1).
  * Transparent images stay PNG with alpha (otherwise a white surface in dark
  * mode), opaque ones become JPEG on white. Without sharp Jimp computes the same.
@@ -26,7 +26,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const sharp = require('sharp');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
-const { vorschauErzeugenAus } = _req('src/images/thumbs.js');
+const { previewFrom } = _req('src/images/thumbs.js');
 const ordner = path.join(DATA_DIR, 'images', 'sets');
 
 /** A green PNG 300 × 200 with alpha channel under /images/sets/; `alpha` 0 = fully transparent, 1 = opaque. */
@@ -58,7 +58,7 @@ async function checkPreview(datei, transparent) {
 test('sharp: transparent stays PNG with alpha, 200 × 133', async () => {
   const b = await put(`zz-sharp-${process.pid}`, 0);
   try {
-    assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
+    assert.equal(await previewFrom(b.web), b.web.replace('.png', '_thumb.jpg'));
     await checkPreview(b.vorschau, true);
   } finally {
     b.weg();
@@ -68,7 +68,7 @@ test('sharp: transparent stays PNG with alpha, 200 × 133', async () => {
 test('sharp: opaque with alpha channel becomes JPEG, 200 × 133', async () => {
   const b = await put(`zz-deckend-${process.pid}`, 1);
   try {
-    assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
+    assert.equal(await previewFrom(b.web), b.web.replace('.png', '_thumb.jpg'));
     await checkPreview(b.vorschau, false);
   } finally {
     b.weg();
@@ -90,7 +90,7 @@ test('without sharp Jimp computes the same preview', async () => {
     };
     console.warn = (...a) => warnings.push(a.join(' '));
     try {
-      assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
+      assert.equal(await previewFrom(b.web), b.web.replace('.png', '_thumb.jpg'));
     } finally {
       Module._load = laden;
       console.warn = warn;

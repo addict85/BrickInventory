@@ -2,10 +2,10 @@
  * never recreated, because an existing preview counts as finished. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { vorschauErzeugenAus } from './thumbs';
+import { previewFrom } from './thumbs';
 import { imageSize } from './imageGuard';
 import { APP_ROOT } from '../infra/appPaths';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import { withoutMissingFile } from '../infra/error';
 import type { ImagesContext } from './context';
 
@@ -41,7 +41,7 @@ export async function fitTailoredPreviews(
   local: { web: string; datei: string }[],
   proxyFolder = path.join(APP_ROOT, 'data', 'img_proxy_cache'),
 ): Promise<number | null> {
-  if (await k.jobQueue.liesZustand(FITTED_MARKER)) return null;
+  if (await k.jobQueue.readState(FITTED_MARKER)) return null;
   let replaced = 0,
     checked = 0;
   for (const { web, datei } of local) {
@@ -49,7 +49,7 @@ export async function fitTailoredPreviews(
     if (++checked % 10 === 0) await pause();
     if (!(await cropped(datei, preview))) continue;
     await fs.promises.rm(preview, { force: true });
-    if ((await versuche('vorschau:einpassen', vorschauErzeugenAus(web))).ok) replaced++;
+    if ((await attempts('vorschau:einpassen', previewFrom(web))).ok) replaced++;
   }
   const names = await fs.promises
     .readdir(proxyFolder)
@@ -61,7 +61,7 @@ export async function fitTailoredPreviews(
     await fs.promises.rm(preview, { force: true });
     replaced++;
   }
-  await k.jobQueue.setzeZustand(FITTED_MARKER, k.uhr.datum().toISOString());
+  await k.jobQueue.setState(FITTED_MARKER, k.uhr.datum().toISOString());
   if (replaced) console.log(`  🖼️  ${replaced} zugeschnittene Vorschauen neu eingepasst`);
   return replaced;
 }

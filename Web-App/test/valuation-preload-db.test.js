@@ -11,7 +11,7 @@
  *   B  the same in valueMinifigs → red: “six minifigures, …”
  *   C  the account filter ignored in mengeJoin → red: “the set quantity only reads
  *      the entries of the requested accounts”
- *   D  inKontowaehrung always delivers TRUE → red: “the average purchase price
+ *   D  inAccountCurrency always delivers TRUE → red: “the average purchase price
  *      of the gallery only counts the account currency” (200 instead of 100)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -112,10 +112,10 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
   await t.test('the set quantity only reads the entries of the requested accounts', async () => {
     await holdsSet(db, uid, `bw${ID}-1`, 2);
     for (let i = 0; i < 40; i++) await holdsSet(db, fremd, `bw${ID}x${i}-1`, 1);
-    const { mengeJoin, mengeAus } = _req('db/stockQuantity.js');
+    const { mengeJoin, quantityFrom } = _req('db/stockQuantity.js');
     const plan = await db.get(
       `EXPLAIN (ANALYZE, FORMAT JSON)
-       SELECT s.set_number, ${mengeAus('sm', 0)} AS menge
+       SELECT s.set_number, ${quantityFrom('sm', 0)} AS menge
          FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
         WHERE s.user_id = ANY($1)`,
       [[uid]],
@@ -150,8 +150,8 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
                     VALUES ($1, $2, 1, $3, 'N', $4)`,
         [uid, SN, preis, waehrung],
       );
-    const { setsLesen } = require('./helpers/sources').areaPage('sets');
-    const r = await setsLesen([uid], {});
+    const { readSets } = require('./helpers/sources').areaPage('sets');
+    const r = await readSets([uid], {});
     const zeile = (r.sets || r).find(z => z.set_number === SN);
     assert.ok(zeile, 'das Set fehlt in der Liste');
     assert.equal(Number(zeile.avg_purchase_price), 100);

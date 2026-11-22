@@ -3,7 +3,7 @@
  * `= ANY($n)`. A value in the SQL text would otherwise run unchecked into every subquery.
  *
  * Counter-checks (measured 15.11.2026, each alone):
- *   A  the check `if (!FORM.test(konten)) throw …` deleted in aufKonten → red: “a value in the
+ *   A  the check `if (!FORM.test(konten)) throw …` deleted in onAccounts → red: “a value in the
  *      text throws”, Missing expected exception: setBestand(= 1 OR TRUE)
  *   B  in db/stockQuantity.ts mengeJoin back to `WHERE a.user_id ${konten}` → red: the same check,
  *      Missing expected exception: mengeJoin(= 1 OR TRUE)

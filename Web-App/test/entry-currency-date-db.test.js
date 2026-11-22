@@ -42,7 +42,7 @@ test('acquisitions: account currency and CSV date', { concurrency: 1 }, async t 
                   VALUES ($1,'N',$2,$3,$3,3)`,
       [SN, w, p],
     );
-  const { changeSet, setErfassen } = require('./helpers/sources').areaPage('sets');
+  const { changeSet, acquireSet } = require('./helpers/sources').areaPage('sets');
 
   try {
     await t.test('the quantity increase takes the price in the account currency', async () => {
@@ -65,7 +65,7 @@ test('acquisitions: account currency and CSV date', { concurrency: 1 }, async t 
                     VALUES ($1,$2,1,100,'N',NOW()), ($1,$2,1,50,'N','2026-10-01T12:00:00Z')`,
         [uid, SN],
       );
-      await setErfassen({
+      await acquireSet({
         requester: uid,
         setNumber: SN,
         menge: 1,

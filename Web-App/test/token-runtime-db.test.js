@@ -219,13 +219,13 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     });
     const zugang = await koppeln(abgelaufen.body, keks);
     const roh = zugang.body.token;
-    assert.ok(await auth.nutzerZumToken(roh), 'Frisch ausgestellt muss der Zugang gelten');
+    assert.ok(await auth.userForToken(roh), 'Frisch ausgestellt muss der Zugang gelten');
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() - INTERVAL '1 day' WHERE token = $1`, [
       auth.tokenDigest(roh),
     ]);
     tokenCache.tokenForgotten(roh); // otherwise the cache answers for up to a minute
     assert.equal(
-      await auth.nutzerZumToken(roh),
+      await auth.userForToken(roh),
       null,
       'Ist der feste Termin erreicht, gilt der Zugang nicht mehr — auch wenn die Gleitfrist noch laeuft',
     );

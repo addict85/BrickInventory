@@ -23,7 +23,7 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { startBans, ladeKonfig, cookieSafe } = _req('src/infra/config.js');
+const { startBans, loadConfig, cookieSafe } = _req('src/infra/config.js');
 
 /** Start without NODE_ENV; `PATH` alone, so that nothing from the test environment falls in. */
 function starte(env, ms = 25_000) {
@@ -59,7 +59,7 @@ function starte(env, ms = 25_000) {
 test('startBans without NODE_ENV', () => {
   assert.ok(startBans({ MAIL_KONSOLE_MIT_TOKEN: '1', APP_BASE_URL: 'https://x.example' }).length >= 1);
   assert.deepEqual(startBans({ NODE_ENV: 'test', MAIL_KONSOLE_MIT_TOKEN: '1' }), []);
-  const k = ladeKonfig({});
+  const k = loadConfig({});
   assert.equal(k.operation, true);
   assert.equal(cookieSafe(k), true, 'ohne NODE_ENV ein sicheres Cookie wie im Betrieb');
 });

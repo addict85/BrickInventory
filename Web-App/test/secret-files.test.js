@@ -4,7 +4,7 @@
  * everything stays as before.
  *
  * Counter-checks (measured 03.11.2026, each on its own):
- *   A  secretsFromFiles() not called in ladeKonfig → red: “the
+ *   A  secretsFromFiles() not called in loadConfig → red: “the
  *      session secret comes from the file” and “both set is an error”
  *   B  the trailing line break not removed → red: “the
  *      session secret …” and “the database password …”
@@ -18,7 +18,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { ladeKonfig, databaseConnection, KonfigFehler } = _req('src/infra/config.js');
+const { loadConfig, databaseConnection, ConfigError } = _req('src/infra/config.js');
 
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnis-datei-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
@@ -33,11 +33,11 @@ test('the session secret comes from the file', () => {
     SESSION_SECRET_FILE: datei('sitzung', 'aus-der-datei-lang-genug-fuer-den-start-42\n'),
     ADMIN_PASSWORD_FILE: datei('verwalter', 'Verwalter-aus-Datei-1'),
   };
-  const k = ladeKonfig(env);
+  const k = loadConfig(env);
   assert.equal(k.sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
   assert.equal(k.adminPassword, 'Verwalter-aus-Datei-1');
   assert.equal(env.SESSION_SECRET_FILE, undefined, 'X_FILE bleibt stehen, ein zweiter Lauf meldete „beide gesetzt"');
-  assert.equal(ladeKonfig(env).sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
+  assert.equal(loadConfig(env).sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
 });
 
 test('the database password comes from the file', () => {
@@ -49,16 +49,16 @@ test('the database password comes from the file', () => {
 
 test('both set is an error, a missing file too', () => {
   assert.throws(
-    () => ladeKonfig({ SESSION_SECRET: 'x'.repeat(40), SESSION_SECRET_FILE: datei('s2', 'y'.repeat(40)) }),
+    () => loadConfig({ SESSION_SECRET: 'x'.repeat(40), SESSION_SECRET_FILE: datei('s2', 'y'.repeat(40)) }),
     (/** @type {any} */ e) =>
-      e instanceof KonfigFehler && e.fehler.some(f => /SESSION_SECRET und SESSION_SECRET_FILE/.test(f)),
+      e instanceof ConfigError && e.error.some(f => /SESSION_SECRET und SESSION_SECRET_FILE/.test(f)),
   );
   assert.throws(
-    () => ladeKonfig({ PGPASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') }),
-    (/** @type {any} */ e) => e instanceof KonfigFehler && e.fehler.some(f => /PGPASSWORD_FILE=.*ENOENT/.test(f)),
+    () => loadConfig({ PGPASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') }),
+    (/** @type {any} */ e) => e instanceof ConfigError && e.error.some(f => /PGPASSWORD_FILE=.*ENOENT/.test(f)),
   );
 });
 
 test('without X_FILE as before', () => {
-  assert.equal(ladeKonfig({ SESSION_SECRET: 'wie-bisher' }).sessionSecret, 'wie-bisher');
+  assert.equal(loadConfig({ SESSION_SECRET: 'wie-bisher' }).sessionSecret, 'wie-bisher');
 });

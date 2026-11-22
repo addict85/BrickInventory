@@ -1,6 +1,6 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { withValue, buildArea, type Inspect } from '../infra/area';
-import { Faecher } from '../infra/cache';
+import { bound, buildArea, type Inspect } from '../infra/area';
+import { Compartments } from '../infra/cache';
 import * as queries from './queries';
 import * as manualPartsService from './manualParts';
 import * as changeColorService from './changeColor';
@@ -11,21 +11,21 @@ export type { PartsDependencies, PartsContext } from './context';
 
 export function createParts(a: Omit<PartsDependencies, 'faecher'>, inspect?: Inspect<PartsContext>) {
   return buildArea(
-    { ...a, faecher: new Faecher() },
+    { ...a, faecher: new Compartments() },
     access,
     (k: PartsContext) => ({
-      partColors: withValue(k)(queries.partColorsQuery),
-      readParts: withValue(k)(queries.partsQuery),
-      partCategories: withValue(k)(queries.partCategoriesQuery),
-      partStats: withValue(k)(queries.partStatsQuery),
-      readManualParts: withValue(k)(queries.manualPartsList),
-      ownedQuantities: withValue(k)(queries.ownedQuantitiesQuery),
-      blColorMap: withValue(k)(queries.blColorMapQuery),
-      addManualPart: withValue(k)(manualPartsService.addManualPart),
-      changeManualPart: withValue(k)(manualPartsService.changeManualPart),
-      partAcquisitions: withValue(k)(manualPartsService.listPartAcquisitions),
-      importPartsCsv: withValue(k)(manualPartsService.importPartsCsv),
-      changePartColor: withValue(k)(changeColorService.changePartColor),
+      partColors: bound(k)(queries.partColorsQuery),
+      readParts: bound(k)(queries.partsQuery),
+      partCategories: bound(k)(queries.partCategoriesQuery),
+      partStats: bound(k)(queries.partStatsQuery),
+      readManualParts: bound(k)(queries.manualPartsList),
+      ownedQuantities: bound(k)(queries.ownedQuantitiesQuery),
+      blColorMap: bound(k)(queries.blColorMapQuery),
+      addManualPart: bound(k)(manualPartsService.addManualPart),
+      changeManualPart: bound(k)(manualPartsService.changeManualPart),
+      partAcquisitions: bound(k)(manualPartsService.listPartAcquisitions),
+      importPartsCsv: bound(k)(manualPartsService.importPartsCsv),
+      changePartColor: bound(k)(changeColorService.changePartColor),
       jobKinds: () => partsJobKinds(k),
     }),
     inspect,

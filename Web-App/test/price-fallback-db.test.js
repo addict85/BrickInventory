@@ -56,8 +56,8 @@ async function nachladen() {
     `SELECT id, payload FROM jobs WHERE type = 'preise_nachladen' AND status = 'offen' ORDER BY id DESC LIMIT 1`,
   );
   if (!a) return false;
-  const { preiseNachladen } = _req('src/finances/reloadPrices.js');
-  await preiseNachladen(a.payload, { signal: new AbortController().signal, progress: async () => true });
+  const { reloadPrices } = _req('src/finances/reloadPrices.js');
+  await reloadPrices(a.payload, { signal: new AbortController().signal, progress: async () => true });
   await db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
   return true;
 }

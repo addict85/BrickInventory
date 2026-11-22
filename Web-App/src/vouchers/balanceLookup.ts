@@ -43,7 +43,7 @@ const QUERY = `query giftCardBalanceQuery($cardNumber: String!, $pin: String!) {
   }
 }`;
 
-export type Abruf = LegoFetch;
+export type FetchFn = LegoFetch;
 
 /** The token has expired, or the card/PIN is wrong. */
 export class NotLoggedIn extends Error {}
@@ -118,11 +118,11 @@ function captureCookies(res: { headers: { getSetCookie?: () => string[] } }, jar
 }
 
 /** Every call in this file goes through the host check. */
-async function fetchChecked(abruf: Abruf, url: string, init?: Record<string, unknown>) {
+async function fetchChecked(fetchFn: FetchFn, url: string, init?: Record<string, unknown>) {
   if (!hostAllowed(url, ALLOWED_BALANCE_HOSTS)) {
     throw new Error(`Address not allowed: ${url}`);
   }
-  return abruf(url, init);
+  return fetchFn(url, init);
 }
 
 /** 429 like 403: both mean "not now" and call for the same action —
@@ -131,13 +131,13 @@ function isBotProtection(status: number): boolean {
   return status === 403 || status === 429;
 }
 
-async function buildSession(abruf: Abruf, locale: string): Promise<Session> {
+async function buildSession(fetchFn: FetchFn, locale: string): Promise<Session> {
   const page = `https://www.lego.com/${locale.toLowerCase()}/gift-cards/balance`;
   const jar = new Map<string, string>();
   jar.set('locale', locale);
   jar.set('country', countryFrom(locale));
 
-  const s = await fetchChecked(abruf, page, {
+  const s = await fetchChecked(fetchFn, page, {
     headers: {
       'user-agent': UA,
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -152,7 +152,7 @@ async function buildSession(abruf: Abruf, locale: string): Promise<Session> {
   }
   captureCookies(s, jar);
 
-  const login = await fetchChecked(abruf, LOGIN, {
+  const login = await fetchChecked(fetchFn, LOGIN, {
     method: 'POST',
     headers: {
       accept: '*/*',
@@ -194,22 +194,28 @@ async function buildSession(abruf: Abruf, locale: string): Promise<Session> {
   return { token, cookies: jar, expiry: jwtExpiry(token) };
 }
 
-async function getSession(store: SessionStore, abruf: Abruf, locale: string, fresh = false): Promise<Session> {
+async function getSession(store: SessionStore, fetchFn: FetchFn, locale: string, fresh = false): Promise<Session> {
   const have = store.get(locale);
   // Five minutes of buffer before expiry.
   if (!fresh && have && have.expiry - Date.now() > 5 * 60_000) return have;
-  const neu = await buildSession(abruf, locale);
-  store.set(locale, neu);
-  return neu;
+  const isNew = await buildSession(fetchFn, locale);
+  store.set(locale, isNew);
+  return isNew;
 }
 
-async function queryBalance(abruf: Abruf, number: string, pin: string, locale: string, s: Session): Promise<Balance> {
+async function queryBalance(
+  fetchFn: FetchFn,
+  number: string,
+  pin: string,
+  locale: string,
+  s: Session,
+): Promise<Balance> {
   const jar = new Map(s.cookies);
   // A card is only valid in the shop of its issuing country.
   jar.set('locale', locale);
   jar.set('country', countryFrom(locale));
 
-  const res = await fetchChecked(abruf, ENDPOINT, {
+  const res = await fetchChecked(fetchFn, ENDPOINT, {
     method: 'POST',
     headers: {
       accept: '*/*',
@@ -270,21 +276,21 @@ export async function fetchBalance(
   store: SessionStore,
   number: string,
   pin: string,
-  opt: { locale?: string; abruf: Abruf },
+  opt: { locale?: string; fetch: FetchFn },
 ): Promise<Balance> {
   const locale = opt.locale || DEFAULT_COUNTRY;
-  const abruf = opt.abruf;
+  const fetchFn = opt.fetch;
 
   const wasInStore = store.has(locale);
   try {
-    const s = await getSession(store, abruf, locale);
+    const s = await getSession(store, fetchFn, locale);
     try {
-      return await queryBalance(abruf, number, pin, locale, s);
+      return await queryBalance(fetchFn, number, pin, locale, s);
     } catch (e) {
       if (!(e instanceof NotLoggedIn) || !wasInStore) throw e;
       console.warn(`[guthaben] token expired, new session for ${short(number)}`);
-      const fresh = await getSession(store, abruf, locale, true);
-      return await queryBalance(abruf, number, pin, locale, fresh);
+      const fresh = await getSession(store, fetchFn, locale, true);
+      return await queryBalance(fetchFn, number, pin, locale, fresh);
     }
   } catch (e) {
     // Two levels: building the session can also get a 403 from bot protection.

@@ -1,7 +1,7 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import type { Faecher } from '../infra/cache';
-import { withValue, type Context } from '../infra/area';
+import type { Compartments } from '../infra/cache';
+import { bound, type Context } from '../infra/area';
 import * as manualParts from './repository/manualParts';
 import * as partsList from './repository/partsList';
 import * as summary from './repository/summary';
@@ -19,7 +19,7 @@ export interface PartsDependencies {
   uhr: Clock;
   db: Db;
   /** State per access (rebuilding the parts summary); createParts sets it up. */
-  faecher: Faecher;
+  faecher: Compartments;
   einstellungen: SettingsServices;
   jobQueue: JobsServices;
   household: HouseholdServices;
@@ -31,31 +31,31 @@ export interface PartsDependencies {
 
 export const access = (db: Db) => ({
   manualParts: {
-    manualPartRow: withValue(db)(manualParts.manualPartRow),
-    manualPartWithCondition: withValue(db)(manualParts.manualPartWithCondition),
-    rbColorHex: withValue(db)(manualParts.rbColorHex),
-    partAcquisitions: withValue(db)(manualParts.partAcquisitions),
+    manualPartRow: bound(db)(manualParts.manualPartRow),
+    manualPartWithCondition: bound(db)(manualParts.manualPartWithCondition),
+    rbColorHex: bound(db)(manualParts.rbColorHex),
+    partAcquisitions: bound(db)(manualParts.partAcquisitions),
   },
   partsList: {
-    ownedMinifigs: withValue(db)(partsList.ownedMinifigs),
-    ownedParts: withValue(db)(partsList.ownedParts),
-    stockColors: withValue(db)(partsList.stockColors),
-    usedManualParts: withValue(db)(partsList.usedManualParts),
-    hasUnseenBlNumber: withValue(db)(partsList.hasUnseenBlNumber),
-    inventoryAsParts: withValue(db)(partsList.inventoryAsParts),
-    categories: withValue(db)(partsList.categories),
-    stats: withValue(db)(partsList.stats),
-    manualParts: withValue(db)(partsList.manualParts),
-    pageFromSummary: withValue(db)(partsList.pageFromSummary),
-    pageLive: withValue(db)(partsList.pageLive),
+    ownedMinifigs: bound(db)(partsList.ownedMinifigs),
+    ownedParts: bound(db)(partsList.ownedParts),
+    stockColors: bound(db)(partsList.stockColors),
+    usedManualParts: bound(db)(partsList.usedManualParts),
+    hasUnseenBlNumber: bound(db)(partsList.hasUnseenBlNumber),
+    inventoryAsParts: bound(db)(partsList.inventoryAsParts),
+    categories: bound(db)(partsList.categories),
+    stats: bound(db)(partsList.stats),
+    manualParts: bound(db)(partsList.manualParts),
+    pageFromSummary: bound(db)(partsList.pageFromSummary),
+    pageLive: bound(db)(partsList.pageLive),
   },
   summary: {
-    analyze: withValue(db)(summary.analyze),
-    builtState: withValue(db)(summary.builtState),
-    rawState: withValue(db)(summary.rawState),
+    analyze: bound(db)(summary.analyze),
+    builtState: bound(db)(summary.builtState),
+    rawState: bound(db)(summary.rawState),
   },
   partColor: {
-    rbColor: withValue(db)(partColor.rbColor),
+    rbColor: bound(db)(partColor.rbColor),
   },
 });
 export type PartsContext = Context<PartsDependencies, ReturnType<typeof access>>;

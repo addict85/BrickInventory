@@ -58,7 +58,7 @@ test('a moved set takes the image paths of all its components along', { concurre
     // Like the collection: in one transaction via its context; two foreign accounts only in the system frame.
     const { inSystemContext } = _req('src/infra/accountContext.js');
     const sammlung = require('./helpers/sources').testContext('collection');
-    await inSystemContext('Testdaten', () => sammlung.transaktion(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
+    await inSystemContext('Testdaten', () => sammlung.transact(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
 
     // Read via the same JOIN that the UIs use — i.e.
     // via the effect. A query on parts.image_local no longer exists,

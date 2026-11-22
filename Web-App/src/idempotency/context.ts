@@ -1,6 +1,6 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { withValue, type Context } from '../infra/area';
+import { bound, type Context } from '../infra/area';
 import * as repository from './repository';
 import type { Clock } from '../infra/clock';
 
@@ -11,15 +11,15 @@ export interface IdempotencyDependencies {
 
 export const access = (db: Db) => ({
   repository: {
-    receipts: withValue(db)(repository.receipts),
-    eintrag: withValue(db)(repository.entry),
-    withEffectNote: withValue(db)(repository.withEffectNote),
-    closeAb: withValue(db)(repository.finish),
-    deleteRunning: withValue(db)(repository.deleteRunning),
-    deleteOtherPrints: withValue(db)(repository.deleteOtherPrints),
-    deleteOlderAs: withValue(db)(repository.deleteOlderAs),
-    oldResponses: withValue(db)(repository.oldResponses),
-    replaceResponse: withValue(db)(repository.replaceResponse),
+    receipts: bound(db)(repository.receipts),
+    entry: bound(db)(repository.entry),
+    withEffectNote: bound(db)(repository.withEffectNote),
+    finish: bound(db)(repository.finish),
+    deleteRunning: bound(db)(repository.deleteRunning),
+    deleteOtherPrints: bound(db)(repository.deleteOtherPrints),
+    deleteOlderAs: bound(db)(repository.deleteOlderAs),
+    oldResponses: bound(db)(repository.oldResponses),
+    replaceResponse: bound(db)(repository.replaceResponse),
   },
 });
 export type IdempotencyContext = Context<IdempotencyDependencies, ReturnType<typeof access>>;

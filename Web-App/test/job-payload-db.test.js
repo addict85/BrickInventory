@@ -77,7 +77,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
           ausfuehren: async () => {
             gelaufen++;
           },
-          aufgegeben: async () => {
+          givenUp: async () => {
             aufgegeben++;
           },
         },

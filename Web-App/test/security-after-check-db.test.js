@@ -7,7 +7,7 @@
  *       static file stays green, it has its own.
  *   H4  in asUploadError() the mapping of entity.parse.failed deleted →
  *       red: “broken JSON …” (response names „Expected double-quoted property name … at position 18")
- *   H2  router.param() switched off in vertragsRouter() → red: “too large IDs …”
+ *   H2  router.param() switched off in contractRouter() → red: “too large IDs …”
  *       (path cases 400 wert_ungueltig from the second line); the check of
  *       body and query in server.ts switched off → red (body cases); both
  *       and the mapping of 22003 gone → 500. Only 22003 gone → „PostgreSQL

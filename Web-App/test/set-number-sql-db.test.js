@@ -22,13 +22,13 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { withVersion } = _req('src/infra/setNumber.js');
-const { setnummerCandidates } = _req('src/catalog/productTitle.js');
+const { setNumberCandidates } = _req('src/catalog/productTitle.js');
 
 const CORPUS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'));
 const RAND = ['10179-1', '10179-12', '10179-', '10179-1b', 'a-b', 'comcon001', 'sw0001a', '6', '-1', '--2', ''];
 
 function inputs() {
-  const kandidaten = CORPUS.faelle.flatMap(f => setnummerCandidates(f.text, 2026));
+  const kandidaten = CORPUS.faelle.flatMap(f => setNumberCandidates(f.text, 2026));
   return [...new Set([...kandidaten, ...kandidaten.map(k => `${k}-2`), ...RAND])];
 }
 

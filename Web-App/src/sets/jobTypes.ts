@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { ImagesPayload } from '../catalog';
 import * as afterAcquisition from './afterAdd';
 import type { SetsContext } from './context';
@@ -19,14 +19,14 @@ declare module '../jobQueue/jobs' {
   }
 }
 
-export function setsJobTypes(sk: SetsContext): Anmeldung[] {
+export function setsJobTypes(sk: SetsContext): Login[] {
   return [
-    auftragsart({
+    jobKind({
       art: 'nacharbeit',
       nutzlast: ReworkPayload,
       ausfuehren: (n, l) => afterAcquisition.pullAfter(sk, n.set_number, n.user_id, n.art ?? 'neu', l),
     }),
-    auftragsart({
+    jobKind({
       art: 'bilder',
       nutzlast: ImagesPayload,
       ausfuehren: async (n, l) => {

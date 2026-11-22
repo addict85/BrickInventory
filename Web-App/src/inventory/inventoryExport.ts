@@ -12,7 +12,7 @@ export async function partsCsv(k: InventoryContext, uid: number) {
   return toCsv(['part_number', 'quantity', 'color_id', 'color_name', 'unit_price', 'condition', 'acquired_at'], rows);
 }
 
-export async function figurenCsv(k: InventoryContext, uid: number) {
+export async function minifigsCsv(k: InventoryContext, uid: number) {
   const acqRows = (await k.bestandExport.minifigsForCsv(uid)).map(r => ({
     ...r,
     unit_price: r.unit_price ?? '',

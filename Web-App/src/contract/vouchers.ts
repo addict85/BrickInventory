@@ -12,18 +12,18 @@ import {
 } from '../infra/voucherValues';
 
 /** The contract checks the format; the service only receives checked values (src/infra/voucherValues.ts). */
-const VOUCHER_NUMBER = input.regel(voucherNumber, { type: 'string', pattern: '^[0-9 -]{4,40}$' });
-const VOUCHER_PIN = input.regel(voucherPin, { type: ['string', 'null'], pattern: '^\\s*([0-9]{3,10})?\\s*$' });
-const VOUCHER_CURRENCY = input.regel(voucherCurrency, { type: ['string', 'null'], pattern: '^([A-Za-z]{3})?$' });
-const NUMBER_OR_MASK = input.regel(voucherNumberOrMask, {
+const VOUCHER_NUMBER = input.rule(voucherNumber, { type: 'string', pattern: '^[0-9 -]{4,40}$' });
+const VOUCHER_PIN = input.rule(voucherPin, { type: ['string', 'null'], pattern: '^\\s*([0-9]{3,10})?\\s*$' });
+const VOUCHER_CURRENCY = input.rule(voucherCurrency, { type: ['string', 'null'], pattern: '^([A-Za-z]{3})?$' });
+const NUMBER_OR_MASK = input.rule(voucherNumberOrMask, {
   type: 'string',
   pattern: '^([0-9 -]{4,40}|…[0-9]{4})$',
 });
-const PIN_OR_MASK = input.regel(voucherPinOrMask, {
+const PIN_OR_MASK = input.rule(voucherPinOrMask, {
   type: ['string', 'null'],
   pattern: '^(\\s*([0-9]{3,10})?\\s*|•••)$',
 });
-const CURRENCY_CHANGE = input.regel(voucherCurrencyChange, {
+const CURRENCY_CHANGE = input.rule(voucherCurrencyChange, {
   type: ['string', 'null'],
   pattern: '^([A-Za-z]{3})?$',
 });

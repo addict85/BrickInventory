@@ -14,7 +14,7 @@
  *      is in set_catalog afterwards”
  *   D  rememberSet() again writes only catalog_cache (rememberSetCatalog call
  *      removed) → red: “a fetch lands in rb_sets”
- *   E  setStamm() reads COALESCE(c.image_url, rs.set_img_url) again → red:
+ *   E  setMaster() reads COALESCE(c.image_url, rs.set_img_url) again → red:
  *      “set master: the image only from set_catalog”
  */
 const test = require('node:test');
@@ -137,10 +137,10 @@ test('catalog_cache only the fetch state now', { concurrency: 1 }, async t => {
       `INSERT INTO rb_sets (set_num, name, year, set_img_url) VALUES ('4343-1', 'Nur CSV-Bild', 2020, 'https://csv/4343.jpg')`,
     );
     await db.run(`INSERT INTO set_catalog (set_number) VALUES ('4343-1')`);
-    const s = await detail.setStamm(db, '4343-1');
+    const s = await detail.setMaster(db, '4343-1');
     assert.equal(s.name, 'Nur CSV-Bild');
     assert.equal(s.image_url, null);
     await db.run(`UPDATE set_catalog SET image_url = 'https://katalog/4343.jpg' WHERE set_number = '4343-1'`);
-    assert.equal((await detail.setStamm(db, '4343-1')).image_url, 'https://katalog/4343.jpg');
+    assert.equal((await detail.setMaster(db, '4343-1')).image_url, 'https://katalog/4343.jpg');
   });
 });

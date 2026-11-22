@@ -5,7 +5,7 @@
  * The second part checks the wiring in vertragsRouter on the real router.
  *
  * Counter-checks (measured on 11.11.2026):
- *   A  in unbekannteFelder() `else if (offen) funde.add(…)` removed → red:
+ *   A  in unknownFields() `else if (offen) funde.add(…)` removed → red:
  *      “a foreign field, also nested in lists”
  *   B  in the branch 'union' the first option taken instead of the matching one → red:
  *      “in a union the option that matches counts”
@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
 const { z } = require('zod');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { unbekannteFelder } = _req('src/contract/unknownFields.js');
+const { unknownFields } = _req('src/contract/unknownFields.js');
 
 test('a foreign field, also nested in lists', () => {
   const Zeile = z.looseObject({ id: z.number(), name: z.string().nullable().optional() });
@@ -30,16 +30,16 @@ test('a foreign field, also nested in lists', () => {
       { id: 2, geheim: 'x' },
     ],
   };
-  assert.deepEqual(unbekannteFelder(Antwort, wert), ['extra', 'sets.1.geheim']);
-  assert.deepEqual(unbekannteFelder(Antwort, { success: true, sets: [{ id: 1 }] }), []);
+  assert.deepEqual(unknownFields(Antwort, wert), ['extra', 'sets.1.geheim']);
+  assert.deepEqual(unknownFields(Antwort, { success: true, sets: [{ id: 1 }] }), []);
 });
 
 test('extensions, envelopes and records', () => {
   const Basis = z.looseObject({ a: z.number() });
   const Mehr = Basis.extend({ b: z.string().optional() });
-  assert.deepEqual(unbekannteFelder(Mehr.nullable().optional(), { a: 1, b: 'x', c: 2 }), ['c']);
+  assert.deepEqual(unknownFields(Mehr.nullable().optional(), { a: 1, b: 'x', c: 2 }), ['c']);
   const Karte = z.looseObject({ jobs: z.record(z.string(), z.looseObject({ n: z.number() })) });
-  assert.deepEqual(unbekannteFelder(Karte, { jobs: { preise: { n: 1, lauf: 2 }, bilder: { n: 2 } } }), [
+  assert.deepEqual(unknownFields(Karte, { jobs: { preise: { n: 1, lauf: 2 }, bilder: { n: 2 } } }), [
     'jobs.preise.lauf',
   ]);
 });
@@ -47,8 +47,8 @@ test('extensions, envelopes and records', () => {
 test('in a union the option that fits counts', () => {
   const A = z.looseObject({ art: z.literal('a'), x: z.number() });
   const B = z.looseObject({ art: z.literal('b'), y: z.number() });
-  assert.deepEqual(unbekannteFelder(z.union([A, B]), { art: 'b', y: 1 }), []);
-  assert.deepEqual(unbekannteFelder(z.union([A, B]), { art: 'b', y: 1, z: 0 }), ['z']);
+  assert.deepEqual(unknownFields(z.union([A, B]), { art: 'b', y: 1 }), []);
+  assert.deepEqual(unknownFields(z.union([A, B]), { art: 'b', y: 1, z: 0 }), ['z']);
 });
 
 test('the route answers 500 if a field is missing in the contract', async () => {

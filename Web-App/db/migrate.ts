@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import type { ClientBase } from 'pg';
-import { reportError, fehlertext, logAndContinue } from '../src/infra/error';
+import { reportError, errorMessage, logAndContinue } from '../src/infra/error';
 import type { DbInterface } from './types';
 
 /** How long a migration waits for a lock and how often it tries. */
@@ -20,7 +20,7 @@ export interface LockPeriod {
 export const LOCK_PERIOD: LockPeriod = { fristMs: 30_000, versuche: 3 };
 
 async function withLockPeriod<T>(was: string, frist: LockPeriod, work: () => Promise<T>): Promise<T> {
-  for (let versuch = 1; ; versuch++) {
+  for (let attempt = 1; ; attempt++) {
     try {
       return await work();
     } catch (e) {
@@ -28,8 +28,8 @@ async function withLockPeriod<T>(was: string, frist: LockPeriod, work: () => Pro
       const grund =
         `${was}: nach ${frist.fristMs / 1000} s keine Sperre erhalten – eine andere Verbindung hält die ` +
         'Tabelle (welche, zeigt pg_stat_activity).';
-      if (versuch >= frist.versuche) throw new Error(`${grund} Aufgegeben nach ${versuch} Versuchen.`);
-      console.warn(`  ⏳ ${grund} Versuch ${versuch + 1}/${frist.versuche} …`);
+      if (attempt >= frist.versuche) throw new Error(`${grund} Aufgegeben nach ${attempt} Versuchen.`);
+      console.warn(`  ⏳ ${grund} Versuch ${attempt + 1}/${frist.versuche} …`);
     }
   }
 }
@@ -230,7 +230,7 @@ async function secureUserData(client: ClientBase, open: string[], sperre = LOCK_
       }
     });
   } catch (e: unknown) {
-    throw new Error(`Sicherung vor den Migrationen fehlgeschlagen: ${fehlertext(e)}`);
+    throw new Error(`Sicherung vor den Migrationen fehlgeschlagen: ${errorMessage(e)}`);
   }
   const alt = await client.query<{ nspname: string }>(`
     SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_[0-9]+$'

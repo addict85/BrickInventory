@@ -1,6 +1,6 @@
 /** Not strict: the payload survives deploys, a legacy field should not make an open job fail. */
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { bricksetJobType } from '../externalSources';
 import * as loadInstruction from './loadInstruction';
 import * as imageFollowUp from './imageFollowUp';
@@ -53,23 +53,23 @@ declare module '../jobQueue/jobs' {
 export const CATALOG_SYNC_TIME_OF_DAY = { setting: 'job_time_csv_sync', vorgabe: '03:00' } as const;
 
 /** Exclusive are kinds that spare a remote side or swap tables. */
-export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmeldung[] {
+export function catalogJobTypes(k: CatalogContext, importProcess: string): Login[] {
   return [
-    auftragsart({
+    jobKind({
       art: 'pdf',
       nutzlast: PdfPayload,
       ausfuehren: (n, l) => pdfGeneration.createPdf(k, n, l),
-      aufgegeben: (n, fehler) => pdfGeneration.pdfGivenUp(n, fehler),
+      givenUp: (n, error) => pdfGeneration.pdfGivenUp(n, error),
       discardPayload: true,
     }),
-    auftragsart({
+    jobKind({
       art: 'anleitung',
       nutzlast: InstructionPayload,
-      ausfuehren: (n, l) => loadInstruction.anleitungLaden(k, n, l),
+      ausfuehren: (n, l) => loadInstruction.loadInstruction(k, n, l),
       exklusiv: true,
     }),
-    bricksetJobType((n, l) => bricksetFollowUp.bricksetNachlauf(k, n, l)),
-    auftragsart({
+    bricksetJobType((n, l) => bricksetFollowUp.bricksetFollowUp(k, n, l)),
+    jobKind({
       art: 'bilder_neu_laden',
       nutzlast: LEER,
       ausfuehren: async (_n, l) => {
@@ -78,23 +78,23 @@ export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmel
       exklusiv: true,
       kontouebergreifend: 'fehlende Bilder aller Bestände',
     }),
-    auftragsart({
+    jobKind({
       art: 'csv_sync',
       nutzlast: CatalogSyncPayload,
-      ausfuehren: (n, l) => csvReconcile.csvAbgleich(k, n, l, importProcess),
+      ausfuehren: (n, l) => csvReconcile.csvReconcile(k, n, l, importProcess),
       exklusiv: true,
       kontouebergreifend: 'BrickLink-Nummern der Teile aller Konten',
       zeitplan: { taeglich: CATALOG_SYNC_TIME_OF_DAY },
     }),
-    auftragsart({
+    jobKind({
       art: 'bild_nachlauf',
       nutzlast: LEER,
-      ausfuehren: (_n, l) => imageFollowUp.bildNachlauf(k, l),
+      ausfuehren: (_n, l) => imageFollowUp.imageFollowUp(k, l),
       exklusiv: true,
       kontouebergreifend: 'Bilder aller Bestände',
       zeitplan: { minuten: { vorgabe: 60 } },
     }),
-    auftragsart({
+    jobKind({
       art: 'widerrufsliste',
       nutzlast: LEER,
       ausfuehren: (_n, l) => revocationList.loadRevocationList(k, l),

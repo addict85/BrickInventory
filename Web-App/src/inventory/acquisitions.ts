@@ -153,7 +153,7 @@ export async function setEstimatedPrice(
   id: number,
   preis: number,
 ): Promise<boolean> {
-  return kx.transaktion(
+  return kx.transact(
     async t => {
       const z = await repo.lockEntry(t.db, kind, id);
       if (!z || z[priceColumn(kind)] != null) return false;

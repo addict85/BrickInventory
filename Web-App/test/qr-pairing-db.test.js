@@ -6,7 +6,7 @@
  * be seen and cannot be confirmed.
  *
  * Counter-checks (measured 09.11.2026, each on its own):
- *   A  in holeQrTokenAb() (src/account/qrPairing.ts) `wartet` treated like `bestaetigt`
+ *   A  in fetchQrToken() (src/account/qrPairing.ts) `wartet` treated like `bestaetigt`
  *      too → red: “without confirmation no token”
  *   B  codeFits() always returns true → red: “a wrong code counts …”
  *   C  qrPairingOfAccount() without `AND user_id = $2` → red: “another account's pairing …”
@@ -15,7 +15,7 @@
  *      names the account …” (token already in the preview)
  *   F  (11.11.2026) markRejected() deleted in discardPickup() → red: “a no
  *      from the app …” (picking up gives a token after all)
- *   G  (11.11.2026) in putQrPairingAn() the count condition deleted → red:
+ *   G  (11.11.2026) in createQrPairing() the count condition deleted → red:
  *      “above the limit of open pairings …” (200 instead of 503)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.

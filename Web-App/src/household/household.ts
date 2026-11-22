@@ -1,13 +1,13 @@
 // Here alone: whose data a request sees.
 import { logAndContinue } from '../infra/error';
 import { Degradations } from '../infra/result';
-import { Zwischenspeicher } from '../infra/cache';
+import { Cache } from '../infra/cache';
 import { processEvent } from '../infra/event';
-import { sperreHaushaltswaehrung } from '../../db/txLock';
+import { lockHouseholdCurrency } from '../../db/txLock';
 import type { HouseholdContext } from './context';
 import * as repo from './repository';
 import type { AcquisitionKind } from './repository';
-import { fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { failDomain, type ErrorCode } from '../infra/errorTexts';
 import { inSystemContext, checkRequester } from '../infra/accountContext';
 import {
   HOUSEHOLD_CHANNEL,
@@ -28,11 +28,11 @@ import {
 } from './rules';
 
 /** Per set of services: the state counts the changes, the dependents (images) listen in. */
-const stand = (k: HouseholdContext) => k.faecher.fach('haushaltStand', () => ({ wert: 0 }));
+const stand = (k: HouseholdContext) => k.faecher.slot('haushaltStand', () => ({ wert: 0 }));
 const householdChange = (k: HouseholdContext) =>
-  k.faecher.fach('haushaltsaenderung', () => {
+  k.faecher.slot('haushaltsaenderung', () => {
     const e = processEvent('haushaltsaenderung', HOUSEHOLD_CHANNEL);
-    e.horche(() => {
+    e.listen(() => {
       stand(k).wert++;
     });
     return e;
@@ -40,7 +40,7 @@ const householdChange = (k: HouseholdContext) =>
 
 /** Callback instead of import: areas that need the household would otherwise form a cycle. */
 export function atHouseholdChange(k: HouseholdContext, empty: () => void): () => void {
-  return householdChange(k).horche(empty);
+  return householdChange(k).listen(empty);
 }
 
 /** Web and jobs each keep their own memories; what one changes, the other clears through this. */
@@ -49,23 +49,23 @@ export function listenOnChanges(k: HouseholdContext): () => void {
 }
 
 /** Per access (two databases, same account IDs); none within a transaction, otherwise a never-valid state would remain after ROLLBACK. */
-function memory(k: HouseholdContext): Zwischenspeicher<number, Household> {
-  if (k.db.inTransaction()) return new Zwischenspeicher<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS);
+function memory(k: HouseholdContext): Cache<number, Household> {
+  if (k.db.inTransaction()) return new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS);
   const now = stand(k).wert;
-  const g = k.faecher.fach('haushalt', () => ({
+  const g = k.faecher.slot('haushalt', () => ({
     stand: now,
-    speicher: new Zwischenspeicher<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS),
+    speicher: new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS),
   }));
   if (g.stand !== now) {
     g.stand = now;
-    g.speicher = new Zwischenspeicher<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS);
+    g.speicher = new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS);
   }
   return g.speicher;
 }
 
 /** Here immediately, elsewhere after the COMMIT; a lost signal is healed by the memory's expiry. */
 export function reportHouseholdChange(k: HouseholdContext): void {
-  void householdChange(k).melde(k.db.notification);
+  void householdChange(k).report(k.db.notification);
 }
 
 /** Only the direct sub-accounts: every account in scope has itself agreed to an
@@ -85,7 +85,7 @@ export async function householdOf(k: HouseholdContext, uid: number): Promise<Hou
 
   const [bottom, parents] = await Promise.all([kinder(k, id), repo.parentAccounts(k.db, id)]);
   const household: Household = { memberIds: [id, ...bottom], isMain: bottom.length > 0, parentIds: parents };
-  store.setze(id, household);
+  store.set(id, household);
   return { ...household, memberIds: [...household.memberIds], parentIds: [...household.parentIds] };
 }
 
@@ -126,7 +126,7 @@ export async function createInvitation(k: HouseholdContext, uid: number) {
   await k.repository.cleanInvitationsOn();
   // Every open invitation is an access to the household; nobody needs arbitrarily many.
   if ((await repo.openInvitations(k.db, id)) >= OPEN_INVITATIONS_MAX)
-    fachfehler('konflikt', 'einladungen_zu_viele', { n: OPEN_INVITATIONS_MAX });
+    failDomain('konflikt', 'einladungen_zu_viele', { n: OPEN_INVITATIONS_MAX });
 
   const code = newCode();
   await repo.createInvitation(k.db, invitationHash(code), id, new Date(k.uhr.jetzt() + INVITE_TTL_MS));
@@ -135,30 +135,30 @@ export async function createInvitation(k: HouseholdContext, uid: number) {
 
 /** Who invites, before anyone agrees with the password; only whoever has the code learns the name. */
 export async function checkInvitation(k: HouseholdContext, uid: number, code: string) {
-  if (typeof code !== 'string' || code.trim().length < 8) fachfehler('konflikt', 'einladungscode_ungueltig');
+  if (typeof code !== 'string' || code.trim().length < 8) failDomain('konflikt', 'einladungscode_ungueltig');
   const subId = parseInt(String(uid), 10);
   const mainId = await k.repository.inviterToCode(invitationHash(code));
-  if (mainId === null) fachfehler('konflikt', 'einladungscode_abgelaufen');
-  if (mainId === subId) fachfehler('konflikt', 'konto_mit_sich_selbst');
-  if (await repo.isLinked(k.db, mainId, subId)) fachfehler('konflikt', 'konto_bereits_verknuepft');
-  if (await repo.isLinked(k.db, subId, mainId)) fachfehler('konflikt', 'verknuepfung_erzeugt_kreis');
+  if (mainId === null) failDomain('konflikt', 'einladungscode_abgelaufen');
+  if (mainId === subId) failDomain('konflikt', 'konto_mit_sich_selbst');
+  if (await repo.isLinked(k.db, mainId, subId)) failDomain('konflikt', 'konto_bereits_verknuepft');
+  if (await repo.isLinked(k.db, subId, mainId)) failDomain('konflikt', 'verknuepfung_erzeugt_kreis');
   return { inviter: { id: mainId, username: (await k.repository.inviterName(mainId)) || String(mainId) } };
 }
 
 // Invalidated atomically, free again on failure.
 export async function redeemInvitation(k: HouseholdContext, uid: number, code: string) {
   const subId = parseInt(String(uid), 10);
-  if (typeof code !== 'string' || code.length < 8) fachfehler('konflikt', 'einladungscode_ungueltig');
+  if (typeof code !== 'string' || code.length < 8) failDomain('konflikt', 'einladungscode_ungueltig');
   const th = invitationHash(code);
 
   // A read error is not an expired code: it propagates.
   const mainId = await k.repository.receiptsInvitation(th, subId);
-  if (mainId === null) fachfehler('konflikt', 'einladungscode_abgelaufen');
+  if (mainId === null) failDomain('konflikt', 'einladungscode_abgelaufen');
 
   /** A refusal frees the code again. */
   const refusal = async (code: ErrorCode, vars?: Record<string, string>): Promise<never> => {
     await k.repository.giveInvitationFree(th).catch(logAndContinue('haushalt:release'));
-    return fachfehler('konflikt', code, vars);
+    return failDomain('konflikt', code, vars);
   };
 
   if (mainId === subId) await refusal('konto_mit_sich_selbst');
@@ -178,8 +178,8 @@ export async function redeemInvitation(k: HouseholdContext, uid: number, code: s
   // the same lock as a currency change, so that nothing slips in between. In
   // the system frame, because the main account is not (yet) in the redeemer's scope.
   const unequal = await inSystemContext('haushalt beitreten', () =>
-    k.transaktion(async t => {
-      await sperreHaushaltswaehrung(t.db);
+    k.transact(async t => {
+      await lockHouseholdCurrency(t.db);
       const [curMain, curSub] = await Promise.all([
         t.einstellungen.userValue(mainId, 'currency', 'EUR'),
         t.einstellungen.userValue(subId, 'currency', 'EUR'),
@@ -285,20 +285,20 @@ export async function writeAreaFrom(k: HouseholdContext, v: Writer | number[]): 
 /** Main accounts see the files of their sub-accounts, not the other way round. Freshly
  * asked like darfSchreibenFuer: an unlinked sub-account should not stay readable until
  * the memory expires in case the notification fails to arrive. */
-export async function seesAccount(k: HouseholdContext, nutzer: number, owner: number): Promise<boolean> {
-  checkRequester(nutzer);
-  return owner === nutzer || repo.isLinked(k.db, nutzer, owner);
+export async function seesAccount(k: HouseholdContext, userRow: number, owner: number): Promise<boolean> {
+  checkRequester(userRow);
+  return owner === userRow || repo.isLinked(k.db, userRow, owner);
 }
 
 /** For whom writing happens; without the right 403 with the route's code. */
 export async function writeTarget(
   k: HouseholdContext,
-  nutzer: number,
+  userRow: number,
   wish: unknown,
   refusal: 'kein_schreibrecht' | 'kein_zugriff_konto' = 'kein_schreibrecht',
 ): Promise<number> {
-  const target = await writeTargetOrNull(k, nutzer, wish);
-  if (target === null) fachfehler('verboten', refusal);
+  const target = await writeTargetOrNull(k, userRow, wish);
+  if (target === null) failDomain('verboten', refusal);
   return target;
 }
 
@@ -327,7 +327,7 @@ export async function moveSource(
 ): Promise<number> {
   const owner = await repo.ownerTheEntry(k.db, k.lesevertrag, kind, acqId);
   if (owner === null || !(await mayWriteFor(k, actorId, owner)))
-    fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
+    failDomain('nicht_gefunden', 'kaufpreis_nicht_gefunden');
   return owner;
 }
 

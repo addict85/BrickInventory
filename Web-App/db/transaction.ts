@@ -41,8 +41,8 @@ const CONTEXT_EMPTY = "SELECT set_config('app.konto', '', true)";
 
 /** Any SQL can set app.konto (an injection): before COMMIT it must still be what `kontext` set,
  * otherwise this fails and the transaction ends as ROLLBACK. */
-export function contextCheckSql(kontext: string): string {
-  const konto = /'app\.konto', '(\d*)'/.exec(kontext)?.[1] ?? '';
+export function contextCheckSql(context: string): string {
+  const konto = /'app\.konto', '(\d*)'/.exec(context)?.[1] ?? '';
   return (
     `DO $$BEGIN IF COALESCE(current_setting('app.konto', true), '') <> '${konto}' THEN ` +
     `RAISE EXCEPTION 'app.konto changed within the transaction' USING ERRCODE = '42501'; END IF; END$$`
@@ -141,11 +141,11 @@ export class ConcurrentSavepoint extends Error {
 export function innerTransaction<T>(
   stand: TxStand,
   frame: string | null,
-  nummer: number,
+  number: number,
   fn: (name: string) => Promise<T>,
 ): Promise<T> {
   if (stand.innerster !== frame) return Promise.reject(new ConcurrentSavepoint(stand.innerster ?? ''));
-  const name = `sp_${nummer}`;
+  const name = `sp_${number}`;
   stand.innerster = name;
   return (async () => {
     const { client } = stand;

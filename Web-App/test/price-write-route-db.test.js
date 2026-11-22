@@ -130,7 +130,7 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
           throw new Error('Verlauf nicht schreibbar (Probe)');
         },
       },
-      transaktion: fn => z.transaktion(t => fn(kaputt(t))),
+      transaction: fn => z.transact(t => fn(kaputt(t))),
     });
     const k = kaputt(fk);
     const guide = { min_price: '8', avg_price: '10', max_price: '12', qty_avg_price: '9', total_quantity: '4' };

@@ -195,10 +195,10 @@ test('household against a real database', async t => {
     assert.deepEqual(await household.scopeIds(U.kindA, 'subs'), [U.kindA]);
 
     // Writing: only the direction parent → own child.
-    assert.equal(await household.darfSchreibenFuer(U.eltern, U.kindA), true);
-    assert.equal(await household.darfSchreibenFuer(U.kindA, U.kindB), false, 'Geschwister dürfen nicht');
-    assert.equal(await household.darfSchreibenFuer(U.kindA, U.eltern), false, 'Kind darf nicht ins Elternkonto');
-    assert.equal(await household.darfSchreibenFuer(U.eltern, U.fremd), false);
+    assert.equal(await household.mayWriteFor(U.eltern, U.kindA), true);
+    assert.equal(await household.mayWriteFor(U.kindA, U.kindB), false, 'Geschwister dürfen nicht');
+    assert.equal(await household.mayWriteFor(U.kindA, U.eltern), false, 'Kind darf nicht ins Elternkonto');
+    assert.equal(await household.mayWriteFor(U.eltern, U.fremd), false);
   });
 
   await t.test('rights only apply along a direct link', async () => {
@@ -213,13 +213,13 @@ test('household against a real database', async t => {
       'Über eine Kette darf eltern das Konto enkel nicht sehen — enkel hat nur kindA zugestimmt',
     );
     assert.equal(
-      await household.darfSchreibenFuer(U.eltern, U.enkel),
+      await household.mayWriteFor(U.eltern, U.enkel),
       false,
       'Über eine Kette darf eltern bei enkel nicht schreiben',
     );
-    assert.ok(!(await household.schreibbereich(U.eltern)).includes(U.enkel));
-    assert.equal(await household.darfSchreibenFuer(U.kindA, U.enkel), true);
-    assert.equal(await household.darfSchreibenFuer(U.enkel, U.kindA), false);
+    assert.ok(!(await household.writeScope(U.eltern)).includes(U.enkel));
+    assert.equal(await household.mayWriteFor(U.kindA, U.enkel), true);
+    assert.equal(await household.mayWriteFor(U.enkel, U.kindA), false);
   });
 
   await t.test('the storage locations of a sub-account follow the right, not the view filter', async () => {
@@ -253,7 +253,7 @@ test('household against a real database', async t => {
     const inv = await household.createInvitation(U.eltern);
     await household.redeemInvitation(U.enkel, inv.code);
     assert.ok((await household.scopeIds(U.eltern, 'all')).includes(U.enkel));
-    assert.equal(await household.darfSchreibenFuer(U.eltern, U.enkel), true);
+    assert.equal(await household.mayWriteFor(U.eltern, U.enkel), true);
 
     const st = await household.householdStatus(U.enkel);
     assert.deepEqual(st.parents.map(p => p.username).sort(), ['eltern', 'kindA']);
@@ -271,11 +271,11 @@ test('household against a real database', async t => {
       ['kindA'],
     );
     assert.equal(
-      await household.darfSchreibenFuer(U.eltern, U.enkel),
+      await household.mayWriteFor(U.eltern, U.enkel),
       false,
       'Nach dem Lösen darf das frühere Elternkonto nicht mehr schreiben',
     );
-    assert.equal(await household.darfSchreibenFuer(U.kindA, U.enkel), true);
+    assert.equal(await household.mayWriteFor(U.kindA, U.enkel), true);
   });
 
   await t.test('linking mutually is rejected', async () => {
@@ -328,7 +328,7 @@ test('household against a real database', async t => {
     await giveSet(U.kindB, '75192-1', 2, 160);
     await giveSet(U.kindA, '10290-1', 1, 50);
 
-    const r = await handlers.setsLesen(await household.scopeIds(U.eltern, 'all'), {});
+    const r = await handlers.readSets(await household.scopeIds(U.eltern, 'all'), {});
     const falcon = r.sets.filter(s => s.set_number === '75192-1');
     assert.equal(falcon.length, 1, 'Set erscheint mehrfach');
     assert.equal(falcon[0].quantity, 3, 'Mengen nicht addiert');
@@ -342,11 +342,11 @@ test('household against a real database', async t => {
     assert.equal(Math.round(falcon[0].avg_purchase_price), 140);
 
     // Filter: the parent account's own view is empty, 'subs' shows both sets.
-    assert.equal((await handlers.setsLesen(await household.scopeIds(U.eltern, 'own'), {})).sets.length, 0);
-    assert.equal((await handlers.setsLesen(await household.scopeIds(U.eltern, 'subs'), {})).sets.length, 2);
+    assert.equal((await handlers.readSets(await household.scopeIds(U.eltern, 'own'), {})).sets.length, 0);
+    assert.equal((await handlers.readSets(await household.scopeIds(U.eltern, 'subs'), {})).sets.length, 2);
 
     // And a child only sees its own.
-    const kindB = await handlers.setsLesen(await household.scopeIds(U.kindB, 'all'), {});
+    const kindB = await handlers.readSets(await household.scopeIds(U.kindB, 'all'), {});
     assert.deepEqual(
       kindB.sets.map(s => s.set_number),
       ['75192-1'],
@@ -412,7 +412,7 @@ test('household against a real database', async t => {
     );
 
     // In the household the set still stands once, now with one owner.
-    const list = await handlers.setsLesen(await household.scopeIds(U.eltern, 'all'), {});
+    const list = await handlers.readSets(await household.scopeIds(U.eltern, 'all'), {});
     const falcon = list.sets.find(s => s.set_number === '75192-1');
     assert.equal(falcon.quantity, 3);
     assert.deepEqual(
@@ -468,7 +468,7 @@ test('household against a real database', async t => {
     await household.unlinkAccounts(U.eltern, U.kindA);
     assert.deepEqual(await household.scopeIds(U.eltern, 'all'), [U.eltern, U.kindB]);
     // The child keeps its stock.
-    const kindA = await handlers.setsLesen(await household.scopeIds(U.kindA, 'all'), {});
+    const kindA = await handlers.readSets(await household.scopeIds(U.kindA, 'all'), {});
     assert.deepEqual(
       kindA.sets.map(s => s.set_number),
       ['10290-1'],

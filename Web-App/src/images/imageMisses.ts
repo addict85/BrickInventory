@@ -1,5 +1,5 @@
 import { reportError } from '../infra/error';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { ImagesContext } from './context';
 
 /** Remembered ONCE, for all processes; after a week the question is asked again. */
@@ -12,7 +12,7 @@ const REFRESH_MS = 5 * 60 * 1000;
 /** Per set of services. `reasons` separate, because isKnownMissing() is the hottest path;
  * `writeTo` buffers the table, otherwise a burst of 404s would be a burst of INSERTs. */
 const stand = (k: ImagesContext) =>
-  k.faecher.fach('fehlanzeige', () => ({
+  k.faecher.slot('fehlanzeige', () => ({
     vorne: new Map<string, number>(),
     reasons: new Map<string, string>(),
     writeTo: new Map<string, string>(),
@@ -53,7 +53,7 @@ export function isKnownMissing(k: ImagesContext, key: string): boolean {
 
 async function refresh(k: ImagesContext): Promise<void> {
   // Not readable: the previous state in memory stays until the next reconciliation succeeds.
-  const r = await versuche('bild-fehlanzeige:rows', k.bildFehlschlaege.freshFailures(String(AGAIN_CHECK_MS)));
+  const r = await attempts('bild-fehlanzeige:rows', k.bildFehlschlaege.freshFailures(String(AGAIN_CHECK_MS)));
   if (!r.ok) return;
   const rows = r.wert;
   const { vorne: _front, reasons: _reasons } = stand(k);

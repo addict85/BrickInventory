@@ -8,21 +8,21 @@ import * as repo from './repository/accounts';
 import { increaseSessionVersion } from './sessionVersion';
 import { emptyTokenCache } from './tokenCache';
 import { reportError } from '../infra/error';
-import { fachfehler, notFound } from '../infra/errorTexts';
+import { failDomain, notFound } from '../infra/errorTexts';
 import { inSystemContext } from '../infra/accountContext';
 import type { AccountContext } from './context';
 
 /** @param through the administrator who deletes; null if the account deletes itself */
-export async function kontoEntfernen(k: AccountContext, target: number, through: number | null): Promise<void> {
+export async function removeAccount(k: AccountContext, target: number, through: number | null): Promise<void> {
   // Always in the system frame: only the system role sees sessions and the copies made before migrations.
   const fremd = through !== null && through !== target;
   const remove = () =>
-    k.transaktion(async t => {
+    k.transact(async t => {
       // Before deleting: afterwards the name for the log can no longer be determined.
-      if (through !== null && fremd) await t.protokoll.protokolliere(through, target, 'konto_geloescht');
+      if (through !== null && fremd) await t.protokoll.logEntry(through, target, 'konto_geloescht');
       const route =
         through === null ? await t.konten.deleteOwnAccount(target) : await t.konten.deleteAccount(target, through);
-      if (route === repo.LAST_ADMIN || (!route && through === null)) fachfehler('konflikt', 'letzter_verwalter');
+      if (route === repo.LAST_ADMIN || (!route && through === null)) failDomain('konflikt', 'letzter_verwalter');
       if (!route) notFound('benutzer_nicht_gefunden_oder_eigenes');
       // user_sessions has no foreign key to users.
       await increaseSessionVersion(t, target);

@@ -109,7 +109,7 @@ async function holdsPart(db, userId, partNumber, opt = {}) {
     [userId, setNumber, partNumber, colorId, quelle, opt.storageId ?? null],
   );
   if (setNumber) {
-    // The catalog count — without it teilmengeAus() falls back to the fallback 1,
+    // The catalog count — without it subsetFrom() falls back to the fallback 1,
     // and a set with four equal bricks would count as one.
     await db.run(
       `INSERT INTO set_parts (set_number, part_number, color_id, quantity)

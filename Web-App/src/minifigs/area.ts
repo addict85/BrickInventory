@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { withValue, buildArea, type Inspect } from '../infra/area';
+import { bound, buildArea, type Inspect } from '../infra/area';
 import * as queries from './queries';
 import * as service from './service';
 import * as manualMinifigs from './manualMinifigs';
@@ -12,14 +12,14 @@ export function createMinifigs(a: MinifigsDependencies, inspect?: Inspect<Minifi
     a,
     access,
     (k: MinifigsContext) => ({
-      readMinifigs: withValue(k)(queries.readMinifigs),
-      minifigStats: withValue(k)(queries.computeMinifigStats),
-      readManualMinifigs: withValue(k)(queries.readManualMinifigs),
-      partsOfMinifig: withValue(k)(service.partsOfMinifig),
-      addManualMinifig: withValue(k)(manualMinifigs.addManualMinifig),
-      updateManualMinifig: withValue(k)(manualMinifigs.updateManualMinifig),
-      minifigAcquisitions: withValue(k)(manualMinifigs.minifigAcquisitionsInScope),
-      importMinifigsCsv: withValue(k)(manualMinifigs.importMinifigsCsv),
+      readMinifigs: bound(k)(queries.readMinifigs),
+      minifigStats: bound(k)(queries.computeMinifigStats),
+      readManualMinifigs: bound(k)(queries.readManualMinifigs),
+      partsOfMinifig: bound(k)(service.partsOfMinifig),
+      addManualMinifig: bound(k)(manualMinifigs.addManualMinifig),
+      updateManualMinifig: bound(k)(manualMinifigs.updateManualMinifig),
+      minifigAcquisitions: bound(k)(manualMinifigs.minifigAcquisitionsInScope),
+      importMinifigsCsv: bound(k)(manualMinifigs.importMinifigsCsv),
     }),
     inspect,
   );

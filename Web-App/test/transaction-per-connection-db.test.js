@@ -28,7 +28,7 @@ const { konfig } = require(path.join(DIST, 'src', 'infra', 'config.js'));
 const { inSystemContext } = require(path.join(DIST, 'src', 'infra', 'accountContext.js'));
 
 test('transaction context per connection', { concurrency: 1 }, async t => {
-  const k0 = modul.dbKonfigFromEnvironment();
+  const k0 = modul.dbConfigFromEnvironment();
   const db = modul.createDb({ ...k0, pool: { ...k0.pool, max: 1 } });
   try {
     await db.get('SELECT 1');
@@ -45,8 +45,8 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
   const imSystem = (/** @type {() => Promise<any>} */ f) => inSystemContext('test', f);
 
   await t.test('two transactions on one connection share t and the services in it', async () => {
-    const t1 = await imSystem(() => k.transaktion(async (/** @type {any} */ t) => t));
-    const t2 = await imSystem(() => k.transaktion(async (/** @type {any} */ t) => t));
+    const t1 = await imSystem(() => k.transact(async (/** @type {any} */ t) => t));
+    const t2 = await imSystem(() => k.transact(async (/** @type {any} */ t) => t));
     assert.equal(t1, t2);
     assert.equal(t1.catalog, t2.catalog, 'die tieferen Bereiche entstehen nicht neu');
     assert.notEqual(t1, k);
@@ -61,13 +61,13 @@ test('transaction context per connection', { concurrency: 1 }, async t => {
       los = /** @type {() => void} */ (r);
     });
     await imSystem(() =>
-      k.transaktion(async (/** @type {any} */ t) => {
+      k.transact(async (/** @type {any} */ t) => {
         stragglers = secondRunning.then(() => t.db.get('SELECT txid_current() AS id'));
         stragglers.catch(() => {});
       }),
     );
     await imSystem(() =>
-      k.transaktion(async (/** @type {any} */ t) => {
+      k.transact(async (/** @type {any} */ t) => {
         los();
         await assert.rejects(/** @type {Promise<unknown>} */ (stragglers), modul.TransactionEnded);
         assert.ok((await t.db.get('SELECT txid_current() AS id')).id, 'die zweite selbst fragt weiter');

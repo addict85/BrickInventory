@@ -29,7 +29,7 @@ export async function endAllSessions(k: AccountContext, userId: number): Promise
 /** A transaction over credentials in the system frame (login looks for them before there is
  * an account). Inside a running one only if that itself runs in the system frame. */
 export function accessTransaction<T>(k: AccountContext, fn: (t: AccountContext) => Promise<T>): Promise<T> {
-  return inSystemFrame(k.db, 'zugangsdaten', () => k.transaktion(fn));
+  return inSystemFrame(k.db, 'zugangsdaten', () => k.transact(fn));
 }
 
 /** Password, accesses and passkeys together, in the system frame (also without login: forgotten
@@ -40,7 +40,7 @@ export async function withAccessEnd<T>(
   konto: number | ((r: T) => number | null),
   fn: (t: AccountContext) => Promise<T>,
 ): Promise<T> {
-  const r = await inSystemContext('zugangsende', () => k.transaktion(fn, { repeatAtConflict: true }));
+  const r = await inSystemContext('zugangsende', () => k.transact(fn, { repeatAtConflict: true }));
   emptyTokenCache(k);
   const uid = typeof konto === 'function' ? konto(r) : konto;
   if (uid) forgetSessionVersion(k, uid);

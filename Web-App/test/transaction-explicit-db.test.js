@@ -1,8 +1,8 @@
 /**
- * One transaction form: in k.transaktion(t => …) the body queries via `t`. A query
+ * One transaction form: in k.transact(t => …) the body queries via `t`. A query
  * via the unbound access (k.db, a captured k) throws UnboundQuery instead of
  * being silently redirected into the transaction; services of other scopes, called via `t`,
- * run inside it. Stock locks are an option of k.transaktion.
+ * run inside it. Stock locks are an option of k.transact.
  *
  * Counter-checks (measured 14.11.2026, each on its own):
  *   A  in txStand() (db/database.ts) the line `if (freigabe.getStore() !== t) throw …`
@@ -18,7 +18,7 @@
  *      (the second waited for the lock of the larger account)
  *   F  in anTransaktion() the line `notification: huelle(…)` deleted → red: “a signal
  *      via t …” (notify() ran via the unbound access and swallowed UnboundQuery)
- *   E  in imSystemrahmen() (src/infra/area.ts) again `return f()` instead of throwing
+ *   E  in inSystemFrame() (src/infra/area.ts) again `return f()` instead of throwing
  *      → red: “a service in the system context inside a transaction without it throws”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -34,7 +34,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const dbModule = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 const { asRequest, inSystemContext } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'accountContext.js'));
-const { SystemrahmenInTransaction } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'area.js'));
+const { SystemFrameInTransaction } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'area.js'));
 
 const PID = 'SELECT pg_backend_pid() AS p';
 const { bis } = require('./helpers/time');
@@ -56,7 +56,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
   });
 
   await t.test('k.db in the body throws, t.db goes through the transaction', async () => {
-    await k.transaktion(async tt => {
+    await k.transact(async tt => {
       const eigene = (await tt.db.get(PID)).p;
       await assert.rejects(k.db.get(PID), dbModule.UnboundQuery);
       await assert.rejects(
@@ -76,7 +76,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
       const gehoert = [];
       listener.on('notification', m => gehoert.push(m.channel));
       await listener.query(`LISTEN ${kanal}`);
-      await k.transaktion(async tt => {
+      await k.transact(async tt => {
         await tt.db.notification.notify(kanal);
       });
       await bis(() => gehoert.length > 0);
@@ -87,8 +87,8 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
   });
 
   await t.test('a captured k in an inner transaction throws as well', async () => {
-    await k.transaktion(async aussen => {
-      await aussen.transaktion(async innen => {
+    await k.transact(async aussen => {
+      await aussen.transact(async innen => {
         await innen.db.get('SELECT 1');
         await assert.rejects(k.db.get('SELECT 1'), dbModule.UnboundQuery);
       });
@@ -96,11 +96,11 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
   });
 
   await t.test('a service of another scope via t runs in the transaction', async () => {
-    const r = await k.transaktion(async tt => {
+    const r = await k.transact(async tt => {
       await tt.db.run(`UPDATE users SET first_name = first_name WHERE id = $1`, [uid]);
       // scopeIds asks the household via its own access; called via t it belongs to it.
       const ids = await tt.household.scopeIds(uid);
-      await assert.rejects(k.household.schreibbereich(uid), dbModule.UnboundQuery);
+      await assert.rejects(k.household.writeScope(uid), dbModule.UnboundQuery);
       return ids;
     });
     assert.deepEqual(r, [uid]);
@@ -127,7 +127,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     const raus = new Promise(r => {
       frei = r;
     });
-    const fertig = k.transaktion(
+    const fertig = k.transact(
       async () => {
         drin();
         await raus;
@@ -142,7 +142,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     const sperren = [{ konto: uid, schluessel: 'probe' }];
     const ablauf = [];
     const erste = await hold(sperren);
-    const zweite = k.transaktion(async () => ablauf.push('zweite an'), { sperren });
+    const zweite = k.transact(async () => ablauf.push('zweite an'), { sperren });
     await bis(() => waitsOn(`${uid}|probe`));
     ablauf.push('erste aus');
     erste.frei();
@@ -156,7 +156,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     const zwei = uid + 1_000_000;
     const auf = konto => ({ konto, schluessel: 'x' });
     const erste = await hold([auf(uid), auf(zwei)]);
-    const zweite = k.transaktion(async () => {}, { sperren: [auf(zwei), auf(uid)] });
+    const zweite = k.transact(async () => {}, { sperren: [auf(zwei), auf(uid)] });
     await bis(async () => (await waitsOn(`${uid}|x`)) || (await waitsOn(`${zwei}|x`)));
     const onSmaller = await waitsOn(`${uid}|x`);
     erste.frei();
@@ -167,13 +167,13 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
   await t.test('a service in the system context inside a transaction without it throws', async () => {
     const konto = testContext('account');
     await asRequest({ apiUser: { user_id: uid } }, () =>
-      konto.transaktion(async tt => {
-        await assert.rejects(async () => tt.zugaenge.validToken('gibt-es-nicht'), SystemrahmenInTransaction);
+      konto.transact(async tt => {
+        await assert.rejects(async () => tt.zugaenge.validToken('gibt-es-nicht'), SystemFrameInTransaction);
       }),
     );
     // Opened in the system context, it also applies to the service.
     assert.equal(
-      await inSystemContext('probe', () => konto.transaktion(tt => tt.zugaenge.validToken('gibt-es-nicht'))),
+      await inSystemContext('probe', () => konto.transact(tt => tt.zugaenge.validToken('gibt-es-nicht'))),
       undefined,
     );
   });

@@ -5,7 +5,7 @@
  * via the service (concurrency).
  *
  * Counter-checks (measured 31.10.2026):
- *   A  in passeManualQuantityAn the target quantity from `upfront` instead of from the
+ *   A  in adjustManualQuantity the target quantity from `upfront` instead of from the
  *      acquisitions read inside the lock → red: “two concurrent +1” (3 instead of 4)
  *   B  mengenwunsch() without the quantity_delta branch → red: all cases
  *   C  lower limit AT_LEAST set to 0 → red: “a step below 1 stays at 1”

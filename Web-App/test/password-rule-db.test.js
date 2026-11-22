@@ -230,7 +230,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     );
   });
 
-  // Counter-check (measured 11.11.2026): eigenesPasswortAendern() (src/account/loginFlow.ts)
+  // Counter-check (measured 11.11.2026): changeOwnPassword() (src/account/loginFlow.ts)
   // lets passwort_zu_kurz through → red (/change-password 200 instead of 400).
   await t.test('passwords that are too short are rejected on all five paths', async () => {
     const ist = [];

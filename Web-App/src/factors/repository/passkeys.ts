@@ -1,4 +1,4 @@
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 
 /** Challenges are kept only as a hash. */
 
@@ -109,7 +109,7 @@ export function passkeysForAccount(db: DbInterface, uid: number) {
 }
 
 export async function hasAny(db: DbInterface, uid: number): Promise<boolean> {
-  return !!(await db.get<Treffer>('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]));
+  return !!(await db.get<Hit>('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]));
 }
 
 export async function deleteAllForAccount(db: DbInterface, uid: number): Promise<number> {

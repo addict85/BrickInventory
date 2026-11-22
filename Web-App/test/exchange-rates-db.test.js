@@ -6,7 +6,7 @@
  * server with the same file format (ZIP with CSV, daily XML).
  *
  * Counter-checks (measured on 30.10.2026):
- *   A  in kaufpreisIn() again `CASE WHEN currency = w THEN spalte END`
+ *   A  in purchasePriceIn() again `CASE WHEN currency = w THEN spalte END`
  *      instead of in_waehrung(…) → red: “set” (purchase_price null instead of 65.25),
  *      “price history”, “part”
  *   B  in kurs_je_eur() `k.tag <= t` replaced by `k.tag = t` (no

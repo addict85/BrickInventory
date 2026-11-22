@@ -25,9 +25,9 @@
  *   G  in onlyStillWithFactor() offerRelease() deleted → red: “at an unknown
  *      address an unlock link comes …” (no mail)
  *   H  in _tagKey() the unlock not respected → red: the same check (429 after the link)
- *   I  in anmeldungFreigeben() the one-time check deleted → red: the same check (the link
+ *   I  in approveLogin() the one-time check deleted → red: the same check (the link
  *      counted twice)
- *   J  in anmeldungFreigeben() the signature not checked → red: the same check (a link for
+ *   J  in approveLogin() the signature not checked → red: the same check (a link for
  *      another account counted)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.

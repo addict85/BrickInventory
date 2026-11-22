@@ -3,19 +3,19 @@ import {
   type JobsServices,
   type JobKind,
   type JobRow,
-  type Bearbeiter,
-  type Fortschritt,
+  type Handler,
+  type Progress,
   type JobContext,
   JobInterrupted,
   JobLost,
   JobMove,
   PayloadInvalid,
-  type Nutzlast,
+  type Payload,
 } from '../src/jobQueue';
-import { fehlertext, logAndContinue, reportError } from '../src/infra/error';
+import { errorMessage, logAndContinue, reportError } from '../src/infra/error';
 import { DEFAULT } from '../src/infra/config';
 
-export type { Bearbeiter } from '../src/jobQueue';
+export type { Handler as Bearbeiter } from '../src/jobQueue';
 
 export interface WorkerOptions {
   parallel?: number;
@@ -23,7 +23,7 @@ export interface WorkerOptions {
   deadlineSec?: number;
 }
 
-export type HandlerTable = { [A in JobKind]?: Bearbeiter<A> };
+export type HandlerTable = { [A in JobKind]?: Handler<A> };
 
 interface Lauf {
   a: JobRow;
@@ -36,7 +36,7 @@ interface Lauf {
 function holdLease(d: JobsServices, a: JobRow, ac: AbortController, deadlineSec: number): () => void {
   const renew = async () => {
     if (ac.signal.aborted) return;
-    const ok = await d.lebenszeichen(a, deadlineSec).catch((e: unknown) => {
+    const ok = await d.heartbeat(a, deadlineSec).catch((e: unknown) => {
       logAndContinue(`auftraege:pacht ${a.type}`)(e);
       return true;
     });
@@ -56,7 +56,7 @@ function holdLease(d: JobsServices, a: JobRow, ac: AbortController, deadlineSec:
  * A failed report fails for its caller, not for all following ones. */
 function progressChain(d: JobsServices, a: JobRow, ac: AbortController, deadlineSec: number) {
   let chain: Promise<boolean> = Promise.resolve(true);
-  return (f: Fortschritt): Promise<boolean> => {
+  return (f: Progress): Promise<boolean> => {
     const report = () => d.setProgress(a, f, deadlineSec);
     chain = chain.then(report, report).then(ok => {
       if (!ok && !ac.signal.aborted) ac.abort(new JobLost());
@@ -84,12 +84,12 @@ function contextFor(
   isEnded: () => boolean,
 ): JobContext {
   return {
-    lebenszeichen: async () => {
-      const ok = await d.lebenszeichen(a, deadlineSec);
+    heartbeat: async () => {
+      const ok = await d.heartbeat(a, deadlineSec);
       if (!ok && !ac.signal.aborted) ac.abort(new JobLost());
       return ok;
     },
-    fortschritt: progressChain(d, a, ac, deadlineSec),
+    progress: progressChain(d, a, ac, deadlineSec),
     signal: ac.signal,
     get ended() {
       return isEnded() || ac.signal.aborted;
@@ -102,11 +102,11 @@ async function runJobFrom(
   d: JobsServices,
   a: JobRow,
   ac: AbortController,
-  b: Bearbeiter | undefined,
+  b: Handler | undefined,
   deadlineSec: number,
   isEnded: () => boolean,
 ): Promise<void> {
-  let payload: Nutzlast<JobKind> | undefined;
+  let payload: Payload<JobKind> | undefined;
   const k = contextFor(d, a, ac, deadlineSec, isEnded);
   const release = holdLease(d, a, ac, deadlineSec);
   try {
@@ -116,7 +116,7 @@ async function runJobFrom(
     const checked = d.checkPayload(a.type, a.payload);
     payload = checked;
     await d.inNamesOfJob(a, () => b.ausfuehren(checked, k, a));
-    if (await d.erledigt(a)) await followUpPlan(d, a);
+    if (await d.done(a)) await followUpPlan(d, a);
   } catch (e) {
     await afterError(d, a, b, payload, ac, e);
   } finally {
@@ -127,8 +127,8 @@ async function runJobFrom(
 async function afterError(
   d: JobsServices,
   a: JobRow,
-  b: Bearbeiter | undefined,
-  payload: Nutzlast<JobKind> | undefined,
+  b: Handler | undefined,
+  payload: Payload<JobKind> | undefined,
   ac: AbortController,
   e: unknown,
 ): Promise<void> {
@@ -143,16 +143,16 @@ async function afterError(
     return;
   }
   if (e instanceof JobMove) {
-    if (await d.verschoben(a, e.bis, e.grund, e.counts)) {
-      if (payload) await d.inNamesOfJob(a, async () => b?.aufgegeben?.(payload, e.grund, a));
+    if (await d.moved(a, e.bis, e.grund, e.counts)) {
+      if (payload) await d.inNamesOfJob(a, async () => b?.givenUp?.(payload, e.grund, a));
       await followUpPlan(d, a);
     }
     return;
   }
-  const text = fehlertext(e) || 'Unbekannter Fehler';
+  const text = errorMessage(e) || 'Unbekannter Fehler';
   console.warn(`[auftraege] ${a.type} #${a.id} Versuch ${a.attempts}/${a.max_attempts}: ${text}`);
-  if (await d.fehlgeschlagen(a, text, e instanceof PayloadInvalid)) {
-    if (payload) await d.inNamesOfJob(a, async () => b?.aufgegeben?.(payload, text, a));
+  if (await d.failed(a, text, e instanceof PayloadInvalid)) {
+    if (payload) await d.inNamesOfJob(a, async () => b?.givenUp?.(payload, text, a));
     await followUpPlan(d, a);
   }
 }
@@ -187,7 +187,7 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
 
   async function receiptsAndStart(): Promise<Lauf | null> {
     await exclusiveRemembered;
-    const a = await d.belegeAuftrag(kinds, deadlineSec, receiptId(), exclusive, [...running.keys()]);
+    const a = await d.claimJob(kinds, deadlineSec, receiptId(), exclusive, [...running.keys()]);
     if (!a) return null;
     if (ended) {
       await backToTable(d, a);
@@ -262,7 +262,7 @@ function createWorker(d: JobsServices, editor: HandlerTable, o: WorkerOptions = 
     console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }
 
-  return { processOne, starte, stop, laufend: () => running.size, lastRound: () => lastRound };
+  return { processOne, starte, stop, running: () => running.size, lastRound: () => lastRound };
 }
 
 export { JobInterrupted, JobLost, JobMove, createWorker };

@@ -9,8 +9,8 @@
  * (src/jobQueue/jobs.ts) reportStatus() removed → red: the same test.
  *
  * Counter-checks for the parts list (measured on 02.11.2026), each red: “the
- * parts list is checked …”: `eingabe: PdfEingabe` deleted from the contract;
- * in the route again `req.body` instead of PdfEingabe.parse()
+ * parts list is checked …”: `eingabe: PdfInput` deleted from the contract;
+ * in the route again `req.body` instead of PdfInput.parse()
  * („unbekannte Felder gehen in den Auftrag“); `.max(5000)` deleted
  * („zu viele Posten“ got 200).
  *
@@ -182,7 +182,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
           Object.assign({}, _req('src/jobQueue/jobs.js'), {
             ..._req('src/jobQueue/service.js'),
             ...require('./helpers/sources').testArea('jobQueue').auftraege,
-          }).erledigt({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
+          }).done({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
         300,
       );
       while (!text.includes('"done"') && Date.now() - start < 8000) {

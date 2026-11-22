@@ -55,7 +55,7 @@ test('the spellings are enumerated in only one place', () => {
     [],
     'Hier wird wieder selbst entschieden, was ein Ersatzteil ist:\n  ' +
       gefunden.join('\n  ') +
-      '\nDie Lesart steht in src/infra/validate.ts, istErsatzteil(). Sechs Fassungen ' +
+      '\nDie Lesart steht in src/infra/validate.ts, isSparePart(). Sechs Fassungen ' +
       'mit vier verschiedenen Bedeutungen waren der Grund, warum die ' +
       'Ersatzteil-Plakette jahrelang nicht gezeichnet wurde.',
   );
@@ -63,7 +63,7 @@ test('the spellings are enumerated in only one place', () => {
   // Self-proof: the helper must really know the notations — otherwise
   // the check above would be green because there is nothing left to find anywhere.
   const helper = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
-  // istErsatzteil() reads with isJa(), the reading of all yes/no values from outside.
+  // isSparePart() reads with isJa(), the reading of all yes/no values from outside.
   const i = helper.indexOf('export function isJa(');
   assert.ok(i > 0, 'isJa() fehlt');
   const rumpf = helper.slice(i, helper.indexOf('\n}', i));

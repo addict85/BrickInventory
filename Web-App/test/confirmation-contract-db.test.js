@@ -227,7 +227,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     const argon2 = dateien
       .filter(f => /['"]@node-rs\/argon2['"]/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/'));
-    assert.deepEqual(argon2, ['src/account/passwordHash.ts'], 'argon2 nur über passwordFits()/hashePassword()');
+    assert.deepEqual(argon2, ['src/account/passwordHash.ts'], 'argon2 nur über passwordFits()/hashPassword()');
   });
 
   await t.test('no confirmation without the brand', async () => {

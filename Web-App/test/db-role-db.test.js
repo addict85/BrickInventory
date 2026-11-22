@@ -166,7 +166,7 @@ function schemaAsAccount(dbUrl, call = 'initSchemaOnce') {
     process.execPath,
     [
       '-e',
-      `const m = require('./dist/db/database.js'); const db = m.createDb(m.dbKonfigFromEnvironment()); db.${call}().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })`,
+      `const m = require('./dist/db/database.js'); const db = m.createDb(m.dbConfigFromEnvironment()); db.${call}().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })`,
     ],
     { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: dbUrl } },
   );
@@ -327,7 +327,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         process.execPath,
         [
           '-e',
-          "const m = require('./dist/db/database.js'); const db = m.createDb(m.dbKonfigFromEnvironment()); require('./dist/startup/database.js').warnAtSuperuser(db).then(w => { console.log('WARNUNG=' + w); return db.pool.end(); })",
+          "const m = require('./dist/db/database.js'); const db = m.createDb(m.dbConfigFromEnvironment()); require('./dist/startup/database.js').warnAtSuperuser(db).then(w => { console.log('WARNUNG=' + w); return db.pool.end(); })",
         ],
         { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl, ...env } },
       );
@@ -647,7 +647,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     await als(neu, ROLLE, PASSWORT, async app => {
       await tausch.lockTable(app, 'rb_colors');
       try {
-        await tausch.putShadowAn(app, 'rb_colors', 'rb_colors_import');
+        await tausch.createShadow(app, 'rb_colors', 'rb_colors_import');
         await tausch.addBlockOne(
           app,
           'rb_colors_import',
@@ -660,7 +660,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         );
         await tausch.swap(app, 'rb_colors', 'rb_colors_import', ['id', 'name', 'rgb', 'is_trans']);
         await tausch.removeShadow(app, 'rb_colors_import');
-        assert.equal(await tausch.pflege(app, 'rb_colors'), true, 'VACUUM (ANALYZE) bricht ab');
+        assert.equal(await tausch.maintenance(app, 'rb_colors'), true, 'VACUUM (ANALYZE) bricht ab');
       } finally {
         await tausch.giveTableFree(app, 'rb_colors');
       }

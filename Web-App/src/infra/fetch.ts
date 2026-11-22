@@ -9,7 +9,7 @@ import { publicLookup } from './targetAddress';
 
 export type FetchReason = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | 'netz' | 'abgebrochen';
 
-export class AbrufFehler extends Error {
+export class FetchError extends Error {
   readonly grund: FetchReason;
   /** As in clients/fetchError.ts: a retry can succeed. */
   readonly isTransient: boolean;
@@ -80,7 +80,7 @@ interface Lauf {
   antwort: IncomingMessage;
   url: string;
   frist: NodeJS.Timeout;
-  abbrechen: (f: AbrufFehler) => void;
+  abbrechen: (f: FetchError) => void;
 }
 
 function run(start: string, o: FetchOptions): Promise<Lauf> {
@@ -88,7 +88,7 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
     let req: ClientRequest | null = null;
     let reply: IncomingMessage | null = null;
     let done = false;
-    const abbrechen = (f: AbrufFehler) => {
+    const abbrechen = (f: FetchError) => {
       clearTimeout(frist);
       if (!done) {
         done = true;
@@ -98,18 +98,18 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
       req?.destroy?.();
     };
     const frist = setTimeout(
-      () => abbrechen(new AbrufFehler('zeitlimit', `Zeitlimit ${o.zeitlimitMs} ms: ${addressShort(start)}`)),
+      () => abbrechen(new FetchError('zeitlimit', `Zeitlimit ${o.zeitlimitMs} ms: ${addressShort(start)}`)),
       o.zeitlimitMs,
     );
     frist.unref?.();
     const atAbort = () =>
-      abbrechen(new AbrufFehler('abgebrochen', `Abgebrochen: ${addressShort(start)}`, o.signal?.reason));
+      abbrechen(new FetchError('abgebrochen', `Abgebrochen: ${addressShort(start)}`, o.signal?.reason));
     if (o.signal?.aborted) return atAbort();
     o.signal?.addEventListener('abort', atAbort, { once: true });
 
     const sprung = (u: string, header: Record<string, string>, rest: number) => {
       if (!u.startsWith('https://') || !hostAllowed(u, o.hosts))
-        return abbrechen(new AbrufFehler('adresse', `Adresse nicht erlaubt: ${addressShort(u)}`));
+        return abbrechen(new FetchError('adresse', `Adresse nicht erlaubt: ${addressShort(u)}`));
       try {
         const atResponse = (r: IncomingMessage) => {
           if (done) {
@@ -120,11 +120,11 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
           if (REDIRECT.has(status) && (o.redirects ?? REDIRECT_LIMIT) > 0 && (o.methode ?? 'GET') === 'GET') {
             r.resume?.();
             if (rest <= 0)
-              return abbrechen(new AbrufFehler('umleitung', `Zu viele Umleitungen: ${addressShort(start)}`));
+              return abbrechen(new FetchError('umleitung', `Zu viele Umleitungen: ${addressShort(start)}`));
             const next = nextRedirect(u, r.headers?.location, header, o.hosts);
             if (!next)
               return abbrechen(
-                new AbrufFehler(
+                new FetchError(
                   'umleitung',
                   `Umleitung ${status} nicht befolgbar (fehlend, kein https oder fremder Host): ${addressShort(u)}`,
                 ),
@@ -134,7 +134,7 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
           const length = Number(r.headers?.['content-length']);
           if (length > o.maxBytes) {
             r.resume?.();
-            return abbrechen(new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(u)}`));
+            return abbrechen(new FetchError('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(u)}`));
           }
           reply = r;
           done = true;
@@ -148,9 +148,9 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
         req.on('error', (e: Error) => {
           const code = (e as NodeJS.ErrnoException).code;
           abbrechen(
-            e instanceof AbrufFehler
+            e instanceof FetchError
               ? e
-              : new AbrufFehler(
+              : new FetchError(
                   code === 'EZIELGESPERRT' ? 'adresse' : 'netz',
                   `${code || e.message}: ${addressShort(u)}`,
                   e,
@@ -159,7 +159,7 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
         });
         if (o.methode === 'POST') req.end(o.rumpf);
       } catch (e) {
-        abbrechen(new AbrufFehler('adresse', `Abruf nicht möglich: ${addressShort(u)}`, e));
+        abbrechen(new FetchError('adresse', `Abruf nicht möglich: ${addressShort(u)}`, e));
       }
     };
     sprung(start, o.kopfzeilen ?? {}, o.redirects ?? REDIRECT_LIMIT);
@@ -173,7 +173,7 @@ export async function holeHttps(url: string, o: FetchOptions): Promise<FetchResp
     const parts: Buffer[] = [];
     let n = 0,
       from = false;
-    const fehler = (f: AbrufFehler) => {
+    const error = (f: FetchError) => {
       if (!from) {
         from = true;
         fail(f);
@@ -184,7 +184,7 @@ export async function holeHttps(url: string, o: FetchOptions): Promise<FetchResp
       const b = typeof d === 'string' ? Buffer.from(d) : d;
       n += b.length;
       if (n > o.maxBytes)
-        return fehler(new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(end)}`));
+        return error(new FetchError('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(end)}`));
       parts.push(b);
     });
     r.on('end', () => {
@@ -195,7 +195,7 @@ export async function holeHttps(url: string, o: FetchOptions): Promise<FetchResp
       }
     });
     r.on('error', (e: Error) =>
-      fehler(e instanceof AbrufFehler ? e : new AbrufFehler('netz', `${e.message}: ${addressShort(end)}`, e)),
+      error(e instanceof FetchError ? e : new FetchError('netz', `${e.message}: ${addressShort(end)}`, e)),
     );
   });
 }
@@ -217,7 +217,7 @@ export async function openHttps(url: string, o: FetchOptions): Promise<FetchStre
       r.on('data', (d: Buffer) => {
         n += d.length;
         if (n > o.maxBytes) {
-          const f = new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(end)}`);
+          const f = new FetchError('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(end)}`);
           from.destroy(f);
           abbrechen(f);
         }
@@ -228,7 +228,7 @@ export async function openHttps(url: string, o: FetchOptions): Promise<FetchStre
         from.destroy(e);
       });
       from.on('close', () => {
-        if (!r.complete) abbrechen(new AbrufFehler('netz', `Abgebrochen: ${addressShort(end)}`));
+        if (!r.complete) abbrechen(new FetchError('netz', `Abgebrochen: ${addressShort(end)}`));
       });
       r.pipe(from);
       return from;

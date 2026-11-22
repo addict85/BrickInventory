@@ -3,7 +3,7 @@
  * correctly right away. */
 import { asFetchError } from '../externalSources';
 import { withVersion, withoutBricklinkPrice, withoutVersion } from '../infra/setNumber';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import type { CatalogEntry } from './repository/catalogCache';
 import type { CatalogContext } from './context';
 
@@ -55,7 +55,7 @@ async function getPriceGuideRaw(
     return await k.externalSources.quellen.bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
   if (cached?.bl_type === 'BOOK')
     return await k.externalSources.quellen.bricklinkRequest('GET', `/items/book/${bare}/price`, params);
-  if (withoutBricklinkPrice(cached)) fachfehler('nicht_gefunden', 'kein_bricklink_preis');
+  if (withoutBricklinkPrice(cached)) failDomain('nicht_gefunden', 'kein_bricklink_preis');
   try {
     return await k.externalSources.quellen.bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {

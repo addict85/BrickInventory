@@ -94,15 +94,15 @@ test('no route sends a fixed error sentence', () => {
 
 test('every entry of the table has both languages and the same placeholders', () => {
   // A missing placeholder means that in one language „{name}" stands on the screen.
-  const { FEHLER, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
-  const codes = Object.keys(FEHLER);
+  const { ERRORS, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
+  const codes = Object.keys(ERRORS);
   assert.ok(codes.length >= 60, `Nur ${codes.length} Einträge — greift die Tabelle noch?`);
   const skewed = [];
   for (const code of codes) {
     const vars = {};
     for (const sprache of ['de', 'en']) {
-      if (!String(FEHLER[code][sprache] || '').trim()) skewed.push(`${code}: ${sprache} fehlt`);
-      for (const [, n] of String(FEHLER[code][sprache] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
+      if (!String(ERRORS[code][sprache] || '').trim()) skewed.push(`${code}: ${sprache} fehlt`);
+      for (const [, n] of String(ERRORS[code][sprache] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
     }
     // Filled with all placeholders of both languages, no brace remains in either.
     for (const sprache of ['de', 'en']) {

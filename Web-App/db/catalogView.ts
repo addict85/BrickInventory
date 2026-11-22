@@ -3,11 +3,11 @@
  * appear in the shared catalog and thus show up in no query. */
 
 /** LEFT JOINs pc/pcc (shared) and te/tfe (own details of `konto`). */
-export function teilSichtJoin(konto: string, nummer: string, color: string): string {
-  return `LEFT JOIN part_catalog pc ON pc.part_number = ${nummer}
-    LEFT JOIN part_color_catalog pcc ON pcc.part_number = ${nummer} AND pcc.color_id = ${color}
-    LEFT JOIN part_custom te ON te.user_id = ${konto} AND te.part_number = ${nummer}
-    LEFT JOIN part_color_custom tfe ON tfe.user_id = ${konto} AND tfe.part_number = ${nummer} AND tfe.color_id = ${color}`;
+export function teilSichtJoin(konto: string, number: string, color: string): string {
+  return `LEFT JOIN part_catalog pc ON pc.part_number = ${number}
+    LEFT JOIN part_color_catalog pcc ON pcc.part_number = ${number} AND pcc.color_id = ${color}
+    LEFT JOIN part_custom te ON te.user_id = ${konto} AND te.part_number = ${number}
+    LEFT JOIN part_color_custom tfe ON tfe.user_id = ${konto} AND tfe.part_number = ${number} AND tfe.color_id = ${color}`;
 }
 
 export const TEIL = {
@@ -20,9 +20,9 @@ export const TEIL = {
 } as const;
 
 /** LEFT JOINs mc (shared) and fe (own details of `konto`). */
-export function minifigViewJoin(konto: string, nummer: string): string {
-  return `LEFT JOIN minifigs_catalog mc ON mc.fig_number = ${nummer}
-    LEFT JOIN minifig_custom fe ON fe.user_id = ${konto} AND fe.fig_number = ${nummer}`;
+export function minifigViewJoin(konto: string, number: string): string {
+  return `LEFT JOIN minifigs_catalog mc ON mc.fig_number = ${number}
+    LEFT JOIN minifig_custom fe ON fe.user_id = ${konto} AND fe.fig_number = ${number}`;
 }
 
 export const MINIFIG = {
@@ -34,8 +34,8 @@ export const MINIFIG = {
 /** LEFT JOINs rs/rt: name, year, theme and part count of a set live only in
  * rb_sets (0105); set_catalog adds image and minifig count. Year and part count 0
  * mean "unknown" in the Rebrickable CSV. */
-export function setMasterJoin(nummer: string): string {
-  return `LEFT JOIN rb_sets rs ON rs.set_num = ${nummer}
+export function setMasterJoin(number: string): string {
+  return `LEFT JOIN rb_sets rs ON rs.set_num = ${number}
     LEFT JOIN rb_themes rt ON rt.id = rs.theme_id`;
 }
 

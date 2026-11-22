@@ -4,26 +4,26 @@
 import { z } from 'zod';
 
 const text = z.string().nullable().optional();
-const zahl = z.number().nullable().optional();
+const number = z.number().nullable().optional();
 const foreignNumbers = z.record(z.string(), z.unknown()).nullable().optional();
 
 export const RbSet = z.looseObject({
   set_num: z.string(),
   name: text,
-  year: zahl,
-  theme_id: zahl,
-  num_parts: zahl,
+  year: number,
+  theme_id: number,
+  num_parts: number,
   set_img_url: text,
   external_ids: foreignNumbers,
 });
 
-export const RbThema = z.looseObject({ id: z.number(), name: text, parent_id: zahl });
+export const RbThema = z.looseObject({ id: z.number(), name: text, parent_id: number });
 
 export const RbTeil = z.looseObject({
   part_num: z.string(),
   name: text,
   part_img_url: text,
-  part_cat_id: zahl,
+  part_cat_id: number,
   external_ids: foreignNumbers,
 });
 
@@ -37,7 +37,7 @@ export const RbSetTeil = z.looseObject({
 export const RbSetMinifig = z.looseObject({
   set_num: z.string(),
   set_name: text,
-  quantity: zahl,
+  quantity: number,
   set_img_url: text,
 });
 
@@ -56,10 +56,10 @@ export const BsSet = z.looseObject({
   number: z.string(),
   numberVariant: z.number(),
   name: text,
-  year: zahl,
+  year: number,
   theme: text,
-  pieces: zahl,
-  minifigs: zahl,
+  pieces: number,
+  minifigs: number,
   image: z.looseObject({ imageURL: text, thumbnailURL: text }).nullable().optional(),
 });
 export const BsSets = BsResponse.extend({ sets: z.array(BsSet).optional() });

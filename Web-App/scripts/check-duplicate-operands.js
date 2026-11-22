@@ -105,7 +105,7 @@ if (sources.length < 300) {
   process.exit(1);
 }
 
-const fehler = [];
+const error = [];
 let checked = 0;
 for (const p of sources) {
   const rel = path.relative(path.join(ROOT, '..'), p);
@@ -122,7 +122,7 @@ for (const p of sources) {
       const r = tight(right(z, m.index + 2));
       if (l.length >= 8 && l === r) {
         const short = `${path.relative(ROOT, p)}:${l}`;
-        if (!ALLOWED.has(short)) fehler.push(`${rel}:${i + 1}  ${l} ${m[0]} ${l}`);
+        if (!ALLOWED.has(short)) error.push(`${rel}:${i + 1}  ${l} ${m[0]} ${l}`);
         break;
       }
     }
@@ -136,14 +136,14 @@ for (const p of sources) {
         .map(x => (x.trim().split(/\s+/).pop() ?? '').split('.').pop() ?? '')
         .filter(x => x !== '');
       const duplicate = sp.filter((x, k) => sp.indexOf(x) !== k);
-      if (duplicate.length) fehler.push(`${rel}:${i + 1}  SELECT … ${duplicate.join(', ')} zweimal`);
+      if (duplicate.length) error.push(`${rel}:${i + 1}  SELECT … ${duplicate.join(', ')} zweimal`);
     }
   }
 }
 
-if (fehler.length) {
+if (error.length) {
   console.error('❌ Doppelte Operanden:');
-  for (const f of fehler) {
+  for (const f of error) {
     console.error(
       `  ${f}\n     Derselbe Ausdruck zweimal ist entweder folgenlos — dann ist er ` +
         'irreführend — oder es war ein anderer gemeint. Beides gehört angesehen.',

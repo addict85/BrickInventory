@@ -6,7 +6,7 @@ import type { VoucherContext } from './context';
 export const TICKET_SEC = 60;
 const hash = (t: string) => crypto.createHash('sha256').update(t).digest('hex');
 const ticketsFor = (k: VoucherContext) =>
-  k.faecher.fach('pdfTickets', () => new Map<string, { uid: number; target: string; until: number }>());
+  k.faecher.slot('pdfTickets', () => new Map<string, { uid: number; target: string; until: number }>());
 
 export function issueTicket(k: VoucherContext, uid: number, target: string): string {
   const tickets = ticketsFor(k);

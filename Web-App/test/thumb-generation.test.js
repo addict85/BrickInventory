@@ -2,7 +2,7 @@
  * Previews REALLY arise — and missing ones heal themselves.
  *
  * Counter-check (carried out): temporary name turned back to `.tmp` →
- * the first substep turns red (no file, vorschauErzeugenAus delivers null).
+ * the first substep turns red (no file, previewFrom delivers null).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('vorschauErzeugenAus() actually creates a smaller file', async () => {
+test('previewFrom() actually creates a smaller file', async () => {
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
@@ -28,12 +28,12 @@ test('vorschauErzeugenAus() actually creates a smaller file', async () => {
   await bild.write(original);
 
   try {
-    const { vorschauErzeugenAus } = _req('src/images/thumbs.js');
-    const web = await vorschauErzeugenAus(`/images/sets/${name}.jpg`);
+    const { previewFrom } = _req('src/images/thumbs.js');
+    const web = await previewFrom(`/images/sets/${name}.jpg`);
 
     assert.ok(
       web,
-      'vorschauErzeugenAus lieferte null — der Fehler wird im catch verschluckt, ' +
+      'previewFrom lieferte null — der Fehler wird im catch verschluckt, ' +
         'typischerweise weil der temporäre Dateiname keine Bildendung trägt',
     );
     assert.ok(fs.existsSync(vorschau), 'die Vorschau-Datei fehlt trotz Erfolgsmeldung');
@@ -85,7 +85,7 @@ test('the image route triggers a missing preview itself', () => {
   );
   const block = src.slice(start, start + 4000);
   assert.ok(
-    /vorschauErzeugenAus/.test(block),
+    /previewFrom/.test(block),
     'ohne diesen Anstoss bleibt eine einmal verpasste Vorschau für immer aus — ' +
       'der Bilder-Nachlauf deckt sets nicht ab',
   );

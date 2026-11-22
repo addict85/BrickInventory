@@ -1,4 +1,4 @@
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 import type { JobsReadContract } from '../readContract';
 import { randomUUID } from 'node:crypto';
 import { LOCKS } from '../../infra/lockNamespaces';
@@ -172,7 +172,7 @@ export function setFailed(
   db: DbInterface,
   a: Claim,
   final: boolean,
-  fehler: string,
+  error: string,
   waitTimeSec: number,
 ): Promise<Stand> {
   return againAtTwin(() =>
@@ -181,7 +181,7 @@ export function setFailed(
               error_message = $4, locked_by = NULL, deadline_at = NULL, updated_at = NOW(),
               due_at = NOW() + make_interval(secs => $5)
         WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
-      [a.id, a.locked_by, final, fehler.slice(0, 2000), waitTimeSec],
+      [a.id, a.locked_by, final, error.slice(0, 2000), waitTimeSec],
     ),
   );
 }
@@ -207,18 +207,18 @@ export function setMoved(
 }
 type Querier = Pick<import('pg').ClientBase, 'query'>;
 
-export async function holdProcessLock(c: Querier, prozess: string): Promise<void> {
-  await c.query('SELECT pg_advisory_lock($1, hashtext($2))', [LOCKS.JOB_PROCESS, prozess]);
+export async function holdProcessLock(c: Querier, process: string): Promise<void> {
+  await c.query('SELECT pg_advisory_lock($1, hashtext($2))', [LOCKS.JOB_PROCESS, process]);
 }
 
 /** Claims of other processes whose lock is free: the process no longer lives
  * (the lock ends with its connection). The attempt counts as after a deadline.
  * @returns returned jobs */
-export async function giveOrphanedBack(c: Querier, prozess: string): Promise<number> {
+export async function giveOrphanedBack(c: Querier, process: string): Promise<number> {
   const { rows } = await c.query<{ p: string }>(
     `SELECT DISTINCT split_part(locked_by, '/', 1) AS p FROM jobs
       WHERE status = 'laeuft' AND locked_by LIKE '%/%' AND split_part(locked_by, '/', 1) <> $1`,
-    [prozess],
+    [process],
   );
   let n = 0;
   for (const { p } of rows) {
@@ -361,7 +361,7 @@ export async function pullAppointmentBefore(
 }
 
 export async function runningKind(db: DbInterface, art: string): Promise<boolean> {
-  return !!(await db.get<Treffer>(`SELECT 1 FROM jobs WHERE type = $1 AND status = 'laeuft'`, [art]));
+  return !!(await db.get<Hit>(`SELECT 1 FROM jobs WHERE type = $1 AND status = 'laeuft'`, [art]));
 }
 
 /** The highest counter `feld` of the payload among the waiting jobs of this key. */
@@ -476,12 +476,8 @@ export function pullAppointmentsBefore(db: DbInterface, art: string, bis: Date) 
   return db.run(`UPDATE jobs SET due_at = $1 WHERE type = $2 AND status = 'offen' AND due_at > NOW()`, [bis, art]);
 }
 
-export async function writeResult(
-  db: DbInterface,
-  id: string,
-  ergebnis: Record<string, unknown> | null,
-): Promise<void> {
-  await db.run('UPDATE jobs SET result = $2 WHERE id = $1', [id, ergebnis === null ? null : JSON.stringify(ergebnis)]);
+export async function writeResult(db: DbInterface, id: string, result: Record<string, unknown> | null): Promise<void> {
+  await db.run('UPDATE jobs SET result = $2 WHERE id = $1', [id, result === null ? null : JSON.stringify(result)]);
 }
 
 /** Only the own one: the key is in the address, it alone grants no right. */

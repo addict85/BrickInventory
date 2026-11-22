@@ -95,18 +95,18 @@ test('backup and restore', async t => {
       timeout: CALL_DEADLINE,
     });
   /** Exit code; `grund()` afterwards delivers psql's message for it. */
-  let letzterLauf = null;
+  let lastRun = null;
   const einspielen = datei => {
-    letzterLauf = lauf(['-v', 'ON_ERROR_STOP=1'], datei);
-    return letzterLauf.status;
+    lastRun = lauf(['-v', 'ON_ERROR_STOP=1'], datei);
+    return lastRun.status;
   };
   const applyWithoutStop = datei => {
-    letzterLauf = lauf([], datei);
-    return letzterLauf.status;
+    lastRun = lauf([], datei);
+    return lastRun.status;
   };
   /** What psql said — the last lines, so that the message stays readable. */
   const grund = () =>
-    (letzterLauf?.stderr || '').trim().split('\n').slice(-8).join('\n') || '(psql hat nichts nach stderr geschrieben)';
+    (lastRun?.stderr || '').trim().split('\n').slice(-8).join('\n') || '(psql hat nichts nach stderr geschrieben)';
 
   await t.test('setup: schema and some data', async () => {
     await db.run('DROP SCHEMA public CASCADE');

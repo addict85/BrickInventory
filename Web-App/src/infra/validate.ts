@@ -4,7 +4,7 @@
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
-import { fachfehler, type ErrorCode } from './errorTexts';
+import { failDomain, type ErrorCode } from './errorTexts';
 import { moneyInput } from './geld';
 
 /** The columns are integer (int4): a larger value ended as a 500 in PostgreSQL. */
@@ -75,8 +75,8 @@ export function onceDecoded(text: string): string {
 
 export function numberRequired(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
-  if (!v) fachfehler('ungueltig', 'feld_erforderlich', { feld: field });
-  if (!ITEM_NUMBER_RE.test(v)) fachfehler('ungueltig', 'feld_nummer_ungueltig', { feld: field });
+  if (!v) failDomain('ungueltig', 'feld_erforderlich', { feld: field });
+  if (!ITEM_NUMBER_RE.test(v)) failDomain('ungueltig', 'feld_nummer_ungueltig', { feld: field });
   return v;
 }
 
@@ -95,14 +95,14 @@ export function optionalText(value: unknown, maxLen = 200): string | null {
 export function optionalImageUrl(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   const v = String(value).trim();
-  if (v.length > 2048) fachfehler('ungueltig', 'bild_url_zu_lang');
+  if (v.length > 2048) failDomain('ungueltig', 'bild_url_zu_lang');
   let u: URL;
   try {
     u = new URL(v);
   } catch {
-    fachfehler('ungueltig', 'bild_url_ungueltig');
+    failDomain('ungueltig', 'bild_url_ungueltig');
   }
-  if (u.protocol !== 'https:') fachfehler('ungueltig', 'bild_url_nicht_https');
+  if (u.protocol !== 'https:') failDomain('ungueltig', 'bild_url_nicht_https');
   return u.toString();
 }
 
@@ -116,7 +116,7 @@ export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): numb
  * "quantity 0" and deleted the inventory. */
 export function inventoryQuantity(value: unknown, min = 0, max = 100_000): number {
   const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^\d{1,6}$/.test(raw) || +raw < min || +raw > max) fachfehler('ungueltig', 'wert_ungueltig');
+  if (!/^\d{1,6}$/.test(raw) || +raw < min || +raw > max) failDomain('ungueltig', 'wert_ungueltig');
   return +raw;
 }
 
@@ -138,11 +138,11 @@ export function optionalHex(value: unknown): string | null {
 }
 
 /** Condition of an inventory item, an acquisition or a price: new or used. */
-export type Zustand = 'N' | 'U';
+export type ConditionState = 'N' | 'U';
 
 /** THE one rule for conditions from database, CSV and input: 'U' (lower case too)
  * is used, 'N' new, everything else the default. */
-export function zustand(raw: unknown, defaultValue: Zustand = 'N'): Zustand {
+export function zustand(raw: unknown, defaultValue: ConditionState = 'N'): ConditionState {
   const v = String(raw ?? '')
     .trim()
     .toUpperCase();
@@ -163,7 +163,7 @@ export function acquisitionQuantity(value: unknown, fallback = 1): number {
 export function quantitiesDelta(value: unknown): number | null {
   if (value === undefined || value === null) return null;
   const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^-?\d{1,4}$/.test(raw)) fachfehler('ungueltig', 'wert_ungueltig');
+  if (!/^-?\d{1,4}$/.test(raw)) failDomain('ungueltig', 'wert_ungueltig');
   return Number(raw);
 }
 
@@ -171,7 +171,7 @@ export function quantitiesDelta(value: unknown): number | null {
 export function strictBool(value: unknown, feld = 'Wert'): boolean {
   if (value === true || value === 'true' || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
-  fachfehler('ungueltig', 'feld_kein_wahrheitswert', { feld });
+  failDomain('ungueltig', 'feld_kein_wahrheitswert', { feld });
 }
 
 /** Aggregates come as strings, and "0" is truthy in JavaScript. */
@@ -205,13 +205,13 @@ export function fromTable<T>(table: Record<string, T>, key: unknown, defaultValu
 
 /** The same checks as an input schema for the API contract: the rule exists
  * once, the JSON schema only describes it, and the route gets its result. */
-function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, pflicht: true): z.ZodType<T, unknown>;
+function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, mandatory: true): z.ZodType<T, unknown>;
 function alsSchema<T>(
   check: (v: unknown) => T,
   json: Record<string, unknown>,
-  pflicht?: false,
+  mandatory?: false,
 ): z.ZodType<T | undefined, unknown>;
-function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, pflicht = false) {
+function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, mandatory = false) {
   const checked = z
     .unknown()
     .meta(json)
@@ -228,12 +228,12 @@ function alsSchema<T>(check: (v: unknown) => T, json: Record<string, unknown>, p
         return z.NEVER;
       }
     });
-  return pflicht ? checked : checked.optional();
+  return mandatory ? checked : checked.optional();
 }
 
 export const input = {
   /** An own rule with its own error code; mandatory. */
-  regel: <T>(check: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(check, json, true),
+  rule: <T>(check: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(check, json, true),
   itemNumber: (feld: string) =>
     alsSchema(v => numberRequired(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
@@ -248,11 +248,11 @@ export const input = {
       minimum: min,
       maximum: max,
     }),
-  stueckzahl: () =>
+  pieceCount: () =>
     alsSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
-  farbe: () =>
+  color: () =>
     alsSchema(colorId, { type: ['integer', 'string'], description: `if missing, ${NO_COLOR} (no color) applies` }),
-  farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
+  colorCode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   /** Money (src/infra/geld.ts). Described as a number; text with a dot or comma is still accepted by the
    * server (forms), it is not part of the contract. */
   geld: (feld: string, o: { nullbar?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
@@ -264,8 +264,8 @@ export const input = {
     }),
   quantitiesDelta: () =>
     alsSchema(quantitiesDelta, { anyOf: [{ type: 'integer', minimum: -9999, maximum: 9999 }, { type: 'null' }] }),
-  zustand: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
-  schalter: (feld: string) =>
+  condition: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
+  flag: (feld: string) =>
     alsSchema(
       v => strictBool(v, feld),
       { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] },

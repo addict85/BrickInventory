@@ -64,7 +64,7 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
     [A],
   );
 
-  const { partsCsv, figurenCsv } = _req('src/inventory/inventoryExport.js');
+  const { partsCsv, minifigsCsv } = _req('src/inventory/inventoryExport.js');
   const { setsAlsCsv } = require('./helpers/sources').areaPage('sets');
   const { importPartsCsv } = _req('src/parts/manualParts.js');
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
@@ -88,7 +88,7 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
   });
 
   await t.test('figures arrive unchanged', async () => {
-    const r = await importMinifigsCsv(B, await figurenCsv(A));
+    const r = await importMinifigsCsv(B, await minifigsCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
       await erfassungen('minifig_acquisitions', 'fig_number', false, B),

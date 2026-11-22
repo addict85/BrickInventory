@@ -48,12 +48,12 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
   try {
     await t.test('setAngaben names the catalog name, not a placeholder', async () => {
       // Since 0108 the fetch state in catalog_cache carries no name that could cover the catalog.
-      const info = await _req('src/catalog/rebrickableCatalog.js').setAngaben(SN);
+      const info = await _req('src/catalog/rebrickableCatalog.js').setDetails(SN);
       assert.equal(info?.name, 'Titanic');
     });
 
     await t.test('adding again without sources leaves the catalog name alone', async () => {
-      const r = await require('./helpers/sources').areaPage('sets').setErfassen({
+      const r = await require('./helpers/sources').areaPage('sets').acquireSet({
         requester: uid,
         setNumber: SN,
         menge: 1,
@@ -67,9 +67,9 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
     });
 
     await t.test('an input without a digit is not created as a set', async () => {
-      const { setErfassen } = require('./helpers/sources').areaPage('sets');
+      const { acquireSet } = require('./helpers/sources').areaPage('sets');
       await assert.rejects(
-        setErfassen({ requester: uid, setNumber: 'abc', menge: 1, zustand: 'N', ifPresent: 'aufstocken' }),
+        acquireSet({ requester: uid, setNumber: 'abc', menge: 1, zustand: 'N', ifPresent: 'aufstocken' }),
         (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);

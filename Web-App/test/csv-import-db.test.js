@@ -11,12 +11,12 @@
  * two real connections — on the source text it would merely be the question whether
  * “BEGIN" stands somewhere.
  *
- * Counter-check (06.11.2026): putShadowAn again with INCLUDING ALL without
+ * Counter-check (06.11.2026): createShadow again with INCLUDING ALL without
  * EXCLUDING CONSTRAINTS → red: “set numbers without version suffix get it
  * on swap” (rb_inventories_setnummer_mit_version in the shadow table).
  *
  * Counter-checks for “rb_sets reproduces the dump” (10.11.2026, in
- * sameSetsAb(), src/catalog/repository/csvSwap.ts, each alone):
+ * syncSets(), src/catalog/repository/csvSwap.ts, each alone):
  *   E  `source='csv'` omitted in the upsert → red: “changed” (B stays 'api')
  *   F  the UPDATE to source='api' removed → red: “with reference” (C stays 'csv')
  *   G  the DELETE removed → red: “without reference” (D and F stay)

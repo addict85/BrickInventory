@@ -408,7 +408,7 @@ test('nothing lies in routes/ that is not a route', () => {
 
   const withoutRoute = dateien.filter(d => {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
-    if (/\b(router|app)\.(get|post|put|delete|patch|use|endpunkt|attachOne)\s*\(/.test(src)) return false;
+    if (/\b(router|app)\.(get|post|put|delete|patch|use|endpoint|attachOne)\s*\(/.test(src)) return false;
     return !allowedWithoutRouter[d.replace(/^routes\//, '')];
   });
   assert.deepEqual(
@@ -501,7 +501,7 @@ const DB_OUTSIDE = new Set([
   'DbInterface',
   'Db',
   'createDb',
-  'dbKonfigFromEnvironment',
+  'dbConfigFromEnvironment',
   'TxOptions',
   'TxGriff',
 ]);
@@ -614,7 +614,7 @@ function boundServices() {
     if (!f) continue;
     const s = fs.readFileSync(f, 'utf8');
     const namen = new Set();
-    for (const m of s.matchAll(/^ {4,8}(\w+): (?:mit\(|imSystem\(|\(\(|\(<)/gm)) namen.add(m[1]);
+    for (const m of s.matchAll(/^ {4,8}(\w+): (?:bound\(|imSystem\(|\(\(|\(<)/gm)) namen.add(m[1]);
     raus.set(b, namen);
   }
   return raus;
@@ -645,15 +645,15 @@ function routesOnlyViaFactory() {
  * is being split right now (own branch): the switch to `t` follows there. */
 const RAW_HANDLE_STILL = new Set(['src/catalog/catalogMaintenance.ts']);
 
-/** A unit of work stands at the call site: k.transaktion(t => …). */
+/** A unit of work stands at the call site: k.transact(t => …). */
 function workUnitAtCallLocation() {
-  // One transaction form: services open it with k.transaktion, the body gets the
+  // One transaction form: services open it with k.transact, the body gets the
   // context of the transaction (t); repositories take the caller's tx. `.transaction(`
   // only stands in src/infra/area.ts and db/.
   // Counter-checks: (13.11.2026) in src/collection/deletion.ts again `k.db.transaction(async tx =>`
   // → red; (13.11.2026) likewise in src/inventory/setStorageLocation.ts and in
   // src/factors/repository/secondFactor.ts → rot „…: .transaction(“.
-  // Likewise db/txLock.ts: stock locks are an option of k.transaktion, not a separate
+  // Likewise db/txLock.ts: stock locks are an option of k.transact, not a separate
   // path with a raw tx; and no service takes a raw handle (tx/dbh), it takes `t`.
   // Counter-checks (14.11.2026): a function with `z.transaction(` in db/txLock.ts → red
   // „db/txLock.ts: .transaction(“; `export async function probe(tx: DbInterface, …)` in
@@ -663,14 +663,14 @@ function workUnitAtCallLocation() {
   for (const d of alle) {
     const s = sourceText(d);
     if (d !== 'src/infra/area.ts' && /\.transaction\s*(?:<[^>]*>)?\(/.test(s)) treffer.push(`${d}: .transaction(`);
-    if (/transaktion\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
+    if (/transact\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
     if (d.startsWith('src/') && !isRepository(d) && !RAW_HANDLE_STILL.has(d))
       for (const m of s.matchAll(/export\s+(?:async\s+)?function\s+(\w+)[^(]*\(([^)]*)\)/g))
-        if (/\b(?:tx|dbh)\??\s*:\s*(?:Pick<\s*)?(?:DbInterface|Db|Schreiber)\b/.test(m[2]))
+        if (/\b(?:tx|dbh)\??\s*:\s*(?:Pick<\s*)?(?:DbInterface|Db|Writer)\b/.test(m[2]))
           treffer.push(`${d}: Dienst mit rohem Griff ${m[1]}`);
   }
   assert.ok(
-    tsBelow('src').some(d => /\.transaktion\(async t\b/.test(sourceText(d))) &&
+    tsBelow('src').some(d => /\.transact\(async t\b/.test(sourceText(d))) &&
       /\.transaction\(/.test(sourceText('src/infra/area.ts')),
     'Selbstbeweis: es gibt Arbeitseinheiten, und die Suche findet die eine Stelle',
   );
@@ -761,15 +761,15 @@ function valueExports(index) {
  * network or files another scope calls via the context (`k.<bereich>.…`), so that it
  * runs in a transaction via `t` and a test replaces it at the wiring. */
 function indexWithoutAccess(indizes) {
-  // Counter-checks (14.11.2026): `export { catalogStatus } from './setStamm'` back in
+  // Counter-checks (14.11.2026): `export { catalogStatus } from './setMaster'` back in
   // src/catalog/index.ts → rot (src/catalog.catalogStatus); `export { vorschauErzeugenAus } from './thumbs'`
   // in src/images/index.ts → red (asynchronous).
   const alle = indizes.filter(i => !/^src\/(?:infra|contract|http)\//.test(i)).flatMap(valueExports);
   assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
   assert.ok(
     alle.some(x => x.name === 'src/household.asIds' && !x.zugang) &&
-      declaration('src/sets/read', 'setsLesen')?.zugang &&
-      declaration('src/images/thumbs', 'vorschauErzeugenAus')?.zugang,
+      declaration('src/sets/read', 'readSets')?.zugang &&
+      declaration('src/images/thumbs', 'previewFrom')?.zugang,
     'Selbstbeweis: asIds ist rein, setsLesen (Kontext) und vorschauErzeugenAus (asynchron) haben Zugang',
   );
   assert.deepEqual(
@@ -1063,7 +1063,7 @@ test('the queue knows no domain areas and payload shapes, events go via ereignis
   // Counter-checks (15.11.2026): in src/settings/userSetting.ts again
   // `fach('currencyChange', () => new Set<() => void>())` → red (own listeners);
   // in src/jobQueue/importJob.ts again `k.db.notification.listen('csv_import_progress', f)`
-  // → red (NOTIFY by hand); `new EventEmitter()` back in importAuftrag.ts → red.
+  // → red (NOTIFY by hand); `new EventEmitter()` back in importJob.ts → red.
   const EREIGNIS = 'src/infra/event.ts';
   const alle = tsBelow('src', 'routes', 'jobs').filter(d => d !== EREIGNIS);
   const treffer = muster =>

@@ -18,7 +18,7 @@
  *      deleted → red: „zwei Client-Adressen: kein Hinweis“
  *   F  the time condition (`uhr() - seit < EINE_ADDRESS.ms`) deleted → red:
  *      „nach zehn Minuten noch kein Hinweis“
- *   G  the call of eineAddress() deleted in proxyHinweis() → red:
+ *   G  the call of eineAddress() deleted in proxyHint() → red:
  *      „eine einzige Client-Adresse über eine Stunde wird gemeldet“
  */
 const test = require('node:test');
@@ -26,12 +26,12 @@ const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { isDockerGateway } = _req('src/infra/proxyTrust.js');
-const { proxyHinweis, EINE_ADDRESS } = _req('src/http/proxyHint.js');
+const { proxyHint, EINE_ADDRESS } = _req('src/http/proxyHint.js');
 
 const anfrage = (von, xff) => ({ socket: { remoteAddress: von }, headers: xff ? { 'x-forwarded-for': xff } : {} });
 function lauf(trust, anfragen) {
   const meldungen = [];
-  const mw = proxyHinweis(trust, t => meldungen.push(t));
+  const mw = proxyHint(trust, t => meldungen.push(t));
   let weiter = 0;
   for (const a of anfragen)
     mw(a, {}, () => {
@@ -74,7 +74,7 @@ test('gateway detection', () => {
 function viaProxy(trust, ips, { minuten }) {
   const meldungen = [];
   let jetzt = 0;
-  const mw = proxyHinweis(
+  const mw = proxyHint(
     trust,
     t => meldungen.push(t),
     () => jetzt,

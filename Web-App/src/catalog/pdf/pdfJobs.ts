@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { PDF_JOB_DIR } from '../../infra/appPaths';
 import { reportError, withoutMissingFile } from '../../infra/error';
-import { Fachfehler, fachfehler, notFound } from '../../infra/errorTexts';
+import { DomainError, failDomain, notFound } from '../../infra/errorTexts';
 import type { PayloadInput } from '../../jobQueue';
 import { withVersion } from '../../infra/setNumber';
 import type { CatalogContext } from '../context';
@@ -52,9 +52,9 @@ export async function readJob(k: CatalogContext, id: string, uid: number): Promi
 export async function finishedFile(k: CatalogContext, id: string, uid: number): Promise<string> {
   const job = await readJob(k, id, uid);
   if (!job) notFound('job_nicht_gefunden');
-  if (job.status !== 'done') throw new Fachfehler('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
+  if (job.status !== 'done') throw new DomainError('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
   const file = pdfFilePath(id);
-  if (!file || !fs.existsSync(file)) fachfehler('nicht_mehr_da', 'pdf_nicht_verfuegbar');
+  if (!file || !fs.existsSync(file)) failDomain('nicht_mehr_da', 'pdf_nicht_verfuegbar');
   return file;
 }
 
@@ -94,22 +94,22 @@ async function fehlendeBilder(
   sets: Array<{ set_number?: unknown }>,
   parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>,
 ) {
-  let fehlend = parts.filter(p => !p.image_local && p.image_url).length;
+  let absent = parts.filter(p => !p.image_local && p.image_url).length;
   const numbers = new Set<string>();
   for (const s of sets || []) {
     const raw = String(s?.set_number || '').trim();
     if (!raw) continue;
     numbers.add(withVersion(raw));
   }
-  if (!numbers.size) return fehlend;
+  if (!numbers.size) return absent;
   try {
     const r = await k.bildlage.missingCatalogImages([...numbers]);
     const c = Number(r?.c);
-    if (Number.isFinite(c)) fehlend = c;
+    if (Number.isFinite(c)) absent = c;
   } catch (e) {
     reportError('pdf:wartezeit schaetzen', e);
   }
-  return fehlend;
+  return absent;
 }
 
 /** If MAX_JOBS_PRO_USER are already running, there is no identifier but their count. */

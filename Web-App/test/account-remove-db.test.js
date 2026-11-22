@@ -4,7 +4,7 @@
  * be deleted. One flow for administrators and the own account (src/account/removeAccount.ts).
  *
  * Counter-checks (measured 09.11.2026, each alone):
- *   A  in kontoEntfernen() session version and sessions deleted only after the transaction
+ *   A  in removeAccount() session version and sessions deleted only after the transaction
  *      → red: “if a step fails, everything stays as it was” (account gone)
  *   B  protokolliere() after the transaction → red: the same check (entry without deletion)
  *   C  in removeAccountFiles() the catch removed → red: “if the files are
@@ -28,7 +28,7 @@ const { dataOrSkip } = require('./helpers/db');
 test('remove account', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const { kontoEntfernen, removeAccountFiles } = _req('src/account/removeAccount.js');
+  const { removeAccount, removeAccountFiles } = _req('src/account/removeAccount.js');
   const P = process.pid;
   const VERW = `entf-verw-${P}`,
     ZIEL = `entf-ziel-${P}`;
@@ -76,7 +76,7 @@ test('remove account', { concurrency: 1 }, async t => {
       CREATE TRIGGER entf_sperre BEFORE DELETE ON user_sessions
         FOR EACH ROW WHEN (OLD.sid = 'entf-${ziel}') EXECUTE FUNCTION entf_sperre()`);
     try {
-      await assert.rejects(kontoEntfernen(ziel, verw), /Sitzungen nicht löschbar/);
+      await assert.rejects(removeAccount(ziel, verw), /Sitzungen nicht löschbar/);
     } finally {
       await db.exec('DROP TRIGGER entf_sperre ON user_sessions; DROP FUNCTION entf_sperre()');
     }
@@ -88,11 +88,11 @@ test('remove account', { concurrency: 1 }, async t => {
   await t.test('if it succeeds, account and sessions are gone and logged', async () => {
     const ziel = await neu();
     await sitzung(ziel);
-    await kontoEntfernen(ziel, verw);
+    await removeAccount(ziel, verw);
     assert.deepEqual(await stand(ziel), { konto: false, sitzungen: 0, protokoll: 1 });
     const NICHT = { code: 'benutzer_nicht_gefunden_oder_eigenes' };
-    await assert.rejects(kontoEntfernen(ziel, verw), NICHT);
-    await assert.rejects(kontoEntfernen(verw, verw), NICHT, 'das eigene Konto nicht über den Verwalterweg');
+    await assert.rejects(removeAccount(ziel, verw), NICHT);
+    await assert.rejects(removeAccount(verw, verw), NICHT, 'das eigene Konto nicht über den Verwalterweg');
   });
 
   await t.test('if the files are locked, a job takes over', async () => {

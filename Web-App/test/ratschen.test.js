@@ -194,7 +194,7 @@ function silentCatchesTheUi() {
   if (ist < LIMIT) console.log(`  ℹ stille Fänge der Oberfläche: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 }
 
-/** The factory (createDb, dbKonfigFromEnvironment) and types are no process access. */
+/** The factory (createDb, dbConfigFromEnvironment) and types are no process access. */
 const PROZESSZUGANG = new Set([
   'pool',
   'all',
@@ -278,8 +278,8 @@ function routesAnDenContextsPast() {
   // a store of services in the process (getters xBereich(), facades from dienstePerAufruf)
   // no longer exists.
   // Counter-checks (14.11.2026): `export const sets = prozessStelle<SetsServices>('sets');` in
-  // src/sets/read.ts → red (1 getter place); `import { setsLesen } from '../sets'` in
-  // src/collection/deletion.ts (with `export const setsLesen = …` in src/sets/index.ts) → red (1 facade).
+  // src/sets/read.ts → red (1 getter place); `import { readSets } from '../sets'` in
+  // src/collection/deletion.ts (with `export const readSets = …` in src/sets/index.ts) → red (1 facade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
   const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
@@ -301,7 +301,7 @@ function routesAnDenContextsPast() {
       return [b, n];
     }),
   );
-  assert.ok(dienste.get('sets').has('setsLesen'), 'die Dienste der Bereiche werden nicht mehr gefunden');
+  assert.ok(dienste.get('sets').has('readSets'), 'die Dienste der Bereiche werden nicht mehr gefunden');
   const facades = [];
   for (const f of quellen()) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
@@ -343,7 +343,7 @@ function bindingWithoutNamesAndProxy() {
   // An area is a factory with a closure over k (src/infra/area.ts, mit()); the transaction
   // travels via `t` (tx.db), not via a proxy or a release in the call path.
   // Counter-checks (14.11.2026): `const _p = new Proxy({}, {});` in src/sets/read.ts → red (proxy);
-  // `setsLesen: binde(sk, lesen, ['setsLesen', 'x'])` in src/sets/area.ts → red (name binding);
+  // `readSets: binde(sk, lesen, ['readSets', 'x'])` in src/sets/area.ts → red (name binding);
   // `new AsyncLocalStorage()` in db/transaction.ts → red (second channel).
   const ohne = require('./helpers/sources').ohneKommentare;
   const rel = f => path.relative(WEB, f).split(path.sep).join('/');
@@ -787,7 +787,7 @@ const USES_FACADE =
 /** Substitute paths that may only sink. Whoever bends modules at load time checks a setup that does not
  * exist in operation, and silently grabs into nothing as soon as an import path changes; replacing
  * happens at the wiring (testImageWorker(), testSources(), replaceServices()). routerServer assembles
- * its own routers instead of baueApp, bypassing session and admin checks. */
+ * its own routers instead of buildApp, bypassing session and admin checks. */
 const FALLBACKS = {
   'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, limit: 11 },
   'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, limit: 13 },

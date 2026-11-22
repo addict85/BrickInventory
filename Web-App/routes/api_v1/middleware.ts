@@ -9,8 +9,8 @@ import {
   loginOrTokenGuard,
   userIdTheRequest,
   sendTokenRejection,
-  nutzerId,
-  zweiterFaktorPflicht,
+  userId,
+  secondFactorRequired,
 } from '../../src/account/http/login';
 import { receiptsAccountSpace, type Gate } from '../../src/http/accountLimit';
 import { requireRelease } from '../../src/account/http/stepGuard';
@@ -22,7 +22,7 @@ export const viewOf = (req: AuthedRequest & { abfrage: { accounts?: string | und
   konten: req.abfrage.accounts,
 });
 import { sendError } from '../../src/http/httpResponse';
-import { Fachfehler, fachfehler } from '../../src/infra/errorTexts';
+import { DomainError, failDomain } from '../../src/infra/errorTexts';
 import { guard } from '../../src/http/contractRouter';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
@@ -113,9 +113,9 @@ function inboxFor(konto: AccountServices) {
   async function inboundLock(req: Request, _res: Response, next: NextFunction) {
     const method = req.method === 'HEAD' ? 'GET' : req.method;
     if (!(method === 'POST' && BEFORE_SWITCH.test(req.path)) && (await switchMust(req)))
-      fachfehler('verboten', 'passwort_wechsel_noetig');
-    if (!TO_SETUP.some(([m, re]) => m === method && re.test(req.path)) && (await zweiterFaktorPflicht(konto, req)))
-      fachfehler('verboten', 'zweiter_faktor_pflicht');
+      failDomain('verboten', 'passwort_wechsel_noetig');
+    if (!TO_SETUP.some(([m, re]) => m === method && re.test(req.path)) && (await secondFactorRequired(konto, req)))
+      failDomain('verboten', 'zweiter_faktor_pflicht');
     next();
   }
 
@@ -136,15 +136,15 @@ function tokenGuardFor(konto: AccountServices) {
     }
     const token = bearerToken(req);
     konto
-      .nutzerZumToken(token, { ip: req.ip })
+      .userForToken(token, { ip: req.ip })
       .then(user => {
-        if (!user) return next(new Fachfehler('nicht_angemeldet', 'token_ungueltig'));
+        if (!user) return next(new DomainError('nicht_angemeldet', 'token_ungueltig'));
         req.apiUser = { ...user, is_admin: user.is_admin === true };
         next();
       })
       .catch((e: unknown) => {
         reportError('eingang:token', e);
-        next(new Fachfehler('nicht_angemeldet', 'auth_fehler'));
+        next(new DomainError('nicht_angemeldet', 'auth_fehler'));
       });
   });
 
@@ -154,7 +154,7 @@ function tokenGuardFor(konto: AccountServices) {
     requireApiAdmin: guard<AuthedRequest>((req, res, next) => {
       requireToken(req, res, (e?: unknown) => {
         if (e) return next(e);
-        if (!req.apiUser?.is_admin) return next(new Fachfehler('verboten', 'nur_admins'));
+        if (!req.apiUser?.is_admin) return next(new DomainError('verboten', 'nur_admins'));
         // Here instead of in a path list: this way no administrator route gets past the device lock.
         requireRelease(konto, req, res, next, 'verwaltung');
       });
@@ -166,7 +166,7 @@ const onlyIf =
   (expected: (req: Request) => boolean, step: RequestHandler): RequestHandler =>
   (req, res, next) =>
     expected(req) ? step(req, res, next) : next();
-const anonymous = (req: Request) => nutzerId(req) === null;
+const anonymous = (req: Request) => userId(req) === null;
 
 /** Without an account it is at most 16 KB: whoever needs longer for that only holds
  * a connection. Signed in, the server's deadline applies (uploads). */
@@ -199,18 +199,18 @@ export const readBody: RequestHandler[] = [
     next();
   }, // Express 5: otherwise undefined
   (req, _res, next) => {
-    if (toLargeId(req.body) || toLargeId(req.query)) fachfehler('ungueltig', 'id_ungueltig');
+    if (toLargeId(req.body) || toLargeId(req.query)) failDomain('ungueltig', 'id_ungueltig');
     next();
   },
 ];
 
 /** Before receiving the body: at the limit the file is not even read. */
-export function kontoSchranke(art: Gate) {
+export function accountGate(art: Gate) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const uid = nutzerId(req);
+    const uid = userId(req);
     if (uid === null) return next();
     const free = receiptsAccountSpace(art, uid);
-    if (!free) fachfehler('zu_viele', art === 'strom' ? 'zu_viele_verbindungen' : 'upload_laeuft');
+    if (!free) failDomain('zu_viele', art === 'strom' ? 'zu_viele_verbindungen' : 'upload_laeuft');
     res.once('finish', free); // an immediately following upload would otherwise arrive before 'close'
     res.once('close', free);
     next();

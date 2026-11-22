@@ -30,13 +30,13 @@ export async function saveRates(kx: FinancesContext, rates: Kurs[]): Promise<num
 
 export async function reloadRates(
   k: FinancesContext,
-  abruf: Abruf = k.externalSources.quellen.ecbFetch,
+  download: Abruf = k.externalSources.quellen.ecbFetch,
   signal?: AbortSignal,
 ): Promise<{ quelle: 'historie' | 'tag'; rates: number }> {
   const leer = !(await k.wechselkurse.givesEsRates());
   const rates = leer
-    ? readHistory(firstZipFile(await abruf(ECB_HISTORY, signal)).toString('utf8'))
-    : readDailyRates((await abruf(ECB_DAILY_RATES, signal)).toString('utf8'));
+    ? readHistory(firstZipFile(await download(ECB_HISTORY, signal)).toString('utf8'))
+    : readDailyRates((await download(ECB_DAILY_RATES, signal)).toString('utf8'));
   if (!rates.length) throw new Error(`EZB lieferte keine Kurse (${leer ? 'Historie' : 'Tageskurse'})`);
   return { quelle: leer ? 'historie' : 'tag', rates: await saveRates(k, rates) };
 }
@@ -66,10 +66,10 @@ export async function scheduleRateFetch(
 /** Schedule the next day first, then load: if loading fails, the schedule is already in place. */
 export async function rateJob(
   k: FinancesContext,
-  abruf: Abruf = k.externalSources.quellen.ecbFetch,
+  download: Abruf = k.externalSources.quellen.ecbFetch,
   lauf?: JobRun,
 ): Promise<void> {
   await scheduleRateFetch(k, k.uhr.datum(), true);
-  const r = await reloadRates(k, abruf, lauf?.signal);
+  const r = await reloadRates(k, download, lauf?.signal);
   console.log(`[wechselkurse] ${r.rates} Kurse aus der EZB-${r.quelle === 'historie' ? 'Historie' : 'Tagesdatei'}`);
 }

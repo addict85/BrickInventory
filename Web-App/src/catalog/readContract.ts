@@ -6,6 +6,6 @@ export interface CatalogReadContract {
   setBestand(konten?: Konten): string;
   teilBestand(konten?: Konten): string;
   figurBestand(konten?: Konten): string;
-  setZaehlt(nummer: string): string;
+  setZaehlt(number: string): string;
   mengeJoin(basis: string, alias?: string, konten?: Konten): string;
 }

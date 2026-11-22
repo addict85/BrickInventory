@@ -12,9 +12,9 @@ type Pending = { auftrag: Job; ok: (v: unknown) => void; fehler: (e: Error) => v
 
 export interface Pool {
   hash(passwort: string, rounds: number): Promise<string>;
-  vergleiche(passwort: string, hash: string): Promise<boolean>;
+  compare(passwort: string, hash: string): Promise<boolean>;
   stand(): { worker: number; frei: number; wartend: number; hauptthread: boolean };
-  beende(): Promise<void>;
+  finish(): Promise<void>;
 }
 
 const inMainThread = (a: Job) =>
@@ -112,9 +112,9 @@ export function newPool(size: number, file = path.join(__dirname, 'bcryptWorker.
   };
   return {
     hash: (passwort, rounds) => job({ art: 'hash', passwort, wert: rounds }) as Promise<string>,
-    vergleiche: (passwort, hash) => job({ art: 'vergleich', passwort, wert: hash }) as Promise<boolean>,
+    compare: (passwort, hash) => job({ art: 'vergleich', passwort, wert: hash }) as Promise<boolean>,
     stand: () => ({ worker: all.size, frei: free.length, wartend: queue.length, hauptthread }),
-    beende: async () => {
+    finish: async () => {
       ended = true;
       await Promise.all([...all].map(w => w.terminate()));
     },

@@ -21,7 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
-const { proxyHinweis, EINE_ADDRESS } = _req('src/http/proxyHint.js');
+const { proxyHint, EINE_ADDRESS } = _req('src/http/proxyHint.js');
 
 test('proxy hint in the response for administrators', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
@@ -40,14 +40,14 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
   // Like startup/app.ts: the hint provider lies on the app object, the administration reads it there.
   let jetzt = 0;
   const meldungen = [];
-  const mw = proxyHinweis(
+  const mw = proxyHint(
     '172.28.73.10',
     m => meldungen.push(m),
     () => jetzt,
   );
   await adminWithFactor(_req, uid);
   const { app, base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
-  app.locals.proxyHinweis = mw;
+  app.locals.proxyHint = mw;
   const jobs = async () => (await fetch(`${base}/api/v1/admin/jobs`)).json();
 
   await t.test('without a hint: null', async () => {
@@ -70,7 +70,7 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
   });
 
   await t.test('the app puts its hint provider where the administration reads', () => {
-    const echt = _req('startup/app.js').baueApp({
+    const echt = _req('startup/app.js').buildApp({
       pool: db.systemPool,
       konfig: _req('src/infra/config.js').konfig(),
       sitzungsGeheimnis: 'p'.repeat(48),
@@ -82,7 +82,7 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
     console.warn = () => {};
     try {
       const req = { socket: { remoteAddress: '172.28.73.30' }, headers: { 'x-forwarded-for': '198.51.100.4' } };
-      echt.locals.proxyHinweis(req, {}, () => {});
+      echt.locals.proxyHint(req, {}, () => {});
     } finally {
       console.warn = leise;
     }

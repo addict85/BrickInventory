@@ -2,10 +2,10 @@
  * src/devices/deviceChallenge.ts. Browser sessions stay with password and
  * second factor: they have no keystore. */
 import type { Request, Response, NextFunction } from 'express';
-import { familyFrom, type Schrittaktion } from '../../devices';
+import { familyFrom, type StepAction } from '../../devices';
 import { reportError } from '../../infra/error';
 import { sendError } from '../../http/httpResponse';
-import { istVerwalter } from './login';
+import { isAdmin } from './login';
 import type { AccountServices } from '../area';
 import { routeForRequest } from '../../contract';
 
@@ -19,7 +19,7 @@ export function requireRelease(
   req: Request,
   res: Response,
   next: NextFunction,
-  action: Schrittaktion,
+  action: StepAction,
 ): void {
   void released(konto, req, res, action).then(ok => {
     if (ok) next();
@@ -32,13 +32,13 @@ export async function released(
   konto: AccountServices,
   req: Request,
   res: Response,
-  action: Schrittaktion,
+  action: StepAction,
 ): Promise<boolean> {
   if (!isAppToken(req)) return true;
   const f = familyFrom(req.apiUser);
   try {
     // Without a family (no created_at) there is no key: closed, not open.
-    const p = f ? await konto.pruefeFreigabe(f, action) : 'kein_schluessel';
+    const p = f ? await konto.checkApproval(f, action) : 'kein_schluessel';
     if (p === 'frei') return true;
     sendError(req, res, 'verboten', p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
   } catch (e) {
@@ -51,10 +51,10 @@ export async function released(
 /** For read paths that show administrators more: an app token without release
  * sees there what every account sees instead of getting a rejection. */
 export async function asAdmin(konto: AccountServices, req: Request): Promise<boolean> {
-  if (!istVerwalter(req)) return false;
+  if (!isAdmin(req)) return false;
   if (!isAppToken(req)) return true;
   const f = familyFrom(req.apiUser);
-  return !!f && (await konto.pruefeFreigabe(f, 'verwaltung')) === 'frei';
+  return !!f && (await konto.checkApproval(f, 'verwaltung')) === 'frei';
 }
 
 /** Behind loginAtInbox, before reading the body. Which steps are protected is said by

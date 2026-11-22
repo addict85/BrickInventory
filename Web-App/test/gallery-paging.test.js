@@ -8,7 +8,7 @@
  *   A  in SET_SORTS qty_asc to `s.quantity DESC, …` → red: “by quantity …”
  *   B  fromTable(SET_SORTS, …) replaced by `SET_SORTS[sort] ?? …` → red:
  *      “unknown sorting …” (constructor delivers a function → 500)
- *   C  in setsLesen `themen: !!page_size && …` replaced by `themen: !!page_size` →
+ *   C  in readSets `themen: !!page_size && …` replaced by `themen: !!page_size` →
  *      red: “the theme list …” (page 2 carries themes)
  *   D  in the minifigure counter GROUP BY without m.source/LOWER(TRIM) replaced by
  *      `GROUP BY m.set_number, m.fig_number` → red: “minifigures count …”

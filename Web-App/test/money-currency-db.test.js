@@ -33,8 +33,8 @@ const db = testData();
 test('cents only at the end, currencies honest', { concurrency: 1 }, async t => {
   const geld = _req('src/infra/geld.js');
   await t.test('120.3333 × 2 is 240.67, and 1.005 rounds to 1.01', () => {
-    assert.equal(geld.zeilenwert(120.3333, 2), 240.67);
-    assert.equal(geld.zeilenwert('120.3333', 2), 240.67);
+    assert.equal(geld.rowValue(120.3333, 2), 240.67);
+    assert.equal(geld.rowValue('120.3333', 2), 240.67);
     assert.equal(geld.alsText(1.005), '1.01');
     assert.equal(geld.aufRappen(-12345), -1.23);
     assert.equal(

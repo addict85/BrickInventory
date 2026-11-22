@@ -1,11 +1,11 @@
-import type { Schreiber } from '../household';
+import type { Writer } from '../household';
 import type { DbInterface } from '../../db/database';
 import * as repo from './repository/trash';
 import * as purchase from './repository/purchaseAcquisitions';
 import type { PaperKind } from './repository/trash';
 import type { InventoryContext } from './context';
 import type { InventoryReadContract } from './readContract';
-import { fachfehler, notFound } from '../infra/errorTexts';
+import { failDomain, notFound } from '../infra/errorTexts';
 
 export type Art = PaperKind;
 export const RETENTION_DAYS = 30;
@@ -16,8 +16,8 @@ const ACQUISITIONS: Record<Art, string> = {
   figur: 'minifig_acquisitions',
 };
 
-function parameter(art: Art, userId: number, nummer: string, colorId: number | null) {
-  return art === 'teil' ? [userId, nummer, colorId] : [userId, nummer];
+function parameter(art: Art, userId: number, number: string, colorId: number | null) {
+  return art === 'teil' ? [userId, number, colorId] : [userId, number];
 }
 
 /** In the deletion's transaction, BEFORE the DELETEs: if storing fails,
@@ -27,16 +27,16 @@ export async function putInTrash(
   k: InventoryContext,
   art: Art,
   userId: number,
-  nummer: string,
+  number: string,
   colorId: number | null = null,
 ): Promise<number | null> {
-  const p = parameter(art, userId, nummer, colorId);
+  const p = parameter(art, userId, number, colorId);
   const rows = await repo.inventoryRows(k.db, art, p);
   const master = repo.tablesTheKind(art)[0] ?? '';
   if (!rows[master]?.length) return null;
 
-  const name = await repo.label(k.db, art, userId, nummer, colorId);
-  return repo.createEntry(k.db, userId, art, nummer, art === 'teil' ? colorId : null, name, rows);
+  const name = await repo.label(k.db, art, userId, number, colorId);
+  return repo.createEntry(k.db, userId, art, number, art === 'teil' ? colorId : null, name, rows);
 }
 
 /** Individual purchases of a set that a quantity reduction removed: the inventory row stays, hence an
@@ -45,13 +45,13 @@ export async function putInTrash(
 export async function putPurchasesInTrash(
   k: InventoryContext,
   userId: number,
-  nummer: string,
+  number: string,
   rows: Record<string, unknown>[],
 ): Promise<number | null> {
   if (!rows.length) return null;
-  const name = await repo.label(k.db, 'set', userId, nummer, null);
+  const name = await repo.label(k.db, 'set', userId, number, null);
   const leer = Object.fromEntries(repo.tablesTheKind('set').map(t => [t, [] as unknown[]]));
-  return repo.createEntry(k.db, userId, 'set', nummer, null, name, { ...leer, set_acquisitions: rows });
+  return repo.createEntry(k.db, userId, 'set', number, null, name, { ...leer, set_acquisitions: rows });
 }
 
 /** Back into the row the quantity came from; if it no longer exists, into an identical row of the same day
@@ -92,9 +92,9 @@ export interface TrashEntry {
   endgueltig_am: string;
 }
 
-export async function listTrash(k: InventoryContext, uidsChoice: Schreiber | number[]): Promise<TrashEntry[]> {
+export async function listTrash(k: InventoryContext, uidsChoice: Writer | number[]): Promise<TrashEntry[]> {
   const uids = await k.household.writeAreaFrom(uidsChoice);
-  const rows = await k.papierkorb.eintraege(uids, RETENTION_DAYS);
+  const rows = await k.papierkorb.entries(uids, RETENTION_DAYS);
   return rows.map(r => {
     const acquisitions = r.rows?.[ACQUISITIONS[r.type]] ?? [];
     const { rows: _z, ...rest } = r;
@@ -106,14 +106,10 @@ export type Restoration = { type: Art; number: string; user_id: number };
 
 /** If the element exists again in the meantime, a unique index applies — then
  * nothing is changed and the entry stays. */
-export async function placeAgainHer(
-  k: InventoryContext,
-  uidsChoice: Schreiber | number[],
-  id: number,
-): Promise<Restoration> {
+export async function restore(k: InventoryContext, uidsChoice: Writer | number[], id: number): Promise<Restoration> {
   const uids = await k.household.writeAreaFrom(uidsChoice);
   try {
-    return await k.transaktion(async (t): Promise<Restoration> => {
+    return await k.transact(async (t): Promise<Restoration> => {
       const e = await repo.lockTrashEntry(t.db, id, uids);
       if (!e) notFound();
       const art = e.type as Art;
@@ -129,17 +125,17 @@ export async function placeAgainHer(
       return { type: art, number: e.number, user_id: e.user_id };
     });
   } catch (err) {
-    if ((err as { code?: string })?.code === '23505') fachfehler('konflikt', 'papierkorb_schon_vorhanden');
+    if ((err as { code?: string })?.code === '23505') failDomain('konflikt', 'papierkorb_schon_vorhanden');
     throw err;
   }
 }
 
-export async function deleteFinal(k: InventoryContext, uidsChoice: Schreiber | number[], id: number): Promise<void> {
+export async function deleteFinal(k: InventoryContext, uidsChoice: Writer | number[], id: number): Promise<void> {
   const uids = await k.household.writeAreaFrom(uidsChoice);
   if (!(await k.papierkorb.removeEntryOfAccount(id, uids))) notFound();
 }
 
-export async function emptyTrash(k: InventoryContext, uidsChoice: Schreiber | number[]): Promise<number> {
+export async function emptyTrash(k: InventoryContext, uidsChoice: Writer | number[]): Promise<number> {
   const uids = await k.household.writeAreaFrom(uidsChoice);
   return k.papierkorb.removeAll(uids);
 }

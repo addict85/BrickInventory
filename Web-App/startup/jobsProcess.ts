@@ -3,7 +3,7 @@ import { logAndContinue, reportError } from '../src/infra/error';
 import { konfig } from '../src/infra/config';
 import { startJobWorker } from '../jobs/startJobs';
 import { FOLLOWUP_RUNS, type FollowUpStep } from '../src/management';
-import type { Dienste } from './wiring';
+import type { Services } from './wiring';
 
 /** The healthcheck of the `jobs` service (compose.yaml) looks at the age of this file. */
 export const HEARTBEAT_FILE = '/tmp/brickinventory-jobs.lebt';
@@ -22,18 +22,18 @@ export interface JobsLauf {
 /** Only a worker that completes its rounds counts as alive: an interval
  * alone would also report a process whose startup failed. The result
  * ends with writing to the database, so that a test can wait for it. */
-export function renewHeartbeat(d: Dienste, worker: JobsLauf['worker']): Promise<void> {
+export function renewHeartbeat(d: Services, worker: JobsLauf['worker']): Promise<void> {
   if (!worker || Date.now() - worker.lastRound() > STILL_AT_MOST_MS) return Promise.resolve();
   fs.writeFile(HEARTBEAT_FILE, String(Date.now()), { mode: 0o600 }, e => {
     if (e) reportError('jobs:lebenszeichen', e);
   });
-  return d.jobQueue.setzeZustand(HEARTBEAT_KEY, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
+  return d.jobQueue.setState(HEARTBEAT_KEY, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
 }
 
 /** The background work (ROLLE=jobs or beides) only runs via jobs; a
  * second job process would be harmless, because each claims jobs with SKIP LOCKED. */
-export async function startJobs(d: Dienste): Promise<JobsLauf> {
-  const takenOver = await d.jobQueue.reportProcessAn();
+export async function startJobs(d: Services): Promise<JobsLauf> {
+  const takenOver = await d.jobQueue.registerProcess();
   if (takenOver) console.log(`[auftraege] ${takenOver} Aufträge eines beendeten Prozesses übernommen`);
   await d.jobQueue.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   await d.jobQueue.planeAll();
@@ -50,7 +50,7 @@ export async function startJobs(d: Dienste): Promise<JobsLauf> {
       { schluessel: `nachlauf:${schritt}`, afterSeconds, maxAttempts: 3 },
     );
   if (await d.images.openImageDemand()) await d.images.imageDemandKick();
-  await d.finances.planeKursabruf();
+  await d.finances.scheduleRateFetch();
   const worker = startJobWorker(d, { parallel: konfig().jobParallel, deadlineSec: konfig().jobDeadlineSec });
   void renewHeartbeat(d, worker);
   const lebenszeichen = setInterval(() => renewHeartbeat(d, worker), HEARTBEAT_MS);
@@ -59,11 +59,11 @@ export async function startJobs(d: Dienste): Promise<JobsLauf> {
 }
 
 /** On shutdown: finish running jobs or return them. */
-export async function stopJobs(d: Dienste, lauf: JobsLauf): Promise<void> {
+export async function stopJobs(d: Services, lauf: JobsLauf): Promise<void> {
   if (lauf.lebenszeichen) clearInterval(lauf.lebenszeichen);
   lauf.lebenszeichen = null;
   const worker = lauf.worker;
   lauf.worker = null;
   await worker?.stop().catch(logAndContinue('shutdown:auftraege'));
-  d.jobQueue.reportProcessAb();
+  d.jobQueue.deregisterProcess();
 }

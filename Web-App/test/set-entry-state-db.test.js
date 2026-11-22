@@ -13,7 +13,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 const { setUserSetting } = _req('src/settings/userSetting.js');
-const { setErfassen } = require('./helpers/sources').areaPage('sets');
+const { acquireSet } = require('./helpers/sources').areaPage('sets');
 
 test("topping up without a condition follows the user's default", { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
@@ -36,7 +36,7 @@ test("topping up without a condition follows the user's default", { concurrency:
 
     // Acquisition WITHOUT a condition. Pass the price along so that no network call
     // is needed; this is not about the price.
-    await setErfassen({ requester: uid, setNumber: SET, menge: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
+    await acquireSet({ requester: uid, setNumber: SET, menge: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
 
     const zeilen = await db.all(
       `SELECT id, quantity, condition FROM set_acquisitions

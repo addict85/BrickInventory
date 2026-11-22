@@ -2,13 +2,13 @@
 import { NO_COLOR } from '../src/infra/validate';
 
 import { pipeline } from 'node:stream/promises';
-import { holeHttps, openHttps, AbrufFehler, type FetchResponse, type FetchStream } from '../src/infra/fetch';
+import { holeHttps, openHttps, FetchError, type FetchResponse, type FetchStream } from '../src/infra/fetch';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fehlertext, reportAndDeliver, reportError } from '../src/infra/error';
+import { errorMessage, reportAndDeliver, reportError } from '../src/infra/error';
 import { withVersion } from '../src/infra/setNumber';
 import type { ClientsAccess } from './access';
-import { versuche } from '../src/infra/result';
+import { attempts } from '../src/infra/result';
 import type { z } from 'zod';
 import {
   RbSet,
@@ -46,7 +46,7 @@ async function getRbKey(kl: Rb): Promise<string | null> {
 /** When in doubt let it through: an exceeded daily quota only costs
  * calls — the opposite of the login counter, where the fallback locks. */
 async function dailyQuotaFree(kl: Rb): Promise<boolean> {
-  const r = await versuche('takt:kontingentPruefenUndZaehlen', kl.zugang.zaehle('rebrickable'));
+  const r = await attempts('takt:kontingentPruefenUndZaehlen', kl.zugang.zaehle('rebrickable'));
   return r.ok ? r.wert.allowed : true;
 }
 
@@ -101,7 +101,7 @@ async function httpsGetRobust(
   const hosts = Object.keys(headers).some(k => k.toLowerCase() === 'authorization')
     ? ALLOWED_REBRICKABLE_HOSTS
     : ALLOWED_API_HOSTS;
-  for (let versuch = 1; ; versuch++) {
+  for (let attempt = 1; ; attempt++) {
     let r: FetchResponse;
     try {
       r = await holeHttps(url, {
@@ -111,7 +111,7 @@ async function httpsGetRobust(
         kopfzeilen: { 'User-Agent': BROWSER_UA, ...headers },
       });
     } catch (e) {
-      if (e instanceof AbrufFehler && e.isTransient && versuch < 3) {
+      if (e instanceof FetchError && e.isTransient && attempt < 3) {
         await sleep(1500);
         continue;
       }
@@ -121,7 +121,7 @@ async function httpsGetRobust(
       const wait = parseThrottleWait(r.koerper.toString('utf-8'));
       console.log(`[rebrickable] 429 throttled, waiting ${wait}ms...`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       kl.zugang.drossel.foreground.throttle(wait);
-      if (versuch < 3) {
+      if (attempt < 3) {
         await sleep(wait);
         continue;
       }
@@ -193,8 +193,8 @@ async function getThemeName(kl: Rb, themeId: number | string) {
 }
 
 /** The master data of a set; null if Rebrickable does not know it. */
-async function holeSet(kl: Rb, nummer: string) {
-  return rbGet(kl, `/lego/sets/${pathSegment(nummer)}/`, RbSet);
+async function holeSet(kl: Rb, number: string) {
+  return rbGet(kl, `/lego/sets/${pathSegment(number)}/`, RbSet);
 }
 
 /**
@@ -221,7 +221,7 @@ async function fetchSetParts(kl: Rb, n: string): Promise<{ teile: RbSetTeil[]; v
     try {
       ({ status, body } = await httpsGetRobust(kl, url, { Authorization: `key ${key}` }, 60000));
     } catch (e) {
-      console.error(`  Parts page ${pages} failed: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.error(`  Parts page ${pages} failed: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       break;
     }
     if (status === 403) {
@@ -307,7 +307,7 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
       },
     });
   } catch (e) {
-    console.warn(`[download] ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.warn(`[download] ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     return false;
   }
   if (reply.status !== 200) {
@@ -317,7 +317,7 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
   try {
     await pipeline(reply.strom(), fs.createWriteStream(destPath));
   } catch (e) {
-    console.warn(`[download] Abgebrochen: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.warn(`[download] Abgebrochen: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     await fs.promises.rm(destPath, { force: true });
     return false;
   }
@@ -371,7 +371,7 @@ async function getSetMinifigs(kl: Rb, setNumber: string) {
       image_url: m.set_img_url || null,
     }));
   } catch (e) {
-    console.log(`  Minifigs fetch failed for ${n}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.log(`  Minifigs fetch failed for ${n}: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     return [];
   }
 }
@@ -553,26 +553,26 @@ interface Rb {
 /** One client per access: what it remembers applies only to it, not to the process. */
 export function createRebrickable(zugang: ClientsAccess) {
   const r: Rb = { zugang, themen: new Map(), farben: null, filterWirkungslos: false };
-  const withValue =
+  const bound =
     <A extends unknown[], E>(f: (r: Rb, ...a: A) => E) =>
     (...a: A) =>
       f(r, ...a);
   return {
     rebrickableJson: <T extends z.ZodType>(path: string, schema: T) => rebrickableJson(r, path, schema),
-    checkRebrickableAccess: withValue(checkRebrickableAccess),
-    lookupPart: withValue(lookupPart),
-    holeSet: withValue(holeSet),
-    holeSetTeile: withValue(fetchSetParts),
-    holeFigurTeile: withValue(fetchMinifigParts),
-    getThemeName: withValue(getThemeName),
-    scrapeInstructions: withValue(scrapeInstructions),
-    getSetMinifigs: withValue(getSetMinifigs),
-    getMinifigInfo: withValue(getMinifigInfo),
-    getBrickColors: withValue(getBrickColors),
-    getRbKey: withValue(getRbKey),
-    httpsGetRobust: withValue(httpsGetRobust),
-    blTeilZuRb: withValue(blPartToRb),
-    blFilterIneffective: withValue(blFilterIneffective),
+    checkRebrickableAccess: bound(checkRebrickableAccess),
+    lookupPart: bound(lookupPart),
+    holeSet: bound(holeSet),
+    fetchSetParts: bound(fetchSetParts),
+    fetchMinifigParts: bound(fetchMinifigParts),
+    getThemeName: bound(getThemeName),
+    scrapeInstructions: bound(scrapeInstructions),
+    getSetMinifigs: bound(getSetMinifigs),
+    getMinifigInfo: bound(getMinifigInfo),
+    getBrickColors: bound(getBrickColors),
+    getRbKey: bound(getRbKey),
+    httpsGetRobust: bound(httpsGetRobust),
+    blPartToRb: bound(blPartToRb),
+    blFilterIneffective: bound(blFilterIneffective),
   };
 }
 

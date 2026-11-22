@@ -50,7 +50,7 @@ export async function readMinifigs(
 
   // With a total count for infinite scroll, as with setsLesen.
   return {
-    figs: await k.household.besitzerAnhaengen(uids, mappedFigs),
+    figs: await k.household.attachOwners(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,
   };
 }
@@ -90,7 +90,7 @@ export async function readManualMinifigs(
     size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
   );
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
-  const withCondition = await k.inventory.setzeManuellenZustand(uids, mapped, 'fig');
+  const withCondition = await k.inventory.setManualCondition(uids, mapped, 'fig');
 
   // The market price ONLY from the cache, in one query for the whole list: a
   // live lookup per entry would make the list wait on BrickLink.
@@ -101,5 +101,5 @@ export async function readManualMinifigs(
   );
   const withPrice = withCondition.map(f => ({ ...f, avg_price: prices.get(String(f.fig_number)) ?? null }));
 
-  return k.household.besitzerAnhaengen(uids, withPrice);
+  return k.household.attachOwners(uids, withPrice);
 }

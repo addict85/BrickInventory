@@ -39,7 +39,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { tlsStatusFrom } = _req('src/infra/tlsWurzel.js');
-const { ladeKonfig, cookieSafe } = _req('src/infra/config.js');
+const { loadConfig, cookieSafe } = _req('src/infra/config.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -76,12 +76,12 @@ test("for comparison on the device: SHA-256 of the whole certificate, as in Cadd
 test('cookie only over TLS: in production and behind https, can be switched off', () => {
   // Without NODE_ENV the rules of production apply; only development is relaxed.
   const ent = { NODE_ENV: 'development' };
-  assert.equal(cookieSafe(ladeKonfig({})), true);
-  assert.equal(cookieSafe(ladeKonfig(ent)), false);
-  assert.equal(cookieSafe(ladeKonfig({ ...ent, APP_BASE_URL: 'https://lego.test' })), true);
-  assert.equal(cookieSafe(ladeKonfig({ ...ent, APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
-  assert.equal(cookieSafe(ladeKonfig({ NODE_ENV: 'production' })), true);
-  assert.equal(cookieSafe(ladeKonfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
+  assert.equal(cookieSafe(loadConfig({})), true);
+  assert.equal(cookieSafe(loadConfig(ent)), false);
+  assert.equal(cookieSafe(loadConfig({ ...ent, APP_BASE_URL: 'https://lego.test' })), true);
+  assert.equal(cookieSafe(loadConfig({ ...ent, APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
+  assert.equal(cookieSafe(loadConfig({ NODE_ENV: 'production' })), true);
+  assert.equal(cookieSafe(loadConfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
 });
 
 test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 1 }, async t => {

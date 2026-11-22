@@ -3,7 +3,7 @@
  * would overwrite the other access. */
 import { inventoryKey } from '../../db/txLock';
 import { inventoryQuantity } from '../infra/validate';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import { Degradations } from '../infra/result';
 import { addPurchaseAtTag } from './acquisitions';
 import * as repo from './repository/manualQuantities';
@@ -19,7 +19,7 @@ export type QuantityRequest = { absolut: number } | { delta: number };
 export function quantityRequest(body: { quantity?: unknown; quantity_delta?: unknown }): QuantityRequest | null {
   if (body.quantity_delta !== undefined && body.quantity_delta !== null) {
     const delta = Number(body.quantity_delta);
-    if (!Number.isInteger(delta) || Math.abs(delta) > 9999) fachfehler('ungueltig', 'wert_ungueltig');
+    if (!Number.isInteger(delta) || Math.abs(delta) > 9999) failDomain('ungueltig', 'wert_ungueltig');
     return { delta };
   }
   if (body.quantity !== undefined) return { absolut: inventoryQuantity(body.quantity, AT_LEAST) };
@@ -30,7 +30,7 @@ const target = (w: QuantityRequest, bisher: number) =>
   'absolut' in w ? w.absolut : Math.max(AT_LEAST, bisher + w.delta);
 
 /** Computed within the inventory lock so that web and app do not overtake each other.
- * @param marktpreis is asked BEFORE the lock and only for an increasing quantity
+ * @param marketPrice is asked BEFORE the lock and only for an increasing quantity
  * @returns the quantity afterwards */
 export async function adjustManualQuantity(
   k: InventoryContext,
@@ -39,13 +39,13 @@ export async function adjustManualQuantity(
   key: (string | number)[],
   wish: QuantityRequest,
   condition: string,
-  marktpreis: () => Promise<number | null>,
+  marketPrice: () => Promise<number | null>,
   ab = new Degradations(),
 ): Promise<number> {
   const upfront = await k.manuelleMengen.sumTheEntries(art, uid, key);
-  const mp = target(wish, upfront) > upfront ? await ab.orElse('kaufpreis', marktpreis, null) : null;
+  const mp = target(wish, upfront) > upfront ? await ab.orElse('kaufpreis', marketPrice, null) : null;
   const sperren = [{ konto: uid, schluessel: inventoryKey(art, key) }];
-  return k.transaktion(
+  return k.transact(
     async t => {
       const acquisitions = await repo.entriesNewestFirst(t.db, art, uid, key);
       const bisher = acquisitions.reduce((s, r) => s + r.quantity, 0);

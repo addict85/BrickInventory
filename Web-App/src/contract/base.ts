@@ -3,7 +3,7 @@
  * ignoreUnknownKeys). Inputs and queries are closed (strictObject):
  * a mistyped field name is a 400 instead of silently ignored. */
 import { z } from 'zod';
-import { FEHLER, type ErrorCode } from '../infra/errorTexts';
+import { ERRORS, type ErrorCode } from '../infra/errorTexts';
 
 export interface Route {
   /** The body of a 2xx response. If missing, the response is not JSON (`art`). */
@@ -89,7 +89,7 @@ export type Wire<T> = T extends Time
 
 /** Every error response (src/infra/errorTexts.ts): the apps decide by the
  * code, the sentence is only for humans. */
-export const Fehler = z.looseObject({
+export const ErrorBody = z.looseObject({
   success: z.literal(false),
   error: z.string().min(1),
   code: z.string().regex(/^[a-z][a-z0-9_]*$/),
@@ -99,7 +99,7 @@ export const Fehler = z.looseObject({
  * (Fehlercode.kt), and Android-App/tools/contract/contract-kotlin.test.js keeps both lists together. The
  * runtime check above stays with the pattern because codes outside the table are
  * sent as well (vertrag_verletzt). */
-export const Fehlercode = z.enum(Object.keys(FEHLER) as [ErrorCode, ...ErrorCode[]]);
+export const Fehlercode = z.enum(Object.keys(ERRORS) as [ErrorCode, ...ErrorCode[]]);
 
 export const Success = z.looseObject({ success: z.literal(true) });
 
@@ -150,7 +150,7 @@ export function query<T extends Record<string, z.ZodType<unknown, string>>>(fiel
 }
 /** Building blocks of the queries; a number arrives as digits and is passed on as a number. */
 export const Q = {
-  zahl: (max = 1_000_000_000) =>
+  number: (max = 1_000_000_000) =>
     z
       .string()
       .regex(/^\d{1,10}$/)
@@ -170,7 +170,7 @@ export const Q = {
   konto: z.string().regex(/^\d{0,10}$/),
 };
 /** Pages of a long list; without page_size everything (older app versions). */
-export const PAGE = { page: Q.zahl(), page_size: Q.zahl() };
+export const PAGE = { page: Q.number(), page_size: Q.number() };
 /** What a page says about the whole list (src/infra/page.ts). */
 export const PAGES_DETAIL = { total: whole, page: whole, page_size: whole };
 /** An identifier in the body; app and UI send a number or digits, the route reads a number. */

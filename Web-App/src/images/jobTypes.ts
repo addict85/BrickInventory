@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { processImageDemand } from './imageDemandRun';
 import type { ImagesContext } from './context';
 
@@ -11,9 +11,9 @@ declare module '../jobQueue/jobs' {
   }
 }
 
-export function imagesJobTypes(k: ImagesContext): Anmeldung[] {
+export function imagesJobTypes(k: ImagesContext): Login[] {
   return [
-    auftragsart({
+    jobKind({
       art: 'bildbedarf',
       nutzlast: LEER,
       ausfuehren: (_n, l) => processImageDemand(k, l),

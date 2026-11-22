@@ -1,5 +1,5 @@
 /** The public face of the area: others import only from here, the cut below stays free. */
-export { SignedIn as Angemeldet, TokenWish } from './loginFlow';
+export { SignedIn, TokenWish } from './loginFlow';
 export type { Account as AccountRow } from './repository/accounts';
 export { OVERLAP_MS, ownAccess, tokenDigest, rotationDue } from './deviceToken';
 export { assertLoginAllowed } from './loginCheck';
@@ -12,7 +12,7 @@ export {
   sessionIdleMs,
   sessionIdleSec,
   sessionMaxMs,
-  sitzungsfristen,
+  sessionDeadlines,
   sessionMaxDuration,
 } from './sessionDeadline';
 export type { AdminAction } from './adminLog';

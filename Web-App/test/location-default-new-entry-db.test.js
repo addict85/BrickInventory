@@ -21,7 +21,7 @@
  *      removed (i.e. an empty field again treated like silence)
  *      → `pass 6 / fail 2`. Red: “an explicitly cleared field stays
  *        empty”. That is the half that makes the star usable in the first place.
- *   C  `vorgabeVon` replaced by a version without the JOIN on storage_locations
+ *   C  `defaultOf` replaced by a version without the JOIN on storage_locations
  *      (only the number from the settings)
  *      → `pass 6 / fail 2`. Red: “a default whose place was deleted
  *        does not apply”. The healing lies in the JOIN, not here.
@@ -155,7 +155,7 @@ test('the storage location default applies to every new capture', { concurrency:
     assert.equal(
       await locationForNewEntry(UID, undefined),
       null,
-      'vorgabeVon() liest ueber einen JOIN auf den Vorrat — die Vorgabe heilt sich selbst',
+      'defaultOf() liest ueber einen JOIN auf den Vorrat — die Vorgabe heilt sich selbst',
     );
     await addManualPart(UID, { part_number: '3004', color_id: 4, quantity: 1 });
     assert.equal(await locationOfPart('3004'), null);

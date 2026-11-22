@@ -12,7 +12,7 @@
  * (security review round 13, H3). Counter-checks (measured 04.11.2026):
  *   A  in GET /sets/info the refusal for `platzhalter` deleted → red: “a
  *      foreign placeholder …”
- *   B  setStamm() always delivers `platzhalter` true → red: “an ordinary
+ *   B  setMaster() always delivers `platzhalter` true → red: “an ordinary
  *      number”, “a path word …” (the catalog entry no longer counts)
  *   C  the refusal without scope (every placeholder counts as foreign) → red: „ein
  *      eigener Platzhalter …“

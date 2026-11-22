@@ -55,8 +55,8 @@ test('first start via db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
   // Like server.ts: the access gets the first start along, which creates the first account.
   const modul = require(path.join(ROOT, 'dist', 'db', 'database.js'));
-  const db = modul.createDb(modul.dbKonfigFromEnvironment(), {
-    firstStart: () => require('./helpers/sources').testServices().account.putStartAdminAn(),
+  const db = modul.createDb(modul.dbConfigFromEnvironment(), {
+    firstStart: () => require('./helpers/sources').testServices().account.createStartAdmin(),
   });
   t.after(async () => {
     await db.pool.end().catch(() => {});

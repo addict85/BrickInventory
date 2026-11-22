@@ -21,7 +21,7 @@
  *   F  the import of startup/checkConfig removed from server.ts → red:
  *      “the server does not start with a wrong value” (stack trace from
  *      src/account/sessionDeadline instead of the message)
- *   G  (30.10.) in ladeKonfig `veraltet` always empty → red: “invalid values:
+ *   G  (30.10.) in loadConfig `veraltet` always empty → red: “invalid values:
  *      all at once, with names” (WEB_WORKERS was no longer named)
  *   H  (11.11.2026) in attestationWurzeln() the check for developmentEnvironment
  *      deleted → red: “own attestation roots only in development and test”
@@ -35,7 +35,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { databaseConnection, standardPasswordInUse, ladeKonfig, KonfigFehler, VARIABLES } = _req('src/infra/config.js');
+const { databaseConnection, standardPasswordInUse, loadConfig, ConfigError, VARIABLES } = _req('src/infra/config.js');
 const { ohneKommentare } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
@@ -110,18 +110,18 @@ test('nobody except the configuration reads process.env', () => {
 test('invalid values: all at once, with names', () => {
   assert.throws(
     () =>
-      ladeKonfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
+      loadConfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
     (/** @type {any} */ e) => {
-      assert.ok(e instanceof KonfigFehler);
+      assert.ok(e instanceof ConfigError);
       assert.deepEqual(
-        e.fehler.map(f => f.split('=')[0]),
+        e.error.map(f => f.split('=')[0]),
         ['APP_BASE_URL', 'PORT', 'COOKIE_SECURE', 'SESSION_IDLE_MINUTES'],
       );
       assert.match(e.message, /PORT="0" ist keine ganze Zahl von 1 bis 65535/);
       return true;
     },
   );
-  const k = ladeKonfig({
+  const k = loadConfig({
     PORT: '8080',
     ROLLE: 'Jobs',
     WEB_WORKERS: '3',
@@ -131,24 +131,24 @@ test('invalid values: all at once, with names', () => {
   assert.equal(k.port, 8080);
   assert.equal(k.rolle, 'jobs');
   assert.deepEqual(k.veraltet, ['WEB_WORKERS'], 'WEB_WORKERS wirkt nicht mehr, der Start nennt es');
-  assert.equal(ladeKonfig({}).rolle, 'beides', 'ohne Angabe ein Prozess für alles');
-  assert.throws(() => ladeKonfig({ ROLLE: 'primary' }), /ROLLE="primary" ist weder web noch jobs noch beides/);
+  assert.equal(loadConfig({}).rolle, 'beides', 'ohne Angabe ein Prozess für alles');
+  assert.throws(() => loadConfig({ ROLLE: 'primary' }), /ROLLE="primary" ist weder web noch jobs noch beides/);
   assert.equal(k.cookieSecure, false);
   assert.equal(k.appBaseUrl, 'https://lego.example.org');
-  assert.equal(ladeKonfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');
+  assert.equal(loadConfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');
 });
 
 test('own attestation roots only in development and test; the cutoff date is a date', () => {
-  assert.throws(() => ladeKonfig({ ATTESTATION_WURZELN: 'PEM' }), /ATTESTATION_WURZELN gilt nur mit NODE_ENV/);
-  assert.throws(() => ladeKonfig({ NODE_ENV: 'production', ATTESTATION_WURZELN: 'PEM' }), KonfigFehler);
-  assert.equal(ladeKonfig({ NODE_ENV: 'test', ATTESTATION_WURZELN: 'PEM' }).attestationWurzeln, 'PEM');
-  assert.equal(ladeKonfig({}).attestationWurzeln, null);
-  assert.equal(ladeKonfig({}).geraeteschluesselAltBis.toISOString(), '2027-02-01T00:00:00.000Z');
-  assert.equal(ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: '2026-01-01' }).geraeteschluesselAltBis.getUTCFullYear(), 2026);
-  assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: 'bald' }), /GERAETESCHLUESSEL_ALT_BIS="bald"/);
-  assert.equal(ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: '2027-02-01' }).geraeteschluesselAltBis.getUTCMonth(), 1);
+  assert.throws(() => loadConfig({ ATTESTATION_WURZELN: 'PEM' }), /ATTESTATION_WURZELN gilt nur mit NODE_ENV/);
+  assert.throws(() => loadConfig({ NODE_ENV: 'production', ATTESTATION_WURZELN: 'PEM' }), ConfigError);
+  assert.equal(loadConfig({ NODE_ENV: 'test', ATTESTATION_WURZELN: 'PEM' }).attestationWurzeln, 'PEM');
+  assert.equal(loadConfig({}).attestationWurzeln, null);
+  assert.equal(loadConfig({}).geraeteschluesselAltBis.toISOString(), '2027-02-01T00:00:00.000Z');
+  assert.equal(loadConfig({ GERAETESCHLUESSEL_ALT_BIS: '2026-01-01' }).geraeteschluesselAltBis.getUTCFullYear(), 2026);
+  assert.throws(() => loadConfig({ GERAETESCHLUESSEL_ALT_BIS: 'bald' }), /GERAETESCHLUESSEL_ALT_BIS="bald"/);
+  assert.equal(loadConfig({ GERAETESCHLUESSEL_ALT_BIS: '2027-02-01' }).geraeteschluesselAltBis.getUTCMonth(), 1);
   for (const spaeter of ['2027-02-02', '2099-12-31'])
-    assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: spaeter }), /liegt nach 2027-02-01/, spaeter);
+    assert.throws(() => loadConfig({ GERAETESCHLUESSEL_ALT_BIS: spaeter }), /liegt nach 2027-02-01/, spaeter);
 });
 
 test('the server does not start with a wrong value', () => {

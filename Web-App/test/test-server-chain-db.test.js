@@ -1,12 +1,12 @@
 /**
- * testServer (test/helpers/server.js) builds the app via baueApp like server.ts: what a
+ * testServer (test/helpers/server.js) builds the app via buildApp like server.ts: what a
  * test checks there runs through the same middleware chain as in production, not through
  * rebuilt routers.
  *
  * Counter-checks (measured 13.11.2026, each on its own):
  *   A  `app.use(onlyOwnOrigin)` removed in startup/app.ts → red:
  *      “foreign origin with session cookie: 403” (200 instead of 403)
- *   B  testServer again with own routers (routerServer instead of baueApp) → red:
+ *   B  testServer again with own routers (routerServer instead of buildApp) → red:
  *      all three cases (no CSP header, no refusal at the entrance, no foreign origin)
  *   C  the entrance lock (loginAtInbox) removed from apiInbox() in startup/app.ts
  *      → red: “an administrator without a second factor is rejected at the entrance”

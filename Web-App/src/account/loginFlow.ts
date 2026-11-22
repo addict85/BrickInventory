@@ -8,9 +8,9 @@ import { hintInBackground } from './accountNotice';
 import * as QR from './qrPairing';
 import { basisUrl, hintWithoutBaseUrl, viaTls } from '../infra/basisUrl';
 import { tlsStand } from '../infra/tlsWurzel';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import { passwordLack } from '../infra/passwordRule';
-import { versuche, valueOr } from '../infra/result';
+import { attempts, valueOr } from '../infra/result';
 import type { AccountContext } from './context';
 
 export type SignedIn = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
@@ -31,7 +31,7 @@ export async function loginResponse(
   if (withToken) {
     const permanent = wish.never_expires === true;
     // A token the database never saw would run into a 401 in the SSE channel.
-    const fresh = await versuche(
+    const fresh = await attempts(
       'login:token',
       createToken(k, uid, tokenLabel(wish.label, 'webapp-session'), permanent, null, {
         scope: tokenScope(wish.scope),
@@ -39,7 +39,7 @@ export async function loginResponse(
       }),
     );
     token = valueOr(fresh, null);
-    if (!token) fachfehler('intern', 'token_nicht_ausgestellt');
+    if (!token) failDomain('intern', 'token_nicht_ausgestellt');
     hintInBackground(k, uid, 'token_neu', tokenLabel(wish.label, 'webapp-session'));
   }
   // Administrator rights are carried by the session and a token with scope `voll`, not `app`.
@@ -78,7 +78,7 @@ export async function createQrAccess(k: AccountContext, uid: number, validity: u
   const basis = basisUrl();
   if (!basis) {
     hintWithoutBaseUrl('auth:qr', 'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
-    fachfehler('nicht_verfuegbar', 'qr_ohne_basis_url');
+    failDomain('nicht_verfuegbar', 'qr_ohne_basis_url');
   }
   // The QR code says how long the access will run: the bound applies here already.
   const days = tokenDays(k, runtimeDays(validity));
@@ -100,8 +100,8 @@ export async function createQrAccess(k: AccountContext, uid: number, validity: u
 export async function changeOwnPassword(k: AccountContext, uid: number, fresh: string, passkeysWiderrufen: boolean) {
   const konto = await k.konten.accountShort(uid);
   const mangel = passwordLack(fresh, konto?.username);
-  if (mangel) fachfehler('ungueltig', mangel);
-  await K.aendereEigenesPasswort(k, uid, fresh, { passkeysWiderrufen });
+  if (mangel) failDomain('ungueltig', mangel);
+  await K.changeOwnPassword(k, uid, fresh, { passkeysWiderrufen });
   hintInBackground(k, uid, 'passwort_geaendert');
   return konto;
 }

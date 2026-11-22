@@ -1,8 +1,8 @@
 import { reportError } from '../infra/error';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/partColor';
-import { fachfehler } from '../infra/errorTexts';
-import { versuche } from '../infra/result';
+import { failDomain } from '../infra/errorTexts';
+import { attempts } from '../infra/result';
 import type { PartsContext } from './context';
 
 // Fix a wrong color without re-entering the row.
@@ -27,7 +27,7 @@ async function fetchImageLater(k: PartsContext, partNumber: string, color: numbe
   if (local?.bildQuelle === 'farbe') return 'vorhanden';
 
   // The change already stands; a failed fetch only drops the image.
-  const info = await versuche('partColor:lookupPart', () => k.externalSources.quellen.lookupPart(partNumber, color));
+  const info = await attempts('partColor:lookupPart', () => k.externalSources.quellen.lookupPart(partNumber, color));
   if (!info.ok || !info.wert?.image_url) return null;
   try {
     await k.catalog.rememberPartColor(partNumber, color, null, null, info.wert.image_url, null);
@@ -56,10 +56,10 @@ export async function changePartColor(
   // own values only fill in what's missing there.
   const catalogColor = await k.partColor.rbColor(fresh);
 
-  const change = await k.transaktion(async (t): Promise<Omit<ColorChange, 'bild'>> => {
+  const change = await k.transact(async (t): Promise<Omit<ColorChange, 'bild'>> => {
     const source = await repo.lockManualPartRow(t.db, uid, partNumber, alt);
     if (!source) {
-      fachfehler('nicht_gefunden', 'teil_nicht_manuell');
+      failDomain('nicht_gefunden', 'teil_nicht_manuell');
     }
     // Same color is REPORTED rather than treated as success: otherwise a misclick
     // would look like a real change.

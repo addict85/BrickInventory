@@ -1,13 +1,13 @@
 /** The monitoring page reaches foreign services and jobs only from here, without a layer jump in the routes. */
 import fs from 'node:fs';
-import { AbrufFehler } from '../infra/fetch';
+import { FetchError } from '../infra/fetch';
 import { DAILY_JOBS } from './timesOfDay';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, reportError, withoutMissingFile } from '../infra/error';
-import { Degradations, versuche } from '../infra/result';
+import { errorMessage, reportError, withoutMissingFile } from '../infra/error';
+import { Degradations, attempts } from '../infra/result';
 import { requestsJeMinute } from '../images';
 import { asFetchError } from '../externalSources';
-import { fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { failDomain, type ErrorCode } from '../infra/errorTexts';
 import type { ManagementContext } from './context';
 
 const SOURCES: Record<string, (q: ManagementContext['externalSources']['quellen']) => Promise<void>> = {
@@ -29,7 +29,7 @@ function sourceRejection(e: unknown): ErrorCode {
   if (/nicht konfiguriert|nicht vollständig|not configured/i.test(text)) return 'quelle_ohne_schluessel';
   if (
     f.isTransient ||
-    (e instanceof AbrufFehler && (e.grund === 'netz' || e.grund === 'zeitlimit')) ||
+    (e instanceof FetchError && (e.grund === 'netz' || e.grund === 'zeitlimit')) ||
     /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|socket hang up/i.test(text)
   )
     return 'quelle_nicht_erreichbar';
@@ -43,12 +43,12 @@ export async function checkSource(
   source: string,
 ): Promise<{ code: ErrorCode; quelle: string; grund: string } | null> {
   const check = Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
-  if (!check) fachfehler('ungueltig', 'quelle_unbekannt');
+  if (!check) failDomain('ungueltig', 'quelle_unbekannt');
   try {
     await check(k.externalSources.quellen);
     return null;
   } catch (e) {
-    return { code: sourceRejection(e), quelle: SOURCE_NAME[source] ?? source, grund: fehlertext(e).slice(0, 200) };
+    return { code: sourceRejection(e), quelle: SOURCE_NAME[source] ?? source, grund: errorMessage(e).slice(0, 200) };
   }
 }
 
@@ -87,21 +87,21 @@ export async function clearCaches(k: ManagementContext, all: boolean) {
 export async function bricksetLimitSet(k: ManagementContext, alt: number, fresh: number) {
   if (!(fresh > alt)) return;
   // The new limit is saved; without a counter state the queue waits for the next run.
-  const rl = await versuche('management:kontingentUebersicht', k.externalSources.quotaStatus('brickset'));
+  const rl = await attempts('management:kontingentUebersicht', k.externalSources.quotaStatus('brickset'));
   if (!rl.ok) return;
   const rest = Math.max(0, fresh - (rl.wert.count || 0));
   if (rest <= 0) return;
   console.log(`[brickset] Limit erhöht ${alt}→${fresh}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
-  await k.externalSources.brickset.jetzt();
+  await k.externalSources.brickset.now();
 }
 
 export async function requeueInstructions(k: ManagementContext) {
-  const fehlend = await k.management.setsWithoutInstructions();
-  for (const { set_number } of fehlend) {
+  const absent = await k.management.setsWithoutInstructions();
+  for (const { set_number } of absent) {
     await k.catalog.deleteInstructions(set_number);
-    await k.catalog.anleitungEinreihen(set_number);
+    await k.catalog.enqueueInstruction(set_number);
   }
-  return fehlend.length;
+  return absent.length;
 }
 
 /** In the old format, so that the UI stays unchanged. */
@@ -115,7 +115,7 @@ export async function priceJobStatus(k: ManagementContext) {
     log?: unknown;
   } = {};
   try {
-    last = JSON.parse((await k.jobQueue.liesZustand('preis_job_stand')) ?? '{}');
+    last = JSON.parse((await k.jobQueue.readState('preis_job_stand')) ?? '{}');
   } catch (e) {
     reportError('management:preis-stand', e);
   }
@@ -152,12 +152,12 @@ export const runCatalogSyncNow = (k: ManagementContext) => k.jobQueue.pullPlanBe
 /** Even beyond the daily quota. */
 export async function retryBrickset(k: ManagementContext, sn: string) {
   await k.externalSources.setQuotaBack('brickset');
-  await k.externalSources.brickset.jetzt(sn);
+  await k.externalSources.brickset.now(sn);
 }
 
 export async function removeBrickset(k: ManagementContext, sn: string) {
   await k.externalSources.quellen.fromRetryQueue(sn);
-  await k.catalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
+  await k.catalog.enqueueInstruction(sn, { nurAusweichquelle: true });
 }
 
 /** The open scheduled job gets the new appointment immediately. */
@@ -170,7 +170,7 @@ export async function setJobSchedule(
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
-    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
+    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) failDomain('ungueltig', 'uhrzeit_ungueltig');
     await k.settings.setGlobalValue(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
@@ -181,7 +181,7 @@ export async function setJobSchedule(
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );
   } else {
-    fachfehler('ungueltig', 'unbekannter_job');
+    failDomain('ungueltig', 'unbekannter_job');
   }
   await rescheduleJobs(k);
 }
@@ -189,7 +189,7 @@ export async function setJobSchedule(
 export async function rescheduleJobs(k: ManagementContext) {
   await k.jobQueue.scheduleChanged('csv_sync');
   await k.jobQueue.scheduleChanged('preise');
-  await k.externalSources.brickset.prefer(await k.externalSources.brickset.dueAb(false));
+  await k.externalSources.brickset.prefer(await k.externalSources.brickset.dueFrom(false));
 }
 
 /** A set is finished with original AND preview; withdrawn negative results

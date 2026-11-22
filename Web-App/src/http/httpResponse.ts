@@ -6,15 +6,15 @@ import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'node:http';
 import { konfig } from '../infra/config';
 import {
-  FEHLER,
-  Fachfehler,
+  ERRORS,
+  DomainError,
   errorText,
   responseLanguage,
   fileError,
   type ErrorKind,
   type ErrorCode,
 } from '../infra/errorTexts';
-import { fehlertext } from '../infra/error';
+import { errorMessage } from '../infra/error';
 import { STATUS_THE_KIND, statusOf } from './errorKind';
 
 export interface ErrorTarget {
@@ -53,24 +53,24 @@ interface Thrown {
 }
 
 // Internals go to the log, not to the client.
-export function handleRouteError(res: ErrorTarget, fehler: unknown, status?: number, req?: ErrorSource): void {
-  const e = asUploadError(fehler) as Thrown | null | undefined;
+export function handleRouteError(res: ErrorTarget, error: unknown, status?: number, req?: ErrorSource): void {
+  const e = asUploadError(error) as Thrown | null | undefined;
   const code = status || statusOf(e);
   // Only the path says which route it was: one place often serves several.
   const wo = req?.originalUrl || req?.url;
   // Without line breaks: a path or text with a line break would otherwise fake a second log line.
-  const anfrage = wo ? `${req?.method || '?'} ${String(wo).split('?')[0]} `.replace(/\n|\r/g, '') : '';
+  const request = wo ? `${req?.method || '?'} ${String(wo).split('?')[0]} `.replace(/\n|\r/g, '') : '';
   const isServerError = code >= 500;
   // A 4xx is an answer, not a server error: with a stack every wrong
   // input would fill the log and hide the real errors.
-  if (isServerError) console.error('[route-error] %s%d:', anfrage, code, e?.stack || e?.message || e);
-  else console.warn('[route-warnung] %s%d: %s', anfrage, code, fehlertext(fehler).replace(/\n|\r/g, ''));
+  if (isServerError) console.error('[route-error] %s%d:', request, code, e?.stack || e?.message || e);
+  else console.warn('[route-warnung] %s%d: %s', request, code, errorMessage(error).replace(/\n|\r/g, ''));
   if (res.headersSent) return;
   // Helpers throw the REASON (code); only here does it become a sentence in the
   // requester's language.
-  if (typeof e?.code === 'string' && e.code in FEHLER) {
+  if (typeof e?.code === 'string' && e.code in ERRORS) {
     res.status(code).json({
-      ...(e instanceof Fachfehler ? e.extra : undefined),
+      ...(e instanceof DomainError ? e.extra : undefined),
       success: false,
       code: e.code,
       error: errorText(e.code as ErrorCode, responseLanguage(req), e.vars),
@@ -85,10 +85,10 @@ export function handleRouteError(res: ErrorTarget, fehler: unknown, status?: num
   }
   // Every error response carries a code so that the apps do not guess from the sentence.
   // Only development sees the exception's text; in production it names internals.
-  const kennung: ErrorCode = isServerError ? 'interner_fehler' : 'anfrage_ungueltig';
+  const key: ErrorCode = isServerError ? 'interner_fehler' : 'anfrage_ungueltig';
   const message =
-    isServerError && konfig().operation ? errorText('interner_fehler', responseLanguage(req)) : fehlertext(e);
-  res.status(code).json({ success: false, code: kennung, error: message });
+    isServerError && konfig().operation ? errorText('interner_fehler', responseLanguage(req)) : errorMessage(e);
+  res.status(code).json({ success: false, code: key, error: message });
 }
 
 /** SQLSTATE of the integrity rules → response. The log still names the violated rule. */

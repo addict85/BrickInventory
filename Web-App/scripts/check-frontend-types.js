@@ -28,17 +28,17 @@ function pruefe(config, extra = []) {
 if (require.main === module) {
   let sum = 0;
   /** @type {Record<string, string[]>} */
-  const ergebnis = {};
+  const result = {};
   for (const c of RUNS) {
     const m = pruefe(c);
-    ergebnis[c] = m;
+    result[c] = m;
     sum += m.length;
     if (!process.argv.includes('--json')) {
       for (const z of m) console.error(z);
       console.log(`[typecheck:frontend] ${c}: ${m.length} Meldungen`);
     }
   }
-  if (process.argv.includes('--json')) console.log(JSON.stringify(ergebnis));
+  if (process.argv.includes('--json')) console.log(JSON.stringify(result));
   process.exit(sum ? 1 : 0);
 }
 

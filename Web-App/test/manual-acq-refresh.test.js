@@ -375,7 +375,7 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   // old unit price — the row showed two pieces at the price of the first.
   const src = require('./helpers/sources').kompakt(require('./helpers/sources').setCoreSource());
   const fn = src.slice(
-    src.indexOf('async function entriesAnQuantityAlign'),
+    src.indexOf('async function alignEntriesToQuantity'),
     src.indexOf('async function writeInLastEntry'),
   );
   assert.doesNotMatch(
@@ -400,7 +400,7 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   // The checked RULE is unchanged: determine the price (network call), THEN lock.
   assert.match(
     src,
-    /const plan = [\s\S]{0,120}priceForNewEntry\(sk, ziel, sn\)[\s\S]{0,400}sk\.transaktion\(/,
+    /const plan = [\s\S]{0,120}priceForNewEntry\(sk, target, sn\)[\s\S]{0,400}sk\.transact\(/,
     'In changeSet muss der Preis VOR der Sperre stehen',
   );
   assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');
@@ -417,12 +417,12 @@ test('a quantity change runs under the inventory lock', () => {
   // Target is the account `ziel` — the rule stays: ONE locked transaction for quantity and acquisitions.
   assert.match(
     fn,
-    /sperren: \[\{ konto: ziel, schluessel: sn \}\]/,
+    /sperren: \[\{ konto: target, schluessel: sn \}\]/,
     'Menge und Erfassungen gehören in EINE gesperrte Transaktion',
   );
   assert.doesNotMatch(
     fn,
-    /entriesAnQuantityAlign\([^)]*\)\.catch\(/,
+    /alignEntriesToQuantity\([^)]*\)\.catch\(/,
     'Ein verschluckter Fehler hinterlässt eine Menge ohne passende Erfassungen',
   );
   assert.doesNotMatch(

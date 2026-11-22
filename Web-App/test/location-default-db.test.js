@@ -53,21 +53,21 @@ test('storage location default against a real database', async t => {
   const bestand = require('./helpers/sources').testArea('inventory');
   const L = { ..._req('src/inventory/storageLocation.js'), ...bestand.locationService, setDefault: bestand.setDefault };
 
-  const estrich = (await L.putLocationAn(U.ich, 'Estrich')).ort;
-  const cellar = (await L.putLocationAn(U.ich, 'Keller')).ort;
-  const fremd = (await L.putLocationAn(U.kind, 'Kinderzimmer')).ort;
+  const estrich = (await L.createStorage(U.ich, 'Estrich')).ort;
+  const cellar = (await L.createStorage(U.ich, 'Keller')).ort;
+  const fremd = (await L.createStorage(U.kind, 'Kinderzimmer')).ort;
 
   await t.test('without a star there is no default', async () => {
     // The initial state, and it is a statement of its own: a UI
     // that got a place here would preselect something on the first capture
     // that nobody set.
-    assert.equal(await L.vorgabeVon(U.ich), null);
+    assert.equal(await L.defaultOf(U.ich), null);
   });
 
   await t.test('the star sets the default and it reads back', async () => {
     const gesetzt = await L.setDefault(U.ich, estrich.id);
     assert.equal(gesetzt.name, 'Estrich');
-    const gelesen = await L.vorgabeVon(U.ich);
+    const gelesen = await L.defaultOf(U.ich);
     assert.equal(gelesen?.id, estrich.id);
     assert.equal(gelesen?.name, 'Estrich');
   });
@@ -77,7 +77,7 @@ test('storage location default against a real database', async t => {
     // question without an answer when capturing. That this holds without any effort is the
     // gain from storing it in user_settings (one key, one value).
     await L.setDefault(U.ich, cellar.id);
-    assert.equal((await L.vorgabeVon(U.ich))?.name, 'Keller');
+    assert.equal((await L.defaultOf(U.ich))?.name, 'Keller');
     const n = (
       await db.get(`SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`, [U.ich, L.DEFAULT_KEY])
     ).c;
@@ -96,7 +96,7 @@ test('storage location default against a real database', async t => {
       'Ein fremder Ort liess sich als eigene Vorgabe setzen',
     );
     assert.equal(
-      (await L.vorgabeVon(U.ich))?.name,
+      (await L.defaultOf(U.ich))?.name,
       'Estrich',
       'Die abgelehnte Zuweisung hat die bestehende Vorgabe veraendert',
     );
@@ -106,8 +106,8 @@ test('storage location default against a real database', async t => {
     // The statement this file exists for. There is NO line in
     // benenneOrtUm that updates the default — it does not need one, because
     // the ID is stored. With the name this would be red.
-    await L.benenneOrtUm(U.ich, estrich.id, 'Dachboden');
-    const v = await L.vorgabeVon(U.ich);
+    await L.renameStorage(U.ich, estrich.id, 'Dachboden');
+    const v = await L.defaultOf(U.ich);
     assert.equal(v?.id, estrich.id, 'Die Vorgabe zeigt nach dem Umbenennen ins Leere');
     assert.equal(
       v?.name,
@@ -115,18 +115,18 @@ test('storage location default against a real database', async t => {
       'Die Vorgabe traegt noch den alten Namen — dann steht beim Erfassen ein ' +
         'Ort, den die Auswahlliste nicht mehr kennt',
     );
-    await L.benenneOrtUm(U.ich, estrich.id, 'Estrich');
+    await L.renameStorage(U.ich, estrich.id, 'Estrich');
   });
 
   await t.test('DELETE: the default is gone, not broken', async () => {
     // The second statement. A place can only be deleted when nothing lies
     // in it (loescheOrt) — hence an own, empty place for this probe.
-    const kiste = (await L.putLocationAn(U.ich, 'Kiste 7')).ort;
+    const kiste = (await L.createStorage(U.ich, 'Kiste 7')).ort;
     await L.setDefault(U.ich, kiste.id);
-    assert.equal((await L.vorgabeVon(U.ich))?.name, 'Kiste 7');
-    await L.loescheOrt(U.ich, kiste.id);
+    assert.equal((await L.defaultOf(U.ich))?.name, 'Kiste 7');
+    await L.deleteStorage(U.ich, kiste.id);
     assert.equal(
-      await L.vorgabeVon(U.ich),
+      await L.defaultOf(U.ich),
       null,
       'Nach dem Loeschen des Ortes meldet die Vorgabe noch etwas — sie heilt ' +
         'sich also nicht selbst, und die Oberflaeche waehlt einen Ort vor, den ' +
@@ -147,9 +147,9 @@ test('storage location default against a real database', async t => {
 
   await t.test('the star can be switched off again', async () => {
     await L.setDefault(U.ich, cellar.id);
-    assert.equal((await L.vorgabeVon(U.ich))?.name, 'Keller');
+    assert.equal((await L.defaultOf(U.ich))?.name, 'Keller');
     assert.equal(await L.setDefault(U.ich, null), null);
-    assert.equal(await L.vorgabeVon(U.ich), null, 'Der Stern liess sich nicht loeschen');
+    assert.equal(await L.defaultOf(U.ich), null, 'Der Stern liess sich nicht loeschen');
     const n = (
       await db.get(`SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`, [U.ich, L.DEFAULT_KEY])
     ).c;

@@ -1,5 +1,5 @@
 import { getSetValue } from './setValue';
-import { preisFuerSetHolen } from './priceRun';
+import { fetchPriceForSet } from './priceRun';
 import {
   DEFAULT_PRICE_CONDITION,
   fetchPartPrice,
@@ -15,7 +15,7 @@ import { NO_COLOR, zustand } from '../infra/validate';
 import type { FinancesContext } from './context';
 
 // A leaf without back references, so that callers import properly instead of late with require().
-export async function aktuellerMarktpreis(
+export async function currentMarketPrice(
   k: FinancesContext,
   setNumber: string,
   userId: number,
@@ -26,7 +26,7 @@ export async function aktuellerMarktpreis(
   const effectiveCond = condition || (await k.einstellungen.userDefaultCondition(userId));
   // condition as a hint: when creating, there is no acquisition yet from which
   // the price run could read the condition.
-  await preisFuerSetHolen(k, setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
+  await fetchPriceForSet(k, setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
 
   // An explicitly requested condition applies exactly as is: when creating there is
   // no acquisition yet from which getSetValue() could derive it.
@@ -85,8 +85,8 @@ export async function marketPricesFromCacheForMinifigs(
   }
 
   for (const f of minifigs) {
-    const nummer = String(f.fig_number ?? '');
-    if (!nummer) continue;
+    const num = String(f.fig_number ?? '');
+    if (!num) continue;
     const zst = zustand(f.condition);
     const anders = zst === 'N' ? 'U' : 'N';
     // Order as in the valuation; for many older figures BrickLink lists
@@ -95,11 +95,11 @@ export async function marketPricesFromCacheForMinifigs(
       for (const c of [zst, anders]) {
         const wert = cache.get(`${k}|${c}`);
         if (wert != null) {
-          hits.set(nummer, wert);
+          hits.set(num, wert);
           break;
         }
       }
-    if (hits.has(nummer)) continue;
+    if (hits.has(num)) continue;
   }
   return hits;
 }
@@ -273,7 +273,7 @@ export async function estimateMinifigsPrice(
     const abdeckung = Math.round((priced / parts.length) * 1000) / 1000;
     // Together, as for sets (savePrice): a cache without a history point would hold back
     // the next estimate. An error ends below as a message without an estimate.
-    await k.transaktion(async t => {
+    await k.transact(async t => {
       await t.marktpreise.rememberEstimatedMinifigsPrice(figNumber, cond, currency, total, abdeckung);
       await t.marktpreise.rememberEstimatedMinifigsHistory(figNumber, cond, currency, total, abdeckung);
     });

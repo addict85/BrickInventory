@@ -1,6 +1,6 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { withValue, buildArea, type Inspect } from '../infra/area';
-import { Faecher } from '../infra/cache';
+import { bound, buildArea, type Inspect } from '../infra/area';
+import { Compartments } from '../infra/cache';
 import * as service from './service';
 import * as pdfTicket from './pdfTicket';
 import { encryptLegacyVoucherFiles } from './voucherFiles';
@@ -10,21 +10,21 @@ export type { VoucherDependencies, VoucherContext } from './context';
 
 export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, inspect?: Inspect<VoucherContext>) {
   return buildArea(
-    { ...a, faecher: new Faecher() },
+    { ...a, faecher: new Compartments() },
     access,
     (k: VoucherContext) => ({
-      changeVoucher: withValue(k)(service.changeVoucher),
-      voucherPlaintext: withValue(k)(service.voucherPlaintext),
-      releasePdf: withValue(k)(service.releasePdf),
-      releaseExport: withValue(k)(service.releaseExport),
-      checkBalance: withValue(k)(service.checkBalance),
-      voucherList: withValue(k)(service.voucherList),
-      createVoucher: withValue(k)(service.createVoucher),
-      deleteVoucher: withValue(k)(service.deleteVoucher),
-      voucherFromPdf: withValue(k)(service.voucherFromPdf),
-      exportVouchers: withValue(k)(service.exportVouchers),
-      voucherPdf: withValue(k)(service.voucherPdf),
-      redeemTicket: withValue(k)(pdfTicket.redeemTicket),
+      changeVoucher: bound(k)(service.changeVoucher),
+      voucherPlaintext: bound(k)(service.voucherPlaintext),
+      releasePdf: bound(k)(service.releasePdf),
+      releaseExport: bound(k)(service.releaseExport),
+      checkBalance: bound(k)(service.checkBalance),
+      voucherList: bound(k)(service.voucherList),
+      createVoucher: bound(k)(service.createVoucher),
+      deleteVoucher: bound(k)(service.deleteVoucher),
+      voucherFromPdf: bound(k)(service.voucherFromPdf),
+      exportVouchers: bound(k)(service.exportVouchers),
+      voucherPdf: bound(k)(service.voucherPdf),
+      redeemTicket: bound(k)(pdfTicket.redeemTicket),
       encryptLegacyFiles: encryptLegacyVoucherFiles,
       // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
       reencryptNumbers: k.vouchers.reencryptNumbers,

@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { NO_COLOR } from '../infra/validate';
-import { versuche } from '../infra/result';
-import { anleitungEinreihen } from './instructionJob';
+import { attempts } from '../infra/result';
+import { enqueueInstruction } from './instructionJob';
 import type { CatalogContext } from './context';
 
 export async function imagesForFollowUp(k: CatalogContext) {
@@ -19,7 +19,7 @@ export async function imagesForFollowUp(k: CatalogContext) {
 
 /** Existing data stays. @returns whether Brickset knows the set */
 export async function fillFromBrickset(k: CatalogContext, setNumber: string): Promise<boolean> {
-  const info = await k.externalSources.quellen.setAngaben(setNumber);
+  const info = await k.externalSources.quellen.setDetails(setNumber);
   if (!info) return false;
   // If it fails, it throws: the job tries again instead of leaving the set nameless.
   await k.bildlage.fillSetGaps(setNumber, info);
@@ -74,7 +74,7 @@ export async function imagesFromCatalog<T extends ImageItem>(
 export async function backfillInstructions(k: CatalogContext): Promise<void> {
   const missing = await k.bildlage.setsWithoutInstructionFetch();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
-  for (const set_number of missing) await anleitungEinreihen(k, set_number);
+  for (const set_number of missing) await enqueueInstruction(k, set_number);
 }
 
 /** The UI only loads from images/sets via image_local; without the entry
@@ -96,7 +96,7 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
   for (const { set_number, image_url } of missing) {
     // Only 404/410 means "does not exist"; throttling ends the run, everything else is tried by the next one.
     const info: { status?: number } = {};
-    const r = await versuche('nachlauf:setBildHerunterladen', k.images.setBildLaden(image_url, set_number, info));
+    const r = await attempts('nachlauf:setBildHerunterladen', k.images.loadSetImage(image_url, set_number, info));
     const local = r.ok ? r.wert : null;
     if (!local && (info.status === 404 || info.status === 410))
       k.images.rememberMissing('set:' + set_number, `HTTP ${info.status} vom CDN`);
@@ -105,9 +105,9 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
       break;
     }
     // A failure counts in the summary; the next run finds the image without an entry again.
-    if (local && !(await versuche(`bilder:set ${set_number}`, k.bildlage.rememberSetImageLocal(set_number, local))).ok)
+    if (local && !(await attempts(`bilder:set ${set_number}`, k.bildlage.rememberSetImageLocal(set_number, local))).ok)
       failed++;
-    if (local && !(await versuche('nachlauf:vorschauErzeugenAus', k.images.createPreview(local))).ok) failed++;
+    if (local && !(await attempts('nachlauf:vorschauErzeugenAus', k.images.createPreview(local))).ok) failed++;
     await new Promise(r => setTimeout(r, 300));
   }
   console.log(`[set-img-bg] Done${failed ? `, ${failed} Schritte gescheitert` : ''}`);
@@ -133,11 +133,11 @@ export async function backfillThumbnails(k: CatalogContext): Promise<void> {
     const d = file(web);
     return d ? [{ web, datei: d }] : [];
   });
-  await versuche('nachlauf:vorschauen einpassen', k.images.fitTailoredPreviews(local));
+  await attempts('nachlauf:vorschauen einpassen', k.images.fitTailoredPreviews(local));
   for (const { web: localPath, datei: fsPath } of local) {
     const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
     if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
-    if ((await versuche('nachlauf:vorschauErzeugenAus', k.images.createPreview(localPath))).ok) generated++;
+    if ((await attempts('nachlauf:vorschauErzeugenAus', k.images.createPreview(localPath))).ok) generated++;
     else failed++;
     if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
   }

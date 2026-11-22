@@ -9,7 +9,7 @@
  *      Datei', 400)` → red: “empty CSV file: English and with code”
  *   B  buildJobStatus() without translating the lines → red: “line errors
  *      in the import state in the reader's language”
- *   C  kaufpreisSpalten() without kaufpreis_original → red: “foreign currency:
+ *   C  purchasePriceColumns() without kaufpreis_original → red: “foreign currency:
  *      amount and currency are shown”
  *   D  catalogRow() again only with the own account ID → red: “catalog:
  *      set of the sub-account is present”

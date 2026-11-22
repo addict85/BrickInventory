@@ -9,10 +9,10 @@ const { testServices } = require('./sources');
 
 const PASSWORT = 'Fabrik-Passwort-2026';
 
-/** An account via konto.putAccountAn (without administrator: the log names none).
+/** An account via konto.createAccount (without administrator: the log names none).
  * @param {string} name @param {{ verwalter?: boolean }} [o] @returns {Promise<number>} */
 async function konto(name, o = {}) {
-  const id = await testServices().account.putAccountAn(null, name, PASSWORT, !!o.verwalter);
+  const id = await testServices().account.createAccount(null, name, PASSWORT, !!o.verwalter);
   if (id === null) throw new Error(`Konto „${name}“ gibt es schon`);
   return id;
 }
@@ -27,11 +27,11 @@ async function subAccount(haupt, unter) {
   if (r?.fehler) throw new Error(`Einlösen abgewiesen: ${r.fehler}`);
 }
 
-/** A set with one entry via sets.setErfassen, booked at the account `besitzer`.
+/** A set with one entry via sets.acquireSet, booked at the account `besitzer`.
  * @param {number} besitzer @param {string} setNumber
  * @param {{ menge?: number, preis?: number | null, zustand?: 'N' | 'U' }} [o] */
 async function setRecorded(besitzer, setNumber, o = {}) {
-  return testServices().sets.setErfassen({
+  return testServices().sets.acquireSet({
     requester: besitzer,
     ownerWish: besitzer,
     setNumber,

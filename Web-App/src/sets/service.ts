@@ -2,13 +2,13 @@
 import { deleteSetRows } from './delete';
 import { toCsv } from '../infra/csvExport';
 import { bookEntry } from './addSet';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import { inventoryQuantity, zustand } from '../infra/validate';
 import * as repo from './repository/sets';
 import type { Input } from '../contract';
-import { versuche, valueOr, Degradations } from '../infra/result';
+import { attempts, valueOr, Degradations } from '../infra/result';
 import { normalizeLocation } from '../inventory';
-import { normalisiereSetNummer } from '../infra/setNumber';
+import { normalizeSetNumber } from '../infra/setNumber';
 import * as detailRepo from './repository/setDetail';
 import type { SetsContext } from './context';
 export type { CatalogPart, ListenTeil, SetMaster } from './rows';
@@ -20,25 +20,25 @@ export type { CatalogPart, ListenTeil, SetMaster } from './rows';
  * src/inventory/purchasePriceBackfill.ts fills it in later. */
 async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: string) {
   // Via the scope: with a bare ID the main account would not find the sub-account's set.
-  const scope = valueOr(await versuche('sets:kaufpreis-blickfeld', sk.household.scopeIds(userId)), [userId]);
+  const scope = valueOr(await attempts('sets:kaufpreis-blickfeld', sk.household.scopeIds(userId)), [userId]);
   const cond = await sk.finances.setState(scope, setNumber);
   // The ACCOUNT's currency: the price is looked up and stored in it.
   const currency = String(await sk.einstellungen.userValue(userId, 'currency', 'EUR'));
   const cached = valueOr(
-    await versuche('set-service:cached', sk.finances.marketPriceFromCache(setNumber, currency, cond)),
+    await attempts('set-service:cached', sk.finances.marketPriceFromCache(setNumber, currency, cond)),
     null,
   );
   let pp = cached?.marktpreis || null;
   if (!pp)
     pp = valueOr(
-      await versuche('set-service:aktuellerMarktpreis', sk.finances.aktuellerMarktpreis(setNumber, userId, cond)),
+      await attempts('set-service:aktuellerMarktpreis', sk.finances.currentMarketPrice(setNumber, userId, cond)),
       null,
     );
   if (!pp) {
     // The history fills the gap when cache and BrickLink quota come up empty during CSV import; otherwise
     // the acquisition would be created without a purchase price.
     const hist = valueOr(
-      await versuche('set-service:hist', sk.finances.marketPriceFromHistory(setNumber, currency, cond)),
+      await attempts('set-service:hist', sk.finances.marketPriceFromHistory(setNumber, currency, cond)),
       null,
     );
     pp = hist?.marktpreis || null;
@@ -100,8 +100,8 @@ async function alignEntriesToQuantity(
     const take = Math.min(r.quantity, -delta);
     const row = await repo.setEntryAsJson(sk.db, r.id);
     if (row) entfallen.push({ ...row, quantity: take });
-    if (take >= r.quantity) await sk.inventory.erfassung.loesche('set', r.id, userId);
-    else await sk.inventory.erfassung.aendere('set', r.id, [userId], { menge: r.quantity - take });
+    if (take >= r.quantity) await sk.inventory.erfassung.remove('set', r.id, userId);
+    else await sk.inventory.erfassung.change('set', r.id, [userId], { menge: r.quantity - take });
     delta += take;
   }
   return entfallen;
@@ -134,10 +134,10 @@ async function writeInLastEntry(
 
 export async function changeSet(sk: SetsContext, uid: number, sn: string, body: Input<'PUT /api/v1/sets/:setNumber'>) {
   // WRITE scope instead of the own ID, otherwise a set of the sub-account would find no row.
-  const _wids = await sk.household.schreibbereich(uid);
+  const _wids = await sk.household.writeScope(uid);
   // The OWN row wins, otherwise the table order would decide.
   const existing = await repo.setRowInWriteField(sk.db, _wids, sn, uid);
-  if (!existing) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
+  if (!existing) failDomain('nicht_gefunden', 'set_nicht_gefunden');
   // From here on the OWNER counts, otherwise acquisitions would arise in the wrong account.
   const ownerId = parseInt(String(existing.user_id), 10);
 
@@ -152,10 +152,10 @@ export async function changeSet(sk: SetsContext, uid: number, sn: string, body: 
     // Relative, so that two concurrent "+1" yield two instead of overwriting each other.
     const delta = hatDelta ? Number(body.quantity_delta) : null;
     if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999))
-      fachfehler('ungueltig', 'wert_ungueltig');
+      failDomain('ungueltig', 'wert_ungueltig');
     // In the household every quantity belongs to one account; without a value to the own one. A foreign one only in the write scope.
     const target = body.owner_user_id == null ? uid : Number(body.owner_user_id);
-    if (!_wids.includes(target)) fachfehler('verboten', 'kein_schreibrecht');
+    if (!_wids.includes(target)) failDomain('verboten', 'kein_schreibrecht');
     const desiredTotal = delta === null ? inventoryQuantity(body.quantity) : null;
     const readField = await sk.household.scopeIds(uid);
     // The household is displayed, only the target account is changed.
@@ -172,12 +172,12 @@ export async function changeSet(sk: SetsContext, uid: number, sn: string, body: 
       upfront.eigenZiel > upfront.ownBefore
         ? await ab.orElse('kaufpreis', priceForNewEntry(sk, target, sn), { price: null, condition: 'N' })
         : { price: null, condition: 'N' };
-    await sk.transaktion(
+    await sk.transact(
       async t => {
         const { ownBefore, eigenZiel } = await eigenesZiel(t);
         if (eigenZiel === ownBefore) return;
         // If the set so far only belonged to another account, the adjustment would otherwise come to nothing.
-        if (ownBefore === 0 && eigenZiel > 0) await t.inventory.putSetAn(target, sn);
+        if (ownBefore === 0 && eigenZiel > 0) await t.inventory.createSet(target, sn);
         // Quantity 0 goes through the trash, so that a typo can be undone.
         if (eigenZiel === 0) {
           entfallen = droppedResponse(await repo.setEntriesAsJson(t.db, target, sn));
@@ -201,7 +201,7 @@ export async function changeSet(sk: SetsContext, uid: number, sn: string, body: 
       // Condition of the LAST acquisition, otherwise the price for "new" would come. No catch: after a read error
       // the new price would otherwise go into a used set.
       const lastCond = await repo.stateNewestSetEntry(sk.db, ownerId, sn);
-      pp = await sk.finances.aktuellerMarktpreis(sn, ownerId, lastCond?.condition || null);
+      pp = await sk.finances.currentMarketPrice(sn, ownerId, lastCond?.condition || null);
     }
     const val = pp !== null && !Number.isNaN(pp) ? pp : null;
     await writeInLastEntry(sk, 'purchase_price', val, ownerId, sn);
@@ -248,7 +248,7 @@ export async function setBelongsAccount(sk: SetsContext, uid: number, sn: string
  * it for everyone who looks into it. */
 export async function setLocationOfSets(sk: SetsContext, uid: number, sn: string, storage: string | null | undefined) {
   const ort = normalizeLocation(storage);
-  const n = await sk.inventory.locationService.setLocation('set', { schreiber: uid }, [normalisiereSetNummer(sn)], ort);
+  const n = await sk.inventory.locationService.setLocation('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
   return { ort, n };
 }
 
@@ -257,7 +257,7 @@ export async function setLocationOfSets(sk: SetsContext, uid: number, sn: string
 export async function locationsWithDefault(sk: SetsContext, uid: number, owner: string | undefined) {
   const [orte, vorgabe] = await Promise.all([
     sk.inventory.locationsFor(uid, owner),
-    sk.inventory.locationService.vorgabeVon(uid),
+    sk.inventory.locationService.defaultOf(uid),
   ]);
   return { orte, vorgabe };
 }

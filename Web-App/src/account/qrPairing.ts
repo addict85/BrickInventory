@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 import { createToken, tokenDigest, ipArea } from './deviceToken';
 import { tokenLabel } from './tokenRequest';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import type { AccountContext } from './context';
 
 export type { QrStand } from './repository/qrPairing';
@@ -23,8 +23,8 @@ export async function create(
   await k.qrKopplung.cleanQrPairingsOn();
   const nonce = crypto.randomBytes(32).toString('base64url');
   const bis = new Date(k.uhr.jetzt() + QR_TTL_MS);
-  const kopplung = await k.qrKopplung.putQrPairingAn(tokenDigest(nonce), uid, bis, days, OPEN_PAIRINGS_AT_MOST);
-  if (kopplung === null) fachfehler('nicht_verfuegbar', 'server_ausgelastet');
+  const kopplung = await k.qrKopplung.createQrPairing(tokenDigest(nonce), uid, bis, days, OPEN_PAIRINGS_AT_MOST);
+  if (kopplung === null) failDomain('nicht_verfuegbar', 'server_ausgelastet');
   return { token: `bim:${nonce}`, kopplung };
 }
 
@@ -37,7 +37,7 @@ export async function reportDevice(
   if (typeof token !== 'string' || !token.startsWith('bim:')) return null;
   const abholung = crypto.randomBytes(32).toString('base64url');
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-  const z = await k.qrKopplung.melde(tokenDigest(token.slice(4)), {
+  const z = await k.qrKopplung.report(tokenDigest(token.slice(4)), {
     abholung: tokenDigest(abholung),
     codeHash: tokenDigest(code),
     geraet: tokenLabel(device, 'Android App'),
@@ -68,10 +68,10 @@ export async function fetchQrToken(
 ): Promise<Pickup> {
   const z = await rowTo(k, abholung);
   if (z?.stand === 'wartet') return { stand: 'wartet' };
-  if (z?.stand === 'abgelehnt') fachfehler('verboten', 'qr_abgelehnt');
-  if (z?.stand !== 'bestaetigt' || !(await may(z.user_id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
+  if (z?.stand === 'abgelehnt') failDomain('verboten', 'qr_abgelehnt');
+  if (z?.stand !== 'bestaetigt' || !(await may(z.user_id))) failDomain('nicht_angemeldet', 'token_ungueltig');
   if (preview) return { stand: 'bereit', uid: z.user_id };
-  if (!(await k.qrKopplung.markPickedUp(z.id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
+  if (!(await k.qrKopplung.markPickedUp(z.id))) failDomain('nicht_angemeldet', 'token_ungueltig');
   const token = await createToken(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? null, {
     scope: 'app',
     ip,
@@ -107,14 +107,14 @@ export async function confirmPairing(
   code: string | number | null | undefined,
 ): Promise<void> {
   const z = await k.qrKopplung.qrPairingOfAccount(kopplung, uid);
-  if (!z) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  if (z.stand !== 'wartet') fachfehler('konflikt', 'qr_nicht_wartend');
+  if (!z) failDomain('nicht_gefunden', 'nicht_gefunden');
+  if (z.stand !== 'wartet') failDomain('konflikt', 'qr_nicht_wartend');
   if (!codeFits(z.code_hash, code)) {
-    if ((await k.qrKopplung.countQrFailedAttempt(z.id)) < QR_FAILED_ATTEMPTS) fachfehler('ungueltig', 'qr_code_falsch');
+    if ((await k.qrKopplung.countQrFailedAttempt(z.id)) < QR_FAILED_ATTEMPTS) failDomain('ungueltig', 'qr_code_falsch');
     await k.qrKopplung.markRejected(z.id);
-    fachfehler('verboten', 'qr_abgelehnt');
+    failDomain('verboten', 'qr_abgelehnt');
   }
-  if (!(await k.qrKopplung.markConfirmed(z.id))) fachfehler('konflikt', 'qr_nicht_wartend');
+  if (!(await k.qrKopplung.markConfirmed(z.id))) failDomain('konflikt', 'qr_nicht_wartend');
 }
 
 export async function rejectPairing(k: AccountContext, kopplung: number, uid: number): Promise<boolean> {

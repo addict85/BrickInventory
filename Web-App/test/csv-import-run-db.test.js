@@ -46,7 +46,7 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
   /** @type {() => void} */
   let loslassen = () => {};
-  /** Holds the lock of setErfassen() for `sn` until loslassen(); returns the end of the transaction. */
+  /** Holds the lock of acquireSet() for `sn` until loslassen(); returns the end of the transaction. */
   const hold = async (/** @type {string} */ sn) => {
     /** @type {Promise<unknown>} */
     let ende = Promise.resolve();
@@ -70,7 +70,7 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
         `${praefix}%`,
       ])
     ).map((/** @type {any} */ z) => z.set_number);
-  testImageWorker(t, { setBildLaden: async () => null });
+  testImageWorker(t, { loadSetImage: async () => null });
   const NAME = `csvlauf-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;

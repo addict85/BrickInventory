@@ -34,7 +34,7 @@ test('the import opens no pool', () => {
     pg.Pool = class extends Echt { constructor(...a) { n++; super(...a); } };
     const db = require(${JSON.stringify(path.join(DIST, 'db', 'database.js'))});
     const nachImport = n;
-    const eigener = db.createDb(db.dbKonfigFromEnvironment());
+    const eigener = db.createDb(db.dbConfigFromEnvironment());
     const nachFabrik = n;
     console.log(JSON.stringify([nachImport, nachFabrik]));
     eigener.pool.end().then(() => process.exit(0));`;
@@ -55,8 +55,8 @@ test('two accesses, two transactions', async t => {
     return;
   }
   const modul = require(path.join(DIST, 'db', 'database.js'));
-  const a = modul.createDb(modul.dbKonfigFromEnvironment()),
-    b = modul.createDb(modul.dbKonfigFromEnvironment());
+  const a = modul.createDb(modul.dbConfigFromEnvironment()),
+    b = modul.createDb(modul.dbConfigFromEnvironment());
   t.after(async () => {
     await a.pool.end();
     await b.pool.end();

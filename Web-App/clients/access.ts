@@ -25,7 +25,7 @@ export interface ClientsAccess {
   /** @returns vorgemerkt: false if the set was already queued too often. */
   bricksetReserve(
     setNumber: string,
-    fehler: string,
+    error: string,
     bald: boolean,
   ): Promise<{ versuch: number; vorgemerkt: boolean; hoechstens: number }>;
   bricksetForgotten(setNumber: string): Promise<void>;

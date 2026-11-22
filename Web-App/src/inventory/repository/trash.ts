@@ -29,13 +29,13 @@ export const tablesTheKind = (art: PaperKind): string[] => TABLES[art].map(t => 
 export async function inventoryRows(
   tx: DbInterface,
   art: PaperKind,
-  werte: unknown[],
+  values: unknown[],
 ): Promise<Record<string, unknown[]>> {
   const rows: Record<string, unknown[]> = {};
   for (const { tabelle, wo } of TABLES[art]) {
     const r = await tx.get<{ z: unknown[] }>(
       `SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${tabelle} t WHERE ${wo}`,
-      werte,
+      values,
     );
     rows[tabelle] = r?.z ?? [];
   }
@@ -57,12 +57,12 @@ export async function label(
   tx: DbInterface,
   art: PaperKind,
   userId: number,
-  nummer: string,
+  number: string,
   colorId: number | null,
 ): Promise<string | null> {
   const r = await tx.get<{ b: string | null }>(
     LABEL[art],
-    art === 'teil' ? [nummer, userId, colorId] : [nummer, userId],
+    art === 'teil' ? [number, userId, colorId] : [number, userId],
   );
   return r?.b || null;
 }
@@ -71,7 +71,7 @@ export async function createEntry(
   tx: DbInterface,
   userId: number,
   art: PaperKind,
-  nummer: string,
+  number: string,
   colorId: number | null,
   name: string | null,
   rows: Record<string, unknown[]>,
@@ -79,7 +79,7 @@ export async function createEntry(
   const r = await tx.get<{ id: number }>(
     `INSERT INTO trash (user_id, type, number, color_id, label, rows)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb) RETURNING id`,
-    [userId, art, nummer, colorId, name, JSON.stringify(rows)],
+    [userId, art, number, colorId, name, JSON.stringify(rows)],
   );
   return r?.id ?? null;
 }
@@ -149,11 +149,11 @@ export async function hatSetRow(
   tx: DbInterface,
   l: InventoryReadContract,
   userId: number,
-  nummer: string,
+  number: string,
 ): Promise<boolean> {
   return !!(await tx.get<{ da: number }>(`SELECT 1 AS da FROM ${l.setBestand('= $1')} s WHERE set_number = $2`, [
     userId,
-    nummer,
+    number,
   ]));
 }
 

@@ -1,7 +1,7 @@
 import type { Db } from '../db/database';
 import { altKey, dataKey } from '../src/infra/secret';
 import { konfig } from '../src/infra/config';
-import type { Dienste } from './wiring';
+import type { Services } from './wiring';
 
 /** A superuser reaches COPY … PROGRAM and every database of the server: in
  * production (even without NODE_ENV) a startup prohibition, unless DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
@@ -27,8 +27,8 @@ export const LEGACY_STOCK_BRAND = 'altbestand_v2';
 /** Once per database, before the first request and without a way out: entschluessele()
  * only reads v2, and a voucher row without nummer_suche would escape the
  * duplicate check. @returns null if the marker is already set */
-export async function legacyStockUpgrade(d: Dienste): Promise<{ umgeschluesselt: number; prints: number } | null> {
-  if (await d.jobQueue.liesZustand(LEGACY_STOCK_BRAND)) return null;
+export async function legacyStockUpgrade(d: Services): Promise<{ umgeschluesselt: number; prints: number } | null> {
+  if (await d.jobQueue.readState(LEGACY_STOCK_BRAND)) return null;
   const n =
     (await d.vouchers.reencryptNumbers()) +
     (await d.vouchers.reencryptCopies()) +
@@ -38,14 +38,14 @@ export async function legacyStockUpgrade(d: Dienste): Promise<{ umgeschluesselt:
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
   const alt = await d.idempotency.deleteOldFingerprints();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
-  await d.jobQueue.setzeZustand(LEGACY_STOCK_BRAND, new Date().toISOString());
+  await d.jobQueue.setState(LEGACY_STOCK_BRAND, new Date().toISOString());
   return { umgeschluesselt: n, prints: alt };
 }
 
 /** If the previous key is available (DATA_KEY_ALT_FILE), every start rewrites
  * everything only it opens with the new one. Concurrently running processes
  * do not disturb each other: every row is only replaced if it is unchanged. */
-export async function keySwitch(d: Dienste): Promise<number | null> {
+export async function keySwitch(d: Services): Promise<number | null> {
   if (!altKey()) return null;
   const n =
     (await d.factors.encryptLegacySecrets({ alle: true })) +
@@ -63,8 +63,8 @@ export async function keySwitch(d: Dienste): Promise<number | null> {
 
 /** The web process alone must not touch vouchers (web system role): it waits
  * until the jobs service has converted the legacy data, instead of reading old rows. */
-export async function waitOnLegacyStock(d: Dienste, tick = 2000): Promise<void> {
-  for (let n = 0; !(await d.jobQueue.liesZustand(LEGACY_STOCK_BRAND)); n++) {
+export async function waitOnLegacyStock(d: Services, tick = 2000): Promise<void> {
+  for (let n = 0; !(await d.jobQueue.readState(LEGACY_STOCK_BRAND)); n++) {
     if (n % 15 === 0) console.log('[geheimnis] warte, bis der Dienst jobs die Geheimnisse auf v2 umgestellt hat');
     await new Promise(r => setTimeout(r, tick));
   }
@@ -76,14 +76,14 @@ export async function waitOnLegacyStock(d: Dienste, tick = 2000): Promise<void> 
  * buffer). Here and not in db/: the database layer knows no jobs.
  * Re-encryption only with `jobs`: only its system role reaches the vouchers.
  */
-export async function prepareDatabaseBefore(db: Db, d: Dienste, o: { jobs?: boolean } = {}): Promise<void> {
+export async function prepareDatabaseBefore(db: Db, d: Services, o: { jobs?: boolean } = {}): Promise<void> {
   // At startup instead of at the first encryption: a wrong or old
   // location of the key should appear in the startup log.
   dataKey();
   await warnAtSuperuser(db);
   await db.initSchemaOnce();
   // Otherwise jobs, admin and login would silently see no row of the account tables.
-  if (!(await db.systemrahmenActs()))
+  if (!(await db.systemFrameActs()))
     throw new Error(
       'Die Rolle für Arbeit über Kontogrenzen unterliegt dem Zeilenschutz: PGSYSTEM_USER und ' +
         'PGSYSTEM_PASSWORD(_FILE) auf die Systemrolle setzen (postgres/app-rolle.sh, UPGRADE.md#systemrolle).',

@@ -1,6 +1,6 @@
 /** RFC 6238 (TOTP, SHA-1, 6 digits, 30 s): the form every authenticator app
  * understands. No third-party package, with node:crypto. */
-import { encrypt, decrypt, kontext, searchValue, searchValueAlt } from '../infra/secret';
+import { encrypt, decrypt, context, searchValue, searchValueAlt } from '../infra/secret';
 import crypto from 'node:crypto';
 import type { DbInterface } from '../../db/database';
 import * as repo from './repository/secondFactor';
@@ -14,7 +14,7 @@ const DIGITS = 6;
 const CODES_COUNT = 10;
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
-export const secondFactorContext = (uid: number) => kontext('zweiter_faktor.geheimnis', uid);
+export const secondFactorContext = (uid: number) => context('zweiter_faktor.geheimnis', uid);
 
 export function base32(buf: Buffer): string {
   let bits = 0,
@@ -53,8 +53,8 @@ export function hotp(key: Buffer, counter: number, digits = DIGITS): string {
   z.writeBigUInt64BE(BigInt(counter));
   const h = crypto.createHmac('sha1', key).update(z).digest();
   const o = (h[h.length - 1] ?? 0) & 15;
-  const zahl = (h.readUInt32BE(o) & 0x7fffffff) % 10 ** digits;
-  return String(zahl).padStart(digits, '0');
+  const number = (h.readUInt32BE(o) & 0x7fffffff) % 10 ** digits;
+  return String(number).padStart(digits, '0');
 }
 
 export function timeStep(nowMs = Date.now()): number {
@@ -140,7 +140,7 @@ export async function beginSetup(k: FactorsContext, uid: number): Promise<string
 }
 
 export async function confirmSetup(k: FactorsContext, uid: number, code: string): Promise<string[] | null> {
-  return k.transaktion(async t => {
+  return k.transact(async t => {
     const z = await repo.lockUnconfirmedSecret(t.db, uid);
     if (!z) return null;
     const step = matchingStep(
@@ -185,11 +185,11 @@ export async function checkCode(
 }
 
 export function disable(k: FactorsContext, uid: number): Promise<void> {
-  return inSystemFrame(k.db, 'zugangsdaten', () => k.transaktion(t => t.secondFactor.remove(uid)));
+  return inSystemFrame(k.db, 'zugangsdaten', () => k.transact(t => t.secondFactor.remove(uid)));
 }
 
 export async function renewCodes(k: FactorsContext, uid: number): Promise<string[]> {
-  return k.transaktion(t => regenerateCodes(t.db, uid));
+  return k.transact(t => regenerateCodes(t.db, uid));
 }
 
 /** For the admin's account list: accounts live with the account area, their factor here. */

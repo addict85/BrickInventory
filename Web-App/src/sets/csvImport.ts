@@ -1,12 +1,12 @@
 /** CSV import of the sets: read rows, start the job, report the state. */
-import { beforeThe, fehlertext, publicError } from '../infra/error';
+import { beforeThe, errorMessage, publicError } from '../infra/error';
 import { buildJobStatus } from '../jobQueue';
-import { normalisiereSetNummer } from '../infra/setNumber';
+import { normalizeSetNumber } from '../infra/setNumber';
 import { csvReadIn, defusingUndo, csvDatum, rowsList } from '../infra/csvExport';
-import { fachfehler, type Language } from '../infra/errorTexts';
+import { failDomain, type Language } from '../infra/errorTexts';
 import { randomUUID } from 'node:crypto';
 import * as repo from './repository/setDetail';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { SetsContext } from './context';
 
 export interface ImportZeile {
@@ -32,12 +32,12 @@ export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: 
   try {
     gelesen = csvReadIn(text);
   } catch (e) {
-    fachfehler('ungueltig', 'csv_parse_fehler', { grund: fehlertext(e) });
+    failDomain('ungueltig', 'csv_parse_fehler', { grund: errorMessage(e) });
   }
   if (!gelesen.records.length) {
     if (gelesen.uebersprungen.length)
-      fachfehler('ungueltig', 'csv_keine_brauchbare_zeile', { zeilen: rowsList(gelesen.uebersprungen) });
-    fachfehler('ungueltig', 'csv_keine_datenzeilen');
+      failDomain('ungueltig', 'csv_keine_brauchbare_zeile', { zeilen: rowsList(gelesen.uebersprungen) });
+    failDomain('ungueltig', 'csv_keine_datenzeilen');
   }
   const rows: ImportZeile[] = [];
   for (const [i, raw] of gelesen.records.entries()) {
@@ -64,16 +64,16 @@ export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: 
       continue;
     }
     const rawPrice = row.purchase_price ?? row.kaufpreis ?? row.einkaufspreis ?? row.price ?? '';
-    const preis = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
-    const zustand = String(row.condition || row.zustand || row.kondition || '')
+    const priceValue = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
+    const state = String(row.condition || row.zustand || row.kondition || '')
       .trim()
       .toUpperCase();
     rows.push({
       sn,
       qty,
       ...(zeile ? { zeile } : {}),
-      purchasePrice: preis !== null && !Number.isNaN(preis) ? preis : null,
-      condition: ['N', 'U'].includes(zustand) ? zustand : null,
+      purchasePrice: priceValue !== null && !Number.isNaN(priceValue) ? priceValue : null,
+      condition: ['N', 'U'].includes(state) ? state : null,
       // 05.03.2026 is the 5th of March, not the 3rd of May.
       acquiredAt: csvDatum(row.acquired_at || row.erfassungsdatum || row.datum),
     });
@@ -86,7 +86,7 @@ async function alreadyPresent(sk: SetsContext, userId: number, rows: ImportZeile
   const da = new Set((await repo.setsWithQuantity(sk.db, userId)).map(s => s.set_number));
   const hits = rows
     .filter(r => !r.fehler)
-    .map(r => normalisiereSetNummer(r.sn))
+    .map(r => normalizeSetNumber(r.sn))
     .filter(sn => da.has(sn));
   return [...new Set(hits)];
 }
@@ -111,7 +111,7 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
   try {
     await sk.jobQueue.placeJobOne('csv_import', { user_id: userId, lauf, rows }, { userId, maxAttempts: 3 });
   } catch (e) {
-    await versuche(
+    await attempts(
       'csv-import:fehler vermerken',
       sk.jobQueue.jobUpdate(userId, { status: 'error', error: publicError(e, 'csv-import:einstellen').error }, lauf),
     );

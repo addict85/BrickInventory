@@ -12,14 +12,14 @@ import {
 } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import { basisUrl } from '../infra/basisUrl';
-import { fehlertext } from '../infra/error';
-import { fachfehler } from '../infra/errorTexts';
+import { errorMessage } from '../infra/error';
+import { failDomain } from '../infra/errorTexts';
 import { searchValue } from '../infra/secret';
 import type { FactorsContext } from './context';
 import { androidOrigins } from './androidApp';
 
 function rejected(e: unknown): null {
-  console.warn('[passkey] response rejected:', fehlertext(e));
+  console.warn('[passkey] response rejected:', errorMessage(e));
   return null;
 }
 
@@ -92,7 +92,7 @@ async function rememberChallenge(
       MAX_OPEN_CHALLENGES,
     ))
   )
-    fachfehler('nicht_verfuegbar', 'server_ausgelastet');
+    failDomain('nicht_verfuegbar', 'server_ausgelastet');
 }
 
 /** Exactly once: a repeated response no longer finds its row. */

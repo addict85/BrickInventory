@@ -5,7 +5,7 @@
  *
  * Counter-check (measured on 28.10.2026; since 09.11. in src/account/startAdmin.ts): back to
  * `hashSync(plainPassword, 10)` → red (10 instead of 12).
- * Counter-check (14.11.2026, argon2id): in hashePasswordImmediately `timeCost: 1` → red
+ * Counter-check (14.11.2026, argon2id): in hashPasswordImmediately `timeCost: 1` → red
  * (prefix with t=1 instead of t=2).
  *
  * Prerequisite: test DB via TEST_DATABASE_URL (the schema is recreated).

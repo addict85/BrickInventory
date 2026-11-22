@@ -2,19 +2,19 @@ import { moneyInput } from '../infra/geld';
 import type { FinancesContext } from './context';
 
 /** For parts and figures in one place; empty means "take the market price", not "price zero".
- * @param marktpreis at the caller, because part and figure have different keys. */
+ * @param marketPrice at the caller, because part and figure have different keys. */
 export async function purchasePriceFromInput(
   k: FinancesContext,
   raw: unknown,
   stateRaw: unknown,
   stateNow: string | null | undefined,
   userId: number,
-  marktpreis: (zustand: string) => Promise<number | null>,
+  marketPrice: (zustand: string) => Promise<number | null>,
 ): Promise<{ unitPrice: number | null; purchasePrice: number | null }> {
-  const zahl = moneyInput(raw, 'Preis');
-  if (zahl !== null) return { unitPrice: zahl, purchasePrice: zahl };
+  const number = moneyInput(raw, 'Preis');
+  if (number !== null) return { unitPrice: number, purchasePrice: number };
   const zustand = await k.einstellungen.conditionForPrice(stateRaw, stateNow, userId);
-  return { unitPrice: null, purchasePrice: await marktpreis(zustand) };
+  return { unitPrice: null, purchasePrice: await marketPrice(zustand) };
 }
 
 /** Without a market price the master row holds 0, the acquisition NULL — the same for
@@ -23,7 +23,7 @@ export async function manualPurchasePrice(
   k: FinancesContext,
   userId: number,
   input: { unitPrice?: unknown; condition?: string | null },
-  marktpreis: (zustand: string) => Promise<{ preis: number | null; fromState: string | null }>,
+  marketPrice: (zustand: string) => Promise<{ preis: number | null; fromState: string | null }>,
 ): Promise<{
   unitPrice: number | null;
   /** For the MASTER ROW — never null. */
@@ -40,7 +40,7 @@ export async function manualPurchasePrice(
   const zustand = await k.einstellungen.conditionForPrice(input.condition ?? null, null, userId);
 
   // A typed-in price does not ask the market — no origin to mark.
-  const market = unitPrice !== null ? null : await marktpreis(zustand);
+  const market = unitPrice !== null ? null : await marketPrice(zustand);
   const kaufpreis = unitPrice !== null ? unitPrice : (market?.preis ?? 0);
   return {
     unitPrice,

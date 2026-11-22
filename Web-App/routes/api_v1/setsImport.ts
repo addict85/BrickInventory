@@ -1,14 +1,14 @@
 /** Adding sets in bulk and as a stream: CSV import with progress, export, adding with supplement. */
 import type express from 'express';
 import { publicError } from '../../src/infra/error';
-import { kontoSchranke, guardFor } from './middleware';
+import { accountGate, guardFor } from './middleware';
 import { csvReceive } from '../../src/http/fileUpload';
 import { skippedHint } from '../../src/infra/csvExport';
 import { sendCsv } from '../../src/http/csvResponse';
-import { responseLanguage, fachfehler } from '../../src/infra/errorTexts';
-import { openStream, StromGeschlossen, type Stream } from '../../src/account/http/stream';
+import { responseLanguage, failDomain } from '../../src/infra/errorTexts';
+import { openStream, StreamClosed, type Stream } from '../../src/account/http/stream';
 import { loginOrTokenGuard, signedInUserId } from '../../src/account/http/login';
-import { vertragsRouter } from '../../src/http/contractRouter';
+import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 
 /** The set is created; if the access ends or the client disconnects, only the
@@ -16,65 +16,65 @@ import type { Services } from '../../src/services';
  * status code anymore. `success` belongs to it: the clients read it like a response. */
 async function supplementInStream(
   services: Pick<Services, 'account' | 'sets'>,
-  strom: Stream,
+  stream: Stream,
   req: express.Request,
   r: { set_number: string; besitzer: number; name?: string | null },
 ) {
-  const send = (d: object) => strom.sende(d);
-  const ergebnis = { success: true, action: 'added', set_number: r.set_number };
+  const send = (d: object) => stream.sende(d);
+  const result = { success: true, action: 'added', set_number: r.set_number };
   send({ step: 'meta', set: r.set_number });
   await services.sets
-    .setSupplement(r.set_number, r.besitzer, d => strom.sendOrAbortAb(d))
+    .setSupplement(r.set_number, r.besitzer, d => stream.sendOrAbort(d))
     .then(
       k => {
         send({ step: 'done_meta', set: r.set_number });
-        send({ step: 'done', ...ergebnis, name: k.name ?? r.name, katalog_offen: !k.name, ergaenzung: 'erledigt' });
+        send({ step: 'done', ...result, name: k.name ?? r.name, katalog_offen: !k.name, ergaenzung: 'erledigt' });
       },
       (f: unknown) => {
-        if (f instanceof StromGeschlossen) return;
+        if (f instanceof StreamClosed) return;
         publicError(f, 'sets:add-stream', req);
-        send({ step: 'done', ...ergebnis, name: r.name, katalog_offen: true, ergaenzung: 'ausstehend' });
+        send({ step: 'done', ...result, name: r.name, katalog_offen: true, ergaenzung: 'ausstehend' });
       },
     );
-  strom.ende();
+  stream.ende();
 }
 
 export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
   const { requireToken } = guardFor(d.account);
-  const router = vertragsRouter('/api/v1');
+  const router = contractRouter('/api/v1');
 
   // ── CSV import: progress as a query and as a stream ──────────────────────────
   // 503 after 3 s instead of waiting: the status routes hang on every open
   // page and must not pile up when the database is full.
   const stateGuard = loginOrTokenGuard(d.account, { timeoutMs: 3000 });
 
-  router.endpunkt('GET /api/v1/sets/import/csv/status', stateGuard, async (req, res) => {
+  router.endpoint('GET /api/v1/sets/import/csv/status', stateGuard, async (req, res) => {
     res.json(await d.sets.csvImportStand(signedInUserId(req), req));
   });
 
   // Open streams per account are counted by kontoSchranke('strom') for all streams together.
-  router.endpunkt('GET /api/v1/sets/import/csv/stream', stateGuard, kontoSchranke('strom'), async (req, res) => {
+  router.endpoint('GET /api/v1/sets/import/csv/stream', stateGuard, accountGate('strom'), async (req, res) => {
     const uid = signedInUserId(req);
-    const strom = openStream(d.account, req, res, { onlyChanges: true, backpressure: `csv-import ${uid}` });
+    const stream = openStream(d.account, req, res, { onlyChanges: true, backpressure: `csv-import ${uid}` });
     // EventSource sets no headers, so the language comes as ?sprache=.
-    const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
-    const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : responseLanguage(req);
-    const sendStatus = async () => strom.sende(await d.sets.csvImportStatusForStream(uid, req, sprache));
+    const chosen = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
+    const language = chosen === 'en' || chosen === 'de' ? chosen : responseLanguage(req);
+    const sendStatus = async () => stream.sende(await d.sets.csvImportStatusForStream(uid, req, language));
     // Subscribe first, then send the first state: otherwise an event between
     // read and subscribe is lost. Other workers report via LISTEN/NOTIFY; the tick catches anything missed.
-    strom.atEnd(d.sets.subscribeCsvImportStatus(uid, sendStatus));
+    stream.atEnd(d.sets.subscribeCsvImportStatus(uid, sendStatus));
     const tick = setInterval(sendStatus, 120000);
-    strom.atEnd(() => clearInterval(tick));
+    stream.atEnd(() => clearInterval(tick));
     await sendStatus();
   });
 
-  router.endpunkt(
+  router.endpoint(
     'POST /api/v1/sets/import/csv',
     requireToken,
-    kontoSchranke('upload'),
+    accountGate('upload'),
     csvReceive.single('file'),
     async req => {
-      if (!req.file) fachfehler('ungueltig', 'keine_datei');
+      if (!req.file) failDomain('ungueltig', 'keine_datei');
       const { total, uebersprungen, vorhanden, gestartet } = await d.sets.startSetCsvImport(
         signedInUserId(req),
         req.file.buffer.toString('utf-8'),
@@ -92,12 +92,12 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
     },
   );
 
-  router.endpunkt('POST /api/v1/sets/import/csv/cancel', requireToken, async req => {
+  router.endpoint('POST /api/v1/sets/import/csv/cancel', requireToken, async req => {
     await d.sets.cancelSetCsvImport(signedInUserId(req));
     return {};
   });
 
-  router.endpunkt('GET /api/v1/sets/export/rebrickable', requireToken, async (req, res) => {
+  router.endpoint('GET /api/v1/sets/export/rebrickable', requireToken, async (req, res) => {
     sendCsv(
       res,
       `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
@@ -106,12 +106,12 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
     );
   });
 
-  router.endpunkt('POST /api/v1/sets/add-stream', requireToken, kontoSchranke('strom'), async (req, res) => {
+  router.endpoint('POST /api/v1/sets/add-stream', requireToken, accountGate('strom'), async (req, res) => {
     const e = req.eingabe;
     const uid = signedInUserId(req);
     // Create first, then stream: an already existing set answers "exists", there is nothing to follow.
     // The job waits: the stream supplements itself and only needs it if it breaks off.
-    const r = await d.sets.setErfassen({
+    const r = await d.sets.acquireSet({
       requester: uid,
       ownerWish: e.owner_user_id,
       setNumber: String(e.set_number ?? ''),
@@ -130,7 +130,7 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
     await supplementInStream(d, openStream(d.account, req, res, { heartbeat: false }), req, r);
   });
 
-  router.endpunkt('POST /api/v1/sets/:setNumber/parts', requireToken, async req => {
+  router.endpoint('POST /api/v1/sets/:setNumber/parts', requireToken, async req => {
     return { count: await d.sets.importPartsOfSets(signedInUserId(req), req.pfad.setNumber) };
   });
   return router;

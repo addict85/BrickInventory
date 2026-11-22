@@ -18,7 +18,7 @@ export {
   rbPage,
   readDailyRates,
 } from './sources';
-export type { Abruf, Kurs, ClientsAccess, LegoFetch, Sources as Quellen, RbSetTeil } from './sources';
+export type { Fetch as Abruf, Rate as Kurs, ClientsAccess, LegoFetch, Sources, RbSetTeil } from './sources';
 export { ConcurrentRateLimiter, REBRICKABLE_DEFAULT_DAILY } from './rateLimiter';
 export type { ApiName } from './apiQuota';
 export { createForeignSources } from './area';

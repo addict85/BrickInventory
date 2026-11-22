@@ -86,7 +86,7 @@ test('own catalog details stay with the account and its household', { concurrenc
     B = api(bob),
     C = api(carol),
     K = api(kind);
-  const { partsCsv, figurenCsv } = _req('src/inventory/inventoryExport.js');
+  const { partsCsv, minifigsCsv } = _req('src/inventory/inventoryExport.js');
 
   const ALICE = ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur', 'Gefälscht'];
   await A('POST', '/parts', {
@@ -127,7 +127,7 @@ test('own catalog details stay with the account and its household', { concurrenc
   });
 
   await t.test("Bob sees Alice's inputs in no list and no export", async () => {
-    const l = (await listen(B)) + (await partsCsv(bob)) + (await figurenCsv(bob));
+    const l = (await listen(B)) + (await partsCsv(bob)) + (await minifigsCsv(bob));
     assert.ok(l.includes('geheim-77') && l.includes('fig-000001'), 'Testdaten: Bob führt beide Nummern');
     for (const s of ALICE) assert.ok(!l.includes(s), `Bob sieht ${s}`);
   });

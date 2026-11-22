@@ -2,13 +2,13 @@
  * reach it — a route should not import another route. */
 import type { Sicht } from '../household';
 import { publicError } from '../infra/error';
-import { Degradations, versuche } from '../infra/result';
+import { Degradations, attempts } from '../infra/result';
 import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
-import { mengenwunsch } from '../inventory';
-import type { Quellen } from '../externalSources';
+import { quantityRequest } from '../inventory';
+import type { Sources } from '../externalSources';
 import * as V from '../infra/validate';
 import { moneyInput } from '../infra/geld';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import type { MinifigsContext } from './context';
 
 // Without a BrickLink minifig number the market price is estimated from part
@@ -27,7 +27,7 @@ export async function manualMinifigPurchase(
 ) {
   // Same rule as for parts (src/finances/priceRule.ts), so a minifig without a
   // market price doesn't count differently than a part.
-  const r = await k.finances.manuellerKaufpreis(uid, { unitPrice, condition }, condition =>
+  const r = await k.finances.manualPurchasePrice(uid, { unitPrice, condition }, condition =>
     k.finances.figMarketPriceWithOrigin(figNumber, uid, blFigNumber || null, condition),
   );
   return {
@@ -44,11 +44,11 @@ export async function manualMinifigPurchase(
 export async function addManualMinifig(k: MinifigsContext, uid: number, body: Record<string, unknown>) {
   // Without a given location, the account's default location applies.
   const ort = await k.inventory.locationService.locationForNewEntry(uid, body?.storage);
-  const ergebnis = await addManualMinifigInternal(k, uid, body);
-  if (ort && ergebnis?.fig_number) {
-    await k.inventory.locationService.setLocation('fig', [uid], [String(ergebnis.fig_number)], ort);
+  const result = await addManualMinifigInternal(k, uid, body);
+  if (ort && result?.fig_number) {
+    await k.inventory.locationService.setLocation('fig', [uid], [String(result.fig_number)], ort);
   }
-  return ergebnis;
+  return result;
 }
 
 async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: Record<string, unknown>) {
@@ -100,7 +100,7 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
   await k.catalog.rememberMinifig(num, found?.fig_name, found?.image_url);
   await k.catalog.rememberMinifig(num, input.name, input.bild, null, k.db, uid);
   // Without quantity, price and condition: they sit in the acquisition below.
-  await k.inventory.manuell.putRowAn('fig', uid, [num]);
+  await k.inventory.manuell.createRow('fig', uid, [num]);
   if (blNum) await k.catalog.rememberOwnBlNumber(uid, 'fig', num, blNum);
   // With the price actually used (market price or estimate), so acquisition
   // history and P&L agree.
@@ -125,7 +125,7 @@ async function minifigDescription(
 ) {
   let fig_name = input.name;
   let image_url = input.bild;
-  let found: Awaited<ReturnType<Quellen['getMinifigInfo']>> | null = null;
+  let found: Awaited<ReturnType<Sources['getMinifigInfo']>> | null = null;
   if (fig_name) return { fig_name, found };
 
   const local = await k.catalog.catalogMinifig(num, uid);
@@ -137,8 +137,8 @@ async function minifigDescription(
   // still proves there's nothing left to fetch.
   if (!fig_name || !(image_url || local?.hatImage)) {
     // Without Rebrickable, the minifig is entered with whatever the catalog already knows.
-    const abruf = await versuche('figuren:getMinifigInfo', k.externalSources.quellen.getMinifigInfo(num));
-    found = abruf.ok ? abruf.wert : null;
+    const fetch = await attempts('figuren:getMinifigInfo', k.externalSources.quellen.getMinifigInfo(num));
+    found = fetch.ok ? fetch.wert : null;
     // `||`: what the catalog already knew stays.
     if (found) fig_name = fig_name || found.fig_name;
   }
@@ -154,15 +154,15 @@ export async function updateManualMinifig(
   body: Record<string, unknown>,
 ): Promise<{ quantity?: number; degradiert?: string[] }> {
   const existing = await k.manualMinifigs.minifigRowWithCondition(uid, figNumber);
-  if (!existing) fachfehler('nicht_gefunden', 'minifig_nicht_manuell');
+  if (!existing) failDomain('nicht_gefunden', 'minifig_nicht_manuell');
 
   const out: { quantity?: number } = {};
   // If the market price for the new acquisition didn't arrive, `degradiert` says so.
   const ab = new Degradations();
-  const wish = mengenwunsch(body);
+  const wish = quantityRequest(body);
   if (wish) {
     const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
-    out.quantity = await k.inventory.passeManualQuantityAn(
+    out.quantity = await k.inventory.adjustManualQuantity(
       'fig',
       uid,
       [figNumber],
@@ -231,8 +231,8 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       let imageUrl: string | null = null;
       if (!figName) {
         // Without Rebrickable, the minifig is entered without a name; the image job won't fetch it later.
-        const abruf = await versuche('figuren:import-info', k.externalSources.quellen.getMinifigInfo(figNumber));
-        const info = abruf.ok ? abruf.wert : null;
+        const fetch = await attempts('figuren:import-info', k.externalSources.quellen.getMinifigInfo(figNumber));
+        const info = fetch.ok ? fetch.wert : null;
         if (info) {
           figName = info.fig_name;
           imageUrl = info.image_url;
@@ -260,7 +260,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       }
       // A name from the file is an input of this account (katalogPflege.ts).
       await k.catalog.rememberMinifig(figNumber, figName, imageUrl, null, k.db, typed ? uid : null);
-      await k.inventory.manuell.putRowAn('fig', uid, [figNumber]);
+      await k.inventory.manuell.createRow('fig', uid, [figNumber]);
       if (blFigNumber) await k.catalog.rememberOwnBlNumber(uid, 'fig', figNumber, blFigNumber);
       await k.inventory.bookDailyEntry('fig', uid, [figNumber], acquisition);
       added++;

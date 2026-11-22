@@ -18,7 +18,7 @@ test('default daily limit is 25000 — in ONE place', () => {
   assert.equal(REBRICKABLE_DEFAULT_DAILY, EXPECTED);
   // limitTheSource() had its own copy of the fallback value (4000). As long as
   // Rebrickable had its own counter, it never saw this table — since
-  // both run via kontingentPruefenUndZaehlen, it would have been a silent cut
+  // both run via checkAndCountQuota, it would have been a silent cut
   // to one sixth. Two constants with the same meaning drift …
   const fc = fs.readFileSync(path.join(ROOT, 'src/externalSources/apiQuota.ts'), 'utf8');
   assert.match(
@@ -35,7 +35,7 @@ test('the daily quota counts for the installation, not per worker', () => {
   assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
   assert.match(
     rl,
-    /kontingentPruefenUndZaehlen\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
+    /checkAndCountQuota\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
     'Derselbe Mechanismus wie bei BrickLink und Brickset — kein dritter Weg',
   );
   assert.doesNotMatch(rl, /new DailyLimiter\(/, 'Keine prozesslokale Instanz mehr für ein Tagesbudget');

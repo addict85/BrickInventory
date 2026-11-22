@@ -88,7 +88,7 @@ export const routen = {
       year_to: Q.numberOrEmpty,
       sort: Q.text(40),
       ...PAGE,
-      limit: outdated(Q.zahl(), 'page_size'),
+      limit: outdated(Q.number(), 'page_size'),
     }),
   },
   'GET /api/v1/catalog/sets/:setNumber': { antwort: CatalogSetDetailResponse },

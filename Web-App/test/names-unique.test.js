@@ -20,7 +20,7 @@ const ALLOWED = new Map([
   ],
   ['log', 'drei Jobs, jeder schreibt mit seinem eigenen Praefix.'],
   [
-    'setAngaben',
+    'setDetails',
     'clients/brickset und src/catalog/rebrickableCatalog — dieselbe Frage an ZWEI ' +
       'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.',
   ],
@@ -29,7 +29,7 @@ const ALLOWED = new Map([
     'clients/bricklink und clients/brickset — jeder mit der Signatur seines ' +
       'Dienstes (BrickLink braucht einen Authorization-Kopf, Brickset nicht).',
   ],
-  ['schreibePuffer', 'src/images/imageDemandRun und src/images/imageMisses — jeder schreibt SEINEN Puffer.'],
+  ['writeBuffer', 'src/images/imageDemandRun und src/images/imageMisses — jeder schreibt SEINEN Puffer.'],
 ]);
 
 test('a function name means one thing', () => {

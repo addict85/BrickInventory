@@ -23,7 +23,7 @@ Module.prototype.require = function (name, ...rest) {
       get: (t, k) => {
         if (k === 'setSupplement')
           return (sk, ...a) => (posedAddSet !== null ? Promise.resolve({ name: 'Testset' }) : t[k](sk, ...a));
-        if (k !== 'setErfassen') return t[k];
+        if (k !== 'acquireSet') return t[k];
         return async (sk, ...args) => {
           if (posedAddSet === null) return t[k](sk, ...args);
           positionCalled++;
@@ -73,21 +73,21 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
   try {
     // ── 1. The premise, with the REAL function ────────────────────────────
     //
-    // If `success` already stood in the result of setErfassen(), everything further would check
+    // If `success` already stood in the result of acquireSet(), everything further would check
     // nothing: the routes would then not have to add it in the first place. The
     // „exists" branch runs purely on the database and needs no network.
-    const { setErfassen } = require('./helpers/sources').areaPage('sets');
-    const echt = await setErfassen({ requester: uid, setNumber: DA });
+    const { acquireSet } = require('./helpers/sources').areaPage('sets');
+    const echt = await acquireSet({ requester: uid, setNumber: DA });
     assert.equal(echt.action, 'exists', 'der Aufbau des Tests stimmt nicht mehr');
     assert.equal(
       'success' in echt,
       false,
-      'setErfassen() liefert jetzt selbst ein success — dann sagt dieser Test nichts mehr ueber die Routen',
+      'acquireSet() liefert jetzt selbst ein success — dann sagt dieser Test nichts mehr ueber die Routen',
     );
 
     // ── 2. The stream: the `done` event ───────────────────────────────────
     //
-    // What is set up is EXACTLY the form that setErfassen()
+    // What is set up is EXACTLY the form that acquireSet()
     // returns for a new set.
     posedAddSet = async e => ({
       action: 'added',
@@ -113,7 +113,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     const roh = await strom.text();
     assert.ok(
       positionCalled > vorher,
-      'setErfassen() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts',
+      'acquireSet() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts',
     );
 
     const ereignisse = roh
@@ -151,7 +151,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     });
     assert.equal(token.status, 200);
     const tb = await token.json();
-    assert.ok(positionCalled > vorher2, 'setErfassen() wurde auf der Token-Route nicht gerufen');
+    assert.ok(positionCalled > vorher2, 'acquireSet() wurde auf der Token-Route nicht gerufen');
     assert.equal(tb.success, true);
 
     // ── 4. One response, one form ──────────────────────────────────────────

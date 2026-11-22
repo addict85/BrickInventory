@@ -17,7 +17,7 @@ export class BcryptOverload extends Error {
 
 export interface Gate {
   /** vorrang: to the front of the queue and never rejected because of its length. */
-  mit<T>(work: () => Promise<T>, priority?: boolean): Promise<T>;
+  run<T>(work: () => Promise<T>, priority?: boolean): Promise<T>;
   stand(): { laufend: number; wartend: number };
 }
 
@@ -50,7 +50,7 @@ export function newLimit(concurrent: number, waitingAtMost: number, waitTimeMs: 
     else laufend--;
   };
   return {
-    async mit(work, priority = false) {
+    async run(work, priority = false) {
       await slot(priority);
       try {
         return await work();
@@ -80,7 +80,7 @@ export function quotaCores(wurzel = '/sys/fs/cgroup'): number | null {
 
 /** Every worker takes a good 12 MB; the host's cores say nothing about the
  * container's memory limit. BCRYPT_ARBEITER raises the default of 4. */
-export function bcryptArbeiter(
+export function bcryptWorkers(
   assigned = konfig().bcryptArbeiter,
   kerne = os.availableParallelism(),
   quota = quotaCores(),
@@ -88,6 +88,6 @@ export function bcryptArbeiter(
   return assigned ?? Math.max(2, Math.min(kerne, quota ?? kerne, 4));
 }
 
-const KERNE = bcryptArbeiter();
-export const bcryptSchranke = newLimit(KERNE, KERNE * 8, 5000);
+const KERNE = bcryptWorkers();
+export const bcryptGate = newLimit(KERNE, KERNE * 8, 5000);
 export const bcryptPool = newPool(KERNE);

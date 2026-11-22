@@ -98,6 +98,6 @@ export function pathSegment(wert: string | number): string {
   return encodeURIComponent(s);
 }
 
-export function numbersList(werte: readonly unknown[]): string {
-  return werte.map(w => encodeURIComponent(String(w))).join(',');
+export function numbersList(values: readonly unknown[]): string {
+  return values.map(w => encodeURIComponent(String(w))).join(',');
 }

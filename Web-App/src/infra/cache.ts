@@ -1,7 +1,7 @@
 /** A bounded store with expiry. When it is full, the oldest entry gives way
  * (insertion order of the Map): clearing everything at once would bring the full
  * load of recomputation precisely at the moment of highest load. */
-export class Zwischenspeicher<K, V> {
+export class Cache<K, V> {
   private readonly eintraege = new Map<K, { wert: V; bis: number }>();
 
   constructor(
@@ -20,7 +20,7 @@ export class Zwischenspeicher<K, V> {
   }
 
   /** fristMs only applies to this entry (e.g. shorter for a failure). */
-  setze(k: K, wert: V, fristMs = this.fristMs): void {
+  set(k: K, wert: V, fristMs = this.fristMs): void {
     this.eintraege.delete(k);
     if (this.eintraege.size >= this.max) {
       const oldest = this.eintraege.keys().next();
@@ -37,7 +37,7 @@ export class Zwischenspeicher<K, V> {
     this.eintraege.clear();
   }
 
-  get groesse(): number {
+  get size(): number {
     return this.eintraege.size;
   }
 }
@@ -45,10 +45,10 @@ export class Zwischenspeicher<K, V> {
 /** State an area keeps for its access (caches from the
  * database, lock connections): one set per factory, not per process. The
  * service creates the compartments on first use; the area does not know their types. */
-export class Faecher {
+export class Compartments {
   private readonly inhalt = new Map<string, unknown>();
 
-  fach<T>(name: string, create: () => T): T {
+  slot<T>(name: string, create: () => T): T {
     if (!this.inhalt.has(name)) this.inhalt.set(name, create());
     return this.inhalt.get(name) as T;
   }

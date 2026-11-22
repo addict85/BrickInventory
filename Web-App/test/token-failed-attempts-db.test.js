@@ -4,10 +4,10 @@
  * Measured at the entrance (loginAtInbox) and repository calls.
  *
  * Counter-checks (measured on 08.11.2026, each on its own):
- *   A  the line with toManyFailedAttempts() removed in pruefeToken() → red:
+ *   A  the line with toManyFailedAttempts() removed in checkToken() → red:
  *      “after the limit an unknown token costs no database query”
  *      and “the throttle responds 429, not 401”
- *   B  in pruefeToken() countFailedAttempt() also for tokens from a family
+ *   B  in checkToken() countFailedAttempt() also for tokens from a family
  *      (return value of reportReuse ignored) → red: “a
  *      reused token does not count as a failed attempt”
  *   C  in sendTokenRejection() always 401 → red: “the throttle responds 429,

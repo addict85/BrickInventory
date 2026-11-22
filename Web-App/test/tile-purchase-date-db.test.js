@@ -2,11 +2,11 @@
  * The set tile shows the date of the last purchase, not the addition to the
  * account (after an import that was the same day for all sets).
  *
- *   - setsLesen() delivers `letzter_kauf` = latest acquisition of the set.
+ *   - readSets() delivers `letzter_kauf` = latest acquisition of the set.
  *   - The tile (jsdom, real bundle) shows this date, not added_at.
  *
  * Counter-checks (measured on 28.10.2026):
- *   A  MAX(…created_at) in src/sets/repository/sets.ts to MIN → red: “setsLesen
+ *   A  MAX(…created_at) in src/sets/repository/sets.ts to MIN → red: “readSets
  *      delivers the last purchase”
  *   B  gridCard() again with s.added_at → red: “the tile shows the purchase date”
  *
@@ -24,7 +24,7 @@ const { holdsSet, record } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
 const { openUi, warte } = require('./helpers/ui');
 
-test('setsLesen delivers the last purchase', { concurrency: 1 }, async t => {
+test('readSets delivers the last purchase', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `kaufdatum_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -35,8 +35,8 @@ test('setsLesen delivers the last purchase', { concurrency: 1 }, async t => {
   });
   await holdsSet(db, uid, '10300-1', 1, { preis: 199, am: '2024-03-02T10:00:00Z' });
   await record(db, uid, '10300-1', 1, { preis: 210, am: '2025-07-14T10:00:00Z' });
-  const { setsLesen } = require('./helpers/sources').areaPage('sets');
-  const { sets } = await setsLesen(uid, {});
+  const { readSets } = require('./helpers/sources').areaPage('sets');
+  const { sets } = await readSets(uid, {});
   const s = sets.find(x => x.set_number === '10300-1');
   assert.ok(s, 'Set fehlt');
   assert.equal(new Date(s.letzter_kauf).toISOString().slice(0, 10), '2025-07-14');

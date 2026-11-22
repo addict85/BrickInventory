@@ -18,14 +18,14 @@ import {
 } from './tokenCache';
 import type { AccountContext } from './context';
 import { reportError } from '../infra/error';
-import { fachfehler } from '../infra/errorTexts';
-import { versuche } from '../infra/result';
+import { failDomain } from '../infra/errorTexts';
+import { attempts } from '../infra/result';
 
 export type { TokenScope, TokenUser };
 
 /** Whether the id (prefix of the stored hash) belongs to the token of the request. */
-export function ownAccess(token: string | null, kennung: string): boolean {
-  return !!token && tokenDigest(token).startsWith(kennung);
+export function ownAccess(token: string | null, key: string): boolean {
+  return !!token && tokenDigest(token).startsWith(key);
 }
 
 export function tokenDigest(token: string): string {
@@ -93,14 +93,14 @@ export async function tokenGilt(k: AccountContext, plaintext: string): Promise<b
   return !!(await k.zugaenge.validToken(tokenDigest(plaintext)));
 }
 
-export async function pruefeToken(
+export async function checkToken(
   k: AccountContext,
   token: string | null | undefined,
   o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {},
 ): Promise<TokenCheck> {
   if (!token) return { nutzer: null };
   const now = k.uhr.jetzt();
-  const ergebnis = (u: TokenUser): TokenCheck =>
+  const result = (u: TokenUser): TokenCheck =>
     o.zweck !== 'rotation' && rotationRequired(u, now)
       ? { nutzer: null, grund: 'token_rotation_noetig' }
       : { nutzer: u };
@@ -114,7 +114,7 @@ export async function pruefeToken(
       return { nutzer: null };
     }
     _touchLastUsed(k, hit, o.ip);
-    return ergebnis(hit.user);
+    return result(hit.user);
   }
 
   // Only after the cache: whoever has a valid token in the cache is never slowed down.
@@ -138,7 +138,7 @@ export async function pruefeToken(
   const entry: CacheEntry = { user: row, cachedAt: now, dbKey: hashed };
   rememberEntry(k, token, entry, stand);
   _touchLastUsed(k, entry, o.ip);
-  return ergebnis(row);
+  return result(row);
 }
 
 /** A replaced token came back after the grace period: lock the family, notify the owner. */
@@ -151,12 +151,12 @@ async function reportReuse(k: AccountContext, hash: string): Promise<boolean> {
   return true;
 }
 
-export async function nutzerZumToken(
+export async function userForToken(
   k: AccountContext,
   token: string | null | undefined,
   o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {},
 ): Promise<TokenUser | null> {
-  return (await pruefeToken(k, token, o)).nutzer;
+  return (await checkToken(k, token, o)).nutzer;
 }
 
 /** At most once per day and token, without holding up the request path. The
@@ -241,7 +241,7 @@ export async function createToken(
 ): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
   const hash = tokenDigest(token);
-  await k.zugaenge.putTokenAn({
+  await k.zugaenge.createToken({
     hash,
     userId,
     label,
@@ -276,13 +276,13 @@ export async function rotateToken(kx: AccountContext, alt: string, ip?: string |
   const newHash = tokenDigest(fresh);
   let copy: { user_id: number; label: string | null } | null = null;
   // The swap comes without a session: the old token is the only credential.
-  const ergebnis = await inSystemContext('tokentausch', () =>
-    kx.transaktion(async t => {
+  const result = await inSystemContext('tokentausch', () =>
+    kx.transact(async t => {
       const z = await repo.lockSwapSource(t.db, altHash);
       if (!z) return null;
       const open = z.replaced_by ? await repo.unusedSuccessor(t.db, z.replaced_by, altHash) : undefined;
-      const bereich = ipArea(ip);
-      if (open?.ip_range && bereich && open.ip_range !== bereich) {
+      const area = ipArea(ip);
+      if (open?.ip_range && area && open.ip_range !== area) {
         await repo.deleteFamily(t.db, z.user_id, z.created_at);
         copy = { user_id: z.user_id, label: z.label };
         return null;
@@ -302,19 +302,19 @@ export async function rotateToken(kx: AccountContext, alt: string, ip?: string |
       };
     }),
   );
-  if (ergebnis || copy) emptyTokenCache(kx);
+  if (result || copy) emptyTokenCache(kx);
   if (copy) {
     const k: { user_id: number; label: string | null } = copy;
     console.warn(`[tokens] zweiter Tausch aus einem anderen Netz — Familie von Konto ${k.user_id} gesperrt`);
     hintInBackground(kx, k.user_id, 'token_wiederverwendet', k.label ?? undefined);
   }
-  if (ergebnis === 'laeuft') fachfehler('konflikt', 'tausch_laeuft');
-  return ergebnis;
+  if (result === 'laeuft') failDomain('konflikt', 'tausch_laeuft');
+  return result;
 }
 
 export async function deleteToken(k: AccountContext, token: string): Promise<void> {
   if (!token) return;
-  await k.zugaenge.loescheToken(tokenDigest(token));
+  await k.zugaenge.deleteToken(tokenDigest(token));
   tokenForgotten(k, token);
 }
 
@@ -330,14 +330,14 @@ export async function revokeAllTokens(k: AccountContext, userId: number): Promis
 export async function tokensCleanup(k: AccountContext) {
   const without: string[] = [];
   const step = async (was: string, work: () => Promise<number>) => {
-    const r = await versuche(`tokens:${was}`, work);
+    const r = await attempts(`tokens:${was}`, work);
     if (!r.ok) without.push(was);
     return r.ok ? r.wert : 0;
   };
   // Safety net beside migration 0126: a row without a fixed end gets one.
   const g = await step('ohne Ende', () => k.zugaenge.boundUnlimited(k.konfig.tokenMaxDays));
   if (g) console.log(`[tokens] ${g} Token ohne festes Ende auf ${k.konfig.tokenMaxDays} Tage begrenzt`);
-  const m = await step('Altzeilen nachziehen', () => k.zugaenge.pullAltzeilenAfter(k.konfig.tokenIdleDays));
+  const m = await step('Altzeilen nachziehen', () => k.zugaenge.pullOldRowsAfter(k.konfig.tokenIdleDays));
   if (m)
     console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenIdleDays} Tagen gesetzt`);
   const expired = await step('abgelaufene', () => k.zugaenge.deleteExpired());

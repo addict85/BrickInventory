@@ -1,12 +1,12 @@
 /** The price run fetches the market prices anyway; the only missing step here was
  * to compare a threshold against them. An alert belongs to ONE account. */
-import { reportError, fehlertext } from '../infra/error';
-import { fachfehler } from '../infra/errorTexts';
+import { reportError, errorMessage } from '../infra/error';
+import { failDomain } from '../infra/errorTexts';
 import type { MailServices } from '../mail';
 import { toCsv, csvRowsFromRequest, skippedHint } from '../infra/csvExport';
-import { normalisiereSetNummer } from '../infra/setNumber';
+import { normalizeSetNumber } from '../infra/setNumber';
 import * as repo from './repository/priceAlerts';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { FinancesContext } from './context';
 
 export type Direction = 'unter' | 'ueber';
@@ -40,13 +40,13 @@ export interface AlarmInput {
 
 function checkInput(direction: string, threshold: AlarmInput['threshold'], condition: string | undefined) {
   const r = String(direction ?? '');
-  if (r !== 'unter' && r !== 'ueber') fachfehler('ungueltig', 'alarm_richtung_ungueltig');
+  if (r !== 'unter' && r !== 'ueber') failDomain('ungueltig', 'alarm_richtung_ungueltig');
   const s = Number(threshold);
   // Number.isFinite also catches NaN from an empty input; `> 0` alone
   // would report two different errors the same way.
-  if (!Number.isFinite(s) || s <= 0) fachfehler('ungueltig', 'alarm_schwelle_ungueltig');
+  if (!Number.isFinite(s) || s <= 0) failDomain('ungueltig', 'alarm_schwelle_ungueltig');
   const c = (condition ?? 'N').toUpperCase();
-  if (!STATES.has(c)) fachfehler('ungueltig', 'alarm_zustand_ungueltig');
+  if (!STATES.has(c)) failDomain('ungueltig', 'alarm_zustand_ungueltig');
   return { direction: r as Direction, threshold: s, condition: c };
 }
 
@@ -189,8 +189,8 @@ export async function checkSet(k: FinancesContext, setNumber: string, post: Alar
 type ActiveAlarm = Awaited<ReturnType<typeof repo.allActiveAlerts>>[number];
 async function send(k: FinancesContext, post: AlarmPost, a: ActiveAlarm, price: number, threshold: number) {
   // The alert goes out even without a name; the mail then only names the set number.
-  const gelesen = await versuche('preisalarm:name', repo.setNameFromMaster(k.db, a.set_number));
-  const name = gelesen.ok ? gelesen.wert : null;
+  const read = await attempts('preisalarm:name', repo.setNameFromMaster(k.db, a.set_number));
+  const name = read.ok ? read.wert : null;
   const mail = await post.buildAlertMail({
     username: a.username,
     lang: a.sprache,
@@ -228,7 +228,7 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
   for (const row of cleaned) {
     const raw = String(row.set_number || row.Setnummer || row.set_num || Object.values(row)[0] || '').trim();
     if (!raw) continue;
-    const sn = normalisiereSetNummer(raw);
+    const sn = normalizeSetNumber(raw);
     // Ask before writing: setzeAlarm() creates or changes without saying so.
     const already = await alertsFor(k, uid, sn);
     const fileCurrency = String(row.currency_code || row.currency || '')
@@ -260,7 +260,7 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
       });
     } catch (e) {
       errors++;
-      results.push({ set_number: sn, action: 'error', error: fehlertext(e) });
+      results.push({ set_number: sn, action: 'error', error: errorMessage(e) });
     }
   }
   return {

@@ -1,5 +1,5 @@
 /** Moving happens via the acquisitions: both accounts' quantities follow from that when reading. */
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import { withVersion } from '../infra/setNumber';
 import * as repo from './repository/move';
 import type { SetsContext } from './context';
@@ -18,8 +18,7 @@ export interface Shift {
  * transaction connection. */
 async function copyContents(t: SetsContext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
-  for (const tab of ['parts', 'minifigs'] as const)
-    n[tab] = await t.inventory.setInhalt.kopieren(tab, sn, fromId, toId);
+  for (const tab of ['parts', 'minifigs'] as const) n[tab] = await t.inventory.setInhalt.copy(tab, sn, fromId, toId);
   if (!(await repo.hatInstructions(t.db, toId, sn)))
     n.instructions = await repo.copyInstructions(t.db, sn, fromId, toId);
   return n;
@@ -35,11 +34,11 @@ export async function setEntriesReassign(
   acquisitionIds?: number[],
 ): Promise<Shift> {
   const src = await repo.setRow(t.db, fromId, sn);
-  if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
+  if (!src) failDomain('nicht_gefunden', 'nicht_gefunden');
 
   const all = await repo.moveEntriesTo(t.db, fromId, sn);
   const wanted = acquisitionIds?.length ? all.filter(a => acquisitionIds.includes(parseInt(String(a.id), 10))) : all;
-  if (!wanted.length) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
+  if (!wanted.length) failDomain('nicht_gefunden', 'kaufpreis_nicht_gefunden');
 
   const totalQty = all.reduce((s, a) => s + (a.quantity || 1), 0);
   const movingQty = wanted.reduce((s, a) => s + (a.quantity || 1), 0);
@@ -48,7 +47,7 @@ export async function setEntriesReassign(
   // Master data describes the set, not the copy: if it already lies with the target,
   // reassigning the acquisitions is enough.
   const dst = await repo.setRow(t.db, toId, sn);
-  if (!dst) await t.inventory.putSetAn(toId, sn, src.added_at);
+  if (!dst) await t.inventory.createSet(toId, sn, src.added_at);
 
   for (const a of wanted) {
     await t.inventory.bookDailyEntry('set', toId, [sn], {
@@ -59,7 +58,7 @@ export async function setEntriesReassign(
       geschaetzt: a.price_estimated,
       currency: a.currency,
     });
-    await t.inventory.erfassung.loesche('set', a.id, fromId);
+    await t.inventory.erfassung.remove('set', a.id, fromId);
   }
 
   const counts = await copyContents(t, sn, fromId, toId);
@@ -69,7 +68,7 @@ export async function setEntriesReassign(
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
   await repo.removeInstructions(t.db, fromId, sn);
-  await t.inventory.setInhalt.entfernen([fromId], sn);
+  await t.inventory.setInhalt.remove([fromId], sn);
   return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
 }
 
@@ -86,13 +85,13 @@ export async function moveSet(
   nach: AccountWish,
   acquisitions: number[],
 ) {
-  if (!acquisitions.length) fachfehler('ungueltig', 'kaufpreise_angeben');
+  if (!acquisitions.length) failDomain('ungueltig', 'kaufpreise_angeben');
   const sn = withVersion(raw);
-  const fromId = await sk.household.schreibziel(uid, fromValue ?? uid);
-  const toId = await sk.household.schreibziel(uid, nach);
-  if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
+  const fromId = await sk.household.writeTarget(uid, fromValue ?? uid);
+  const toId = await sk.household.writeTarget(uid, nach);
+  if (fromId === toId) failDomain('ungueltig', 'quelle_ziel_identisch');
   // Two moves in opposite directions lock the rows of both accounts in reverse order.
-  const r = await sk.transaktion(t => setEntriesReassign(t, sn, fromId, toId, acquisitions), {
+  const r = await sk.transact(t => setEntriesReassign(t, sn, fromId, toId, acquisitions), {
     sperren: [{ konto: fromId, schluessel: sn }],
     repeatAtConflict: true,
   });

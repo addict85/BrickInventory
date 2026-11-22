@@ -13,11 +13,11 @@ export interface Stream {
   atEnd(f: () => void): void;
   readonly zu: boolean;
   /** Like sende(), but StromGeschlossen when the stream is closed: the work behind it aborts. */
-  sendOrAbortAb(data: object): void;
+  sendOrAbort(data: object): void;
 }
 
 /** The client is gone. An abort, not an error: whoever catches it reports nothing. */
-export class StromGeschlossen extends Error {
+export class StreamClosed extends Error {
   constructor() {
     super('Strom geschlossen');
     this.name = 'StromGeschlossen';
@@ -78,8 +78,8 @@ export function openStream(konto: AccountServices, req: Request, res: Response, 
     get zu() {
       return zu;
     },
-    sendOrAbortAb: data => {
-      if (zu) throw new StromGeschlossen();
+    sendOrAbort: data => {
+      if (zu) throw new StreamClosed();
       sende(data);
     },
   };

@@ -33,12 +33,12 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
       netz.push(sn);
       return null;
     },
-    setAngaben: async sn => {
+    setDetails: async sn => {
       netz.push(sn);
       return null;
     },
   });
-  testImageWorker(t, { setBildLaden: async () => null });
+  testImageWorker(t, { loadSetImage: async () => null });
   const sets = require('./helpers/sources').areaPage('sets');
   const P = process.pid % 100000;
   const MAIN = `einweg-h-${P}`,
@@ -71,7 +71,7 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
         [uid, sn],
       )
     ).n;
-  const record = (uid, e) => asAccount(uid, () => sets.setErfassen({ requester: uid, ...e }));
+  const record = (uid, e) => asAccount(uid, () => sets.acquireSet({ requester: uid, ...e }));
 
   await t.test('no network on import, follow-up work in the same transaction', async () => {
     const r = await record(h, {

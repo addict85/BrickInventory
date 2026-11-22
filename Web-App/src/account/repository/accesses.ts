@@ -54,12 +54,7 @@ export async function endOverlap(db: DbInterface, previous_token: string, hash: 
 
 /** The WHERE clause lets at most one write per day through, even
  * across several processes. */
-export async function touchToken(
-  db: DbInterface,
-  hash: string,
-  idleDays: number,
-  bereich: string | null,
-): Promise<void> {
+export async function touchToken(db: DbInterface, hash: string, idleDays: number, area: string | null): Promise<void> {
   await db.run(
     `UPDATE api_tokens
         SET last_used = NOW(),
@@ -69,7 +64,7 @@ export async function touchToken(
       WHERE token = $1
         AND (last_used IS NULL OR last_used < NOW() - INTERVAL '1 day'
              OR (sliding AND expires_at < NOW() + make_interval(days => $2) - INTERVAL '1 day'))`,
-    [hash, idleDays, bereich],
+    [hash, idleDays, area],
   );
 }
 
@@ -170,7 +165,7 @@ export function createSuccessor(
   alt: string,
   z: SwapSource,
   idleDays: number,
-  bereich: string | null,
+  area: string | null,
 ) {
   return tx.get<{ expires_at: Date | null; hard_expires_at: Date | null; rotated_at: Date }>(
     `INSERT INTO api_tokens (token, user_id, label, created_at, last_used, expires_at, sliding,
@@ -190,7 +185,7 @@ export function createSuccessor(
       z.hard_expires_at,
       z.never_expires,
       z.scope,
-      bereich,
+      area,
       alt,
     ],
   );
@@ -364,6 +359,6 @@ export async function replacePasswordHash(db: DbInterface, id: number, alt: stri
   await db.run('UPDATE users SET password_hash = $3 WHERE id = $1 AND password_hash = $2', [id, alt, fresh]);
 }
 
-export function passwortHash(db: DbInterface, id: number) {
+export function passwordHash(db: DbInterface, id: number) {
   return db.get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = $1', [id]);
 }

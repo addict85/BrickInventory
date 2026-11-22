@@ -15,7 +15,7 @@ let versuche = 0;
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async (_u, _sn, info) => {
+  loadSetImage: async (_u, _sn, info) => {
     versuche++;
     if (info) info.status = antwort;
     return null;
@@ -127,7 +127,7 @@ test('throttling and a missing image are distinguished', { concurrency: 1 }, asy
         'Die zurückgelegten Notizen tauchen in keinem Zähler auf — dann ist ' +
           'aus der Meldung nicht zu erkennen, dass gedrosselt wurde',
       );
-      assert.match(IQ.meldung(e), /zurückgelegt/, 'Die Meldung verschweigt die Drosselung');
+      assert.match(IQ.message(e), /zurückgelegt/, 'Die Meldung verschweigt die Drosselung');
       assert.equal(
         await offen(),
         10,

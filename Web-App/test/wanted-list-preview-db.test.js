@@ -96,7 +96,7 @@ testSources(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
-const { importiereWantedListe } = _req('src/wanted/wantedList.js');
+const { importWantedList } = _req('src/wanted/wantedList.js');
 const { describeItem, resolveLocalOn } = _req('src/wanted/wantedResolution.js');
 const { readWantedList } = _req('src/wanted/wantedParser.js');
 
@@ -155,7 +155,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // WRITE (`vorschau: !!opt.vorschau`), and that is right: whoever calls it
     // brings a creator along. The decision "preview or for real"
     // is made by the route from `?schreiben=1` — not by a default value here.
-    const b = await importiereWantedListe(1, xml, { vorschau: true });
+    const b = await importWantedList(1, xml, { vorschau: true });
     assert.equal(b.vorschau, true, 'Mit vorschau: true muss es eine Vorschau sein');
     assert.equal(b.angelegt, 0, 'Eine Vorschau schreibt nichts');
 
@@ -219,7 +219,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   await t.test('2. quantity, BL color and condition travel into the preview', async () => {
     // Without it the preview cannot show the row — and the correction
     // cannot say which color was meant.
-    const b = await importiereWantedListe(1, liste(item('P', '3001', 85, 7)), { vorschau: true });
+    const b = await importWantedList(1, liste(item('P', '3001', 85, 7)), { vorschau: true });
     const p = b.posten[0];
     assert.equal(p.blFarbe, 85, 'Die BrickLink-Farbnummer aus der Datei fehlt');
     assert.equal(p.menge, 7);
@@ -229,14 +229,14 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
 
   await t.test('2b. the account default condition travels ONCE per report', async () => {
     // Asked for by Marco on 20.10.
-    const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')), { vorschau: true });
+    const ohne = await importWantedList(1, liste(item('P', '3001', 5, 1, 'X')), { vorschau: true });
     assert.equal(ohne.standardZustand, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
     assert.equal(ohne.posten[0].zustand, null, 'Am ITEM steht weiterhin, was in der Datei stand — nicht der Standard');
 
     await db.run(`INSERT INTO user_settings (user_id, key, value)
                   VALUES (1,'user_default_condition','U')
                   ON CONFLICT (user_id, key) DO UPDATE SET value='U'`);
-    const mit = await importiereWantedListe(
+    const mit = await importWantedList(
       1,
       liste(
         item('P', '3001', 5, 1, 'N'),
@@ -261,7 +261,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // number and color would hit both rows.
     const xml = liste(item('P', '3001', 85, 2), item('P', '3001', 85, 5));
     const zaehler = [];
-    const b = await importiereWantedListe(1, xml, {
+    const b = await importWantedList(1, xml, {
       vorschau: false,
       korrekturen: [{ index: 1, blId: '3001', art: 'part', rbFarbe: 7 }],
       creator: {
@@ -269,7 +269,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
           zaehler.push(body);
           return { action: 'created' };
         },
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
     });
@@ -311,7 +311,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // item — silently, because both numbers would look plausible.
     const xml = liste(item('P', '3001', 85, 2));
     const zaehler = [];
-    const b = await importiereWantedListe(1, xml, {
+    const b = await importWantedList(1, xml, {
       vorschau: false,
       korrekturen: [{ index: 0, blId: '4444', art: 'part', rbFarbe: 7 }],
       creator: {
@@ -319,7 +319,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
           zaehler.push(body);
           return { action: 'created' };
         },
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
     });
@@ -337,13 +337,13 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     const gemerkt = [];
     const creator = {
       teil: async () => ({ action: 'created' }),
-      figur: async () => ({ action: 'created' }),
+      minifig: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
     // 3001 resolves via the catalog (stage 3, a guess), 9999 does not.
     // 9999 is corrected → 3002.
     const xml = liste(item('P', '3001', 5, 1), item('P', '9999', 5, 1));
-    const b = await importiereWantedListe(1, xml, {
+    const b = await importWantedList(1, xml, {
       vorschau: false,
       creator,
       korrekturen: [{ index: 1, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
@@ -364,12 +364,12 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   await t.test('5b. a number looked up at Rebrickable is remembered too', async () => {
     const gemerkt = [];
     const xml = liste(item('P', '98765', 5, 1));
-    const b = await importiereWantedListe(1, xml, {
+    const b = await importWantedList(1, xml, {
       vorschau: false,
       viaRebrickable: true,
       creator: {
         teil: async () => ({ action: 'created' }),
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
       rememberNumber: async (art, rbId, blId) => {
@@ -398,12 +398,12 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // WITH creator: without it writing fails, and the callback would
     // not be reached for that reason alone — the case would be green without
     // saying anything about the preview.
-    const b = await importiereWantedListe(1, liste(item('P', '9999', 5, 1)), {
+    const b = await importWantedList(1, liste(item('P', '9999', 5, 1)), {
       vorschau: true,
       korrekturen: [{ index: 0, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
       creator: {
         teil: async () => ({ action: 'created' }),
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
       rememberNumber: async (...a) => {
@@ -449,10 +449,10 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // Marco's finding of 21.10.
     const creator = {
       teil: async () => ({ action: 'created' }),
-      figur: async () => ({ action: 'created' }),
+      minifig: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
-    const b = await importiereWantedListe(1, liste(item('P', '3001', 5, 1)), {
+    const b = await importWantedList(1, liste(item('P', '3001', 5, 1)), {
       vorschau: false,
       creator,
     });
@@ -477,14 +477,14 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // the loop would show nothing for exactly these items.
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
-    const vorher = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), { vorschau: true });
+    const vorher = await importWantedList(1, liste(item('P', '7777', 5, 1)), { vorschau: true });
     assert.equal(
       vorher.posten[0].bild,
       null,
       'In der Vorschau gibt es das Bild noch nicht — sonst sagt der Fall nichts',
     );
 
-    const b = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), {
+    const b = await importWantedList(1, liste(item('P', '7777', 5, 1)), {
       vorschau: false,
       creator: {
         // The way addManualPart would do it: fill the catalog first, then report.
@@ -494,7 +494,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
                         ON CONFLICT DO NOTHING`);
           return { action: 'created' };
         },
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
     });

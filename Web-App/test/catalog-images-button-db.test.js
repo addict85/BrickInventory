@@ -16,7 +16,7 @@ const verkleinert = [];
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async (_u, sn) => {
+  loadSetImage: async (_u, sn) => {
     geladen++;
     return `/images/sets/${sn}.jpg`;
   },

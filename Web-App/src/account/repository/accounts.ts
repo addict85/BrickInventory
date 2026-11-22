@@ -1,4 +1,4 @@
-import type { Db, DbInterface, Treffer } from '../../../db/database';
+import type { Db, DbInterface, Hit } from '../../../db/database';
 import { removeAccountFromBackups } from '../../../db/migrate';
 import { LOCKS } from '../../infra/lockNamespaces';
 import type { Columns } from '../../../db/rows';
@@ -172,7 +172,7 @@ export async function switchRegistrationFree(
   if (!k) return 'nicht_wartend';
   if (
     k.new_email &&
-    (await tx.get<Treffer>(
+    (await tx.get<Hit>(
       'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
       [k.new_email, id],
     ))
@@ -238,7 +238,7 @@ const OTHER_ADMIN = 'EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_act
  * (READ COMMITTED), and none would remain. It holds until the end of the caller's
  * transaction; without one it would end with the query and protect nothing. */
 async function belowAdminLock<T>(tx: Db, fn: (tx: DbInterface) => Promise<T>): Promise<T> {
-  if (!tx.inTransaction()) throw new Error('Die Verwaltersperre gilt nur in einer Transaktion (k.transaktion)');
+  if (!tx.inTransaction()) throw new Error('Die Verwaltersperre gilt nur in einer Transaktion (k.transact)');
   await tx.get<unknown>('SELECT pg_advisory_xact_lock($1, 0)', [LOCKS.ADMIN_INVENTORY]);
   return fn(tx);
 }
@@ -302,7 +302,7 @@ export async function setOwnPassword(db: DbInterface, id: number, hash: string):
 }
 
 export async function accountExists(db: DbInterface, id: number): Promise<boolean> {
-  return !!(await db.get<Treffer>('SELECT 1 FROM users WHERE id = $1', [id]));
+  return !!(await db.get<Hit>('SELECT 1 FROM users WHERE id = $1', [id]));
 }
 
 /** Also from the copies made before migrations; the name in the log is taken by cleanLogOn(). */
@@ -517,13 +517,13 @@ export function tokenStand(
 export async function deleteAccess(
   db: DbInterface,
   uid: number,
-  kennung: string,
+  key: string,
 ): Promise<{ anzahl: number; label: string | null }> {
   const r = await db.get<{ n: number; label: string | null }>(
     `WITH weg AS (DELETE FROM api_tokens WHERE user_id = $1 AND (left(token, 16) = $2 OR left(replaced_by, 16) = $2)
                   RETURNING replaced_by, label)
      SELECT count(*) FILTER (WHERE replaced_by IS NULL)::int AS n, max(label) AS label FROM weg`,
-    [uid, kennung],
+    [uid, key],
   );
   return { anzahl: r?.n ?? 0, label: r?.label ?? null };
 }

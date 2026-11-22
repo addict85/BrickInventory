@@ -3,7 +3,7 @@
  * limit; writes only happen on a failed attempt, the lock itself is remembered by
  * each process so that a valid token costs no additional query.
  * Replaced tokens of a family do not count (reuse detection). */
-import { drosselAdresse } from '../infra/throttleAddress';
+import { throttleAddress } from '../infra/throttleAddress';
 import { countRequest } from './loginLimiter';
 import { reportError } from '../infra/error';
 import type { AccountContext } from './context';
@@ -25,13 +25,13 @@ export async function countFailedAttempt(
   const st = await countRequest(kx, BUCKET, ip, FAILED_ATTEMPT_WINDOW_MS);
   if (st.count <= FAILED_ATTEMPT_MAX) return;
   const lockedUntil = locked();
-  lockedUntil.set(drosselAdresse(ip), now + Math.min(st.waitMin * 60_000, FAILED_ATTEMPT_WINDOW_MS));
+  lockedUntil.set(throttleAddress(ip), now + Math.min(st.waitMin * 60_000, FAILED_ATTEMPT_WINDOW_MS));
   if (lockedUntil.size > 5000) for (const [k, bis] of lockedUntil) if (bis <= now) lockedUntil.delete(k);
 }
 
 export function toManyFailedAttempts(ip: string | null | undefined, now = Date.now()): boolean {
   if (!ip) return false;
-  const bis = locked().get(drosselAdresse(ip));
+  const bis = locked().get(throttleAddress(ip));
   return bis !== undefined && now < bis;
 }
 

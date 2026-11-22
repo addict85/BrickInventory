@@ -1,4 +1,4 @@
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 
 export function writeRates(db: DbInterface, days: string[], currencies: string[], jeEur: string[]) {
   return db.run(
@@ -10,5 +10,5 @@ export function writeRates(db: DbInterface, days: string[], currencies: string[]
 }
 
 export function givesEsRates(db: DbInterface) {
-  return db.get<Treffer>('SELECT 1 AS da FROM exchange_rates LIMIT 1');
+  return db.get<Hit>('SELECT 1 AS da FROM exchange_rates LIMIT 1');
 }

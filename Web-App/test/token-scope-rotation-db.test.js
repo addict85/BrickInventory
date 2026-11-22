@@ -4,7 +4,7 @@
  * database and the login path as in the server (entrance, api_v1, settings, auth).
  *
  * Counter-checks (measured on 30.10.2026):
- *   A  the scope not respected in pruefeToken() (is_admin = konto_is_admin) →
+ *   A  the scope not respected in checkToken() (is_admin = konto_is_admin) →
  *      red: “scope app: even an administrator account gets no administrator rights”
  *   B  in /qr-login again establishSession() with isAdmin → red: the same
  *      check (the response sets a session cookie)
@@ -12,9 +12,9 @@
  *      “expiry slides, written at most once per day”
  *   D  in rotateToken() the unused successor not replaced → red:
  *      “rotation: …” (B still applies after the second exchange)
- *   E  in pruefeToken() the predecessor not deleted on the first use →
+ *   E  in checkToken() the predecessor not deleted on the first use →
  *      red: “rotation: …” (the old one still applies after use of the new one)
- *   F  (22.11.2026) in putTokenAn() no fixed end at the bound (hard_expires_at NULL for
+ *   F  (22.11.2026) in createToken() no fixed end at the bound (hard_expires_at NULL for
  *      TOKEN_MAX_DAYS, as „unbegrenzt“ was) → red: “app login: fixed maximum duration …” and
  *      “no access without an end, …”
  *   G  rotationRequired() always false → red: the same check (status 200 instead of 401)
@@ -24,7 +24,7 @@
  *      “device list: …” (the exchanged device stood there twice)
  *   J  (22.11.2026) the cleanup step `boundUnlimited` deleted → red: “no access without an
  *      end, …” (the legacy row keeps never_expires)
- *   K  (02.11.2026) in putSuccessorAn() hard_expires_at set to NOW() + 180
+ *   K  (02.11.2026) in createSuccessor() hard_expires_at set to NOW() + 180
  *      days → red: the same check („der Tausch verlängert …“)
  *   L  (09.11.2026) in deleteAccess() the predecessor (`left(replaced_by, 16)`)
  *      not deleted along → red: “device list: …” (the predecessor lives on)

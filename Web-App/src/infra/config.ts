@@ -1,7 +1,7 @@
 /** THE one place that reads process.env: an invalid value is a
  * startup error with name and reason, instead of silently falling back to a default.
  * The list with explanations is in .env.example. */
-import { proxyVertrauen } from './proxyTrust';
+import { proxyTrust } from './proxyTrust';
 import { readFileSync } from 'node:fs';
 import { processWide } from './prozessweit';
 
@@ -20,25 +20,25 @@ export const FILE_VARIABLES = [
 
 /** Transfers every readable X_FILE to X and removes X_FILE; a second call changes nothing. */
 export function secretsFromFiles(env: Environment): string[] {
-  const fehler: string[] = [];
+  const error: string[] = [];
   for (const name of FILE_VARIABLES) {
     const file = env[`${name}_FILE`]?.trim();
     if (!file) continue;
     if (env[name]) {
-      fehler.push(`${name} und ${name}_FILE sind beide gesetzt — nur eines davon`);
+      error.push(`${name} und ${name}_FILE sind beide gesetzt — nur eines davon`);
       continue;
     }
     try {
       env[name] = readFileSync(file, 'utf8').replace(/\r?\n$/, '');
       delete env[`${name}_FILE`];
     } catch (e) {
-      fehler.push(`${name}_FILE="${file}" ist nicht lesbar (${(e as NodeJS.ErrnoException).code ?? e})`);
+      error.push(`${name}_FILE="${file}" ist nicht lesbar (${(e as NodeJS.ErrnoException).code ?? e})`);
     }
   }
-  return fehler;
+  return error;
 }
 
-export interface Konfig {
+export interface AppConfig {
   production: boolean;
   nodeEnv: string;
   /** Only explicitly development or test: without NODE_ENV the production rules apply. */
@@ -128,9 +128,9 @@ export const DEFAULT = {
 } as const;
 
 /** The message names every invalid variable. */
-export class KonfigFehler extends Error {
-  constructor(readonly fehler: string[]) {
-    super(`Ungültige Konfiguration:\n  - ${fehler.join('\n  - ')}`);
+export class ConfigError extends Error {
+  constructor(readonly error: string[]) {
+    super(`Ungültige Konfiguration:\n  - ${error.join('\n  - ')}`);
     this.name = 'KonfigFehler';
   }
 }
@@ -205,10 +205,10 @@ export const VARIABLES = [
 const STALE = ['WEB_WORKERS'] as const;
 
 /** Without a value both in one process: the simple start without Compose. */
-function roleFrom(env: Environment, fehler: string[]): Role {
+function roleFrom(env: Environment, error: string[]): Role {
   const raw = env.ROLLE?.trim().toLowerCase() || 'beides';
   if ((ROLES as readonly string[]).includes(raw)) return raw as Role;
-  fehler.push(`ROLLE="${env.ROLLE}" ist weder web noch jobs noch beides`);
+  error.push(`ROLLE="${env.ROLLE}" ist weder web noch jobs noch beides`);
   return 'beides';
 }
 
@@ -218,76 +218,76 @@ function integer(
   defaultValue: number,
   min: number,
   max: number,
-  fehler: string[],
+  error: string[],
 ): number {
   const raw = env[name]?.trim();
   if (raw === undefined || raw === '') return defaultValue;
   const n = Number(raw);
   if (!Number.isInteger(n) || n < min || n > max) {
-    fehler.push(`${name}="${raw}" ist keine ganze Zahl von ${min} bis ${max}`);
+    error.push(`${name}="${raw}" ist keine ganze Zahl von ${min} bis ${max}`);
     return defaultValue;
   }
   return n;
 }
 
-function zahl(env: Environment, name: string, defaultValue: number, fehler: string[]): number {
+function number(env: Environment, name: string, defaultValue: number, error: string[]): number {
   const raw = env[name]?.trim();
   if (raw === undefined || raw === '') return defaultValue;
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) {
-    fehler.push(`${name}="${raw}" ist keine positive Zahl`);
+    error.push(`${name}="${raw}" ist keine positive Zahl`);
     return defaultValue;
   }
   return n;
 }
 
-function flag(env: Environment, name: string, fehler: string[]): boolean | null {
+function flag(env: Environment, name: string, error: string[]): boolean | null {
   const raw = env[name]?.trim();
   if (raw === undefined || raw === '') return null;
   if (raw === '1' || raw === 'true') return true;
   if (raw === '0' || raw === 'false') return false;
-  fehler.push(`${name}="${raw}" ist weder 1 noch 0`);
+  error.push(`${name}="${raw}" ist weder 1 noch 0`);
   return null;
 }
 
 /** Every signing key (own, Play App Signing, debug) yields a different
  * hash; which version a server's users have is only known by its operator.
  * Empty: the server accepts no passkey response from an app. */
-function androidCertificates(env: Environment, fehler: string[]): string[] {
+function androidCertificates(env: Environment, error: string[]): string[] {
   const raw = env.PASSKEY_ANDROID_ZERTIFIKATE?.trim() || '';
   const list = raw ? raw.split(/[\s,;]+/).filter(Boolean) : [];
   const hex = list.map(f => f.replace(/:/g, '').toUpperCase());
   const wrong = list.filter((_, i) => !/^[0-9A-F]{64}$/.test(hex[i] ?? ''));
   if (wrong.length)
-    fehler.push(`PASSKEY_ANDROID_ZERTIFIKATE: ${wrong.join(', ')} ist kein SHA-256-Fingerabdruck (64 Hex-Zeichen)`);
+    error.push(`PASSKEY_ANDROID_ZERTIFIKATE: ${wrong.join(', ')} ist kein SHA-256-Fingerabdruck (64 Hex-Zeichen)`);
   return wrong.length ? [] : [...new Set(hex)];
 }
 
-function androidPackage(env: Environment, fehler: string[]): string {
+function androidPackage(env: Environment, error: string[]): string {
   const pkg = env.PASSKEY_ANDROID_PAKET?.trim() || 'ch.brickinventoryapp';
   if (/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/.test(pkg)) return pkg;
-  fehler.push(`PASSKEY_ANDROID_PAKET="${pkg}" ist kein Paketname`);
+  error.push(`PASSKEY_ANDROID_PAKET="${pkg}" ist kein Paketname`);
   return 'ch.brickinventoryapp';
 }
 
 /** An own root would open the step guard to every key it signs:
  * hence only where NODE_ENV explicitly says development or test. */
-function attestationRoots(env: Environment, fehler: string[]): string | null {
+function attestationRoots(env: Environment, error: string[]): string | null {
   const pem = env.ATTESTATION_WURZELN?.trim() || null;
   if (pem && !developmentEnvironment(env))
-    fehler.push('ATTESTATION_WURZELN gilt nur mit NODE_ENV=development oder test');
+    error.push('ATTESTATION_WURZELN gilt nur mit NODE_ENV=development oder test');
   return pem;
 }
 
 export const LEGACY_KEY_CUTOFF_DATE = '2027-02-01';
 
-function legacyKeyUntil(env: Environment, fehler: string[]): Date {
+function legacyKeyUntil(env: Environment, error: string[]): Date {
   const raw = env.GERAETESCHLUESSEL_ALT_BIS?.trim() || LEGACY_KEY_CUTOFF_DATE;
   const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00Z`) : new Date(Number.NaN);
   const cutoffDate = new Date(`${LEGACY_KEY_CUTOFF_DATE}T00:00:00Z`);
   // Only earlier, never later: a date in the distant future would let unattested keys apply permanently.
   if (d.getTime() <= cutoffDate.getTime()) return d;
-  fehler.push(
+  error.push(
     Number.isNaN(d.getTime())
       ? `GERAETESCHLUESSEL_ALT_BIS="${raw}" ist kein Datum JJJJ-MM-TT`
       : `GERAETESCHLUESSEL_ALT_BIS="${raw}" liegt nach ${LEGACY_KEY_CUTOFF_DATE}; nur ein früheres Datum ist erlaubt`,
@@ -295,11 +295,11 @@ function legacyKeyUntil(env: Environment, fehler: string[]): Date {
   return cutoffDate;
 }
 
-function patchAtLeast(env: Environment, fehler: string[]): number | null {
+function patchAtLeast(env: Environment, error: string[]): number | null {
   const raw = env.ATTESTATION_PATCH_MINDESTENS?.trim();
   if (!raw) return null;
   if (/^20\d\d(0[1-9]|1[0-2])$/.test(raw)) return Number(raw);
-  fehler.push(`ATTESTATION_PATCH_MINDESTENS="${raw}" ist kein Monat JJJJMM`);
+  error.push(`ATTESTATION_PATCH_MINDESTENS="${raw}" ist kein Monat JJJJMM`);
   return null;
 }
 
@@ -316,10 +316,10 @@ export function timeZoneValid(name: string): boolean {
 
 /** If set explicitly, the zone must be correct; TZ and the process zone are only
  * a fallback and fall back to UTC for a foreign value. */
-function zoneFrom(env: Environment, fehler: string[]): string {
+function zoneFrom(env: Environment, error: string[]): string {
   let zone = env.ERFASSUNG_ZEITZONE?.trim() || '';
   if (zone && !timeZoneValid(zone)) {
-    fehler.push(`ERFASSUNG_ZEITZONE="${zone}" ist keine bekannte Zeitzone`);
+    error.push(`ERFASSUNG_ZEITZONE="${zone}" ist keine bekannte Zeitzone`);
     zone = '';
   }
   if (!zone) zone = env.TZ?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -355,7 +355,7 @@ function sessionConfig(env: Environment, f: string[]) {
   };
 }
 
-export function ladeKonfig(env: Environment = process.env): Konfig {
+export function loadConfig(env: Environment = process.env): AppConfig {
   const f: string[] = secretsFromFiles(env);
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
 
@@ -373,7 +373,7 @@ export function ladeKonfig(env: Environment = process.env): Konfig {
   const zone = zoneFrom(env, f);
 
   const pgPoolMax = env.PG_POOL_MAX?.trim() ? integer(env, 'PG_POOL_MAX', 15, 1, 1000, f) : null;
-  const k: Konfig = {
+  const k: AppConfig = {
     production: nodeEnv === 'production',
     nodeEnv,
     entwicklung: developmentEnvironment(env),
@@ -408,11 +408,11 @@ export function ladeKonfig(env: Environment = process.env): Konfig {
     entryTimeZone: zone,
     // 0 or less switches off trimming the price history.
     priceHistoryDays: integer(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
-    uploadQuotaMb: zahl(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
-    uploadTotalMb: zahl(env, 'UPLOAD_GESAMT_MB', 20_480, f),
+    uploadQuotaMb: number(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
+    uploadTotalMb: number(env, 'UPLOAD_GESAMT_MB', 20_480, f),
     mailConsoleWithToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
     bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
-    imageCacheMaxMb: zahl(env, 'BILD_CACHE_MAX_MB', 2048, f),
+    imageCacheMaxMb: number(env, 'BILD_CACHE_MAX_MB', 2048, f),
     imageFetchesJeMinute: integer(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
     csvRowDeadlineMs: integer(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
     jobParallel: integer(env, 'AUFTRAG_PARALLEL', DEFAULT.jobParallel, 1, 64, f),
@@ -428,42 +428,42 @@ export function ladeKonfig(env: Environment = process.env): Konfig {
     attestationRevocationDays: integer(env, 'ATTESTATION_WIDERRUF_TAGE', 7, 1, 90, f),
     attestationPatchAtLeast: patchAtLeast(env, f),
   };
-  if (f.length) throw new KonfigFehler(f);
+  if (f.length) throw new ConfigError(f);
   return k;
 }
 
 /** In production and behind Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 is the deliberate
  * exception for an operation without TLS. */
-export function cookieSafe(k: Konfig): boolean {
+export function cookieSafe(k: AppConfig): boolean {
   return k.cookieSecure ?? (k.operation || k.hinterTls);
 }
 
-const K = processWide('konfig', () => ({ v: null as Readonly<Konfig> | null }));
+const K = processWide('konfig', () => ({ v: null as Readonly<AppConfig> | null }));
 
 /** Read on the first call and frozen: konfig() is on the hot path
  * of every request, and production does not change its environment at runtime.
  * Whoever does (tests) says so explicitly with setKonfig/readKonfigNew. */
-export function konfig(): Readonly<Konfig> {
-  K.v ??= Object.freeze(ladeKonfig(process.env));
+export function konfig(): Readonly<AppConfig> {
+  K.v ??= Object.freeze(loadConfig(process.env));
   return K.v;
 }
 
 /** For tests: lay individual values over the read configuration; null lifts that. */
-export function setKonfig(teil: Partial<Konfig> | null): Readonly<Konfig> {
-  K.v = teil ? Object.freeze({ ...ladeKonfig(process.env), ...teil }) : null;
+export function setConfig(teil: Partial<AppConfig> | null): Readonly<AppConfig> {
+  K.v = teil ? Object.freeze({ ...loadConfig(process.env), ...teil }) : null;
   return konfig();
 }
 
 /** For tests and scripts that change process.env after startup. */
-export function readKonfigNew(): Readonly<Konfig> {
-  return setKonfig(null);
+export function readConfigNew(): Readonly<AppConfig> {
+  return setConfig(null);
 }
 
-export function checkConfigOnStart(): Konfig {
+export function checkConfigOnStart(): AppConfig {
   try {
     return konfig();
   } catch (e) {
-    if (!(e instanceof KonfigFehler)) throw e;
+    if (!(e instanceof ConfigError)) throw e;
     console.error(`❌ ${e.message}\n   Siehe .env.example.`);
     process.exit(1);
   }
@@ -526,7 +526,7 @@ export function startBans(env: NodeJS.ProcessEnv = process.env): string[] {
         'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).',
     );
   try {
-    proxyVertrauen(env.TRUST_PROXY, env.PROXY_NETZ_BESTAETIGT?.trim() === '1');
+    proxyTrust(env.TRUST_PROXY, env.PROXY_NETZ_BESTAETIGT?.trim() === '1');
   } catch (e) {
     reasons.push(`[proxy] ${(e as Error).message} Start verweigert.`);
   }

@@ -162,13 +162,13 @@ export async function deleteManual(
   ownerId: number,
   key: (string | number)[],
 ) {
-  const [nummer = '', color = 0] = key;
+  const [number = '', color = 0] = key;
   const r =
     art === 'part'
-      ? await repo.loescheTeilZeile(k.db, ownerId, String(nummer), Number(color))
-      : await repo.deleteMinifigRow(k.db, ownerId, String(nummer));
+      ? await repo.loescheTeilZeile(k.db, ownerId, String(number), Number(color))
+      : await repo.deleteMinifigRow(k.db, ownerId, String(number));
   if (!r.changes) return r;
-  if (art === 'part') await purchases.deletePartEntries(k.db, ownerId, String(nummer), Number(color) || 0);
-  else await purchases.deleteMinifigEntries(k.db, ownerId, String(nummer));
+  if (art === 'part') await purchases.deletePartEntries(k.db, ownerId, String(number), Number(color) || 0);
+  else await purchases.deleteMinifigEntries(k.db, ownerId, String(number));
   return r;
 }

@@ -5,7 +5,7 @@
  * with the password.
  *
  * Counter-checks (measured 09.11.2026):
- *   A  in server.ts `app.use('/api/v1', stepChutzAtInbox)` deleted →
+ *   A  in server.ts `app.use('/api/v1', stepProtectionAtInbox)` deleted →
  *      red: “without a device key …” (plain text 200 instead of 403)
  *   B  in requireApiAdmin again `next()` instead of requireRelease() → red:
  *      “administrator routes …” (/admin/cache-ttl 200 without approval)
@@ -13,8 +13,8 @@
  *      “a foreign signature …”
  *   D  in nachricht() the action left out → red: “a challenge is only good
  *      for its action”
- *   E  in putKeyAn() the deadline multiplied by a thousand → red: “an old access …”
- *      (with a nonce from back then; without it putNonceAn() already holds)
+ *   E  in createKey() the deadline multiplied by a thousand → red: “an old access …”
+ *      (with a nonce from back then; without it createNonce() already holds)
  *   F  in depositKey() `takeNonce` skipped → red: “a chain with a foreign
  *      or used challenge …”
  *   G  in keyThe() `(attested OR NOW() < $3)` deleted → red: “a key
@@ -25,14 +25,14 @@
  *      “every administrator path …” (POST /settings without approval 200); the same per
  *      path for smtp-test, einrichtung and quelle-testen with `requireToken`
  *      instead of `requireAdmin`, for import and instructions without freigegeben()
- *   J  in /settings/raw `istVerwalter(req)` instead of asAdmin() → red:
+ *   J  in /settings/raw `isAdmin(req)` instead of asAdmin() → red:
  *      „ohne Freigabe zeigt /settings/raw nur Kontowerte“
  *   K  (14.11.2026) in depositKey() `if (!widerrufen) return …` deleted and
  *      `widerrufen ?? new Set()` passed → red: “without a fresh revocation list …”;
  *      `widerrufen: new Set()` (list never checked) → red in the same test
  *   L  (15.11.2026) three lines at once: in startup/app.ts the refusal for `/` at the end
- *      deleted, stepChutzAtInbox again with the regexes `^…$` on req.path and
- *      in vertragsRouter the check of res.locals.schritt deleted → red: „auch anders
+ *      deleted, stepProtectionAtInbox again with the regexes `^…$` on req.path and
+ *      in contractRouter the check of res.locals.schritt deleted → red: „auch anders
  *      geschrieben …“ (klartext/, DELETE vouchers/n/ and zweiter-faktor/einrichten/ 200). Each line
  *      alone catches the other two (contract-spelling-db, contract-endpoint).
  *

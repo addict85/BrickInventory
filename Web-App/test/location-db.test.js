@@ -86,7 +86,7 @@ test('storage location against a real database', async t => {
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const writable = await household.schreibbereich(U.ich);
+  const writable = await household.writeScope(U.ich);
 
   await t.test('a part lies at ONE place, not at one per set', async () => {
     // The same part is in two sets and thus in two rows. If setting
@@ -194,7 +194,7 @@ test('storage location against a real database', async t => {
   });
 
   await t.test('the overview follows the scope', async () => {
-    await L.setLocation('set', await household.schreibbereich(U.kind), ['21318-1'], 'Kinderzimmer');
+    await L.setLocation('set', await household.writeScope(U.kind), ['21318-1'], 'Kinderzimmer');
     const oben = (await L.lagerorte(await household.scopeIds(U.ich, 'all'))).map(o => o.ort);
     const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.ort);
     assert.ok(oben.includes('Kinderzimmer'), 'Das Hauptkonto sieht den Ort des Kindes nicht');

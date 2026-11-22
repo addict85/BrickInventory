@@ -71,7 +71,7 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
   );
 
   const { priceHistorySet } = _req('src/finances/priceHistory.js');
-  const { setsLesen } = require('./helpers/sources').handlerModule(_req);
+  const { readSets } = require('./helpers/sources').handlerModule(_req);
 
   try {
     await t.test('the chart only shows the conditions in the inventory', async () => {
@@ -117,7 +117,7 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     });
 
     await t.test('an account with quantity 0 no longer stands as an owner', async () => {
-      const r = await setsLesen([mainId, subId], {});
+      const r = await readSets([mainId, subId], {});
       const zeile = r.sets.find(s => s.set_number === SN);
       assert.ok(zeile, 'das Set fehlt in der Galerie');
       assert.equal(zeile.quantity, 1, 'die Menge des Haushalts ist die Summe');
@@ -135,7 +135,7 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       // disappeared entirely.
       // “Hold a copy again" means: create an entry.
       await record(db, mainId, SN, 2);
-      const r = await setsLesen([mainId, subId], {});
+      const r = await readSets([mainId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
       assert.deepEqual(namen, [MAIN, SUB].sort(), 'beide Konten halten jetzt Exemplare');
     });

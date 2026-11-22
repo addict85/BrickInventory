@@ -1,18 +1,18 @@
-import { FEHLER, responseLanguage, errorText, type ErrorCode } from '../../src/infra/errorTexts';
+import { ERRORS, responseLanguage, errorText, type ErrorCode } from '../../src/infra/errorTexts';
 import { viewOf, guardFor } from './middleware';
 import { singleValue } from '../../src/infra/validate';
 import { pageFrom } from '../../src/infra/page';
-import { vertragsRouter } from '../../src/http/contractRouter';
+import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 
 /** Price errors come with a code from the valuation; the text follows the request's language, not the server's. */
-function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
+function translated<T extends { error?: unknown; error_code?: unknown }>(
   rows: T[],
   req: Parameters<typeof responseLanguage>[0],
 ): T[] {
   const language = responseLanguage(req);
   return rows.map(z =>
-    typeof z.error_code === 'string' && z.error_code in FEHLER
+    typeof z.error_code === 'string' && z.error_code in ERRORS
       ? { ...z, error: errorText(z.error_code as ErrorCode, language) }
       : z,
   );
@@ -20,40 +20,40 @@ function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
 
 export function buildFinanceRouter(d: Pick<Services, 'account' | 'finances'>) {
   const { requireToken } = guardFor(d.account);
-  const router = vertragsRouter('/api/v1');
+  const router = contractRouter('/api/v1');
 
-  router.endpunkt('GET /api/v1/finance/valuation', requireToken, async req => {
+  router.endpoint('GET /api/v1/finance/valuation', requireToken, async req => {
     const data = await d.finances.valueSets(req.apiUser.user_id, viewOf(req));
     // No `rate_limit` in the response: it cost three queries per call and
     // is shown in the monitoring.
-    const { eintraege: sets, ...seite } = pageFrom(uebersetzt(data.sets, req), req.abfrage);
-    return { total_value: data.totals.qty_avg, wert_gesamt: Number(data.totals.qty_avg), ...data, sets, ...seite };
+    const { eintraege: sets, ...page } = pageFrom(translated(data.sets, req), req.abfrage);
+    return { total_value: data.totals.qty_avg, wert_gesamt: Number(data.totals.qty_avg), ...data, sets, ...page };
   });
 
-  router.endpunkt('GET /api/v1/finance/parts-valuation', requireToken, async req => {
+  router.endpoint('GET /api/v1/finance/parts-valuation', requireToken, async req => {
     const data = await d.finances.valueParts(req.apiUser.user_id, viewOf(req));
-    const { eintraege: parts, ...seite } = pageFrom(uebersetzt(data.parts, req), req.abfrage);
-    return { ...data, parts, ...seite };
+    const { eintraege: parts, ...page } = pageFrom(translated(data.parts, req), req.abfrage);
+    return { ...data, parts, ...page };
   });
 
-  router.endpunkt('GET /api/v1/finance/minifigs-valuation', requireToken, async req => {
+  router.endpoint('GET /api/v1/finance/minifigs-valuation', requireToken, async req => {
     const data = await d.finances.valueMinifigs(req.apiUser.user_id, viewOf(req));
-    const { eintraege: figs, ...seite } = pageFrom(uebersetzt(data.figs, req), req.abfrage);
-    return { ...data, figs, ...seite };
+    const { eintraege: figs, ...page } = pageFrom(translated(data.figs, req), req.abfrage);
+    return { ...data, figs, ...page };
   });
 
-  router.endpunkt('GET /api/v1/finance/pnl', requireToken, async req => {
+  router.endpoint('GET /api/v1/finance/pnl', requireToken, async req => {
     const data = await d.finances.gainAndLoss(req.apiUser.user_id, viewOf(req));
-    const { eintraege: sets, ...seite } = pageFrom(data.sets, req.abfrage);
-    return { ...data, sets, ...seite };
+    const { eintraege: sets, ...page } = pageFrom(data.sets, req.abfrage);
+    return { ...data, sets, ...page };
   });
 
-  router.endpunkt('GET /api/v1/finance/portfolio-history', requireToken, async req => {
+  router.endpoint('GET /api/v1/finance/portfolio-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
     // einzelwert(): ?period=a&period=b arrives as an array and would otherwise go
     // back into the response unchanged.
     const period = singleValue(req.abfrage.period, 'week');
-    return { ...(await d.finances.portfolioVerlauf(uid, viewOf(req), period)) };
+    return { ...(await d.finances.portfolioHistory(uid, viewOf(req), period)) };
   });
   return router;
 }

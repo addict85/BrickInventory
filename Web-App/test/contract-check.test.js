@@ -24,16 +24,16 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
-const { vertragsRouter } = _req('src/http/contractRouter.js');
-const { setKonfig } = _req('src/infra/config.js');
+const { contractRouter: vertragsRouter } = _req('src/http/contractRouter.js');
+const { setConfig } = _req('src/infra/config.js');
 
 /** A router with real contract keys that answers whatever the test wants. */
 function server(t, antworten) {
   const router = vertragsRouter('/api/v1/auth');
-  router.endpunkt('GET /api/v1/auth/registration-status', (_req, res) =>
+  router.endpoint('GET /api/v1/auth/registration-status', (_req, res) =>
     res.status(antworten.status ?? 200).json(antworten.rumpf),
   );
-  router.endpunkt('PUT /api/v1/auth/users/:id/admin', (_req, res) => res.json({ success: true }));
+  router.endpoint('PUT /api/v1/auth/users/:id/admin', (_req, res) => res.json({ success: true }));
   const app = express();
   app.use(express.json());
   app.use('/api/v1/auth', router);
@@ -84,8 +84,8 @@ test('an error response without a code becomes a 500', async t => {
 });
 
 test('in production the response goes out unchecked', async t => {
-  setKonfig({ checkContract: false });
-  t.after(() => setKonfig(null));
+  setConfig({ checkContract: false });
+  t.after(() => setConfig(null));
   const basis = server(t, { rumpf: { enabled: 'ja' } });
   const r = await fetch(`${basis}/registration-status`);
   assert.deepEqual([r.status, await r.json()], [200, { enabled: 'ja' }]);
@@ -93,7 +93,7 @@ test('in production the response goes out unchecked', async t => {
 
 test('the check is decided when the router is built', async t => {
   const basis = server(t, { rumpf: { enabled: 'ja' } });
-  setKonfig({ checkContract: false });
-  t.after(() => setKonfig(null));
+  setConfig({ checkContract: false });
+  t.after(() => setConfig(null));
   assert.equal((await fetch(`${basis}/registration-status`)).status, 500);
 });

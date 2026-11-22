@@ -217,10 +217,10 @@ export async function partStatsQuery(k: PartsContext, userIdChoice: Sicht | Blic
 
 export async function blColorMapQuery(k: PartsContext) {
   // farbkarte() caches the map for ten minutes.
-  const karte = await k.finances.farbkarte();
-  if (karte.size > 0) {
+  const chart = await k.finances.colorChart();
+  if (chart.size > 0) {
     const map: Record<string, unknown> = {};
-    for (const [id, blId] of karte) map[id] = blId;
+    for (const [id, blId] of chart) map[id] = blId;
     return { map, source: 'db' };
   }
   const key = await k.externalSources.quellen.getRbKey();
@@ -247,7 +247,7 @@ export async function blColorMapQuery(k: PartsContext) {
       const blId = blColorNumberFrom(c);
       if (blId != null) {
         map[c.id] = blId;
-        k.catalog.merkeBlFarbnummer(c.id, blId).catch(logAndContinue('parts:merkeBlFarbnummer'));
+        k.catalog.rememberBlColorNumber(c.id, blId).catch(logAndContinue('parts:merkeBlFarbnummer'));
       }
     }
     hasNext = !!data.next;
@@ -273,9 +273,9 @@ export async function manualPartsList(
   const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
-  const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
-  const rows = await k.partsList.manualParts(uids, { search, storage }, seite);
-  const withState = await k.inventory.setzeManuellenZustand(uids, rows, 'part');
+  const pageNo = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
+  const rows = await k.partsList.manualParts(uids, { search, storage }, pageNo);
+  const withState = await k.inventory.setManualCondition(uids, rows, 'part');
   // One query for the whole list; the app reads `avg_price` in the detail view. Without
   // prices the list stays usable; `ab` collects why for `degradiert`.
   const prices = await ab.orElse(
@@ -284,7 +284,7 @@ export async function manualPartsList(
     new Map<string, number>(),
   );
   const withPrice = withState.map(t => ({ ...t, avg_price: prices.get(`${t.part_number}|${t.color_id}`) ?? null }));
-  return k.household.besitzerAnhaengen(uids, withPrice);
+  return k.household.attachOwners(uids, withPrice);
 }
 
 // Fills the "Have" column from the stock.

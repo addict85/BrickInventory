@@ -2,8 +2,8 @@
  * after the link; the mails go through the mail area. */
 import crypto from 'node:crypto';
 import { mailBasisUrl } from '../infra/basisUrl';
-import { fachfehler } from '../infra/errorTexts';
-import { versuche, valueOr } from '../infra/result';
+import { failDomain } from '../infra/errorTexts';
+import { attempts, valueOr } from '../infra/result';
 import { inSystemContext } from '../infra/accountContext';
 import { tokenDigest } from './deviceToken';
 import { accountThrottled } from './targetThrottle';
@@ -34,9 +34,9 @@ export async function changeProfile(
   if (nameNew || newEmail) {
     // Every availability check reveals whether an account exists; registration hides that.
     const zuOft = await accountThrottled(k, 'profil-vergabe', user.id, 10, 60 * 60 * 1000);
-    if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
+    if (zuOft) failDomain('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
     if (nameNew && e.username && (await k.konten.nameTaken(e.username, user.id)))
-      fachfehler('ungueltig', 'benutzername_vergeben');
+      failDomain('ungueltig', 'benutzername_vergeben');
   }
   const fields: Record<string, unknown> = {};
   if (e.first_name !== undefined) fields.first_name = e.first_name || null;
@@ -63,7 +63,7 @@ async function addressMails(k: AccountContext, user: Account, email: string, tok
   const language = async (uid: number) =>
     String(
       valueOr(
-        await versuche(
+        await attempts(
           'anmeldung:sprache',
           inSystemContext('adressmail', () => k.einstellungen.userValue(uid, 'language', 'de')),
         ),
@@ -77,7 +77,7 @@ async function addressMails(k: AccountContext, user: Account, email: string, tok
   if (holder && holder.id !== user.id) {
     if (basis)
       sent = valueOr(
-        await versuche(
+        await attempts(
           'anmeldung:versuchsmail',
           k.mail.mailRegistrationAttempt(holder.email, await language(holder.id), 'adresse'),
         ),
@@ -85,12 +85,12 @@ async function addressMails(k: AccountContext, user: Account, email: string, tok
       ).success;
   } else if (basis) {
     sent = valueOr(
-      await versuche('anmeldung:bestaetigungsmail', k.mail.mailVerification(email, token, basis, lang, 'adresse')),
+      await attempts('anmeldung:bestaetigungsmail', k.mail.mailVerification(email, token, basis, lang, 'adresse')),
       { success: false },
     ).success;
   }
   // The old address learns about it — if it was not the owner, they notice that way.
   if (user.email)
-    await versuche('anmeldung:hinweis-alte-adresse', k.mail.mailEmailChanged(user.email, user.username, email, lang));
+    await attempts('anmeldung:hinweis-alte-adresse', k.mail.mailEmailChanged(user.email, user.username, email, lang));
   return sent;
 }

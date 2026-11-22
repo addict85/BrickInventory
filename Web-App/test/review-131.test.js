@@ -94,7 +94,7 @@ test.after(() => db.pool.end().catch(() => {}));
 
 test('image downloads are capped', () => {
   const src = quelle('src/images/setImages.ts');
-  const fn = src.slice(src.indexOf('async function setBildHerunterladen'));
+  const fn = src.slice(src.indexOf('async function downloadSetImage'));
   const ende = fn.indexOf('\n}\n');
   const body = fn.slice(0, ende);
 
@@ -118,8 +118,8 @@ test('write endpoints without login carry a throttle', () => {
   // Every writing one may either require a login (via
   // middleware or in the body), or it counts attempts per IP. qr-login had …
   const src = ohneKommentare(require('./helpers/sources').loginSource());
-  // Old form router.post('/pfad' and contract form router.endpunkt('POST /api/v1/auth/pfad'.
-  const stellen = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpunkt\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
+  // Old form router.post('/pfad' and contract form router.endpoint('POST /api/v1/auth/pfad'.
+  const stellen = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpoint\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
   const offen = [];

@@ -1,24 +1,24 @@
 /** Distinguishes "failed" from "empty": a substitute value after an error looked like an empty response. */
-import { fehlertext, reportError, checkFallbackInTransaction } from './error';
+import { errorMessage, reportError, checkFallbackInTransaction } from './error';
 
 export interface Failure {
   kontext: string;
   grund: string;
 }
 
-export type Ergebnis<T, F = Failure> = { ok: true; wert: T } | { ok: false; fehler: F };
+export type Result<T, F = Failure> = { ok: true; wert: T } | { ok: false; fehler: F };
 
-export const succeeded = <T>(wert: T): Ergebnis<T, never> => ({ ok: true, wert });
-export const failed = <F>(fehler: F): Ergebnis<never, F> => ({ ok: false, fehler });
+export const succeeded = <T>(wert: T): Result<T, never> => ({ ok: true, wert });
+export const failed = <F>(fehler: F): Result<never, F> => ({ ok: false, fehler });
 
 /** Reports the error to the log and passes it on as a result; the caller has to decide. */
-export async function versuche<T>(kontext: string, work: Promise<T> | (() => Promise<T>)): Promise<Ergebnis<T>> {
+export async function attempts<T>(kontext: string, work: Promise<T> | (() => Promise<T>)): Promise<Result<T>> {
   try {
     return succeeded(await (typeof work === 'function' ? work() : work));
   } catch (e) {
     checkFallbackInTransaction(kontext, e);
     reportError(kontext, e);
-    return failed({ kontext, grund: fehlertext(e) || 'Unbekannter Fehler' });
+    return failed({ kontext, grund: errorMessage(e) || 'Unbekannter Fehler' });
   }
 }
 
@@ -27,7 +27,7 @@ export async function versuche<T>(kontext: string, work: Promise<T> | (() => Pro
 export class Degradations {
   readonly teile: string[] = [];
   async orElse<T, E>(teil: string, work: Promise<T> | (() => Promise<T>), ersatz: E): Promise<T | E> {
-    const r = await versuche(teil, work);
+    const r = await attempts(teil, work);
     if (!r.ok && !this.teile.includes(teil)) this.teile.push(teil);
     return r.ok ? r.wert : ersatz;
   }
@@ -37,6 +37,6 @@ export class Degradations {
 }
 
 /** The value or, after a failure, the explicitly named substitute. */
-export function valueOr<T, E>(e: Ergebnis<T, unknown>, ersatz: E): T | E {
+export function valueOr<T, E>(e: Result<T, unknown>, ersatz: E): T | E {
   return e.ok ? e.wert : ersatz;
 }

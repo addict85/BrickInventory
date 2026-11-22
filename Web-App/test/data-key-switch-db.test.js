@@ -10,7 +10,7 @@
  *      removed → red: “B alone reads everything” (API key, factor, PIN)
  *   B  in reencryptAllVouchers() the search value not renewed → red: “the
  *      search value of the number …”
- *   C  pufferUmschluesseln() always returns undefined → red: “B alone reads
+ *   C  rekeyBuffer() always returns undefined → red: “B alone reads
  *      everything” (voucher PDF)
  *   D  in pruefeCode() the fallback to searchValueAlt removed → red: “a
  *      recovery code from before the switch …”
@@ -75,7 +75,7 @@ test('rotate the data key', { concurrency: 1 }, async t => {
 
   // ── write under A ────────────────────────────────────────────────────────
   schluessel(A, null);
-  const apiContext = G.kontext('global_settings.value', 'rebrickable_api_key');
+  const apiContext = G.context('global_settings.value', 'rebrickable_api_key');
   await db.run(
     `INSERT INTO global_settings (key, value) VALUES ('rebrickable_api_key', $1)
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -92,7 +92,7 @@ test('rotate the data key', { concurrency: 1 }, async t => {
     const api = (await db.get(`SELECT value FROM global_settings WHERE key = 'rebrickable_api_key'`)).value;
     const faktor = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
     const v = await db.get('SELECT number, pin, number_search FROM vouchers WHERE id = $1', [g.id]);
-    const datei = G.decryptBuffer(fs.readFileSync(pdf), G.kontext('gutschein-pdf', `${uid}/${g.id}.pdf`));
+    const datei = G.decryptBuffer(fs.readFileSync(pdf), G.context('gutschein-pdf', `${uid}/${g.id}.pdf`));
     return {
       api: G.decrypt(api, apiContext),
       faktor: G.decrypt(faktor, zf.secondFactorContext(uid)),

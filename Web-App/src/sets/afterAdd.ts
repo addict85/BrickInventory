@@ -2,7 +2,7 @@
  * failed import of parts or figures is retried. The
  * enrichments afterwards report their error without making the job fail. */
 import { checkAbort, type JobRun } from '../jobQueue';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import { setSupplement, type ReworkKind } from './addSet';
 import { importMinifigs, importParts } from './setContentImport';
 import type { SetsContext } from './context';
@@ -22,7 +22,7 @@ async function pullAfter(
   // A failed step does not hold up the others, but it is recorded in the job's state.
   const ohne: string[] = [];
   const step = async (name: string, work: () => Promise<unknown>) => {
-    if (!(await versuche(`nacharbeit:${name} ${setNumber}`, work)).ok) ohne.push(name);
+    if (!(await attempts(`nacharbeit:${name} ${setNumber}`, work)).ok) ohne.push(name);
   };
   // The figures in every branch: the import keeps the storage location of existing
   // figures, and that way a second capture catches up on what failed the first time.
@@ -32,25 +32,25 @@ async function pullAfter(
 
   if (art === 'zweit') await step('bl-nummern', () => sk.catalog.reloadBlNumbers(lauf));
   if (art === 'neu') {
-    await step('preis', () => sk.finances.preisFuerSetHolen(setNumber, userId));
+    await step('preis', () => sk.finances.fetchPriceForSet(setNumber, userId));
     await step('anleitung', () => sk.catalog.loadSetInstructions(setNumber));
   } else {
-    await step('anleitung-einreihen', () => sk.catalog.anleitungEinreihen(setNumber));
+    await step('anleitung-einreihen', () => sk.catalog.enqueueInstruction(setNumber));
   }
   checkAbort(lauf);
-  await step('teile-anreichern', () => sk.catalog.enrichSetPartsAn(setNumber));
-  await step('figuren-anreichern', () => sk.catalog.enrichSetMinifigsAn(setNumber));
+  await step('teile-anreichern', () => sk.catalog.enrichSetParts(setNumber));
+  await step('figuren-anreichern', () => sk.catalog.enrichSetMinifigs(setNumber));
   // Brickset only fills gaps; the CSV import does not ask it when creating.
   if (art === 'csv') await step('brickset', () => sk.catalog.fillFromBrickset(setNumber));
   checkAbort(lauf);
   await step('bilder', () => sk.catalog.loadSetImages(setNumber));
-  if (ohne.length) await lauf?.fortschritt?.({ text: `ohne ${ohne.join(', ')}`, ohne });
+  if (ohne.length) await lauf?.progress?.({ text: `ohne ${ohne.join(', ')}`, ohne });
 }
 
 async function loadSetImages(k: SetsContext, setNumber: string, lauf?: JobRun): Promise<void> {
   await k.catalog.loadSetImages(setNumber);
   checkAbort(lauf);
-  await k.catalog.enrichSetMinifigsAn(setNumber);
+  await k.catalog.enrichSetMinifigs(setNumber);
 }
 
 export { pullAfter, loadSetImages };

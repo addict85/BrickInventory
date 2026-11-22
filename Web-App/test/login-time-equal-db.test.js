@@ -23,7 +23,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const argon2 = require('@node-rs/argon2');
 const { checkCredentials } = _req('src/account/loginCheck.js');
-const { hashePassword } = _req('src/account/passwordHash.js');
+const { hashPassword } = _req('src/account/passwordHash.js');
 
 /** Minimal request: checkCredentials only needs the IP of it (counter). */
 const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
@@ -34,7 +34,7 @@ test('an unknown login name computes the same hash as a wrong password', async t
   if (!(await dataOrSkip(t, _req))) return;
 
   const name = 'zeit_bekannt';
-  const hash = await hashePassword('richtigesPasswort1');
+  const hash = await hashPassword('richtigesPasswort1');
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   await db.run(
     'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',

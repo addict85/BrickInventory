@@ -15,7 +15,7 @@ if (!setNumber) {
 
 const ROOT = path.join(__dirname, '..');
 const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
-const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 const { DATA_DIR } = require(path.join(ROOT, 'dist/src/infra/appPaths.js'));
 
 const row = (/** @type {string} */ k, /** @type {any} */ v) => console.log(`   ${String(k).padEnd(14)} ${v}`);

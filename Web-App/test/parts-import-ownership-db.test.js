@@ -37,7 +37,7 @@ const replace = (rel, zusatz) => {
 };
 // Rebrickable set up at the wiring: every set of services asks via it.
 quellen.testSources(null, {
-  holeSetTeile: async n => {
+  fetchSetParts: async n => {
     fetches.push(n);
     return { teile: [], verweigert: false };
   },
@@ -129,10 +129,10 @@ test('parts import only in scope', { concurrency: 1 }, async t => {
   });
 
   await t.test('an empty response is remembered', async () => {
-    const { alleTeileDesSets } = _req('src/catalog/rebrickableCatalog.js');
+    const { allPartsOfSet } = _req('src/catalog/rebrickableCatalog.js');
     const leer = `TIL${P}-1`;
-    assert.deepEqual(await alleTeileDesSets(leer), []);
-    assert.deepEqual(await alleTeileDesSets(leer), []);
+    assert.deepEqual(await allPartsOfSet(leer), []);
+    assert.deepEqual(await allPartsOfSet(leer), []);
     assert.deepEqual(fetches, [leer], 'die zweite Frage ging wieder an Rebrickable');
   });
 });

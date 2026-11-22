@@ -137,9 +137,9 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
     if (l) l.push(a);
     else jeSet.set(a.set_number, [a]);
   }
-  const werte = await setMarketValues(k, sets, jeSet, currency, Math.max(1, parseInt(ttlHours, 10)));
+  const values = await setMarketValues(k, sets, jeSet, currency, Math.max(1, parseInt(ttlHours, 10)));
 
-  const setResults = sets.map(s => pnlSetRow(s, werte));
+  const setResults = sets.map(s => pnlSetRow(s, values));
   const tile = tileValues(setResults);
   const [partsVal, figsVal] = await Promise.all([valueParts(k, viewerId, uids), valueMinifigs(k, viewerId, uids)]);
   const partsResults = partsVal.parts.map(itemRow),

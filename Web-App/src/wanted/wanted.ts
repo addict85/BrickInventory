@@ -3,14 +3,14 @@
  * need the same rules. */
 import type { Sicht } from '../household';
 import * as V from '../infra/validate';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import { moneyInput } from '../infra/geld';
 import { publicError } from '../infra/error';
 import { Degradations } from '../infra/result';
 import { forSet } from '../catalog';
 import { imageIfPresent } from '../images';
 import { toCsv, csvRowsFromRequest, csvDatum } from '../infra/csvExport';
-import { possibleSetNumber, withVersion, normalisiereSetNummer } from '../infra/setNumber';
+import { possibleSetNumber, withVersion, normalizeSetNumber } from '../infra/setNumber';
 import type { WantedContext } from './context';
 
 /** Each condition on its own: if BrickLink doesn't know one, the other still
@@ -67,7 +67,7 @@ export async function conditionOrDefault(
   k: WantedContext,
   raw: string | null | undefined,
   userId: number,
-): Promise<V.Zustand> {
+): Promise<V.ConditionState> {
   return (
     V.optionalCondition(
       String(raw ?? '')
@@ -85,7 +85,7 @@ export async function addWantedItem(
   condition: string | null | undefined,
   capturedAt?: string | null,
 ): Promise<{ merkposten: WantedItem | null; war_neu: boolean }> {
-  const sn = normalisiereSetNummer(setNumber);
+  const sn = normalizeSetNumber(setNumber);
   const c = await conditionOrDefault(k, condition, userId);
   const r = await k.wanted.markSetWanted(userId, sn, c, capturedAt ?? null);
   const list = await wantedItemsOf(k, [userId], sn);
@@ -97,9 +97,9 @@ export async function removeWantedItem(
   k: WantedContext,
   userId: number,
   setNumber: string,
-  c: V.Zustand,
+  c: V.ConditionState,
 ): Promise<number> {
-  const r = await k.wanted.removeWantedEntry(userId, normalisiereSetNummer(setNumber), c);
+  const r = await k.wanted.removeWantedEntry(userId, normalizeSetNumber(setNumber), c);
   return r.changes ?? 0;
 }
 
@@ -112,7 +112,7 @@ function withWantedItemLock<T>(
   c: string,
   fn: (t: WantedContext) => Promise<T>,
 ): Promise<T> {
-  return k.transaktion(fn, {
+  return k.transact(fn, {
     sperren: konten.map(konto => ({ konto, schluessel: `merk:${sn}:${c}` })),
     repeatAtConflict: true,
   });
@@ -123,16 +123,16 @@ export async function moveWantedItem(
   k: WantedContext,
   ofId: number,
   setNumber: string,
-  c: V.Zustand,
+  c: V.ConditionState,
   zuId: number,
 ): Promise<{ verschoben: boolean; zusammengefuehrt: boolean }> {
-  const sn = normalisiereSetNummer(setNumber);
+  const sn = normalizeSetNumber(setNumber);
   if (ofId === zuId) return { verschoben: false, zusammengefuehrt: false };
 
   return withWantedItemLock(k, [ofId, zuId], sn, c, async t => {
     if (await t.wanted.isWanted(zuId, sn, c)) {
       const route = await removeWantedItem(t, ofId, sn, c);
-      await t.finances.preisalarm.loescheAlarm(ofId, sn, c);
+      await t.finances.preisalarm.deleteAlert(ofId, sn, c);
       return { verschoben: route > 0, zusammengefuehrt: true };
     }
     const r = await t.wanted.transferWantedEntry(zuId, ofId, sn, c);
@@ -167,7 +167,7 @@ export async function wantedItemsOf(
   const rows = await k.wanted.wantedListInScope(
     userIds,
     {
-      setOnly: nurSet ? normalisiereSetNummer(nurSet) : null,
+      setOnly: nurSet ? normalizeSetNumber(nurSet) : null,
       search: String(filter?.search ?? '').trim() || null,
       condition: condition === 'N' || condition === 'U' ? condition : null,
       sort: filter?.sort,
@@ -207,41 +207,41 @@ export async function fulfillWantedItem(
   readerId: number,
   ownerId: number,
   setNumber: string,
-  condition: V.Zustand,
-  eingabe: {
+  condition: V.ConditionState,
+  body: {
     quantity?: unknown;
     purchase_price?: unknown;
     condition?: string | null | undefined;
     storage?: unknown;
   } = {},
 ): Promise<{ action: string; set_number: string }> {
-  const sn = normalisiereSetNummer(setNumber);
+  const sn = normalizeSetNumber(setNumber);
 
   // Two conditions: `condition` is the wanted item's key, which disappears;
   // `eingabe.condition` is the one the set is recorded in.
   const wantedCondition = await conditionOrDefault(k, condition, ownerId);
-  const zustand = eingabe.condition == null ? wantedCondition : await conditionOrDefault(k, eingabe.condition, ownerId);
-  const menge = V.acquisitionQuantity(eingabe.quantity ?? 1);
-  const kaufpreis = moneyInput(eingabe.purchase_price, 'Kaufpreis');
+  const zustand = body.condition == null ? wantedCondition : await conditionOrDefault(k, body.condition, ownerId);
+  const menge = V.acquisitionQuantity(body.quantity ?? 1);
+  const kaufpreis = moneyInput(body.purchase_price, 'Kaufpreis');
 
   // Record and remove together: otherwise the set would sit in holdings AND
   // still on the wanted list at the same time.
   return withWantedItemLock(k, [ownerId], sn, wantedCondition, async t => {
     // A wanted item is being fulfilled; without it, this would be a second way to record.
-    if (!(await t.wanted.isWanted(ownerId, sn, wantedCondition))) fachfehler('nicht_gefunden', 'nicht_gefunden');
+    if (!(await t.wanted.isWanted(ownerId, sn, wantedCondition))) failDomain('nicht_gefunden', 'nicht_gefunden');
     // Already in scope means "exists", not increase; the wanted item is still done.
-    const r = await t.sets.setErfassen({
+    const r = await t.sets.acquireSet({
       requester: readerId,
       ownerWish: ownerId,
       setNumber: sn,
       menge,
       kaufpreis,
       zustand,
-      lagerort: eingabe.storage == null ? null : String(eingabe.storage),
+      lagerort: body.storage == null ? null : String(body.storage),
     });
     // After the WANTED-ITEM's condition: this is about the entry that was fulfilled.
     await removeWantedItem(t, ownerId, sn, wantedCondition);
-    await t.finances.preisalarm.loescheAlarm(ownerId, sn, wantedCondition);
+    await t.finances.preisalarm.deleteAlert(ownerId, sn, wantedCondition);
     return r.action === 'added'
       ? { action: 'added', set_number: r.set_number, name: r.name, katalog_offen: r.katalog_offen }
       : { action: 'exists', set_number: r.set_number };

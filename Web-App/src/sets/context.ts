@@ -1,4 +1,4 @@
-import type { Konfig } from '../infra/config';
+import type { AppConfig } from '../infra/config';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
@@ -16,7 +16,7 @@ import type { Clock } from '../infra/clock';
  * all areas use the same one is ensured by buildServices (startup/wiring.ts). */
 export interface SetsDependencies {
   uhr: Clock;
-  konfig: Readonly<Konfig>;
+  konfig: Readonly<AppConfig>;
   db: Db;
   externalSources: ForeignSourcesServices;
   images: ImagesServices;

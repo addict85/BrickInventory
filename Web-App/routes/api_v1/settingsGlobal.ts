@@ -1,53 +1,53 @@
 /** Global settings, import and export, setup, source and SMTP test; in settings.ts behind requireLogin. */
 import multer from 'multer';
 import { FORM_LIMITS } from '../../src/http/fileUpload';
-import { kontoSchranke, guardFor } from './middleware';
+import { accountGate, guardFor } from './middleware';
 import { hasGlobalValues } from '../../src/management';
-import { istVerwalter, nutzerName, confirmWithFactor } from '../../src/account/http/login';
+import { isAdmin, userName, confirmWithFactor } from '../../src/account/http/login';
 import { released, asAdmin } from '../../src/account/http/stepGuard';
-import { fachfehler, Fachfehler } from '../../src/infra/errorTexts';
+import { failDomain, DomainError } from '../../src/infra/errorTexts';
 import { emailValid } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/http/contractRouter';
+import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 
 export function buildSettingsGlobalRouter(
   d: Pick<Services, 'settings' | 'mail' | 'account' | 'profile' | 'management'>,
 ) {
   const { requireApiAdmin: requireAdmin, requireToken } = guardFor(d.account);
-  const router = vertragsRouter('/api/v1');
+  const router = contractRouter('/api/v1');
 
-  router.endpunkt('POST /api/v1/settings', requireToken, async (req, res) => {
+  router.endpoint('POST /api/v1/settings', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     // An administrator's global values go through the step guard like every administrator route.
-    const verwalter = istVerwalter(req) && hasGlobalValues(req.eingabe);
+    const verwalter = isAdmin(req) && hasGlobalValues(req.eingabe);
     if (verwalter && !(await released(d.account, req, res, 'verwaltung'))) return;
-    const fertig = await d.management.saveSettings(req.eingabe, {
+    const finished = await d.management.saveSettings(req.eingabe, {
       uid,
       verwalter,
-      name: nutzerName(req) ?? '',
+      name: userName(req) ?? '',
       confirm: passwort => confirmWithFactor(d.account, req, res, uid, passwort),
     });
-    if (fertig) return {};
+    if (finished) return {};
   });
 
   // Via readSettings(), so the masking does not get bypassed by the packaging.
-  router.endpunkt('GET /api/v1/settings/raw', requireToken, async req => {
+  router.endpoint('GET /api/v1/settings/raw', requireToken, async req => {
     return {
       settings: await d.settings.readSettings(req.apiUser.user_id, await asAdmin(d.account, req)),
     };
   });
 
-  router.endpunkt('GET /api/v1/settings/export', requireToken, async (req, res) => {
+  router.endpoint('GET /api/v1/settings/export', requireToken, async (req, res) => {
     const verwalter = await asAdmin(d.account, req);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0, 10)}.json"`,
     );
-    res.json(await d.management.exportConfig(req.apiUser.user_id, verwalter, nutzerName(req) ?? null));
+    res.json(await d.management.exportConfig(req.apiUser.user_id, verwalter, userName(req) ?? null));
   });
 
-  router.endpunkt('GET /api/v1/settings/export/data', requireToken, async (req, res) => {
+  router.endpoint('GET /api/v1/settings/export/data', requireToken, async (req, res) => {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
       'Content-Disposition',
@@ -63,34 +63,34 @@ export function buildSettingsGlobalRouter(
     storage: multer.memoryStorage(),
     limits: { ...FORM_LIMITS, fileSize: 1024 * 1024 },
   });
-  router.endpunkt(
+  router.endpoint(
     'POST /api/v1/settings/import',
     requireToken,
-    kontoSchranke('upload'),
+    accountGate('upload'),
     importUpload.single('file'),
     async (req, res) => {
-      if (!req.file) fachfehler('ungueltig', 'keine_datei');
+      if (!req.file) failDomain('ungueltig', 'keine_datei');
       // As administrator the import writes global values and reschedules the jobs.
-      const verwalter = istVerwalter(req);
+      const verwalter = isAdmin(req);
       if (verwalter && !(await released(d.account, req, res, 'verwaltung'))) return;
       return { ...(await d.management.importConfig(req.apiUser.user_id, verwalter, req.file.buffer)) };
     },
   );
 
-  router.endpunkt('POST /api/v1/settings/smtp-test', requireAdmin, async (req, res) => {
+  router.endpoint('POST /api/v1/settings/smtp-test', requireAdmin, async (req, res) => {
     const uid = req.apiUser.user_id;
     // Otherwise the mail server would be a relay to any address for a captured administrator session.
     const zuOft = await d.account.accountThrottled('smtp-test', uid, 10, 60 * 60 * 1000);
-    if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
+    if (zuOft) failDomain('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
 
-    const eigene = (await d.account.profil(uid))?.email || '';
-    const to = (req.eingabe.to || '').trim() || eigene;
+    const own = (await d.account.profile(uid))?.email || '';
+    const to = (req.eingabe.to || '').trim() || own;
     if (!emailValid(to)) {
-      fachfehler('ungueltig', 'keine_ziel_email');
+      failDomain('ungueltig', 'keine_ziel_email');
     }
     // Like changing the mail settings: to a foreign address only with password.
     if (
-      to.toLowerCase() !== eigene.toLowerCase() &&
+      to.toLowerCase() !== own.toLowerCase() &&
       !(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))
     )
       return;
@@ -100,7 +100,7 @@ export function buildSettingsGlobalRouter(
 
   // Open as long as the administrator has not completed it AND something
   // is missing — a configured installation never sees the wizard.
-  router.endpunkt('GET /api/v1/settings/einrichtung', requireAdmin, async req => {
+  router.endpoint('GET /api/v1/settings/einrichtung', requireAdmin, async req => {
     const wert = async (k: string) => !!(await d.settings.globalValue(k));
     const passwort = await d.account.passwordSwitchDue(req.apiUser.user_id);
     const quellen = {
@@ -118,24 +118,24 @@ export function buildSettingsGlobalRouter(
     return { offen: !done && (passwort || !quellen.rebrickable), passwort_aendern: passwort, quellen };
   });
 
-  router.endpunkt('POST /api/v1/settings/einrichtung/fertig', requireAdmin, async _req => {
+  router.endpoint('POST /api/v1/settings/einrichtung/fertig', requireAdmin, async _req => {
     await d.settings.setGlobalValue('einrichtung_erledigt', '1');
     return {};
   });
 
   // Checks the STORED access with a small request.
-  router.endpunkt('POST /api/v1/settings/quelle-testen', requireAdmin, async req => {
-    const absage = await d.management.checkSource(req.eingabe.quelle);
-    if (!absage) return {};
-    throw new Fachfehler(
+  router.endpoint('POST /api/v1/settings/quelle-testen', requireAdmin, async req => {
+    const refusal = await d.management.checkSource(req.eingabe.quelle);
+    if (!refusal) return {};
+    throw new DomainError(
       'ungueltig',
-      absage.code,
-      { quelle: absage.quelle, grund: absage.grund },
-      { details: absage.grund },
+      refusal.code,
+      { quelle: refusal.quelle, grund: refusal.grund },
+      { details: refusal.grund },
     );
   });
 
-  router.endpunkt('POST /api/v1/settings/admin/theme', requireAdmin, async req => {
+  router.endpoint('POST /api/v1/settings/admin/theme', requireAdmin, async req => {
     const theme = req.eingabe.theme;
     await d.profile.setGlobalTheme(theme);
     return { theme };

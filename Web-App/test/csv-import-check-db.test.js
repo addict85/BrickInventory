@@ -4,7 +4,7 @@
  * not silently skipped, every result names its line, a set unknown to the catalog
  * counts as a warning, and before taking over the check says
  * which sets are already in the collection. File as in the report
- * (import-fehler.csv), import as a job with a provided setErfassen.
+ * (import-fehler.csv), import as a job with a provided acquireSet.
  *
  * Counter-checks (measured 05.11.2026, each alone):
  *   A  csvMenge() again with .replace(/[^0-9]/g, '') → red: “every line with
@@ -29,7 +29,7 @@ Module.prototype.require = function (name, ...rest) {
   if (typeof name === 'string' && /[/\\]addSet(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) => {
-        if (k !== 'setErfassen') return t[k];
+        if (k !== 'acquireSet') return t[k];
         return async (_sk, { setNumber: sn, menge: qty }) => {
           if (sn === 'abc') throw new Error('Das ist keine Setnummer');
           booked.push(`${sn}×${qty}`);

@@ -19,7 +19,7 @@ export { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../clients/imag
 import { legoFetch } from '../../clients/legoBalance';
 export { legoFetch };
 export { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../../clients/legoBalance';
-export type { Fetch as Abruf, Rate as Kurs } from '../../clients/ecb';
+export type { Fetch, Rate } from '../../clients/ecb';
 export type { RbSetTeil } from '../../clients/rebrickable';
 export type { ClientsAccess } from '../../clients/access';
 
@@ -35,7 +35,7 @@ export function buildSources(z: ClientsAccess) {
     fromRetryQueue: bs.fromRetryQueue,
     getSetByBarcode: bs.getSetByBarcode,
     getSetByEan: bs.getSetByEan,
-    setAngaben: bs.setAngaben,
+    setDetails: bs.setDetails,
     checkBricksetAccess: bs.checkBricksetAccess,
     brickset: bs,
     productTitle: (ean13: string) => productTitle(rb.httpsGetRobust, ean13),

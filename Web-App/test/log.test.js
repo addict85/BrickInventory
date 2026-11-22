@@ -22,7 +22,7 @@ const P = _req('src/infra/log.js');
 /** An output to read along, with an adjustable clock. */
 function transcript() {
   const m = { out: [], err: [], uhr: Date.parse('2026-10-30T12:00:00Z') };
-  return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), jetzt: () => m.uhr } };
+  return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), now: () => m.uhr } };
 }
 
 test('a line is JSON with time, level, message, request and context', t => {
@@ -58,7 +58,7 @@ test('app_logs gets the lines in the previous text format', async t => {
   const { output } = transcript();
   t.after(P.installLog(output));
   const geschrieben = [];
-  P.logInDieDatabase({
+  P.logToDatabase({
     query: async (sql, werte) => {
       if (sql.startsWith('INSERT')) geschrieben.push(werte);
     },
@@ -73,7 +73,7 @@ test('app_logs gets the lines in the previous text format', async t => {
 test('write errors: immediately, then collected per minute', async t => {
   const { m, output } = transcript();
   t.after(P.installLog(output));
-  P.logInDieDatabase({
+  P.logToDatabase({
     query: async () => {
       throw new Error('Datenbank weg');
     },
@@ -103,11 +103,11 @@ test('write errors: immediately, then collected per minute', async t => {
 
 test('X-Request-Id: only harmless identifiers, otherwise an own one', () => {
   for (const gut of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x'])
-    assert.equal(P.anfrageKennung(gut), gut);
+    assert.equal(P.requestId(gut), gut);
   for (const boese of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {
-    const k = P.anfrageKennung(boese);
+    const k = P.requestId(boese);
     assert.notEqual(k, boese);
     assert.match(k, /^[0-9a-z]{4,}$/, `eigene Kennung statt ${JSON.stringify(boese)}`);
   }
-  assert.notEqual(P.anfrageKennung(''), P.anfrageKennung(''), 'eigene Kennungen zählen weiter');
+  assert.notEqual(P.requestId(''), P.requestId(''), 'eigene Kennungen zählen weiter');
 });

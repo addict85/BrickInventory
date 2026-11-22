@@ -59,29 +59,29 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
   /** A token that stands in the cache; afterwards its row is silently deleted. */
   const inCacheWithoutRow = async () => {
     const token = await auth.createToken(uid, 'Test');
-    assert.ok(await auth.nutzerZumToken(token), 'Vorbedingung: der Token gilt');
+    assert.ok(await auth.userForToken(token), 'Vorbedingung: der Token gilt');
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
-    assert.ok(await auth.nutzerZumToken(token), 'Gegenprobe: der Cache bedient ihn noch');
+    assert.ok(await auth.userForToken(token), 'Gegenprobe: der Cache bedient ihn noch');
     return token;
   };
 
   await t.test('logout applies immediately', async () => {
     const token = await inCacheWithoutRow();
     tokenCache.tokenForgotten(token);
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 
   await t.test('the token administration clears the cache', async () => {
     const token = await inCacheWithoutRow();
     tokenCache.emptyTokenCache();
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 
   await t.test('a password change also revokes cached tokens', async () => {
     const token = await auth.createToken(uid, 'Test');
-    assert.ok(await auth.nutzerZumToken(token));
+    assert.ok(await auth.userForToken(token));
     await auth.revokeAllTokens(uid);
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 
   await t.test('without notification a revoked token applies at most for the cache period', async t2 => {
@@ -89,7 +89,7 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
     const token = await inCacheWithoutRow();
     t2.mock.timers.enable({ apis: ['Date'], now: Date.now() });
     t2.mock.timers.tick(tokenCache.TOKEN_TTL_MS + 1000);
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 
   await t.test('without a listen connection the cache does not apply', async () => {
@@ -99,7 +99,7 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
     await db.run(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
       WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE 'LISTEN "token_widerrufen"%'`);
     assert.ok(await bis(() => !pgNotify.listensTo('token_widerrufen'), 2000), 'der Abriss kam nicht an');
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
     assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen'), 5000), 'die Verbindung kam nicht wieder');
   });
 });

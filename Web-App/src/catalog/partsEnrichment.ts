@@ -181,7 +181,7 @@ async function rememberPartsOfSets(
 }
 
 async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string): Promise<void> {
-  const existingFigs = await k.teileAnreicherung.minifigsInSetkatalog(n);
+  const existingFigs = await k.teileAnreicherung.minifigsInSetCatalog(n);
 
   if (!existingFigs) {
     const figsData = await apiGet(

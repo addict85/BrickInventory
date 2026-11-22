@@ -102,13 +102,13 @@ test('secrets encrypted', { concurrency: 1 }, async t => {
   });
 
   await t.test('wrong key yields null, not nonsense', async () => {
-    const wert = g.encrypt('geheim', g.kontext('probe'));
+    const wert = g.encrypt('geheim', g.context('probe'));
     environment({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
     g._forgetKey();
     const echt = console.warn;
     console.warn = () => {};
     try {
-      assert.equal(g.decrypt(wert, g.kontext('probe')), null);
+      assert.equal(g.decrypt(wert, g.context('probe')), null);
     } finally {
       console.warn = echt;
     }

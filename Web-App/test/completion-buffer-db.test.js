@@ -4,7 +4,7 @@
  * (startup/shutdown.ts, called by herunterfahren() in server.ts).
  *
  * Counter-checks (measured on 11.11.2026):
- *   A  stopImageDemand() without `await schreibePuffer()` → red: “the image demand
+ *   A  stopImageDemand() without `await writeBuffer()` → red: “the image demand
  *      is in image_wanted afterwards”
  *   B  stopNone() without clearInterval → red: “every timer has ended”
  *   C  stopLog() without `await emptyLog()` → red: “the last
@@ -43,14 +43,14 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
     offen.delete(h);
     echt.clear(h);
   };
-  const zurueck = P.installLog({ out: () => {}, err: () => {}, jetzt: () => Date.now() });
+  const zurueck = P.installLog({ out: () => {}, err: () => {}, now: () => Date.now() });
   t.after(() => {
     zurueck();
     Object.assign(global, { setInterval: echt.set, clearInterval: echt.clear });
   });
 
   const kennung = `abschluss-${process.pid}`;
-  P.logInDieDatabase(db.pool);
+  P.logToDatabase(db.pool);
   await B.setUpImageDemand();
   await F.setUpImageGaps();
   assert.ok(offen.size >= 4, `Aufbau: ${offen.size} Takte, erwartet mindestens vier`);

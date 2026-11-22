@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { PricesReload } from './priceItems';
-import { preiseNachladen } from './reloadPrices';
+import { reloadPrices } from './reloadPrices';
 import { runPriceRefresh } from './priceRun';
 import { rateJob } from './exchangeRates';
 import type { FinancesContext } from './context';
@@ -15,10 +15,10 @@ declare module '../jobQueue/jobs' {
   }
 }
 
-export function financesJobTypes(k: FinancesContext): Anmeldung[] {
+export function financesJobTypes(k: FinancesContext): Login[] {
   return [
-    auftragsart({ art: 'wechselkurse', nutzlast: LEER, ausfuehren: (_n, l) => rateJob(k, undefined, l) }),
-    auftragsart({
+    jobKind({ art: 'wechselkurse', nutzlast: LEER, ausfuehren: (_n, l) => rateJob(k, undefined, l) }),
+    jobKind({
       art: 'preise',
       nutzlast: LEER,
       ausfuehren: (_n, l) => runPriceRefresh(k, l),
@@ -26,10 +26,10 @@ export function financesJobTypes(k: FinancesContext): Anmeldung[] {
       kontouebergreifend: 'Preise aller Sets',
       zeitplan: { minuten: { setting: 'price_job_interval_minutes', vorgabe: 60, mindestens: 5 } },
     }),
-    auftragsart({
+    jobKind({
       art: 'preise_nachladen',
       nutzlast: PricesReload,
-      ausfuehren: (n, l) => preiseNachladen(k, n, l),
+      ausfuehren: (n, l) => reloadPrices(k, n, l),
       exklusiv: true,
     }),
   ];

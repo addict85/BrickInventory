@@ -3,7 +3,7 @@
  *
  * ── Counter-checks (performed, results copied down) ─────────────────────────
  *
- *   A  `stempleAssetsGecacht(...)` removed from src/profile/indexHtml.ts
+ *   A  `stampAssetsCached(...)` removed from src/profile/indexHtml.ts
  *      → “the renderer really stamps" red
  *   B  the size omitted from the stamp (mtime only)
  *      → “a changed file gets a new address" red — but only at
@@ -123,7 +123,7 @@ test('the renderer really stamps', () => {
   const idx = fs.readFileSync(path.join(ROOT, 'src/profile/indexHtml.ts'), 'utf8');
   assert.match(
     idx,
-    /return stempleAssetsGecacht\(out, PUBLIC_DIR\)/,
+    /return stampAssetsCached\(out, PUBLIC_DIR\)/,
     'src/profile/indexHtml.ts stempelt die Assets nicht mehr — dann gilt wieder die ' +
       'Zahl aus package.json, und die steht still, wenn niemand den Bumper läuft.',
   );
@@ -134,7 +134,7 @@ test('the renderer really stamps', () => {
   // 4882), making the case red although the order was right. A
   // check that hangs on the wrong word measures the wrong thing.
   assert.ok(
-    idx.indexOf('stempleAssetsGecacht(out') > idx.indexOf('lang !== '),
+    idx.indexOf('stampAssetsCached(out') > idx.indexOf('lang !== '),
     'Gestempelt wird vor dem Austausch der Sprachdatei — dann hängt der ' +
       'Stempel der deutschen Datei an der englischen.',
   );

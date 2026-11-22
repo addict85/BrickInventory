@@ -3,14 +3,14 @@
  * minutes and then until the next day. */
 import { withSessionLock } from '../../db/txLock';
 import {
-  setAnleitungenLaden,
+  loadSetInstructions,
   lastFetchWarExtern,
   instructionCount,
   scrapeInstructionsFromFallback,
 } from './instructions';
-import { fehlertext } from '../infra/error';
+import { errorMessage } from '../infra/error';
 import { asFetchError } from '../externalSources';
-import { type Nutzlast, type JobRun, JobMove } from '../jobQueue';
+import { type Payload, type JobRun, JobMove } from '../jobQueue';
 import { LOCKS } from '../infra/lockNamespaces';
 import type { CatalogContext } from './context';
 
@@ -38,7 +38,7 @@ async function reportInstructions(k: CatalogContext, setNumber: string, lauf?: J
   const z = await k.jobQueue.countKind('anleitung');
   const open = z.offen + z.laeuft,
     gesamt = open + z.erledigt + z.fehler;
-  await lauf?.fortschritt?.({
+  await lauf?.progress?.({
     erledigt: gesamt - open + 1,
     gesamt,
     text: open > 1 ? `${setNumber} · ${open - 1} ausstehend` : 'Alle erledigt',
@@ -46,7 +46,7 @@ async function reportInstructions(k: CatalogContext, setNumber: string, lauf?: J
 }
 
 /** Throttling postpones the job without counting it as an attempt. */
-async function loadInstruction(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf?: JobRun): Promise<void> {
+async function loadInstruction(k: CatalogContext, n: Payload<'anleitung'>, lauf?: JobRun): Promise<void> {
   const sn = n.set_number;
   if ((await instructionCount(k, sn)) > 0) return;
   if (n.nur_ausweichquelle) {
@@ -56,7 +56,7 @@ async function loadInstruction(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf
   await withLock(k, async () => {
     try {
       // The spacing is kept by the kind's pause, not by the function.
-      const count = await setAnleitungenLaden(k, sn, true);
+      const count = await loadSetInstructions(k, sn, true);
       console.log(`[instr-queue] ${sn}: ${count} instructions`);
       if (await k.jobQueue.liesPause('anleitung')) await k.jobQueue.endPause('anleitung');
       if (lastFetchWarExtern(k))
@@ -68,7 +68,7 @@ async function loadInstruction(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf
       await reportInstructions(k, sn, lauf);
     } catch (e) {
       const f = asFetchError(e);
-      const msg = fehlertext(e) || '';
+      const msg = errorMessage(e) || '';
       if (f.isCloudflare || msg.includes('1015')) {
         const level = (await k.jobQueue.liesPause('anleitung'))?.level ?? 0;
         const bis =
@@ -78,7 +78,7 @@ async function loadInstruction(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf
             ? `Cloudflare-Sperre: ${Math.round(CF_PAUSES_MS[level]! / 60000)} min warten (Versuch ${level + 1})`
             : 'Cloudflare-Sperre: bis morgen pausiert';
         await k.jobQueue.pauseKind('anleitung', bis, grund, level < CF_PAUSES_MS.length ? level + 1 : 0);
-        await lauf?.fortschritt?.({ text: grund });
+        await lauf?.progress?.({ text: grund });
         console.log(`[instr-queue] ${grund}`);
         throw new JobMove(bis, grund);
       }
@@ -92,4 +92,4 @@ async function loadInstruction(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf
   });
 }
 
-export { TICK_AFTER_FETCH_MS, CF_PAUSES_MS, nextTag, loadInstruction as anleitungLaden };
+export { TICK_AFTER_FETCH_MS, CF_PAUSES_MS, nextTag, loadInstruction };

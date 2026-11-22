@@ -1,10 +1,10 @@
 /** The Wanted XML import as a job: it creates parts, figures and sets and
  * asks Rebrickable on request — neither belongs in the web process. */
-import type { Nutzlast, JobContext } from '../jobQueue';
+import type { Payload, JobContext } from '../jobQueue';
 import { logAndContinue } from '../infra/error';
 import type { CollectionContext } from './context';
 
-export type WantedXmlInput = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
+export type WantedXmlInput = Extract<Payload<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
 
 async function importWantedXml(
   kx: CollectionContext,
@@ -24,12 +24,11 @@ async function importWantedXml(
   };
   // Wait for the chain first, then close: otherwise the bar would still show "running" elsewhere.
   const closeBar = async (
-    details: Parameters<CollectionContext['jobQueue']['beendeAuftrag']>[1],
-    rows?: Parameters<CollectionContext['jobQueue']['beendeAuftrag']>[2],
+    details: Parameters<CollectionContext['jobQueue']['finishJob']>[1],
+    rows?: Parameters<CollectionContext['jobQueue']['finishJob']>[2],
   ) => {
     await chain;
-    if (jobRunning)
-      await kx.jobQueue.beendeAuftrag(uid, details, rows).catch(logAndContinue('wanted-import:auftrag-ende'));
+    if (jobRunning) await kx.jobQueue.finishJob(uid, details, rows).catch(logAndContinue('wanted-import:auftrag-ende'));
   };
   let lastUsed = 0,
     lastPhase = '';
@@ -49,7 +48,7 @@ async function importWantedXml(
         source === 'korrigiert'
           ? kx.catalog.rememberOwnBlNumber(uid, art, rbId, blId)
           : kx.catalog.rememberBlNumber(art, rbId, blId),
-      fortschritt: stand => {
+      progress: stand => {
         // The state travels via the job to the waiting request (and its stream);
         // at most five times per second, the last one of each phase always.
         const now = kx.uhr.jetzt();
@@ -57,7 +56,7 @@ async function importWantedXml(
           lastUsed = now;
           lastPhase = stand.phase;
           const f = { ...stand, erledigt: stand.fertig };
-          after('wanted-import:stand', () => k.fortschritt(f));
+          after('wanted-import:stand', () => k.progress(f));
         }
         // Created on the FIRST write progress: before that the denominator is unknown.
         if (e.schreiben && !jobRequested && stand.phase === 'schreiben') {
@@ -68,13 +67,13 @@ async function importWantedXml(
         }
         toBar(stand);
       },
-      ...(e.schreiben ? { abbruch: async () => jobRunning && (await kx.jobQueue.isAborted(uid)) } : {}),
+      ...(e.schreiben ? { cancellation: async () => jobRunning && (await kx.jobQueue.isAborted(uid)) } : {}),
       creator: {
         teil: (u, body) => kx.parts.addManualPart(u, body),
-        figur: (u, body) => kx.minifigs.addManualMinifig(u, body),
+        minifig: (u, body) => kx.minifigs.addManualMinifig(u, body),
         // The purchase price is MAXPRICE from the file.
         set: (u, sn, menge, zustand, kaufpreis) =>
-          kx.sets.setErfassen({
+          kx.sets.acquireSet({
             requester: u,
             setNumber: sn,
             menge,

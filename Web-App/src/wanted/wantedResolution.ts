@@ -54,9 +54,9 @@ export async function resolveLocalOn(
     }
   }
 
-  const katalog = new Set<string>();
+  const catalog = new Set<string>();
   for (const art of ['part', 'fig', 'set'] as const) {
-    for (const n of await k.wantedListe.numbersInCatalog(art, numbers)) katalog.add(`${art}:${n}`);
+    for (const n of await k.wantedListe.numbersInCatalog(art, numbers)) catalog.add(`${art}:${n}`);
   }
 
   const colorMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
@@ -75,7 +75,7 @@ export async function resolveLocalOn(
     if (hits) {
       rbId = hits.rbId;
       sicherheit = hits.sicherheit;
-    } else if (katalog.has(`${p.art}:${p.blId}`)) {
+    } else if (catalog.has(`${p.art}:${p.blId}`)) {
       rbId = p.blId;
       sicherheit = 'katalogtreffer';
     }
@@ -117,12 +117,12 @@ export async function resolveViaRebrickableOn(
   let gefragt = 0,
     gefunden = 0;
 
-  const ergebnis = [...auf];
+  const result = [...auf];
   // Exactly the conditions of the loop below, otherwise the bar counts against
   // a different number than it fills.
-  const gesamt = Math.min(limit, ergebnis.filter(a => a.rbId === null && a.posten.art === 'part').length);
-  for (let i = 0; i < ergebnis.length; i++) {
-    const a = ergebnis[i]!;
+  const gesamt = Math.min(limit, result.filter(a => a.rbId === null && a.posten.art === 'part').length);
+  for (let i = 0; i < result.length; i++) {
+    const a = result[i]!;
     if (a.rbId !== null) continue;
     if (a.posten.art !== 'part') continue;
     if (gefragt >= limit) break;
@@ -132,12 +132,12 @@ export async function resolveViaRebrickableOn(
     // An error other than "unknown" also affects all following items; the report
     // names the reason instead of silently counting them as "not found".
     try {
-      rbId = await k.externalSources.quellen.blTeilZuRb(a.posten.blId);
+      rbId = await k.externalSources.quellen.blPartToRb(a.posten.blId);
     } catch (e) {
       if (!(e instanceof RebrickableLocked)) reportError('wanted:rebrickable', e);
       const abgebrochen = e instanceof RebrickableLocked ? e.grund : 'stoerung';
       return {
-        auf: ergebnis,
+        auf: result,
         gefragt,
         gefunden,
         filterWirkungslos: k.externalSources.quellen.blFilterIneffective(),
@@ -146,12 +146,12 @@ export async function resolveViaRebrickableOn(
     }
     if (rbId) {
       gefunden++;
-      ergebnis[i] = { ...a, rbId, sicherheit: 'rebrickable' };
+      result[i] = { ...a, rbId, sicherheit: 'rebrickable' };
     }
     // After the fetch: "37 of 50" means 37 done.
     progress?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
-  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.externalSources.quellen.blFilterIneffective() };
+  return { auf: result, gefragt, gefunden, filterWirkungslos: k.externalSources.quellen.blFilterIneffective() };
 }
 
 /** Addressed via the index: the same number may appear several times in the list. */
@@ -196,18 +196,18 @@ export async function describeItem(
     const rows = await k.wantedListe.partsDescription(numbers);
     const afterNumber = new Map(rows.map(z => [z.part_number, z]));
     const pairs = parts.filter(t => t.farbe !== null);
-    const bilder = new Map<string, string>();
+    const images = new Map<string, string>();
     if (pairs.length) {
       const colorRows = await k.wantedListe.partColorImages(
         pairs.map(t => t.nr),
         pairs.map(t => t.farbe as number),
       );
-      for (const z of colorRows) if (z.bild) bilder.set(`${z.part_number}|${z.color_id}`, z.bild);
+      for (const z of colorRows) if (z.bild) images.set(`${z.part_number}|${z.color_id}`, z.bild);
     }
     for (const t of parts) {
       const z = afterNumber.get(t.nr);
       const name = z?.name ?? null;
-      const bild = bilder.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
+      const bild = images.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
       // `geraten` only on a find: calling an empty row "guessed" would be
       // a claim about nothing.
       out.set(t.i, { name, bild, geraten: t.geraten && !!(name || bild) });
@@ -246,11 +246,11 @@ export function applyCorrections(
   auf: Resolution[],
   corrections: Correction[],
 ): { auf: Resolution[]; angewandt: number; abgewiesen: Correction[] } {
-  const ergebnis = [...auf];
+  const result = [...auf];
   const abgewiesen: Correction[] = [];
   let angewandt = 0;
   for (const k of corrections) {
-    const a = ergebnis[k.index];
+    const a = result[k.index];
     if (!a || a.posten.art !== k.art || a.posten.blId !== k.blId) {
       abgewiesen.push(k);
       continue;
@@ -300,7 +300,7 @@ export function applyCorrections(
     const itemChanged = menge !== a.posten.menge || zustand !== a.posten.zustand || maxPreis !== a.posten.maxPreis;
     if (!numberChanged && !itemChanged) continue; // nothing changed
 
-    ergebnis[k.index] = {
+    result[k.index] = {
       ...a,
       rbId,
       rbFarbe,
@@ -315,7 +315,7 @@ export function applyCorrections(
     };
     angewandt++;
   }
-  return { auf: ergebnis, angewandt, abgewiesen };
+  return { auf: result, angewandt, abgewiesen };
 }
 
 /** A color entered by hand was not part of the resolution; without

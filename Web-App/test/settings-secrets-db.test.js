@@ -84,7 +84,7 @@ function leserouten() {
     .join('\n')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
-  const gefunden = [...quelle.matchAll(/router\.endpunkt\(\s*'GET \/api\/v1\/settings([^']*)'/g)].map(m => m[1] || '/');
+  const gefunden = [...quelle.matchAll(/router\.endpoint\(\s*'GET \/api\/v1\/settings([^']*)'/g)].map(m => m[1] || '/');
   // Self-proof: if the pattern did not apply, the list would be empty and the test
   // green without having looked at a single route.
   assert.ok(

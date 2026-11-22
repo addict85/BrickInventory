@@ -1,7 +1,7 @@
 /** pg_advisory_lock on its own, permanent connection: it applies across all
  * processes and ends with the connection if the process crashes. */
 export type LockConnection = {
-  query: (sql: string, werte?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
+  query: (sql: string, values?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
 };
 
 export async function attemptsLock(client: LockConnection, key: number): Promise<boolean> {

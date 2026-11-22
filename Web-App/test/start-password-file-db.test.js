@@ -4,10 +4,10 @@
  * the first own password change the file disappears.
  *
  * Counter-checks (measured 09.11.2026, each on its own):
- *   A  in putStartAdminAn() (src/account/startAdmin.ts) the password additionally output via
+ *   A  in createStartAdmin() (src/account/startAdmin.ts) the password additionally output via
  *      console.log → red: “the log names the path, not the password”
- *   B  in writeStartpasswort() `mode: 0o644` → red: “only the service can read it”
- *   C  in aendereEigenesPasswort() (src/account/accounts.ts) startpasswortDone()
+ *   B  in writeStartPassword() `mode: 0o644` → red: “only the service can read it”
+ *   C  in changeOwnPassword() (src/account/accounts.ts) startPasswordDone()
  *      deleted → red: “the first password change deletes the file”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL (the schema is created anew).
@@ -76,7 +76,7 @@ test('initial password in a file instead of the log', async t => {
     assert.ok(!log.includes(passwort), 'Passwort im Log');
   });
   await t.test('the first password change deletes the file', async () => {
-    await _req('src/account/accounts.js').aendereEigenesPasswort(admin.id, 'ein-neues-langes-Passwort-42');
+    await _req('src/account/accounts.js').changeOwnPassword(admin.id, 'ein-neues-langes-Passwort-42');
     assert.equal(fs.existsSync(datei), false);
   });
 });

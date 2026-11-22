@@ -2,14 +2,14 @@
 import type { JobKind } from './jobs';
 import { pullBefore, repeat, abortAb, endPause } from './service';
 import { hatSchedule, planeNext, pullPlanBefore } from './schedule';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import type { JobsContext } from './context';
 
 const HEARTBEAT_APPLIES_SEC = 120;
 const STATUS = ['offen', 'laeuft', 'fehler', 'abgebrochen', 'erledigt'] as const;
 
 function checkKind(k: JobsContext, art: string): JobKind {
-  if (!k.arten.fromValue(art)) fachfehler('ungueltig', 'unbekannter_job');
+  if (!k.arten.fromValue(art)) failDomain('ungueltig', 'unbekannter_job');
   return art as JobKind;
 }
 
@@ -27,7 +27,7 @@ export async function jobsInOverview(
     k.auftraege.jobList(status, art),
     k.auftraege.numbersJeKindAndStatus(),
     k.auftraege.runningPauses(),
-    k.laufzustand.liesZustand('jobs_lebenszeichen'),
+    k.laufzustand.readState('jobs_lebenszeichen'),
   ]);
   const alterSec = lebenszeichen ? Math.round((k.uhr.jetzt() - new Date(lebenszeichen).getTime()) / 1000) : null;
   return {
@@ -43,18 +43,18 @@ export async function jobsInOverview(
 }
 
 /** For a scheduled kind the next regular appointment is pending afterwards. */
-export async function auftragAbbrechen(k: JobsContext, kennung: number) {
+export async function auftragAbbrechen(k: JobsContext, key: number) {
   // The response names the identifier as text like the overview (bigint).
-  const id = String(kennung);
+  const id = String(key);
   const a = await abortAb(k, id);
-  if (!a) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
+  if (!a) failDomain('konflikt', 'auftrag_nicht_aenderbar');
   await planeNext(k, a.type);
   return { id, status: 'abgebrochen' };
 }
 
-export async function retryJob(k: JobsContext, kennung: number) {
-  const id = String(kennung);
-  if (!(await repeat(k, id))) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
+export async function retryJob(k: JobsContext, key: number) {
+  const id = String(key);
+  if (!(await repeat(k, id))) failDomain('konflikt', 'auftrag_nicht_aenderbar');
   return { id, status: 'offen' };
 }
 

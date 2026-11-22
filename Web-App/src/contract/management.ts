@@ -275,7 +275,7 @@ export const routen = {
     ereignis: CsvImportStatus,
     abfrage: query({ sprache: Q.text(2) }),
   },
-  'GET /api/v1/admin/logs': { klein: true, antwort: LogResponse, abfrage: query({ minutes: Q.zahl() }) },
+  'GET /api/v1/admin/logs': { klein: true, antwort: LogResponse, abfrage: query({ minutes: Q.number() }) },
   'GET /api/v1/admin/jobs': { antwort: JobsResponse, klein: true },
   'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse, abfrage: query(PAGE) },
   'GET /api/v1/admin/cache-stats': { antwort: CacheStatsResponse, klein: true },

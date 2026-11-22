@@ -10,7 +10,7 @@ export async function rebuildSummary(k: PartsContext, userId: number, version?: 
   const stand = version ?? (await currentVersion(k, userId));
   // Whether THIS call built it: if another call holds the lock, there is nothing to catch up on.
   let built = false;
-  await k.transaktion(async t => {
+  await k.transact(async t => {
     // Lock via the database, not only via _rebuilding: several processes.
     if (!(await repo.lockAccount(t.db, userId))) {
       return;
@@ -30,7 +30,7 @@ export async function rebuildSummary(k: PartsContext, userId: number, version?: 
 
 /** Per access: account IDs, rebuilds and the follow-up belong to the database they run in. */
 const state = (k: PartsContext) =>
-  k.faecher.fach('partsSummary', () => ({
+  k.faecher.slot('partsSummary', () => ({
     lastAnalyse: 0,
     neuaufbau: new Map<number, Promise<void>>(),
     followUp: null as ReturnType<typeof runCatalogFollowUp> | null,
@@ -104,7 +104,7 @@ export function runCatalogFollowUp(k: PartsContext): Promise<{ konten: number; g
 }
 
 async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ konten: number; gruppen: number } | null> {
-  return k.transaktion(async t => {
+  return k.transact(async t => {
     if (!(await repo.lockCatalogFollowUp(t.db))) return null;
     const numbers = await repo.pendingNumbers(t.db);
     if (!numbers.length) return { konten: 0, gruppen: 0 };

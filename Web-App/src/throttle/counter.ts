@@ -1,6 +1,6 @@
 /** Counter with fallback: when the database locks up, the process keeps counting in memory so
  * a brake doesn't end up wide open. It only counts per process; reported at most once per minute. */
-import { fehlertext } from '../infra/error';
+import { errorMessage } from '../infra/error';
 import { processWide } from '../infra/prozessweit';
 import type { ThrottleContext } from './context';
 
@@ -19,7 +19,7 @@ function inMemory(wo: string, e: unknown): void {
   const r = fallback();
   if (Date.now() - r.reportedAt < 60_000) return;
   r.reportedAt = Date.now();
-  console.warn(`[login] counter in process memory instead of the database (${wo}): ${fehlertext(e)}`);
+  console.warn(`[login] counter in process memory instead of the database (${wo}): ${errorMessage(e)}`);
 }
 
 function trim(windowMs: number): void {
@@ -40,8 +40,8 @@ export async function counterState(k: ThrottleContext, key: string, windowMin: n
       waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)),
       sinceLast: Math.max(0, parseFloat(row.seit) || 0),
     };
-  } catch (fehler) {
-    inMemory('read', fehler);
+  } catch (error) {
+    inMemory('read', error);
     const e = fallback().eintraege.get(key);
     const now = k.uhr.jetzt();
     if (!e || now - e.firstAt > windowMin * 60000) return null;
@@ -57,8 +57,8 @@ export async function counterState(k: ThrottleContext, key: string, windowMin: n
 export async function countAttempt(k: ThrottleContext, key: string, windowMin: number): Promise<number> {
   try {
     return await k.counter.increase(key, windowMin);
-  } catch (fehler) {
-    inMemory('count', fehler);
+  } catch (error) {
+    inMemory('count', error);
     const now = k.uhr.jetzt();
     const e = fallback().eintraege.get(key);
     if (!e || now - e.firstAt > windowMin * 60000)
@@ -82,7 +82,7 @@ export async function reserve(
   allowed: (s: State) => boolean,
 ): Promise<{ ok: boolean; stand: State }> {
   try {
-    return await k.transaktion(async t => {
+    return await k.transact(async t => {
       const r = await t.counter.lock(key, windowMin, decayS);
       const fresh = !!r.abgelaufen;
       const s: State = {
@@ -95,8 +95,8 @@ export async function reserve(
       await t.counter.occupySlot(key, s.laufend + 1, fresh);
       return { ok: true, stand: s };
     });
-  } catch (fehler) {
-    inMemory('reserve', fehler);
+  } catch (error) {
+    inMemory('reserve', error);
     // In process memory this block without await is atomic.
     const now = k.uhr.jetzt();
     let e = fallback().eintraege.get(key);
@@ -120,8 +120,8 @@ export async function reserve(
 export async function releaseSlot(k: ThrottleContext, key: string): Promise<void> {
   try {
     await k.counter.freeSlot(key);
-  } catch (fehler) {
-    inMemory('release', fehler);
+  } catch (error) {
+    inMemory('release', error);
     const e = fallback().eintraege.get(key);
     if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
   }
@@ -149,8 +149,8 @@ export async function countInWindow(
   try {
     const r = await k.counter.countUp(key, windowMin);
     return { count: parseInt(r.count, 10) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
-  } catch (fehler) {
-    inMemory('request', fehler);
+  } catch (error) {
+    inMemory('request', error);
     const now = k.uhr.jetzt();
     let e = fallback().eintraege.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {

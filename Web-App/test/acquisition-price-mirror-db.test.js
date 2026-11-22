@@ -51,7 +51,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
   };
   // What the tile shows: the aggregate from the entries, not a mirrored column.
   const kachel = async () =>
-    (await _req('src/sets/read.js').zustandsAggregat(require('./helpers/sources').testContext('sets'), [uid], SN))
+    (await _req('src/sets/read.js').conditionAggregate(require('./helpers/sources').testContext('sets'), [uid], SN))
       .avg_purchase_price;
 
   try {

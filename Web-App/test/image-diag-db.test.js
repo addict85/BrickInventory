@@ -76,7 +76,7 @@ test('the image diagnostics describe every situation in plain text', { concurren
     );
 
     // C) After generation everything is together — and the sizes are right.
-    await _req('src/images/thumbs.js').vorschauErzeugenAus(`/images/sets/${MIT}.jpg`);
+    await _req('src/images/thumbs.js').previewFrom(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
     assert.ok(
       d.hinweise.some(h => /Alles vorhanden/.test(h)),
@@ -108,7 +108,7 @@ test('the set image download reports every failure', () => {
   // all ended in a silent `return null`. Exactly this silence stretched
   // the image debugging over five addenda.
   const src = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
-  const start = src.indexOf('async function setBildHerunterladen');
+  const start = src.indexOf('async function downloadSetImage');
   const fn = src
     .slice(start, src.indexOf('\n}\n', start))
     .split('\n')
@@ -117,7 +117,7 @@ test('the set image download reports every failure', () => {
   const meldungen = (fn.match(/console\.(error|log)/g) || []).length;
   assert.ok(
     meldungen >= 4,
-    `setBildHerunterladen meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
+    `downloadSetImage meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
       'zu kleine Antwort und der umschliessende catch müssen alle eine Spur hinterlassen',
   );
 });

@@ -4,13 +4,13 @@ import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../infra/foreignAddresses';
 import { urlOrNull } from '../infra/validate';
 import type { AccountImageRow } from './repository/management';
 import fs from 'node:fs';
-import { AbrufFehler, type FetchStream } from '../infra/fetch';
+import { FetchError, type FetchStream } from '../infra/fetch';
 import path from 'node:path';
 import { DATA_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, withoutMissingFile } from '../infra/error';
+import { errorMessage, withoutMissingFile } from '../infra/error';
 import { Degradations } from '../infra/result';
 import { withoutBricklinkPrice } from '../infra/setNumber';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import type { ManagementContext } from './context';
 
 const UA =
@@ -26,12 +26,12 @@ const VARIANTS = [
 
 /** Reports what the proxy would deliver of it — with and without referer. */
 export async function imageProbe(k: ManagementContext, url: string) {
-  if (!/^https:\/\//.test(url)) fachfehler('ungueltig', 'url_fehlt_https');
+  if (!/^https:\/\//.test(url)) failDomain('ungueltig', 'url_fehlt_https');
   const address = urlOrNull(url);
-  if (!address) fachfehler('ungueltig', 'url_ungueltig');
+  if (!address) failDomain('ungueltig', 'url_ungueltig');
   // The same hosts as the image proxy: the fetch runs from the internal network;
   // allowing every address would be server-side request forgery.
-  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: address.hostname });
+  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) failDomain('verboten', 'host_nicht_erlaubt', { host: address.hostname });
 
   const results: Awaited<ReturnType<typeof probeVariant>>[] = [];
   for (const v of VARIANTS) results.push(await probeVariant(k, url, v));
@@ -94,8 +94,8 @@ async function probeVariant(kx: ManagementContext, url: string, v: { name: strin
     return {
       variant: v.name,
       ms: Math.round(performance.now() - t0),
-      error: fehlertext(e),
-      code: e instanceof AbrufFehler ? e.grund : undefined,
+      error: errorMessage(e),
+      code: e instanceof FetchError ? e.grund : undefined,
     };
   }
 }
@@ -122,7 +122,7 @@ function firstBytes(k: ManagementContext, url: string) {
         looks_like: imageKind(b),
       };
     },
-    (e: unknown) => ({ error: fehlertext(e) }),
+    (e: unknown) => ({ error: errorMessage(e) }),
   );
 }
 
@@ -175,13 +175,13 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
   // The same currency as the valuation, otherwise the probe would show other cache rows.
   out.currency = await k.settings.userValue(uid, 'currency', 'EUR');
   // "BrickLink does not know the set": if it is set, fetchPrice silently delivers 0.
-  const katalog = await k.catalog.catalogEntry(setNumber);
-  out.katalog = katalog ? { ...katalog, applies_as_unknown: withoutBricklinkPrice(katalog) } : null;
+  const catalog = await k.catalog.catalogEntry(setNumber);
+  out.katalog = catalog ? { ...catalog, applies_as_unknown: withoutBricklinkPrice(catalog) } : null;
   // Exactly the call that finances makes.
   try {
     out.finances_price = await k.finances.fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
   } catch (e) {
-    out.finances_price = { error: fehlertext(e) };
+    out.finances_price = { error: errorMessage(e) };
   }
 
   if (live) {
@@ -198,7 +198,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
           guide_fallback: g?.guide_fallback || false,
         };
       } catch (e) {
-        liveValues[cond] = { error: fehlertext(e) };
+        liveValues[cond] = { error: errorMessage(e) };
       }
     }
   }
@@ -214,7 +214,7 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
     image_local: null,
     image_url: null,
   });
-  const katalog = await ab.orElse('katalog', kx.management.catalogImage(sn), null);
+  const catalog = await ab.orElse('katalog', kx.management.catalogImage(sn), null);
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const file = async (p: string) => {
@@ -226,7 +226,7 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
   const original = await file(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
   const vorschau = await file(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
 
-  const cdnUrl = konten.image_url || katalog?.image_url || null;
+  const cdnUrl = konten.image_url || catalog?.image_url || null;
   let proxy: { gecacht: boolean; [k: string]: unknown } = { adresse: cdnUrl, gecacht: false };
   if (cdnUrl) {
     const cf = proxyCachePathFor ? proxyCachePathFor(cdnUrl) : null;
@@ -262,7 +262,7 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
 
   return {
     set_number: sn,
-    datenbank: { ...konten, katalog_bild: katalog?.image_url || null },
+    datenbank: { ...konten, katalog_bild: catalog?.image_url || null },
     lokal: { original, vorschau },
     merker: merker ? { seit: merker.checked_at, grund: merker.reason || null } : null,
     proxy,

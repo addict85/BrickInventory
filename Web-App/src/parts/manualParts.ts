@@ -2,14 +2,14 @@
  * reach for it — a route shouldn't import another route. */
 import type { Sicht } from '../household';
 import { publicError } from '../infra/error';
-import { Degradations, versuche } from '../infra/result';
+import { Degradations, attempts } from '../infra/result';
 import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
-import { mengenwunsch } from '../inventory';
+import { quantityRequest } from '../inventory';
 import { KEINE_FARBE } from '../catalog';
-import type { Quellen } from '../externalSources';
+import type { Sources } from '../externalSources';
 import * as V0 from '../infra/validate';
 import { moneyInput } from '../infra/geld';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import type { PartsContext } from './context';
 
 // One calculation for adding, editing and CSV import; without a value, price/unit stays empty.
@@ -25,7 +25,7 @@ export async function manualPartPurchase(
 ) {
   // The rule lives in src/finances/priceRule.ts; what remains here is only what
   // differs for a PART versus a minifig: the lookup key.
-  const r = await k.finances.manuellerKaufpreis(uid, { unitPrice, condition }, condition =>
+  const r = await k.finances.manualPurchasePrice(uid, { unitPrice, condition }, condition =>
     k.finances.marketPriceWithOrigin(partNumber, colorId, uid, condition),
   );
   return {
@@ -45,11 +45,11 @@ export async function addManualPart(k: PartsContext, uid: number, rawBody: Recor
   const ort = await k.inventory.locationService.locationForNewEntry(uid, rawBody?.storage);
   // The SAME conversion as in the body, on the same input — it cannot drift apart.
   const color = V0.colorId(rawBody?.color_id);
-  const ergebnis = await addManualPartInternal(k, uid, rawBody);
-  if (ort && ergebnis?.part_number) {
-    await k.inventory.locationService.setLocation('part', [uid], [ergebnis.part_number, String(color)], ort);
+  const result = await addManualPartInternal(k, uid, rawBody);
+  if (ort && result?.part_number) {
+    await k.inventory.locationService.setLocation('part', [uid], [result.part_number, String(color)], ort);
   }
-  return ergebnis;
+  return result;
 }
 
 async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Record<string, unknown>) {
@@ -96,7 +96,7 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
   await k.catalog.rememberPartColor(part_number, color_id, color_name, color_hex, input.bild, null, k.db, uid);
 
   // Price, condition and quantity live in the acquisition, not on the row.
-  await k.inventory.manuell.putRowAn('part', uid, [part_number, color_id]);
+  await k.inventory.manuell.createRow('part', uid, [part_number, color_id]);
   await k.inventory.bookDailyEntry('part', uid, [part_number, color_id], {
     quantity,
     price: erfassungsPreis,
@@ -121,7 +121,7 @@ async function partDescription(
 ) {
   let part_name = input.name;
   let image_url = input.bild;
-  let gefunden: Awaited<ReturnType<Quellen['lookupPart']>> | null = null;
+  let gefunden: Awaited<ReturnType<Sources['lookupPart']>> | null = null;
   if (part_name) return { part_name, gefunden };
 
   const hasColor = color_id !== KEINE_FARBE;
@@ -135,11 +135,11 @@ async function partDescription(
   // still proves the fetch has nothing more to get.
   if (!part_name || !(image_url || local?.hatImage)) {
     // Without Rebrickable, the part gets logged with whatever the catalog already knows.
-    const abruf = await versuche(
+    const fetch = await attempts(
       'parts:lookupPart',
       k.externalSources.quellen.lookupPart(part_number, hasColor ? color_id : null),
     );
-    gefunden = abruf.ok ? abruf.wert : null;
+    gefunden = fetch.ok ? fetch.wert : null;
     // `||`: what the catalog already knew stays as-is.
     if (gefunden) part_name = part_name || gefunden.part_name;
   }
@@ -182,15 +182,15 @@ export async function changeManualPart(
   body: Record<string, unknown>,
 ): Promise<{ quantity?: number; degradiert?: string[] }> {
   const existing = await k.manualParts.manualPartWithCondition(uid, partNumber, colorId);
-  if (!existing) fachfehler('nicht_gefunden', 'teil_nicht_manuell');
+  if (!existing) failDomain('nicht_gefunden', 'teil_nicht_manuell');
 
   const out: { quantity?: number } = {};
   // If the market price for the new acquisition didn't arrive, `degradiert` says so.
   const ab = new Degradations();
-  const wish = mengenwunsch(body);
+  const wish = quantityRequest(body);
   if (wish) {
     const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
-    out.quantity = await k.inventory.passeManualQuantityAn(
+    out.quantity = await k.inventory.adjustManualQuantity(
       'part',
       uid,
       [partNumber, colorId],
@@ -262,11 +262,11 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
       let imageUrl: string | null = null,
         categoryName: string | null = null;
       if (!partName) {
-        const abruf = await versuche(
+        const fetch = await attempts(
           'parts:import-lookupPart',
           k.externalSources.quellen.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
         );
-        const info = abruf.ok ? abruf.wert : null;
+        const info = fetch.ok ? fetch.wert : null;
         if (info) {
           partName = info.part_name;
           imageUrl = info.image_url;
@@ -299,7 +299,7 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
       else await k.catalog.rememberPart(partNumber, partName, categoryName);
       await k.catalog.rememberPartColor(partNumber, colorId, null, colorHex, imageUrl);
       await k.catalog.rememberPartColor(partNumber, colorId, colorName, null, null, null, k.db, uid);
-      await k.inventory.manuell.putRowAn('part', uid, [partNumber, colorId]);
+      await k.inventory.manuell.createRow('part', uid, [partNumber, colorId]);
       await k.inventory.bookDailyEntry('part', uid, [partNumber, colorId], acquisition);
       added++;
       results.push({ part_number: partNumber, action: 'added' });

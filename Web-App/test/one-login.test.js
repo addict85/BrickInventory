@@ -77,7 +77,7 @@ test('no handler asks the session for the user identifier itself', () => {
   assert.deepEqual(
     violations,
     [],
-    'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter()/nutzerName():\n  ' +
+    'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter()/userName():\n  ' +
       violations.join('\n  ') +
       '\nMit einem Bearer-Token — dem einzigen Ausweis der App — ist das immer ' +
       'undefined. Das fällt nicht als Fehler auf: Die Route antwortet mit 401, ' +

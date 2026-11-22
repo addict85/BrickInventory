@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, nextTimeOfDay, type Anmeldung, type Bearbeiter } from '../jobQueue';
+import { jobKind, nextTimeOfDay, type Login, type Handler } from '../jobQueue';
 import type { ForeignSourcesContext } from './context';
 
 /** One job per set, due at the configured time of day. `versuch` counts across
@@ -18,8 +18,8 @@ declare module '../jobQueue/jobs' {
 }
 
 /** The kind's type and registration live here, where it is queued; the run is provided by the catalog, which knows the sets. */
-export function bricksetJobType(ausfuehren: Bearbeiter<'brickset'>['ausfuehren']): Anmeldung {
-  return auftragsart({ art: 'brickset', nutzlast: BricksetPayload, ausfuehren, exklusiv: true });
+export function bricksetJobType(ausfuehren: Handler<'brickset'>['ausfuehren']): Login {
+  return jobKind({ art: 'brickset', nutzlast: BricksetPayload, ausfuehren, exklusiv: true });
 }
 
 const key = (sn: string) => `brickset:${sn}`;
@@ -47,13 +47,13 @@ export async function bricksetReserve(k: ForeignSourcesContext, sn: string, fehl
 }
 
 export function bricksetForgotten(k: ForeignSourcesContext, sn: string): Promise<void> {
-  return k.jobQueue.wiedervorlage.vergiss(key(sn));
+  return k.jobQueue.wiedervorlage.forget(key(sn));
 }
 
 /** Without a number, all; the kind's pause (quota exhausted) ends as well. */
 export async function bricksetNow(k: ForeignSourcesContext, sn?: string): Promise<void> {
   await k.jobQueue.endPause('brickset');
-  await k.jobQueue.wiedervorlage.jetzt('brickset', sn ? key(sn) : undefined);
+  await k.jobQueue.wiedervorlage.now('brickset', sn ? key(sn) : undefined);
 }
 
 export function bricksetPrefer(k: ForeignSourcesContext, bis: Date): Promise<void> {
@@ -61,11 +61,11 @@ export function bricksetPrefer(k: ForeignSourcesContext, bis: Date): Promise<voi
 }
 
 export function bricksetNumbers(k: ForeignSourcesContext) {
-  return k.jobQueue.wiedervorlage.zahlen('brickset');
+  return k.jobQueue.wiedervorlage.numbers('brickset');
 }
 
 export async function bricksetWaiting(k: ForeignSourcesContext) {
-  return (await k.jobQueue.wiedervorlage.wartende('brickset')).map(z => {
+  return (await k.jobQueue.wiedervorlage.waiting('brickset')).map(z => {
     const n = BricksetPayload.safeParse(z.payload);
     return {
       set_number: n.success ? n.data.set_number : '',

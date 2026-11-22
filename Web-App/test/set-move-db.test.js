@@ -39,7 +39,7 @@ test('move set', { concurrency: 1 }, async t => {
   // Two foreign accounts: across both only in the system context (the owner role creates the data).
   const { inSystemContext } = _req('src/infra/accountContext.js');
   const setEntriesReassign = (...a) =>
-    inSystemContext('Testdaten', () => sammlung.transaktion(t => t.sets.setEntriesReassign(...a)));
+    inSystemContext('Testdaten', () => sammlung.transact(t => t.sets.setEntriesReassign(...a)));
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('mv_a','x'),('mv_b','x')");
   const [a, b] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);

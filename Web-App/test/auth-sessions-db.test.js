@@ -128,14 +128,14 @@ test('a password change ends sessions AND tokens — against a real store', { co
     });
 
     await t.test('bearer tokens of the account expire along with it', async () => {
-      const { tokenDigest, nutzerZumToken } = _req('src/account/deviceToken.js');
+      const { tokenDigest, userForToken } = _req('src/account/deviceToken.js');
       const crypto = require('node:crypto');
       const tok = crypto.randomBytes(16).toString('hex');
       await db.run("INSERT INTO api_tokens (token,user_id,label,expires_at) VALUES ($1,$2,'app',NULL)", [
         tokenDigest(tok),
         victimId,
       ]);
-      assert.ok(await nutzerZumToken(tok), 'Vorbedingung: Token gilt');
+      assert.ok(await userForToken(tok), 'Vorbedingung: Token gilt');
 
       // 'nochNeuer1234' — the subtest before changed it.
       const chef = await anmelden('pw_chef', 'nochNeuer1234');
@@ -149,7 +149,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
       assert.equal(r.status, 200, await r.text());
       assert.equal(await takeoverNow(_req, db, victimId), 1);
       assert.equal(
-        await nutzerZumToken(tok),
+        await userForToken(tok),
         null,
         'Ein Token auf einem fremden Gerät darf den Passwortwechsel nicht überleben',
       );
@@ -158,7 +158,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
     // Counter-check (measured 11.11.2026): in setPasswordBack (src/account/accounts.ts)
     // `await endAccesses(uid)` deleted → red here (session and token stay).
     await t.test('resetting via link ends sessions and tokens', async () => {
-      const { tokenDigest, createToken, nutzerZumToken } = _req('src/account/deviceToken.js');
+      const { tokenDigest, createToken, userForToken } = _req('src/account/deviceToken.js');
       const fenster = await anmelden('pw_opfer', 'wiederNeu123');
       const tok = await createToken(victimId, 'Fremdgerät', true);
       const roh = 'd'.repeat(64);
@@ -175,7 +175,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
       assert.equal(r.status, 200, await r.text());
       assert.equal(await sitzungen(victimId), 0, 'Sitzungen des Kontos müssen enden');
       assert.equal(await angemeldet(fenster.cookie), false);
-      assert.equal(await nutzerZumToken(tok), null, 'Der Token darf das Zurücksetzen nicht überleben');
+      assert.equal(await userForToken(tok), null, 'Der Token darf das Zurücksetzen nicht überleben');
     });
 
     // Counter-check (measured 11.11.2026): in PUT /users/:id/password the check

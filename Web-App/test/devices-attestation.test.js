@@ -144,7 +144,7 @@ test('the Google roots match their fingerprints', () => {
   for (const p of G.GOOGLE_ROOTS) assert.equal(new X509Certificate(p).ca, true);
 });
 
-const series = b64 => A.seriennummer(new X509Certificate(Buffer.from(b64, 'base64')));
+const series = b64 => A.serialNumber(new X509Certificate(Buffer.from(b64, 'base64')));
 
 test('a chain with a revoked serial number is rejected, regardless of the link', () => {
   const k = T.kette({ challenge: NONCE });
@@ -156,8 +156,8 @@ test('a chain with a revoked serial number is rejected, regardless of the link',
 
 test("the serial number stands as in Google's list: hex lower case, without the leading zero", () => {
   const c = { serialNumber: '00A1B2' };
-  assert.equal(A.seriennummer(c), 'a1b2');
-  assert.equal(A.seriennummer({ serialNumber: '00' }), '0');
+  assert.equal(A.serialNumber(c), 'a1b2');
+  assert.equal(A.serialNumber({ serialNumber: '00' }), '0');
   const liste = W.readRevocationList(JSON.stringify({ entries: { '00A1B2': { status: 'REVOKED' } } }));
   assert.deepEqual(liste, ['a1b2']);
 });

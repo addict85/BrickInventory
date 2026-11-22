@@ -72,7 +72,7 @@ test('search text and storage location also hit the manually captured lists', { 
   const UID = u.id;
 
   // Three manually captured parts. At BrickLink 3002 carries a DIFFERENT number —
-  // and the tile shows that one (bl_part_number, blNummerSql). Whoever reads it
+  // and the tile shows that one (bl_part_number, blNumberSql). Whoever reads it
   // there also types it in.
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES
                   ('3001','Brick 2 x 4'), ('3002','Brick 2 x 2'), ('3003','Brick 2 x 3')`);
@@ -199,7 +199,7 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       d.parts.map(p => String(p.part_number)),
       ['9999'],
-      'Die Set-Teile-Wand findet die BrickLink-Nummer nicht — sie zeigt sie ' + 'aber an (blNummerSql als part_number)',
+      'Die Set-Teile-Wand findet die BrickLink-Nummer nicht — sie zeigt sie ' + 'aber an (blNumberSql als part_number)',
     );
   });
 });

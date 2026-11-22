@@ -138,7 +138,7 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
       ON CONFLICT (part_number, color_id) DO NOTHING`);
     // Without quantity: since migration 0038 the piece count of a set part is the
     // catalog number. Here only the NUMBER of rows (300) counts, not their value
-    // — hence no catalog rows are needed for it; teilmengeAus() falls back to
+    // — hence no catalog rows are needed for it; subsetFrom() falls back to
     // 1, and 1 stood here before as well.
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '75192-1') ON CONFLICT DO NOTHING`, [nutzer]);
     await db.run(

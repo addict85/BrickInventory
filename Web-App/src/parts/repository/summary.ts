@@ -1,6 +1,6 @@
 import { storages } from '../../../db/inventoryView';
 import type { DbInterface } from '../../../db/database';
-import { mengeJoin, mengeAus, teilmengeJoin, subsetFrom } from '../../../db/stockQuantity';
+import { mengeJoin, quantityFrom, teilmengeJoin, subsetFrom } from '../../../db/stockQuantity';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
 import { teilSichtJoin, TEIL } from '../../../db/catalogView';
 import { LOCKS } from '../../infra/lockNamespaces';
@@ -39,7 +39,7 @@ function summaryInsert(groupsOnly: boolean): string {
              -- Spare is a property of the set list; the same part can be spare in
              -- one set and required in the next.
              bool_or(COALESCE(tm_k.is_spare, false)),
-             SUM(${subsetFrom('p', 'part')} * ${mengeAus('sm', 1)}),
+             SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)}),
              STRING_AGG(DISTINCT p.set_number, ','),
              -- All storage locations of the group: the same part sits in different bins from several sets.
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')

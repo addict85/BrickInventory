@@ -34,10 +34,10 @@ async function downloadImage(
   const webBase = kind === 'minifig' ? '/images/minifigs/' : '/images/parts/';
   // For manual parts, number and address come from the user: they may neither
   // form a path nor determine the extension.
-  const nummer = filePart(partNum),
+  const number = filePart(partNum),
     color = filePart(colorId);
-  if (!nummer || !color) return null;
-  const file = `${nummer}_${color}.${imageExtension(imgUrl)}`;
+  if (!number || !color) return null;
+  const file = `${number}_${color}.${imageExtension(imgUrl)}`;
   const dest = targetInFolder(IMG_DIR, file);
   if (!dest) return null;
   const rel = `${webBase}${file}`;
@@ -64,14 +64,14 @@ async function loadPartImage(k: CatalogContext, p: repo.ImageRequest): Promise<v
     return;
   }
 
-  const nummer = filePart(p.id),
+  const number = filePart(p.id),
     color = filePart(p.color_id);
-  if (!nummer || (p.kind !== 'fig' && !color)) {
+  if (!number || (p.kind !== 'fig' && !color)) {
     console.warn(`[img-dl] skipping unsafe number ${String(p.id).substring(0, 40)}`);
     return;
   }
   const file =
-    p.kind === 'fig' ? `${nummer}.${imageExtension(cdnUrl)}` : `${nummer}_${color}.${imageExtension(cdnUrl)}`;
+    p.kind === 'fig' ? `${number}.${imageExtension(cdnUrl)}` : `${number}_${color}.${imageExtension(cdnUrl)}`;
   const dest = targetInFolder(PART_IMAGES_DIR, file);
   if (!dest) return;
   const rel = `/images/parts/${file}`;
@@ -132,11 +132,11 @@ async function fetchImageLock(
 }
 
 // One lock per set: concurrent calls for the same set wait for the first one.
-const sperren = (k: CatalogContext) => k.faecher.fach('setBilder:sperren', () => new Map<string, Promise<void>>());
+const locks = (k: CatalogContext) => k.faecher.slot('setBilder:sperren', () => new Map<string, Promise<void>>());
 
 async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBusy = false) {
   const n = withVersion(setNumber);
-  const _downloadLocks = sperren(k);
+  const _downloadLocks = locks(k);
   if (_downloadLocks.has(n)) {
     await _downloadLocks.get(n);
     return;

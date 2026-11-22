@@ -1,12 +1,12 @@
 import { viewOf, guardFor } from './middleware';
-import { vertragsRouter } from '../../src/http/contractRouter';
+import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 
 export function buildMiscRouter(d: Pick<Services, 'account' | 'inventory'>) {
   const { requireToken } = guardFor(d.account);
-  const router = vertragsRouter('/api/v1');
+  const router = contractRouter('/api/v1');
 
-  router.endpunkt('GET /api/v1/stats', requireToken, async req => {
+  router.endpoint('GET /api/v1/stats', requireToken, async req => {
     return { stats: await d.inventory.inventoryMetrics(viewOf(req)) };
   });
 
@@ -47,6 +47,6 @@ export function buildMiscRouter(d: Pick<Services, 'account' | 'inventory'>) {
   };
 
   // Behind requireToken: otherwise the overview would reveal the whole API surface.
-  router.endpunkt('GET /api/v1/', requireToken, (_req, res) => res.json(OVERVIEW));
+  router.endpoint('GET /api/v1/', requireToken, (_req, res) => res.json(OVERVIEW));
   return router;
 }

@@ -33,10 +33,10 @@ export interface ItemResult {
 /** As an interface: the route plugs in the real functions, a test counters. */
 export interface Creator {
   teil: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
-  figur: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
+  minifig: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   set: (
     uid: number,
-    setNummer: string,
+    setNumber: string,
     menge: number,
     condition: string | null,
     purchasePrice: number | null,
@@ -108,7 +108,7 @@ export async function writeItem(
       ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
     });
   } else if (a.posten.art === 'fig') {
-    feedback = await opt.creator.figur(uid, {
+    feedback = await opt.creator.minifig(uid, {
       fig_number: rbId,
       quantity: a.posten.menge,
       condition: a.posten.zustand ?? undefined,

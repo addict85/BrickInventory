@@ -4,16 +4,16 @@ import { type RbSetTeil, firstBlNumber } from '../externalSources';
 import { findSetInScope } from './addSet';
 import { isSparePart } from '../infra/validate';
 import { withVersion, withoutVersion } from '../infra/setNumber';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import * as repo from './repository/setDetail';
 import type { CatalogPart, ListenTeil, SetMaster } from './rows';
-import { versuche, valueOr } from '../infra/result';
+import { attempts, valueOr } from '../infra/result';
 import { importParts } from './setContentImport';
 import type { SetsContext } from './context';
 
 /** null without an entry. */
 export async function setInfo(sk: SetsContext, setNumber: string): Promise<SetMaster | null> {
-  return (await repo.setStamm(sk.db, withVersion(setNumber))) ?? null;
+  return (await repo.setMaster(sk.db, withVersion(setNumber))) ?? null;
 }
 
 /** What the asking account may learn about a number: a foreign placeholder
@@ -48,11 +48,9 @@ export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (s
   if (!parts.length) {
     source = 'api';
     // If Rebrickable is disrupted, the response says so; an empty list would mean "the set has no parts".
-    const withValue = await versuche('sets:alleTeileDesSets', sk.catalog.allSetParts(n));
+    const fetched = await attempts('sets:alleTeileDesSets', sk.catalog.allSetParts(n));
     const rb =
-      withValue.ok && withValue.wert
-        ? withValue
-        : await versuche('sets:alleTeileDesSets', sk.catalog.allSetParts(bare));
+      fetched.ok && fetched.wert ? fetched : await attempts('sets:alleTeileDesSets', sk.catalog.allSetParts(bare));
     if (!rb.ok) return { parts: [], source: SOURCE_DISRUPTED, error: rb.fehler.grund, ...einePage(0) };
     parts = (rb.wert || []).map((r: RbSetTeil) => ({
       part_number: r.part.part_num,
@@ -68,13 +66,13 @@ export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (s
   }
   if (!parts.length) return { parts: [], source: 'not_found', ...einePage(0) };
 
-  const katalog = new Map<string, CatalogPart>();
+  const catalog = new Map<string, CatalogPart>();
   const remember = (rows: CatalogPart[]) => {
-    for (const r of rows) katalog.set(`${r.part_number}|${r.color_id}`, r);
+    for (const r of rows) catalog.set(`${r.part_number}|${r.color_id}`, r);
   };
   remember(await catalogOfSets(sk, setNum));
-  if (parts.some(p => !katalog.has(`${p.part_number}|${p.color_id}`))) {
-    await versuche('sets:enrichSetParts', enrich(setNum));
+  if (parts.some(p => !catalog.has(`${p.part_number}|${p.color_id}`))) {
+    await attempts('sets:enrichSetParts', enrich(setNum));
     remember(await catalogOfSets(sk, setNum));
   }
 
@@ -97,7 +95,7 @@ export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (s
   >();
   for (const p of parts) {
     const key = `${p.part_number}|${p.color_id}`;
-    const cat = katalog.get(key);
+    const cat = catalog.get(key);
     const menge = parseInt(String(p.total_quantity), 10) || 0;
     const image = cat?.image_local || (cat?.image_url ? proxyImageUrl(cat.image_url) : null) || p.rb_image_url || null;
     const da = rows.get(key);
@@ -118,7 +116,7 @@ export async function partListOfSets(sk: SetsContext, setNum: string, enrich: (s
       is_spare: isSparePart(p.is_spare),
     });
   }
-  await versuche(
+  await attempts(
     `sets:bilder einstellen ${setNum}`,
     sk.jobQueue.placeJobOne('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxAttempts: 3 }),
   );
@@ -146,8 +144,8 @@ export async function minifigsListOfSets(sk: SetsContext, setNum: string) {
     owners: [] as { id: number; username: string }[],
   });
 
-  const katalog = await sk.catalog.minifigsFromCatalog(setNum);
-  if (katalog.length) return { figs: katalog.map(output), source: 'catalog' };
+  const catalog = await sk.catalog.minifigsFromCatalog(setNum);
+  if (catalog.length) return { figs: catalog.map(output), source: 'catalog' };
 
   type Fig = { fig_number: string; fig_name: string | null; quantity: number; image_url: string | null };
   let figs: Fig[] = [];
@@ -156,17 +154,17 @@ export async function minifigsListOfSets(sk: SetsContext, setNum: string) {
     figs = await repo.inventoryMinifigsOfSets(sk.db, invId);
   }
   if (!figs.length) {
-    const withValue = await versuche('sets:getSetMinifigs', sk.externalSources.quellen.getSetMinifigs(n));
+    const fetched = await attempts('sets:getSetMinifigs', sk.externalSources.quellen.getSetMinifigs(n));
     const rb =
-      withValue.ok && withValue.wert
-        ? withValue
-        : await versuche('sets:getSetMinifigs', sk.externalSources.quellen.getSetMinifigs(bare));
+      fetched.ok && fetched.wert
+        ? fetched
+        : await attempts('sets:getSetMinifigs', sk.externalSources.quellen.getSetMinifigs(bare));
     if (!rb.ok) return { figs: [], source: SOURCE_DISRUPTED, error: rb.fehler.grund };
     figs = rb.wert || [];
   }
   if (!figs.length) return { figs: [], source: 'not_found' };
   setImmediate(() => {
-    void versuche('sets:figurenkatalog schreiben', storeSetMinifigs(sk, n, figs));
+    void attempts('sets:figurenkatalog schreiben', storeSetMinifigs(sk, n, figs));
   });
   return { figs: figs.map(output), source: 'csv_cache' };
 }
@@ -180,7 +178,7 @@ async function storeSetMinifigs(
     let image = f.image_url || null;
     if (!image)
       image =
-        valueOr(await versuche('sets:minifigur-info', k.externalSources.quellen.getMinifigInfo(f.fig_number)), null)
+        valueOr(await attempts('sets:minifigur-info', k.externalSources.quellen.getMinifigInfo(f.fig_number)), null)
           ?.image_url || null;
     await k.catalog.rememberMinifig(f.fig_number, f.fig_name, image);
     await k.catalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
@@ -190,13 +188,13 @@ async function storeSetMinifigs(
 /** Only for sets in scope and throttled: every import can cost Rebrickable quota. */
 export async function importPartsOfSets(sk: SetsContext, uid: number, sn: string): Promise<number> {
   const set = await findSetInScope(sk, uid, sn);
-  if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
+  if (!set) failDomain('nicht_gefunden', 'set_nicht_gefunden');
   const tick = await sk.account.countRequest('teile-import', `konto:${uid}`, 60 * 60 * 1000);
-  if (tick.count > 30) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: tick.waitMin });
+  if (tick.count > 30) failDomain('zu_viele', 'zu_viele_anfragen', { minuten: tick.waitMin });
   return importParts(sk, set.set_number, set.owner_user_id);
 }
 
 /** The route does not know the parts' job path; without an inventory the job process enriches. */
 export function partListWithRework(sk: SetsContext, setNum: string) {
-  return partListOfSets(sk, setNum, sn => sk.catalog.enrichSetPartsAn(sn));
+  return partListOfSets(sk, setNum, sn => sk.catalog.enrichSetParts(sn));
 }

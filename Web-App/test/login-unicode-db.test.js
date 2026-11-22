@@ -6,7 +6,7 @@
  * typed-in spelling.
  *
  * Counter-checks (measured on 28.10.2026):
- *   A  kontoKennung() again with JavaScript toLowerCase() and `= $1` → red:
+ *   A  accountKey() again with JavaScript toLowerCase() and `= $1` → red:
  *      “after five failed attempts the Unicode spelling is locked too”
  *   B  sendPasswordResetMail again to `email` from the request → red: “the
  *      reset mail goes to the stored address”

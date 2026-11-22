@@ -4,7 +4,7 @@
  *
  * Counter-checks (measured on 28.10.2026):
  *   A  the count removed in bricklinkRequest() → red: both cases
- *   B  in fetchPrice back to kontingentPruefenUndZaehlen instead of quotaFree
+ *   B  in fetchPrice back to checkAndCountQuota instead of quotaFree
  *      → red: both cases (the pre-check counts too)
  *   C  in bricklinkRequest the abort on an exhausted quota removed
  *      → red: “an exhausted quota also stops the fallback”

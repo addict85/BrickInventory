@@ -3,10 +3,7 @@ import net from 'node:net';
 /** Only explicitly named addresses: every trusted sender can state its client address freely
  * and thus bypass the login lock. A network spanning more than eight addresses only with `networkConfirmed`
  * (PROXY_NETZ_BESTAETIGT=1): it usually contains clients too. */
-export function proxyVertrauen(
-  wert?: string,
-  networkConfirmed = false,
-): false | string[] | ((address: string) => boolean) {
+export function proxyTrust(wert?: string, networkConfirmed = false): false | string[] | ((address: string) => boolean) {
   const v = (wert ?? '').trim();
   if (!v) return nurLoopback;
   if (/^(false|nein|no|off)$/i.test(v)) return false;

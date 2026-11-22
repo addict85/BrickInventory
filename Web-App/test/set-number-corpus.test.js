@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { setnummerCandidates } = _req('src/catalog/productTitle.js');
+const { setNumberCandidates } = _req('src/catalog/productTitle.js');
 
 const ROOT = path.join(__dirname, '..');
 const CORPUS_FILE = path.join(ROOT, '..', 'shared', 'setnummer-korpus.json');
@@ -23,7 +23,7 @@ test('every case of the shared corpus yields the same first candidate', () => {
     withoutCandidate = 0,
     threeDigit = 0;
   for (const [i, fall] of korpus.entries()) {
-    const k = setnummerCandidates(fall.text, 2026);
+    const k = setNumberCandidates(fall.text, 2026);
     const ist = k[0] ?? null;
     assert.equal(
       ist,

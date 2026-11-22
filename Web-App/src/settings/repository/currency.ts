@@ -1,5 +1,5 @@
 /** Currency applies per household; writing it touches every account in it. */
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 import type { SettingsReadContract } from '../readContract';
 
 export async function storedCurrencyOf(tx: DbInterface, userId: number): Promise<string | null> {
@@ -29,7 +29,7 @@ export async function sharedWithForeignMain(
 }
 
 export async function hasMainAccount(tx: DbInterface, l: SettingsReadContract, userId: number): Promise<boolean> {
-  return !!(await tx.get<Treffer>(l.isSubAccount('$1'), [userId]));
+  return !!(await tx.get<Hit>(l.isSubAccount('$1'), [userId]));
 }
 
 export async function setCurrencyFor(tx: DbInterface, ids: number[], currency: string): Promise<void> {

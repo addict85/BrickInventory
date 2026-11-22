@@ -6,9 +6,9 @@ import { processWide } from '../infra/prozessweit';
 const accessChange = processWide('zugangsHoerer', () => event('zugangsAenderung'));
 
 export function atAccessChange(f: () => unknown): () => void {
-  return accessChange.horche(f);
+  return accessChange.listen(f);
 }
 
 export function reportAccessChange(): void {
-  void accessChange.melde();
+  void accessChange.report();
 }

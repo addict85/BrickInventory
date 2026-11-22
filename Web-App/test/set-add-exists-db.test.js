@@ -4,7 +4,7 @@
  * Counter-check (carried out): the findSetInScope branch removed from routes/api_v1/sets.ts
  * → the first substep turns red (quantity 1 → 2).
  * Counter-check (15.11.2026): in setPresent() (src/sets/addSet.ts) the number returned without
- * normalisiereSetNummer → red „exists: false, set_number“ (without -1).
+ * normalizeSetNumber → red „exists: false, set_number“ (without -1).
  *
  * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
@@ -26,7 +26,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
 
   const MAIN = `ex-haupt-${process.pid}`,
     SUB = `ex-sub-${process.pid}`;
-  // Suffix deliberately „-1": normalisiereSetNummer() always appends „-1" to a number WITHOUT
+  // Suffix deliberately „-1": normalizeSetNumber() always appends „-1" to a number WITHOUT
   // a suffix. A set 97001-42 could thus not be found at all via the mere input „97001"
   // — that is the existing rule of the project and not
   // the subject of this test. Substep 2 therefore checks the normalization on
@@ -152,9 +152,9 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     assert.equal(beide.is_self, true);
 
     // 4. EXCEPTION: the CSV import tops up (ifPresent: 'aufstocken').
-    const { setErfassen } = require('./helpers/sources').areaPage('sets');
+    const { acquireSet } = require('./helpers/sources').areaPage('sets');
     const vorImport = await stand(KIND);
-    const erg = await setErfassen({
+    const erg = await acquireSet({
       requester: subId,
       setNumber: KIND,
       menge: 1,
@@ -172,9 +172,9 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
   }
 });
 
-test('one rule for set numbers: normalisiereSetNummer', () => {
+test('one rule for set numbers: normalizeSetNumber', () => {
   // Formerly three names (normalizeSetNumber, sanitizeSetNumber); now only the place where the rule stands.
-  const { normalisiereSetNummer } = _req('src/infra/setNumber.js');
+  const { normalizeSetNumber } = _req('src/infra/setNumber.js');
   const sets = _req('src/sets/index.js');
   assert.equal(sets.normalizeSetNumber, undefined);
   assert.equal(sets.sanitizeSetNumber, undefined);
@@ -187,5 +187,5 @@ test('one rule for set numbers: normalisiereSetNummer', () => {
     ['ab-12', 'ab-12'],
     ['4002!!', '4002-1'],
   ])
-    assert.equal(normalisiereSetNummer(eingabe), erwartet, `bei "${eingabe}"`);
+    assert.equal(normalizeSetNumber(eingabe), erwartet, `bei "${eingabe}"`);
 });

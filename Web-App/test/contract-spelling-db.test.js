@@ -5,7 +5,7 @@
  * a different route (404) and leaves nothing in `idempotency`.
  *
  * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
- *   A  server.ts without `case sensitive routing` and vertragsRouter() without
+ *   A  server.ts without `case sensitive routing` and contractRouter() without
  *      caseSensitive → red: “upper case is a different route” (routes
  *      answer, entries in idempotency) and “… not stored” (an
  *      UPPER-case token-rotieren has already replaced the token)

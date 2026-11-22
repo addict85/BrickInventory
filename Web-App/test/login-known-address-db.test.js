@@ -3,11 +3,11 @@
  * rate_limit_attempts, and the precedence of known logins still works.
  *
  * Counter-checks (measured on 08.11.2026):
- *   A  _knownKey and _successKey again take drosselAdresse(ip) instead of the
+ *   A  _knownKey and _successKey again take throttleAddress(ip) instead of the
  *      fingerprint → red: “no plaintext address”
- *   B  adressDigest delivers a different value per call → red: “known
+ *   B  addressDigest delivers a different value per call → red: “known
  *      stays known”
- *   C  adressDigest delivers the same value for every address → red: “a different
+ *   C  addressDigest delivers the same value for every address → red: “a different
  *      address is unknown”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.

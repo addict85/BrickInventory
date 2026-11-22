@@ -66,7 +66,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
         });
       })
     );
-  testImageWorker(t, { setBildLaden: async () => null });
+  testImageWorker(t, { loadSetImage: async () => null });
 
   const dedupe_key = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [dedupe_key]);
@@ -133,7 +133,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       const r = await asAccount(b, () =>
         require('./helpers/sources')
           .areaPage('sets')
-          .setErfassen({ requester: b, setNumber: SN, menge: 1, kaufpreis: 10, zustand: 'N' }),
+          .acquireSet({ requester: b, setNumber: SN, menge: 1, kaufpreis: 10, zustand: 'N' }),
       );
       assert.equal(r.action, 'added');
       assert.deepEqual(await nacharbeit(b), [{ sn: SN, type: 'ergaenzen' }]);

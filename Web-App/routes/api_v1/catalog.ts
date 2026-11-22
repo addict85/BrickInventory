@@ -1,17 +1,17 @@
 import { guardFor } from './middleware';
-import { vertragsRouter } from '../../src/http/contractRouter';
+import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 import { notFound } from '../../src/infra/errorTexts';
 
 export function buildCatalogRouter(d: Pick<Services, 'account' | 'catalog'>) {
   const { requireToken } = guardFor(d.account);
-  const router = vertragsRouter('/api/v1');
+  const router = contractRouter('/api/v1');
 
-  router.endpunkt('GET /api/v1/catalog/meta', requireToken, async _req => {
+  router.endpoint('GET /api/v1/catalog/meta', requireToken, async _req => {
     return { ...(await d.catalog.catalogMeta()) };
   });
 
-  router.endpunkt('GET /api/v1/catalog/year-verteilung', requireToken, async req => {
+  router.endpoint('GET /api/v1/catalog/year-verteilung', requireToken, async req => {
     const q = req.abfrage;
     const years = await d.catalog.yearDistribution(
       { q: (q.q ?? '').trim(), themeId: q.theme_id || null },
@@ -20,11 +20,11 @@ export function buildCatalogRouter(d: Pick<Services, 'account' | 'catalog'>) {
     return { years };
   });
 
-  router.endpunkt('GET /api/v1/catalog/sets', requireToken, async req => {
+  router.endpoint('GET /api/v1/catalog/sets', requireToken, async req => {
     const q = req.abfrage;
     const page = Math.max(1, q.page ?? 1);
     const limit = Math.min(200, Math.max(1, q.page_size ?? q.limit ?? 60));
-    const seite = await d.catalog.catalogPage(
+    const pageNo = await d.catalog.catalogPage(
       req.apiUser.user_id,
       {
         q: (q.q ?? '').trim(),
@@ -36,17 +36,17 @@ export function buildCatalogRouter(d: Pick<Services, 'account' | 'catalog'>) {
       page,
       limit,
     );
-    return { ...seite };
+    return { ...pageNo };
   });
 
-  router.endpunkt('GET /api/v1/catalog/sets/:setNumber', requireToken, async req => {
+  router.endpoint('GET /api/v1/catalog/sets/:setNumber', requireToken, async req => {
     const set = await d.catalog.catalogSet(req.apiUser.user_id, req.pfad.setNumber);
     if (!set) notFound((await d.catalog.catalogLoaded()) ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen');
     return { set };
   });
 
   // Links for a whole catalog page from one query, without a BrickLink call.
-  router.endpunkt('GET /api/v1/catalog/bricklink', requireToken, async req => {
+  router.endpoint('GET /api/v1/catalog/bricklink', requireToken, async req => {
     const raw = (req.abfrage.sets ?? '').trim();
     if (!raw) {
       return { links: {} };

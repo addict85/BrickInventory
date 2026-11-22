@@ -92,7 +92,7 @@ test('storage location when capturing — against a real database', async t => {
 
   await t.test('1. a set comes into the gallery with its storage location', async () => {
     // Like the CSV import (top up); the job fetches the catalog, the storage location is checked.
-    await setService.setErfassen({
+    await setService.acquireSet({
       requester: U.ich,
       setNumber: '10179-1',
       menge: 1,
@@ -162,7 +162,7 @@ test('storage location when capturing — against a real database', async t => {
     // version into `message` and the code next to it (src/infra/errorTexts.ts). Checking
     // the text would mean hanging the rule on a translation.
     await assert.rejects(
-      () => L.loescheOrt(U.ich, parseInt(ort.id, 10)),
+      () => L.deleteStorage(U.ich, parseInt(ort.id, 10)),
       (/** @type {any} */ e) => e?.code === 'lagerort_in_benutzung',
       'Der Ort liess sich löschen, obwohl eine Figur darin liegt.',
     );
@@ -170,7 +170,7 @@ test('storage location when capturing — against a real database', async t => {
 
   await t.test('8. renaming takes the figures along', async () => {
     const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
-    await L.benenneOrtUm(U.ich, parseInt(ort.id, 10), 'Vitrine Wohnzimmer');
+    await L.renameStorage(U.ich, parseInt(ort.id, 10), 'Vitrine Wohnzimmer');
     const minifigLocation = await locationOf(db, 'minifigs', 't.user_id=$1 AND t.fig_number=$2', [U.ich, 'sw0001']);
     assert.equal(
       minifigLocation,

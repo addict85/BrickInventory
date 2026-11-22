@@ -47,7 +47,7 @@ test('browser without token', { concurrency: 1 }, async t => {
     )
   ).id;
 
-  const KEKS = _req('src/http/sitzungsKeks.js').sitzungsKeksName();
+  const KEKS = _req('src/http/sitzungsKeks.js').sessionCookieName();
   const app = express();
   app.use(express.json());
   app.use(

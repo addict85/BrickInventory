@@ -23,7 +23,7 @@ const defOf = (s: z.ZodType): Def => (s as unknown as { _zod: { def: Def } })._z
 const SHELL = new Set(['optional', 'nullable', 'default', 'prefault', 'readonly', 'catch', 'nonoptional', 'success']);
 
 /** Paths like `sets.0.letzter_kauf`; at most `grenze` so that a long list does not flood. */
-export function unbekannteFelder(schema: z.ZodType, wert: unknown, limit = 20): string[] {
+export function unknownFields(schema: z.ZodType, wert: unknown, limit = 20): string[] {
   const findings = new Set<string>();
   const lauf = (s: z.ZodType | undefined, w: unknown, path: string): void => {
     if (!s || w === null || w === undefined || findings.size >= limit) return;
@@ -42,8 +42,8 @@ export function unbekannteFelder(schema: z.ZodType, wert: unknown, limit = 20): 
     }
     if (d.type === 'intersection') {
       // Known together is what either of the two sides names.
-      const links = unbekannteFelder(d.left as z.ZodType, w, limit);
-      const right = new Set(unbekannteFelder(d.right as z.ZodType, w, limit));
+      const links = unknownFields(d.left as z.ZodType, w, limit);
+      const right = new Set(unknownFields(d.right as z.ZodType, w, limit));
       for (const p of links) if (right.has(p)) findings.add(path + p);
       return;
     }

@@ -17,7 +17,7 @@ const { keineDb } = require('./helpers/db');
 const db = testData();
 const { readWantedList } = _req('src/wanted/wantedParser.js');
 const { resolveLocalOn } = _req('src/wanted/wantedResolution.js');
-const { importiereWantedListe } = _req('src/wanted/wantedList.js');
+const { importWantedList } = _req('src/wanted/wantedList.js');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -262,14 +262,14 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
           gesehen.push(body);
           return { action: secondRun ? 'updated' : 'created' };
         },
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
     };
   }
 
   const z1 = zaehler();
-  const bericht = await importiereWantedListe(1, xml, { creator: z1.creator });
+  const bericht = await importWantedList(1, xml, { creator: z1.creator });
 
   await t.test('an open color is not invented', () => {
     assert.equal(
@@ -304,11 +304,9 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   await t.test('MAXPRICE becomes the purchase price — and -1 stays none', async () => {
     // Marco's decision of 21.10.
     const z = zaehler();
-    await importiereWantedListe(
-      1,
-      liste(item('P', '3001', 5, 2, 'N', '0.8578'), item('P', '3001', 5, 2, 'N', '-1.0000')),
-      { creator: z.creator },
-    );
+    await importWantedList(1, liste(item('P', '3001', 5, 2, 'N', '0.8578'), item('P', '3001', 5, 2, 'N', '-1.0000')), {
+      creator: z.creator,
+    });
     assert.equal(z.gesehen.length, 2, 'Beide Posten müssen beim Anleger ankommen');
     assert.equal(
       z.gesehen[0].unit_price,
@@ -327,7 +325,7 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
 
   await t.test('a second run tops up instead of creating', async () => {
     const z2 = zaehler(true);
-    const b2 = await importiereWantedListe(1, xml, { creator: z2.creator });
+    const b2 = await importWantedList(1, xml, { creator: z2.creator });
     assert.equal(
       b2.angelegt,
       0,
@@ -357,9 +355,9 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
     ).join('')}</INVENTORY>`;
     const z = zaehler();
     let gefragt = 0;
-    const b = await importiereWantedListe(1, viele, {
+    const b = await importWantedList(1, viele, {
       creator: z.creator,
-      abbruch: async () => {
+      cancellation: async () => {
         gefragt++;
         return true;
       },
@@ -388,9 +386,9 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
         `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` + `<MINQTY>${i + 1}</MINQTY></ITEM>`,
     ).join('')}</INVENTORY>`;
     const z = zaehler();
-    const b = await importiereWantedListe(1, viele, {
+    const b = await importWantedList(1, viele, {
       creator: z.creator,
-      abbruch: async () => false,
+      cancellation: async () => false,
     });
     assert.equal(b.abgebrochen, undefined, 'Nichts wurde abgebrochen');
     assert.equal(z.gesehen.length, 25, `Der Anleger bekam ${z.gesehen.length} statt 25 Posten`);
@@ -405,9 +403,9 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
         `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` + `<MINQTY>${i + 1}</MINQTY></ITEM>`,
     ).join('')}</INVENTORY>`;
     let gefragt = 0;
-    const b = await importiereWantedListe(1, viele, {
+    const b = await importWantedList(1, viele, {
       vorschau: true,
-      abbruch: async () => {
+      cancellation: async () => {
         gefragt++;
         return true;
       },

@@ -194,11 +194,11 @@ function collect(doc) {
       });
       return;
     }
-    const pflicht = new Set(s.required ?? []);
+    const mandatory = new Set(s.required ?? []);
     const felder = Object.entries(s.properties ?? {}).map(([json, schema]) => ({
       json,
       typ: type(schema, name + className(json), beside),
-      pflicht: pflicht.has(json),
+      pflicht: mandatory.has(json),
     }));
     shapes.push({ name, felder, anfrage, quellen: [name] });
   }
@@ -358,8 +358,8 @@ const withoutEmptyValue = t => t.art === 'klasse' && !t.nullbar && STRICT.has(t.
 /** @param {Form} f @returns {string} */
 function kind(f) {
   if (f.werte) {
-    const werte = f.werte.map(w => `    @SerialName(${JSON.stringify(w)}) ${constant(w)},`);
-    return `@Serializable\nenum class ${f.name} {\n${werte.join('\n')}\n}`;
+    const values = f.werte.map(w => `    @SerialName(${JSON.stringify(w)}) ${constant(w)},`);
+    return `@Serializable\nenum class ${f.name} {\n${values.join('\n')}\n}`;
   }
   if (!f.felder.length) return `@Serializable\nclass ${f.name}`;
   const felder = f.felder.map(x => {
@@ -373,8 +373,8 @@ function kind(f) {
         ? `val ${name}: ${kotlin(t)}`
         : `val ${name}: ${kotlin(t)} = ${defaultValue ?? emptyValue(t)}`;
     const ser = x.typ.art === 'grund' ? Z.FACHTYPEN[x.typ.name]?.serializer : undefined;
-    const withValue = ser ? `@Serializable(with = ${ser.split('.').pop()}::class) ` : '';
-    return `    ${withValue}@SerialName(${JSON.stringify(x.json)}) ${decl},`;
+    const serialWith = ser ? `@Serializable(with = ${ser.split('.').pop()}::class) ` : '';
+    return `    ${serialWith}@SerialName(${JSON.stringify(x.json)}) ${decl},`;
   });
   return `@Serializable\ndata class ${f.name}(\n${felder.join('\n')}\n)`;
 }

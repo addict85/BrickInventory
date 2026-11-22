@@ -3,7 +3,7 @@
  * `voll` true, with `app` false; requireToken passes it on to req.apiUser like that.
  *
  * Counter-checks (measured on 11.11.2026):
- *   A  in pruefeToken() back to `… ? 1 : 0` → red: both parts
+ *   A  in checkToken() back to `… ? 1 : 0` → red: both parts
  *   B  in requireToken `is_admin: user.is_admin ? 1 : 0` → red: “requireToken
  *      passes a boolean on”
  */
@@ -33,8 +33,8 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
   const app = await A.createToken(id, 'app', false, null, { scope: 'app' });
 
   await t.test('a token with scope full carries true, with app false', async () => {
-    assert.equal((await A.pruefeToken(voll)).nutzer?.is_admin, true);
-    assert.equal((await A.pruefeToken(app)).nutzer?.is_admin, false);
+    assert.equal((await A.checkToken(voll)).nutzer?.is_admin, true);
+    assert.equal((await A.checkToken(app)).nutzer?.is_admin, false);
   });
 
   await t.test('requireToken passes a boolean on', async () => {

@@ -1,6 +1,6 @@
 /**
  * The services of an area read and write via the access with which
- * buildServices() built them, and a unit of work (k.transaktion) applies
+ * buildServices() built them, and a unit of work (k.transact) applies
  * entirely or not at all.
  *
  * Counter-checks (13.11.2026):
@@ -57,7 +57,7 @@ test('services take the access from their context, not from the process', async 
   assert.ok(zaehler.n > 0, 'partStatsQuery fragt über den übergebenen Zugang');
 });
 
-test('k.transaktion: what is written via t applies together or not at all', async t => {
+test('k.transact: what is written via t applies together or not at all', async t => {
   if (!(await accessOrSkip(t, _req))) return;
   const { buildServices } = _req('startup/wiring.js');
   const contexts = {};
@@ -72,7 +72,7 @@ test('k.transaktion: what is written via t applies together or not at all', asyn
 
   await assert.rejects(
     imSystem(() =>
-      e.transaktion(async tx => {
+      e.transact(async tx => {
         await tx.repository.writeGlobalValue(A, 'eins');
         assert.equal(await tx.repository.globalValue(A), 'eins', 'innen sichtbar');
         await tx.repository.writeGlobalValue(B, 'zwei');
@@ -88,7 +88,7 @@ test('k.transaktion: what is written via t applies together or not at all', asyn
   );
 
   await imSystem(() =>
-    e.transaktion(async tx => {
+    e.transact(async tx => {
       await tx.repository.writeGlobalValue(A, 'eins');
       await tx.repository.writeGlobalValue(B, 'zwei');
     }),

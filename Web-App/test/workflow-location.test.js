@@ -231,7 +231,7 @@ function dependabot() {
     .slice(1)
     .map(b => ({
       ecosystem: b.match(/^package-ecosystem: (\S+)/)?.[1],
-      ordner: b.match(/\n {4}directory: (\S+)/)?.[1],
+      folder: b.match(/\n {4}directory: (\S+)/)?.[1],
       text: b,
     }));
 }
@@ -244,7 +244,7 @@ function dependabot() {
 // red „Hauptversion“.
 test('Dependabot maintains npm, Gradle, images and actions from the root configuration', () => {
   const eintraege = dependabot();
-  const finde = (oe, ordner) => eintraege.find(e => e.ecosystem === oe && e.ordner === ordner);
+  const finde = (oe, ordner) => eintraege.find(e => e.ecosystem === oe && e.folder === ordner);
   for (const [oe, ordner] of [
     ['npm', '/Web-App'],
     // The name assembled: abgleich-baumbruecken reads every mention as a path into the tree.

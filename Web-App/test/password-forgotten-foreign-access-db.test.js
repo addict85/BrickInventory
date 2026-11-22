@@ -73,7 +73,7 @@ test('forgot password removes foreign access', { concurrency: 1 }, async t => {
   const mainAccountsOf = () => inSystemContext('test', () => H.householdOf(A)).then(h => h.memberIds.includes(V));
 
   await t.test('the normal password change leaves the household', async () => {
-    await K_.aendereEigenesPasswort(V, 'zwischen-Passwort-17');
+    await K_.changeOwnPassword(V, 'zwischen-Passwort-17');
     assert.equal(await mainAccountsOf(), true);
   });
 

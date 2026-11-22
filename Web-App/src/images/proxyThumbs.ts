@@ -1,5 +1,5 @@
 import type { Client } from 'pg';
-import { fehlertext, reportError } from '../infra/error';
+import { errorMessage, reportError } from '../infra/error';
 import fs from 'node:fs';
 import { rememberMissing, isKnownMissing } from './imageMisses';
 import { imgProxyFailures, countProxyError } from './imgProxyStats';
@@ -21,7 +21,7 @@ const THUMB_MAX_PARALLEL = 1;
 const THUMB_MAX_QUEUE = 40;
 /** Queue and lock connection per set of services; the lock itself applies to the server. */
 const stand = (k: ImagesContext) =>
-  k.faecher.fach('vorschauen', () => ({
+  k.faecher.slot('vorschauen', () => ({
     laufend: 0,
     _thumbQueue: [] as [string, string][],
     _thumbInFlight: new Set<string>(),
@@ -109,10 +109,10 @@ export async function createProxyPreview(k: ImagesContext, srcFile: string, thum
       return true;
     } catch (e) {
       // No silent false: a permanently failing generator would stay invisible.
-      console.error(`[img-proxy] Vorschau fehlgeschlagen für ${srcFile}: ${fehlertext(e)}`);
+      console.error(`[img-proxy] Vorschau fehlgeschlagen für ${srcFile}: ${errorMessage(e)}`);
       rememberMissing(k, 'thumb:' + thumbFile);
       imgProxyFailures.other++;
-      imgProxyFailures.lastError = `Vorschau fehlgeschlagen: ${fehlertext(e)}`;
+      imgProxyFailures.lastError = `Vorschau fehlgeschlagen: ${errorMessage(e)}`;
       return false;
     }
   });

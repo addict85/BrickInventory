@@ -58,7 +58,7 @@ test('the routers under /api/v1 do not hit each other', () => {
 
 test('the app attaches the error path, once behind all routers', () => {
   const { errorResponse } = _req('src/http/httpResponse.js');
-  const app = _req('startup/app.js').baueApp({
+  const app = _req('startup/app.js').buildApp({
     pool: q.testAccess().systemPool,
     konfig: _req('src/infra/config.js').konfig(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',

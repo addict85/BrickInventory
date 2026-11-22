@@ -1,7 +1,7 @@
-import type { Konfig } from '../infra/config';
+import type { AppConfig } from '../infra/config';
 import path from 'node:path';
 import fs from 'node:fs';
-import { AbrufFehler } from '../infra/fetch';
+import { FetchError } from '../infra/fetch';
 import { IMAGE_HEADERS } from '../externalSources';
 import type { ImagesContext } from './context';
 
@@ -17,7 +17,7 @@ export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
 /** The same browser identifier as the image proxy: the CDN rejects an own one with 403,
  * and the image job would then pause endlessly. IMG_USER_AGENT stays as a way out. */
-export function imageUserAgent(k: Pick<Konfig, 'bildUserAgent'>): string {
+export function imageUserAgent(k: Pick<AppConfig, 'bildUserAgent'>): string {
   return k.bildUserAgent || String(IMAGE_HEADERS['User-Agent']);
 }
 
@@ -37,7 +37,7 @@ export async function setImageComplete(setNumber: string): Promise<boolean> {
   return (await da(`${safe}.jpg`)) && (await da(`${safe}_thumb.jpg`));
 }
 
-export async function setBildHerunterladen(
+export async function downloadSetImage(
   k: ImageWorkerContext,
   url: string,
   setNumber: string,
@@ -72,7 +72,7 @@ export async function setBildHerunterladen(
         return null;
       },
       (e: unknown) => {
-        if (e instanceof AbrufFehler && e.grund === 'zu-gross')
+        if (e instanceof FetchError && e.grund === 'zu-gross')
           console.error(
             `[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`,
           );

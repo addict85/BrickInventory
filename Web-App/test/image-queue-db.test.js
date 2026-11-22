@@ -17,7 +17,7 @@ let geladen = 0,
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async () => {
+  loadSetImage: async () => {
     geladen++;
     return '/images/sets/test.jpg';
   },
@@ -65,7 +65,7 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
       // be computed in one go.
       // The batch size stands in the source (: raised from 5 to 20
       // after the CPU causes were fixed). The test reads it …
-      const stapel = IQ.STAPEL;
+      const stapel = IQ.BATCH;
       assert.ok(stapel > 0, 'STAPEL nicht auffindbar');
       const vorher = geladen;
       const n1 = (await IQ._workStack()).gesamt;
@@ -132,7 +132,7 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
     await _req('src/management/tiles.js')
       .imgDlReset()
       .catch(() => {});
-    _req('src/images/imageDemandRun.js').letzterLauf.zeit = null;
+    _req('src/images/imageDemandRun.js').lastRun.zeit = null;
     const withoutRun = await kachel();
     assert.equal(withoutRun.status, 'idle', 'Ohne Durchgang darf die Kachel keinen Betrieb melden');
     assert.match(
@@ -152,7 +152,7 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
 
     // A STUCK “running" is not operation
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
-    _req('src/images/imageDemandRun.js').letzterLauf.zeit = null;
+    _req('src/images/imageDemandRun.js').lastRun.zeit = null;
     await _req('src/management/tiles.js')
       .imgDlReset()
       .catch(() => {});
@@ -193,7 +193,7 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
 
 test('the job also reports pure skips', () => {
   // Marco's finding
-  const { meldung } = _req('src/images/imageDemandRun.js');
+  const { message: meldung } = _req('src/images/imageDemandRun.js');
   const onlySkipped = {
     geholt: 0,
     vorschau: 0,
@@ -227,7 +227,7 @@ test('the job also reports pure skips', () => {
   );
   assert.match(
     fn,
-    /meldung\(e\)/,
+    /message\(e\)/,
     'Der Takt baut den Text selbst zusammen — dann laufen Meldung und Zähler ' +
       'auseinander, sobald ein Zähler dazukommt',
   );
@@ -274,7 +274,7 @@ test('the buffer is written away in EVERY worker process', () => {
   );
   assert.match(
     init,
-    /setInterval\([\s\S]{0,80}schreibePuffer/,
+    /setInterval\([\s\S]{0,80}writeBuffer/,
     'Das Wegschreiben steht nicht in setUpImageDemand() — dann läuft es nur dort, ' +
       'wo start() aufgerufen wird, also nur im Primärprozess',
   );
@@ -307,7 +307,7 @@ test('the request no longer computes anything, it only takes notes', () => {
     'Im gen=0-Fall wird weiter sofort verkleinert statt notiert',
   );
   // And the note needs the set number — without it the job does not know where to.
-  assert.match(px, /const setNummer = setNumberFromImageAddress\(/, 'Die Setnummer wird nicht aus der Adresse gelesen');
+  assert.match(px, /const setNumber = setNumberFromImageAddress\(/, 'Die Setnummer wird nicht aus der Adresse gelesen');
   assert.equal(
     _req('routes/imgProxy.js').setNumberFromImageAddress('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),
     '10294-1',

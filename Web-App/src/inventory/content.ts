@@ -18,13 +18,13 @@ export async function recolorPartRow(
 ) {
   const merged = await purchases.stallSameEntriesOn(k.db, uid, teil, source.farbe, newColor);
   await purchases.deleteToppedUpEntries(k.db, uid, teil, source.farbe, newColor);
-  const verschoben = await purchases.recolorEntries(k.db, uid, teil, source.farbe, newColor);
+  const moved = await purchases.recolorEntries(k.db, uid, teil, source.farbe, newColor);
   if (!target) await sharedRepo.recolorPartRow(k.db, newColor, source.id);
   else {
     if (source.storage_id && !target.storage_id) await sharedRepo.setPartLocation(k.db, source.storage_id, target.id);
     await sharedRepo.loescheTeilzeile(k.db, source.id);
   }
-  return { vereint: merged.changes ?? 0, verschoben: verschoben.changes ?? 0 };
+  return { vereint: merged.changes ?? 0, verschoben: moved.changes ?? 0 };
 }
 
 /** A set's parts or figures: what the catalog names, and only that. */

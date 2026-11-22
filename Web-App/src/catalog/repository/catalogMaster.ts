@@ -176,7 +176,7 @@ export function writePartColors(
   colors: number[],
   names: (string | null)[],
   codes: (string | null)[],
-  bilder: (string | null)[],
+  images: (string | null)[],
   local: (string | null)[],
 ) {
   return dbh.run(
@@ -189,7 +189,7 @@ export function writePartColors(
       image_url = COALESCE(part_color_catalog.image_url, EXCLUDED.image_url),
       image_local = COALESCE(part_color_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`,
-    [numbers, colors, names, codes, bilder, local],
+    [numbers, colors, names, codes, images, local],
   );
 }
 
@@ -215,7 +215,7 @@ export function writeMinifigsCatalog(
   dbh: Writer,
   numbers: string[],
   names: (string | null)[],
-  bilder: (string | null)[],
+  images: (string | null)[],
 ) {
   return dbh.run(
     `
@@ -225,7 +225,7 @@ export function writeMinifigsCatalog(
       fig_name = COALESCE(minifigs_catalog.fig_name, EXCLUDED.fig_name),
       image_url = COALESCE(minifigs_catalog.image_url, EXCLUDED.image_url),
       updated_at  = NOW()`,
-    [numbers, names, bilder],
+    [numbers, names, images],
   );
 }
 

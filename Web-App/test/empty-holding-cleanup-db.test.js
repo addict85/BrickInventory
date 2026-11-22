@@ -76,7 +76,7 @@ test('last purchase price deleted → the entry disappears entirely', { concurre
     assert.equal((await r.json()).new_quantity, 0);
 
     await t.test('the gallery no longer shows it', async () => {
-      const g = await H.setsLesen([uid], {});
+      const g = await H.readSets([uid], {});
       const nummern = g.sets.map(s => s.set_number);
       assert.deepEqual(
         nummern,

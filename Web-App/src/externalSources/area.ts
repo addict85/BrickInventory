@@ -1,6 +1,6 @@
 /** From an access arise quota, throttles and the clients that receive exactly these:
  * two sets of services in one process share neither keys nor intermediate states. */
-import { withValue, buildContext, type Inspect } from '../infra/area';
+import { bound, buildContext, type Inspect } from '../infra/area';
 import type { Db } from '../../db/database';
 import * as brickset from './bricksetResubmission';
 import * as apiQuotaService from './apiQuota';
@@ -25,18 +25,18 @@ export function createForeignSources(a: ForeignSourcesDependencies, inspect?: In
   inspect?.(k);
   const drossel = rateLimiter.throttleRebrickable(k.apiTakt, k.uhr);
   const quota = {
-    quotaStatus: withValue(k)(apiQuotaService.kontingentUebersicht),
-    quotaFree: withValue(k)(apiQuotaService.quotaFree),
-    setQuotaBack: withValue(k)(apiQuotaService.setQuotaBack),
-    quotaLimit: withValue(k)(apiQuotaService.limitTheSource),
+    quotaStatus: bound(k)(apiQuotaService.quotaOverview),
+    quotaFree: bound(k)(apiQuotaService.quotaFree),
+    setQuotaBack: bound(k)(apiQuotaService.setQuotaBack),
+    quotaLimit: bound(k)(apiQuotaService.limitTheSource),
   };
   const clients: ClientsAccess = {
     schluessel: async name => (await k.einstellungen.globalValue(name)) || '',
-    zaehle: api => apiQuotaService.kontingentPruefenUndZaehlen(k, api),
+    zaehle: api => apiQuotaService.checkAndCountQuota(k, api),
     quotaStatus: api => quota.quotaStatus(api),
     drossel,
-    bricksetReserve: withValue(k)(brickset.bricksetReserve),
-    bricksetForgotten: withValue(k)(brickset.bricksetForgotten),
+    bricksetReserve: bound(k)(brickset.bricksetReserve),
+    bricksetForgotten: bound(k)(brickset.bricksetForgotten),
   };
   const services = {
     /** The clients of this access; a test replaces individual ones via `ersatz`. */
@@ -46,19 +46,19 @@ export function createForeignSources(a: ForeignSourcesDependencies, inspect?: In
     quotaFree: quota.quotaFree,
     setQuotaBack: quota.setQuotaBack,
     quotaLimit: quota.quotaLimit,
-    consumeRebrickableDaily: withValue(k)(rateLimiter.consumeRebrickableDaily),
+    consumeRebrickableDaily: bound(k)(rateLimiter.consumeRebrickableDaily),
     /** The resubmission of the sets for which Brickset had no quota left. */
     brickset: {
-      dueAb: withValue(k)(brickset.bricksetDueFrom),
-      jetzt: withValue(k)(brickset.bricksetNow),
-      prefer: withValue(k)(brickset.bricksetPrefer),
-      zahlen: withValue(k)(brickset.bricksetNumbers),
-      wartende: withValue(k)(brickset.bricksetWaiting),
+      dueFrom: bound(k)(brickset.bricksetDueFrom),
+      now: bound(k)(brickset.bricksetNow),
+      prefer: bound(k)(brickset.bricksetPrefer),
+      numbers: bound(k)(brickset.bricksetNumbers),
+      waiting: bound(k)(brickset.bricksetWaiting),
     },
   };
   // Clients call outside and never belong in a transaction: their set stays
   // the same so that throttles and quota are not created anew per transaction.
-  return Object.assign(services, { ueber: (_db: Db) => services });
+  return Object.assign(services, { over: (_db: Db) => services });
 }
 
 export type ForeignSourcesServices = ReturnType<typeof createForeignSources>;

@@ -12,7 +12,7 @@
  *      „Teile des alten Sets bleiben“ (ON DELETE CASCADE took them along)
  *   C  withVersion() removed in the parts filter (src/parts/queries.ts) → red:
  *      “the filter finds the set even without the version suffix”
- *   D  (10.11.) in setStamm() (src/sets/repository/setDetail.ts) the placeholder
+ *   D  (10.11.) in setMaster() (src/sets/repository/setDetail.ts) the placeholder
  *      „Set …“ not hidden → red: “… a placeholder stays a placeholder”
  *   E  'True' not read as spare part in 0075 → red: „Ersatzteil wird 0/1“
  *

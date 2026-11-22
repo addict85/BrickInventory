@@ -91,8 +91,8 @@ test('api(): every path gets the response of its route', () => {
     "api('GET', `/v1/stats${nr}`).then(d => { if (d.success) zahl(d.stats?.total_sets ?? 0); });",
     "api('GET', `/v1/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });",
     "api('GET', `/v1/sets/${nr}`).then(d => { if (d.success) zahl(d.parts.length); }); // FEHLT",
-    "api('GET', '/v1/sets').then(d => { zahl(d.total); }); // FEHLT",
-    "api('GET', '/v1/sets/' + nr).then(d => { zahl(d.waswillstdu); });",
+    "api('GET', '/v1/sets').then(d => { number(d.total); }); // FEHLT",
+    "api('GET', '/v1/sets/' + nr).then(d => { number(d.waswillstdu); });",
   ];
   const probe = HEADER + faelle.join('\n') + '\n';
   const versatz = HEADER.split('\n').length - 1;
@@ -113,7 +113,7 @@ test('/v1/sets/:nr/parts-list only hits its route', () => {
 
 test('without checking success a field is undefined, not unknown', () => {
   // Under strict: `d.total` is number | undefined, so with a fallback a number.
-  const m = pruefe(HEADER + "api('GET', '/v1/sets').then(d => { zahl(d.total ?? 0); });\n");
+  const m = pruefe(HEADER + "api('GET', '/v1/sets').then(d => { number(d.total ?? 0); });\n");
   assert.deepEqual(Object.values(m), []);
 });
 

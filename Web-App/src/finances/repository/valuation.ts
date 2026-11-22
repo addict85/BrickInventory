@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import { purchasePriceColumns } from '../../../db/geldSql';
-import { mengeAus, subsetFrom } from '../../../db/stockQuantity';
+import { quantityFrom, subsetFrom } from '../../../db/stockQuantity';
 import type { FinancesReadContract } from '../readContract';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
 import { teilSichtJoin, minifigViewJoin, setMasterJoin, TEIL, MINIFIG, SET } from '../../../db/catalogView';
@@ -58,7 +58,7 @@ export interface ValuedSet {
 export function setsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<ValuedSet>(
     `SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
-            ${mengeAus('sm', 0)}::int AS quantity,
+            ${quantityFrom('sm', 0)}::int AS quantity,
             c.image_local, c.image_url, s.added_at
        FROM ${l.setBestand('= ANY($1)')} s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number

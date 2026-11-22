@@ -6,7 +6,7 @@
  * Counter-checks (measured 13.11.2026, each reverted):
  *   A  marketPriceFrom() (src/catalog/bricklinkPrices.ts) only avg_price → red:
  *      “valuation” (unit price 0 instead of 37.5), “G&V”, “price history”; Wertkurve green
- *   B  marktpreisSql() (db/geldSql.ts) only avg_price → red: „Wertkurve“
+ *   B  marketPriceSql() (db/geldSql.ts) only avg_price → red: „Wertkurve“
  *      (60, the purchase price as starting point, instead of 75) and “price history”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -92,8 +92,8 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
   });
 
   await t.test('Wertkurve', async () => {
-    const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
-    const kurve = await portfolioVerlauf(uid, [uid], 'month');
+    const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
+    const kurve = await portfolioHistory(uid, [uid], 'month');
     assert.ok(kurve.points.length > 0, 'keine Punkte');
     assert.equal(kurve.points.at(-1).value, 75);
   });

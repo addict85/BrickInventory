@@ -1,11 +1,11 @@
 /**
  * A downloaded instruction only lands in the shared cache (and goes
  * from there to all accounts) if it starts with `%PDF-`. Measured on
- * setAnleitungenLaden: the sources and the network are replaced, database
+ * loadSetInstructions: the sources and the network are replaced, database
  * and disk are real.
  *
  * Counter-checks (measured on 08.11.2026, each alone):
- *   A  in setAnleitungenLaden() `PDF_START` no longer passed → red:
+ *   A  in loadSetInstructions() `PDF_START` no longer passed → red:
  *      “a file without %PDF- is not stored” (file lies there, path stands
  *      in the table)
  *   B  in downloadFile() the block `if (anfang && …)` removed → the same red
@@ -35,7 +35,7 @@ const URLS = ['https://cdn.rebrickable.com/media/echt.pdf', 'https://cdn.rebrick
 S.testSources(null, {
   scrapeInstructions: async () => URLS.map((url, i) => ({ url, description: `Anleitung ${i}` })),
 });
-const { setAnleitungenLaden } = _req('src/catalog/instructions.js');
+const { loadSetInstructions } = _req('src/catalog/instructions.js');
 
 const CONTENT = {
   [URLS[0]]: Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(3000, 7)]),
@@ -70,7 +70,7 @@ test('instructions only with a PDF start', async t => {
     https.get = echt;
   });
 
-  await setAnleitungenLaden(sn, true);
+  await loadSetInstructions(sn, true);
 
   const zeilen = await db.all('SELECT url, local_path FROM shared_instructions WHERE set_number = $1 ORDER BY url', [
     sn,

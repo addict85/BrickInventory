@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
-import { encryptBuffer, decryptBuffer, isEncryptedBuffer, readOldBuffer, kontext, rekeyBuffer } from '../infra/secret';
+import { encryptBuffer, decryptBuffer, isEncryptedBuffer, readOldBuffer, context, rekeyBuffer } from '../infra/secret';
 import { withoutMissingFile } from '../infra/error';
 
 /** The PDFs carry the card number and PIN in plain text; encrypted, a copy of
@@ -21,7 +21,7 @@ export function voucherFile(userId: number, pdfPath: string): string | null {
  * NOTE: the literal tag ('gutschein-pdf') is part of the encryption AAD for
  * files already on disk — it must not change, even though the code around it does. */
 function fileContext(file: string) {
-  return kontext('gutschein-pdf', path.relative(VOUCHER_DIR, file).split(path.sep).join('/'));
+  return context('gutschein-pdf', path.relative(VOUCHER_DIR, file).split(path.sep).join('/'));
 }
 
 /** Only the finished file gets its name. */

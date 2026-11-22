@@ -1,8 +1,8 @@
 /** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Db } from '../../db/database';
-import { imSystem, withValue, type Context } from '../infra/area';
+import { imSystem, bound, type Context } from '../infra/area';
 import type { JobsReadContract } from './readContract';
-import type { Faecher } from '../infra/cache';
+import type { Compartments } from '../infra/cache';
 import type { SettingsServices } from '../settings';
 import * as jobs from './repository/jobs';
 import * as importStand from './repository/importStatus';
@@ -13,7 +13,7 @@ import type { Kinds } from './kinds';
 export interface JobsDependencies {
   uhr: Clock;
   db: Db;
-  faecher: Faecher;
+  faecher: Compartments;
   einstellungen: SettingsServices;
   /** The registered kinds; shared across all sets of this access. */
   arten: Kinds;
@@ -28,11 +28,11 @@ const MANAGEMENT = 'Verwaltung: Übersicht über die Aufträge aller Konten';
 export const access = (db: Db, l: JobsReadContract) => ({
   auftraege: {
     addJobOne: imSystem(db, QUEUE, jobs.addJobOne),
-    addOwnJobOne: withValue(db)(jobs.addOwnJobOne),
-    addListAn: imSystem(db, QUEUE, jobs.enqueueList),
-    belegeAuftrag: imSystem(db, QUEUE, jobs.claimJob),
+    addOwnJobOne: bound(db)(jobs.addOwnJobOne),
+    enqueueList: imSystem(db, QUEUE, jobs.enqueueList),
+    claimJob: imSystem(db, QUEUE, jobs.claimJob),
     rememberExclusive: imSystem(db, QUEUE, jobs.rememberExclusive),
-    lebenszeichen: imSystem(db, QUEUE, jobs.heartbeat),
+    heartbeat: imSystem(db, QUEUE, jobs.heartbeat),
     belongsStill: imSystem(db, QUEUE, jobs.belongsStill),
     writeProgress: imSystem(db, QUEUE, jobs.writeProgress),
     setDone: imSystem(db, QUEUE, jobs.setDone),
@@ -48,7 +48,7 @@ export const access = (db: Db, l: JobsReadContract) => ({
     emptyKind: imSystem(db, QUEUE, jobs.emptyKind),
     makeDue: imSystem(db, QUEUE, jobs.makeDue),
     statusNumbers: imSystem(db, MANAGEMENT, jobs.statusNumbers),
-    accountRole: withValue(l)(imSystem(db, MANAGEMENT, jobs.accountRole)),
+    accountRole: bound(l)(imSystem(db, MANAGEMENT, jobs.accountRole)),
     setDueDate: imSystem(db, QUEUE, jobs.setDueDate),
     pullAppointmentBefore: imSystem(db, QUEUE, jobs.pullAppointmentBefore),
     runningKind: imSystem(db, QUEUE, jobs.runningKind),
@@ -58,30 +58,30 @@ export const access = (db: Db, l: JobsReadContract) => ({
     waitingTheKind: imSystem(db, QUEUE, jobs.waitingTheKind),
     numbersTheKind: imSystem(db, QUEUE, jobs.numbersTheKind),
     jobList: imSystem(db, MANAGEMENT, jobs.jobList),
-    letzteJeArt: imSystem(db, MANAGEMENT, jobs.lastPerKind),
+    lastPerKind: imSystem(db, MANAGEMENT, jobs.lastPerKind),
     numbersJeKindAndStatus: imSystem(db, MANAGEMENT, jobs.numbersJeKindAndStatus),
     runningPauses: imSystem(db, QUEUE, jobs.runningPauses),
-    jobStatus: withValue(db)(jobs.jobStatus),
+    jobStatus: bound(db)(jobs.jobStatus),
     pullAppointmentsBefore: imSystem(db, QUEUE, jobs.pullAppointmentsBefore),
     writeResult: imSystem(db, QUEUE, jobs.writeResult),
   },
   importStand: {
-    markOrphaned: withValue(db)(importStand.markOrphaned),
-    importStand: withValue(db)(importStand.importStand),
-    writeImportStatus: withValue(db)(importStand.writeImportStatus),
-    changeImportStatus: withValue(db)(importStand.changeImportStatus),
-    setRunFort: withValue(db)(importStand.setRunFort),
+    markOrphaned: bound(db)(importStand.markOrphaned),
+    importStand: bound(db)(importStand.importStand),
+    writeImportStatus: bound(db)(importStand.writeImportStatus),
+    changeImportStatus: bound(db)(importStand.changeImportStatus),
+    setRunFort: bound(db)(importStand.setRunFort),
   },
   laufzustand: {
-    liesZustand: withValue(db)(runState.readState),
-    setzeZustand: withValue(db)(runState.setState),
-    deleteState: withValue(db)(runState.deleteState),
-    countState: withValue(db)(runState.countState),
+    readState: bound(db)(runState.readState),
+    setState: bound(db)(runState.setState),
+    deleteState: bound(db)(runState.deleteState),
+    countState: bound(db)(runState.countState),
   },
   eigene: {
-    ownRow: withValue(db)(jobs.ownRow),
-    countRunningRows: withValue(db)(jobs.countRunningRows),
-    deleteOwnRow: withValue(db)(jobs.deleteOwnRow),
+    ownRow: bound(db)(jobs.ownRow),
+    countRunningRows: bound(db)(jobs.countRunningRows),
+    deleteOwnRow: bound(db)(jobs.deleteOwnRow),
     deleteEndedRows: imSystem(db, 'Aufräumen über alle Konten', jobs.deleteEndedRows),
   },
 });

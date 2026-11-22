@@ -20,7 +20,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 
 const _req = buildAndRequire();
-const { ladeKonfig, KonfigFehler } = _req('src/infra/config.js');
+const { loadConfig, ConfigError } = _req('src/infra/config.js');
 const { androidOrigins: origins } = _req('src/factors/androidApp.js');
 const androidOrigins = () => origins(_req('src/infra/config.js').konfig());
 
@@ -80,11 +80,11 @@ test('the origin is base64url of the hash, regardless of the notation it is ente
 test('a wrong fingerprint or package name is a startup error with a name', () => {
   const fehler = env => {
     try {
-      ladeKonfig(env);
+      loadConfig(env);
       return [];
     } catch (e) {
-      assert.ok(e instanceof KonfigFehler);
-      return e.fehler;
+      assert.ok(e instanceof ConfigError);
+      return e.error;
     }
   };
   assert.match(fehler({ PASSKEY_ANDROID_ZERTIFIKATE: 'AB:CD' }).join(), /PASSKEY_ANDROID_ZERTIFIKATE: AB:CD/);

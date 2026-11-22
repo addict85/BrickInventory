@@ -3,7 +3,7 @@
  *
  * Counter-check (measured on 27.10.): txLock again with the user_id as the first
  * value → red: “an account's inventory lock does not hit a job”. Since the lock
- * is an option of k.transaktion (14.11.2026) again: in lockInventories()
+ * is an option of k.transact (14.11.2026) again: in lockInventories()
  * (src/infra/area.ts) the account ID as class → red, the same test.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip (unless
@@ -148,7 +148,7 @@ test('lock namespaces against a real database', async t => {
     const SET = '60511-1';
     const zweiter = (await db.get('SELECT hashtext($1) AS h', [SET])).h;
     const frei = {};
-    await testContext('inventory').transaktion(
+    await testContext('inventory').transact(
       async () => {
         frei.bild = await stillFree(LOCKS.IMAGE_DOWNLOAD, zweiter);
         // On an own connection: db.get would run here via the transaction that already holds the lock.

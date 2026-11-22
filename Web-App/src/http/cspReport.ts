@@ -5,7 +5,7 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import { processWide } from '../infra/prozessweit';
-import { drosselAdresse } from '../infra/throttleAddress';
+import { throttleAddress } from '../infra/throttleAddress';
 
 const WINDOW_MS = 60_000;
 const JE_ADDRESS = 10;
@@ -22,7 +22,7 @@ export function cspMessageFree(address: string, now = Date.now()): boolean {
     F.seit = now;
   }
   // Per sender instead of shared, otherwise real reports would drown in a foreign flood; IPv6 per /64.
-  const a = drosselAdresse(address);
+  const a = throttleAddress(address);
   const n = (_jeAddress.get(a) ?? 0) + 1;
   const free = n <= JE_ADDRESS && (_jeAddress.has(a) || _jeAddress.size < AT_MOST_ADDRESSES);
   if (_jeAddress.has(a) || _jeAddress.size < AT_MOST_ADDRESSES) _jeAddress.set(a, n);

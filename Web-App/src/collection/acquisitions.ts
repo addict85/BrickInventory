@@ -3,12 +3,12 @@ import { moneyInput } from '../infra/geld';
 import type { Sicht } from '../household';
 import { Degradations } from '../infra/result';
 import { inventoryKey } from '../../db/txLock';
-import { fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { failDomain, type ErrorCode } from '../infra/errorTexts';
 import { quantityOfSets, quantityThePosition, priceColumn, type AcquisitionKind } from '../../db/stockQuantity';
 import { inventoryQuantity, zustand } from '../infra/validate';
 import type { CollectionContext } from './context';
 
-export type { AcquisitionKind as ErfassungsArt } from '../../db/stockQuantity';
+export type { AcquisitionKind } from '../../db/stockQuantity';
 type Keys = Array<string | number>;
 
 interface Kind {
@@ -22,7 +22,7 @@ interface Kind {
 const kinds = (k: CollectionContext): Record<AcquisitionKind, Kind> => ({
   set: {
     notFound: 'erfassung_nicht_gefunden',
-    resolvePrice: (uid, [sn], cond) => k.finances.aktuellerMarktpreis(String(sn), uid, cond || null),
+    resolvePrice: (uid, [sn], cond) => k.finances.currentMarketPrice(String(sn), uid, cond || null),
     // Same as explicit deletion: the set's parts and minifigs would otherwise
     // sit in the parts/minifigs list and finance totals without a set.
     cleanupWhenEmpty: (t, ownerId, [sn]) => t.sets.deleteSetRows([ownerId], String(sn)),
@@ -58,7 +58,7 @@ interface Row {
 
 /** Only for the lock key and price fallback; the query inside the transaction checks the rights. */
 async function beforehand(k: CollectionContext, art: AcquisitionKind, uid: number, id: number, keys: Keys) {
-  return k.inventory.erfassung.imSchreibfeld(art, id, await k.household.schreibbereich(uid), keys);
+  return k.inventory.erfassung.inWriteScope(art, id, await k.household.writeScope(uid), keys);
 }
 
 /** 0 "empty" and null "no row" are cleaned up; a read error propagates, a fallback would hide the
@@ -82,8 +82,8 @@ async function rowInWriteScope(
   keys: Keys,
 ): Promise<Row> {
   const a = kinds(t)[art];
-  const z = await t.inventory.erfassung.imSchreibfeld(art, id, wids, keys);
-  if (!z) fachfehler('nicht_gefunden', a.notFound);
+  const z = await t.inventory.erfassung.inWriteScope(art, id, wids, keys);
+  if (!z) failDomain('nicht_gefunden', a.notFound);
   return z;
 }
 
@@ -121,10 +121,10 @@ export async function changeAcquisition(
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
     const from = await k.household.moveSource(uid, art, id);
     const to = await k.household.writeTargetOrNull(uid, ownerReq);
-    if (to === null) fachfehler('verboten', 'kein_schreibrecht');
+    if (to === null) failDomain('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
     // Like moveSet(): opposite directions lock both accounts' rows in reverse order.
-    const moved = await k.transaktion(
+    const moved = await k.transact(
       t =>
         art === 'set'
           ? t.sets.setEntriesReassign(String(keys[0]), from, to, [id])
@@ -151,15 +151,15 @@ export async function changeAcquisition(
   }
 
   const owner = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
-  await k.transaktion(
+  await k.transact(
     async t => {
-      const wids = await t.household.schreibbereich(uid);
+      const wids = await t.household.writeScope(uid);
       const acq = await rowInWriteScope(t, art, wids, id, keys);
       // From here on the row's owner counts, not the viewer.
       const ownerId = Number(acq.user_id);
       let newDate: string | null = null;
       if (date !== undefined && date !== null && date !== '') {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) fachfehler('ungueltig', 'datum_ungueltig');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) failDomain('ungueltig', 'datum_ungueltig');
         newDate = String(date);
       }
       const hasCondition = condition !== undefined && condition !== null;
@@ -172,10 +172,10 @@ export async function changeAcquisition(
           geschaetzt: targetEstimated,
           waehrung: acq.currency,
         });
-        if (clash) fachfehler('konflikt', 'datum_belegt');
+        if (clash) failDomain('konflikt', 'datum_belegt');
       }
       const hasQuantity = quantity !== undefined && quantity !== null;
-      await t.inventory.erfassung.aendere(art, id, wids, {
+      await t.inventory.erfassung.change(art, id, wids, {
         ...(hasQuantity ? { menge: inventoryQuantity(quantity, 1) } : {}),
         ...(rawPrice !== undefined ? { preis: { wert: priceVal, geschaetzt: targetEstimated } } : {}),
         ...(hasCondition ? { zustand: targetCondition } : {}),
@@ -199,11 +199,11 @@ export async function deleteAcquisition(
 ) {
   const a = kinds(k)[art];
   const owner = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
-  const menge = await k.transaktion(
+  const menge = await k.transact(
     async t => {
-      const acq = await rowInWriteScope(t, art, await t.household.schreibbereich(uid), id, keys);
+      const acq = await rowInWriteScope(t, art, await t.household.writeScope(uid), id, keys);
       const ownerId = Number(acq.user_id);
-      await t.inventory.erfassung.loesche(art, id, ownerId);
+      await t.inventory.erfassung.remove(art, id, ownerId);
       const q = await holdingQuantity(t, art, ownerId, keys);
       if (isEmpty(q)) await a.cleanupWhenEmpty(t, ownerId, keys);
       return q;

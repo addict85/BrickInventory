@@ -1,5 +1,5 @@
 /** One job 'nachlauf' per step, so that an error is retried and visible in the admin. */
-import { type Nutzlast, checkAbort, type JobRun } from '../jobQueue';
+import { type Payload, checkAbort, type JobRun } from '../jobQueue';
 import type { ManagementContext } from './context';
 
 /** Secrets from the time before encryption (src/infra/secret.ts). */
@@ -33,14 +33,14 @@ function runners(k: ManagementContext): Record<FollowUpStep, () => Promise<unkno
   return {
     geheimnisse: () => encryptSecrets(k),
     vorschauen: () => k.catalog.backfillThumbnails(),
-    katalog: () => k.catalog.sameMissingAb(),
+    katalog: () => k.catalog.syncAllMissing(),
     anleitungen: () => k.catalog.backfillInstructions(),
     set_bilder: () => k.catalog.reloadSetImages(),
     kaufpreise: () => k.inventory.backfillPurchasePrices(),
   };
 }
 
-async function runFollowUp(k: ManagementContext, n: Nutzlast<'nachlauf'>, lauf?: JobRun): Promise<void> {
+async function runFollowUp(k: ManagementContext, n: Payload<'nachlauf'>, lauf?: JobRun): Promise<void> {
   checkAbort(lauf);
   await runners(k)[n.schritt]();
 }

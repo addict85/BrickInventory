@@ -9,7 +9,7 @@ interface ImageRequest {
 
 /** From the disk cache, if present; true means answered. */
 export async function deliverFromCache(
-  bilder: Pick<ImagesServices, 'cacheTreffer'>,
+  images: Pick<ImagesServices, 'cacheTreffer'>,
   opts: {
     res: ImageResponse;
     req: ImageRequest;
@@ -22,7 +22,7 @@ export async function deliverFromCache(
   },
 ): Promise<boolean> {
   const { res, req, streamFileToResponse } = opts;
-  const hits = await bilder.cacheTreffer(opts);
+  const hits = await images.cacheTreffer(opts);
   if (!hits) return false;
   res.setHeader('Content-Type', hits.typ);
   // Pass the length: a reverse proxy may buffer a chunked response.

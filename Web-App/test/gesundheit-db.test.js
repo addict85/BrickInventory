@@ -54,8 +54,8 @@ test('health check and startup state', { concurrency: 1, timeout: 180_000 }, asy
     )
   ).id;
   const token = await _req('src/account/deviceToken.js').createToken(uid, 'Gesundheit', false, null, { scope: 'voll' });
-  const { setzeZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
-  await setzeZustand(
+  const { setState, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+  await setState(
     'startup_status',
     JSON.stringify({
       ready: false,

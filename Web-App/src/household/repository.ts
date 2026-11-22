@@ -1,14 +1,14 @@
-import type { DbInterface, Treffer } from '../../db/database';
+import type { DbInterface, Hit } from '../../db/database';
 import type { HouseholdReadContract } from './readContract';
 
-const zahl = (v: number | string) => parseInt(String(v), 10);
+const number = (v: number | string) => parseInt(String(v), 10);
 
 export async function subAccounts(db: DbInterface, id: number): Promise<number[]> {
   const rows = await db.all<{ sub_user_id: number | string }>(
     'SELECT sub_user_id FROM account_links WHERE main_user_id = $1 ORDER BY sub_user_id',
     [id],
   );
-  return rows.map(r => zahl(r.sub_user_id));
+  return rows.map(r => number(r.sub_user_id));
 }
 
 export async function parentAccounts(db: DbInterface, id: number): Promise<number[]> {
@@ -16,14 +16,11 @@ export async function parentAccounts(db: DbInterface, id: number): Promise<numbe
     'SELECT main_user_id FROM account_links WHERE sub_user_id = $1 ORDER BY main_user_id',
     [id],
   );
-  return rows.map(r => zahl(r.main_user_id));
+  return rows.map(r => number(r.main_user_id));
 }
 
 export async function isLinked(db: DbInterface, main: number, sub: number, d: DbInterface = db): Promise<boolean> {
-  return !!(await d.get<Treffer>('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [
-    main,
-    sub,
-  ]));
+  return !!(await d.get<Hit>('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [main, sub]));
 }
 
 export interface AccountName {
@@ -41,7 +38,7 @@ export async function accountNames(
     `SELECT id, username FROM ${l.KONTEN} k WHERE id = ANY($1) ORDER BY ${order === 'id' ? 'id' : 'username'}`,
     [ids],
   );
-  return rows.map(r => ({ id: zahl(r.id), username: r.username }));
+  return rows.map(r => ({ id: number(r.id), username: r.username }));
 }
 
 export async function accountName(db: DbInterface, l: HouseholdReadContract, id: number): Promise<string | null> {
@@ -69,7 +66,7 @@ export async function receiptsInvitation(db: DbInterface, tokenHash: string, sub
       RETURNING main_user_id`,
     [tokenHash, sub],
   );
-  return r ? zahl(r.main_user_id) : null;
+  return r ? number(r.main_user_id) : null;
 }
 
 export async function inviterToCode(db: DbInterface, tokenHash: string): Promise<number | null> {
@@ -77,7 +74,7 @@ export async function inviterToCode(db: DbInterface, tokenHash: string): Promise
     'SELECT main_user_id FROM account_link_invites WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()',
     [tokenHash],
   );
-  return r ? zahl(r.main_user_id) : null;
+  return r ? number(r.main_user_id) : null;
 }
 
 export async function giveInvitationFree(db: DbInterface, tokenHash: string): Promise<void> {
@@ -112,7 +109,7 @@ export async function resolveSubAccountAndInvitations(
     [sub],
   );
   const instr = await tx.run('DELETE FROM account_link_invites WHERE main_user_id = $1 AND used_at IS NULL', [sub]);
-  return { hauptkonten: route.map(z => zahl(z.main_user_id)), einladungen: instr.changes ?? 0 };
+  return { hauptkonten: route.map(z => number(z.main_user_id)), einladungen: instr.changes ?? 0 };
 }
 
 export async function deleteSeparatedHint(db: DbInterface, main: number, sub: number): Promise<number> {
@@ -151,7 +148,7 @@ export async function separateChains(
       WHERE f.main_user_id = $1 ORDER BY u.username`,
     [main],
   );
-  return rows.map(g => ({ id: zahl(g.id), username: g.username, via: g.via ?? null }));
+  return rows.map(g => ({ id: number(g.id), username: g.username, via: g.via ?? null }));
 }
 
 /** A fixed list so that a request value never gets into the name. */
@@ -169,7 +166,7 @@ export async function ownerTheEntry(
     `SELECT user_id FROM ${l[ACQUISITIONS[art]]()} e WHERE id = $1`,
     [id],
   );
-  return r ? zahl(r.user_id) : null;
+  return r ? number(r.user_id) : null;
 }
 
 export function userNames(db: DbInterface, l: HouseholdReadContract, uids: number[]) {

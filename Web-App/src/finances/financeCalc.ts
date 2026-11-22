@@ -11,9 +11,9 @@ export {
   resolveBlPartNumber,
   fetchPartPrice,
   fetchMinifigPrice,
-  preloadPartPrices as ladeTeilepreiseVor,
-  preloadMinifigPrices as ladeFigurenpreiseVor,
-  colorChart as farbkarte,
+  preloadPartPrices,
+  preloadMinifigPrices,
+  colorChart,
   loadBlNumbersBefore,
   setState,
 } from './calculation/prices';

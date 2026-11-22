@@ -7,11 +7,11 @@ export function basisUrl(): string | null {
 }
 
 // Once per area: callers run in loops.
-export function hintWithoutBaseUrl(bereich: string, sequence: string): void {
+export function hintWithoutBaseUrl(area: string, sequence: string): void {
   const _reported = processWide('basisUrlGemeldet', () => new Set<string>());
-  if (_reported.has(bereich)) return;
-  _reported.add(bereich);
-  console.warn(`⚠️  [${bereich}] APP_BASE_URL ist nicht gesetzt — ${sequence} Siehe README.md.`);
+  if (_reported.has(area)) return;
+  _reported.add(area);
+  console.warn(`⚠️  [${area}] APP_BASE_URL ist nicht gesetzt — ${sequence} Siehe README.md.`);
 }
 
 /** For links in mails, never from headers: Host or X-Forwarded-Host could

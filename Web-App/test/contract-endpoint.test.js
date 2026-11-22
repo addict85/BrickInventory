@@ -7,7 +7,7 @@
  *   A  in endpunkt() `res.json({ success: true, ...r })` replaced by `res.json(r)` → red:
  *      “the envelope sets success”.
  *   B  the check of req.baseUrl against the prefix deleted → red: “a foreign prefix is 500”.
- *   C  in endpunkt() the lookup in the contract (`routeZu`) skipped → red: “a key outside …”.
+ *   C  in endpunkt() the lookup in the contract (`routeFor`) skipped → red: “a key outside …”.
  *   D  (15.11.2026) in endpunkt() the check of res.locals.schritt deleted → red:
  *      “a route with a step marker …” (200 instead of 403 for `keiner` and `zweiter_faktor`).
  */
@@ -16,7 +16,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { vertragsRouter } = _req('src/http/contractRouter.js');
+const { contractRouter: vertragsRouter } = _req('src/http/contractRouter.js');
 
 function server(t, mount, router) {
   const app = express();
@@ -30,7 +30,7 @@ function server(t, mount, router) {
 
 test('the envelope sets success, the route only returns its result', async t => {
   const r = vertragsRouter('/api/v1/auth');
-  r.endpunkt('GET /api/v1/auth/users', () => ({ users: [] }));
+  r.endpoint('GET /api/v1/auth/users', () => ({ users: [] }));
   const basis = server(t, '/api/v1/auth', r);
   const a = await fetch(`${basis}/api/v1/auth/users`);
   assert.deepEqual([a.status, await a.json()], [200, { success: true, users: [] }]);
@@ -38,7 +38,7 @@ test('the envelope sets success, the route only returns its result', async t => 
 
 test('a foreign prefix is a 500, no response under a wrong path', async t => {
   const r = vertragsRouter('/api/v1/auth');
-  r.endpunkt('GET /api/v1/auth/registration-status', () => ({ enabled: true }));
+  r.endpoint('GET /api/v1/auth/registration-status', () => ({ enabled: true }));
   const basis = server(t, '/api/v1', r);
   const a = await fetch(`${basis}/api/v1/registration-status`);
   assert.equal(a.status, 500);
@@ -46,16 +46,16 @@ test('a foreign prefix is a 500, no response under a wrong path', async t => {
 });
 
 test('a key outside the contract or the prefix throws at build time', () => {
-  assert.throws(() => vertragsRouter('/api/v1').endpunkt('GET /api/v1/gibt-es-nicht', () => ({})), /nicht im Vertrag/);
-  assert.throws(() => vertragsRouter('/api/v1/auth').endpunkt('GET /api/v1/sets', () => ({})), /nicht im Vertrag/);
+  assert.throws(() => vertragsRouter('/api/v1').endpoint('GET /api/v1/gibt-es-nicht', () => ({})), /nicht im Vertrag/);
+  assert.throws(() => vertragsRouter('/api/v1/auth').endpoint('GET /api/v1/sets', () => ({})), /nicht im Vertrag/);
 });
 
 test('a route with a step brand only answers if the entrance checked exactly its step', async t => {
   const r = vertragsRouter('/api/v1');
-  r.endpunkt('POST /api/v1/vouchers/:id/klartext', () => ({ id: 1, number: '1', pin: null }));
+  r.endpoint('POST /api/v1/vouchers/:id/klartext', () => ({ id: 1, number: '1', pin: null }));
   const app = express();
   app.use(express.json());
-  // Like stepChutzAtInbox: it records which step it assigned to the request.
+  // Like stepProtectionAtInbox: it records which step it assigned to the request.
   app.use((req, res, next) => {
     const s = req.get('x-schritt');
     if (s !== undefined) res.locals.schritt = s === 'keiner' ? null : s;

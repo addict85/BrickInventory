@@ -9,7 +9,7 @@
  *     `kaufpreis_geschaetzt` if all purchase prices are estimated.
  *
  * Counter-checks (measured 05.11.2026, each alone):
- *   A  in erfassungenInKontowaehrung the sum again over purchase_price →
+ *   A  in acquisitionsInAccountCurrency the sum again over purchase_price →
  *      red: “sum in account currency like the finances” (1490.98)
  *   B  in valueAcquisitionRows the field price_estimated omitted → red:
  *      “estimated purchase prices are marked”

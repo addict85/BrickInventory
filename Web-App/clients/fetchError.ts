@@ -1,7 +1,7 @@
 /**
  * The extra details the fetch clients attach to their errors.
  */
-type AbrufFehler = Error & {
+type FetchError = Error & {
   /** Daily quota of the API key exhausted. */
   isQuota?: boolean;
   /** Temporary — network drop, timeout. Another attempt is worthwhile. */
@@ -14,8 +14,8 @@ type AbrufFehler = Error & {
 
 /** Read a caught value as a fetch error; always an Error, so no branch below
  * has to check again whether there is an object at all. */
-function asFetchError(e: unknown): AbrufFehler {
-  if (e instanceof Error) return e as AbrufFehler;
+function asFetchError(e: unknown): FetchError {
+  if (e instanceof Error) return e as FetchError;
   // Not an Error: we keep the extra fields in case there are some, and
   // give the message a text one can work with.
   const raw = (e ?? {}) as Record<string, unknown>;
@@ -25,16 +25,16 @@ function asFetchError(e: unknown): AbrufFehler {
       : typeof raw.message === 'string' && raw.message
         ? raw.message
         : 'Unbekannter Abruffehler',
-  ) as AbrufFehler;
+  ) as FetchError;
   if (raw.isQuota) f.isQuota = true;
   if (raw.isTransient) f.isTransient = true;
   if (raw.isCloudflare) f.isCloudflare = true;
   // NonNullable, because exactOptionalPropertyTypes distinguishes "field missing" from
   // "field is undefined" — the assignment below only happens
   // when something is really there.
-  if (raw.detail) f.detail = raw.detail as NonNullable<AbrufFehler['detail']>;
+  if (raw.detail) f.detail = raw.detail as NonNullable<FetchError['detail']>;
   return f;
 }
 
 export { asFetchError };
-export type { AbrufFehler };
+export type { FetchError };

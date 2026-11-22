@@ -30,7 +30,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet, record, haltRow } = require('./helpers/inventory');
 const db = testData();
 const { reportAndDeliver, logAndContinue } = _req('src/infra/error.js');
-const { versuche } = _req('src/infra/result.js');
+const { attempts: versuche } = _req('src/infra/result.js');
 const { deleteAcquisition } = _req('src/collection/acquisitions.js');
 
 const NAME = `ersatz_tx_${process.pid}`,

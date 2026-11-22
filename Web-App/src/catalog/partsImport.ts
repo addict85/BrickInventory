@@ -3,7 +3,7 @@ import type { JobRun } from '../jobQueue';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil, firstBlNumber, parseThrottleWait } from '../externalSources';
-import { alleTeileDesSets } from './rebrickableCatalog';
+import { allPartsOfSet } from './rebrickableCatalog';
 import { logAndContinue, reportError } from '../infra/error';
 import { withVersion } from '../infra/setNumber';
 import { numbersList } from '../infra/foreignAddresses';
@@ -54,7 +54,7 @@ export async function loadSetParts(
   setNumber: string,
 ): Promise<{ n: string; zeilen: SetPartRow[] } | null> {
   const n = withVersion(setNumber);
-  const raw: RbSetTeil[] | null = await alleTeileDesSets(k, n);
+  const raw: RbSetTeil[] | null = await allPartsOfSet(k, n);
   if (!raw?.length) return null;
   const zeilen = setPartRows(raw);
   return zeilen.length ? { n, zeilen } : null;
@@ -89,7 +89,7 @@ export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
   if (!missing.length) return;
 
   const stand = (n: number) =>
-    lauf.fortschritt?.({
+    lauf.progress?.({
       erledigt: n,
       gesamt: missing.length,
       schritt: 'BrickLink IDs nachladen',

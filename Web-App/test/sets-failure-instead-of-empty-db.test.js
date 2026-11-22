@@ -29,13 +29,13 @@ const stoerung = async () => {
   if (rebrickable === 'gestoert') throw new Error('Rebrickable antwortet nicht');
   return null;
 };
-replace('src/catalog/rebrickableCatalog.js', { alleTeileDesSets: stoerung });
+replace('src/catalog/rebrickableCatalog.js', { allPartsOfSet: stoerung });
 testSources(null, { getSetMinifigs: stoerung });
 // The follow-up work: parts and figures succeed, two enrichments fail.
 const still = async () => {};
 replace('src/catalog/partsImport.js', { reloadBlNumbers: still });
 replace('src/sets/setContentImport.js', { importParts: still, importMinifigs: still });
-replace('src/catalog/instructionJob.js', { anleitungEinreihen: still });
+replace('src/catalog/instructionJob.js', { enqueueInstruction: still });
 replace('src/catalog/partsEnrichment.js', {
   enrichSetParts: stoerung,
   enrichSetMinifigs: still,
@@ -43,7 +43,7 @@ replace('src/catalog/partsEnrichment.js', {
 });
 
 test('result: value, substitute and reported failure', async () => {
-  const { versuche, valueOr } = _req('src/infra/result.js');
+  const { attempts: versuche, valueOr } = _req('src/infra/result.js');
   assert.deepEqual(await versuche('probe', Promise.resolve([])), { ok: true, wert: [] });
   const r = await versuche('probe', async () => {
     throw new Error('weg');
@@ -93,7 +93,7 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
       await nacharbeit.ausfuehren(
         { set_number: SN, user_id: 0, art: 'zweit' },
         {
-          fortschritt: async f => {
+          progress: async f => {
             states.push(f);
             return true;
           },

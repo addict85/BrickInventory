@@ -8,14 +8,14 @@
  *   A  reportLoginEvent() removed in fehlversuch() → red: “an unknown
  *      name …”, “wrong password …”, “a wrong code …”
  *   B  the line at loginAllowed() removed → red: “the lock is in the log”
- *   C  reportLoginEvent() removed in gebremst() (passwortBestaetigung) →
+ *   C  reportLoginEvent() removed in gebremst() (passwordConfirmation) →
  *      red: “a wrong confirmation …”, “the line ends up in app_logs”
  *   D  the mail removed in fehlversuch() → red: “wrong password …” (no
  *      mail), “the mail at most once a day”
  *   E  accountThrottled() before the mail removed → red: “the mail at most once a day”
  *   F  `name` passed along in reportLoginEvent() → red: “an unknown name …”
  * Counter-checks round 17 (measured 05.11.2026, each on its own):
- *   G  kontoKennung() again returns the plaintext for unknown names →
+ *   G  accountKey() again returns the plaintext for unknown names →
  *      red: “an unknown name is only stored as an HMAC …” (part 1)
  *   H  reportLogin() removed in checkCredentials() → red: “a
  *      successful login …”
@@ -80,9 +80,9 @@ test('login events in the log', { concurrency: 1 }, async t => {
   const zurueck = protokoll.installLog({
     out: z => infos.push(z),
     err: z => zeilen.push(z),
-    jetzt: () => Date.now(),
+    now: () => Date.now(),
   });
-  protokoll.logInDieDatabase(db.pool);
+  protokoll.logToDatabase(db.pool);
   t.after(async () => {
     zurueck();
     await emptyCounter();

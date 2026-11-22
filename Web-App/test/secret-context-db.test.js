@@ -164,7 +164,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
   });
 
   await t.test('plain text and v1 are rejected on read', async () => {
-    const k = g.kontext('probe', 1);
+    const k = g.context('probe', 1);
     assert.equal(await stumm(() => g.decrypt('klartext', k)), null);
     assert.equal(await stumm(() => g.decrypt(alsV1('alt'), k)), null);
     assert.equal(g.readOldValue(alsV1('alt'), k), 'alt', 'nur das Umschlüsseln liest v1');

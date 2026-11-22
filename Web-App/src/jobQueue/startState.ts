@@ -13,15 +13,13 @@ export interface StartState {
 
 /** Per set of services: the job process writes, the web process re-reads until ready. */
 const remembered = (k: JobsContext) =>
-  k.faecher.fach<{ stand: StartState }>('startZustand', () => ({
+  k.faecher.slot<{ stand: StartState }>('startZustand', () => ({
     stand: { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 },
   }));
 
 export async function reportStartState(k: JobsContext, s: StartState): Promise<void> {
   remembered(k).stand = s;
-  await k.laufzustand
-    .setzeZustand('startup_status', JSON.stringify(s))
-    .catch(logAndContinue('start:zustand schreiben'));
+  await k.laufzustand.setState('startup_status', JSON.stringify(s)).catch(logAndContinue('start:zustand schreiben'));
 }
 
 /** Shortened; step and sub-state only when logged in, otherwise everyone sees what startup is stuck on. */
@@ -40,7 +38,7 @@ export async function currentStartState(k: JobsContext): Promise<StartState> {
   const g = remembered(k);
   if (g.stand.ready) return g.stand;
   try {
-    const raw = await k.laufzustand.liesZustand('startup_status');
+    const raw = await k.laufzustand.readState('startup_status');
     if (raw) g.stand = JSON.parse(raw) as StartState;
   } catch (e) {
     // Exception: the health path then shows the last known state instead of an error.

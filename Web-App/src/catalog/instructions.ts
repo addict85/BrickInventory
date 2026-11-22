@@ -6,7 +6,7 @@ import { setTimeout as warte } from 'node:timers/promises';
 import { reportError, logAndContinue } from '../infra/error';
 import { withVersion, withoutVersion } from '../infra/setNumber';
 import { pathSegment } from '../infra/foreignAddresses';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { CatalogContext } from './context';
 
 const PDF_START = Buffer.from('%PDF-');
@@ -15,15 +15,15 @@ const PDF_START = Buffer.from('%PDF-');
  * if need be. */
 
 /** So that the queue's tick only waits after real fetches; per set of services. */
-const abruf = (k: CatalogContext) => k.faecher.fach('anleitungen:abruf', () => ({ extern: false }));
+const fetchState = (k: CatalogContext) => k.faecher.slot('anleitungen:abruf', () => ({ extern: false }));
 export function lastFetchWarExtern(k: CatalogContext): boolean {
-  return abruf(k).extern;
+  return fetchState(k).extern;
 }
 
 // Count, read, delete in one place instead of scattered.
 
 export async function instructionCount(k: CatalogContext, setNumber: string): Promise<number> {
-  const r = await k.anleitungen.zaehleAnleitungen(withVersion(setNumber));
+  const r = await k.anleitungen.countInstructions(withVersion(setNumber));
   return Number(r?.c) || 0;
 }
 
@@ -101,19 +101,19 @@ type InstructionSource = {
 
 /** @param ownTick The caller keeps the spacing between two sets itself;
  *   then the pauses at the end are dropped. */
-export async function setAnleitungenLaden(k: CatalogContext, setNumber: string, ownTick = false) {
+export async function loadSetInstructions(k: CatalogContext, setNumber: string, ownTick = false) {
   const n = withVersion(setNumber);
 
   // Remember whether a foreign server was asked: the tick should not depend on sets
   // that have long had instructions.
-  abruf(k).extern = false;
+  fetchState(k).extern = false;
 
   const existing = await instructionCount(k, n);
   if (existing > 0) {
     return existing;
   }
 
-  abruf(k).extern = true; // from here on a real request is made
+  fetchState(k).extern = true; // from here on a real request is made
   const { instrList, bricksetSucceededEmpty } = await instructionSources(k, n);
 
   if (!instrList.length && bricksetSucceededEmpty && (await bdpFallback(k, n, ownTick))) return 1;
@@ -141,7 +141,7 @@ async function instructionSources(k: CatalogContext, n: string) {
     reportError('anleitungen:auslesen', e);
   }
   if (!instrList.length) {
-    const bs = await versuche('anleitungen:brickset', k.externalSources.quellen.brickset.getInstructions(n));
+    const bs = await attempts('anleitungen:brickset', k.externalSources.quellen.brickset.getInstructions(n));
     instrList = bs.ok ? bs.wert.instructions || [] : [];
     // usesFallback false means quota exhausted. An error is not an answer —
     // both stay in the queue.

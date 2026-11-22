@@ -4,14 +4,14 @@ import { setPartImageLocal, setMinifigImageLocal } from './catalogMaintenance';
 import { NO_COLOR } from '../infra/validate';
 import * as enrich from './partsEnrichment';
 import { JobInterrupted, type JobContext } from '../jobQueue';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import { imagesForFollowUp } from './imageState';
 import type { CatalogContext } from './context';
 
 async function imageFollowUp(kx: CatalogContext, k: JobContext): Promise<void> {
   const { sets, teile: manualParts, figuren: figsToFetch } = await imagesForFollowUp(kx);
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
-    await k.fortschritt({ erledigt: 0, gesamt: 0, text: 'Alle Bilder gecacht' });
+    await k.progress({ erledigt: 0, gesamt: 0, text: 'Alle Bilder gecacht' });
     return;
   }
   console.log(
@@ -19,7 +19,7 @@ async function imageFollowUp(kx: CatalogContext, k: JobContext): Promise<void> {
   );
   let done = 0;
   const total = sets.length + manualParts.length + figsToFetch.length;
-  await k.fortschritt({
+  await k.progress({
     erledigt: 0,
     gesamt: total,
     text: `${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)`,
@@ -27,7 +27,7 @@ async function imageFollowUp(kx: CatalogContext, k: JobContext): Promise<void> {
   const tick = async () => {
     done++;
     if (done % 10 === 0 || done === total) {
-      await k.fortschritt({ erledigt: done, gesamt: total, text: `${done} / ${total} geladen` });
+      await k.progress({ erledigt: done, gesamt: total, text: `${done} / ${total} geladen` });
     }
     if (k.ended) throw new JobInterrupted();
   };
@@ -37,7 +37,7 @@ async function imageFollowUp(kx: CatalogContext, k: JobContext): Promise<void> {
   }
   for (const p of manualParts) {
     // An error leaves the part without an image; the next follow-up run tries again.
-    const r = await versuche(
+    const r = await attempts(
       'bild-nachlauf:downloadImage',
       enrich.downloadImage(kx, p.image_url, p.part_number, p.color_id ?? NO_COLOR, 'part'),
     );
@@ -53,7 +53,7 @@ async function imageFollowUp(kx: CatalogContext, k: JobContext): Promise<void> {
     await tick();
   }
   for (const f of figsToFetch) {
-    const r = await versuche(
+    const r = await attempts(
       'bild-nachlauf:downloadImage',
       enrich.downloadImage(kx, f.image_url, f.fig_number, 0, 'minifig'),
     );
@@ -66,7 +66,7 @@ async function imageFollowUp(kx: CatalogContext, k: JobContext): Promise<void> {
     }
     await tick();
   }
-  await k.fortschritt({ erledigt: total, gesamt: total, text: 'Alle Bilder gecacht' });
+  await k.progress({ erledigt: total, gesamt: total, text: 'Alle Bilder gecacht' });
 }
 
-export { imageFollowUp as bildNachlauf };
+export { imageFollowUp };

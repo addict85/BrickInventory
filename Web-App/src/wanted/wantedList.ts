@@ -53,7 +53,7 @@ async function resolveCompleteOn(kx: WantedContext, item: WantedItem[], uid: num
   let auf = await resolveLocalOn(kx, item, uid);
   let rebrickable: WantedReport['rebrickable'];
   if (opt.viaRebrickable) {
-    const r = await resolveViaRebrickableOn(kx, auf, 250, opt.fortschritt);
+    const r = await resolveViaRebrickableOn(kx, auf, 250, opt.progress);
     auf = r.auf;
     rebrickable = {
       gefragt: r.gefragt,
@@ -76,27 +76,27 @@ export interface WantedOptions extends WriteOptions {
   viaRebrickable?: boolean;
   korrekturen?: Correction[];
   /** Is called SYNCHRONOUSLY and must not throw. */
-  fortschritt?: (stand: WantedProgress) => void;
+  progress?: (stand: WantedProgress) => void;
   /** The bar in the UI carries a cross; without this question it would have a
    * cancel button that lies. */
-  abbruch?: () => Promise<boolean>;
+  cancellation?: () => Promise<boolean>;
 }
 
 /** Preview and the real thing take the same path, so that the preview promises
  * nothing the import does not do. */
-export async function importiereWantedListe(
+export async function importWantedList(
   k: WantedContext,
   uid: number,
   xml: string,
   opt: WantedOptions = {},
 ): Promise<WantedReport> {
-  const gelesen = readWantedList(xml);
-  const { auf, rebrickable, korrekturen } = await resolveCompleteOn(k, gelesen.posten, uid, opt);
+  const read = readWantedList(xml);
+  const { auf, rebrickable, korrekturen } = await resolveCompleteOn(k, read.posten, uid, opt);
 
   const bericht: WantedReport = {
-    gelesen: gelesen.posten.length,
-    fremdeArten: gelesen.fremdeArten,
-    ohneNummer: gelesen.ohneNummer,
+    gelesen: read.posten.length,
+    fremdeArten: read.fremdeArten,
+    ohneNummer: read.ohneNummer,
     stufen: countLevels(auf),
     farbeOffen: auf.filter(a => a.farbeOffen).length,
     offen: auf
@@ -113,12 +113,12 @@ export async function importiereWantedListe(
   };
 
   let seq = -1;
-  const melde = () => opt.fortschritt?.({ phase: 'schreiben', fertig: seq + 1, gesamt: auf.length });
+  const melde = () => opt.progress?.({ phase: 'schreiben', fertig: seq + 1, gesamt: auf.length });
 
   for (const a of auf) {
     // The tick counts over ALL items, otherwise it would depend on how many were resolvable.
-    if (opt.abbruch && !opt.vorschau && seq >= 0 && (seq + 1) % 10 === 0) {
-      if (await opt.abbruch()) {
+    if (opt.cancellation && !opt.vorschau && seq >= 0 && (seq + 1) % 10 === 0) {
+      if (await opt.cancellation()) {
         bericht.abgebrochen = true;
         break;
       }

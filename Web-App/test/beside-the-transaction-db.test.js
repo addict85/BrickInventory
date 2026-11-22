@@ -10,7 +10,7 @@
  *      query ran on another connection, pg_backend_pid differed)
  *   B  inTransaction back via txStand() (throws) → red: “inTransaction …”
  *   C  in redeemInvitation() (src/household/household.ts) inSystemContext again
- *      only around the two getSetting() inside k.transaktion → red in
+ *      only around the two getSetting() inside k.transact → red in
  *      test/rows-protection-db.test.js “whoever joins a household …” (BesideTheTransaction)
  *   D  in txStand() the pool check deleted entirely → red: the first two
  *      (14.11.2026 again: now UnboundQuery instead of BesideTheTransaction)
@@ -30,7 +30,7 @@ const { inSystemContext, asRequest } = require(path.join(__dirname, '..', 'dist'
 const PID = 'SELECT pg_backend_pid() AS p';
 
 test('queries next to a transaction', { concurrency: 1 }, async t => {
-  const k = modul.dbKonfigFromEnvironment();
+  const k = modul.dbConfigFromEnvironment();
   const db = modul.createDb({ ...k, system: { ...k.verbindung } });
   try {
     await db.get(PID);

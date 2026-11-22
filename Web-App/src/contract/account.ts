@@ -371,11 +371,11 @@ export const routen = {
   },
   'PUT /api/v1/auth/users/:id/admin': {
     antwort: AdminRoute,
-    ...adminConfirmed({ is_admin: input.schalter('is_admin') }),
+    ...adminConfirmed({ is_admin: input.flag('is_admin') }),
   },
   'PUT /api/v1/auth/users/:id/aktiv': {
     antwort: AccountActive,
-    ...adminConfirmed({ is_active: input.schalter('is_active') }),
+    ...adminConfirmed({ is_active: input.flag('is_active') }),
   },
   'PUT /api/v1/auth/users/:id/freischalten': { antwort: Success, ...adminConfirmed() },
   'PUT /api/v1/auth/users/:id/password': {

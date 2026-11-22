@@ -25,13 +25,13 @@ import { count } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
 import { NO_COLOR, zustand } from '../../infra/validate';
 import { aufRappen, inTenThousandths } from '../../infra/geld';
-import type { Nutzlast } from '../../jobQueue';
+import type { Payload } from '../../jobQueue';
 import { PRICE_ITEM_AT_MOST, rememberPricesBefore } from '../priceItems';
 import { errorText } from '../../infra/errorTexts';
 import type { FinancesContext } from '../context';
 
-type Zustand = 'N' | 'U';
-type Item = Nutzlast<'preise_nachladen'>['posten'][number];
+type ConditionState = 'N' | 'U';
+type Item = Payload<'preise_nachladen'>['posten'][number];
 type MinifigPrice = PriceData & { estimated_from_parts?: true; abdeckung?: number | null };
 
 /** @returns Map key → acquisition rows; key is `konto|nummer|farbe` or `konto|nummer` */
@@ -85,9 +85,9 @@ type Bewertungslage = {
  * in valueSet(), so that the valuation rule stays in ONE place. */
 function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   // Without an acquisition the set counts as new (effectiveCondition without counters).
-  const fallbackCond: Zustand = 'N';
-  const needed: Zustand[] = acqs.length ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
-  const preise = new Map<Zustand, PriceData>(
+  const fallbackCond: ConditionState = 'N';
+  const needed: ConditionState[] = acqs.length ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
+  const preise = new Map<ConditionState, PriceData>(
     needed.map(c => [c, setPriceFromStock(set.set_number, c, l.ttl, l.jetzt, l.pre)]),
   );
   const preisMap = new Map<string, number>();
@@ -104,7 +104,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   const qty = valued.quantity || 1;
   const weighted = (key: 'min_price' | 'max_price' | 'qty_avg_price') =>
     valued.by_condition
-      .map(bc => (preise.get(bc.condition as Zustand)?.[key] ?? 0) * bc.quantity)
+      .map(bc => (preise.get(bc.condition as ConditionState)?.[key] ?? 0) * bc.quantity)
       .reduce((a, b) => a + b, 0) / qty;
   const onePrice = needed.map(c => preise.get(c)).find(p => p && !p.ausstehend);
   const pending = needed.some(c => preise.get(c)?.ausstehend === true);
@@ -233,7 +233,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
     if (l) l.push(a);
     else jeAccountAndSet.set(k, [a]);
   }
-  const results = await kx.household.besitzerAnhaengen(
+  const results = await kx.household.attachOwners(
     uids,
     sets.map(set => bewerteSet(set, jeAccountAndSet.get(`${set.user_id}|${set.set_number}`) || [], situation)),
   );
@@ -248,14 +248,14 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
   };
 }
 
-function conditionsOf(acqs: { condition?: string | null }[]): Zustand[] {
+function conditionsOf(acqs: { condition?: string | null }[]): ConditionState[] {
   if (!acqs?.length) return ['N'];
   const set = new Set(acqs.map(a => zustand(a.condition)));
   return (['N', 'U'] as const).filter(c => set.has(c));
 }
 
 /** One price per occurring condition; the first one with a value carries the row's additional details. */
-function pricesJeState<P extends PriceData>(key: string, conds: Zustand[], priceOf: (c: Zustand) => P) {
+function pricesJeState<P extends PriceData>(key: string, conds: ConditionState[], priceOf: (c: ConditionState) => P) {
   const priceMap = new Map<string, number>();
   let priceData: P | null = null;
   for (const cond of conds) {
@@ -334,9 +334,9 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
       ttl,
     ),
   ]);
-  const fehlt: Item[] = [];
+  const isMissing: Item[] = [];
 
-  const results = await k.household.besitzerAnhaengen(
+  const results = await k.household.attachOwners(
     uids,
     manualFigs.map(fig => {
       // Per occurring condition: a copy bought new gets the new price,
@@ -346,7 +346,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
       const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), (cond): MinifigPrice => {
         if (fig.bl_fig_number) {
           const p = priceFromStock(c => figStock.get(`${fig.bl_fig_number}|${c}`), cond, ttl, k.uhr.jetzt());
-          if (p.ausstehend) fehlt.push({ art: 'figur', nummer: fig.bl_fig_number, zustand: cond });
+          if (p.ausstehend) isMissing.push({ art: 'figur', nummer: fig.bl_fig_number, zustand: cond });
           return p;
         }
         // Without a BL number estimated from the part prices (the job computes the estimate).
@@ -361,7 +361,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
             estimated_from_parts: true as const,
             abdeckung: s.abdeckung,
           };
-        fehlt.push({ art: 'schaetzung', nummer: key, zustand: cond });
+        isMissing.push({ art: 'schaetzung', nummer: key, zustand: cond });
         return {
           min_price: 0,
           avg_price: 0,
@@ -380,7 +380,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
     ...total(results),
     kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByFig),
     kaufpreise_umgerechnet: count([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, fehlt),
+    preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
   };
 }
 
@@ -414,7 +414,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     currency,
     ttlHours,
   );
-  const fehlt: Item[] = [];
+  const isMissing: Item[] = [];
 
   const tasks = manualParts.map(part => async () => {
     const key = `${part.part_number}|${part.color_id ?? NO_COLOR}`;
@@ -423,7 +423,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), cond => {
       const p = priceFromStock(c => partStock.get(`${stockKey}|${c}`), cond, ttl, k.uhr.jetzt());
       if (p.ausstehend)
-        fehlt.push({ art: 'teil', nummer: blNumber(part), farbe: part.color_id ?? NO_COLOR, zustand: cond });
+        isMissing.push({ art: 'teil', nummer: blNumber(part), farbe: part.color_id ?? NO_COLOR, zustand: cond });
       return p;
     });
     const wert = valueManual(key, acqs, priceMap, part.quantity || 1);
@@ -447,13 +447,13 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     };
   });
 
-  const results = await k.household.besitzerAnhaengen(uids, await parallelLimit(tasks, 5));
+  const results = await k.household.attachOwners(uids, await parallelLimit(tasks, 5));
   return {
     currency,
     parts: results,
     ...total(results),
     kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByPart),
     kaufpreise_umgerechnet: count([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, fehlt),
+    preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
   };
 }

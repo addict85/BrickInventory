@@ -86,7 +86,7 @@ test('the portfolio curve computes the same as the reference version', { concurr
     c0.release();
   }
 
-  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
+  const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('ph_a','x'),('ph_b','x')");
@@ -168,7 +168,7 @@ test('the portfolio curve computes the same as the reference version', { concurr
   for (const period of ['week', 'month', 'year', 'max']) {
     await t.test(`period ${period}: same points as the reference version`, async () => {
       const alt = await comparisonVersion(setNumbers, setQty, 'CHF', 'N', filter[period]);
-      const neu = await portfolioVerlauf(u1, [u1, u2], period, db, getSetting);
+      const neu = await portfolioHistory(u1, [u1, u2], period, db, getSetting);
 
       assert.equal(neu.points.length, alt.length, `andere Anzahl Punkte: ${neu.points.length} statt ${alt.length}`);
 
@@ -187,7 +187,7 @@ test('the portfolio curve computes the same as the reference version', { concurr
   await t.test('without price history the curve stays empty instead of crashing', async () => {
     await db.run('DELETE FROM price_history');
     await db.run('DELETE FROM price_cache');
-    const r = await portfolioVerlauf(u1, [u1, u2], 'max', db, getSetting);
+    const r = await portfolioHistory(u1, [u1, u2], 'max', db, getSetting);
     assert.equal(Array.isArray(r.points), true);
   });
 

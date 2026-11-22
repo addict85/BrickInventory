@@ -2,7 +2,7 @@
 import type { MailServices } from '../mail';
 import type { VoucherServices } from '../vouchers';
 import type { Db } from '../../db/database';
-import { imSystem, withValue, type Context } from '../infra/area';
+import { imSystem, bound, type Context } from '../infra/area';
 import * as management from './repository/management';
 import type { SettingsServices } from '../settings';
 import type { JobsServices } from '../jobQueue';
@@ -66,8 +66,8 @@ export const access = (db: Db) => ({
     thumbnailImageMisses: imSystem(db, 'management', management.thumbnailImageMisses),
     mappedParts: imSystem(db, 'management', management.mappedParts),
     // The price probe only sees the admin's own inventory: under row security.
-    sampleAcquisitions: withValue(db)(management.sampleAcquisitions),
-    sampleSet: withValue(db)(management.sampleSet),
+    sampleAcquisitions: bound(db)(management.sampleAcquisitions),
+    sampleSet: bound(db)(management.sampleSet),
   },
 });
 export type ManagementContext = Context<ManagementDependencies, ReturnType<typeof access>>;

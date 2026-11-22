@@ -2,18 +2,18 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
 import { logAndContinue, reportError } from '../../infra/error';
-import { type Nutzlast, checkAbort, type JobRun } from '../../jobQueue';
+import { type Payload, checkAbort, type JobRun } from '../../jobQueue';
 import { pdfFilePath } from './pdfJobs';
 import { downloadImage, downloadSetImages } from '../partsEnrichment';
 import { drawPdfInThread, type PdfTeil } from './pdfDrawing';
 import { NO_COLOR } from '../../infra/validate';
 import { rememberMinifigImageAddress, setMinifigImageLocal, setPartImageLocal } from '../catalogMaintenance';
-import { normalisiereSetNummer, possibleSetNumber } from '../../infra/setNumber';
+import { normalizeSetNumber, possibleSetNumber } from '../../infra/setNumber';
 import { imagesFromCatalog as readImagesFromCatalog } from '../imageState';
 import type { CatalogContext } from '../context';
 
 /** Fetch missing images first, then draw in a thread of its own. */
-export type PdfPayload = Nutzlast<'pdf'>;
+export type PdfPayload = Payload<'pdf'>;
 
 const isMinifig = (p: PdfTeil) => !!p.is_fig || String(p.part_number).startsWith('fig-');
 const cdnAddress = (url: string) => {
@@ -65,7 +65,7 @@ async function createPdf(k: CatalogContext, n: PdfPayload, lauf?: JobRun): Promi
   const { job_id: jobId, user_id: uid, sets = [], parts = [] } = n;
   const target = pdfFilePath(jobId);
   if (!target) throw new Error(`ungültige Auftragskennung ${jobId}`);
-  const setNumbers = [...new Set(sets.map(s => normalisiereSetNummer(s?.set_number ?? '')).filter(possibleSetNumber))];
+  const setNumbers = [...new Set(sets.map(s => normalizeSetNumber(s?.set_number ?? '')).filter(possibleSetNumber))];
   // Wait in case another process is loading the same images — otherwise they would be missing from the PDF.
   for (const sn of setNumbers) {
     checkAbort(lauf);
@@ -101,8 +101,8 @@ async function createPdf(k: CatalogContext, n: PdfPayload, lauf?: JobRun): Promi
   console.log(`[PDF job] ${jobId} fertig für Konto ${uid}`);
 }
 
-async function pdfGivenUp(n: PdfPayload, fehler: string): Promise<void> {
-  console.error(`[PDF job] ${n.job_id} error:`, fehler);
+async function pdfGivenUp(n: PdfPayload, error: string): Promise<void> {
+  console.error(`[PDF job] ${n.job_id} error:`, error);
 }
 
 export { createPdf, pdfGivenUp };

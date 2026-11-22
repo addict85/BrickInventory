@@ -50,28 +50,28 @@ for (const rel of files()) {
   if (n) found.set(rel, n);
 }
 
-const fehler = [];
+const error = [];
 for (const [file, n] of found) {
   const allowed = OPEN.get(file);
   if (allowed === undefined) {
-    fehler.push(
+    error.push(
       `NEU: ${file} (${n}x). global_settings gehört über src/settings/settings.ts — ` +
         `getGlobalSetting() / setGlobalSetting(). Nur so ist updated_at einheitlich ` +
         `und ein späterer Umbau der Tabelle EINE Änderung statt zwanzig.`,
     );
   } else if (n > allowed) {
-    fehler.push(`MEHR: ${file} hat ${n} statt ${allowed}. Die Liste darf nur kürzer werden.`);
+    error.push(`MEHR: ${file} hat ${n} statt ${allowed}. Die Liste darf nur kürzer werden.`);
   }
 }
 // A line nobody needs any more is a permission nobody checks.
 for (const [file, n] of OPEN) {
   const actual = found.get(file) ?? 0;
-  if (actual === 0) fehler.push(`ERLEDIGT: ${file} — Zeile aus OFFEN streichen.`);
-  else if (actual < n) fehler.push(`GESUNKEN: ${file} hat ${actual} statt ${n} — Zahl in OFFEN nachziehen.`);
+  if (actual === 0) error.push(`ERLEDIGT: ${file} — Zeile aus OFFEN streichen.`);
+  else if (actual < n) error.push(`GESUNKEN: ${file} hat ${actual} statt ${n} — Zahl in OFFEN nachziehen.`);
 }
 
-if (fehler.length) {
-  console.error('❌ global_settings:\n  ' + fehler.join('\n  '));
+if (error.length) {
+  console.error('❌ global_settings:\n  ' + error.join('\n  '));
   process.exit(1);
 }
 const sum = [...found.values()].reduce((a, b) => a + b, 0);

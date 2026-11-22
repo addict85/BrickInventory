@@ -48,7 +48,7 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
   const { getGlobalSetting } = _req('src/settings/settings.js');
   const einstellungen = require('./helpers/sources').testServices().settings;
   /** The settings over the access of a transaction, as they stand in `t`. */
-  const in_ = tx => einstellungen.ueber(tx.db);
+  const in_ = tx => einstellungen.over(tx.db);
   const schreibe = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
 
   await t.test('a service via tx.db sees what the transaction wrote; on the unbound access it throws', async () => {

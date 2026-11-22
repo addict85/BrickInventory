@@ -28,7 +28,7 @@ const limitAllAccounts = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_
 
 /** Atomic: the upsert only increments below the limit, and if the account's limit
  * fails, the total count falls back as well. */
-export async function kontingentPruefenUndZaehlen(k: ForeignSourcesContext, apiName: ApiName, _default?: number) {
+export async function checkAndCountQuota(k: ForeignSourcesContext, apiName: ApiName, _default?: number) {
   const limit = await limitTheSource(k, apiName);
   const tag = today(k);
   const konto = currentAccount();
@@ -38,7 +38,7 @@ export async function kontingentPruefenUndZaehlen(k: ForeignSourcesContext, apiN
   };
   if (limit <= 0) return { allowed: false, count: 0, limit, remaining: 0 };
   return k
-    .transaktion(async t => {
+    .transact(async t => {
       const total = await count(t.db, 0, limit);
       if (total === null) return { allowed: false, count: limit, limit, remaining: 0 };
       if (konto && !konto.verwalter) {
@@ -54,7 +54,7 @@ export async function kontingentPruefenUndZaehlen(k: ForeignSourcesContext, apiN
     });
 }
 
-export async function kontingentUebersicht(k: ForeignSourcesContext, apiName: ApiName) {
+export async function quotaOverview(k: ForeignSourcesContext, apiName: ApiName) {
   const tag = today(k);
   const [z, limit] = await Promise.all([k.apiKontingent.callsToday(tag, apiName), limitTheSource(k, apiName)]);
   const count = Number(z?.count || 0);
@@ -64,7 +64,7 @@ export async function kontingentUebersicht(k: ForeignSourcesContext, apiName: Ap
 /** Does NOT count: the callers ask beforehand so that an exhausted quota
  * is reported as such instead of as a fetch error. */
 export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
-  const s = await kontingentUebersicht(kx, apiName);
+  const s = await quotaOverview(kx, apiName);
   const konto = currentAccount();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
   const z = await kx.apiKontingent.callsJeAccount(s.date, apiName, konto.id, ALL_ACCOUNTS);

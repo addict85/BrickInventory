@@ -8,7 +8,7 @@ import type { AccountContext } from './context';
 const CACHE_MS = 5_000;
 /** Per access; `stand` counts every clearing so that an older read state does not get back in. */
 const store = (k: AccountContext) =>
-  k.faecher.fach('sitzungsVersion', () => ({
+  k.faecher.slot('sitzungsVersion', () => ({
     eintraege: new Map<number, { version: number | null; bis: number }>(),
     stand: 0,
     verteilt: false,
@@ -19,9 +19,9 @@ const remembered = (k: AccountContext) => store(k).eintraege;
  * is announced via NOTIFY. Without a standing listen connection only the database counts (fail closed). */
 const CHANNEL = 'sitzung_version';
 const increased = (k: AccountContext) =>
-  k.faecher.fach('sitzungsVersionSignal', () => {
+  k.faecher.slot('sitzungsVersionSignal', () => {
     const e = processEvent('sitzungsVersion', CHANNEL);
-    e.horche(() => forgetAllSessionVersions(k));
+    e.listen(() => forgetAllSessionVersions(k));
     return e;
   });
 function forgetAllSessionVersions(k: AccountContext): void {
@@ -39,20 +39,20 @@ function usable(k: AccountContext): boolean {
   return false;
 }
 function reportIncrease(k: AccountContext): void {
-  if (store(k).verteilt) void increased(k).melde(k.db.notification);
+  if (store(k).verteilt) void increased(k).report(k.db.notification);
 }
 
 /** null: account missing or locked. */
 export function sessionVersionFromDb(k: AccountContext, uid: number): Promise<number | null> {
-  return k.zugaenge.sitzungsVersion(uid);
+  return k.zugaenge.sessionVersion(uid);
 }
 
 export async function currentSessionVersion(k: AccountContext, uid: number): Promise<number | null> {
-  if (!usable(k)) return k.zugaenge.sitzungsVersion(uid);
+  if (!usable(k)) return k.zugaenge.sessionVersion(uid);
   const g = remembered(k).get(uid);
   if (g && g.bis > k.uhr.jetzt()) return g.version;
   const before = store(k).stand;
-  const version = await k.zugaenge.sitzungsVersion(uid);
+  const version = await k.zugaenge.sessionVersion(uid);
   if (store(k).stand === before) remembered(k).set(uid, { version, bis: k.uhr.jetzt() + CACHE_MS });
   return version;
 }

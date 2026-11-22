@@ -61,7 +61,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
     // at once. The order stays: without a stock row there is no
     // parent information, even if entries should still be lying around.
     if (!(await haltRow(db, uid, SN))) return undefined;
-    const agg = await _req('src/sets/read.js').zustandsAggregat(
+    const agg = await _req('src/sets/read.js').conditionAggregate(
       require('./helpers/sources').testContext('sets'),
       [uid],
       SN,

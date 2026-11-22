@@ -7,9 +7,9 @@
  * Counter-checks (measured on 03.11.2026, each alone):
  *   A  in newLimit() the queue limit removed → red: both
  *      tests (the surplus one waited instead of being rejected)
- *   B  checkCredentials() without bcryptSchranke.mit() → red: “with a full
+ *   B  checkCredentials() without bcryptGate.run() → red: “with a full
  *      barrier …” (the login got through)
- *   C  checkConfirmation() without bcryptSchranke.mit() → red: “with a full
+ *   C  checkConfirmation() without bcryptGate.run() → red: “with a full
  *      barrier …” (the password confirmation got through)
  *
  * Whoever last logged in from this address with this name waits
@@ -36,7 +36,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { newLimit, bcryptSchranke, BcryptOverload } = _req('src/account/bcryptLimit.js');
+const { newLimit, bcryptGate, BcryptOverload } = _req('src/account/bcryptLimit.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test.after(async () => {
@@ -47,11 +47,11 @@ test('the limit lets n run, m wait and rejects the rest', async () => {
   const s = newLimit(2, 1, 200);
   const offen = [];
   const blockiert = () => new Promise(r => offen.push(r));
-  const a = s.mit(blockiert),
-    b = s.mit(blockiert);
-  const c = s.mit(async () => 'c');
+  const a = s.run(blockiert),
+    b = s.run(blockiert);
+  const c = s.run(async () => 'c');
   await assert.rejects(
-    s.mit(async () => 'd'),
+    s.run(async () => 'd'),
     BcryptOverload,
   );
   assert.deepEqual(s.stand(), { laufend: 2, wartend: 1 });
@@ -62,10 +62,10 @@ test('the limit lets n run, m wait and rejects the rest', async () => {
   await b;
   assert.deepEqual(s.stand(), { laufend: 0, wartend: 0 });
   // Deadline: whoever waits too long is rejected and frees their place in the queue.
-  const x = s.mit(blockiert),
-    y = s.mit(blockiert);
+  const x = s.run(blockiert),
+    y = s.run(blockiert);
   await assert.rejects(
-    s.mit(async () => 'z'),
+    s.run(async () => 'z'),
     BcryptOverload,
   );
   assert.deepEqual(s.stand(), { laufend: 2, wartend: 0 });
@@ -78,15 +78,15 @@ test('priority: to the front of the queue, even if it is full', async () => {
   const s = newLimit(1, 1, 1000);
   const offen = [],
     reihe = [];
-  const a = s.mit(() => new Promise(r => offen.push(r)));
-  const b = s.mit(async () => {
+  const a = s.run(() => new Promise(r => offen.push(r)));
+  const b = s.run(async () => {
     reihe.push('b');
   });
-  const v = s.mit(async () => {
+  const v = s.run(async () => {
     reihe.push('v');
   }, true);
   await assert.rejects(
-    s.mit(async () => 'x'),
+    s.run(async () => 'x'),
     BcryptOverload,
   );
   assert.deepEqual(s.stand(), { laufend: 1, wartend: 2 });
@@ -136,8 +136,8 @@ test('with a full limit, login and password confirmation answer 503', { concurre
   const kerne = Math.max(2, os.availableParallelism());
   const offen = [];
   const belegt = [];
-  for (let i = 0; i < kerne * 9; i++) belegt.push(bcryptSchranke.mit(() => new Promise(r => offen.push(r))));
-  assert.deepEqual(bcryptSchranke.stand(), { laufend: kerne, wartend: kerne * 8 });
+  for (let i = 0; i < kerne * 9; i++) belegt.push(bcryptGate.run(() => new Promise(r => offen.push(r))));
+  assert.deepEqual(bcryptGate.stand(), { laufend: kerne, wartend: kerne * 8 });
   try {
     const anmeldung = await post('/login', { username: NAME, password: PASS });
     assert.deepEqual(
@@ -154,7 +154,7 @@ test('with a full limit, login and password confirmation answer 503', { concurre
       JSON.stringify(bestaetigung.body),
     );
   } finally {
-    while (offen.length || bcryptSchranke.stand().laufend) {
+    while (offen.length || bcryptGate.stand().laufend) {
       for (const r of offen.splice(0)) r();
       await new Promise(r => setImmediate(r));
     }
@@ -165,20 +165,19 @@ test('with a full limit, login and password confirmation answer 503', { concurre
   assert.equal(danach.status, 200, JSON.stringify(danach.body));
 
   // Now the login from here is known: it waits at the front, a foreign one is rejected.
-  for (let i = 0; i < kerne * 9; i++) belegt.push(bcryptSchranke.mit(() => new Promise(r => offen.push(r))));
+  for (let i = 0; i < kerne * 9; i++) belegt.push(bcryptGate.run(() => new Promise(r => offen.push(r))));
   try {
     delete sitzung.userId;
     const bekannt = post('/login', { username: NAME, password: PASS });
     const fremd = await post('/login', { username: `${NAME}_x`, password: PASS });
     assert.deepEqual([fremd.status, fremd.body.code], [503, 'server_ausgelastet']);
-    for (let i = 0; i < 200 && bcryptSchranke.stand().wartend <= kerne * 8; i++)
-      await new Promise(r => setTimeout(r, 10));
-    assert.equal(bcryptSchranke.stand().wartend, kerne * 8 + 1, 'die bekannte Anmeldung wartet nicht');
+    for (let i = 0; i < 200 && bcryptGate.stand().wartend <= kerne * 8; i++) await new Promise(r => setTimeout(r, 10));
+    assert.equal(bcryptGate.stand().wartend, kerne * 8 + 1, 'die bekannte Anmeldung wartet nicht');
     offen.shift()();
     const r = await bekannt;
     assert.equal(r.status, 200, JSON.stringify(r.body));
   } finally {
-    while (offen.length || bcryptSchranke.stand().laufend) {
+    while (offen.length || bcryptGate.stand().laufend) {
       for (const r of offen.splice(0)) r();
       await new Promise(r => setImmediate(r));
     }

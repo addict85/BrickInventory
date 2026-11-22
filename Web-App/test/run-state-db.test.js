@@ -8,9 +8,9 @@
  *   A  in the migration `starts_with(key, 'job_monitor_')` left out (in the
  *      INSERT and in the DELETE) → red: “migration 0063 separates state from
  *      configuration”
- *   B  countState() as read-then-write (liesZustand + setzeZustand)
+ *   B  countState() as read-then-write (readState + setState)
  *      → red: “the image counter counts concurrent calls exactly”
- * Counter-check (05.11.2026): in letzteJeArt() `ORDER BY type, updated_at DESC`
+ * Counter-check (05.11.2026): in lastPerKind() `ORDER BY type, updated_at DESC`
  *   → red: „die Kachel zeigt den laufenden Auftrag“ (the younger open one won)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.

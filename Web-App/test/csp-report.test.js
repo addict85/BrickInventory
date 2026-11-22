@@ -14,7 +14,7 @@
  *      160 characters) → red: “only directives and addresses …”
  *   G  bildansicht() always false → red: “the browser's image view …”
  *   H  in cspMessageFree() the former split(':').slice(0, 4) instead of
- *      drosselAdresse() → red: “shortened IPv6 addresses …” (20 instead of 10 free)
+ *      throttleAddress() → red: “shortened IPv6 addresses …” (20 instead of 10 free)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

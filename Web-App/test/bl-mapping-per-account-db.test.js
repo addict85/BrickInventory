@@ -7,7 +7,7 @@
  * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
  *   A  routes/api_v1/wanted.ts: rememberNumber always writes rememberBlNumber →
  *      red: all seven subtests (Anna's 3001 fills the note for 3003)
- *   B  db/blMappingSql.ts: blNummerSql without `_e.bl_id` → red: “valuation”
+ *   B  db/blMappingSql.ts: blNumberSql without `_e.bl_id` → red: “valuation”
  *      (Anna sees the shared number)
  *   C  resolveBlPartNumber() ignores `konto` → red: “price fetch”
  *   D  writeBlNumber() back with `DO UPDATE SET bl_id=…` without WHERE → red:

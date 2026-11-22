@@ -36,7 +36,7 @@ function withRecentlyTag(klar, k, laenge) {
 }
 
 test('a 4-byte tag is not accepted, a full one is', () => {
-  const k = g.kontext('test', 1);
+  const k = g.context('test', 1);
   const kurz = withRecentlyTag('', k, 4);
   assert.equal(g.decrypt(`v2:${kurz.toString('base64')}`, k), null);
   assert.equal(g.decryptBuffer(Buffer.concat([Buffer.from('BIENC2\n'), kurz]), k), null);

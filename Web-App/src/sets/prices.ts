@@ -1,10 +1,10 @@
 /** Market price, price history and price alert of a set. */
 import type { Sicht } from '../household';
-import { normalisiereSetNummer } from '../infra/setNumber';
-import type { Zustand } from '../infra/validate';
+import { normalizeSetNumber } from '../infra/setNumber';
+import type { ConditionState } from '../infra/validate';
 import type { CsvImportReport } from '../infra/csvExport';
 import * as repo from './repository/setDetail';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { SetsContext } from './context';
 
 /** In the inventory's condition. null: no set in scope. */
@@ -17,7 +17,7 @@ export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht 
   const currency = await currencyOf(sk, uid);
   const guideType = String(await sk.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await sk.einstellungen.userValue(uid, 'price_cache_ttl', '24'));
-  const price = await versuche('sets:preis', async () =>
+  const price = await attempts('sets:preis', async () =>
     sk.finances.fetchPrice(sn, await sk.finances.setState(scope, sn), guideType, currency, ttlHours, null),
   );
   if (!price.ok)
@@ -51,20 +51,20 @@ export async function currencyOf(sk: SetsContext, uid: number): Promise<string> 
 }
 
 export function readSetAlerts(sk: SetsContext, uid: number, sn: string) {
-  return sk.finances.preisalarm.alertsFor(uid, normalisiereSetNummer(sn));
+  return sk.finances.preisalarm.alertsFor(uid, normalizeSetNumber(sn));
 }
 
 export async function setAlarmOfSets(
   sk: SetsContext,
   uid: number,
   sn: string,
-  input: Parameters<SetsContext['finances']['preisalarm']['setzeAlarm']>[3],
+  input: Parameters<SetsContext['finances']['preisalarm']['setAlert']>[3],
 ) {
-  return sk.finances.preisalarm.setzeAlarm(uid, normalisiereSetNummer(sn), await currencyOf(sk, uid), input);
+  return sk.finances.preisalarm.setAlert(uid, normalizeSetNumber(sn), await currencyOf(sk, uid), input);
 }
 
-export function deleteAlarmOfSets(sk: SetsContext, uid: number, sn: string, condition: Zustand | undefined) {
-  return sk.finances.preisalarm.loescheAlarm(uid, normalisiereSetNummer(sn), condition ?? 'N');
+export function deleteAlarmOfSets(sk: SetsContext, uid: number, sn: string, condition: ConditionState | undefined) {
+  return sk.finances.preisalarm.deleteAlert(uid, normalizeSetNumber(sn), condition ?? 'N');
 }
 
 export async function startAlarmCsvImport(sk: SetsContext, uid: number, text: string) {

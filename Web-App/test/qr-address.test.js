@@ -150,7 +150,7 @@ test('3. one source for QR code, mail button and reset links', () => {
   // for a link in a mail — a guessed address is worse than
   // none. (getBaseUrl further down MAY do it, see the reasoning there.)
   const auth = lies('routes/auth/qr.ts');
-  const i = auth.search(/router\.endpunkt\(\s*'POST \/api\/v1\/auth\/qr-token'/);
+  const i = auth.search(/router\.endpoint\(\s*'POST \/api\/v1\/auth\/qr-token'/);
   assert.ok(i > 0, 'Die Route /qr-token ist verschwunden — umbenannt?');
   const rumpf = auth.slice(i, auth.indexOf('\n  router.', i + 10));
   assert.ok(

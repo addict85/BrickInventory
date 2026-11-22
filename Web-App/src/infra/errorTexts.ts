@@ -4,7 +4,7 @@
 export type Language = 'de' | 'en';
 
 // Every text once, in both languages.
-export const FEHLER = {
+export const ERRORS = {
   // ── Login and account ────────────────────────────────────────────────────
   nicht_angemeldet: { de: 'Nicht angemeldet', en: 'Not signed in' },
   auth_fehler: { de: 'Auth-Fehler', en: 'Authentication error' },
@@ -629,7 +629,7 @@ export const FEHLER = {
   },
 } as const;
 
-export type ErrorCode = keyof typeof FEHLER;
+export type ErrorCode = keyof typeof ERRORS;
 
 // From Accept-Language; without a match German.
 export function responseLanguage(req: { headers?: Record<string, unknown> } | undefined): Language {
@@ -661,7 +661,7 @@ export type ErrorKind =
 
 /** Kind and code travel along; the sentence is only created in the response in the
  * requester's language. */
-export class Fachfehler extends Error {
+export class DomainError extends Error {
   /** `zusatz`: fields the response carries next to code and error (e.g. `wartenSek`). */
   constructor(
     readonly art: ErrorKind,
@@ -678,7 +678,7 @@ export class Fachfehler extends Error {
  * server error; everything else propagates unchanged. */
 export function asDuplicate(code: ErrorCode): (e: unknown) => never {
   return (e: unknown) => {
-    if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler('konflikt', code);
+    if ((e as { code?: unknown } | null)?.code === '23505') throw new DomainError('konflikt', code);
     throw e;
   };
 }
@@ -693,22 +693,22 @@ export function duplicateAs<T>(wert: T): (e: unknown) => T {
 }
 
 /** Aborts the service with a reason the route names to the requester. */
-export function fachfehler(art: ErrorKind, code: ErrorCode, vars?: Record<string, string | number>): never {
-  throw new Fachfehler(art, code, vars);
+export function failDomain(art: ErrorKind, code: ErrorCode, vars?: Record<string, string | number>): never {
+  throw new DomainError(art, code, vars);
 }
 
 /** A read path found nothing: 404 with the code that says what is missing. */
 export function notFound(code: ErrorCode = 'nicht_gefunden', vars?: Record<string, string | number>): never {
-  throw new Fachfehler('nicht_gefunden', code, vars);
+  throw new DomainError('nicht_gefunden', code, vars);
 }
 
 /** For callbacks like multer's fileFilter that pass an error instead of throwing it. */
 export function fileError(art: ErrorKind, code: ErrorCode, vars?: Record<string, string | number>): Error {
-  return new Fachfehler(art, code, vars);
+  return new DomainError(art, code, vars);
 }
 
 export function errorText(code: ErrorCode, language: Language = 'de', vars?: Record<string, string | number>): string {
-  const entry = FEHLER[code];
+  const entry = ERRORS[code];
   // An error message must not crash itself: a missing entry passes through
   // as a code in plaintext and tells the log what is missing.
   if (!entry) {

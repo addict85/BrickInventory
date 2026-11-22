@@ -187,7 +187,7 @@ test('minifigures export: the same rule, the same single query', { concurrency: 
       abfragen++;
       return realQuery(...args);
     };
-    const csv = await _req('src/inventory/inventoryExport.js').figurenCsv(uid);
+    const csv = await _req('src/inventory/inventoryExport.js').minifigsCsv(uid);
     db.pool.query = realQuery;
 
     const r = zeilen(csv);

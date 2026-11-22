@@ -88,16 +88,16 @@ export function dataKey(): Buffer {
   // second process was faster, and nobody reads a half-written file.
   const tmp = `${file}.${process.pid}`;
   fs.writeFileSync(tmp, fresh.toString('base64'), { mode: 0o600 });
-  let ergebnis: Buffer = fresh;
+  let result: Buffer = fresh;
   try {
     fs.linkSync(tmp, file);
   } catch {
-    ergebnis = readSecretKey(file) ?? fresh;
+    result = readSecretKey(file) ?? fresh;
   } finally {
     fs.rmSync(tmp, { force: true });
   }
-  S.geladen = ergebnis;
-  return ergebnis;
+  S.geladen = result;
+  return result;
 }
 
 /** The previous key of a rotation: what only it opens stays readable until startup
@@ -129,7 +129,7 @@ function altV2Key(): Buffer | null {
 /** What and which row a ciphertext applies to (AAD in AES-GCM): copied into another
  * column, another account or another row, it is unreadable. */
 export type Context = string & { readonly __context: true };
-export function kontext(purpose: string, ...basis: (string | number)[]): Context {
+export function context(purpose: string, ...basis: (string | number)[]): Context {
   return JSON.stringify([purpose, ...basis.map(String)]) as Context;
 }
 

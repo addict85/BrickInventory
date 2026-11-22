@@ -25,7 +25,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const ohneKommentare = require('./helpers/sources').ohneKommentare;
 const { handleRouteError, sendError } = _req('src/http/httpResponse.js');
 const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
-const { fachfehler, asDuplicate } = _req('src/infra/errorTexts.js');
+const { failDomain, asDuplicate } = _req('src/infra/errorTexts.js');
 
 /** What handleRouteError writes to a response. */
 function antwort(e) {
@@ -87,7 +87,7 @@ test('every kind yields its status', () => {
   assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(erwartet).sort());
   for (const [art, status] of Object.entries(erwartet)) {
     assert.deepEqual(
-      antwort(geworfen(() => fachfehler(art, 'set_nicht_gefunden'))),
+      antwort(geworfen(() => failDomain(art, 'set_nicht_gefunden'))),
       { status, code: 'set_nicht_gefunden' },
       art,
     );

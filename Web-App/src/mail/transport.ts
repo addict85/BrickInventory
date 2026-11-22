@@ -7,7 +7,7 @@ import type { PeerCertificate } from 'node:tls';
 import type { MailContext } from './context';
 import addressparser from 'nodemailer/lib/addressparser';
 import { emailValid } from '../infra/validate';
-import { fehlertext } from '../infra/error';
+import { errorMessage } from '../infra/error';
 import { resolveOn, mailServerAddress } from '../infra/targetAddress';
 const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
 
@@ -73,15 +73,15 @@ function smtpErrorText(e: unknown): { text: string; certificate: boolean } {
   const code = String((e as { code?: unknown; cause?: { code?: unknown } })?.code ?? '');
   const cause = String((e as { cause?: { code?: unknown } })?.cause?.code ?? '');
   const certificate =
-    CERTIFICATE_ERRORS.has(code) || CERTIFICATE_ERRORS.has(cause) || /certificate|Fingerabdruck/i.test(fehlertext(e));
-  const noStarttls = code === 'ETLS' && /upgrading connection with STARTTLS/.test(fehlertext(e));
+    CERTIFICATE_ERRORS.has(code) || CERTIFICATE_ERRORS.has(cause) || /certificate|Fingerabdruck/i.test(errorMessage(e));
+  const noStarttls = code === 'ETLS' && /upgrading connection with STARTTLS/.test(errorMessage(e));
   return {
     certificate,
     text: certificate
-      ? `Zertifikat des Mailservers nicht bestätigt (${fehlertext(e)}). Unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
+      ? `Zertifikat des Mailservers nicht bestätigt (${errorMessage(e)}). Unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
       : noStarttls
         ? 'Der Mailserver bietet kein STARTTLS an; unverschlüsselt wird nichts gesendet. Port 465 mit „SSL/TLS" wählen oder STARTTLS am Mailserver einschalten.'
-        : fehlertext(e),
+        : errorMessage(e),
   };
 }
 
@@ -195,7 +195,7 @@ export async function testSmtp(k: MailContext) {
   } catch (e) {
     const { text, certificate } = smtpErrorText(e);
     return certificate
-      ? { success: false as const, code: 'smtp_zertifikat' as const, vars: { grund: fehlertext(e) } }
+      ? { success: false as const, code: 'smtp_zertifikat' as const, vars: { grund: errorMessage(e) } }
       : { success: false as const, code: 'smtp_fehler' as const, vars: { grund: text } };
   }
 }

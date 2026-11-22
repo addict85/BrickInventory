@@ -8,7 +8,7 @@
  * → red: “Pagination” (the page has 60 instead of 10 sets). (10.11.2026) in
  * src/catalog/repository/catalogSearch.ts c.image_local removed from SET_SPALTEN →
  * red: “the list names the local image …” (undefined instead of the address); there
- * `NOT ${PLATZHALTER}` removed from katalogWo() → red: “… a placeholder is missing”
+ * `NOT ${PLATZHALTER}` removed from catalogWhere() → red: “… a placeholder is missing”
  * (total 1 instead of 0).
  */
 const test = require('node:test');

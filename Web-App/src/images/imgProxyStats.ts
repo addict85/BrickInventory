@@ -1,4 +1,4 @@
-import { fehlertext, reportError } from '../infra/error';
+import { errorMessage, reportError } from '../infra/error';
 
 // A module of its own so that proxy and preview count without reaching through global.
 export const imgProxyFailures = {
@@ -13,6 +13,6 @@ export const imgProxyFailures = {
  * shows in the diagnostics (counter and last error), not only in the log. */
 export function countProxyError(ort: string, e: unknown): void {
   imgProxyFailures.other++;
-  imgProxyFailures.lastError = `${ort}: ${fehlertext(e)}`;
+  imgProxyFailures.lastError = `${ort}: ${errorMessage(e)}`;
   reportError(ort, e);
 }

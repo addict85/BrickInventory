@@ -87,7 +87,7 @@ test('balance query', async t => {
   await t.test('1. the path: page, login, query — and the result in francs', async () => {
     vorrat.clear();
     const { abruf, protokoll } = double();
-    const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf });
+    const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf });
     assert.deepEqual(
       g,
       { amount: 250, currency: 'CHF', formatted: 'CHF 250.00' },
@@ -112,8 +112,8 @@ test('balance query', async t => {
   await t.test('2. the session is reused, not rebuilt per card', async () => {
     vorrat.clear();
     const { abruf, protokoll } = double();
-    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf });
-    await G.fetchBalance(vorrat, '5045076374450022277', '1234', { locale: 'de-CH', abruf });
+    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf });
+    await G.fetchBalance(vorrat, '5045076374450022277', '1234', { locale: 'de-CH', fetch: abruf });
     const logins = protokoll.filter(p => p.url.includes('/Login')).length;
     assert.equal(
       logins,
@@ -129,12 +129,12 @@ test('balance query', async t => {
     vorrat.clear();
     // First one query, so that a session lies in the store.
     const leadTime = double();
-    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: leadTime.abruf });
+    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: leadTime.abruf });
 
     const { abruf, protokoll } = double({
       giftCardBalanceQuery: [antwort({ status: 401 }), antwort({ json: BALANCE_RESPONSE })],
     });
-    const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf });
+    const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf });
     assert.equal(g.amount, 250, 'Der zweite Versuch mit frischer Sitzung muss gelingen');
     const abfragen = protokoll.filter(p => p.url.includes('giftCardBalanceQuery')).length;
     assert.equal(abfragen, 2, `${abfragen} Abfragen — erwartet genau zwei (eine Wiederholung)`);
@@ -151,7 +151,7 @@ test('balance query', async t => {
       giftCardBalanceQuery: [antwort({ status: 401 }), antwort({ status: 401 })],
     });
     await assert.rejects(
-      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf }),
+      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf }),
       e => e instanceof G.NotLoggedIn,
       'Erwartet NichtAngemeldet',
     );
@@ -169,7 +169,7 @@ test('balance query', async t => {
       giftCardBalanceQuery: antwort({ status: 403, text: 'Attention Required! Cloudflare' }),
     });
     await assert.rejects(
-      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf }),
+      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf }),
       e => e instanceof G.BotProtection,
       'Erwartet BotSchutz — daran haengt die Pause in der Schranke',
     );
@@ -179,7 +179,7 @@ test('balance query', async t => {
     vorrat.clear();
     const b = double({ 'gift-cards/balance': antwort({ status: 403, text: 'blocked' }) });
     await assert.rejects(
-      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: b.abruf }),
+      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: b.abruf }),
       e => e instanceof G.BotProtection,
       'Ein 403 auf der Guthabenseite ist dieselbe Wand wie eines auf dem Endpunkt',
     );
@@ -192,7 +192,7 @@ test('balance query', async t => {
 
     // 1. Build up a session and use it.
     const a = double();
-    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: a.abruf });
+    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: a.abruf });
     assert.equal(
       a.protokoll.filter(p => p.url.includes('/Login')).length,
       1,
@@ -202,7 +202,7 @@ test('balance query', async t => {
     // 2. The bot protection strikes.
     const b = double({ giftCardBalanceQuery: antwort({ status: 403, text: 'blocked' }) });
     await assert.rejects(
-      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: b.abruf }),
+      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: b.abruf }),
       e => e instanceof G.BotProtection,
     );
     assert.equal(
@@ -214,7 +214,7 @@ test('balance query', async t => {
     // 3. The next attempt (after the pause, which is not recreated
     //    here — it stands in the throttle) must reload the page.
     const c = double();
-    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: c.abruf });
+    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: c.abruf });
     assert.equal(
       c.protokoll.filter(p => p.url.includes('/gift-cards/balance')).length,
       1,
@@ -239,7 +239,7 @@ test('balance query', async t => {
       giftCardBalanceQuery: antwort({ status: 400, text: echo }),
     });
     await assert.rejects(
-      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf }),
+      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf }),
       (/** @type {any} */ e) => {
         assert.ok(!e.message.includes(PIN), `Die PIN steht in der Meldung: ${e.message}`);
         assert.ok(!e.message.includes(NUMBER), `Die ganze Nummer steht in der Meldung: ${e.message}`);
@@ -257,7 +257,7 @@ test('balance query', async t => {
       giftCardBalanceQuery: antwort({ json: { errors: [{ message: echo }] } }),
     });
     await assert.rejects(
-      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: b.abruf }),
+      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: b.abruf }),
       (/** @type {any} */ e) => !e.message.includes(PIN) && !e.message.includes(NUMBER),
     );
   });
@@ -279,7 +279,7 @@ test('balance query', async t => {
     // What I had expected here, and what came out when measured
     vorrat.clear();
     const { abruf, protokoll } = double();
-    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: '../../boese.example.com/x', abruf }).catch(() => null);
+    await G.fetchBalance(vorrat, NUMBER, PIN, { locale: '../../boese.example.com/x', fetch: abruf }).catch(() => null);
     assert.ok(protokoll.length > 0, 'Selbstnachweis: es wurde ueberhaupt abgerufen');
     for (const p of protokoll) {
       assert.equal(
@@ -304,7 +304,7 @@ test('balance query', async t => {
     vorrat.clear();
     const { abruf } = double({ Login: antwort({ json: { errors: [{ message: 'gesperrt' }] } }) });
     await assert.rejects(
-      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf }),
+      () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: abruf }),
       e => e instanceof G.LoginRejected && String(Object(e).message) === 'Login: gesperrt',
     );
   });

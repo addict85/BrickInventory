@@ -8,7 +8,7 @@ import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } 
 // Read queries; condition from the acquisitions.
 
 import type { Query } from '../contract';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { SetsContext } from './context';
 
 /** Filtering and sorting on the server, so that they work together with page-wise
@@ -67,7 +67,7 @@ export async function readSets(
   }));
 
   // One query for the whole page instead of one per row.
-  const withOwners = await sk.household.besitzerAnhaengen(uids, mapped);
+  const withOwners = await sk.household.attachOwners(uids, mapped);
 
   // With a total count for infinite scroll; without pagination total is the length.
   return {
@@ -78,7 +78,7 @@ export async function readSets(
 }
 
 // One used acquisition makes the set used; the rule lives only here.
-export async function zustandsAggregat(sk: SetsContext, userId: Blickfeld, setNumber: string) {
+export async function conditionAggregate(sk: SetsContext, userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setEntryMetrics(sk.db, uids, setNumber);
   const acqCount = Number(acq?.acq_count) || 0;
@@ -103,7 +103,7 @@ export async function withSetAggregate<T extends object>(
   payload: T,
 ) {
   const uids = asIds(userId);
-  const agg = await versuche('sets-handler:zustandsAggregat', zustandsAggregat(sk, uids, setNumber));
+  const agg = await attempts('sets-handler:zustandsAggregat', conditionAggregate(sk, uids, setNumber));
   return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
 }
 
@@ -120,7 +120,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
   if (!set) return null;
   // The same fields as setsLesen(sk), so that a client can overwrite the tile with the
   // detail.
-  const agg = await zustandsAggregat(sk, uids, setNumber);
+  const agg = await conditionAggregate(sk, uids, setNumber);
   // The purchase addresses from the server: one address in four places would be four truths.
   const [bricklink, priceComparison] = await Promise.all([
     sk.catalog.resolveBlLink(setNumber).catch((e: unknown) => {
@@ -130,7 +130,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
     Promise.resolve(forSet(setNumber, set.name)),
   ]);
   const { owner_ids, ...withoutIds } = set;
-  const [withOwners] = await sk.household.besitzerAnhaengen(uids, [
+  const [withOwners] = await sk.household.attachOwners(uids, [
     uids.length > 1 ? { ...withoutIds, owner_ids } : withoutIds,
   ]);
   return {

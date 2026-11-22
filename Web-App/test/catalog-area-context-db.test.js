@@ -74,10 +74,10 @@ test('catalog with its own access', { concurrency: 1 }, async t => {
 
   await t.test('the transaction goes via the passed access', async () => {
     sql.length = 0;
-    const { kontingentPruefenUndZaehlen } = require(
+    const { checkAndCountQuota } = require(
       require('node:path').join(require('./helpers/sources').ROOT, 'dist/src/externalSources/apiQuota.js'),
     );
-    const r = await kontingentPruefenUndZaehlen(contexts.externalSources, 'brickset');
+    const r = await checkAndCountQuota(contexts.externalSources, 'brickset');
     assert.equal(r.allowed, true);
     assert.ok(
       sql.some(s => /INSERT INTO api_calls/.test(s)),

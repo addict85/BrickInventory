@@ -89,11 +89,11 @@ test('figure estimate and set price per condition', async t => {
                     VALUES ($1, $2, 1, 'N', 'EUR')`,
         [u.id, SN],
       );
-      assert.equal(await mf.aktuellerMarktpreis(SN, u.id), 10);
-      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'U'), 20);
-      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'N'), 10);
+      assert.equal(await mf.currentMarketPrice(SN, u.id), 10);
+      assert.equal(await mf.currentMarketPrice(SN, u.id, 'U'), 20);
+      assert.equal(await mf.currentMarketPrice(SN, u.id, 'N'), 10);
       await db.run(`DELETE FROM price_cache WHERE set_number = $1 AND condition = 'U'`, [SN]);
-      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'U'), 10, 'ohne Preis im Wunschzustand der andere');
+      assert.equal(await mf.currentMarketPrice(SN, u.id, 'U'), 10, 'ohne Preis im Wunschzustand der andere');
     });
   } finally {
     await db.run('DELETE FROM users WHERE id = $1', [u.id]);

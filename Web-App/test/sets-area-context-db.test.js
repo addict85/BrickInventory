@@ -4,12 +4,12 @@
  * process or the catalog of another wiring.
  *
  * Counter-checks (measured 10.11.2026, each on its own):
- *   A  in src/sets/repository/setDetail.ts setStamm() via `standardDb().get`
+ *   A  in src/sets/repository/setDetail.ts setMaster() via `standardDb().get`
  *      instead of via the passed access → red: “reading goes through the
  *      passed access” (no query on rb_sets counted)
  *   B  in partListWithRework() again `nacharbeit().setTeileAnreichern(sn)` →
  *      red: “the enrichment comes from the context” (process follow-up called)
- *   C  (15.11.2026) there `sn => sk.katalog.enrichSetPartsAn(sn)` replaced by `async () => {}`
+ *   C  (15.11.2026) there `sn => sk.katalog.enrichSetParts(sn)` replaced by `async () => {}`
  *      → red: “the enrichment comes from the context” (nothing triggered)
  */
 const test = require('node:test');
@@ -42,8 +42,8 @@ function countingAccess(echt, sql) {
 
 /** A catalog that records which enrichment was triggered. */
 const recording = notiz => ({
-  enrichSetPartsAn: async sn => {
-    notiz.push(['enrichSetPartsAn', sn]);
+  enrichSetParts: async sn => {
+    notiz.push(['enrichSetParts', sn]);
   },
 });
 
@@ -87,7 +87,7 @@ test('sets with their own context', { concurrency: 1 }, async t => {
     const r = await sets.partListWithRework(SN);
     assert.equal(r.parts.length, 1);
     assert.ok(sql.some(s => /FROM rb_inventory_parts/.test(s)));
-    assert.deepEqual(notiz, [['enrichSetPartsAn', SN]]);
+    assert.deepEqual(notiz, [['enrichSetParts', SN]]);
     assert.deepEqual(processNote, []);
   });
 });

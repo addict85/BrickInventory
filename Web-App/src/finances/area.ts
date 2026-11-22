@@ -1,7 +1,7 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
 import type { Db } from '../../db/database';
-import { withValue, buildArea, type Inspect } from '../infra/area';
-import { Faecher } from '../infra/cache';
+import { bound, buildArea, type Inspect } from '../infra/area';
+import { Compartments } from '../infra/cache';
 import * as marketPrice from './marketPrice';
 import * as portfolioHistory from './portfolioHistory';
 import * as priceHistory from './priceHistory';
@@ -21,48 +21,48 @@ export function createFinances(a: Omit<FinancesDependencies, 'faecher'>, inspect
   // The price cache applies per currency: a change requires a full price run.
   a.einstellungen.onCurrencyChange(() => a.jobQueue.pullPlanBefore('preise'));
   return buildArea(
-    { ...a, faecher: new Faecher() },
+    { ...a, faecher: new Compartments() },
     (db: Db) => access(db, a.lesevertrag),
     (k: FinancesContext) => ({
       // The price alerts are services; the price run calls them via the context.
       preisalarm: {
-        alarmTransfer: withValue(k)(priceAlert.alarmTransfer),
-        alertsFromCsv: withValue(k)(priceAlert.alertsFromCsv),
-        alertsFor: withValue(k)(priceAlert.alertsFor),
-        alleAlarme: withValue(k)(priceAlert.allAlerts),
-        triggeredSince: withValue(k)(priceAlert.triggeredSince),
-        preisalarmeAlsCsv: withValue(k)(priceAlert.priceAlertsAsCsv),
-        loescheAlarm: withValue(k)(priceAlert.deleteAlert),
-        setzeAlarm: withValue(k)(priceAlert.setAlert),
+        alarmTransfer: bound(k)(priceAlert.alarmTransfer),
+        alertsFromCsv: bound(k)(priceAlert.alertsFromCsv),
+        alertsFor: bound(k)(priceAlert.alertsFor),
+        allAlerts: bound(k)(priceAlert.allAlerts),
+        triggeredSince: bound(k)(priceAlert.triggeredSince),
+        priceAlertsAsCsv: bound(k)(priceAlert.priceAlertsAsCsv),
+        deleteAlert: bound(k)(priceAlert.deleteAlert),
+        setAlert: bound(k)(priceAlert.setAlert),
       },
-      aktuellerMarktpreis: withValue(k)(marketPrice.aktuellerMarktpreis),
+      currentMarketPrice: bound(k)(marketPrice.currentMarketPrice),
       marketPriceFromCache: k.preisCache.marketPriceFromCache,
       marketPriceFromHistory: k.preisCache.marketPriceFromHistory,
-      partState: withValue(k)(marketPrice.partState),
-      marketPricesFromCacheForMinifigs: withValue(k)(marketPrice.marketPricesFromCacheForMinifigs),
-      marketPricesFromCacheForParts: withValue(k)(marketPrice.marketPricesFromCacheForParts),
-      figMarketPriceWithOrigin: withValue(k)(marketPrice.figMarketPriceWithOrigin),
-      marketPriceWithOrigin: withValue(k)(marketPrice.marketPriceWithOrigin),
-      currentMinifigMarketPrice: withValue(k)(marketPrice.currentMinifigMarketPrice),
-      currentPartMarketPrice: withValue(k)(marketPrice.currentPartMarketPrice),
-      portfolioVerlauf: withValue(k)(portfolioHistory.portfolioVerlauf),
-      priceHistorySet: withValue(k)(priceHistory.priceHistorySet),
-      priceHistoryPart: withValue(k)(priceHistory.priceHistoryPart),
-      priceHistoryMinifig: withValue(k)(priceHistory.priceHistoryMinifig),
-      deleteOldPrices: withValue(k)(priceHistory.deleteOldPrices),
-      valueSets: withValue(k)(valuationService.valueSets),
-      valueMinifigs: withValue(k)(valuationService.valueMinifigs),
-      valueParts: withValue(k)(valuationService.valueParts),
-      gainAndLoss: withValue(k)(gainLossService.gainAndLoss),
-      setState: withValue(k)(prices.setState),
-      emptyPriceCache: withValue(k)(prices.emptyPriceCache),
-      fetchPrice: withValue(k)(prices.fetchPrice),
-      farbkarte: withValue(k)(prices.colorChart),
-      preisFuerSetHolen: withValue(k)(priceRunService.preisFuerSetHolen),
-      purchasePriceFromInput: withValue(k)(priceRule.purchasePriceFromInput),
-      manuellerKaufpreis: withValue(k)(priceRule.manualPurchasePrice),
-      planeKursabruf: withValue(k)(exchangeRatesService.scheduleRateFetch),
-      auftragsarten: () => financesJobTypes(k),
+      partState: bound(k)(marketPrice.partState),
+      marketPricesFromCacheForMinifigs: bound(k)(marketPrice.marketPricesFromCacheForMinifigs),
+      marketPricesFromCacheForParts: bound(k)(marketPrice.marketPricesFromCacheForParts),
+      figMarketPriceWithOrigin: bound(k)(marketPrice.figMarketPriceWithOrigin),
+      marketPriceWithOrigin: bound(k)(marketPrice.marketPriceWithOrigin),
+      currentMinifigMarketPrice: bound(k)(marketPrice.currentMinifigMarketPrice),
+      currentPartMarketPrice: bound(k)(marketPrice.currentPartMarketPrice),
+      portfolioHistory: bound(k)(portfolioHistory.portfolioHistory),
+      priceHistorySet: bound(k)(priceHistory.priceHistorySet),
+      priceHistoryPart: bound(k)(priceHistory.priceHistoryPart),
+      priceHistoryMinifig: bound(k)(priceHistory.priceHistoryMinifig),
+      deleteOldPrices: bound(k)(priceHistory.deleteOldPrices),
+      valueSets: bound(k)(valuationService.valueSets),
+      valueMinifigs: bound(k)(valuationService.valueMinifigs),
+      valueParts: bound(k)(valuationService.valueParts),
+      gainAndLoss: bound(k)(gainLossService.gainAndLoss),
+      setState: bound(k)(prices.setState),
+      emptyPriceCache: bound(k)(prices.emptyPriceCache),
+      fetchPrice: bound(k)(prices.fetchPrice),
+      colorChart: bound(k)(prices.colorChart),
+      fetchPriceForSet: bound(k)(priceRunService.fetchPriceForSet),
+      purchasePriceFromInput: bound(k)(priceRule.purchasePriceFromInput),
+      manualPurchasePrice: bound(k)(priceRule.manualPurchasePrice),
+      scheduleRateFetch: bound(k)(exchangeRatesService.scheduleRateFetch),
+      jobKinds: () => financesJobTypes(k),
     }),
     inspect,
   );

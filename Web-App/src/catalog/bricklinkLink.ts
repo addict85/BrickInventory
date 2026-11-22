@@ -39,7 +39,7 @@ export function blAddress(type: BlType, number: string): string | null {
 }
 
 // Without an unambiguous mapping (e.g. collectible minifigures) a search instead of a wrong link.
-export function blSuchadresse(number: string): string {
+export function blSearchUrl(number: string): string {
   return `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(bareNumber(number))}`;
 }
 
@@ -55,7 +55,7 @@ function toLink(setNumber: string, blType: string | null | undefined): BlLink {
   // collectible minifigures, and for them the button must not disappear.
   return exactUrl
     ? { type: effective, number, url: exactUrl, exact: true, resolved: type !== null }
-    : { type: effective, number, url: blSuchadresse(setNumber), exact: false, resolved: type !== null };
+    : { type: effective, number, url: blSearchUrl(setNumber), exact: false, resolved: type !== null };
 }
 
 /** One query instead of N single queries, for list and catalog pages.

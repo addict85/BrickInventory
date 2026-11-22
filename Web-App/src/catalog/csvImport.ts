@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import { dbKonfigFromEnvironment, createDb, type Db } from '../../db/database';
+import { dbConfigFromEnvironment, createDb, type Db } from '../../db/database';
 import { databaseConnection, systemConnection } from '../infra/config';
 import { isJa } from '../infra/validate';
 import { logAndContinue } from '../infra/error';
@@ -91,7 +91,7 @@ interface Swap {
   chunkSize?: number;
   mapRow: (c: string[]) => unknown[];
   /** Instead of the swap; rb_sets reconciles via upsert. */
-  abgleich?: typeof repo.swap;
+  reconcile?: typeof repo.swap;
 }
 
 // Via a shadow table: readers see the old one until the swap, never an empty table.
@@ -101,7 +101,7 @@ async function importWithSwap(pool: Db['systemPool'], report: (m: Message) => vo
   try {
     await repo.lockTable(client, t.tabelle);
     try {
-      await repo.putShadowAn(client, t.tabelle, shadow);
+      await repo.createShadow(client, t.tabelle, shadow);
       const total = await streamInsert(
         t.tmp,
         t.chunkSize ?? 100,
@@ -113,9 +113,9 @@ async function importWithSwap(pool: Db['systemPool'], report: (m: Message) => vo
       // An empty file is an error, not an empty catalog.
       if (total === 0)
         throw new Error(`${t.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
-      await (t.abgleich ?? repo.swap)(client, t.tabelle, shadow, t.cols);
+      await (t.reconcile ?? repo.swap)(client, t.tabelle, shadow, t.cols);
       await repo.removeShadow(client, shadow).catch(logAndContinue('csv-worker:query'));
-      await repo.pflege(client, t.tabelle);
+      await repo.maintenance(client, t.tabelle);
       return total;
     } finally {
       await repo.giveTableFree(client, t.tabelle).catch(logAndContinue('csv-worker:lockKeyFor'));
@@ -130,7 +130,7 @@ async function importWithSwap(pool: Db['systemPool'], report: (m: Message) => vo
  * pool of its own without a pipeline, like this process's raw pool before. */
 export function createImportAccess(): Db {
   return createDb({
-    ...dbKonfigFromEnvironment(),
+    ...dbConfigFromEnvironment(),
     pool: { max: 2 },
     system: systemConnection() ?? databaseConnection(),
   });
@@ -178,7 +178,7 @@ export function createCatalogImports(
       tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
       cols: ['set_num', 'name', 'year', 'theme_id', 'num_parts', 'set_img_url'],
       konflikt: ['set_num'],
-      abgleich: (c, _table, shadow, cols) => repo.syncSets(c, l, shadow, cols),
+      reconcile: (c, _table, shadow, cols) => repo.syncSets(c, l, shadow, cols),
       mapRow: c => [
         sp(c, 0),
         sp(c, 1),

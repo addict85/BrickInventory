@@ -1,4 +1,4 @@
-import { fehlertext } from '../infra/error';
+import { errorMessage } from '../infra/error';
 import type { SetsContext } from './context';
 
 /** Catalog and inventory in one transaction; throws on errors, the job then retries. */
@@ -6,7 +6,7 @@ export async function importMinifigs(k: SetsContext, setNumber: string, userId: 
   const { figuren, fromSource } = await k.catalog.loadSetMinifigs(setNumber);
   if (!figuren.length) return 0;
   const numbers = figuren.map(f => f.fig_number);
-  await k.transaktion(async t => {
+  await k.transact(async t => {
     await t.inventory.setInhalt.enterMinifigs(userId, setNumber, numbers);
     await t.catalog.setFigurenMerken(setNumber, figuren, fromSource);
   });
@@ -21,18 +21,18 @@ export async function importParts(k: SetsContext, setNumber: string, userId: num
   const { n, zeilen } = loaded;
   const parts = zeilen.map(z => z.partNumber),
     colors = zeilen.map(z => z.colorId);
-  for (let versuch = 1; ; versuch++) {
+  for (let attempt = 1; ; attempt++) {
     try {
-      await k.transaktion(async t => {
+      await k.transact(async t => {
         await t.inventory.setInhalt.enterParts(userId, n, parts, colors);
-        await t.catalog.setTeileMerken(n, zeilen);
+        await t.catalog.rememberSetParts(n, zeilen);
       });
       break;
     } catch (e) {
       // The fixed order makes deadlocks rare, but does not rule them out entirely.
-      if (!fehlertext(e)?.includes('deadlock') || versuch >= 3) throw e;
-      console.warn(`[parts] Deadlock bei ${n}, Versuch ${versuch}/3`);
-      await new Promise(r => setTimeout(r, 200 * versuch));
+      if (!errorMessage(e)?.includes('deadlock') || attempt >= 3) throw e;
+      console.warn(`[parts] Deadlock bei ${n}, Versuch ${attempt}/3`);
+      await new Promise(r => setTimeout(r, 200 * attempt));
     }
   }
   await k.catalog.enqueueSetPartImages(n, zeilen);

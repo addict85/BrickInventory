@@ -23,16 +23,16 @@ export const NEW_JOB = signal(repo.JOB_CHANNEL);
 export const JOB_STATUS = signal(repo.JOB_STATUS_CHANNEL);
 
 export function wakeWorker(k: JobsContext, art: string): Promise<void> {
-  return NEW_JOB.melde(k.db.notification, art);
+  return NEW_JOB.report(k.db.notification, art);
 }
 
 async function reportStatus(k: JobsContext, z: { s: string } | undefined): Promise<void> {
-  if (z) await JOB_STATUS.melde(k.db.notification, z.s);
+  if (z) await JOB_STATUS.report(k.db.notification, z.s);
 }
 
 /** 30 s, doubled per attempt, at most one hour. */
-export function waitTimeSec(versuch: number): number {
-  return Math.min(3600, 30 * 2 ** Math.max(0, versuch - 1));
+export function waitTimeSec(attempt: number): number {
+  return Math.min(3600, 30 * 2 ** Math.max(0, attempt - 1));
 }
 
 export async function placeJobOne<A extends JobKind>(
@@ -68,7 +68,7 @@ export async function supplementListenJob<A extends JobKind>(
   o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
   const n = k.arten.check(art, payload);
-  const id = await k.auftraege.addListAn(art, n as object, o);
+  const id = await k.auftraege.enqueueList(art, n as object, o);
   await wakeWorker(k, art);
   return id;
 }
@@ -93,27 +93,16 @@ export async function done(k: JobsContext, a: Claim & Pick<JobRow, 'type'>): Pro
 }
 
 /** @returns true if it was the last attempt and the job is now 'fehler' */
-export async function fehlgeschlagen(
-  k: JobsContext,
-  a: JobRow,
-  fehler: string,
-  immediatelyFinal = false,
-): Promise<boolean> {
+export async function failed(k: JobsContext, a: JobRow, error: string, immediatelyFinal = false): Promise<boolean> {
   const final = immediatelyFinal || a.attempts >= a.max_attempts;
-  const z = await k.auftraege.setFailed(a, final, fehler, waitTimeSec(a.attempts));
+  const z = await k.auftraege.setFailed(a, final, error, waitTimeSec(a.attempts));
   await reportStatus(k, z);
   return final && !!z;
 }
 
 /** E.g. after throttling by the remote side.
  * @returns true if the attempt counted and it was the last one (then 'fehler') */
-export async function verschoben(
-  k: JobsContext,
-  a: JobRow,
-  bis: Date,
-  grund: string,
-  counts: boolean,
-): Promise<boolean> {
+export async function moved(k: JobsContext, a: JobRow, bis: Date, grund: string, counts: boolean): Promise<boolean> {
   const final = counts && a.attempts >= a.max_attempts;
   const z = await k.auftraege.setMoved(a, final, bis, grund, counts);
   await reportStatus(k, z);
@@ -173,12 +162,12 @@ export function inJobFrame<T>(k: JobsContext, a: Pick<JobRow, 'type'>, f: () => 
 
 /** Wakes on every status change of a job, also from the job process; returns the unsubscribe. */
 export function atJobStatus(k: JobsContext, f: (key?: string) => void): () => void {
-  return JOB_STATUS.horche(k.db.notification, f);
+  return JOB_STATUS.listen(k.db.notification, f);
 }
 
 /** Wakes as soon as a job is queued anywhere; returns the unsubscribe. */
 export function atNewJob(k: JobsContext, f: () => void): () => void {
-  return NEW_JOB.horche(k.db.notification, f);
+  return NEW_JOB.listen(k.db.notification, f);
 }
 
 /** An abort via the admin announces itself via NOTIFY: the affected running jobs check immediately

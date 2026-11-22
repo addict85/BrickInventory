@@ -8,7 +8,7 @@ import { pathSegments } from '../../http/httpResponse';
 import { responseOnFileError, deliverFile, sendeDatei } from '../../http/serveFile';
 import { countProxyError } from '../imgProxyStats';
 import { imageReleased } from '../imageScope';
-import { vorschauErzeugenAus, previewType } from '../thumbs';
+import { previewFrom, previewType } from '../thumbs';
 import { IMG_PROXY_PATH } from '../images';
 import type { ImageServices } from './imageProxy';
 
@@ -31,7 +31,7 @@ async function originalInsteadOfPreview(res: Response, segments: string[]): Prom
   )
     return false;
   setImmediate(() => {
-    void vorschauErzeugenAus('/images/' + originalSegs.join('/')).catch(e => countProxyError('bilder:vorschau', e));
+    void previewFrom('/images/' + originalSegs.join('/')).catch(e => countProxyError('bilder:vorschau', e));
   });
   deliverFile(res, originalPath);
   return true;

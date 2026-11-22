@@ -26,7 +26,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { getGlobalSetting, setGlobalSetting, deleteGlobalValues } = _req('src/settings/settings.js');
-const { setzeZustand, liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+const { setState, readState, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
 
 test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
@@ -61,10 +61,10 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
     );
 
     // 2. Run state: deleted means the row is gone.
-    await setzeZustand(T, 'x');
-    assert.equal(await liesZustand(T), 'x');
+    await setState(T, 'x');
+    assert.equal(await readState(T), 'x');
     await deleteState(T);
-    assert.equal(await liesZustand(T), null, 'abgearbeitet heisst: die Zeile ist weg');
+    assert.equal(await readState(T), null, 'abgearbeitet heisst: die Zeile ist weg');
     await setGlobalSetting(T, 'bleibt');
 
     // 3. Several keys in ONE call — the reason for `key = ANY($1)`.

@@ -10,7 +10,7 @@
  * Switched to behavior on 11.11.2026: administrator sets a foreign password and
  * every password path ends the accesses → auth-sessions-db; equal bcrypt cost
  * on all paths → passwort-regel-db; sliding period and count of the cleanup →
- * token-gleitfrist-db. Counter-check: `ladeKonfig` accepts TOKEN_IDLE_DAYS=0 → red
+ * token-gleitfrist-db. Counter-check: `loadConfig` accepts TOKEN_IDLE_DAYS=0 → red
  * “the sliding period cannot be switched off”.
  */
 const test = require('node:test');
@@ -41,7 +41,7 @@ function loginHandler() {
   for (const datei of alle) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(
-      /(?:router|app)\.(?:(?:post|put)\(\s*'|endpunkt\(\s*'(?:POST|PUT) )([^']*login[^']*)'/g,
+      /(?:router|app)\.(?:(?:post|put)\(\s*'|endpoint\(\s*'(?:POST|PUT) )([^']*login[^']*)'/g,
     )) {
       // The body extends to the next route definition. Comments are
       // already gone — otherwise an explanatory text mentioning “password" would count.
@@ -173,8 +173,8 @@ test('the sliding deadline cannot be switched off', () => {
   // “Never” no longer exists since migration 0080: without expiry only per device,
   // over HTTPS and with rotation (token-scope-rotation-db). That the period comes from
   // the configuration and the cleanup counts is shown by token-gleitfrist-db.
-  const { ladeKonfig } = _req('src/infra/config.js');
-  assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
-  assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenIdleDays, 23);
+  const { loadConfig } = _req('src/infra/config.js');
+  assert.throws(() => loadConfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
+  assert.equal(loadConfig({ TOKEN_IDLE_DAYS: '23' }).tokenIdleDays, 23);
   assert.ok(ARGON2_COST.memoryCost >= 19_456 && ARGON2_COST.timeCost >= 2);
 });

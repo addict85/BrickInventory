@@ -29,9 +29,9 @@ function pruefe(web) {
     `(?<![\\w./-])((?:${folder.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})/[\\w./-]*\\w\\.(?:${EXTENSIONS}))\\b`,
     'g',
   );
-  /** @param {string} p @param {string} datei */
-  const gibt = (p, datei) =>
-    [web, repo, path.dirname(datei)].some(
+  /** @param {string} p @param {string} fileName */
+  const gibt = (p, fileName) =>
+    [web, repo, path.dirname(fileName)].some(
       w => fs.existsSync(path.join(w, p)) || (p.endsWith('.js') && fs.existsSync(path.join(w, `${p.slice(0, -3)}.ts`))),
     );
 
@@ -52,16 +52,16 @@ function pruefe(web) {
   /** @type {string[]} */
   const tot = [];
   let gesehen = 0;
-  /** @param {string} datei @param {(z: string) => string} teil the part of a line to check */
-  const lies = (datei, teil) =>
+  /** @param {string} fileName @param {(z: string) => string} teil the part of a line to check */
+  const lies = (fileName, teil) =>
     fs
-      .readFileSync(datei, 'utf8')
+      .readFileSync(fileName, 'utf8')
       .split('\n')
       .forEach((z, i) => {
         for (const m of teil(z).matchAll(muster)) {
-          const pfad = m[1] ?? '';
+          const filePath = m[1] ?? '';
           gesehen++;
-          if (!gibt(pfad, datei)) tot.push(`${path.relative(web, datei)}:${i + 1} ${pfad}`);
+          if (!gibt(filePath, fileName)) tot.push(`${path.relative(web, fileName)}:${i + 1} ${filePath}`);
         }
       });
   for (const f of sources) lies(f, f.endsWith('.sh') ? commentSh : commentJs);

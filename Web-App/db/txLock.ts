@@ -7,7 +7,7 @@ import { LOCKS } from '../src/infra/lockNamespaces';
 import { reportError } from '../src/infra/error';
 
 /** A transaction lock on (class, hashtext(schluessel)); it ends with COMMIT or ROLLBACK.
- * Inventory locks are taken by k.transaktion(…, { sperren }) (src/infra/area.ts). The class
+ * Inventory locks are taken by k.transact(…, { sperren }) (src/infra/area.ts). The class
  * LOCKS.INVENTORY instead of the account id as first value: otherwise account 42 would lock the
  * image download (LOCKS.IMAGE_DOWNLOAD = 42) of the same set. */
 async function lockUntilToEnd(tx: DbInterface, kind: number, key: string): Promise<void> {
@@ -16,7 +16,7 @@ async function lockUntilToEnd(tx: DbInterface, kind: number, key: string): Promi
 
 import type { HoldingLock } from '../src/infra/access';
 
-export type { HoldingLock as Bestandssperre };
+export type { HoldingLock };
 
 /** Ascending by account, so two opposite directions (something moves between accounts) do not deadlock. */
 async function lockInventories(tx: DbInterface, lock: readonly HoldingLock[]): Promise<void> {
@@ -114,7 +114,7 @@ async function giveKeyLockFree(c: Querier, namespace: number, key: string): Prom
 export {
   lockInventories,
   inventoryKey,
-  lockHouseholdCurrency as sperreHaushaltswaehrung,
+  lockHouseholdCurrency,
   withSessionLock,
   receiptsSessionLock,
   attemptsKeyLock,

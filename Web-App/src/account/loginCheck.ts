@@ -1,7 +1,7 @@
 /** Checking credentials: password, account state, second factor, brake. */
 import * as passwordRule from '../infra/passwordRule';
 import { BcryptOverload } from './bcryptLimit';
-import { needsNewHash, hashePassword, hashPasswordImmediately, passwordFits } from './passwordHash';
+import { needsNewHash, hashPassword, hashPasswordImmediately, passwordFits } from './passwordHash';
 import {
   loginAllowed,
   knownLogin,
@@ -20,7 +20,7 @@ import {
   type LoginMethod,
 } from './loginLimiter';
 import { accountThrottled } from './targetThrottle';
-import { duplicateAs, fachfehler, type ErrorKind, type ErrorCode } from '../infra/errorTexts';
+import { duplicateAs, failDomain, type ErrorKind, type ErrorCode } from '../infra/errorTexts';
 import { hintInBackground } from './accountNotice';
 import { tokenDigest } from './deviceToken';
 import { accessTransaction } from './accessEnd';
@@ -48,11 +48,11 @@ export async function verifyEmailToken(
   const leer = token === undefined || token === null || String(token).trim() === '';
   const hash = tokenDigest(String(token));
   const id = leer ? undefined : await k.konten.accountToEmailToken(hash);
-  if (id === undefined) fachfehler('ungueltig', 'bestaetigungslink_ungueltig');
+  if (id === undefined) failDomain('ungueltig', 'bestaetigungslink_ungueltig');
   const ok = await accessTransaction(k, t => t.konten.adoptEmailNew(id, hash)).catch(duplicateAs(false));
   if (!ok) {
     await k.konten.discardEmailNew(id, hash);
-    fachfehler('ungueltig', 'email_vergeben');
+    failDomain('ungueltig', 'email_vergeben');
   }
   return { userId: id };
 }
@@ -192,7 +192,7 @@ export async function checkCredentials(
   }
   // Only now, after password and second factor: the plaintext only exists on a login.
   if (needsNewHash(user.password_hash))
-    await k.zugaenge.replacePasswordHash(user.id, user.password_hash, await hashePassword(password));
+    await k.zugaenge.replacePasswordHash(user.id, user.password_hash, await hashPassword(password));
   await loginSucceeded(k, ip, name);
   reportLogin({ ip, konto: Number(user.id), zugang });
   return { ok: true, user };

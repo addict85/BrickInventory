@@ -378,7 +378,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     assert.equal(body.gelesen, 3);
   });
 
-  await t.test('9. a set goes through setErfassen: created, then topped up, with follow-up work', async () => {
+  await t.test('9. a set goes through acquireSet: created, then topped up, with follow-up work', async () => {
     const SN = '76001-1';
     await catalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
     const datei = liste(item('S', SN, null, 2));

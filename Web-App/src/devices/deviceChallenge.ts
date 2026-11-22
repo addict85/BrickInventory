@@ -10,9 +10,9 @@ import { checkChain } from './attestation/keyAttestation';
 import { applicableList, REVOCATION_STATE } from './attestation/revocationList';
 import type { DevicesContext } from './context';
 import { processWide } from '../infra/prozessweit';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 
-export type { Family as Familie };
+export type { Family };
 
 export type StepAction = (typeof ACTIONS)[number];
 
@@ -57,7 +57,7 @@ export async function newNonce(k: DevicesContext, f: Family, fromQr = false): Pr
     if (qr) return qr.nonce;
   }
   const nonce = randomBytes(32).toString('base64url');
-  const ok = await k.geraeteSchluessel.putNonceAn(f, nonce, {
+  const ok = await k.geraeteSchluessel.createNonce(f, nonce, {
     fristS: KEY_DEADLINE_S,
     offen: NONCES_OPEN,
     fromQr,
@@ -90,14 +90,14 @@ export type Registration = 'neu' | 'gleich';
 /** The reason belongs in the log: the app cannot fix it, the operator (fingerprint) can. */
 function attestationRejected(f: Family, grund: string): never {
   console.warn(`[geraet] Attestation von Konto ${f.uid} abgewiesen: ${grund}`);
-  fachfehler('ungueltig', 'geraeteschluessel_attestation');
+  failDomain('ungueltig', 'geraeteschluessel_attestation');
 }
 
 /** The chain must pass the check and carry a still-open nonce of this family. */
 export async function depositKey(kx: DevicesContext, f: Family, chain: readonly string[]): Promise<Registration> {
   const k = kx.konfig;
   const widerrufen = applicableList(
-    await kx.jobQueue.liesZustand(REVOCATION_STATE),
+    await kx.jobQueue.readState(REVOCATION_STATE),
     k.attestationRevocationDays,
     kx.uhr.datum(),
   );
@@ -112,17 +112,17 @@ export async function depositKey(kx: DevicesContext, f: Family, chain: readonly 
   });
   if (!p.ok) attestationRejected(f, p.grund);
   const canonical = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
-  if (!readKey(canonical)) fachfehler('ungueltig', 'geraeteschluessel_ungueltig');
+  if (!readKey(canonical)) failDomain('ungueltig', 'geraeteschluessel_ungueltig');
   const da = await kx.geraeteSchluessel.entryThe(f);
   if (da?.attested) {
-    if (da.public_key !== canonical) fachfehler('konflikt', 'geraeteschluessel_vorhanden');
+    if (da.public_key !== canonical) failDomain('konflikt', 'geraeteschluessel_vorhanden');
     return 'gleich';
   }
   if (!(await kx.geraeteSchluessel.takeNonce(f, p.challenge.toString('base64url'))))
     attestationRejected(f, 'challenge');
-  if (await kx.geraeteSchluessel.putKeyAn(f, canonical, KEY_DEADLINE_S)) return 'neu';
+  if (await kx.geraeteSchluessel.createKey(f, canonical, KEY_DEADLINE_S)) return 'neu';
   if ((await kx.geraeteSchluessel.entryThe(f))?.public_key !== canonical)
-    fachfehler('verboten', 'geraeteschluessel_frist');
+    failDomain('verboten', 'geraeteschluessel_frist');
   return 'gleich';
 }
 
@@ -130,9 +130,9 @@ export type Challenge = { challenge: string; nachricht: string; gueltig_bis: Dat
 
 export async function newChallenge(k: DevicesContext, f: Family, aktion: StepAction): Promise<Challenge> {
   if (!(await k.geraeteSchluessel.keyThe(f, k.konfig.geraeteschluesselAltBis)))
-    fachfehler('verboten', 'geraeteschluessel_fehlt');
+    failDomain('verboten', 'geraeteschluessel_fehlt');
   const challenge = randomBytes(32).toString('base64url');
-  const bis = await k.geraeteSchluessel.putChallengeAn(f, challenge, aktion, CHALLENGE_FRIST_S, CHALLENGES_OPEN);
+  const bis = await k.geraeteSchluessel.createChallenge(f, challenge, aktion, CHALLENGE_FRIST_S, CHALLENGES_OPEN);
   return { challenge, nachricht: message(aktion, challenge), gueltig_bis: bis };
 }
 

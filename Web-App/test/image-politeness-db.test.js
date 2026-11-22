@@ -19,7 +19,7 @@ let gleichzeitig = 0,
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async (_u, sn) => {
+  loadSetImage: async (_u, sn) => {
     times.push(Date.now());
     gleichzeitig++;
     maxConcurrent = Math.max(maxConcurrent, gleichzeitig);
@@ -85,7 +85,7 @@ test('the image server is queried gently', { concurrency: 1 }, async t => {
     await t.test('at most 30 requests per minute', () => {
       // The rate results from batch size and tick; both come from the
       // module so that the test repeats no number that may change.
-      const { STAPEL: stapel, TAKT_MS: takt } = _req('src/images/imageDemandRun.js');
+      const { BATCH: stapel, TICK_MS: takt } = _req('src/images/imageDemandRun.js');
       assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
       const jeMinute = stapel * (60_000 / takt);
       assert.ok(jeMinute <= 30, `${jeMinute} Anfragen je Minute — höchstens 30 sind gewollt`);
@@ -154,7 +154,7 @@ test("the image job fetches with the proxy's browser identifier", () => {
   const dist = path.join(ROOT, 'dist', 'src/images/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js fehlt — erst bauen');
   const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/imageCdn.js'));
-  const ua = require(dist).bildUserAgent({ bildUserAgent: null });
+  const ua = require(dist).imageUserAgent({ bildUserAgent: null });
   assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');
   assert.match(ua, /^Mozilla\/5\.0 /);
 });

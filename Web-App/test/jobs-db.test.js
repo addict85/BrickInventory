@@ -54,7 +54,7 @@ test('job table', { concurrency: 1 }, async t => {
   for (const type of [ART, `${ART}-ex`]) {
     require('./helpers/sources')
       .testServices()
-      .jobQueue.reportKindAn({ art: type, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
+      .jobQueue.registerKind({ art: type, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
     await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [type]);
   }
   const leeren = () => db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]);
@@ -66,7 +66,7 @@ test('job table', { concurrency: 1 }, async t => {
     await t.test('an orphaned job is settled after its deadline', async () => {
       const id = await A.placeJobOne(ART, { marke: MARKE, n: 1 });
       // A process occupies it with a deadline of one second and then ends.
-      const tot = await A.belegeAuftrag([ART], 1);
+      const tot = await A.claimJob([ART], 1);
       assert.equal(tot.id, id);
       const erledigt = [];
       const w = createWorker(
@@ -98,7 +98,7 @@ test('job table', { concurrency: 1 }, async t => {
             mal++;
             if (n.immer || mal === 1) throw new Error('Quelle weg');
           },
-          aufgegeben: async (_n, error_message) => {
+          givenUp: async (_n, error_message) => {
             aufgegeben.push(error_message);
           },
         },
@@ -158,7 +158,7 @@ test('job table', { concurrency: 1 }, async t => {
           `SELECT COUNT(*)::int AS n FROM jobs WHERE payload->>'marke' = $1 AND status <> 'erledigt'`,
           [MARKE],
         );
-        if (offen.n === 0 && w1.laufend() === 0 && w2.laufend() === 0) break;
+        if (offen.n === 0 && w1.running() === 0 && w2.running() === 0) break;
         await warte(25);
       }
       await w1.stop(0);
@@ -173,7 +173,7 @@ test('job table', { concurrency: 1 }, async t => {
       for (let i = 0; i < 3; i++) await A.placeJobOne(EX, { marke: MARKE, n: i });
       await db.run('DELETE FROM job_pauses WHERE type = $1', [EX]);
       await A.pauseKind(EX, new Date(Date.now() + 60_000), 'Test');
-      assert.equal(await A.belegeAuftrag([EX], 60, 'x', [EX]), null, 'trotz Pause belegt');
+      assert.equal(await A.claimJob([EX], 60, 'x', [EX]), null, 'trotz Pause belegt');
       await A.endPause(EX);
       let gleichzeitig = 0,
         hoechstens = 0;
@@ -196,7 +196,7 @@ test('job table', { concurrency: 1 }, async t => {
         const offen = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE type = $1 AND status <> 'erledigt'`, [
           EX,
         ]);
-        if (offen.n === 0 && w.laufend() === 0) break;
+        if (offen.n === 0 && w.running() === 0) break;
         await warte(25);
       }
       await w.stop(0);
@@ -246,7 +246,7 @@ test('job table', { concurrency: 1 }, async t => {
           ausfuehren: async (_n, k) => {
             laeuft();
             await afterAbort;
-            lebt = await k.lebenszeichen();
+            lebt = await k.heartbeat();
           },
         },
       });

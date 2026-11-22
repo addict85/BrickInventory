@@ -8,10 +8,10 @@
  *   A  protokolliere() deleted in POST /settings → red: both cases
  *   B  the comparison with the old value deleted (every sent key
  *      counts) → red: “unchanged …”
- *   C  in saveSettings() the writes without kx.transaktion()
+ *   C  in saveSettings() the writes without kx.transact()
  *      (directly one after another) → red: “if an account value fails …” (smtp_host
  *      and log entry remained; 13.11.2026 with `language: 'xx'`)
- *   D  (13.11.2026) the currency again in the loop inside kx.transaktion()
+ *   D  (13.11.2026) the currency again in the loop inside kx.transact()
  *      → red: “a valid currency …” (500: BesideTheTransaction, because the
  *      household switch needs the system frame)
  *

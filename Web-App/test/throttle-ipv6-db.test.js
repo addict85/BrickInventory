@@ -4,10 +4,10 @@
  * IPv4 in IPv6 (::ffff:a.b.c.d) counts like the IPv4 address itself.
  *
  * Counter-checks (measured 01.11.2026, each on its own):
- *   A  drosselAdresse() returns the address unchanged → red: „ipThrottle:
+ *   A  throttleAddress() returns the address unchanged → red: „ipThrottle:
  *      der sechste Versuch aus demselben /64 wird abgewiesen", „Anmeldung:
  *      Spraying aus einem /64 trifft die Grenze je Adresse" and „Schlüssel …"
- *   B  drosselAdresse() left out in countRequest → red only „ipThrottle: …"
+ *   B  throttleAddress() left out in countRequest → red only „ipThrottle: …"
  *   C  the ::ffff: detection removed → red: „IPv4 in IPv6 zählt wie IPv4"
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -24,7 +24,7 @@ const db = testData();
 const ipThrottle = (...a) =>
   _req('src/account/http/login.js').ipThrottle(require('./helpers/sources').testServices().account, ...a);
 const L = _req('src/account/loginLimiter.js');
-const { drosselAdresse } = _req('src/infra/throttleAddress.js');
+const { throttleAddress } = _req('src/infra/throttleAddress.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test.after(() => db.pool.end().catch(() => {}));
@@ -80,11 +80,11 @@ test('login: spraying from a /64 hits the per-address limit', async t => {
 });
 
 test('key per address: /64, IPv4 in IPv6, others stay', () => {
-  assert.equal(drosselAdresse('2001:0db8:0000:0042:1:2:3:4'), '2001:db8:0:42::/64');
-  assert.equal(drosselAdresse('2001:db8::1'), '2001:db8:0:0::/64');
-  assert.equal(drosselAdresse('::1'), '0:0:0:0::/64');
-  assert.equal(drosselAdresse('::ffff:192.0.2.7'), '192.0.2.7', 'IPv4 in IPv6 zählt wie IPv4');
-  assert.equal(drosselAdresse('192.0.2.7'), '192.0.2.7');
-  assert.equal(drosselAdresse('konto:7'), 'konto:7');
-  assert.equal(drosselAdresse('?'), '?');
+  assert.equal(throttleAddress('2001:0db8:0000:0042:1:2:3:4'), '2001:db8:0:42::/64');
+  assert.equal(throttleAddress('2001:db8::1'), '2001:db8:0:0::/64');
+  assert.equal(throttleAddress('::1'), '0:0:0:0::/64');
+  assert.equal(throttleAddress('::ffff:192.0.2.7'), '192.0.2.7', 'IPv4 in IPv6 zählt wie IPv4');
+  assert.equal(throttleAddress('192.0.2.7'), '192.0.2.7');
+  assert.equal(throttleAddress('konto:7'), 'konto:7');
+  assert.equal(throttleAddress('?'), '?');
 });

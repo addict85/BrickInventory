@@ -1,4 +1,4 @@
-import { Zwischenspeicher } from '../infra/cache';
+import { Cache } from '../infra/cache';
 import type { ImagesContext } from './context';
 
 /** Redirecting to the CDN address heals web and app without having to clean up orphaned
@@ -6,7 +6,7 @@ import type { ImagesContext } from './context';
  * file name stem (bild_stamm()). */
 const CACHE_MS = 10 * 60 * 1000;
 const cdnStorage = (k: ImagesContext) =>
-  k.faecher.fach('cdnZuPfad', () => new Zwischenspeicher<string, { url: string | null }>(5000, CACHE_MS));
+  k.faecher.slot('cdnZuPfad', () => new Cache<string, { url: string | null }>(5000, CACHE_MS));
 
 export function imageMasterFromPath(webPath: string): string {
   const file = webPath.split('/').pop() || '';
@@ -19,10 +19,10 @@ export async function cdnForMissingImage(k: ImagesContext, webPath: string): Pro
   const master = imageMasterFromPath(webPath);
   let url: string | null = null;
   if (master) {
-    const z = await k.bildStammCdn.cdnZuBildstamm(master);
+    const z = await k.bildStammCdn.cdnToImageMaster(master);
     url = z?.url ?? null;
   }
-  cdnStorage(k).setze(webPath, { url });
+  cdnStorage(k).set(webPath, { url });
   return url;
 }
 

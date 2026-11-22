@@ -153,7 +153,7 @@ function areaPage(bereich) {
  *  itself, so that every path there counts. `ende()` stops again. */
 /** @param {any} [kontext] @returns {{ notes: [string, string][], ende: () => void }} */
 function imageNotes(kontext = testContext('images')) {
-  const puffer = kontext.faecher.fach('bildbedarf:puffer', () => new Map());
+  const puffer = kontext.faecher.slot('bildbedarf:puffer', () => new Map());
   /** @type {[string, string][]} */
   const notes = [];
   puffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
@@ -194,19 +194,19 @@ let _dataFactory = null;
 /** The services' image machinery (src/catalog/context.ts): one per file, even if it
  *  calls buildAndRequire() several times, so that a replaced part does not get lost. */
 const _imageWorker = {
-  setBildLaden: (...a) =>
-    require(path.join(ROOT, 'dist', 'src/images/setImages.js')).setBildHerunterladen(testContext('images'), ...a),
-  createPreview: (...a) => require(path.join(ROOT, 'dist', 'src/images/thumbs.js')).vorschauErzeugenAus(...a),
+  loadSetImage: (...a) =>
+    require(path.join(ROOT, 'dist', 'src/images/setImages.js')).downloadSetImage(testContext('images'), ...a),
+  createPreview: (...a) => require(path.join(ROOT, 'dist', 'src/images/thumbs.js')).previewFrom(...a),
 };
 
 /** The replaced clients of the services (src/externalSources/sources.ts): empty means real. */
 const _sources = {};
 
-/** The clock of this test file's services (k.uhr, stellbareClock from src/infra/clock.ts): it runs
+/** The clock of this test file's services (k.uhr, settableClock from src/infra/clock.ts): it runs
  *  with the system time, a test jumps over a deadline with vor(ms) instead of waiting it out. */
 let _clock = null;
 function testClock() {
-  if (!_clock) _clock = require(path.join(ROOT, 'dist', 'src/infra/clock.js')).stellbareClock();
+  if (!_clock) _clock = require(path.join(ROOT, 'dist', 'src/infra/clock.js')).settableClock();
   return _clock;
 }
 
@@ -220,15 +220,15 @@ function buildAndRequire() {
   const V = () => require(path.join(ROOT, 'dist', 'startup/wiring.js'));
   const dbModule = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Like server.ts: the access creates the first account in an empty database.
-  const firstStart = () => testServices().account.putStartAdminAn();
-  const testDb = () => (_testDb ??= dbModule.createDb(dbModule.dbKonfigFromEnvironment(), { firstStart }));
+  const firstStart = () => testServices().account.createStartAdmin();
+  const testDb = () => (_testDb ??= dbModule.createDb(dbModule.dbConfigFromEnvironment(), { firstStart }));
   _accessFactory = testDb;
   // The same wiring as the server (buildServices), built only on first use:
   // a test provides clients via testSources(), even after this call.
   _serviceFactory = () => {
     const contexts = {};
     // The configuration that buildServices passes reads on access: a test that
-    // changes a value with umgebung()/setKonfig() also sees it in k.konfig.
+    // changes a value with umgebung()/setConfig() also sees it in k.konfig.
     const K = require(path.join(ROOT, 'dist', 'src/infra/config.js'));
     const konfig = {};
     for (const n of Object.keys(K.konfig()))
@@ -311,7 +311,7 @@ function withContext(rel, modul) {
 function ownerAccess(dbModule, testDb, firstStart) {
   const url = process.env.TEST_DB_EIGEN_URL;
   if (!url || url === process.env.DATABASE_URL) return testDb();
-  const k = dbModule.dbKonfigFromEnvironment();
+  const k = dbModule.dbConfigFromEnvironment();
   // Like server.ts: the first start creates the first account in the system context.
   const { inSystemContext } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
   const eigen = dbModule.createDb(
@@ -407,7 +407,7 @@ function environment(werte) {
   }
   // Not loaded yet: the first konfig() call reads the new values anyway.
   const datei = path.join(ROOT, 'dist', 'src/infra/config.js');
-  if (require.cache[datei]) require(datei).readKonfigNew();
+  if (require.cache[datei]) require(datei).readConfigNew();
 }
 
 /** Both language files together: i18n.js alone delivers an empty I18N.
@@ -655,7 +655,7 @@ function hatParameter(src, name, param, withDefaultNull = false) {
 
 /**
  * Exactly these parameters, in order, regardless of type annotations,
- * default values or line breaks: `checkParameter(src, 'besitzerAnhaengen',
+ * default values or line breaks: `checkParameter(src, 'attachOwners',
  * ['uids', 'rows'])`. A pattern over the whole head would break as soon as someone
  * tightens a type.
  * @param {string} [hinweis] addition for the error message
@@ -823,13 +823,13 @@ function leseLiteral(src, i) {
 
 /**
  * The routes of a router file like a hit of `router.<verb>('<pfad>'`: [whole, verb, path
- * relative to `mount`]. Contract routers name the full path in the key (`endpunkt('GET /api/v1/…'`).
+ * relative to `mount`]. Contract routers name the full path in the key (`endpoint('GET /api/v1/…'`).
  * @param {string} src @param {string} mount @returns {string[][]}
  */
 function routesFromSource(src, mount) {
   const raus = [];
   for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]*)['"`]/g)) raus.push([...m]);
-  for (const m of src.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g)) {
+  for (const m of src.matchAll(/\.endpoint\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g)) {
     const voll = m[2];
     const rel = voll === mount ? '/' : voll.startsWith(`${mount}/`) ? voll.slice(mount.length) : null;
     if (rel !== null) raus.push([m[0], m[1].toLowerCase(), rel]);
@@ -846,7 +846,7 @@ function v1Routes() {
     for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
       gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
     // Contract routers: the key names method and full path.
-    for (const m of s.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g))
+    for (const m of s.matchAll(/\.endpoint\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g))
       gefunden.push([m[1], m[2]]);
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))

@@ -19,7 +19,7 @@ import { buildVouchersRouter } from './vouchers';
 import { buildTrashRouter } from './trash';
 import { buildDeviceRouter } from './device';
 import { buildSetupRouter } from './setup';
-import { vertragsRouter } from '../../src/http/contractRouter';
+import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 
 export function buildApiRouter(
@@ -46,7 +46,7 @@ export function buildApiRouter(
     | 'management'
   >,
 ) {
-  const router = vertragsRouter('/api/v1');
+  const router = contractRouter('/api/v1');
 
   router.attachOne(buildSetupRouter(d)); // /einrichtung/stand (public, see loginAtInbox)
   router.attachOne(buildPdfRouter(d)); // /sets/partslist-pdf/*

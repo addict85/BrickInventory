@@ -36,9 +36,9 @@ test('the portfolio percentage measures prices, not additional purchases', { con
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   await aufraeumen();
 
-  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
+  const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
-  const kurve = async (period = 'week') => portfolioVerlauf(uid, [uid], period, db, getSetting);
+  const kurve = async (period = 'week') => portfolioHistory(uid, [uid], period, db, getSetting);
 
   /** Create a set and give it a price history from `abTag` days before today. */
   const setWith = async (i, abTag, priceAtStart, priceToday) => {

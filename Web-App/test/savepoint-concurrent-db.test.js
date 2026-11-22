@@ -36,7 +36,7 @@ const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 const TABELLE = `sp_gleichzeitig_${process.pid}`;
 
 test('savepoints of a transaction', { concurrency: 1 }, async t => {
-  const db = modul.createDb(modul.dbKonfigFromEnvironment());
+  const db = modul.createDb(modul.dbConfigFromEnvironment());
   try {
     await db.run(`CREATE TABLE ${TABELLE} (wert TEXT NOT NULL)`);
   } catch (e) {
@@ -50,7 +50,7 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
   });
   const schreibe = (tx, w) => tx.run(`INSERT INTO ${TABELLE} (wert) VALUES ($1)`, [w]);
   const werte = async () => (await db.all(`SELECT wert FROM ${TABELLE} ORDER BY wert`)).map(z => z.wert);
-  /** An inner transaction via the access of the outer one (like t.transaktion). */
+  /** An inner transaction via the access of the outer one (like t.transact). */
   const innen = (tx, fn) => tx.db.transaction(fn);
   t.beforeEach(() => db.run(`DELETE FROM ${TABELLE}`));
 
@@ -91,7 +91,7 @@ test('savepoints of a transaction', { concurrency: 1 }, async t => {
 
   await t.test('a straggler does not spoil the next transaction of its connection', async () => {
     // A pool with one connection: the next transaction surely gets the same.
-    const k = modul.dbKonfigFromEnvironment();
+    const k = modul.dbConfigFromEnvironment();
     const eng = modul.createDb({ ...k, pool: { ...k.pool, max: 1 } });
     try {
       let stragglers;

@@ -93,8 +93,8 @@ export function localImagesWithAddress(db: DbInterface) {
 /** An unrecoverable image is cleared here: the UIs fall back
  * to the CDN address. */
 export const CATALOGS_WITH_IMAGE = ['part_color_catalog', 'minifigs_catalog', 'set_catalog'] as const;
-export function forgetLocalImage(db: DbInterface, katalog: (typeof CATALOGS_WITH_IMAGE)[number], imageLocal: string) {
-  return db.run(`UPDATE ${katalog} SET image_local=NULL WHERE image_local=$1`, [imageLocal]);
+export function forgetLocalImage(db: DbInterface, catalog: (typeof CATALOGS_WITH_IMAGE)[number], imageLocal: string) {
+  return db.run(`UPDATE ${catalog} SET image_local=NULL WHERE image_local=$1`, [imageLocal]);
 }
 
 /** Locking and releasing must run on the same session; via the pool

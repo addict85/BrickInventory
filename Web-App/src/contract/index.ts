@@ -66,7 +66,7 @@ export type Input<K extends Key> = Teil<K, 'eingabe'>;
 /** The checked query; empty without a schema, reading there is a translation error. */
 export type Query<K extends Key> = Teil<K, 'abfrage'>;
 
-export function routeZu(key: string): Route | undefined {
+export function routeFor(key: string): Route | undefined {
   return Object.hasOwn(CONTRACT, key) ? (CONTRACT as Record<string, Route>)[key] : undefined;
 }
 

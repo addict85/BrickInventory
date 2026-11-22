@@ -104,8 +104,7 @@ export function resetLinkRequest(kx: AccountContext, email: string): Promise<voi
     const user = throttled ? null : await kx.konten.activeAccountAfterEmail(email);
     const token = crypto.randomBytes(32).toString('hex');
     const k = kx.konten;
-    if (!user || !(await k.setRuecksetzTokenIfFree(user.id, tokenDigest(token), RESET_VALID_MIN, RESET_PAUSE_MIN)))
-      return;
+    if (!user || !(await k.setResetTokenIfFree(user.id, tokenDigest(token), RESET_VALID_MIN, RESET_PAUSE_MIN))) return;
     mailLanguage(kx, user.id)
       // To the STORED address: the entered one also matches via LOWER() as a Unicode variant.
       .then(lang => kx.mail.mailPasswordReset(user.email ?? '', token, mailBasisUrl()!, lang))
@@ -114,9 +113,9 @@ export function resetLinkRequest(kx: AccountContext, email: string): Promise<voi
 }
 
 export function nameToConfirmation(k: AccountContext, token: string): Promise<string | null> {
-  return k.konten.nameZuEmailToken(tokenDigest(token));
+  return k.konten.nameForEmailToken(tokenDigest(token));
 }
 
 export function accountToResetLink(k: AccountContext, token: string) {
-  return k.konten.accountAfterRuecksetzToken(tokenDigest(token));
+  return k.konten.accountAfterResetToken(tokenDigest(token));
 }

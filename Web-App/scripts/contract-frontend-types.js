@@ -54,9 +54,9 @@ function type(s, indent) {
 /** @param {any} s @param {string} indent */
 function object(s, indent) {
   const inner = indent + '  ';
-  const pflicht = new Set(s.required || []);
+  const mandatory = new Set(s.required || []);
   const rows = Object.entries(s.properties || {}).map(
-    ([k, v]) => `${inner}${key(k)}${pflicht.has(k) ? '' : '?'}: ${type(v, inner)};`,
+    ([k, v]) => `${inner}${key(k)}${mandatory.has(k) ? '' : '?'}: ${type(v, inner)};`,
   );
   // The server passes further fields through (passthrough); they are only read
   // once the contract names them.

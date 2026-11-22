@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { cleanup, cleanupDaily } from './cleanup';
 import { FOLLOW_UP_STEPS, runFollowUp } from './startFollowUpRuns';
 import type { ManagementContext } from './context';
@@ -15,15 +15,15 @@ declare module '../jobQueue/jobs' {
   }
 }
 
-export function managementJobTypes(k: ManagementContext): Anmeldung[] {
+export function managementJobTypes(k: ManagementContext): Login[] {
   return [
-    auftragsart({
+    jobKind({
       art: 'nachlauf',
       nutzlast: FollowUpPayload,
       ausfuehren: (n, l) => runFollowUp(k, n, l),
       kontouebergreifend: 'Altbestand und Katalog aller Konten',
     }),
-    auftragsart({
+    jobKind({
       art: 'aufraeumen',
       nutzlast: EMPTY,
       ausfuehren: (_n, l) => cleanup(k, l),
@@ -31,7 +31,7 @@ export function managementJobTypes(k: ManagementContext): Anmeldung[] {
       kontouebergreifend: 'Reste aller Konten',
       zeitplan: { minuten: { vorgabe: 60 } },
     }),
-    auftragsart({
+    jobKind({
       art: 'aufraeumen_taeglich',
       nutzlast: EMPTY,
       ausfuehren: (_n, l) => cleanupDaily(k, l),

@@ -1,29 +1,29 @@
 // Domain-free and without Express: db/, clients/ and every service report via this.
 // How an error becomes an HTTP response is in httpAntwort.ts.
-import { FEHLER, errorText, responseLanguage, type ErrorCode } from './errorTexts';
+import { ERRORS, errorText, responseLanguage, type ErrorCode } from './errorTexts';
 import { transactionOfPath } from './accountContext';
 
 /** Replacement for `.catch(() => {})`: the step should not make the request fail,
  * but leave a trace.
- * @param kontext short origin information, e.g. 'parts:image_local' */
-export function logAndContinue(kontext: string) {
-  return (e: unknown) => continueDespiteError(kontext, e);
+ * @param context short origin information, e.g. 'parts:image_local' */
+export function logAndContinue(context: string) {
+  return (e: unknown) => continueDespiteError(context, e);
 }
 
-function continueDespiteError(kontext: string, e: unknown) {
-  checkFallbackInTransaction(kontext, e);
-  logWarning(kontext, e);
+function continueDespiteError(context: string, e: unknown) {
+  checkFallbackInTransaction(context, e);
+  logWarning(context, e);
 }
 
-function logWarning(kontext: string, e: unknown) {
+function logWarning(context: string, e: unknown) {
   const raw = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
-  console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(raw)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+  console.warn(`[weiter-trotz-fehler] ${context}: ${String(raw)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
 /** With a substitute value, where the caller keeps computing. */
-export function reportAndDeliver<T>(kontext: string, ersatz: T) {
+export function reportAndDeliver<T>(context: string, ersatz: T) {
   return (e: unknown): T => {
-    continueDespiteError(kontext, e);
+    continueDespiteError(context, e);
     return ersatz;
   };
 }
@@ -32,12 +32,14 @@ export function reportAndDeliver<T>(kontext: string, ersatz: T) {
  * (25P02); a substitute value would hide the cause behind this follow-up error. A
  * database error therefore always propagates, another one only in tests; in
  * production it is reported loudly because the body keeps computing with the substitute. */
-export function checkFallbackInTransaction(kontext: string, e: unknown): void {
+export function checkFallbackInTransaction(context: string, e: unknown): void {
   const tx = transactionOfPath();
   if (!tx?.verdirbt(e)) return;
   if (isDatabaseError(e)) throw e;
-  if (tx.streng) throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
-  console.error(`[ersatz-in-transaktion] ${kontext}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+  if (tx.streng) throw new Error(`Ersatzwert in einer Transaktion (${context}): ${errorMessage(e)}`, { cause: e });
+  console.error(
+    `[ersatz-in-transaktion] ${context}: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
+  );
 }
 
 /** An error of the server (pg.DatabaseError) carries SQLSTATE and severity. */
@@ -47,22 +49,22 @@ export function isDatabaseError(e: unknown): boolean {
 }
 
 /** An already missing file is the goal, not an error. */
-export function withoutMissingFile(kontext: string): (e: unknown) => void;
-export function withoutMissingFile<T>(kontext: string, ersatz: T): (e: unknown) => T;
-export function withoutMissingFile<T>(kontext: string, ersatz?: T) {
+export function withoutMissingFile(context: string): (e: unknown) => void;
+export function withoutMissingFile<T>(context: string, ersatz: T): (e: unknown) => T;
+export function withoutMissingFile<T>(context: string, ersatz?: T) {
   return (e: unknown): T | undefined => {
-    if (errorCode(e) !== 'ENOENT') continueDespiteError(kontext, e);
+    if (errorCode(e) !== 'ENOENT') continueDespiteError(context, e);
     return ersatz;
   };
 }
 
 /** Only the log: whoever reports and then decides themselves delivers no substitute. */
-export function reportError(kontext: string, e: unknown) {
-  logWarning(kontext, e);
+export function reportError(context: string, e: unknown) {
+  logWarning(context, e);
 }
 
 // Not only Error gets thrown; otherwise "Error: undefined".
-export function fehlertext(e: unknown): string {
+export function errorMessage(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;
   if (typeof e === 'string' && e) return e;
   const m = e && typeof e === 'object' ? (e as { message?: unknown }).message : undefined;
@@ -86,11 +88,11 @@ export function beforeThe(s: string, separator: string): string {
  * sentence, everything else (SQL, file paths, third-party APIs) only the log. */
 export function publicError(
   e: unknown,
-  kontext: string,
+  context: string,
   req?: { headers?: Record<string, unknown> },
 ): { error: string; code: ErrorCode } {
   const code = errorCode(e);
-  if (code && code in FEHLER) {
+  if (code && code in ERRORS) {
     return {
       code: code as ErrorCode,
       error: errorText(
@@ -100,6 +102,6 @@ export function publicError(
       ),
     };
   }
-  reportError(kontext, e);
+  reportError(context, e);
   return { code: 'interner_fehler', error: errorText('interner_fehler', responseLanguage(req)) };
 }

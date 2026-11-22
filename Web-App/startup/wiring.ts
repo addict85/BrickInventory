@@ -2,8 +2,8 @@
  * (via src/externalSources) arise from one database access. The entry point (server.ts, scripts,
  * test helpers) holds the result and passes it on; there is no process store. */
 import path from 'node:path';
-import { createJobs, type Anmeldung, type JobKind } from '../src/jobQueue';
-import { dbKonfigFromEnvironment, createDb, type Db } from '../db/database';
+import { createJobs, type Login, type JobKind } from '../src/jobQueue';
+import { dbConfigFromEnvironment, createDb, type Db } from '../db/database';
 import { createSets } from '../src/sets';
 import { createHousehold } from '../src/household';
 import { createMail } from '../src/mail';
@@ -21,29 +21,29 @@ import { createFinances } from '../src/finances';
 import { createAccount } from '../src/account';
 import { createFactors } from '../src/factors';
 import { createProfile } from '../src/profile';
-import { createForeignSources, type Quellen } from '../src/externalSources';
+import { createForeignSources, type Sources } from '../src/externalSources';
 import { createSettings } from '../src/settings';
 import { createThrottle } from '../src/throttle';
 import { createDevices } from '../src/devices';
-import { konfig, type Konfig } from '../src/infra/config';
+import { konfig, type AppConfig } from '../src/infra/config';
 import { systemClock, type Clock } from '../src/infra/clock';
 import { LESEVERTRAG, type Services } from '../src/services';
 
-export type { Services as Dienste } from '../src/services';
+export type { Services } from '../src/services';
 
 /** What a test provides instead of the real thing: own image works, own external sources. */
 export interface Components {
   bildwerk?: ImageWorker;
   /** Replaced clients (src/externalSources/sources.ts), read at call time. */
-  quellen?: Partial<Quellen>;
+  quellen?: Partial<Sources>;
   /** Test helpers only: every factory stores its context here (insight). */
   contexts?: Record<string, unknown>;
   /** The configuration; without a value that of the process (src/infra/config.ts). */
-  konfig?: Readonly<Konfig>;
+  konfig?: Readonly<AppConfig>;
   /** The services' time (k.uhr); without a value that of the system. */
   uhr?: Clock;
 }
-type Assigned = Components & { konfig: Readonly<Konfig>; uhr: Clock };
+type Assigned = Components & { konfig: Readonly<AppConfig>; uhr: Clock };
 
 // The catalog import runs in a process of its own; its entry point lives in the build under jobs/.
 const IMPORT_PROCESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
@@ -88,20 +88,20 @@ export class KindNotSignedIn extends Error {}
 
 /** Every area registers its job kinds with payload and executor; the queue knows none. */
 function registerJobTypes(d: Services): void {
-  const kinds: Anmeldung[] = [
-    ...d.images.auftragsarten(),
-    ...d.account.auftragsarten(),
-    ...d.catalog.auftragsarten(IMPORT_PROCESS),
-    ...d.finances.auftragsarten(),
-    ...d.sets.auftragsarten(),
+  const kinds: Login[] = [
+    ...d.images.jobKinds(),
+    ...d.account.jobKinds(),
+    ...d.catalog.jobKinds(IMPORT_PROCESS),
+    ...d.finances.jobKinds(),
+    ...d.sets.jobKinds(),
     ...d.collection.jobKinds(),
     ...d.parts.jobKinds(),
     ...d.management.jobTypes(),
   ];
-  for (const a of kinds) d.jobQueue.reportKindAn(a);
+  for (const a of kinds) d.jobQueue.registerKind(a);
   const signedIn = new Set(d.jobQueue.signedInKinds().map(a => a.art));
-  const fehlt = Object.keys(DECLARED_KINDS).filter(a => !signedIn.has(a as JobKind));
-  if (fehlt.length) throw new KindNotSignedIn(`Auftragsart ohne Anmeldung: ${fehlt.join(', ')}`);
+  const isMissing = Object.keys(DECLARED_KINDS).filter(a => !signedIn.has(a as JobKind));
+  if (isMissing.length) throw new KindNotSignedIn(`Auftragsart ohne Anmeldung: ${isMissing.join(', ')}`);
 }
 
 type Show = ReturnType<typeof inspectIn>;
@@ -238,10 +238,10 @@ function buildAreas(db: Db, components: Assigned): Services {
  * account via the services that only arise after the access. */
 export function wireProcess(): { db: Db; dienste: Services } {
   const finished: { d: Services | null } = { d: null };
-  const db = createDb(dbKonfigFromEnvironment(), {
+  const db = createDb(dbConfigFromEnvironment(), {
     firstStart: async () => {
       if (!finished.d) throw new Error('Erststart vor der Verdrahtung');
-      await finished.d.account.putStartAdminAn();
+      await finished.d.account.createStartAdmin();
     },
   });
   finished.d = buildServices(db);

@@ -31,7 +31,7 @@ function withStartPoint(rawPoints: CurvesPoint[], period: string, purchaseTotal:
 
 /** `db` and `getSetting` can be passed in so that the calculation stays testable
  * without a database. */
-export async function portfolioVerlauf(
+export async function portfolioHistory(
   k: FinancesContext,
   viewerId: number,
   idsChoice: Sicht | number[],

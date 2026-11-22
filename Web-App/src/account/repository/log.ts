@@ -21,7 +21,7 @@ export type AdminAction =
   | 'uebernahme_abgebrochen';
 
 /** Call before deleting — afterwards the name can no longer be determined. */
-export async function protokolliere(
+export async function logEntry(
   db: DbInterface,
   adminId: number,
   targetId: number,

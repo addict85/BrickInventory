@@ -13,11 +13,11 @@
  *   B  the check possibleSetNumber() removed → red: “a number with
  *      path parts” (404 instead of 400)
  * Counter-checks (measured on 02.11.2026):
- *   C  the check for anzahlAnleitungen() removed → red: “whoever has the set
+ *   C  the check for instructionCount() removed → red: “whoever has the set
  *      does not replace a shared instruction” (200 instead of 403)
  *   D  deleteInstructions() again for everyone → red: “a foreign account” and C
  * Since 05.11.2026 a job loads, the route answers 202. Counter-check:
- *   E  anleitungEinreihen() not called in the route → red: “the reload
+ *   E  enqueueInstruction() not called in the route → red: “the reload
  *      is pending as a job”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -39,7 +39,7 @@ const { holdsSet, catalogSet } = require('./helpers/inventory');
 // No fetch at the sources: the reload finds nothing here.
 const anlPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/catalog/instructions.js'));
 const echt = require(anlPath);
-require.cache[anlPath].exports = Object.assign({}, echt, { setAnleitungenLaden: async () => [] });
+require.cache[anlPath].exports = Object.assign({}, echt, { loadSetInstructions: async () => [] });
 
 const db = testData();
 const SET = '99072-1',

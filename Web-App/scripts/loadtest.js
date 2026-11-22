@@ -34,7 +34,7 @@ const DURATION_S = arg('dauer', 10); // measurement duration per pass
 const N_SETS = arg('sets', 800); // collection size (as in pass 119)
 
 const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
-const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 // The routes call the areas via their wiring, as in the server.
 const wiring = require(path.join(ROOT, 'dist/startup/wiring.js'));
 const dienste = wiring.buildServices(db);
@@ -189,7 +189,7 @@ async function seed() {
 // The app from startup/app.ts (baueApp); only the session store is provided,
 // so that the run gets by without login.
 function buildApp() {
-  return require(path.join(ROOT, 'dist/startup/app.js')).baueApp({
+  return require(path.join(ROOT, 'dist/startup/app.js')).buildApp({
     pool: db.pool,
     konfig: require(path.join(ROOT, 'dist/src/infra/config.js')).konfig(),
     sitzungsGeheimnis: 'lasttest-sitzungsgeheimnis-lang-genug',
@@ -279,12 +279,12 @@ async function main() {
   /** @type {Record<string, number[]>} */
   const measurement = Object.fromEntries(PATHS.map(([n]) => [n, []]));
   /** @type {Record<string, number>} */
-  const fehler = {};
+  const error = {};
   const end = Date.now() + DURATION_S * 1000;
   let total = 0;
 
   /** @param {number} id */
-  const nutzer = async id => {
+  const userRow = async id => {
     // Staggered start, so that not all run in lockstep.
     await new Promise(r => setTimeout(r, (id * 37) % 250));
     while (Date.now() < end) {
@@ -299,14 +299,14 @@ async function main() {
         measurement[name] ??= [];
         measurement[name].push(ms);
         total++;
-        if (!ok) fehler[`${name} → HTTP ${status}`] = (fehler[`${name} → HTTP ${status}`] || 0) + 1;
+        if (!ok) error[`${name} → HTTP ${status}`] = (error[`${name} → HTTP ${status}`] || 0) + 1;
       } catch (e) {
-        fehler[`${name} → ${errorText(e)}`] = (fehler[`${name} → ${errorText(e)}`] || 0) + 1;
+        error[`${name} → ${errorText(e)}`] = (error[`${name} → ${errorText(e)}`] || 0) + 1;
       }
     }
   };
   const t0 = Date.now();
-  await Promise.all(Array.from({ length: USERS }, (_, i) => nutzer(i)));
+  await Promise.all(Array.from({ length: USERS }, (_, i) => userRow(i)));
   const sec = (Date.now() - t0) / 1000;
 
   // ── Output ──────────────────────────────────────────────────────────────────
@@ -327,7 +327,7 @@ async function main() {
         `${p95.toFixed(0).padStart(6)}  ${max.toFixed(0).padStart(6)}  ${factor.toFixed(1).padStart(6)}x  ${String(w.length).padStart(4)}`,
     );
   }
-  const errorList = Object.entries(fehler);
+  const errorList = Object.entries(error);
   if (errorList.length) {
     // A run with errors does not measure what it claims to: red, also for the test that starts the script.
     process.exitCode = 1;

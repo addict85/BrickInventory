@@ -2,7 +2,7 @@
  * by an area in its compartments (cache.ts), so that two accesses in one
  * process (tests, tools) do not deceive each other. Whoever stores something here
  * names the reason in REASONS; the ratchet in test/ratschen.test.js counts the rest. */
-import { Faecher } from './cache';
+import { Compartments } from './cache';
 
 export const REASONS = {
   apiDrossel: 'Anfragebudget je Konto: schützt Rechenzeit und Speicher dieses Prozesses, gleich welcher Zugang',
@@ -27,8 +27,8 @@ export const REASONS = {
   platzhalterBild: 'Inhalt einer Datei aus public/, für jeden Zugang derselbe und beim Blättern dutzendfach gebraucht',
 } as const;
 
-const compartments = new Faecher();
+const compartments = new Compartments();
 
 export function processWide<T>(name: keyof typeof REASONS, create: () => T): T {
-  return compartments.fach(name, create);
+  return compartments.slot(name, create);
 }

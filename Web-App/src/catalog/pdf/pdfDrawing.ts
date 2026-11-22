@@ -5,13 +5,13 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import PDFDocument from 'pdfkit';
 import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
 import { reportError } from '../../infra/error';
-import type { Nutzlast } from '../../jobQueue';
+import type { Payload } from '../../jobQueue';
 
 /** In a worker_thread: pdfkit draws synchronously and with thousands of rows would stall
  * the event loop, which in the "beides" process also answers requests. */
 
-export type PdfTeil = Nutzlast<'pdf'>['parts'][number];
-export type PdfSet = Nutzlast<'pdf'>['sets'][number];
+export type PdfTeil = Payload<'pdf'>['parts'][number];
+export type PdfSet = Payload<'pdf'>['sets'][number];
 
 /** Only inside the image folder: the list comes from the client, an `image_local`
  * like `/images/../../…` would otherwise read foreign files into the PDF. */
@@ -91,11 +91,11 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
 
   const { colorOrder, byColor } = afterColor(parts);
   // Preload and release per color group: only one group is held in memory.
-  const bilder = new Map<string, Buffer | null>();
+  const images = new Map<string, Buffer | null>();
   for (const colorName of colorOrder) {
     const colorParts = byColor.get(colorName) ?? [];
-    await loadImages(colorParts, bilder);
-    drawColorGroup(doc, colorName, colorParts, bilder, seiten.newPage);
+    await loadImages(colorParts, images);
+    drawColorGroup(doc, colorName, colorParts, images, seiten.newPage);
   }
 
   seiten.footer();
@@ -144,14 +144,14 @@ function drawHeader(doc: Doc, sets: PdfSet[], parts: PdfTeil[]) {
   doc.moveDown(1);
 }
 
-async function loadImages(group: PdfTeil[], bilder: Map<string, Buffer | null>) {
-  bilder.clear();
+async function loadImages(group: PdfTeil[], images: Map<string, Buffer | null>) {
+  images.clear();
   const paths = [...new Set(group.map(pdfImagePath).filter((fp): fp is string => !!fp))];
   for (let i = 0; i < paths.length; i += 32) {
     const piece = paths.slice(i, i + 32);
     const bufs = await Promise.all(piece.map(fp => fsp.readFile(fp).catch(withoutImage)));
     piece.forEach((fp, j) => {
-      bilder.set(fp, bufs[j] ?? null);
+      images.set(fp, bufs[j] ?? null);
     });
   }
 }
@@ -160,7 +160,7 @@ function drawColorGroup(
   doc: Doc,
   colorName: string,
   colorParts: Row[],
-  bilder: Map<string, Buffer | null>,
+  images: Map<string, Buffer | null>,
   newPage: () => void,
 ) {
   if (doc.y > 700) newPage();
@@ -188,16 +188,16 @@ function drawColorGroup(
   doc.moveTo(START_X, doc.y).lineTo(555, doc.y).lineWidth(0.5).strokeColor('#e2e8f0').stroke();
   doc.moveDown(0.2);
 
-  for (const p of colorParts) drawPart(doc, p, bilder, newPage);
+  for (const p of colorParts) drawPart(doc, p, images, newPage);
   doc.moveDown(0.6);
 }
 
-function drawPart(doc: Doc, p: Row, bilder: Map<string, Buffer | null>, newPage: () => void) {
+function drawPart(doc: Doc, p: Row, images: Map<string, Buffer | null>, newPage: () => void) {
   const rowHeight = 36;
   if (doc.y > 730 - rowHeight) newPage();
   const rowY = doc.y;
   const fp = pdfImagePath(p);
-  const imgBuf = fp ? bilder.get(fp) || null : null;
+  const imgBuf = fp ? images.get(fp) || null : null;
   let imgOffset = 0;
   if (imgBuf) {
     try {

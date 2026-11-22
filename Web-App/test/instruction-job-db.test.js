@@ -28,9 +28,9 @@ Module.prototype.require = function (name, ...rest) {
   if (!/[/\\]instructions(\.js)?$/.test(name)) return m;
   return {
     ...m,
-    anzahlAnleitungen: async () => 0,
+    instructionCount: async () => 0,
     lastFetchWarExtern: () => abruf.extern,
-    setAnleitungenLaden: async () => {
+    loadSetInstructions: async () => {
       abruf.aufrufe++;
       if (abruf.error_message) throw abruf.error_message;
       return 1;
@@ -73,10 +73,10 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     await zuruecksetzen();
     abruf.extern = false;
     abruf.error_message = null;
-    await Q.anleitungLaden({ set_number: '10001-1' });
+    await Q.loadInstruction({ set_number: '10001-1' });
     assert.equal(await pause(), null, 'ohne fremden Abruf keine Pause');
     abruf.extern = true;
-    await Q.anleitungLaden({ set_number: '10002-1' });
+    await Q.loadInstruction({ set_number: '10002-1' });
     const s = await inSec();
     assert.ok(s >= 13 && s <= 15, `nach einem echten Abruf ${s} s Abstand statt 15`);
   });
@@ -86,7 +86,7 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     abruf.error_message = new Error('Cloudflare error 1015: rate limited');
     const gesehen = [];
     for (let i = 0; i < 5; i++) {
-      await assert.rejects(Q.anleitungLaden({ set_number: '10003-1' }), e => e instanceof JobMove);
+      await assert.rejects(Q.loadInstruction({ set_number: '10003-1' }), e => e instanceof JobMove);
       gesehen.push(await inSec());
       await db.run(`UPDATE job_pauses SET until_at = NOW() WHERE type = 'anleitung'`);
     }
@@ -98,7 +98,7 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'nach der vierten Sperre until_at morgen');
     abruf.error_message = null;
     abruf.extern = false;
-    await Q.anleitungLaden({ set_number: '10003-1' });
+    await Q.loadInstruction({ set_number: '10003-1' });
     assert.equal(await pause(), null, 'ein Erfolg setzt die Leiter zurück');
   });
 
@@ -109,21 +109,21 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
     const vorher = abruf.aufrufe;
     try {
-      await assert.rejects(Q.anleitungLaden({ set_number: '10004-1' }), e => e instanceof JobMove);
+      await assert.rejects(Q.loadInstruction({ set_number: '10004-1' }), e => e instanceof JobMove);
       assert.equal(abruf.aufrufe, vorher, 'trotz fremder Sperre abgerufen');
     } finally {
       await fremd.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
       fremd.release();
     }
-    await Q.anleitungLaden({ set_number: '10004-1' });
+    await Q.loadInstruction({ set_number: '10004-1' });
     assert.equal(abruf.aufrufe, vorher + 1, 'Gegenprobe: ohne fremde Sperre wird abgerufen');
   });
 
   await t.test('a set is open only once', async () => {
     await db.run(`DELETE FROM jobs WHERE type = 'anleitung'`);
     const E = _req('src/catalog/instructionJob.js');
-    await E.anleitungEinreihen('10005');
-    await E.anleitungEinreihen('10005-1');
+    await E.enqueueInstruction('10005');
+    await E.enqueueInstruction('10005-1');
     const z = await require('./helpers/sources').testServices().jobQueue.countKind('anleitung');
     assert.equal(z.offen + z.laeuft, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
   });

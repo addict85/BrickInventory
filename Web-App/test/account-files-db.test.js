@@ -8,7 +8,7 @@
  *      and card number are in plain text on disk”
  *   B  encryptLegacyVoucherFiles() skips everything → red: “the
  *      legacy stock stays plain text”
- *   C  in kontoEntfernen() (src/account) the call of deleteAccountFiles() removed → red:
+ *   C  in removeAccount() (src/account) the call of deleteAccountFiles() removed → red:
  *      “data/uploads/<id> stays after deletion”
  *   D  GET /vouchers/:id/pdf delivers the file raw again (deliverFile) →
  *      red: “the delivered PDF is not the uploaded one”

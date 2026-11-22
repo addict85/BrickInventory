@@ -114,7 +114,7 @@ test('a cleared purchase price is filled from the market price — web app AND a
       // And the tile at the top — that is where Marco's dash was. Since
       // migration 0032 it computes from the entries; the stock has two here (7.30
       // used, 12.55 new, one copy each), the mean is 9.925.
-      const kachel = await _req('src/sets/read.js').zustandsAggregat(
+      const kachel = await _req('src/sets/read.js').conditionAggregate(
         require('./helpers/sources').testContext('sets'),
         [subId],
         SN,

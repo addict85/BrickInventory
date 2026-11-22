@@ -1,9 +1,9 @@
 /** The imports other than the set CSV (which continues row-by-row in setCsvImport.ts).
  * The route submits and waits (runImport). */
 import { csvImportReport } from '../infra/csvExport';
-import { Fachfehler } from '../infra/errorTexts';
+import { DomainError } from '../infra/errorTexts';
 import { z } from 'zod';
-import type { JobRow, JobContext, Fortschritt } from '../jobQueue';
+import type { JobRow, JobContext, Progress } from '../jobQueue';
 import { SetCsvPayload } from '../sets';
 import { importWantedXml } from './wantedXmlImport';
 import type { CollectionContext } from './context';
@@ -66,7 +66,7 @@ export function runImport<T = Record<string, unknown>, Q extends ImportSource = 
   uid: number,
   quelle: Q,
   eingabe: ImportInput<Q>,
-  o: { fortschritt?: (f: Fortschritt) => void; wartenMs?: number } = {},
+  o: { progress?: (f: Progress) => void; wartenMs?: number } = {},
 ): Promise<T> {
   // tsc doesn't link Q to the union's branch; it's checked when enqueuing.
   const payload = { user_id: uid, quelle, eingabe } as z.input<typeof ImportPayloadSchema>;
@@ -96,7 +96,7 @@ async function runImportFrom(kx: CollectionContext, n: ImportPayload, k: JobCont
   try {
     await kx.jobQueue.setResult(a.id, await resultFrom(kx, n, k));
   } catch (e) {
-    if (!(e instanceof Fachfehler)) throw e;
+    if (!(e instanceof DomainError)) throw e;
     await kx.jobQueue.setSlotError(a.id, e);
   }
 }

@@ -24,7 +24,7 @@
  *   G  `validToken: k.zugaenge.validToken` back in src/account/area.ts → red „Zahl
  *      der Dienstschlüssel“ (538, allowed 537) and „roh weiterreichen“ (konto.validToken)
  *   H  'catalog.catalogStatus' deleted from RAW_ALLOWED → red „roh weiterreichen“ (the form
- *      mit(k.db, setStamm.catalogStatus), recognized via the build as a repository function)
+ *      mit(k.db, setMaster.catalogStatus), recognized via the build as a repository function)
  *   I  JE_AREA.factors set to 17 → red „Schlüssel je Bereich“ (factors 18, allowed 17)
  */
 const test = require('node:test');
@@ -52,7 +52,7 @@ const GANZ = new Set(['quellen', 'drossel']);
 /** Every service as `bereich.name` or `bereich.teil.name`. */
 function leaves(x, vor) {
   return Object.entries(/** @type {Record<string, unknown>} */ (x)).flatMap(([n, v]) => {
-    if (n === 'ueber') return [];
+    if (n === 'over') return [];
     const teil = v && typeof v === 'object' && !GANZ.has(n) && Object.values(v).some(w => typeof w === 'function');
     return teil ? leaves(v, `${vor}.${n}`) : [`${vor}.${n}`];
   });
@@ -144,17 +144,17 @@ test('service keys become fewer, never more, and each has a caller', () => {
 
 /** Services that pass a repository through raw, with a reason; the list gets shorter, never longer. */
 const RAW_ALLOWED = {
-  'jobQueue.belegeAuftrag': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.claimJob': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.giveBack': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.lebenszeichen': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.rememberExclusive': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
-  'jobQueue.letzteJeArt': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
+  'jobQueue.lastPerKind': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
   'jobQueue.cleanCompletedOn': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',
   'jobQueue.liesPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
   'jobQueue.pauseKind': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
-  'jobQueue.liesZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'jobQueue.readState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'jobQueue.deleteState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
-  'jobQueue.setzeZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'jobQueue.setState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'jobQueue.countState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'throttle.hourlyState': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
   'throttle.countHour': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
@@ -191,7 +191,7 @@ function boundRepositories(b, leavesOfArea, q) {
   if (!factory) return [];
   const repo = repositoryFunctions(b, q);
   const raus = [];
-  for (const m of factory.matchAll(/^\s*(\w+): mit\(\w+\.db,\s*(\w+)\.(\w+)\)/gm)) {
+  for (const m of factory.matchAll(/^\s*(\w+): bound\(\w+\.db,\s*(\w+)\.(\w+)\)/gm)) {
     const imp = new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`).exec(factory);
     const f = imp && _req(`src/${b}/${imp[1]}.js`)[m[3]];
     if (f && repo.has(f)) raus.push(...leavesOfArea.filter(s => s.endsWith(`.${m[1]}`)));
@@ -222,7 +222,7 @@ test('no service key passes a repository through raw', () => {
     }
     for (const s of boundRepositories(b, leavesOfArea, q)) roh.add(s);
   }
-  assert.ok(roh.has('jobQueue.liesZustand') && roh.has('catalog.catalogStatus'), 'Selbstbeweis: beide Formen gefunden');
+  assert.ok(roh.has('jobQueue.readState') && roh.has('catalog.catalogStatus'), 'Selbstbeweis: beide Formen gefunden');
   assert.deepEqual(
     [...roh].sort(),
     Object.keys(RAW_ALLOWED).sort(),

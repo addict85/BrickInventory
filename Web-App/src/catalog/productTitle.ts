@@ -15,7 +15,7 @@ function qualityIndex(places: number): number {
 
 /** `jahr`: the current one; a number beyond it is not a release year.
  * @returns candidates in descending quality; empty if nothing remains */
-export function setnummerCandidates(title: string, jahr: number): string[] {
+export function setNumberCandidates(title: string, jahr: number): string[] {
   if (!title) return [];
   const yearLimit = jahr + 1;
 
@@ -33,9 +33,9 @@ export function setnummerCandidates(title: string, jahr: number): string[] {
     const suffix = hits[3] ?? '';
     const after = title.slice(hits.index + hits[0].length);
     if (QUANTITY_WORD.test(after)) continue; // Rule 1: part count
-    const zahl = parseInt(digits, 10);
+    const number = parseInt(digits, 10);
     // With a variant suffix it is no longer a year but a set number.
-    const jahr = !suffix && digits.length === 4 && zahl >= 1949 && zahl <= yearLimit;
+    const jahr = !suffix && digits.length === 4 && number >= 1949 && number <= yearLimit;
     found.push({
       wert: digits + suffix,
       withSuffix: !!suffix,

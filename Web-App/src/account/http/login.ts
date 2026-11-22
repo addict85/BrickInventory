@@ -5,17 +5,17 @@ import { rotationDue, type TokenCheck } from '../deviceToken';
 import type { LoginResult } from '../loginCheck';
 import type { ConfirmationRejection, Factor } from '../passwordConfirmation';
 import { createHash } from 'node:crypto';
-import { routeZu } from '../../contract';
+import { routeFor } from '../../contract';
 import { errorText, responseLanguage } from '../../infra/errorTexts';
 import { reportAndDeliver } from '../../infra/error';
 import { userId, signedInUserId } from '../../http/userId';
 import { sendError } from '../../http/httpResponse';
 import { STATUS_THE_KIND } from '../../http/errorKind';
-import { versuche } from '../../infra/result';
+import { attempts } from '../../infra/result';
 import type { AccountServices } from '../area';
 
 /** Until the factor is set up only this works (loginAtInbox); the rule lives in openFactorRequired. */
-export async function zweiterFaktorPflicht(konto: AccountServices, req: Request): Promise<boolean> {
+export async function secondFactorRequired(konto: AccountServices, req: Request): Promise<boolean> {
   const uid = userId(req);
   const admin = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
   return uid !== null && (await konto.openFactorRequired(uid, admin));
@@ -27,7 +27,7 @@ export function address(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
 
-export function anmelden(
+export function login(
   konto: AccountServices,
   req: Request,
   username: string | null | undefined,
@@ -72,7 +72,7 @@ export async function establishSession(
       req.session.save((e2?: Error) =>
         e2
           ? reject(e2)
-          : versuche('anmeldung:sitzungen-begrenzen', konto.sitzungen.limit(data.userId, req.sessionID)).then(() =>
+          : attempts('anmeldung:sitzungen-begrenzen', konto.sitzungen.limit(data.userId, req.sessionID)).then(() =>
               resolve(undefined),
             ),
       );
@@ -102,7 +102,7 @@ export async function userIdTheRequest(konto: AccountServices, req: Request): Pr
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
   const check = await konto
-    .pruefeToken(token, { ip: req.ip })
+    .checkToken(token, { ip: req.ip })
     .catch(reportAndDeliver<TokenCheck>('auth:nutzerZumToken', { nutzer: null }));
   const user = check.nutzer;
   if (check.grund) req.tokenRejection = check.grund;
@@ -146,10 +146,10 @@ export function loginOrTokenGuard(konto: AccountServices, opts: { timeoutMs?: nu
 
 /** The computation lives in src/http/userId: the throttle there needs it too,
  * and infra may not import an HTTP layer. The name stays here for the routes. */
-export { userId as nutzerId, signedInUserId };
+export { userId, signedInUserId };
 
 /** Session OR token: `req.session.username` is undefined for token requests. */
-export function nutzerName(req: Request): string | null {
+export function userName(req: Request): string | null {
   return req.session?.username ?? req.apiUser?.username ?? null;
 }
 
@@ -158,7 +158,7 @@ export function perSession(req: Request): boolean {
   return !!req.session?.userId;
 }
 
-export function istVerwalter(req: Request): boolean {
+export function isAdmin(req: Request): boolean {
   if (req.session?.isAdmin) return true;
   return !!req.apiUser?.is_admin;
 }
@@ -210,7 +210,7 @@ export async function confirmWithFactor(
   // The key under which the contract router registered the route; an error of the
   // wiring, not a case of the request, hence loud in operation too.
   const key = String(res.locals.contractKey ?? '');
-  if (routeZu(key) && !routeZu(key)?.bestaetigung)
+  if (routeFor(key) && !routeFor(key)?.bestaetigung)
     throw new Error(`${key} bestätigt, ohne \`bestaetigung\` im Vertrag`);
   // The checked body (checkInput): the confirmation fields are in the contract (bestaetigt()).
   const input = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};

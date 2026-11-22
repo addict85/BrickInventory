@@ -21,7 +21,7 @@
  * (asAccount, route via testServer) as the runtime role; test data via the owner role.
  *   B' (13.11.) B repeated via the set-up sources → red: “the request asks
  *      no network …” (name „Testset“ already in the request) and “the job …”
- *   G  (13.11.) in setAngaben() (rebrickableKatalog.ts) again the imported holeSet
+ *   G  (13.11.) in setAngaben() (rebrickableCatalog.ts) again the imported holeSet
  *      instead of quellen(k) → red: “the job completes …” (no network call counted)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -47,14 +47,14 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       return { set_num: sn, name: 'Testset', year: 2020, theme_id: 990001, num_parts: 10, set_img_url: null };
     },
     getThemeName: async () => 'Test',
-    setAngaben: async () => null,
+    setDetails: async () => null,
     bricklinkRequest: async (_m, pfad) => {
       netz.push(`preis ${pfad.split('/')[3]}`);
       return { avg_price: '42', qty_avg_price: '42', currency_code: 'EUR' };
     },
   });
   testImageWorker(t, {
-    setBildLaden: async (_u, sn) => {
+    loadSetImage: async (_u, sn) => {
       netz.push(`bild ${sn}`);
       return null;
     },
@@ -94,7 +94,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
     const fuer = [haupt, kind, haupt, kind, haupt, kind, haupt, kind];
     const r = await Promise.all(
       fuer.map(b =>
-        asAccount(haupt, () => sets.setErfassen({ requester: haupt, ownerWish: b, setNumber: SN, kaufpreis: null })),
+        asAccount(haupt, () => sets.acquireSet({ requester: haupt, ownerWish: b, setNumber: SN, kaufpreis: null })),
       ),
     );
     assert.equal(r.filter(x => x.action === 'added').length, 1, JSON.stringify(r.map(x => x.action)));

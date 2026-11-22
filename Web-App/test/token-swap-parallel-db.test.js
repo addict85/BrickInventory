@@ -82,7 +82,7 @@ test('exchange of the same token', { concurrency: 1 }, async t => {
     ]);
     assert.equal(await auth.rotateToken(alt, '192.0.2.5'), null);
     tokenCache.emptyTokenCache();
-    assert.equal(await auth.nutzerZumToken(erster.token), null, 'der Nachfolger ist weg');
-    assert.equal(await auth.nutzerZumToken(alt), null, 'der alte ist weg');
+    assert.equal(await auth.userForToken(erster.token), null, 'der Nachfolger ist weg');
+    assert.equal(await auth.userForToken(alt), null, 'der alte ist weg');
   });
 });

@@ -8,7 +8,7 @@ export const fileMaster = (setNumber: string) => String(setNumber).replace(/[^a-
 type Stand = { nummern: Set<string>; anleitungen: Set<string>; am: number };
 /** Per set of services; a household change clears it because it shifts the scope. */
 const merker = (k: ImagesContext) =>
-  k.faecher.fach('blickfeld', () => {
+  k.faecher.slot('blickfeld', () => {
     const m = new Map<number, Stand>();
     k.household.atHouseholdChange(() => m.clear());
     return m;

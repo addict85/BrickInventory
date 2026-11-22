@@ -42,33 +42,33 @@ async function longestDelay(work) {
 
 test('computes in the worker and correctly', async t => {
   const pool = newPool(2);
-  t.after(() => pool.beende());
+  t.after(() => pool.finish());
   const hash = await pool.hash('Geheim-2026', 4);
-  assert.equal(await pool.vergleiche('Geheim-2026', hash), true);
-  assert.equal(await pool.vergleiche('falsch', hash), false);
-  assert.equal(await pool.vergleiche('egal', 'x'), false, 'ein kaputter Hash ist kein Treffer');
+  assert.equal(await pool.compare('Geheim-2026', hash), true);
+  assert.equal(await pool.compare('falsch', hash), false);
+  assert.equal(await pool.compare('egal', 'x'), false, 'ein kaputter Hash ist kein Treffer');
   assert.equal(bcrypt.compareSync('Geheim-2026', hash), true, 'der Hash ist ein gewöhnlicher bcrypt-Hash');
   assert.deepEqual(pool.stand(), { worker: 1, frei: 1, wartend: 0, hauptthread: false }, 'rechnet im Worker …');
 });
 
 test('the main thread stays responsive', async t => {
   const pool = newPool(2);
-  t.after(() => pool.beende());
+  t.after(() => pool.finish());
   const hash = bcrypt.hashSync('Geheim-2026', 12);
-  await pool.vergleiche('aufwaermen', hash);
+  await pool.compare('aufwaermen', hash);
   const vier = f => Promise.all([1, 2, 3, 4].map(() => f('Geheim-2026', hash)));
-  const imHauptthread = await longestDelay(() => vier(bcrypt.compare));
-  const imPool = await longestDelay(() => vier(pool.vergleiche));
+  const inMainThread = await longestDelay(() => vier(bcrypt.compare));
+  const imPool = await longestDelay(() => vier(pool.compare));
   console.log(
-    `  ℹ längste Verzögerung der Ereignisschleife: Hauptthread ${imHauptthread.toFixed(0)} ms, Pool ${imPool.toFixed(0)} ms`,
+    `  ℹ längste Verzögerung der Ereignisschleife: Hauptthread ${inMainThread.toFixed(0)} ms, Pool ${imPool.toFixed(0)} ms`,
   );
-  assert.ok(imHauptthread >= 50, `Vorbedingung: bcryptjs hält den Hauptthread an (${imHauptthread} ms)`);
-  assert.ok(imPool < imHauptthread / 2, `der Hauptthread bleibt ansprechbar: ${imPool} ms gegen ${imHauptthread} ms`);
+  assert.ok(inMainThread >= 50, `Vorbedingung: bcryptjs hält den Hauptthread an (${inMainThread} ms)`);
+  assert.ok(imPool < inMainThread / 2, `der Hauptthread bleibt ansprechbar: ${imPool} ms gegen ${inMainThread} ms`);
 });
 
 test('without a worker file the main thread computes', async () => {
   const pool = newPool(2, path.join(os.tmpdir(), `bcrypt-arbeiter-${process.pid}-fehlt.js`));
-  assert.equal(await pool.vergleiche('a', bcrypt.hashSync('a', 4)), true);
+  assert.equal(await pool.compare('a', bcrypt.hashSync('a', 4)), true);
   assert.equal(pool.stand().hauptthread, true);
 });
 
@@ -85,30 +85,30 @@ test('login checks old bcrypt hashes via the pool', async () => {
   const { passwordFits } = _req('src/account/passwordHash.js');
   assert.equal(await passwordFits('Geheim-2026', bcrypt.hashSync('Geheim-2026', 4)), true);
   assert.ok(bcryptPool.stand().worker >= 1 && !bcryptPool.stand().hauptthread, JSON.stringify(bcryptPool.stand()));
-  await bcryptPool.beende();
+  await bcryptPool.finish();
 });
 
 test('an idle worker ends after the idle time', async t => {
   const pool = newPool(2, undefined, 200);
-  t.after(() => pool.beende());
+  t.after(() => pool.finish());
   await pool.hash('x', 4);
   assert.equal(pool.stand().worker, 1, 'Vorbedingung: ein Arbeiter rechnete');
   for (let i = 0; i < 100 && pool.stand().worker > 0; i++) await new Promise(r => setTimeout(r, 50));
   assert.equal(pool.stand().worker, 0, 'ein untätiger Arbeiter endet nach der Leerlaufzeit');
-  assert.equal(await pool.vergleiche('x', await pool.hash('x', 4)), true, 'danach entsteht wieder einer');
+  assert.equal(await pool.compare('x', await pool.hash('x', 4)), true, 'danach entsteht wieder einer');
   assert.deepEqual(pool.stand(), { worker: 1, frei: 1, wartend: 0, hauptthread: false });
 });
 
 test('the number of workers is capped', () => {
-  const { bcryptArbeiter, quotaCores } = _req('src/account/bcryptLimit.js');
-  const { ladeKonfig } = _req('src/infra/config.js');
+  const { bcryptWorkers: bcryptArbeiter, quotaCores } = _req('src/account/bcryptLimit.js');
+  const { loadConfig } = _req('src/infra/config.js');
   assert.equal(bcryptArbeiter(null, 64, null), 4, '64 Kerne ohne Kontingent');
   assert.equal(bcryptArbeiter(null, 64, 1), 2, '64 Kerne, Kontingent 1');
   assert.equal(bcryptArbeiter(null, 3, null), 3);
-  assert.equal(bcryptArbeiter(ladeKonfig({ BCRYPT_ARBEITER: '8' }).bcryptArbeiter, 64, 2), 8, 'die Variable gilt');
-  assert.equal(ladeKonfig({}).bcryptArbeiter, null);
+  assert.equal(bcryptArbeiter(loadConfig({ BCRYPT_ARBEITER: '8' }).bcryptWorkers, 64, 2), 8, 'die Variable gilt');
+  assert.equal(loadConfig({}).bcryptWorkers, null);
   assert.throws(
-    () => ladeKonfig({ BCRYPT_ARBEITER: '0' }),
+    () => loadConfig({ BCRYPT_ARBEITER: '0' }),
     /BCRYPT_ARBEITER="0"/,
     'ein ungültiger Wert hält den Start an',
   );

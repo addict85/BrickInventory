@@ -1,6 +1,6 @@
 import express from 'express';
 import type { Application, Request, Response, NextFunction } from 'express';
-import { proxyVertrauen, withoutV4Shell, inDockerNetwork, isDockerGateway } from '../infra/proxyTrust';
+import { proxyTrust, withoutV4Shell, inDockerNetwork, isDockerGateway } from '../infra/proxyTrust';
 
 /** From here on "always the same client address" no longer counts as the coincidence of a
  * single user, but as a sign of a further proxy in front of Caddy. */
@@ -12,20 +12,20 @@ export type ProxyStand =
 /** The admin rarely reads the log; background jobs shows the hint of the hint giver,
  * which startup/app.ts stores in app.locals (GET /admin/jobs). */
 export function proxyHintStatus(app: Application): ProxyStand | null {
-  return (app.locals.proxyHinweis as ReturnType<typeof proxyHinweis> | undefined)?.stand() ?? null;
+  return (app.locals.proxyHint as ReturnType<typeof proxyHint> | undefined)?.stand() ?? null;
 }
 
 /** Clients come in via the gateway as well; that is why the guess is never
  * the gateway, but a fixed proxy address. */
-export function proxyHinweis(
+export function proxyHint(
   trustProxy: string | undefined,
   warn: (text: string) => void = console.warn,
   clock: () => number = Date.now,
   networkConfirmed = false,
 ) {
-  let trust: ReturnType<typeof proxyVertrauen>;
+  let trust: ReturnType<typeof proxyTrust>;
   try {
-    trust = proxyVertrauen(trustProxy, networkConfirmed);
+    trust = proxyTrust(trustProxy, networkConfirmed);
   } catch {
     trust = false;
   }

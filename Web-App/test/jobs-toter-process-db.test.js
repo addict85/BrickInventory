@@ -27,7 +27,7 @@ test('jobs of dead job processes', { concurrency: 1 }, async t => {
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
   const alive = await db.pool.connect();
   t.after(async () => {
-    prozess.reportProcessAb();
+    prozess.deregisterProcess();
     alive.release(true);
     await db.pool.end().catch(() => {});
   });
@@ -48,7 +48,7 @@ test('jobs of dead job processes', { concurrency: 1 }, async t => {
 
   // What startup/jobsProcess.ts calls before the worker; starting the whole job operation
   // would launch real jobs that hold connections.
-  await prozess.reportProcessAn();
+  await prozess.registerProcess();
 
   await t.test('the start takes over the job of a dead process', async () => {
     assert.notEqual(await status(tot), 'laeuft');

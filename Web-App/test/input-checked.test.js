@@ -23,7 +23,7 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
-const { vertragsRouter } = _req('src/http/contractRouter.js');
+const { contractRouter: vertragsRouter } = _req('src/http/contractRouter.js');
 const { CONTRACT } = _req('src/contract/index.js');
 
 test('checked input and query', { concurrency: 1 }, async t => {
@@ -34,8 +34,8 @@ test('checked input and query', { concurrency: 1 }, async t => {
     aufrufe++;
     res.type('json').send(JSON.stringify({ eingabe: req.eingabe, abfrage: req.abfrage }));
   };
-  router.endpunkt('POST /api/v1/sets', zeige);
-  router.endpunkt('GET /api/v1/catalog/sets', zeige);
+  router.endpoint('POST /api/v1/sets', zeige);
+  router.endpoint('GET /api/v1/catalog/sets', zeige);
   const app = express();
   app.use(express.json());
   app.use('/api/v1', router);

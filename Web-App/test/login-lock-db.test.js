@@ -5,23 +5,23 @@
  * Counter-checks (measured on 25.10.):
  *   A  counter per name removed in loginAllowed → red: „mit wechselnden
  *      Adressen unbegrenzt raten" (since 28.10. per account with growing wait time)
- *   B  server.ts again with `trust proxy` 1 instead of proxyVertrauen() → red:
+ *   B  server.ts again with `trust proxy` 1 instead of proxyTrust() → red:
  *      „TRUST_PROXY=false wird nicht beachtet"
- *   C  proxyVertrauen('') delivers true → red: „öffentliche Adresse vertraut"
+ *   C  proxyTrust('') delivers true → red: „öffentliche Adresse vertraut"
  *   D  (27.10.) default again with uniquelocal → red: „Heimnetz-Rechner vertraut"
  *   E  (27.10.) exception for known addresses removed → red: „der Inhaber
  *      kommt von seiner bekannten Adresse weiter herein"
  *   G  (27.10.) app.disable('x-powered-by') removed → red: „verrät X-Powered-By"
  *   J  (29.10.) default without TRUST_PROXY again the Docker network → red:
  *      „ohne TRUST_PROXY dem Docker-Netz vertraut: 172.18.0.2"
- *   K  (30.10.) proxyVertrauen again accepts „docker" (172.16/12 without gateway)
+ *   K  (30.10.) proxyTrust again accepts „docker" (172.16/12 without gateway)
  *      → red: „angenommen: docker"; prefix limit in proxyEntryValid
  *      removed → red: „angenommen: 172.16.0.0/12"
  *   L  (14.11.2026) in proxyEntryValid the narrow limit again /16 or /64 → red:
  *      „ohne Bestätigung angenommen: 192.168.1.0/24“
  *   M  (14.11.2026) the confirmation allows everything (`p <= max`) → red: „bestätigt
  *      angenommen: 172.16.0.0/12“
- *   H  (28.10.) kontoKennung() again delivers the raw name → red: „Name
+ *   H  (28.10.) accountKey() again delivers the raw name → red: „Name
  *      und E-Mail zählen gemeinsam" (and the counter per account is missing)
  *   I  (28.10.) waitTimeSeconds() fixed at 1 s → red: “lock per
  *      username applies across all addresses” (no doubling)
@@ -44,7 +44,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = testData();
-const { proxyVertrauen } = _req('src/infra/proxyTrust.js');
+const { proxyTrust } = _req('src/infra/proxyTrust.js');
 const { MAX_ATTEMPTS, waitTimeSeconds } = _req('src/account/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -90,10 +90,10 @@ async function prepare(t) {
   return true;
 }
 
-test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
+test('proxyTrust: whom X-Forwarded-For is believed', () => {
   const vertraut = (setting, adresse) => {
     const app = express();
-    app.set('trust proxy', proxyVertrauen(setting));
+    app.set('trust proxy', proxyTrust(setting));
     return app.get('trust proxy fn')(adresse, 0);
   };
   // Without a setting only loopback: outside of Docker 172.16/12 is a network like any other.
@@ -123,8 +123,8 @@ test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
     '192.168.1.5/33',
     '172.28.73.10, docker',
   ])
-    assert.throws(() => proxyVertrauen(falsch), /TRUST_PROXY enthält/, `angenommen: ${falsch}`);
-  assert.deepEqual(proxyVertrauen('172.28.73.10, 192.168.1.8/29 fd00::7 fd00::100/120'), [
+    assert.throws(() => proxyTrust(falsch), /TRUST_PROXY enthält/, `angenommen: ${falsch}`);
+  assert.deepEqual(proxyTrust('172.28.73.10, 192.168.1.8/29 fd00::7 fd00::100/120'), [
     '172.28.73.10',
     '192.168.1.8/29',
     'fd00::7',
@@ -132,11 +132,11 @@ test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
   ]);
   // A network above eight addresses only when confirmed, and even then at most /16 or /64.
   for (const weit of ['192.168.1.0/24', '172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
-    assert.throws(() => proxyVertrauen(weit), /PROXY_NETZ_BESTAETIGT=1/, `ohne Bestätigung angenommen: ${weit}`);
-    assert.deepEqual(proxyVertrauen(weit, true), [weit]);
+    assert.throws(() => proxyTrust(weit), /PROXY_NETZ_BESTAETIGT=1/, `ohne Bestätigung angenommen: ${weit}`);
+    assert.deepEqual(proxyTrust(weit, true), [weit]);
   }
   for (const toWide of ['172.16.0.0/12', 'fd00::/48'])
-    assert.throws(() => proxyVertrauen(toWide, true), /TRUST_PROXY enthält/, `bestätigt angenommen: ${toWide}`);
+    assert.throws(() => proxyTrust(toWide, true), /TRUST_PROXY enthält/, `bestätigt angenommen: ${toWide}`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
   // Computers in the home network do not state their address themselves.
@@ -151,7 +151,7 @@ test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
 test('lock per username applies across all addresses', { concurrency: 1 }, async t => {
   if (!(await prepare(t))) return;
   const app = express();
-  app.set('trust proxy', proxyVertrauen(undefined)); // Requests come from 127.0.0.1
+  app.set('trust proxy', proxyTrust(undefined)); // Requests come from 127.0.0.1
   app.use(express.json());
   app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
@@ -198,7 +198,7 @@ test('the lock per name does not lock out the owner', { concurrency: 1 }, async 
   if (!(await prepare(t))) return;
   await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%${NAME}%`]);
   const app = express();
-  app.set('trust proxy', proxyVertrauen(undefined));
+  app.set('trust proxy', proxyTrust(undefined));
   app.use(express.json());
   app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);

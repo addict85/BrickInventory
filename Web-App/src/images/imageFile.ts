@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
-import { AbrufFehler } from '../infra/fetch';
+import { FetchError } from '../infra/fetch';
 import type { ImagesContext } from './context';
 
 /** Deliberately without SVG. */
@@ -93,7 +93,7 @@ export async function loadImage(
     await fs.promises.rename(between, target);
     return true;
   } catch (e) {
-    if (e instanceof AbrufFehler && e.grund === 'zu-gross') reportWarning(`Bild zu gross: ${address.slice(0, 80)}`);
+    if (e instanceof FetchError && e.grund === 'zu-gross') reportWarning(`Bild zu gross: ${address.slice(0, 80)}`);
     await fs.promises.rm(between, { force: true });
     return false;
   }

@@ -156,19 +156,19 @@ if (!Array.isArray(appFields) || appFields.length < 100) {
 }
 const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields].join('\n');
 
-const fehler = [];
+const error = [];
 for (const [k, filesList] of [...whence].sort()) {
   if (FRAME.has(k) || ALLOWED.has(k)) continue;
   if (!new RegExp(`\\b${k}\\b`).test(customer)) {
-    fehler.push(`${k}  (${[...new Set(filesList)].slice(0, 2).join(', ')})`);
+    error.push(`${k}  (${[...new Set(filesList)].slice(0, 2).join(', ')})`);
   }
 }
 // A permission nobody needs any more is one nobody checks any more.
 const tot = [...ALLOWED.keys()].filter(k => !whence.has(k));
 
-if (fehler.length || tot.length) {
+if (error.length || tot.length) {
   console.error('❌ Antwortfelder:');
-  for (const f of fehler) {
+  for (const f of error) {
     console.error(
       `  OHNE VERBRAUCHER: ${f} — weder public/js noch die Android-App ` +
         'nennen den Namen. Entweder fehlt die Anzeige, oder das Feld (und die ' +

@@ -12,7 +12,7 @@ let kicked = 0;
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async () => {
+  loadSetImage: async () => {
     kicked++;
     await new Promise(r => setTimeout(r, 2));
     return null;

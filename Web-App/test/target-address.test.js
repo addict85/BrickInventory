@@ -27,7 +27,7 @@ const dns = require('node:dns');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const Z = _req('src/infra/targetAddress.js');
-const { holeHttps, AbrufFehler } = _req('src/infra/fetch.js');
+const { holeHttps, FetchError } = _req('src/infra/fetch.js');
 const { oeffneBild } = _req('clients/imageCdn.js');
 const { hostAllowed, ALLOWED_DOWNLOAD_HOSTS } = _req('src/infra/foreignAddresses.js');
 
@@ -52,7 +52,7 @@ async function grund(promise) {
   try {
     await promise;
   } catch (e) {
-    assert.ok(e instanceof AbrufFehler, `kein AbrufFehler: ${e}`);
+    assert.ok(e instanceof FetchError, `kein AbrufFehler: ${e}`);
     return e.grund;
   }
   return 'kein Fehler';
@@ -164,8 +164,8 @@ test('NAT64 and IPv4-mapped addresses: the IPv4 address inside counts', () => {
     ['64:ff9b::a9fe:a9fe', '169.254.169.254'],
     ['64:ff9b::808:808', '8.8.8.8'],
   ])
-    assert.equal(Z.normalisiert(ip), v4, ip);
-  for (const ip of ['2606:4700::1111', 'fe80::1%eth0', '64:ff9b:1::1', '1.2.3.4']) assert.equal(Z.normalisiert(ip), ip);
+    assert.equal(Z.normalized(ip), v4, ip);
+  for (const ip of ['2606:4700::1111', 'fe80::1%eth0', '64:ff9b:1::1', '1.2.3.4']) assert.equal(Z.normalized(ip), ip);
   for (const ip of ['64:ff9b::7f00:1', '64:ff9b::10.0.0.1', '64:ff9b::a9fe:a9fe', '::ffff:192.168.1.1'])
     assert.equal(Z.publicAddress(ip), false, `NAT64 zählt wie die IPv4-Adresse darin: ${ip}`);
   // Behind DNS64 a pure IPv4 service gets a NAT64 address; it stays reachable.
@@ -189,9 +189,9 @@ test('the mail server does not reach the container network via NAT64 either', ()
 });
 
 test('IPv4-compatible addresses (::a.b.c.d) count like the IPv4 address inside', () => {
-  assert.equal(Z.normalisiert('::127.0.0.1'), '127.0.0.1');
-  assert.equal(Z.normalisiert('::a9fe:a9fe'), '169.254.169.254');
-  for (const ip of ['::', '::1']) assert.equal(Z.normalisiert(ip), ip, `${ip} bleibt IPv6`);
+  assert.equal(Z.normalized('::127.0.0.1'), '127.0.0.1');
+  assert.equal(Z.normalized('::a9fe:a9fe'), '169.254.169.254');
+  for (const ip of ['::', '::1']) assert.equal(Z.normalized(ip), ip, `${ip} bleibt IPv6`);
   for (const ip of ['::127.0.0.1', '::7f00:1', '::10.0.0.1', '::a9fe:a9fe', '64:ff9b::7f00:1'])
     assert.equal(Z.publicAddress(ip), false, ip);
   const interfaces = {

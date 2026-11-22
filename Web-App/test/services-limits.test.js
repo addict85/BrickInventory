@@ -5,7 +5,7 @@
  *
  * Counter-checks (measured 14.11.2026, each on its own):
  *   A  in createInventory (src/inventory/area.ts) again `...k,` before the services →
- *      red: four unused @ts-expect-error (d.inventory.db, .transaktion,
+ *      red: four unused @ts-expect-error (d.inventory.db, .transact,
  *      .papierkorb, .manuelleMengen)
  *   B  `protokoll: k.protokoll,` added in createAccount → red: d.account.protokoll
  *   C  `locationService` removed from createInventory → red: tsc reports the users and the probe

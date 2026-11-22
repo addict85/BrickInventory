@@ -1,16 +1,16 @@
 // Log out after hours of idleness.
-import { type Konfig, DEFAULT } from '../infra/config';
+import { type AppConfig, DEFAULT } from '../infra/config';
 
 export const IDLE_DEFAULT_MIN = DEFAULT.sitzungLeerlaufMin;
 
-export const sessionIdleMs = (k: Pick<Konfig, 'sitzungLeerlaufMin'>) => k.sitzungLeerlaufMin * 60_000;
+export const sessionIdleMs = (k: Pick<AppConfig, 'sitzungLeerlaufMin'>) => k.sitzungLeerlaufMin * 60_000;
 
 /** In seconds for connect-pg-simple; computed once instead of in two places. */
-export const sessionIdleSec = (k: Pick<Konfig, 'sitzungLeerlaufMin'>) => Math.round(sessionIdleMs(k) / 1000);
+export const sessionIdleSec = (k: Pick<AppConfig, 'sitzungLeerlaufMin'>) => Math.round(sessionIdleMs(k) / 1000);
 
 // The idle deadline slides: whoever works daily would otherwise stay
 // logged in forever. The maximum duration counts from login.
-export const sessionMaxMs = (k: Pick<Konfig, 'sitzungHoechstStd'>) => k.sitzungHoechstStd * 3_600_000;
+export const sessionMaxMs = (k: Pick<AppConfig, 'sitzungHoechstStd'>) => k.sitzungHoechstStd * 3_600_000;
 
 export interface SessionDeadlines {
   maxMs: number;
@@ -19,9 +19,9 @@ export interface SessionDeadlines {
 }
 
 /** Admins never longer than everyone else, even if someone sets the general deadlines shorter. */
-export const sitzungsfristen = (
+export const sessionDeadlines = (
   k: Pick<
-    Konfig,
+    AppConfig,
     'sitzungHoechstStd' | 'sitzungLeerlaufMin' | 'sitzungVerwalterHoechstStd' | 'sitzungVerwalterLeerlaufMin'
   >,
 ): SessionDeadlines => ({

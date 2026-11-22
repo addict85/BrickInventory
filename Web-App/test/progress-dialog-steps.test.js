@@ -193,8 +193,8 @@ test('after the last event no item hangs on “active”', () => {
   // The route and its helper supplementInStream (before the router factory).
   const strom =
     route.slice(
-      route.indexOf("router.endpunkt('POST /api/v1/sets/add-stream'"),
-      route.indexOf("router.endpunkt('POST /api/v1/sets/:setNumber/parts'"),
+      route.indexOf("router.endpoint('POST /api/v1/sets/add-stream'"),
+      route.indexOf("router.endpoint('POST /api/v1/sets/:setNumber/parts'"),
     ) +
     route.slice(
       route.indexOf('async function supplementInStream('),

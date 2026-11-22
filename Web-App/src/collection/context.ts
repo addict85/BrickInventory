@@ -1,6 +1,6 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { withValue, type Context } from '../infra/area';
+import { bound, type Context } from '../infra/area';
 import * as setAcquisitions from './repository/setAcquisitions';
 import type { HouseholdServices } from '../household';
 import type { JobsServices } from '../jobQueue';
@@ -28,6 +28,6 @@ export interface CollectionDependencies {
 }
 
 export const access = (db: Db) => ({
-  setAcquisitions: { inScope: withValue(db)(setAcquisitions.setAcquisitionsInScope) },
+  setAcquisitions: { inScope: bound(db)(setAcquisitions.setAcquisitionsInScope) },
 });
 export type CollectionContext = Context<CollectionDependencies, ReturnType<typeof access>>;

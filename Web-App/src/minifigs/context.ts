@@ -1,6 +1,6 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { withValue, type Context } from '../infra/area';
+import { bound, type Context } from '../infra/area';
 import * as minifigsList from './repository/minifigsList';
 import * as minifigParts from './repository/minifigParts';
 import * as manualMinifigs from './repository/manualMinifigs';
@@ -27,20 +27,20 @@ export interface MinifigsDependencies {
 
 export const access = (db: Db) => ({
   minifigsList: {
-    groupedMinifigs: withValue(db)(minifigsList.groupedMinifigs),
-    manualMinifigsList: withValue(db)(minifigsList.manualMinifigsList),
-    conditionCountsOfManualMinifigs: withValue(db)(minifigsList.conditionCountsOfManualMinifigs),
-    minifigStats: withValue(db)(minifigsList.minifigStats),
+    groupedMinifigs: bound(db)(minifigsList.groupedMinifigs),
+    manualMinifigsList: bound(db)(minifigsList.manualMinifigsList),
+    conditionCountsOfManualMinifigs: bound(db)(minifigsList.conditionCountsOfManualMinifigs),
+    minifigStats: bound(db)(minifigsList.minifigStats),
   },
   minifigParts: {
-    catalogPartsOfMinifig: withValue(db)(minifigParts.catalogPartsOfMinifig),
-    inventoryPartsOfMinifig: withValue(db)(minifigParts.inventoryPartsOfMinifig),
-    setWithMinifig: withValue(db)(minifigParts.setWithMinifig),
+    catalogPartsOfMinifig: bound(db)(minifigParts.catalogPartsOfMinifig),
+    inventoryPartsOfMinifig: bound(db)(minifigParts.inventoryPartsOfMinifig),
+    setWithMinifig: bound(db)(minifigParts.setWithMinifig),
   },
   manualMinifigs: {
-    manualMinifigRow: withValue(db)(manualMinifigs.manualMinifigRow),
-    minifigRowWithCondition: withValue(db)(manualMinifigs.minifigRowWithCondition),
-    minifigAcquisitions: withValue(db)(manualMinifigs.minifigAcquisitions),
+    manualMinifigRow: bound(db)(manualMinifigs.manualMinifigRow),
+    minifigRowWithCondition: bound(db)(manualMinifigs.minifigRowWithCondition),
+    minifigAcquisitions: bound(db)(manualMinifigs.minifigAcquisitions),
   },
 });
 export type MinifigsContext = Context<MinifigsDependencies, ReturnType<typeof access>>;

@@ -5,7 +5,7 @@ import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
 import { DAILY_JOBS } from './timesOfDay';
 import { rescheduleJobs } from './service';
 import { jsonOrNull } from '../infra/validate';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import { ConfigExport } from '../contract/settings';
 import type { ManagementContext } from './context';
 
@@ -39,7 +39,7 @@ export async function dataZip(
     k.inventory.partsAsCsv(uid),
     k.inventory.minifigsAsCsv(uid),
     k.wanted.wantedListCsv(uid),
-    k.finances.preisalarm.preisalarmeAlsCsv(uid),
+    k.finances.preisalarm.priceAlertsAsCsv(uid),
   ]);
   const archive = new ZipArchive({ zlib: { level: 9 } });
   archive.on('error', atError);
@@ -83,15 +83,15 @@ const ACCOUNT_IMPORT = ['currency', 'user_default_condition'];
 /** An import file comes from anywhere: schema (KonfigExport), rules per key
  * (GLOBAL_RULES) and without the sensitive keys that would need a confirmation. */
 export async function importConfig(kx: ManagementContext, uid: number, admin: boolean, file: Buffer) {
-  const gelesen = jsonOrNull(file.toString('utf-8'));
-  const checked = gelesen ? ConfigExport.safeParse(gelesen.wert) : null;
-  if (!checked?.success) fachfehler('ungueltig', 'json_ungueltig');
+  const read = jsonOrNull(file.toString('utf-8'));
+  const checked = read ? ConfigExport.safeParse(read.wert) : null;
+  if (!checked?.success) failDomain('ungueltig', 'json_ungueltig');
   const { global, user_settings: konto } = checked.data;
   let imported = 0;
   const smtpSkipped = global ? Object.keys(global).filter(isSensitive) : [];
   if (global && admin) {
     if (GLOBAL_IMPORT.some(k => global[k] !== undefined && !isValidGlobalValue(k, global[k])))
-      fachfehler('ungueltig', 'wert_ungueltig');
+      failDomain('ungueltig', 'wert_ungueltig');
     const changed: string[] = [];
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Masked values from older exports must not overwrite real keys.

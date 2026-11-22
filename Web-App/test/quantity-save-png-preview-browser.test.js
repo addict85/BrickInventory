@@ -118,7 +118,7 @@ test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, asy
       // How the app stores set images: <nr>.jpg, next to it the preview from vorschauErzeugenAus.
       fs.mkdirSync(ordner, { recursive: true });
       fs.writeFileSync(path.join(ordner, `${nr}.jpg`), checkerboard());
-      assert.ok(await req('src/images/thumbs.js').vorschauErzeugenAus(`/images/sets/${nr}.jpg`), 'Vorschau');
+      assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), 'Vorschau');
       await catalogSet(db, nr, { name: 'Durchsichtig', year: 2020, theme: 'Bildprobe', pieces: 10 });
       await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_nummer_mit_version($1)', [
         nr,

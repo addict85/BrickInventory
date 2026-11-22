@@ -15,7 +15,7 @@ let versuche = 0;
 const { buildAndRequire, testData, testImageWorker, testClock } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async () => {
+  loadSetImage: async () => {
     versuche++;
     return null;
   },
@@ -85,7 +85,7 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
       try {
         assert.equal(IM.isKnownMissing('set:' + PREFIX + '_frist'), false, 'die Frist ist abgelaufen');
       } finally {
-        testClock().zurueck();
+        testClock().back();
       }
     });
 

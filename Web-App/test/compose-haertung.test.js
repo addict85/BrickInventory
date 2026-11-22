@@ -201,8 +201,8 @@ test('TRUST_PROXY trusts exactly Caddy, the network has a fixed subnet', () => {
     /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-172\.28\.73\.10\}\s*$/m,
     'TRUST_PROXY nennt ohne Angabe nicht genau Caddy',
   );
-  const { proxyVertrauen } = require('./helpers/sources').buildAndRequire()('src/infra/proxyTrust.js');
-  assert.deepEqual(proxyVertrauen(adresse), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
+  const { proxyTrust } = require('./helpers/sources').buildAndRequire()('src/infra/proxyTrust.js');
+  assert.deepEqual(proxyTrust(adresse), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
   const netz = compose.slice(compose.indexOf('\nnetworks:'));
   assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net hat kein festes Subnetz');
   // The DOCKER-USER rule in UPGRADE.md (section 53) names exactly this network.

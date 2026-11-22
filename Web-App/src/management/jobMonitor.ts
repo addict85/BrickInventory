@@ -24,7 +24,7 @@ const count = (ab: Degradations, p: Promise<number>, ort: string) => ab.orElse(o
 
 /** A JSON state from laufzustand; a damaged one counts as none. */
 async function readState<T>(k: ManagementContext, ab: Degradations, key: string): Promise<T | null> {
-  const raw = await ab.orElse(key, k.jobQueue.liesZustand(key), null);
+  const raw = await ab.orElse(key, k.jobQueue.readState(key), null);
   try {
     return raw ? (JSON.parse(raw) as T) : null;
   } catch {
@@ -64,7 +64,7 @@ function instructionsTile(alt: Tile, a: { offen: number; erledigt: number; fehle
 }
 
 async function bricksetTile(k: ManagementContext, ab: Degradations): Promise<Tile> {
-  const { wartend, faellig } = await ab.orElse('brickset', k.externalSources.brickset.zahlen(), {
+  const { wartend, faellig } = await ab.orElse('brickset', k.externalSources.brickset.numbers(), {
     wartend: 0,
     faellig: 0,
   });
@@ -135,9 +135,9 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
   const active = await imagesInProgress(k, ab, open);
   const { reDl, laeuft: reDlRunning, sub: reDlSub } = await redownloadState(k, ab);
   // "running" means: has recently done something, according to the database.
-  const letzterLauf = await readState<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
-  const sinceRun = letzterLauf?.zeit ? k.uhr.jetzt() - letzterLauf.zeit : null;
-  const jobRunning = isFresh(k, letzterLauf?.zeit);
+  const lastRun = await readState<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
+  const sinceRun = lastRun?.zeit ? k.uhr.jetzt() - lastRun.zeit : null;
+  const jobRunning = isFresh(k, lastRun?.zeit);
   const catalogSub =
     openCatalog > 0
       ? `${openCatalog} Katalog-Bilder in Warteschlange` +
@@ -189,20 +189,20 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
     progress: finished,
     total: finished + open + openCatalog,
     queue: openCatalog,
-    queueLastRun: letzterLauf?.zeit || null,
+    queueLastRun: lastRun?.zeit || null,
     lastRun: job?.lastRun || null,
     canRedownload: true,
   };
 }
 
 function pdfTile(): Tile {
-  let laufend = 0,
+  let inProgress = 0,
     finished = 0;
   try {
     for (const f of fs.readdirSync(PDF_JOB_DIR).filter((f: string) => f.endsWith('.json'))) {
       try {
         const j = JSON.parse(fs.readFileSync(path.join(PDF_JOB_DIR, f), 'utf8')) as { status?: string };
-        if (j.status === 'running') laufend++;
+        if (j.status === 'running') inProgress++;
         else if (j.status === 'done') finished++;
       } catch (e) {
         reportError('admin:pdf-auftrag-lesen', e);
@@ -213,19 +213,19 @@ function pdfTile(): Tile {
   }
   return {
     label: '📄 PDF-Jobs',
-    status: laufend > 0 ? 'running' : finished > 0 ? 'idle' : 'done',
+    status: inProgress > 0 ? 'running' : finished > 0 ? 'idle' : 'done',
     progress: 0,
     total: 0,
     lastRun: null,
     sub:
-      laufend > 0
-        ? `${laufend} PDF(s) werden erstellt`
+      inProgress > 0
+        ? `${inProgress} PDF(s) werden erstellt`
         : finished > 0
           ? `${finished} PDF(s) bereit zum Download`
           : 'Keine aktiven Jobs',
     sub_teile: [
-      laufend > 0
-        ? part('pdf_laufend', { n: laufend })
+      inProgress > 0
+        ? part('pdf_laufend', { n: inProgress })
         : finished > 0
           ? part('pdf_bereit', { n: finished })
           : part('no_active'),
@@ -259,7 +259,7 @@ export async function jobMonitor(k: ManagementContext) {
     count(ab, k.management.bricklinkParts(), 'bl_mapping'),
     count(ab, k.management.rbParts(), 'katalog'),
     count(ab, k.management.rbInventoryParts(), 'katalog'),
-    k.jobQueue.liesZustand('rb_csv_last_sync'),
+    k.jobQueue.readState('rb_csv_last_sync'),
   ]);
   const blIds = blIdsTile(jobs.blIds ?? {}, mapped, blTotal);
   if (blIds) jobs.blIds = blIds;

@@ -64,7 +64,7 @@ export function buildJobStatus(
 
 /** The streams re-read the state themselves; if the signal gets lost, their catch-up tick fetches it. */
 export async function emitJobStatus(k: JobsContext, userId: number) {
-  await IMPORT_STAND.melde(k.db.notification, String(userId)).catch(logAndContinue('import-auftrag:notify'));
+  await IMPORT_STAND.report(k.db.notification, String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
 export const ORPHANED_MIN = 10;
@@ -135,7 +135,7 @@ export async function startJob(
   return true;
 }
 
-const reported = (k: JobsContext) => k.faecher.fach('importGemeldet', () => new Map<number, number>());
+const reported = (k: JobsContext) => k.faecher.slot('importGemeldet', () => new Map<number, number>());
 
 /** Throttled, so that a fast import does not write every row to the database. */
 export async function reportJob(
@@ -189,5 +189,5 @@ export async function isAborted(k: JobsContext, userId: number): Promise<boolean
 
 /** Wakes when a process wrote an account's state; returns the unsubscribe. */
 export function atImportStatus(k: JobsContext, f: (konto?: string) => void): () => void {
-  return IMPORT_STAND.horche(k.db.notification, f);
+  return IMPORT_STAND.listen(k.db.notification, f);
 }

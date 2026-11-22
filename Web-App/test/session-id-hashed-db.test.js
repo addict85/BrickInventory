@@ -53,7 +53,7 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
   });
 
   const dienste = testServices();
-  const app = _req('startup/app.js').baueApp({
+  const app = _req('startup/app.js').buildApp({
     pool: db.systemPool,
     konfig: _req('src/infra/config.js').konfig(),
     sitzungsGeheimnis: GEHEIM,

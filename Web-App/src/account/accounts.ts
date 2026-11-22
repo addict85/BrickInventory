@@ -1,6 +1,6 @@
 /** Every path that changes a password ends all accesses afterwards — in one
  * place, so no path forgets the step. */
-import { hashePassword } from './passwordHash';
+import { hashPassword } from './passwordHash';
 import * as repo from './repository/accounts';
 import { emptyTokenCache } from './tokenCache';
 import { withAccessEnd, endAllSessions, accessTransaction } from './accessEnd';
@@ -8,7 +8,7 @@ import { tokenDigest, revokeAllTokens } from './deviceToken';
 import { emailValid } from '../infra/validate';
 import { removeStartPassword } from '../infra/startpasswort';
 import { rememberAdminAction } from './adminLog';
-import { asDuplicate, fachfehler, notFound } from '../infra/errorTexts';
+import { asDuplicate, failDomain, notFound } from '../infra/errorTexts';
 import type { ResetSideEffects } from '../mail';
 import { hintInBackground } from './accountNotice';
 import { deleteDailyLimit } from './loginLimiter';
@@ -83,10 +83,10 @@ export async function accountConfigured(k: AccountContext, admin: boolean): Prom
 }
 
 export function passwordSwitchDue(k: AccountContext, id: number): Promise<boolean> {
-  return k.konten.mussPasswortAendern(id);
+  return k.konten.mustChangePassword(id);
 }
 
-const hashe = (passwort: string) => hashePassword(passwort);
+const hashe = (passwort: string) => hashPassword(passwort);
 
 export async function endAccesses(k: AccountContext, uid: number): Promise<void> {
   await revokeAllTokens(k, uid);
@@ -115,7 +115,7 @@ export async function setForeignPassword(
 
 /** The token just used falls too. Passkeys only on request: whoever merely
  * renews the password should not have to set up their devices again. */
-export async function aendereEigenesPasswort(
+export async function changeOwnPassword(
   k: AccountContext,
   uid: number,
   passwort: string,
@@ -175,7 +175,7 @@ export function cleanOpenRegistrationsOn(k: AccountContext): Promise<number> {
 /** Account and log entry in one transaction: an account without an entry
  * would conceal who created it. Hashing happens before, so bcrypt holds no
  * connection. @returns the new id, or null if the name is taken */
-export async function createAccount(
+export async function addAccount(
   k: AccountContext,
   admin: number,
   username: string,
@@ -222,7 +222,7 @@ export async function register(
 export async function setzeAktiv(k: AccountContext, uid: number, expected: boolean): Promise<{ geaendert: boolean }> {
   const r = await accessTransaction(k, t => t.konten.writeActive(uid, expected));
   if (!r) notFound('benutzer_nicht_gefunden');
-  if (r === repo.LAST_ADMIN) fachfehler('konflikt', 'letzter_verwalter');
+  if (r === repo.LAST_ADMIN) failDomain('konflikt', 'letzter_verwalter');
   if (!expected) await endAccesses(k, uid);
   return { geaendert: r.vorher !== expected };
 }
@@ -237,7 +237,7 @@ export async function setzeVerwalterRolle(
 ): Promise<{ geaendert: boolean }> {
   const vorher = await accessTransaction(k, t => t.konten.setAdmin(uid, expected));
   if (!vorher) notFound('benutzer_nicht_gefunden');
-  if (vorher === repo.LAST_ADMIN) fachfehler('konflikt', 'letzter_verwalter');
+  if (vorher === repo.LAST_ADMIN) failDomain('konflikt', 'letzter_verwalter');
   const geaendert = vorher.vorher !== expected;
   if (geaendert) {
     await endAllSessions(k, uid);

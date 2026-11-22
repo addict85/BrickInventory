@@ -80,7 +80,7 @@ test('vorschauErzeugenAus writes via a temporary file', async () => {
     .toFile(original);
   try {
     const { ergebnis, spur } = await withRenameTrack(() =>
-      _req('src/images/thumbs.js').vorschauErzeugenAus(`/images/sets/${name}.jpg`),
+      _req('src/images/thumbs.js').previewFrom(`/images/sets/${name}.jpg`),
     );
     assert.equal(ergebnis, `/images/sets/${name}_thumb.jpg`);
     checkAtomic(spur, vorschau);

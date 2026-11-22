@@ -5,15 +5,21 @@ import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
 import { mergeInstructions } from '../catalog';
 import { findSetInScope } from './addSet';
-import { normalisiereSetNummer, possibleSetNumber } from '../infra/setNumber';
-import { fachfehler, notFound } from '../infra/errorTexts';
+import { normalizeSetNumber, possibleSetNumber } from '../infra/setNumber';
+import { failDomain, notFound } from '../infra/errorTexts';
 import { inSystemContext } from '../infra/accountContext';
 import * as repo from './repository/setDetail';
-import { versuche, valueOr } from '../infra/result';
+import { attempts, valueOr } from '../infra/result';
 import type { SetsContext } from './context';
 
-export async function rememberInstruction(sk: SetsContext, uid: number, sn: string, pfad: string, description: string) {
-  await repo.addInstructionOne(sk.db, uid, sn, pfad, description, pfad);
+export async function rememberInstruction(
+  sk: SetsContext,
+  uid: number,
+  sn: string,
+  filePath: string,
+  description: string,
+) {
+  await repo.addInstructionOne(sk.db, uid, sn, filePath, description, filePath);
 }
 
 /** The file stays as long as another row points to it. */
@@ -23,11 +29,11 @@ export async function deleteInstruction(sk: SetsContext, uid: number, id: number
   if (!instr.local_path?.startsWith('/data/uploads/')) return;
   // If the database does not know whether anyone still needs the file, it stays. Another
   // account's row is hidden by row security; that is why the question is asked in the system frame.
-  const pfad = instr.local_path;
+  const filePath = instr.local_path;
   const rest = valueOr(
-    await versuche(
+    await attempts(
       'sets:anleitung-noch-benutzt',
-      inSystemContext('geteilte Anleitungsdatei', () => repo.instructionFileUsed(sk.db, pfad)),
+      inSystemContext('geteilte Anleitungsdatei', () => repo.instructionFileUsed(sk.db, filePath)),
     ),
     { ok: 1 },
   );
@@ -41,16 +47,16 @@ export async function deleteInstruction(sk: SetsContext, uid: number, id: number
 /** The instructions are shared: only the admin may replace them (an empty
  * fetch would otherwise delete them for everyone). Others fetch what is missing, once per set and day. */
 export async function loadInstructionsNew(sk: SetsContext, uid: number, raw: string, admin: boolean) {
-  const sn = normalisiereSetNummer(raw);
-  if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
+  const sn = normalizeSetNumber(raw);
+  if (!possibleSetNumber(sn)) failDomain('ungueltig', 'setnummer_ungueltig');
   if (admin) await sk.catalog.deleteInstructions(sn);
   else {
-    if (!(await findSetInScope(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
-    if ((await sk.catalog.anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
+    if (!(await findSetInScope(sk, uid, sn))) failDomain('nicht_gefunden', 'set_nicht_gefunden');
+    if ((await sk.catalog.instructionCount(sn)) > 0) failDomain('verboten', 'nur_admins');
     if (!(await sk.catalog.instructionNewLoadAllowed(sn)))
-      fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
+      failDomain('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
-  const auftrag = await sk.catalog.anleitungEinreihen(sn, { jetzt: true });
+  const auftrag = await sk.catalog.enqueueInstruction(sn, { jetzt: true });
   const instructions = mergeInstructions(await sk.catalog.instructionsToSet(sn), []);
   return { instructions, auftrag };
 }

@@ -254,7 +254,7 @@ export const QuantityChanged = GenericResponse.extend({
 /** A new set; the same fields for the stream (add-stream). */
 const NewSet = z.strictObject({
   set_number: z.union([z.string().max(64), z.number()]).optional(),
-  quantity: input.stueckzahl(),
+  quantity: input.pieceCount(),
   purchase_price: input.geld('Kaufpreis'),
   condition: CONDITION.nullable().optional(),
   owner_user_id: IDENTIFIER.nullable().optional(),
@@ -280,8 +280,8 @@ export const routen = {
       search: Q.text(),
       theme: Q.text(),
       sort: Q.text(40),
-      page: Q.zahl(),
-      page_size: Q.zahl(),
+      page: Q.number(),
+      page_size: Q.number(),
       storage: Q.text(),
     }),
   },

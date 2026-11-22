@@ -54,8 +54,8 @@ test('cropped previews are refitted once', async t => {
   const zustand = new Map();
   const k = {
     jobQueue: {
-      liesZustand: async s => zustand.get(s) ?? null,
-      setzeZustand: async (s, w) => {
+      readState: async s => zustand.get(s) ?? null,
+      setState: async (s, w) => {
         zustand.set(s, String(w));
       },
     },

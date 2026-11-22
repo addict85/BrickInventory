@@ -73,7 +73,7 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
       secret: 'deaktivieren-test-geheimnis-lang-genug',
       resave: false,
       saveUninitialized: false,
-      name: _req('src/http/sitzungsKeks.js').sitzungsKeksName(),
+      name: _req('src/http/sitzungsKeks.js').sessionCookieName(),
     }),
   );
   app.use(
@@ -199,9 +199,9 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     const auth = _req('src/account/deviceToken.js');
     const tokenCache = _req('src/account/tokenCache.js');
     const token = await auth.createToken(nutzer, 'Probe');
-    assert.ok(await auth.nutzerZumToken(token));
+    assert.ok(await auth.userForToken(token));
     await db.run('UPDATE users SET is_active = false WHERE id = $1', [nutzer]);
     tokenCache.emptyTokenCache();
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 });

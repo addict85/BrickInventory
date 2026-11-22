@@ -1,7 +1,7 @@
 /**
  * The ONE login — played through, not read.
  *
- * Counter-check (14.11.2026): in POST /logout again `tokenLoeschen(…).catch(logAndContinue(…))`
+ * Counter-check (14.11.2026): in POST /logout again `deleteToken(…).catch(logAndContinue(…))`
  * → red: „Ein Token, der gültig bleibt, darf nicht als abgemeldet gelten“ (200 instead of 500).
  */
 const test = require('node:test');
@@ -147,8 +147,8 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
 
     // ── 3b. If the invalidation fails, the logout has not succeeded ───────
     const konto = require('./helpers/sources').testServices().account;
-    const echt = konto.tokenLoeschen;
-    konto.tokenLoeschen = async () => {
+    const echt = konto.deleteToken;
+    konto.deleteToken = async () => {
       throw new Error('Datenbank weg');
     };
     try {
@@ -156,7 +156,7 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
       assert.equal(halb.status, 500, 'Ein Token, der gültig bleibt, darf nicht als abgemeldet gelten');
       assert.ok(await ablauf(webToken), 'Der Token ist noch da');
     } finally {
-      konto.tokenLoeschen = echt;
+      konto.deleteToken = echt;
     }
 
     // ── 4. Logging out invalidates BOTH ────────────────────────────────────────

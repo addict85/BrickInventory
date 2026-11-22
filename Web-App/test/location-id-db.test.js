@@ -68,9 +68,9 @@ test('storage location as an ID against a real database', async t => {
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const writable = await household.schreibbereich(UID);
+  const writable = await household.writeScope(UID);
 
-  const estrich = (await L.putLocationAn(UID, 'Estrich')).ort;
+  const estrich = (await L.createStorage(UID, 'Estrich')).ort;
 
   await t.test('a different spelling lands in the EXISTING place', async () => {
     // The core. „estrich" is typed, the stock holds „Estrich" — and the
@@ -99,7 +99,7 @@ test('storage location as an ID against a real database', async t => {
     // benenneOrtUm() rewrites ONLY the stock. With the name this needed
     // a loop over three tables in one transaction — and that
     // compared character by character, so it did not hit „estrich".
-    await L.benenneOrtUm(UID, estrich.id, 'Dachboden');
+    await L.renameStorage(UID, estrich.id, 'Dachboden');
     assert.equal(
       await ortAmSet('10179-1'),
       'Dachboden',
@@ -112,7 +112,7 @@ test('storage location as an ID against a real database', async t => {
     // a different spelling and released the place — the set then kept
     // a name that the selection list no longer knew.
     await assert.rejects(
-      () => L.loescheOrt(UID, estrich.id),
+      () => L.deleteStorage(UID, estrich.id),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
       'Ein belegter Ort liess sich loeschen',
     );
@@ -128,7 +128,7 @@ test('storage location as an ID against a real database', async t => {
     await L.setLocation('set', writable, ['10179-1'], null);
     assert.equal(await ortAmSet('10179-1'), null, 'Das Leeren hat nichts entfernt');
     // And now deleting works, because nothing lies in it any more.
-    await L.loescheOrt(UID, estrich.id);
+    await L.deleteStorage(UID, estrich.id);
     assert.deepEqual(await L.locationsOf([UID]), []);
   });
 

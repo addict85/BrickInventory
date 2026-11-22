@@ -18,7 +18,7 @@
  *      finds the token …” (token invalid, revocation deletes nothing)
  *   O  the check of the pool deleted in txStand() → red: „inSystemContext
  *      mitten in der Transaktion …“ (ran inside it, without an error)
- *   P  the worker as before (whole run in imAuftragsrahmen(), inNamesOfJob()
+ *   P  the worker as before (whole run in inJobFrame(), inNamesOfJob()
  *      with imNamenVon) → red: “a job runs in the system context only if …”
  *      (without marker [A,B,C], account [A,B,C])
  *   Q  only inNamesOfJob() with imNamenVon instead of asRequest → red: the same
@@ -28,7 +28,7 @@
  *   R  in src/account/context.ts passkeys.desKontos and konten.accessesOfAccount again
  *      in the list of the system context → red: “an account reads its passkeys and
  *      tokens …” (account A saw the passkey and the token of C)
- *   S  pdfAuftraege again entirely with bindeImSystemrahmen and without `AND user_id = $2`
+ *   S  pdfJobs again entirely with bindeImSystemrahmen and without `AND user_id = $2`
  *      in pdfAuftragZeile → red: “a PDF job of a foreign account …”
  *
  * Counter-check credentials only of the own account (migration 0114, measured 14.11.2026):
@@ -48,7 +48,7 @@
  *      connection carries account A on) and “in the system context …”
  *   D  zeilenschutz_konten() without the sub-accounts → red: “with account A …”,
  *      „ohne Konto …“, “foreign user_id …”, “a signal handler …”
- *   E  in imAuftragsrahmen() the marker KONTOUEBERGREIFEND not respected → red: “a job …”
+ *   E  in inJobFrame() the marker KONTOUEBERGREIFEND not respected → red: “a job …”
  *   F  after ROLLBACK TO SAVEPOINT stand.kontext not reset → red:
  *      „inSystemContext mitten … Sicherungspunkt“ (account A saw only B)
  *   G  AsyncResource.bind left out in Benachrichtigung.listen() → red: “a
@@ -73,7 +73,7 @@ const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 const { accessOrSkip, missingPrecondition } = require('./helpers/db');
 const { testName, cleanRemainder, id } = require('./helpers/test-names');
-const { createDb, dbKonfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
+const { createDb, dbConfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 const { inSystemContext, asRequest } = _req('src/infra/accountContext.js');
 
 const ROLLE = testName('rows');
@@ -110,7 +110,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${id(r)}`);
   }
   // One connection: this way it shows whether an account sticks to it.
-  const k = dbKonfigFromEnvironment();
+  const k = dbConfigFromEnvironment();
   const app = createDb({
     verbindung: k.verbindung,
     pool: { ...k.pool, max: 1, options: `${k.pool.options} -c role=${ROLLE}` },
@@ -237,7 +237,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
           await see('Konto')();
           throw new Error('gescheitert');
         },
-        aufgegeben: see('Konto aufgegeben'),
+        givenUp: see('Konto aufgegeben'),
       },
       preise: { ausfuehren: (_n, _k, a) => see(a.user_id ? 'markiert mit Konto' : 'markiert')() },
     });
@@ -367,7 +367,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       K.tokenDigest(token),
       C,
     ]);
-    assert.equal((await d.account.nutzerZumToken(token))?.user_id, C);
+    assert.equal((await d.account.userForToken(token))?.user_id, C);
     await require(path.join(q.DIST, 'src/account/deviceToken.js')).revokeAllTokens(contexts.account, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });
@@ -484,7 +484,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     // Asked with the own ID (like the route): none; with the foreign one: the row security hides it.
     assert.equal(await request(A, () => d.catalog.pdf.lies(kennung, A)), null);
     assert.equal(await request(A, () => d.catalog.pdf.lies(kennung, C)), null);
-    await request(A, () => d.catalog.pdf.loesche(kennung, C));
+    await request(A, () => d.catalog.pdf.remove(kennung, C));
     assert.equal((await su.all('SELECT 1 FROM jobs WHERE dedupe_key = $1', [`pdf:${kennung}`])).length, 1);
   });
 });

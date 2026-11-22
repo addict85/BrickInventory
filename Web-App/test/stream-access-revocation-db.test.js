@@ -48,7 +48,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const app = _req('startup/app.js').baueApp({
+  const app = _req('startup/app.js').buildApp({
     pool: db.systemPool,
     konfig: _req('src/infra/config.js').konfig(),
     sitzungsGeheimnis: 's'.repeat(48),

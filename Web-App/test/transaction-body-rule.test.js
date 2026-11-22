@@ -1,5 +1,5 @@
 /**
- * The lint rule biome/transaktionsrumpf.grit: in the body of `k.transaktion(async t => …)`
+ * The lint rule biome/transaktionsrumpf.grit: in the body of `k.transact(async t => …)`
  * nobody queries via the outer access. Checked with the real Biome and the real
  * biome.json on a sample tree with allowed and forbidden forms.
  *
@@ -22,20 +22,20 @@ const BIOME = path.join(ROOT, 'node_modules', '@biomejs', 'biome', 'bin', 'biome
 const VERBOTEN = `
 declare const k: any, sk: any, kx: any, db: any;
 export async function a() {
-  await k.transaktion(async (t: any) => { await t.db.get('x'); await k.db.get('y'); });
-  await k.transaktion(async t => k.konfig);
-  await sk.transaktion(async t => { await kx.household.x(t); }, { repeatAtConflict: true });
+  await k.transact(async (t: any) => { await t.db.get('x'); await k.db.get('y'); });
+  await k.transact(async t => k.konfig);
+  await sk.transact(async t => { await kx.household.x(t); }, { repeatAtConflict: true });
   await db.transaction(async function (tx: any) { await db.get('z'); });
-  await k.transaktion((t: any) => t.transaktion(async (u: any) => sk.x(u)));
+  await k.transact((t: any) => t.transact(async (u: any) => sk.x(u)));
 }
 `;
 const ALLOWED = `
 declare const k: any, sk: any;
 export async function b() {
-  await k.transaktion(async (t: any) => { await t.db.get('x'); });
-  await sk.transaktion(t => ({ k: t.k, sk: t.sk }));
-  await k.transaktion(k => k.x);
-  await k.transaktion(fn);
+  await k.transact(async (t: any) => { await t.db.get('x'); });
+  await sk.transact(t => ({ k: t.k, sk: t.sk }));
+  await k.transact(k => k.x);
+  await k.transact(fn);
 }
 declare const fn: any;
 `;

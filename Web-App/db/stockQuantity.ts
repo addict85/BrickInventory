@@ -31,8 +31,8 @@ export function mengeJoin(basis: string, alias = 'sm', konten?: Konten): string 
 
 /** The quantity column for [mengeJoin], never NULL (NULL would make every product
  * NULL). `fehlt`: 0 for a quantity, 1 for a factor. */
-export function mengeAus(alias = 'sm', fehlt: 0 | 1 = 0): string {
-  return `COALESCE(${alias}.menge, ${fehlt})`;
+export function quantityFrom(alias = 'sm', isMissing: 0 | 1 = 0): string {
+  return `COALESCE(${alias}.menge, ${isMissing})`;
 }
 
 /**

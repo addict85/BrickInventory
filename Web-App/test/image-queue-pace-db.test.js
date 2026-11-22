@@ -48,7 +48,7 @@ let loadFailsFail = false;
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async (_u, sn) => {
+  loadSetImage: async (_u, sn) => {
     // The failure also counts as a request: the round trip to the CDN has
     // taken place, and exactly that is what the quota is about.
     loadTimes.push(Date.now());
@@ -64,7 +64,7 @@ const IQ = _req('src/images/imageDemandRun.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 /** Batch size and cap from the module — the test repeats no number. */
-const { STAPEL, DURCHGANG_MAX_NOTIZEN: DECKEL } = IQ;
+const { BATCH: STAPEL, PASS_MAX_NOTES: DECKEL } = IQ;
 
 const angelegt = [];
 /** Put image AND preview in place — the job has nothing to do for this note. */
@@ -355,8 +355,8 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
       '-e',
       `
     const V = require(${JSON.stringify(path.join(ROOT, 'dist', 'startup', 'wiring.js'))});
-    const { dbKonfigFromEnvironment, createDb } = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
-    const db = createDb(dbKonfigFromEnvironment(), { firstStart: async () => {} });
+    const { dbConfigFromEnvironment, createDb } = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
+    const db = createDb(dbConfigFromEnvironment(), { firstStart: async () => {} });
     const contexts = {};
     V.buildServices(db, { contexts });
     const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/images/imageDemandRun.js'))});
@@ -382,8 +382,8 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
 
   // And now up to the TILE
   const IQhier = _req('src/images/imageDemandRun.js');
-  IQhier.letzterLauf.zeit = null;
-  IQhier.letzterLauf.ergebnis = null;
+  IQhier.lastRun.zeit = null;
+  IQhier.lastRun.ergebnis = null;
 
   const NUTZER = `pace-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
@@ -457,7 +457,7 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
       assert.equal(e.notLoaded, 2, 'Marcos Fall: zwei Notizen, kein Bild, und kein Zähler nannte den Grund');
       assert.equal(e.gesamt, 2);
       assert.match(
-        IQ.meldung(e),
+        IQ.message(e),
         /2 Download fehlgeschlagen/,
         'Die Meldung nennt den Fehlschlag nicht — dann steht dort dreimal null ' + 'und die Frage bleibt offen',
       );

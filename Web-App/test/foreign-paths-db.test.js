@@ -4,7 +4,7 @@
  * to another place of the API, `?…` appended own parameters.
  *
  * Checked twice: GET /sets/:setNumber/parts-list rejects such numbers at the
- * entrance (contract: PATH), and behind it holeSetTeile() builds the address with
+ * entrance (contract: PATH), and behind it fetchSetParts() builds the address with
  * intercepted https.get.
  *
  * Counter-checks (measured on 30.10.2026):
@@ -90,12 +90,12 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
     t,
   });
   let geprueft = 0;
-  const { holeSetTeile } = require('./helpers/sources').testServices().externalSources.quellen;
+  const { fetchSetParts } = require('./helpers/sources').testServices().externalSources.quellen;
   for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
     const r = await fetch(`${base}/api/v1/sets/${roh}/parts-list`);
     assert.equal(r.status, 400, `${roh}: kommt am Eingang durch`);
     abgerufen.length = 0;
-    await holeSetTeile(decodeURIComponent(roh));
+    await fetchSetParts(decodeURIComponent(roh));
     const api = abgerufen.filter(u => u.includes('/api/v3/'));
     for (const u of api) {
       geprueft++;

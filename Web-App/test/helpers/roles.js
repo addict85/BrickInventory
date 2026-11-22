@@ -26,6 +26,6 @@ function asRole(url, rolle) {
  * (ratchet in test/roles-separation-db.test.js). @param {string} quelle */
 const asSuperuser = quelle => /^\s*(\*|\/\/)\s*@superuser\b/m.test(quelle);
 /** Does the file call services in the system context (helpers/system-frame.js)? @param {string} quelle */
-const imSystemrahmen = quelle => /^require\('\.\/helpers\/systemrahmen'\);/m.test(quelle);
+const inSystemFrame = quelle => /^require\('\.\/helpers\/systemrahmen'\);/m.test(quelle);
 
-module.exports = { rollen, asRole, asSuperuser, imSystemrahmen };
+module.exports = { rollen, asRole, asSuperuser, inSystemFrame };

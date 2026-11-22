@@ -48,8 +48,8 @@ test('if the image address is missing on the set, it comes from the shared catal
   await catalogSet(db, MIT, { name: 'Anderes', image_url: OWN });
 
   try {
-    const { setsLesen } = require('./helpers/sources').handlerModule(_req);
-    const r = await setsLesen([uid], {});
+    const { readSets } = require('./helpers/sources').handlerModule(_req);
+    const r = await readSets([uid], {});
     const ohne = r.sets.find(s => s.set_number === OHNE);
     const mit = r.sets.find(s => s.set_number === MIT);
 

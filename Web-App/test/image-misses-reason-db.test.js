@@ -14,7 +14,7 @@ let responseStatus = null;
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async (_u, _sn, info) => {
+  loadSetImage: async (_u, _sn, info) => {
     if (responseStatus && info) info.status = responseStatus;
     return null; // failure — the status code decides the rest
   },
@@ -141,7 +141,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
   });
 
   await t.test('a timeout does NOT lock out for seven days', async () => {
-    // No status code: exactly the picture of a network error. setBildHerunterladen
+    // No status code: exactly the picture of a network error. downloadSetImage
     // only sets info.status for a response ≠ 200 — if the connection
     // breaks off, the field stays empty.
     const sn = `${P}_timeout`;
@@ -159,7 +159,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
         'Genau so verschwinden Bilder für sieben Tage, ohne dass je etwas ' +
         'daran war — und niemand sieht, dass es überhaupt einen Versuch gab.',
     );
-    assert.match(IQ.meldung(e), /Download fehlgeschlagen/);
+    assert.match(IQ.message(e), /Download fehlgeschlagen/);
   });
 
   await t.test('the same standard as in the image proxy', () => {

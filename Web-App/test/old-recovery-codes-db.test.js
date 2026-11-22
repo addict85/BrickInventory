@@ -36,7 +36,7 @@ S.replaceServices('mail', {
   },
 });
 const db = S.testData();
-const { hashePassword } = _req('src/account/passwordHash.js');
+const { hashPassword } = _req('src/account/passwordHash.js');
 const { searchValue } = _req('src/infra/secret.js');
 
 test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -48,7 +48,7 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
     await db.get(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified)
        VALUES ($1, $1 || '@beispiel.de', $2, true, true) RETURNING id`,
-      [NAME, await hashePassword(PASS)],
+      [NAME, await hashPassword(PASS)],
     )
   ).id;
   await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [uid]);

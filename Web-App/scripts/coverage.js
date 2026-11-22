@@ -78,8 +78,8 @@ async function bericht(v8 = path.join(TARGET, 'v8'), target = TARGET) {
     map.merge(umw.toIstanbul());
     umw.destroy();
   }
-  const kontext = libReport.createContext({ dir: target, coverageMap: map, sourceFinder: () => '' });
-  for (const art of ['lcovonly', 'json-summary', 'text-summary']) reports.create(art).execute(kontext);
+  const context = libReport.createContext({ dir: target, coverageMap: map, sourceFinder: () => '' });
+  for (const art of ['lcovonly', 'json-summary', 'text-summary']) reports.create(art).execute(context);
   const areas = zusammenfassung(map);
   fs.writeFileSync(path.join(target, 'bereiche.json'), `${JSON.stringify(areas, null, 2)}\n`);
   return areas;
@@ -134,9 +134,9 @@ if (require.main === module) {
         console.error('[abdeckung] coverage/bereiche.json fehlt — erst npm test -- --abdeckung');
         process.exit(2);
       }
-      const fehler = pruefen(JSON.parse(fs.readFileSync(file, 'utf8')));
-      if (fehler.length) {
-        console.error(`[abdeckung] unter der Schranke: ${fehler.join(', ')}`);
+      const error = pruefen(JSON.parse(fs.readFileSync(file, 'utf8')));
+      if (error.length) {
+        console.error(`[abdeckung] unter der Schranke: ${error.join(', ')}`);
         process.exit(1);
       }
       return;

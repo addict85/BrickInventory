@@ -1,11 +1,11 @@
 import type { CookieOptions, Request } from 'express';
-import { cookieSafe, konfig, type Konfig } from '../infra/config';
+import { cookieSafe, konfig, type AppConfig } from '../infra/config';
 
 const NAME_TLS = '__Host-bim.sid';
 const NAME_WITHOUT_TLS = 'bim.sid';
 
 /** `__Host-` locks out neighboring subdomains; without TLS the browser would not accept it. */
-export function sitzungsKeksName(k: Konfig = konfig()): string {
+export function sessionCookieName(k: AppConfig = konfig()): string {
   return cookieSafe(k) ? NAME_TLS : NAME_WITHOUT_TLS;
 }
 
@@ -13,12 +13,12 @@ export function sitzungsKeksName(k: Konfig = konfig()): string {
  * Strict: no link from a foreign page carries the session along. The UI
  * fetches everything from its own site and thus stays logged in even after a
  * mail link; mail links themselves need no session. */
-export function sessionCookieOptions(k: Konfig = konfig()): CookieOptions & { path: '/' } {
+export function sessionCookieOptions(k: AppConfig = konfig()): CookieOptions & { path: '/' } {
   return { path: '/', httpOnly: true, sameSite: 'strict', secure: cookieSafe(k) };
 }
 
 /** Over http express-session sets no Secure cookie; the response says so instead of guessing "expired". */
-export function cookieStaysFrom(req: Pick<Request, 'secure'>, k: Konfig = konfig()): boolean {
+export function cookieStaysFrom(req: Pick<Request, 'secure'>, k: AppConfig = konfig()): boolean {
   return cookieSafe(k) && !req.secure;
 }
 

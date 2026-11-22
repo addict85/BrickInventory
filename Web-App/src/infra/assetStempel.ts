@@ -25,11 +25,11 @@ export function fileStamp(file: string): string | null {
 export function stempleAssets(html: string, wurzel: string): string {
   return html.replace(
     /((?:href|src)=")(\/[^"?]+)\?v=[^"]*(")/g,
-    (whole, header: string, pfad: string, tail: string) => {
+    (whole, header: string, filePath: string, tail: string) => {
       // normalize against `..`: a rule that only holds for benign input is none.
-      const rein = path.normalize(pfad).replace(/^(\.\.(\/|\\|$))+/, '');
+      const rein = path.normalize(filePath).replace(/^(\.\.(\/|\\|$))+/, '');
       const stempel = fileStamp(path.join(wurzel, rein));
-      return stempel === null ? whole : `${header}${pfad}?v=${stempel}${tail}`;
+      return stempel === null ? whole : `${header}${filePath}?v=${stempel}${tail}`;
     },
   );
 }
@@ -43,14 +43,14 @@ export function stampAssetsCached(html: string, wurzel: string): string {
   const record = Z.satz;
   return html.replace(
     /((?:href|src)=")(\/[^"?]+)\?v=[^"]*(")/g,
-    (whole, header: string, pfad: string, tail: string) => {
-      let stempel = record.get(pfad);
+    (whole, header: string, filePath: string, tail: string) => {
+      let stempel = record.get(filePath);
       if (stempel === undefined) {
-        const rein = path.normalize(pfad).replace(/^(\.\.(\/|\\|$))+/, '');
+        const rein = path.normalize(filePath).replace(/^(\.\.(\/|\\|$))+/, '');
         stempel = fileStamp(path.join(wurzel, rein)) ?? '';
-        record.set(pfad, stempel);
+        record.set(filePath, stempel);
       }
-      return stempel === '' ? whole : `${header}${pfad}?v=${stempel}${tail}`;
+      return stempel === '' ? whole : `${header}${filePath}?v=${stempel}${tail}`;
     },
   );
 }

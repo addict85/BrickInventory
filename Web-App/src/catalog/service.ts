@@ -5,8 +5,8 @@ import { resolveSingle, resolveViaInterface } from './bricklinkLink';
 import { forSet } from './priceComparison';
 import { newestInventory } from './rbInventory';
 import { withVersion } from '../infra/setNumber';
-import { Zwischenspeicher } from '../infra/cache';
-import { versuche } from '../infra/result';
+import { Cache } from '../infra/cache';
+import { attempts } from '../infra/result';
 import type { CatalogContext } from './context';
 
 // rb_themes changes at most daily; the tree is built once per access
@@ -15,12 +15,12 @@ type ThemeNode = repo.Thema;
 type ThemeTree = { byId: Map<number, ThemeNode>; children: Map<number, number[]>; pathName: Map<number, string> };
 const THEME_CACHE_TTL = 60 * 60 * 1000;
 const themesStorage = (k: CatalogContext) =>
-  k.faecher.fach('themenbaum', () => new Zwischenspeicher<0, ThemeTree>(1, THEME_CACHE_TTL));
+  k.faecher.slot('themenbaum', () => new Cache<0, ThemeTree>(1, THEME_CACHE_TTL));
 
 async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
   const remembered = themesStorage(k).hole(0);
   if (remembered) return remembered;
-  const rows = await k.katalogSuche.themen();
+  const rows = await k.katalogSuche.themes();
   const byId = new Map<number, ThemeNode>();
   const children = new Map<number, number[]>();
   for (const r of rows) {
@@ -48,7 +48,7 @@ async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
   };
   for (const id of byId.keys()) resolvePath(id, new Set([id]));
   const tree = { byId, children, pathName };
-  themesStorage(k).setze(0, tree);
+  themesStorage(k).set(0, tree);
   return tree;
 }
 
@@ -72,7 +72,7 @@ export async function catalogMeta(k: CatalogContext) {
   const tree = await getThemeTree(k);
   const [counts, years, yearCounts] = await Promise.all([
     k.katalogSuche.setsJeThema(),
-    k.katalogSuche.jahresspanne(),
+    k.katalogSuche.yearRange(),
     k.katalogSuche.setsJeYear(),
   ]);
   const direct = new Map<number, number>();
@@ -149,14 +149,14 @@ export async function catalogSet(k: CatalogContext, userId: number, raw: string)
   let bricklink = await resolveSingle(k, set.set_number);
   // If the check fails, the link stays marked as unverified (resolved: false).
   if (!bricklink.resolved) {
-    const r = await versuche('katalog:bricklink', resolveViaInterface(k, set.set_number));
+    const r = await attempts('katalog:bricklink', resolveViaInterface(k, set.set_number));
     if (r.ok) bricklink = r.wert;
   }
   let image_local = imageIfPresent(set.image_local ?? `/images/sets/${fileMaster(set.set_number)}.jpg`);
   // Now store permanently; the preview and the entry in set_catalog are done by the image job.
   if (!image_local && set.image_url) {
     // Without a file the page shows image_url; the image job fetches it later.
-    const r = await versuche('katalog:setBildHerunterladen', k.images.setBildLaden(set.image_url, set.set_number));
+    const r = await attempts('katalog:setBildHerunterladen', k.images.loadSetImage(set.image_url, set.set_number));
     image_local = r.ok ? r.wert : null;
     if (image_local) k.images.rememberUsed(String(set.image_url || ''), set.set_number);
   }

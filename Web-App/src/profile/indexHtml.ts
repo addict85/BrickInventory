@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { DESIGNS } from '../settings';
 import { stampAssetsCached } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { ProfileContext } from './context';
 import { processWide } from '../infra/prozessweit';
 
@@ -88,7 +88,7 @@ async function currentTheme(k: ProfileContext, userId?: number): Promise<string>
   }
   if (Z.theme !== null && k.uhr.jetzt() - Z.themeAt < THEME_TTL_MS) return Z.theme;
   // The start page still loads with a disrupted database, then classic and uncached.
-  const read = await versuche('index-html:design', k.einstellungen.globalValue('app_theme'));
+  const read = await attempts('index-html:design', k.einstellungen.globalValue('app_theme'));
   if (!read.ok) return 'classic';
   const stored = read.wert;
   const chosen: string = stored && DESIGNS.includes(stored) ? stored : 'classic';

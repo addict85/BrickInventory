@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
-const { ARGON2_PREFIX, hashePassword, passwordFits } = _req('src/account/passwordHash.js');
+const { ARGON2_PREFIX, hashPassword, passwordFits } = _req('src/account/passwordHash.js');
 
 test('argon2id and replacing old bcrypt hashes', { concurrency: 1, timeout: 60_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -55,13 +55,13 @@ test('argon2id and replacing old bcrypt hashes', { concurrency: 1, timeout: 60_0
   const gespeichert = async () => (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
 
   await t.test('new hashes are argon2id with the fixed costs', async () => {
-    const h = await hashePassword(PASS);
+    const h = await hashPassword(PASS);
     assert.ok(h.startsWith(ARGON2_PREFIX), h.slice(0, 40));
     assert.equal(await passwordFits(PASS, h), true);
     assert.equal(await passwordFits(`${PASS}x`, h), false);
     // What stands behind byte 72 counts (bcrypt cut it off).
     const lang = 'L'.repeat(80);
-    assert.equal(await passwordFits(`${lang}b`, await hashePassword(`${lang}a`)), false);
+    assert.equal(await passwordFits(`${lang}b`, await hashPassword(`${lang}a`)), false);
   });
 
   await t.test('… a failed attempt replaces nothing', async () => {

@@ -54,7 +54,7 @@ test('capturing under load', { concurrency: 1 }, async t => {
     await holdsSet(db, uid, '70001-1', 0);
     await Promise.all(
       Array.from({ length: 10 }, () =>
-        bestand.transaktion(
+        bestand.transact(
           tt => addPurchaseAtTag(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
           { sperren: [{ konto: uid, schluessel: '70001-1' }] },
         ),
@@ -172,14 +172,14 @@ test('all capture paths use the same check', () => {
   const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/contract/sets.ts'), 'utf8'));
   assert.match(
     vertrag,
-    /const NewSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.geld\(/,
+    /const NewSet = [^;]*quantity: input\.pieceCount\(\)[^;]*purchase_price: input\.geld\(/,
     'Sets: Menge oder Preis ungeprüft',
   );
 
   // And the add path writes under the lock.
   const sets = ohneKommentare(require('./helpers/sources').setCoreSource());
   // Only the body of setErfassen(), the single path for adding: up to the next function.
-  const start = sets.indexOf('async function setErfassen(');
+  const start = sets.indexOf('async function acquireSet(');
   const naechste = sets.slice(start + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
   const kern = sets.slice(start, start + 10 + naechste);
   const sperre = kern.indexOf('repo.addLockSet(');
@@ -288,8 +288,8 @@ test('the parts list delivers what it reports', () => {
   // The response reports the ACTUAL page size, not the requested one.
   const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/parts.ts'), 'utf8'));
   const antwort = v1.slice(
-    v1.indexOf("router.endpunkt('GET /api/v1/parts'"),
-    v1.indexOf("router.endpunkt('GET /api/v1/parts/brick-colors'"),
+    v1.indexOf("router.endpoint('GET /api/v1/parts'"),
+    v1.indexOf("router.endpoint('GET /api/v1/parts/brick-colors'"),
   );
   // What is checked is WHERE the number comes from, not how the line is written.
   //

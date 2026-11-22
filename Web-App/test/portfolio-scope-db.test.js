@@ -1,7 +1,7 @@
 /**
  * The portfolio curve belongs to the CHOSEN account, not to the viewer.
  *
- * Counter-check (carried out): in portfolioVerlauf `viewerId` used again as scope
+ * Counter-check (carried out): in portfolioHistory `viewerId` used again as scope
  * instead of `ids` → both curves become the same.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -72,11 +72,11 @@ test('the portfolio curve follows the selected account', { concurrency: 1 }, asy
     }
   }
 
-  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
+  const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
   const { getSetting } = _req('src/settings/settings.js');
   const kurve = async uids => {
     // The viewer is ALWAYS the main account — that is exactly what this is about.
-    const r = await portfolioVerlauf(mainId, uids, 'week', db, getSetting);
+    const r = await portfolioHistory(mainId, uids, 'week', db, getSetting);
     return (r?.points || []).map(p => p.value);
   };
 

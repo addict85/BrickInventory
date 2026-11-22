@@ -2,8 +2,8 @@
 import type express from 'express';
 import path from 'node:path';
 import { pathParam } from '../../src/http/httpResponse';
-import { fachfehler, notFound } from '../../src/infra/errorTexts';
-import { kontoSchranke, guardFor } from './middleware';
+import { failDomain, notFound } from '../../src/infra/errorTexts';
+import { accountGate, guardFor } from './middleware';
 import {
   uploadQuotaBytes,
   privaterFolder,
@@ -13,10 +13,10 @@ import {
   uploadTotalMb,
   checkReceivedFile,
 } from '../../src/http/fileUpload';
-import { ANLEITUNGS_WURZEL } from '../../src/sets';
-import { signedInUserId, istVerwalter } from '../../src/account/http/login';
+import { INSTRUCTION_ROOT } from '../../src/sets';
+import { signedInUserId, isAdmin } from '../../src/account/http/login';
 import { released } from '../../src/account/http/stepGuard';
-import { vertragsRouter } from '../../src/http/contractRouter';
+import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 
 const uploadQuotaMb = () => Math.round(uploadQuotaBytes() / 1024 / 1024);
@@ -28,45 +28,41 @@ const beforeTheUpload =
     const uid = signedInUserId(req);
     if (!(await d.sets.setBelongsAccount(uid, pathParam(req, 'setNumber')))) notFound();
     const length = Number(req.headers['content-length']) || 0;
-    if (!(await quotaSufficesFor(path.join(ANLEITUNGS_WURZEL, String(uid)), length)))
-      fachfehler('zu_gross', 'upload_kontingent_voll', { mb: uploadQuotaMb() });
-    if (!(await totalSufficesFor(length))) fachfehler('speicher_voll', 'upload_gesamt_voll', { mb: uploadTotalMb() });
+    if (!(await quotaSufficesFor(path.join(INSTRUCTION_ROOT, String(uid)), length)))
+      failDomain('zu_gross', 'upload_kontingent_voll', { mb: uploadQuotaMb() });
+    if (!(await totalSufficesFor(length))) failDomain('speicher_voll', 'upload_gesamt_voll', { mb: uploadTotalMb() });
     next();
   };
 
 export function buildSetsInstructionsRouter(d: Pick<Services, 'account' | 'sets'>) {
   const { requireToken } = guardFor(d.account);
-  const router = vertragsRouter('/api/v1');
+  const router = contractRouter('/api/v1');
 
-  router.endpunkt('POST /api/v1/sets/:setNumber/instructions', requireToken, async (req, res) => {
+  router.endpoint('POST /api/v1/sets/:setNumber/instructions', requireToken, async (req, res) => {
     // The administrator deletes shared instructions: the same step guard as every administrator route.
-    const verwalter = istVerwalter(req);
-    if (verwalter && !(await released(d.account, req, res, 'verwaltung'))) return;
-    const { instructions, auftrag } = await d.sets.loadInstructionsNew(
-      req.apiUser.user_id,
-      req.pfad.setNumber,
-      verwalter,
-    );
+    const admin = isAdmin(req);
+    if (admin && !(await released(d.account, req, res, 'verwaltung'))) return;
+    const { instructions, auftrag } = await d.sets.loadInstructionsNew(req.apiUser.user_id, req.pfad.setNumber, admin);
     res.status(202);
     return { instructions, count: instructions.length, auftrag_id: auftrag };
   });
 
   const uploadInstr = privaterReceive({
-    ordner: req => privaterFolder(ANLEITUNGS_WURZEL, String(signedInUserId(req))),
-    praefix: req => pathParam(req, 'setNumber'),
+    folder: req => privaterFolder(INSTRUCTION_ROOT, String(signedInUserId(req))),
+    prefix: req => pathParam(req, 'setNumber'),
     typen: { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' },
     maxBytes: 50 * 1024 * 1024,
   });
 
-  router.endpunkt(
+  router.endpoint(
     'POST /api/v1/sets/:setNumber/instructions/upload',
     requireToken,
-    kontoSchranke('upload'),
+    accountGate('upload'),
     beforeTheUpload(d),
     uploadInstr.single('file'),
     async req => {
-      if (!req.file) fachfehler('ungueltig', 'keine_datei');
-      await checkReceivedFile(ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
+      if (!req.file) failDomain('ungueltig', 'keine_datei');
+      await checkReceivedFile(INSTRUCTION_ROOT, req.file.path, req.file.mimetype);
       const uid = signedInUserId(req),
         sn = req.pfad.setNumber;
       const desc = (req.eingabe.description || req.file.originalname).substring(0, 200);
@@ -76,8 +72,8 @@ export function buildSetsInstructionsRouter(d: Pick<Services, 'account' | 'sets'
     },
   );
 
-  router.endpunkt('DELETE /api/v1/sets/:setNumber/instructions/:instrId', requireToken, async req => {
-    await d.sets.anleitungLoeschen(signedInUserId(req), req.pfad.instrId);
+  router.endpoint('DELETE /api/v1/sets/:setNumber/instructions/:instrId', requireToken, async req => {
+    await d.sets.deleteInstruction(signedInUserId(req), req.pfad.instrId);
     return {};
   });
   return router;

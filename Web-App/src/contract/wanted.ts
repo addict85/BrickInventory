@@ -168,7 +168,7 @@ export const routen = {
   'POST /api/v1/wanted/:setNumber/:condition/uebernehmen': {
     antwort: WantedItemTakeoverResponse,
     eingabe: z.strictObject({
-      quantity: input.stueckzahl(),
+      quantity: input.pieceCount(),
       purchase_price: input.geld('Kaufpreis'),
       condition: CONDITION.nullable().optional(),
       owner_user_id: IDENTIFIER.nullable().optional(),

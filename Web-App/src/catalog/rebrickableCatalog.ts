@@ -1,12 +1,12 @@
-import { Zwischenspeicher } from '../infra/cache';
+import { Cache } from '../infra/cache';
 /** First the own data (CSV tables, cache), then the client:
  * the quota is scarce. The client only queries; storing is done by this service. */
-import type { Quellen } from '../externalSources';
+import type { Sources } from '../externalSources';
 import { isSparePart } from '../infra/validate';
 import { withVersion } from '../infra/setNumber';
 import { newestInventory } from './rbInventory';
 
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { CatalogContext } from './context';
 
 /** A broken entry counts as none. */
@@ -19,7 +19,7 @@ function fromCache<T>(json: string | undefined): T | undefined {
   }
 }
 
-export async function setAngaben(k: CatalogContext, setNumber: string) {
+export async function setDetails(k: CatalogContext, setNumber: string) {
   const n = withVersion(setNumber);
   const cached = await k.rebrickableCache.catalogSetTo(n);
   // "Set <number>" is a placeholder, not a name; as a hit it would overwrite
@@ -32,7 +32,7 @@ export async function setAngaben(k: CatalogContext, setNumber: string) {
     return null;
   }
   // The theme is secondary: without it the set is still remembered, the row names none.
-  const thema = await versuche('rebrickable:thema', k.externalSources.quellen.getThemeName(data.theme_id ?? 0));
+  const thema = await attempts('rebrickable:thema', k.externalSources.quellen.getThemeName(data.theme_id ?? 0));
   const theme = thema.ok ? thema.wert : null;
   const row = {
     set_number: n,
@@ -69,35 +69,34 @@ async function setPartsFromCsv(k: CatalogContext, setNumber: string) {
 /** Briefly remember an empty answer (404, abort): otherwise every
  * repeated import of an unknown number costs quota again. */
 const LEER_MS = 10 * 60 * 1000;
-const leer = (k: CatalogContext) =>
-  k.faecher.fach('rebrickable:leer', () => new Zwischenspeicher<string, true>(5000, LEER_MS));
+const leer = (k: CatalogContext) => k.faecher.slot('rebrickable:leer', () => new Cache<string, true>(5000, LEER_MS));
 
-export async function alleTeileDesSets(k: CatalogContext, setNumber: string) {
+export async function allPartsOfSet(k: CatalogContext, setNumber: string) {
   const csvParts = await setPartsFromCsv(k, setNumber);
   if (csvParts) return csvParts;
   const n = withVersion(setNumber);
-  const remembered = fromCache<Awaited<ReturnType<Quellen['holeSetTeile']>>['teile']>(
+  const remembered = fromCache<Awaited<ReturnType<Sources['fetchSetParts']>>['teile']>(
     await k.rebrickableCache.partListFromCache(n),
   );
   if (remembered) return remembered;
   if (leer(k).hole(n)) return [];
-  const { teile, verweigert } = await k.externalSources.quellen.holeSetTeile(n);
+  const { teile, verweigert } = await k.externalSources.quellen.fetchSetParts(n);
   // A refusal (403) is remembered as an empty list so that not every import asks again.
   if (teile.length > 0 || verweigert) await k.rebrickableCache.rememberPartList(n, JSON.stringify(teile));
-  else leer(k).setze(n, true);
+  else leer(k).set(n, true);
   return teile;
 }
 
 /** Shared cache: the data rarely changes, the quota is scarce. */
 export async function minifigPartsQuery(k: CatalogContext, figNumber: string) {
-  const remembered = fromCache<NonNullable<Awaited<ReturnType<Quellen['holeFigurTeile']>>>>(
+  const remembered = fromCache<NonNullable<Awaited<ReturnType<Sources['fetchMinifigParts']>>>>(
     await k.rebrickableCache.minifigsPartsFromCache(figNumber),
   );
   if (remembered) return remembered;
-  const parts = await k.externalSources.quellen.holeFigurTeile(figNumber);
+  const parts = await k.externalSources.quellen.fetchMinifigParts(figNumber);
   if (!parts) return [];
   // The cache only saves the next fetch; the parts apply without it as well.
-  await versuche(
+  await attempts(
     'rebrickable:figurenteile-merken',
     k.rebrickableCache.rememberMinifigsParts(figNumber, JSON.stringify(parts)),
   );

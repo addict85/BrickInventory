@@ -3,7 +3,7 @@
  * host of the API list when a response points there with `next`.
  *
  * Counter-checks (measured on 08.11.2026):
- *   A  the check of `next` removed in holeSetTeile AND httpsGetRobust again with
+ *   A  the check of `next` removed in fetchSetParts AND httpsGetRobust again with
  *      ALLOWED_API_HOSTS → red: “next on api.upcitemdb.com …” (fetch with key seen)
  *   B  only the host choice in httpsGetRobust back to ALLOWED_API_HOSTS (next check stays)
  *      → red: “fetches with key …” (the next check alone does not catch this path)
@@ -61,7 +61,7 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
     if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
     else await S.deleteGlobalValues('rebrickable_api_key');
   });
-  const { holeSetTeile, httpsGetRobust, rebrickableRaw } =
+  const { fetchSetParts, httpsGetRobust, rebrickableRaw } =
     require('./helpers/sources').testServices().externalSources.quellen;
   const withKey = () => fetches.filter(a => Object.keys(a.kopf).some(k => k.toLowerCase() === 'authorization'));
 
@@ -77,7 +77,7 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
             }),
           }
         : { status: 200, body: '{}' };
-    await holeSetTeile('10294-1');
+    await fetchSetParts('10294-1');
     assert.ok(fetches.length >= 1, 'die Attrappe sah keinen Abruf — die Gegenprobe bewiese nichts');
     assert.deepEqual(
       fetches.filter(a => new URL(a.url).hostname !== 'rebrickable.com').map(a => a.url),
@@ -101,7 +101,7 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
               next: 'https://rebrickable.com/api/v3/lego/sets/10294-1/parts/?page=2',
             }),
           };
-    const r = await holeSetTeile('10294-1');
+    const r = await fetchSetParts('10294-1');
     assert.equal(r.teile.length, 2, 'die zweite Seite fehlt');
   });
 

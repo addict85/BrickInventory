@@ -1,7 +1,7 @@
 /** The connection comes from the log: it starts before the database layer
  * and must not import it. */
 export interface Querier {
-  query(sql: string, werte?: unknown[]): Promise<unknown>;
+  query(sql: string, values?: unknown[]): Promise<unknown>;
 }
 
 export function writeLogRows(pool: Querier, rows: { level: string; message: string }[]) {

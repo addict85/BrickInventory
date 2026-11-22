@@ -9,7 +9,7 @@ export type Schedule =
 
 export interface Handler<A extends JobKind = JobKind> {
   ausfuehren(payload: Payload<A>, k: JobContext, a: JobRow): Promise<void>;
-  aufgegeben?(payload: Payload<A>, fehler: string, a: JobRow): Promise<void>;
+  givenUp?(payload: Payload<A>, error: string, a: JobRow): Promise<void>;
   exklusiv?: boolean;
 }
 

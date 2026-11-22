@@ -52,8 +52,8 @@ test('the API quotas are named after the API, not after a path', () => {
       'zaehleKontingent',
       'quotaStatus',
       'quotaLimit',
-      'kontingentPruefenUndZaehlen',
-      'kontingentUebersicht',
+      'checkAndCountQuota',
+      'quotaOverview',
       'limitTheSource',
     ]) {
       const re = new RegExp(`${fn}\\(\\s*'([^']+)'`, 'g');
@@ -115,7 +115,7 @@ test('clients/ contains no routes and is built anyway', () => {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients', f), 'utf8'));
     assert.doesNotMatch(
       src,
-      /^\s*router\.(get|post|put|delete|patch|endpunkt)\(/m,
+      /^\s*router\.(get|post|put|delete|patch|endpoint)\(/m,
       `clients/${f} hat eine Route — dann ist es ein Router und gehört nach routes/`,
     );
   }

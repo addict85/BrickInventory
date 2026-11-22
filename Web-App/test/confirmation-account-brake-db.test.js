@@ -61,7 +61,7 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
     ]);
   await leere();
   const zeilen = [];
-  const zurueck = protokoll.installLog({ out: () => {}, err: z => zeilen.push(z), jetzt: () => Date.now() });
+  const zurueck = protokoll.installLog({ out: () => {}, err: z => zeilen.push(z), now: () => Date.now() });
   t.after(async () => {
     zurueck();
     await leere();

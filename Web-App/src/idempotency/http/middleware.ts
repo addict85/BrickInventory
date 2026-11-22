@@ -1,7 +1,7 @@
 /** Behind login (the key is valid per account). Stored BEFORE the response
  * goes out: if the connection drops, the retry already finds it. */
 import type { Request, Response, NextFunction } from 'express';
-import { nutzerId } from '../../account/http/login';
+import { userId } from '../../account/http/login';
 import { reportError } from '../../infra/error';
 import * as service from '../service';
 import { routeForRequest } from '../../contract';
@@ -27,7 +27,7 @@ export function idempotency(d: IdempotencyServices) {
     const route = routeForRequest(req.method, req.baseUrl + req.path);
     if (!route) return next();
     if (!service.KEY_PATTERN.test(key)) return sendError(req, res, 'ungueltig', 'idempotenz_schluessel_ungueltig');
-    const uid = nutzerId(req);
+    const uid = userId(req);
     if (uid === null) return next();
 
     const outcome = await d.begin(

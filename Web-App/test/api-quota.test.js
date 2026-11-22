@@ -18,7 +18,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { checkBudget, clearThrottle, classification, apiDrossel, BUDGET, JOB_BUDGET, WINDOW_MS, COST } =
+const { checkBudget, clearThrottle, classification, apiThrottle, BUDGET, JOB_BUDGET, WINDOW_MS, COST } =
   _req('src/http/apiThrottle.js');
 
 test('an account has BUDGET units per window', () => {
@@ -122,7 +122,7 @@ test('the route answers 429 with Retry-After and error code', async t => {
     Object.assign(req, { session: { userId: 42 } });
     next();
   });
-  app.use('/api/v1', apiDrossel);
+  app.use('/api/v1', apiThrottle);
   app.use('/api/v1', (req, res) => res.json({ success: true, pfad: req.path }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
@@ -139,7 +139,7 @@ test('the route answers 429 with Retry-After and error code', async t => {
 
   // Without login nothing limits — login has its own brakes.
   const ohne = express();
-  ohne.use('/api/v1', apiDrossel);
+  ohne.use('/api/v1', apiThrottle);
   ohne.use('/api/v1', (_req, res) => res.json({ success: true }));
   const srv2 = ohne.listen(0);
   t.after(() => new Promise(r => srv2.close(r)));

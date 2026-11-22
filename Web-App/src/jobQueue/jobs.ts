@@ -21,7 +21,7 @@ export interface Progress {
 /** What a service needs from the running job: report state, stop at the signal. */
 export interface JobRun {
   readonly signal?: AbortSignal;
-  fortschritt?(f: Progress): Promise<boolean>;
+  progress?(f: Progress): Promise<boolean>;
 }
 
 /** Throws the reason for the abort; between two steps of a long run. */
@@ -67,8 +67,8 @@ export interface Pause {
 /** What a handler gets from the worker; the domain services only know this, not the worker. */
 export interface JobContext {
   /** false: the job no longer belongs to this run (aborted, reassigned). */
-  lebenszeichen(): Promise<boolean>;
-  fortschritt(f: Progress): Promise<boolean>;
+  heartbeat(): Promise<boolean>;
+  progress(f: Progress): Promise<boolean>;
   /** Aborted, reassigned or the process ends: fetches and loops stop. */
   readonly signal: AbortSignal;
   /** A long job stops at the next safe point. */

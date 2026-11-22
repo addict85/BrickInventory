@@ -44,7 +44,7 @@ replace('src/wanted/repository/wanted.js', {
 // Creation happens without network; afterwards only the completion in the open stream can fail.
 // The process's sets services with two replaced; the routes get the same ones (routerFrom).
 Object.assign(require('./helpers/sources').testArea('sets'), {
-  setErfassen: async e => {
+  acquireSet: async e => {
     if (e.setNumber === 'FACH-1') throw fileError('ungueltig', 'setnummer_ungueltig');
     return {
       action: 'added',

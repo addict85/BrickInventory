@@ -7,23 +7,23 @@ export interface CatalogEntry {
 }
 
 /** With the version suffix, as it is stored. */
-export async function catalogEntryTo(db: DbInterface, nummer: string): Promise<CatalogEntry | null> {
+export async function catalogEntryTo(db: DbInterface, number: string): Promise<CatalogEntry | null> {
   return (
     (await db.get<CatalogEntry>('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1', [
-      nummer,
+      number,
     ])) ?? null
   );
 }
 
 /** A set that one of our catalogs really knows. A "no price" marker
  * does not count: it only arises from the fetch this check is meant to prevent. */
-export async function setInCatalog(db: DbInterface, nummer: string): Promise<boolean> {
+export async function setInCatalog(db: DbInterface, number: string): Promise<boolean> {
   const r = await db.get<{ x: number }>(
     `SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM set_catalog WHERE set_number = $1)
                       OR EXISTS (SELECT 1 FROM rb_sets WHERE set_num = $1)
                       OR EXISTS (SELECT 1 FROM catalog_cache WHERE set_number = $1
                                   AND NOT (is_gear IS TRUE AND bl_type = 'NONE'))`,
-    [nummer],
+    [number],
   );
   return !!r;
 }
@@ -31,29 +31,29 @@ export async function setInCatalog(db: DbInterface, nummer: string): Promise<boo
 export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
 
 /** NONE means "no price", with a timestamp. */
-export async function rememberBricklinkKind(db: DbInterface, nummer: string, art: BricklinkArt): Promise<void> {
+export async function rememberBricklinkKind(db: DbInterface, number: string, art: BricklinkArt): Promise<void> {
   if (art === 'NONE') {
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,true)
       ON CONFLICT (set_number) DO UPDATE SET bl_type=$2, is_gear=true, fetched_at=NOW()`,
-      [nummer, art],
+      [number, art],
     );
   } else {
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,false)
       ON CONFLICT (set_number) DO UPDATE SET bl_type=$2, is_gear=false`,
-      [nummer, art],
+      [number, art],
     );
   }
 }
 
-export async function emptySubsetsCache(db: DbInterface, nummer: string | null): Promise<void> {
-  if (nummer) await db.run('DELETE FROM subsets_cache WHERE set_number = $1', [nummer]);
+export async function emptySubsetsCache(db: DbInterface, number: string | null): Promise<void> {
+  if (number) await db.run('DELETE FROM subsets_cache WHERE set_number = $1', [number]);
   else await db.run('DELETE FROM subsets_cache');
 }
 
-export async function emptyCatalogCache(db: DbInterface, nummer: string | null): Promise<void> {
-  if (nummer) await db.run('DELETE FROM catalog_cache WHERE set_number = $1', [nummer]);
+export async function emptyCatalogCache(db: DbInterface, number: string | null): Promise<void> {
+  if (number) await db.run('DELETE FROM catalog_cache WHERE set_number = $1', [number]);
   else await db.run('DELETE FROM catalog_cache');
 }
 

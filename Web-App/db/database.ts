@@ -36,7 +36,7 @@ export {
   UnboundQuery,
   ConcurrentSavepoint,
 } from './transaction';
-export type { FirstStart as Erststart } from './schemaStart';
+export type { FirstStart } from './schemaStart';
 
 // All dependencies are up here: a require() in the body hides them
 // and yields `any`.
@@ -74,7 +74,7 @@ export interface DbConfig {
  * connection, from which the context `t` is built. */
 export interface TxGriff extends TxHandleOf<Db> {}
 
-export function dbKonfigFromEnvironment(): DbConfig {
+export function dbConfigFromEnvironment(): DbConfig {
   const K = konfig();
   return {
     verbindung: databaseConnection(),
@@ -101,7 +101,7 @@ export type Row<T extends object = object> = T & Record<string, unknown>;
 
 // Named, so tx callbacks are type-checked.
 export type { DbInterface };
-export type { Hit as Treffer } from './types';
+export type { Hit } from './types';
 
 // Inside an outer transaction repeatAtConflict has no effect; there its option decides.
 export type { TxOptions };
@@ -115,7 +115,7 @@ export interface Db extends DbInterface, Access<Db> {
   /** The pool for the system frame of HTTP requests; without a role of its own the same as `systemPool`. */
   readonly systemWebPool: Pool;
   /** Whether the system frame really lifts row-level security (BYPASSRLS, ownership or superuser). */
-  systemrahmenActs(): Promise<boolean>;
+  systemFrameActs(): Promise<boolean>;
   /** LISTEN/NOTIFY of this access (db/pgNotify.ts); only listens on the first listen(). Inside a
    * transaction it sends over its connection: the signal takes effect with the COMMIT. */
   readonly notification: Signals;
@@ -203,9 +203,9 @@ function watch(r: Frame): void {
  * connection only goes back into the pool when idle, i.e. without context. */
 async function query(r: Frame, sql: string, params?: unknown[]): Promise<QueryResult> {
   watch(r);
-  const kontext = contextSql();
+  const context = contextSql();
   const p = poolOfFrame(r);
-  if (!kontext) return p.query(sql, params);
+  if (!context) return p.query(sql, params);
   const client = await p.connect();
   let kaputt: Error | undefined;
   const teardown = (e: Error) => {
@@ -213,15 +213,15 @@ async function query(r: Frame, sql: string, params?: unknown[]): Promise<QueryRe
   };
   client.on('error', teardown);
   try {
-    const [start, ergebnis, check, end] = await Promise.allSettled([
-      client.query(`BEGIN; ${kontext}`),
+    const [start, result, check, end] = await Promise.allSettled([
+      client.query(`BEGIN; ${context}`),
       client.query(sql, params),
-      client.query(contextCheckSql(kontext)),
+      client.query(contextCheckSql(context)),
       client.query('COMMIT'),
     ]);
     if (client.getTransactionStatus() !== 'I') kaputt ??= new Error('Verbindung nach COMMIT nicht im Leerlauf');
-    for (const x of [start, ergebnis, check, end]) if (x.status === 'rejected') throw x.reason;
-    return (ergebnis as PromiseFulfilledResult<QueryResult>).value;
+    for (const x of [start, result, check, end]) if (x.status === 'rejected') throw x.reason;
+    return (result as PromiseFulfilledResult<QueryResult>).value;
   } finally {
     client.off('error', teardown);
     client.release(kaputt);
@@ -279,13 +279,13 @@ function lockWith<T>(body: (tx: TxGriff) => Promise<T>, lock?: readonly HoldingL
 }
 
 async function withRetry<T>(once: () => Promise<T>, o: TxOptions): Promise<T> {
-  for (let versuch = 0; ; versuch++) {
+  for (let attempt = 0; ; attempt++) {
     try {
       return await once();
     } catch (e) {
-      if (!o.repeatAtConflict || versuch >= TX_RETRIES || !TX_CONFLICT.has(errorCode(e) ?? '')) throw e;
+      if (!o.repeatAtConflict || attempt >= TX_RETRIES || !TX_CONFLICT.has(errorCode(e) ?? '')) throw e;
       // Staggered, so the contenders do not meet again in lockstep.
-      await new Promise(res => setTimeout(res, 25 * (versuch + 1) + Math.random() * 50));
+      await new Promise(res => setTimeout(res, 25 * (attempt + 1) + Math.random() * 50));
     }
   }
 }
@@ -405,7 +405,7 @@ export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
     pool,
     systemPool,
     systemWebPool,
-    systemrahmenActs: async () =>
+    systemFrameActs: async () =>
       (
         await systemPool.query<{ frei: boolean }>(
           `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS frei

@@ -3,7 +3,7 @@
  * an unkeyed SHA-256 (which could be brute-forced for small value
  * ranges).
  *
- * Counter-check (measured 14.11.2026): in namedDigest() and adressDigest() again
+ * Counter-check (measured 14.11.2026): in namedDigest() and addressDigest() again
  * `try { searchValue(…) } catch { createHash('sha256')… }` → red: „Missing expected
  * rejection“ (the brake kept counting without a key).
  */

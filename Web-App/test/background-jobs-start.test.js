@@ -103,12 +103,12 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
 
   await t.test('the sign of life follows the worker', async () => {
     const jp = _req('startup/jobsProcess.js');
-    const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
-    for (let i = 0; i < 50 && !(await liesZustand(jp.HEARTBEAT_KEY)); i++) await warte(20);
-    assert.ok(await liesZustand(jp.HEARTBEAT_KEY), 'nach dem Start fehlt das Lebenszeichen');
+    const { readState, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+    for (let i = 0; i < 50 && !(await readState(jp.HEARTBEAT_KEY)); i++) await warte(20);
+    assert.ok(await readState(jp.HEARTBEAT_KEY), 'nach dem Start fehlt das Lebenszeichen');
     for (const lauf of runs) await jp.stopJobs(require('./helpers/sources').testServices(), lauf);
     await deleteState(jp.HEARTBEAT_KEY);
     await jp.renewHeartbeat(require('./helpers/sources').testServices(), runs[0].worker);
-    assert.equal(await liesZustand(jp.HEARTBEAT_KEY), null, 'ohne Worker kein Lebenszeichen');
+    assert.equal(await readState(jp.HEARTBEAT_KEY), null, 'ohne Worker kein Lebenszeichen');
   });
 });

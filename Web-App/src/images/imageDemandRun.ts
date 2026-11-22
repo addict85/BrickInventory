@@ -18,7 +18,7 @@ import {
   requestsJeMinute,
   takeImageRequests,
 } from './imageDemand';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { ImagesContext } from './context';
 
 /** Store images requested via the proxy locally in the BACKGROUND, including
@@ -49,7 +49,7 @@ function pause(): number {
 /** Per set of services instead of per batch, so that the first step of a follow-up batch
  * also keeps its distance. There is no waiting before the VERY FIRST step. */
 async function pauseBeforeWork(k: ImagesContext): Promise<void> {
-  const tick = k.faecher.fach('bildbedarf:letzteArbeit', () => ({ am: 0 }));
+  const tick = k.faecher.slot('bildbedarf:letzteArbeit', () => ({ am: 0 }));
   const expected = pause();
   if (tick.am) {
     const seit = k.uhr.jetzt() - tick.am;
@@ -63,7 +63,7 @@ async function pauseBeforeWork(k: ImagesContext): Promise<void> {
 async function createPreview(k: ImagesContext, relPath: string, key: string): Promise<boolean> {
   if (isKnownMissing(k, 'thumb:' + key)) return false;
   // An error is remembered as well: the file would otherwise come back on every pass.
-  const r = await versuche('bild-job:vorschauErzeugenAus', () => k.bildwerk.createPreview(relPath));
+  const r = await attempts('bild-job:vorschauErzeugenAus', () => k.bildwerk.createPreview(relPath));
   const ok = r.ok && !!r.wert;
   if (!ok) rememberMissing(k, 'thumb:' + key, 'Vorschau konnte nicht erzeugt werden');
   return ok;
@@ -106,7 +106,7 @@ function emptyResult(): StackResult {
 }
 
 /** Only what is NOT zero — otherwise the one important number drowns in zeros. */
-export function meldung(e: StackResult): string {
+export function message(e: StackResult): string {
   const parts = [`${e.geholt} geladen`, `${e.vorschau} Vorschau erzeugt`, `${e.uebersprungen} bereits vorhanden`];
   if (e.notLoaded) parts.push(`${e.notLoaded} Download fehlgeschlagen`);
   if (e.noPreview) parts.push(`${e.noPreview} Vorschau fehlgeschlagen`);
@@ -118,11 +118,11 @@ export function meldung(e: StackResult): string {
 }
 
 /** In the database too, because the tile reads in another process. */
-export const letzterLauf: { zeit: number | null; ergebnis: StackResult | null } = { zeit: null, ergebnis: null };
+export const lastRun: { zeit: number | null; ergebnis: StackResult | null } = { zeit: null, ergebnis: null };
 
 function rememberRun(k: ImagesContext, erg: StackResult): void {
-  letzterLauf.zeit = k.uhr.jetzt();
-  letzterLauf.ergebnis = erg;
+  lastRun.zeit = k.uhr.jetzt();
+  lastRun.ergebnis = erg;
 }
 
 /** Once per tick, not per batch: the tile reads minutes, and that spares an SD card. */
@@ -130,7 +130,7 @@ async function saveRun(k: ImagesContext, erg: StackResult): Promise<void> {
   // await: the next tick reads the state via ANOTHER process; without await the tile would report "not
   // run yet".
   await k.jobQueue
-    .setzeZustand(RUN_KEY, JSON.stringify({ zeit: k.uhr.jetzt(), ergebnis: erg }))
+    .setState(RUN_KEY, JSON.stringify({ zeit: k.uhr.jetzt(), ergebnis: erg }))
     .catch(e => reportError('bild-job:setzeZustand', e));
 }
 
@@ -139,7 +139,7 @@ type StackStatus = { erg: StackResult; reasons: string[]; somethingToDo: boolean
 
 /** The file is there, at most the preview is missing. Do not touch known failures:
  * every webp image would otherwise cost a run on EVERY pass. */
-async function onlyPreview(k: ImagesContext, setNummer: string, preview: string, st: StackStatus): Promise<void> {
+async function onlyPreview(k: ImagesContext, setNumber: string, preview: string, st: StackStatus): Promise<void> {
   if (fs.existsSync(preview)) {
     st.erg.uebersprungen++;
     return;
@@ -151,19 +151,19 @@ async function onlyPreview(k: ImagesContext, setNummer: string, preview: string,
   // Wait here too: a resize costs more than a download.
   await pauseBeforeWork(k);
   st.work++;
-  if (await createPreview(k, `/images/sets/${setNummer}.jpg`, preview)) {
+  if (await createPreview(k, `/images/sets/${setNumber}.jpg`, preview)) {
     st.erg.vorschau++;
     return;
   }
   st.erg.noPreview++;
   st.somethingToDo = true;
-  st.reasons.push(`${setNummer}: Vorschau fehlgeschlagen`);
+  st.reasons.push(`${setNumber}: Vorschau fehlgeschlagen`);
 }
 
 /** @returns true if the CDN throttles and the batch aborts */
 async function afterFailure(
   k: ImagesContext,
-  setNummer: string,
+  setNumber: string,
   info: { status?: number },
   st: StackStatus,
 ): Promise<boolean> {
@@ -178,11 +178,11 @@ async function afterFailure(
   // ONLY a 404/410 means "the image does not exist"; timeouts and network dropouts must not
   // block an image permanently.
   const hartMissing = info.status === 404 || info.status === 410;
-  if (hartMissing) rememberMissing(k, 'set:' + setNummer, `HTTP ${status} vom CDN`);
+  if (hartMissing) rememberMissing(k, 'set:' + setNumber, `HTTP ${status} vom CDN`);
   else st.somethingToDo = true;
   st.erg.notLoaded++;
   st.reasons.push(
-    `${setNummer}: Download fehlgeschlagen` +
+    `${setNumber}: Download fehlgeschlagen` +
       (status ? ` (HTTP ${status})` : ' (kein Statuscode — vorübergehend?)') +
       (hartMissing ? '' : ', wird erneut versucht'),
   );
@@ -236,8 +236,8 @@ async function workStack(k: ImagesContext): Promise<StackResult> {
 
     const info: { status?: number } = {};
     // An error counts like a futile fetch; afterFailure() decides about the retry.
-    const abruf = await versuche('bild-job:setBildHerunterladen', k.bildwerk.setBildLaden(r.url, r.set_number, info));
-    const local = abruf.ok ? abruf.wert : null;
+    const fetch = await attempts('bild-job:setBildHerunterladen', k.bildwerk.loadSetImage(r.url, r.set_number, info));
+    const local = fetch.ok ? fetch.wert : null;
     if (!local) {
       if (await afterFailure(k, r.set_number, info, st)) {
         // Put back ALL unprocessed notes: the batch came via DELETE … RETURNING, the rest would otherwise
@@ -304,24 +304,16 @@ export async function processImageDemand(kx: ImagesContext, k: JobContext): Prom
   for (;;) {
     if (k.ended) throw new JobInterrupted();
     const e = await tickPass(kx);
-    if (e.gesamt || e.setAside) console.log(`[image-queue] ${meldung(e)}`);
+    if (e.gesamt || e.setAside) console.log(`[image-queue] ${message(e)}`);
     const pause = await kx.jobQueue.liesPause('bildbedarf');
     if (pause && new Date(pause.until_at).getTime() > kx.uhr.jetzt())
       throw new JobMove(new Date(pause.until_at), pause.reason ?? 'CDN drosselt');
     if (!e.gesamt) return;
-    if (!(await k.fortschritt({ text: meldung(e) }))) return; // aborted
+    if (!(await k.progress({ text: message(e) }))) return; // aborted
     await wait(TICK_MS);
   }
 }
 
-export {
-  rememberUsed,
-  setUpImageDemand,
-  stopImageDemand,
-  requestsJeMinute,
-  BATCH as STAPEL,
-  TICK_MS as TAKT_MS,
-  PASS_MAX_NOTES as DURCHGANG_MAX_NOTIZEN,
-};
+export { rememberUsed, setUpImageDemand, stopImageDemand, requestsJeMinute, BATCH, TICK_MS, PASS_MAX_NOTES };
 
 export { workStack as _workStack, tickPass as _tickPass, deleteExpired as _deleteExpired, writeBuffer as _writeBuffer };

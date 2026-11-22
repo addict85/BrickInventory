@@ -17,7 +17,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { createDb, dbKonfigFromEnvironment } = _req('db/database.js');
+const { createDb, dbConfigFromEnvironment } = _req('db/database.js');
 const { bis } = require('./helpers/time');
 
 test('household changes per set of services', { concurrency: 1 }, async t => {
@@ -25,7 +25,7 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
   const db = testData();
   const { buildServices } = _req('startup/wiring.js');
   // Two accesses like two processes (web and jobs).
-  const zugaenge = [createDb(dbKonfigFromEnvironment()), createDb(dbKonfigFromEnvironment())];
+  const zugaenge = [createDb(dbConfigFromEnvironment()), createDb(dbConfigFromEnvironment())];
   const [a, b] = zugaenge.map(z => buildServices(z));
   const namen = [`hhd_h_${process.pid}`, `hhd_u_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);

@@ -3,7 +3,7 @@
  * voucher row and PDF, reading and writing when changing a voucher.
  *
  * Counter-checks (measured 13.11.2026, each on its own, dist rebuilt):
- *   A  putAccountAn (src/account/accounts.ts) without db.transaction, the body directly →
+ *   A  createAccount (src/account/accounts.ts) without db.transaction, the body directly →
  *      red: “if the log entry fails, there is no account”
  *   B  aktivSetzen (src/account/adminActions.ts) without withAccessEnd → red:
  *      “… the account stays active”
@@ -39,7 +39,7 @@ const kaputt = was => {
 };
 const realLog = _req('src/account/repository/log.js');
 replace('src/account/repository/log.js', {
-  protokolliere: (...a) => (stoerung.protokoll ? kaputt('protokoll') : realLog.protokolliere(...a)),
+  logEntry: (...a) => (stoerung.protokoll ? kaputt('protokoll') : realLog.logEntry(...a)),
 });
 const realFiles = _req('src/vouchers/voucherFiles.js');
 replace('src/vouchers/voucherFiles.js', {
@@ -98,16 +98,16 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
   };
 
   await t.test('if the log entry fails, there is no account', async () => {
-    await disrupt('protokoll', () => K.putAccountAn(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false));
+    await disrupt('protokoll', () => K.createAccount(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false));
     assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [`${NAME}-neu`]), undefined);
     // Without interference account and entry arise together.
-    const id = await K.putAccountAn(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false);
+    const id = await K.createAccount(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false);
     const eintrag = await db.get('SELECT action FROM admin_log WHERE target_id = $1', [id]);
     assert.equal(eintrag?.action, 'konto_angelegt');
   });
 
   await t.test('if the log entry fails while locking, the account stays active', async () => {
-    await disrupt('protokoll', () => K.verwalter.aktivSetzen(chef, nutzer, false));
+    await disrupt('protokoll', () => K.verwalter.setActive(chef, nutzer, false));
     assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [nutzer])).is_active, true);
   });
 

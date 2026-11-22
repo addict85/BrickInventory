@@ -51,8 +51,8 @@ const COUNTS = [
 ] as const;
 
 /** Condition: the set with number `nummer` counts for some account. */
-export const setZaehlt = (nummer: string) =>
-  `(${COUNTS.map(z => `EXISTS (SELECT 1 FROM ${z.tabelle} WHERE set_number = ${nummer})`).join(' OR ')})`;
+export const setZaehlt = (number: string) =>
+  `(${COUNTS.map(z => `EXISTS (SELECT 1 FROM ${z.tabelle} WHERE set_number = ${number})`).join(' OR ')})`;
 
 /** Query: per set that counts for `konten`, set_number and besitz (held, not only wanted). */
 export const countedSets = (konten?: Konten) =>

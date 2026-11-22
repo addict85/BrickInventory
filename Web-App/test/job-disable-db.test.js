@@ -32,7 +32,7 @@ test('switching off during a claim', async t => {
   // A test kind needs a schema for its payload like any other.
   require('./helpers/sources')
     .testServices()
-    .jobQueue.reportKindAn({ art: ART, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
+    .jobQueue.registerKind({ art: ART, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
   await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
   let loslassen = () => {};

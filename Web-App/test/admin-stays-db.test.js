@@ -28,13 +28,13 @@ const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').
 /** The service throws the refusal; here it becomes a value so that concurrent calls stay countable. */
 const LAST = 'letzter_verwalter';
 const alsWert = p => p.catch(e => (e?.code === LAST ? LAST : Promise.reject(e)));
-/** Like kontoEntfernen(), without log: its entry for the concurrently deleted administrator would hit the foreign key. */
+/** Like removeAccount(), without log: its entry for the concurrently deleted administrator would hit the foreign key. */
 /** In the system context as there: only the system role deletes accounts (0117). */
 const remove = (ziel, durch) =>
   _req('src/infra/accountContext.js').inSystemContext('test', () =>
     require('./helpers/sources')
       .testContext('account')
-      .transaktion(t => t.konten.deleteAccount(ziel, durch)),
+      .transact(t => t.konten.deleteAccount(ziel, durch)),
   );
 
 const ROUNDS = 12;

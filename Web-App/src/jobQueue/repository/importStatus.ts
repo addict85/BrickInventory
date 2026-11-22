@@ -2,12 +2,12 @@ import type { DbInterface } from '../../../db/database';
 
 /** A run without writes for `minuten` belongs to a vanished process;
  * "running" would otherwise block every further import. */
-export async function markOrphaned(db: DbInterface, userId: number, fehler: string, minutes: number): Promise<void> {
+export async function markOrphaned(db: DbInterface, userId: number, error: string, minutes: number): Promise<void> {
   await db.run(
     `UPDATE import_status SET status = 'error', current = NULL, error = $2, updated_at = NOW()
       WHERE user_id = $1 AND status IN ('running', 'pending')
         AND updated_at < NOW() - make_interval(mins => $3)`,
-    [userId, fehler, minutes],
+    [userId, error, minutes],
   );
 }
 
@@ -61,11 +61,11 @@ export async function changeImportStatus(
   lauf?: string,
 ): Promise<number> {
   const keys = columns(fields);
-  const werte = [userId, ...keys.map(k => fields[k])];
+  const values = [userId, ...keys.map(k => fields[k])];
   const r = await db.run(
     `UPDATE import_status SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(', ')}, updated_at = NOW()
       WHERE user_id = $1${lauf ? ` AND run_id = $${keys.length + 2} AND status = 'running'` : ''}`,
-    lauf ? [...werte, lauf] : werte,
+    lauf ? [...values, lauf] : values,
   );
   return r?.changes ?? 0;
 }

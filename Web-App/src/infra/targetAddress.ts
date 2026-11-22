@@ -56,7 +56,7 @@ function groups(ip: string): number[] {
 
 /** ::ffff:a.b.c.d, ::a.b.c.d and 64:ff9b::a.b.c.d reach an IPv4 address: that one
  * is checked (blocking NAT64 entirely would break DNS64). :: and ::1 are real IPv6 addresses. */
-export function normalisiert(ip: string): string {
+export function normalized(ip: string): string {
   if (!net.isIPv6(ip)) return ip;
   const g = groups(ip);
   const mapped = g.slice(0, 5).every(x => x === 0) && g[5] === 0xffff;
@@ -72,7 +72,7 @@ const type = (ip: string) => (net.isIPv6(ip) ? 'ipv6' : 'ipv4');
 /** For fetches from public services (Rebrickable, LEGO, CDNs). */
 export function publicAddress(raw: string): boolean {
   if (!net.isIP(raw)) return false;
-  const ip = normalisiert(raw);
+  const ip = normalized(raw);
   return ![NIE, LOOPBACK, INTERN].some(b => b.check(ip, type(ip)));
 }
 
@@ -83,7 +83,7 @@ type Interfaces = ReturnType<typeof os.networkInterfaces>;
  * without a container loopback is a local mail server and stays allowed. */
 export function mailServerAddress(raw: string, o: { imContainer?: boolean; interfaces?: Interfaces } = {}): boolean {
   if (!net.isIP(raw)) return false;
-  const ip = normalisiert(raw);
+  const ip = normalized(raw);
   if (NIE.check(ip, type(ip))) return false;
   if (!(o.imContainer ?? imContainer())) return true;
   if (LOOPBACK.check(ip, type(ip))) return false;

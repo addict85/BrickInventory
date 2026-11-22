@@ -1,6 +1,6 @@
 /** Sets and purchases belong to the inventory (docs/architektur.md); the areas above write via this. */
 import type { AcquisitionKind } from '../../db/stockQuantity';
-import { withValue } from '../infra/area';
+import { bound } from '../infra/area';
 import * as acquisitions from './repository/acquisitions';
 import * as shared from './repository/shared';
 import * as purchases from './repository/purchases';
@@ -23,12 +23,12 @@ async function change(k: InventoryContext, art: AcquisitionKind, id: number, kon
 }
 
 export const writePaths = (k: InventoryContext) => ({
-  putSetAn: withValue(k.db, shared.createSet),
-  setNewest: withValue(k.db, purchases.setNewest),
+  createSet: bound(k.db, shared.createSet),
+  setNewest: bound(k.db, purchases.setNewest),
   erfassung: {
-    imSchreibfeld: withValue(k.db, acquisitions.entryInWriteField),
-    aendere: withValue(k)(change),
-    loesche: withValue(k.db, acquisitions.deleteEntry),
+    inWriteScope: bound(k.db, acquisitions.entryInWriteField),
+    change: bound(k)(change),
+    remove: bound(k.db, acquisitions.deleteEntry),
   },
-  manualEntryReassign: withValue(k)(manualEntryReassign),
+  manualEntryReassign: bound(k)(manualEntryReassign),
 });

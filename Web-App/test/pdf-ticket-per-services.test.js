@@ -14,12 +14,12 @@ const { buildAndRequire, ROOT } = require('./helpers/sources');
 buildAndRequire();
 // The built module itself: the functions take the context explicitly.
 const { issueTicket, redeemTicket } = require(path.join(ROOT, 'dist/src/vouchers/pdfTicket.js'));
-const { Faecher } = require(path.join(ROOT, 'dist/src/infra/cache.js'));
-const { stellbareClock } = require(path.join(ROOT, 'dist/src/infra/clock.js'));
+const { Compartments: Faecher } = require(path.join(ROOT, 'dist/src/infra/cache.js'));
+const { settableClock } = require(path.join(ROOT, 'dist/src/infra/clock.js'));
 
 test('PDF ticket: once, per account and target, per set of services', async t => {
-  const a = { faecher: new Faecher(), uhr: stellbareClock() },
-    b = { faecher: new Faecher(), uhr: stellbareClock() };
+  const a = { faecher: new Faecher(), uhr: settableClock() },
+    b = { faecher: new Faecher(), uhr: settableClock() };
   await t.test('another set of services does not know the ticket', () => {
     assert.equal(redeemTicket(b, issueTicket(a, 7, 'export'), 7, 'export'), false);
   });

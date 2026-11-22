@@ -1,6 +1,6 @@
 /** Only this repository encrypts and decrypts number and PIN: even the number unlocks it. */
 import type { DbInterface } from '../../../db/database';
-import { encrypt, decrypt, searchValue, kontext, rekey, readOldValue } from '../../infra/secret';
+import { encrypt, decrypt, searchValue, context, rekey, readOldValue } from '../../infra/secret';
 
 export interface VoucherRow {
   id: number;
@@ -27,8 +27,8 @@ const COLUMNS =
 /** Account and row as context: a number or PIN copied into another voucher stays unreadable.
  * NOTE: these tags are part of the encryption AAD / HMAC input for data already stored —
  * they must not change, even though the code around them does. */
-export const numberContext = (uid: number, id: number) => kontext('vouchers.number', uid, id);
-export const pinContext = (uid: number, id: number) => kontext('vouchers.pin', uid, id);
+export const numberContext = (uid: number, id: number) => context('vouchers.number', uid, id);
+export const pinContext = (uid: number, id: number) => context('vouchers.pin', uid, id);
 export const numberSearch = (uid: number, number: string) => searchValue('gutschein-nummer', `${uid}:${number}`);
 
 /** Account in the HMAC: the same card in two accounts should not be recognizable as the same. */

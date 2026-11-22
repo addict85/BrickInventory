@@ -33,7 +33,7 @@ function asSession(/** @type {Record<string, any>} */ s) {
 function testServer(_req, { sitzung = {}, t } = {}) {
   const { testAccess, testServices } = require('./sources');
   const gestellt = asSession(sitzung);
-  const app = _req('startup/app.js').baueApp({
+  const app = _req('startup/app.js').buildApp({
     pool: testAccess().systemWebPool,
     konfig: _req('src/infra/config.js').konfig(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',

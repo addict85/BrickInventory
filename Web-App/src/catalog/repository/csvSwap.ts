@@ -45,7 +45,7 @@ export async function giveTableFree(c: PoolClient, table: string): Promise<void>
 
 /** With keys (ON CONFLICT needs them), without CHECKs (checked on swap, after the
  * target table's triggers), temporary (the runtime role may not create anything in public). */
-export async function putShadowAn(c: PoolClient, table: CsvTable, shadow: string): Promise<void> {
+export async function createShadow(c: PoolClient, table: CsvTable, shadow: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS pg_temp.${shadow}`);
   await c.query(`CREATE TEMP TABLE ${shadow} (LIKE ${onlyCsvTable(table)} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
 }
@@ -128,6 +128,6 @@ export async function removeShadow(c: PoolClient, shadow: string): Promise<void>
 }
 
 /** After a complete swap the planner statistics are meaningless. */
-export function pflege(c: PoolClient, table: string) {
+export function maintenance(c: PoolClient, table: string) {
   return maintainTable(sql => c.query(sql), table);
 }

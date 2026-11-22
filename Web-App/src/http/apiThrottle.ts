@@ -99,7 +99,7 @@ export function checkBudget(uid: number, method: string, path: string, now = Dat
 
 /** Behind loginAtInbox: without an account there is nothing to limit, and
  * login has its own brakes (src/account/loginLimiter.ts). */
-export function apiDrossel(req: Request, res: Response, next: NextFunction): void {
+export function apiThrottle(req: Request, res: Response, next: NextFunction): void {
   const uid = userId(req);
   if (uid === null) {
     next();

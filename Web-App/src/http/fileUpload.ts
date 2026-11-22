@@ -41,16 +41,16 @@ const IDENTIFIER: Record<string, Buffer> = {
 /** The sender sets the MIME type; without this look, arbitrary content could sit
  * under `.pdf`, which the server would deliver as application/pdf. */
 export async function contentFitsToType(file: string, mime: string): Promise<boolean> {
-  const kennung = Object.hasOwn(IDENTIFIER, mime) ? IDENTIFIER[mime] : undefined;
-  if (!kennung) return false;
-  const header = Buffer.alloc(kennung.length);
+  const key = Object.hasOwn(IDENTIFIER, mime) ? IDENTIFIER[mime] : undefined;
+  if (!key) return false;
+  const header = Buffer.alloc(key.length);
   const fd = await fs.promises.open(file, 'r');
   try {
     await fd.read(header, 0, header.length, 0);
   } finally {
     await fd.close();
   }
-  return header.equals(kennung);
+  return header.equals(key);
 }
 
 /** The per-file limit does not stop anyone who sends a hundred files — and all
@@ -80,15 +80,15 @@ export async function privaterFolder(wurzel: string, name: string): Promise<stri
 /** A file into an account's private folder: extension from the MIME type, never
  * from the client's name; the name random so that it cannot be guessed. */
 export function privaterReceive(o: {
-  ordner: (req: Request) => Promise<string>;
-  praefix: (req: Request) => string;
+  folder: (req: Request) => Promise<string>;
+  prefix: (req: Request) => string;
   typen: Record<string, string>;
   maxBytes: number;
 }) {
   return multer({
     storage: multer.diskStorage({
       destination: (req, _file, cb) => {
-        o.ordner(req).then(
+        o.folder(req).then(
           d => cb(null, d),
           (e: Error) => cb(e, ''),
         );
@@ -96,7 +96,7 @@ export function privaterReceive(o: {
       filename: (req, file, cb) => {
         const ext = fromTable(o.typen, file.mimetype);
         if (!ext) return cb(fileError('falscher_typ', 'datei_typ_falsch'), '');
-        cb(null, `${o.praefix(req).replace(/[^a-z0-9-]/gi, '_')}_${crypto.randomBytes(12).toString('hex')}${ext}`);
+        cb(null, `${o.prefix(req).replace(/[^a-z0-9-]/gi, '_')}_${crypto.randomBytes(12).toString('hex')}${ext}`);
       },
     }),
     limits: { ...FORM_LIMITS, fileSize: o.maxBytes },

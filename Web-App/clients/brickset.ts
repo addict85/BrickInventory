@@ -4,10 +4,10 @@ import type { z } from 'zod';
 import { BsResponse, BsInstructions, BsSets, checkResponse } from './responses';
 import { holeHttps, excerpt } from '../src/infra/fetch';
 import type { ClientsAccess } from './access';
-import { fehlertext, reportError } from '../src/infra/error';
+import { errorMessage, reportError } from '../src/infra/error';
 import { asFetchError } from './fetchError';
 import { withVersion } from '../src/infra/setNumber';
-import { versuche } from '../src/infra/result';
+import { attempts } from '../src/infra/result';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
@@ -95,7 +95,7 @@ function checkStatus(status: number, body: string, label: string) {
 /** Queue for resubmission; false if the set was already queued too often (then the
  * fallback source applies). `soon` for 5xx of the remote side: they do not depend on the daily quota. */
 async function enqueueRetry(kl: ClientsAccess, setNumber: string, errorMsg: string | null = null, soon = false) {
-  const r = await versuche('brickset:vormerken', kl.bricksetReserve(setNumber, errorMsg || 'Quota exceeded', soon));
+  const r = await attempts('brickset:vormerken', kl.bricksetReserve(setNumber, errorMsg || 'Quota exceeded', soon));
   if (!r.ok) return false;
   const { versuch, vorgemerkt, hoechstens } = r.wert;
   if (!vorgemerkt) {
@@ -136,7 +136,7 @@ async function fromRetryQueue(kl: ClientsAccess, setNumber: string) {
 
 // Remove from queue when a non-quota error occurs — no point retrying
 async function removeFromQueue(kl: ClientsAccess, setNumber: string) {
-  await versuche('brickset:wiedervorlage', fromRetryQueue(kl, setNumber));
+  await attempts('brickset:wiedervorlage', fromRetryQueue(kl, setNumber));
   console.log(
     `[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`
       .replace(/\r?\n/g, ' ⏎ ')
@@ -144,7 +144,7 @@ async function removeFromQueue(kl: ClientsAccess, setNumber: string) {
   );
 }
 
-async function setAngaben(kl: ClientsAccess, setNumber: string) {
+async function setDetails(kl: ClientsAccess, setNumber: string) {
   const key = await getApiKey(kl);
   if (!key) return null;
   const n = withVersion(setNumber);
@@ -157,7 +157,7 @@ async function setAngaben(kl: ClientsAccess, setNumber: string) {
     if (!checkStatus(status, body, n)) return null;
     const s = parseResponse(body, BsSets).sets?.[0];
     if (!s) return null;
-    await versuche('brickset:wiedervorlage', fromRetryQueue(kl, n));
+    await attempts('brickset:wiedervorlage', fromRetryQueue(kl, n));
     return {
       name: s.name || null,
       year: s.year || null,
@@ -171,16 +171,16 @@ async function setAngaben(kl: ClientsAccess, setNumber: string) {
     if (f.isQuota) {
       const errMsg = f.detail
         ? `HTTP ${f.detail.meta?.code ?? '429'}: ${excerpt(JSON.stringify(f.detail), 300)}`
-        : fehlertext(e);
+        : errorMessage(e);
       await enqueueRetry(kl, n, errMsg);
       return null;
     }
     if (f.isTransient) {
       // Timeout / network error is transient (Brickset currently slow/not
       // reachable) → KEEP it in the retry queue instead of giving up for good.
-      await enqueueRetry(kl, n, fehlertext(e), true);
+      await enqueueRetry(kl, n, errorMessage(e), true);
       console.log(
-        `  Brickset setAngaben transient error for ${n}: ${fehlertext(e)} — für Retry heute eingereiht`
+        `  Brickset setAngaben transient error for ${n}: ${errorMessage(e)} — für Retry heute eingereiht`
           .replace(/\r?\n/g, ' ⏎ ')
           .replace(/\n|\r/g, ''),
       );
@@ -188,7 +188,7 @@ async function setAngaben(kl: ClientsAccess, setNumber: string) {
     }
     await removeFromQueue(kl, n);
     console.log(
-      `  Brickset setAngaben failed for ${n}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
+      `  Brickset setAngaben failed for ${n}: ${errorMessage(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
     );
     return null;
   }
@@ -230,7 +230,7 @@ async function getInstructions(kl: ClientsAccess, setNumber: string) {
     if (f.isQuota) {
       const errMsg = f.detail
         ? `HTTP ${f.detail.meta?.code ?? '429'}: ${excerpt(JSON.stringify(f.detail), 300)}`
-        : `Quota exceeded: ${fehlertext(e)}`;
+        : `Quota exceeded: ${errorMessage(e)}`;
       const requeued = await enqueueRetry(kl, n, errMsg);
       return { instructions: [], usesFallback: !requeued };
     }
@@ -238,9 +238,9 @@ async function getInstructions(kl: ClientsAccess, setNumber: string) {
       // Timeout / network error is transient → keep it in the retry queue and
       // do NOT switch to the fallback sources right away (usesFallback=false)
       // while a retry is pending.
-      const requeued = await enqueueRetry(kl, n, fehlertext(e));
+      const requeued = await enqueueRetry(kl, n, errorMessage(e));
       console.log(
-        `  Brickset getInstructions transient error for ${n}: ${fehlertext(e)} — für Retry eingereiht`
+        `  Brickset getInstructions transient error for ${n}: ${errorMessage(e)} — für Retry eingereiht`
           .replace(/\r?\n/g, ' ⏎ ')
           .replace(/\n|\r/g, ''),
       );
@@ -249,7 +249,7 @@ async function getInstructions(kl: ClientsAccess, setNumber: string) {
     await removeFromQueue(kl, n);
     const detail = f.detail ? ` | response: ${excerpt(JSON.stringify(f.detail), 300)}` : '';
     console.log(
-      `  Brickset getInstructions failed for ${n}: ${fehlertext(e)}${detail}`
+      `  Brickset getInstructions failed for ${n}: ${errorMessage(e)}${detail}`
         .replace(/\r?\n/g, ' ⏎ ')
         .replace(/\n|\r/g, ''),
     );
@@ -286,7 +286,7 @@ async function findSetByQuery(kl: ClientsAccess, query: string, origin: string) 
       return null;
     }
     console.log(
-      `[brickset] ${origin}-Suche für ${query} fehlgeschlagen: ${fehlertext(e)}`
+      `[brickset] ${origin}-Suche für ${query} fehlgeschlagen: ${errorMessage(e)}`
         .replace(/\r?\n/g, ' ⏎ ')
         .replace(/\n|\r/g, ''),
     );
@@ -307,7 +307,7 @@ async function checkBricksetAccess(kl: ClientsAccess): Promise<void> {
 export function createBrickset(kl: ClientsAccess) {
   return {
     checkBricksetAccess: () => checkBricksetAccess(kl),
-    setAngaben: (setNumber: string) => setAngaben(kl, setNumber),
+    setDetails: (setNumber: string) => setDetails(kl, setNumber),
     getInstructions: (setNumber: string) => getInstructions(kl, setNumber),
     getSetByEan: (ean: string) => findSetByQuery(kl, ean, 'EAN'),
     getSetByBarcode: (barcode: string) => findSetByQuery(kl, barcode, 'barcode'),

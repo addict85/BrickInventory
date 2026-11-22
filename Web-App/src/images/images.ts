@@ -4,12 +4,12 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import path from 'node:path';
-import { Zwischenspeicher } from '../infra/cache';
+import { Cache } from '../infra/cache';
 
 // Positive hits stay valid (previews are never deleted); negative ones
 // are rechecked after 10 min so that freshly created ones appear.
 const NEGATIVE_MS = 10 * 60 * 1000;
-const _thumbCache = new Zwischenspeicher<string, boolean>(20000);
+const _thumbCache = new Cache<string, boolean>(20000);
 
 export function resolveImageLocal(localPath: string | null | undefined) {
   if (!localPath) return localPath;
@@ -24,7 +24,7 @@ export function resolveImageLocal(localPath: string | null | undefined) {
   if (hit !== undefined) return hit ? thumbPath : localPath;
 
   const exists = fs.existsSync(thumbFs);
-  _thumbCache.setze(thumbFs, exists, exists ? undefined : NEGATIVE_MS);
+  _thumbCache.set(thumbFs, exists, exists ? undefined : NEGATIVE_MS);
   return exists ? thumbPath : localPath;
 }
 
@@ -56,7 +56,7 @@ export function proxyImageUrl(url: string | null | undefined) {
 
 // For callers without a stored image_local column (catalog), which would
 // otherwise recheck existence on every request.
-const _existsCache = new Zwischenspeicher<string, boolean>(20000);
+const _existsCache = new Cache<string, boolean>(20000);
 
 /** Returns the preview-preferred path on a hit, otherwise null.
  * @param publicRelPath e.g. "/images/sets/10283-1.jpg" */
@@ -68,7 +68,7 @@ export function imageIfPresent(publicRelPath: string) {
     ? path.join(IMAGES_DIR, publicRelPath.slice('/images/'.length))
     : path.join(APP_ROOT, publicRelPath.replace(/^\//, ''));
   const exists = fs.existsSync(fsPath);
-  _existsCache.setze(publicRelPath, exists, exists ? undefined : NEGATIVE_MS);
+  _existsCache.set(publicRelPath, exists, exists ? undefined : NEGATIVE_MS);
   return exists ? resolveImageLocal(publicRelPath) : null;
 }
 

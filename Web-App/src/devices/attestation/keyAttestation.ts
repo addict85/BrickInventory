@@ -115,7 +115,7 @@ export interface Expectation {
 }
 
 /** That is how Google's list writes them: hex lower case, without leading zeros. */
-export function seriennummer(c: X509Certificate): string {
+export function serialNumber(c: X509Certificate): string {
   return c.serialNumber.toLowerCase().replace(/^0+(?=.)/, '');
 }
 
@@ -190,9 +190,9 @@ export function checkChain(chainB64: readonly string[], e: Expectation): Check {
   try {
     const raw = chainB64.map(s => Buffer.from(s, 'base64'));
     const z = raw.map(d => new X509Certificate(d));
-    const fehler = checkLinks(z, raw, e);
-    if (fehler) return { ok: false, grund: fehler };
-    if (z.some(c => e.widerrufen.has(seriennummer(c)))) return { ok: false, grund: 'widerrufen' };
+    const error = checkLinks(z, raw, e);
+    if (error) return { ok: false, grund: error };
+    if (z.some(c => e.widerrufen.has(serialNumber(c)))) return { ok: false, grund: 'widerrufen' };
     const ext = attestationExtension(raw[0] as Buffer);
     if (!ext) return { ok: false, grund: 'ohne_attestation' };
     const b = readDescription(ext);

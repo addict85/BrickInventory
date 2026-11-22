@@ -23,7 +23,7 @@ const angefragt = [];
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async (_url, sn, info) => {
+  loadSetImage: async (_url, sn, info) => {
     angefragt.push(sn);
     const status = antworten.get(sn);
     if (status && info) info.status = status;

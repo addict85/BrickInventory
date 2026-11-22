@@ -10,7 +10,7 @@
  *   4. The read paths still deliver the piece count — from the catalog for a
  *      set part, from the acquisitions for a manual position. With
  *      counter-checks: if the source changes, the response follows.
- *   5. Every read place is EXECUTED. That is no accessory: teilmengeAus()
+ *   5. Every read place is EXECUTED. That is no accessory: subsetFrom()
  *      reads the alias `tm_e` that only teilmengeJoin() attaches. If the
  *      JOIN is missing, that is not a silent error but „missing FROM-clause entry
  *      for table tm_e" — MEASURED in computeMinifigStats(), where exactly that had
@@ -463,7 +463,7 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   const farben = await P.partColorsQuery([haupt]);
   assert.ok(
     Array.isArray(farben) && farben.length > 0,
-    'Die Farbliste ist leer — sie zaehlt mit teilmengeAus() und muesste zwei Farben haben',
+    'Die Farbliste ist leer — sie zaehlt mit subsetFrom() und muesste zwei Farben haben',
   );
 
   // rebuildNow() and not rebuild(): the list calls above have already triggered
@@ -494,7 +494,7 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
 
   const csvP = await _req('src/inventory/inventoryExport.js').partsCsv(haupt);
   assert.match(csvP, /3070b/, 'Der Teile-Export laesst die manuelle Position aus');
-  const csvM = await _req('src/inventory/inventoryExport.js').figurenCsv(haupt);
+  const csvM = await _req('src/inventory/inventoryExport.js').minifigsCsv(haupt);
   assert.match(csvM, /fig-m/, 'Der Figuren-Export laesst die manuelle Figur aus');
 
   // ── COUNTER-CHECK 1: change the CATALOG NUMBER ────────────────────────────────
@@ -528,7 +528,7 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   // ── COUNTER-CHECK 2: change an ACQUISITION ─────────────────────────────────
   //
   // The same probe for the other branch. That both counter-checks are
-  // needed is the whole reason why teilmengeAus() is a CASE distinction
+  // needed is the whole reason why subsetFrom() is a CASE distinction
   // and not a single query.
   const eine = await db.get(
     `SELECT id FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'

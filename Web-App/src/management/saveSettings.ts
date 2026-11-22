@@ -1,7 +1,7 @@
 /** POST /settings without HTTP. Here instead of in src/settings, because mail, log
  * and Brickset queue are higher levels (test/layers.test.js). */
 import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import { inSystemContext } from '../infra/accountContext';
 import { GLOBAL_SETTINGS, ACCOUNT_SETTINGS } from '../contract/settings';
 import type { Input } from '../contract';
@@ -62,16 +62,16 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   const global = o.verwalter && hasGlobalValues(e);
   if (global) {
     if (GLOBAL_SETTINGS.some(k => e[k] !== undefined && !isValidGlobalValue(k, e[k])))
-      fachfehler('ungueltig', 'wert_ungueltig');
+      failDomain('ungueltig', 'wert_ungueltig');
     if (
       String(e.registration_enabled) === '1' &&
       (await kx.settings.globalValue('registration_enabled')) !== '1' &&
       !(await kx.mail.mailReady(e))
     )
-      fachfehler('ungueltig', 'registrierung_braucht_mail');
+      failDomain('ungueltig', 'registrierung_braucht_mail');
   }
   const sensitive = global ? await sensitiveKeys(kx, e) : [];
-  if (sensitive.length && !e.admin_password) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
+  if (sensitive.length && !e.admin_password) failDomain('ungueltig', 'aktuelles_passwort_erforderlich');
   if (sensitive.length && !(await o.confirm(e.admin_password))) return false;
 
   // The currency applies to the whole household and therefore needs the system frame, which
@@ -81,7 +81,7 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   // Global values are only written by the system role (0117): then the whole transaction in its frame.
   const frame = <T>(f: () => Promise<T>) => (global ? inSystemContext('globale Einstellungen', f) : f());
   const bricksetAlt = await frame(() =>
-    kx.transaktion(async t => {
+    kx.transact(async t => {
       const alt =
         global && e.api_limit_brickset !== undefined
           ? parseInt((await t.settings.globalValue('api_limit_brickset')) || '100', 10)

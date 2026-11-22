@@ -39,8 +39,8 @@ test('session periods in the real app', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { baueApp } = _req('startup/app.js');
-  const app = baueApp({
+  const { buildApp } = _req('startup/app.js');
+  const app = buildApp({
     pool: db.systemPool,
     konfig: _req('src/infra/config.js').konfig(),
     sitzungsGeheimnis: 'p'.repeat(48),

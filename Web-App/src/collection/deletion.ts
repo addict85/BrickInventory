@@ -3,7 +3,7 @@
 import type { CollectionContext } from './context';
 
 export async function deletePart(k: CollectionContext, owner: number, pn: string, cid: number): Promise<number | null> {
-  return k.transaktion(async t => {
+  return k.transact(async t => {
     const id = await t.inventory.putInTrash('teil', owner, pn, cid);
     const r = await t.inventory.deleteManual('part', owner, [pn, cid]);
     return r.changes === 0 ? null : id;
@@ -11,7 +11,7 @@ export async function deletePart(k: CollectionContext, owner: number, pn: string
 }
 
 export async function deleteMinifig(k: CollectionContext, owner: number, fn: string): Promise<number | null> {
-  return k.transaktion(async t => {
+  return k.transact(async t => {
     const id = await t.inventory.putInTrash('figur', owner, fn);
     const r = await t.inventory.deleteManual('fig', owner, [fn]);
     return r.changes === 0 ? null : id;

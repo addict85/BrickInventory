@@ -13,7 +13,7 @@ const K = processWide('anfrageKennung', () => ({ sequence: 0 }));
 
 /** Unfiltered, a client could write line breaks or foreign identifiers into the
  * log and fake entries. */
-export function anfrageKennung(raw: unknown): string {
+export function requestId(raw: unknown): string {
   const wert = typeof raw === 'string' ? raw : '';
   if (ID_RE.test(wert)) return wert;
   K.sequence = (K.sequence + 1) % 1_679_616;
@@ -34,7 +34,7 @@ const LOG_LEVEL: Record<Level | 'log', Level> = {
 export interface Output {
   out(row: string): void;
   err(row: string): void;
-  jetzt(): number;
+  now(): number;
 }
 const PROCESS: Output = {
   out: z => {
@@ -43,7 +43,7 @@ const PROCESS: Output = {
   err: z => {
     process.stderr.write(z + '\n');
   },
-  jetzt: () => Date.now(),
+  now: () => Date.now(),
 };
 
 type Querier = logs.Querier;
@@ -74,8 +74,8 @@ export function split(args: unknown[]): { nachricht: string; kontext?: Record<st
     kontext = last;
     parts.pop();
   }
-  const fehler = parts.find((t): t is Error => t instanceof Error);
-  if (fehler) kontext = { ...kontext, fehler: { name: fehler.name, message: fehler.message, stack: fehler.stack } };
+  const error = parts.find((t): t is Error => t instanceof Error);
+  if (error) kontext = { ...kontext, fehler: { name: error.name, message: error.message, stack: error.stack } };
   const nachricht = parts
     .map(t => (t instanceof Error ? t.message : logText(t)))
     .join(' ')
@@ -114,12 +114,12 @@ function writeError(count: number, e: unknown): void {
   if (!P.z) return;
   P.z.fehlgeschlagen += count;
   P.z.lastError = e instanceof Error ? e.message : String(e);
-  if (P.z.output.jetzt() - P.z.lastlyReported >= REPORT_GAP_MS) {
+  if (P.z.output.now() - P.z.lastlyReported >= REPORT_GAP_MS) {
     reportWriteError();
     return;
   }
   if (!P.z.reportTimer) {
-    P.z.reportTimer = setTimeout(reportWriteError, REPORT_GAP_MS - (P.z.output.jetzt() - P.z.lastlyReported));
+    P.z.reportTimer = setTimeout(reportWriteError, REPORT_GAP_MS - (P.z.output.now() - P.z.lastlyReported));
     P.z.reportTimer.unref();
   }
 }
@@ -136,11 +136,11 @@ export function reportWriteError(): void {
     jsonRow(
       'warn',
       [`app_logs: ${P.z.fehlgeschlagen} Zeile(n) nicht geschrieben`, { last_error: P.z.lastError }],
-      P.z.output.jetzt(),
+      P.z.output.now(),
     ),
   );
   P.z.fehlgeschlagen = 0;
-  P.z.lastlyReported = P.z.output.jetzt();
+  P.z.lastlyReported = P.z.output.now();
 }
 
 export function emptyLog(): Promise<void> {
@@ -152,7 +152,7 @@ export function emptyLog(): Promise<void> {
   );
 }
 
-export function logInDieDatabase(pool: Querier): void {
+export function logToDatabase(pool: Querier): void {
   if (!P.z) return;
   P.z.pool = pool;
   void emptyLog();
@@ -197,7 +197,7 @@ export function installLog(output: Output = PROCESS): () => void {
     console[name] = (...args: unknown[]) => {
       if (!P.z) return;
       const rid = requestContext.getStore()?.rid;
-      const row = jsonRow(stufe, args, P.z.output.jetzt(), rid);
+      const row = jsonRow(stufe, args, P.z.output.now(), rid);
       (stufe === 'warn' || stufe === 'error' ? P.z.output.err : P.z.output.out)(row);
       // app_logs keeps the previous text format; the log view reads it like that.
       const { nachricht, kontext } = split(args);

@@ -1,5 +1,5 @@
 import { setEstimatedPrice } from './acquisitions';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import { setTimeout as warte } from 'node:timers/promises';
 import type { InventoryContext } from './context';
 
@@ -13,22 +13,22 @@ async function jeRow<Z>(art: string, rows: Z[], f: (z: Z) => Promise<boolean>): 
   if (!rows.length) return;
   log(`${art} ohne Kaufpreis: ${rows.length}`);
   let done = 0;
-  const fehler: unknown[] = [];
+  const error: unknown[] = [];
   for (const row of rows) {
     try {
       if (await f(row)) done++;
     } catch (e) {
-      fehler.push(e);
+      error.push(e);
     }
     await warte(1500); // spare BrickLink's daily quota
   }
   log(`${art} nachgetragen: ${done} von ${rows.length}`);
-  if (fehler.length) throw new AggregateError(fehler, `${art}: ${fehler.length} von ${rows.length} gescheitert`);
+  if (error.length) throw new AggregateError(error, `${art}: ${error.length} von ${rows.length} gescheitert`);
 }
 
 async function backfillAcquisitions(k: InventoryContext) {
   await jeRow('Erfassungen', await k.nachtrag.setEntriesWithoutPrice(), async row => {
-    const price = await k.finances.aktuellerMarktpreis(row.set_number, row.user_id, row.condition || null);
+    const price = await k.finances.currentMarketPrice(row.set_number, row.user_id, row.condition || null);
     return !!price && (await setEstimatedPrice(k, 'set', row.id, price));
   });
 }
@@ -69,7 +69,7 @@ async function run(k: InventoryContext) {
     ['teilfarbenbilder', () => k.catalog.backfillPartColorsImages()],
   ];
   const without: string[] = [];
-  for (const [name, step] of steps) if (!(await versuche(`kaufpreis-nachtrag:${name}`, step)).ok) without.push(name);
+  for (const [name, step] of steps) if (!(await attempts(`kaufpreis-nachtrag:${name}`, step)).ok) without.push(name);
   if (without.length) throw new Error(`Kaufpreis-Nachtrag gescheitert: ${without.join(', ')}`);
   log('Migration abgeschlossen.');
 }

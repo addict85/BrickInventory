@@ -5,9 +5,9 @@
  * it under its name.
  *
  * Counter-checks (measured on 01.11.2026):
- *   A  `name: sitzungsKeksName()` removed in server.ts (connect.sid again)
+ *   A  `name: sessionCookieName()` removed in server.ts (connect.sid again)
  *      → red: “with TLS …” and “without TLS …”
- *   B  sitzungsKeksName() always returns `__Host-bim.sid` → red: “without TLS …”
+ *   B  sessionCookieName() always returns `__Host-bim.sid` → red: “without TLS …”
  *   C  sessionCookieOptions() with `secure: false` → red: “with TLS …” (no
  *      Secure; leaving out `path` stays green, Path=/ is the default)
  *   D  clearCookie() removed in POST /logout → red: both („Abmelden: null")

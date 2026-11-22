@@ -5,11 +5,11 @@ import {
   BotProtection,
   DEFAULT_COUNTRY,
   redact,
-  type Abruf,
+  type FetchFn,
   type Balance,
   type SessionStore,
 } from './balanceLookup';
-import { Fachfehler } from '../infra/errorTexts';
+import { DomainError } from '../infra/errorTexts';
 import * as repo from './repository/balanceThrottle';
 import type { VoucherContext } from './context';
 
@@ -31,7 +31,7 @@ export type Lookup = { art: 'guthaben'; guthaben: Balance } | ({ art: 'gesperrt'
 
 /** In the database, so the limit holds across every process. */
 export async function claimSlot(k: VoucherContext, uid: number): Promise<{ frei: true } | ({ frei: false } & Locked)> {
-  return k.transaktion(async t => {
+  return k.transact(async t => {
     // In case an older backup lacks the row. NULL means "never" — a date would be a claim.
     await repo.ensureThrottleRow(t.db);
 
@@ -78,7 +78,7 @@ export async function checkBalanceThrottled(
   uid: number,
   number: string,
   pin: string,
-  opt: { locale?: string; abruf?: Abruf } = {},
+  opt: { locale?: string; fetch?: FetchFn } = {},
 ): Promise<Lookup> {
   const slot = await claimSlot(k, uid);
   if (!slot.frei) {
@@ -87,8 +87,8 @@ export async function checkBalanceThrottled(
   try {
     // Set individually: exactOptionalPropertyTypes distinguishes "not set" from
     // "undefined", and only "not set" makes fetchBalance use the real fetch.
-    const through = { locale: opt.locale || DEFAULT_COUNTRY, abruf: opt.abruf ?? k.externalSources.quellen.legoFetch };
-    const store = k.faecher.fach<SessionStore>('voucherBalanceSessions', () => new Map());
+    const through = { locale: opt.locale || DEFAULT_COUNTRY, fetch: opt.fetch ?? k.externalSources.quellen.legoFetch };
+    const store = k.faecher.slot<SessionStore>('voucherBalanceSessions', () => new Map());
     const guthaben = await fetchBalance(store, number, pin, through);
     return { art: 'guthaben', guthaben };
   } catch (e) {
@@ -104,6 +104,6 @@ export async function checkBalanceThrottled(
     // An error from the other side is not a server error: whoever asked should read the reason.
     const grund = redact(String((e as Error)?.message || e), number, pin);
     console.warn(`[guthaben] lookup failed: ${grund}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
-    throw new Fachfehler('fremddienst', 'guthaben_fehlgeschlagen', { grund });
+    throw new DomainError('fremddienst', 'guthaben_fehlgeschlagen', { grund });
   }
 }

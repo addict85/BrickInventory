@@ -11,7 +11,7 @@ import { AsyncResource } from 'node:async_hooks';
 type Handler = (payload?: string) => void | Promise<void>;
 /** The handler runs in the frame of its listen(): a stream of a request then
  * queries with its account, a job in the system frame (row-level security, migration 0111). */
-type Entry = { roh: Handler; lauf: Handler };
+type Entry = { raw: Handler; lauf: Handler };
 
 /** Channel names are identifiers and cannot be bound as parameters. */
 function quoteIdent(name: string) {
@@ -134,7 +134,7 @@ export class Notification implements Signals {
     quoteIdent(channel);
     this._closed = false;
     if (!this._handlers.has(channel)) this._handlers.set(channel, []);
-    this._handlers.get(channel)!.push({ roh: handler, lauf: AsyncResource.bind(handler) });
+    this._handlers.get(channel)!.push({ raw: handler, lauf: AsyncResource.bind(handler) });
     const c = this._client;
     if (c) {
       c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
@@ -171,7 +171,7 @@ export class Notification implements Signals {
   unlisten(channel: string, handler: Handler) {
     const hs = this._handlers.get(channel);
     if (!hs) return;
-    const i = hs.findIndex(e => e.roh === handler);
+    const i = hs.findIndex(e => e.raw === handler);
     if (i !== -1) hs.splice(i, 1);
     if (!hs.length) {
       this._handlers.delete(channel);

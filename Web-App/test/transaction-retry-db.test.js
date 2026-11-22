@@ -14,11 +14,11 @@
  *      retries on conflict”; from setEstimatedPrice() → red:
  *      “setEstimatedPrice retries on conflict”
  *      (the move path in changeAcquisition() needs a household account and
- *      is not covered here; it shares k.transaktion with locks with verschiebeSet.)
+ *      is not covered here; it shares k.transact with locks with verschiebeSet.)
  *   D  mitInventarSperre() does not pass the option to transaction() → red:
  *      “mitInventarSperre passes the option on”, „moveSet …“
- *      (14.11.2026, now k.transaktion with `sperren`: in buildContext() the options
- *      not passed to transaction() → red: “k.transaktion with locks …”,
+ *      (14.11.2026, now k.transact with `sperren`: in buildContext() the options
+ *      not passed to transaction() → red: “k.transact with locks …”,
  *      „moveSet …“, „setEstimatedPrice …“)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -185,11 +185,11 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     await db.run('DELETE FROM users WHERE id = ANY($1)', [konten]).catch(() => {});
   });
 
-  await t.test('k.transaktion with locks passes the option on', async () => {
+  await t.test('k.transact with locks passes the option on', async () => {
     const k = testContext('inventory');
     const sperren = [{ konto: 1, schluessel: 'x' }];
     let n = 0;
-    const r = await k.transaktion(
+    const r = await k.transact(
       async () => {
         if (++n < 2) throw pgError('40P01');
         return 'fertig';
@@ -199,7 +199,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     assert.deepEqual([r, n], ['fertig', 2]);
     let m = 0;
     await assert.rejects(
-      k.transaktion(
+      k.transact(
         async () => {
           m++;
           throw pgError('40P01');

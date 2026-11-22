@@ -101,9 +101,9 @@ function appModule() {
  * A newly created .js that nobody imports would otherwise silently be missing.
  */
 function checkComplete() {
-  const fehlend = [...KERN, ...BAUSTEINE].filter(f => !fs.existsSync(path.join(PUBLIC, 'js', f)));
-  if (fehlend.length) {
-    console.error(`[build-frontend] KERN/BAUSTEINE nennen fehlende Dateien: ${fehlend.join(', ')}`);
+  const absent = [...KERN, ...BAUSTEINE].filter(f => !fs.existsSync(path.join(PUBLIC, 'js', f)));
+  if (absent.length) {
+    console.error(`[build-frontend] KERN/BAUSTEINE nennen fehlende Dateien: ${absent.join(', ')}`);
     process.exit(1);
   }
   const entry = fs.readFileSync(path.join(PUBLIC, ENTRY), 'utf8');
@@ -131,7 +131,7 @@ function allowedStyles() {
       .filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL))
       .map(f => 'js/' + f),
   ];
-  const werte = new Set();
+  const values = new Set();
   /** @type {Record<string, string>} */
   const entity = { '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
   for (const d of files) {
@@ -139,11 +139,11 @@ function allowedStyles() {
     for (const m of s.matchAll(/data-stil=(\\?["'])([\s\S]*?)\1/g)) {
       const raw = m[2] ?? '';
       if (!raw.includes('${'))
-        werte.add(raw.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
+        values.add(raw.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
     }
-    for (const m of s.matchAll(/\b(?:stil|rowsStyle|valueStyle):\s*'([^'$]*)'/g)) werte.add(m[1] ?? '');
+    for (const m of s.matchAll(/\b(?:stil|rowsStyle|valueStyle):\s*'([^'$]*)'/g)) values.add(m[1] ?? '');
   }
-  return [...werte].sort();
+  return [...values].sort();
 }
 
 /** Bundles to `outAbs` (delivery, test-run.js). */

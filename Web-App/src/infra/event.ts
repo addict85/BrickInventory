@@ -6,9 +6,9 @@ import { reportError } from './error';
 type Listener<A extends unknown[]> = (...a: A) => unknown;
 
 export interface Event<A extends unknown[] = []> {
-  horche(f: Listener<A>): () => void;
+  listen(f: Listener<A>): () => void;
   /** Resolves when all listeners are done, with false if one failed; never throws. */
-  melde(...a: A): Promise<boolean>;
+  report(...a: A): Promise<boolean>;
 }
 
 export interface SignalPath {
@@ -27,20 +27,20 @@ async function call<A extends unknown[]>(name: string, listener: Iterable<Listen
 export function event<A extends unknown[] = []>(name: string): Event<A> {
   const listener = new Set<Listener<A>>();
   return {
-    horche(f) {
+    listen(f) {
       listener.add(f);
       return () => {
         listener.delete(f);
       };
     },
-    melde: (...a) => call(name, listener, a),
+    report: (...a) => call(name, listener, a),
   };
 }
 
 /** Across processes via NOTIFY: here immediately, elsewhere after the COMMIT of the signal path. */
 export interface ProcessEvent {
-  horche(f: () => unknown): () => void;
-  melde(over: SignalPath): Promise<boolean>;
+  listen(f: () => unknown): () => void;
+  report(over: SignalPath): Promise<boolean>;
   connect(s: SignalPath): () => void;
 }
 
@@ -49,13 +49,13 @@ export function processEvent(name: string, channel: string): ProcessEvent {
   // The own NOTIFY comes back; here it already applies.
   const sender = crypto.randomBytes(6).toString('hex');
   return {
-    horche: f => here.horche(f),
-    melde: async over => {
-      const [ok, sent] = await Promise.all([here.melde(), call(name, [() => over.notify(channel, sender)], [])]);
+    listen: f => here.listen(f),
+    report: async over => {
+      const [ok, sent] = await Promise.all([here.report(), call(name, [() => over.notify(channel, sender)], [])]);
       return ok && sent;
     },
     connect(s) {
-      const h = (n?: string) => (n === sender ? undefined : here.melde());
+      const h = (n?: string) => (n === sender ? undefined : here.report());
       s.listen(channel, h);
       return () => s.unlisten(channel, h);
     },
@@ -64,16 +64,16 @@ export function processEvent(name: string, channel: string): ProcessEvent {
 
 /** Only via NOTIFY, also for the own process: a wake-up signal that only applies after the COMMIT. */
 export interface Signal {
-  horche(s: SignalPath, f: (payload?: string) => unknown): () => void;
-  melde(over: SignalPath, payload?: string): Promise<void>;
+  listen(s: SignalPath, f: (payload?: string) => unknown): () => void;
+  report(over: SignalPath, payload?: string): Promise<void>;
 }
 
 export function signal(channel: string): Signal {
   return {
-    horche(s, f) {
+    listen(s, f) {
       s.listen(channel, f);
       return () => s.unlisten(channel, f);
     },
-    melde: (over, payload) => over.notify(channel, payload),
+    report: (over, payload) => over.notify(channel, payload),
   };
 }

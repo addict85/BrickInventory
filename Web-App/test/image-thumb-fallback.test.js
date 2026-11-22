@@ -10,7 +10,7 @@
  *   A  `if (await originalInsteadOfPreview(res, segmente)) return;` removed →
  *      red: “if the preview is missing …” (302 to the CDN instead of the original)
  *   B  the call placed behind the CDN healing → red: same place
- *   C  in originalInsteadOfPreview the setImmediate(vorschauErzeugenAus …) removed →
+ *   C  in originalInsteadOfPreview the setImmediate(previewFrom …) removed →
  *      red: same place (no preview is created)
  */
 const test = require('node:test');

@@ -83,7 +83,7 @@ const { testServer } = require('./helpers/server');
 testSources(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
-  setAngaben: async () => null,
+  setDetails: async () => null,
 });
 
 const KATALOG = 'katalog'; // verified sources (Rebrickable, BrickLink, Brickset, ECB)

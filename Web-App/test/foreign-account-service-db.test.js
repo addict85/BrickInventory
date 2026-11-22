@@ -30,7 +30,7 @@ test('a service only asks as the account of the row security', { concurrency: 1 
   const { inSystemContext, ForeignAccount } = require(
     path.join(__dirname, '..', 'dist', 'src/infra/accountContext.js'),
   );
-  const { setsLesen } = areaPage('sets');
+  const { readSets } = areaPage('sets');
   const [MAIN, SUB] = [`fk_haupt_${process.pid}`, `fk_sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, SUB]]);
   const neu = async n =>
@@ -41,7 +41,7 @@ test('a service only asks as the account of the row security', { concurrency: 1 
   require('./helpers/sources').testServices().household.reportHouseholdChange();
   await holdsSet(db, haupt, '10179-1');
   await holdsSet(db, sub, '75192-1');
-  const nummern = async nutzer => (await setsLesen({ nutzer }, {})).sets.map(s => s.set_number).sort();
+  const nummern = async nutzer => (await readSets({ nutzer }, {})).sets.map(s => s.set_number).sort();
 
   await t.test('the own account sees its household', async () => {
     assert.deepEqual(await asAccount(haupt, () => nummern(haupt)), ['10179-1', '75192-1']);

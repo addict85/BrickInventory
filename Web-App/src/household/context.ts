@@ -1,9 +1,9 @@
 /** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Db } from '../../db/database';
-import { imSystem, withValue, withContract, type Context } from '../infra/area';
+import { imSystem, bound, withContract, type Context } from '../infra/area';
 import type { HouseholdReadContract } from './readContract';
 import type { SettingsServices } from '../settings';
-import type { Faecher } from '../infra/cache';
+import type { Compartments } from '../infra/cache';
 import * as repository from './repository';
 import type { Clock } from '../infra/clock';
 
@@ -11,7 +11,7 @@ export interface HouseholdDependencies {
   uhr: Clock;
   db: Db;
   /** The households' memory per access; createHousehold creates it. */
-  faecher: Faecher;
+  faecher: Compartments;
   einstellungen: SettingsServices;
   lesevertrag: HouseholdReadContract;
 }
@@ -20,23 +20,23 @@ export interface HouseholdDependencies {
 const FOREIGN_INVITATION = 'Einlösen: Die Einladung gehört dem einladenden Konto';
 export const access = (db: Db, l: HouseholdReadContract) => ({
   repository: {
-    subAccounts: withValue(db)(repository.subAccounts),
-    elternkonten: withValue(db)(repository.parentAccounts),
-    isLinked: withValue(db)(repository.isLinked),
+    subAccounts: bound(db)(repository.subAccounts),
+    parentAccounts: bound(db)(repository.parentAccounts),
+    isLinked: bound(db)(repository.isLinked),
     accountNames: withContract(db, l)(repository.accountNames),
     accountName: withContract(db, l)(repository.accountName),
     // Before joining, the invitee does not see the inviting account (0121).
-    inviterName: withValue(l)(imSystem(db, FOREIGN_INVITATION, repository.accountName)),
+    inviterName: bound(l)(imSystem(db, FOREIGN_INVITATION, repository.accountName)),
     cleanInvitationsOn: imSystem(db, 'Abgelaufene Einladungen aller Konten', repository.cleanInvitationsOn),
-    putInvitationAn: withValue(db)(repository.createInvitation),
+    createInvitation: bound(db)(repository.createInvitation),
     receiptsInvitation: imSystem(db, FOREIGN_INVITATION, repository.receiptsInvitation),
     inviterToCode: imSystem(db, FOREIGN_INVITATION, repository.inviterToCode),
     giveInvitationFree: imSystem(db, FOREIGN_INVITATION, repository.giveInvitationFree),
-    link: withValue(db)(repository.link),
-    separate: withValue(db)(repository.separate),
-    resolveSubAccountAndInvitations: withValue(db)(repository.resolveSubAccountAndInvitations),
-    deleteSeparatedHint: withValue(db)(repository.deleteSeparatedHint),
-    openInvitations: withValue(db)(repository.openInvitations),
+    link: bound(db)(repository.link),
+    separate: bound(db)(repository.separate),
+    resolveSubAccountAndInvitations: bound(db)(repository.resolveSubAccountAndInvitations),
+    deleteSeparatedHint: bound(db)(repository.deleteSeparatedHint),
+    openInvitations: bound(db)(repository.openInvitations),
     separateChains: withContract(db, l)(repository.separateChains),
     ownerTheEntry: withContract(db, l)(repository.ownerTheEntry),
     userNames: withContract(db, l)(repository.userNames),

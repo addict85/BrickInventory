@@ -4,7 +4,7 @@ import type { MailContext } from './context';
 import { basisUrl, hintWithoutBaseUrl } from '../infra/basisUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailTheme } from './template';
 import { sendMail, testSmtp } from './transport';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
 
 // Re-exported so callers and tests keep a single address.
@@ -663,7 +663,7 @@ export async function buildAlertMail(
 /** A rejection while checking the server throws; sending itself reports how it went. */
 export async function sendSmtpTest(k: MailContext, to: string) {
   const verify = await testSmtp(k);
-  if ('code' in verify) fachfehler('ungueltig', verify.code, 'vars' in verify ? verify.vars : undefined);
+  if ('code' in verify) failDomain('ungueltig', verify.code, 'vars' in verify ? verify.vars : undefined);
   return sendMail(k, {
     to,
     subject: 'BrickInventory Manager — SMTP Test',

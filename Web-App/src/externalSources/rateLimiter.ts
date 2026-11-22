@@ -60,8 +60,8 @@ export class RateLimiter {
 }
 
 import { reportError } from '../infra/error';
-import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiQuota';
-import { versuche } from '../infra/result';
+import { checkAndCountQuota, REBRICKABLE_DEFAULT_DAILY } from './apiQuota';
+import { attempts } from '../infra/result';
 import type { ForeignSourcesContext } from './context';
 
 /** A single UPDATE moves the point in time forward — two processes never get
@@ -105,7 +105,7 @@ export function throttleRebrickable(apiTakt: Tick['apiTakt'], uhr: Clock) {
 
 // Counted in the database: counted per process, the limit would multiply.
 export async function consumeRebrickableDaily(k: ForeignSourcesContext): Promise<boolean> {
-  const rl = await versuche('takt:kontingentPruefenUndZaehlen', kontingentPruefenUndZaehlen(k, 'rebrickable'));
+  const rl = await attempts('takt:kontingentPruefenUndZaehlen', checkAndCountQuota(k, 'rebrickable'));
   // When in doubt let it through: an exceeded daily quota merely costs
   // calls — the opposite of the login counter, where the fallback locks.
   return rl.ok ? rl.wert.allowed : true;

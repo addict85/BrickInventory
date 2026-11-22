@@ -6,8 +6,8 @@
  *
  * Counter-checks (25.10., measured):
  *   A  putInTrash() removed in deleteSet()         → red: „Set fehlt im Papierkorb"
- *   B  column matching removed in placeAgainHer()  → red: „unbekannte Spalte"
- *   C  `user_id = ANY($2)` gone in placeAgainHer() → red: „fremdes Konto"
+ *   B  column matching removed in restore()  → red: „unbekannte Spalte"
+ *   C  `user_id = ANY($2)` gone in restore() → red: „fremdes Konto"
  *   D  (03.11.2026) confirmWithFactor() removed in DELETE /papierkorb/:id or
  *      DELETE /papierkorb → red: „endgültig löschen ohne Passwort"
  *      or „Leeren mit falschem Passwort" (200 instead of 400)

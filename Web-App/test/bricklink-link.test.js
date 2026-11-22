@@ -13,7 +13,7 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 
 // Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { withVariant, bareNumber, blAddress, blSuchadresse } = _req('src/catalog/bricklinkLink.js');
+const { withVariant, bareNumber, blAddress, blSearchUrl } = _req('src/catalog/bricklinkLink.js');
 
 test('withVariant adds the Rebrickable suffix', () => {
   assert.equal(withVariant('75192'), '75192-1');
@@ -52,11 +52,11 @@ test('blAddress returns null for NONE — the caller falls back to the search', 
   assert.equal(blAddress('NONE', 'x-1'), null);
 });
 
-test('blSuchadresse applies where no deep link can be constructed', () => {
+test('blSearchUrl applies where no deep link can be constructed', () => {
   // Collectible minifigures: Rebrickable lists them as a set (71021-1), BrickLink as
   // MINIFIG with another number (col325). The mapping exists in neither of the
   // two data sources — a deep link cannot be derived in principle.
-  const u = blSuchadresse('71021-1');
+  const u = blSearchUrl('71021-1');
   assert.match(u, /search\.page\?q=71021/);
   assert.ok(!u.includes('-1'), 'Der Variantensuffix engt die Suche unnötig ein');
 });

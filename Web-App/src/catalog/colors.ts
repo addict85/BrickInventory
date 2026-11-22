@@ -2,10 +2,10 @@
  * (9999), never 0, otherwise "not specified" turns into a black part. */
 
 import { NO_COLOR } from '../infra/validate';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { CatalogContext } from './context';
 
-export { NO_COLOR as KEINE_FARBE };
+export { NO_COLOR };
 
 export interface Color {
   id: number;
@@ -34,7 +34,7 @@ export async function colorList(k: CatalogContext): Promise<Color[]> {
   const loaded = await k.katalogStamm.loadedColors();
   if (loaded.length) return loaded;
   // Without Rebrickable the built-in emergency list remains; as such it is short.
-  const fetched = await versuche('farben:rebrickable', k.externalSources.quellen.getBrickColors());
+  const fetched = await attempts('farben:rebrickable', k.externalSources.quellen.getBrickColors());
   if (fetched.ok && fetched.wert.length) return fetched.wert;
   return FALLBACK_LIST;
 }

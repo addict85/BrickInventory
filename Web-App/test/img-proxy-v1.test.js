@@ -146,9 +146,9 @@ test('the migration covers EVERY table with image_url', () => {
   const umgeschrieben = [...mig.matchAll(/UPDATE\s+(\w+)\s/g)].map(m => m[1]);
   assert.ok(umgeschrieben.length >= 5, `Nur ${umgeschrieben.length} UPDATE-Ziele in 0014 gefunden — Muster veraltet?`);
 
-  const migVerz = path.join(ROOT, 'db/migrations');
+  const migDir = path.join(ROOT, 'db/migrations');
   const spaeter = fs
-    .readdirSync(migVerz)
+    .readdirSync(migDir)
     .filter(f => f.endsWith('.sql') && f > '0014')
     .sort();
   const stragglers = [];

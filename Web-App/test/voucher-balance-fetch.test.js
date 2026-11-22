@@ -26,7 +26,7 @@ const { portOf } = require('./helpers/server');
 const G = _req('src/vouchers/balanceLookup.js');
 /** The session store that the compartment of the voucher services otherwise holds. */
 const vorrat = new Map();
-const { AbrufFehler } = _req('src/infra/fetch.js');
+const { FetchError } = _req('src/infra/fetch.js');
 // The real fetch, as the services pass it via their sources (src/externalSources/sources.ts).
 const { legoFetch } = require('./helpers/sources').testServices().externalSources.quellen;
 
@@ -122,7 +122,7 @@ test.beforeEach(() => {
 
 test('cookies, token and body arrive via the real fetch path', async () => {
   modus = 'gut';
-  const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch });
+  const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch });
   assert.deepEqual(g, { amount: 12.5, currency: 'CHF', formatted: 'CHF 12.50' });
   assert.deepEqual(
     gesehen.map(a => `${a.methode} ${a.pfad}`),
@@ -142,8 +142,8 @@ test('cookies, token and body arrive via the real fetch path', async () => {
 test('a redirect to a foreign host is not followed', async () => {
   modus = 'umleitung';
   await assert.rejects(
-    G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch }),
-    (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'umleitung',
+    G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
+    (/** @type {any} */ e) => e instanceof FetchError && e.grund === 'umleitung',
   );
   assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
   assert.deepEqual(
@@ -155,7 +155,7 @@ test('a redirect to a foreign host is not followed', async () => {
 test('an oversized response is aborted', async () => {
   modus = 'gross';
   await assert.rejects(
-    G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch }),
-    (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'zu-gross',
+    G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
+    (/** @type {any} */ e) => e instanceof FetchError && e.grund === 'zu-gross',
   );
 });

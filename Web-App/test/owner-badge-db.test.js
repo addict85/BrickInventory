@@ -70,7 +70,7 @@ test('every list with a badge in the client carries it in the response too', asy
 
   /** @type {[string, () => Promise<any[]>][]} */
   const listen = [
-    ['/v1/sets', async () => (await S.setsLesen(uids, { page_size: 60 })).sets],
+    ['/v1/sets', async () => (await S.readSets(uids, { page_size: 60 })).sets],
     // manualPartsList/readManualMinifigs deliver a BARE array; the route
     // wraps it. The three other lists deliver an object with `total`.
     ['/v1/parts/manual', async () => await P.manualPartsList(uids, {})],
@@ -142,7 +142,7 @@ test('in a single account there is no badge', async t => {
   // „mine" on every tile would only be noise — and additional fields in
   // every response. The same decision as for the sets all along.
   for (const [name, zeilen] of [
-    ['/v1/sets', (await S.setsLesen(uids, { page_size: 60 })).sets],
+    ['/v1/sets', (await S.readSets(uids, { page_size: 60 })).sets],
     ['/v1/minifigs', (await M.readMinifigs(uids, { source: 'set' })).figs],
   ]) {
     assert.ok(zeilen?.length, `${name}: Vorlage liefert keine Zeile`);

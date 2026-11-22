@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 const { accessOrSkip, missingPrecondition } = require('./helpers/db');
-const { createDb, dbKonfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
+const { createDb, dbConfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 const { asRequest } = _req('src/infra/accountContext.js');
 
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
@@ -60,7 +60,7 @@ test('context per query in the pipeline', { concurrency: 1 }, async t => {
   t.after(() => zugang.pool.end().catch(() => {}));
   if (!process.env.TEST_DB_EIGEN_URL || (await zugang.asSuperuserConnected()))
     return missingPrecondition(t, 'die App läuft als Superuser (nur npm test trennt Rollen)');
-  const k = dbKonfigFromEnvironment();
+  const k = dbConfigFromEnvironment();
   // The owner writes the test data, bypassing row security.
   const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
   const app = createDb({ ...k, pool: { ...k.pool, max: 1 } });

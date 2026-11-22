@@ -20,8 +20,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 const { accessOrSkip, missingPrecondition } = require('./helpers/db');
-const { asSuperuser, imSystemrahmen } = require('./helpers/roles');
-const { createDb, dbKonfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
+const { asSuperuser, inSystemFrame } = require('./helpers/roles');
+const { createDb, dbConfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 
 const ROLLE = `SELECT r.rolsuper AS super, r.rolbypassrls AS bypass,
                       pg_has_role(current_user, c.relowner, 'USAGE') AS eigentum
@@ -43,7 +43,7 @@ test('the suite separates the roles as in production, exceptions become fewer', 
     { super: false, bypass: true, eigentum: false },
     'der Systemrahmen fragt als Systemrolle',
   );
-  const k = dbKonfigFromEnvironment();
+  const k = dbConfigFromEnvironment();
   const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
   try {
     assert.deepEqual(
@@ -61,7 +61,7 @@ test('the suite separates the roles as in production, exceptions become fewer', 
   /** @type {Record<string, number>} */
   const ist = {
     superuser: dateien.filter(n => asSuperuser(quelle(n))).length,
-    systemrahmen: dateien.filter(n => !asSuperuser(quelle(n)) && imSystemrahmen(quelle(n))).length,
+    systemrahmen: dateien.filter(n => !asSuperuser(quelle(n)) && inSystemFrame(quelle(n))).length,
   };
   assert.ok(dateien.length > 500, `nur ${dateien.length} Testdateien — greift die Suche noch?`);
   for (const [art, s] of Object.entries(LIMIT)) {

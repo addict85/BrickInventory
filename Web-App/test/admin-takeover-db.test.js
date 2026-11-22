@@ -19,7 +19,7 @@
  *      “… whoever lost the role enforces nothing anymore” (the hash was replaced)
  *   F  in the cleanup run `endAccesses` deleted → red: “… after the period …”
  * Counter-checks (measured 16.11.2026, each alone):
- *   G  in aktivSetzen (verwalterAktionen.ts) the announcement deleted → red: “deactivating,
+ *   G  in aktivSetzen (adminActions.ts) the announcement deleted → red: “deactivating,
  *      revoking the role and deleting …” (deactivated immediately, no effective_at)
  *   H  in executeTeardown the branch `loeschen` routed to deactivate → red: the same check
  *      (the account stayed)
@@ -41,7 +41,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { bis } = require('./helpers/time');
 const db = S.testData();
-const { hashePassword, passwordFits } = _req('src/account/passwordHash.js');
+const { hashPassword, passwordFits } = _req('src/account/passwordHash.js');
 const zf = _req('src/factors/secondFactor.js');
 const { decrypt } = _req('src/infra/secret.js');
 /** A real second factor; the recovery codes come back. */
@@ -69,7 +69,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     n => `ueb_${n}_${P}`,
   );
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
-  const hash = await hashePassword(PASS);
+  const hash = await hashPassword(PASS);
   const konto = async (name, admin) =>
     (
       await db.get(

@@ -4,13 +4,13 @@
 import crypto from 'node:crypto';
 import { accountDisplayName, setzeAktiv, setzeVerwalterRolle, endAccesses } from './accounts';
 import { withAccessEnd, accessTransaction } from './accessEnd';
-import { duplicateAs, fachfehler, notFound } from '../infra/errorTexts';
+import { duplicateAs, failDomain, notFound } from '../infra/errorTexts';
 import { rememberAdminAction } from './adminLog';
 import { hintInBackground, adminHintInBackground } from './accountNotice';
-import { hashePassword } from './passwordHash';
+import { hashPassword } from './passwordHash';
 import { forgetSessionVersion } from './sessionVersion';
 import { tokenDigest } from './deviceToken';
-import { kontoEntfernen } from './removeAccount';
+import { removeAccount } from './removeAccount';
 import { approveLogin } from './loginLimiter';
 import type { Takeover, TakeoverKind } from './repository/takeovers';
 import type { AccountContext } from './context';
@@ -49,7 +49,7 @@ export async function aktivSetzen(k: AccountContext, durch: number, ziel: number
 export async function accountRemoveBy(k: AccountContext, ziel: number, durch: number | null): Promise<Date | null> {
   const fremd = durch !== null && durch !== ziel && (await k.konten.accountExists(ziel));
   const effectiveAb = fremd ? await announceTeardown(k, durch, ziel, 'loeschen') : null;
-  if (!effectiveAb) await kontoEntfernen(k, ziel, durch);
+  if (!effectiveAb) await removeAccount(k, ziel, durch);
   return effectiveAb;
 }
 
@@ -60,7 +60,7 @@ export async function unlockRegistration(k: AccountContext, durch: number, ziel:
     if (r === 'ok') await rememberAdminAction(t, durch, ziel, 'konto_freigeschaltet');
     return r;
   }).catch(duplicateAs('vergeben' as const));
-  if (r !== 'ok') fachfehler('konflikt', r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
+  if (r !== 'ok') failDomain('konflikt', r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
 }
 
 /** A captured administrator session must not immediately take over another account
@@ -80,7 +80,7 @@ export async function passwordByAdmin(
   password: string,
 ): Promise<AdminRoute | null> {
   if (!(await k.konten.accountExists(ziel))) return null;
-  const password_hash = await hashePassword(password);
+  const password_hash = await hashPassword(password);
   return { effectiveAb: await announce(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash }) };
 }
 
@@ -103,7 +103,7 @@ async function announceTeardown(k: AccountContext, durch: number, ziel: number, 
 async function announce(k: AccountContext, u: Takeover): Promise<Date> {
   const abbruch = crypto.randomBytes(32).toString('base64url');
   const bis = await accessTransaction(k, async t => {
-    const b = await t.uebernahmen.terminateAn(u, TAKEOVER_HOURS, tokenDigest(abbruch));
+    const b = await t.uebernahmen.scheduleTermination(u, TAKEOVER_HOURS, tokenDigest(abbruch));
     await rememberAdminAction(t, u.initiated_by, u.target_id, 'uebernahme_angekuendigt', u.type);
     return b;
   });
@@ -128,7 +128,7 @@ async function executeTeardown(k: AccountContext, u: Takeover): Promise<void> {
   const [durch, konto] = [await accountDisplayName(k, u.initiated_by), await accountDisplayName(k, u.target_id)];
   if (u.type === 'deaktivieren') await persistActive(k, u.initiated_by, u.target_id, false);
   else if (u.type === 'rolle_entziehen') await writeRole(k, u.initiated_by, u.target_id, false);
-  else await kontoEntfernen(k, u.target_id, u.initiated_by);
+  else await removeAccount(k, u.target_id, u.initiated_by);
   if (u.type !== 'loeschen')
     hintInBackground(k, u.target_id, 'verwalter_aktion_ausgefuehrt', undefined, { durch, was: u.type });
   adminHintInBackground(k, 'verwaltung_aktion_ausgefuehrt', { konto, durch, was: u.type });
@@ -161,10 +161,10 @@ export async function runDueTakeoversFrom(k: AccountContext): Promise<number> {
     await afterTheTakeover(k, u);
   }
   // Deleting last; a failure (last administrator) does not hold up the others, the run reports it.
-  const fehler: unknown[] = [];
+  const error: unknown[] = [];
   for (const u of teardown.sort((a, b) => Number(a.type === 'loeschen') - Number(b.type === 'loeschen')))
-    await executeTeardown(k, u).catch((e: unknown) => fehler.push(e));
-  if (fehler.length) throw new AggregateError(fehler, `${fehler.length} angekündigte Verwalteraktion(en) gescheitert`);
+    await executeTeardown(k, u).catch((e: unknown) => error.push(e));
+  if (error.length) throw new AggregateError(error, `${error.length} angekündigte Verwalteraktion(en) gescheitert`);
   return erledigt.length + teardown.length;
 }
 
@@ -174,7 +174,7 @@ export async function cancelTakeovers(
   uid: number,
   route: 'anmeldung' | 'link' = 'anmeldung',
 ): Promise<TakeoverKind[]> {
-  const kinds = await k.uebernahmen.abortTakeoversAb(uid);
+  const kinds = await k.uebernahmen.abortTakeovers(uid);
   if (!kinds.length) return kinds;
   for (const type of kinds) await rememberAdminAction(k, uid, uid, 'uebernahme_abgebrochen', `${route}:${type}`);
   adminHintInBackground(k, 'verwaltung_uebernahme_abgebrochen', {
@@ -188,6 +188,6 @@ export async function cancelTakeovers(
 export async function redeemMailLink(k: AccountContext, type: 'abbrechen' | 'freigeben', token: string): Promise<void> {
   if (type === 'freigeben') return approveLogin(k, token);
   const ziel = token ? await k.uebernahmen.targetToAbort(tokenDigest(token)) : null;
-  if (ziel === null) fachfehler('konflikt', 'abbruch_link_ungueltig');
+  if (ziel === null) failDomain('konflikt', 'abbruch_link_ungueltig');
   await cancelTakeovers(k, ziel, 'link');
 }

@@ -1,4 +1,4 @@
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 
 export interface InstructionRow {
   id: number;
@@ -22,7 +22,7 @@ export function deleteInstructionsOfSets(db: DbInterface, setNumber: string) {
 }
 
 export function hatBrickinstructions(db: DbInterface, setNumber: string) {
-  return db.get<Treffer>("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [
+  return db.get<Hit>("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [
     setNumber,
   ]);
 }

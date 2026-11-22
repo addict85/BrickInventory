@@ -2,18 +2,18 @@
 import { konfig } from './startup/checkConfig';
 // Logging first: from here on every console line is a JSON line and goes
 // to app_logs as soon as the pool is up.
-import { installLog, logInDieDatabase, emptyLog } from './src/infra/log';
+import { installLog, logToDatabase, emptyLog } from './src/infra/log';
 installLog();
 
 import http, { type Server } from 'node:http';
 import type { Db } from './db/database';
-import { fehlertext, logAndContinue } from './src/infra/error';
+import { errorMessage, logAndContinue } from './src/infra/error';
 import { startBans, startWarnings } from './src/infra/config';
 import { hintWithoutBaseUrl } from './src/infra/basisUrl';
 import { prepareDatabaseBefore } from './startup/database';
 import { startJobs, stopJobs, type JobsLauf } from './startup/jobsProcess';
-import { wireProcess, type Dienste } from './startup/wiring';
-import { baueApp } from './startup/app';
+import { wireProcess, type Services } from './startup/wiring';
+import { buildApp } from './startup/app';
 import { HTTP_DEADLINES } from './src/infra/httpDeadlines';
 import { closeAllSse } from './src/http/sseRegistry';
 
@@ -25,7 +25,7 @@ import { inSystemContext } from './src/infra/accountContext';
 // requests and jobs keep their state in the database. A restart would tear
 // down all running requests and streams for it (unlike uncaughtException).
 process.on('unhandledRejection', (reason: unknown) => {
-  console.error('[unhandledRejection] Unhandled promise rejection:', fehlertext(reason));
+  console.error('[unhandledRejection] Unhandled promise rejection:', errorMessage(reason));
 });
 process.on('uncaughtException', err => {
   // The state is uncertain afterwards (half-open transactions); Docker takes care of the restart.
@@ -78,7 +78,7 @@ async function shutdown(
   httpServer: Server | null,
   jobs: boolean,
   access: Db,
-  dienste: Dienste,
+  dienste: Services,
   webLockFree: (() => Promise<void>) | null,
 ): Promise<void> {
   if (lauf.endedBecomes) return;
@@ -106,7 +106,7 @@ async function shutdown(
     clearTimeout(emergencyBrake);
     process.exit(0);
   } catch (e) {
-    console.error('[shutdown] Fehler beim Beenden:', fehlertext(e));
+    console.error('[shutdown] Fehler beim Beenden:', errorMessage(e));
     process.exit(1);
   }
 }
@@ -136,7 +136,7 @@ async function start(): Promise<void> {
       '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): ' +
         'Der Host-Filter gegen DNS-Rebinding nimmt nur Loopback und IP-Adressen an, jeder Name bekommt 421.',
     );
-  const geheimnis = web ? sessionSecret() : ''; // before the database: a start ban should not wait for it
+  const secret = web ? sessionSecret() : ''; // before the database: a start ban should not wait for it
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Database access and wiring are created here, not on import of a module;
   // acquisitions and settings trigger their follow-up work in every process.
@@ -146,21 +146,21 @@ async function start(): Promise<void> {
     // Migrations, first start and re-keying go across all accounts.
     await inSystemContext('start', () => prepareDatabaseBefore(access, dienste, { jobs }));
   } catch (e) {
-    console.error('❌ Database initialisation failed:', fehlertext(e));
+    console.error('❌ Database initialisation failed:', errorMessage(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
     process.exit(1);
   }
-  logInDieDatabase(access.pool);
+  logToDatabase(access.pool);
   const webLockFree = web
     ? await holdWebLock(access).catch((e: unknown) => {
-        console.error(`❌ [start] ${fehlertext(e)}`);
+        console.error(`❌ [start] ${errorMessage(e)}`);
         process.exit(1);
       })
     : null;
   // Hints into the log: one that fails holds up neither the start nor the others.
   const hints: [string, () => Promise<unknown>][] = [
     ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],
-    ...dienste.account.adressHints(),
+    ...dienste.account.addressHints(),
   ];
   if (web) for (const [wo, hint] of hints) await hint().catch(logAndContinue(wo));
   if (web) dienste.account.listenOnRevocation();
@@ -174,7 +174,7 @@ async function start(): Promise<void> {
     ? http
         .createServer(
           { ...HTTP_DEADLINES },
-          baueApp({ pool: access.systemWebPool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
+          buildApp({ pool: access.systemWebPool, konfig: k, sitzungsGeheimnis: secret, dienste }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
@@ -193,6 +193,6 @@ async function start(): Promise<void> {
 
 // Continuing without a worker would fake a service.
 start().catch((e: unknown) => {
-  console.error('❌ [start] Start gescheitert:', fehlertext(e));
+  console.error('❌ [start] Start gescheitert:', errorMessage(e));
   process.exit(1);
 });

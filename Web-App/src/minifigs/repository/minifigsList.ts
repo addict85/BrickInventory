@@ -1,13 +1,13 @@
 import { storages, setBestand } from '../../../db/inventoryView';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
-import { mengeAus, mengeJoin, subsetFrom, teilmengeJoin } from '../../../db/stockQuantity';
+import { quantityFrom, mengeJoin, subsetFrom, teilmengeJoin } from '../../../db/stockQuantity';
 import type { Row, DbInterface } from '../../../db/database';
 import { minifigViewJoin, MINIFIG } from '../../../db/catalogView';
 import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
 
 // One search for both minifig lists; it searches the number shown on the tile.
-function minifigSearch(nummer: string, name: string, pi: number) {
-  return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E})`;
+function minifigSearch(number: string, name: string, pi: number) {
+  return `(${number} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E})`;
 }
 
 /** Groups are counted, or a minifig from five sets would count five times. */
@@ -75,7 +75,7 @@ export async function groupedMinifigs(
            MIN(m.set_number) AS set_number,
            -- The set's quantity as a factor; 1 without an acquisition, so a
            -- manual minifig simply counts.
-           SUM(${subsetFrom('m', 'fig')} * ${mengeAus('sm', 1)})::int AS total_quantity,
+           SUM(${subsetFrom('m', 'fig')} * ${quantityFrom('sm', 1)})::int AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
            -- Storage location of the GROUP: if the minifig sits in two places, both show.
            NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
@@ -185,7 +185,7 @@ export function minifigStats(db: DbInterface, uids: number[]) {
            COALESCE(SUM(g.menge), 0)::int AS total_quantity,
            COUNT(*) FILTER (WHERE g.source = 'manual')::int AS manual
       FROM (
-        SELECT m.source, SUM(${subsetFrom('m', 'fig')} * ${mengeAus('sm', 1)}) AS menge
+        SELECT m.source, SUM(${subsetFrom('m', 'fig')} * ${quantityFrom('sm', 1)}) AS menge
           FROM minifigs m
           ${mengeJoin('m', 'sm', '= ANY($1)')}
           ${teilmengeJoin('m', 'fig')}

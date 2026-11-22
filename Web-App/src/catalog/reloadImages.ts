@@ -1,5 +1,5 @@
 /** Reload missing image files: find references without a file, load or clear them. */
-import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/error';
+import { errorMessage, logAndContinue, withoutMissingFile } from '../infra/error';
 
 import { checkAbort, type JobRun } from '../jobQueue';
 import * as repo from './repository/partsEnrichment';
@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import type { PoolClient } from 'pg';
 import path from 'node:path';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { CatalogContext } from './context';
 
 // "Missing" = image_local set, file missing. Unrecoverable
@@ -35,19 +35,19 @@ function _fsPathFromLocal(imageLocal: string) {
 // With await, otherwise the final state would be lost on a restart.
 async function _redownloadSetStatus(k: CatalogContext, obj: Record<string, unknown>) {
   await k.jobQueue
-    .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: k.uhr.jetzt() }))
+    .setState('imgredl_status', JSON.stringify({ ...obj, at: k.uhr.jetzt() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
 async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
-  const lauf_ = k.faecher.fach('bilderNachladen', () => ({ laeuft: false }));
+  const lauf_ = k.faecher.slot('bilderNachladen', () => ({ laeuft: false }));
   if (lauf_.laeuft) return { alreadyRunning: true };
   // Lock on an OWN connection: advisory locks are bound to the session.
   let lockClient: PoolClient;
   try {
     lockClient = await k.teileAnreicherung.lockConnection();
   } catch (e) {
-    return { error: fehlertext(e) || 'keine Verbindung' };
+    return { error: errorMessage(e) || 'keine Verbindung' };
   }
   try {
     if (!(await repo.attemptsFollowUpLock(lockClient))) {
@@ -56,7 +56,7 @@ async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
     }
   } catch (e) {
     lockClient.release();
-    return { error: fehlertext(e) || 'Sperre fehlgeschlagen' };
+    return { error: errorMessage(e) || 'Sperre fehlgeschlagen' };
   }
   lauf_.laeuft = true;
   try {
@@ -108,10 +108,10 @@ async function _redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
     );
     return { total, redownloaded, cleared, thumbs: thumbsCreated };
   } catch (e) {
-    await _redownloadSetStatus(k, { running: false, phase: 'error', error: fehlertext(e) });
+    await _redownloadSetStatus(k, { running: false, phase: 'error', error: errorMessage(e) });
     if (lauf?.signal?.aborted) throw e;
-    console.error('[img-redl] Fehler:', fehlertext(e));
-    return { error: fehlertext(e) };
+    console.error('[img-redl] Fehler:', errorMessage(e));
+    return { error: errorMessage(e) };
   }
 }
 
@@ -152,7 +152,7 @@ async function catchUpPreviews(k: CatalogContext, withoutPreview: string[]): Pro
     cleared: 0,
   });
   for (const web of withoutPreview) {
-    const r = await versuche('teile-enrich:vorschau', () => k.images.createPreview(web));
+    const r = await attempts('teile-enrich:vorschau', () => k.images.createPreview(web));
     if (r.ok && r.wert) thumbsCreated++;
   }
   console.log(`[img-redl] ${thumbsCreated} fehlende Vorschauen erzeugt (von ${withoutPreview.length})`);
@@ -204,7 +204,7 @@ async function reloadImage(k: CatalogContext, m: MissingImage): Promise<boolean>
     await k.cdnDrossel.acquire();
     try {
       // An error counts like a fruitless fetch; the counter names both.
-      const r = await versuche('teile-enrich:downloadFile', k.externalSources.quellen.downloadFile(m.image_url, m.fp));
+      const r = await attempts('teile-enrich:downloadFile', k.externalSources.quellen.downloadFile(m.image_url, m.fp));
       ok = r.ok && r.wert === true;
     } finally {
       k.cdnDrossel.release();

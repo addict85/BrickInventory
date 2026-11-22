@@ -59,15 +59,15 @@ test('the cache stream hangs in front of the client stream', () => {
   // r.pipe(ws) once stood behind an `await mkdir`. r.pipe(res) runs
   // synchronously before it — the first chunks thus flowed to the client before the
   // cache stream was even attached.
-  // The cache branch stands in inDenCache(); there up to body.pipe(ws), then in the
+  // The cache branch stands in intoCache(); there up to body.pipe(ws), then in the
   // caller from the call up to body.pipe(res).
   const start = CODE.indexOf("const rawType = String(r.kopf['content-type']");
   const blk = CODE.slice(start, CODE.indexOf('body.pipe(res);', start) + 20);
-  const iCache = blk.indexOf('inDenCache(d, body'),
+  const iCache = blk.indexOf('intoCache(d, body'),
     iClient = blk.indexOf('body.pipe(res)');
-  assert.ok(iCache > 0 && iClient > iCache, 'inDenCache(body …) muss vor body.pipe(res) stehen');
-  const cache = CODE.slice(CODE.indexOf('function inDenCache('), CODE.indexOf('body.pipe(ws)'));
-  assert.ok(cache.length > 0 && CODE.indexOf('function inDenCache(') > 0, 'body.pipe(ws) steht nicht in inDenCache()');
+  assert.ok(iCache > 0 && iClient > iCache, 'intoCache(body …) muss vor body.pipe(res) stehen');
+  const cache = CODE.slice(CODE.indexOf('function intoCache('), CODE.indexOf('body.pipe(ws)'));
+  assert.ok(cache.length > 0 && CODE.indexOf('function intoCache(') > 0, 'body.pipe(ws) steht nicht in intoCache()');
   assert.doesNotMatch(
     blk.slice(0, iCache) + cache,
     /await /,
@@ -155,8 +155,8 @@ test('the diagnostic endpoints are present', () => {
   const route = require('./helpers/sources').kompakt(
     fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8'),
   );
-  assert.match(route, /router\.endpunkt\('POST \/api\/v1\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
-  assert.match(route, /router\.endpunkt\('POST \/api\/v1\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
+  assert.match(route, /router\.endpoint\('POST \/api\/v1\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
+  assert.match(route, /router\.endpoint\('POST \/api\/v1\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // The fetches themselves stand in the administration's service (routes do not call into the network).
   const admin = fs.readFileSync(path.join(ROOT, 'src/management/diagnostics.ts'), 'utf8');
   assert.match(

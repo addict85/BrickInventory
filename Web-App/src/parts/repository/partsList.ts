@@ -1,6 +1,6 @@
 import { storages } from '../../../db/inventoryView';
-import type { DbInterface, Treffer } from '../../../db/database';
-import { mengeJoin, mengeAus, teilmengeJoin, subsetFrom } from '../../../db/stockQuantity';
+import type { DbInterface, Hit } from '../../../db/database';
+import { mengeJoin, quantityFrom, teilmengeJoin, subsetFrom } from '../../../db/stockQuantity';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
 import { teilSichtJoin, TEIL } from '../../../db/catalogView';
 import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
@@ -31,8 +31,8 @@ function orderSql(o: PartsOrder, sp: { farbe: string; name: string; menge: strin
 }
 
 /** `pi` is the placeholder for `%text%`. */
-function partsSearch(nummer: string, name: string, blNumber: string, pi: number) {
-  return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E} OR ${blNumber} ILIKE $${pi}${E})`;
+function partsSearch(number: string, name: string, blNumber: string, pi: number) {
+  return `(${number} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E} OR ${blNumber} ILIKE $${pi}${E})`;
 }
 
 export interface PartRow {
@@ -78,7 +78,7 @@ export function stockColors(db: DbInterface, uids: number[], fromSummary: boolea
     `
     SELECT ${TEIL.farbname} AS color_name, COALESCE(${TEIL.farbcode}, rc.rgb) AS color_hex,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
-           SUM(${subsetFrom('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
+           SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int AS total_quantity
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part')}
@@ -198,7 +198,7 @@ export async function pageLive(db: DbInterface, uids: number[], f: PartsFilter, 
   // ::int: total_quantity's JSON type must not depend on the branch.
   const qtyExpr = f.set_number
     ? `SUM(${subsetFrom('p', 'part')})::int`
-    : `SUM(${subsetFrom('p', 'part')} * ${mengeAus('sm', 1)})::int`;
+    : `SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int`;
   const joinClause =
     (f.set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`) +
     ` ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}` +
@@ -261,7 +261,7 @@ export function usedManualParts(db: DbInterface, uids: number[]) {
 }
 
 export async function hasUnseenBlNumber(db: DbInterface, uids: number[]): Promise<boolean> {
-  return !!(await db.get<Treffer>(
+  return !!(await db.get<Hit>(
     `SELECT 1 FROM parts p
      LEFT JOIN bl_mapping m ON m.type = 'part' AND m.rb_id = p.part_number
      WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`,
@@ -292,10 +292,10 @@ export function inventoryAsParts(db: DbInterface, inventoryId: number, setNumber
 
 export function categories(db: DbInterface, uids: number[], fromSummary: boolean) {
   type Category = { category_name: string | null; label: string | null; unique_parts: number; total_quantity: number };
-  const categoryJoin = (column: string, nummer: string) => `
+  const categoryJoin = (column: string, number: string) => `
       LEFT JOIN rb_part_categories rc
              ON rc.id = (CASE WHEN ${column} ~ '^[0-9]+$' THEN ${column}::int ELSE NULL END)
-      LEFT JOIN rb_parts rp ON rp.part_num = ${nummer}
+      LEFT JOIN rb_parts rp ON rp.part_num = ${number}
       LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id`;
   // Without a catalog entry a saved name remains ("Bricks"); anything with none shows as ONE unnamed entry.
   const name = (k: string) =>
@@ -321,7 +321,7 @@ export function categories(db: DbInterface, uids: number[], fromSummary: boolean
     SELECT ${key(TEIL.kategorie)}                             AS category_name,
            ${name(TEIL.kategorie)}                                    AS label,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
-           SUM(${subsetFrom('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
+           SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int AS total_quantity
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}
@@ -358,7 +358,7 @@ export async function stats(db: DbInterface, uids: number[], fromSummary: boolea
         `
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
-           SUM(${subsetFrom('p', 'part')} * ${mengeAus('sm', 1)})
+           SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})
              FILTER (WHERE COALESCE(p.source, 'set') <> 'manual') AS total_parts
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
@@ -371,19 +371,19 @@ export async function stats(db: DbInterface, uids: number[], fromSummary: boolea
   // total so the collection tab and the parts tab show the same number.
   const individual = await db.get<{ t: string | number | null }>(
     `
-    SELECT SUM(${subsetFrom('p', 'part')} * ${mengeAus('sm', 1)}) AS t
+    SELECT SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)}) AS t
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part')}
     WHERE p.user_id = ANY($1) AND p.source = 'manual'`,
     [uids],
   );
-  const zahl = (v: string | number | null) => parseInt(String(v ?? 0), 10) || 0;
+  const number = (v: string | number | null) => parseInt(String(v ?? 0), 10) || 0;
   return {
-    unique_parts: zahl(r.unique_parts),
-    unique_colors: zahl(r.unique_colors),
-    total_parts: zahl(r.total_parts),
-    manual_parts: zahl(individual?.t ?? null),
+    unique_parts: number(r.unique_parts),
+    unique_colors: number(r.unique_colors),
+    total_parts: number(r.total_parts),
+    manual_parts: number(individual?.t ?? null),
   };
 }
 
@@ -477,7 +477,7 @@ export function ownedParts(db: DbInterface, uids: number[], numbers: string[], c
             p.color_id,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
                               THEN ${subsetFrom('p', 'part')}
-                              ELSE ${subsetFrom('p', 'part')} * ${mengeAus('sm', 1)}
+                              ELSE ${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)}
                          END), 0)::int                                AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
                               THEN ${subsetFrom('p', 'part')} ELSE 0 END), 0)::int AS lose
@@ -497,7 +497,7 @@ export function ownedMinifigs(db: DbInterface, uids: number[], numbers: string[]
     `SELECT m.fig_number                                                AS part_number,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
                               THEN ${subsetFrom('m', 'fig')}
-                              ELSE ${subsetFrom('m', 'fig')} * ${mengeAus('sm', 1)}
+                              ELSE ${subsetFrom('m', 'fig')} * ${quantityFrom('sm', 1)}
                          END), 0)::int                                  AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
                               THEN ${subsetFrom('m', 'fig')} ELSE 0 END), 0)::int AS lose

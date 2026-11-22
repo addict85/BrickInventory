@@ -61,12 +61,12 @@ test('header and gallery count the same sets', async t => {
     ...require('./helpers/sources').testArea('household'),
   };
   const { getStats } = _req('src/inventory/metrics.js');
-  const { setsLesen } = require('./helpers/sources').areaPage('sets');
+  const { readSets } = require('./helpers/sources').areaPage('sets');
 
   for (const modus of ['all', 'own']) {
     const uids = await scopeIds(haupt, modus);
     const kopf = await getStats(uids);
-    const liste = await setsLesen(uids, { page_size: 60 });
+    const liste = await readSets(uids, { page_size: 60 });
     assert.equal(
       kopf.total_sets,
       liste.total,

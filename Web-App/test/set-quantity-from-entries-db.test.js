@@ -146,7 +146,7 @@ test('nobody writes the item count of a set anymore', () => {
   // and that is exactly the path on which an acquisition becomes smaller.
   const setzt = /UPDATE\s+sets\s+SET\s+[^;`']*\bquantity\s*=/i;
   const fortschreiben = /UPDATE\s+sets\s+SET\s+quantity\s*=\s*(?:sets\.)?quantity\s*[+-]/i;
-  const beiKonflikt = /INSERT\s+INTO\s+sets\b[^;]*DO\s+UPDATE\s+SET\s+[^;]*\bquantity\s*=/i;
+  const onConflict = /INSERT\s+INTO\s+sets\b[^;]*DO\s+UPDATE\s+SET\s+[^;]*\bquantity\s*=/i;
   // And the column must not be created again either — an
   // `ADD COLUMN quantity` on sets would bring the copy back without violating a
   // single one of the rules above.
@@ -160,7 +160,7 @@ test('nobody writes the item count of a set anymore', () => {
       for (const [was, muster] of /** @type {[string, RegExp][]} */ ([
         ['setzt', setzt],
         ['schreibt fort', fortschreiben],
-        ['bei Konflikt', beiKonflikt],
+        ['bei Konflikt', onConflict],
         ['legt an', legtAn],
       ])) {
         if (muster.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
@@ -190,7 +190,7 @@ test('nobody writes the item count of a set anymore', () => {
     [
       `INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,$2,$3)
         ON CONFLICT (user_id,set_number) DO UPDATE SET quantity = sets.quantity + 1`,
-      beiKonflikt,
+      onConflict,
     ],
     ['ALTER TABLE sets ADD COLUMN IF NOT EXISTS quantity INTEGER', legtAn],
   ];
@@ -205,7 +205,7 @@ test('nobody writes the item count of a set anymore', () => {
     for (const [was, muster] of /** @type {[string, RegExp][]} */ ([
       ['setzt', setzt],
       ['schreibt fort', fortschreiben],
-      ['bei Konflikt', beiKonflikt],
+      ['bei Konflikt', onConflict],
       ['legt an', legtAn],
     ])) {
       assert.ok(!muster.test(zeile), `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.slice(0, 70)}`);
@@ -243,7 +243,7 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   const H = require('./helpers/sources').areaPage('sets');
 
   // ── One account ────────────────────────────────────────────────────────────
-  const eins = await H.setsLesen([haupt.id], { page_size: 60 });
+  const eins = await H.readSets([haupt.id], { page_size: 60 });
   const kachel = eins.sets.find(s => s.set_number === SN);
   assert.ok(kachel, `Das Set fehlt in der Antwort: ${JSON.stringify(eins.sets).slice(0, 300)}`);
   assert.equal(Number(kachel.quantity), 3, `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
@@ -257,7 +257,7 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   );
 
   // ── Household ─────────────────────────────────────────────────────────────
-  const beide = await H.setsLesen([haupt.id, kind.id], { page_size: 60 });
+  const beide = await H.readSets([haupt.id, kind.id], { page_size: 60 });
   const zusammen = beide.sets.find(s => s.set_number === SN);
   assert.ok(zusammen, 'Das Set fehlt in der Haushaltsantwort');
   assert.equal(Number(zusammen.quantity), 6, `Haushalt, Erfassungen 2+1+3: erwartet 6, bekam ${zusammen.quantity}`);
@@ -285,7 +285,7 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   );
   await db.run('UPDATE set_acquisitions SET quantity = 7 WHERE id=$1', [eine.id]);
 
-  const nachher = await H.setsLesen([haupt.id], { page_size: 60 });
+  const nachher = await H.readSets([haupt.id], { page_size: 60 });
   const neu = nachher.sets.find(s => s.set_number === SN);
   assert.equal(
     Number(neu.quantity),
@@ -304,7 +304,7 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   // — hence LEFT JOIN in db/stockQuantity.ts. It then means
   // zero pieces.
   await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [haupt.id, SN]);
-  const leer = await H.setsLesen([haupt.id], { page_size: 60 });
+  const leer = await H.readSets([haupt.id], { page_size: 60 });
   const nullStueck = leer.sets.find(s => s.set_number === SN);
   assert.ok(
     nullStueck,

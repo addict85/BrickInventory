@@ -30,7 +30,7 @@ const db = testData();
 const CHILD = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
 const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
-const db     = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const db     = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 const notify = db.notification;
 const { bis } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'time.js'))});
 const LISTEN = \`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND query LIKE 'LISTEN "reconnect_probe"%'\`;
@@ -108,7 +108,7 @@ test('close() during connection setup leaves no connection open', async t => {
   const kind = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
 const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
-const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 const notify = db.notification;
 notify.listen('rennen_probe', () => {});
 notify.close().then(() => console.log('GESCHLOSSEN'));
