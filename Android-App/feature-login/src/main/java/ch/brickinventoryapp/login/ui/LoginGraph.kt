@@ -20,6 +20,7 @@ import ch.brickinventoryapp.login.ui.screens.QrAccountQuestion
 import ch.brickinventoryapp.login.ui.screens.ServerStartDisplay
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel
+import ch.brickinventoryapp.model.domain.StartStateView
 
 /** What sign-in needs from the app: only the app knows where it goes after signing in. */
 interface LoginNavigation {
@@ -95,13 +96,7 @@ private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
         // is an account. `Unit` as the key: exactly once per setup, not
         // on every state change.
         LaunchedEffect(Unit) { loginVm.openCheckRegistration() }
-        // If the server is currently starting, the progress stands in place of the form: a
-        // network message would sound like an error. `startupStatus` only has a value
-        // when the server answers and denies `ready`.
-        val serverStart = state.startupStatus
-        if (serverStart != null) {
-            ServerStartDisplay(serverStart)
-        } else LoginScreen(
+        LoginOrServerStart(state.startupStatus, state.isLoggedIn, navigation::loggedIn) { LoginScreen(
             state = LoginScreenState(
                 serverUrl = state.serverUrl,
                 login = loginUiState.login,
@@ -116,15 +111,20 @@ private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
                 passkeyInsteadOfCode = loginUiState.passkeyInsteadOfCode,
             ),
             actions = remember(loginVm, passkeys) { GraphLoginActions(loginVm, passkeys, navController) },
-        )
+        ) }
         loginUiState.qrAccount?.let { QrAccountQuestion(it, loginVm::decideQrAccount) }
-        // Outside the if/else: if someone signs in while the server
-        // is still starting — possible, because the switch can happen at any time —,
-        // the jump to the gallery should happen anyway.
-        LaunchedEffect(state.isLoggedIn) {
-            if (state.isLoggedIn) navigation.loggedIn()
-        }
     }
+}
+
+/**
+ * While the server is starting ([serverStart] only has a value when it answers and denies `ready`),
+ * its progress stands in place of the form: a network message would sound like an error. The jump
+ * after signing in follows either way — the switch to „started“ can come at any time.
+ */
+@Composable
+internal fun LoginOrServerStart(serverStart: StartStateView?, loggedIn: Boolean, onLoggedIn: () -> Unit, form: @Composable () -> Unit) {
+    if (serverStart != null) ServerStartDisplay(serverStart) else form()
+    LaunchedEffect(loggedIn) { if (loggedIn) onLoggedIn() }
 }
 
 /** The sign-in screen's actions on the ViewModel; the passkey query is tied to the Activity (system picker). */

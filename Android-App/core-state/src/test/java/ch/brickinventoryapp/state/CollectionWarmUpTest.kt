@@ -1,17 +1,38 @@
 package ch.brickinventoryapp.state
 
+import ch.brickinventoryapp.data.Credentials
+import ch.brickinventoryapp.data.DevicesSettings
+import ch.brickinventoryapp.data.NetworkState
+import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.data.cache.PreviewMemory
+import ch.brickinventoryapp.data.cache.PreviewPrewarmer
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testAccountView
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
 import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testNetworkState
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.state.testing.StorageStore
+import ch.brickinventoryapp.state.ui.CollectionWarmUp
 import ch.brickinventoryapp.state.ui.ScopeService
 import ch.brickinventoryapp.state.ui.imageAddressesTheCollection
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,6 +47,8 @@ import java.io.File
  * Counter-checks (patches under counter-checks/):
  *   vorwaermen-ohne-blickfeld  the parts fetched without the account filter → red „vorgewärmt wird …“
  *   vorwaermen-ohne-figuren    the figures no longer collected → red „vorgewärmt wird …“
+ * Counter-checks (run here): `delay(RAMP_UP_MS)` removed from CollectionWarmUp.kick → red “the app start
+ * waits …”; the `mayStart()` question removed → red, the same test.
  */
 class CollectionWarmUpTest {
 
@@ -60,6 +83,52 @@ class CollectionWarmUpTest {
         } finally {
             paths.server.shutdown()
             folder.deleteRecursively()
+        }
+    }
+
+    /** The app start: [situation] decides whether warming may start; the lists come from [paths]. */
+    private fun TestScope.warmUp(paths: PathServer, situation: NetworkState.Kind): CollectionWarmUp {
+        val api = paths.onTick()
+        val parts = testPartsRepository(api)
+        val root = File(System.getProperty("java.io.tmpdir"), "bim-start-${System.nanoTime()}")
+        val memory = PreviewMemory({ root }, StoreCipher { ByteArray(32) { 9 } }) { ByteArray(32) { 19 } }
+        val settings = object : DevicesSettings {
+            override val alarmMessagesEnabled: Flow<Boolean> = MutableStateFlow(false)
+            override suspend fun setAlarmMessages(an: Boolean) = Unit
+            override fun warmUpAllowed(network: PrewarmNetwork): Flow<Boolean> = flowOf(network == PrewarmNetwork.WIFI)
+            override suspend fun warmUpSet(network: PrewarmNetwork, allowed: Boolean) = Unit
+        }
+        val images = OkHttpClient.Builder().addInterceptor { chain ->
+            Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(404).message("x")
+                .body("".toResponseBody("image/jpeg".toMediaType())).build()
+        }.build()
+        val prewarmer = PreviewPrewarmer(memory, testNetworkState { situation }, settings, images)
+        val credentials = object : Credentials {
+            override suspend fun serverUrlNow() = "https://brick.example"
+            override suspend fun tokenNow() = "token"
+        }
+        return CollectionWarmUp(prewarmer, testSetsRepository(api), parts, testMinifigsRepository(api), testAccountView(api),
+            ScopeService(StorageStore(), testHouseholdRepository(api), parts), credentials, backgroundScope)
+    }
+
+    @Test
+    fun `the app start waits for the ramp-up and asks before collecting`() = runTest {
+        val paths = PathServer(*responses)
+        try {
+            warmUp(paths, NetworkState.Kind.WIFI).kick()
+            advanceTimeBy(PreviewPrewarmer.RAMP_UP_MS - 1)
+            assertEquals("collected during sign-in and the first tiles", emptyList<String>(), paths.requests.toList())
+            advanceTimeBy(2)
+            runCurrent()
+            assertTrue("never collected", paths.requests.isNotEmpty())
+
+            paths.requests.clear()
+            warmUp(paths, NetworkState.Kind.NO_NETWORK).kick()
+            advanceTimeBy(PreviewPrewarmer.RAMP_UP_MS * 2)
+            runCurrent()
+            assertEquals("collected without being allowed to warm", emptyList<String>(), paths.requests.toList())
+        } finally {
+            paths.server.shutdown()
         }
     }
 }

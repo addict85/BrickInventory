@@ -1,7 +1,7 @@
 Gegenprobe: Herunterladen-Knopf steht ausserhalb des Ready-Zweigs und ist schon beim Laden sichtbar
-Modul: core-data
-Test: ch.brickinventoryapp.data.MediaAuthTest
-Rot: the download button appears only once the file is loaded
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfDownloadTest
+Rot: while loading there is no download button
 
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfViewerScreen.kt

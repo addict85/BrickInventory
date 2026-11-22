@@ -2,6 +2,7 @@
 
 package ch.brickinventoryapp.data.testing
 
+import ch.brickinventoryapp.data.NetworkState
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.account.AccountRepositoryImpl
@@ -109,3 +110,6 @@ fun testStockReconciliation(api: BrickApiService, store: OfflineStore): StockRec
 
 /** The device store's trust cipher with a fixed key: Robolectric has no Keystore. */
 fun testTrustCipher(key: Byte = 7): TrustCipher = TrustCipher { ByteArray(32) { key } }
+
+/** A network situation the test sets; the device measures it via the ConnectivityManager. */
+fun testNetworkState(kind: () -> NetworkState.Kind): NetworkState = NetworkState(kind)

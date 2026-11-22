@@ -53,13 +53,16 @@ class StoreEncryptionTest {
     private val vault = Vault()
     private val file = File(folder, "ablage.schluessel")
 
+    /** What the key store wrote — its output, read like any other result. */
+    private fun onDisk() = String(file.readBytes(), Charsets.UTF_8)
+
     @Test
     fun `the key is created once and lies only wrapped`() {
         val first = StoreKey(file, vault)
         val k = first.fetch()
         assertEquals(32, k.size)
         assertTrue(first.newCreated)
-        assertTrue("On disk only wrapped", file.readText().startsWith("umhuellt:"))
+        assertTrue("On disk only wrapped", onDisk().startsWith("umhuellt:"))
         val second = StoreKey(file, vault)
         assertArrayEquals("The same after the restart", k, second.fetch())
         assertFalse(second.newCreated)
@@ -85,19 +88,19 @@ class StoreEncryptionTest {
     @Test
     fun `a locked keystore does not replace the key`() {
         StoreKey(file, vault).fetch()
-        val before = file.readText()
+        val before = onDisk()
         vault.situation = VaultFinding.LockedState
         try {
             StoreKey(file, vault).fetch()
             fail("Locked must fail, not silently create a new key")
         } catch (_: IOException) {
         }
-        assertEquals(before, file.readText())
+        assertEquals(before, onDisk())
         vault.situation = VaultFinding.Gone
         val newValue = StoreKey(file, vault)
         newValue.fetch()
         assertTrue("Gone means: create anew and say so", newValue.newCreated)
-        assertNotEquals(before, file.readText())
+        assertNotEquals(before, onDisk())
     }
 
     @Test

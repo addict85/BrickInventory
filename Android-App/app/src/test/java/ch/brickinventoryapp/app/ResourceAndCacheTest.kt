@@ -5,9 +5,10 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Construction rules that without a device only stand in the source: camera resources, PDF cache budget,
- * fixed debug version and one CSV status path. That sign-out empties all caches is checked by
- * LogoutCleansEverythingTest, executed.
+ * Construction rules that without a device only stand in the source: camera resources (ML Kit clients
+ * cannot be created under Robolectric), fixed debug version and one CSV status path. The PDF cache
+ * budget (InstructionCacheBudgetTest), the CSV service's startup window (CsvStartupGraceTest) and that
+ * sign-out empties all caches (LogoutCleansEverythingTest) are checked executed.
  */
 class ResourceAndCacheTest {
 
@@ -25,7 +26,7 @@ class ResourceAndCacheTest {
     /** Camera screen including analysis and common setup — see [Sources.cameraSource]. */
     private fun withAnalyse(rel: String): String = Sources.cameraSource(rel)
 
-    // ── Kamera-Ressourcen ────────────────────────────────────────────────────
+    // ── Camera resources ─────────────────────────────────────────────────────
 
     @Test
     fun `both camera screens release executor and ML Kit client`() {
@@ -47,26 +48,6 @@ class ResourceAndCacheTest {
     // The autofocus rule stood here a third time. It does not belong to the
     // topic of this file (cleaning up resources) and now stands
     // completely in CameraFocusConfigTest.
-
-    // ── PDF-Cache ────────────────────────────────────────────────────────────
-
-    @Test
-    fun `the PDF view cache has an upper limit`() {
-        val src = code(read("data/InstructionRepository.kt"))
-        assert(src.contains("private fun prunePdfCache")) {
-            "No cleanup of the PDF cache. Viewed manuals deliberately stay " +
-                "(resume, reopening without a new download) — with up to 300 MB " +
-                "per file this needs an upper limit though."
-        }
-        assert(src.contains("PDF_CACHE_BUDGET_BYTES")) { "no budget defined" }
-        assert(src.contains("prunePdfCache(ctx.cacheDir")) {
-            "prunePdfCache() is not called before the download"
-        }
-        assert(src.contains("keep.absolutePath")) {
-            "The file just requested is not exempt from deleting — its " +
-                "partial download would be lost and the resume mechanism would come to nothing"
-        }
-    }
 
     // ── Debug-Version ────────────────────────────────────────────────────────
 
@@ -119,17 +100,6 @@ class ResourceAndCacheTest {
         }
         assert(src.contains("pollOnce()")) {
             "the polling fallback is missing — on an SSE outage there would be no progress any more"
-        }
-    }
-
-    @Test
-    fun `a first idle response does not end the service immediately`() {
-        val src = code(read("services/service/CsvImportService.kt"))
-        assert(src.contains("sawRunning") && src.contains("GRACE_MS")) {
-            "No start-up protection in applyStatus(). The service starts at the same moment " +
-                "as the upload; until the import job is created the server reports " +
-                "\"idle\". Without a start-up window the first idle answer ends the service, " +
-                "and the user never sees any progress."
         }
     }
 }

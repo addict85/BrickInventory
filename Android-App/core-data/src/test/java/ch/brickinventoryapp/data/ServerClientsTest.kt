@@ -50,6 +50,8 @@ import java.util.concurrent.TimeUnit
  *   bild-client-ohne-token         the ServerGuard taken out of the image client → red “both clients …”
  *   bild-client-ohne-rueckfall     the FORCE_CACHE fallback keeps throwing → red “if the server is …”
  *   coil-ohne-bild-client          Coil without the image client's fetcher → red “Coil loads …”
+ * Counter-checks (run here): previewTap no longer hooked in → red “… a preview comes from the preview
+ * store”. previewTap behind the offline fallback stays green: the tap then catches the connection error itself.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -84,8 +86,9 @@ class ServerClientsTest {
     private fun apiClient() = buildInterceptorClient(network, isApiClient = true, sessionExpired = SessionExpiredSignal(),
         ctx = ctx, question = CertificateQuestion())
 
-    private fun imageClient() = NetworkModule.provideImageOkHttpClient(ctx, network, SessionExpiredSignal(),
-        PreviewMemory({ File(ctx.filesDir, "vorschau-clients") }, StoreCipher { ByteArray(32) { 2 } }, { ByteArray(32) { 12 } }),
+    private val previews = PreviewMemory({ File(ctx.filesDir, "vorschau-clients") }, StoreCipher { ByteArray(32) { 2 } }, { ByteArray(32) { 12 } })
+
+    private fun imageClient() = NetworkModule.provideImageOkHttpClient(ctx, network, SessionExpiredSignal(), previews,
         CertificateQuestion(), StoreKey(File(ctx.noBackupFilesDir, "clients.schluessel"), PlainVault))
 
     private fun fetch(client: OkHttpClient, address: String) =
@@ -128,6 +131,15 @@ class ServerClientsTest {
         assertEquals(200 to "bild-10179", fetch(image, address))
         server.shutdown()
         assertEquals("Offline the tile stays empty", 200 to "bild-10179", fetch(image, address))
+    }
+
+    @Test
+    fun `if the server is unreachable and the cache empty, a preview comes from the preview store`() {
+        val address = server.url("/api/v1/images/set/75192-1?thumb=1").toString()
+        previews.write(address, "vorschau-75192".toByteArray())
+        val image = imageClient()
+        server.shutdown()
+        assertEquals("Offline the tile stays empty", 200 to "vorschau-75192", fetch(image, address))
     }
 
     @Test
