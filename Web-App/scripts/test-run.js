@@ -152,7 +152,8 @@ async function reportsCoverage() {
 
 /**
  * How many files only skip for lack of a tool: without Chrome the browser files are green without
- * having checked. With REQUIRE_BROWSER=1 or REQUIRE_CADDY=1 they fail instead and do not count.
+ * having checked. Browser files only skip with SKIP_BROWSER=1 (otherwise REQUIRE_BROWSER=1 is forced);
+ * with REQUIRE_CADDY=1 Caddy files fail instead and do not count.
  * @param {string[]} browser @param {string[]} all @param {(f: string) => string} source
  */
 function withoutTool(browser, all, source) {
@@ -169,13 +170,16 @@ function withoutTool(browser, all, source) {
     spawnSync('caddy', ['version'], { stdio: 'ignore' }).status === 0;
   const caddy = all.filter(f => /CADDY_BIN/.test(source(f))).length;
   return (
-    `übersprungen: ${chromeDa ? 0 : browser.length} Browser-Dateien ohne Chrome (CHROME_BIN, REQUIRE_BROWSER=1), ` +
+    `übersprungen: ${chromeDa ? 0 : browser.length} Browser-Dateien ohne Chrome (CHROME_BIN, SKIP_BROWSER=1), ` +
     `${caddyDa ? 0 : caddy} Caddy-Dateien ohne Caddy (CADDY_BIN, REQUIRE_CADDY=1)`
   );
 }
 
 async function main() {
   const start = Date.now();
+  // A local run without Chrome was green without checking the layout; only an explicit
+  // SKIP_BROWSER=1 still allows skipping (children inherit the variable).
+  if (process.env.SKIP_BROWSER !== '1') process.env.REQUIRE_BROWSER = '1';
   if (process.env.TEST_LAUF_GEBAUT !== '1') {
     // a run within a run does not build: parallel files read dist/ and the bundle
     execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], {

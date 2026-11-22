@@ -456,14 +456,15 @@ Dateien (Datenbankrolle, Sicherung) Superuser-Rechte.
 |---|---|
 | `TEST_DATABASE_URL` | Basis-Datenbank. Ohne sie laufen nur die Tests ohne Datenbank. |
 | `REQUIRE_DB=1` | Eine fehlende Datenbank (oder fehlende Rechte, `psql`, `pg_dump`) ist ein Fehler statt eines Überspringens. In der CI gesetzt. |
-| `REQUIRE_BROWSER=1` | Dasselbe für Chrome: Ohne Browser schlagen die Browser-Tests fehl, statt still zu überspringen. In der CI gesetzt. |
+| `REQUIRE_BROWSER=1` | Dasselbe für Chrome: Ohne Browser schlagen die Browser-Tests fehl, statt still zu überspringen. `npm test` setzt es selbst. |
+| `SKIP_BROWSER=1` | Erlaubt `npm test` ausdrücklich, Browser-Dateien ohne Chrome zu überspringen (sonst rot). |
 | `CHROME_BIN` | Pfad zu Chrome/Chromium, falls nicht unter `/usr/bin/google-chrome` oder `/usr/bin/chromium`. |
 | `CADDY_BIN` | Pfad zu `caddy` für die Caddyfile-Tests; ohne ihn übersprungen. |
 | `REQUIRE_CADDY=1` | Ein fehlender Caddy ist ein Fehler. In der CI gesetzt (Caddy aus dem Image in `compose.yaml`). |
 | `TEST_PARALLEL_BROWSER` | Browser-Dateien gleichzeitig (Vorgabe 1; je Datei eigene Datenbank, Port und Chrome-Profil). In der CI 2. |
 | `TEST_NACHLAUF=aus` | Eine Fristüberschreitung ist rot. Sonst läuft die Datei einzeln nach und erscheint als Warnung am Ende des Laufs. |
 
-Ohne `REQUIRE_DB=1` und `REQUIRE_BROWSER=1` ist ein grüner Lauf kein Beleg:
+Ohne `REQUIRE_DB=1` (bzw. mit `SKIP_BROWSER=1`) ist ein grüner Lauf kein Beleg:
 Die betroffenen Dateien überspringen sich dann selbst.
 
 **Aufbau** (flach in `test/`; die Zahlen nennt `ls test/*.test.js` bzw. die Ratschen):

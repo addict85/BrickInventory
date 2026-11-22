@@ -6,6 +6,8 @@
  *   A  in withoutTool() `chromeDa ? 0 : browser.length` replaced by `0` → red: “without Chrome and Caddy”
  *   B  in the catch around chrome() `chromeDa = false` set → red: “with REQUIRE_BROWSER=1 nothing counts
  *      as skipped”
+ *   C  in main() the line forcing REQUIRE_BROWSER removed → red: “without SKIP_BROWSER=1 the files run
+ *      with REQUIRE_BROWSER=1” (measured 22.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,18 +19,18 @@ const { spawnSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 
 /** Two throwaway test files: a browser file, one that needs Caddy. */
-function dateien(t) {
+function dateien(t, browserBody = '') {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lauf-uebersprungen-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const browser = path.join(ordner, 'leer-browser.test.js');
   const caddy = path.join(ordner, 'leer-caddy.test.js');
-  fs.writeFileSync(browser, "require('node:test')('leer', () => {});\n");
+  fs.writeFileSync(browser, `require('node:test')('leer', () => {${browserBody}});\n`);
   fs.writeFileSync(caddy, "// braucht CADDY_BIN\nrequire('node:test')('leer', () => {});\n");
   return [browser, caddy];
 }
 
 /** test-run.js as a child, without a database and without a rebuild; `zusatz` sets the tool variables. */
-function abschluss(t, /** @type {Record<string, string>} */ zusatz) {
+function abschluss(t, /** @type {Record<string, string>} */ zusatz, { browserBody = '' } = {}) {
   const env = { ...process.env, TEST_LAUF_GEBAUT: '1', PATH: path.dirname(process.execPath), ...zusatz };
   for (const k of [
     'TEST_DATABASE_URL',
@@ -40,9 +42,10 @@ function abschluss(t, /** @type {Record<string, string>} */ zusatz) {
     'CADDY_BIN',
     'REQUIRE_BROWSER',
     'REQUIRE_CADDY',
+    'SKIP_BROWSER',
   ])
     if (!(k in zusatz)) delete env[k];
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), ...dateien(t)], {
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), ...dateien(t, browserBody)], {
     cwd: ROOT,
     env,
     encoding: 'utf8',
@@ -59,10 +62,10 @@ test('without Chrome and Caddy the closing line names both numbers', { timeout: 
   delete process.env.REQUIRE_BROWSER;
   const chromeDa = !!require('./helpers/app-browser').chrome();
   for (const [k, v] of Object.entries(vorher)) if (v !== undefined) process.env[k] = v;
-  const zeile = abschluss(t, {});
+  const zeile = abschluss(t, { SKIP_BROWSER: '1' });
   assert.match(
     zeile,
-    new RegExp(`übersprungen: ${chromeDa ? 0 : 1} Browser-Dateien ohne Chrome \\(CHROME_BIN, REQUIRE_BROWSER=1\\)`),
+    new RegExp(`übersprungen: ${chromeDa ? 0 : 1} Browser-Dateien ohne Chrome \\(CHROME_BIN, SKIP_BROWSER=1\\)`),
   );
   assert.match(zeile, /, 1 Caddy-Dateien ohne Caddy \(CADDY_BIN, REQUIRE_CADDY=1\)$/);
 });
@@ -76,4 +79,14 @@ test('with REQUIRE_BROWSER=1 nothing counts as skipped', { timeout: 120_000 }, t
   // Then every real browser file fails loudly; the throwaway file here does not ask for Chrome.
   const zeile = abschluss(t, { CHROME_BIN: '/gibt/es/nicht', REQUIRE_BROWSER: '1', REQUIRE_CADDY: '1' });
   assert.match(zeile, /übersprungen: 0 Browser-Dateien .*, 0 Caddy-Dateien/);
+});
+
+test('without SKIP_BROWSER=1 the files run with REQUIRE_BROWSER=1', { timeout: 120_000 }, t => {
+  // With it helpers/app-browser throws instead of skipping; the throwaway file asserts the variable.
+  const zeile = abschluss(
+    t,
+    { CHROME_BIN: '/gibt/es/nicht' },
+    { browserBody: "require('node:assert').equal(process.env.REQUIRE_BROWSER, '1');" },
+  );
+  assert.match(zeile, /übersprungen: 0 Browser-Dateien/);
 });
