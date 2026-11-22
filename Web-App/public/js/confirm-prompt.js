@@ -130,6 +130,29 @@ export function fetchSetPasskey(fn) {
 
 const WITH_PASSKEY = Symbol('passkey');
 
+/** Title, text, button and choice of the dialog; @returns the choice field.
+ * @param {string} title @param {string} msg @param {string | undefined} icon @param {Button | null | undefined} button */
+function confirmTexts(title, msg, icon, button) {
+  G('cd-title').textContent = title || tRaw('common.delete_title');
+  G('cd-msg').textContent = msg || tRaw('common.delete_text');
+  setHtml(G('cd-icon'), ico(icon || 'delete'));
+  const btnYes = G('cd-confirm');
+  const danger = (button?.kind || 'bd') === 'bd';
+  btnYes.textContent = tRaw(button?.button || 'confirm.delete_btn', button?.values);
+  btnYes.classList.toggle('bd', danger);
+  btnYes.classList.toggle('bp', !danger);
+  G('cd-icon').classList.toggle('neutral', !danger);
+  G('cd-msg').classList.toggle('text-danger', !!button?.error);
+  G('cd-pw-label').textContent = tRaw(button?.field || 'confirm.admin_password');
+  const choiceField = G('cd-choice');
+  choiceField.hidden = !button?.choice;
+  setHtml(
+    choiceField,
+    html`${(button?.choice || []).map((w, i) => html`<label class="cd-choice-row"><input type="radio" name="cd-choice" value="${w.value}"${i ? '' : ' checked'}> ${w.text}</label>`)}`,
+  );
+  return choiceField;
+}
+
 /**
  * @param {Button | null} [button]
  * @param {string} title
@@ -160,25 +183,10 @@ function openDialog(
     if (pkButton) pkButton.hidden = !withPasskey;
     if (pw) pw.value = '';
     if (codeField) codeField.value = '';
-    G('cd-title').textContent = title || tRaw('common.delete_title');
-    G('cd-msg').textContent = msg || tRaw('common.delete_text');
-    setHtml(G('cd-icon'), ico(icon || 'delete'));
+    const choiceField = confirmTexts(title, msg, icon, button);
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
     const btnNo = G('cd-cancel');
-    const danger = (button?.kind || 'bd') === 'bd';
-    btnYes.textContent = tRaw(button?.button || 'confirm.delete_btn', button?.values);
-    btnYes.classList.toggle('bd', danger);
-    btnYes.classList.toggle('bp', !danger);
-    G('cd-icon').classList.toggle('neutral', !danger);
-    G('cd-msg').classList.toggle('text-danger', !!button?.error);
-    G('cd-pw-label').textContent = tRaw(button?.field || 'confirm.admin_password');
-    const choiceField = G('cd-choice');
-    choiceField.hidden = !button?.choice;
-    setHtml(
-      choiceField,
-      html`${(button?.choice || []).map((w, i) => html`<label class="cd-choice-row"><input type="radio" name="cd-choice" value="${w.value}"${i ? '' : ' checked'}> ${w.text}</label>`)}`,
-    );
     if (withPassword) setTimeout(() => pw?.focus(), 0);
     else if (withCode) setTimeout(() => codeField?.focus(), 0);
     /** @param {string | symbol | null} result */

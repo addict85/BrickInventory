@@ -15,30 +15,33 @@
     // Only the bottom header row counts — multi-row headers (a group heading above) occur in the
     // finance tables.
     const headRow = head.rows[head.rows.length - 1];
-    // Visible text only: a header labelled only for screen readers (.vh) stays empty on the card.
-    const labels = [...headRow.cells].map(th => {
-      const k = th.cloneNode(true);
-      /** @type {Element} */
-      (k).querySelectorAll('.vh').forEach(v => {
-        v.remove();
-      });
-      return (k.textContent || '').trim();
-    });
+    const labels = [...headRow.cells].map(visibleText);
     if (!labels.length) return;
 
     for (const body of table.tBodies) {
-      for (const row of body.rows) {
-        let col = 0;
-        for (const cell of row.cells) {
-          if (!cell.hasAttribute('data-label')) {
-            cell.setAttribute('data-label', labels[col] || '');
-          }
-          // Account for colspan, otherwise every following column shifts
-          col += cell.colSpan || 1;
-        }
-      }
+      for (const row of body.rows) labelRow(row, labels);
     }
     table.dataset.labelled = '1';
+  }
+
+  /** Visible text only: a header labelled only for screen readers (.vh) stays empty on the card.
+   * @param {HTMLTableCellElement} th */
+  function visibleText(th) {
+    const k = /** @type {Element} */ (th.cloneNode(true));
+    k.querySelectorAll('.vh').forEach(v => {
+      v.remove();
+    });
+    return (k.textContent || '').trim();
+  }
+
+  /** @param {HTMLTableRowElement} row @param {string[]} labels */
+  function labelRow(row, labels) {
+    let col = 0;
+    for (const cell of row.cells) {
+      if (!cell.hasAttribute('data-label')) cell.setAttribute('data-label', labels[col] || '');
+      // Account for colspan, otherwise every following column shifts
+      col += cell.colSpan || 1;
+    }
   }
 
   /** Handle every still-unlabelled table below root. */

@@ -56,6 +56,19 @@ export function fmtMoney(v, cur) {
     : fmtN(v, cur);
 }
 
+/** Which sign separates the decimals: with only one kind of sign several times, or one sign that is the
+ * locale's group sign before exactly three digits, there is none. @param {string} s @param {number} last */
+function decimalSign(s, last) {
+  const divider = s.match(/[.,]/g) || [];
+  if (!divider.length) return null;
+  if (new Set(divider).size === 1 && divider.length > 1) return null;
+  if (divider.length === 1) {
+    const group = new Intl.NumberFormat(locale()).formatToParts(1000).find(p => p.type === 'group')?.value;
+    if (divider[0] === group && /^\d{3}$/.test(s.slice(last + 1)) && !/^0[.,]/.test(s)) return null;
+  }
+  return s[last];
+}
+
 /**
  * An amount from an input field. Comma and dot are both decimal separators, spaces and ' are
  * thousands separators; a single separator with exactly three digits after it counts as thousands if the
@@ -70,14 +83,8 @@ export function readAmount(raw) {
     .replace(/^[€$£]|[€$£]$/g, '');
   if (!s) return null;
   if (!/^[\d.,]*\d[\d.,]*$/.test(s)) return NaN;
-  const divider = s.match(/[.,]/g) || [];
   const last = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
-  let decimal = divider.length ? s[last] : null;
-  if (new Set(divider).size === 1 && divider.length > 1) decimal = null;
-  if (divider.length === 1) {
-    const group = new Intl.NumberFormat(locale()).formatToParts(1000).find(p => p.type === 'group')?.value;
-    if (divider[0] === group && /^\d{3}$/.test(s.slice(last + 1)) && !/^0[.,]/.test(s)) decimal = null;
-  }
+  const decimal = decimalSign(s, last);
   const whole = decimal ? s.slice(0, last) : s,
     nach = decimal ? s.slice(last + 1) : '';
   if (/[.,]/.test(nach) || (decimal && whole.includes(decimal))) return NaN;
@@ -145,6 +152,33 @@ export function browserWritesDateHowApp(iso) {
   }
 }
 
+/** A time alone read as today, even if the run was only tomorrow or three days ago. @param {Date} d */
+function whenText(d) {
+  const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
+  const time = fmtDate(d, 'time');
+  if (days === 0) return time;
+  if (days === 1) return tRaw('time.morgen', { time });
+  if (days === -1) return tRaw('time.yesterday', { time });
+  return fmtDate(d, 'datetime');
+}
+
+/** English with month names: "03/11/2026" reads as 11 March in the USA. German always 24 hours, even
+ * with a browser defaulting to 12 h. @param {string} kind @returns {Intl.DateTimeFormatOptions} */
+function dateOptions(kind) {
+  /** @type {Intl.DateTimeFormatOptions} */
+  const tag =
+    LANG === 'en'
+      ? { day: 'numeric', month: 'short', year: 'numeric' }
+      : { day: '2-digit', month: '2-digit', year: 'numeric' };
+  /** @type {Intl.DateTimeFormatOptions} */
+  const time =
+    LANG === 'en' ? { hour: '2-digit', minute: '2-digit' } : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
+  if (kind === 'time') return time;
+  if (kind === 'datetime') return { ...tag, ...time };
+  if (kind === 'lang') return { day: 'numeric', month: 'long', year: 'numeric' };
+  return tag;
+}
+
 /**
  * A date the same everywhere: "05.01.2024" (de), "5 Jan 2024" (en). Before, every place had toLocaleDateString()
  * ("5.1.2024") next to its own forms.
@@ -158,30 +192,6 @@ export function fmtDate(v, kind = 'tag') {
   const d =
     v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (Number.isNaN(d.getTime())) return '';
-  // A time alone read as today, even if the run was only tomorrow or three days ago.
-  if (kind === 'when') {
-    const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
-    const time = fmtDate(d, 'time');
-    if (days === 0) return time;
-    if (days === 1) return tRaw('time.morgen', { time });
-    if (days === -1) return tRaw('time.yesterday', { time });
-    return fmtDate(d, 'datetime');
-  }
-  // English with month names: "03/11/2026" reads as 11 March in the USA. German always 24 hours, even
-  // with a browser defaulting to 12 h.
-  const tag =
-    LANG === 'en'
-      ? { day: 'numeric', month: 'short', year: 'numeric' }
-      : { day: '2-digit', month: '2-digit', year: 'numeric' };
-  const time =
-    LANG === 'en' ? { hour: '2-digit', minute: '2-digit' } : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
-  const o =
-    kind === 'time'
-      ? time
-      : kind === 'datetime'
-        ? { ...tag, ...time }
-        : kind === 'lang'
-          ? { day: 'numeric', month: 'long', year: 'numeric' }
-          : tag;
-  return new Intl.DateTimeFormat(locale(), /** @type {Intl.DateTimeFormatOptions} */ (o)).format(d);
+  if (kind === 'when') return whenText(d);
+  return new Intl.DateTimeFormat(locale(), dateOptions(kind)).format(d);
 }

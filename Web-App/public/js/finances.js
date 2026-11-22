@@ -126,31 +126,38 @@ const noMarket = () =>
   html`<span class="fin-strich">${noValue()}</span><span class="fin-no-market">${tRaw('finance.no_market_price')}</span>`;
 const noPnl = () => html`<span class="text-mut fin-guv-empty">—</span>`;
 
+/** The numbers of a row: of the acquisition if there is one, else of the item. avg_price first — as
+ * everywhere since the price-model switch. @param {any} it @param {any} acq */
+function pmValues(it, acq) {
+  const src = acq ?? it;
+  const purchase = src.purchase_price != null ? Number(src.purchase_price) : null;
+  return {
+    qty: acq ? acq.quantity : it.quantity || 1,
+    current: acq ? Number(acq.avg_price ?? 0) : Number(it.avg_price ?? it.qty_avg_price ?? 0),
+    purchase,
+    total: src.value_total ?? 0,
+    pnl: src.pnl_percent,
+  };
+}
+
+/** @param {any} it */
+function pmImage(it) {
+  const kind = it.fig_number ? 'figur' : 'teil';
+  const source = it.image_local || it.image_url;
+  if (!source) return html`<span class="image-ph" aria-hidden="true">${placeholderContent(kind)}</span>`;
+  return imageTag({
+    src: imgUrl(thumbUrl(source) || source, true),
+    orig: imgUrl(it.image_url || ''),
+    alt: '',
+    ph: kind,
+  });
+}
+
 /** @param {ManualItem} it @param {string} label @param {ManualAcquisition | null} acq @param {RowContext} ctx @param {string} text visible name without markup */
 function pmRow(it, label, acq, ctx, text) {
   const cur = ctx.cur;
-  const qty = acq ? acq.quantity : it.quantity || 1;
-  // avg_price first — as everywhere since the price-model switch.
-  const current = acq ? Number(acq.avg_price ?? 0) : Number(it.avg_price ?? it.qty_avg_price ?? 0);
-  const purchase = acq
-    ? acq.purchase_price != null
-      ? Number(acq.purchase_price)
-      : null
-    : it.purchase_price != null
-      ? Number(it.purchase_price)
-      : null;
-  const total = acq ? (acq.value_total ?? 0) : (it.value_total ?? 0);
-  const pnl = acq ? acq.pnl_percent : it.pnl_percent;
-  const kind = it.fig_number ? 'figur' : 'teil';
-  const img =
-    it.image_local || it.image_url
-      ? imageTag({
-          src: imgUrl(thumbUrl(it.image_local || it.image_url) || it.image_local || it.image_url, true),
-          orig: imgUrl(it.image_url || ''),
-          alt: '',
-          ph: kind,
-        })
-      : html`<span class="image-ph" aria-hidden="true">${placeholderContent(kind)}</span>`;
+  const { qty, current, purchase, total, pnl } = pmValues(it, acq);
+  const img = pmImage(it);
   // The former third parameter onclickAttr was never set by any caller — that branch was dead and would
   // have been blocked by the CSP as an inline handler.
   return html`<tr class="cursor-pointer" ${rawHtml(manArgs(it))}>
@@ -295,31 +302,20 @@ function filterEnabled(enabled) {
   G('tab-finance')?.classList.toggle('finances-error', !enabled);
 }
 
-export async function loadFinance() {
-  const hadTable = financeLoading();
-  // All four with the same account filter — otherwise a total from one scope would sit next to a
-  // listing from another.
-  const [d, partsVal, figsVal, pnlData] = await Promise.all([
-    api('GET', `/v2/finance/valuation${scopeQuery('finance')}`),
-    api('GET', `/v2/finance/parts-valuation${scopeQuery('finance')}`),
-    api('GET', `/v2/finance/minifigs-valuation${scopeQuery('finance')}`),
-    api('GET', `/v2/finance/pnl${scopeQuery('finance')}`),
-  ]);
-  if (financeFailed(d, hadTable) || !d?.success) return;
-  filterEnabled(true);
-  const cur = d.currency;
+/** Rows, purchase totals and market values of the three sections; totals from the server where it sends them.
+ * @param {import('../../frontend-types/api').ApiResponse<'GET', '/v2/finance/valuation'>} d
+ * @param {import('../../frontend-types/api').ApiResponse<'GET', '/v2/finance/parts-valuation'>} partsVal
+ * @param {import('../../frontend-types/api').ApiResponse<'GET', '/v2/finance/minifigs-valuation'>} figsVal
+ * @param {import('../../frontend-types/api').ApiResponse<'GET', '/v2/finance/pnl'>} pnlData */
+function financeSums(d, partsVal, figsVal, pnlData) {
   const extra =
     parseFloat(partsVal.success ? partsVal.total_value || '0' : '0') +
     parseFloat(figsVal.success ? figsVal.total_value || '0' : '0');
-  // No P&L without a comparable entry — not even the previous filter's: a leftover number would look
-  // like the answer to the new one.
-  const totalPnl = pnlData.success ? pnlData.totals?.pnl_percent : null;
   const allRows = [
     ...(d.sets || []),
     ...(partsVal.success ? partsVal.parts : []),
     ...(figsVal.success ? figsVal.figs : []),
   ];
-  const multiAccount = new Set(allRows.flatMap(z => (z.owners || []).map(o => o.id))).size > 1;
   const partsItems = partsVal.success ? partsVal.parts : [];
   const figsItems = figsVal.success ? figsVal.figs : [];
   // Purchase total per section: from the server (pnl), otherwise computed from the rows.
@@ -333,20 +329,46 @@ export async function loadFinance() {
   };
   purchase.all = numberOr(pt.purchase, purchase.sets + purchase.parts + purchase.figs);
   const missingPrice =
-    d.sets.filter(s => s.error || !(Number(s.avg_price) > 0)).length +
+    (d.sets || []).filter(s => s.error || !(Number(s.avg_price) > 0)).length +
     [...partsItems, ...figsItems].filter(it => !(Number(it.avg_price ?? it.qty_avg_price) > 0)).length;
   // Totals from the server (`total_value`), as in the app.
-  const setsQtyAvg = parseFloat(d.totals.avg || '0');
+  const setsQtyAvg = parseFloat(d.totals?.avg || '0');
   // The grand total comes from the server (totals.grand_total, computed per row): the rule for what
   // counts should live in one place. The locally computed sum is only a fallback if the pnl request fails.
   const grandTotal = parseFloat(pnlData?.totals?.grand_total || '0') || setsQtyAvg + extra;
-  const basis = baseFrom(pt, missingPrice);
   const value = {
     sets: setsQtyAvg,
     parts: parseFloat(partsVal?.total_value || '0'),
     figs: parseFloat(figsVal?.total_value || '0'),
     all: grandTotal,
   };
+  return { allRows, partsItems, figsItems, pt, purchase, missingPrice, setsQtyAvg, grandTotal, value };
+}
+
+export async function loadFinance() {
+  const hadTable = financeLoading();
+  // All four with the same account filter — otherwise a total from one scope would sit next to a
+  // listing from another.
+  const [d, partsVal, figsVal, pnlData] = await Promise.all([
+    api('GET', `/v2/finance/valuation${scopeQuery('finance')}`),
+    api('GET', `/v2/finance/parts-valuation${scopeQuery('finance')}`),
+    api('GET', `/v2/finance/minifigs-valuation${scopeQuery('finance')}`),
+    api('GET', `/v2/finance/pnl${scopeQuery('finance')}`),
+  ]);
+  if (financeFailed(d, hadTable) || !d?.success) return;
+  filterEnabled(true);
+  const cur = d.currency;
+  const { allRows, partsItems, figsItems, pt, purchase, missingPrice, setsQtyAvg, grandTotal, value } = financeSums(
+    d,
+    partsVal,
+    figsVal,
+    pnlData,
+  );
+  // No P&L without a comparable entry — not even the previous filter's: a leftover number would look
+  // like the answer to the new one.
+  const totalPnl = pnlData.success ? pnlData.totals?.pnl_percent : null;
+  const multiAccount = new Set(allRows.flatMap(z => (z.owners || []).map(o => o.id))).size > 1;
+  const basis = baseFrom(pt, missingPrice);
   // Chart, header figure and cards show the same market value and purchase total.
   const headValue = basis.valued > 0 ? basis.value : grandTotal;
   setFinanceHeaderValue(headValue);

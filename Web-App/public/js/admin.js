@@ -20,54 +20,57 @@ function formatDuration(ms) {
   return `${num(Math.floor(ms / 60000))} min ${num(Math.floor((ms % 60000) / 1000))} s`;
 }
 
+/** The contract doesn't name the progress shape (PriceJobState.job is open); the service writes it this way.
+ * @param {{ total?: number, current?: number, set?: string } | undefined} progress */
+function showJobProgress(progress) {
+  if (!progress) return;
+  const pct = progress.total ? ((progress.current ?? 0) / progress.total) * 100 : 0;
+  G('job-progress-wrap').style.display = 'flex';
+  G('job-prog-bar').style.width = pct + '%';
+  G('job-prog-txt').textContent = `${progress.current}/${progress.total}`;
+  G('job-status-detail').textContent = progress.set ? tRaw('monitor.current', { set: progress.set }) : '';
+}
+
+/** The last run with its result, or the wait for the first one. @param {any} j */
+function showLastJobRun(j) {
+  const dot = G('job-dot');
+  const stxt = G('job-status-txt');
+  const sdet = G('job-status-detail');
+  const nextRun = j.nextRun ? `${tRaw('monitor.next_run')} ${fmtDate(j.nextRun, 'when')}` : '';
+  if (!j.lastRun) {
+    dot.style.background = 'var(--s300)';
+    stxt.textContent = tRaw('monitor.waiting_first');
+    sdet.textContent = nextRun;
+    return;
+  }
+  dot.style.background = j.lastErrors > 0 ? 'var(--a500)' : 'var(--g500)';
+  stxt.textContent = tRaw('monitor.last_run_at', { time: fmtDate(j.lastRun, 'datetime') });
+  const parts = [];
+  if (j.lastUpdated) parts.push(`${j.lastUpdated} ${tRaw('common.updated')}`);
+  if (j.lastErrors) parts.push(tRaw('monitor.errors_n', { n: j.lastErrors }));
+  if (j.lastDuration) parts.push(formatDuration(Number(j.lastDuration)));
+  sdet.textContent = parts.join(' · ') + (nextRun ? ` · ${nextRun}` : '');
+}
+
 export async function pollJobStatus() {
   const d = await api('GET', '/v2/admin/job-status');
   if (!d.success) return;
   const j = d.job;
   const dot = G('job-dot');
-  const stxt = G('job-status-txt');
-  const sdet = G('job-status-detail');
-  const pwrap = G('job-progress-wrap');
-  const pbar = G('job-prog-bar');
-  const ptxt = G('job-prog-txt');
   const btn = G('btn-job-trigger');
-
+  btn.disabled = !!j.running;
   if (j.running) {
     dot.style.background = 'var(--b500)';
     dot.style.animation = 'sp .8s linear infinite';
-    stxt.textContent = tRaw('monitor.job_running');
-    // The contract doesn't name the progress shape (PriceJobState.job is open); the service writes it
-    // this way.
-    const progress = /** @type {{ total?: number, current?: number, set?: string } | undefined} */ (j.progress);
-    if (progress) {
-      const pct = progress.total ? ((progress.current ?? 0) / progress.total) * 100 : 0;
-      pwrap.style.display = 'flex';
-      pbar.style.width = pct + '%';
-      ptxt.textContent = `${progress.current}/${progress.total}`;
-      sdet.textContent = progress.set ? tRaw('monitor.current', { set: progress.set }) : '';
-    }
-    btn.disabled = true;
+    G('job-status-txt').textContent = tRaw('monitor.job_running');
+    showJobProgress(/** @type {{ total?: number, current?: number, set?: string } | undefined} */ (j.progress));
     nextJobPoll(2000);
-  } else {
-    dot.style.animation = '';
-    pwrap.style.display = 'none';
-    btn.disabled = false;
-    if (j.lastRun) {
-      dot.style.background = j.lastErrors > 0 ? 'var(--a500)' : 'var(--g500)';
-      stxt.textContent = tRaw('monitor.last_run_at', { time: fmtDate(j.lastRun, 'datetime') });
-      const parts = [];
-      if (j.lastUpdated) parts.push(`${j.lastUpdated} ${tRaw('common.updated')}`);
-      if (j.lastErrors) parts.push(tRaw('monitor.errors_n', { n: j.lastErrors }));
-      if (j.lastDuration) parts.push(formatDuration(Number(j.lastDuration)));
-      sdet.textContent =
-        parts.join(' · ') + (j.nextRun ? ` · ${tRaw('monitor.next_run')} ${fmtDate(j.nextRun, 'when')}` : '');
-    } else {
-      dot.style.background = 'var(--s300)';
-      stxt.textContent = tRaw('monitor.waiting_first');
-      sdet.textContent = j.nextRun ? `${tRaw('monitor.next_run')} ${fmtDate(j.nextRun, 'when')}` : '';
-    }
-    nextJobPoll(30000);
+    return;
   }
+  dot.style.animation = '';
+  G('job-progress-wrap').style.display = 'none';
+  showLastJobRun(j);
+  nextJobPoll(30000);
 }
 /** Fast while the price run is active; polling rests in a hidden tab (ifVisible). @param {number} ms */
 function nextJobPoll(ms) {

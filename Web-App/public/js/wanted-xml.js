@@ -201,6 +201,34 @@ async function readStream(r) {
   return last ?? {};
 }
 
+/** The index travels WITH it: a list may contain the same item twice, and a key built from number and
+ * color would then hit both. Kind and number are the server's cross-check. */
+function correctionsJson() {
+  return JSON.stringify(
+    [..._corrections.entries()].map(([index, k]) => ({
+      index: Number(index),
+      blId: _report?.items?.[index]?.blId ?? '',
+      kind: _report?.items?.[index]?.kind ?? 'part',
+      ...k,
+    })),
+  );
+}
+
+/** What gets reloaded depends on WHAT the list contained — and the report knows that better than the
+ * button it came from: a wanted list may mix parts, figures AND sets. @param {any} d the report */
+function afterWrite(d) {
+  toast(
+    tRaw('import.summary', { added: d.created, updated: d.topped_up, errors: d.failed }),
+    d.failed ? 'info' : 'success',
+  );
+  const kinds = new Set((d.items || []).map((/** @type {{ kind: string }} */ x) => x.kind));
+  if (kinds.has('part')) loadManualParts().catch(() => {});
+  if (kinds.has('fig')) loadManualFigsTable().catch(() => {});
+  if (kinds.has('set')) emit('collectionLoad');
+  _file = null;
+  _corrections = new Map();
+}
+
 /**
  * The actual run. Separate so the lock in read() has a try/finally.
  * @param {boolean} write
@@ -213,21 +241,7 @@ async function readReally(write) {
 
   const fd = new FormData();
   if (_file) fd.append('file', _file);
-  if (write && _corrections.size) {
-    // The index travels WITH it: a list may contain the same item twice, and a key built from number and
-    // color would then hit both. Kind and number are the server's cross-check.
-    fd.append(
-      'corrections',
-      JSON.stringify(
-        [..._corrections.entries()].map(([index, k]) => ({
-          index: Number(index),
-          blId: _report?.items?.[index]?.blId ?? '',
-          kind: _report?.items?.[index]?.kind ?? 'part',
-          ...k,
-        })),
-      ),
-    );
-  }
+  if (write && _corrections.size) fd.append('corrections', correctionsJson());
   const p = new URLSearchParams();
   if (write) p.set('write', '1');
   if (G('wanted-rb')?.checked) p.set('rebrickable', '1');
@@ -253,20 +267,7 @@ async function readReally(write) {
   _report = resultReport;
   drawSummary(resultReport);
   drawTable(resultReport);
-  if (write) {
-    toast(
-      tRaw('import.summary', { added: d.created, updated: d.topped_up, errors: d.failed }),
-      d.failed ? 'info' : 'success',
-    );
-    // What gets reloaded depends on WHAT the list contained — and the report knows that better than the
-    // button it came from: a wanted list may mix parts, figures AND sets.
-    const kinds = new Set((d.items || []).map(x => x.kind));
-    if (kinds.has('part')) loadManualParts().catch(() => {});
-    if (kinds.has('fig')) loadManualFigsTable().catch(() => {});
-    if (kinds.has('set')) emit('collectionLoad');
-    _file = null;
-    _corrections = new Map();
-  }
+  if (write) afterWrite(d);
 }
 
 /** The summary above the table. */
@@ -309,16 +310,8 @@ function drawSummary(d) {
   );
 }
 
-/** What a row shows. See the reasoning on ItemResult. */
-/** @param {Item} p @param {number} i */
-function row(p, i) {
-  const image = p.image
-    ? imageTag({ src: imgUrl(fullUrl(p.image), true), alt: '', class: 'image-40', ph: 'teil' })
-    : html`<span class="image-ph image-40" aria-hidden="true">${placeholderContent('teil')}</span>`;
-  const dot = p.colorHex
-    ? html`<span data-style="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
-        data-color-hex="${escHex(p.colorHex, 'var(--s300)')}"></span>`
-    : '';
+/** @param {any} p a report row */
+function outcomeTexts(p) {
   // The outcome in words, not just a color. In the preview "will be created", after import "created":
   // otherwise every row would still read in future tense after writing.
   const future = !!_report?.preview;
@@ -333,13 +326,22 @@ function row(p, i) {
     : p.reason
       ? esc(p.reason)
       : '';
+  return { outcome, reason };
+}
+
+/** @param {any} p a report row */
+function defaultConditionCell(p) {
   // The condition that gets created: from the file, else the account's default — with a note that it came
   // from there. Without the note, "Used" would read like a value from the file.
   const conditionValue = p.condition === 'N' || p.condition === 'U' ? p.condition : _report?.defaultCondition || null;
   const fromDefault = p.condition !== 'N' && p.condition !== 'U';
-  const conditionCell = conditionValue
+  return conditionValue
     ? html`<span class="cond-badge ${conditionValue === 'U' ? 'cond-used' : 'cond-new'}">${tRaw(conditionValue === 'U' ? 'common.condition_used' : 'common.condition_new')}</span>${fromDefault ? html`<div data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.cond_default')}</div>` : ''}`
     : '';
+}
+
+/** @param {any} p a report row @param {number} i */
+function correctionCells(p, i) {
   const correction = _corrections.get(i) || {};
 
   // The values from the file, pre-filled and editable. Here any deviation from the original value counts
@@ -380,6 +382,24 @@ function row(p, i) {
       ${option('N', tRaw('common.condition_new'))}
       ${option('U', tRaw('common.condition_used'))}
     </select>`;
+  return { quantityCell, priceCell, conditionSelect, conditionNow };
+}
+
+/** What a row shows. See the reasoning on ItemResult. */
+/** @param {Item} p @param {number} i */
+function row(p, i) {
+  const image = p.image
+    ? imageTag({ src: imgUrl(fullUrl(p.image), true), alt: '', class: 'image-40', ph: 'teil' })
+    : html`<span class="image-ph image-40" aria-hidden="true">${placeholderContent('teil')}</span>`;
+  const dot = p.colorHex
+    ? html`<span data-style="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
+        data-color-hex="${escHex(p.colorHex, 'var(--s300)')}"></span>`
+    : '';
+  const { outcome, reason } = outcomeTexts(p);
+  const conditionCell = defaultConditionCell(p);
+  const { quantityCell, priceCell, conditionSelect, conditionNow } = correctionCells(p, i);
+  const correction = _corrections.get(i) || {};
+  const id = p.blId;
 
   return html`<tr${p.outcome === 'open' ? html` data-style="background:var(--s50)"` : ''}>
     <td>${image}</td>
@@ -474,6 +494,37 @@ function wantedCorrectionColor() {
 }
 
 /**
+ * Per editable field: the value into the correction, or the text to put back into the field. Nothing
+ * unusable is sent: the server would reject the whole correction, and the color next to it would be lost
+ * too. @type {Record<string, (k: any, p: any, raw: string) => string | undefined>}
+ */
+const CORRECTION_FIELDS = {
+  quantity: (k, p, raw) => {
+    const m = parseInt(raw, 10);
+    if (!Number.isFinite(m) || m < 1) return String(k.quantity ?? p.quantity);
+    if (m === p.quantity) delete k.quantity;
+    else k.quantity = m;
+    return undefined;
+  },
+  condition: (k, p, raw) => {
+    const w = raw === '' ? null : raw;
+    if (w === (p.condition ?? null)) delete k.condition;
+    else k.condition = w;
+    return undefined;
+  },
+  'purchase-price': (k, p, raw) => {
+    const old = p.maxPrice ?? null;
+    // 0 means "none", like MAXPRICE=-1 in the file.
+    const z = raw === '' ? 0 : Number(raw);
+    if (!Number.isFinite(z) || z < 0) return String(k.purchase_price ?? old ?? '');
+    const w = z > 0 ? z : null;
+    if (w === old) delete k.purchase_price;
+    else k.purchase_price = w;
+    return undefined;
+  },
+};
+
+/**
  * A pre-filled preview field (quantity, condition, purchase price). Its own handler, because it compares
  * against the report instead of checking for empty: typing back the original value takes the correction
  * back.
@@ -489,37 +540,13 @@ function wantedCorrectionValue() {
   const k = { ..._corrections.get(i) };
   const raw = el.value.trim();
 
-  if (name === 'quantity') {
-    const m = parseInt(raw, 10);
-    // Don't send anything unusable: the server would reject the whole correction, and the color next to it
-    // would be lost too. The field shows the current value again instead.
-    if (!Number.isFinite(m) || m < 1) {
-      el.value = String(k.quantity ?? p.quantity);
-      return;
-    }
-    if (m === p.quantity) delete k.quantity;
-    else k.quantity = m;
-  } else if (name === 'condition') {
-    const w = raw === '' ? null : raw;
-    if (w === (p.condition ?? null)) delete k.condition;
-    else k.condition = w;
-  } else if (name === 'purchase-price') {
-    const old = p.maxPrice ?? null;
-    /** @type {number | null} */
-    let w = null;
-    if (raw !== '') {
-      const z = Number(raw);
-      if (!Number.isFinite(z) || z < 0) {
-        el.value = String(k.purchase_price ?? old ?? '');
-        return;
-      }
-      // 0 means "none", like MAXPRICE=-1 in the file.
-      w = z > 0 ? z : null;
-    }
-    if (w === old) delete k.purchase_price;
-    else k.purchase_price = w;
-  } else return;
-
+  const apply = CORRECTION_FIELDS[name ?? ''];
+  if (!apply) return;
+  const restore = apply(k, p, raw);
+  if (restore !== undefined) {
+    el.value = restore;
+    return;
+  }
   setCorrection(i, k);
 }
 

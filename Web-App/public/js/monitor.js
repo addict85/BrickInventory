@@ -294,6 +294,42 @@ const PROXY_HINT = {
   single_address: 'monitor.proxy.one_address',
 };
 
+/** @param {string} k @param {JobStatus} j @param {any} schedules */
+function serviceRow(k, j, schedules) {
+  const sub = j.sub_parts?.length ? subFromCodes(j.sub_parts, j.sub ?? '') : translateJobSub(j.sub ?? '');
+  return html`<tr>
+          <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${serviceName(k, j)}</span></td>
+          <td><span class="mon-state mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobState(j.status)}</span>
+            ${j.sub_parts?.length || j.sub ? html`<div class="mon-quiet">${sub}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+          <td>${schedText(schedules, k)}</td>
+          <td>${j.lastRun ? fmtDate(/** @type {string} */ (j.lastRun), 'when') : ''}</td>
+          <td><div class="mon-buttons">${actions(k, j).length ? actions(k, j) : html`<span class="mon-quiet">–</span>`}</div></td>
+        </tr>`;
+}
+
+/** @param {{ csvCache: { lastSync?: string, parts?: number, inventoryParts?: number }, blMapping: { mapped?: number, total?: number } }} dbStats */
+function showDbStats(dbStats) {
+  const number = (/** @type {number | null | undefined} */ n) => (n || 0).toLocaleString(locale());
+  const set = (/** @type {string} */ id, /** @type {string} */ v) => {
+    const e = G(id);
+    if (e) e.textContent = v;
+  };
+  set('mon-db-sync', dbStats.csvCache.lastSync ? fmtDate(dbStats.csvCache.lastSync) : '–');
+  set('mon-db-parts', number(dbStats.csvCache.parts));
+  set('mon-db-inventory', number(dbStats.csvCache.inventoryParts));
+  set('mon-db-bl', `${number(dbStats.blMapping.mapped)} / ${number(dbStats.blMapping.total)}`);
+}
+
+/** An open Brickset panel stays open across the refresh. @param {HTMLElement} el @param {string} panelHTML */
+function restorePanel(el, panelHTML) {
+  const newValue = G('brickset-queue-panel');
+  if (!newValue) return;
+  setHtml(newValue, rawHtml(panelHTML));
+  newValue.style.display = 'block';
+  const button = el.querySelector('[data-click="toggleBricksetQueue"] span');
+  if (button) button.textContent = tRaw('monitor.collapse');
+}
+
 export async function loadMonitor() {
   const el = G('monitor-content');
   if (!el) return;
@@ -316,15 +352,7 @@ export async function loadMonitor() {
       );
     const panel = G('brickset-queue-panel');
     const panelHTML = panel && panel.style.display !== 'none' ? panel.innerHTML : null;
-    const number = (/** @type {number | null | undefined} */ n) => (n || 0).toLocaleString(locale());
-    const set = (/** @type {string} */ id, /** @type {string} */ v) => {
-      const e = G(id);
-      if (e) e.textContent = v;
-    };
-    set('mon-db-sync', dbStats.csvCache.lastSync ? fmtDate(dbStats.csvCache.lastSync) : '–');
-    set('mon-db-parts', number(dbStats.csvCache.parts));
-    set('mon-db-inventory', number(dbStats.csvCache.inventoryParts));
-    set('mon-db-bl', `${number(dbStats.blMapping.mapped)} / ${number(dbStats.blMapping.total)}`);
+    showDbStats(dbStats);
 
     setHtml(
       el,
@@ -334,29 +362,12 @@ export async function loadMonitor() {
       ${d.proxy_hint ? html`<p class="mon-warning" role="status" id="mon-proxy-hint">${ico('warning')} ${tRaw(PROXY_HINT[d.proxy_hint.kind], d.proxy_hint.vars)}</p>` : ''}
       <div class="tw"><table class="dt mon-table mon-services" aria-label="${tRaw('table.services')}">
         <thead><tr><th>${tRaw('monitor.col.service')}</th><th>${tRaw('monitor.col.state')}</th><th>${tRaw('monitor.col.schedule')}</th><th>${tRaw('monitor.col.last')}</th><th>${tRaw('monitor.col.actions')}</th></tr></thead>
-        <tbody>${Object.entries(jobs).map(
-          ([k, j]) => html`<tr>
-          <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${serviceName(k, j)}</span></td>
-          <td><span class="mon-state mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobState(j.status)}</span>
-            ${j.sub_parts?.length || j.sub ? html`<div class="mon-quiet">${j.sub_parts?.length ? subFromCodes(j.sub_parts, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
-          <td>${schedText(schedules, k)}</td>
-          <td>${j.lastRun ? fmtDate(/** @type {string} */ (j.lastRun), 'when') : ''}</td>
-          <td><div class="mon-buttons">${actions(k, j).length ? actions(k, j) : html`<span class="mon-quiet">–</span>`}</div></td>
-        </tr>`,
-        )}</tbody>
+        <tbody>${Object.entries(jobs).map(([k, j]) => serviceRow(k, j, schedules))}</tbody>
       </table></div>
       ${jobs.bricksetRetry ? html`<div id="brickset-queue-panel" class="mon-panel" data-style="display:none"></div>` : ''}`,
     );
 
-    if (panelHTML !== null) {
-      const newValue = G('brickset-queue-panel');
-      if (newValue) {
-        setHtml(newValue, rawHtml(panelHTML));
-        newValue.style.display = 'block';
-        const button = el.querySelector('[data-click="toggleBricksetQueue"] span');
-        if (button) button.textContent = tRaw('monitor.collapse');
-      }
-    }
+    if (panelHTML !== null) restorePanel(el, panelHTML);
 
     await showJobs();
     return Object.values(jobs).some(j => j.status === 'running');
@@ -421,34 +432,31 @@ function errorBox(text) {
 const button = (/** @type {string} */ action, /** @type {string} */ arg, /** @type {string} */ text, purpose = '') =>
   html`<button class="btn bs btn-sm" type="button" data-click="${action}"${genuine()} data-arg="${arg}"${purpose ? html` aria-label="${text}: ${purpose}"` : ''}>${text}</button>`;
 const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUS_NAMES, s) ? STATUS_NAMES[s]() : s);
-/** A row of the individual jobs. If a kind is open several times, the role at the name says which entry
- * is a retry and which is the regular run. @param {QueueJob} a @param {Set<string>} multiple */
-const jobRow = (a, multiple) => {
+/** Only when one kind has several open jobs: which one is the regular run, which one a retry.
+ * @param {QueueJob} a @param {Set<string>} multiple */
+function jobRole(a, multiple) {
   const open = a.status === 'pending' || a.status === 'running';
-  const role =
-    !open || !multiple.has(a.type)
-      ? ''
-      : a.scheduled
-        ? tRaw('monitor.jobs.regular')
-        : a.attempts > 1 || a.error_message
-          ? tRaw('monitor.jobs.retry')
-          : '';
-  const time = fmtDate(a.status === 'running' ? a.started_at : a.due_at, 'when');
-  // Postponed is not failed: the server says so (waiting), not the text of the reason.
-  const waiting = a.status === 'pending' && a.waiting && !!a.due_at && new Date(a.due_at) > new Date();
-  const when = waiting
-    ? t('monitor.jobs.waiting_bis', { time })
-    : a.status === 'pending'
-      ? t(a.scheduled ? 'monitor.jobs.scheduled' : 'monitor.jobs.due', { time })
-      : a.status === 'running'
-        ? time
-        : '';
+  if (!open || !multiple.has(a.type)) return '';
+  if (a.scheduled) return tRaw('monitor.jobs.regular');
+  return a.attempts > 1 || a.error_message ? tRaw('monitor.jobs.retry') : '';
+}
+
+/** @param {QueueJob} a @param {boolean} waiting @param {string} time */
+function jobWhen(a, waiting, time) {
+  if (waiting) return t('monitor.jobs.waiting_bis', { time });
+  if (a.status === 'pending') return t(a.scheduled ? 'monitor.jobs.scheduled' : 'monitor.jobs.due', { time });
+  return a.status === 'running' ? time : '';
+}
+
+/** @param {QueueJob} a @param {boolean} waiting */
+function jobHint(a, waiting) {
   const status = a.progress?.total
     ? `${Math.round(a.progress.done ?? 0)} / ${a.progress.total}`
     : a.progress?.text || '';
-  const hint = [
+  const shownError = a.error_message && (a.status === 'pending' || a.status === 'error');
+  return [
     waiting && a.error_message ? html`<span class="mon-quiet">${a.error_message}</span>` : '',
-    !waiting && a.error_message && (a.status === 'pending' || a.status === 'error') ? errorBox(a.error_message) : '',
+    !waiting && shownError ? errorBox(a.error_message) : '',
     a.attempts > 1 && !waiting
       ? html`<span class="mon-quiet">${tRaw('monitor.jobs.attempt', { n: a.attempts, max: a.max_attempts })}</span>`
       : '',
@@ -456,6 +464,17 @@ const jobRow = (a, multiple) => {
   ]
     .filter(Boolean)
     .join(' ');
+}
+
+/** A row of the individual jobs. If a kind is open several times, the role at the name says which entry
+ * is a retry and which is the regular run. @param {QueueJob} a @param {Set<string>} multiple */
+const jobRow = (a, multiple) => {
+  const role = jobRole(a, multiple);
+  const time = fmtDate(a.status === 'running' ? a.started_at : a.due_at, 'when');
+  // Postponed is not failed: the server says so (waiting), not the text of the reason.
+  const waiting = a.status === 'pending' && a.waiting && !!a.due_at && new Date(a.due_at) > new Date();
+  const when = jobWhen(a, waiting, time);
+  const hint = jobHint(a, waiting);
   const action =
     a.status === 'pending' || a.status === 'running' ? button('cancelJob', a.id, tRaw('monitor.jobs.cancel')) : '';
   return html`<tr>
@@ -467,6 +486,48 @@ const jobRow = (a, multiple) => {
   </tr>`;
 };
 
+/** Per kind the jobs by status, the next run (the earliest waiting job) and the retries after an error.
+ * @param {any} d the job queue */
+function jobCounts(d) {
+  /** @type {Record<string, Record<string, number>>} */
+  const number = {};
+  for (const z of d.summary) {
+    number[z.type] ||= {};
+    number[z.type][z.status] = z.count;
+  }
+  /** @type {Record<string, string>} */
+  const next = {};
+  /** @type {Record<string, number>} */
+  const afterError = {};
+  for (const a of d.jobs) {
+    if (a.status !== 'pending') continue;
+    if (a.due_at && (!next[a.type] || a.due_at < next[a.type])) next[a.type] = a.due_at;
+    if (a.attempts > 1 || a.error_message) afterError[a.type] = (afterError[a.type] || 0) + 1;
+  }
+  const kinds = Object.keys(number).sort((a, b) => kindName(a).localeCompare(kindName(b), locale()));
+  return { number, next, kinds, afterError };
+}
+
+const digit = (/** @type {number | undefined} */ n, cls = '') =>
+  html`<span class="mon-digit${n ? html`${' '}${rawHtml(cls)}` : ' null'}">${n || 0}</span>`;
+
+/** @param {string[]} kinds @param {Record<string, Record<string, number>>} number
+ * @param {Record<string, number>} afterError @param {Record<string, string>} next */
+function jobKindsTable(kinds, number, afterError, next) {
+  return html`<div class="tw"><table class="dt mon-table mon-kinds" aria-label="${tRaw('table.job_kinds')}">
+      <thead><tr><th>${tRaw('monitor.col.kind')}</th><th class="number">${tRaw('monitor.col.open')}</th><th class="number">${tRaw('monitor.col.running')}</th><th class="number">${tRaw('monitor.col.error')}</th><th>${tRaw('monitor.col.next')}</th><th>${tRaw('monitor.col.actions')}</th></tr></thead>
+      <tbody>${kinds.map(
+        kind => html`<tr>
+        <td>${kindName(kind)}</td>
+        <td class="number">${digit(number[kind].pending)}${afterError[kind] ? html`<span class="mon-quiet mon-extra">${tRaw('monitor.jobs.of_which_nach_error', { n: afterError[kind] })}</span>` : ''}</td>
+        <td class="number">${digit(number[kind].running, 'mon-running')}</td>
+        <td class="number">${digit(number[kind].error, 'mon-error')}</td>
+        <td>${next[kind] ? fmtDate(next[kind], 'when') : ''}</td>
+        <td><div class="mon-buttons">${button('runJobKindNow', kind, tRaw('monitor.jobs.now'), kindName(kind))}${number[kind].pending ? button('emptyJobKind', kind, tRaw('monitor.jobs.clear'), kindName(kind)) : ''}</div></td>
+      </tr>`,
+      )}</tbody></table></div>`;
+}
+
 /** The card "background jobs": per kind the numbers with "now" and "clear", below the individual
  * running, waiting and failed jobs (GET /api/v2/admin/jobs). */
 async function showJobs() {
@@ -477,26 +538,8 @@ async function showJobs() {
     el.replaceChildren();
     return;
   }
-  /** @type {Record<string, Record<string, number>>} */
-  const number = {};
-  for (const z of d.summary) {
-    number[z.type] ||= {};
-    number[z.type][z.status] = z.count;
-  }
-  // The next run per kind: the earliest waiting job of that kind.
-  /** @type {Record<string, string>} */
-  const next = {};
-  for (const a of d.jobs)
-    if (a.status === 'pending' && a.due_at && (!next[a.type] || a.due_at < next[a.type])) next[a.type] = a.due_at;
-  const kinds = Object.keys(number).sort((a, b) => kindName(a).localeCompare(kindName(b), locale()));
-  const digit = (/** @type {number | undefined} */ n, cls = '') =>
-    html`<span class="mon-digit${n ? html`${' '}${rawHtml(cls)}` : ' null'}">${n || 0}</span>`;
+  const { number, next, kinds, afterError } = jobCounts(d);
   const more = d.jobs.length - 40;
-  /** @type {Record<string, number>} */
-  const afterError = {};
-  for (const a of d.jobs)
-    if (a.status === 'pending' && (a.attempts > 1 || a.error_message))
-      afterError[a.type] = (afterError[a.type] || 0) + 1;
   const perKind = d.jobs.filter(a => a.status === 'pending' || a.status === 'running').map(a => a.type);
   const multiple = new Set(perKind.filter((kind, i) => perKind.indexOf(kind) !== i));
   const pause = (/** @type {QueuePause} */ p) =>
@@ -509,22 +552,7 @@ async function showJobs() {
     ${d.job_process.running ? '' : html`<p class="mon-warning">${ico('warning')} ${tRaw('monitor.jobs.no_process')}</p>`}
     ${d.pauses.map(p => html`<p class="mon-quiet">${ico('pause')} ${pause(p)}</p>`)}
     ${d.image_demand ? html`<p class="mon-quiet">${tRaw('monitor.jobs.bildbedarf', { n: d.image_demand })}</p>` : ''}
-    ${
-      kinds.length
-        ? html`<div class="tw"><table class="dt mon-table mon-kinds" aria-label="${tRaw('table.job_kinds')}">
-      <thead><tr><th>${tRaw('monitor.col.kind')}</th><th class="number">${tRaw('monitor.col.open')}</th><th class="number">${tRaw('monitor.col.running')}</th><th class="number">${tRaw('monitor.col.error')}</th><th>${tRaw('monitor.col.next')}</th><th>${tRaw('monitor.col.actions')}</th></tr></thead>
-      <tbody>${kinds.map(
-        kind => html`<tr>
-        <td>${kindName(kind)}</td>
-        <td class="number">${digit(number[kind].pending)}${afterError[kind] ? html`<span class="mon-quiet mon-extra">${tRaw('monitor.jobs.of_which_nach_error', { n: afterError[kind] })}</span>` : ''}</td>
-        <td class="number">${digit(number[kind].running, 'mon-running')}</td>
-        <td class="number">${digit(number[kind].error, 'mon-error')}</td>
-        <td>${next[kind] ? fmtDate(next[kind], 'when') : ''}</td>
-        <td><div class="mon-buttons">${button('runJobKindNow', kind, tRaw('monitor.jobs.now'), kindName(kind))}${number[kind].pending ? button('emptyJobKind', kind, tRaw('monitor.jobs.clear'), kindName(kind)) : ''}</div></td>
-      </tr>`,
-      )}</tbody></table></div>`
-        : ''
-    }
+    ${kinds.length ? jobKindsTable(kinds, number, afterError, next) : ''}
     ${
       d.jobs.length
         ? html`<details class="mon-single"${openSingle() ? ' open' : ''}>

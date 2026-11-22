@@ -9,6 +9,54 @@ export function removeStartupScaffold() {
   G('start-skeleton')?.remove();
 }
 
+/** Main bar of the startup screen. @param {any} s the startup status */
+function showStartupMain(s) {
+  const pct = s.total > 0 ? Math.round((s.progress / s.total) * 100) : 0;
+  const stepEl = G('startup-step');
+  const barEl = G('startup-bar');
+  const pctEl = G('startup-pct');
+  if (stepEl) stepEl.textContent = s.step || t('startup.loading');
+  if (barEl) barEl.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = pct + '%';
+}
+
+/** Sub bar: a percentage in the sub-status fills it, any other text stands in place of the number.
+ * @param {{ step?: string, sub?: string }} s */
+function showStartupSub(s) {
+  const subVal = s.sub || '';
+  const subWrap = G('startup-sub-wrap');
+  const subLabel = G('startup-sub-label');
+  if (!subWrap) return;
+  subWrap.style.display = subVal ? '' : 'none';
+  if (subLabel) subLabel.style.display = subVal ? '' : 'none';
+  if (!subVal) return;
+  const subBar = G('startup-sub-bar');
+  const subPctEl = G('startup-sub-pct');
+  const subEl = G('startup-sub');
+  const subPct = subVal.match(/(\d+)%/);
+  if (subBar) subBar.style.width = subPct ? subPct[1] + '%' : '0%';
+  if (subPctEl) subPctEl.textContent = subPct ? subPct[1] + '%' : subVal;
+  if (subEl) subEl.textContent = s.step || '';
+}
+
+/** One status poll; null while the server has no status yet. */
+async function startupStatus() {
+  const r = await apiRaw('GET', '/v2/startup-status?_=' + Date.now(), {
+    cache: 'no-store',
+    headers: { 'Cache-Control': 'no-cache' },
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+/** Only show progress once the server is actually still starting up. @param {HTMLElement | null} ss */
+function showStartupScreen(ss) {
+  if (ss && ss.style.display !== 'flex') {
+    removeStartupScaffold();
+    ss.style.display = 'flex';
+  }
+}
+
 export async function waitForStartup() {
   const ss = G('startup-screen');
   // No hard overall timeout: downloading/importing the Rebrickable CSVs on a fresh install can take many
@@ -26,48 +74,15 @@ export async function waitForStartup() {
   if (button) button.onclick = () => retryNow();
   while (true) {
     try {
-      const r = await apiRaw('GET', '/v2/startup-status?_=' + Date.now(), {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' },
-      });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const s = await r.json();
+      const s = await startupStatus();
       errorSince = 0;
       showOffline(false);
       if (!s) {
         await new Promise(r => setTimeout(r, 600));
         continue;
       }
-      const pct = s.total > 0 ? Math.round((s.progress / s.total) * 100) : 0;
-      const stepEl = G('startup-step');
-      const barEl = G('startup-bar');
-      const pctEl = G('startup-pct');
-      if (stepEl) stepEl.textContent = s.step || t('startup.loading');
-      if (barEl) barEl.style.width = pct + '%';
-      if (pctEl) pctEl.textContent = pct + '%';
-      const subVal = s.sub || '';
-      const subWrap = G('startup-sub-wrap');
-      const subLabel = G('startup-sub-label');
-      const subBar = G('startup-sub-bar');
-      const subPctEl = G('startup-sub-pct');
-      const subEl = G('startup-sub');
-      if (subVal && subWrap) {
-        subWrap.style.display = '';
-        if (subLabel) subLabel.style.display = '';
-        const subPct = subVal.match(/(\d+)%/);
-        if (subPct) {
-          if (subBar) subBar.style.width = subPct[1] + '%';
-          if (subPctEl) subPctEl.textContent = subPct[1] + '%';
-          if (subEl) subEl.textContent = s.step || '';
-        } else {
-          if (subBar) subBar.style.width = '0%';
-          if (subPctEl) subPctEl.textContent = subVal;
-          if (subEl) subEl.textContent = s.step || '';
-        }
-      } else if (subWrap) {
-        subWrap.style.display = 'none';
-        if (subLabel) subLabel.style.display = 'none';
-      }
+      showStartupMain(s);
+      showStartupSub(s);
       // Detect progress: once step, percent or sub-status change, startup counts as active and the stall
       // timer resets.
       const sig = `${s.step}|${s.progress}|${s.total}|${s.sub || ''}`;
@@ -76,11 +91,7 @@ export async function waitForStartup() {
         lastChangeAt = Date.now();
       }
       if (s.ready) break;
-      // Only show progress once the server is actually still starting up.
-      if (ss && ss.style.display !== 'flex') {
-        removeStartupScaffold();
-        ss.style.display = 'flex';
-      }
+      showStartupScreen(ss);
       if (Date.now() - lastChangeAt > STALL_TIMEOUT) {
         console.warn('[startup] stalled — no progress');
         break;

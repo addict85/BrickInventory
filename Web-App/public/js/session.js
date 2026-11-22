@@ -613,21 +613,65 @@ for (const id of ['lu', 'lp', 'lc'])
       doLogin();
     }
   });
-async function doLogin() {
-  // Empty required fields are reported by the field itself, as in the other forms; the summary message at the top stays
-  // for what only the server knows (wrong credentials, lock).
-  formError(G('lerr'), '');
-  // If the code field stands there, the code is required: without it the server only returned a silent 401, which moreover
-  // counted against the login throttle.
+/** Empty required fields are reported by the field itself, as in the other forms. If the code field stands
+ * there, the code is required: without it the server only returned a silent 401, which moreover counted
+ * against the login throttle. @returns {boolean} whether all are filled */
+function loginFieldsFilled() {
   /** @type {[string, string][]} */
   const required =
     G('lc-row').style.display === 'none' ? LOGIN_REQUIRED : [...LOGIN_REQUIRED, ['lc', 'login.code_empty']];
   const empty = required.filter(([id]) => !(id === 'lp' ? G(id).value : G(id).value.trim()));
   for (const [id, key] of required) fieldError(id, empty.some(([l]) => l === id) ? tRaw(key) : '');
-  if (empty.length) {
-    G(empty[0][0]).focus();
+  if (empty.length) G(empty[0][0]).focus();
+  return !empty.length;
+}
+
+/** Second factor required: show the code field and continue there. The focus jumps into the new field;
+ * without the sentence one would not know whether the password was right. If the account has passkeys, one
+ * works instead of the code (js/passkeys.js). @param {any} d @param {string} code */
+function askSecondFactor(d, code) {
+  G('lc-row').style.display = '';
+  G('lc').value = '';
+  G('lc-status').textContent = code ? '' : tRaw('login.code_now');
+  G('lc').focus();
+  G('lc-passkey').hidden = !d.passkey;
+  formError(G('lerr'), code ? d.error || '' : '', code ? ['lc'] : []);
+}
+
+/** Every login starts with "all accounts" — BEFORE showApp(), so that the select fields are created right
+ * away with the reset value. @param {any} d */
+function enterAfterLogin(d) {
+  if (_expiredAccount !== null && _expiredAccount !== d.user?.id) {
+    location.reload();
     return;
   }
+  setAccount(
+    /** @type {import('./state.js').Account} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
+  );
+  resetScopeModes();
+  formError(G('lerr'), '');
+  G('login-hint').hidden = true;
+  _signedInUm = Date.now();
+  _cookieSet = d.cookie_missing === false;
+  openApp();
+}
+
+/** Both filled: usually the password is wrong, so go there. @param {any} d */
+function loginRefused(d) {
+  const err = d.error || tRaw('settings.error');
+  formError(G('lerr'), err, ['lp', 'lu']);
+  if (d.unverified || d.code === 'email_not_confirmed') {
+    setHtml(
+      G('lerr'),
+      html`${err}${html` <a href="#" data-click="resendConfirmation" data-style="color:var(--b600)">`}${tRaw('auth.resend_mail')}${html`</a>`}`,
+    );
+  }
+}
+
+async function doLogin() {
+  // The summary message at the top stays for what only the server knows (wrong credentials, lock).
+  formError(G('lerr'), '');
+  if (!loginFieldsFilled()) return;
   const b = G('btn-login');
   const free = buttonBusy(b);
   const code = G('lc').value.trim();
@@ -638,53 +682,17 @@ async function doLogin() {
     ...(code ? { code } : {}),
   });
   free();
-  // Second factor required: show the code field and continue there.
   if (d.second_factor) {
-    G('lc-row').style.display = '';
-    G('lc').value = '';
-    // The focus jumps into the new field; without the sentence one would not know whether the password was right.
-    G('lc-status').textContent = code ? '' : tRaw('login.code_now');
-    G('lc').focus();
-    // If the account has passkeys, one works instead of the code (js/passkeys.js).
-    G('lc-passkey').hidden = !d.passkey;
-    formError(G('lerr'), code ? d.error || '' : '', code ? ['lc'] : []);
+    askSecondFactor(d, code);
     return;
   }
   G('lc-row').style.display = 'none';
   G('lc').value = '';
   G('lc-status').textContent = '';
-  if (d.success && d.cookie_missing) {
-    // The server did not set the cookie at all: opening the app would mean "expired" again right away.
-    showLogin({ expired: true, hint: tRaw('auth.cookie_missing') });
-    return;
-  }
-  if (d.success) {
-    if (_expiredAccount !== null && _expiredAccount !== d.user?.id) {
-      location.reload();
-      return;
-    }
-    setAccount(
-      /** @type {import('./state.js').Account} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
-    );
-    // Every login starts with "all accounts" — BEFORE showApp(), so that the select fields are created right away with the
-    // reset value.
-    resetScopeModes();
-    formError(G('lerr'), '');
-    G('login-hint').hidden = true;
-    _signedInUm = Date.now();
-    _cookieSet = d.cookie_missing === false;
-    openApp();
-  } else {
-    const err = d.error || tRaw('settings.error');
-    // Both filled (see above): usually the password is wrong, so go there.
-    formError(G('lerr'), err, ['lp', 'lu']);
-    if (d.unverified || d.code === 'email_not_confirmed') {
-      setHtml(
-        G('lerr'),
-        html`${err}${html` <a href="#" data-click="resendConfirmation" data-style="color:var(--b600)">`}${tRaw('auth.resend_mail')}${html`</a>`}`,
-      );
-    }
-  }
+  // The server did not set the cookie at all: opening the app would mean "expired" again right away.
+  if (d.success && d.cookie_missing) showLogin({ expired: true, hint: tRaw('auth.cookie_missing') });
+  else if (d.success) enterAfterLogin(d);
+  else loginRefused(d);
 }
 G('btn-logout').onclick = async () => {
   // A token from an older login is invalidated along with it.

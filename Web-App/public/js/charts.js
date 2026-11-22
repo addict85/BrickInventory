@@ -148,6 +148,46 @@ export function moment(s) {
   return new Date(t).getTime();
 }
 
+const DAY_MS = 864e5;
+const timeFormat = (/** @type {Intl.DateTimeFormatOptions} */ o) => new Intl.DateTimeFormat(locale(), o);
+
+/** Ticks at whole hours. @param {number} of @param {number} bis @param {number} max */
+function hourTicks(of, bis, max) {
+  const h = [1, 2, 3, 6, 12, 24].find(x => Math.max(1, bis - of) / (x * 36e5) <= max) ?? 24;
+  const f = timeFormat({ hour: '2-digit', minute: '2-digit' });
+  const out = [];
+  for (let t = Math.ceil(of / (h * 36e5)) * h * 36e5; t <= bis; t += h * 36e5) out.push({ t, text: f.format(t) });
+  return out;
+}
+
+/** Ticks at midnight, every n days. @param {number} of @param {number} bis @param {number} max */
+function dayTicks(of, bis, max) {
+  const timeSpan = Math.max(1, bis - of);
+  const n = [1, 2, 7, 14].find(x => timeSpan / (x * DAY_MS) <= max) ?? 14;
+  const f = timeFormat(LANG === 'en' ? { day: 'numeric', month: 'short' } : { day: '2-digit', month: '2-digit' });
+  const d = new Date(of);
+  d.setHours(0, 0, 0, 0);
+  if (d.getTime() < of) d.setDate(d.getDate() + 1);
+  const out = [];
+  for (; d.getTime() <= bis; d.setDate(d.getDate() + n)) out.push({ t: d.getTime(), text: f.format(d) });
+  return out;
+}
+
+/** Ticks at the first of a month, on multiples of n months. @param {number} of @param {number} bis @param {number} max */
+function monthTicks(of, bis, max) {
+  const months = Math.max(1, bis - of) / (30.44 * DAY_MS);
+  const n = [1, 2, 3, 6, 12, 24].find(x => months / x <= max) ?? 24;
+  const f = timeFormat({ month: 'short', year: 'numeric' });
+  const d = new Date(of);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  if (d.getTime() < of) d.setMonth(d.getMonth() + 1);
+  while (d.getMonth() % n) d.setMonth(d.getMonth() + 1);
+  const out = [];
+  for (; d.getTime() <= bis; d.setMonth(d.getMonth() + n)) out.push({ t: d.getTime(), text: f.format(d) });
+  return out;
+}
+
 /**
  * Ticks of a time axis with uniform labels: hours within a day, days up to three months, beyond that
  * months ("Nov. 2025"). Days in German as digits like every date in the text ("13.09." for "13.09.2026");
@@ -157,33 +197,10 @@ export function moment(s) {
  * @returns {{ t: number, text: string }[]}
  */
 export function timeSplit(of, bis, maxStrokes) {
-  const TAG = 864e5,
-    timeSpan = Math.max(1, bis - of),
+  const timeSpan = Math.max(1, bis - of),
     max = Math.max(2, maxStrokes);
-  const fmt = (/** @type {Intl.DateTimeFormatOptions} */ o) => new Intl.DateTimeFormat(locale(), o);
-  const out = [];
-  if (timeSpan <= 2 * TAG) {
-    const h = [1, 2, 3, 6, 12, 24].find(x => timeSpan / (x * 36e5) <= max) ?? 24;
-    const f = fmt({ hour: '2-digit', minute: '2-digit' });
-    for (let t = Math.ceil(of / (h * 36e5)) * h * 36e5; t <= bis; t += h * 36e5) out.push({ t, text: f.format(t) });
-  } else if (timeSpan <= 92 * TAG) {
-    const n = [1, 2, 7, 14].find(x => timeSpan / (x * TAG) <= max) ?? 14;
-    const f = fmt(LANG === 'en' ? { day: 'numeric', month: 'short' } : { day: '2-digit', month: '2-digit' });
-    const d = new Date(of);
-    d.setHours(0, 0, 0, 0);
-    if (d.getTime() < of) d.setDate(d.getDate() + 1);
-    for (; d.getTime() <= bis; d.setDate(d.getDate() + n)) out.push({ t: d.getTime(), text: f.format(d) });
-  } else {
-    const months = timeSpan / (30.44 * TAG);
-    const n = [1, 2, 3, 6, 12, 24].find(x => months / x <= max) ?? 24;
-    const f = fmt({ month: 'short', year: 'numeric' });
-    const d = new Date(of);
-    d.setDate(1);
-    d.setHours(0, 0, 0, 0);
-    if (d.getTime() < of) d.setMonth(d.getMonth() + 1);
-    while (d.getMonth() % n) d.setMonth(d.getMonth() + 1);
-    for (; d.getTime() <= bis; d.setMonth(d.getMonth() + n)) out.push({ t: d.getTime(), text: f.format(d) });
-  }
+  const ticks = timeSpan <= 2 * DAY_MS ? hourTicks : timeSpan <= 92 * DAY_MS ? dayTicks : monthTicks;
+  const out = ticks(of, bis, max);
   // If even the largest step does not fit (narrow phone), only every k-th tick.
   if (out.length > max) {
     const k = Math.ceil(out.length / max);
@@ -616,6 +633,66 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, width = 700, medium =
   </svg>`;
 }
 
+/** Day labels by index, about 70 px per label, so that they do not overlap on the phone.
+ * @param {{ day?: string }[]} data @param {(i: number) => number} px
+ * @param {{ iw: number, f: number, fs: number, y: number }} o */
+function dayLabels(data, px, o) {
+  const n = data.length;
+  const step = Math.max(1, Math.ceil(n / Math.max(2, Math.min(7, Math.floor(o.iw / (70 * o.f))))));
+  /** @type {import('./escaping.js').Markup} */
+  let labels = html``;
+  for (let i = 0; i < n; i += step)
+    if (data[i].day)
+      labels = html`${labels}${html`<text x="${px(i).toFixed(1)}" y="${o.y}" text-anchor="middle" font-size="${o.fs}" fill="var(--mut)" font-family="inherit">${data[i].day}</text>`}`;
+  return labels;
+}
+
+/** The text alternative of the value curve. @param {(i: number) => string | undefined} when
+ * @param {number[]} vals @param {string} cur @param {string} costLine @param {number} min */
+function portfolioSummary(when, vals, cur, costLine, min) {
+  const n = vals.length;
+  return [
+    tRaw('finance.chart.summary', {
+      title: tRaw('finance.chart.label'),
+      of: when(0),
+      bis: when(n - 1),
+      start: fmtN(vals[0], cur),
+      end: fmtN(vals[n - 1], cur),
+    }),
+    costLine,
+    min > 0 ? tRaw('chart.axis_from', { value: fmtN(min, cur) }) : '',
+    tRaw('chart.keys'),
+  ]
+    .filter(Boolean)
+    .join('. ');
+}
+
+/** Sizes of the value curve: margins, legend below the image when the reference text does not fit in it.
+ * Narrow, only "purchase price": the addition ("only valued items") is in the metric below.
+ * @param {any} division @param {string} cur @param {number} width @param {string} referenceText */
+function portfolioLayout(division, cur, width, referenceText) {
+  const f = fontFactor(),
+    fs = 12 * f;
+  const W = width,
+    situation = axesSituation(division, cur, fs, W, 16 * f);
+  const PAD = {
+    l: situation.links,
+    r: situation.inside ? 6 * f : 16 * f,
+    t: situation.inside ? 24 * f : 14 * f,
+    b: 32 * f,
+  };
+  const belowTheImage = !!referenceText && !inImage(referenceText, PAD.l, W - PAD.r, f);
+  const refLegend = referenceLegend(belowTheImage ? [{ text: referenceText, color: 'var(--txt)' }] : [], W, f);
+  const hCurve = Math.round(180 * (1 + (f - 1) * 0.6)),
+    H = hCurve + refLegend.height;
+  PAD.b += refLegend.height;
+  const iw = W - PAD.l - PAD.r,
+    ih = H - PAD.t - PAD.b,
+    bottom = PAD.t + ih;
+
+  return { f, fs, W, situation, PAD, referenceText, belowTheImage, refLegend, hCurve, H, iw, ih, bottom };
+}
+
 /**
  * @param {{ day: string, total: number, time?: number }[]} data
  *   `time` (ms) puts the points on a real time axis; if missing, by index.
@@ -643,28 +720,13 @@ export function portfolioChartSVG(
   const min = Math.max(0, division.of),
     max = division.bis,
     range = max - min || 1;
-  const f = fontFactor(),
-    fs = 12 * f;
-  const W = width,
-    situation = axesSituation(division, cur, fs, W, 16 * f);
-  const PAD = {
-    l: situation.links,
-    r: situation.inside ? 6 * f : 16 * f,
-    t: situation.inside ? 24 * f : 14 * f,
-    b: 32 * f,
-  };
-  // Narrow, only "purchase price": the addition ("only valued items") is in the metric below.
-  const referenceText = withCost
-    ? `${W < 560 ? tRaw('finance.chart.purchase_price') : costText} ${fmtN(costBasis, cur)}`
-    : '';
-  const belowTheImage = !!referenceText && !inImage(referenceText, PAD.l, W - PAD.r, f);
-  const refLegend = referenceLegend(belowTheImage ? [{ text: referenceText, color: 'var(--txt)' }] : [], W, f);
-  const hCurve = Math.round(180 * (1 + (f - 1) * 0.6)),
-    H = hCurve + refLegend.height;
-  PAD.b += refLegend.height;
-  const iw = W - PAD.l - PAD.r,
-    ih = H - PAD.t - PAD.b,
-    bottom = PAD.t + ih;
+  const { f, fs, W, situation, PAD, referenceText, belowTheImage, refLegend, hCurve, H, iw, ih, bottom } =
+    portfolioLayout(
+      division,
+      cur,
+      width,
+      withCost ? `${width < 560 ? tRaw('finance.chart.purchase_price') : costText} ${fmtN(costBasis, cur)}` : '',
+    );
 
   const color = 'var(--chart-value, var(--chart-new))';
   const n = vals.length;
@@ -695,23 +757,15 @@ export function portfolioChartSVG(
   const pts = vals.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
   const area = `${px(0).toFixed(1)},${bottom} ${pts} ${px(n - 1).toFixed(1)},${bottom}`;
 
-  // About 70 px per label, so that they do not overlap on the phone.
-  /** @type {import('./escaping.js').Markup} */
-  let xLabels = html``;
-  if (withTime) {
-    xLabels = xLabel(
-      timeSplit(t0, times[n - 1], Math.floor(iw / (70 * f))).map(s => ({ x: pxTime(s.t), text: s.text })),
-      hCurve - 8 * f,
-      W - PAD.r,
-      f,
-      fs,
-    );
-  } else {
-    const step = Math.max(1, Math.ceil(n / Math.max(2, Math.min(7, Math.floor(iw / (70 * f))))));
-    for (let i = 0; i < n; i += step)
-      if (data[i].day)
-        xLabels = html`${xLabels}${html`<text x="${px(i).toFixed(1)}" y="${hCurve - 8 * f}" text-anchor="middle" font-size="${fs}" fill="var(--mut)" font-family="inherit">${data[i].day}</text>`}`;
-  }
+  const xLabels = withTime
+    ? xLabel(
+        timeSplit(t0, times[n - 1], Math.floor(iw / (70 * f))).map(s => ({ x: pxTime(s.t), text: s.text })),
+        hCurve - 8 * f,
+        W - PAD.r,
+        f,
+        fs,
+      )
+    : dayLabels(data, px, { iw, f, fs, y: hCurve - 8 * f });
 
   const when = (/** @type {number} */ i) => (withTime ? fmtDate(new Date(times[i])) : data[i].day);
   const last = html`<circle cx="${px(n - 1).toFixed(1)}" cy="${py(vals[n - 1]).toFixed(1)}" r="${4 * f}" fill="${color}" stroke="var(--sur)" stroke-width="1.5"/>`;
@@ -736,20 +790,7 @@ export function portfolioChartSVG(
     f,
   );
 
-  const summary = [
-    tRaw('finance.chart.summary', {
-      title: tRaw('finance.chart.label'),
-      of: when(0),
-      bis: when(n - 1),
-      start: fmtN(vals[0], cur),
-      end: fmtN(vals[n - 1], cur),
-    }),
-    withCost ? `${costText} ${fmtN(costBasis, cur)}` : '',
-    min > 0 ? tRaw('chart.axis_from', { value: fmtN(min, cur) }) : '',
-    tRaw('chart.keys'),
-  ]
-    .filter(Boolean)
-    .join('. ');
+  const summary = portfolioSummary(when, vals, cur, withCost ? `${costText} ${fmtN(costBasis, cur)}` : '', min);
   return html`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="chart chart-value" role="img" aria-label="${summary}" data-surface="${iw.toFixed(0)}"${rawHtml(fk.attr)}>
   <defs><linearGradient id="pcg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>

@@ -46,6 +46,39 @@ function renderColorDropdown() {
   );
 }
 
+/** "No color" is null, not 0: 0 is black at Rebrickable. With 0 for both, the server looked for
+ * no color image for black parts and showed the generic one, mostly white. @param {any} colorSel */
+function selectedColor(colorSel) {
+  const rawColor = colorSel?.value ?? '';
+  const colorId = String(rawColor).trim() === '' ? null : parseInt(rawColor, 10) || 0;
+  const colorOpt = colorSel?.options[colorSel.selectedIndex];
+  return { colorId, colorName: colorOpt?.dataset.name || null, colorHex: colorOpt?.dataset.hex || null };
+}
+
+/** Report the saved part and empty the form for the next one. @param {any} d @param {any} res @param {any} colorSel */
+function partAdded(d, res, colorSel) {
+  const hintT = priceOriginHint(d.price_from_condition);
+  res.style.color = 'var(--g700)';
+  res.textContent =
+    `${d.part_number} ${d.action === 'added' ? t('common.added') : t('common.updated')}` + (hintT ? ` — ${hintT}` : '');
+  closeCapture('part');
+  toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
+  G('ap-num-inline').value = '';
+  G('ap-qty-inline').value = '1';
+  G('ap-price-inline').value = '';
+  G('ap-date').value = '';
+  emptyLocationField('ap-storage');
+  if (colorSel) colorSel.selectedIndex = 0;
+  loadManualParts();
+  // See the figure capture above: a sentence takes longer than a check mark.
+  setTimeout(
+    () => {
+      res.textContent = '';
+    },
+    hintT ? 9000 : 3000,
+  );
+}
+
 G('btn-add-part')?.addEventListener('click', async () => {
   const num = G('ap-num-inline')?.value.trim();
   const res = G('ap-inline-result');
@@ -55,13 +88,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     return;
   }
   const colorSel = G('ap-color-select');
-  // "No color" is null, not 0: 0 is black at Rebrickable. With 0 for both, the server looked for
-  // no color image for black parts and showed the generic one, mostly white.
-  const rawColor = colorSel?.value ?? '';
-  const colorId = String(rawColor).trim() === '' ? null : parseInt(rawColor, 10) || 0;
-  const colorOpt = colorSel?.options[colorSel.selectedIndex];
-  const colorName = colorOpt?.dataset.name || null;
-  const colorHex = colorOpt?.dataset.hex || null;
+  const { colorId, colorName, colorHex } = selectedColor(colorSel);
   const price = amountFromField('ap-price-inline');
   const dateOk = purchaseDateValid('ap-date');
   const quantity = quantityFromField('ap-qty-inline');
@@ -85,29 +112,8 @@ G('btn-add-part')?.addEventListener('click', async () => {
   });
   btn.disabled = false;
   btn.textContent = tRaw('gallery.add.submit');
-  if (d.success) {
-    const hintT = priceOriginHint(d.price_from_condition);
-    res.style.color = 'var(--g700)';
-    res.textContent =
-      `${d.part_number} ${d.action === 'added' ? t('common.added') : t('common.updated')}` +
-      (hintT ? ` — ${hintT}` : '');
-    closeCapture('part');
-    toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
-    G('ap-num-inline').value = '';
-    G('ap-qty-inline').value = '1';
-    G('ap-price-inline').value = '';
-    G('ap-date').value = '';
-    emptyLocationField('ap-storage');
-    if (colorSel) colorSel.selectedIndex = 0;
-    loadManualParts();
-    // See the figure capture above: a sentence takes longer than a check mark.
-    setTimeout(
-      () => {
-        res.textContent = '';
-      },
-      hintT ? 9000 : 3000,
-    );
-  } else {
+  if (d.success) partAdded(d, res, colorSel);
+  else {
     res.style.color = 'var(--r500)';
     res.textContent = d.error || tRaw('settings.error');
   }

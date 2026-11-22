@@ -183,21 +183,33 @@ export async function setupSource(source) {
     setStatus(source, null);
     return;
   }
-  if (Object.keys(values).length) {
-    const s = await saveSettings(tRaw('settings.api_key_title'), values);
-    if (!s) return;
-    if (!s?.success) {
-      sourceError(source, s?.error || tRaw('settings.error'), '', Object.values(fields));
-      return;
-    }
-    if (!empty.length) _saved[source] = true;
-  }
+  if (Object.keys(values).length && !(await saveSourceValues(source, fields, values, empty))) return;
   const d = await api('POST', '/v2/settings/test-source', { source: source });
   setStatus(source, !!d?.success);
   if (d?.success) {
     toast(tRaw('setup.test_ok'), 'success');
     return;
   }
+  sourceTestFailed(source, fields, d);
+}
+
+/** @returns whether saving worked; a failure is already shown at the fields.
+ * @param {string} source @param {Record<string, string>} fields @param {Record<string, string>} values
+ * @param {string[]} empty */
+async function saveSourceValues(source, fields, values, empty) {
+  const s = await saveSettings(tRaw('settings.api_key_title'), values);
+  if (!s) return false;
+  if (!s?.success) {
+    sourceError(source, s?.error || tRaw('settings.error'), '', Object.values(fields));
+    return false;
+  }
+  if (!empty.length) _saved[source] = true;
+  return true;
+}
+
+/** A rejected key marks every field of the source; other failures mark none.
+ * @param {string} source @param {Record<string, string>} fields @param {any} d */
+function sourceTestFailed(source, fields, d) {
   const { reason, details } = d?.code
     ? { reason: d.error, details: d.details == null ? undefined : String(d.details) }
     : clearerReason(d);
