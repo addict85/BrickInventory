@@ -1,0 +1,16 @@
+Gegenprobe: der Galeriezustand trägt wieder einen fertigen Fehlersatz
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: screens do not trigger loading via LaunchedEffect, states carry loading and message
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandSammlung.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandSammlung.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandSammlung.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandSammlung.kt
+@@ -29,6 +29,7 @@
+      * Fehler sah ein Ladefehler aus wie eine leere Sammlung.
+      */
+     val abruf: Laden<Unit> = Laden.Daten(Unit),
++    val galleryFehlerSatz: String? = null,
+     /** Liste aus dem Plattenspeicher statt vom Server: Zeitpunkt der Ablage, sonst null. */
+     val offlineStatus: Long? = null,
+     val stats: MetricsView? = null,

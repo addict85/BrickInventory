@@ -3,7 +3,7 @@
 # Heben geht erst mit neuen Prüfsummen (Workflow pruefsummen=true), also über AGP- und Lint-Fassungen.
 #
 # Eine Zeile je Lücke, darüber der Grund:  gruppe:name:fassung  CVE-…  bis:JJJJ-MM-TT
-# Nach dem Datum ist ModulgrenzenTest rot; steht die Fassung nicht mehr in
+# Nach dem Datum ist ModuleBoundariesTest rot; steht die Fassung nicht mehr in
 # gradle/verification-metadata.xml, ebenfalls: Dann gehört die Zeile gestrichen.
 
 # commons-lang3 über Lint/AGP: ClassUtils.getClass kann bei sehr langen Namen überlaufen. Lint liest

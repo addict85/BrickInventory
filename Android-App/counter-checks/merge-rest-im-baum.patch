@@ -1,0 +1,11 @@
+Gegenprobe: ein Merge-Rest (.orig) liegt im Baum
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: every module folder is included, every included module exists, no merge remnant lies in the tree, and every Kotlin file lies in its module's package root
+
+diff --git a/B/Android-App/core-ui/Rest.kt.orig b/Android-App/core-ui/Rest.kt.orig
+new file mode 100644
+--- /dev/null
++++ b/Android-App/core-ui/Rest.kt.orig
+@@ -0,0 +1 @@
++Rest

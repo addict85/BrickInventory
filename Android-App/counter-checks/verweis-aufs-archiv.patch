@@ -1,0 +1,16 @@
+Gegenprobe: Ein Kommentar verweist wieder auf das Begründungsarchiv
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no reference to the reasoning archive, and no KDoc hangs on nothing
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
+@@ -12,6 +12,7 @@
+ /**
+  * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
+  * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
++ * Ausführlich: docs/begruendungen/core-security/sicherheit/TokenTresor.kt.md#z12
+  */
+ 
+ /** Wo die Schlüssel liegen: im Gerät der AndroidKeyStore, im Test ein Bund im Speicher. */

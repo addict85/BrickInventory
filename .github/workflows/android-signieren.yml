@@ -625,10 +625,10 @@ jobs:
           # Beschreibung an. Sichtbar in jedem Lauf; ein Release veröffentlicht so nicht.
           SCHLUESSEL=0
           python3 tools/release-check.py schluessel "$A/beschreibungsschluessel.pem" \
-            core-resources/src/main/res/raw/beschreibungs_schluessel.pem || SCHLUESSEL=$?
+            core-resources/src/main/res/raw/description_key.pem || SCHLUESSEL=$?
           if [ "$SCHLUESSEL" = 3 ]; then
             if [ "$ECHT" = "true" ]; then
-              echo "::error title=Beschreibungsschlüssel fehlt::beschreibungs_schluessel.pem ist leer; die Beschreibung gälte mit dem APK-Schlüssel. Erst einrichten (README, „Beschreibungsschlüssel“). Nichts wird veröffentlicht."
+              echo "::error title=Beschreibungsschlüssel fehlt::description_key.pem ist leer; die Beschreibung gälte mit dem APK-Schlüssel. Erst einrichten (README, „Beschreibungsschlüssel“). Nichts wird veröffentlicht."
               exit 1
             fi
             echo "::warning title=Beschreibungsschlüssel fehlt::Die App nennt keinen Beschreibungsschlüssel (README, „Beschreibungsschlüssel“); ein Release veröffentlicht so nicht."
