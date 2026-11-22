@@ -200,8 +200,9 @@ const TOKEN_RUNTIMES: Record<string, number> = {
   unbegrenzt: 0,
 };
 
-/** The choices the QR dialog may offer. */
-export const RUNTIME_CHOICES: readonly string[] = Object.freeze(Object.keys(TOKEN_RUNTIMES));
+/** The choices the QR dialog may offer; 6m, 12m and "unbegrenzt" exceed the default bound and are
+ * only still accepted from older pages. */
+export const RUNTIME_CHOICES: readonly string[] = Object.freeze(['1m', '2m']);
 
 /** fromTable instead of direct access: 'constructor' would otherwise return an inherited function.
  * @returns days, or null for "no fixed deadline" */

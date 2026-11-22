@@ -259,7 +259,7 @@ test('QR access: the UI chooses when CREATING, not when redeeming', () => {
   for (const w of serverList) assert.notEqual(auth.runtimeDays(w), null, `${w} kennt der Server nicht`);
   const markupList = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)].map(m => m[1]);
   assert.deepEqual(markupList, serverList, 'Die Auswahl im Markup und die Liste in TOKEN_RUNTIMES laufen auseinander');
-  assert.ok(serverList.length >= 5, 'Die Liste des Servers ist zu kurz');
-  // Still accepted while the UI offers it; it means the bound (3b above).
+  assert.ok(serverList.length >= 2, 'Die Liste des Servers ist zu kurz');
+  // No longer offered, but still accepted from older pages; it means the bound (3b above).
   assert.equal(auth.runtimeDays('unbegrenzt'), 0);
 });
