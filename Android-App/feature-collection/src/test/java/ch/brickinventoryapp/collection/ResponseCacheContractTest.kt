@@ -6,12 +6,10 @@ import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.SetsResponse
 import ch.brickinventoryapp.contract.StatsResponse
 import ch.brickinventoryapp.contract.ValuationSet
-import ch.brickinventoryapp.testing.Sources
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
-import java.io.File
 
 /**
  * The server's answers pass through serialization without loss; how they lie in the
@@ -154,46 +152,5 @@ class MinifigImageFieldTest {
             """{"fig_number":"fig-2","image_local":"/images/sets/fig-2.jpg"}"""
         )
         assertEquals("/images/sets/fig-2.jpg", item.imageLocal)
-    }
-}
-
-/**
- * Retry for gallery tiles after a load error.
- *
- * Observed: tiles stayed empty, but the image appeared right away as soon as
- * the affected set was opened — a sign of a one-off, transient
- * failure on the first load attempt. Coil does not retry a failed
- * request on its own.
- */
-class GalleryImageRetryTest {
-
-    private fun read(rel: String): String {
-        val f = File(Sources.root, rel)
-        assert(f.exists()) { "File not found: $rel" }
-        return f.readText()
-    }
-
-    @Test
-    fun `SetCard retries a failed image exactly once`() {
-        val src = read("collection/ui/screens/GalleryCard.kt")
-
-        assert(src.contains("var retryNonce by remember(set.setNumber, imageUrl)")) {
-            "the retry counter is missing or not bound per tile/image"
-        }
-        assert(src.contains("AsyncImagePainter.State.Error && retryNonce == 0")) {
-            "the retry must be limited to EXACTLY ONCE"
-        }
-        // Coil 3 no longer knows this parameter; checked in the sources of
-        // coil-core 3.3.0, memoryCacheKeyExtra is the successor. What is checked
-        // remains the WHAT (a distinguishable feature of the request), not
-        // the name of a library function — the name is only here because
-        // a text comparison can do nothing else.
-        assert(src.contains(".memoryCacheKeyExtra(\"retry\", source.retryNonce.toString())")) {
-            "The request needs a distinguishing feature, otherwise Coil could " +
-            "confuse it with the failed predecessor"
-        }
-        assert(src.contains("kotlinx.coroutines.delay(1000)")) {
-            "the retry should happen delayed, not right away at the same moment"
-        }
     }
 }

@@ -7,7 +7,6 @@ import androidx.camera.core.CameraControl
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.FocusMeteringResult
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.impl.Config as UseCaseConfig
 import androidx.camera.core.Preview
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ui.screens.autofocusPermanent
@@ -22,6 +21,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import androidx.camera.core.impl.Config as UseCaseConfig
 
 /**
  * The camera setup both scanners share: preview and image analysis both carry continuous

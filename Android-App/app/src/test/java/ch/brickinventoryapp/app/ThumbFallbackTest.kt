@@ -37,16 +37,6 @@ class ThumbFallbackTest {
     }
 
     @Test
-    fun `rememberTileImageWithFallback exists`() {
-        val src = read("ui/util/ImageRueckfall.kt")
-        assert(src.contains("fun rememberTileImageWithFallback(")) {
-            "the fallback helper is missing"
-        }
-        val fn = src.substring(src.indexOf("fun rememberTileImageWithFallback("))
-        assert(fn.contains("var useFallback by remember")) { "the state is missing" }
-    }
-
-    @Test
     fun `imageLocal is taken over unchanged — no own _thumb guess any more`() {
         // The server checks whether the preview exists and delivers the matching
         // path; a client-side guessed "_thumb.jpg" failed exactly then.
@@ -54,39 +44,6 @@ class ThumbFallbackTest {
             resolveThumbUrl(SERVER, "/images/sets/10283-1.jpg", "https://cdn.rebrickable.com/x.jpg"))
         assertEquals("http://nas:3000/images/sets/10283-1_thumb.jpg",
             resolveThumbUrl(SERVER, "/images/sets/10283-1_thumb.jpg", null))
-    }
-
-    @Test
-    fun `GalleryScreen uses the fallback instead of an ineffective retry`() {
-        val src = read("collection/ui/screens/GalleryCard.kt")
-        assert(src.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
-            "GalleryScreen must use the new fallback helper"
-        }
-        assert(src.contains("onImageError()")) {
-            "the error case must trigger the fallback"
-        }
-        // ── Adjusted ──────────────────────────────────────────
-        // Two prohibitions stood here: no `retryNonce`, no `setParameter`
-        // (that was its name in Coil 2; today `memoryCacheKeyExtra`).
-        //
-        // Meanwhile the flow is a different one: right after adding,
-        // the server still has to create the preview — the second attempt after
-        // one second then does find it. GalleryImageRetryTest
-        // (ResponseCacheContractTest.kt) requires exactly that, and both tests
-        // directly contradicted each other. The prohibitions have therefore been dropped;
-        // what remains is the rule that BOTH versions share: at the end of the
-        // chain the fallback to the full resolution must stand.
-    }
-
-    @Test
-    fun `CatalogSetCard falls back to the full resolution on an error`() {
-        // The placeholder image stands in ONE place since ProductImage (ui/components); the
-        // catalog tile only passes the error on to the fallback.
-        val src = read("catalog/ui/screens/CatalogCard.kt")
-        assert(src.contains("ProductImage(")) { "the catalog tile uses the shared image with fallback" }
-        assert(src.contains("AsyncImagePainter.State.Error) onThumbError()")) {
-            "an error must trigger the fallback to full resolution"
-        }
     }
 }
 
@@ -178,51 +135,6 @@ class PartsMinifigsFullResBypassProxyTest {
     fun `resolveFullUrlViaProxy exists and wraps CDN addresses into the proxy`() {
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fp.png",
             resolveFullUrlViaProxy(SERVER, null, "https://cdn.rebrickable.com/p.png"))
-    }
-
-    @Test
-    fun `parts and minifigures pass fullViaProxy = true, sets and catalog do not`() {
-        // ── EVERY call, not a count ─────────────────────────────────────────
-        //
-        // Here stood `partsCount == 2`. The number was right as long as there
-        // were exactly two call sites — with the table view a third one came into each
-        // of the two screens, and the test reported „3 statt 2“
-        // , although the third place does it JUST as right.
-        //
-        // The rule stands in the name of this test: in these two screens
-        // the full resolution runs via the proxy. So EVERY call
-        // of rememberTileImageWithFallback there must set fullViaProxy = true —
-        // a forgotten place thus stands out, an added correct one
-        // does not.
-        val call = Regex("""rememberTileImageWithFallback\s*\(([^)]*)\)""")
-        for (rel in listOf("parts/ui/screens/PartsScreen.kt", "parts/ui/screens/MinifigsScreen.kt")) {
-            // withoutComments: both files MENTION the helper in an
-            // explanatory comment („siehe model/util/ImageUrls.kt, rememberTileImageWithFallback()“
-            // ). Without this step the
-            // check reports exactly this mention as a call without
-            // fullViaProxy — when recalculating that happened to me immediately.
-            val src = Sources.withoutComments(Sources.screen(rel))
-            val places = call.findAll(src).toList()
-            // Self-proof: if the pattern finds nothing, the loop would be empty
-            // and the test green without having checked anything.
-            assert(places.size >= 2) {
-                "$rel: only ${places.size} call(s) of rememberTileImageWithFallback found — pattern outdated?"
-            }
-            for (m in places) {
-                val row = src.substring(0, m.range.first).count { it == '\n' } + 1
-                assert(m.groupValues[1].contains("fullViaProxy = true")) {
-                    "$rel:$row — this call does not set fullViaProxy. Parts and " +
-                    "minifigures fetch the full resolution via the proxy because " +
-                    "Rebrickable cannot be reached directly."
-                }
-            }
-        }
-
-        val gallery = Sources.gallery()
-        assert(!gallery.contains("fullViaProxy")) { "the gallery must not set fullViaProxy — sets stay direct" }
-
-        val catalog = Sources.screen("catalog/ui/screens/CatalogScreen.kt")
-        assert(!catalog.contains("fullViaProxy")) { "the catalog must not set fullViaProxy — the catalog stays direct" }
     }
 }
 

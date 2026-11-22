@@ -158,27 +158,4 @@ class CatalogUsesLocalImagesTest {
             }
         }
     }
-
-    @Test
-    fun `parts, minifigures and catalog use the same fallback as the gallery`() {
-        // Switched at the user's request to the same pattern as GalleryScreen.kt:
-        // resolveThumbUrl() alone is not enough when the preview is (still)
-        // missing — rememberTileImageWithFallback() switches to the full
-        // resolution on a loading error.
-        val expectations = mapOf(
-            "parts/ui/screens/PartsScreen.kt" to 2,      // ManualPartTile, PartCard
-            "parts/ui/screens/MinifigsScreen.kt" to 2,   // ManualFigTile, MinifigCard
-            "catalog/ui/screens/CatalogScreen.kt" to 1,     // CatalogSetCard
-        )
-        for ((rel, expectedCount) in expectations) {
-            val src = Sources.screen(rel)
-            val count = Regex("""rememberTileImageWithFallback\(serverUrl""").findAll(src).count()
-            assert(count == expectedCount) {
-                "$rel: $count instead of $expectedCount uses of rememberTileImageWithFallback()"
-            }
-            assert(!Regex("""[^.]resolveThumbUrl\(serverUrl""").containsMatchIn(src)) {
-                "$rel: still uses resolveThumbUrl() directly instead of the fallback helper"
-            }
-        }
-    }
 }

@@ -90,7 +90,7 @@ fun SetCard(
 ) {
     // Preview image via the server, with fallback to full resolution as long as
     // the `_thumb` file is missing (the server generates it after a CSV import)
-    // — like data-orig in the web app; see util/ImageRueckfall.kt.
+    // — like data-orig in the web app; see util/ImageFallback.kt.
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
 
     // One delayed retry after a load error: right after

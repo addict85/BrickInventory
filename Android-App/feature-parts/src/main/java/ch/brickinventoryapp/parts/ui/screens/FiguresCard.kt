@@ -47,7 +47,7 @@ import coil3.ImageLoader
 internal fun ManualFigTile(fig: ManualMinifigView, serverUrl: String, imageLoader: ImageLoader,
                   currency: CurrencyCode, onEdit: () -> Unit) {
     // Thumbnail with a fallback to full resolution — see
-    // util/ImageRueckfall.kt, rememberTileImageWithFallback().
+    // util/ImageFallback.kt, rememberTileImageWithFallback().
     val (image, onImageError) =
         rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
     // Everything else lives in ManualTile (ManualItemComposables.kt), which the
@@ -120,7 +120,7 @@ internal fun MinifigTableRow(fig: FigureView, serverUrl: String, imageLoader: Im
 private fun MinifigCardImage(fig: FigureView, serverUrl: String, imageLoader: ImageLoader, qty: Int) {
     Box(Modifier.fillMaxWidth().height(110.dp)) {
         // Thumbnail with a fallback to full resolution — see
-        // util/ImageRueckfall.kt, rememberTileImageWithFallback().
+        // util/ImageFallback.kt, rememberTileImageWithFallback().
         val (figImg, onFigImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
         ProductImage(
             model = figImg,
