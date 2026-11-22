@@ -553,17 +553,24 @@ test('routes, jobs and clients import no repositories', () => {
   // `await kontoBereich().protokoll.protokolliere(…)` back in routes/auth/users.ts
   // → rot „routes/auth/users.ts: kontoBereich()“; `gutscheineBereich` als Import in
   // routes/api/vouchers.ts → rot „…: gutscheineBereich (Import)“.
-  const CALL = /\b\w+Bereich\s*\(\s*\)/g;
+  const FACTORIES = fs.readdirSync(path.join(ROOT, 'src')).flatMap(b => {
+    const f = path.join(ROOT, 'src', b, 'area.ts');
+    return fs.existsSync(f)
+      ? [...fs.readFileSync(f, 'utf8').matchAll(/^export function (create\w+)/gm)].map(m => m[1])
+      : [];
+  });
+  assert.ok(FACTORIES.length >= 15, `nur ${FACTORIES.length} Bereichsfabriken gefunden`);
+  const CALL = new RegExp(`\\b(?:${FACTORIES.join('|')})\\s*\\(`, 'g');
   const IMPORT = /import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/[^']+'/g;
   for (const d of tsBelow('routes')) {
     const s = sourceText(d);
     for (const m of s.matchAll(CALL)) treffer.push(`${d}: ${m[0].replace(/\s/g, '')}`);
     for (const m of s.matchAll(IMPORT))
       for (const n of m[1].split(',').map(x => x.trim().split(/\s+as\s+/)[0]))
-        if (/Bereich$/.test(n)) treffer.push(`${d}: ${n} (Import)`);
+        if (FACTORIES.includes(n)) treffer.push(`${d}: ${n} (Import)`);
   }
   assert.ok(
-    CALL.test('await kontoBereich().accounts.accountShort(1)') && tsBelow('routes').length > 15,
+    CALL.test('createAccount(deps).accounts.accountShort(1)') && tsBelow('routes').length > 15,
     'Selbstbeweis: das Muster findet einen Aufruf, und es gibt Routen',
   );
   assert.deepEqual(treffer, []);
@@ -881,6 +888,9 @@ const SEND_ERROR_IN_ROUTES = new Map([
 ]);
 
 test("routes catch no errors — the router's error path answers", () => {
+  const CONVERSION =
+    /\b(?:String|Number|parseInt|parseFloat|Boolean)\(\s*(?:String\()?req\.(?:input|queryArgs|pathArgs)\b/g;
+  assert.equal("String(req.input.condition ?? '')".match(CONVERSION)?.length, 1, 'Selbstbeweis: Umwandlung erkannt');
   // Counter-checks: a route in routes/api/minifigs.ts wrapped again in `try { … } catch (e) {
   // handleRouteError(res, e, undefined, req); }` → red (31.10.2026). In parts.ts
   // `return sendError(req, res, 404, 'part_not_manual')` instead of notFound → red
@@ -899,7 +909,7 @@ test("routes catch no errors — the router's error path answers", () => {
     const results = [...q.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*await\s+d\./g)].map(m => m[1]);
     const vergleich = n => new RegExp(`\\b${n}(?:\\.\\w+)?\\s*[!=]==\\s*(?:'[^']*'|[A-Z][A-Z_]{2,}\\b)`);
     for (const z of q.split('\n')) {
-      const wirft = /\b(?:fachfehler|notFound)\(|\bthrow\b/.test(z);
+      const wirft = /\b(?:failDomain|notFound)\(|\bthrow\b/.test(z);
       if (wirft && (results.some(n => vergleich(n).test(z)) || /\(await d\.[^;]*\)\s*[!=]==\s*'/.test(z)))
         rejections.push(`${d}: ${z.trim()}`);
     }
@@ -907,10 +917,7 @@ test("routes catch no errors — the router's error path answers", () => {
     if (n) ist.set(d, n);
     const s = (q.match(/\bsendError\(/g) || []).length;
     if (s) senden.set(d, s);
-    for (const m of q.matchAll(
-      /\b(?:String|Number|parseInt|parseFloat|Boolean)\(\s*(?:String\()?req\.(?:eingabe|abfrage|pfad)\b/g,
-    ))
-      conversions.push(`${d}: ${m[0]}`);
+    for (const m of q.matchAll(CONVERSION)) conversions.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTES));
   assert.deepEqual(Object.fromEntries(senden), Object.fromEntries(SEND_ERROR_IN_ROUTES), 'sendError in Routen');

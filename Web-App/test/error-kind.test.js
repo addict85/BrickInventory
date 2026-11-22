@@ -129,7 +129,9 @@ function dienste() {
 test('only src/http maps kinds to status, no service names a status', () => {
   const liste = dienste();
   assert.ok(liste.length > 200, `nur ${liste.length} Dienste gefunden — greift die Suche noch?`);
-  const treffer = liste.filter(d => /from '[./]+\/http\/fehlerArt'/.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
+  const IMPORT = /from '[./]+\/http\/errorKind'/;
+  assert.ok(IMPORT.test("from '../http/errorKind'"), 'Selbstbeweis: das Muster findet den Import');
+  const treffer = liste.filter(d => IMPORT.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
   assert.deepEqual(treffer, []);
 
   // No service names a status: a number as the second argument would mean that
@@ -137,11 +139,11 @@ test('only src/http maps kinds to status, no service names a status', () => {
   const status = [];
   for (const d of liste) {
     const s = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
-    for (const m of s.matchAll(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/g))
-      status.push(`${d}: ${m[0]}`);
-    for (const m of s.matchAll(/new Fachfehler\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
+    for (const m of s.matchAll(/\b(?:failDomain|fileError)\([^)]*?,\s*\d{3}\b/g)) status.push(`${d}: ${m[0]}`);
+    for (const m of s.matchAll(/new DomainError\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(status, []);
   // Self-proof of the search on a probe.
-  assert.ok(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/.test("fehlerWerfen('x', 400)"));
+  assert.ok(/\b(?:failDomain|fileError)\([^)]*?,\s*\d{3}\b/.test("failDomain('x', 400)"));
+  assert.ok(/new DomainError\(\s*'[a-z_]+',\s*\d{3}/.test("new DomainError('x', 400)"));
 });
