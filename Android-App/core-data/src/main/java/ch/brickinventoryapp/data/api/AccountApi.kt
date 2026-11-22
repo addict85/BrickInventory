@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.contract.Erledigt
 import ch.brickinventoryapp.contract.AndereBeendenAnfrage
 import ch.brickinventoryapp.contract.AndereBeendet
+import ch.brickinventoryapp.contract.AppThemeResponse
 import ch.brickinventoryapp.contract.DefaultConditionResponse
+import ch.brickinventoryapp.contract.Erledigt
 import ch.brickinventoryapp.contract.ForgotPasswordRequest
 import ch.brickinventoryapp.contract.ForgotPasswordResponse
 import ch.brickinventoryapp.contract.GenericAdminResponse
@@ -42,7 +43,6 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
-import ch.brickinventoryapp.contract.AppThemeResponse
 
 /**
  * Sign-in and the own account: profile, password, second factor, signed-in
@@ -78,7 +78,7 @@ interface AccountApi {
     // ── Create account and forgot password ──
     //
     // Without sign-in, because they are needed before there is a token; the server
-    // keeps them before requireLogin (routes/auth.ts).
+    // keeps them before requireLogin (`routes/auth.ts`).
     @GET("api/v1/auth/registration-status")
     suspend fun getRegistrationStatus(): Response<RegistrationStatusResponse>
 
@@ -88,7 +88,7 @@ interface AccountApi {
     @POST("api/v1/auth/forgot-password")
     suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<ForgotPasswordResponse>
 
-    // ── Das eigene Konto ────────────────────────────────────────────────────
+    // ── The own account ────────────────────────────────────────────────────
     @GET("api/v1/auth/profile")
     suspend fun getProfile(): Response<ProfilResponse>
 

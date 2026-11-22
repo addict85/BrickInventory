@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.local.StockKind
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.FigureEntry
-import ch.brickinventoryapp.model.domain.WantedRequest
-import ch.brickinventoryapp.model.domain.QuantityChange
 import ch.brickinventoryapp.model.domain.PartEntry
-import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.QuantityChange
+import ch.brickinventoryapp.model.domain.WantedRequest
+import ch.brickinventoryapp.model.local.StockKind
 
 /**
  * A change that waits in the outbox without connection, in domain values; the request from it

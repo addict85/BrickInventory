@@ -1,51 +1,51 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import java.time.Instant
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailActions
-import ch.brickinventoryapp.model.domain.SetView
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.pluralStringResource
-import ch.brickinventoryapp.resources.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
-import ch.brickinventoryapp.shared.ui.LocalColumnMap
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.collection.ui.SetDetailUiState
-import ch.brickinventoryapp.ui.title
-import ch.brickinventoryapp.ui.twoColumn
-import ch.brickinventoryapp.state.ui.StorageUiState
-import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.model.util.resolveFullUrl
-import coil3.ImageLoader
-import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.ReadingWidth
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.collection.ui.SetDetailUiState
+import ch.brickinventoryapp.collection.ui.viewmodel.INSTRUCTION_TYPES
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailActions
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.util.resolveFullUrl
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.shared.ui.LocalColumnMap
+import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.LoadCircle
-import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.StateHint
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.ZoomableImageDialog
+import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.LocalAccentSurfaces
-import ch.brickinventoryapp.collection.ui.viewmodel.INSTRUCTION_TYPES
+import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.ui.twoColumn
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.model.file.FileRef
+import coil3.ImageLoader
+import kotlinx.coroutines.launch
+import java.time.Instant
 
 /** The set detail at the navigation destination: gathers the flows and passes them to [SetDetailScreen]. */
 @Composable
@@ -122,7 +122,7 @@ internal fun SetDetailScreen(
         else fmtMoney(v, currency)
 
     // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
-    // MinifigsScreen in einer zweiten, abweichenden Fassung.
+    // MinifigsScreen in a second, diverging version.
     fun fmtDate(time: Instant?) = fmtTag(time) ?: "—"
 
     val accent = LocalAccentSurfaces.current
@@ -172,7 +172,7 @@ internal fun SetDetailScreen(
             return@Scaffold
         }
 
-        // Full resolution — like the web app's detail dialog (admin.js, "m-img",
+        // Full resolution — like the web app's detail dialog (`admin.js`, "m-img",
         // fullUrl()). The preview card and zoom use the same address.
         val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)
         // One delayed retry — as in the gallery tile: right

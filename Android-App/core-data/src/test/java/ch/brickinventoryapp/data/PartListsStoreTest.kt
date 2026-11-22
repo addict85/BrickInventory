@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.security.StoreCipher
-import ch.brickinventoryapp.data.util.PART_LIST_FILE
 import ch.brickinventoryapp.data.util.PART_LIST_DEADLINE_MS
+import ch.brickinventoryapp.data.util.PART_LIST_FILE
 import ch.brickinventoryapp.data.util.PartListVault
-import ch.brickinventoryapp.data.util.readFromStorage
 import ch.brickinventoryapp.data.util.cleanOldPartListOn
 import ch.brickinventoryapp.data.util.cleanUpAccountFiles
 import ch.brickinventoryapp.data.util.partListsStore
+import ch.brickinventoryapp.data.util.readFromStorage
+import ch.brickinventoryapp.security.StoreCipher
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -29,7 +29,7 @@ import java.io.File
  * Counter-check: in
  * cleanOldPartListOn() the age check reversed (`<` instead of `>=`) → red “after
  * the deadline the parts list disappears …”; counter-checks/teileliste-bleibt-liegen.patch
- * Counter-check: Teilelistentresor.lege()
+ * Counter-check: PartListVault's write
  * writes the plaintext instead of the ciphertext → red “the parts list lies only
  * encrypted …”; counter-checks/teileliste-im-klartext.patch
  */

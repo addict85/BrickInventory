@@ -8,8 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /** A row of the detail cards (catalog, wishlist), limited to reading width on the tablet at most. */
 @Composable

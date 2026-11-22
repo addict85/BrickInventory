@@ -3,24 +3,24 @@ package ch.brickinventoryapp.collection.ui.dialogs
 // Bulk imports as in the neighboring dialog (BarcodeResultDialog.kt): `Modifier.size`
 // lives in foundation.layout, and the `by` before collectAsStateWithLifecycle
 // needs runtime.getValue — both come along with the star imports.
-import ch.brickinventoryapp.collection.ui.EntryUiState
-import ch.brickinventoryapp.ui.theme.windowSurface
-import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.collection.ui.CheckPhase
+import ch.brickinventoryapp.collection.ui.EntryUiState
+import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
+import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.windowSurface
 
 /**
  * "Checking" — the display between scan and interim dialog. A dialog instead of a snackbar:
@@ -41,7 +41,7 @@ internal fun SetCheckDialog(entryVm: EntryUiState, actions: EntryActions) {
     AlertDialog(
         containerColor = windowSurface(),
         modifier = Modifier.semantics { paneTitle = title },
-        // Can't be dismissed by tapping outside: the halt IS the point. Whoever
+        // Can't be dismissed by tapping outside: the stop IS the point. Whoever
         // really wants to continue uses the button — then it's a decision
         // and not a slipped finger.
         onDismissRequest = { },

@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.services.service
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -10,9 +9,14 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.data.CsvImportSseClient
+import ch.brickinventoryapp.data.collection.SetFilesRepository
+import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetFilesRepository
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.resources.R
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -22,11 +26,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import javax.inject.Inject
-import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.data.util.LanguageManager
 
 /** The foreground service of a running CSV import; a counter in the test. */
 interface CsvImportRunner {
@@ -50,7 +50,7 @@ class CsvImportService : Service() {
 
         // Fallback for when SSE isn't working
         private const val POLL_INTERVAL_MS = 1500L
-        private const val POLL_WINDOW      = 10   // Abfragen je Fenster, dann neuer SSE-Versuch
+        private const val POLL_WINDOW      = 10   // queries per window, then a new SSE attempt
         private const val MAX_ERRORS       = 10
         private const val GRACE_MS         = 10_000L  // Anlauffenster, siehe applyStatus()
 
@@ -190,7 +190,7 @@ class CsvImportService : Service() {
         return true
     }
 
-    /** Abschlussmeldung kurz stehen lassen, dann beenden. */
+    /** Leave the final notice up briefly, then stop. */
     private suspend fun finishAndStop() {
         updateNotification(loc.getString(R.string.notif_csv_done), 1, 1)
         delay(4000)

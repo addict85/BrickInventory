@@ -1,6 +1,6 @@
 Gegenprobe: Ein gewähltes Konto geht mit falschem Wert in accounts=
-Modul: core-model
-Test: ch.brickinventoryapp.model.AccountSelectionTest
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.AccountSelectionTest
 Rot: every saved choice becomes the same value again
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Kontoauswahl.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Kontoauswahl.kt

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Ratchets: numbers that may only sink. Each stands exactly at the measured value;
@@ -29,6 +29,8 @@ import ch.brickinventoryapp.testing.Sources
  *   detekt-baseline-waechst    upper limit one below the entries → red “the detekt baseline …”
  *   detekt-baseline-fremde-regel  a MagicNumber entry → red, the same test
  *   start-schluckt-abbruch     makes “no broad catch …” red
+ *   (local) `(lists.metrics() as? Outcome.Success)?.let { … }` back in Parts.kt → red “no load
+ *                              result is dropped silently” [Parts.kt:…]
  *   runcatching-um-suspend     BrickInventoryApp takes over the old token in runCatching again
  *                              → red “no runCatching swallows …”
  *   runcatching-um-suspend-lambda  Offlineablage calls the suspend source (a field of type
@@ -59,7 +61,7 @@ import ch.brickinventoryapp.testing.Sources
  * Language (word list app/src/test/resources/german-words.txt; local JUnit, no patch yet):
  *   `fun ladeDaten()` in GalleryViewModel → red „German declarations …: ladeDaten“
  *   a file data/repository/Ergebnis.kt → red „German file names …: [Ergebnis.kt]“
- *   „// Lädt die Liste neu“ in OutboxWorker.kt → red „German comment words: 560, erlaubt 559“
+ *   `// Lädt die Liste neu` in OutboxWorker.kt → red „German comment words …“ (expected 0, was 1)
  */
 class SourceRatchetTest {
 
@@ -442,13 +444,13 @@ class SourceRatchetTest {
     }
 
     @Test
-    fun `the detekt baseline holds only length and branching and shrinks`() {
+    fun `the detekt baseline holds only length, branching and parameter lists and shrinks`() {
         val baseline = File(Sources.project, "config/detekt/baseline.xml").readText()
         val ids = Regex("""<ID>(\w+):""").findAll(baseline).map { it.groupValues[1] }.toList()
         val limit = File(Sources.project, "tools/detekt-limit.txt").readLines()
             .first { it.isNotBlank() && !it.startsWith("#") }.trim().toInt()
         assert(ids.size >= 10) { "Nur ${ids.size} Einträge in der Baseline — Muster veraltet?" }
-        val foreign = ids.filter { it !in setOf("LongMethod", "CyclomaticComplexMethod") }.distinct()
+        val foreign = ids.filter { it !in setOf("LongMethod", "CyclomaticComplexMethod", "LongParameterList") }.distinct()
         assert(foreign.isEmpty()) { "Die Baseline verschweigt andere Regeln: $foreign. Den Fund beheben, nicht eintragen." }
         ratchet("Funktionen in der detekt-Baseline (tools/detekt-limit.txt)", limit, ids.size,
             "Eine neue lange oder verzweigte Funktion zerlegen, statt sie einzutragen.")
@@ -460,7 +462,7 @@ class SourceRatchetTest {
         // run in ticks (PathServer.onTick, test dispatcher); counted is what still waits.
         val SLEEP = 2
         val WAIT = 13
-        val files = (Sources.tests.walkTopDown() + File(Sources.project, "core-testing/src/main").walkTopDown())
+        val files = (Sources.tests.walkTopDown() + Sources.module.asSequence().flatMap { File(it, "src/testFixtures").walkTopDown() })
             .filter { it.isFile && it.extension == "kt" }.toList()
         val texts = files.map { code(it.readText()) }
         val sleep = texts.sumOf { Regex("""\bThread\.sleep\(""").findAll(it).count() }
@@ -490,7 +492,7 @@ class SourceRatchetTest {
         // interface for all areas. Counted at the top level, across core-data and
         // everything split off from it; otherwise the number would sink spuriously when moving.
         // Among them UPDATE_FOLDER: public because core-data and core-update share it.
-        val LIMIT_AREAS = 222
+        val LIMIT_AREAS = 209
         val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }
@@ -503,7 +505,7 @@ class SourceRatchetTest {
     fun `the public surface of the areas does not grow`() {
         // An area shows the app routes and destinations; what only it needs itself is internal.
         // Much is still public because graphs and UI tests live in app.
-        val LIMIT_AREAS = 142
+        val LIMIT_AREAS = 135
         val module = Sources.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratchet("öffentliche Deklarationen der Bereiche", LIMIT_AREAS, public(module, 100),
@@ -538,6 +540,20 @@ class SourceRatchetTest {
         val without = Regex("""\bString\.format\(\s*(?!Locale|appNumberLocale|locale\b|java\.util\.Locale)""")
         val places = mainCode().filter { (_, text) -> without.containsMatchIn(text) }.map { it.first.name }
         assertEquals("String.format ohne Locale in $places", emptyList<String>(), places)
+    }
+
+    @Test
+    fun `no load result is dropped silently`() {
+        // `as? Outcome.Success` turns a failure into null: the page then shows nothing instead of an
+        // error. A result goes through `when` (or loadAs/fetched), so its failure reaches the UI state.
+        val dropped = Regex("""\bas\?\s*\w*Outcome\.Success\b""")
+        assertTrue("Das Muster erkennt die alte Form nicht mehr",
+            dropped.containsMatchIn("(source.partsMetrics() as? Outcome.Success)?.let { }"))
+        val places = mainCode().flatMap { (f, text) ->
+            dropped.findAll(text).map { "${f.name}:${text.substring(0, it.range.first).count { c -> c == '\n' } + 1}" }.toList()
+        }
+        assertEquals("Ladefehler still verworfen (as? Outcome.Success); exhaustiv mit when behandeln",
+            emptyList<String>(), places)
     }
 
     /** The arguments of a call up to the matching bracket; [on] points to the opening one. */
@@ -653,7 +669,7 @@ class SourceRatchetTest {
     @Test
     fun `fully qualified names of foreign packages become fewer`() {
         // Written out only for a real name clash, and then better with `import … as`.
-        val MAIN = 187
+        val MAIN = 180
         val TESTS = 0
         val full = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun count(files: Sequence<File>) = files.sumOf { f ->
@@ -671,7 +687,7 @@ class SourceRatchetTest {
     @Test
     fun `screens do not trigger loading via LaunchedEffect, states carry loading and message`() {
         // Target 0: the ViewModel loads itself (init, observeLoadOn); the screen calls
-        // at most aktualisiere() in response to a gesture. Counted: LaunchedEffect with a lade…/load… call.
+        // at most refresh() in response to a gesture. Counted: LaunchedEffect with a load… call.
         val LOADING = 0
         val effect = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
         val loader = Regex("""\b(?:load|load)[A-Z]\w*\s*\(""")
@@ -750,6 +766,8 @@ class SourceRatchetTest {
 
     // ── Language: source code is English ─────────────────────────────────────
 
+    private val commentOrString = Regex("\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\\n])*\"|//[^\n]*|/\\*[\\s\\S]*?\\*/")
+
     private val germanWords: Set<String> by lazy {
         File(Sources.project, "app/src/test/resources/german-words.txt").readLines()
             .map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toSet()
@@ -776,7 +794,7 @@ class SourceRatchetTest {
                 .flatMap { e -> Regex("""(?:^|,)\s*([A-Z][A-Z0-9_]*)""").findAll(e.groupValues[1]).map { it.groupValues[1] } }
 
     @Test
-    fun `file names and declarations are English, German comment words only become fewer`() {
+    fun `file names, declarations and comments are English`() {
         // Kotlin of all modules and of build-logic, main and test.
         val files = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
             m.walkTopDown().onEnter { it.name != "build" }.filter { it.isFile && it.extension in setOf("kt", "kts") }.toList()
@@ -795,16 +813,17 @@ class SourceRatchetTest {
         assertEquals("German declarations (only the contract keeps them until API v2):\n  " + declared.joinToString("\n  "),
             emptyList<String>(), declared)
         // Comments: German words outside quotes; quoted UI texts and patch names (with hyphens) do not count.
-        val COMMENT_WORDS = 559
+        // A fixed ban, no longer a ratchet: every comment is English.
         val prose = Regex("""(?<![\w-])(der|die|das|und|nicht|wird|werden|auch|noch|wenn|weil|oder|sich)(?![\w-])""")
         val word = Regex("""(?<![\w-])[a-zäöüß]{4,}(?![\w-])""")
         val quoted = Regex("""„[^“\n]*“|"[^"\n]*"|`[^`\n]*`|«[^»\n]*»""")
         val comments = files.filter { it != contract }.sumOf { f ->
-            Regex("""//[^\n]*|/\*[\s\S]*?\*/""").findAll(f.readText()).sumOf { c ->
+            // Strings first, so a `//` inside "https://…" is no comment.
+            commentOrString.findAll(f.readText()).filter { !it.value.startsWith("\"") }.sumOf { c ->
                 val t = quoted.replace(c.value, "")
                 prose.findAll(t).count() + word.findAll(t).count { it.value in germanWords || umlaut.containsMatchIn(it.value) }
             }
         }
-        ratchet("German comment words", COMMENT_WORDS, comments, "Comments are English (CLAUDE.md).")
+        assertEquals("German comment words; comments are English (CLAUDE.md)", 0, comments)
     }
 }

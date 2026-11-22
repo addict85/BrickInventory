@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * An amount in ten-thousandths, as the server holds it (NUMERIC(12,4), Web-App/src/infra/geld.ts):
+ * An amount in ten-thousandths, as the server holds it (NUMERIC(12,4), `Web-App/src/infra/geld.ts`):
  * integral, so that totals and comparisons do not hang on binary fractions. The currency stands on account
  * or response, not on every amount; a field next to it carries it where the server names it.
  */

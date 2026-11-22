@@ -1,10 +1,13 @@
 package ch.brickinventoryapp.login.ui.screens
 
-import ch.brickinventoryapp.ui.theme.Shapes
+import androidx.camera.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Lock
@@ -15,30 +18,27 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.camera.core.*
-import androidx.compose.foundation.border
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.network.util.NetworkPolicy
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.login.ui.QrLoginPayload
 import ch.brickinventoryapp.login.ui.parseQrPayload
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.AppCard
-import ch.brickinventoryapp.ui.components.outsideTheSystemBars
-import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.LocalAppVersion
-import ch.brickinventoryapp.ui.components.LocalAppLock
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.AppLockChoice
 import ch.brickinventoryapp.ui.components.BrandsHeader
+import ch.brickinventoryapp.ui.components.LocalAppLock
+import ch.brickinventoryapp.ui.components.LocalAppVersion
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.outsideTheSystemBars
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.AppCard
 import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.centeredUntil
 
 /**
  * Set up a server: via QR code or by hand, https only. If an

@@ -27,7 +27,7 @@ import org.robolectric.annotation.Config
  * are none yet, and underneath, what the page is for.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   gutschein-fehler-ohne-klasse  ErrorHint without fehler.art → red “a server error …”
+ *   gutschein-fehler-ohne-klasse  ErrorHint without failure.kind → red “a server error …”
  *   gutschein-leer-nur-satz       empty state again only the gray line → red “without vouchers …”
  */
 @RunWith(RobolectricTestRunner::class)

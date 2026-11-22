@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.login.ui
 
-import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
 
 /**
  * Which of the three forms the sign-in screen shows — the same as in the

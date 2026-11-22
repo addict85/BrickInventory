@@ -5,7 +5,7 @@ import java.text.Collator
 import java.util.Locale
 
 /**
- * The same keys as the server (teileListe.ts, ordnungSql), so that the store sorts the same
+ * The same keys as the server (`teileListe.ts`, ordnungSql), so that the store sorts the same
  * way as the web app without network. The last key makes the order unambiguous.
  */
 internal fun sorted(parts: List<PartView>, order: PartsFilter.Order): List<PartView> {

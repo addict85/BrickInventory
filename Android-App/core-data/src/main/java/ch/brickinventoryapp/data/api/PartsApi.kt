@@ -14,6 +14,7 @@ import ch.brickinventoryapp.contract.LagerortVorgabeRequest
 import ch.brickinventoryapp.contract.LagerortVorgabeResponse
 import ch.brickinventoryapp.contract.LagerortVorratResponse
 import ch.brickinventoryapp.contract.LagerorteResponse
+import ch.brickinventoryapp.contract.ManualPartsResponse
 import ch.brickinventoryapp.contract.PartsCategoriesResponse
 import ch.brickinventoryapp.contract.PartsFilterColorsResponse
 import ch.brickinventoryapp.contract.PartsResponse
@@ -22,6 +23,7 @@ import ch.brickinventoryapp.contract.TeilFarbeRequest
 import ch.brickinventoryapp.contract.TeilFarbeResponse
 import ch.brickinventoryapp.contract.UpdateManualItemRequest
 import ch.brickinventoryapp.contract.VerwendendeSetsResponse
+import ch.brickinventoryapp.model.data.SparePartChoice
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -31,8 +33,6 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.contract.ManualPartsResponse
-import ch.brickinventoryapp.model.data.SparePartChoice
 
 /**
  * Query the parts list — for the parts tab and the content of a set;
@@ -52,7 +52,7 @@ interface PartsQueryApi {
         @Query("accounts") accounts: String? = null,
         // "0" = without spare parts, "1" = only spare parts, null = all.
         // The same three values as the web app's select field (parts-spare);
-        // the server reads them in utils/handlers/parts.ts.
+        // the server reads them in `utils/handlers/parts.ts`.
         @Query("spare") spare: String? = null,
         // "1" additionally fetches in which sets the part is. Costs the
         // server its own query — hence only in the table view,
@@ -199,7 +199,7 @@ interface PartsApi : PartsQueryApi {
         @Path("partNumber") partNumber: String,
         @Path("colorId") colorId: Int,
         @Body request: UpdateManualItemRequest,
-        // Wessen Karte gemeint war — siehe deletePart.
+        // Whose card was meant — see deletePart.
         @Query("owner") owner: Int? = null,
         @Header("Idempotency-Key") key: String? = null,
     ): Response<GenericResponse>
@@ -217,7 +217,7 @@ interface PartsApi : PartsQueryApi {
     /**
      * The manually added parts, with search text and storage location: the screen has a
      * search field over manual and set parts, and both should follow it. Filtering
-     * happens on the server (utils/handlers/parts.ts); without parameters everything comes.
+     * happens on the server (`utils/handlers/parts.ts`); without parameters everything comes.
      */
     @GET("api/v1/parts/manual")
     suspend fun getManualParts(

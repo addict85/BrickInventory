@@ -1,14 +1,8 @@
 package ch.brickinventoryapp.catalog.ui.screens
 
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.model.domain.CatalogSetView
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.theme.AppCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.*
@@ -17,40 +11,46 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.components.TileBalance
+import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.BrickStudCap
-import ch.brickinventoryapp.ui.theme.StudsSeries
+import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.TileBalance
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.AppCard
 import ch.brickinventoryapp.ui.theme.BrickEdgesHistory
-import ch.brickinventoryapp.ui.theme.StudsMass
+import ch.brickinventoryapp.ui.theme.BrickStudCap
+import ch.brickinventoryapp.ui.theme.LocalBrickDecor
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.LocalIsStudTheme
-import ch.brickinventoryapp.ui.theme.LocalIsGloss
-import ch.brickinventoryapp.ui.theme.brickTone
 import ch.brickinventoryapp.ui.theme.LocalIsColorSlotsTheme
+import ch.brickinventoryapp.ui.theme.LocalIsGloss
+import ch.brickinventoryapp.ui.theme.LocalIsStudTheme
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.StudsMass
+import ch.brickinventoryapp.ui.theme.StudsSeries
+import ch.brickinventoryapp.ui.theme.brickTone
+import ch.brickinventoryapp.ui.theme.lightStrip
 import ch.brickinventoryapp.ui.theme.slotsTone
+import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.readAloudAs
-import ch.brickinventoryapp.ui.util.fmtInt
-import ch.brickinventoryapp.ui.components.ProductImage
-import ch.brickinventoryapp.ui.components.movementReduced
-import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.theme.LocalBrickDecor
-import ch.brickinventoryapp.ui.theme.lightStrip
 
 @Composable
 fun CatalogSetCard(
@@ -58,15 +58,15 @@ fun CatalogSetCard(
     imageLoader: ImageLoader,
     serverUrl: String,
     onClick: (String) -> Unit,
-    /** Position in the tile wall — only for the cap color of the "noppe" design. */
+    /** Position in the tile wall — only for the cap color of the `noppe` design. */
     position: Int = 0
 ) {
     val ctx = LocalContext.current
     val isBrick = LocalIsBrickTheme.current
     val isStud = LocalIsStudTheme.current
     val isGloss = LocalIsGloss.current
-    // The theme tone of the "farbfaecher" design — the same formula as
-    // --faecher-ton in js/katalog.js. Without a theme number there is no
+    // The theme tone of the `farbfaecher` design — the same formula as
+    // --faecher-ton in `js/katalog.js`. Without a theme number there is no
     // stripe, instead of a wrong one.
     val tone = if (LocalIsColorSlotsTheme.current) slotsTone(set.themeId) else null
     val ownership = set.ownedQuantity.coerceAtLeast(1)

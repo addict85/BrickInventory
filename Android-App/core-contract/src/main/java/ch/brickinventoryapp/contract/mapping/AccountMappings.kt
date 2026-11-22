@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.contract.mapping
 
-import ch.brickinventoryapp.model.util.parseInstant
 import ch.brickinventoryapp.contract.CsvImportErgebnis
 import ch.brickinventoryapp.contract.CsvImportStatus
 import ch.brickinventoryapp.contract.GetrenntesKonto
@@ -8,15 +7,16 @@ import ch.brickinventoryapp.contract.HouseholdStatusResponse
 import ch.brickinventoryapp.contract.LoginResponse
 import ch.brickinventoryapp.contract.Profil
 import ch.brickinventoryapp.contract.ProtokollZeile
-import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_FULL
-import ch.brickinventoryapp.contract.parentAccounts
 import ch.brickinventoryapp.contract.newCreated
-import ch.brickinventoryapp.model.domain.CsvResultView
+import ch.brickinventoryapp.contract.parentAccounts
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
-import ch.brickinventoryapp.model.domain.SeparateAccountView
+import ch.brickinventoryapp.model.domain.CsvResultView
 import ch.brickinventoryapp.model.domain.HouseholdStatusView
-import ch.brickinventoryapp.model.domain.ProfileView
 import ch.brickinventoryapp.model.domain.LogRowView
+import ch.brickinventoryapp.model.domain.ProfileView
+import ch.brickinventoryapp.model.domain.SeparateAccountView
+import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_FULL
+import ch.brickinventoryapp.model.util.parseInstant
 
 /** Admin rights only take effect with a full token: with "app" the server answers admin addresses with 403. */
 val LoginResponse.admin: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_FULL

@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.local.Local
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.contract.GenericResponse
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
+import ch.brickinventoryapp.model.domain.ErrorCode
+import ch.brickinventoryapp.model.local.Local
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.data.api.ErrorBody
-import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.network.util.PlaintextRejected
 import ch.brickinventoryapp.offline.Domain
+import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OfflineStore.Effect
-import ch.brickinventoryapp.model.domain.ErrorCode
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import retrofit2.Response
-import ch.brickinventoryapp.network.util.PlaintextRejected
 
 /*
  * What the repositories need in common, as functions instead of a base class:
@@ -157,7 +157,7 @@ internal suspend fun <T : Any, E : T?> OfflineStore.reconciledSingle(domain: Dom
 /**
  * A Retrofit response as Ergebnis: server message and code are kept,
  * transport errors are marked as temporary. Top-level because the
- * outbox (data/lokal) also sends with it without being a repository.
+ * outbox (data/local) also sends with it without being a repository.
  */
 @Suppress("TooGenericExceptionCaught") // The boundary: every error becomes Ergebnis here.
 internal suspend fun <T> safeCall(call: suspend () -> Response<T>): Outcome<T> {

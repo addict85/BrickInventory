@@ -2,14 +2,14 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.cache.areaName
 import ch.brickinventoryapp.data.cache.cleanOldResponseStore
+import ch.brickinventoryapp.data.catalog.CatalogRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.CatalogRepository
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.TestApi
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -37,7 +37,7 @@ import java.io.File
 class CacheAreaTest {
 
     /**
-     * What lies on the device is classified by data class (INVARIANTEN.md,
+     * What lies on the device is classified by data class (`INVARIANTEN.md`,
      * „Daten auf dem Gerät“). A new compartment must be classified there before
      * this test is green again.
      */

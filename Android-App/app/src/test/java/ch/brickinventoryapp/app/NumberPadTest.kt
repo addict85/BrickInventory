@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * Where a number belongs, the number pad appears.
  *
  * ── How to recognize a number field ──────────────────────────────────────────
  *
- * Not by the label — „Teilenummer" sounds like a number and is
- * „3001pb01", „Figurennummer" is „sw0001". A number pad would make
+ * Not by the label — „Teilenummer“ sounds like a number and is
+ * „3001pb01“, „Figurennummer“ is „sw0001“. A number pad would make
  * both unusable.
  *
  * But by the field sending its input through one of the filters from
@@ -42,7 +42,7 @@ import ch.brickinventoryapp.testing.Sources
  *
  *   NumberPadTest > whoever filters numbers also shows the number pad
  *   NumberPadTest > the price comparison takes digits and hyphen
- *   NumericInputTest   > kein Zahlenfeld steht ohne Tastaturwahl da
+ *   NumericInputTest   > no number field stands without a keyboard choice
  *
  * I had expected TWO. The third was no chance hit but the
  * actual find of the counter-check: the rule already existed, since 22.09.,
@@ -202,8 +202,8 @@ class NumberPadTest {
      * This rule says something UNCONDITIONALLY: this one field IS a number field,
      * because that has been decided. No rule can know that
      * that recognizes fields only by their construction — the same gap that
-     * NumericInputTest already closes with „every set number field takes filter and
-     * number pad".
+     * NumericInputTest already closes with „every set number field takes filter and number pad“
+     * .
      *
      * Plus the search key, which nobody else says anything about.
      */

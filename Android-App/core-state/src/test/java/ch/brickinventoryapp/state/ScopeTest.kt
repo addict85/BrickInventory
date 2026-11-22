@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.state
 
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AccountSelection
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.state.ui.Scope
 import ch.brickinventoryapp.state.ui.FilterStore
+import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.state.ui.ScopeService
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -15,19 +17,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The Blickfeld service — account filter, storage filter, household accounts — run
  * against an in-memory store and a test server.
  *
  * Counter-checks (measured 28.10.2026, kotlinc against Blickfeld.kt):
- *   A  in loadMembers() the fallback to ALL removed → red „ein Filter auf
- *      ein Konto, das nicht mehr dazugehört, fällt auf alle zurück“
- *   B  in loadFilter() taking over the storage filters removed → red „die
- *      gemerkten Filter kommen aus der Ablage“
- *   C  in loginBegins() `store.forgetAll()` removed → red „eine
- *      Anmeldung beginnt mit allen Konten“
+ *   A  in loadMembers() the fallback to ALL removed → red „ein Filter auf ein Konto, das nicht mehr dazugehört, fällt auf alle zurück“
+ *   B  in loadFilter() taking over the storage filters removed → red „die gemerkten Filter kommen aus der Ablage“
+ *   C  in loginBegins() `store.forgetAll()` removed → red „eine Anmeldung beginnt mit allen Konten“
  */
 class ScopeTest {
 
@@ -53,7 +51,7 @@ class ScopeTest {
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-blick-${System.nanoTime()}").apply { mkdirs() }
         val api = TestApi.forTarget(server)
         store = Store()
-        glance = Scope(store, testHouseholdRepository(api), testPartsRepository(api))
+        glance = ScopeService(store, testHouseholdRepository(api), testPartsRepository(api))
     }
 
     @After

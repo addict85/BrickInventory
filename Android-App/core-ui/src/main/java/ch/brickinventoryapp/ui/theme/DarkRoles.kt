@@ -68,7 +68,7 @@ data class BrickDecorColors(val studs: Long, val slate: Long, val onSlate: Long)
 
 /**
  * The brick decoration in the dark variant of „brick“, as with [data-dunkel] on
- * the web (themes/brick.css): studs --b400, slate tile --b600 with text
+ * the web (`themes/brick.css`): studs --b400, slate tile --b600 with text
  * --auf-primaer. In light mode they're the same tokens from DesignTokens.kt; hardcoded,
  * the light tones stayed in place even in the dark theme.
  */

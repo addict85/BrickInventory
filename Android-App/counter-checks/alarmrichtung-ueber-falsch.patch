@@ -1,6 +1,6 @@
 Gegenprobe: Die Richtung „über“ schreibt nicht das Wort des Servers
-Modul: core-model
-Test: ch.brickinventoryapp.model.AccountSelectionTest
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.AccountSelectionTest
 Rot: the direction reads and writes the server's words
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Alarmrichtung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Alarmrichtung.kt

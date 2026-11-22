@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.errorTextToCode
 import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.data.repository.errorTextToCode
+import ch.brickinventoryapp.resources.R
 
 /**
  * Which text resource belongs to which error? A dedicated, pure function
@@ -65,6 +65,12 @@ fun failed(f: Outcome.Failure): Operation.Failed = Operation.Failed(errorMessage
 /** A fetch as [Load]; the store's state goes along, so „offline“ stays visible. */
 fun <T> Outcome<T>.loadAs(): Load<T> = when (this) {
     is Outcome.Success -> Load.Data(data, state)
+    is Outcome.Failure -> loadError(this)
+}
+
+/** Only whether a side fetch worked, for a `…Fetch` field next to the data it fills. */
+fun Outcome<*>.fetched(): Load<Unit> = when (this) {
+    is Outcome.Success -> Load.Data(Unit, state)
     is Outcome.Failure -> loadError(this)
 }
 

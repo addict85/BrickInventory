@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Every text stands in BOTH languages, and no text stands in the source.
@@ -43,7 +43,7 @@ class StringResourceParityTest {
         }
     }
 
-    /** Name → Mengenklassen („one", „other", …) einer `<plurals>`. */
+    /** Name → quantity classes ("one", "other", …) of a `<plurals>`. */
     private fun quantityShapes(file: String): Map<String, Set<String>> =
         Regex("""<plurals name="([^"]+)">(.*?)</plurals>""", RegexOption.DOT_MATCHES_ALL)
             .findAll(File(Sources.res, "$file").readText())
@@ -121,7 +121,7 @@ class StringResourceParityTest {
      *
      * `every text is in both language files` compares NAMES. The ten
      * texts of the price alert section stood dutifully in both files — only
-     * the German one carried the same English sentence; the German app showed „rises above".
+     * the German one carried the same English sentence; the German app showed „rises above“.
      *
      * The error is not the forgetting but its form: whoever creates a new
      * text copies the block into the second file — and then does not
@@ -132,15 +132,15 @@ class StringResourceParityTest {
      * ── Why a list and not a heuristic ───────────────────────────────────────
      *
      * RE-MEASURED, after the translation 30 entries still stood the same in both
-     * files, and all 30 rightly: „Sets", „Scan", „OK", „Details",
+     * files, and all 30 rightly: „Sets“, „Scan“, „OK“, „Details“,
      * format templates like `×%1${DOLLAR}d`, the address in the placeholder. A
-     * heuristic („at least two real words") would have found eight of the ten
+     * heuristic („at least two real words“) would have found eight of the ten
      * alert texts and in return wrongly reported `app_name` and `monitoring_title`
      * — so both wrong: incomplete AND loud.
      *
      * The list is instead a claim that every entry carries
-     * individually: „this text reads the same in both languages, and that is
-     * intended". New texts do not get in by themselves — that is exactly the
+     * individually: „this text reads the same in both languages, and that is intended“
+     * . New texts do not get in by themselves — that is exactly the
      * purpose. And as with `allowed` further below the test checks the list
      * itself too: an entry that no longer applies is thrown out instead of
      * staying as an old decision that nobody looks at any more.
@@ -175,13 +175,13 @@ class StringResourceParityTest {
             // placeholders and punctuation — translation happens in the <plurals>.
             "partslist_summary", "csv_upload_result",
             // Added with the voucher import (piece 3): also a
-            // pure frame, „%1$s, %2$s". The two pieces in it are the
+            // pure frame, „%1$s, %2$s“. The two pieces in it are the
             // EXISTING plural forms of the CSV imports (csv_upload_new,
             // csv_upload_updated) — translation happens there.
             "vouchers_import_done",
-            // The response of the balance query: „%1$s: %2$s" — number and
+            // The response of the balance query: „%1$s: %2$s“ — number and
             // amount, no own word. Nothing in it is translated, and the
-            // amount comes formatted from LEGO or from „%.2f %s".
+            // amount comes formatted from LEGO or from „%.2f %s“.
             "vouchers_balance_done",
             // „Filter“ is also in German the word for the button and the sheet.
             "filter_button", "filter_title",
@@ -233,18 +233,18 @@ class StringResourceParityTest {
      *
      * The `common_` names already exist — `common_delete`, `common_cancel`,
      * `common_quantity`, `common_back`, `common_condition`. Whoever created them
-     * has already made the decision „this is ONE text". It was just not
+     * has already made the decision „this is ONE text“. It was just not
      * carried through: RE-MEASURED, sixteen further names stood next to them
-     * with the same word in BOTH languages — five times „Löschen",
-     * five times „Abbrechen", four times „Anzahl", twice „Zurück".
+     * with the same word in BOTH languages — five times „Löschen“,
+     * five times „Abbrechen“, four times „Anzahl“, twice „Zurück“.
      *
      * What that costs is not the space but the drifting apart: whoever changes
-     * „Anzahl" to „Menge" changes it in one place, and afterwards
+     * „Anzahl“ to „Menge“ changes it in one place, and afterwards
      * the same field is called differently in the parts tab than in the figures tab. Exactly that
      * should not happen with two UIs that should look the same.
      *
-     * Deliberately ONLY against `common_`: „two names with the same value" alone would be
-     * too coarse — `login_title` and `login_button` are both called „Anmelden" and
+     * Deliberately ONLY against `common_`: „two names with the same value“ alone would be
+     * too coarse — `login_title` and `login_button` are both called „Anmelden“ and
      * may change independently. The `common_` name is the sign that
      * someone explicitly wanted the commonality.
      */
@@ -334,7 +334,7 @@ class StringResourceParityTest {
             for (k in en.keys.sorted()) {
                 if (k == g || k.startsWith("common_")) continue
                 // The same in BOTH languages. Comparing only English
-                // would find accidental homophones („Sets"/„Sets"), which
+                // would find accidental homophones („Sets“/„Sets“), which
                 // differ in German.
                 if (en[k] == en[g] && de[k] == de[g]) double += "$k = $g (\"${en[g]}\")"
             }

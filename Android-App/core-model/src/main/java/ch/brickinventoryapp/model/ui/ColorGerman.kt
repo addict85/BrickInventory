@@ -2,7 +2,7 @@ package ch.brickinventoryapp.model.ui
 
 /**
  * Color names from Rebrickable in German — the same rule as colorName() of the web app
- * (public/i18n.js): the names stay English in the data (BrickLink needs them),
+ * (`public/i18n.js`): the names stay English in the data (BrickLink needs them),
  * only the display is translated, word by word, so that new colors become readable
  * too. Unknown words stay. The vocabulary is compared with the web app by
  * ColorGermanTest.

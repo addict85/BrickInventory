@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.app.ui.components
 
 import androidx.compose.foundation.rememberScrollState
-import ch.brickinventoryapp.ui.theme.windowSurface
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -10,12 +9,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.theme.windowSurface
 
 /**
  * The confirmation before turning on user CAs. Cancel is the default

@@ -1,12 +1,13 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.finances.ui.viewmodel.voucherExportAddress
-import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
+import ch.brickinventoryapp.data.util.PDF_CONFIDENTIAL_FOLDER
+import ch.brickinventoryapp.data.util.cleanUpConfidentialPdfs
+import ch.brickinventoryapp.data.util.pdfStore
 import ch.brickinventoryapp.finances.ui.viewmodel.pdfMaySavedBecome
 import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
-import ch.brickinventoryapp.data.util.PDF_CONFIDENTIAL_FOLDER
-import ch.brickinventoryapp.data.util.pdfStore
-import ch.brickinventoryapp.data.util.cleanUpConfidentialPdfs
+import ch.brickinventoryapp.finances.ui.viewmodel.voucherExportAddress
+import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
+import ch.brickinventoryapp.testing.Sources
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -14,7 +15,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * A voucher PDF (number and PIN) never lands on disk: the

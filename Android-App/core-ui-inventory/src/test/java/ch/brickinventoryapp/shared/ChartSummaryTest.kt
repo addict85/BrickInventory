@@ -2,21 +2,20 @@ package ch.brickinventoryapp.shared
 
 import ch.brickinventoryapp.contract.ChartPoint
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.shared.ui.chartSummary
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import ch.brickinventoryapp.shared.ui.chartSummary
 
 /**
  * The summary that PortfolioChart reads out as contentDescription.
  *
  * Counter-checks (measured 28.10., kotlinc against a copy of
  * shared/ui/ChartSummary.kt):
- *   A  the server's figure bypassed (always computed itself) → red „die
- *      Veraenderung des Servers geht vor"
+ *   A  the server's figure bypassed (always computed itself) → red „die Veraenderung des Servers geht vor“
  *   B  `of` taken from the first point instead of the first label → red
- *      „the period comes from the outermost labels"
- *   C  threshold `< 2` → `< 1` → red „a single point is not a history"
+ *      „the period comes from the outermost labels“
+ *   C  threshold `< 2` → `< 1` → red „a single point is not a history“
  */
 class ChartSummaryTest {
 

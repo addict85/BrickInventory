@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.PartsValuationResponse
+import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.SetsResponse
 import ch.brickinventoryapp.contract.ValuationResponse
 import ch.brickinventoryapp.contract.present
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.model.json.BrickJson
 
 /**
  * Client-side API contract for the price history and the valuation.
@@ -228,7 +228,7 @@ class PriceHistorySerializationTest {
         assertEquals(2, part.acquisitions.size)
         assertEquals(listOf(Condition.NEW, Condition.USED), part.conditions)
         // Quantity 2 in ONE row — two entries on the same day in the same
-        // condition are merged by the server (utils/acquisitions.ts).
+        // condition are merged by the server (`utils/acquisitions.ts`).
         assertEquals(2, part.acquisitions[0].quantity)
         val sum = part.acquisitions.sumOf { it.totalAvg!!.toDouble() }
         assertEquals(part.displayValue!!.toDouble(), sum, 0.0001)

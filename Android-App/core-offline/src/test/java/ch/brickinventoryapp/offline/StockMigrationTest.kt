@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.local.StockKind
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.offline.room.InventoryDatabase
-import ch.brickinventoryapp.offline.room.RoomOutbox
 import ch.brickinventoryapp.offline.room.RoomInventory
+import ch.brickinventoryapp.offline.room.RoomOutbox
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

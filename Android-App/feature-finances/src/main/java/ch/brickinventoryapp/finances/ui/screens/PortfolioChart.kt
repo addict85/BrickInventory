@@ -1,9 +1,5 @@
 package ch.brickinventoryapp.finances.ui.screens
 
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.theme.LocalStatusColors
-import ch.brickinventoryapp.ui.theme.LocalChartColors
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -14,20 +10,24 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import ch.brickinventoryapp.model.domain.ChartAxis
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.PricePoint
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.chartSummary
+import ch.brickinventoryapp.ui.components.SegmentChoice
+import ch.brickinventoryapp.ui.theme.LocalChartColors
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtPercent
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.SegmentChoice
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

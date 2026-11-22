@@ -19,6 +19,8 @@ android {
     namespace = "ch.brickinventoryapp.core.offline"
     // The Room tests run under Robolectric and read the resources.
     testOptions.unitTests.isIncludeAndroidResources = true
+    // Room in memory for the tests of core-data, which may not see the database itself.
+    testFixtures.enable = true
 }
 
 dependencies {
@@ -32,11 +34,10 @@ dependencies {
     implementation(libs.sqlcipher.android)
     ksp(libs.androidx.room.compiler)
 
-    testImplementation(project(":core-testing"))
+    testFixturesImplementation(libs.androidx.room.runtime)
+    testFixturesImplementation(libs.kotlinx.coroutines.android)
     // The tests build server responses as core-data maps them; the store itself does not know them.
     testImplementation(project(":core-contract"))
-    // Sync and repositories against the real Room store (InventoryDatabaseTest, WithoutNetworkFilterTest).
-    testImplementation(project(":core-data"))
     // Room-Tests laufen unter Robolectric (StockMigrationTest).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

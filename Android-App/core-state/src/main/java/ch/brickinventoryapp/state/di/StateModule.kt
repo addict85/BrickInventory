@@ -1,29 +1,29 @@
 package ch.brickinventoryapp.state.di
 
+import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.model.ui.ScrollStorage
+import ch.brickinventoryapp.session.FilterSource
+import ch.brickinventoryapp.session.LogoutProcess
+import ch.brickinventoryapp.session.WarmUp
+import ch.brickinventoryapp.state.ui.CollectionWarmUp
+import ch.brickinventoryapp.state.ui.FilterStore
+import ch.brickinventoryapp.state.ui.InitialObserver
+import ch.brickinventoryapp.state.ui.Logout
+import ch.brickinventoryapp.state.ui.OutboxNotifier
+import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.state.ui.ScopeFilterStore
+import ch.brickinventoryapp.state.ui.ScopeService
+import ch.brickinventoryapp.state.ui.viewmodel.AppMessages
+import ch.brickinventoryapp.state.ui.viewmodel.AppTexts
+import ch.brickinventoryapp.state.ui.viewmodel.AreaFilter
+import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
+import ch.brickinventoryapp.state.ui.viewmodel.Messages
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import ch.brickinventoryapp.state.ui.Logout
-import ch.brickinventoryapp.state.ui.FilterStore
-import ch.brickinventoryapp.state.ui.CollectionWarmUp
-import ch.brickinventoryapp.state.ui.ScopeFilterStore
-import ch.brickinventoryapp.state.ui.viewmodel.AppTexts
-import ch.brickinventoryapp.state.ui.viewmodel.Texts
-import ch.brickinventoryapp.session.LogoutProcess
-import ch.brickinventoryapp.session.WarmUp
-import ch.brickinventoryapp.session.FilterSource
-import ch.brickinventoryapp.state.ui.InitialObserver
-import ch.brickinventoryapp.state.ui.OutboxNotifier
-import ch.brickinventoryapp.state.ui.Scope
-import ch.brickinventoryapp.state.ui.ScopeService
-import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.model.ui.ScrollStorage
-import ch.brickinventoryapp.state.ui.viewmodel.AppMessages
-import ch.brickinventoryapp.state.ui.viewmodel.AreaFilter
-import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
-import ch.brickinventoryapp.state.ui.viewmodel.Messages
 
 /** Texts, file access and filter store of the shared presentation layer. */
 @Module

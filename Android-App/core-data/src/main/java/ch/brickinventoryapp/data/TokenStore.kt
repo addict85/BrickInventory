@@ -8,16 +8,17 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import ch.brickinventoryapp.data.cache.CacheOwner
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.util.LockWipe
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.DeviceLock
-import ch.brickinventoryapp.model.util.LockWipe
 import ch.brickinventoryapp.security.TokenEncryption
 import ch.brickinventoryapp.security.VaultFinding
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.security.pinKey
 import ch.brickinventoryapp.security.readPatient
 import ch.brickinventoryapp.security.readToken
-import ch.brickinventoryapp.security.pinKey
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,14 +32,13 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.security.MessageDigest
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 /**
  * Server, token, origin and generation of the signed-in account including the
@@ -80,7 +80,7 @@ class TokenStore @Inject constructor(
         val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
         /** Plaintext of older versions, like [SERVER_URL]. */
         val TOKEN_ORIGIN = stringPreferencesKey("token_herkunft")
-        /** The server that issued the token (NetworkPolicy.herkunft); it goes only there. */
+        /** The server that issued the token (NetworkPolicy's origin); it goes only there. */
         val TOKEN_ORIGIN_SECRET = stringPreferencesKey("token_herkunft_geheim")
         /** Plaintext of older versions: taken over once into [SIGNED_IN_SECRET] (loggedInAt). */
         val SIGNED_IN_AT = longPreferencesKey("angemeldet_am")

@@ -1,63 +1,54 @@
 package ch.brickinventoryapp.account
 
-import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.errorMessage
 
 /**
  * Settings and household, run against a PathServer with no network.
  *
  * Counter-checks (measured on Oct 28, 2026, kotlinc against SettingsViewModel.kt
  * and HouseholdViewModel.kt):
- *   A  the check for > 0 removed from changeAlarmThreshold() → red "eine
- *      Schwelle von null geht nicht hinaus"
- *   B  `alertsNew()` removed from alarmLock() → red "ein geänderter Alarm lädt
- *      die Übersicht nach"
- *   C  the old name left empty in renameLocation() → red "ein umbenannter
- *      Lagerort heisst auch an den Sets in der Ablage neu" ("Kiste" stayed)
+ *   A  the check for > 0 removed from changeAlarmThreshold() → red "eine Schwelle von null geht nicht hinaus"
+ *   B  `alertsNew()` removed from alarmLock() → red "ein geänderter Alarm lädt die Übersicht nach"
+ *   C  the old name left empty in renameLocation() → red "ein umbenannter Lagerort heisst auch an den Sets in der Ablage neu" ("Kiste" stayed)
  *   D  saveSettings() only pulling the sets along → red "eine andere Währung …"
- *   E  the household accounts not reloaded in accountsChanged() → red "eine
- *      eingelöste Einladung lädt Status und Haushaltskonten"
- *   F  the password not sent in the repository → red "eine eingelöste
- *      Einladung …" (body without password)
- *   G  `passwordWrong` not set in redeemHouseholdInvite() → red "ein
- *      falsches Passwort beim Einlösen markiert das Feld"
- *   H  the lockout branch removed from redeemError() → red "nach zu
- *      vielen Fehlversuchen …" ("fehler" came instead of the own sentence)
- *   I  `faktor_code` not in the body in the repository → red "bei
- *      aktivem zweitem Faktor geht dessen Code …"
+ *   E  the household accounts not reloaded in accountsChanged() → red "eine eingelöste Einladung lädt Status und Haushaltskonten"
+ *   F  the password not sent in the repository → red "eine eingelöste Einladung …" (body without password)
+ *   G  `passwordWrong` not set in redeemHouseholdInvite() → red "ein falsches Passwort beim Einlösen markiert das Feld"
+ *   H  the lockout branch removed from redeemError() → red "nach zu vielen Fehlversuchen …" ("fehler" came instead of the own sentence)
+ *   I  `faktor_code` not in the body in the repository → red "bei aktivem zweitem Faktor geht dessen Code …"
  *   J  `r.data.active` → `false` in checkSecondFactor() → red
  *      "bei aktivem zweitem Faktor …" (code field timed out)
- *   K  `factorNeeded` not set in the error branch → red "verlangt
- *      der Server den Code …"
+ *   K  `factorNeeded` not set in the error branch → red "verlangt der Server den Code …"
  *   L  the success message removed from saveUserDefaultCondition() →
  *      red "the default condition reports the saving" (message timed out)
  */

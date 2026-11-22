@@ -1,35 +1,41 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.data.RightsSignal
-import ch.brickinventoryapp.data.SessionExpiredSignal
-import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.contract.AppThemeResponse
+import ch.brickinventoryapp.contract.MeResponse
+import ch.brickinventoryapp.contract.StartupStatus
+import ch.brickinventoryapp.contract.TokenInfo
+import ch.brickinventoryapp.contract.User
+import ch.brickinventoryapp.data.RightsSignal
+import ch.brickinventoryapp.data.SecondFactorRequired
+import ch.brickinventoryapp.data.SessionExpiredSignal
+import ch.brickinventoryapp.data.SessionStore
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.FakeApi
+import ch.brickinventoryapp.data.testing.StorageSessionStore
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.AccountSettings
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.session.AccountValues
-import ch.brickinventoryapp.session.Session
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.StateFlow
-import ch.brickinventoryapp.contract.MeResponse
-import ch.brickinventoryapp.contract.StartupStatus
-import ch.brickinventoryapp.contract.User
-import ch.brickinventoryapp.contract.TokenInfo
-import ch.brickinventoryapp.session.tokenEndsSoon
-import java.time.Instant
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.AccountValues
 import ch.brickinventoryapp.session.LogoutProcess
 import ch.brickinventoryapp.session.SessionService
 import ch.brickinventoryapp.session.WarmUp
+import ch.brickinventoryapp.session.testing.testSession
+import ch.brickinventoryapp.session.tokenEndsSoon
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -46,13 +52,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.StorageSessionStore
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.model.ui.Message
+import java.time.Instant
 
 /**
  * SessionService put to the test: signing out on 401 and on a too-old sign-in,
@@ -68,13 +68,11 @@ import ch.brickinventoryapp.model.ui.Message
  *   anmeldung-ohne-abbruch          in sequenceLogin `collect` instead of `collectLatest` and the
  *                                   steps in `area` instead of the sign-in's own scope → red
  *                                   „eine späte Antwort des alten Kontos …“ (CHF instead of USD)
- *   waehrung-zurueckgespiegelt      in launch() restored `sitzung.state.map { it.currency }…
- *                                   collect { prefs.saveCurrency(it) }` → red „Währung und Design
- *                                   kommen aus der Ablage …“ (one write instead of none)
+ *   waehrung-zurueckgespiegelt      in launch() restored `session.state.map { it.currency }…
+ *                                   collect { prefs.saveCurrency(it) }` → red „Währung und Design kommen aus der Ablage …“ (one write instead of none)
  *   ablauf-ohne-hinweis             the loginExpiresSoon() check in login() removed → red
  *                                   „a sign-in near its end asks …“ (no notification)
- *   server-ende-ignoriert           tokenEndsSoon(…) removed from that check → red „a server end
- *                                   within a week …“
+ *   server-ende-ignoriert           tokenEndsSoon(…) removed from that check → red „a server end within a week …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionServiceTest {
@@ -90,7 +88,7 @@ class SessionServiceTest {
     }
 
     /** Currency and theme from the same store, like StoreAccountValues on the device. */
-    private val session = Session(object : AccountValues {
+    private val session = testSession(object : AccountValues {
         override val currency: StateFlow<CurrencyCode> = store.currencyState
         override val design: StateFlow<Design> = store.design
         override fun setCurrency(w: CurrencyCode) { store.currencyState.value = w }

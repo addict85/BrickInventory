@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.finances.ui.pdf
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.os.ParcelFileDescriptor
 import android.system.Os
 import android.system.OsConstants
+import ch.brickinventoryapp.data.DownloadFailed
 import ch.brickinventoryapp.data.util.INSTRUCTION_IN_STORAGE_UNTIL
 import ch.brickinventoryapp.data.util.InstructionStore
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File
@@ -14,20 +16,18 @@ import java.io.InputStream
 import java.io.InterruptedIOException
 import java.net.SocketException
 import java.net.UnknownHostException
-import ch.brickinventoryapp.data.DownloadFailed
-import ch.brickinventoryapp.model.ui.ErrorClass
 
 /**
  * Where the viewer reads from. An interface, so that the ViewModel can be
  * checked without a device; [open] renders the pages, printing and downloading read [inbox].
  */
-interface PdfSource : Closeable {
+internal interface PdfSource : Closeable {
     fun open(): ParcelFileDescriptor
     fun inbox(): InputStream
 }
 
 /** How far the viewer has got; errors carry the cause's text or a [reason]. */
-sealed class PdfLoadState {
+internal sealed class PdfLoadState {
     data class Downloading(val pct: Int, val bytes: Long, val total: Long) : PdfLoadState()
     data object Rendering : PdfLoadState()
     data class Ready(val source: PdfSource, val pageCount: Int) : PdfLoadState()
@@ -52,13 +52,13 @@ internal fun pdfErrorClass(e: Throwable): ErrorClass {
 }
 
 /** Error without its own text; the UI chooses the sentence in the app's language. */
-enum class PdfError { FOREIGN_HOST, DOWNLOAD, UNKNOWN }
+internal enum class PdfError { FOREIGN_HOST, DOWNLOAD, UNKNOWN }
 
 /**
  * Holds the source for as long as the viewer stands. If it only arrives after leaving
  * (the download was still running), it is closed right away instead of living until the process ends.
  */
-class PdfHolder : Closeable {
+internal class PdfHolder : Closeable {
     private var source: PdfSource? = null
     private var too = false
 

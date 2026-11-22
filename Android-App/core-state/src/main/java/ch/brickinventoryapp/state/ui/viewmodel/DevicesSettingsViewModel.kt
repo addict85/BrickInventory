@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.state.ui.viewmodel
 
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import ch.brickinventoryapp.data.cache.PreviewStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AlarmPlanner
 import ch.brickinventoryapp.data.DevicesSettings
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PrewarmNetwork
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.data.cache.PreviewStore
 import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.resources.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch

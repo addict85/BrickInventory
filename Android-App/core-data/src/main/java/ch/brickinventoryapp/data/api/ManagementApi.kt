@@ -12,6 +12,7 @@ import ch.brickinventoryapp.contract.CsvImportErgebnis
 import ch.brickinventoryapp.contract.GenericAdminResponse
 import ch.brickinventoryapp.contract.JobsResponse
 import ch.brickinventoryapp.contract.ProtokollResponse
+import ch.brickinventoryapp.contract.StartupStatus
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -19,10 +20,9 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
-import retrofit2.http.Part
-import ch.brickinventoryapp.contract.StartupStatus
 
 /**
  * Operation of the server and data maintenance: CSV import, log, startup state,
@@ -48,8 +48,8 @@ interface ManagementApi {
     suspend fun importMinifigsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // The wishlist does NOT lie under an own old router like sets,
-    // parts and minifigures, but completely in routes/api_v1/wanted.ts —
-    // hence its import stands there and not under api/v1/merkliste/.
+    // parts and minifigures, but completely in `routes/api_v1/wanted.ts` —
+    // hence its import stands there and not under the wishlist routes.
     @Multipart
     @POST("api/v1/wanted/import/csv")
     suspend fun importWantedCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>

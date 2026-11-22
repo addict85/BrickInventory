@@ -7,11 +7,10 @@ import org.junit.Test
  * Phone at the bottom, from 600 dp window width on the left as a side bar.
  *
  * Counter-checks (measured on Oct 28, kotlinc against ui/Navigationsart.kt):
- *   A  `>=` replaced by `>` → red: „exactly at the threshold the side bar appears"
- *   B  threshold set to 840 → red: the same check and „ein kleines Tablet"
+ *   A  `>=` replaced by `>` → red: „exactly at the threshold the side bar appears“
+ *   B  threshold set to 840 → red: the same check and „ein kleines Tablet“
  *   C  LARGE_WIDTH_DP at 600 → red „two columns only from 840 dp“
- *   D  `>` instead of `>=` in listAndDetail() → red „Liste und
- *      Detail nebeneinander ab 840 dp“
+ *   D  `>` instead of `>=` in listAndDetail() → red „Liste und Detail nebeneinander ab 840 dp“
  */
 class NavigationModeTest {
 

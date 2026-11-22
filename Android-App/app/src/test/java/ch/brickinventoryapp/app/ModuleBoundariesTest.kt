@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.app
 
-import java.time.LocalDate
+import ch.brickinventoryapp.buildlogic.edges.ModuleEdge
+import ch.brickinventoryapp.buildlogic.edges.ModuleEdges
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.buildlogic.edges.ModuleEdge
-import ch.brickinventoryapp.buildlogic.edges.ModuleEdges
-import ch.brickinventoryapp.testing.Sources
+import java.time.LocalDate
 
 /**
  * The module boundaries, read from settings.gradle.kts and the build.gradle.kts:
@@ -19,10 +19,8 @@ import ch.brickinventoryapp.testing.Sources
  * Counter-checks:
  *   A  feature-collection: `implementation(project(":feature-parts"))` → red
  *      „feature-collection hängt an feature-parts“
- *   B  core-model: jvm.library replaced by android.library → red „core-model
- *      ist kein reines Kotlin-Modul“
- *   C  core-data: `implementation(project(":core-ui"))` → red „Schichtung
- *      der Kernmodule: core-data hängt an [core-ui]“
+ *   B  core-model: jvm.library replaced by android.library → red „core-model ist kein reines Kotlin-Modul“
+ *   C  core-data: `implementation(project(":core-ui"))` → red „Schichtung der Kernmodule: core-data hängt an [core-ui]“
  *   D  include(":feature-management") deleted from settings.gradle.kts → red
  *      “every module folder is included”
  *   E  in dependencyResolutionManagement again `google()` → red
@@ -40,6 +38,8 @@ import ch.brickinventoryapp.testing.Sources
  *   H a `PdfRenderer(` in PdfPage.kt →
  *      red “PdfRenderer lives only in the isolated render service“; likewise
  *      counter-checks/pdf-bitmap-aus-dem-renderer.patch (again `Bitmap.CREATOR.createFromParcel`)
+ *   M  `internal` removed from `class SetsRepositoryImpl` → red „SetsRepositoryImpl ist öffentlich“ (layering of the core modules); likewise an import of data.parts.PartsRepositoryImpl
+ *      in collection/SetsRepositoryImpl.kt → red „kennt parts.PartsRepositoryImpl“
  *   L  counter-checks/netz-haengt-an-ablage.patch: core-network includes Room →
  *      red „core-network hängt an Ablage oder DI“ (layering of the core modules);
  *      only CI measures it, locally there is no Gradle
@@ -60,7 +60,7 @@ import ch.brickinventoryapp.testing.Sources
  *   T  counter-checks/bereich-kennt-bereich.patch: feature-parts includes feature-catalog →
  *      red „feature-parts hängt an feature-catalog“
  *   R  counter-checks/ui-kennt-ansicht.patch: a core-ui file imports a view from
- *      model.fach → red „core-ui kennt Fachmodelle“ (layering of the core modules)
+ *      model.domain → red „core-ui kennt Fachmodelle“ (layering of the core modules)
  *   S  counter-checks/ui-neuer-bildschirm.patch: a new file in core-ui/ui/screens →
  *      red „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (layering …)
  *   O  counter-checks/fremder-paketstamm.patch: feature-parts gets a file in the package
@@ -73,8 +73,7 @@ import ch.brickinventoryapp.testing.Sources
  *      red „layering of the core modules: core-session hängt an core-ui“
  *   Z  counter-checks/konto-haengt-an-tresor.patch: feature-account includes core-security again →
  *      red „feature-account hängt an core-security, das unter dem Zustand liegt“ (no area depends …)
- *   AA core-state switches on brickinventory.android.compose again → red „core-state liegt unter
- *      der Oberfläche und schaltet Compose ein“ (layering …; measured with kotlinc, in Gradle
+ *   AA core-state switches on brickinventory.android.compose again → red „core-state liegt unter der Oberfläche und schaltet Compose ein“ (layering …; measured with kotlinc, in Gradle
  *      AndroidComposeConvention already aborts); counter-checks/zustand-darf-oberflaeche.patch → red “the edge rule …”
  *   AB counter-checks/bereichs-viewmodel-im-zustand.patch: a ViewModel of only one area in core-state
  *      → red „… liegt in core-state ohne Grund in ModuleEdges.stateViewModels“ (layering …)
@@ -95,7 +94,7 @@ class ModuleBoundariesTest {
         dependencies(build).map { ModuleEdge(name, it.configuration, it.target) }
 
     private fun dependencies(build: String): List<Dependency> =
-        Regex("""^\s*(\w+)\(project\(":([\w-]+)"\)\)""", RegexOption.MULTILINE).findAll(build)
+        Regex("""^\s*(\w+)\((?:testFixtures\()?project\(":([\w-]+)"\)\)""", RegexOption.MULTILINE).findAll(build)
             .map { Dependency(it.groupValues[1], it.groupValues[2]) }.toList()
 
     /** What applies in the shipped code; test configurations do not count. */
@@ -115,7 +114,7 @@ class ModuleBoundariesTest {
         val folder = module().keys
         assertTrue("Nur ${folder.size} Module gefunden — Suche veraltet?", folder.size >= 12)
         assertEquals("jeder Modulordner ist eingebunden", folder, included)
-        // Every module has its own package root (table in README.md): an import
+        // Every module has its own package root (table in `README.md`): an import
         // thus reveals the module, and no package spreads across two modules.
         val master = mapOf(
             "app" to "app", "core-model" to "model", "core-contract" to "contract", "core-network" to "network", "core-data" to "data",
@@ -128,10 +127,23 @@ class ModuleBoundariesTest {
             "feature-account" to "account", "feature-management" to "management", "core-ui-inventory" to "shared",
         )
         assertEquals("kein Stamm ist doppelt vergeben", master.size, master.values.toSet().size)
+        val wrong = filesOutsidePackageRoot(master)
+        assertTrue("Dateien außerhalb des Paketstamms ihres Moduls:\n  " + wrong.joinToString("\n  "), wrong.isEmpty())
+    }
+
+    /**
+     * The Kotlin files outside their module's package root. Test fixtures sit in a
+     * `.testing` package of their module, so a test's import names whose fixture it uses.
+     */
+    private fun inRoot(rel: String, pkg: String?, should: String?, fixtures: Boolean): Boolean =
+        should != null && pkg == rel.substringBeforeLast('/').replace('/', '.') &&
+            (pkg == should || pkg.startsWith("$should.")) && (!fixtures || pkg.endsWith(".testing"))
+
+    private fun filesOutsidePackageRoot(master: Map<String, String>): List<String> {
         val packageRow = Regex("""^package\s+([\w.]+)""", RegexOption.MULTILINE)
         val wrong = mutableListOf<String>()
         var n = 0
-        for (m in Sources.module) for (sentence in listOf("main", "test")) {
+        for (m in Sources.module) for (sentence in listOf("main", "test", "testFixtures")) {
             val basis = File(m, "src/$sentence/java")
             if (!basis.isDirectory) continue
             for (f in basis.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
@@ -139,14 +151,13 @@ class ModuleBoundariesTest {
                 val rel = f.relativeTo(basis).invariantSeparatorsPath
                 val pkg = packageRow.find(f.readText())?.groupValues?.get(1)
                 val should = master[m.name]?.let { "ch.brickinventoryapp.$it" }
-                val folderPackage = rel.substringBeforeLast('/').replace('/', '.')
-                if (should == null || pkg != folderPackage || !(pkg == should || pkg.startsWith("$should."))) {
+                if (!inRoot(rel, pkg, should, fixtures = sentence == "testFixtures")) {
                     wrong += "${m.name}/src/$sentence: $rel (package $pkg, Stamm ${should ?: "fehlt"})"
                 }
             }
         }
         assertTrue("Nur $n Kotlin-Dateien gefunden — Suche veraltet?", n >= 500)
-        assertTrue("Dateien außerhalb des Paketstamms ihres Moduls:\n  " + wrong.joinToString("\n  "), wrong.isEmpty())
+        return wrong
     }
 
     @Test
@@ -154,7 +165,7 @@ class ModuleBoundariesTest {
         val areas = module().filterKeys { it.startsWith("feature-") }
         assertTrue("Nur ${areas.size} Bereichsmodule", areas.size >= 5)
         for ((name, build) in areas) {
-            // Ohne Ausnahme: Was mehrere Bereiche zeigen, liegt in core-ui-inventory.
+            // Without exception: what several areas show lives in core-ui-inventory.
             val wrong = ModuleEdges.violations(edges(name, build))
             assertTrue(wrong.joinToString("\n"), wrong.isEmpty())
             assertTrue("$name kennt keine Kernmodule — Muster veraltet?", mainDependencies(build).any { it.startsWith("core-") })
@@ -203,11 +214,40 @@ class ModuleBoundariesTest {
         val foreign = imports.filter { Regex(""": (androidx\.room|dagger|javax\.inject|retrofit2|android\.content|ch\.brickinventoryapp\.data\.(repository|local|cache))\b""").containsMatchIn(it) }
         assertTrue("core-network importiert Ablage, Repositories, DI oder Android-Oberfläche: $foreign", foreign.isEmpty())
         checkUiWithoutDomainKnowledge()
+        checkDataAreas()
+    }
+
+    /**
+     * core-data is cut by area (catalog, collection, parts, finances, account): each shows
+     * its repositories as interfaces, the implementations are internal and only Hilt binds them.
+     * The shared kernel (repository: Outcome, fetch helpers) knows no area.
+     */
+    private fun checkDataAreas() {
+        val root = File(project, "core-data/src/main/java/ch/brickinventoryapp/data")
+        val areas = listOf("catalog", "collection", "parts", "finances", "account")
+        val importRow = Regex("""^import ch\.brickinventoryapp\.data\.(\w+)\.(\w+)""", RegexOption.MULTILINE)
+        val findings = mutableListOf<String>()
+        for (f in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val text = Sources.withoutComments(f.readText())
+            val area = f.parentFile.name
+            Regex("""^(\w+\s+)*class\s+(\w+Impl)\b""", RegexOption.MULTILINE).findAll(text)
+                .filter { "internal" !in it.value && "private" !in it.value }.forEach { findings += "${f.name}: ${it.groupValues[2]} ist öffentlich" }
+            for (m in importRow.findAll(text)) {
+                val (from, name) = m.destructured
+                if (area == "repository" && from in areas) findings += "${f.name}: der Kern kennt den Bereich $from"
+                if (area in areas && from in areas && from != area && name.endsWith("Impl")) findings += "${f.name}: kennt $from.$name"
+            }
+        }
+        val interfaces = areas.associateWith { a ->
+            File(root, a).listFiles().orEmpty().count { Regex("""^interface\s+\w+Repository\b""", RegexOption.MULTILINE).containsMatchIn(it.readText()) }
+        }
+        assertTrue("Bereiche ohne öffentliche Repository-Schnittstelle: $interfaces", interfaces.values.all { it > 0 })
+        assertTrue("Schichtung in core-data:\n  " + findings.joinToString("\n  "), findings.isEmpty())
     }
 
     /**
      * core-ui is the design system: theme and building blocks without domain knowledge. Whoever needs a domain type
-     * (model.fach) or a server model (model.data) is a domain building block
+     * (model.domain) or a server model (model.data) is a domain building block
      * and belongs in the area or in core-ui-inventory; it only formats amounts and currency.
      */
     private fun checkUiWithoutDomainKnowledge() {
@@ -228,12 +268,14 @@ class ModuleBoundariesTest {
      * Counter-checks (measured with kotlinc):
      *   counter-checks/kantenregel-ohne-testausnahme.patch: test configurations count → red here
      *   the api line deleted → red here, „Modulkanten per api …“ missing
-     *   core-ui entered in kerne["core-state"] → red here
+     *   core-ui entered in cores["core-state"] → red here
      *   counter-checks/tiefe-kerne-offen.patch: the rule for depthCores deleted → red here
  *   counter-checks/wire-format-fuer-alle.patch: the rule for wireMarker deleted → red here
      *
      *   in uiViolation `module in withoutUi &&` deleted → red here (core-navigation)
      *   counter-checks/zustand-darf-oberflaeche.patch: core-state missing in withoutUi → red here
+ *   the line `k.onlyTest && reverseTest(k)` in ModuleEdges.violations deleted → red here
+ *      (core-data testet mit core-state … missing)
      */
     @Test
     fun `the edge rule forbids area to area, wrong layering, api and core-testing in main code`() {
@@ -258,6 +300,15 @@ class ModuleBoundariesTest {
         assertEquals(emptyList<String>(), check("feature-parts", "testImplementation", "core-testing"))
         assertEquals(emptyList<String>(), check("feature-login", "implementation", "core-security"))
         assertEquals(emptyList<String>(), check("feature-account", "testImplementation", "core-security"))
+        assertEquals(emptyList<String>(), check("core-state", "testImplementation", "core-data"))
+        assertEquals(emptyList<String>(), check("core-offline", "testImplementation", "core-contract"))
+        // A test that needs the layer above belongs there; fixtures of one module only see what lies below.
+        assertEquals(listOf("core-data testet mit core-state, das auf core-data aufbaut: der Test gehört nach core-state"),
+            check("core-data", "testImplementation", "core-state"))
+        assertEquals(listOf("core-model testet mit core-contract, das auf core-model aufbaut: der Test gehört nach core-contract"),
+            check("core-model", "testImplementation", "core-contract"))
+        assertEquals(listOf("core-ui testet mit feature-parts, das auf core-ui aufbaut: der Test gehört nach feature-parts"),
+            check("core-ui", "testFixturesImplementation", "feature-parts"))
         assertEquals(emptyList<String>(), check("core-state", "testImplementation", "core-ui"))
         assertEquals(emptyList<String>(), check("app", "implementation", "feature-parts"))
         assertEquals(emptyList<String>(), check("core-data", "api", "core-model"))

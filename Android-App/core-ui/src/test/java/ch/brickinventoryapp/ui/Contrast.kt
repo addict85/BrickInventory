@@ -20,7 +20,7 @@ object Contrast {
         return (max(a, b) + 0.05) / (min(a, b) + 0.05)
     }
 
-    /** Relative Leuchtdichte einer sRGB-Farbe (0 = schwarz, 1 = weiss). */
+    /** Relative luminance of an sRGB color (0 = black, 1 = white). */
     fun luminance(argb: Int): Double {
         fun channel(value: Int): Double {
             val c = value / 255.0

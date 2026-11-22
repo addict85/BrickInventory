@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -29,14 +28,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.finances.ui.pdf.PdfSource
 import ch.brickinventoryapp.finances.ui.pdf.PagesRenderer
-import kotlin.math.roundToInt
+import ch.brickinventoryapp.finances.ui.pdf.PdfSource
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import kotlin.math.roundToInt
 
 /**
  * Minus, factor, plus — at the bottom in the middle: the header already carries back,
@@ -110,7 +110,7 @@ internal class ZoomAnchor {
     var finger: Offset? = null
     /** At which zoom the list was last measured. */
     var measuredAt = 0f
-    /** Waagerechtes Ziel, gesetzt beim Messen, eingeloest beim Platzieren. */
+    /** Horizontal target, set while measuring, redeemed while placing. */
     var pendingX: Int? = null
 }
 

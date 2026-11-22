@@ -1,42 +1,39 @@
 package ch.brickinventoryapp.state.ui.viewmodel
 
-import kotlinx.coroutines.flow.getAndUpdate
-import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
-import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.update
-import ch.brickinventoryapp.model.domain.AccountSelection
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.AccountSelection
+import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.state.ui.Scope
 import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
-import ch.brickinventoryapp.session.Session
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Notifications into the app's one channel, along with the strings they're built from. */
 interface Messages : Texts {
-    /** Null zeigt nichts. */
+    /** Null shows nothing. */
     fun show(text: String?)
 
     /** Retract an outdated notification, e.g. after a successful second scan. */
     fun acknowledge()
 }
-
-/** For tests without Hilt. */
-fun Messages(channel: MessageChannel, texts: Texts): Messages = AppMessages(channel, texts)
 
 class AppMessages @Inject constructor(
     private val channel: MessageChannel,
@@ -79,9 +76,6 @@ interface FilterChoice {
     suspend fun fetchStorageLocations()
     suspend fun ownLocationsNew()
 }
-
-/** For tests without Hilt. */
-fun FilterChoice(service: Scope, area: CoroutineScope): FilterChoice = AreaFilter(service, area)
 
 /**
  * In the app's scope: a filter that someone set is remembered, even if

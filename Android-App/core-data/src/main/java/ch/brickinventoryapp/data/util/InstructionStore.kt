@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.data.util
 
+import ch.brickinventoryapp.security.EncryptedFileSystem
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.security.StoreKey
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 import okio.blackholeSink
@@ -9,9 +12,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
-import ch.brickinventoryapp.security.StoreCipher
-import ch.brickinventoryapp.security.StoreKey
-import ch.brickinventoryapp.security.EncryptedFileSystem
 
 /** Name prefix of the instructions in the cache ([pdfStore]); `.part` after it means: download running. */
 internal const val INSTRUCTION_PREFIX = "anleitung_"

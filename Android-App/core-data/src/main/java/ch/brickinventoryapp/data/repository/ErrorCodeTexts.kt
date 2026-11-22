@@ -6,7 +6,7 @@ import ch.brickinventoryapp.resources.R
 /**
  * Server error codes with the app's own sentence, for paths without a server sentence:
  * an event stream delivers only status and body for 429, no error with text.
- * Where the server sends a sentence, its sentence applies (AppTexts.meldung); null: no own one.
+ * Where the server sends a sentence, its sentence applies (AppTexts.message); null: no own one.
  */
 fun errorTextToCode(code: ErrorCode?): Int? = when (code) {
     ErrorCode.UPLOAD_RUNNING -> R.string.err_upload_running

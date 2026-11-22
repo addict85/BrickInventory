@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.account.ui
 
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.CsvResultView
 import ch.brickinventoryapp.model.domain.CsvImportKind
+import ch.brickinventoryapp.model.domain.CsvResultView
 import ch.brickinventoryapp.model.domain.DeviceView
 import ch.brickinventoryapp.model.domain.HouseholdStatusView
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.domain.ProfileView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.update.util.UpdateDescription
 import ch.brickinventoryapp.update.util.UpdateFresh
 

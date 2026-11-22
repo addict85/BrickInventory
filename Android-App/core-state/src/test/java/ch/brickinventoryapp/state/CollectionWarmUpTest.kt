@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.state
 
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testAccountView
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testAccountView
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.StorageStore
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.state.testing.StorageStore
+import ch.brickinventoryapp.state.ui.ScopeService
 import ch.brickinventoryapp.state.ui.imageAddressesTheCollection
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -44,7 +44,7 @@ class CollectionWarmUpTest {
         try {
             val api = TestApi.forTarget(paths.server)
             val parts = testPartsRepository(api)
-            val viewport = Scope(StorageStore(), testHouseholdRepository(api), parts)
+            val viewport = ScopeService(StorageStore(), testHouseholdRepository(api), parts)
             val addresses = runBlocking {
                 for (v in listOf(ScopeFilter.View.GALLERY, ScopeFilter.View.PARTS, ScopeFilter.View.MINIFIGS)) viewport.setAccount(v, "own")
                 imageAddressesTheCollection(testSetsRepository(api), parts, testMinifigsRepository(api), testAccountView(api), viewport,

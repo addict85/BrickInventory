@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.management
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.SemanticsMatcher
@@ -11,10 +10,6 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import ch.brickinventoryapp.data.PrewarmNetwork
-import ch.brickinventoryapp.model.domain.JobStateView
-import ch.brickinventoryapp.model.domain.ScheduleView
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.screens.CacheEvents
 import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
@@ -22,6 +17,11 @@ import ch.brickinventoryapp.management.ui.screens.MonitoringState
 import ch.brickinventoryapp.management.ui.viewmodel.BackgroundUiState
 import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.model.domain.JobStateView
+import ch.brickinventoryapp.model.domain.ScheduleView
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

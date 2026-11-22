@@ -33,7 +33,9 @@ object Sources {
     val manifest: File get() = File(project, "app/src/main/AndroidManifest.xml")
 
     private fun merged(subPath: String, name: String): File {
-        val target = kotlin.io.path.createTempDirectory("bim-$name-").toFile().apply { deleteOnExit() }
+        // deleteOnExit() removes only an empty folder; each test JVM left a full copy of the sources in /tmp.
+        val target = kotlin.io.path.createTempDirectory("bim-$name-").toFile()
+        Runtime.getRuntime().addShutdownHook(Thread { target.deleteRecursively() })
         var n = 0
         for (m in module) {
             val source = File(m, subPath)

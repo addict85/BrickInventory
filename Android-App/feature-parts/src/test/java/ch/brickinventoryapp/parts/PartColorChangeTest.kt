@@ -1,7 +1,11 @@
 package ch.brickinventoryapp.parts
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -12,10 +16,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * Changing a manually entered part's color after the fact — the app side.

@@ -73,7 +73,7 @@ class OutboxStorage : Outbox {
 
     override suspend fun first(area: String) = all(area).minByOrNull { it.id }
 
-    /** Im Speicher liegt nichts in Textform, also nichts Unlesbares. */
+    /** In memory nothing is stored as text, so nothing is unreadable. */
     override suspend fun cleanUnreadable(area: String) = 0
 
     override suspend fun remove(id: Long) = item.update { l -> l.filterNot { it.second.id == id } }

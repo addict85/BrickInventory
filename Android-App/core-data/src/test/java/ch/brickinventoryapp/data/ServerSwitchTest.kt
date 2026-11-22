@@ -1,8 +1,9 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.di.RotationReason
+import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -24,7 +25,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import ch.brickinventoryapp.network.di.RotationReason
 
 /**
  * A server switch while a request hangs at the old server: the old one (A)

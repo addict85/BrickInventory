@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.management.ui.screens
 
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.model.domain.JobStatus
+import ch.brickinventoryapp.resources.R
 
 // The texts for jobs belong to the display: the UI model in core-model knows
 // no Android resources.

@@ -16,8 +16,7 @@ import org.junit.Test
  *      and „an invalid target does not overwrite a valid one“
  *   B  pickUp() with get() instead of getAndSet(null) → red „it is picked up once“
  *   C  put() also stores invalid input (`target.set(raw)` before the check) → red
- *      „an invalid target does not overwrite a valid one“ and „was keine
- *      Setnummer ist …“
+ *      „an invalid target does not overwrite a valid one“ and „was keine Setnummer ist …“
  */
 class MessageInboxTest {
 

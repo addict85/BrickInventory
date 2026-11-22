@@ -1,21 +1,24 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testVouchersRepository
+import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.finances.ui.CopyJob
 import ch.brickinventoryapp.finances.ui.VoucherPdfTarget
 import ch.brickinventoryapp.finances.ui.VoucherStep
-import ch.brickinventoryapp.finances.ui.CopyJob
-import ch.brickinventoryapp.testing.testVouchersRepository
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.finances.ui.viewmodel.inputViaMask
-import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
 import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
+import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.testing.NumbersTexts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -31,23 +34,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.text
 
 /**
  * Vouchers with a masked list: number and PIN, PDF and delete only after a
  * password (and code), the plain text only in the ViewModel. Against a test server.
  *
  * Counter-checks:
- *  A  In bestaetige() `codeNeeded = … || error.code in FACTOR_CODES` reset
+ *  A  In confirm() `codeNeeded = … || error.code in FACTOR_CODES` reset
  *     to `it.confirmation.codeNeeded` → red “revealing a PIN …”
  *     (code field does not appear).
  *  B  In verlange() the plain-text shortcut removed (always a new prompt) → red
  *     “revealing a PIN …” (copying asks again instead of copying).
  *  C  forgetPlaintext() does not clear `plaintext` → red “revealing a PIN …”.
- *  D  In bestaetige() the offline message on deleting removed (always
- *     texte.meldung) → red “offline it is not deleted …”.
+ *  D  In confirm() the offline message on deleting removed (always
+ *     texts.message) → red “offline it is not deleted …”.
  *  E  withTicket() does not attach the ticket → red “PDF and export …”.
  *  F  editVoucher() no longer takes `g.pin`, but "" instead → red
  *     “editing sends the mask …” (the PIN would be cleared or missing).

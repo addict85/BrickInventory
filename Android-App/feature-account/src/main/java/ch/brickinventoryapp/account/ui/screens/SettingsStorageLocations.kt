@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.account.ui.screens
 
-import ch.brickinventoryapp.state.ui.StorageUiState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,15 +11,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
+import ch.brickinventoryapp.model.domain.LocationEntryView
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.Section
+import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.AddDialog
 import ch.brickinventoryapp.ui.components.Prompt
-import ch.brickinventoryapp.model.domain.LocationEntryView
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
+import ch.brickinventoryapp.ui.components.Section
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 
 /**

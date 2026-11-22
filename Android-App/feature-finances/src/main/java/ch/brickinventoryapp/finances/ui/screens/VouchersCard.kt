@@ -1,44 +1,44 @@
 package ch.brickinventoryapp.finances.ui.screens
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Redeem
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.ui.Alignment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import ch.brickinventoryapp.ui.components.WithTooltip
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Redeem
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.model.domain.VoucherView
-import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.BalanceRun
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.finances.ui.VoucherStep
+import ch.brickinventoryapp.finances.ui.VoucherUiState
+import ch.brickinventoryapp.finances.ui.voucherSum
+import ch.brickinventoryapp.model.domain.VoucherView
+import ch.brickinventoryapp.model.step.StepAction
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.HintText
-import ch.brickinventoryapp.ui.components.LocalStepGuard
-import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.ui.components.PasswordPrompt
-import ch.brickinventoryapp.finances.ui.voucherSum
 import ch.brickinventoryapp.ui.components.LabelAndValue
-import ch.brickinventoryapp.ui.components.SettingsCard
+import ch.brickinventoryapp.ui.components.LocalStepGuard
+import ch.brickinventoryapp.ui.components.PasswordPrompt
 import ch.brickinventoryapp.ui.components.SecretCopyWarning
+import ch.brickinventoryapp.ui.components.SettingsCard
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.fmtMoney
 
 /**
  * Vouchers — LEGO gift cards in one's own profile, reachable as simply as possible
@@ -164,7 +164,7 @@ private fun protectedStep(): (() -> Unit) -> Unit {
     return { step -> protection.confirm(reason, StepAction.VOUCHER, step) }
 }
 
-/** Die Karten untereinander, ab Tabletbreite ([wide]) je zwei gleich hoch nebeneinander. */
+/** The cards one below the other; from tablet width ([wide]) two of equal height side by side. */
 @Composable
 private fun VoucherRaster(
     vouchers: List<VoucherView>,

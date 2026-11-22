@@ -4,7 +4,7 @@ import java.net.URLEncoder
 
 /**
  * Resolving image addresses — the same logic as thumbUrl()/imgUrl() in
- * public/js/images.js. Everything without `imageLocal` runs via the server's image proxy:
+ * `public/js/images.js`. Everything without `imageLocal` runs via the server's image proxy:
  * it delivers a small preview, brings referer fallback, unpacking and
  * negative cache against Cloudflare along, and its disk cache also fills through
  * the app.
@@ -39,7 +39,7 @@ private fun resolveImageUrl(serverUrl: String, imageLocal: String?, imageUrl: St
     return when {
         imageLocal != null -> {
             // No own toThumbPath(): imageLocal is the server's decision
-            // (resolveImageLocal() in src/images/images.ts checks whether the preview exists). For
+            // (resolveImageLocal() in `src/images/images.ts` checks whether the preview exists). For
             // the full resolution an existing `_thumb` is removed, otherwise detail
             // and zoom would show the same small preview as the tile — like fullUrl() in the web app.
             val path = if (thumb) imageLocal
@@ -73,7 +73,7 @@ private fun resolveImageUrl(serverUrl: String, imageLocal: String?, imageUrl: St
 // toThumbPath() (client-side "_thumb.jpg" construction for local paths)
 // was removed — exactly it was the cause of the error described above.
 // For local images only the server decides which file
-// is delivered (src/images/images.ts, resolveImageLocal()).
+// is delivered (`src/images/images.ts`, resolveImageLocal()).
 
 /**
  * Full resolution via the server proxy — the fallback for parts and minifigures.

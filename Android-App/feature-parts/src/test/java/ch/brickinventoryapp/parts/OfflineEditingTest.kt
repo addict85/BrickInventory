@@ -1,19 +1,26 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.testing.testWantedRepository
-import ch.brickinventoryapp.model.domain.Condition
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
 import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ReconcileOutcome
-import ch.brickinventoryapp.offline.Editing
-import ch.brickinventoryapp.offline.Slots
-import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.data.local.ServerSender
-import ch.brickinventoryapp.offline.OutboxStorage
-import ch.brickinventoryapp.offline.StorageInventory
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.data.testing.testWantedRepository
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.OutboxStorage
+import ch.brickinventoryapp.offline.Slots
+import ch.brickinventoryapp.offline.StorageInventory
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -22,33 +29,26 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlinx.coroutines.flow.first
 import java.io.File
-import java.util.Collections
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.testing.BrickApiService
 import java.net.ConnectException
 import java.net.SocketTimeoutException
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestApi
+import java.util.Collections
 
 /**
  * Editing offline from start to end: repository, outbox and sender against
  * a test server that can drop the connection on request.
  *
  * Counter-checks:
- *   A  in Offlineablage.schreibe (Fetch.kt) the branch for transient errors removed → red
+ *   A  in the store's write (Fetch.kt) the branch for transient errors removed → red
  *      “without a connection the quantity goes into the outbox” (Ergebnis.Fehler instead of buffered)
- *   B  in Offlineablage.schreibe (Fetch.kt) the check `store.waiting()` removed → red
+ *   B  in the store's write (Fetch.kt) the check `store.waiting()` removed → red
  *      “if something waits, new things go behind it” (the second change went out directly)
  *   C  in ServerSender for SetQuantity `quantity = step` instead of `quantityDelta` →
  *      red “what is sent is the step”
  *   D  in Offlineablage.refreshPaged (Fetch.kt) the empty list taken over even on an
  *      error → red “without a connection the list stays in the store”
  *   (E–I measured)
- *   E  in Offlineablage.schreibe (Fetch.kt) take a new key when buffering after the direct
+ *   E  in the store's write (Fetch.kt) take a new key when buffering after the direct
  *      attempt (`buffer(editing)`) → red “… the same key”
  *   F  in PartsRepository.deletePart back to directly `safeCall` instead of `write` →
  *      red “deleted offline …” (Ergebnis.Fehler instead of buffered)

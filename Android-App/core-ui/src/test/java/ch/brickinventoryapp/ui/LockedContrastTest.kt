@@ -6,10 +6,10 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.ui.theme.windowSurface
 import ch.brickinventoryapp.ui.theme.colorScheme
-import ch.brickinventoryapp.ui.theme.lockedColors
 import ch.brickinventoryapp.ui.theme.hasDarkVersion
+import ch.brickinventoryapp.ui.theme.lockedColors
+import ch.brickinventoryapp.ui.theme.windowSurface
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -17,7 +17,7 @@ import org.junit.Test
  * Locked buttons and dialogs in every design, light and dark: text 4.5:1 on its
  * surface, a button's surface and border 3:1 on surface and background, a dialog's
  * text 4.5:1 on the dialog surface and that surface 3:1 on the dimmed background
- * behind it. Measured beforehand in the "noppe" design: locked text 2.29:1, surface 1.28:1.
+ * behind it. Measured beforehand in the `noppe` design: locked text 2.29:1, surface 1.28:1.
  *
  * Counter-checks (measured locally, JVM):
  *   gesperrt-material-deckkraft  Material's fixed opacity (12% / 38%) → red „gesperrte Knoepfe …“

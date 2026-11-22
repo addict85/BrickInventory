@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.model.domain.LocationView
-import ch.brickinventoryapp.model.domain.LocationEntryView
-import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.LocationEntryView
+import ch.brickinventoryapp.model.domain.LocationView
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.ui.Load
 
 /*
  * The state classes live per area in ui/Zustand*.kt; here, what applies alongside
@@ -26,6 +27,8 @@ data class ScopeUiState(
      * capture, and the move path.
      */
     val householdMembers: List<MemberView> = emptyList(),
+    /** The last fetch of [householdMembers]; on failure the previous members stay. */
+    val membersFetch: Load<Unit> = Load.Data(Unit),
 )
 
 /**
@@ -38,6 +41,8 @@ data class StorageUiState(
     val modes: Map<ScopeFilter.View, String> = emptyMap(),
     /** The occupied storage locations in the Blickfeld — feeds the FILTER. */
     val locations: List<LocationView> = emptyList(),
+    /** The last fetch of [locations] or [stock]; on failure the previous lists stay. */
+    val locationsFetch: Load<Unit> = Load.Data(Unit),
     /**
      * The stock for the detail that's currently open — what's available to choose. Not [locations]
      * (the Blickfeld's occupied locations), but the owner's selectable locations; for the

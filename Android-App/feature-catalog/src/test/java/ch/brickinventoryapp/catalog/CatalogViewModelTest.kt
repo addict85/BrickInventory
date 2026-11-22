@@ -1,35 +1,40 @@
 package ch.brickinventoryapp.catalog
 
-import ch.brickinventoryapp.model.domain.CatalogSort
 import androidx.lifecycle.viewModelScope
+import ch.brickinventoryapp.catalog.ui.CatalogTarget
+import ch.brickinventoryapp.catalog.ui.WantedRequest
+import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
 import ch.brickinventoryapp.contract.CatalogSetItem
 import ch.brickinventoryapp.contract.CatalogSetsResponse
 import ch.brickinventoryapp.contract.CatalogYearVerteilungResponse
 import ch.brickinventoryapp.contract.JahrAnzahl
-import ch.brickinventoryapp.model.domain.YearCountView
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.catalog.ui.CatalogTarget
-import ch.brickinventoryapp.catalog.ui.WantedRequest
-import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.MerklisteResponse
+import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.MerkpostenAntwort
 import ch.brickinventoryapp.contract.PreisalarmRequest
 import ch.brickinventoryapp.contract.PreisalarmResponse
+import ch.brickinventoryapp.data.testing.FakeApi
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.dataOrNull
 import ch.brickinventoryapp.model.ui.errorMessage
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.testing.NumbersTexts
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -43,11 +48,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
 
 /**
  * The CatalogViewModel run: API with no network, texts as resource numbers,

@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.services
 
-import ch.brickinventoryapp.model.domain.asMoney
-import ch.brickinventoryapp.model.domain.Money
-import java.time.Instant
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.services.alarm.AlarmFetch
-import ch.brickinventoryapp.model.domain.AlarmFetchView
-import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.AlarmFetchView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.PriceAlertView
+import ch.brickinventoryapp.model.domain.asMoney
+import ch.brickinventoryapp.services.alarm.AlarmFetch
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import java.time.Instant
 import java.util.Locale
 
 /**

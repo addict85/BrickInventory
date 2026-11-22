@@ -3,8 +3,8 @@ package ch.brickinventoryapp.state.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.data.ConnectionDrop
 import ch.brickinventoryapp.data.TrustStore
-import ch.brickinventoryapp.state.ui.UserCaToggle
 import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.state.ui.UserCaToggle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 

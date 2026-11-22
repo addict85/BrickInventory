@@ -1,34 +1,34 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.Condition
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.model.domain.WantedItemView
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.selected
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import ch.brickinventoryapp.resources.R
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.util.resolveThumbUrl
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Alarm
-import ch.brickinventoryapp.ui.components.ProductImage
-import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.InfoBadge
+import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.fmtMoney
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

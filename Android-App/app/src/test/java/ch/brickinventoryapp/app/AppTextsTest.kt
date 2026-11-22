@@ -3,9 +3,9 @@ package ch.brickinventoryapp.app
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.LoginState
-import ch.brickinventoryapp.model.util.TextSource
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.ErrorCode
+import ch.brickinventoryapp.model.util.TextSource
 import ch.brickinventoryapp.state.ui.viewmodel.AppTexts
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +24,7 @@ import org.robolectric.annotation.Config
  * the app formulates itself.
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
- *   servermeldung-ohne-vorrang   the check for fehler.message removed → red “the server's sentence …”
+ *   servermeldung-ohne-vorrang   the check for failure.message removed → red “the server's sentence …”
  *   servermeldung-nach-code      the error code before the server message → red “the server's sentence …”
  */
 @RunWith(RobolectricTestRunner::class)

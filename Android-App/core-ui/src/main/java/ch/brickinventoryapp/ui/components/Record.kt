@@ -3,13 +3,13 @@ package ch.brickinventoryapp.ui.components
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -21,8 +21,8 @@ import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.Shapes
 
 /**
  * Space below the last row of a list with a capture button: button height (56) plus

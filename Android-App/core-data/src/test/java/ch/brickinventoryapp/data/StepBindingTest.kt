@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.data.account.StepBindingImpl
 import ch.brickinventoryapp.data.api.DeviceApi
-import ch.brickinventoryapp.data.repository.StepBindingImpl
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.step.KeyNonce
 import ch.brickinventoryapp.model.step.StepAction
 import ch.brickinventoryapp.model.step.StepResponse
-import ch.brickinventoryapp.testing.TestApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType

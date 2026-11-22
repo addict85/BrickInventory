@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.login.ui.screens
 
-import androidx.compose.ui.focus.FocusManager
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,20 +10,22 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.semantics.contentType
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.*
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.login.ui.LoginForm
-import ch.brickinventoryapp.model.util.passwordToShort
 import ch.brickinventoryapp.model.util.PASSWORD_MIN_CHARS
-import ch.brickinventoryapp.ui.components.PasswordKind
-import ch.brickinventoryapp.ui.components.PasswordField
-import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.model.util.passwordToShort
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LoginTitle
+import ch.brickinventoryapp.ui.components.PasswordField
+import ch.brickinventoryapp.ui.components.PasswordKind
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 
 @Composable
 internal fun RegisterFields(
@@ -90,7 +90,7 @@ internal fun RegisterFields(
         val complete = user.isNotBlank() && email.isNotBlank() && pw1.isNotBlank()
         LoadButton(stringResource(R.string.register_button), running = running, active = complete, missing = reqFields) {
             // The same checks as in the web form, in the same order; the
-            // length limit (PASSWORD_MIN_CHARS) is the server's (routes/auth.ts). Anticipated
+            // length limit (PASSWORD_MIN_CHARS) is the server's (`routes/auth.ts`). Anticipated
             // here, so that it needs no round trip over the network.
             ownError = when {
                 passwordToShort(pw1) -> toShort

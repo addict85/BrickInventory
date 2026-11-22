@@ -1,28 +1,30 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.domain.SetTotals
+import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.errorKind
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.offline.OfflineStore.FollowUp
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testFinancesRepository
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.ui.ErrorClass
-import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.contract.SetItem
-import ch.brickinventoryapp.offline.Slots
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetTotals
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.errorKind
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.offline.OfflineStore.FollowUp
+import ch.brickinventoryapp.offline.Slots
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -32,8 +34,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The set detail ViewModel, run against a PathServer without network.
@@ -47,7 +47,7 @@ import ch.brickinventoryapp.testing.TestServices
  *      replaced with the whole list → red “a changed purchase of a different set loads nothing here”
  *   D  in the price alert input `saved` left empty → red “a saved
  *      price alert is loaded anew”
- *   E  in changeQuantityBy() back to UpdateQuantityRequest(quantity = schritt)
+ *   E  in changeQuantityBy() back to UpdateQuantityRequest(quantity = step)
  *      → red “the slider sends a step …”
  *   F  `init { refresh() }` removed (the screen used to load itself)
  *      → red “the set comes from the SavedStateHandle and everything is loaded on creation”

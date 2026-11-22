@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.catalog.ui
 
-import ch.brickinventoryapp.model.domain.CatalogSort
-import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogSetView
+import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.CatalogThemeView
+import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.model.ui.Load
 
 /**

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * A working button must not lose its label.
@@ -15,7 +15,7 @@ import ch.brickinventoryapp.testing.Sources
  * app should look the same; a flicker fixed only in the web app
  * would be the opposite.
  *
- * Right is what SettingsScreen already showed (button „Suchen"): the
+ * Right is what SettingsScreen already showed (button „Suchen“): the
  * spinner steps NEXT to the label, not into its place.
  *
  * ── What the rule exempts ────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ class ButtonWidthTest {
     /**
      * Remove comment lines, empty strings.
      *
-     * Both are necessary: a comment that mentions „Text(" would otherwise make the rule
+     * Both are necessary: a comment that mentions „Text(“ would otherwise make the rule
      * blind (this trap has struck several times in this project
      * already), and a bracket in a string would upset the
      * bracket balance. Line breaks stay so that the reported

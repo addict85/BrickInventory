@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.ui.util
 
-import ch.brickinventoryapp.model.domain.Money
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import ch.brickinventoryapp.model.domain.Money
 import java.text.DecimalFormatSymbols
 
 /**
@@ -103,7 +103,7 @@ object NumericInput {
         return if (front.isNotEmpty() && front.last() in CURRENCY) front.dropLast(1) else front
     }
 
-    /** Das letzte Trennzeichen ist das Dezimalzeichen, ausser es steht mehrfach oder ist ein Gruppenzeichen vor drei Ziffern. */
+    /** The last separator is the decimal mark, unless it occurs several times or is a group mark before three digits. */
     private fun decimalSeparator(s: String, last: Int, group: Char): Char? {
         val separator = s.filter { it == '.' || it == ',' }
         val multipleEqual = separator.toSet().size == 1 && separator.length > 1
@@ -115,7 +115,7 @@ object NumericInput {
     private fun groupsValid(groups: List<String>): Boolean =
         FIRST_GROUP.matches(groups[0]) && groups.drop(1).all { THREE_DIGITS.matches(it) }
 
-    /** Setnummer: Buchstaben kommen vor, also die Texttastatur, ohne Grossschreibung und Korrektur. */
+    /** Set number: letters occur, so the text keyboard, without capitalization and correction. */
     fun setNumberKeyboard(imeAction: ImeAction = ImeAction.Next) =
         KeyboardOptions(
             capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false,

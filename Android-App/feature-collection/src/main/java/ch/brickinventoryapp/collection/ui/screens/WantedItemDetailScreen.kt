@@ -1,14 +1,6 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.ui.theme.centeredUntil
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -19,32 +11,41 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.collection.ui.viewmodel.WantedListActions
-import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.resolveFullUrl
-import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.components.SectionTitle
+import ch.brickinventoryapp.network.util.externalAddress
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.shared.ui.OwnerPicker
+import ch.brickinventoryapp.shared.ui.PriceChart
+import ch.brickinventoryapp.shared.ui.PriceLoadsRow
+import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
-import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
 import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.SectionTitle
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.ZoomableImageDialog
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.AppCard
 import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.network.util.externalAddress
 import ch.brickinventoryapp.ui.util.openExtern
-import ch.brickinventoryapp.ui.components.CatalogDetailRow
-import ch.brickinventoryapp.shared.ui.OwnerPicker
-import ch.brickinventoryapp.shared.ui.PriceLoadsRow
-import ch.brickinventoryapp.shared.ui.PriceChart
+import kotlinx.coroutines.launch
 
 /**
  * A watchlist item's detail — the same rows in the same order as the
@@ -217,6 +218,7 @@ internal fun WantedItemDetailScreen(
                             Spacer(Modifier.height(Spacing.small))
                             PriceLoadsRow()
                         }
+                        PartialLoadFailed(detail.fetch, { actions.loadWantedItemDetail(wantedItem.setNumber) })
                     }
                 }
             }

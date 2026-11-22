@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.collection.ui.GalleryUiState
+import ch.brickinventoryapp.session.AppUiState
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.lang.reflect.Modifier

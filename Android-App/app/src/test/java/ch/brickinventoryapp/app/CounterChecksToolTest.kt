@@ -8,7 +8,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * The tool of the CI job `counter-checks` (tools/counter-checks.py), executed in
+ * The tool of the CI job `counter-checks` (`tools/counter-checks.py`), executed in
  * a throwaway repository with a Gradle stand-in: it writes a
  * JUnit report, red exactly when the file contains „kaputt“.
  *

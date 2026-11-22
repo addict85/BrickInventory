@@ -16,7 +16,7 @@ import java.io.File
  *   counter-checks-job-weich     continue-on-error in the job `counter-checks` → red “the counter-checks job …”
  *   release-image-wechselnd   job `signature` (android-signieren.yml) on ubuntu-latest → red “the release path …”
  *   workflow-image-wechselnd  job `counter-checks` on ubuntu-latest → red “the release path …”
- *   (local) in the header of teile-ablage-trotz-konto again `Rot: mit Kontofilter gilt die
+ *   (local) in the header of teile-ablage-trotz-konto again `Rot:` followed by a sentence instead of a test name
  *   Antwort des Servers` (a message, not a test name) → red “the counter-checks job …”
  */
 class AndroidWorkflowTest {
@@ -58,7 +58,7 @@ class AndroidWorkflowTest {
             val full = header(p, "Test").orEmpty()
             val file = File(Sources.project, "${header(p, "Modul")}/src/test/java/${full.replace('.', '/')}.kt")
             assertTrue("${p.name}: $full liegt nicht in ${header(p, "Modul")}", file.isFile)
-            // counter-checks.py searches `Rot` in the names of the failed tests, not in their
+            // `counter-checks.py` searches `Rot` in the names of the failed tests, not in their
             // messages; a message text would mean „blieb grün“ although the test was red.
             val names = Regex("""fun `([^`]+)`|fun (\w+)\(""").findAll(file.readText()).map { it.value }.toList()
             assertTrue("${p.name}: Rot „${header(p, "Rot")}“ ist kein Testname in $full",

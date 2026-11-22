@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * What the user triggers also reports when it fails.
@@ -19,7 +19,7 @@ import ch.brickinventoryapp.testing.Sources
  * other side. So the rule had long been in the code; these two
  * slipped through.
  *
- * For the user it looked like this: they tap „Verknüpfung lösen" or
+ * For the user it looked like this: they tap „Verknüpfung lösen“ or
  * delete, and visibly nothing happens. No success, no reason. One taps
  * once more.
  *

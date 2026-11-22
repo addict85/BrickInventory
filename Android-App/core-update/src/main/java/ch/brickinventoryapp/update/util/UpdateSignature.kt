@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.update.util
 
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import ch.brickinventoryapp.model.json.BrickJson
 import java.io.File
 import java.security.KeyFactory
 import java.security.MessageDigest

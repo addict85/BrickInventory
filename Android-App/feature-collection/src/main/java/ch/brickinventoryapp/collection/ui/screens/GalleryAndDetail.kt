@@ -7,9 +7,9 @@ import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.ui.components.ListAndDetail
 import ch.brickinventoryapp.ui.components.LocalOpenDetail

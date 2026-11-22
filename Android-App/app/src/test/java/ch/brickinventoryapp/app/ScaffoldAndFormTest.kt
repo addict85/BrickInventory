@@ -1,12 +1,8 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.app.nav.Tab
+import android.content.Context
+import android.os.Looper
+import android.provider.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,20 +23,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -50,21 +49,55 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.login.ui.LoginForm
-import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.account.ui.AccountUiState
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
+import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.app.csv.CsvImportUiState
+import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
+import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.SetupScreen
+import ch.brickinventoryapp.model.domain.BrickLinkView
+import ch.brickinventoryapp.model.domain.CatalogDetailView
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.util.PASSWORD_MIN_CHARS
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.shared.ui.GalleryStatChip
+import ch.brickinventoryapp.shared.ui.MetricsSeries
+import ch.brickinventoryapp.shared.ui.StatChipV2
+import ch.brickinventoryapp.shared.ui.partsBreakdown
+import ch.brickinventoryapp.ui.components.AddFab
+import ch.brickinventoryapp.ui.components.BrandsHeader
+import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
+import ch.brickinventoryapp.ui.components.OfflineHint
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.fmtInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -72,45 +105,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
-import ch.brickinventoryapp.ui.components.AddFab
-import ch.brickinventoryapp.ui.components.BrandsHeader
-import ch.brickinventoryapp.ui.components.OfflineHint
-import ch.brickinventoryapp.ui.components.movementReduced
-import ch.brickinventoryapp.model.domain.BrickLinkView
-import ch.brickinventoryapp.model.domain.CatalogDetailView
-import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
-import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
-import ch.brickinventoryapp.shared.ui.GalleryStatChip
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.text.TextLayoutResult
-import ch.brickinventoryapp.shared.ui.partsBreakdown
-import ch.brickinventoryapp.shared.ui.MetricsSeries
-import ch.brickinventoryapp.login.ui.screens.LoginScreen
-import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
-import ch.brickinventoryapp.login.ui.screens.SetupScreen
-import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
-import ch.brickinventoryapp.shared.ui.StatChipV2
-import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
-import ch.brickinventoryapp.ui.theme.ReadingWidth
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.ui.util.fmtInt
-import android.content.Context
-import android.os.Looper
-import android.provider.Settings
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.SemanticsNode
 import java.util.Locale
-import org.robolectric.Shadows
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.collection.ui.CollectionTarget
 
 /**
  * Findings of the tenth and eleventh UI review (Android), executed as behavior: the
@@ -266,8 +266,8 @@ class ScaffoldAndFormTest {
             }
             wait("Alarme") { vm.alarmOverview.value.loaded }
             // „750.00“ like every amount (de-CH), not the raw number „750.0“; the field is called „Schwelle“,
-            // the direction stands selected in the choice above (N2 of the second UX review). „Steigt
-            // über“, because the creation form preselects „Fällt unter“.
+            // the direction stands selected in the choice above (N2 of the second UX review). „Steigt über“
+            // , because the creation form preselects „Fällt unter“.
             compose.onNode(hasSetTextAction() and hasText("750.00")).fetchSemanticsNode()
             compose.onNode(hasSetTextAction() and hasText("750.00") and hasText(ctx.getString(R.string.alerts_threshold)))
                 .fetchSemanticsNode()

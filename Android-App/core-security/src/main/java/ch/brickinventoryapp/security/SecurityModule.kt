@@ -76,7 +76,8 @@ internal object SecurityModule {
     }
 
     @Provides
-    fun certificateQuestion(z: CertificatePrompt): CertificateQuestion = z
+    @Singleton
+    fun certificateQuestion(): CertificateQuestion = CertificateQuestion()
 
     private const val ALIAS_STORE = "brickinventory_ablage"
     private const val ALIAS_DETAILS = "brickinventory_angaben_entsperrt"

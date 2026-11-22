@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.catalog
 
 import ch.brickinventoryapp.catalog.ui.CatalogYearMath
-import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.catalog.ui.viewmodel.VIEWPORT_REST_MS
 import ch.brickinventoryapp.catalog.ui.viewmodel.ViewportLoader
+import ch.brickinventoryapp.data.catalog.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -13,7 +14,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * One drag on the year bar fetches ONE page, not a hundred.
@@ -41,7 +41,7 @@ import ch.brickinventoryapp.testing.Sources
  *
  * The stillness now lives in the viewport loader. It covers both paths, because
  * both end up there. That's exactly what the web app has always done
- * (js/katalog.js, `_ladeSichtbareSeiten`, 150 ms) — and exactly why
+ * (`js/katalog.js`, `_ladeSichtbareSeiten`, 150 ms) — and exactly why
  * the web app is fast.
  *
  * ── How it's checked ───────────────────────────────────────────────────────
@@ -51,8 +51,7 @@ import ch.brickinventoryapp.testing.Sources
  *
  * Counter-checks:
  *   A  `collectLatest` replaced by `collect`
- *      (counter-checks/sichtfenster-ohne-entprellung.patch) → red "der
- *      Sichtfenster-Lader wartet …" (every window of the drag gets loaded)
+ *      (counter-checks/sichtfenster-ohne-entprellung.patch) → red "der Sichtfenster-Lader wartet …" (every window of the drag gets loaded)
  *   B  `delay(restMs)` removed → red, the same case (loads before the stillness)
  *   C  the lead `(of - 1)..(until + 1)` shortened to `of..until` → red, the same case
  */

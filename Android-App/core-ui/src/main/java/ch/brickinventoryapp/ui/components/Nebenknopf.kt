@@ -37,8 +37,8 @@ fun secondaryButtonRand(active: Boolean = true): BorderStroke =
                        else lockedColors(MaterialTheme.colorScheme).edge)
 
 /**
- * Stacked buttons equally wide, as wide as the widest one: „Set merken" stood
- * narrower above „Barcode scannen", and the group looked uneven. Every button in it
+ * Stacked buttons equally wide, as wide as the widest one: "Remember set" stood
+ * narrower above "Scan barcode", and the group looked uneven. Every button in it
  * takes `Modifier.fillMaxWidth()`.
  */
 @Composable

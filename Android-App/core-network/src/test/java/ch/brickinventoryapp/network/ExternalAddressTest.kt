@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.network
 
-import ch.brickinventoryapp.network.util.ownAddress
 import ch.brickinventoryapp.network.util.externalAddress
+import ch.brickinventoryapp.network.util.ownAddress
 import ch.brickinventoryapp.network.util.pdfInViewer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

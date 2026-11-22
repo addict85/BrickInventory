@@ -34,26 +34,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import ch.brickinventoryapp.ui.components.Prompt
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.ReadingWidth
-import ch.brickinventoryapp.ui.theme.centeredUntil
-import ch.brickinventoryapp.ui.components.GroupTitle
-import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.account.ui.AccountTarget
 import ch.brickinventoryapp.collection.ui.CollectionTarget
-import ch.brickinventoryapp.parts.ui.PartsTarget
+import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.management.ui.ManagementTarget
+import ch.brickinventoryapp.parts.ui.PartsTarget
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.GroupTitle
+import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.centeredUntil
 
 /**
  * The destination “More” of the bottom bar: all pages that are not an inventory tab, in
@@ -173,7 +173,7 @@ private val MORE_TWO_COLUMN_MIN_WIDTH = 840.dp
 private fun MoreGroup(title: Int, separator: Boolean) =
     GroupTitle(stringResource(title), separator = separator)
 
-/** Ein Eintrag: Symbol, Text, ganze Zeile antippbar (mindestens 56 dp hoch). */
+/** One entry: icon, text, the whole row tappable (at least 56 dp high). */
 @Composable
 private fun MoreItem(
     title: Int, symbol: ImageVector, point: Boolean = false, color: Color = Color.Unspecified, onClick: () -> Unit,

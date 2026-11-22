@@ -1,13 +1,16 @@
 package ch.brickinventoryapp.account
 
+import ch.brickinventoryapp.account.ui.DesignChoice
+import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import ch.brickinventoryapp.account.ui.DesignChoice
-import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.session.loadSettings
-import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.session.testing.SessionFake
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -15,12 +18,9 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Before
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The design applies per account: /settings/theme delivers, with a token, the effective
@@ -30,15 +30,12 @@ import ch.brickinventoryapp.testing.TestServices
  *
  * Counter-checks:
  *   A  `session.setDesign(…)` removed in AccountViewModel.chooseDesign() → red
- *      "die Wahl gilt sofort in der ganzen App" (classic instead of noppe)
+ *      "die Wahl gilt sofort in der ganzen App" (classic instead of `noppe`)
  *   B  the key "design" instead of "theme" in AccountRepository.setOwnDesign →
  *      red "die Wahl geht an den Server …"
- *   C  `default ?: theme` instead of `default?.let` in designChoice() → red "ein
- *      älterer Server ohne Vorgabe zeigt keine Auswahl"
- *   D  appTheme not taken over in Sitzung.loggedOut() → red "Abmelden lässt
- *      das Design stehen …"
- *   E  `appTheme = e.appTheme` back in Sitzung.loadSettings() → red "die
- *      Einstellungen überschreiben das Design des Kontos nicht" (classic instead of noppe)
+ *   C  `default ?: theme` instead of `default?.let` in designChoice() → red "ein älterer Server ohne Vorgabe zeigt keine Auswahl"
+ *   D  appTheme not taken over in Sitzung.loggedOut() → red "Abmelden lässt das Design stehen …"
+ *   E  `appTheme = e.appTheme` back in Sitzung.loadSettings() → red "die Einstellungen überschreiben das Design des Kontos nicht" (classic instead of `noppe`)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DesignPerAccountTest {
@@ -97,7 +94,7 @@ class DesignPerAccountTest {
         assertNull(vm.accountState.value.design)
     }
 
-    /** /settings names the admin's default in app_theme (routes/api_v1/settings.ts), not the account's. */
+    /** /settings names the admin's default in app_theme (`routes/api_v1/settings.ts`), not the account's. */
     @Test
     fun `the settings do not overwrite the account's design`() {
         paths.responses["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""

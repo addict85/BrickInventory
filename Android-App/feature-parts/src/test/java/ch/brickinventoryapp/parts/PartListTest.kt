@@ -1,6 +1,11 @@
 package ch.brickinventoryapp.parts
 
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetCatalogRepository
 import ch.brickinventoryapp.parts.ui.PartList
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -10,10 +15,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.net.URLEncoder
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.testSetCatalogRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The temporary parts list, run against a test server: resolve a set
@@ -33,6 +34,8 @@ import ch.brickinventoryapp.testing.TestServices
  *   F  BestandTeil built with blPartNumber → red, the same case (body)
  *   G  on a failed answer computed onward with an empty stock → red “an
  *      error on the stock gives null …”
+ *   H  in resolveSetOn() a failed parts fetch taken as an empty list → red “a failed parts
+ *      fetch is an error, not an empty list”
  */
 class PartListTest {
 
@@ -72,11 +75,11 @@ class PartListTest {
 
     @Test
     fun `a set is grouped by Rebrickable number and carries the catalog name`() = runBlocking {
-        val (name, rows) = list.resolveSetOn("75192-1", "http://srv/")
+        val (name, rows) = list.resolveSetOn("75192-1", "http://srv/").data()
         assertEquals("Millennium Falcon", name)
         assertEquals(listOf("3001", "970c00", "970c11", "sw0001"), rows.map { it.partNumber })
         assertEquals(5, rows.single { it.partNumber == "3001" }.quantity)
-        // Gleiche BrickLink-Nummer, verschiedene Rebrickable-Teile: zwei Zeilen.
+        // Same BrickLink number, different Rebrickable parts: two rows.
         assertEquals("970c00", rows.single { it.partNumber == "970c11" }.blPartNumber)
         val figure = rows.single { it.isFig }
         assertEquals(2, figure.quantity)
@@ -84,7 +87,7 @@ class PartListTest {
 
     @Test
     fun `an image from the CDN runs via the server and a local image goes first`() = runBlocking {
-        val rows = list.resolveSetOn("75192-1", "http://srv/").second
+        val rows = list.resolveSetOn("75192-1", "http://srv/").data().second
         assertEquals("http://srv/images/parts/3001.jpg", rows.single { it.partNumber == "3001" }.imageUrl)
         assertEquals("http://srv/api/v1/img-proxy?url=" + URLEncoder.encode(cdn, "UTF-8"),
             rows.single { it.partNumber == "970c00" }.imageUrl)
@@ -93,7 +96,7 @@ class PartListTest {
 
     @Test
     fun `the stock asks only the own account without sub-accounts and optionally counts only loose parts`() = runBlocking {
-        val rows = list.resolveSetOn("75192-1", "http://srv").second.filter { !it.isFig }
+        val rows = list.resolveSetOn("75192-1", "http://srv").data().second.filter { !it.isFig }
 
         val lose = list.withInventory(rows, onlyLose = true, withSubAccounts = false)!!
         assertEquals(listOf(2, 0, 0), lose.map { it.present })
@@ -107,9 +110,17 @@ class PartListTest {
     }
 
     @Test
+    fun `a failed parts fetch is an error, not an empty list`() = runBlocking {
+        paths.codes["/api/v1/sets/75192-1/parts-list"] = 500
+        assertTrue(list.resolveSetOn("75192-1", "http://srv") is Outcome.Failure)
+    }
+
+    @Test
     fun `an error in the stock gives null instead of a list full of zeros`() = runBlocking {
         paths.codes["/api/v1/parts/owned"] = 500
-        val rows = list.resolveSetOn("75192-1", "http://srv").second
+        val rows = list.resolveSetOn("75192-1", "http://srv").data().second
         assertNull(list.withInventory(rows, onlyLose = false, withSubAccounts = false))
     }
 }
+
+private fun <T> Outcome<T>.data(): T = (this as Outcome.Success).data

@@ -1,16 +1,18 @@
 package ch.brickinventoryapp.finances
 
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import ch.brickinventoryapp.model.ui.loading
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.testing.testFinancesRepository
-import kotlinx.coroutines.runBlocking
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.state.testing.TestServices
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -20,8 +22,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The finance ViewModel, run against a PathServer without network.

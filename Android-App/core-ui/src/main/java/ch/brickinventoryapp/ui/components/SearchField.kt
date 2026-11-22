@@ -17,10 +17,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * Cards/table switch as two chips: with two possibilities, a

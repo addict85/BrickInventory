@@ -11,6 +11,8 @@ plugins {
 
 android {
     namespace = "ch.brickinventoryapp.core.data"
+    // Test API, test server and repositories without Hilt, for the tests of every module above.
+    testFixtures.enable = true
 
     buildFeatures {
         buildConfig = true
@@ -52,10 +54,14 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.appcompat)
 
+    testFixturesImplementation(project(":core-offline"))
+    testFixturesImplementation(project(":core-security"))
+    testFixturesImplementation(libs.kotlinx.coroutines.android)
+    testFixturesApi(libs.bundles.unit.tests)
+    testFixturesApi(libs.retrofit)
+    testFixturesApi(libs.retrofit.kotlinx.serialization)
     testImplementation(project(":core-testing"))
-    // LogoutCleansEverythingTest checks sign-out including session and view.
-    testImplementation(project(":core-state"))
-    testImplementation(project(":core-session"))
+    testImplementation(testFixtures(project(":core-offline")))
     // Robolectric-Tests (InventoryDatabaseTest, Ablagen, Netz-Clients).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

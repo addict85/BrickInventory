@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
-import ch.brickinventoryapp.data.repository.AlarmRepositoryImpl
+import ch.brickinventoryapp.data.collection.AlarmRepositoryImpl
+import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
+import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.PathServer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -25,7 +25,7 @@ import org.junit.Test
  *
  * Counter-checks (counter-checks/alarm-ohne-nachzug.patch, vorrat-vorgabe-ohne-nachzug.patch):
  *   in AlarmRepositoryImpl.setPriceAlarm only `safeCall` → red “a set and a deleted alert …”
- *   in LocalApplication.lagerorte the branch LocationDefault on `list` → red “creating, renaming …”
+ *   in LocalApplication's storage locations the branch LocationDefault on `list` → red “creating, renaming …”
  */
 class AlarmAndStockStoreTest {
 

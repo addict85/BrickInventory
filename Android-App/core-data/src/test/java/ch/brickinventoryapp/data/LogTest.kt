@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.network.util.AppLog
 import ch.brickinventoryapp.data.util.networkRecording
+import ch.brickinventoryapp.network.util.AppLog
+import ch.brickinventoryapp.testing.Sources
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -14,7 +15,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Collections
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * What the app writes to logcat: in release nothing, in the debug build neither token

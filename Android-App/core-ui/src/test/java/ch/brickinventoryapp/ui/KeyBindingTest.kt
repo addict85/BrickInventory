@@ -2,8 +2,8 @@ package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.model.step.KeyNonce
 import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.model.step.StepResponse
 import ch.brickinventoryapp.model.step.StepBinding
+import ch.brickinventoryapp.model.step.StepResponse
 import ch.brickinventoryapp.ui.components.AttestableKey
 import ch.brickinventoryapp.ui.components.KeyBinding
 import kotlinx.coroutines.Dispatchers
@@ -21,10 +21,10 @@ import java.util.Base64
  * notice and sends nothing; without a nonce (even on a 404) no key is created.
  *
  * Counter-checks (Nov 11, 2026; locally with kotlinc against stubs, Robolectric decides CI):
- *   A  the nonce not decoded but inserted as UTF-8 bytes → red „die Nonce
- *      des Servers wird zur Challenge …“; counter-checks/schluesselbindung-nonce-als-text.patch
- *   B  a chain of only the self-signed certificate sent anyway → red „ein Geraet
- *      ohne Attestation …“; counter-checks/schluesselbindung-ohne-attestation-gesendet.patch
+ *   A  the nonce not decoded but inserted as UTF-8 bytes → red „die Nonce des Servers wird zur Challenge …“
+ * ; counter-checks/schluesselbindung-nonce-als-text.patch
+ *   B  a chain of only the self-signed certificate sent anyway → red „ein Geraet ohne Attestation …“
+ * ; counter-checks/schluesselbindung-ohne-attestation-gesendet.patch
  */
 class KeyBindingTest {
 

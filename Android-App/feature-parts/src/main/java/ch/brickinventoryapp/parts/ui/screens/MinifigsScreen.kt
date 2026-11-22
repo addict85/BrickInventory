@@ -1,64 +1,65 @@
 package ch.brickinventoryapp.parts.ui.screens
 
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.parts.ui.MinifigsUiState
-import ch.brickinventoryapp.parts.ui.PartsSessionUiState
-import ch.brickinventoryapp.state.ui.ScopeUiState
-import ch.brickinventoryapp.state.ui.StorageUiState
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.domain.Condition
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import ch.brickinventoryapp.ui.components.NoHitsHint
-import ch.brickinventoryapp.ui.components.HintText
-import ch.brickinventoryapp.parts.ui.viewmodel.FiguresActions
-import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
-import ch.brickinventoryapp.ui.LoadingIndicator
-import ch.brickinventoryapp.ui.loadingIndicator
-import ch.brickinventoryapp.state.ui.FilterCount
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.Moved
-import ch.brickinventoryapp.ui.components.SkeletonRaster
-import ch.brickinventoryapp.ui.components.ErrorHint
-import ch.brickinventoryapp.ui.components.StateHint
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.ui.components.AddFab
-import ch.brickinventoryapp.ui.components.FabSpace
-import ch.brickinventoryapp.ui.components.ReadableColumns
-import ch.brickinventoryapp.ui.components.LocalOpenDetail
-import ch.brickinventoryapp.ui.components.OfflineHint
-import ch.brickinventoryapp.ui.components.detailKey
-import ch.brickinventoryapp.ui.components.largeFont
-import ch.brickinventoryapp.shared.ui.ViewSection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.FigureOrder
+import ch.brickinventoryapp.model.domain.MinifigsMetricsView
+import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.parts.ui.MinifigsUiState
+import ch.brickinventoryapp.parts.ui.PartsSessionUiState
+import ch.brickinventoryapp.parts.ui.viewmodel.FiguresActions
+import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.shared.ui.AccountFilterSection
 import ch.brickinventoryapp.shared.ui.FilterSheetFrame
 import ch.brickinventoryapp.shared.ui.GalleryStatChip
 import ch.brickinventoryapp.shared.ui.MetricsSeries
-import ch.brickinventoryapp.shared.ui.AccountFilterSection
 import ch.brickinventoryapp.shared.ui.SearchWithFilter
+import ch.brickinventoryapp.shared.ui.ViewSection
 import ch.brickinventoryapp.shared.ui.accountFilter
-import ch.brickinventoryapp.model.domain.FigureOrder
+import ch.brickinventoryapp.state.ui.FilterCount
+import ch.brickinventoryapp.state.ui.ScopeUiState
+import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.LoadingIndicator
+import ch.brickinventoryapp.ui.components.AddFab
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.FabSpace
+import ch.brickinventoryapp.ui.components.HintText
+import ch.brickinventoryapp.ui.components.LocalOpenDetail
+import ch.brickinventoryapp.ui.components.Moved
+import ch.brickinventoryapp.ui.components.NoHitsHint
+import ch.brickinventoryapp.ui.components.OfflineHint
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
+import ch.brickinventoryapp.ui.components.ReadableColumns
+import ch.brickinventoryapp.ui.components.SkeletonRaster
 import ch.brickinventoryapp.ui.components.SortMenu
-import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.ui.components.StateHint
+import ch.brickinventoryapp.ui.components.detailKey
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
+import ch.brickinventoryapp.ui.loadingIndicator
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Spacing
+import coil3.ImageLoader
 
 /** What the figures tab shows; the route collects it from the flows. */
 internal data class FiguresState(
@@ -192,6 +193,11 @@ internal fun MinifigsScreen(
                     if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { MinifigsMetrics(minifigStats) }
                     }
+                    if (partsState.metricsFetch is Load.Failure) {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "figs-metrics-failed") {
+                            PartialLoadFailed(partsState.metricsFetch, actions::retryMetrics)
+                        }
+                    }
                     // Manual figures as a grid section — one continuous
                     // scroll list instead of a fixed block above the grid (see PartsScreen).
                     if (manualFigs.isNotEmpty()) {
@@ -224,7 +230,7 @@ internal fun MinifigsScreen(
                         key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
                         span = { _, _ -> if (view == ListView.TABLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
-                        // BEIDE Ansichten oeffnen denselben Dialog.
+                        // BOTH views open the same dialog.
                         val open = { actions.openSetItem(fig.figNumber) }
                         Moved {
                             if (view == ListView.TABLE) MinifigTableRow(fig, serverUrl, imageLoader, open)

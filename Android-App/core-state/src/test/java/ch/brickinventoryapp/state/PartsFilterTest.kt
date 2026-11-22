@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.state
 
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetFilesRepository
 import ch.brickinventoryapp.model.domain.AccountSelection
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.testSetFilesRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /** A test server for [block], shut down afterwards. */
 private fun <T> withServer(block: (PathServer) -> T): T {

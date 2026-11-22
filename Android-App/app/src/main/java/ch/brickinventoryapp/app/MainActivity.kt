@@ -1,69 +1,69 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import android.app.KeyguardManager
+import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.Toast
-import androidx.glance.appwidget.updateAll
-import ch.brickinventoryapp.app.widget.CollectionWidget
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.navigation.compose.*
-import ch.brickinventoryapp.state.ui.AppViewModel
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.ui.theme.appearance
-import androidx.compose.foundation.isSystemInDarkTheme
-import coil3.ImageLoader
 import androidx.compose.runtime.CompositionLocalProvider
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.LocalAppVersion
-import ch.brickinventoryapp.model.util.AppVersion
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import android.content.Intent
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
-import ch.brickinventoryapp.services.alarm.PriceAlertRepository
-import ch.brickinventoryapp.state.ui.MessageInbox
-import ch.brickinventoryapp.ui.components.DevicesStepProtection
+import androidx.navigation.compose.*
+import ch.brickinventoryapp.BuildConfig
+import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
+import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.app.csv.CsvImportViewModel
+import ch.brickinventoryapp.app.nav.ActivityState
+import ch.brickinventoryapp.app.ui.components.CertificateDialog
+import ch.brickinventoryapp.app.ui.components.UserCaDialog
+import ch.brickinventoryapp.app.widget.CollectionWidget
+import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.model.step.StepBinding
-import ch.brickinventoryapp.ui.components.LocalStepGuard
+import ch.brickinventoryapp.model.util.AppVersion
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.network.util.AppLog
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.services.alarm.PriceAlertRepository
+import ch.brickinventoryapp.state.ui.AppViewModel
+import ch.brickinventoryapp.state.ui.MessageInbox
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
 import ch.brickinventoryapp.ui.components.AppLock
 import ch.brickinventoryapp.ui.components.AppLockScreen
 import ch.brickinventoryapp.ui.components.AppOverviewProtection
-import ch.brickinventoryapp.ui.components.LocalAppLock
-import ch.brickinventoryapp.ui.components.unlockWithDevicesLock
-import android.os.SystemClock
-import android.app.KeyguardManager
-import ch.brickinventoryapp.security.CertificateUnresolved
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import ch.brickinventoryapp.app.ui.components.UserCaDialog
-import ch.brickinventoryapp.ui.components.WithoutLockWarning
-import ch.brickinventoryapp.ui.components.PrivacyShield
+import ch.brickinventoryapp.ui.components.DevicesStepProtection
 import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
-import ch.brickinventoryapp.app.ui.components.CertificateDialog
-import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
-import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
-import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
-import ch.brickinventoryapp.app.csv.CsvImportViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
-import ch.brickinventoryapp.app.nav.ActivityState
+import ch.brickinventoryapp.ui.components.LocalAppLock
+import ch.brickinventoryapp.ui.components.LocalAppVersion
+import ch.brickinventoryapp.ui.components.LocalStepGuard
+import ch.brickinventoryapp.ui.components.PrivacyShield
+import ch.brickinventoryapp.ui.components.WithoutLockWarning
+import ch.brickinventoryapp.ui.components.unlockWithDevicesLock
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.ui.theme.appearance
 import ch.brickinventoryapp.ui.util.SecretClipboard
-import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.network.util.AppLog
-import ch.brickinventoryapp.BuildConfig
+import coil3.ImageLoader
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : OnlyLauncherStart() {
@@ -107,7 +107,7 @@ class MainActivity : OnlyLauncherStart() {
     /** Optional, default off: after N minutes in the background continue only after the device lock. */
     private val appLock by lazy { AppLock(SystemClock::elapsedRealtime, AppLockStore(this)) { devicesStarts(this) } }
 
-    /** Binds the step guard to the server (routes/api_v1/device.ts). */
+    /** Binds the step guard to the server (`routes/api_v1/device.ts`). */
     @Inject lateinit var stepBinding: StepBinding
 
     /** The target of a tapped notification; stored only by the non-exported MessageEntryPoint. */

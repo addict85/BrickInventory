@@ -1,22 +1,22 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.EntryRequest
-import ch.brickinventoryapp.model.domain.AccountSelection
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.AccountView
-import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
+import ch.brickinventoryapp.data.account.AccountView
+import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.model.domain.AccountSelection
+import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.PathServer
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
 import org.junit.After
@@ -31,9 +31,9 @@ import org.junit.Test
  * splits quantities per account — and never ends up in the store.
  *
  * Counter-checks (kotlinc against AccountView.kt, Fetch.kt and SetsRepositoryImpl.kt):
- *   A  in Kontosicht.galerie `a.search` replaced by `null` → red “every filter of the
+ *   A  in AccountView's gallery `a.search` replaced by `null` → red “every filter of the
  *      account view is in the request”
- *   B  in Serversicht.aktualisiere additionally taken into the store → red “the
+ *   B  in the server view's refresh additionally taken into the store → red “the
  *      account view does not end up in the store”
  *   C  in allPages the rows not merged by key (list instead of map)
  *      → red “the account view fetches all pages and no row twice”

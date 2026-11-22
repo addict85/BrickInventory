@@ -1,71 +1,71 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.components.focusFrame
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
-import kotlin.math.roundToInt
-import kotlin.reflect.KClass
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.foundation.background
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import ch.brickinventoryapp.ui.theme.TabColors
-import ch.brickinventoryapp.ui.theme.tabColors
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.account.ui.AccountTarget
-import ch.brickinventoryapp.collection.ui.CollectionTarget
-import ch.brickinventoryapp.parts.ui.PartsTarget
-import ch.brickinventoryapp.ui.NavigationMode
-import ch.brickinventoryapp.ui.TabTarget
-import ch.brickinventoryapp.ui.navigationMode
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.ui.title
-import ch.brickinventoryapp.ui.forgetTab
-import ch.brickinventoryapp.management.ui.ManagementTarget
-import ch.brickinventoryapp.app.nav.Tab
-import ch.brickinventoryapp.app.nav.TargetEnvironment
-import ch.brickinventoryapp.ui.components.OutboxBar
-import ch.brickinventoryapp.ui.components.LocalOpenChanges
-import ch.brickinventoryapp.ui.components.LocalOfflineHints
-import ch.brickinventoryapp.ui.components.LocalSnackbarSpace
-import ch.brickinventoryapp.ui.components.WithTooltip
-import ch.brickinventoryapp.ui.components.ViewToggle
-import ch.brickinventoryapp.ui.components.UpdatePoint
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.LocalAccentSurfaces
-import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.AppTarget
+import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.app.nav.TargetEnvironment
+import ch.brickinventoryapp.app.ui.components.CsvImportBanner
+import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.management.ui.ManagementTarget
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.parts.ui.PartsTarget
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.NavigationMode
+import ch.brickinventoryapp.ui.TabTarget
+import ch.brickinventoryapp.ui.components.LocalOfflineHints
+import ch.brickinventoryapp.ui.components.LocalOpenChanges
+import ch.brickinventoryapp.ui.components.LocalSnackbarSpace
+import ch.brickinventoryapp.ui.components.OutboxBar
+import ch.brickinventoryapp.ui.components.UpdatePoint
+import ch.brickinventoryapp.ui.components.ViewToggle
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.focusFrame
+import ch.brickinventoryapp.ui.forgetTab
+import ch.brickinventoryapp.ui.navigationMode
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.LocalAccentSurfaces
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.TabColors
+import ch.brickinventoryapp.ui.theme.tabColors
+import ch.brickinventoryapp.ui.title
+import kotlin.math.roundToInt
+import kotlin.reflect.KClass
 
 /**
  * Common scaffold of all signed-in screens: top bar with title and
@@ -257,7 +257,7 @@ fun TabScaffold(
         snackbarHostState = environment.snackbar,
         csvImportState = csvImport.csvImportState,
         onCsvCancel = { csvImport.cancelCsvImport() },
-        // Reiter angetippt → oben anfangen.
+        // Tab tapped → start at the top.
         onTabTapped = { target -> vm.scrollMemory.forgetTab(rollKey(target)) },
         // The silent start check has a result — here it gets a place.
         updateAvailable = updateUiState.newerVersion != null,

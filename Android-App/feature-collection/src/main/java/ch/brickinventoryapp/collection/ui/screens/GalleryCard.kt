@@ -1,75 +1,75 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.theme.AppCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.components.TileBalance
+import ch.brickinventoryapp.collection.ui.TilePrice
+import ch.brickinventoryapp.collection.ui.TileSource
+import ch.brickinventoryapp.collection.ui.tileAmount
+import ch.brickinventoryapp.collection.ui.tileSource
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.LocalIsStudTheme
-import ch.brickinventoryapp.ui.theme.LocalIsGloss
-import androidx.compose.foundation.shape.CircleShape
-import ch.brickinventoryapp.ui.theme.brickTone
-import ch.brickinventoryapp.ui.theme.BrickStudCap
-import ch.brickinventoryapp.ui.theme.StudsSeries
+import ch.brickinventoryapp.shared.ui.ConditionBadges
+import ch.brickinventoryapp.shared.ui.OwnerBadges
+import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.SharedImage
+import ch.brickinventoryapp.ui.components.TileBalance
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.AppCard
 import ch.brickinventoryapp.ui.theme.BrickEdgesHistory
+import ch.brickinventoryapp.ui.theme.BrickStudCap
+import ch.brickinventoryapp.ui.theme.LocalBrickDecor
+import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.LocalIsColorSlotsTheme
+import ch.brickinventoryapp.ui.theme.LocalIsGloss
+import ch.brickinventoryapp.ui.theme.LocalIsStudTheme
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.StudsMass
+import ch.brickinventoryapp.ui.theme.StudsSeries
+import ch.brickinventoryapp.ui.theme.brickTone
+import ch.brickinventoryapp.ui.theme.lightStrip
+import ch.brickinventoryapp.ui.theme.slotsTone
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtPercent
-import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
-import androidx.compose.material3.ExperimentalMaterial3Api
 import coil3.ImageLoader
 import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.launch
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.readAloudAs
-import androidx.compose.ui.res.pluralStringResource
-import ch.brickinventoryapp.ui.components.SharedImage
-import ch.brickinventoryapp.ui.components.ProductImage
-import ch.brickinventoryapp.ui.components.movementReduced
-import ch.brickinventoryapp.ui.components.largeFont
-import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.theme.LocalIsColorSlotsTheme
-import ch.brickinventoryapp.ui.theme.LocalBrickDecor
-import ch.brickinventoryapp.ui.theme.slotsTone
-import ch.brickinventoryapp.ui.theme.lightStrip
-import ch.brickinventoryapp.shared.ui.ConditionBadges
-import ch.brickinventoryapp.shared.ui.OwnerBadges
-import ch.brickinventoryapp.collection.ui.TilePrice
-import ch.brickinventoryapp.collection.ui.TileSource
-import ch.brickinventoryapp.collection.ui.tileAmount
-import ch.brickinventoryapp.collection.ui.tileSource
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -78,7 +78,7 @@ fun SetCard(
     serverUrl: String,
     imageLoader: ImageLoader,
     onClick: (String) -> Unit,
-    /** Position in the tile wall — only for the cap color of the "noppe" design. */
+    /** Position in the tile wall — only for the cap color of the `noppe` design. */
     position: Int = 0,
     /** Market price and P&L; if both are missing, the purchase price shows (as in the web). */
     price: TilePrice? = null,
@@ -103,7 +103,7 @@ fun SetCard(
     val isBrick = LocalIsBrickTheme.current
     val isStud = LocalIsStudTheme.current
     val isGloss = LocalIsGloss.current
-    // In the "farbfaecher" design, every tile carries its theme's tone as a stripe, as
+    // In the `farbfaecher` design, every tile carries its theme's tone as a stripe, as
     // in the catalog. The gallery only knows the name; the same name gives the same tone.
     val tone = if (LocalIsColorSlotsTheme.current)
         slotsTone(set.theme?.hashCode()) else null
@@ -286,7 +286,7 @@ private fun TileTexts(
                 OwnerBadges(set.owners)
             }
             // Theme and part count in one line: separate, usually one of them sat empty.
-            // In farbfaecher, a dot in the card bar's tone before it: that way the
+            // In `farbfaecher`, a dot in the card bar's tone before it: that way the
             // bar reads as a theme, not just a color.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
                 if (tone != null && !set.theme.isNullOrBlank()) Box(Modifier.size(8.dp).background(tone, CircleShape))
@@ -367,7 +367,7 @@ private fun TileFrame(
             onClickLabel = stringResource(R.string.cd_details_open),
         ) {
             Column {
-                // The brick edge with the dimensions from themes/brick.css (StudsMass.Stein), as in
+                // The brick edge with the dimensions from `themes/brick.css` (StudsMass.Stein), as in
                 // the web across the full width. Only the edge sits in the card; the studs are drawn
                 // next to it, because the Card would clip them.
                 // A slimmer edge on the narrow phone tile: 22 dp there visibly took room from the
@@ -376,8 +376,8 @@ private fun TileFrame(
                     BrickStudCap(mass = StudsMass.Brick, history = BrickEdgesHistory,
                         height = if (maxWidth < 240.dp) 12.dp else null)
                 }
-                // The "noppe" design's brick cap — position modulo six,
-                // exactly like `.sc:nth-child(6n+…)` in themes/noppe.css. The same
+                // The `noppe` design's brick cap — position modulo six,
+                // exactly like `.sc:nth-child(6n+…)` in `themes/noppe.css`. The same
                 // building block as the brick design, only taller and in
                 // varying color; hence the same component instead of a second one.
                 if (isStud) BrickStudCap(color = brickTone(position), gloss = isGloss)

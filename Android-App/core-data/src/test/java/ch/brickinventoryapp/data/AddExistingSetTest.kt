@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testSetCatalogRepository
+import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testSetCatalogRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * An already added set is opened, not silently increased — whether
  * via barcode, text recognition or number. The rule lies on the server
- * (utils/setAdd.ts): adding answers with `action = "exists"` and writes
+ * (`utils/setAdd.ts`): adding answers with `action = "exists"` and writes
  * nothing, so that it does not drift apart between the clients.
  *
  * This is checked, executed, in EntryViewModelTest (number path,
@@ -30,7 +30,7 @@ class AddExistingSetTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
-     * The question is „do I have this already?", not „do I see this right now?". Without
+     * The question is „do I have this already?“, not „do I see this right now?“. Without
      * accounts the server takes its default view — main AND sub-accounts, and
      * a set of a sub-account counts as present.
      */

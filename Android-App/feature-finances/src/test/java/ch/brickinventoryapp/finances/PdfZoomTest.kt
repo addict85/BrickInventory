@@ -3,8 +3,8 @@ package ch.brickinventoryapp.finances
 import ch.brickinventoryapp.finances.ui.pdf.PDF_BITMAP_MAX_PX
 import ch.brickinventoryapp.finances.ui.pdf.bitmapDimensions
 import ch.brickinventoryapp.finances.ui.screens.renderLevel
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * The PDF viewer can zoom — and stays sharp while doing so, without blowing
@@ -34,7 +34,7 @@ import ch.brickinventoryapp.testing.Sources
  */
 class PdfZoomTest {
 
-    private val A4 = 1.4142f      // Hoehe / Breite einer A4-Seite
+    private val A4 = 1.4142f      // height / width of an A4 page
 
     @Test
     fun `without zoom it renders at single width, with zoom higher`() {

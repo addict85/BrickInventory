@@ -1,6 +1,10 @@
 package ch.brickinventoryapp.account
 
-import ch.brickinventoryapp.model.ui.theme.Design
+import android.app.Activity
+import android.content.ClipboardManager
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
@@ -24,14 +28,17 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
-import ch.brickinventoryapp.resources.R
+import androidx.core.content.IntentCompat
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
+import ch.brickinventoryapp.account.ui.screens.CODES_FILE
+import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.StepGuard
-import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import ch.brickinventoryapp.ui.util.secretCopyable
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -39,18 +46,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import android.content.ClipboardManager
-import android.content.Intent
-import androidx.core.content.IntentCompat
-import android.app.Activity
-import android.net.Uri
-import ch.brickinventoryapp.account.ui.screens.CODES_FILE
 import java.io.ByteArrayOutputStream
 import java.util.Locale
-import org.robolectric.Shadows
-import android.os.Build
 
 /**
  * The admins' mandatory-factor mask, run through: setup only with
@@ -71,8 +71,7 @@ import android.os.Build
  *   codes-teilen-ueber-ablage      "Share" puts the codes on the clipboard → red "die Notfallcodes lassen sich teilen …"
  *   codes-wieder-kopierbar         a button copies the codes to the clipboard → red "kein Knopf der Codes …"
  *   schluessel-kopieren-vor-33     key copyable from API 30 → red "der Schluessel ist erst ab API 33 …"
- *   codes-sichern-als-teilen       "Save as file" shares again (ACTION_SEND) → red "die Notfallcodes
- *                                  lassen sich als Datei speichern …" (not measured locally)
+ *   codes-sichern-als-teilen       "Save as file" shares again (ACTION_SEND) → red "die Notfallcodes lassen sich als Datei speichern …" (not measured locally)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

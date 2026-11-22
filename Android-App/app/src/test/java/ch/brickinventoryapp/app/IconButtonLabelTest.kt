@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Controls that consist ONLY of an icon need a label.
  *
  * ── What this test does NOT require ─────────────────────────────────────────
  * `contentDescription = null` on an icon NEXT to a text is right and
- * stays: otherwise TalkBack reads the same thing twice („Suchen, Suchen"). The
+ * stays: otherwise TalkBack reads the same thing twice („Suchen, Suchen“). The
  * test therefore only picks up icons INSIDE an IconButton — there the
  * icon is the only thing the button has to offer.
  */

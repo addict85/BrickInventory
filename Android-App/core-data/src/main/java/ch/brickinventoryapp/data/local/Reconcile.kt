@@ -1,11 +1,18 @@
 package ch.brickinventoryapp.data.local
 
-import ch.brickinventoryapp.data.api.MinifigsApi
-import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.contract.UpdateQuantityRequest
+import ch.brickinventoryapp.data.api.MinifigsApi
+import ch.brickinventoryapp.data.api.PartsApi
+import ch.brickinventoryapp.data.api.SetsApi
+import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.safeCall
+import ch.brickinventoryapp.model.local.StockKind
+import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.Outbox
+import ch.brickinventoryapp.offline.Outbox.DiscardedItem
+import ch.brickinventoryapp.offline.OutboxItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,13 +22,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.offline.Outbox
-import ch.brickinventoryapp.offline.OutboxItem
-import ch.brickinventoryapp.offline.Editing
-import ch.brickinventoryapp.model.local.StockKind
-import ch.brickinventoryapp.offline.OfflineStore
-import ch.brickinventoryapp.offline.Outbox.DiscardedItem
-import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
 
 /** What the server said about an edit. */
 sealed class SendOutcome {

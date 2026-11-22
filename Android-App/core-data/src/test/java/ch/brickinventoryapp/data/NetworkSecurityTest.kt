@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * The network security config is the second line behind the guard: in the

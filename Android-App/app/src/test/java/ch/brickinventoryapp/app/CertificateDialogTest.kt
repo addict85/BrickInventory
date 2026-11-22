@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.app
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
@@ -10,17 +12,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
 import ch.brickinventoryapp.app.ui.components.closable
-import ch.brickinventoryapp.security.Transcript
-import org.junit.Assert.assertFalse
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.security.Transcript
 import ch.brickinventoryapp.security.fingerprintReadable
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test

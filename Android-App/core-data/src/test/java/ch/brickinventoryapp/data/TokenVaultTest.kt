@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.testing.testTrustCipher
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.security.UnlockVault
+import ch.brickinventoryapp.data.testing.testTrustCipher
 import ch.brickinventoryapp.security.TokenEncryption
-import ch.brickinventoryapp.security.VaultFinding
 import ch.brickinventoryapp.security.TrustCipher
+import ch.brickinventoryapp.security.UnlockVault
+import ch.brickinventoryapp.security.VaultFinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,7 +39,7 @@ import java.io.IOException
  *                                   “saving stores only encrypted now”
  *   abmelden-laesst-geheimtext      clearSession() without remove(AUTH_TOKEN_ENC) → red
  *                                   “sign-out removes both entries”
- *   altbestand-nicht-umgeschluesselt  adoptOldToken() without umschluesseln(prefs) → red
+ *   altbestand-nicht-umgeschluesselt  adoptOldToken() without re-encrypting (prefs) → red
  *                                   “a token under the old key goes under the strict one at start”
  *   klartext-token-gilt-wieder      the mirror reads AUTH_TOKEN as token again → red
  *                                   “a plaintext token of older versions never counts …”

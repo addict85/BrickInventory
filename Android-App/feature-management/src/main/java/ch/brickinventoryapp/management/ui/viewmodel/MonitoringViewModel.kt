@@ -1,20 +1,29 @@
 package ch.brickinventoryapp.management.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Condition
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.data.repository.ManagementRepository
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.account.ManagementRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.model.domain.ApiLimitsView
+import ch.brickinventoryapp.model.domain.BackgroundView
 import ch.brickinventoryapp.model.domain.BricksetEntryView
 import ch.brickinventoryapp.model.domain.CacheMetricsView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.domain.JobStateView
 import ch.brickinventoryapp.model.domain.ScheduleView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.dataOrNull
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.errorMessage
+import ch.brickinventoryapp.state.ui.loadAs
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,15 +31,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.domain.ErrorCode
-import ch.brickinventoryapp.model.domain.BackgroundView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.dataOrNull
-import ch.brickinventoryapp.state.ui.loadAs
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.state.ui.errorMessage
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
  * What the monitoring screen knows from the server — server data only. What is
@@ -54,6 +54,8 @@ data class MonitoringUiState(
     val defaultState: Condition = Condition.NEW,
     /** The theme the admin sets for everyone — not the account's own. */
     val defaultDesign: Design? = null,
+    /** Cache numbers, limits, cache duration and defaults: a failure keeps the last values and offers a retry. */
+    val settingsFetch: Load<Unit> = Load.Data(Unit),
     /** The server said `only_admins`: the poll loop stops instead of being rejected again every 5 s. */
     val accessRevoked: Boolean = false,
 )
@@ -316,18 +318,21 @@ class MonitoringViewModel @Inject constructor(
      * the order of the state changes would become unpredictable.
      */
     internal suspend fun loadCacheAndLimits() {
-        (admin.getCacheStats() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(cacheStats = r.data) }
-        }
-        (admin.getApiLimits() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(apiLimits = r.data) }
-        }
-        (admin.getCacheTtl() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(cacheTtl = r.data) }
-        }
-        (account.getDefaultCondition() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(defaultState = r.data) }
-        }
+        _state.update { it.copy(settingsFetch = Load.Data(Unit)) }
+        setting(admin.getCacheStats()) { s, d -> s.copy(cacheStats = d) }
+        setting(admin.getApiLimits()) { s, d -> s.copy(apiLimits = d) }
+        setting(admin.getCacheTtl()) { s, d -> s.copy(cacheTtl = d) }
+        setting(account.getDefaultCondition()) { s, d -> s.copy(defaultState = d) }
+    }
+
+    /** All settings of the page again, after one of them failed. */
+    fun reloadSettings() {
+        viewModelScope.launch { loadCacheAndLimits(); loadDesignDefault() }
+    }
+
+    private fun <T> setting(r: Outcome<T>, take: (MonitoringUiState, T) -> MonitoringUiState) = when (r) {
+        is Outcome.Success -> _state.update { take(it, r.data) }
+        is Outcome.Failure -> _state.update { it.copy(settingsFetch = loadError(r)) }
     }
 
     internal suspend fun setCacheDuration(hours: Int): Outcome<Unit> {
@@ -365,9 +370,7 @@ class MonitoringViewModel @Inject constructor(
      * yet; there, the effective theme was also the default.
      */
     internal suspend fun loadDesignDefault() {
-        (account.getAppTheme() as? Outcome.Success)?.let { r ->
-            _state.update { it.copy(defaultDesign = r.data.default ?: r.data.effective) }
-        }
+        setting(account.getAppTheme()) { s, d -> s.copy(defaultDesign = d.default ?: d.effective) }
     }
 
     /**
@@ -384,9 +387,7 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun setLimits(rebrickable: Int, bricklink: Int, brickset: Int): Outcome<Unit> {
         val r = admin.setApiLimits(rebrickable, bricklink, brickset)
         if (r is Outcome.Success) {
-            (admin.getApiLimits() as? Outcome.Success)?.let { l ->
-                _state.update { it.copy(apiLimits = l.data) }
-            }
+            setting(admin.getApiLimits()) { s, d -> s.copy(apiLimits = d) }
         }
         return r
     }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.data.testing.TestApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -15,7 +16,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The shared SSE building block (sseStream) against a real test server, and the

@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.finances.ui
 
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.PlaintextView
-import ch.brickinventoryapp.model.domain.ValuationView
 import ch.brickinventoryapp.model.domain.ChartAxis
-import ch.brickinventoryapp.model.domain.PricePoint
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.FiguresValuationView
-import ch.brickinventoryapp.model.domain.ProfitView
-import ch.brickinventoryapp.model.domain.VoucherView
 import ch.brickinventoryapp.model.domain.PartsValuationView
+import ch.brickinventoryapp.model.domain.PlaintextView
+import ch.brickinventoryapp.model.domain.PricePoint
+import ch.brickinventoryapp.model.domain.ProfitView
+import ch.brickinventoryapp.model.domain.ValuationView
+import ch.brickinventoryapp.model.domain.VoucherView
 import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Operation
 
 /**
  * Finances: valuation, profit/loss and portfolio history — its own flow because
@@ -27,6 +27,8 @@ data class FinanceUiState(
      * other displays. Without the error the tab showed „keine Preisdaten“.
      */
     val valuationLoad: Load<Unit> = Load.Data(Unit),
+    /** Parts, figures and P&L next to the sets: a failure leaves the sets and offers a retry. */
+    val extrasLoad: Load<Unit> = Load.Data(Unit),
     val history: Load<Unit> = Load.Data(Unit),
     val historyPeriodChangePct: Double? = null,
     /**
@@ -79,7 +81,7 @@ data class VoucherUiState(
     //
     // As strings, including the amount: while typing, „12,“ is neither a number
     // nor an error. What cannot be converted on saving is rejected by the server
-    // (pruefeWerte in routes/api_v1/vouchers.ts).
+    // (pruefeWerte in `routes/api_v1/vouchers.ts`).
     val number: String = "",
     val pin: String = "",
     val amount: String = "",

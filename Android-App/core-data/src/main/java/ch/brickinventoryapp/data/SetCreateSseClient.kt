@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.SetRecorded
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.data.di.SseClient
-import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
 import ch.brickinventoryapp.contract.AddSetResponse
+import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetRecorded
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformWhile
-import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -92,7 +92,7 @@ internal class SetCreateSseClient @Inject constructor(
 
     /**
      * An event of the stream; null for unknown ones. The same step names as in the
-     * web app (public/js/collection.js): a protocol between two programs.
+     * web app (`public/js/collection.js`): a protocol between two programs.
      */
     private fun step(obj: JsonObject): SetCreateStep? = when (obj["step"]?.jsonPrimitive?.content) {
         "meta" -> SetCreateStep.MasterData(obj["set"]?.jsonPrimitive?.content)

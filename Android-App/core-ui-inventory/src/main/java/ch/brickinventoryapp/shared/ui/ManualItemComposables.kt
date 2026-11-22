@@ -1,51 +1,51 @@
 package ch.brickinventoryapp.shared.ui
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.Condition
-import androidx.compose.ui.graphics.luminance
-import ch.brickinventoryapp.ui.components.SmallerButton
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.model.domain.PurchaseView
-import ch.brickinventoryapp.model.domain.AccountView
-import ch.brickinventoryapp.ui.theme.Shapes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import coil3.ImageLoader
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.model.domain.AccountView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.BrickSay
-import ch.brickinventoryapp.ui.theme.BrickSayText
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.quantity
-import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.SmallerButton
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.ProductImage
-import ch.brickinventoryapp.ui.components.movementReduced
 import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.quantity
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.BrickSay
+import ch.brickinventoryapp.ui.theme.BrickSayText
+import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
+import ch.brickinventoryapp.ui.util.fmtMoney
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 
 /**
  * Shared composables for manually captured parts AND minifigs.
@@ -226,8 +226,8 @@ fun InfoBadge(text: String, modifier: Modifier = Modifier, icon: androidx.compos
  * The first is quantity-weighted across all captured purchases; the second is only the most recently
  * written single price.
  *
- * @param preis    raw amount; null = none stored, then it says „noch kein Preis“
- * @param waehrung currency code from settings
+ * @param price    raw amount; null = none stored, then it says „noch kein Preis“
+ * @param currency currency code from settings
  */
 @Composable
 fun ManualTileFooter(price: Money?, currency: CurrencyCode) {
@@ -395,7 +395,7 @@ fun ManualTile(
                 }
                 Box(Modifier.padding(top = 3.dp)) { ConditionBadges(states, condition) }
                 // Who owns the entry? The server only attaches owners when
-                // several accounts are in the Blickfeld — in a single account, „gehört mir" would sit on
+                // several accounts are in the Blickfeld — in a single account, "mine" would sit on
                 // every single tile.
                 OwnerBadges(owner, Modifier.padding(top = Spacing.hairline))
                 ManualTileFooter(price = price, currency = currency)

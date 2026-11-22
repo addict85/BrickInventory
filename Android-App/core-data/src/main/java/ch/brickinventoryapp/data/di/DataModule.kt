@@ -1,29 +1,29 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.model.coroutines.ApplicationScope
-import androidx.datastore.preferences.preferencesDataStoreFile
+import android.content.Context
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.preferencesDataStoreFile
 import ch.brickinventoryapp.data.AccountStore
+import ch.brickinventoryapp.data.CreateWithStore
+import ch.brickinventoryapp.data.LoginStore
+import ch.brickinventoryapp.data.RedemptionSource
+import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.TokenStore
+import ch.brickinventoryapp.data.TokenSwap
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.cache.CacheOwner
+import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.security.DeviceLock
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
-import ch.brickinventoryapp.data.LoginStore
-import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.data.CreateWithStore
-import ch.brickinventoryapp.data.TokenSwap
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.data.repository.AccountRepository
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
-import ch.brickinventoryapp.data.RedemptionSource
-import ch.brickinventoryapp.data.cache.CacheOwner
 
 /** Interfaces of the data layer and their implementations, where the data layer knows them. */
 @Module

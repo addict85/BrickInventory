@@ -2,11 +2,11 @@ package ch.brickinventoryapp.services
 
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.services.service.errorText
-import ch.brickinventoryapp.services.service.progressText
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.services.service.errorText
+import ch.brickinventoryapp.services.service.progressText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,8 +16,7 @@ import org.junit.Test
  * error is left without a string, even when the server sent none.
  *
  * Counter-check (counter-checks/pdf-dienst-fehler-leer.patch, measured with kotlinc):
- *   errorText() always uses `error.message` for a fetch error → red „jeder Fehler
- *   hat einen Satz …“ with „Netz(technisch=null) ohne Satz“
+ *   errorText() always uses `error.message` for a fetch error → red „jeder Fehler hat einen Satz …“ with „Netz(technisch=null) ohne Satz“
  */
 class PdfServiceTextsTest {
 

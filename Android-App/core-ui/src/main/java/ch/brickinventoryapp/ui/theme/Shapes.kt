@@ -1,10 +1,5 @@
 package ch.brickinventoryapp.ui.theme
 
-import ch.brickinventoryapp.ui.components.focusFrame
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,7 +10,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.ui.components.focusFrame
 
 /**
  * Shapes and elevations in one place, like the colors via `colorScheme`: „make
@@ -70,9 +70,9 @@ object Shapes {
      */
     val tileHeight  = 208.dp
 
-    /** Erhebung einer flachen Karte (Listen, Abschnitte). */
+    /** Elevation of a flat card (lists, sections). */
     val cardElevation = 1.dp
-    /** Erhebung einer hervorgehobenen Karte (Anmeldung, Dialoge, Kennzahlen). */
+    /** Elevation of a highlighted card (sign-in, dialogs, key figures). */
     val cardElevationHigh = 2.dp
 }
 

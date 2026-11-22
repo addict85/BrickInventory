@@ -1,10 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Condition
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -25,22 +20,40 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
-import ch.brickinventoryapp.login.ui.screens.LoginScreen
-import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.data.SetCreateStep
+import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.management.ui.ManagementUiState
+import ch.brickinventoryapp.management.ui.screens.CacheEvents
+import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
+import ch.brickinventoryapp.management.ui.screens.MonitoringState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.domain.BrickLinkView
+import ch.brickinventoryapp.model.domain.CatalogDetailView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -51,19 +64,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
-import ch.brickinventoryapp.model.domain.BrickLinkView
-import ch.brickinventoryapp.model.domain.CatalogDetailView
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.management.ui.ManagementUiState
-import ch.brickinventoryapp.management.ui.screens.CacheEvents
-import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
-import ch.brickinventoryapp.management.ui.screens.MonitoringState
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
-import kotlinx.coroutines.runBlocking
 
 /**
  * No text breaks character by character or within a word, none protrudes beyond its space,
@@ -320,8 +320,9 @@ class WrapGuardTest {
         val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
+        val background = vm.background.value
         check("Hintergrundarbeiten $font", font, device = "w360dp-h891dp-port-xxhdpi") {
-            MonitoringScreen(MonitoringState(MonitoringUiState(defaultState = Condition.USED), vm.background.value, ManagementUiState(),
+            MonitoringScreen(MonitoringState(MonitoringUiState(defaultState = Condition.USED), background, ManagementUiState(),
                 emptyMap(), Design.CLASSIC, 0L), vm, events)
         }
         inImage("Hintergrundarbeiten $font", "Gebraucht")

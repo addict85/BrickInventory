@@ -2,10 +2,10 @@ package ch.brickinventoryapp.offline
 
 import android.content.Context
 import androidx.room.Room
-import ch.brickinventoryapp.offline.room.InventoryDatabase
-import ch.brickinventoryapp.offline.room.RoomOutbox
-import ch.brickinventoryapp.offline.room.RoomInventory
 import ch.brickinventoryapp.offline.room.EncryptedInventoryFactory
+import ch.brickinventoryapp.offline.room.InventoryDatabase
+import ch.brickinventoryapp.offline.room.RoomInventory
+import ch.brickinventoryapp.offline.room.RoomOutbox
 import ch.brickinventoryapp.security.StoreKey
 import dagger.Binds
 import dagger.Module

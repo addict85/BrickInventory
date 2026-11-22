@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.components
 
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -39,8 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.resources.R
-import coil3.ImageLoader
+import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
+import coil3.ImageLoader
 import kotlin.math.roundToInt
 
 /**

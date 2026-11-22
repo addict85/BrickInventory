@@ -13,8 +13,6 @@ import java.security.cert.PKIXParameters
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 import java.util.Base64
-import javax.inject.Inject
-import javax.inject.Singleton
 import javax.net.ssl.SSLEngine
 import javax.net.ssl.SSLSession
 import javax.net.ssl.SSLSocket
@@ -194,14 +192,13 @@ interface CertificateQuestion {
     fun confirm(pins: PinStore, input: String? = null, deviceConfirmed: Boolean = false): Boolean
     fun discard()
 
-    /** For tests without Hilt. */
+    /** The one way to build it, for Hilt and tests alike; the implementation stays internal. */
     companion object {
         operator fun invoke(): CertificateQuestion = CertificatePrompt()
     }
 }
 
-@Singleton
-internal class CertificatePrompt @Inject constructor() : CertificateQuestion {
+internal class CertificatePrompt : CertificateQuestion {
     private val _open = MutableStateFlow<CertificateUnresolved?>(null)
     override val open: StateFlow<CertificateUnresolved?> = _open.asStateFlow()
 

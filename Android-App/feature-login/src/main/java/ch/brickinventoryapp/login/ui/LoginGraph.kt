@@ -1,16 +1,13 @@
 package ch.brickinventoryapp.login.ui
 
-import androidx.compose.runtime.getValue
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.ui.sentence
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -21,6 +18,9 @@ import ch.brickinventoryapp.login.ui.screens.QrAccountQuestion
 import ch.brickinventoryapp.login.ui.screens.ServerStartDisplay
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.ui.sentence
 
 /** What sign-in needs from the app: only the app knows where it goes after signing in. */
 interface LoginNavigation {

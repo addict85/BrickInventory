@@ -1,22 +1,22 @@
 package ch.brickinventoryapp.ui.util
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import androidx.appcompat.app.AppCompatDelegate
 import android.text.format.DateFormat
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.util.DateYear
+import ch.brickinventoryapp.model.util.fmtDatum
+import ch.brickinventoryapp.model.util.numbersLocale
 import java.text.NumberFormat
 import java.time.Instant
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.model.util.DateYear
-import ch.brickinventoryapp.model.util.fmtDatum
-import ch.brickinventoryapp.model.util.numbersLocale
 
 /*
  * Numbers and amounts — one version for the whole app, kept in step with
- * the web app (locale() in public/i18n.js), so the same amount looks the
+ * the web app (locale() in `public/i18n.js`), so the same amount looks the
  * same everywhere. Amounts go through the platform's currency formatting:
  * the placement of symbol and amount is not something to get right by hand.
  */
@@ -35,7 +35,7 @@ fun appNumberLocale(): Locale {
 }
 
 /**
- * Amount WITH currency — the counterpart to fmtN() in public/js/01-core.js.
+ * Amount WITH currency — the counterpart to fmtN() in `public/js/01-core.js`.
  *
  * @param currencyCode ISO code from the server response (CHF, EUR, …). An
  *        unknown code must not break the display: then the code stands

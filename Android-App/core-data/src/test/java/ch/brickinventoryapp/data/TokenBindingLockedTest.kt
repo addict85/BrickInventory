@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.testing.testTrustCipher
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.data.testing.testTrustCipher
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.TokenEncryption
 import ch.brickinventoryapp.security.VaultFinding
@@ -22,9 +22,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicInteger
-import java.io.File
 
 /**
  * A token goes only to the server that issued it — even if the keystore is locked during
@@ -59,7 +59,7 @@ class TokenBindingLockedTest {
     /** One file per test; DataStore allows only one instance per file in the process. */
     private val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "bindung-${System.nanoTime()}.preferences_pb") }
 
-    /** Ein Prozessstart: neue Instanz, eigener Bereich, dieselbe Platte. */
+    /** A process start: new instance, own scope, the same disk. */
     private fun start(vault: TokenEncryption): TokenStore {
         val area = CoroutineScope(SupervisorJob() + Dispatchers.IO).also { areas += it }
         return TokenStore(store, vault, DevicesStore(ctx, store, testTrustCipher()), area) { RedemptionPlanner { scheduled += it } }

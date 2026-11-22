@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.ui.components
 
 import android.app.KeyguardManager
-import ch.brickinventoryapp.ui.theme.windowSurface
 import android.os.SystemClock
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
@@ -21,10 +20,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import androidx.fragment.app.FragmentActivity
@@ -34,6 +33,7 @@ import androidx.lifecycle.lifecycleScope
 import ch.brickinventoryapp.model.step.StepAction
 import ch.brickinventoryapp.model.step.StepBinding
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.windowSurface
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.security.Signature

@@ -1,21 +1,21 @@
 package ch.brickinventoryapp.parts.ui.screens
 
-import ch.brickinventoryapp.model.domain.FigureEntry
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.shared.ui.entryInvalid
-import ch.brickinventoryapp.shared.ui.entryValues
-import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.FigureEntry
+import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.AddDialog
 import ch.brickinventoryapp.shared.ui.EntryFields
 import ch.brickinventoryapp.shared.ui.OwnerPicker
+import ch.brickinventoryapp.shared.ui.entryInvalid
+import ch.brickinventoryapp.shared.ui.entryValues
+import ch.brickinventoryapp.ui.components.AddDialog
+import ch.brickinventoryapp.ui.theme.Shapes
 
 @Composable
 internal fun AddMinifigDialog(

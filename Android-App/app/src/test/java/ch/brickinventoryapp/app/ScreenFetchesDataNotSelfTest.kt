@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * No screen reaches past the state layer into the data layer: loading logic in
@@ -47,7 +47,7 @@ class ScreenFetchesDataNotSelfTest {
     }
 
     /**
-     * Screens see domain types (model.fach), not server models: a new
+     * Screens see domain types (model.domain), not server models: a new
      * field or a different nullability in the DTO should stand out in the repository or ViewModel,
      * not in a composable. Without exception.
      * Counter-check: in VouchersCard.kt again

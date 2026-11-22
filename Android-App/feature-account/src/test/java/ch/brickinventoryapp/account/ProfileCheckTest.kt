@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.account
 
-import ch.brickinventoryapp.account.ui.screens.ProfileField.USERNAME
 import ch.brickinventoryapp.account.ui.screens.ProfileField.EMAIL
+import ch.brickinventoryapp.account.ui.screens.ProfileField.USERNAME
 import ch.brickinventoryapp.account.ui.screens.profileError
 import org.junit.Assert.assertEquals
 import org.junit.Test

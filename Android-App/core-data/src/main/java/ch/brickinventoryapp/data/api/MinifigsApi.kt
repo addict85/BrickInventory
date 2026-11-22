@@ -5,6 +5,8 @@ import ch.brickinventoryapp.contract.AddMinifigResponse
 import ch.brickinventoryapp.contract.GenericResponse
 import ch.brickinventoryapp.contract.LagerortRequest
 import ch.brickinventoryapp.contract.LagerortResponse
+import ch.brickinventoryapp.contract.ManualFigsResponse
+import ch.brickinventoryapp.contract.MinifigStatsResponse
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.UpdateManualItemRequest
 import ch.brickinventoryapp.contract.VerwendendeSetsResponse
@@ -17,8 +19,6 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.contract.ManualFigsResponse
-import ch.brickinventoryapp.contract.MinifigStatsResponse
 
 /**
  * Query the figure list — for the figures tab and the content of a set.
@@ -35,7 +35,7 @@ interface MinifigsQueryApi {
 }
 
 /**
- * Minifiguren: manuell erfasste Figuren, Kennzahlen, Lagerort (MinifigsRepository).
+ * Minifigures: manually entered figures, key figures, storage location (MinifigsRepository).
  */
 interface MinifigsApi : MinifigsQueryApi {
 
@@ -64,7 +64,7 @@ interface MinifigsApi : MinifigsQueryApi {
     suspend fun updateMinifig(
         @Path("figNumber") figNumber: String,
         @Body request: UpdateManualItemRequest,
-        // Wessen Karte gemeint war — siehe deletePart.
+        // Whose card was meant — see deletePart.
         @Query("owner") owner: Int? = null,
         @Header("Idempotency-Key") key: String? = null,
     ): Response<GenericResponse>

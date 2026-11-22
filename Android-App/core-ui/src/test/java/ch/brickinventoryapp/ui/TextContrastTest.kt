@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.ChartColors
 import ch.brickinventoryapp.ui.theme.StatusColors
 import ch.brickinventoryapp.ui.theme.accentSurfaces
 import ch.brickinventoryapp.ui.theme.chartColors
 import ch.brickinventoryapp.ui.theme.colorScheme
 import ch.brickinventoryapp.ui.theme.hasDarkVersion
-import ch.brickinventoryapp.ui.theme.tabColors
 import ch.brickinventoryapp.ui.theme.statusColorsFor
+import ch.brickinventoryapp.ui.theme.tabColors
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -23,27 +23,27 @@ import org.junit.Test
  * Counter-checks:
  *   A  old colors: both first tests red, 33 pairs under 4.5:1, among them
  *      brick.onSurfaceVariant/background 3.91, classic …/surfaceContainerHighest 3.85,
- *      noppe.primary/background 4.44, onError/error in all dark versions 4.48;
- *      the third red with noppe 0.03 and noppe/dunkel 0.13.
+ *      `noppe`.primary/background 4.44, onError/error in all dark versions 4.48;
+ *      the third red with `noppe` 0.03 and `noppe/dunkel` 0.13.
  *   B  brick.onSurfaceVariant back to #6B7785 → red (3.91 on background)
- *   C  noppe.primary back to StudRed → red: „Hauptfarbe zu nah …“ (0.13)
+ *   C  `noppe`.primary back to StudRed → red: „Hauptfarbe zu nah …“ (0.13)
  *
  * Chart colors:
- *   D  gedaempft hardcoded back to #94A3B8 in chartColors() → red „Diagrammschrift …“
+ *   D  the muted color hardcoded back to #94A3B8 in chartColors() → red „Diagrammschrift …“
  *      with classic 2.56 on surface and 2.07 on surfaceContainerHighest
  *
  * Accent surfaces:
  *   E  the brick surfaces also in the dark in accentSurfaces() (as before M5: bars in
  *      primary/secondary, market value petrol) → red „im Dunkeln leuchtet …“ with
- *      brick/dunkel.leiste 0.45, .detailBar 0.63, .markt 0.17
+ *      `brick/dunkel.leiste` 0.45, `.detailBar` 0.63, `.markt` 0.17
  *
- * Counter-checks for the color roles (thema.py against Compose Desktop; patches under counter-checks/):
+ * Counter-checks for the color roles (`thema.py` against Compose Desktop; patches under counter-checks/):
  *   container-ohne-stauchung   → red classic.primary/surfaceContainerHighest 4.18
  *   primarycontainer-blau50    → red classic.primary/primaryContainer 4.24
- *   inverseprimary-ungeprueft  → red farbfaecher.inversePrimary/inverseSurface 3.73
- *   gebraucht-linie-blass      → red noppe.gebraucht/surface 2.61
- *   reiteranzeige-blass        → red classic.anzeige/leiste 1.02
- *   warnfarbe-hell             → red classic.warnung/surface 1.95
+ *   inverseprimary-ungeprueft  → red `farbfaecher`.inversePrimary/inverseSurface 3.73
+ *   gebraucht-linie-blass      → red `noppe.gebraucht`/surface 2.61
+ *   reiteranzeige-blass        → red `classic.anzeige/leiste` 1.02
+ *   warnfarbe-hell             → red `classic.warnung`/surface 1.95
  */
 class TextContrastTest {
 
@@ -200,7 +200,7 @@ class TextContrastTest {
     /**
      * Delete and error must not look like the main color. The measure is the
      * distance in RGB space (0 to 1.73): blue against red is above 0.8, the
-     * noppe red #D91F26 next to #B91C1C at 0.13.
+     * `noppe` red #D91F26 next to #B91C1C at 0.13.
      */
     @Test
     fun `error color deviates clearly from the primary color`() {

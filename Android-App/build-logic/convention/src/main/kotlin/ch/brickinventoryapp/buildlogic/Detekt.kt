@@ -5,9 +5,11 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.file.FileCollection
 import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -15,7 +17,7 @@ import org.gradle.process.CommandLineArgumentProvider
 import java.io.File
 
 /**
- * Task `detekt`: checks src/main and src/test of the module against config/detekt/detekt.yml
+ * Task `detekt`: checks src/main, src/test and src/testFixtures of the module against config/detekt/detekt.yml
  * and fails on every finding that is not in config/detekt/baseline.xml. The
  * baseline only records length and branching; tools/detekt-limit.txt lets it shrink. The command line instead of the Gradle plugin:
  * it only needs the source folders and brings its own Kotlin, the plugin would have to
@@ -30,7 +32,7 @@ class DetektConvention : Plugin<Project> {
         target.dependencies.add(ruleset.name, "io.gitlab.arturbosch.detekt:detekt-formatting:$version")
 
         val sources = target.files(
-            listOf("src/main/java", "src/main/kotlin", "src/test/java", "src/test/kotlin").map { target.file(it) },
+            listOf("src/main/java", "src/main/kotlin", "src/test/java", "src/test/kotlin", "src/testFixtures/java").map { target.file(it) },
         ).filter { it.isDirectory }
         val report = target.layout.buildDirectory.file("reports/detekt/detekt.txt")
         val detekt = target.tasks.register("detekt", JavaExec::class.java) { task ->
@@ -42,6 +44,8 @@ class DetektConvention : Plugin<Project> {
                 DetektArguments(
                     sources, target.rootDir.resolve("config/detekt/detekt.yml"),
                     target.rootDir.resolve("config/detekt/baseline.xml"), ruleset, report.map { it.asFile },
+                    target.providers.gradleProperty("detektAutoCorrect").isPresent,
+                    target.providers.gradleProperty("detektNewBaseline").map { File(it, target.name + ".xml").absolutePath }.orNull,
                 ),
             )
             task.outputs.file(report)
@@ -74,13 +78,18 @@ internal class DetektArguments(
     @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val baseline: File,
     @get:Classpath val ruleset: FileCollection,
     @get:Internal val report: org.gradle.api.provider.Provider<File>,
+    /** `-PdetektAutoCorrect`: let the formatting rules (import order) rewrite the files instead of only reporting. */
+    @get:Input val autoCorrect: Boolean,
+    /** `-PdetektNewBaseline=<dir>`: write this module's findings as a baseline there, to merge by hand. */
+    @get:Input @get:Optional val newBaseline: String?,
 ) : CommandLineArgumentProvider {
     override fun asArguments(): Iterable<String> = listOf(
         "--input", sources.files.joinToString(",") { it.absolutePath },
         "--config", rules.absolutePath,
         "--build-upon-default-config",
-        "--baseline", baseline.absolutePath,
+        "--baseline", newBaseline ?: baseline.absolutePath,
         "--plugins", ruleset.files.joinToString(",") { it.absolutePath },
         "--report", "txt:" + report.get().absolutePath,
-    )
+    ) + (if (autoCorrect) listOf("--auto-correct") else emptyList()) +
+        (if (newBaseline != null) listOf("--create-baseline") else emptyList())
 }

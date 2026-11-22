@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.withRepo
+import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.withRepo
 
 /**
  * While the server starts, the app shows the progress — no error. The first
@@ -52,7 +52,7 @@ class ServerStartTest {
             "Die Anmeldung zeigt den Startfortschritt nicht"
         }
         // The jump into the gallery must stand OUTSIDE the if/else: the
-        // switch to „finished" can come at any time.
+        // switch to „finished“ can come at any time.
         val display = s.indexOf("ServerStartDisplay(serverStart)")
         val jump = s.indexOf("LaunchedEffect(state.isLoggedIn)")
         assert(jump > display) { "Test veraltet — die Reihenfolge stimmt nicht mehr" }

@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.management
 
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -33,7 +33,7 @@ import org.junit.Test
  *   startknopf-bleibt-gestartet      resetting after STARTED_MS removed → red “a start button shows …”
  *   startknopf-fehlschlag-still      failure without a message → red “a failed start reports …”
  *   warteschlange-fehler-verschluckt queue error treated as an empty list → red “a failed queue …”
- *   The cause dropped from a failure (Meldung.Resource(satz) without werte) → red “a failed start
+ *   The cause dropped from a failure (Message.Resource(sentence) without values) → red “a failed start
  *   reports …”, “a failed removal names …” and “a failed save names …” (not locally runnable,
  *   to be checked in CI).
  */

@@ -1,174 +1,176 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.CatalogSort
-import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.domain.Condition
-import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.navigation.NavDestination.Companion.hasRoute
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Looper
+import android.view.View
+import android.view.ViewGroup
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.ViewRootForTest
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.runtime.getValue
+import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.resources.R
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.account.ui.AccountUiState
+import ch.brickinventoryapp.account.ui.SecondFactorUiState
+import ch.brickinventoryapp.account.ui.UpdateUiState
+import ch.brickinventoryapp.account.ui.dialogs.UpdateRoute
+import ch.brickinventoryapp.account.ui.screens.AccountRoute
+import ch.brickinventoryapp.account.ui.screens.CsvImportRoute
+import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
+import ch.brickinventoryapp.account.ui.screens.LocationsRoute
+import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
+import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.account.ui.screens.SettingsScreen
+import ch.brickinventoryapp.account.ui.screens.SettingsState
+import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
+import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.app.nav.AppTarget
+import ch.brickinventoryapp.app.ui.components.CertificateDialog
+import ch.brickinventoryapp.app.ui.components.CsvImportBanner
+import ch.brickinventoryapp.catalog.ui.CatalogUiState
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
+import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
+import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
+import ch.brickinventoryapp.collection.ui.BarcodeUiState
+import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.collection.ui.dialogs.BarcodeDialogState
+import ch.brickinventoryapp.collection.ui.dialogs.BarcodeResultDialog
+import ch.brickinventoryapp.collection.ui.screens.AcquisitionManagementRoute
+import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
+import ch.brickinventoryapp.collection.ui.screens.BarcodeScannerScreen
+import ch.brickinventoryapp.collection.ui.screens.ComparisonScreen
+import ch.brickinventoryapp.collection.ui.screens.GalleryAndDetail
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
-import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
-import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
-import ch.brickinventoryapp.parts.ui.screens.PartsRoute
+import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonActions
+import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonUiState
+import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.data.SetCreateStep
+import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testFinancesRepository
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.data.testing.testVouchersRepository
+import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.finances.ui.screens.VouchersRoute
+import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
+import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.SetupScreen
+import ch.brickinventoryapp.management.ui.ManagementUiState
+import ch.brickinventoryapp.management.ui.screens.CacheEvents
+import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
+import ch.brickinventoryapp.management.ui.screens.MonitoringState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.domain.BrickLinkView
+import ch.brickinventoryapp.model.domain.CatalogDetailView
+import ch.brickinventoryapp.model.domain.CatalogSetView
+import ch.brickinventoryapp.model.domain.CatalogSort
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.parts.ui.PartListUiState
+import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.PlSet
-import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
+import ch.brickinventoryapp.parts.ui.screens.ManualItemDetailRoute
+import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
+import ch.brickinventoryapp.parts.ui.screens.PartsListScreen
+import ch.brickinventoryapp.parts.ui.screens.PartsRoute
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.testing.SessionFake
+import ch.brickinventoryapp.state.ui.ScopeUiState
+import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceActions
+import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
+import ch.brickinventoryapp.ui.components.OfflineHint
+import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.update.util.UpdateDescription
 import com.github.takahirom.roborazzi.captureRoboImage
-import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.data.PrewarmNetwork
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.util.Locale
-import ch.brickinventoryapp.catalog.ui.CatalogUiState
-import ch.brickinventoryapp.account.ui.AccountUiState
-import ch.brickinventoryapp.parts.ui.PartListUiState
-import ch.brickinventoryapp.account.ui.SecondFactorUiState
-import ch.brickinventoryapp.ui.components.OfflineHint
-import ch.brickinventoryapp.model.domain.BrickLinkView
-import ch.brickinventoryapp.model.domain.CatalogDetailView
-import ch.brickinventoryapp.model.domain.CatalogSetView
-import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
-import ch.brickinventoryapp.collection.ui.screens.GalleryAndDetail
-import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
-import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
-import ch.brickinventoryapp.collection.ui.screens.ComparisonScreen
-import ch.brickinventoryapp.account.ui.screens.CsvImportRoute
-import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
-import ch.brickinventoryapp.account.ui.screens.AccountRoute
-import ch.brickinventoryapp.account.ui.screens.LocationsRoute
-import ch.brickinventoryapp.parts.ui.screens.PartsListScreen
-import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
-import ch.brickinventoryapp.login.ui.screens.SetupScreen
-import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
-import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
-import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
-import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.view.View
-import android.view.ViewGroup
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.ViewRootForTest
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.semantics.SemanticsNode
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.text.TextLayoutResult
-import java.time.Duration
-import org.junit.Assert
-import org.robolectric.Shadows
 import org.robolectric.shadows.ShadowDialog
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.test.performScrollTo
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.collection.ui.BarcodeUiState
-import ch.brickinventoryapp.state.ui.ScopeUiState
-import ch.brickinventoryapp.state.ui.StorageUiState
-import ch.brickinventoryapp.account.ui.UpdateUiState
-import ch.brickinventoryapp.management.ui.ManagementUiState
-import ch.brickinventoryapp.collection.ui.dialogs.BarcodeDialogState
-import ch.brickinventoryapp.collection.ui.dialogs.BarcodeResultDialog
-import ch.brickinventoryapp.collection.ui.screens.AcquisitionManagementRoute
-import ch.brickinventoryapp.collection.ui.screens.BarcodeScannerScreen
-import ch.brickinventoryapp.management.ui.screens.CacheEvents
-import ch.brickinventoryapp.app.ui.components.CsvImportBanner
-import ch.brickinventoryapp.account.ui.screens.SettingsState
-import ch.brickinventoryapp.finances.ui.screens.VouchersRoute
-import ch.brickinventoryapp.ui.screens.CameraPermissionHint
-import ch.brickinventoryapp.parts.ui.screens.ManualItemDetailRoute
-import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
-import ch.brickinventoryapp.management.ui.screens.MonitoringState
-import ch.brickinventoryapp.account.ui.screens.SettingsScreen
-import ch.brickinventoryapp.state.ui.viewmodel.AppearanceActions
-import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
-import ch.brickinventoryapp.update.util.UpdateDescription
-import ch.brickinventoryapp.testing.testVouchersRepository
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.app.nav.AppTarget
-import ch.brickinventoryapp.collection.ui.CollectionTarget
-import ch.brickinventoryapp.account.ui.dialogs.UpdateRoute
-import ch.brickinventoryapp.app.ui.components.CertificateDialog
-import ch.brickinventoryapp.security.CertificateUnresolved
-import androidx.compose.ui.platform.LocalInputModeManager
-import androidx.compose.ui.input.InputMode
-import androidx.compose.ui.test.performSemanticsAction
+import java.time.Duration
+import java.util.Locale
 
 /**
  * What ScreenPhotoTest does not cover, once each instead of in the full grid (the
@@ -210,7 +212,7 @@ class ScreenPhotoVariantsTest {
         world.close()
     }
 
-    /** Like ScreenPhotoTest.bereitstellen: drive the main looper until the world rests. */
+    /** Like ScreenPhotoTest's provide step: drive the main looper until the world rests. */
     private fun provide(name: String, ready: () -> Boolean, condition: () -> Any?) {
         driveUntil(name, requests = { world.paths.requests.size }, condition = condition, ready = ready)
     }
@@ -638,7 +640,7 @@ class ScreenPhotoVariantsTest {
         }
         compose.onNode(androidx.compose.ui.test.hasText("Titanic", substring = true) and
             androidx.compose.ui.test.hasClickAction()).performClick()
-        // Erst komponieren: Das Detail startet sein Laden selbst (LaunchedEffect).
+        // Compose first: the detail starts its own loading (LaunchedEffect).
         compose.waitForIdle()
         // Photograph only when price and history are there — otherwise „Preis wird geladen“ stood
         // next to the price in the list.
@@ -800,7 +802,7 @@ class ScreenPhotoVariantsTest {
         }
     }
 
-    // ── Laden, Fehler, leer ──
+    // ── Loading, error, empty ──
 
     @Test
     fun galleryLoads() {
@@ -872,7 +874,7 @@ class ScreenPhotoVariantsTest {
     @Test fun comparisonFont200() = comparisonPhoto("vergleich-schrift200", 2f)
 
     private fun comparisonPhoto(name: String, font: Float) {
-        show(name, font = font) { ComparisonScreen() }
+        show(name, font = font) { ComparisonScreen(ComparisonUiState(), NoComparison) }
         pause()
         photo(name)
     }
@@ -1325,9 +1327,10 @@ class ScreenPhotoVariantsTest {
         val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
+        val background = vm.background.value
         show("hintergrundarbeiten", dark = dark, device = device, wait = false) {
             // Wi-Fi allowed, the others not: both switch positions in the image.
-            MonitoringScreen(MonitoringState(MonitoringUiState(), vm.background.value, ManagementUiState(),
+            MonitoringScreen(MonitoringState(MonitoringUiState(), background, ManagementUiState(),
                 mapOf(PrewarmNetwork.WIFI to true), Design.CLASSIC, 0L), vm, events)
         }
         pause()
@@ -1660,3 +1663,14 @@ class ScreenPhotoVariantsTest {
 
 /** A fixed point in time for images that show a date (5.11.2026, 23:33 UTC). */
 private const val FIXED_TIME = 1_793_921_600_000L
+
+/** The photo shows the empty page; nothing on it is pressed. */
+private object NoComparison : ComparisonActions {
+    override fun setSearch(text: String) = Unit
+    override fun clearSearch() = Unit
+    override fun openScanner() = Unit
+    override fun closeScanner() = Unit
+    override fun scanned(barcode: String) = Unit
+    override fun search() = Unit
+    override fun queryOpened() = Unit
+}

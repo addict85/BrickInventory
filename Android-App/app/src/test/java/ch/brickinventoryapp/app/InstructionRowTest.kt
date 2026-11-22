@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * The WHOLE instruction row opens the PDF — not only the icon on the right.
@@ -14,7 +14,7 @@ import ch.brickinventoryapp.testing.Sources
  * takes the modifier along and notices nothing, because everything still looks as
  * before.
  *
- * Therefore the STRUCTURE is checked and not that „clickable" occurs
+ * Therefore the STRUCTURE is checked and not that „clickable“ occurs
  * somewhere: the action (`openInstruction`) hangs on it, NO second button hangs
  * on the icon any more, and the trash keeps its own.
  */

@@ -1,45 +1,45 @@
 package ch.brickinventoryapp.account.ui.screens
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.ui.title
-import ch.brickinventoryapp.ui.description
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.ui.components.SecondFactorCodeField
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.foundation.text.KeyboardActions
-import ch.brickinventoryapp.ui.components.PasswordSwitchFields
-import ch.brickinventoryapp.ui.components.PasswordSwitchCheck
-import ch.brickinventoryapp.ui.components.rememberPasswordSwitchCheck
-import ch.brickinventoryapp.ui.theme.mainButtonColors
-import ch.brickinventoryapp.ui.theme.toneButtonColors
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import ch.brickinventoryapp.ui.components.ErrorRow
-import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.account.ui.DesignChoice
+import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.AccountUiState
+import ch.brickinventoryapp.account.ui.DesignChoice
 import ch.brickinventoryapp.model.domain.ProfileView
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.ErrorRow
 import ch.brickinventoryapp.ui.components.PasswordPrompt
+import ch.brickinventoryapp.ui.components.PasswordSwitchCheck
+import ch.brickinventoryapp.ui.components.PasswordSwitchFields
+import ch.brickinventoryapp.ui.components.SecondFactorCodeField
 import ch.brickinventoryapp.ui.components.SelectionField
 import ch.brickinventoryapp.ui.components.SettingsCard
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.rememberPasswordSwitchCheck
+import ch.brickinventoryapp.ui.description
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.mainButtonColors
+import ch.brickinventoryapp.ui.theme.toneButtonColors
+import ch.brickinventoryapp.ui.title
 
 /**
  * One's own account: profile and password. Via /auth/profile and
@@ -290,7 +290,7 @@ internal fun DesignCard(design: DesignChoice?, onChoice: (Design?) -> Unit) {
             chosen = design.own,
             onChoice = { value -> if (value != design.own) onChoice(value) },
         )
-        // What defines the chosen design — telling werkbank apart from the dark classic
+        // What defines the chosen design — telling `werkbank` apart from the dark classic
         // image alone was hardly possible.
         (design.own ?: design.default).description().let {
             Text(stringResource(it), style = MaterialTheme.typography.bodySmall,

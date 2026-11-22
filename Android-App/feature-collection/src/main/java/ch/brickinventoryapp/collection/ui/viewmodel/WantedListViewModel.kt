@@ -1,59 +1,60 @@
 package ch.brickinventoryapp.collection.ui.viewmodel
 
-import ch.brickinventoryapp.state.ui.viewmodel.Observed
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
-import kotlinx.coroutines.flow.first
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.data.repository.AlarmRepository
-import ch.brickinventoryapp.data.repository.WantedRepository
-import ch.brickinventoryapp.model.domain.WantedSort
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
-import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.domain.WantedItemView
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.session.derived
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.CatalogRepository
-import ch.brickinventoryapp.data.repository.FinancesRepository
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.AccountView
-import ch.brickinventoryapp.collection.ui.WantedUiState
-import ch.brickinventoryapp.collection.ui.WantedItemDetailUiState
 import ch.brickinventoryapp.collection.ui.PriceAlarmInput
+import ch.brickinventoryapp.collection.ui.WantedItemDetailUiState
+import ch.brickinventoryapp.collection.ui.WantedUiState
+import ch.brickinventoryapp.data.account.AccountView
+import ch.brickinventoryapp.data.alarm.AlarmInput
+import ch.brickinventoryapp.data.catalog.CatalogRepository
+import ch.brickinventoryapp.data.collection.AlarmRepository
+import ch.brickinventoryapp.data.collection.WantedRepository
+import ch.brickinventoryapp.data.finances.FinancesRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.WantedSort
+import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.errorClass
+import ch.brickinventoryapp.state.ui.errorMessage
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
+import ch.brickinventoryapp.state.ui.viewmodel.Messages
+import ch.brickinventoryapp.state.ui.viewmodel.Observed
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.state.ui.errorClass
-import ch.brickinventoryapp.state.ui.errorMessage
-import ch.brickinventoryapp.model.ui.Load
-import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
-import ch.brickinventoryapp.state.ui.viewmodel.Messages
-import ch.brickinventoryapp.state.ui.viewmodel.Texts
-import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 
 /**
  * Wishlist and wishlist-item detail — what one would like to have, separate from ownership.
  *
  * How a wishlist item is created, taken over or filtered is decided by the
- * server (utils/merkliste.ts); here it is only asked for and shown. Search,
+ * server (`utils/merkliste.ts`); here it is only asked for and shown. Search,
  * condition and sorting live in the [SavedStateHandle].
  */
 @HiltViewModel
@@ -111,17 +112,19 @@ class WantedListViewModel @Inject constructor(
      * The list shows only the source — the store, or, over selected accounts, the account view —,
      * including what was added or deleted offline, right away. The item pending deletion is missing from it.
      */
-    val wantedState: StateFlow<WantedUiState> = _wantedState
-        .derived(list) { st, l ->
-            if (l?.state != null) st.copy(wantedItem = l.list) else st
-        }
-        .derived(_reserved) { st, v ->
-            if (v == null) st else st.copy(wantedItem = st.wantedItem.filterNot { it.setNumber == v.setNumber && it.condition == v.condition })
-        }
+    private val wantedObserved = Observed(combine(_wantedState, list, _reserved, ::shown)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, shown(_wantedState.value, list.value, _reserved.value)))
+    val wantedState: StateFlow<WantedUiState> = wantedObserved
+
+    private fun shown(st: WantedUiState, l: Local<WantedItemView>?, v: ReservedWantedItem?): WantedUiState {
+        val listed = if (l?.state != null) st.copy(wantedItem = l.list) else st
+        return if (v == null) listed
+        else listed.copy(wantedItem = listed.wantedItem.filterNot { it.setNumber == v.setNumber && it.condition == v.condition })
+    }
 
     init {
         // Whoever shows the list gets it fresh; the source after that follows the store itself.
-        observeLoadOn(_wantedState) { loadWanted() }
+        observeLoadOn(wantedObserved) { loadWanted() }
     }
 
     private val _wantedItemDetailState = MutableStateFlow(WantedItemDetailUiState())
@@ -259,7 +262,7 @@ class WantedListViewModel @Inject constructor(
         }
     }
 
-    /** Catalog data, prices and history of a wishlist item — each on its own; whatever is missing stays empty. */
+    /** Catalog data, prices and history of a wishlist item — each on its own; what fails is in `fetch`, the rest shows. */
     override fun wantedItemDetailOf(setNumber: String): StateFlow<WantedItemDetailUiState> =
         Observed(wantedItemDetailState) { loadWantedItemDetail(setNumber) }
 
@@ -268,12 +271,17 @@ class WantedListViewModel @Inject constructor(
             _wantedItemDetailState.value = WantedItemDetailUiState(setNumber = setNumber, fetch = Load.Loads)
             if (wantedState.value.wantedItem.isEmpty()) loadWanted()
             loadPriceAlarms(setNumber)
-            val catalog = (catalogRepo.getCatalogSetDetail(setNumber) as? Outcome.Success)?.data
+            var failure: Load.Failure? = null
+            fun <T> taken(r: Outcome<T>): T? = when (r) {
+                is Outcome.Success -> r.data
+                is Outcome.Failure -> null.also { if (failure == null) failure = loadError(r) }
+            }
+            val catalog = taken(catalogRepo.getCatalogSetDetail(setNumber))
             _wantedItemDetailState.update { it.copy(catalog = catalog) }
-            val prices = (wantedList.getWantedItemPrices(setNumber) as? Outcome.Success)?.data
+            val prices = taken(wantedList.getWantedItemPrices(setNumber))
             _wantedItemDetailState.update { it.copy(prices = prices) }
-            val history = (finances.getSetPriceHistory(setNumber) as? Outcome.Success)?.data
-            _wantedItemDetailState.update { it.copy(history = history, fetch = Load.Data(Unit)) }
+            val history = taken(finances.getSetPriceHistory(setNumber))
+            _wantedItemDetailState.update { it.copy(history = history, fetch = failure ?: Load.Data(Unit)) }
         }
     }
 

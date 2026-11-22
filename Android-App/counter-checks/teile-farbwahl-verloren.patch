@@ -1,6 +1,6 @@
 Gegenprobe: beobachteTeile reicht die Farbwahl nicht an die Filterspalten
-Modul: core-offline
-Test: ch.brickinventoryapp.offline.WithoutNetworkFilterTest
+Modul: core-data
+Test: ch.brickinventoryapp.data.WithoutNetworkFilterTest
 Rot: color, category, spare parts and search of the parts list work offline
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt

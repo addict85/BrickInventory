@@ -1,71 +1,68 @@
 package ch.brickinventoryapp.data.di
 
-import kotlinx.serialization.json.Json
-import ch.brickinventoryapp.offline.Outbox
-import ch.brickinventoryapp.offline.OutboxPlanner
-import ch.brickinventoryapp.data.local.Reconcile
-import ch.brickinventoryapp.data.local.Baseline
-import ch.brickinventoryapp.data.local.EditingSender
-import ch.brickinventoryapp.offline.LocalInventory
-import ch.brickinventoryapp.offline.OfflineStore
+import android.content.Context
+import ch.brickinventoryapp.data.AccountStore
+import ch.brickinventoryapp.data.AlarmStore
+import ch.brickinventoryapp.data.AppearanceStore
+import ch.brickinventoryapp.data.Credentials
+import ch.brickinventoryapp.data.CsvImportObserver
+import ch.brickinventoryapp.data.CsvImportRepository
+import ch.brickinventoryapp.data.CsvImportSseClient
+import ch.brickinventoryapp.data.CsvImportStream
+import ch.brickinventoryapp.data.DevicesCleanup
+import ch.brickinventoryapp.data.DevicesSettings
+import ch.brickinventoryapp.data.DevicesStore
+import ch.brickinventoryapp.data.InstructionDownload
+import ch.brickinventoryapp.data.InstructionRepository
+import ch.brickinventoryapp.data.LanguageStore
+import ch.brickinventoryapp.data.LoginState
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.NetworkTrust
+import ch.brickinventoryapp.data.PasswordRequired
+import ch.brickinventoryapp.data.RedemptionLog
+import ch.brickinventoryapp.data.RedemptionPlanner
+import ch.brickinventoryapp.data.SecondFactorRequired
+import ch.brickinventoryapp.data.SessionCleanup
+import ch.brickinventoryapp.data.SessionEnd
+import ch.brickinventoryapp.data.SessionStore
+import ch.brickinventoryapp.data.TokenAdoption
+import ch.brickinventoryapp.data.TokenMirror
+import ch.brickinventoryapp.data.TokenStore
+import ch.brickinventoryapp.data.TrustStore
+import ch.brickinventoryapp.data.WidgetStatusStore
 import ch.brickinventoryapp.data.cache.CacheOwner
+import ch.brickinventoryapp.data.cache.PreviewMemory
+import ch.brickinventoryapp.data.cache.PreviewStore
 import ch.brickinventoryapp.data.cache.areaName
 import ch.brickinventoryapp.data.cache.cleanOldResponseStore
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
-import ch.brickinventoryapp.model.coroutines.BrickDispatchers
-import ch.brickinventoryapp.model.coroutines.Dispatcher
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.launch
+import ch.brickinventoryapp.data.local.Baseline
+import ch.brickinventoryapp.data.local.EditingSender
+import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ServerSender
 import ch.brickinventoryapp.data.local.WorkManagerPlanner
+import ch.brickinventoryapp.data.local.WorkManagerRedemption
+import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
 import ch.brickinventoryapp.network.util.AppLog
+import ch.brickinventoryapp.offline.LocalInventory
+import ch.brickinventoryapp.offline.OfflineStore
+import ch.brickinventoryapp.offline.Outbox
+import ch.brickinventoryapp.offline.OutboxPlanner
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.data.CsvImportStream
-import ch.brickinventoryapp.data.CsvImportObserver
-import ch.brickinventoryapp.data.CsvImportRepository
-import ch.brickinventoryapp.data.DevicesCleanup
-import ch.brickinventoryapp.data.SessionCleanup
-import ch.brickinventoryapp.data.AppearanceStore
-import ch.brickinventoryapp.data.WidgetStatusStore
-import ch.brickinventoryapp.data.DevicesSettings
-import ch.brickinventoryapp.data.DevicesStore
-import ch.brickinventoryapp.data.AccountStore
-import ch.brickinventoryapp.data.TokenStore
-import ch.brickinventoryapp.data.InstructionDownload
-import ch.brickinventoryapp.data.InstructionRepository
-import ch.brickinventoryapp.data.TokenMirror
-import ch.brickinventoryapp.data.TokenAdoption
-import ch.brickinventoryapp.data.NetworkTrust
-import ch.brickinventoryapp.data.AlarmStore
-import ch.brickinventoryapp.data.RedemptionLog
-import ch.brickinventoryapp.data.LanguageStore
-import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.data.TrustStore
-import ch.brickinventoryapp.data.Credentials
-import ch.brickinventoryapp.data.LoginState
-import ch.brickinventoryapp.data.SessionEnd
-import ch.brickinventoryapp.data.local.WorkManagerRedemption
-import ch.brickinventoryapp.data.RedemptionPlanner
-import ch.brickinventoryapp.data.cache.PreviewMemory
-import ch.brickinventoryapp.data.cache.PreviewStore
-import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.MessageQueue
-import ch.brickinventoryapp.data.PasswordRequired
-import ch.brickinventoryapp.data.PasswordRequiredState
-import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.data.SecondFactorState
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import javax.inject.Singleton
 
 /**
  * The local store: Room (core-offline) for lists and outbox, WorkManager for
@@ -98,11 +95,12 @@ internal abstract class LocalModule {
     @Binds abstract fun csvImport(b: CsvImportObserver): CsvImportRepository
     @Binds abstract fun cleanup(b: DevicesCleanup): SessionCleanup
     @Binds abstract fun previewStore(v: PreviewMemory): PreviewStore
-    @Binds abstract fun messages(m: MessageQueue): MessageChannel
-    @Binds abstract fun passwordRequired(p: PasswordRequiredState): PasswordRequired
-    @Binds abstract fun factorRequired(z: SecondFactorState): SecondFactorRequired
 
     companion object {
+        @Provides @Singleton fun messages(): MessageChannel = MessageChannel()
+        @Provides @Singleton fun passwordRequired(): PasswordRequired = PasswordRequired()
+        @Provides @Singleton fun factorRequired(): SecondFactorRequired = SecondFactorRequired()
+
         /**
          * The area comes from the signed-in account, hashed: asked now for writing,
          * as the session's StateFlow for observing. On the first build it clears the former

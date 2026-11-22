@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.RowsServer
+import ch.brickinventoryapp.data.testing.TestApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -11,9 +14,6 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.RowsServer
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * PathServer.onTick reads every response against the DTO of the called method. An

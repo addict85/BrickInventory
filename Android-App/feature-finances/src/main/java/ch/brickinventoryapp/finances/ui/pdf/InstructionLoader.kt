@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.finances.ui.pdf
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import android.content.Context
-import ch.brickinventoryapp.model.coroutines.BrickDispatchers
-import ch.brickinventoryapp.model.coroutines.Dispatcher
-import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
-import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
-import ch.brickinventoryapp.data.util.INSTRUCTION_DISPLAY_FOLDER
 import ch.brickinventoryapp.data.InstructionRepository
+import ch.brickinventoryapp.data.util.INSTRUCTION_DISPLAY_FOLDER
 import ch.brickinventoryapp.data.util.InstructionStore
 import ch.brickinventoryapp.data.util.pdfStore
+import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
+import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -22,7 +22,7 @@ import java.io.File
 import javax.inject.Inject
 
 /** Loads a PDF for the viewer; [open] gets the source before it comes back. */
-interface PdfLoader {
+internal interface PdfLoader {
     suspend fun load(pdfUrl: String, open: PdfHolder, onUiState: (PdfLoadState) -> Unit): Pair<PdfSource, Int>
 }
 
@@ -50,7 +50,7 @@ internal class InstructionLoader @Inject constructor(
 ) : PdfLoader {
 
     override suspend fun load(pdfUrl: String, open: PdfHolder, onUiState: (PdfLoadState) -> Unit): Pair<PdfSource, Int> {
-        // A voucher PDF carries number and PIN: no file (ablage == null), only a
+        // A voucher PDF carries number and PIN: no file (store == null), only a
         // memory area that dies with the viewer.
         val confidential = showsVouchers(pdfUrl)
         val store = pdfStore(ctx.cacheDir, pdfUrl, confidential)

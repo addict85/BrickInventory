@@ -1,20 +1,23 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.model.domain.PartEntry
-import ch.brickinventoryapp.model.domain.SetTotals
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.offline.OfflineStore.FollowUp
-import ch.brickinventoryapp.model.domain.SetSort
-import ch.brickinventoryapp.model.domain.Condition
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testFinancesRepository
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.PartEntry
+import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.domain.SetTotals
+import ch.brickinventoryapp.offline.Editing
+import ch.brickinventoryapp.offline.OfflineStore.FollowUp
+import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.state.testing.newProcess
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -25,8 +28,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The gallery ViewModel, run against a PathServer without network.

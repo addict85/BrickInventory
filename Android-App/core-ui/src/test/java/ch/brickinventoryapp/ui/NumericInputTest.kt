@@ -3,10 +3,10 @@ package ch.brickinventoryapp.ui
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.util.NumericInput
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Number fields: number pad and allowed characters — one version.
@@ -26,11 +26,11 @@ import ch.brickinventoryapp.testing.Sources
  * Since Nov 8 the set number also lets letters through (llca30, comcon001), like
  * the web app's normalizeSetNumber; its fields show the text keyboard for that.
  * Counter-check (counter-checks/setnummer-nur-ziffern.patch): the filter back to only
- * digits and "-" → red „die Setnummer laesst Buchstaben und Ziffern durch …".
+ * digits and "-" → red „die Setnummer laesst Buchstaben und Ziffern durch …“.
  *
- * Amount and quantity: readAmount follows the web app's readAmount (format.js).
+ * Amount and quantity: readAmount follows the web app's readAmount (`format.js`).
  * Counter-check (counter-checks/betrag-tausenderpunkt.patch): price() cuts off again at the
- * second separator → red „a pasted number with thousands separator keeps its value".
+ * second separator → red „a pasted number with thousands separator keeps its value“.
  */
 class NumericInputTest {
 
@@ -198,11 +198,11 @@ class NumericInputTest {
         return hits
     }
 
-    // ── Here stood „kein Zahlenfeld steht ohne Tastaturwahl da" ──────────────
+    // ── Here stood „kein Zahlenfeld steht ohne Tastaturwahl da“ ──────────────
     //
     // The rule hasn't gone away, it has moved: to
-    // NumberPadTest, „wer Zahlen filtert, zeigt auch die
-    // Zahlentastatur". Both said the same thing — a field with a NumericInput
+    // NumberPadTest, „wer Zahlen filtert, zeigt auch die Zahlentastatur“
+    // . Both said the same thing — a field with a NumericInput
     // filter needs the matching keyboard —, and the counter-check on Sep 28.
     //
     // What remained is the sharper of the two:

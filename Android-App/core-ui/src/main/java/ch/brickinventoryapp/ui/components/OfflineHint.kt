@@ -27,10 +27,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.model.util.fmtStatus
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.ui.util.twentyFourHours
 

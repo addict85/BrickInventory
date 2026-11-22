@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Condition
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import ch.brickinventoryapp.model.domain.NO_COLOR
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.ui.ScannerOrigin
-import ch.brickinventoryapp.login.ui.LoginTarget
-import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.login.ui.LoginTarget
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.NO_COLOR
+import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import org.junit.Assert.assertEquals
 import org.junit.Rule

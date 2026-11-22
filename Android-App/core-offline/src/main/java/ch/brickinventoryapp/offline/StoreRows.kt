@@ -1,28 +1,28 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.domain.AccountView
 import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.InstructionView
-import ch.brickinventoryapp.model.domain.ValuationPurchaseView
 import ch.brickinventoryapp.model.domain.BrickLinkView
-import ch.brickinventoryapp.model.domain.FigureView
-import ch.brickinventoryapp.model.domain.VoucherView
-import ch.brickinventoryapp.model.domain.Origin
-import ch.brickinventoryapp.model.domain.NO_COLOR
 import ch.brickinventoryapp.model.domain.CatalogMetaView
 import ch.brickinventoryapp.model.domain.CatalogThemeView
-import ch.brickinventoryapp.model.domain.MetricsView
-import ch.brickinventoryapp.model.domain.AccountView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.FigureView
+import ch.brickinventoryapp.model.domain.InstructionView
 import ch.brickinventoryapp.model.domain.LocationEntryView
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
-import ch.brickinventoryapp.model.domain.WantedItemAlarmView
-import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.model.domain.NO_COLOR
+import ch.brickinventoryapp.model.domain.Origin
+import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.StockLocationView
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ValuationPurchaseView
+import ch.brickinventoryapp.model.domain.VoucherView
+import ch.brickinventoryapp.model.domain.WantedItemAlarmView
+import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.model.domain.asMoneyRequired
 import ch.brickinventoryapp.model.util.parseInstant
@@ -167,7 +167,7 @@ internal data class ValuationPurchaseRow(
     @SerialName("price_estimated") val priceEstimated: Boolean = false,
 )
 
-/** Ein manuell erfasstes Teil samt Bewertung. */
+/** A manually entered part with its valuation. */
 @Serializable
 internal data class ManualPartRow(
     @SerialName("ausstehend") val pending: Boolean = false,
@@ -207,7 +207,7 @@ internal data class ManualPartRow(
     val storage: String? = null,
 )
 
-/** Eine manuell erfasste Figur samt Bewertung. */
+/** A manually entered figure with its valuation. */
 @Serializable
 internal data class ManualMinifigRow(
     @SerialName("ausstehend") val pending: Boolean = false,

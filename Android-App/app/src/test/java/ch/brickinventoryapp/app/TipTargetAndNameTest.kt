@@ -11,40 +11,40 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.login.ui.LoginForm
-import ch.brickinventoryapp.login.ui.screens.LoginScreen
-import ch.brickinventoryapp.login.ui.screens.SetupScreen
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.account.ui.AccountUiState
+import ch.brickinventoryapp.account.ui.SecondFactorUiState
+import ch.brickinventoryapp.account.ui.UpdateUiState
+import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
+import ch.brickinventoryapp.account.ui.screens.SettingsScreen
+import ch.brickinventoryapp.account.ui.screens.SettingsState
+import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
-import ch.brickinventoryapp.account.ui.AccountUiState
-import ch.brickinventoryapp.account.ui.UpdateUiState
-import ch.brickinventoryapp.account.ui.SecondFactorUiState
-import ch.brickinventoryapp.account.ui.screens.SettingsState
-import ch.brickinventoryapp.account.ui.screens.SettingsScreen
-import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
-import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.CatalogSetView
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
-import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
+import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.data.SetCreateStep
+import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.login.ui.LoginForm
+import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.SetupScreen
+import ch.brickinventoryapp.model.domain.CatalogSetView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceActions
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.junit.After
@@ -65,9 +65,9 @@ import java.util.Locale
  * Replaces the source search for small IconButtons (TouchTargetSizeTest).
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   tippziel-klein         „Nach Update suchen“ without heightIn, Material button 40 dp → red “einstellungen”
+ *   tippziel-klein         „Nach Update suchen“ without heightIn, Material button 40 dp → red “settings”
  *                          (a 40 dp row without its own shape stayed green: touchBoundsInRoot stretches it to 48 dp)
- *   tippziel-ohne-namen    add button without description → red “galerie” (without name)
+ *   tippziel-ohne-namen    add button without description → red “gallery” (without name)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

@@ -9,8 +9,8 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.update.util.INSTALLATION_CONFIRM
-import ch.brickinventoryapp.update.util.InstallReceiver
 import ch.brickinventoryapp.update.util.InstallMessage
+import ch.brickinventoryapp.update.util.InstallReceiver
 import ch.brickinventoryapp.update.util.install
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -27,10 +27,8 @@ import java.io.File
  * an implicit intent; the system's response lands in our own receiver.
  *
  * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
- *   the STATUS_PENDING_USER_ACTION branch in the receiver has no effect → red „verlangt
- *   das System eine Bestaetigung …“ (counter-checks/installer-ohne-bestaetigung.patch)
- *   EXTRA_INTENT in the receiver launched unchecked again → red „eine Bestaetigung,
- *   die nicht zum System-Installer fuehrt …“ (counter-checks/installer-ziel-ungeprueft.patch)
+ *   the STATUS_PENDING_USER_ACTION branch in the receiver has no effect → red „verlangt das System eine Bestaetigung …“ (counter-checks/installer-ohne-bestaetigung.patch)
+ *   EXTRA_INTENT in the receiver launched unchecked again → red „eine Bestaetigung, die nicht zum System-Installer fuehrt …“ (counter-checks/installer-ziel-ungeprueft.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class InstallSessionTest {

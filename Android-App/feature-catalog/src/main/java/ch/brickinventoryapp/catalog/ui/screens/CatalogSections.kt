@@ -1,44 +1,41 @@
 package ch.brickinventoryapp.catalog.ui.screens
 
-import ch.brickinventoryapp.model.domain.CatalogSort
-import androidx.compose.runtime.MutableState
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.heading
-import androidx.compose.foundation.selection.selectableGroup
-import ch.brickinventoryapp.ui.components.SelectionChip
-
-/**
- * The catalog page's sections: search field, filter row (theme, year, sort order)
- * and hit list next to the grid. Unlike SetDetail and Finance,
- * ordinary @Composable functions, because they sit in a `Column`, not in
- * a LazyColumn.
- */
-
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.*
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ModalBottomSheet
-import ch.brickinventoryapp.resources.R
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
-import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.material.icons.filled.*
-import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.model.domain.CatalogSort
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.SearchField
+import ch.brickinventoryapp.ui.components.SelectionChip
 import ch.brickinventoryapp.ui.components.SortMenu
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.components.SearchField
+import ch.brickinventoryapp.ui.theme.Spacing
+
+// The catalog page's sections: search field, filter row (theme, year, sort order)
+// and hit list next to the grid. Unlike SetDetail and Finance,
+// ordinary @Composable functions, because they sit in a `Column`, not in
+// a LazyColumn.
 
 /**
  * Filter row: theme and year; sorting goes through the menu next to search. Deliberate

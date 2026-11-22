@@ -1,13 +1,5 @@
 package ch.brickinventoryapp.offline
 
-import org.junit.Assert.assertNotNull
-import ch.brickinventoryapp.model.domain.CatalogThemeView
-import ch.brickinventoryapp.model.domain.CatalogMetaView
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.contract.DashboardStats
 import ch.brickinventoryapp.contract.FigValuationItem
 import ch.brickinventoryapp.contract.Gutschein
@@ -17,8 +9,16 @@ import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.Preisalarm
 import ch.brickinventoryapp.contract.StatsResponse
 import ch.brickinventoryapp.contract.ValuationAcquisition
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.CatalogMetaView
+import ch.brickinventoryapp.model.domain.CatalogThemeView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -29,7 +29,7 @@ import org.junit.Test
  *
  * Counter-checks (patches under counter-checks/):
  *   ablage-figur-feld-umbenannt     in MinifigRow `fig_number` without SerialName → red „eine alte Zeile …“
- *   ablage-kauf-feld-vertauscht     in Ablagezeilen.kauf avgPrice and purchasePrice swapped → red „jedes Feld …“
+ *   ablage-kauf-feld-vertauscht     in the purchase store row avgPrice and purchasePrice swapped → red "every field …"
  *   ablage-fassung-ignoriert        dekodiere() reads every version with today's reader → red „eine unbekannte Fassung …“
  */
 class StoreVersionTest {

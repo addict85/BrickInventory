@@ -1,16 +1,15 @@
 package ch.brickinventoryapp.offline
 
-import kotlinx.coroutines.flow.mapLatest
-import ch.brickinventoryapp.model.json.BrickJson
-import kotlinx.serialization.json.Json
-import ch.brickinventoryapp.model.local.StockKind
-import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.LocationEntryView
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.domain.SetTotals
-import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.local.StockKind
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.offline.Outbox.DiscardedItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -19,10 +18,11 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ch.brickinventoryapp.offline.Outbox.DiscardedItem
+import kotlinx.serialization.json.Json
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -78,7 +78,7 @@ object Slots {
         FilterColumns(searchText(it.setNumber, it.name), condition = it.condition.identifier)
     }
 
-    /** Der eigene Vorrat an Lagerorten samt Vorgabe. */
+    /** The own supply of storage locations including the default. */
     val STORAGE_LOCATIONS = Domain(StockKind.STORAGE_LOCATIONS, StoreShape(StockRow.serializer(), StoreRows::stock, StoreRows::stock),
         { it.location.id.toString() }, LocalApplication::storageLocations) {
         FilterColumns(searchText(it.location.name))
@@ -355,7 +355,7 @@ class OfflineStore(
         outbox.empty()
     }
 
-    /** Call only under the lock of ([b], fach.art). */
+    /** Call only under the lock of ([b], slot kind). */
     private suspend fun <T : Any> applyChangeTo(domain: Domain<T>, b: String, w: Effect) {
         val old = decode(domain, stock.read(b, domain.kind))
         stock.syncRows(b, domain.kind, encode(domain, domain.apply(old.list, w)))

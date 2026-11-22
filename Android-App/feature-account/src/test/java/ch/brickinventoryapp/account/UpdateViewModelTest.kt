@@ -1,17 +1,18 @@
 package ch.brickinventoryapp.account
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.update.data.UpdateLoader
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.LoginState
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.data.LoginState
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.model.util.AppVersion
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.update.data.UpdateLoader
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_BASE
 import ch.brickinventoryapp.update.util.UPDATE_VERSION_URL
-import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.UpdateDevice
+import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.UpdateStatus
 import ch.brickinventoryapp.update.util.UpdateStatusStore
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,6 @@ import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.Signature
 import java.util.Base64
-import ch.brickinventoryapp.model.ui.Message
 
 /**
  * The self-update run: signed description, download, checksum,
@@ -51,8 +51,7 @@ import ch.brickinventoryapp.model.ui.Message
  * Counter-checks:
  *   update-angebot-ohne-frische  offer with isNew instead of offerableVersion →
  *                                red "a reset description offers nothing"
- *   update-vm-abgelaufen-ohne-angebot  offer only on AKTUELL → red "eine abgelaufene,
- *                                neuere Beschreibung bietet die Fassung mit Hinweis an"
+ *   update-vm-abgelaufen-ohne-angebot  offer only on AKTUELL → red "eine abgelaufene, neuere Beschreibung bietet die Fassung mit Hinweis an"
  *   update-signatur-ungeprueft   the signature check after the download removed →
  *                                red "eine fremde Signatur loescht das APK …"
  *   update-zweiter-weg-ungeprueft  startInstallation() without signatureFits →

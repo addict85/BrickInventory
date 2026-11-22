@@ -4,17 +4,17 @@ import android.content.Context
 import androidx.glance.appwidget.updateAll
 import ch.brickinventoryapp.BuildConfig
 import ch.brickinventoryapp.app.MessageEntryPoint
-import ch.brickinventoryapp.model.util.AppVersion
-import ch.brickinventoryapp.data.StartDestination
-import ch.brickinventoryapp.state.ui.LogoutHook
 import ch.brickinventoryapp.app.widget.CollectionWidget
 import ch.brickinventoryapp.app.widget.WidgetStore
+import ch.brickinventoryapp.data.StartDestination
+import ch.brickinventoryapp.model.util.AppVersion
+import ch.brickinventoryapp.state.ui.LogoutHook
+import ch.brickinventoryapp.state.ui.WidgetKick
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import ch.brickinventoryapp.state.ui.WidgetKick
 
 /**
  * What only the app knows: its activity and its widget. The modules below see

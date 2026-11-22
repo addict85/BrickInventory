@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import androidx.core.content.edit
 import androidx.datastore.core.DataStore
@@ -9,18 +7,20 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import ch.brickinventoryapp.security.VaultFinding
-import ch.brickinventoryapp.security.TrustCipher
-import ch.brickinventoryapp.network.util.AppLog
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.ui.theme.brightnessApplies
+import ch.brickinventoryapp.network.util.AppLog
+import ch.brickinventoryapp.security.TrustCipher
+import ch.brickinventoryapp.security.VaultFinding
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Settings of this device, not of the account: display, trust, pins, widget,
@@ -83,7 +83,7 @@ class DevicesStore @Inject constructor(
         /**
          * The most recently known design of the server. Remembered because /settings only comes after
          * sign-in and the sign-in and setup screens would otherwise appear in the default design
-         * and switch — stage one as in public/js/theme-boot.js.
+         * and switch — stage one as in `public/js/theme-boot.js`.
          * Global, therefore it survives sign-out.
          */
         val APP_THEME    = stringPreferencesKey("app_theme")

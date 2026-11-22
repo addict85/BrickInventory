@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.services.service
 
-import ch.brickinventoryapp.model.domain.PartListJob
 import android.content.Context
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.ExportResult
-import ch.brickinventoryapp.data.service.PdfFailure
 import ch.brickinventoryapp.data.service.PartListsExport
+import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfProgress
 import dagger.Binds
 import dagger.Module

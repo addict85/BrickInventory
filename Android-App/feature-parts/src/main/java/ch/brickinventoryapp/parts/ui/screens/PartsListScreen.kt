@@ -1,59 +1,59 @@
 package ch.brickinventoryapp.parts.ui.screens
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.parts.ui.normalized
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import ch.brickinventoryapp.ui.components.ThrottledAnnouncement
-import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.BoxRow
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import ch.brickinventoryapp.ui.components.Prompt
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import coil3.ImageLoader
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import ch.brickinventoryapp.resources.R
-import androidx.compose.ui.text.input.ImeAction
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.parts.ui.PartListUiState
-import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import ch.brickinventoryapp.ui.theme.Spacing
 import androidx.compose.material.icons.automirrored.filled.ListAlt
-import ch.brickinventoryapp.data.service.partListsSelection
-import ch.brickinventoryapp.ui.components.HintText
-import ch.brickinventoryapp.ui.components.WithTooltip
-import ch.brickinventoryapp.ui.components.RemovableChip
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material3.*
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.data.service.partListsSelection
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.parts.ui.PartListUiState
+import ch.brickinventoryapp.parts.ui.normalized
+import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.BoxRow
+import ch.brickinventoryapp.ui.components.HintText
+import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.components.RemovableChip
 import ch.brickinventoryapp.ui.components.ScanButton
 import ch.brickinventoryapp.ui.components.StateHint
+import ch.brickinventoryapp.ui.components.ThrottledAnnouncement
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
+import coil3.ImageLoader
 
 // ── Sort order like the web app and PDF ──
 //
@@ -372,7 +372,7 @@ fun PartsListScreen(
 
                 // Live countdown while the PDF is being created (only while an export is running).
                 pdfStatus?.let { txt ->
-                    // Sichtbar jede Sekunde, angesagt alle zehn.
+                    // Visible every second, announced every ten.
                     ThrottledAnnouncement(txt)
                     Text(txt, Modifier.clearAndSetSemantics { contentDescription = txt }, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary)

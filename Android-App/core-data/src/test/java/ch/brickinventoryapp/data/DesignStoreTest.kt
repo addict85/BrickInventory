@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.app.Application
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.testing.testTrustCipher
+import ch.brickinventoryapp.data.testing.testTrustCipher
+import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

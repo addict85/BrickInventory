@@ -9,9 +9,7 @@ plugins {
 
 dependencies {
     api(libs.kotlinx.serialization.json)
-    // Only @Qualifier for the dispatcher qualifiers (model.koroutinen); no Hilt, no Android.
+    // Only @Qualifier for the dispatcher qualifiers (model.coroutines); no Hilt, no Android.
     implementation(libs.javax.inject)
     testImplementation(libs.junit)
-    // Some tests check domain types on the response that carries them; test only.
-    testImplementation(project(":core-contract"))
 }

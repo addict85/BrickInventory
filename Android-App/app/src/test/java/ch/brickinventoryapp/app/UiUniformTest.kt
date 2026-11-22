@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.app
 
 import android.content.Context
+import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -23,49 +24,49 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.account.ui.screens.LocationsRoute
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
-import ch.brickinventoryapp.account.ui.screens.LocationsRoute
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.YearCountView
-import ch.brickinventoryapp.model.domain.CatalogSetView
-import ch.brickinventoryapp.model.domain.CatalogSort
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.collection.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.SetCard
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.model.domain.FigureOrder
-import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
-import ch.brickinventoryapp.parts.ui.screens.ManualItemDetailRoute
-import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
-import ch.brickinventoryapp.parts.ui.screens.PartsRoute
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.data.SetCreateStep
+import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testFinancesRepository
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.screens.CacheEvents
 import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
 import ch.brickinventoryapp.management.ui.screens.MonitoringState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.domain.CatalogSetView
+import ch.brickinventoryapp.model.domain.CatalogSort
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.FigureOrder
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.domain.YearCountView
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
+import ch.brickinventoryapp.parts.ui.screens.ManualItemDetailRoute
+import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
+import ch.brickinventoryapp.parts.ui.screens.PartsRoute
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -79,11 +80,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
-import android.os.Looper
-import org.robolectric.Shadows.shadowOf
 
 /**
  * One language of the UI, executed instead of searched in the source: filters as chips,
@@ -211,8 +211,9 @@ class UiUniformTest {
         val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
+        val background = vm.background.value
         show {
-            MonitoringScreen(MonitoringState(MonitoringUiState(), vm.background.value, ManagementUiState(),
+            MonitoringScreen(MonitoringState(MonitoringUiState(), background, ManagementUiState(),
                 emptyMap(), Design.CLASSIC, 0L), vm, events)
         }
         linksAbFormEdge(ctx.getString(R.string.background_jobs), "Hintergrundarbeiten")

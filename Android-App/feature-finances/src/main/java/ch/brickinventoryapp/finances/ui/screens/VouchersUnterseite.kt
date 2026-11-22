@@ -4,17 +4,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.PrivacyShield
-import ch.brickinventoryapp.ui.components.OverlayGuard
-import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
-import ch.brickinventoryapp.ui.util.SecretClipboard
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.ui.components.Subpage
-import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.finances.ui.VoucherUiState
+import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.components.PrivacyShield
+import ch.brickinventoryapp.ui.components.Subpage
+import ch.brickinventoryapp.ui.util.SecretClipboard
 
 /**
  * Vouchers — the first entry of the list, because they are needed in the

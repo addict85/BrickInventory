@@ -1,21 +1,24 @@
 package ch.brickinventoryapp.state
 
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testFinancesRepository
+import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.offline.Slots
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -26,9 +29,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
 
 /**
  * The purchases ViewModel (sets, manual parts and figures), run against
@@ -37,23 +37,20 @@ import ch.brickinventoryapp.testing.text
  * Counter-checks (measured 28.10.2026, kotlinc against PurchasesViewModel.kt):
  *   A  in setChanged() the summary not taken over (always fetches the whole inventory
  *      instead) → red „ein geänderter Kauf eines Sets schreibt seine Zusammenfassung …“
- *   B  on a rejected date change, doesn't reload → red „eine
- *      abgelehnte Datumsänderung lädt die Liste neu“
+ *   B  on a rejected date change, doesn't reload → red „eine abgelehnte Datumsänderung lädt die Liste neu“
  *   C  on an owner change, the response's numbers replaced with 0, or dropped the catching-up
  *      of the store → red „ein Besitzerwechsel meldet die mitgewanderten Teile …“
  *   D  in load() left another entry's history standing → red
  *      „the price history of another entry does not stay“
  *   E  in changeForPiece() `purchasePrice = price` instead of
- *      `unitPrice = price` → red „ein Set schickt purchase_price, Teile und
- *      Figuren unit_price“ (part)
+ *      `unitPrice = price` → red „ein Set schickt purchase_price, Teile und Figuren unit_price“ (part)
  *   F  in HouseholdRepository.updateAcquisition() changeForPiece instead of changeForSet →
  *      red at the same spot (set)
  *   G  in updateManualAcquisition() the body built by hand,
  *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → red at
  *      the same spot (part)
  *   H  in loadManualPriceHistory() always getPartPriceHistory
- *      (counter-checks/kaeufe-verlauf-nur-teile.patch) → red „der Preisverlauf kommt für
- *      Teile und Figuren …“ (figure without history; only measurable in CI)
+ *      (counter-checks/kaeufe-verlauf-nur-teile.patch) → red „der Preisverlauf kommt für Teile und Figuren …“ (figure without history; only measurable in CI)
  *   kaeufe-laden-nicht-beim-zeigen  (counter-checks/) purchasesOf without a fetch on the first observer
  *      → red „die Kaeufe eines Eintrags laden, sobald …“
  */

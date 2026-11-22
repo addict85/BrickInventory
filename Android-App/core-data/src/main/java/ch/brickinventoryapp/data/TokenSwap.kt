@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.network.di.RotationReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ch.brickinventoryapp.network.di.RotationReason
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * How a swap ended. DISCARDED: during the swap there was a sign-out, a new
@@ -84,7 +84,7 @@ internal class TokenLimit {
 
 /**
  * Maximum duration of a sign-in, the server's default hard deadline for app tokens
- * (Web-App/src/account/tokenRequest.ts; the swap inherits it). The check here is the
+ * (`Web-App/src/account/tokenRequest.ts`; the swap inherits it). The check here is the
  * second line: the app signs itself out and invalidates the token instead of only
  * noticing at the 401 that the chain has ended. A shorter server deadline still ends with that 401.
  */

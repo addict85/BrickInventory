@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.finances.ui.screens
 
 import androidx.compose.runtime.Composable
-import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
+import ch.brickinventoryapp.ui.components.PrivacyShield
 
 /** A voucher PDF carries number and PIN: no screenshot while it is being shown. */
 @Composable

@@ -6,12 +6,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.StepLock
-import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.management.ui.screens.MonitoringRoute
+import ch.brickinventoryapp.model.step.StepAction
 import ch.brickinventoryapp.navigation.AreaEnvironment
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.components.StepLock
 
 /** Management only needs what every area gets. */
 interface ManagementNavigation : AreaEnvironment

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.management.ui.screens
 
-import ch.brickinventoryapp.ui.components.SelectionChip
-import ch.brickinventoryapp.ui.theme.AppCard
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -11,26 +11,26 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.model.domain.LogRowView
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.model.util.fmtClockTime
-import ch.brickinventoryapp.ui.util.appNumberLocale
-import ch.brickinventoryapp.ui.util.twentyFourHours
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringActions
 import ch.brickinventoryapp.management.ui.ManagementUiState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringActions
+import ch.brickinventoryapp.model.domain.LogRowView
 import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.WithTooltip
-import ch.brickinventoryapp.ui.components.SegmentChoice
+import ch.brickinventoryapp.model.util.fmtClockTime
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.SearchField
+import ch.brickinventoryapp.ui.components.SegmentChoice
+import ch.brickinventoryapp.ui.components.SelectionChip
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.AppCard
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.appNumberLocale
+import ch.brickinventoryapp.ui.util.twentyFourHours
 
 /**
  * The server log, like "Logs" in the web app. Not loaded on its own: up to

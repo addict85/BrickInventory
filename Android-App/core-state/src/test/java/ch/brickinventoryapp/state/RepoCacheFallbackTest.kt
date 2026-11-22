@@ -1,8 +1,10 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.domain.CatalogMetaView
-import ch.brickinventoryapp.data.repository.CatalogRepository
+import ch.brickinventoryapp.data.catalog.CatalogRepository
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.model.domain.CatalogMetaView
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -10,8 +12,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The store ONLY steps in when the server is not reachable — and then says
@@ -25,8 +25,7 @@ import ch.brickinventoryapp.testing.TestApi
  *   A  the old rule restored („bei jedem Fehler ausser 401 die Platte“) →
  *      red: „a server error is not hidden by old data“ and
  *      „a 404 is not hidden by old data“
- *   B  in the fallback `state = state` left out → red: „ohne Verbindung kommen
- *      die gespeicherten Daten, als veraltet gekennzeichnet“
+ *   B  in the fallback `state = state` left out → red: „ohne Verbindung kommen die gespeicherten Daten, als veraltet gekennzeichnet“
  *   C  the transient condition left out (fallback on every error) →
  *      red: „an expired session is not hidden by the cache“, plus
  *      the two from A

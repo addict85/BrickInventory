@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Spacings and font sizes come from the scale — and the exceptions
@@ -102,7 +102,7 @@ class SpacingScaleTest {
      * Counter-checks (measured on Oct 28, copy of the source tree, in TableRow.kt
      * `style = MaterialTheme.typography.bodySmall` replaced):
      *   by `fontSize = Schrift.small` → red here
-     *   by `fontSize = 12.sp` → red in „die Zahl der Schriftgroessen …"
+     *   by `fontSize = 12.sp` → red in „die Zahl der Schriftgroessen …“
      */
     @Test
     fun `there is only Material's type scale`() {
@@ -131,7 +131,7 @@ class SpacingScaleTest {
         // 178 -> 176: the settings rework (Oct 16) took along two bare
         // numbers — the 10 dp between the fourteen cards (now
         // Abstaende.gross between four) and the inner padding of the
-        // „Aktuelle Einstellungen" box, which was dropped without replacement.
+        // „Aktuelle Einstellungen“ box, which was dropped without replacement.
         //
         // This number may FALL if someone deliberately decides to move one of
         // these groups onto the scale. It may not rise: a new

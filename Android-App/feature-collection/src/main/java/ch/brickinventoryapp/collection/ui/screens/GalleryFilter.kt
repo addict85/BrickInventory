@@ -1,21 +1,21 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import ch.brickinventoryapp.model.domain.LocationView
-import ch.brickinventoryapp.model.domain.MemberView
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.state.ui.FilterCount
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.LocationView
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.shared.ui.AccountFilterSection
+import ch.brickinventoryapp.shared.ui.FilterChoice
 import ch.brickinventoryapp.shared.ui.FilterSection
 import ch.brickinventoryapp.shared.ui.FilterSheetFrame
-import ch.brickinventoryapp.shared.ui.FilterChoice
-import ch.brickinventoryapp.shared.ui.AccountFilterSection
 import ch.brickinventoryapp.shared.ui.LocationFilterSection
+import ch.brickinventoryapp.state.ui.FilterCount
 
 /** The filter sheet with the gallery's values. */
 @Composable

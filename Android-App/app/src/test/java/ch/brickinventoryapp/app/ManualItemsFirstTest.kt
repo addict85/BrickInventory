@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import android.os.Looper
 import androidx.compose.foundation.layout.height
@@ -25,9 +24,10 @@ import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.model.ui.ScrollStorage
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

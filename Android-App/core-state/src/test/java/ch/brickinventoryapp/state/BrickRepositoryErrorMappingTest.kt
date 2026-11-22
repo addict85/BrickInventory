@@ -1,11 +1,15 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.network.util.NetworkPolicy
-import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.data.repository.AccountRepository
+import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import kotlinx.coroutines.test.runTest
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.di.ServerGuard
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -17,10 +21,6 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.network.di.ServerGuard
-import ch.brickinventoryapp.network.di.AccessState
-import ch.brickinventoryapp.testing.testAccountRepository
 
 /**
  * The first test in this project that runs BEHAVIOR instead of reading
@@ -150,7 +150,7 @@ class BrickRepositoryErrorMappingTest {
      * A stored http address: the release build's guard rejects it, and
      * that becomes a dedicated message with instructions instead of „no connection“.
      * Counter-check: removed the branch for PlaintextRejected in
-     * safeCall() → red (Netz, vorübergehend).
+     * safeCall() → red (network, transient).
      */
     @Test
     fun `a rejected http request is not a network error and not temporary`() = runTest {

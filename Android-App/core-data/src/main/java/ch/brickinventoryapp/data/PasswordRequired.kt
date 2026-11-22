@@ -3,8 +3,6 @@ package ch.brickinventoryapp.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * The account still signs in with its start password: until it is replaced,
@@ -17,14 +15,13 @@ interface PasswordRequired {
     fun report()
     fun done()
 
-    /** For tests without Hilt. */
+    /** The one way to build it, for Hilt and tests alike; the implementation stays internal. */
     companion object {
         operator fun invoke(): PasswordRequired = PasswordRequiredState()
     }
 }
 
-@Singleton
-internal class PasswordRequiredState @Inject constructor() : PasswordRequired {
+internal class PasswordRequiredState : PasswordRequired {
     private val _needed = MutableStateFlow(false)
     override val needed: StateFlow<Boolean> = _needed.asStateFlow()
 

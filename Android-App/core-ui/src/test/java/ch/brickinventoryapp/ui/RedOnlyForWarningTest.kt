@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.ui.graphics.Color
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.accentSurfaces
 import ch.brickinventoryapp.ui.theme.colorScheme
 import ch.brickinventoryapp.ui.theme.hasDarkVersion
@@ -15,10 +15,10 @@ import org.junit.Test
  * never red in any design or version.
  *
  * Counter-checks (patches under counter-checks/, measured only in CI):
- *   noppe-container-rot        noppe's primaryContainer back to StudRedLight
- *                              → red „value and state surfaces are never red“ (noppe.primaryContainer)
- *   noppe-dunkel-container-rot noppe in the dark without its own primaryContainer (back to #2a1415)
- *                              → red „value and state surfaces are never red“ (noppe/dunkel.primaryContainer)
+ *   noppe-container-rot        `noppe`'s primaryContainer back to StudRedLight
+ *                              → red „value and state surfaces are never red“ (`noppe`.primaryContainer)
+ *   noppe-dunkel-container-rot `noppe` in the dark without its own primaryContainer (back to #2a1415)
+ *                              → red „value and state surfaces are never red“ (`noppe/dunkel`.primaryContainer)
  */
 class RedOnlyForWarningTest {
 

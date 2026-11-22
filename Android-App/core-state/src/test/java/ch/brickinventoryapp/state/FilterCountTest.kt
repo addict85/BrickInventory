@@ -1,26 +1,23 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
+import ch.brickinventoryapp.model.domain.ColorPicker
 import ch.brickinventoryapp.model.domain.LocationView
 import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.state.ui.FilterCount
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.model.data.SparePartChoice
 
 /**
  * The number on the „Filter“ button counts what really narrows the list — not
  * what is merely remembered, and not sorting (its own menu, SortMenu).
  *
  * Counter-checks:
- *   A  in account() the check `value in possible` removed → red „ein Konto,
- *      das nicht mehr zum Haushalt gehört, zählt nicht“
- *   B  in storage() only checked against `isNotBlank` → red „ein leerer Lagerort
- *      zählt nicht“
- *   C  in gallery() the theme not counted → red „jede Abweichung zählt
- *      einmal“ (2 instead of 3)
+ *   A  in account() the check `value in possible` removed → red „ein Konto, das nicht mehr zum Haushalt gehört, zählt nicht“
+ *   B  in storage() only checked against `isNotBlank` → red „ein leerer Lagerort zählt nicht“
+ *   C  in gallery() the theme not counted → red „jede Abweichung zählt einmal“ (2 instead of 3)
  *   D  in parts() the category forgotten → red „bei den Teilen zählen …“
  */
 class FilterCountTest {

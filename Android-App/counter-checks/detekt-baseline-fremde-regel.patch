@@ -1,7 +1,7 @@
 Gegenprobe: Die Baseline verschweigt eine andere Regel als Länge und Verzweigung
 Modul: app
 Test: ch.brickinventoryapp.app.SourceRatchetTest
-Rot: the detekt baseline holds only length and branching and shrinks
+Rot: the detekt baseline holds only length, branching and parameter lists and shrinks
 
 diff --git a/Android-App/config/detekt/baseline.xml b/Android-App/config/detekt/baseline.xml
 --- a/Android-App/config/detekt/baseline.xml

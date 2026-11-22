@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.model.step.StepResponse
 import ch.brickinventoryapp.model.step.StepBinding
-import ch.brickinventoryapp.ui.components.StepFlow
+import ch.brickinventoryapp.model.step.StepResponse
 import ch.brickinventoryapp.ui.components.StepApproval
+import ch.brickinventoryapp.ui.components.StepFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,12 +25,12 @@ import java.security.spec.ECGenParameterSpec
  * „nicht freigegeben“ is a signature that cannot sign or signs with someone else's key.
  *
  * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
- *   A  Schrittfreigabe.unterschrift() accepts any existing signature → red „ein anderer
- *      Schluessel zaehlt nicht“; counter-checks/schrittschutz-ohne-signatur.patch
+ *   A  Schrittfreigabe.unterschrift() accepts any existing signature → red „ein anderer Schluessel zaehlt nicht“
+ * ; counter-checks/schrittschutz-ohne-signatur.patch
  *   B  step flow continues past the lock without asking the server → red
  *      „lehnt der Server die Signatur ab …“; counter-checks/schrittablauf-ohne-server.patch
- *   C  a server refusal falls back to the on-device check → red „ohne
- *      Schluessel am Server …“; counter-checks/schrittablauf-absage-im-geraet.patch
+ *   C  a server refusal falls back to the on-device check → red „ohne Schluessel am Server …“
+ * ; counter-checks/schrittablauf-absage-im-geraet.patch
  */
 class StepApprovalTest {
 
@@ -42,7 +42,7 @@ class StepApprovalTest {
     private fun signature(with: PrivateKey) =
         Signature.getInstance(StepApproval.SIGNATURE_SCHEME).apply { initSign(with) }
 
-    /** A server that checks like routes/api_v1/device.ts: signature over exactly its message. */
+    /** A server that checks like `routes/api_v1/device.ts`: signature over exactly its message. */
     private class Server(private val key: PublicKey, var challenge: StepResponse) : StepBinding {
         val releases = mutableListOf<String>()
         override suspend fun challenge(action: StepAction) = challenge

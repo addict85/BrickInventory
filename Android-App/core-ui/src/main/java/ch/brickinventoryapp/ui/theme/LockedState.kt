@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.luminance
 
 /**
  * Colors of locked buttons. Material's fixed opacity (12% surface, 38% text) produced
- * 2.3:1 for the text and 1.3:1 for the surface in the „noppe“ theme; here the text holds
+ * 2.3:1 for the text and 1.3:1 for the surface in the „`noppe`“ theme; here the text holds
  * 4.5:1 on its surface, and the surface resp. border 3:1 against surface and background.
  */
 data class LockedColors(

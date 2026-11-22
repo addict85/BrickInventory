@@ -8,8 +8,8 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import ch.brickinventoryapp.parts.ui.PlSet
 import ch.brickinventoryapp.parts.ui.PartListUiState
+import ch.brickinventoryapp.parts.ui.PlSet
 import ch.brickinventoryapp.parts.ui.screens.PartsListScreen
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -31,7 +31,7 @@ import org.robolectric.annotation.Config
  *     (no node with the remove label)
  *   `enabled = count > 0 && !isLoading` on the main button again → red “create with nothing …”
  *     (assertIsEnabled fails)
- *   creating() without the check for anzahl == 0 → red “create with nothing …” (onCreate called)
+ *   creating() without the check for count == 0 → red “create with nothing …” (onCreate called)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")

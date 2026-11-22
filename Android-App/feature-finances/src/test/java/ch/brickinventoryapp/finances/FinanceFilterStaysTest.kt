@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.finances
 
 import ch.brickinventoryapp.finances.ui.FinanceUiState
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * The category filter of finances stays put — and can be combined.

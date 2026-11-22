@@ -1,9 +1,16 @@
 package ch.brickinventoryapp.app
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testFinancesRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -13,13 +20,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import javax.inject.Singleton
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestServices
-import ch.brickinventoryapp.testing.text
 
 /**
  * There is exactly ONE path to the snackbar.
@@ -30,9 +30,9 @@ import ch.brickinventoryapp.testing.text
  * it ends nowhere — unless someone builds a forwarding into EVERY place where
  * this ViewModel is used:
  *
- *     val katMeldung by katalog.snackbar.collectAsStateWithLifecycle()
+ *     val catalogMessage by catalog.snackbar.collectAsStateWithLifecycle()
  *     LaunchedEffect(katMeldung) {
- *         katMeldung?.let { vm.showSnackbar(it); katalog.snackbarGelesen() }
+ *         catalogMessage?.let { vm.showSnackbar(it); catalog.snackbarRead() }
  *     }
  *
  * Exactly that stood TWICE in CatalogGraph.kt. And that is the dangerous part:
@@ -111,9 +111,11 @@ class MessageChannelTest {
         assertEquals("AppNavigation.kt sammelt die Nur-Lese-Sicht ein", "gespeichert", channel.text)
         channel.acknowledge()
         assertEquals(null, channel.text)
+        // Hilt builds it in LocalModule (internal to core-data), hence by name.
+        val provider = Class.forName("ch.brickinventoryapp.data.di.LocalModule\$Companion").getMethod("messages")
         assertTrue("Ohne @Singleton bekäme jedes ViewModel eine eigene Instanz — dann gibt es " +
             "wieder so viele Kanäle wie ViewModels, nur unsichtbar",
-            channel::class.java.isAnnotationPresent(Singleton::class.java))
+            provider.isAnnotationPresent(Singleton::class.java))
     }
 
     @Test

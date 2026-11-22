@@ -1,9 +1,5 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.domain.LocationEntryView
-import ch.brickinventoryapp.model.domain.StockLocationView
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.contract.BrickLinkRef
 import ch.brickinventoryapp.contract.Instruction
 import ch.brickinventoryapp.contract.KontoName
@@ -11,9 +7,13 @@ import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.MerkpostenAlarm
 import ch.brickinventoryapp.contract.Part
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.LocationEntryView
+import ch.brickinventoryapp.model.domain.StockLocationView
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.local.StockKind
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -28,7 +28,7 @@ import org.junit.Test
  *
  * Counter-checks (counter-checks/ablageform-felder-vertauscht.patch, verworfen-still.patch):
  *   in Ablagezeilen.set avg and max of the purchase price swapped → red “every field …”
- *   in Offlineablage.dekodiere verworfen = 0 → red “an unreadable row is counted …”
+ *   in OfflineStore's decode discarded = 0 → red “an unreadable row is counted …”
  */
 class StoreShapeTest {
 

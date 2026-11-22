@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.session
 
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.StartStateView
 import ch.brickinventoryapp.model.ui.theme.Design
 

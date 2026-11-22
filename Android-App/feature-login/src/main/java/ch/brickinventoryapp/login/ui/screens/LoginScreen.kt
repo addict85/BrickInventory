@@ -1,44 +1,44 @@
 package ch.brickinventoryapp.login.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import ch.brickinventoryapp.ui.theme.windowSurface
-import androidx.compose.foundation.verticalScroll
-import ch.brickinventoryapp.ui.theme.centeredUntil
-import androidx.compose.foundation.rememberScrollState
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.paneTitle
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.QrAccount
-import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.outsideTheSystemBars
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.LoginCard
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
+import ch.brickinventoryapp.ui.components.LoginCard
 import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.outsideTheSystemBars
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.centeredUntil
+import ch.brickinventoryapp.ui.theme.windowSurface
 
 /**
  * Sign in, create an account, request a reset link — like the web app. Three
@@ -251,7 +251,7 @@ internal fun FormMessage(text: String, error: Boolean) {
 /** A button that loads: a spinner instead of a label while something is running. */
 @Composable
 internal fun LoadButton(text: String, running: Boolean, active: Boolean, missing: String? = null, onClick: () -> Unit) {
-    // Ein gesperrter Hauptknopf sagt, was fehlt: Blass allein liess raten, warum.
+    // A disabled main button says what is missing: pale alone left one guessing why.
     if (!active && !running && missing != null) Text(missing, style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
     Button(

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.network.di
 
-import ch.brickinventoryapp.network.data.api.ErrorBody
 import ch.brickinventoryapp.model.domain.ErrorCode
+import ch.brickinventoryapp.network.data.api.ErrorBody
 import ch.brickinventoryapp.network.util.APP_API_VERSION
-import ch.brickinventoryapp.network.util.PlaintextRejected
 import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.network.util.PlaintextRejected
 import ch.brickinventoryapp.network.util.VersionsHint
 import ch.brickinventoryapp.network.util.followUpMay
 import ch.brickinventoryapp.network.util.versionsHint

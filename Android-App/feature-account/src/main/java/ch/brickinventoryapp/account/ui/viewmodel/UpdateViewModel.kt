@@ -1,23 +1,32 @@
 package ch.brickinventoryapp.account.ui.viewmodel
 
-import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.account.ui.UpdateUiState
+import ch.brickinventoryapp.data.LoginState
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.update.data.UpdateRepository
+import ch.brickinventoryapp.update.util.InstallMessage
+import ch.brickinventoryapp.update.util.UpdateDescription
+import ch.brickinventoryapp.update.util.UpdateDevice
+import ch.brickinventoryapp.update.util.UpdateStatusStore
+import ch.brickinventoryapp.update.util.checkFresh
 import ch.brickinventoryapp.update.util.checkedDescription
 import ch.brickinventoryapp.update.util.checksumFits
-import ch.brickinventoryapp.update.util.versionFits
-import ch.brickinventoryapp.update.util.InstallMessage
 import ch.brickinventoryapp.update.util.isAllowedApkAddress
 import ch.brickinventoryapp.update.util.offerableVersion
-import ch.brickinventoryapp.update.util.checkFresh
+import ch.brickinventoryapp.update.util.versionFits
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -25,17 +34,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
-import ch.brickinventoryapp.update.util.UpdateDescription
 import java.io.File
-import ch.brickinventoryapp.model.coroutines.BrickDispatchers
-import ch.brickinventoryapp.model.coroutines.Dispatcher
-import ch.brickinventoryapp.data.LoginState
-import ch.brickinventoryapp.update.data.UpdateRepository
-import kotlinx.coroutines.Job
-import ch.brickinventoryapp.update.util.UpdateDevice
-import ch.brickinventoryapp.update.util.UpdateStatusStore
-import ch.brickinventoryapp.model.ui.Message
+import javax.inject.Inject
 
 /**
  * Self-update: check, load, offer to install. Check silently on start,
@@ -56,7 +56,7 @@ class UpdateViewModel @Inject constructor(
     val updateState = _state.asStateFlow()
     override val uiState: StateFlow<UpdateUiState> get() = updateState
 
-    /** Der laufende Download; [cancelLoad] beendet ihn samt Teildatei. */
+    /** The running download; [cancelLoad] ends it together with the partial file. */
     private var loadJob: Job? = null
 
     init {

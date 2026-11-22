@@ -1,29 +1,34 @@
 package ch.brickinventoryapp.parts.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.withoutError
-import ch.brickinventoryapp.state.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.domain.PartListJob
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.ExportResult
+import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
-import ch.brickinventoryapp.data.service.PartListsExport
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.model.ui.withoutError
 import ch.brickinventoryapp.parts.ui.PartListUiState
+import ch.brickinventoryapp.parts.ui.PartListUiState.RemovedSet
 import ch.brickinventoryapp.parts.ui.PartListsSource
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.PlSet
-import ch.brickinventoryapp.parts.ui.PartListUiState.RemovedSet
 import ch.brickinventoryapp.parts.ui.normalized
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.errorMessage
+import ch.brickinventoryapp.state.ui.viewmodel.Messages
+import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,11 +38,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.state.ui.viewmodel.Messages
-import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 
 /**
  * The build list: collect sets, resolve them, compare the stock, generate a PDF. The list and
@@ -132,17 +132,17 @@ class PartListViewModel @Inject constructor(
             val sets = start.sets
             sets.forEachIndexed { i, s ->
                 _uiState.update { it.copy(status = Message.Resource(R.string.partslist_loading_set, listOf(s.setNumber, i + 1, sets.size))) }
-                try {
-                    val (name, newValue) = source.resolveSetOn(s.setNumber, server)
-                    setList { z -> z.copy(sets = z.sets.map { if (it.setNumber == s.setNumber) it.copy(name = name) else it }) }
-                    newValue.forEach { p ->
-                        val key = "${p.blPartNumber ?: p.partNumber}|${p.colorName}"
-                        combined[key] = combined[key]?.let { it.copy(quantity = it.quantity + p.quantity) } ?: p
+                when (val r = source.resolveSetOn(s.setNumber, server)) {
+                    is Outcome.Success -> {
+                        val (name, newValue) = r.data
+                        setList { z -> z.copy(sets = z.sets.map { if (it.setNumber == s.setNumber) it.copy(name = name) else it }) }
+                        newValue.forEach { p ->
+                            val key = "${p.blPartNumber ?: p.partNumber}|${p.colorName}"
+                            combined[key] = combined[key]?.let { it.copy(quantity = it.quantity + p.quantity) } ?: p
+                        }
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    _uiState.update { it.copy(status = Message.Resource(R.string.partslist_error_for_set, listOf(s.setNumber))) }
+                    is Outcome.Failure ->
+                        _uiState.update { it.copy(status = Message.Resource(R.string.partslist_error_for_set, listOf(s.setNumber))) }
                 }
             }
             val parts = source.sorted(combined.values)

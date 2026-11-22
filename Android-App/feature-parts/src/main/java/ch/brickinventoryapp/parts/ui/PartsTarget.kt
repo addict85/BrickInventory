@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.parts.ui
 
-import ch.brickinventoryapp.model.domain.NO_COLOR
 import ch.brickinventoryapp.model.domain.ItemKind
+import ch.brickinventoryapp.model.domain.NO_COLOR
 import ch.brickinventoryapp.ui.TabTarget
 import kotlinx.serialization.Serializable
 

@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Load
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -19,6 +17,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.screens.CameraPermissionHint

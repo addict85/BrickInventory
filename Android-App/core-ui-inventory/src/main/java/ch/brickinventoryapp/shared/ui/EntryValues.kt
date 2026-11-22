@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.shared.ui
 
-import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.ui.util.NumericInput
 
 /**
@@ -20,7 +20,7 @@ data class EntryValues(
 )
 
 /**
- * @param haushalt The household's accounts — with at most one, NO
+ * @param household The household's accounts — with at most one, NO
  *                 owner goes along.
  */
 fun entryValues(

@@ -1,16 +1,25 @@
 package ch.brickinventoryapp.account
 
+import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.testing.RowsServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.session.testing.SessionFake
+import ch.brickinventoryapp.session.testing.testSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -20,15 +29,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.testing.RowsServer
-import ch.brickinventoryapp.testing.SessionFake
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import java.time.Instant
 
 /**
@@ -38,26 +38,19 @@ import java.time.Instant
  *  - The check `list.none { it.current }` removed from redeemQuestion():
  *    "without a recognized own device, nothing is revoked" red — the
  *    confirmation went ahead.
- *  - In redeemConfirm() `codeNeeded` not set: "ein fremdes Gerät
- *    verlangt Passwort und bei Bedarf den Code" red; the password not put into
+ *  - In redeemConfirm() `codeNeeded` not set: "ein fremdes Gerät verlangt Passwort und bei Bedarf den Code" red; the password not put into
  *    the body: same check red (no "password").
- *  - The call `sessionService.logout()` removed from changePassword(): "nach dem
- *    Passwortwechsel wird abgemeldet" red.
- *  - In secondFactor() `successText` no longer reported: "der bestätigte
- *    zweite Faktor zeigt die Codes" red on the message.
- *  - In asDevice() `.minOrNull()` → `.maxOrNull()`: "die
- *    Geräteliste zeigt Vollzugriff und die frühere Frist" red (2027 instead of 2026);
- *    `accesses` ignored when counting: "ein schon entwertetes Gerät zählt
- *    nicht" red.
- *  - In declined() `codeNeeded` not set: "ohne Code
- *    verlangt der zweite Faktor …" and "eine neue E-Mail …" red; in changePassword()
+ *  - The call `sessionService.logout()` removed from changePassword(): "nach dem Passwortwechsel wird abgemeldet" red.
+ *  - In secondFactor() `successText` no longer reported: "der bestätigte zweite Faktor zeigt die Codes" red on the message.
+ *  - In asDevice() `.minOrNull()` → `.maxOrNull()`: "die Geräteliste zeigt Vollzugriff und die frühere Frist" red (2027 instead of 2026);
+ *    `accesses` ignored when counting: "ein schon entwertetes Gerät zählt nicht" red.
+ *  - In declined() `codeNeeded` not set: "ohne Code verlangt der zweite Faktor …" and "eine neue E-Mail …" red; in changePassword()
  *    the code not passed to changePassword(): same check red (no
  *    "code" in the body).
  *  - In setUpSecondFactorOne() `d.otpauth` taken unchecked:
  *    "a foreign address instead of otpauth is not opened" red.
  *  - Patch counter-checks/profil-ohne-passwort.patch (the check
- *    `password.isNullOrBlank()` removed from saveProfile()): "ohne Passwort
- *    fragt das Profil den Server nicht" red.
+ *    `password.isNullOrBlank()` removed from saveProfile()): "ohne Passwort fragt das Profil den Server nicht" red.
  *  - Patch counter-checks/profil-mail-nicht-gesendet-still.patch (`emailSent` not
  *    evaluated): "eine neue E-Mail ohne gesendete Mail …" red. Patch
  *    counter-checks/profil-neu-laden-loescht-fehler.patch (fetchProfile() clears the
@@ -95,7 +88,7 @@ class AccountViewModelTest {
         cacheDir.mkdirs()
         channel = MessageChannel()
         vm = AccountViewModel(testAccountRepository(server.api, tick), channel,
-                            Session(), SessionFake { loggedOut = true })
+                            testSession(), SessionFake { loggedOut = true })
     }
 
     @After

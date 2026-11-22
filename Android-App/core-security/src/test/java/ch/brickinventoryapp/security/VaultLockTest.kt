@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.security
 
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import android.security.keystore.KeyPermanentlyInvalidatedException
 import java.security.InvalidKeyException
 import java.security.KeyStoreException
 import java.security.ProviderException
@@ -20,18 +20,17 @@ import javax.crypto.BadPaddingException
  *
  * Counter-checks:
  *   A  vaultErrorPermanent() always true (the old state: every error = gone) →
- *      red „only a permanent error means token gone“ and „ein vorübergehender
- *      Fehler wird einmal wiederholt“
+ *      red „only a permanent error means token gone“ and „ein vorübergehender Fehler wird einmal wiederholt“
  *   B  openWithRetry() with `repeat(1)` → red „… wird einmal wiederholt“
  *   C  readToken() reports „“ immediately when locked (`report(old ?: ""); return`) →
  *      red „ein gesperrter Keystore beim Start …“ and „… nachgemeldet“
  *   D  readToken() stops after startup (`return` after the first „“) → red
  *      „ein länger gesperrter Keystore meldet das Token nach“
  * Counter-checks for the key that only works on an unlocked device (measured locally):
- *   E  readToken() counts every attempt (`attempt++` unconditionally) → red „bei
- *      gesperrtem Geraet wartet das Lesen …“; counter-checks/sperre-zaehlt-versuche.patch
- *   G  UnlockVault.open() always via `onlyUnlocked` → red „ein Geheimtext ohne
- *      Praefix …“; counter-checks/entsperrtresor-vergisst-altbestand.patch
+ *   E  readToken() counts every attempt (`attempt++` unconditionally) → red „bei gesperrtem Geraet wartet das Lesen …“
+ * ; counter-checks/sperre-zaehlt-versuche.patch
+ *   G  UnlockVault.open() always via `onlyUnlocked` → red „ein Geheimtext ohne Praefix …“
+ * ; counter-checks/entsperrtresor-vergisst-altbestand.patch
  * That UnlockVault never falls back to the key without a condition is checked by StoreUnlockedTest.
  */
 class VaultLockTest {

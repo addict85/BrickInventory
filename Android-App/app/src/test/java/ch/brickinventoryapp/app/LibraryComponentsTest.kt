@@ -38,7 +38,7 @@ class LibraryComponentsTest {
             fetch(ComponentName(ctx.packageName, name))
             fail("$name steht im Manifest")
         } catch (_: PackageManager.NameNotFoundException) {
-            // erwartet: herausgenommen
+            // expected: taken out
         }
     }
 

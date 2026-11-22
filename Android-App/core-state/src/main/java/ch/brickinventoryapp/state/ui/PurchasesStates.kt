@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.domain.PurchaseView
-import ch.brickinventoryapp.model.domain.PurchaseSumsView
-import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
 import ch.brickinventoryapp.model.domain.PriceHistoryView
+import ch.brickinventoryapp.model.domain.PurchaseSumsView
+import ch.brickinventoryapp.model.domain.PurchaseView
+import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
+import ch.brickinventoryapp.model.ui.Load
 /**
  * State for the detail dialog of manually captured parts and minifigs.
  * Separated from the main state so acquisition updates (which happen

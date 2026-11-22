@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
@@ -12,9 +10,11 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import org.junit.After

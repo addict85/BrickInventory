@@ -8,8 +8,8 @@ import org.junit.Test
 
 /**
  * Collection (/stats) and parts tab (/parts/stats) show the same
- * total including breakdown, like the web app („394 — 144 aus Sets · 250
- * einzeln“). Read from real responses of the server (state 45210d5).
+ * total including breakdown, like the web app („394 — 144 aus Sets · 250 einzeln“
+ * ). Read from real responses of the server (state 45210d5).
  *
  * Counter-checks:
  *   A  in PartsStats.asView() `+ (manualParts ?: 0)` removed → red

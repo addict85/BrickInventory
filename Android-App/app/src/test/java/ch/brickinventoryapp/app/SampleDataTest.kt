@@ -1,33 +1,41 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
-import ch.brickinventoryapp.model.domain.PartListJob
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
-import ch.brickinventoryapp.parts.ui.PartListsSource
-import ch.brickinventoryapp.parts.ui.PlPart
+import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.ExportResult
 import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testFinancesRepository
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.finances.ui.financeTotals
+import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfProgress
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.parts.ui.PartListsSource
+import ch.brickinventoryapp.parts.ui.PlPart
+import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
 import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
-import kotlinx.coroutines.flow.flowOf
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.shared.ui.localAxis
+import ch.brickinventoryapp.shared.ui.localValues
+import ch.brickinventoryapp.state.testing.NumbersTexts
+import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -36,15 +44,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.finances.ui.financeTotals
-import ch.brickinventoryapp.shared.ui.localAxis
-import ch.brickinventoryapp.shared.ui.localValues
-import ch.brickinventoryapp.finances.ui.setRows
-import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import java.util.Locale
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * Sample data for screenshots and UI tests: a PathServer in ticks with
@@ -61,7 +61,7 @@ import ch.brickinventoryapp.testing.TestServices
  * "fig_name" → red “parts and figures carry real names“; the path
  * /api/v1/minifigs/stats removed → red as well (no key figures).
  * Counter-checks: for the Falcon every "wert_gesamt" removed → red
- * “every finance row carries …” (wert=null); in the FinanceViewModel the points again
+ * “every finance row carries …” (value=null); in the FinanceViewModel the points again
  * translated with Locale.getDefault() when loading → red “the finance axis is formatted
  * only when drawing” ([10/27, , 10/29]) and “the samples are consistent“.
  * Counter-check: for the parts again "quantity" instead of
@@ -248,9 +248,8 @@ object Examples {
             {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1,"kachel_quelle":"markt"},
             {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5,"kachel_quelle":"markt"},
             {"set_number":"21318-1","quantity":1,"current_price":null,"baseline_price":180,"kachel_preis":180.0,"kachel_pnl_pct":null,"kachel_quelle":"kauf"}]}""",
-        // Like the server (finances/rechnung/bewertung.ts): wert_gesamt, purchase price, P&L and
-        // one row per acquisition with condition. Without wert_gesamt every row shows „noch
-        // kein Preis“ below a filled header tile.
+        // Like the server (`finances/rechnung/bewertung.ts`): wert_gesamt, purchase price, P&L and
+        // one row per acquisition with condition. Without wert_gesamt every row shows „noch kein Preis“ below a filled header tile.
         "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
             {"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","quantity":1,"avg_price":812.5,"qty_avg_price":812.5,
              "min_price":760.0,"max_price":880.0,"total_avg":"812.50","wert_gesamt":812.5,"purchase_price":700.0,"pnl_prozent":16.1,
@@ -324,7 +323,7 @@ object Examples {
         /** The build list without network: [resolve] delivers name and parts per set number. */
         fun buildList(resolve: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
             t.track(PartListViewModel(t.session, t.hints, object : PartListsSource {
-                override suspend fun resolveSetOn(setNumber: String, serverUrl: String) = resolve(setNumber)
+                override suspend fun resolveSetOn(setNumber: String, serverUrl: String) = Outcome.Success(resolve(setNumber))
                 override suspend fun withInventory(parts: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = parts
                 override fun sorted(parts: Collection<PlPart>) = parts.toList()
             }, object : PartListsExport {

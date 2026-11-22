@@ -5,43 +5,43 @@ package ch.brickinventoryapp.collection.ui.screens
  * no periodic refocusing, which would keep making the camera re-measure.
  */
 
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
-import androidx.compose.foundation.background
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FlashlightOff
-import androidx.compose.material.icons.filled.FlashlightOn
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.foundation.BorderStroke
-import ch.brickinventoryapp.ui.components.withFont
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.Spacing
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.WithTooltip
-import ch.brickinventoryapp.ui.screens.CameraPermissionHint
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.screens.CameraOverlay
+import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.screens.cameraBind
 import ch.brickinventoryapp.ui.screens.cameraPreview
 import ch.brickinventoryapp.ui.screens.rememberCameraPermission
 import ch.brickinventoryapp.ui.screens.tapToFocus
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 
 @Composable
 fun BarcodeScannerScreen(
@@ -270,7 +270,7 @@ private fun LightButton(an: Boolean, toggleOn: () -> Unit) {
 
 /**
  * Words that mark a number as a quantity — word-for-word the same as QUANTITY_WORD in
- * produkttitel.ts. `(?iu)`, because IGNORE_CASE without `u` only knows ASCII.
+ * `produkttitel.ts`. `(?iu)`, because IGNORE_CASE without `u` only knows ASCII.
  */
 private val QUANTITY_WORD = Regex(
     "(?iu)^\\s*(?:x\\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|en)?|" +
@@ -279,14 +279,14 @@ private val QUANTITY_WORD = Regex(
 
 /**
  * Digit counts in descending quality. Unknown lengths land after them.
- * Must match `QUALITY` in Web-App/utils/produkttitel.ts.
+ * Must match `QUALITY` in `Web-App/utils/produkttitel.ts`.
  */
 internal val QUALITY = listOf(5, 4, 6, 7, 3)
 
 /**
  * Three to seven digits, optionally with a leading `#` and a variant suffix. At the
  * top rather than in the function, because it runs every 700 ms in the camera loop. Word-for-word
- * the same as `pattern` in produkttitel.ts.
+ * the same as `pattern` in `produkttitel.ts`.
  */
 private val SET_NUMBER_PATTERN = Regex("(#\\s*)?\\b(\\d{3,7})(-\\d{1,2})?\\b")
 

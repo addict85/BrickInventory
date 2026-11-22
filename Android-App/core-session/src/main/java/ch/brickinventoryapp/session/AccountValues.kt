@@ -2,14 +2,12 @@ package ch.brickinventoryapp.session
 
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,16 +23,6 @@ interface AccountValues {
     val design: StateFlow<Design>
     fun setCurrency(w: CurrencyCode)
     fun setDesign(d: Design)
-}
-
-/** In memory: for tests and previews without a store. */
-class StorageAccountValues(currency: CurrencyCode = CurrencyCode.EUR, design: Design = Design.DEFAULT) : AccountValues {
-    private val _currency = MutableStateFlow(currency)
-    private val _design = MutableStateFlow(design)
-    override val currency: StateFlow<CurrencyCode> = _currency.asStateFlow()
-    override val design: StateFlow<Design> = _design.asStateFlow()
-    override fun setCurrency(w: CurrencyCode) { _currency.value = w }
-    override fun setDesign(d: Design) { _design.value = d }
 }
 
 /**

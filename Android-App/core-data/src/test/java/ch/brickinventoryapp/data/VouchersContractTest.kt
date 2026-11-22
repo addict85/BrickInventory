@@ -1,21 +1,21 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.data.finances.VouchersRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testVouchersRepository
+import ch.brickinventoryapp.model.domain.Confirmation
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.VoucherInfo
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.Confirmation
-import ch.brickinventoryapp.data.repository.VouchersRepository
+import ch.brickinventoryapp.testing.Sources
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.Outcome
 import java.io.File
-import org.json.JSONObject
-import ch.brickinventoryapp.testing.testVouchersRepository
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.Sources
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * Vouchers — LEGO gift cards in one's own profile.
@@ -61,7 +61,7 @@ class VouchersContractTest {
         if (z.trim().startsWith("//") || z.trim().startsWith("*")) "" else z
     }
 
-    private val repo by lazy { code(read("data/repository/VouchersRepositoryImpl.kt")) }
+    private val repo by lazy { code(read("data/finances/VouchersRepositoryImpl.kt")) }
     private val feature by lazy { code(read("finances/ui/viewmodel/VoucherViewModel.kt")) }
     // The card including its sibling files: list, form and single card.
     private val card by lazy {
@@ -81,7 +81,7 @@ class VouchersContractTest {
     }
 
     /**
-     * ONE service in the backend, both apps on it — the router routes/api_v1/vouchers.ts.
+     * ONE service in the backend, both apps on it — the router `routes/api_v1/vouchers.ts`.
      * Other addresses would mean two implementations.
      */
     @Test
@@ -134,7 +134,7 @@ class VouchersContractTest {
 
     @Test
     fun `the PDF is sent to the SERVER and not read in the app`() {
-        // The excerpt lives in Web-App/src/vouchers/pdfParsing.ts — ONCE, for
+        // The excerpt lives in `Web-App/src/vouchers/pdfParsing.ts` — ONCE, for
         // both apps. A second reading logic in Kotlin would have to keep pace
         // with it, and the web app would need a third.
         assert(repo.contains("MultipartBody.Part.createFormData(\"file\"")) {
@@ -150,7 +150,7 @@ class VouchersContractTest {
 
     @Test
     fun `the three values are not checked in the app`() {
-        // `checkValues` in src/vouchers/service.ts decides which
+        // `checkValues` in `src/vouchers/service.ts` decides which
         // number, which amount and which currency are valid — once,
         // for both apps. A second check here would drift apart
         // at some point, and then it would be unclear which one applies.

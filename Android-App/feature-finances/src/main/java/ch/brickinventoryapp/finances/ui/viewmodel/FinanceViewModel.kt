@@ -1,16 +1,22 @@
 package ch.brickinventoryapp.finances.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.Load
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.FinancesRepository
+import ch.brickinventoryapp.data.finances.FinancesRepository
+import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.StockReconciliation
 import ch.brickinventoryapp.finances.ui.FinanceUiState
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
+import ch.brickinventoryapp.state.ui.viewmodel.Messages
+import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,12 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
-import ch.brickinventoryapp.state.ui.viewmodel.Messages
-import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 
 /**
  * The finance tab: valuation of sets, parts and figures, profit and
@@ -98,13 +98,16 @@ class FinanceViewModel @Inject constructor(
                     messages.show(messages.messageForSnackbar(r))
                 }
             }
-            (finances.getPartsValuation(account) as? Outcome.Success)
-                ?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
-            (finances.getMinifigsValuation(account) as? Outcome.Success)
-                ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
-            (finances.getPnl(account) as? Outcome.Success)
-                ?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
+            _financeState.update { it.copy(extrasLoad = Load.Data(Unit)) }
+            extra(finances.getPartsValuation(account)) { s, d -> s.copy(partsValuation = d) }
+            extra(finances.getMinifigsValuation(account)) { s, d -> s.copy(figsValuation = d) }
+            extra(finances.getPnl(account)) { s, d -> s.copy(pnl = d) }
         }
+    }
+
+    private fun <T> extra(r: Outcome<T>, take: (FinanceUiState, T) -> FinanceUiState) = when (r) {
+        is Outcome.Success -> _financeState.update { take(it, r.data) }
+        is Outcome.Failure -> _financeState.update { it.copy(extrasLoad = loadError(r)) }
     }
 
     /** Fetch the history for the chosen period anew. */

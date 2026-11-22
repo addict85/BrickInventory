@@ -12,7 +12,7 @@ fun isVoucherMask(number: String): Boolean = number.startsWith("…")
 
 /**
  * „No color“ as at Rebrickable ([No Color/Any Color]) and on the server
- * (src/infra/validate.ts). 0 is black: whoever sends 0 for „none“ turns
+ * (`src/infra/validate.ts`). 0 is black: whoever sends 0 for „none“ turns
  * a part without color information into a black one.
  */
 const val NO_COLOR = 9999

@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.app.nav.Tab
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
@@ -17,13 +15,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.app.csv.CsvImportUiState
+import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.finances.ui.FinanceTarget
-import ch.brickinventoryapp.collection.ui.CollectionTarget
-import ch.brickinventoryapp.parts.ui.PartsTarget
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

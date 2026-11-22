@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.contract.AcquisitionsResponse
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.contract.AcquisitionsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

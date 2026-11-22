@@ -1,38 +1,38 @@
 package ch.brickinventoryapp.catalog.ui.viewmodel
 
-import ch.brickinventoryapp.model.domain.CatalogSort
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.model.domain.CatalogSetView
-import ch.brickinventoryapp.data.repository.CatalogRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
+import ch.brickinventoryapp.catalog.ui.WantedRequest
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.alarm.AlarmInput
+import ch.brickinventoryapp.data.catalog.CatalogRepository
+import ch.brickinventoryapp.data.collection.AlarmRepository
+import ch.brickinventoryapp.data.collection.WantedRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.CatalogSetView
+import ch.brickinventoryapp.model.domain.CatalogSort
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.state.ui.viewmodel.Texts
-import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.repository.AlarmRepository
-import ch.brickinventoryapp.data.repository.WantedRepository
-import ch.brickinventoryapp.catalog.ui.CatalogTarget
-import ch.brickinventoryapp.catalog.ui.WantedRequest
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.model.domain.WantedItemView
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
  * How long the list must stay still before its visible pages are fetched:
@@ -122,7 +122,7 @@ class CatalogViewModel @Inject constructor(
                 q = s.query.ifBlank { null }, themeId = s.themeId,
                 yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
             )
-            if (gen != catalogGeneration) return@launch   // inzwischen neuer Filter
+            if (gen != catalogGeneration) return@launch   // a new filter in the meantime
             when (r) {
                 is Outcome.Success -> {
                     _catalogState.update {

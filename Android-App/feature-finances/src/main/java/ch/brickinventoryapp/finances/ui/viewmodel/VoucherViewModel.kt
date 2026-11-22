@@ -1,31 +1,37 @@
 package ch.brickinventoryapp.finances.ui.viewmodel
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.state.ui.errorMessage
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.ErrorCode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.model.domain.VoucherStorage
-import ch.brickinventoryapp.model.domain.PlaintextView
-import ch.brickinventoryapp.model.domain.VoucherView
-import ch.brickinventoryapp.model.domain.Confirmation
-import ch.brickinventoryapp.model.domain.VoucherInfo
-import ch.brickinventoryapp.data.repository.VouchersRepository
+import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.finances.ui.BalanceRun
+import ch.brickinventoryapp.finances.ui.CopyJob
 import ch.brickinventoryapp.finances.ui.VoucherConfirmation
 import ch.brickinventoryapp.finances.ui.VoucherPdfTarget
 import ch.brickinventoryapp.finances.ui.VoucherStep
-import ch.brickinventoryapp.finances.ui.CopyJob
 import ch.brickinventoryapp.finances.ui.VoucherUiState
+import ch.brickinventoryapp.model.domain.Confirmation
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.ErrorCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.PlaintextView
+import ch.brickinventoryapp.model.domain.VoucherInfo
+import ch.brickinventoryapp.model.domain.VoucherStorage
+import ch.brickinventoryapp.model.domain.VoucherView
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.file.Read
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.errorMessage
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
+import ch.brickinventoryapp.ui.util.fmtMoney
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,12 +40,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.Read
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.state.ui.viewmodel.Texts
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
  * Vouchers in one's own profile. The server reads the PDF and checks the values, once
@@ -264,7 +264,11 @@ class VoucherViewModel @Inject constructor(
                         number = s.number, pin = s.pin, amount = s.amount.replace(',', '.'),
                         currency = s.currency,
                     )
-                    val g = (r as? Outcome.Success)?.data as? VoucherStorage.Incomplete
+                    // A failure goes to handleResponse below like every other answer.
+                    val g = when (r) {
+                        is Outcome.Success -> r.data as? VoucherStorage.Incomplete
+                        is Outcome.Failure -> null
+                    }
                     if (g != null) {
                         // 422: what the server could read goes into the form —
                         // the user fills in the rest and sends the same file.
@@ -346,7 +350,7 @@ class VoucherViewModel @Inject constructor(
     /**
      * Query the balance of ALL cards, one after another.
      *
-     * This waits when the server reports „abstand" — for exactly as long
+     * This waits when the server reports `abstand` — for exactly as long
      * as it says. On bot protection the whole run aborts: the remaining cards
      * would run into the same wall.
      */
@@ -377,7 +381,7 @@ class VoucherViewModel @Inject constructor(
         }
     }
 
-    /** One card; if the server reports „abstand", it waits and asks again. */
+    /** One card; if the server reports `abstand`, it waits and asks again. */
     private suspend fun questionBalance(g: VoucherView, previous: Int, total: Int): BalanceQuery {
         repeat(GAP_ATTEMPTS) {
             _state.update {

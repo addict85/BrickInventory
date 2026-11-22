@@ -65,7 +65,7 @@ internal class AppLockStore(context: Context, private val seal: LockSeal = Keyst
         reseal()
     }
 
-    /** Set once on first read (AppLock.vorgabe) so that a later update changes nothing. */
+    /** Set once on first read (the AppLock default) so that a later update changes nothing. */
     override fun minutes(): Int {
         checkSeal()
         if (!prefs.contains(MINUTES)) write { putInt(MINUTES, AppLock.default(newInstalled(), secured())) }

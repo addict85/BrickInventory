@@ -1,14 +1,16 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.TrustStore
-import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.data.testing.StorageSessionStore
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.session.StoreAccountValues
+import ch.brickinventoryapp.session.testing.testSession
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
 import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
-import ch.brickinventoryapp.security.CertificateUnresolved
-import ch.brickinventoryapp.security.CertificateQuestion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -24,8 +26,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.StorageSessionStore
-import ch.brickinventoryapp.session.StoreAccountValues
 
 /**
  * AppearanceViewModel and TrustViewModel put to the test, with in-memory stores
@@ -35,7 +35,7 @@ import ch.brickinventoryapp.session.StoreAccountValues
  *   design-spaet-gesetzt        StoreAccountValues starts with the default instead of the remembered theme → red „der Zustand wird mit …“
  *   widget-nicht-angestossen    `widget.refresh()` removed → red „eine Wahl wird gemerkt …“
  *   vertrauen-ohne-abwurf       after trustCertificate() no `drop.discard()` → red „ein bestätigter …“
- *   unbekannte-ca-ohne-abtippen in CertificateQuestion.bestaetige() the typing-in requirement removed → red „ohne bekannte CA …“
+ *   unbekannte-ca-ohne-abtippen in CertificateQuestion.confirm() the typing-in requirement removed → red „ohne bekannte CA …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RenderingAndTrustTest {
@@ -79,7 +79,7 @@ class RenderingAndTrustTest {
         val store = StorageRendering().apply { design = Design.STUD }
         val account = StorageSessionStore().apply { design.value = Design.STUD }
         // As on the device: currency and theme from the store, the first from the synchronous mirror.
-        val session = Session(StoreAccountValues(account, store, backgroundScope))
+        val session = testSession(StoreAccountValues(account, store, backgroundScope))
         val vm = AppearanceViewModel(store, session) {}
         // Without a single tick of the clock: the first frame already shows the remembered theme.
         assertEquals(Design.STUD, vm.appTheme.value)
@@ -91,7 +91,7 @@ class RenderingAndTrustTest {
     fun `a choice is remembered and applies immediately, the widget learns of its values`() = runTest(tick) {
         val store = StorageRendering()
         var widgetKicks = 0
-        val vm = AppearanceViewModel(store, Session()) { widgetKicks++ }
+        val vm = AppearanceViewModel(store, testSession()) { widgetKicks++ }
         assertTrue("Vorgabe: Vorschau verborgen", vm.hidePreview.value)
 
         vm.setBrightness("dunkel")

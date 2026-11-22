@@ -1,13 +1,22 @@
 package ch.brickinventoryapp.account.ui.viewmodel
 
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.repository.HouseholdRepository
-import ch.brickinventoryapp.data.repository.AccountRepository
+import ch.brickinventoryapp.account.ui.HouseholdUiState
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.account.HouseholdRepository
+import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.ErrorCode
-import ch.brickinventoryapp.data.repository.StockReconciliation
-import ch.brickinventoryapp.account.ui.HouseholdUiState
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
+import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,21 +24,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
  * The household: link accounts, invitations, unlinking.
  *
  * Who belongs and what's allowed is decided by the server
- * (utils/household.ts). Errors live in [HouseholdUiState.fetch], not in the
+ * (`utils/household.ts`). Errors live in [HouseholdUiState.fetch], not in the
  * message channel: the card shows them as long as it's open.
  */
 @HiltViewModel

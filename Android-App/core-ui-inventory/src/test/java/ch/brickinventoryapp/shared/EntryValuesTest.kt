@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.shared
 
-import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.shared.ui.entryInvalid
 import ch.brickinventoryapp.shared.ui.entryValues
-import ch.brickinventoryapp.model.domain.MemberView
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -12,7 +12,7 @@ import org.junit.Test
  * The capture dialogs read price and quantity like the number fields (NumericInput).
  *
  * Counter-check (counter-checks/erfassung-liest-preis-roh.patch): entryValues reads the
- * price with replace and toDoubleOrNull again → red „die Erfassung liest den Preis …".
+ * price with replace and toDoubleOrNull again → red „die Erfassung liest den Preis …“.
  */
 class EntryValuesTest {
 

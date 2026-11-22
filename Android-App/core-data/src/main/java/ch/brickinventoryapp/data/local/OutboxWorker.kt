@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data.local
 
 import android.content.Context
+import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -9,14 +10,13 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import androidx.hilt.work.HiltWorker
+import ch.brickinventoryapp.offline.OutboxPlanner
 import ch.brickinventoryapp.security.DeviceLock
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import ch.brickinventoryapp.offline.OutboxPlanner
 
 /**
  * Sends the outbox as soon as there is network. WorkManager takes over the network condition,

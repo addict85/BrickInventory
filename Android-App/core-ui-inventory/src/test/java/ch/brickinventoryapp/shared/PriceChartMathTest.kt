@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.shared
 
-import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PriceChartView
 import ch.brickinventoryapp.model.domain.PricePointView
 import ch.brickinventoryapp.model.domain.PriceSeriesView
+import ch.brickinventoryapp.shared.ui.PriceChartMath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
-import ch.brickinventoryapp.shared.ui.PriceChartMath
 
 /**
  * Chart math for the price history (shared/ui/PriceChartMath.kt).
@@ -23,8 +23,7 @@ import ch.brickinventoryapp.shared.ui.PriceChartMath
  *      like a price crash that never happened.
  *
  * Plus the description for TalkBack. Counter-checks:
- *   A  in summary() start and end by index instead of by day → red „die
- *      Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
+ *   A  in summary() start and end by index instead of by day → red „die Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
  *   B  the semantics on the canvas is checked by PriceChartDescriptionTest (app), drawn;
  *      counter-checks/preisdiagramm-stumm.patch
  */

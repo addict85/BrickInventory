@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.util
 
+import ch.brickinventoryapp.data.DownloadFailed
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayOutputStream
-import ch.brickinventoryapp.data.DownloadFailed
 import java.io.IOException
 
 /** Upper limit of a PDF that may only lie in memory; a voucher export has a few hundred kB. */

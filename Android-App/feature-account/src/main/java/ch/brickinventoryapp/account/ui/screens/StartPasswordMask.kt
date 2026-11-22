@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.account.ui.screens
 
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.errorMessage
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,20 +22,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.account.ui.AccountUiState
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.BrandsHeader
+import ch.brickinventoryapp.ui.components.ErrorRow
 import ch.brickinventoryapp.ui.components.LoginCard
 import ch.brickinventoryapp.ui.components.LoginTitle
-import ch.brickinventoryapp.ui.components.ErrorRow
-import ch.brickinventoryapp.ui.components.BrandsHeader
-import ch.brickinventoryapp.ui.components.SecondFactorCodeField
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.theme.ReadingWidth
-import ch.brickinventoryapp.ui.theme.centeredUntil
-import ch.brickinventoryapp.ui.components.PasswordSwitchFields
-import ch.brickinventoryapp.ui.components.rememberPasswordSwitchCheck
-import ch.brickinventoryapp.ui.theme.mainButtonColors
 import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.components.PasswordSwitchFields
+import ch.brickinventoryapp.ui.components.SecondFactorCodeField
+import ch.brickinventoryapp.ui.components.rememberPasswordSwitchCheck
+import ch.brickinventoryapp.ui.theme.ReadingWidth
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.centeredUntil
+import ch.brickinventoryapp.ui.theme.mainButtonColors
 
 /**
  * The account still has its start password: the server rejects every

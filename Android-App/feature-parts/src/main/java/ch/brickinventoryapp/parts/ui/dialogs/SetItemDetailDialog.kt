@@ -1,42 +1,38 @@
 package ch.brickinventoryapp.parts.ui.dialogs
 
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.state.ui.StorageUiState
-import ch.brickinventoryapp.parts.ui.SetItemUiState
-import ch.brickinventoryapp.parts.ui.viewmodel.SetItemActions
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-
-// rememberSaveable lives in the SUBPACKAGE runtime.saveable — the wildcard import
-// above it does not cover that (Kotlin star imports do not apply to
-// subpackages). That is exactly what tripped up round 81.
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil3.ImageLoader
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.shared.ui.TableRow
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
-import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.DetailTopAppBar
-import ch.brickinventoryapp.ui.components.BackButton
-import ch.brickinventoryapp.ui.components.colorTranslator
-import ch.brickinventoryapp.ui.components.categoryTranslator
-import ch.brickinventoryapp.shared.ui.quantityFromSet
-import ch.brickinventoryapp.shared.ui.LocationField
+import ch.brickinventoryapp.parts.ui.SetItemUiState
 import ch.brickinventoryapp.parts.ui.screens.PartDetailHeader
+import ch.brickinventoryapp.parts.ui.viewmodel.SetItemActions
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.shared.ui.LocationField
+import ch.brickinventoryapp.shared.ui.TableRow
+import ch.brickinventoryapp.shared.ui.quantityFromSet
+import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.components.BackButton
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.ZoomableImageDialog
+import ch.brickinventoryapp.ui.components.categoryTranslator
+import ch.brickinventoryapp.ui.components.colorTranslator
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
+import coil3.ImageLoader
 
 /**
  * Detail for a part / figure from a set, on the phone as a sheet from the bottom:
@@ -133,7 +129,7 @@ private fun SetItemDetail(
                         }
                         PartDetailHeader(image, imageLoader, header?.name, chips, onZoom = { showZoom = true })
                         Spacer(Modifier.height(Spacing.small))
-                        // Only for parts (kopf.colorId is null for figures): a minifigure
+                        // Only for parts (header.colorId is null for figures): a minifigure
                         // is stuck in its set, whose location stands in the set detail — a second
                         // location could drift apart. Editable as in the web app; the
                         // field writes to every row of this part-color pair.

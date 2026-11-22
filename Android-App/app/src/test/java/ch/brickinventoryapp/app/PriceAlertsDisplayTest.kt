@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.material3.MaterialTheme
@@ -19,13 +18,14 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals

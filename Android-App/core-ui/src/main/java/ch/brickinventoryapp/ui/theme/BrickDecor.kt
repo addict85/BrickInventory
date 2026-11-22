@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The light falloff of a glossy surface — light at the top, shadow at the bottom, the same
- * stops as in themes/hochglanz.css. The light rim is narrow (0.34 at 30%),
+ * stops as in `themes/hochglanz.css`. The light rim is narrow (0.34 at 30%),
  * so it doesn't eat away the lid color on the phone; that color is the theme's
  * defining beat. Numbers instead of design-tokens.json, because a gradient of white and
  * black proportions is not a color, but sits on top of every base color.
@@ -30,13 +30,13 @@ val LacquerHistory = Brush.verticalGradient(
 
 /**
  * The shape of a stud: flush at the bottom with the lid, round at the
- * top — the same as `--studs-form` in styles.css, in one place.
+ * top — the same as `--studs-form` in `styles.css`, in one place.
  */
 val StudsForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
 
 /**
  * The light falloff on the brick edge, the same stops as `.sc::before` in
- * themes/brick.css. Weaker than LacquerHistory, because the brick theme is matte
+ * `themes/brick.css`. Weaker than LacquerHistory, because the brick theme is matte
  * plastic; without it the edge would be flat.
  */
 val BrickEdgesHistory = Brush.verticalGradient(
@@ -73,11 +73,11 @@ data class StudsMass(
     val overhanging: Boolean get() = top < 0.dp
 
     companion object {
-        /** themes/brick.css: one row across the whole edge, beat 17. */
+        /** `themes/brick.css`: one row across the whole edge, beat 17. */
         val Brick = StudsMass(edgeHeight = 22.dp, tick = 17.dp, width = 10.dp,
                                height = 6.dp, edge = 10.dp, top = (-6).dp, filling = true)
 
-        /** themes/noppe.css: four studs on the lid, beat 22. */
+        /** `themes/noppe.css`: four studs on the lid, beat 22. */
         val Lid = StudsMass(edgeHeight = 16.dp, tick = 22.dp, width = 14.dp,
                                 height = 7.dp, edge = 12.dp, top = 6.dp, filling = false, count = 4)
     }
@@ -86,7 +86,7 @@ data class StudsMass(
 /**
  * Stud lid for brick cards: a narrow colored strip with studs; the
  * card's clipping rounds it off at the top. A stud is a rectangle with a round
- * top edge, as in themes/noppe.css (13 × 6, radius 4, spacing 7). `gloss` curves
+ * top edge, as in `themes/noppe.css` (13 × 6, radius 4, spacing 7). `gloss` curves
  * the lid — a parameter instead of a second building block, because it's the same
  * lid in a different material.
  */

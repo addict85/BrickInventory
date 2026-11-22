@@ -10,7 +10,7 @@ import org.junit.Test
  * were stored back then — regardless of what the models are called today.
  *
  * Counter-checks (measured locally with kotlinc):
- *   A  MIGRATION_2_3 again via today's models (Faecher.SETS.spalten using
+ *   A  MIGRATION_2_3 again via today's models (the SETS slot's columns using
  *      BrickJson.decodeFromString) and in SetItem `set_number` renamed to
  *      `set_nummer` → red „Set: Nummer, Name, Thema, Jahr“ (the row would count as unreadable)
  *   B  in ColumnsVersion2 the fallback `?: "N"` for MERKLISTE removed → red

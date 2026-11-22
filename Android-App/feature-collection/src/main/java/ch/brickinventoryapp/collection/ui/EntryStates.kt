@@ -58,9 +58,9 @@ enum class CheckPhase {
     STOCK,
     // ── The steps of creating ──
     //
-    // The same three steps the server sends (add-stream in routes/sets.ts),
+    // The same three steps the server sends (add-stream in `routes/sets.ts`),
     // so you can see what's happening for a large set.
-    /** Stammdaten holen — Name, Teilezahl, Jahr. */
+    /** Fetch master data — name, part count, year. */
     CREATE_MASTER_DATA,
     /** Bild herunterladen. */
     CREATE_IMAGE,

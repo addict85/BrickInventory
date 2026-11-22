@@ -1,46 +1,46 @@
 package ch.brickinventoryapp.parts.ui.screens
 
-import ch.brickinventoryapp.model.domain.Origin
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import androidx.compose.material3.Button
-import ch.brickinventoryapp.ui.components.focusFrame
-import ch.brickinventoryapp.model.domain.FigureView
-import ch.brickinventoryapp.model.domain.ManualMinifigView
-import ch.brickinventoryapp.ui.theme.Shapes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.Button
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
-import coil3.ImageLoader
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.quantity
-import ch.brickinventoryapp.ui.components.readAloudAs
-import ch.brickinventoryapp.ui.components.ProductImage
-import ch.brickinventoryapp.ui.components.largeFont
-import ch.brickinventoryapp.ui.components.catalogName
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.FigureView
+import ch.brickinventoryapp.model.domain.ManualMinifigView
+import ch.brickinventoryapp.model.domain.Origin
 import ch.brickinventoryapp.model.util.DateYear
-import ch.brickinventoryapp.ui.util.fmtTag
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionBadges
 import ch.brickinventoryapp.shared.ui.ManualTile
 import ch.brickinventoryapp.shared.ui.OwnerBadges
 import ch.brickinventoryapp.shared.ui.TableRow
 import ch.brickinventoryapp.shared.ui.quantityFromSet
+import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.catalogName
+import ch.brickinventoryapp.ui.components.focusFrame
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.quantity
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.fmtTag
+import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
+import coil3.ImageLoader
 
 @Composable
 internal fun ManualFigTile(fig: ManualMinifigView, serverUrl: String, imageLoader: ImageLoader,
@@ -171,7 +171,7 @@ fun MinifigCard(fig: FigureView, serverUrl: String, imageLoader: ImageLoader,
 
 /**
  * A figure as a table row: image, number, name, quantity, entry date — what
- * the web app's table shows (renderFigs in minifigs.js). No columns
+ * the web app's table shows (renderFigs in `minifigs.js`). No columns
  * for "source" or trash can: this list only loads `source=set`, and both would be
  * constant.
  */

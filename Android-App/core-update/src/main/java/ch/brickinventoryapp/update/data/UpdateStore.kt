@@ -7,12 +7,12 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import ch.brickinventoryapp.data.DevicesStore
 import ch.brickinventoryapp.update.util.UpdateStatus
 import ch.brickinventoryapp.update.util.UpdateStatusStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
-import ch.brickinventoryapp.data.DevicesStore
 
 /** The self-update's benchmark (util/UpdateFresh.kt), per device in the DataStore. */
 internal class UpdateStore @Inject constructor(

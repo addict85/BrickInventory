@@ -1,20 +1,22 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.domain.PartEntry
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.contract.BrickColor
-import ch.brickinventoryapp.model.domain.NO_COLOR
 import ch.brickinventoryapp.contract.Part
 import ch.brickinventoryapp.contract.PartValuationItem
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.state.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.parts.ui.PartsTarget
+import ch.brickinventoryapp.model.domain.NO_COLOR
+import ch.brickinventoryapp.model.domain.PartEntry
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.ui.colorName
 import ch.brickinventoryapp.model.ui.withoutNoColor
+import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.state.ui.ManualItemDetailUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -26,11 +28,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
- * "Keine Farbe" is 9999 as on the server (utils/validate.ts, NO_COLOR);
+ * "Keine Farbe" is 9999 as on the server (`utils/validate.ts`, NO_COLOR);
  * 0 is black. The app sends 9999 for a part without a color, shows 9999 as
  * "keine Farbe" and does not take a missing color_id as black.
  *

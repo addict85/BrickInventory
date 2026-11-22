@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * Images and PDFs need sign-in on the server side — the app must send it

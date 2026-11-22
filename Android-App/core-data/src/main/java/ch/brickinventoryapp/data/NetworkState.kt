@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data
 
 import android.content.Context
-import ch.brickinventoryapp.data.repository.Outcome
-import kotlinx.coroutines.delay
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import ch.brickinventoryapp.data.repository.Outcome
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
 

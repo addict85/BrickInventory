@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.collection.ui
 
-import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.domain.GainRowView
 import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetView
 import java.math.BigDecimal
 import java.math.RoundingMode
 

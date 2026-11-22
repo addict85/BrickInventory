@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * In a keyed list EVERY item has a key.

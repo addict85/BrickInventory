@@ -3,11 +3,11 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.contract.CatalogMetaResponse
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
 import ch.brickinventoryapp.contract.CatalogSetsResponse
+import ch.brickinventoryapp.contract.CatalogYearVerteilungResponse
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.contract.CatalogYearVerteilungResponse
 
 /**
  * The server's set catalog: themes, list, detail, year distribution (CatalogRepository).

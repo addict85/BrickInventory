@@ -1,73 +1,74 @@
 package ch.brickinventoryapp.parts.ui.screens
 
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.model.domain.CategoryChoice
-import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.parts.ui.PartsFilter
-import ch.brickinventoryapp.ui.sentence
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.domain.Condition
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import ch.brickinventoryapp.ui.components.HintText
-import ch.brickinventoryapp.ui.theme.colorFromHex
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsActions
-import ch.brickinventoryapp.model.domain.PartsMetricsView
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
-import ch.brickinventoryapp.parts.ui.PartsUiState
-import ch.brickinventoryapp.ui.components.SortMenu
-import ch.brickinventoryapp.ui.LoadingIndicator
-import ch.brickinventoryapp.ui.loadingIndicator
-import ch.brickinventoryapp.state.ui.ScopeUiState
-import ch.brickinventoryapp.state.ui.FilterCount
-import ch.brickinventoryapp.state.ui.StorageUiState
 import androidx.compose.ui.res.stringResource
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil3.ImageLoader
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.Moved
-import ch.brickinventoryapp.ui.components.SkeletonRaster
-import ch.brickinventoryapp.ui.components.ErrorHint
-import ch.brickinventoryapp.ui.components.NoHitsHint
-import ch.brickinventoryapp.ui.components.StateHint
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.ui.components.AddFab
-import ch.brickinventoryapp.ui.components.FabSpace
-import ch.brickinventoryapp.ui.components.ReadableColumns
-import ch.brickinventoryapp.ui.components.LocalOpenDetail
-import ch.brickinventoryapp.ui.components.OfflineHint
-import ch.brickinventoryapp.ui.components.detailKey
-import ch.brickinventoryapp.ui.components.colorTranslator
-import ch.brickinventoryapp.ui.components.largeFont
-import ch.brickinventoryapp.ui.components.categoryTranslator
+import ch.brickinventoryapp.model.data.SparePartChoice
+import ch.brickinventoryapp.model.domain.CategoryChoice
+import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.LocationView
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.PartsMetricsView
+import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.parts.ui.PartsFilter
+import ch.brickinventoryapp.parts.ui.PartsSessionUiState
+import ch.brickinventoryapp.parts.ui.PartsUiState
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsActions
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.shared.ui.ActiveFilter
 import ch.brickinventoryapp.shared.ui.GalleryStatChip
 import ch.brickinventoryapp.shared.ui.MetricsSeries
 import ch.brickinventoryapp.shared.ui.SearchWithFilter
-import ch.brickinventoryapp.shared.ui.ActiveFilter
 import ch.brickinventoryapp.shared.ui.accountFilter
-import ch.brickinventoryapp.shared.ui.storageFilter
-import ch.brickinventoryapp.model.data.SparePartChoice
-import ch.brickinventoryapp.model.domain.LocationView
-import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.shared.ui.partsBreakdown
-import ch.brickinventoryapp.model.ui.ListView
-import ch.brickinventoryapp.parts.ui.PartsSessionUiState
+import ch.brickinventoryapp.shared.ui.storageFilter
+import ch.brickinventoryapp.state.ui.FilterCount
+import ch.brickinventoryapp.state.ui.ScopeUiState
+import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.LoadingIndicator
+import ch.brickinventoryapp.ui.components.AddFab
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.FabSpace
+import ch.brickinventoryapp.ui.components.HintText
+import ch.brickinventoryapp.ui.components.LocalOpenDetail
+import ch.brickinventoryapp.ui.components.Moved
+import ch.brickinventoryapp.ui.components.NoHitsHint
+import ch.brickinventoryapp.ui.components.OfflineHint
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
+import ch.brickinventoryapp.ui.components.ReadableColumns
+import ch.brickinventoryapp.ui.components.SkeletonRaster
+import ch.brickinventoryapp.ui.components.SortMenu
+import ch.brickinventoryapp.ui.components.StateHint
+import ch.brickinventoryapp.ui.components.categoryTranslator
+import ch.brickinventoryapp.ui.components.colorTranslator
+import ch.brickinventoryapp.ui.components.detailKey
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
+import ch.brickinventoryapp.ui.loadingIndicator
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.theme.colorFromHex
+import coil3.ImageLoader
 
 /** What the parts tab shows; the route collects it from the flows. */
 internal data class PartsState(
@@ -166,7 +167,7 @@ internal fun PartsScreen(
     LaunchedEffect(endReached) { if (endReached) onLoadMore(currentPage + 1) }
 
     var showFilter by rememberSaveable { mutableStateOf(false) }
-    // Color and category — the web app's two filter lists (teile.js,
+    // Color and category — the web app's two filter lists (`teile.js`,
     // loadPartsFilters). The conversion to the shared shape lives here: the two
     // answers carry different field names, everything else is the same.
     val color = colorTranslator()
@@ -252,6 +253,11 @@ internal fun PartsScreen(
                 ) {
                     if (stats != null) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { PartsMetrics(stats) }
+                    }
+                    if (partsState.extrasFetch is Load.Failure) {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "parts-extras-failed") {
+                            PartialLoadFailed(partsState.extrasFetch, actions::retryExtras)
+                        }
                     }
                     // Manually entered parts as a grid section instead of in a FlowRow above the grid:
                     // this way everything scrolls as one list, not just the set part.

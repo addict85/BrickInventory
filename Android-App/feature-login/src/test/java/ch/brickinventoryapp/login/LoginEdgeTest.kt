@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.login
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +14,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
@@ -22,20 +22,20 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -47,10 +47,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
-import java.util.Locale
 
 /**
  * Sign-in, register and setup stand without a frame on the whole window

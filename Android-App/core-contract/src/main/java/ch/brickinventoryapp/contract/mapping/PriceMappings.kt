@@ -13,15 +13,15 @@ import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.SetPriceResponse
 import ch.brickinventoryapp.model.domain.CurrentPerStateView
 import ch.brickinventoryapp.model.domain.CurrentPriceView
-import ch.brickinventoryapp.model.domain.WantedItemPricesView
 import ch.brickinventoryapp.model.domain.PriceChartView
+import ch.brickinventoryapp.model.domain.PriceHistoryPointView
+import ch.brickinventoryapp.model.domain.PriceHistoryView
 import ch.brickinventoryapp.model.domain.PricePerStateView
 import ch.brickinventoryapp.model.domain.PricePointView
 import ch.brickinventoryapp.model.domain.PriceSeriesView
-import ch.brickinventoryapp.model.domain.PriceHistoryView
-import ch.brickinventoryapp.model.domain.PriceHistoryPointView
 import ch.brickinventoryapp.model.domain.SetPriceView
 import ch.brickinventoryapp.model.domain.StateValuationView
+import ch.brickinventoryapp.model.domain.WantedItemPricesView
 import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.model.domain.asMoneyRequired
 

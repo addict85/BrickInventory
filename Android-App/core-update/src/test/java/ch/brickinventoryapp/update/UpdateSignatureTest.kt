@@ -1,11 +1,12 @@
 package ch.brickinventoryapp.update
 
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_BASE
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_ROOT
-import ch.brickinventoryapp.update.util.descriptionKey
 import ch.brickinventoryapp.update.util.checkedDescription
-import ch.brickinventoryapp.update.util.isAllowedApkAddress
 import ch.brickinventoryapp.update.util.checksumFits
+import ch.brickinventoryapp.update.util.descriptionKey
+import ch.brickinventoryapp.update.util.isAllowedApkAddress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -13,14 +14,13 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.Signature
-import java.util.Base64
-import java.security.KeyFactory
-import java.security.spec.X509EncodedKeySpec
 import java.security.cert.CertificateFactory
-import ch.brickinventoryapp.testing.Sources
+import java.security.spec.X509EncodedKeySpec
+import java.util.Base64
 
 /**
  * The self-updater's version description is signed with its own
@@ -31,16 +31,15 @@ import ch.brickinventoryapp.testing.Sources
  *
  * Counter-checks:
  *   A  checkedDescription() without the line `if (!real) return null`
- *      → red „ein fremder Schluessel …“, „veraenderte Daten …“ and „eine
- *      unsignierte version.json …“; counter-checks/update-beschreibung-ungeprueft.patch
+ *      → red „ein fremder Schluessel …“, „veraenderte Daten …“ and „eine unsignierte version.json …“
+ * ; counter-checks/update-beschreibung-ungeprueft.patch
  *   B  checksumFits() compares only as a prefix (`startsWith`) and without the
  *      empty check → red „the APK must carry the signed checksum“
  *   C  isAllowedApkAddress() without VERSION_LABEL.matches → red „nur Fassungsetiketten …“
  *   D  SignedDescription reads the `signature` field as the description signature again
  *      (`@SerialName("signature")`) → red „the signature of the APK key no longer applies“;
  *      counter-checks/beschreibung-ohne-schluesseltrennung.patch
- *   E  descriptionKey() only the first block (`.take(1)`) → red „waehrend
- *      eines Schluesselwechsels gelten alter und neuer Schluessel“
+ *   E  descriptionKey() only the first block (`.take(1)`) → red „waehrend eines Schluesselwechsels gelten alter und neuer Schluessel“
  */
 class UpdateSignatureTest {
 

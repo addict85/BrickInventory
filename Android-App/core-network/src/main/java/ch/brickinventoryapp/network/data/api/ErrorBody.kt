@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.domain.ErrorCode
  * What the server puts in the body on an error: `{success:false, error, code}`.
  *
  * `error` is a sentence in the account's language, there to be shown; `code`
- * is the case's name (utils/fehlerTexte.ts), there to branch on. Whoever
+ * is the case's name (`utils/fehlerTexte.ts`), there to branch on. Whoever
  * decides by the case takes the code — the sentence changes with language
  * and wording, the code does not.
  */

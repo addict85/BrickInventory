@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.shared.ui
 
-import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.ChartAxis
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.PricePoint
+import ch.brickinventoryapp.model.util.DateYear
+import ch.brickinventoryapp.model.util.fmtDatum
+import ch.brickinventoryapp.ui.util.withCurrencyGap
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.model.util.DateYear
-import ch.brickinventoryapp.model.util.fmtDatum
-import ch.brickinventoryapp.ui.util.withCurrencyGap
 
 /*
  * Axis labels of the value chart in the app's language. The server

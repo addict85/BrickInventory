@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.session.di
 
-import ch.brickinventoryapp.session.StoreAccountValues
 import ch.brickinventoryapp.session.AccountValues
 import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.session.SessionService
 import ch.brickinventoryapp.session.SessionRepository
+import ch.brickinventoryapp.session.SessionService
 import ch.brickinventoryapp.session.SessionState
+import ch.brickinventoryapp.session.StoreAccountValues
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

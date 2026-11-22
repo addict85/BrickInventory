@@ -19,10 +19,9 @@ import java.util.Base64
  * Re-encryption only ever happens under the unlock condition, never with a fallback.
  *
  * Counter-checks (kotlinc and JUnit locally):
- *   A  in hole() `if (vault.stale(wrapped)) wrapNew(…)` removed → red „ein Altbestand
- *      … kommt beim ersten Lesen unter den entsperrten …“; counter-checks/ablage-bleibt-ohne-sperre.patch
- *   C  in StoreCipher.open() the key wrapped in runCatching again → red „gesperrt entsteht kein
- *      neuer Schluessel …“ (null instead of IOException); counter-checks/ablage-gesperrt-wie-unlesbar.patch
+ *   A  in hole() `if (vault.stale(wrapped)) wrapNew(…)` removed → red „ein Altbestand … kommt beim ersten Lesen unter den entsperrten …“
+ * ; counter-checks/ablage-bleibt-ohne-sperre.patch
+ *   C  in StoreCipher.open() the key wrapped in runCatching again → red „gesperrt entsteht kein neuer Schluessel …“ (null instead of IOException); counter-checks/ablage-gesperrt-wie-unlesbar.patch
  *   D  UnlockVault.encrypt() falls back to the legacy key again → red
  *      „locked the unlock vault stores nothing under the weaker key“;
  *      counter-checks/entsperrtresor-mit-ausweg.patch
@@ -100,7 +99,7 @@ class StoreUnlockedTest {
             StoreCipher { newValue().forTarget("bestand") }.decrypt(secret, "b")
             fail("Gesperrt hiesse sonst unlesbar, und die Ablage würde gelöscht")
         } catch (_: IOException) {
-            // erwartet
+            // expected
         }
         unlocked.locked = false
         assertEquals("Kaufpreis 499.99", String(StoreCipher { newValue().forTarget("bestand") }.decrypt(secret, "b")!!))

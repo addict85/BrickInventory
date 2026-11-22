@@ -1,37 +1,38 @@
 package ch.brickinventoryapp.management.ui.screens
 
-import ch.brickinventoryapp.ui.title
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.ui.theme.Shapes
-import ch.brickinventoryapp.ui.theme.AppCard
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import ch.brickinventoryapp.ui.components.Prompt
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.PrewarmNetwork
-import ch.brickinventoryapp.model.domain.CacheMetricsView
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.SectionTitle
-import ch.brickinventoryapp.ui.components.WithTooltip
-import ch.brickinventoryapp.ui.components.SelectionField
-import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.model.domain.CacheMetricsView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionToggle
+import ch.brickinventoryapp.ui.components.PartialLoadFailed
+import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.components.SectionTitle
+import ch.brickinventoryapp.ui.components.SelectionField
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.AppCard
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.ui.util.NumericInput
 
 /** What the cache section triggers; MonitoringRoute wires up the ViewModels. */
 class CacheEvents(
@@ -42,6 +43,8 @@ class CacheEvents(
     val cacheDuration: (Int) -> Unit,
     val cacheClear: (Boolean) -> Unit,
     val limits: (rebrickable: Int, bricklink: Int, brickset: Int) -> Unit,
+    /** Fetch numbers and settings again after a failure. */
+    val retry: () -> Unit = {},
 )
 
 @Composable
@@ -90,6 +93,7 @@ private fun CacheCard(
             SectionTitle(stringResource(R.string.monitoring_price_cache))
 
             cacheStats?.let { cs -> CacheNumbers(cs) }
+            PartialLoadFailed(monState.settingsFetch, events.retry)
 
             // Default condition (Neu/Gebraucht)
             DefaultStateRow(defaultCondition, events.defaultState)

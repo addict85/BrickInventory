@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data
 
-import kotlinx.coroutines.test.advanceTimeBy
-import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.contract.TokenRotation
 import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.ErrorCode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield

@@ -1,28 +1,29 @@
 package ch.brickinventoryapp.parts.ui
 
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
-import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.domain.ComponentHeaderView
-import ch.brickinventoryapp.model.domain.ColorView
-import ch.brickinventoryapp.model.domain.FigureView
-import ch.brickinventoryapp.model.domain.FigureOrder
-import ch.brickinventoryapp.model.domain.MinifigsMetricsView
-import ch.brickinventoryapp.model.domain.FilterColorView
 import ch.brickinventoryapp.model.domain.CategoryView
+import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.domain.ColorView
+import ch.brickinventoryapp.model.domain.ComponentHeaderView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.FigureOrder
+import ch.brickinventoryapp.model.domain.FigureView
+import ch.brickinventoryapp.model.domain.FilterColorView
+import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
-import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
+import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
 import ch.brickinventoryapp.model.domain.UsingSetView
-import ch.brickinventoryapp.model.data.SparePartChoice
+import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
 import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.session.AppUiState
 import java.io.Serializable
 
 /**
@@ -75,6 +76,8 @@ data class PartsUiState(
     val partsStats: PartsMetricsView? = null,
     /** All colors for the entry dialog. */
     val partsColors: List<ColorView> = emptyList(),
+    /** Key figures, filter lists and colors: if one fails, the list stays and the page offers a retry. */
+    val extrasFetch: Load<Unit> = Load.Data(Unit),
 )
 
 /** The figures tab: a state of its own, so that paging through the parts does not redraw it. */
@@ -85,6 +88,8 @@ data class MinifigsUiState(
     /** Key figures of the tiles — from the server, not from the (filtered) list. */
     val minifigStats: MinifigsMetricsView = MinifigsMetricsView(),
     val minifigsFetch: Load<Unit> = Load.Data(Unit),
+    /** The key figures alone; their failure leaves the list as is. */
+    val metricsFetch: Load<Unit> = Load.Data(Unit),
     val minifigsOfflineStatus: Long? = null,
     /** The search happens on the server before grouping; a second search in the screen would hit different things. */
     val minifigsQuery: String = "",
@@ -150,3 +155,5 @@ internal data class PartsSessionUiState(
     val currency: CurrencyCode = CurrencyCode.EUR,
     val userDefaultCondition: Condition? = null,
 )
+
+internal fun partsSession(s: AppUiState) = PartsSessionUiState(s.serverUrl, s.currency, s.userDefaultCondition)

@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.theme
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -12,6 +11,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 
 // Lets composables recognize whether the "Stein (Blau)" theme is active,
@@ -25,7 +25,7 @@ val LocalIsBrickTheme = staticCompositionLocalOf { false }
 val LocalIsColorSlotsTheme = staticCompositionLocalOf { false }
 
 /**
- * Does the tile carry a stud lid in the "noppe" theme?
+ * Does the tile carry a stud lid in the `noppe` theme?
  *
  * Like [LocalIsColorSlotsTheme]: the tile itself should keep the same
  * markup in every theme, and only this Local decides whether the
@@ -34,8 +34,8 @@ val LocalIsColorSlotsTheme = staticCompositionLocalOf { false }
 val LocalIsStudTheme = staticCompositionLocalOf { false }
 
 /**
- * Does the surface carry the gloss of the "hochglanz" theme? Separate from
- * [LocalIsStudTheme]: "hochglanz" is "noppe" in a different material; the tile
+ * Does the surface carry the gloss of the `hochglanz` theme? Separate from
+ * [LocalIsStudTheme]: `hochglanz` is `noppe` in a different material; the tile
  * asks both, a Local with three states would force a case distinction everywhere.
  */
 val LocalIsGloss = staticCompositionLocalOf { false }
@@ -135,7 +135,7 @@ data class ChartColors(
 // including the reasoning for why the used line is sand in the brick theme.
 
 // Werkbank (dark): darkColorScheme, because some components (text-field borders,
-// ripple) read their brightness from it. Values as in themes/werkbank.css: warm graphite
+// ripple) read their brightness from it. Values as in `themes/werkbank.css`: warm graphite
 // and brass instead of anthracite with blue, otherwise it would match „Classic dark“ (DarkTokens.kt).
 private val WorkbenchColors = darkColorScheme(
     primary              = WorkbenchAzure,
@@ -225,7 +225,7 @@ private val StudColors = lightColorScheme(
 )
 
 /**
- * Nunito, the font of the "noppe" theme: the system font stays
+ * Nunito, the font of the `noppe` theme: the system font stays
  * angular even at 900. Three static cuts instead of the variable one, which would need
  * FontVariation and thus a higher API level; the same shapes as public/vendor/fonts/ on the web.
  */
@@ -236,8 +236,8 @@ private val NunitoFamily = FontFamily(
 )
 
 /**
- * Plus Jakarta Sans — the web app's font (styles.css --font) for all
- * themes except "noppe". Static cuts from the web app's variable
+ * Plus Jakarta Sans — the web app's font (`styles.css` --font) for all
+ * themes except `noppe`. Static cuts from the web app's variable
  * cut, for the same reason as with Nunito above.
  */
 private val JakartaFamily = FontFamily(
@@ -273,14 +273,14 @@ private fun withFamily(f: FontFamily): Typography = Typography().let { t ->
     )
 }
 
-/** The typography of the "noppe" theme: the same scale, a different font. */
+/** The typography of the `noppe` theme: the same scale, a different font. */
 private val StudTypography: Typography = withFamily(NunitoFamily)
 private val BrandsTypography: Typography = withFamily(JakartaFamily)
 
 /**
- * The cap color of a tile in the "noppe" design.
+ * The cap color of a tile in the `noppe` design.
  *
- * Position modulo six, exactly like `.sc:nth-child(6n+…)` in themes/noppe.css.
+ * Position modulo six, exactly like `.sc:nth-child(6n+…)` in `themes/noppe.css`.
  * It means NOTHING and only gives rhythm — the explicit difference to
  * [slotsTone] below, where the color IS the theme.
  */
@@ -288,7 +288,7 @@ fun brickTone(position: Int): Color =
     BrickColors[((position % BrickColors.size) + BrickColors.size) % BrickColors.size]
 
 /**
- * The tone of a LEGO theme in the "farbfaecher" design.
+ * The tone of a LEGO theme in the `farbfaecher` design.
  *
  * Theme number modulo twelve, exactly like `--slots-tone` in the web app. Without
  * a number there is no tone — then the stripe stays off instead of showing a
@@ -331,7 +331,7 @@ private fun darkSchema(theme: Design): ColorScheme = darkRoles(theme).let { r ->
  */
 internal fun colorScheme(theme: Design, dark: Boolean = false): ColorScheme =
     if (dark && hasDarkVersion(theme)) supplementRoles(darkSchema(theme).let {
-        // Like light: noppe red is barely distinguishable from the error color in the dark.
+        // Like light: `noppe` red is barely distinguishable from the error color in the dark.
         // Main color becomes the blue of the chart line, the containers take the blue steps
         // from classic, and the accent stays the amber of the base.
         if (theme == Design.STUD || theme == Design.GLOSSY) it.copy(primary = Color(0xFF6AA8FF),
@@ -343,7 +343,7 @@ internal fun colorScheme(theme: Design, dark: Boolean = false): ColorScheme =
         Design.BRICK -> BrickBlueColors
         Design.WORKBENCH -> WorkbenchColors
         Design.COLOR_FAN -> ColorSlotsColors
-        // Glossy is noppe in a different material, not in different colors (`inherits`).
+        // Glossy is `noppe` in a different material, not in different colors (`inherits`).
         Design.STUD, Design.GLOSSY -> StudColors
         Design.CLASSIC -> LightColors
     }.let { supplementRoles(it, dark = theme == Design.WORKBENCH) }
@@ -365,7 +365,7 @@ data class AccentSurfaces(
  * One accent per design: only light "brick" carries colored bars and the web's
  * petrol tile; otherwise bars on surface, market value in the main color and
  * purchase price neutral, so that the page's most important value also stands
- * out most (primaryContainer was as pale as the neutral tile in farbfaecher and noppe).
+ * out most (primaryContainer was as pale as the neutral tile in `farbfaecher` and `noppe`).
  */
 internal fun accentSurfaces(theme: Design, dark: Boolean, s: ColorScheme): AccentSurfaces {
     val brick = theme == Design.BRICK && !dark
@@ -454,7 +454,7 @@ internal fun supplementRoles(s: ColorScheme, dark: Boolean): ColorScheme {
         surfaceBright = if (dark) level(0.12f) else s.surface,
         inverseSurface = s.onSurface,
         inverseOnSurface = s.surface,
-        // Die Snackbar-Aktion: so weit aufgehellt bzw. abgedunkelt, bis sie 4,5:1 erreicht.
+        // The snackbar action: lightened or darkened until it reaches 4.5:1.
         inversePrimary = withContrast(lerp(s.primary, if (dark) Color.Black else Color.White, 0.45f), s.onSurface),
         // Material sets #690005 in the dark, only 4.48:1 on the light error tones.
         onError = if (dark) s.background else Color.White,
@@ -473,7 +473,7 @@ fun contrast(a: Color, b: Color): Float {
     return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
 }
 
-/** [color], schrittweise von [against] weg gemischt, bis sie [target]:1 erreicht. */
+/** [color], mixed away from [against] step by step until it reaches [target]:1. */
 fun withContrast(color: Color, against: Color, target: Float = TEXT_CONTRAST): Color {
     val gone = if (against.luminance() > 0.5f) Color.Black else Color.White
     var share = 0f
@@ -499,7 +499,7 @@ internal fun chartColors(theme: Design, dark: Boolean, s: ColorScheme): ChartCol
         // darker — otherwise it disappears.
         Design.WORKBENCH -> ChartColors(ChartNewWorkbench, ChartUsedWorkbench,
             line = ChartNewWorkbench, raster = Color(0xFF2C261E), muted = muted)
-        // Farbfaecher and noppe color themes or tiles, NOT states: new stays
+        // Farbfaecher and `noppe` color themes or tiles, NOT states: new stays
         // blue, used amber/orange, so the color systems don't get confused.
         Design.COLOR_FAN -> ChartColors(ChartNewColorFan, ChartUsedColorFan, muted = muted)
         // The web's orange (ChartUsedStud) reaches only 2.6:1 on white; as a line it needs 3:1.

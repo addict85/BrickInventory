@@ -1,17 +1,20 @@
 package ch.brickinventoryapp.app
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.model.domain.FigureView
-import ch.brickinventoryapp.model.domain.CatalogSetView
-import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.catalog.ui.screens.CatalogSetCard
+import ch.brickinventoryapp.model.domain.CatalogSetView
+import ch.brickinventoryapp.model.domain.FigureView
+import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.parts.ui.screens.MinifigCard
 import ch.brickinventoryapp.parts.ui.screens.PartCard
 import ch.brickinventoryapp.shared.ui.TableRow
@@ -27,9 +30,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
-import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.text.TextLayoutResult
 
 /**
  * What TalkBack reads on part, figure and catalog tile and on the table row

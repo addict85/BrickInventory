@@ -1,40 +1,40 @@
 package ch.brickinventoryapp.login.ui.screens
 
-import androidx.compose.ui.focus.FocusManager
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.ui.semantics.Role
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.semantics.contentType
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.login.ui.LoginForm
-import ch.brickinventoryapp.ui.components.PasswordField
-import androidx.compose.ui.semantics.collapse
-import androidx.compose.ui.semantics.expand
-import androidx.compose.ui.semantics.stateDescription
-import ch.brickinventoryapp.ui.theme.Spacing
-import ch.brickinventoryapp.ui.components.LoginTitle
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalStepGuard
+import ch.brickinventoryapp.ui.components.LoginTitle
+import ch.brickinventoryapp.ui.components.PasswordField
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

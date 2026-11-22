@@ -6,7 +6,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * The summary of the checksums job (tools/checksum-compare.py),
+ * The summary of the checksums job (`tools/checksum-compare.py`),
  * executed against two small metadata files: one new, one removed and one
  * component with a different checksum at the same version.
  *

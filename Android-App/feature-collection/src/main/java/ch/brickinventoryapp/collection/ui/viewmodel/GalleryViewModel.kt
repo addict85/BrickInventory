@@ -1,39 +1,41 @@
 package ch.brickinventoryapp.collection.ui.viewmodel
 
-import ch.brickinventoryapp.state.ui.viewmodel.Observed
-import ch.brickinventoryapp.state.ui.viewmodel.loadPerServer
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.SetSort
-import ch.brickinventoryapp.session.derived
-import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.domain.MetricsView
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.FinancesRepository
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.StockReconciliation
-import ch.brickinventoryapp.data.repository.AccountView
 import ch.brickinventoryapp.collection.ui.Gallery
 import ch.brickinventoryapp.collection.ui.GalleryUiState
 import ch.brickinventoryapp.collection.ui.TilePrice
 import ch.brickinventoryapp.collection.ui.tilePrices
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-import androidx.lifecycle.ViewModel
+import ch.brickinventoryapp.data.account.AccountView
+import ch.brickinventoryapp.data.collection.SetsRepository
+import ch.brickinventoryapp.data.finances.FinancesRepository
+import ch.brickinventoryapp.data.local.StockReconciliation
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
+import ch.brickinventoryapp.state.ui.viewmodel.Observed
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.state.ui.viewmodel.loadPerServer
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * The set collection: list, filters, key figures.
@@ -105,12 +107,13 @@ class GalleryViewModel @Inject constructor(
      * The gallery without the set pending deletion: the store keeps it until the
      * server deletion completes, and „Rückgängig“ brings it back this way without a reload.
      */
-    private val galleryObserved = Observed(gallery.state
-        .derived(_reserved) { st, v ->
-            // The key figures likewise: next to two tiles there would otherwise still be „3 Sets“.
-            if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
-                stats = st.stats?.let { k -> v.set?.let { withoutSet(k, it) } ?: k })
-        })
+    private val galleryObserved = Observed(combine(gallery.state, _reserved, ::withoutReserved)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, withoutReserved(gallery.state.value, _reserved.value)))
+
+    // The key figures likewise: next to two tiles there would otherwise still be „3 Sets“.
+    private fun withoutReserved(st: GalleryUiState, v: ReservedDelete?): GalleryUiState =
+        if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
+            stats = st.stats?.let { k -> v.set?.let { withoutSet(k, it) } ?: k })
     val galleryState: StateFlow<GalleryUiState> = galleryObserved
 
     private val _prices = MutableStateFlow<Map<String, TilePrice>>(emptyMap())

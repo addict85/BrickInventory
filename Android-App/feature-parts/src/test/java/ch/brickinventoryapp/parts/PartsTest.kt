@@ -1,27 +1,29 @@
 package ch.brickinventoryapp.parts
 
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
+import ch.brickinventoryapp.model.domain.CategoryView
 import ch.brickinventoryapp.model.domain.ColorPicker
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.FigureView
-import ch.brickinventoryapp.model.domain.MinifigsMetricsView
+import ch.brickinventoryapp.model.domain.FilterColorView
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
+import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
-import ch.brickinventoryapp.model.domain.ColorView
-import ch.brickinventoryapp.model.domain.FilterColorView
-import ch.brickinventoryapp.model.domain.CategoryView
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.ui.ListView
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.parts.ui.Figures
 import ch.brickinventoryapp.parts.ui.MinifigsLocal
 import ch.brickinventoryapp.parts.ui.Parts
 import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.PartsLocal
-import ch.brickinventoryapp.parts.ui.PartsUiState
 import ch.brickinventoryapp.parts.ui.PartsSource
+import ch.brickinventoryapp.parts.ui.PartsUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -37,8 +39,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
-import ch.brickinventoryapp.model.data.SparePartChoice
-import ch.brickinventoryapp.model.ui.ListView
 
 /**
  * The parts and figures list checked as a flow. Their sources are flows (on the device
@@ -56,7 +56,7 @@ import ch.brickinventoryapp.model.ui.ListView
  *      a filter change the old source no longer writes into it”
  *   E  in outbox() the branch "without network, with a cached state" removed → red “without network
  *      the figures stay as they are”
- *   F  in folge() the check on the cached state removed → red “a source
+ *   F  in follow() the check on the cached state removed → red “a source
  *      never loaded shows nothing and empties nothing”
  */
 @OptIn(ExperimentalCoroutinesApi::class)

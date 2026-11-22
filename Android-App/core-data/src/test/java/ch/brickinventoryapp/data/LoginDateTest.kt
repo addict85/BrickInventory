@@ -4,9 +4,9 @@ import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.data.testing.testTrustCipher
 import ch.brickinventoryapp.model.util.LockWipe
 import ch.brickinventoryapp.security.TokenEncryption
-import ch.brickinventoryapp.testing.testTrustCipher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,8 +32,7 @@ import java.io.File
  * restarting the clock. A swap carries the date over. Locked, the token leaves the mirror.
  *
  * Counter-checks (Robolectric, local):
- *   A  in loginExpired() `LoginStatus.Missing -> false` → red „a deleted date …“, „a seal of
- *      another sign-in …“ and „a plaintext date …“ (after the transition)
+ *   A  in loginExpired() `LoginStatus.Missing -> false` → red „a deleted date …“, „a seal of another sign-in …“ and „a plaintext date …“ (after the transition)
  *   B  in loggedInFrom() the tag comparison removed (`it.size == 2`) → red „a seal of another sign-in …“
  *   C  writeToken() without previousToken (date not carried over) → red „a swap keeps the date …“
  *   D  in loggedInFrom() `minOf(old, now)` → `old` → red „a plaintext date of older versions …“

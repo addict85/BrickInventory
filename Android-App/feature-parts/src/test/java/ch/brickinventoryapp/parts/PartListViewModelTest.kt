@@ -1,31 +1,33 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.testing.text
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.PartListJob
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.parts.ui.PartListsSource
-import ch.brickinventoryapp.parts.ui.PlPart
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.ExportResult
 import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.parts.ui.PartListsSource
+import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -39,8 +41,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.PathServer
-import ch.brickinventoryapp.testing.TestServices
 
 /**
  * The build list lives in the ViewModel: list, running fetch and status survive
@@ -92,10 +92,10 @@ class PartListViewModelTest {
         val asked = mutableListOf<String>()
         var brake: CompletableDeferred<Unit>? = null
         var stock: List<PlPart>? = null
-        override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
+        override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Outcome<Pair<String, List<PlPart>>> {
             asked += setNumber
             brake?.await()
-            return "Name $setNumber" to parts[setNumber].orEmpty()
+            return Outcome.Success("Name $setNumber" to parts[setNumber].orEmpty())
         }
         override suspend fun withInventory(parts: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean) = stock
         override fun sorted(parts: Collection<PlPart>) = parts.sortedBy { it.partNumber }

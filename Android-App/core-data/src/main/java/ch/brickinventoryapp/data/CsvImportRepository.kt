@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetFilesRepository
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -52,9 +52,12 @@ class CsvImportObserver @Inject constructor(
         }
     }
 
+    /** A failed look is no state: the bar keeps the last one, and the stream is retried with back-off. */
     private suspend fun FlowCollector<CsvImportStatusView>.poll() {
-        val state = catchUnlessCancelled { (files.getCsvImportStatus() as? Outcome.Success)?.data }.getOrNull()
-        if (state != null) emit(state)
+        when (val r = catchUnlessCancelled { files.getCsvImportStatus() }.getOrNull()) {
+            is Outcome.Success -> emit(r.data)
+            is Outcome.Failure, null -> Unit
+        }
     }
 
     override suspend fun cancel(): Outcome<Unit> = files.cancelCsvImport()

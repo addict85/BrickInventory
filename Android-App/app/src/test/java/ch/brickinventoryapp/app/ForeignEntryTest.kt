@@ -7,16 +7,20 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.composable
 import androidx.navigation.createGraph
-import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.state.ui.MessageInbox
 import ch.brickinventoryapp.app.ui.components.UserCaDialog
+import ch.brickinventoryapp.data.service.PartListsProvider
+import ch.brickinventoryapp.data.service.partListsSelection
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
+import ch.brickinventoryapp.state.ui.MessageInbox
+import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -28,10 +32,6 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowDialog
-import ch.brickinventoryapp.data.service.PartListsProvider
-import ch.brickinventoryapp.data.service.partListsSelection
-import ch.brickinventoryapp.ui.components.OverlayGuard
-import androidx.core.content.IntentCompat
 
 /**
  * What a foreign app can reach: the notification entry not at all, the

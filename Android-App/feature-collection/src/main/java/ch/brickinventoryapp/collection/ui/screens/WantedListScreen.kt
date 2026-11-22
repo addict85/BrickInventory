@@ -1,63 +1,63 @@
 package ch.brickinventoryapp.collection.ui.screens
 
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import ch.brickinventoryapp.model.ui.errorKind
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.domain.Condition
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material3.*
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.runtime.LaunchedEffect
-import ch.brickinventoryapp.state.ui.StorageUiState
-import ch.brickinventoryapp.collection.ui.WantedItemDetailUiState
-import ch.brickinventoryapp.collection.ui.WantedUiState
-import ch.brickinventoryapp.state.ui.ScopeUiState
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.collection.ui.viewmodel.WantedListActions
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.model.domain.WantedItemView
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.items
-import ch.brickinventoryapp.ui.components.Moved
-import ch.brickinventoryapp.ui.components.HintText
-import ch.brickinventoryapp.ui.components.NoHitsHint
-import ch.brickinventoryapp.ui.components.LoadState
-import ch.brickinventoryapp.ui.LoadingIndicator
-import ch.brickinventoryapp.ui.loadingIndicator
-import ch.brickinventoryapp.ui.sentence
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.resources.R
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.collection.ui.WantedItemDetailUiState
+import ch.brickinventoryapp.collection.ui.WantedUiState
+import ch.brickinventoryapp.collection.ui.viewmodel.WantedListActions
 import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
-import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.ui.components.BarcodeSymbol
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.WantedSort
+import ch.brickinventoryapp.model.ui.errorKind
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.shared.ui.ScopeFilterRow
+import ch.brickinventoryapp.state.ui.ScopeUiState
+import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.components.AddFab
-import ch.brickinventoryapp.ui.components.FabSpace
+import ch.brickinventoryapp.ui.components.BarcodeSymbol
 import ch.brickinventoryapp.ui.components.ButtonStack
+import ch.brickinventoryapp.ui.components.FabSpace
+import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.ui.components.ListAndDetail
+import ch.brickinventoryapp.ui.components.LoadState
+import ch.brickinventoryapp.ui.components.Moved
+import ch.brickinventoryapp.ui.components.NoHitsHint
 import ch.brickinventoryapp.ui.components.ScanButton
+import ch.brickinventoryapp.ui.components.SearchField
 import ch.brickinventoryapp.ui.components.SelectionChip
 import ch.brickinventoryapp.ui.components.SortMenu
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.shared.ui.ScopeFilterRow
-import ch.brickinventoryapp.ui.components.SearchField
+import ch.brickinventoryapp.ui.loadingIndicator
+import ch.brickinventoryapp.ui.sentence
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * A row's key: number, condition and account. The same set can stand new and
@@ -139,7 +139,7 @@ internal fun WantedItemDetailRoute(
 /**
  * The watchlist — as a list, because it's read and worked through: number, year,
  * condition and price alert side by side, as in the web app. The rules live on the
- * server (utils/merkliste.ts); the screen shows and calls.
+ * server (`utils/merkliste.ts`); the screen shows and calls.
  */
 @Composable
 internal fun WantedListScreen(

@@ -1,24 +1,14 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.components.announce
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.LocalActivity
-import androidx.core.app.ActivityCompat
-import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,21 +17,31 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Surface
-import androidx.compose.ui.text.style.TextAlign
-import ch.brickinventoryapp.ui.theme.Shapes
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 
 /** Whether the camera is allowed, and how to ask for it (see [rememberCameraPermission]). */
@@ -110,9 +110,9 @@ private fun openAppSettings(context: Context) {
  * It says what the camera is for, and offers the path without it: whoever doesn't
  * want to allow it shouldn't be stuck in a dead end.
  *
- * @param zweck what the camera is for (barcode, QR code)
- * @param eintippen label for the path without the camera, [typeInOn] follows it
- * @param verweigert [CameraPermission.permanentDenied]: then the hint says where to
+ * @param purpose what the camera is for (barcode, QR code)
+ * @param typeIn label for the path without the camera, [typeInOn] follows it
+ * @param denied [CameraPermission.permanentDenied]: then the hint says where to
  *        allow it, otherwise „Allow“ would look like a dead button.
  * @param onAllow [CameraPermission.allow]
  */
@@ -149,7 +149,7 @@ fun CameraPermissionHint(
 /**
  * The overlay over the camera image: a frame in the middle, below it a dark banner with
  * the hint text — one design for barcode scanner and QR setup (weight 0.2 / 0.8,
- * so the frame sits slightly above center; black at 72% opacity, Formen.kachel,
+ * so the frame sits slightly above center; black at 72% opacity, Shapes.tile,
  * white text at 13 sp).
  */
 @Composable

@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.session.SessionRepository
-import ch.brickinventoryapp.session.AppUiState
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.SecondFactorRequired
+import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.session.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
-import ch.brickinventoryapp.model.ui.ScrollMemory
 
 /**
  * What MainActivity displays: session, snackbar, the mandatory screens and the target of a
@@ -74,7 +74,7 @@ class AppViewModel @Inject constructor(
         loadStorageLocations()
     }
 
-    // ── Meldung angetippt ────────────────────────────────────────────────────
+    // ── Message tapped ─────────────────────────────────────────────────────────
 
     /** The intent arrives at the edge of the app, and that edge is the activity. */
     fun setFromMessageRequest(setNumber: String?) {

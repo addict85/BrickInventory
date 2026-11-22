@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.collection.ui
 
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.data.alarm.AlarmInput
+import ch.brickinventoryapp.data.collection.AlarmRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

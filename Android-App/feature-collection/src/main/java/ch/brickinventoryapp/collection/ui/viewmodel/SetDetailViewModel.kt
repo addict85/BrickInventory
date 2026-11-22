@@ -1,57 +1,57 @@
 package ch.brickinventoryapp.collection.ui.viewmodel
 
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.model.ui.Load
-import kotlinx.coroutines.flow.first
-import ch.brickinventoryapp.model.domain.AlarmDirection
-import ch.brickinventoryapp.data.repository.SetFilesRepository
-import ch.brickinventoryapp.data.repository.AlarmRepository
-import ch.brickinventoryapp.data.repository.SetCatalogRepository
-import ch.brickinventoryapp.model.domain.Condition
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.repository.FinancesRepository
-import ch.brickinventoryapp.data.repository.HouseholdRepository
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.collection.ui.PriceAlarmInput
 import ch.brickinventoryapp.collection.ui.SetDetailUiState
+import ch.brickinventoryapp.data.account.HouseholdRepository
+import ch.brickinventoryapp.data.alarm.AlarmInput
+import ch.brickinventoryapp.data.catalog.SetCatalogRepository
+import ch.brickinventoryapp.data.collection.AlarmRepository
+import ch.brickinventoryapp.data.collection.SetFilesRepository
+import ch.brickinventoryapp.data.collection.SetsRepository
+import ch.brickinventoryapp.data.finances.FinancesRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.domain.AlarmDirection
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.file.Read
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Session
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
+import ch.brickinventoryapp.state.ui.viewmodel.Messages
+import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
-import ch.brickinventoryapp.model.domain.SetView
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
-import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.session.AppUiState
-import ch.brickinventoryapp.session.Session
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.Read
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
-import ch.brickinventoryapp.state.ui.viewmodel.Messages
-import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 
 /**
  * How large an instruction manual may be — the same value as `limits.fileSize` in
- * routes/sets.ts. The app must know the limit before it sends 80 MB over
+ * `routes/sets.ts`. The app must know the limit before it sends 80 MB over
  * the mobile network.
  */
 internal const val INSTRUCTION_MAX_BYTES = 50L * 1024 * 1024
 
 /**
- * The types the server accepts (INSTR_EXT_BY_MIME in routes/sets.ts). It
+ * The types the server accepts (INSTR_EXT_BY_MIME in `routes/sets.ts`). It
  * derives the file extension from them; the app already filters the selection.
  */
 internal val INSTRUCTION_TYPES = arrayOf("application/pdf", "image/jpeg", "image/png")
@@ -120,7 +120,7 @@ class SetDetailViewModel @Inject constructor(
         saved = { sn -> if (sn == setNumber) loadPriceAlerts() },
     )
 
-    // At the end of the fields: the fetches need laufend and alarmInput already assigned.
+    // At the end of the fields: the fetches need the running jobs and alarmInput already assigned.
     init { refresh() }
 
     /** Fetch everything the view shows anew; on creation and on „Erneut versuchen“. */

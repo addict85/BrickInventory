@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ui.components.AppUnlocking
-import ch.brickinventoryapp.ui.components.UnlockKey
 import ch.brickinventoryapp.ui.components.StepApproval
+import ch.brickinventoryapp.ui.components.UnlockKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.security.KeyPairGenerator

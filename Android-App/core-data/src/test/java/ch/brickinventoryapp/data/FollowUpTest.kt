@@ -1,22 +1,22 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.data.repository.FiguresRepositoryImpl
-import ch.brickinventoryapp.data.repository.WantedListRepositoryImpl
-import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
-import ch.brickinventoryapp.data.repository.PartsRepositoryImpl
-import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.contract.FigValuationItem
 import ch.brickinventoryapp.contract.KontoName
 import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.data.NetworkState.RetryPolicy
+import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
+import ch.brickinventoryapp.data.collection.WantedListRepositoryImpl
+import ch.brickinventoryapp.data.parts.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
+import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
+import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.StorageInventory
-import ch.brickinventoryapp.testing.PathServer
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -30,7 +30,7 @@ import org.junit.Test
  *
  * Counter-checks (kotlinc and JUnit against the repositories and LocalApplication.kt):
  *   A  in SetsRepositoryImpl.setSetStorage again only `safeCall` → red “quantity, storage location …”
- *   B  in LocalApplication.merkliste the branch WantedItemMoved removed → red
+ *   B  in LocalApplication's wishlist the branch WantedItemMoved removed → red
  *      “a moved and a taken-over wishlist item …”
  *   C  in LocalApplication the branch PartColor set to `list` → red “storage location and
  *      color of a part …”

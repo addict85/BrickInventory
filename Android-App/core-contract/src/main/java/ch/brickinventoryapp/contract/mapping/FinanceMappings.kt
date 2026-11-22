@@ -1,26 +1,25 @@
 package ch.brickinventoryapp.contract.mapping
 
-import ch.brickinventoryapp.model.domain.ValueHistoryView
-import ch.brickinventoryapp.contract.PortfolioHistoryResponse
-
 import ch.brickinventoryapp.contract.DashboardStats
 import ch.brickinventoryapp.contract.FigsValuationResponse
 import ch.brickinventoryapp.contract.PartsValuationResponse
 import ch.brickinventoryapp.contract.PnlResponse
 import ch.brickinventoryapp.contract.PnlSetZeile
 import ch.brickinventoryapp.contract.PnlTotals
+import ch.brickinventoryapp.contract.PortfolioHistoryResponse
 import ch.brickinventoryapp.contract.Totals
 import ch.brickinventoryapp.contract.ValuationResponse
 import ch.brickinventoryapp.contract.ValuationSet
-import ch.brickinventoryapp.model.domain.ValuationView
-import ch.brickinventoryapp.model.domain.ValuationSetView
 import ch.brickinventoryapp.model.domain.FiguresValuationView
-import ch.brickinventoryapp.model.domain.ProfitView
-import ch.brickinventoryapp.model.domain.GainSumsView
 import ch.brickinventoryapp.model.domain.GainRowView
+import ch.brickinventoryapp.model.domain.GainSumsView
 import ch.brickinventoryapp.model.domain.MetricsView
-import ch.brickinventoryapp.model.domain.SumsView
 import ch.brickinventoryapp.model.domain.PartsValuationView
+import ch.brickinventoryapp.model.domain.ProfitView
+import ch.brickinventoryapp.model.domain.SumsView
+import ch.brickinventoryapp.model.domain.ValuationSetView
+import ch.brickinventoryapp.model.domain.ValuationView
+import ch.brickinventoryapp.model.domain.ValueHistoryView
 import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.model.util.parseInstant
 

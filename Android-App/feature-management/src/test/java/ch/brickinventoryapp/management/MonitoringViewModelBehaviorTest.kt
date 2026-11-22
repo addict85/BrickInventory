@@ -1,13 +1,17 @@
 package ch.brickinventoryapp.management
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.model.ui.dataOrNull
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.theme.Design
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
@@ -20,10 +24,6 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.ui.dataOrNull
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 
 /**
  * The monitoring ViewModel against a MockWebServer: anticipated states with
@@ -165,7 +165,7 @@ class MonitoringViewModelBehaviorTest {
     // ── The default theme ───────────────────────────────────────────────
     //
     // Counter-checks (measured 30.10.2026):
-    //   A  loadDesignDefault() takes r.data.theme instead of vorgabe → red “the
+    //   A  loadDesignDefault() takes r.data.theme instead of the default → red “the
     //      selection shows the default, not the own theme”
     //   B  setDesign() does not take over the value → red “a set theme
     //      is immediately the default …”
@@ -254,7 +254,7 @@ class MonitoringViewModelBehaviorTest {
 
     // ── The server log (moved here from MainViewModel) ────────────
     //
-    // Counter-check: in loadLog() the error branch without `abruf =
+    // Counter-check: in loadLog() the error branch without `fetch =
     // ladefehler(r)` → “an error in the log ends the loading" red.
 
     @Test

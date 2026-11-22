@@ -2,14 +2,14 @@ package ch.brickinventoryapp.shared.ui
 
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.PriceChartView
-import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.model.util.fmtDatum
+import ch.brickinventoryapp.ui.util.appNumberLocale
 
 /**
  * Computation for the price chart, without Compose and thus testable. The zeros
  * the server pads at the front mean „no value“ and are not drawn; the
  * x-axis follows the date, not the index. The same rules as on the web
- * (public/js/admin.js, priceChartSVG).
+ * (`public/js/admin.js`, priceChartSVG).
  */
 
 /** A drawn point: day as a number (days since 1970) and price. */
@@ -29,7 +29,7 @@ data class ChartBounds(
     /** Waagerechte Position 0..1. */
     fun xFraction(day: Long): Float = ((day - minDay).toDouble() / daySpan).toFloat()
 
-    /** Senkrechte Position 0..1, von OBEN gemessen (Canvas-Richtung). */
+    /** Vertical position 0..1, measured from the TOP (canvas direction). */
     fun yFraction(value: Double): Float = (1.0 - (value - minValue) / valueSpan).toFloat()
 }
 
@@ -82,7 +82,7 @@ object PriceChartMath {
      * Turn the server's chart data into drawable lines.
      *
      * Discarded are: the padded zeros before `firstRealIndex`, after that
-     * every point without a price (preis <= 0), and every series that is then empty.
+     * every point without a price (price <= 0), and every series that is then empty.
      */
     fun buildLines(chart: PriceChartView?): List<ChartLine> {
         val series = chart?.values ?: return emptyList()

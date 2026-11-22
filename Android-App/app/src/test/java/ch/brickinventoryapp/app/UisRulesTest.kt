@@ -1,45 +1,48 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.app.nav.Tab
-import ch.brickinventoryapp.model.domain.Condition
+import android.content.Context
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeDown
-import androidx.compose.ui.test.swipeUp
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.platform.testTag
-import androidx.compose.material3.Text
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -47,18 +50,42 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.app.nav.AppTarget
+import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.collection.ui.TilePrice
-import ch.brickinventoryapp.ui.components.ErrorHint
-import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.collection.ui.screens.WantedRoute
+import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.SetCard
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
+import ch.brickinventoryapp.collection.ui.screens.WantedRoute
+import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.data.SetCreateStep
+import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.finances.ui.inGroupsOfFour
+import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.parts.ui.PartsTarget
+import ch.brickinventoryapp.parts.ui.screens.PartsRoute
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
+import ch.brickinventoryapp.ui.components.SegmentChoice
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtPercent
+import coil3.intercept.Interceptor
+import coil3.request.ErrorResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -70,35 +97,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
-import ch.brickinventoryapp.ui.components.SegmentChoice
-import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
-import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
-import ch.brickinventoryapp.parts.ui.screens.PartsRoute
-import ch.brickinventoryapp.finances.ui.setRows
-import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.finances.ui.inGroupsOfFour
-import android.content.Context
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.text.intl.LocaleList
-import coil3.intercept.Interceptor
-import coil3.request.ErrorResult
 import java.math.BigDecimal
 import java.util.Locale
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.app.nav.AppTarget
-import ch.brickinventoryapp.finances.ui.FinanceTarget
-import ch.brickinventoryapp.collection.ui.CollectionTarget
-import ch.brickinventoryapp.parts.ui.PartsTarget
 
 /**
  * What the screenshots show, executed here as a rule: on the tablet the
@@ -868,7 +868,7 @@ class UisRulesTest {
             wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoad.loading } }
             val row = setRows(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.quantity > 1 && it.purchasePrice != null && it.value != null }
-            // Computed ourselves, not from purchaseTotal/gewinn: otherwise the test would check the calculation with itself.
+            // Computed ourselves, not from purchaseTotal/profit: otherwise the test would check the calculation with itself.
             val total = row.purchasePrice!! * row.quantity
             val purchase = ctx.getString(R.string.finance_purchase_total, fmtMoney(total, CurrencyCode("CHF")))
             compose.onNodeWithText(purchase, useUnmergedTree = true).fetchSemanticsNode()

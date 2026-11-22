@@ -3,6 +3,7 @@ package ch.brickinventoryapp.services.alarm
 import android.app.PendingIntent
 import android.content.Context
 import androidx.core.app.NotificationCompat
+import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -11,7 +12,6 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.resources.R
-import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
@@ -29,7 +29,7 @@ class PriceAlarmWorker @AssistedInject constructor(
     private val pickup: PriceAlertRepository,
 ) : CoroutineWorker(context, params) {
 
-    // erfolg=false means ONLY „the server was not reachable“. Everything else
+    // success=false means ONLY „the server was not reachable“. Everything else
     // — disabled, signed out, nothing new — is a successful
     // run that had nothing to do.
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =

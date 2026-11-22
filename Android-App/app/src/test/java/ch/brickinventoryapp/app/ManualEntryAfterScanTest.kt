@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Test
 import ch.brickinventoryapp.testing.Sources
+import org.junit.Test
 
 /**
  * An unsuccessful scan leads to manual adding — everywhere.

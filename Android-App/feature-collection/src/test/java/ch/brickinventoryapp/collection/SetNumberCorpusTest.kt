@@ -12,7 +12,7 @@ import java.io.File
  *
  * The same question — "which number in this text is the set number?" — is
  * answered twice: here in Kotlin for text recognition (offline, in the
- * camera loop) and in Web-App/utils/produkttitel.ts for dealer titles. A
+ * camera loop) and in `Web-App/utils/produkttitel.ts` for dealer titles. A
  * shared call is not possible; a shared TEST CORPUS is.
  *
  * MEASURED, before it existed:

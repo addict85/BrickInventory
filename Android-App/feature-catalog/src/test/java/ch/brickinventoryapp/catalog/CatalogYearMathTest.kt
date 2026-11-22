@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.catalog
 
-import ch.brickinventoryapp.model.domain.YearCountView
 import ch.brickinventoryapp.catalog.ui.CatalogYearMath
+import ch.brickinventoryapp.model.domain.YearCountView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,7 +23,7 @@ import org.junit.Test
  * therefore STILL in the newest year — calculated linearly, that spot would give
  * the oldest.
  *
- * The same calculation lives in the web app (js/katalog.js → _jahrAnPosition).
+ * The same calculation lives in the web app (`js/katalog.js` → _jahrAnPosition).
  * Web-App/test/catalog-frontend.test.js checks, across both source trees, that
  * both have it and neither estimates linearly.
  */

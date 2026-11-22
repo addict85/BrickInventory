@@ -1,18 +1,17 @@
 package ch.brickinventoryapp.parts
 
-import org.junit.Assert.assertTrue
-import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.model.util.resolveThumbUrl
 import ch.brickinventoryapp.model.util.resolveFullUrl
+import ch.brickinventoryapp.model.util.resolveThumbUrl
+import ch.brickinventoryapp.testing.Sources
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Sources
 
 /**
  * All images run via the server — never directly from the device to the CDN.
  *
- * User request: "As I see it, the Android app should source all content, including
- * all images, via the web app." Previously several screens bypassed the
+ * User request: "As I see it, the Android app should source all content, including all images, via the web app." Previously several screens bypassed the
  * server proxy and loaded raw CDN addresses directly from the device — that was
  * the actual cause of the Cloudflare detection, the concurrency
  * problems and the AVIF crash of the last three rounds: each of these

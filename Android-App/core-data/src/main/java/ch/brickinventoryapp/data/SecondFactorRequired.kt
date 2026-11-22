@@ -3,8 +3,6 @@ package ch.brickinventoryapp.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Admin rights without a set-up second factor: until it is confirmed, the server
@@ -16,14 +14,13 @@ interface SecondFactorRequired {
     fun report()
     fun done()
 
-    /** For tests without Hilt. */
+    /** The one way to build it, for Hilt and tests alike; the implementation stays internal. */
     companion object {
         operator fun invoke(): SecondFactorRequired = SecondFactorState()
     }
 }
 
-@Singleton
-internal class SecondFactorState @Inject constructor() : SecondFactorRequired {
+internal class SecondFactorState : SecondFactorRequired {
     private val _needed = MutableStateFlow(false)
     override val needed: StateFlow<Boolean> = _needed.asStateFlow()
 

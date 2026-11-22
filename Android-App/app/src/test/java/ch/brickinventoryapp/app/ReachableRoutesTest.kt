@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import android.content.Context
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -12,17 +13,17 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.createGraph
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.account.ui.AccountTarget
+import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.Tab
 import ch.brickinventoryapp.app.nav.TargetEnvironment
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.login.ui.LoginTarget
-import ch.brickinventoryapp.app.nav.AppTarget
-import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.catalog.ui.CatalogTarget
-import ch.brickinventoryapp.account.ui.AccountTarget
 import ch.brickinventoryapp.collection.ui.CollectionTarget
-import ch.brickinventoryapp.parts.ui.PartsTarget
+import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.login.ui.LoginTarget
 import ch.brickinventoryapp.management.ui.ManagementTarget
+import ch.brickinventoryapp.parts.ui.PartsTarget
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.StartTarget
 import kotlinx.serialization.descriptors.StructureKind
 import org.junit.Assert.assertEquals
@@ -32,7 +33,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import android.content.Context
 
 /**
  * Every destination is in the app's graph, and a path leads to every destination without values.

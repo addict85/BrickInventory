@@ -13,8 +13,7 @@ import org.junit.Test
  * Counter-checks:
  *   A  applies() with `<=` instead of `<` → red „after one minute it asks again“
  *   B  forgetNow() without effect → red „whoever leaves the app is asked again“
- *   C  applies() without confirmation `true` (`until?.let { … } != false`) → red „ohne
- *      Bestaetigung gilt nichts“ und „wer die App verlaesst …“
+ *   C  applies() without confirmation `true` (`until?.let { … } != false`) → red „ohne Bestaetigung gilt nichts“ and „wer die App verlaesst …“
  */
 class ConfirmationDeadlineTest {
 

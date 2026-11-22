@@ -11,8 +11,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * The designs — the same list as ALLOWED in js/theme-boot.js and the whitelist
- * in src/contract/globalRules.ts (theme.test.js keeps them together). On the wire and in
+ * The designs — the same list as ALLOWED in `js/theme-boot.js` and the whitelist
+ * in `src/contract/globalRules.ts` (theme.test.js keeps them together). On the wire and in
  * the store stands the [identifier].
  */
 @Serializable(with = DesignSerializer::class)
