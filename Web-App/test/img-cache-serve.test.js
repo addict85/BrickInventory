@@ -4,7 +4,7 @@
  * Counter-check (measured 04.11.2026): imageType() returns the raw value as before
  * as soon as it starts with `image/` and is not SVG → red: “stored as
  * image/png, text/html …”.
- * (11.11.2026) in cacheTreffer() the ETag omitted (`etag: null`) →
+ * (11.11.2026) in cacheHit() the ETag omitted (`etag: null`) →
  * red: “the service names file, type, length and ETag without sending”.
  */
 const test = require('node:test');
@@ -200,8 +200,8 @@ test('delivery order of the image cache', async t => {
     aufraeumen();
     datei(orig, 5000);
     fs.writeFileSync(orig + '.ct', 'image/png');
-    const { cacheHit: cacheTreffer } = _req('src/images/imgCacheServe.js');
-    const treffer = await cacheTreffer({
+    const { cacheHit } = _req('src/images/imgCacheServe.js');
+    const treffer = await cacheHit({
       cacheFile: orig,
       thumbFile: thumb,
       wantThumb: false,
@@ -214,7 +214,7 @@ test('delivery order of the image cache', async t => {
     assert.match(String(treffer.etag), /^"c-5000-\d+"$/);
     aufraeumen();
     assert.equal(
-      await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, createMay: false, note() {} }),
+      await cacheHit({ cacheFile: orig, thumbFile: thumb, wantThumb: false, createMay: false, note() {} }),
       null,
     );
   });

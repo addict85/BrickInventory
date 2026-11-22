@@ -12,8 +12,8 @@ import type { ImagesContext } from './context';
 export const FITTED_MARKER = 'vorschauen_eingepasst';
 const OLD_EDGE = 200;
 
-async function masse(datei: string): Promise<{ width: number; height: number } | null> {
-  const fd = await fs.promises.open(datei, 'r').catch(withoutMissingFile('vorschau:masse', null));
+async function masse(file: string): Promise<{ width: number; height: number } | null> {
+  const fd = await fs.promises.open(file, 'r').catch(withoutMissingFile('vorschau:masse', null));
   if (!fd) return null;
   try {
     const buf = Buffer.alloc(65536);
@@ -38,16 +38,16 @@ const pause = () => new Promise(r => setTimeout(r, 10));
  * @returns how many previews were replaced, or null if it already ran once */
 export async function fitTailoredPreviews(
   k: Pick<ImagesContext, 'jobQueue' | 'clock'>,
-  local: { web: string; datei: string }[],
+  local: { web: string; file: string }[],
   proxyFolder = path.join(APP_ROOT, 'data', 'img_proxy_cache'),
 ): Promise<number | null> {
   if (await k.jobQueue.readState(FITTED_MARKER)) return null;
   let replaced = 0,
     checked = 0;
-  for (const { web, datei } of local) {
-    const preview = datei.replace(path.extname(datei), '_thumb.jpg');
+  for (const { web, file } of local) {
+    const preview = file.replace(path.extname(file), '_thumb.jpg');
     if (++checked % 10 === 0) await pause();
-    if (!(await cropped(datei, preview))) continue;
+    if (!(await cropped(file, preview))) continue;
     await fs.promises.rm(preview, { force: true });
     if ((await attempts('vorschau:einpassen', previewFrom(web))).ok) replaced++;
   }

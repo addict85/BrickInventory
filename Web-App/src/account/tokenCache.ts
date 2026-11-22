@@ -30,7 +30,7 @@ export interface CacheEntry {
   cachedAt: number;
   dbKey: string;
   /** A write is already running; a second one would be the same. */
-  schreibt?: boolean;
+  writing?: boolean;
 }
 
 /** Upper bound for an entry; a revocation clears it immediately (NOTIFY). */
@@ -39,7 +39,7 @@ export const TOKEN_TTL_MS = 5 * 1000;
 /** Per access: a token only applies in the database it comes from. `stand` counts
  * every clearing: a row read before a revocation does not get in afterwards. */
 const store = (k: AccountContext) =>
-  k.faecher.slot('tokenCache', () => ({ entries: new Map<string, CacheEntry>(), state: 0, verteilt: false }));
+  k.compartments.slot('tokenCache', () => ({ entries: new Map<string, CacheEntry>(), state: 0, distributed: false }));
 
 function empty(k: AccountContext): void {
   const c = store(k);
@@ -99,22 +99,22 @@ export function tokenForgotten(k: AccountContext, token: string | null | undefin
  * only the database counts (fail closed). */
 const REVOCATION_CHANNEL = 'token_widerrufen';
 const revocation = (k: AccountContext) =>
-  k.faecher.slot('tokenWiderruf', () => {
+  k.compartments.slot('tokenWiderruf', () => {
     const e = processEvent('tokenWiderruf', REVOCATION_CHANNEL);
     e.listen(() => empty(k));
     return e;
   });
 export function listenOnTokenRevocation(k: AccountContext): void {
-  store(k).verteilt = true;
+  store(k).distributed = true;
   revocation(k).connect(k.db.notification);
 }
 function tokenCacheUsable(k: AccountContext): boolean {
-  if (store(k).verteilt && k.db.notification.listensTo(REVOCATION_CHANNEL)) return true;
+  if (store(k).distributed && k.db.notification.listensTo(REVOCATION_CHANNEL)) return true;
   empty(k);
   return false;
 }
 function reportRevocation(k: AccountContext): void {
-  if (store(k).verteilt) void revocation(k).report(k.db.notification);
+  if (store(k).distributed) void revocation(k).report(k.db.notification);
 }
 
 /** For deletions without plaintext (token management only knows the

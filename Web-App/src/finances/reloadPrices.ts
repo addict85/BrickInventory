@@ -10,7 +10,7 @@ type Item = Payload<'price_refresh'>['items'][number];
 
 async function fetchOne(k: FinancesContext, p: Item, uid: number, currency: string, ttl: string): Promise<void> {
   if (p.kind === 'set') await fetchPrice(k, p.number, p.condition, 'sold', currency, ttl);
-  else if (p.kind === 'teil') await fetchPartPrice(k, p.number, p.farbe, p.condition, currency, ttl);
+  else if (p.kind === 'teil') await fetchPartPrice(k, p.number, p.color, p.condition, currency, ttl);
   else if (p.kind === 'figur') await fetchMinifigPrice(k, p.number, p.condition, currency, ttl);
   else await estimateMinifigsPrice(k, p.number, uid, p.condition);
 }

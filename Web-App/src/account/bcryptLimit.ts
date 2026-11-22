@@ -18,15 +18,15 @@ export class BcryptOverload extends Error {
 export interface Gate {
   /** vorrang: to the front of the queue and never rejected because of its length. */
   run<T>(work: () => Promise<T>, priority?: boolean): Promise<T>;
-  state(): { laufend: number; wartend: number };
+  state(): { running: number; waiting: number };
 }
 
 export function newLimit(concurrent: number, waitingAtMost: number, waitTimeMs: number): Gate {
-  let laufend = 0;
+  let running = 0;
   const queue: (() => void)[] = [];
   const slot = (priority: boolean): Promise<void> => {
-    if (laufend < concurrent) {
-      laufend++;
+    if (running < concurrent) {
+      running++;
       return Promise.resolve();
     }
     if (!priority && queue.length >= waitingAtMost) return Promise.reject(new BcryptOverload());
@@ -43,11 +43,11 @@ export function newLimit(concurrent: number, waitingAtMost: number, waitTimeMs: 
       else queue.push(los);
     });
   };
-  // The free slot goes directly to the next waiting one, `laufend` then stays the same.
+  // The free slot goes directly to the next waiting one, `running` then stays the same.
   const free = () => {
     const next = queue.shift();
     if (next) next();
-    else laufend--;
+    else running--;
   };
   return {
     async run(work, priority = false) {
@@ -58,7 +58,7 @@ export function newLimit(concurrent: number, waitingAtMost: number, waitTimeMs: 
         free();
       }
     },
-    state: () => ({ laufend, wartend: queue.length }),
+    state: () => ({ running, waiting: queue.length }),
   };
 }
 

@@ -41,7 +41,7 @@ test('idempotency: admin responses only for the admin role', { concurrency: 1 },
     scope: 'app',
   });
 
-  const sitzung = { userId: uid, username: name, isAdmin: true, mussPasswortAendern: false };
+  const sitzung = { userId: uid, username: name, isAdmin: true, mustChangePassword: false };
   const verwalter = testServer(_req, { sitzung, t });
   const ohne = testServer(_req, { sitzung: {}, t });
 

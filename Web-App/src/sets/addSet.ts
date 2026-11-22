@@ -9,26 +9,29 @@ import type { SetsContext } from './context';
 
 /** An acquisition: one row in set_acquisitions, the only place for purchase price and condition. */
 export interface Acquisition {
-  konto: number;
+  account: number;
   setNumber: string;
   quantity: number;
-  kaufpreis?: number | null;
+  purchasePrice?: number | null;
   condition?: string | null;
   /** Only with a purchase price: an estimated price without an amount would say nothing. */
-  geschaetzt?: boolean;
+  estimated?: boolean;
   currency?: string | null;
   recordedAt?: string | null;
 }
 
 /** Call in a transaction with its context (`t`). */
 export async function bookEntry(sk: SetsContext, e: Acquisition) {
-  const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
+  const pp =
+    e.purchasePrice !== null && e.purchasePrice !== undefined && !Number.isNaN(e.purchasePrice)
+      ? e.purchasePrice
+      : null;
   const cond = e.condition === 'N' || e.condition === 'U' ? e.condition : 'N';
-  await sk.inventory.bookDailyEntry('set', e.konto, [e.setNumber], {
+  await sk.inventory.bookDailyEntry('set', e.account, [e.setNumber], {
     quantity: e.quantity,
     price: pp,
     condition: cond,
-    geschaetzt: !!e.geschaetzt,
+    estimated: !!e.estimated,
     currency: e.currency ?? null,
     createdAt: e.recordedAt ?? null,
   });
@@ -72,92 +75,92 @@ export interface NewSet {
   ownerWish?: unknown;
   setNumber: string;
   quantity?: number;
-  kaufpreis?: number | null;
+  purchasePrice?: number | null;
   condition?: string | null;
-  lagerort?: string | null;
+  storage?: string | null;
   recordedAt?: string | null;
   currency?: string | null;
   /** Typed input: only a number, not a sentence. */
-  streng?: boolean;
+  strict?: boolean;
   /** Until the job starts; the stream completes by itself and only needs it as a fallback. */
   supplementAfterSeconds?: number;
   /** An import books an account's file and tops up; typed means "in scope" exists. */
   ifPresent?: 'melden' | 'aufstocken';
   /** The CSV import only asks Brickset in the follow-up work ('csv'). */
-  nacharbeit?: ReworkKind;
+  rework?: ReworkKind;
 }
 
 export type SetRecorded =
   | ({ action: 'exists' } & ExistingSet)
-  | { action: 'updated'; set_number: string; besitzer: number }
+  | { action: 'updated'; set_number: string; owner: number }
   | {
       action: 'added';
       set_number: string;
       name: string;
       catalog_pending: boolean;
       supplement: 'pending';
-      besitzer: number;
+      owner: number;
     };
 
 /** THE one way to capture, without network and under the lock per set number: otherwise two
  * requests (even from two accounts in the household) would create the set twice. The job fetches the catalog. */
 export async function acquireSet(sk: SetsContext, e: NewSet): Promise<SetRecorded> {
   const raw = String(e.setNumber ?? '').trim();
-  if (!raw) failDomain('ungueltig', 'set_number_required');
-  if (e.streng && !TYPED_NUMBER.test(raw)) failDomain('ungueltig', 'set_number_invalid');
+  if (!raw) failDomain('invalid', 'set_number_required');
+  if (e.strict && !TYPED_NUMBER.test(raw)) failDomain('invalid', 'set_number_invalid');
   const sn = normalizeSetNumber(raw);
-  if (!possibleSetNumber(sn)) failDomain('ungueltig', 'set_number_invalid');
-  const besitzer = await sk.household.writeTarget(e.requester, e.ownerWish);
-  const condition = await sk.settings.conditionForPrice(e.condition ?? null, null, besitzer);
-  const location = await sk.inventory.locationService.locationForNewEntry(besitzer, e.lagerort ?? null);
-  const kaufpreis = e.kaufpreis ?? null;
+  if (!possibleSetNumber(sn)) failDomain('invalid', 'set_number_invalid');
+  const owner = await sk.household.writeTarget(e.requester, e.ownerWish);
+  const condition = await sk.settings.conditionForPrice(e.condition ?? null, null, owner);
+  const location = await sk.inventory.locationService.locationForNewEntry(owner, e.storage ?? null);
+  const purchasePrice = e.purchasePrice ?? null;
   const acquisition = {
-    konto: besitzer,
+    account: owner,
     setNumber: sn,
     quantity: e.quantity ?? 1,
-    kaufpreis,
+    purchasePrice,
     condition,
-    currency: kaufpreis === null ? null : (e.currency ?? null),
+    currency: purchasePrice === null ? null : (e.currency ?? null),
     recordedAt: e.recordedAt ?? null,
   };
 
   return sk.transact(async t => {
-    await repo.addLockSet(t.db, sn, besitzer);
+    await repo.addLockSet(t.db, sn, owner);
     const followUp = (kind: ReworkKind) =>
       // In the same transaction: a created set without a job would stay without a catalog forever.
       t.jobQueue.placeOwnJobOne(
         'rework',
-        { set_number: sn, user_id: besitzer, kind: e.nacharbeit ?? kind },
+        { set_number: sn, user_id: owner, kind: e.rework ?? kind },
         {
-          userId: besitzer,
-          schluessel: `rework:${besitzer}:${sn}`,
+          userId: owner,
+          key: `rework:${owner}:${sn}`,
           maxAttempts: 5,
           afterSeconds: e.supplementAfterSeconds ?? 0,
         },
       );
-    if (e.ifPresent === 'aufstocken' && (await repo.setRowOfAccount(t.db, besitzer, sn))) {
+    if (e.ifPresent === 'aufstocken' && (await repo.setRowOfAccount(t.db, owner, sn))) {
       await bookEntry(t, acquisition);
       // Only a named place: the account's default would otherwise move an already sorted set.
-      if (location && e.lagerort) await t.inventory.locationService.setLocation('set', [besitzer], [sn], location);
+      if (location && e.storage) await t.inventory.locationService.setLocation('set', [owner], [sn], location);
       await followUp('zweit');
-      return { action: 'updated' as const, set_number: sn, besitzer };
+      return { action: 'updated' as const, set_number: sn, owner };
     }
     if (e.ifPresent !== 'aufstocken') {
       const present = await findSetInScope(t, e.requester, sn);
       if (present) return { action: 'exists' as const, ...present };
     }
     const catalog = await t.catalog.rememberCatalogPlaceholder(sn);
-    await t.inventory.createSet(besitzer, sn);
+    await t.inventory.createSet(owner, sn);
     await bookEntry(t, acquisition);
-    if (location) await t.inventory.locationService.setLocation('set', [besitzer], [sn], location);
+    if (location) await t.inventory.locationService.setLocation('set', [owner], [sn], location);
     await followUp('ergaenzen');
     return {
       action: 'added' as const,
       set_number: sn,
       name: catalog?.name ?? `Set ${sn}`,
-      catalog_pending: !catalog || catalog.platzhalter,
+      catalog_pending: !catalog || catalog.placeholder,
       supplement: 'pending' as const,
-      besitzer,
+      owner,
     };
   });
 }
@@ -213,19 +216,19 @@ async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, 
 export async function setSupplement(
   sk: SetsContext,
   sn: string,
-  konto: number,
+  account: number,
   sendProgress: Progress | null = null,
   withBrickset = true,
 ): Promise<{ name: string | null }> {
   const state = await sk.catalog.catalogStatus(sn);
-  let name = state && !state.platzhalter ? state.name : null;
-  if (!state || state.platzhalter || !state.image_local) {
+  let name = state && !state.placeholder ? state.name : null;
+  if (!state || state.placeholder || !state.image_local) {
     const k = await fetchCatalog(sk, sn, withBrickset, sendProgress);
     if (k.disrupted && !k.name) throw new Error(`Katalog für ${sn} nicht erreichbar`);
     name = k.name ?? name;
   }
-  for (const z of await repo.entriesWithoutPriceOfSets(sk.db, konto, sn)) {
-    const price = await sk.finances.currentMarketPrice(sn, konto, z.condition || null);
+  for (const z of await repo.entriesWithoutPriceOfSets(sk.db, account, sn)) {
+    const price = await sk.finances.currentMarketPrice(sn, account, z.condition || null);
     if (price) await sk.inventory.setEstimatedPrice('set', z.id, price);
   }
   return { name };

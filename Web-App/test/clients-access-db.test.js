@@ -8,9 +8,9 @@
  *      createRebrickable(z) and read in getRbKey() instead of `z` (the former
  *      verdrahteKlienten(): the last one wins) → red: “two clients …”
  *      (both fetches carried “key zweiter”)
- *   B  in createForeignSources() `schluessel: async () => ''` → red: “via the
+ *   B  in createForeignSources() `key: async () => ''` → red: “via the
  *      services fetches carry …” (no fetch, result null)
- *   C  in createForeignSources() `zaehle: async () => ({ allowed: true, count: 0,
+ *   C  in createForeignSources() `count: async () => ({ allowed: true, count: 0,
  *      limit: 0 })` → red: the same test (the counter stands still)
  *
  * Rebrickable itself is not asked: https.get is a dummy.
@@ -51,11 +51,11 @@ https.get = (url, opts, cb) => {
 const accessWith = schluessel => {
   const frei = { waitForSlot: async () => {}, throttle: () => {} };
   return {
-    schluessel: async () => schluessel,
-    zaehle: async () => ({ allowed: true, count: 1, limit: 10 }),
+    key: async () => schluessel,
+    count: async () => ({ allowed: true, count: 1, limit: 10 }),
     quotaStatus: async () => ({ count: 1, limit: 10, remaining: 9 }),
-    drossel: { foreground: frei, hintergrund: frei },
-    bricksetReserve: async () => ({ versuch: 1, vorgemerkt: true, hoechstens: 3 }),
+    throttle: { foreground: frei, background: frei },
+    bricksetReserve: async () => ({ attempt: 1, queued: true, atMost: 3 }),
     bricksetForgotten: async () => {},
   };
 };

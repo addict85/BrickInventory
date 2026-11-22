@@ -27,9 +27,9 @@ export async function storageWriteAccount(
   userRow: number,
   wish: string | number | undefined,
 ): Promise<number> {
-  const konto = (await storageAccounts(k, userRow, wish, true))[0];
-  if (konto === undefined) failDomain('verboten', 'no_write_access');
-  return konto;
+  const account = (await storageAccounts(k, userRow, wish, true))[0];
+  if (account === undefined) failDomain('forbidden', 'no_write_access');
+  return account;
 }
 
 /** The stock of the requested accounts, as far as the account may see them. */

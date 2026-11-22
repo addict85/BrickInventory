@@ -31,7 +31,7 @@ export interface SetupStatusResponse {
 const CACHE_MS = 5000;
 type Cached = Map<boolean, { until: number; response: Promise<SetupStatusResponse> }>;
 const cached = (k: ProfileContext) =>
-  k.faecher.slot<Cached>('einrichtungStand', () => {
+  k.compartments.slot<Cached>('einrichtungStand', () => {
     const m: Cached = new Map();
     k.settings.onGlobalChange(() => m.clear());
     return m;

@@ -12,25 +12,25 @@ if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL &&
   const { execFileSync } = require('node:child_process');
   const fs = require('node:fs');
   const path = require('node:path');
-  const { rollen, asRole, asSuperuser } = require('./roles');
+  const { roles, asRole, asSuperuser } = require('./roles');
   const werkzeug = path.join(__dirname, 'test-db.js');
   const name = `${vorlage}_${process.pid}`;
   execFileSync(process.execPath, [werkzeug, 'anlegen', name, vorlage], { stdio: 'inherit' });
   const url = new URL(process.env.TEST_DATABASE_URL);
   url.pathname = '/' + name;
   const su = url.toString();
-  const r = rollen(vorlage);
+  const r = roles(vorlage);
   const datei = process.argv[1] ?? '';
   const source = fs.existsSync(datei) ? fs.readFileSync(datei, 'utf8') : '';
   const superuser = asSuperuser(source);
   process.env.TEST_DB_SU_URL = su;
-  process.env.TEST_DB_EIGEN_URL = superuser ? su : asRole(su, r.eigen);
+  process.env.TEST_DB_EIGEN_URL = superuser ? su : asRole(su, r.own);
   process.env.TEST_DATABASE_URL = superuser ? su : asRole(su, r.app);
   if (!superuser) {
     process.env.PGSYSTEM_USER = r.system.name;
-    process.env.PGSYSTEM_PASSWORD = r.system.passwort;
+    process.env.PGSYSTEM_PASSWORD = r.system.password;
     process.env.PGSYSTEM_WEB_USER = r.systemweb.name;
-    process.env.PGSYSTEM_WEB_PASSWORD = r.systemweb.passwort;
+    process.env.PGSYSTEM_WEB_PASSWORD = r.systemweb.password;
   }
   process.env.TEST_DB_EIGEN = name;
   process.on('exit', () => {

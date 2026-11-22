@@ -95,7 +95,7 @@ export function buildWantedRouter(d: Pick<Services, 'settings' | 'household' | '
    * do not depend on the path. */
   router.endpoint('POST /api/v2/wanted', requireToken, async req => {
     const { set_number, condition, owner_user_id } = req.input;
-    if (!set_number) failDomain('ungueltig', 'set_number_required');
+    if (!set_number) failDomain('invalid', 'set_number_required');
     const owner = await d.household.writeTarget(req.apiUser.user_id, owner_user_id);
     const { item, was_new } = await d.wanted.addWantedItem(owner, set_number, condition);
     return { was_new, item };
@@ -144,7 +144,7 @@ export function buildWantedRouter(d: Pick<Services, 'settings' | 'household' | '
     accountGate('upload'),
     csvReceive.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       const owner = await d.household.writeTarget(req.apiUser.user_id, req.input.owner_user_id);
 
       return {
@@ -166,12 +166,12 @@ export function buildWantedRouter(d: Pick<Services, 'settings' | 'household' | '
     accountGate('upload'),
     xmlReceive.single('file'),
     async (req, res) => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       const xml = req.file.buffer.toString('utf-8');
       // Without <INVENTORY> there is no wanted list — a better answer than "0 items".
-      if (!/<INVENTORY[\s>]/i.test(xml)) failDomain('nicht_verarbeitbar', 'no_wanted_list');
+      if (!/<INVENTORY[\s>]/i.test(xml)) failDomain('unprocessable', 'no_wanted_list');
       const corrections = correctionsFrom(req.input.corrections, !!res.locals.apiV1);
-      if (corrections === null) failDomain('ungueltig', 'corrections_invalid');
+      if (corrections === null) failDomain('invalid', 'corrections_invalid');
       const eingabe = {
         xml,
         fileName: String(req.file.originalname || 'wanted.xml').slice(0, 120),

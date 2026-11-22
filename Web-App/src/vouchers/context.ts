@@ -19,7 +19,7 @@ export interface VoucherDependencies {
   throttle: ThrottleServices;
   externalSources: ForeignSourcesServices;
   /** Sessions of balance lookups of this set of services. */
-  faecher: Compartments;
+  compartments: Compartments;
 }
 
 export const access = (db: Db) => ({

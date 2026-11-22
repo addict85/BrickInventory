@@ -183,11 +183,11 @@ export async function replaceAmount(data: Buffer, newAmount: number): Promise<Re
 const MARK_HEADER = 'BIM-GUTSCHEIN v1';
 
 /** Semicolon as the separator, because notes have commas.
- * NOTE: the field labels (nummer=/pin=/betrag=/waehrung=) are a persisted export
+ * NOTE: the field labels (nummer=/pin=/amount=/waehrung=) are a persisted export
  * format read back by readMark() — they must not change. */
-export function markText(w: { number: string; pin: string | null; betrag: number; currency: string }): string {
+export function markText(w: { number: string; pin: string | null; amount: number; currency: string }): string {
   return (
-    `${MARK_HEADER} nummer=${w.number}; pin=${w.pin ?? ''}; ` + `betrag=${w.betrag.toFixed(2)}; waehrung=${w.currency}`
+    `${MARK_HEADER} nummer=${w.number}; pin=${w.pin ?? ''}; ` + `betrag=${w.amount.toFixed(2)}; waehrung=${w.currency}`
   );
 }
 
@@ -285,7 +285,7 @@ export async function combineVouchers(vouchers: ExportVoucher[]): Promise<{ pdf:
       target.addPage(s);
       // The mark only on the FIRST page of a voucher.
       if (i === 0) {
-        s.drawText(markText({ number: g.number, pin: g.pin, betrag: g.amount, currency: g.currency }), {
+        s.drawText(markText({ number: g.number, pin: g.pin, amount: g.amount, currency: g.currency }), {
           x: 28,
           y: 18,
           size: 6,

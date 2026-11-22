@@ -96,7 +96,7 @@ export function writeLocationNames(db: DbInterface, id: number, userId: number, 
 
 export function locationOccupancy(db: DbInterface, l: InventoryReadContract, userId: number, id: number) {
   return db.get<{ n: string }>(
-    `SELECT (SELECT COUNT(*) FROM ${l.setBestand('= $1')} s WHERE storage_id = $2)
+    `SELECT (SELECT COUNT(*) FROM ${l.setHoldings('= $1')} s WHERE storage_id = $2)
           + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
           + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage_id = $2) AS n`,
     [userId, id],
@@ -115,7 +115,7 @@ export function locationsWithInventory(db: DbInterface, l: InventoryReadContract
             SUM(minifigs)::int AS minifigs
        FROM (
          SELECT l.name AS location, COUNT(*)::int AS sets, 0 AS parts, 0 AS minifigs
-           FROM ${l.setBestand('= ANY($1)')} s JOIN storage_locations l ON l.id = s.storage_id
+           FROM ${l.setHoldings('= ANY($1)')} s JOIN storage_locations l ON l.id = s.storage_id
           WHERE s.user_id = ANY($1)
           GROUP BY l.name
          UNION ALL

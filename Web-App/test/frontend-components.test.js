@@ -13,7 +13,7 @@ const path = require('node:path');
 const JS = path.join(__dirname, '..', 'public', 'js');
 const COMPONENT = 'components.js';
 const { buildTestbuendel } = require('./helpers/bundle');
-process.env.TEST_BUENDEL = buildTestbuendel(
+process.env.TEST_BUNDLE = buildTestbuendel(
   'bausteine',
   "import { detailRow, loadDisplay } from './components.js';\nwindow.__build = { detailRow, loadDisplay };\n",
 );

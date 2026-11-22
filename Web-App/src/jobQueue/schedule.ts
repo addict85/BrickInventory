@@ -7,12 +7,12 @@ import type { JobsContext } from './context';
 export const planKey = (kind: JobKind) => `plan:${kind}`;
 
 function planOf(k: JobsContext, kind: JobKind): Schedule {
-  const plan = k.arten.fromValue(kind)?.zeitplan;
+  const plan = k.kinds.fromValue(kind)?.schedule;
   if (!plan) throw new Error(`${kind} hat keinen Zeitplan`);
   return plan;
 }
 
-export const hatSchedule = (k: JobsContext, kind: JobKind): boolean => !!k.arten.fromValue(kind)?.zeitplan;
+export const hatSchedule = (k: JobsContext, kind: JobKind): boolean => !!k.kinds.fromValue(kind)?.schedule;
 
 export function readTimeOfDay(s: string | null | undefined, defaultValue: string): { h: number; min: number } {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? '').trim()) ?? /^(\d{1,2}):(\d{2})$/.exec(defaultValue);
@@ -39,10 +39,9 @@ export async function dailyTimeOfDay(
 
 export async function nextRun(k: JobsContext, kind: JobKind, now = k.clock.datum()): Promise<Date> {
   const plan = planOf(k, kind);
-  if ('taeglich' in plan)
-    return nextTimeOfDay(await dailyTimeOfDay(k, plan.taeglich.setting, plan.taeglich.preset), now);
+  if ('daily' in plan) return nextTimeOfDay(await dailyTimeOfDay(k, plan.daily.setting, plan.daily.preset), now);
   const raw = plan.minutes.setting ? await k.settings.globalValue(plan.minutes.setting) : null;
-  const min = Math.max(plan.minutes.mindestens ?? 1, parseInt(String(raw ?? ''), 10) || plan.minutes.preset);
+  const min = Math.max(plan.minutes.atLeast ?? 1, parseInt(String(raw ?? ''), 10) || plan.minutes.preset);
   return new Date(now.getTime() + min * 60_000);
 }
 
@@ -54,14 +53,14 @@ export async function planeNext<A extends JobKind>(
 ): Promise<string | null> {
   if (!hatSchedule(k, kind)) return null;
   return placeJobOne(k, kind, payload, {
-    schluessel: planKey(kind),
-    dueAb: await nextRun(k, kind),
+    key: planKey(kind),
+    dueFrom: await nextRun(k, kind),
     maxAttempts: 3,
   });
 }
 
 export async function planeAll(k: JobsContext): Promise<void> {
-  for (const a of k.arten.all()) if (a.zeitplan) await planeNext(k, a.kind);
+  for (const a of k.kinds.all()) if (a.schedule) await planeNext(k, a.kind);
 }
 
 export async function scheduleChanged(k: JobsContext, kind: JobKind): Promise<void> {
@@ -77,11 +76,11 @@ export async function pullPlanBefore<A extends JobKind>(
   payload: PayloadInput<A> = {} as PayloadInput<A>,
 ): Promise<boolean> {
   planOf(k, kind);
-  if (await k.jobs.pullAppointmentBefore(planKey(kind), seconds, k.arten.check(kind, payload))) {
+  if (await k.jobs.pullAppointmentBefore(planKey(kind), seconds, k.kinds.check(kind, payload))) {
     await wakeWorker(k, kind);
     return true;
   }
   if (await k.jobs.runningKind(kind)) return false;
-  await placeJobOne(k, kind, payload, { schluessel: planKey(kind), afterSeconds: seconds, maxAttempts: 3 });
+  await placeJobOne(k, kind, payload, { key: planKey(kind), afterSeconds: seconds, maxAttempts: 3 });
   return true;
 }

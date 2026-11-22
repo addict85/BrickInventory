@@ -7,9 +7,9 @@ import { access, type SettingsDependencies, type SettingsContext } from './conte
 
 export type { SettingsDependencies, SettingsContext } from './context';
 
-export function createSettings(a: Omit<SettingsDependencies, 'faecher'>, inspect?: Inspect<SettingsContext>) {
+export function createSettings(a: Omit<SettingsDependencies, 'compartments'>, inspect?: Inspect<SettingsContext>) {
   return buildArea(
-    { ...a, faecher: new Compartments() },
+    { ...a, compartments: new Compartments() },
     access,
     (k: SettingsContext) => ({
       userDefaultCondition: bound(k)(settings.userDefaultCondition),

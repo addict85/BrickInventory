@@ -12,7 +12,7 @@ export const PROCESS = randomUUID();
 export const receiptId = (): string => `${PROCESS}/${randomUUID()}`;
 
 /** The lock connection belongs to the access whose pool it comes from. */
-const sperre = (k: JobsContext) => k.faecher.slot('prozessSperre', () => ({ client: null as PoolClient | null }));
+const sperre = (k: JobsContext) => k.compartments.slot('prozessSperre', () => ({ client: null as PoolClient | null }));
 
 /** @returns jobs taken over from dead processes */
 export async function registerProcess(k: JobsContext): Promise<number> {

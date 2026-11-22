@@ -14,7 +14,7 @@ const EXTENSIONS = 'ts|js|sql|html|css|json|md|sh|ya?ml|kt|kts|xml|txt';
 const EARLIER = ['utils', 'handlers'];
 
 /** @param {string} web */
-function pruefe(web) {
+function check(web) {
   const repo = path.dirname(web);
   const folder = [web, repo]
     .flatMap(w =>
@@ -30,7 +30,7 @@ function pruefe(web) {
     'g',
   );
   /** @param {string} p @param {string} fileName */
-  const gibt = (p, fileName) =>
+  const exists = (p, fileName) =>
     [web, repo, path.dirname(fileName)].some(
       w => fs.existsSync(path.join(w, p)) || (p.endsWith('.js') && fs.existsSync(path.join(w, `${p.slice(0, -3)}.ts`))),
     );
@@ -51,7 +51,7 @@ function pruefe(web) {
 
   /** @type {string[]} */
   const tot = [];
-  let gesehen = 0;
+  let seen = 0;
   /** @param {string} fileName @param {(z: string) => string} teil the part of a line to check */
   const lies = (fileName, teil) =>
     fs
@@ -60,13 +60,13 @@ function pruefe(web) {
       .forEach((z, i) => {
         for (const m of teil(z).matchAll(muster)) {
           const filePath = m[1] ?? '';
-          gesehen++;
-          if (!gibt(filePath, fileName)) tot.push(`${path.relative(web, fileName)}:${i + 1} ${filePath}`);
+          seen++;
+          if (!exists(filePath, fileName)) tot.push(`${path.relative(web, fileName)}:${i + 1} ${filePath}`);
         }
       });
   for (const f of sources) lies(f, f.endsWith('.sh') ? commentSh : commentJs);
   for (const f of docs) if (fs.existsSync(f)) lies(f, z => z);
-  return { tot, gesehen, dateien: sources.length + docs.length };
+  return { tot, seen, files: sources.length + docs.length };
 }
 
 /** Only the comment part: a comment line entirely, otherwise what stands behind ` // `
@@ -82,12 +82,12 @@ function commentSh(/** @type {string} */ z) {
   return i === -1 ? '' : z.slice(i);
 }
 
-module.exports = { pruefe };
+module.exports = { check };
 
 if (require.main === module) {
   const web = path.resolve(process.argv[2] || path.join(__dirname, '..'));
-  const { tot, gesehen, dateien } = pruefe(web);
+  const { tot, seen, files } = check(web);
   for (const z of tot) console.log(z);
-  console.error(`[verweise] ${gesehen} Pfadverweise in ${dateien} Dateien, ${tot.length} tot`);
+  console.error(`[verweise] ${seen} Pfadverweise in ${files} Dateien, ${tot.length} tot`);
   process.exitCode = tot.length ? 1 : 0;
 }

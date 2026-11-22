@@ -78,7 +78,7 @@ test('services resolve the view', { concurrency: 1 }, async t => {
     assert.equal(await H.writeTarget(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
     await assert.rejects(
       H.writeTarget(sub, haupt),
-      (/** @type {any} */ e) => e.code === 'no_write_access' && e.kind === 'verboten',
+      (/** @type {any} */ e) => e.code === 'no_write_access' && e.kind === 'forbidden',
     );
   });
 });

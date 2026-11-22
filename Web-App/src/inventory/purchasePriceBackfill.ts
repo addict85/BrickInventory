@@ -1,6 +1,6 @@
 import { setEstimatedPrice } from './acquisitions';
 import { attempts } from '../infra/result';
-import { setTimeout as warte } from 'node:timers/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
 import type { InventoryContext } from './context';
 
 function log(msg: string) {
@@ -20,7 +20,7 @@ async function jeRow<Z>(kind: string, rows: Z[], f: (z: Z) => Promise<boolean>):
     } catch (e) {
       error.push(e);
     }
-    await warte(1500); // spare BrickLink's daily quota
+    await sleep(1500); // spare BrickLink's daily quota
   }
   log(`${kind} nachgetragen: ${done} von ${rows.length}`);
   if (error.length) throw new AggregateError(error, `${kind}: ${error.length} von ${rows.length} gescheitert`);

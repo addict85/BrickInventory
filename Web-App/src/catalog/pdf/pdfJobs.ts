@@ -52,9 +52,9 @@ export async function readJob(k: CatalogContext, id: string, uid: number): Promi
 export async function finishedFile(k: CatalogContext, id: string, uid: number): Promise<string> {
   const job = await readJob(k, id, uid);
   if (!job) notFound('job_not_found');
-  if (job.status !== 'done') throw new DomainError('konflikt', 'pdf_not_ready', undefined, { status: job.status });
+  if (job.status !== 'done') throw new DomainError('conflict', 'pdf_not_ready', undefined, { status: job.status });
   const file = pdfFilePath(id);
-  if (!file || !fs.existsSync(file)) failDomain('nicht_mehr_da', 'pdf_not_available');
+  if (!file || !fs.existsSync(file)) failDomain('gone', 'pdf_not_available');
   return file;
 }
 
@@ -89,7 +89,7 @@ export async function cleanOldPdfJobs(k: CatalogContext) {
 }
 
 /** The waiting time depends on this (about one image per second). */
-async function fehlendeBilder(
+async function countMissingImages(
   k: CatalogContext,
   sets: Array<{ set_number?: unknown }>,
   parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>,
@@ -118,20 +118,20 @@ export async function startPdfJob(
   uid: number,
   sets: PayloadInput<'pdf'>['sets'],
   parts: PayloadInput<'pdf'>['parts'],
-): Promise<{ jobId: string } | { laufend: number }> {
-  const laufend = await k.jobQueue.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
-  if (laufend >= MAX_JOBS_PRO_USER) return { laufend };
+): Promise<{ jobId: string } | { running: number }> {
+  const runningJobs = await k.jobQueue.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
+  if (runningJobs >= MAX_JOBS_PRO_USER) return { running: runningJobs };
   const jobId = newJobId(k.clock.now());
   // The client's image details do not go into the job: the images come from the catalog.
   const withoutImages = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
-  const missingImages = await fehlendeBilder(k, sets, parts);
+  const missingImages = await countMissingImages(k, sets, parts);
   await k.jobQueue.placeJobOne(
     'pdf',
     { job_id: jobId, user_id: uid, sets, parts: withoutImages },
     {
       userId: uid,
       maxAttempts: 2,
-      schluessel: pdfKey(jobId),
+      key: pdfKey(jobId),
       progress: { missingImages, etaSeconds: Math.max(3, Math.round(missingImages) + 3) },
     },
   );

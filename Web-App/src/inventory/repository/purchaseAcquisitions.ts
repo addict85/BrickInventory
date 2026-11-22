@@ -5,9 +5,9 @@ import { acquisitionDaySql, ENTRY_TABLES as SHAPES, type AcquisitionKind } from 
 
 export type NewEntry = {
   quantity: number;
-  preis: number | null;
+  price: number | null;
   condition: string;
-  geschaetzt: boolean;
+  estimated: boolean;
   currency: string | null;
   am: string | null;
 };
@@ -32,7 +32,7 @@ export async function addEntryAdd(
     'currency',
     'created_at',
   ];
-  const vals = [userId, ...key, e.quantity, e.preis, e.condition, e.geschaetzt, e.currency, e.am];
+  const vals = [userId, ...key, e.quantity, e.price, e.condition, e.estimated, e.currency, e.am];
   const ph = vals.map((_, i) => `$${i + 1}`);
   ph[ph.length - 1] = `COALESCE(${ph[ph.length - 1]}::timestamptz, NOW())`;
   const target = [
@@ -53,7 +53,7 @@ export async function addEntryAdd(
   return !!row?.merged;
 }
 
-export type Features = { condition: string; preis: number | null; geschaetzt: boolean; currency: string | null };
+export type Features = { condition: string; price: number | null; estimated: boolean; currency: string | null };
 
 export async function sameEntryAtTag(
   dbh: DbInterface,
@@ -76,7 +76,7 @@ export async function sameEntryAtTag(
         AND price_estimated = $${n + 6}
         AND ($${n + 7}::text IS NULL OR currency = $${n + 7})
       LIMIT 1`,
-    [userId, ...key, except, tag, m.condition, m.preis, m.geschaetzt, m.currency],
+    [userId, ...key, except, tag, m.condition, m.price, m.estimated, m.currency],
   );
   return row ? Number(row.id) : null;
 }

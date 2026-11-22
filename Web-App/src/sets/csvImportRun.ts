@@ -55,11 +55,11 @@ async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<Impo
         requester: userId,
         setNumber: z.sn,
         quantity: z.qty,
-        kaufpreis: z.purchasePrice,
+        purchasePrice: z.purchasePrice,
         condition: z.condition,
         recordedAt: z.acquiredAt,
         ifPresent: 'aufstocken',
-        nacharbeit: 'csv',
+        rework: 'csv',
       }),
       new Promise<never>((_, rej) => {
         alarm = setTimeout(() => rej(new Error('Timeout')), sk.config.csvRowDeadlineMs);

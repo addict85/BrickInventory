@@ -17,8 +17,8 @@ export type TxStand = PathTransaction & {
   open: boolean;
   db: object;
   pool: Pool;
-  innerster: string | null;
-  kontext: string;
+  innermost: string | null;
+  context: string;
 };
 
 /** The open transaction of this call path, for the guards (UnboundQuery, fallback value). */
@@ -33,18 +33,18 @@ export function runningTx(): TxStand | null {
  * is a checked integer and may therefore go into the SQL. The system frame
  * is carried by the role of the connection (migration 0112), not a setting. */
 export function contextSql(): string {
-  const { system, konto } = rowsContext();
-  if (system || konto === null) return '';
-  return `SELECT set_config('app.account', '${konto}', true)`;
+  const { system, account } = rowsContext();
+  if (system || account === null) return '';
+  return `SELECT set_config('app.account', '${account}', true)`;
 }
 const CONTEXT_EMPTY = "SELECT set_config('app.account', '', true)";
 
-/** Any SQL can set app.account (an injection): before COMMIT it must still be what `kontext` set,
+/** Any SQL can set app.account (an injection): before COMMIT it must still be what `context` set,
  * otherwise this fails and the transaction ends as ROLLBACK. */
 export function contextCheckSql(context: string): string {
-  const konto = /'app\.account', '(\d*)'/.exec(context)?.[1] ?? '';
+  const account = /'app\.account', '(\d*)'/.exec(context)?.[1] ?? '';
   return (
-    `DO $$BEGIN IF COALESCE(current_setting('app.account', true), '') <> '${konto}' THEN ` +
+    `DO $$BEGIN IF COALESCE(current_setting('app.account', true), '') <> '${account}' THEN ` +
     `RAISE EXCEPTION 'app.account changed within the transaction' USING ERRCODE = '42501'; END IF; END$$`
   );
 }
@@ -52,9 +52,9 @@ export function contextCheckSql(context: string): string {
 /** If the account changes in the middle of the transaction (asRequest), the setting follows. */
 export async function contextSync(state: TxStand): Promise<void> {
   const expected = contextSql();
-  if (expected === state.kontext) return;
+  if (expected === state.context) return;
   await state.client.query(expected || CONTEXT_EMPTY);
-  state.kontext = expected;
+  state.context = expected;
 }
 
 /** What the body of a transaction gets: its queries and `db`, a whole access
@@ -144,13 +144,13 @@ export function innerTransaction<T>(
   number: number,
   fn: (name: string) => Promise<T>,
 ): Promise<T> {
-  if (state.innerster !== frame) return Promise.reject(new ConcurrentSavepoint(state.innerster ?? ''));
+  if (state.innermost !== frame) return Promise.reject(new ConcurrentSavepoint(state.innermost ?? ''));
   const name = `sp_${number}`;
-  state.innerster = name;
+  state.innermost = name;
   return (async () => {
     const { client } = state;
     // ROLLBACK TO also undoes a set_config() from the savepoint.
-    const contextBefore = state.kontext;
+    const contextBefore = state.context;
     try {
       openStill(state);
       await client.query(`SAVEPOINT ${name}`);
@@ -162,12 +162,12 @@ export function innerTransaction<T>(
       } catch (e) {
         if (!state.open) throw e;
         await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
-        state.kontext = contextBefore;
+        state.context = contextBefore;
         if (e !== null && typeof e === 'object') fromSavepointCaught.add(e);
         throw e;
       }
     } finally {
-      state.innerster = frame;
+      state.innermost = frame;
     }
   })();
 }
@@ -177,13 +177,13 @@ export function innerTransaction<T>(
 const fromSavepointCaught = new WeakSet<object>();
 
 /** The state of a new transaction; it is also its guard against fallback values. */
-export function newTxStatus(t: Omit<TxStand, 'verdirbt' | 'open' | 'innerster' | 'kontext'>): TxStand {
+export function newTxStatus(t: Omit<TxStand, 'spoils' | 'open' | 'innermost' | 'context'>): TxStand {
   const state: TxStand = {
     ...t,
     open: true,
-    innerster: null,
-    kontext: '',
-    verdirbt: e => state.open && !(e !== null && typeof e === 'object' && fromSavepointCaught.has(e)),
+    innermost: null,
+    context: '',
+    spoils: e => state.open && !(e !== null && typeof e === 'object' && fromSavepointCaught.has(e)),
   };
   return state;
 }

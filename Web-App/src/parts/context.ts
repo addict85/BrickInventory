@@ -19,7 +19,7 @@ export interface PartsDependencies {
   clock: Clock;
   db: Db;
   /** State per access (rebuilding the parts summary); createParts sets it up. */
-  faecher: Compartments;
+  compartments: Compartments;
   settings: SettingsServices;
   jobQueue: JobsServices;
   household: HouseholdServices;

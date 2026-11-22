@@ -18,8 +18,8 @@ import type { Sicht } from '../../src/household';
 
 /** Who is asking and which accounts they chose; the service resolves the scope. */
 export const viewOf = (req: AuthedRequest & { queryArgs: { accounts?: string | undefined } }): Sicht => ({
-  nutzer: req.apiUser.user_id,
-  konten: req.queryArgs.accounts,
+  user: req.apiUser.user_id,
+  accounts: req.queryArgs.accounts,
 });
 import { sendError } from '../../src/http/httpResponse';
 import { DomainError, failDomain } from '../../src/infra/errorTexts';
@@ -78,16 +78,16 @@ const TO_SETUP: ReadonlyArray<readonly [string, RegExp]> = [
 
 /** The guards of the entrance, built from the account services: the entrance
  * (startup/app.ts) and every router take the same ones. */
-export function guardFor(konto: AccountServices) {
-  return { ...inboxFor(konto), ...tokenGuardFor(konto), requireLoginOrToken: loginOrTokenGuard(konto) };
+export function guardFor(account: AccountServices) {
+  return { ...inboxFor(account), ...tokenGuardFor(account), requireLoginOrToken: loginOrTokenGuard(account) };
 }
 
-function inboxFor(konto: AccountServices) {
+function inboxFor(account: AccountServices) {
   /** Sessions from before the field ask the database once and remember it. */
   async function switchMust(req: Request): Promise<boolean> {
-    if (!req.session?.userId) return req.apiUser?.muss_passwort_aendern === true;
-    req.session.mussPasswortAendern ??= await konto.passwordSwitchDue(req.session.userId);
-    return req.session.mussPasswortAendern;
+    if (!req.session?.userId) return req.apiUser?.must_change_password === true;
+    req.session.mustChangePassword ??= await account.passwordSwitchDue(req.session.userId);
+    return req.session.mustChangePassword;
   }
 
   async function loginAtInbox(req: Request, res: Response, next: NextFunction) {
@@ -100,7 +100,7 @@ function inboxFor(konto: AccountServices) {
       };
     } else {
       // A read error is not an invalid login: a 401 would sign the app out.
-      const uid = await userIdTheRequest(konto, req);
+      const uid = await userIdTheRequest(account, req);
       if (!uid) return sendTokenRejection(req, res);
       req.tokenUserId = uid;
     }
@@ -113,16 +113,16 @@ function inboxFor(konto: AccountServices) {
   async function inboundLock(req: Request, _res: Response, next: NextFunction) {
     const method = req.method === 'HEAD' ? 'GET' : req.method;
     if (!(method === 'POST' && BEFORE_SWITCH.test(req.path)) && (await switchMust(req)))
-      failDomain('verboten', 'password_change_required');
-    if (!TO_SETUP.some(([m, re]) => m === method && re.test(req.path)) && (await secondFactorRequired(konto, req)))
-      failDomain('verboten', 'second_factor_mandatory');
+      failDomain('forbidden', 'password_change_required');
+    if (!TO_SETUP.some(([m, re]) => m === method && re.test(req.path)) && (await secondFactorRequired(account, req)))
+      failDomain('forbidden', 'second_factor_mandatory');
     next();
   }
 
   return { loginAtInbox, inboundLock };
 }
 
-function tokenGuardFor(konto: AccountServices) {
+function tokenGuardFor(account: AccountServices) {
   const requireToken = guard<AuthedRequest>((req, _res, next) => {
     // Already checked at the entrance: no second database access.
     if (req.apiUser) return next();
@@ -135,7 +135,7 @@ function tokenGuardFor(konto: AccountServices) {
       return next();
     }
     const token = bearerToken(req);
-    konto
+    account
       .userForToken(token, { ip: req.ip })
       .then(user => {
         if (!user) return next(new DomainError('not_signed_in', 'token_invalid'));
@@ -154,9 +154,9 @@ function tokenGuardFor(konto: AccountServices) {
     requireApiAdmin: guard<AuthedRequest>((req, res, next) => {
       requireToken(req, res, (e?: unknown) => {
         if (e) return next(e);
-        if (!req.apiUser?.is_admin) return next(new DomainError('verboten', 'admins_only'));
+        if (!req.apiUser?.is_admin) return next(new DomainError('forbidden', 'admins_only'));
         // Here instead of in a path list: this way no administrator route gets past the device lock.
-        requireRelease(konto, req, res, next, 'admin');
+        requireRelease(account, req, res, next, 'admin');
       });
     }),
   };
@@ -177,7 +177,7 @@ function bodyDeadline(req: Request, res: Response, next: NextFunction) {
   const clock = setTimeout(() => {
     if (req.complete || res.headersSent) return;
     res.setHeader('Connection', 'close');
-    sendError(req, res, 'zu_langsam', 'request_too_slow');
+    sendError(req, res, 'request_timeout', 'request_too_slow');
   }, BODY_DEADLINE_MS);
   res.once('close', () => clearTimeout(clock));
   req.once('end', () => clearTimeout(clock));
@@ -199,7 +199,7 @@ export const readBody: RequestHandler[] = [
     next();
   }, // Express 5: otherwise undefined
   (req, _res, next) => {
-    if (toLargeId(req.body) || toLargeId(req.query)) failDomain('ungueltig', 'id_invalid');
+    if (toLargeId(req.body) || toLargeId(req.query)) failDomain('invalid', 'id_invalid');
     next();
   },
 ];
@@ -210,7 +210,7 @@ export function accountGate(kind: Gate) {
     const uid = userId(req);
     if (uid === null) return next();
     const free = receiptsAccountSpace(kind, uid);
-    if (!free) failDomain('zu_viele', kind === 'stream' ? 'too_many_connections' : 'upload_running');
+    if (!free) failDomain('too_many', kind === 'stream' ? 'too_many_connections' : 'upload_running');
     res.once('finish', free); // an immediately following upload would otherwise arrive before 'close'
     res.once('close', free);
     next();

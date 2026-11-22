@@ -9,7 +9,7 @@ import { publicError } from '../infra/error';
 import { Degradations } from '../infra/result';
 import { forSet } from '../catalog';
 import { imageIfPresent } from '../images';
-import { toCsv, csvRowsFromRequest, csvDatum } from '../infra/csvExport';
+import { toCsv, csvRowsFromRequest, csvDatum, csvFirst } from '../infra/csvExport';
 import { possibleSetNumber, withVersion, normalizeSetNumber } from '../infra/setNumber';
 import type { WantedContext } from './context';
 
@@ -107,13 +107,13 @@ export async function removeWantedItem(
  * holdings): all in one transaction, locked per account on the item. */
 function withWantedItemLock<T>(
   k: WantedContext,
-  konten: number[],
+  accounts: number[],
   sn: string,
   c: string,
   fn: (t: WantedContext) => Promise<T>,
 ): Promise<T> {
   return k.transact(fn, {
-    sperren: konten.map(konto => ({ konto, schluessel: `merk:${sn}:${c}` })),
+    locks: accounts.map(account => ({ account, key: `merk:${sn}:${c}` })),
     repeatAtConflict: true,
   });
 }
@@ -132,13 +132,13 @@ export async function moveWantedItem(
   return withWantedItemLock(k, [ofId, zuId], sn, c, async t => {
     if (await t.wanted.isWanted(zuId, sn, c)) {
       const route = await removeWantedItem(t, ofId, sn, c);
-      await t.finances.preisalarm.deleteAlert(ofId, sn, c);
+      await t.finances.priceAlert.deleteAlert(ofId, sn, c);
       return { moved: route > 0, merged: true };
     }
     const r = await t.wanted.transferWantedEntry(zuId, ofId, sn, c);
     const moved = (r.changes ?? 0) > 0;
     // Only carry the alert along if the item really moved.
-    if (moved) await t.finances.preisalarm.alarmTransfer(zuId, ofId, sn, c);
+    if (moved) await t.finances.priceAlert.alarmTransfer(zuId, ofId, sn, c);
     return { moved, merged: false };
   });
 }
@@ -222,7 +222,7 @@ export async function fulfillWantedItem(
   const wantedCondition = await conditionOrDefault(k, wantedKey, ownerId);
   const condition = body.condition == null ? wantedCondition : await conditionOrDefault(k, body.condition, ownerId);
   const quantity = V.acquisitionQuantity(body.quantity ?? 1);
-  const kaufpreis = moneyInput(body.purchase_price, 'Kaufpreis');
+  const purchasePrice = moneyInput(body.purchase_price, 'Kaufpreis');
 
   // Record and remove together: otherwise the set would sit in holdings AND
   // still on the wanted list at the same time.
@@ -235,13 +235,13 @@ export async function fulfillWantedItem(
       ownerWish: ownerId,
       setNumber: sn,
       quantity,
-      kaufpreis,
+      purchasePrice,
       condition,
-      lagerort: body.storage == null ? null : String(body.storage),
+      storage: body.storage == null ? null : String(body.storage),
     });
     // After the WANTED-ITEM's condition: this is about the entry that was fulfilled.
     await removeWantedItem(t, ownerId, sn, wantedCondition);
-    await t.finances.preisalarm.deleteAlert(ownerId, sn, wantedCondition);
+    await t.finances.priceAlert.deleteAlert(ownerId, sn, wantedCondition);
     return r.action === 'added'
       ? { action: 'added', set_number: r.set_number, name: r.name, catalog_pending: r.catalog_pending }
       : { action: 'exists', set_number: r.set_number };
@@ -257,7 +257,7 @@ export async function wantedListCsv(k: WantedContext, uid: number): Promise<stri
 
 /** The counterpart to wantedListCsv(); runs as a job (src/collection/importJobs.ts). */
 export async function importWantedListCsv(k: WantedContext, owner: number, text: string) {
-  const { records, cleaned, uebersprungen } = csvRowsFromRequest(text);
+  const { records, cleaned, skipped } = csvRowsFromRequest(text);
 
   let added = 0,
     updated = 0,
@@ -267,10 +267,10 @@ export async function importWantedListCsv(k: WantedContext, owner: number, text:
   for (const row of cleaned) {
     // Last fallback: a file without a header row, first column = set number —
     // the same leniency as the minifig import.
-    const setNumber = String(row.set_number || row.Setnummer || row.set_num || Object.values(row)[0] || '').trim();
+    const setNumber = String(csvFirst(row, 'set_number', 'Setnummer', 'set_num') || Object.values(row)[0] || '').trim();
     if (!setNumber) continue;
 
-    const condition = String(row.condition || row.zustand || row.Zustand || '').trim();
+    const condition = String(csvFirst(row, 'condition', 'zustand', 'Zustand') || '').trim();
     const am = csvDatum(row.created_at || row.captured_at || row['Auf der Liste seit']);
 
     try {
@@ -287,5 +287,5 @@ export async function importWantedListCsv(k: WantedContext, owner: number, text:
       results.push({ set_number: setNumber, action: 'error', error: publicError(e, 'wanted-csv:zeile').error });
     }
   }
-  return { added, updated, errors, records, results, uebersprungen };
+  return { added, updated, errors, records, results, skipped };
 }

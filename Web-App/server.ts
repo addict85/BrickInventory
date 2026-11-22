@@ -46,7 +46,7 @@ const PLACEHOLDER_SECRETS = [
  * without NODE_ENV the same rules as in production apply. */
 function sessionSecret(): string {
   const assigned = config().sessionSecret?.trim();
-  if (config().entwicklung) return assigned || 'brickinventory-manager-dev-secret';
+  if (config().development) return assigned || 'brickinventory-manager-dev-secret';
   const reason = !assigned
     ? 'SESSION_SECRET ist nicht gesetzt — Start verweigert. Bitte in compose.yaml/ENV setzen' +
       (config().production ? '.' : ', oder für die Entwicklung NODE_ENV=development.')
@@ -78,7 +78,7 @@ async function shutdown(
   httpServer: Server | null,
   jobs: boolean,
   access: Db,
-  dienste: Services,
+  services: Services,
 ): Promise<void> {
   if (lauf.ending) return;
   lauf.ending = true;
@@ -97,8 +97,8 @@ async function shutdown(
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
     // Running jobs stop safely and go back into the table.
-    if (jobs && lauf.jobs) await stopJobs(dienste, lauf.jobs);
-    await closeBufferAndTicks(access, dienste);
+    if (jobs && lauf.jobs) await stopJobs(services, lauf.jobs);
+    await closeBufferAndTicks(access, services);
     await access.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(emergencyBrake);
@@ -110,8 +110,8 @@ async function shutdown(
 }
 
 /** One process per role (ROLE=web|jobs|beides); initSchemaOnce lets only one migrate. */
-async function start(): Promise<void> {
-  const k = config();
+/** Bans end the start in operation; warnings, renamed and dropped variables only go to the log. */
+function startChecks(k: ReturnType<typeof config>, web: boolean): void {
   if (k.operation) {
     const bans = startBans();
     if (bans.length) {
@@ -121,56 +121,65 @@ async function start(): Promise<void> {
     for (const w of startWarnings()) console.warn(`⚠️ ${w}`);
   }
   for (const v of k.renamed) console.warn(`⚠️ [start] Variable umbenannt: ${v}, bitte .env umstellen (UPGRADE.md 70).`);
-  for (const v of k.veraltet)
+  for (const v of k.deprecated)
     console.warn(`⚠️ [start] ${v} wird nicht mehr ausgewertet und kann weg (siehe UPGRADE.md).`);
   if (!k.appBaseUrl)
     hintWithoutBaseUrl(
       'start',
       'Mails enthalten keine Links (Bestätigung, Passwort vergessen), Passkeys und QR-Code der App sind aus.',
     );
-  const web = k.rolle !== 'jobs',
-    jobs = k.rolle !== 'web';
   if (!k.appBaseUrl && k.operation && web)
     console.error(
       '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_MISSING_OK=1): ' +
         'Der Host-Filter gegen DNS-Rebinding nimmt nur Loopback und IP-Adressen an, jeder Name bekommt 421.',
     );
+}
+
+async function startListeners(services: Services, web: boolean): Promise<void> {
+  // Hints into the log: one that fails holds up neither the start nor the others.
+  const hints: [string, () => Promise<unknown>][] = [
+    ['start:smtp-altlast', () => services.mail.reportSmtpLegacySetting()],
+    ...services.account.addressHints(),
+  ];
+  if (web) for (const [wo, hint] of hints) await hint().catch(logAndContinue(wo));
+  if (web) services.account.listenOnRevocation();
+  // Web and jobs (also separate processes) clear their household memory on every change.
+  services.household.listenOnChanges();
+  // A global value from another process (follow-up run, second web process) clears the setup state.
+  if (web) services.settings.listenForGlobalChanges();
+}
+
+async function start(): Promise<void> {
+  const k = config();
+  const web = k.role !== 'jobs',
+    jobs = k.role !== 'web';
+  startChecks(k, web);
   const secret = web ? sessionSecret() : ''; // before the database: a start ban should not wait for it
-  console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
+  console.log(`[start] Prozess ${process.pid}, Rolle ${k.role}`);
   // Database access and wiring are created here, not on import of a module;
   // acquisitions and settings trigger their follow-up work in every process.
-  const { db: access, dienste } = wireProcess();
+  const { db: access, services } = wireProcess();
 
   try {
     // Migrations, first start and re-keying go across all accounts.
-    await inSystemContext('start', () => prepareDatabaseBefore(access, dienste, { jobs }));
+    await inSystemContext('start', () => prepareDatabaseBefore(access, services, { jobs }));
   } catch (e) {
     console.error('❌ Database initialisation failed:', errorMessage(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
     process.exit(1);
   }
   logToDatabase(access.pool);
-  registerCollectors(access, dienste.jobQueue);
+  registerCollectors(access, services.jobQueue);
   // The web process serves /metrics itself (startup/app.ts); the jobs-only one has no HTTP server.
   if (!web && k.metricsPort) startMetricsServer(k.metricsPort, k.metricsToken);
-  // Hints into the log: one that fails holds up neither the start nor the others.
-  const hints: [string, () => Promise<unknown>][] = [
-    ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],
-    ...dienste.account.addressHints(),
-  ];
-  if (web) for (const [wo, hint] of hints) await hint().catch(logAndContinue(wo));
-  if (web) dienste.account.listenOnRevocation();
-  // Web and jobs (also separate processes) clear their household memory on every change.
-  dienste.household.listenOnChanges();
-  // A global value from another process (follow-up run, second web process) clears the setup state.
-  if (web) dienste.settings.listenForGlobalChanges();
+  await startListeners(services, web);
 
   // Accept requests only after the schema: the session store needs user_sessions.
   const httpServer = web
     ? http
         .createServer(
           { ...HTTP_DEADLINES },
-          buildApp({ pool: access.systemWebPool, config: k, sitzungsGeheimnis: secret, dienste }),
+          buildApp({ pool: access.systemWebPool, config: k, sessionSecret: secret, services }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
@@ -178,13 +187,13 @@ async function start(): Promise<void> {
     : null;
   const lauf: Lauf = { ending: false, jobs: null };
   process.on('SIGTERM', () => {
-    void shutdown(lauf, 'SIGTERM', httpServer, jobs, access, dienste);
+    void shutdown(lauf, 'SIGTERM', httpServer, jobs, access, services);
   });
   process.on('SIGINT', () => {
-    void shutdown(lauf, 'SIGINT', httpServer, jobs, access, dienste);
+    void shutdown(lauf, 'SIGINT', httpServer, jobs, access, services);
   });
   // Without frame: queue and jobs enter it themselves (src/jobQueue/context.ts, service.ts).
-  if (jobs) lauf.jobs = await startJobs(dienste);
+  if (jobs) lauf.jobs = await startJobs(services);
 }
 
 // Continuing without a worker would fake a service.

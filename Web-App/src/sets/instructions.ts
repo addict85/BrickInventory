@@ -48,17 +48,17 @@ export async function deleteInstruction(sk: SetsContext, uid: number, id: number
  * fetch would otherwise delete them for everyone). Others fetch what is missing, once per set and day. */
 export async function loadInstructionsNew(sk: SetsContext, uid: number, raw: string, admin: boolean) {
   const sn = normalizeSetNumber(raw);
-  if (!possibleSetNumber(sn)) failDomain('ungueltig', 'set_number_invalid');
+  if (!possibleSetNumber(sn)) failDomain('invalid', 'set_number_invalid');
   if (admin) await sk.catalog.deleteInstructions(sn);
   else {
     if (!(await findSetInScope(sk, uid, sn))) failDomain('not_found', 'set_not_found');
-    if ((await sk.catalog.instructionCount(sn)) > 0) failDomain('verboten', 'admins_only');
+    if ((await sk.catalog.instructionCount(sn)) > 0) failDomain('forbidden', 'admins_only');
     if (!(await sk.catalog.instructionNewLoadAllowed(sn)))
-      failDomain('zu_viele', 'too_many_requests', { minutes: 24 * 60 });
+      failDomain('too_many', 'too_many_requests', { minutes: 24 * 60 });
   }
-  const auftrag = await sk.catalog.enqueueInstruction(sn, { now: true });
+  const job = await sk.catalog.enqueueInstruction(sn, { now: true });
   const instructions = mergeInstructions(await sk.catalog.instructionsToSet(sn), []);
-  return { instructions, auftrag };
+  return { instructions, job };
 }
 
 /** Uploaded instructions live per account in a folder of its own below. */

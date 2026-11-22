@@ -18,7 +18,7 @@ export const PASSWORD_MAX_CHARS = 1024;
 /** Shipped along (common-passwords.txt next to this file), without a network query. */
 function common(): Set<string> {
   return processWide(
-    'haeufigePasswoerter',
+    'commonPasswords',
     () =>
       new Set(
         fs
@@ -31,12 +31,12 @@ function common(): Set<string> {
 }
 
 /** For every path that sets a password: the reason for rejection or null. */
-export function passwordLack(password: unknown, benutzername?: unknown): ErrorCode | null {
+export function passwordLack(password: unknown, username?: unknown): ErrorCode | null {
   if (passwordToShort(password)) return 'password_too_short';
   const p = String(password);
   if (p.length > PASSWORD_MAX_CHARS) return 'password_too_long';
   const small = p.toLowerCase();
-  if (common().has(small) || (typeof benutzername === 'string' && small === benutzername.toLowerCase()))
+  if (common().has(small) || (typeof username === 'string' && small === username.toLowerCase()))
     return 'password_too_common';
   return null;
 }

@@ -44,10 +44,10 @@ export async function addJobOne(
       kind,
       JSON.stringify(payload),
       o.userId ?? null,
-      o.schluessel ?? null,
+      o.key ?? null,
       o.maxAttempts ?? 5,
       o.afterSeconds ?? 0,
-      o.dueAb ?? null,
+      o.dueFrom ?? null,
       o.progress ? JSON.stringify(o.progress) : null,
     ],
   );
@@ -64,7 +64,7 @@ export async function enqueueList(
   db: DbInterface,
   kind: string,
   payload: object,
-  o: { schluessel: string; liste: string; hoechstens: number; userId: number },
+  o: { key: string; list: string; atMost: number; userId: number },
 ): Promise<string> {
   const z = await db.get<{ id: string }>(
     `INSERT INTO jobs (type, payload, user_id, dedupe_key) VALUES ($5, $2, $3, $1)
@@ -77,7 +77,7 @@ export async function enqueueList(
              SELECT p, n + 1000000 FROM jsonb_array_elements(EXCLUDED.payload->$6) WITH ORDINALITY AS neu(p, n)
            ) beide GROUP BY p ORDER BY MIN(n) LIMIT $4) united))
      RETURNING id`,
-    [o.schluessel, JSON.stringify(payload), o.userId, o.hoechstens, kind, o.liste],
+    [o.key, JSON.stringify(payload), o.userId, o.atMost, kind, o.list],
   );
   return String(z!.id);
 }
@@ -328,7 +328,7 @@ export function statusNumbers(db: DbInterface, kind: JobKind) {
 }
 /** The role as it is now, not as at queuing time. */
 export function accountRole(db: DbInterface, l: JobsReadContract, uid: number) {
-  return db.get<{ is_admin: boolean }>(`SELECT is_admin FROM ${l.KONTEN} k WHERE id = $1`, [uid]);
+  return db.get<{ is_admin: boolean }>(`SELECT is_admin FROM ${l.ACCOUNTS} k WHERE id = $1`, [uid]);
 }
 export const JOB_CHANNEL = 'auftraege';
 export const JOB_STATUS_CHANNEL = 'auftrag_stand';
@@ -380,7 +380,7 @@ export async function writeResubmission(
   kind: string,
   key: string,
   payload: object,
-  o: { dueAb: Date; error: string; maxAttempts: number },
+  o: { dueFrom: Date; error: string; maxAttempts: number },
 ): Promise<void> {
   await db.run(
     `INSERT INTO jobs (type, payload, dedupe_key, max_attempts, due_at, error_message)
@@ -388,7 +388,7 @@ export async function writeResubmission(
      ON CONFLICT (dedupe_key) WHERE status = 'pending'
        DO UPDATE SET payload = EXCLUDED.payload, due_at = EXCLUDED.due_at,
                      error_message = EXCLUDED.error_message, updated_at = NOW()`,
-    [key, JSON.stringify(payload), o.dueAb, o.error, kind, o.maxAttempts],
+    [key, JSON.stringify(payload), o.dueFrom, o.error, kind, o.maxAttempts],
   );
 }
 
@@ -413,8 +413,8 @@ export function waitingTheKind(db: DbInterface, kind: string) {
 }
 
 export function numbersTheKind(db: DbInterface, kind: string) {
-  return db.get<{ wartend: number; faellig: number }>(
-    `SELECT COUNT(*)::int AS wartend, COUNT(*) FILTER (WHERE due_at <= NOW())::int AS faellig
+  return db.get<{ waiting: number; due: number }>(
+    `SELECT COUNT(*)::int AS waiting, COUNT(*) FILTER (WHERE due_at <= NOW())::int AS faellig
        FROM jobs WHERE type = $1 AND status IN ('pending', 'running')`,
     [kind],
   );

@@ -15,9 +15,9 @@ export function purchasePriceIn(column: string, w: string): string {
 export function purchasePriceColumns(column: string, w: string): string {
   const k = purchasePriceIn(column, w);
   return `${k} AS ${column},
-            (currency <> ${w} AND ${column} IS NOT NULL AND ${k} IS NULL) AS kaufpreis_fremd,
+            (currency <> ${w} AND ${column} IS NOT NULL AND ${k} IS NULL) AS purchase_price_foreign,
             CASE WHEN currency <> ${w} AND ${k} IS NULL THEN ${column} END AS original_purchase_price,
-            (currency <> ${w} AND ${k} IS NOT NULL) AS kaufpreis_umgerechnet`;
+            (currency <> ${w} AND ${k} IS NOT NULL) AS purchase_price_converted`;
 }
 
 /** Quantity-weighted average over the rows in which `k` has a price. */

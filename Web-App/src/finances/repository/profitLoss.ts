@@ -16,7 +16,7 @@ export function setsWithEntries(db: DbInterface, l: FinancesReadContract, uids: 
     acq_count: number;
     used_count: number;
   }>(
-    `SELECT s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
+    `SELECT s.set_number, ${SET.name} AS name, ${SET.year} AS year,
             -- Menge aus den Erfassungen (Gruppierung a unten), kein zweiter JOIN.
             COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             c.image_local, c.image_url, MIN(s.added_at) AS added_at,
@@ -24,7 +24,7 @@ export function setsWithEntries(db: DbInterface, l: FinancesReadContract, uids: 
             COALESCE(SUM(a.acq_count), 0)::int  AS acq_count,
             COALESCE(SUM(a.used_count), 0)::int AS used_count
      -- Name und Jahr aus rb_sets, die Bilder aus set_catalog (0105).
-     FROM ${l.setBestand('= ANY($1)')} s
+     FROM ${l.setHoldings('= ANY($1)')} s
      LEFT JOIN set_catalog c ON c.set_number = s.set_number
      ${setMasterJoin('s.set_number')}
      LEFT JOIN (
@@ -32,7 +32,7 @@ export function setsWithEntries(db: DbInterface, l: FinancesReadContract, uids: 
               SUM(quantity) AS total_qty,
               COUNT(*)                                AS acq_count,
               COUNT(*) FILTER (WHERE condition = 'U')  AS used_count
-       FROM ${l.setErfassungen('= ANY($1)')} e GROUP BY user_id, set_number
+       FROM ${l.setAcquisitions('= ANY($1)')} e GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
      WHERE s.user_id = ANY($1)
      GROUP BY s.set_number, rs.name, rs.year, c.image_local, c.image_url`,

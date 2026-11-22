@@ -28,7 +28,7 @@ const dns = require('node:dns');
 const _req = require('./helpers/sources').buildAndRequire();
 const Z = _req('src/infra/targetAddress.js');
 const { holeHttps, FetchError } = _req('src/infra/fetch.js');
-const { oeffneBild } = _req('clients/imageCdn.js');
+const { openImage } = _req('clients/imageCdn.js');
 const { hostAllowed, ALLOWED_DOWNLOAD_HOSTS } = _req('src/infra/foreignAddresses.js');
 
 /** @param {Record<string, string[]>} antworten  host → addresses */
@@ -130,7 +130,7 @@ test('an allowed host that resolves internally is not connected', async t => {
     'rebrickable.com': ['127.0.0.1'],
     'cdn.rebrickable.com': ['10.0.0.9', '169.254.169.254'],
   });
-  const o = { hosts: ['rebrickable.com', 'cdn.rebrickable.com'], maxBytes: 1000, zeitlimitMs: 3000 };
+  const o = { hosts: ['rebrickable.com', 'cdn.rebrickable.com'], maxBytes: 1000, timeoutMs: 3000 };
   assert.equal(await reason(holeHttps('https://rebrickable.com/api/v3/x', o)), 'adresse');
   assert.equal(
     await reason(holeHttps('https://cdn.rebrickable.com/a.png', { ...o, methode: 'POST', rumpf: '{}' })),
@@ -142,7 +142,7 @@ test('an allowed host that resolves internally is not connected', async t => {
 test('the image proxy pool also checks the address', async t => {
   const asked = withDns(t, { 'cdn.rebrickable.com': ['192.168.0.10'] });
   assert.equal(
-    await reason(oeffneBild('https://cdn.rebrickable.com/media/x.jpg', { maxBytes: 1000, pool: true })),
+    await reason(openImage('https://cdn.rebrickable.com/media/x.jpg', { maxBytes: 1000, pool: true })),
     'adresse',
   );
   assert.deepEqual(asked, ['cdn.rebrickable.com']);

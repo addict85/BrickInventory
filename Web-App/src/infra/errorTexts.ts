@@ -640,24 +640,24 @@ export function responseLanguage(req: { headers?: Record<string, unknown> } | un
 /** What went wrong, in domain terms. Which HTTP status belongs to it is only known by
  * src/http/errorKind.ts: services also run in the job process and in scripts. */
 export type ErrorKind =
-  | 'ungueltig'
+  | 'invalid'
   | 'not_signed_in'
-  | 'verboten'
+  | 'forbidden'
   | 'not_found'
-  | 'konflikt'
-  | 'zu_gross'
-  | 'falscher_typ'
-  | 'zu_langsam'
-  | 'nicht_mehr_da'
-  | 'nicht_verarbeitbar'
-  | 'zu_viele'
-  | 'speicher_voll'
-  | 'intern'
-  | 'fremddienst'
-  | 'nicht_verfuegbar'
-  | 'zeitueberschreitung'
-  | 'falscher_host'
-  | 'zu_alt';
+  | 'conflict'
+  | 'too_large'
+  | 'unsupported_type'
+  | 'request_timeout'
+  | 'gone'
+  | 'unprocessable'
+  | 'too_many'
+  | 'storage_full'
+  | 'internal'
+  | 'upstream'
+  | 'unavailable'
+  | 'upstream_timeout'
+  | 'misdirected'
+  | 'upgrade_required';
 
 /** Kind and code travel along; the sentence is only created in the response in the
  * requester's language. */
@@ -678,7 +678,7 @@ export class DomainError extends Error {
  * server error; everything else propagates unchanged. */
 export function asDuplicate(code: ErrorCode): (e: unknown) => never {
   return (e: unknown) => {
-    if ((e as { code?: unknown } | null)?.code === '23505') throw new DomainError('konflikt', code);
+    if ((e as { code?: unknown } | null)?.code === '23505') throw new DomainError('conflict', code);
     throw e;
   };
 }

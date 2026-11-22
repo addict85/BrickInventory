@@ -26,14 +26,14 @@ export async function loadCatalogCsv(file: string, target: string, o: CsvLaden =
   const a = await openHttps(CSV_BASIS + file, {
     hosts: CSV_HOSTS,
     maxBytes: PACKED_AT_MOST,
-    zeitlimitMs: FRIST_MS,
+    timeoutMs: FRIST_MS,
     ...(o.signal ? { signal: o.signal } : {}),
   });
   if (a.status !== 200) {
-    a.verwerfen();
+    a.discard();
     throw new FetchError('netz', `HTTP ${a.status} für ${file}`);
   }
-  const total = Number(a.kopf['content-length']) || 0;
+  const total = Number(a.head['content-length']) || 0;
   let read = 0,
     unpacked = 0;
   const counter = new Transform({

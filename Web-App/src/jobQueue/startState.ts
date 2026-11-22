@@ -13,7 +13,7 @@ export interface StartState {
 
 /** Per set of services: the job process writes, the web process re-reads until ready. */
 const remembered = (k: JobsContext) =>
-  k.faecher.slot<{ state: StartState }>('startZustand', () => ({
+  k.compartments.slot<{ state: StartState }>('startZustand', () => ({
     state: { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 },
   }));
 

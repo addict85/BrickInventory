@@ -159,9 +159,9 @@ if (OUTDIR) {
   // By name into the build log, so that nothing disappears silently.
   if (route.length) console.log(`[build-ts] ${route.length} verwaiste Datei(en) entfernt: ${route.join(', ')}`);
   // The version belongs to the build, not into the working tree (scripts/version.js).
-  const { buildVersion, schreibe } = require('./version');
+  const { buildVersion, writeVersion } = require('./version');
   const version = buildVersion();
-  schreibe(OUTDIR, version);
+  writeVersion(OUTDIR, version);
   console.log(`[build-ts] Version ${version}`);
 }
 

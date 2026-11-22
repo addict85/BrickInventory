@@ -27,13 +27,13 @@ import { createThrottle } from '../src/throttle';
 import { createDevices } from '../src/devices';
 import { config, type AppConfig } from '../src/infra/config';
 import { systemClock, type Clock } from '../src/infra/clock';
-import { LESEVERTRAG, type Services } from '../src/services';
+import { READ_CONTRACT, type Services } from '../src/services';
 
 export type { Services } from '../src/services';
 
 /** What a test provides instead of the real thing: own image works, own external sources. */
 export interface Components {
-  bildwerk?: ImageWorker;
+  imageWorker?: ImageWorker;
   /** Replaced clients (src/externalSources/sources.ts), read at call time. */
   sources?: Partial<Sources>;
   /** Test helpers only: every factory stores its context here (insight). */
@@ -117,31 +117,31 @@ function inspectIn(contexts: Record<string, unknown> | undefined) {
 }
 
 /** The areas up to the catalog: they only need each other and the access. */
-function buildRationale(db: Db, { bildwerk, sources, config, clock }: Assigned, zeige: Show) {
-  const throttle = createThrottle({ db, clock }, zeige('throttle'));
-  const settings = createSettings({ db, clock, throttle, readContract: LESEVERTRAG }, zeige('settings'));
-  const mail = createMail({ clock, settings, config }, zeige('mail'));
-  const jobQueue = createJobs({ db, clock, settings, readContract: LESEVERTRAG }, zeige('jobQueue'));
-  const household = createHousehold({ db, clock, settings, readContract: LESEVERTRAG }, zeige('household'));
-  const devices = createDevices({ db, clock, config, jobQueue, readContract: LESEVERTRAG }, zeige('devices'));
-  const factors = createFactors({ db, clock, config, settings }, zeige('factors'));
+function buildRationale(db: Db, { imageWorker, sources, config, clock }: Assigned, show: Show) {
+  const throttle = createThrottle({ db, clock }, show('throttle'));
+  const settings = createSettings({ db, clock, throttle, readContract: READ_CONTRACT }, show('settings'));
+  const mail = createMail({ clock, settings, config }, show('mail'));
+  const jobQueue = createJobs({ db, clock, settings, readContract: READ_CONTRACT }, show('jobQueue'));
+  const household = createHousehold({ db, clock, settings, readContract: READ_CONTRACT }, show('household'));
+  const devices = createDevices({ db, clock, config, jobQueue, readContract: READ_CONTRACT }, show('devices'));
+  const factors = createFactors({ db, clock, config, settings }, show('factors'));
   const account = createAccount(
     { db, clock, config, settings, jobQueue, household, mail, throttle, devices, factors },
-    zeige('account'),
+    show('account'),
   );
-  const profile = createProfile({ db, clock, config, settings, account, mail }, zeige('profile'));
-  const idempotency = createIdempotency({ db, clock }, zeige('idempotency'));
+  const profile = createProfile({ db, clock, config, settings, account, mail }, show('profile'));
+  const idempotency = createIdempotency({ db, clock }, show('idempotency'));
   const externalSources = createForeignSources(
     { db, clock, settings, jobQueue, ersatz: sources },
-    zeige('externalSources'),
+    show('externalSources'),
   );
   const images = createImages(
-    { db, clock, config, jobQueue, household, externalSources, bildwerk, readContract: LESEVERTRAG },
-    zeige('images'),
+    { db, clock, config, jobQueue, household, externalSources, imageWorker, readContract: READ_CONTRACT },
+    show('images'),
   );
   const catalog = createCatalog(
-    { db, clock, settings, jobQueue, household, externalSources, images, throttle, readContract: LESEVERTRAG },
-    zeige('catalog'),
+    { db, clock, settings, jobQueue, household, externalSources, images, throttle, readContract: READ_CONTRACT },
+    show('catalog'),
   );
   // The entry on the set is made by the catalog (higher); it listens to the images instead of them calling it.
   images.atSetImageLoaded((sn, source) => catalog.enterSetImageLocal(sn, source));
@@ -163,18 +163,18 @@ function buildRationale(db: Db, { bildwerk, sources, config, clock }: Assigned, 
 }
 
 function buildAreas(db: Db, components: Assigned): Services {
-  const zeige = inspectIn(components.contexts);
-  const reason = buildRationale(db, components, zeige);
+  const show = inspectIn(components.contexts);
+  const reason = buildRationale(db, components, show);
   const { throttle, settings, mail, jobQueue, household, factors } = reason;
   const { account, idempotency, externalSources, images, catalog } = reason;
   const { config, clock } = components;
   const finances = createFinances(
-    { db, clock, config, settings, jobQueue, household, catalog, externalSources, mail, readContract: LESEVERTRAG },
-    zeige('finances'),
+    { db, clock, config, settings, jobQueue, household, catalog, externalSources, mail, readContract: READ_CONTRACT },
+    show('finances'),
   );
   const inventory = createInventory(
-    { db, clock, settings, household, account, catalog, finances, readContract: LESEVERTRAG },
-    zeige('inventory'),
+    { db, clock, settings, household, account, catalog, finances, readContract: READ_CONTRACT },
+    show('inventory'),
   );
   const sets = createSets(
     {
@@ -191,24 +191,24 @@ function buildAreas(db: Db, components: Assigned): Services {
       settings,
       account,
     },
-    zeige('sets'),
+    show('sets'),
   );
   const parts = createParts(
     { db, clock, settings, jobQueue, household, catalog, externalSources, finances, inventory },
-    zeige('parts'),
+    show('parts'),
   );
   const minifigs = createMinifigs(
     { db, clock, settings, household, catalog, externalSources, jobQueue, finances, inventory },
-    zeige('minifigs'),
+    show('minifigs'),
   );
   const wanted = createWanted(
     { db, clock, settings, household, catalog, externalSources, images, finances, sets },
-    zeige('wanted'),
+    show('wanted'),
   );
-  const vouchers = createVouchers({ db, clock, settings, account, externalSources, throttle }, zeige('vouchers'));
+  const vouchers = createVouchers({ db, clock, settings, account, externalSources, throttle }, show('vouchers'));
   const collection = createCollection(
     { db, clock, household, jobQueue, catalog, finances, inventory, sets, parts, minifigs, wanted },
-    zeige('collection'),
+    show('collection'),
   );
   const management = createManagement(
     {
@@ -229,14 +229,14 @@ function buildAreas(db: Db, components: Assigned): Services {
       vouchers,
       mail,
     },
-    zeige('management'),
+    show('management'),
   );
   return { ...reason, finances, inventory, sets, parts, minifigs, wanted, vouchers, collection, management };
 }
 
 /** The process's access including the first start, wired. The first start creates the first
  * account via the services that only arise after the access. */
-export function wireProcess(): { db: Db; dienste: Services } {
+export function wireProcess(): { db: Db; services: Services } {
   const finished: { d: Services | null } = { d: null };
   const db = createDb(dbConfigFromEnvironment(), {
     firstStart: async () => {
@@ -245,5 +245,5 @@ export function wireProcess(): { db: Db; dienste: Services } {
     },
   });
   finished.d = buildServices(db);
-  return { db, dienste: finished.d };
+  return { db, services: finished.d };
 }

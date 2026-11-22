@@ -29,12 +29,12 @@ export const ecbFetch: Fetch = async (url, signal) => {
   const r = await holeHttps(url, {
     hosts: ALLOWED_RATE_HOSTS,
     maxBytes: 16 * 1024 * 1024,
-    zeitlimitMs: 60_000,
+    timeoutMs: 60_000,
     redirects: 0,
     ...(signal ? { signal } : {}),
   });
   if (r.status !== 200) throw new Error(`EZB ${r.status} für ${url}`);
-  return r.koerper;
+  return r.body;
 };
 
 const CURRENCY = /^[A-Z]{3}$/;

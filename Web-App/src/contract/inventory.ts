@@ -18,7 +18,7 @@ import {
 const STORAGE_ACCOUNTS = z.string().regex(/^[0-9,]{0,200}$/);
 import { DEGRADED, AcquisitionReply } from './shared';
 
-export { AcquisitionReply as Erfassungsantwort };
+export { AcquisitionReply };
 
 export const Acquisition = z.looseObject({
   id: z.number().int(),

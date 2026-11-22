@@ -43,7 +43,7 @@ export async function checkSource(
   source: string,
 ): Promise<{ code: ErrorCode; source: string; reason: string } | null> {
   const check = Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
-  if (!check) failDomain('ungueltig', 'source_unknown');
+  if (!check) failDomain('invalid', 'source_unknown');
   try {
     await check(k.externalSources.sources);
     return null;
@@ -144,7 +144,7 @@ export async function priceJobStatus(k: ManagementContext) {
 export const runPriceJobNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('prices');
 /** Only queues the job; if that fails, the admin learns about it instead of the log. */
 export async function reloadMissingImages(k: ManagementContext): Promise<void> {
-  await k.jobQueue.placeJobOne('images_reload', {}, { schluessel: 'images_reload', maxAttempts: 2 });
+  await k.jobQueue.placeJobOne('images_reload', {}, { key: 'images_reload', maxAttempts: 2 });
 }
 
 export const runCatalogSyncNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('csv_sync');
@@ -157,7 +157,7 @@ export async function retryBrickset(k: ManagementContext, sn: string) {
 
 export async function removeBrickset(k: ManagementContext, sn: string) {
   await k.externalSources.sources.fromRetryQueue(sn);
-  await k.catalog.enqueueInstruction(sn, { nurAusweichquelle: true });
+  await k.catalog.enqueueInstruction(sn, { fallbackOnly: true });
 }
 
 /** The open scheduled job gets the new appointment immediately. */
@@ -170,7 +170,7 @@ export async function setJobSchedule(
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
-    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) failDomain('ungueltig', 'time_invalid');
+    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) failDomain('invalid', 'time_invalid');
     await k.settings.setGlobalValue(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
@@ -181,7 +181,7 @@ export async function setJobSchedule(
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );
   } else {
-    failDomain('ungueltig', 'unknown_job');
+    failDomain('invalid', 'unknown_job');
   }
   await rescheduleJobs(k);
 }

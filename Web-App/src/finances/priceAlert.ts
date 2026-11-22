@@ -3,7 +3,7 @@
 import { reportError, errorMessage } from '../infra/error';
 import { failDomain } from '../infra/errorTexts';
 import type { MailServices } from '../mail';
-import { toCsv, csvRowsFromRequest, skippedHint } from '../infra/csvExport';
+import { toCsv, csvRowsFromRequest, skippedHint, csvFirst } from '../infra/csvExport';
 import { normalizeSetNumber } from '../infra/setNumber';
 import * as repo from './repository/priceAlerts';
 import { attempts } from '../infra/result';
@@ -46,13 +46,13 @@ const csvDirection = (raw: string | undefined) => {
 
 function checkInput(direction: string, threshold: AlarmInput['threshold'], condition: string | undefined) {
   const r = String(direction ?? '');
-  if (r !== 'below' && r !== 'above') failDomain('ungueltig', 'alert_direction_invalid');
+  if (r !== 'below' && r !== 'above') failDomain('invalid', 'alert_direction_invalid');
   const s = Number(threshold);
   // Number.isFinite also catches NaN from an empty input; `> 0` alone
   // would report two different errors the same way.
-  if (!Number.isFinite(s) || s <= 0) failDomain('ungueltig', 'alert_threshold_invalid');
+  if (!Number.isFinite(s) || s <= 0) failDomain('invalid', 'alert_threshold_invalid');
   const c = (condition ?? 'N').toUpperCase();
-  if (!STATES.has(c)) failDomain('ungueltig', 'alert_condition_invalid');
+  if (!STATES.has(c)) failDomain('invalid', 'alert_condition_invalid');
   return { direction: r as Direction, threshold: s, condition: c };
 }
 
@@ -225,14 +225,14 @@ export async function priceAlertsAsCsv(k: FinancesContext, uid: number): Promise
 /** Thresholds apply in the account currency; another one in the file is
  * named instead of silently converted — there are no rates. */
 export async function alertsFromCsv(k: FinancesContext, uid: number, currency: string, text: string) {
-  const { records, cleaned, uebersprungen } = csvRowsFromRequest(text);
+  const { records, cleaned, skipped } = csvRowsFromRequest(text);
   let added = 0,
     updated = 0,
     errors = 0,
     foreignCurrency = 0;
   const results: Array<Record<string, unknown>> = [];
   for (const row of cleaned) {
-    const raw = String(row.set_number || row.Setnummer || row.set_num || Object.values(row)[0] || '').trim();
+    const raw = String(csvFirst(row, 'set_number', 'Setnummer', 'set_num') || Object.values(row)[0] || '').trim();
     if (!raw) continue;
     const sn = normalizeSetNumber(raw);
     // Ask before writing: setzeAlarm() creates or changes without saying so.
@@ -244,11 +244,11 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
     try {
       const alarm = await setAlert(k, uid, sn, currency, {
         // Both the new English header and an older export's German one are accepted on import.
-        direction: csvDirection(row.direction || row.richtung || row.Richtung),
-        threshold: String(row.threshold || row.schwelle || row.Schwelle || '')
+        direction: csvDirection(csvFirst(row, 'direction', 'richtung', 'Richtung')),
+        threshold: String(csvFirst(row, 'threshold', 'schwelle', 'Schwelle') || '')
           .trim()
           .replace(',', '.'),
-        condition: String(row.condition || row.zustand || row.Zustand || 'N')
+        condition: String(csvFirst(row, 'condition', 'zustand', 'Zustand') || 'N')
           .trim()
           .toUpperCase(),
       });
@@ -273,8 +273,8 @@ export async function alertsFromCsv(k: FinancesContext, uid: number, currency: s
     errors,
     total: records.length,
     results,
-    skipped: uebersprungen.length || undefined,
-    skipped_hint: skippedHint(uebersprungen) || undefined,
+    skipped: skipped.length || undefined,
+    skipped_hint: skippedHint(skipped) || undefined,
     ...(foreignCurrency
       ? {
           currency_note:

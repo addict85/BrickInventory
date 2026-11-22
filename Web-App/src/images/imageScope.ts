@@ -5,10 +5,10 @@ import type { ImagesContext } from './context';
  * logged-in account (set images since 0105: the catalog search shows them for everyone). */
 export const fileMaster = (setNumber: string) => String(setNumber).replace(/[^a-z0-9-]/gi, '_');
 
-type Stand = { nummern: Set<string>; anleitungen: Set<string>; am: number };
+type Stand = { numbers: Set<string>; instructions: Set<string>; am: number };
 /** Per set of services; a household change clears it because it shifts the scope. */
 const marker = (k: ImagesContext) =>
-  k.faecher.slot('blickfeld', () => {
+  k.compartments.slot('blickfeld', () => {
     const m = new Map<number, Stand>();
     k.household.atHouseholdChange(() => m.clear());
     return m;
@@ -21,10 +21,10 @@ const HITS_MS = 60_000,
 
 async function lade(k: ImagesContext, uid: number): Promise<Stand> {
   const rows = await k.imageScope.setsInScope(await k.household.scopeIds(uid));
-  const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: k.clock.now() };
+  const s: Stand = { numbers: new Set(), instructions: new Set(), am: k.clock.now() };
   for (const z of rows) {
-    s.nummern.add(fileMaster(z.set_number));
-    if (z.besitz) s.anleitungen.add(fileMaster(z.set_number));
+    s.numbers.add(fileMaster(z.set_number));
+    if (z.owned) s.instructions.add(fileMaster(z.set_number));
   }
   const _cache = marker(k);
   if (_cache.size >= ACCOUNTS_AT_MOST) _cache.delete(_cache.keys().next().value!);
@@ -36,7 +36,7 @@ async function inScope(
   k: ImagesContext,
   uid: number,
   master: string,
-  kind: 'nummern' | 'anleitungen',
+  kind: 'numbers' | 'instructions',
 ): Promise<boolean> {
   const s = marker(k).get(uid);
   const alter = s ? k.clock.now() - s.am : Infinity;
@@ -54,10 +54,10 @@ export async function imageReleased(_uid: number, segments: string[]): Promise<b
 /** Names as src/catalog/instructions.ts assigns them: <set>_<n|bdp|brickinstructions>.pdf */
 export async function instructionReleased(k: ImagesContext, uid: number, segments: string[]): Promise<boolean> {
   const m = segments.length === 1 ? /^(.+)_(\d+|bdp|brickinstructions)\.pdf$/.exec(segments[0]!) : null;
-  return !!m && inScope(k, uid, m[1]!, 'anleitungen');
+  return !!m && inScope(k, uid, m[1]!, 'instructions');
 }
 
 /** Wishlist and price alert count as well: a placeholder from there is not a foreign one. */
 export async function setNumberInScope(k: ImagesContext, uid: number, setNumber: string): Promise<boolean> {
-  return inScope(k, uid, fileMaster(setNumber), 'nummern');
+  return inScope(k, uid, fileMaster(setNumber), 'numbers');
 }

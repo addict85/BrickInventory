@@ -67,7 +67,7 @@ test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
       assert.equal(r.absage?.kind, 'not_signed_in', `Versuch ${i + 1}`);
     }
     const r = await checkCredentials(anfrage, VARIANT, 'richtig-geheim');
-    assert.equal(r.absage?.kind, 'zu_viele', 'die Variante bekam frische Zähler');
+    assert.equal(r.absage?.kind, 'too_many', 'die Variante bekam frische Zähler');
   });
 
   await t.test('the reset mail goes to the stored address', async () => {

@@ -17,8 +17,8 @@ export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
 /** The same browser identifier as the image proxy: the CDN rejects an own one with 403,
  * and the image job would then pause endlessly. IMG_USER_AGENT stays as a way out. */
-export function imageUserAgent(k: Pick<AppConfig, 'bildUserAgent'>): string {
-  return k.bildUserAgent || String(IMAGE_HEADERS['User-Agent']);
+export function imageUserAgent(k: Pick<AppConfig, 'imageUserAgent'>): string {
+  return k.imageUserAgent || String(IMAGE_HEADERS['User-Agent']);
 }
 
 /** Only Rebrickable images are stored by the proxy including preview under images/sets. */
@@ -58,12 +58,12 @@ export async function downloadSetImage(
   const buf = await k.externalSources.sources
     .fetchImage(url, {
       maxBytes: SET_IMG_MAX_BYTES,
-      zeitlimitMs: 30_000,
-      kopfzeilen: { ...IMAGE_HEADERS, 'User-Agent': userAgent },
+      timeoutMs: 30_000,
+      headers: { ...IMAGE_HEADERS, 'User-Agent': userAgent },
     })
     .then(
       r => {
-        if (r.status === 200) return r.koerper;
+        if (r.status === 200) return r.body;
         // "404" and "403 bot detection" require different measures; without
         // a real code it counts as temporary in src/images/imageDemandRun.ts.
         const notPresent = r.status === 404 || r.status === 410;

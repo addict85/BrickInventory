@@ -60,29 +60,29 @@ export async function loadImage(
   address: string,
   target: string,
   allowedHosts: readonly string[],
-  kopfzeilen: Record<string, string> = {},
+  headers: Record<string, string> = {},
   reportWarning: (text: string) => void = () => {},
 ): Promise<boolean> {
-  let a: Awaited<ReturnType<ImagesContext['externalSources']['sources']['oeffneBild']>>;
+  let a: Awaited<ReturnType<ImagesContext['externalSources']['sources']['openImage']>>;
   try {
-    a = await k.externalSources.sources.oeffneBild(address, {
+    a = await k.externalSources.sources.openImage(address, {
       hosts: allowedHosts,
       maxBytes: IMAGE_MAX_BYTES,
-      zeitlimitMs: 30_000,
-      kopfzeilen,
+      timeoutMs: 30_000,
+      headers,
     });
   } catch (e) {
     reportWarning(e instanceof Error ? e.message : String(e));
     return false;
   }
   if (a.status !== 200) {
-    a.verwerfen();
+    a.discard();
     reportWarning(`HTTP ${a.status}: ${address.slice(0, 80)}`);
     return false;
   }
-  if (!imageTypeAllowed(a.kopf['content-type'])) {
-    a.verwerfen();
-    reportWarning(`kein Bild (${a.kopf['content-type']}): ${address.slice(0, 80)}`);
+  if (!imageTypeAllowed(a.head['content-type'])) {
+    a.discard();
+    reportWarning(`kein Bild (${a.head['content-type']}): ${address.slice(0, 80)}`);
     return false;
   }
   // Unique per fetch: two concurrent downloads would otherwise write into

@@ -7,7 +7,7 @@ import type * as repo from '../repository/valuation';
 import { asIds, type Sicht } from '../../household';
 import { hatPrice, marketPriceFrom } from '../../catalog';
 import { resolveImageLocal, proxyImageUrl } from '../../images';
-import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
+import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlPercent } from '../setValue';
 import { withVersion } from '../../infra/setNumber';
 import {
   DEFAULT_PRICE_CONDITION,
@@ -18,7 +18,7 @@ import {
   priceFromStock,
   setPriceFromStock,
   partKey,
-  type Blickfeld,
+  type Scope,
   type PriceData,
 } from './prices';
 import { countFlagged } from './queries';
@@ -34,8 +34,8 @@ type ConditionState = 'N' | 'U';
 type Item = Payload<'price_refresh'>['items'][number];
 type MinifigPrice = PriceData & { estimated_from_parts?: true; abdeckung?: number | null };
 
-/** @returns Map key → acquisition rows; key is `konto|nummer|farbe` or `konto|nummer` */
-async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 'part' | 'fig', currency: string) {
+/** @returns Map key → acquisition rows; key is `konto|nummer|color` or `konto|nummer` */
+async function loadManualAcquisitions(k: FinancesContext, uid: Scope, kind: 'part' | 'fig', currency: string) {
   // A main account values the whole household; the currency is forced to be
   // the same when linking, otherwise this would sum two currencies.
   const rows = await k.valuation.manualEntries(kind, asIds(uid), currency);
@@ -50,9 +50,9 @@ async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 
   return out;
 }
 
-function foreignPurchasePrices(jeEntry: Map<string, Array<{ kaufpreis_fremd?: boolean }>>): number {
+function foreignPurchasePrices(jeEntry: Map<string, Array<{ purchase_price_foreign?: boolean }>>): number {
   let n = 0;
-  for (const rows of jeEntry.values()) n += rows.filter(z => z.kaufpreis_fremd).length;
+  for (const rows of jeEntry.values()) n += rows.filter(z => z.purchase_price_foreign).length;
   return n;
 }
 
@@ -70,44 +70,44 @@ async function rememberPricesForAccountBefore(
   return item.length;
 }
 
-type BewertungsSet = Awaited<ReturnType<typeof repo.setsToValuation>>[number];
+type ValuedSet = Awaited<ReturnType<typeof repo.setsToValuation>>[number];
 type SetEntry = Awaited<ReturnType<typeof loadSetEntries>>[number];
 /** What every row needs: the viewer's settings and the preloaded tables. */
-type Bewertungslage = {
+type ValuationState = {
   ttl: number;
   now: number;
   pre: Parameters<typeof setPriceFromStock>[4];
-  fehlt: Item[];
+  missing: Item[];
   withoutAccess: string | null;
 };
 
 /** One row of the valuation: per purchase price the price of ITS condition, condensed
  * in valueSet(), so that the valuation rule stays in ONE place. */
-function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
+function assessSet(set: ValuedSet, acqs: SetEntry[], l: ValuationState) {
   // Without an acquisition the set counts as new (effectiveCondition without counters).
   const fallbackCond: ConditionState = 'N';
   const needed: ConditionState[] = acqs.length ? [...new Set(acqs.map(a => conditionOf(a.condition)))] : [fallbackCond];
-  const preise = new Map<ConditionState, PriceData>(
+  const prices = new Map<ConditionState, PriceData>(
     needed.map(c => [c, setPriceFromStock(set.set_number, c, l.ttl, l.now, l.pre)]),
   );
-  const preisMap = new Map<string, number>();
-  for (const [cond, p] of preise) {
+  const priceMap = new Map<string, number>();
+  for (const [cond, p] of prices) {
     const market = marketPriceFrom(p);
-    if (market !== null) preisMap.set(`${set.set_number}|${cond}`, market);
-    if (p.pending) l.fehlt.push({ kind: 'set', number: set.set_number, condition: cond });
+    if (market !== null) priceMap.set(`${set.set_number}|${cond}`, market);
+    if (p.pending) l.missing.push({ kind: 'set', number: set.set_number, condition: cond });
   }
-  const valued = valueSet(set.set_number, acqs, preisMap, fallbackCond, set.quantity || 1);
-  const rows = valueAcquisitionRows(set.set_number, acqs, preisMap);
+  const valued = valueSet(set.set_number, acqs, priceMap, fallbackCond, set.quantity || 1);
+  const rows = valueAcquisitionRows(set.set_number, acqs, priceMap);
   // Without an acquisition no purchase price, not 0: a 0 would look like a gift.
   const purchase = weightedPurchase(rows);
   // Min/max must match the same quantity split as the average.
   const qty = valued.quantity || 1;
   const weighted = (key: 'min_price' | 'max_price' | 'qty_avg_price') =>
     valued.by_condition
-      .map(bc => (preise.get(bc.condition as ConditionState)?.[key] ?? 0) * bc.quantity)
+      .map(bc => (prices.get(bc.condition as ConditionState)?.[key] ?? 0) * bc.quantity)
       .reduce((a, b) => a + b, 0) / qty;
-  const onePrice = needed.map(c => preise.get(c)).find(p => p && !p.pending);
-  const pending = needed.some(c => preise.get(c)?.pending === true);
+  const onePrice = needed.map(c => prices.get(c)).find(p => p && !p.pending);
+  const pending = needed.some(c => prices.get(c)?.pending === true);
   const unitAvg = valued.unit_price ?? 0;
   const conditions = valued.by_condition.map(bc => bc.condition);
   return {
@@ -133,13 +133,13 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
     value_total: aufRappen((valued.unit_z ?? 0) * qty),
     total_qty_avg: aufRappen((inTenThousandths(weighted('qty_avg_price')) ?? 0) * qty).toFixed(2),
     pnl_pct: calcPnlPct(purchase, unitAvg),
-    pnl_percent: pnlProzent(purchase, unitAvg),
+    pnl_percent: pnlPercent(purchase, unitAvg),
     acquisitions: rows,
     from_cache: true,
     is_fallback: onePrice?.is_fallback === true,
     // A pending price is not a price yet; a check mark would mean "loaded".
     no_price: (!!onePrice || pending) && valued.unit_price == null,
-    bl_unknown: needed.some(c => preise.get(c)?.bl_unknown === true),
+    bl_unknown: needed.some(c => prices.get(c)?.bl_unknown === true),
     price_pending: pending,
     ...(pending && l.withoutAccess && valued.unit_price == null
       ? { error: l.withoutAccess, error_code: 'no_bricklink_access' }
@@ -171,7 +171,7 @@ function valuationSums(
 }
 
 /** One implementation for session route and token API. */
-export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
+export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice: Sicht | Scope) {
   // viewerId determines the settings, ids the calculated data: with the
   // filter "sub-accounts" the asking account is missing from ids.
   const uids = await kx.household.scopeFrom(idsChoice);
@@ -215,10 +215,10 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
         'no_bricklink_access',
         (await kx.settings.userValue(viewerId, 'language', 'de')) === 'en' ? 'en' : 'de',
       );
-  const situation: Bewertungslage = {
+  const situation: ValuationState = {
     ttl,
     now: kx.clock.now(),
-    fehlt: [],
+    missing: [],
     withoutAccess,
     pre: {
       catalog: new Map(catRows.map(r => [r.set_number, r])),
@@ -235,16 +235,16 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
   }
   const results = await kx.household.attachOwners(
     uids,
-    sets.map(set => bewerteSet(set, jeAccountAndSet.get(`${set.user_id}|${set.set_number}`) || [], situation)),
+    sets.map(set => assessSet(set, jeAccountAndSet.get(`${set.user_id}|${set.set_number}`) || [], situation)),
   );
   return {
     ...header,
     // Foreign purchase prices are missing from the sums (no rates); the number says how many there are.
-    foreign_currency_purchases: countFlagged(acqRows, 'kaufpreis_fremd'),
-    converted_purchase_prices: countFlagged(acqRows, 'kaufpreis_umgerechnet'),
+    foreign_currency_purchases: countFlagged(acqRows, 'purchase_price_foreign'),
+    converted_purchase_prices: countFlagged(acqRows, 'purchase_price_converted'),
     sets: results,
     totals: valuationSums(results),
-    prices_pending: await rememberPricesForAccountBefore(kx, viewerId, currency, situation.fehlt),
+    prices_pending: await rememberPricesForAccountBefore(kx, viewerId, currency, situation.missing),
   };
 }
 
@@ -285,7 +285,7 @@ function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string
     acquisitions: rows,
     purchase_price: hasCost ? purchasePrice : null,
     pnl_pct: hasCost ? calcPnlPct(purchasePrice, unitVal) : null,
-    pnl_percent: hasCost ? pnlProzent(purchasePrice, unitVal) : null,
+    pnl_percent: hasCost ? pnlPercent(purchasePrice, unitVal) : null,
     avg_price: unitVal,
     qty_avg_price: unitVal,
     value_total: aufRappen(wert_z),
@@ -301,7 +301,7 @@ function total(rows: Array<{ total_value: string }>) {
 }
 
 /** One implementation for session route and token API. */
-export async function valueMinifigs(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
+export async function valueMinifigs(k: FinancesContext, viewerId: number, idsChoice: Sicht | Scope) {
   const uids = asIds(await k.household.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
     k.settings.userValue(viewerId, 'currency', 'EUR'),
@@ -354,9 +354,9 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
         if (s)
           return {
             min_price: 0,
-            avg_price: s.preis,
+            avg_price: s.price,
             max_price: 0,
-            qty_avg_price: s.preis,
+            qty_avg_price: s.price,
             from_cache: true,
             estimated_from_parts: true as const,
             abdeckung: s.abdeckung,
@@ -379,12 +379,12 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
     figs: results,
     ...total(results),
     foreign_currency_purchases: foreignPurchasePrices(acqByFig),
-    converted_purchase_prices: countFlagged([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
+    converted_purchase_prices: countFlagged([...acqByFig.values()].flat(), 'purchase_price_converted'),
     prices_pending: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
   };
 }
 
-export async function valueParts(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
+export async function valueParts(k: FinancesContext, viewerId: number, idsChoice: Sicht | Scope) {
   const uids = asIds(await k.household.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
     k.settings.userValue(viewerId, 'currency', 'EUR'),
@@ -423,7 +423,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), cond => {
       const p = priceFromStock(c => partStock.get(`${stockKey}|${c}`), cond, ttl, k.clock.now());
       if (p.pending)
-        isMissing.push({ kind: 'teil', number: blNumber(part), farbe: part.color_id ?? NO_COLOR, condition: cond });
+        isMissing.push({ kind: 'teil', number: blNumber(part), color: part.color_id ?? NO_COLOR, condition: cond });
       return p;
     });
     const wert = valueManual(key, acqs, priceMap, part.quantity || 1);
@@ -453,7 +453,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     parts: results,
     ...total(results),
     foreign_currency_purchases: foreignPurchasePrices(acqByPart),
-    converted_purchase_prices: countFlagged([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
+    converted_purchase_prices: countFlagged([...acqByPart.values()].flat(), 'purchase_price_converted'),
     prices_pending: await rememberPricesForAccountBefore(k, viewerId, currency, isMissing),
   };
 }

@@ -17,15 +17,15 @@ import { access, type JobsDependencies, type JobsContext } from './context';
 export type { JobsDependencies, JobsContext } from './context';
 
 /** The kinds are registered by the wiring (reportKindAn); until then the queue accepts none. */
-export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspect?: Inspect<JobsContext>) {
-  const arten = new Kinds();
+export function createJobs(a: Omit<JobsDependencies, 'compartments' | 'kinds'>, inspect?: Inspect<JobsContext>) {
+  const kinds = new Kinds();
   return buildArea(
-    { ...a, faecher: new Compartments(), arten },
+    { ...a, compartments: new Compartments(), kinds },
     (db: Db) => access(db, a.readContract),
     (k: JobsContext) => ({
-      registerKind: (an: Login) => arten.report(an),
-      signedInKinds: () => arten.all(),
-      checkPayload: arten.check.bind(arten) as Kinds['check'],
+      registerKind: (an: Login) => kinds.report(an),
+      signedInKinds: () => kinds.all(),
+      checkPayload: kinds.check.bind(kinds) as Kinds['check'],
       supplementListenJob: bound(k)(service.supplementListenJob),
       setProgress: bound(k)(service.setProgress),
       done: bound(k)(service.done),
@@ -42,7 +42,7 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
       jobsInOverview: bound(k)(background.jobsInOverview),
       emptyJobKind: bound(k)(background.emptyJobKind),
       jobKindNow: bound(k)(background.jobKindNow),
-      cancelJob: bound(k)(background.auftragAbbrechen),
+      cancelJob: bound(k)(background.cancelJob),
       retryJob: bound(k)(background.retryJob),
       setResult: bound(k)(importAsJob.setResult),
       setSlotError: bound(k)(importAsJob.setSlotError),
@@ -62,7 +62,7 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
       deleteOwn: bound(k)(own.deleteOwn),
       countRunning: bound(k)(own.countRunning),
       deleteEnded: bound(k)(own.deleteEnded),
-      wiedervorlage: {
+      resubmission: {
         rememberBefore: bound(k)(resubmission.rememberBefore),
         forget: bound(k)(resubmission.forget),
         now: bound(k)(resubmission.now),

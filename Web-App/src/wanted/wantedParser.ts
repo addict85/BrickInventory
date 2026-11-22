@@ -23,7 +23,7 @@ export interface WantedItem {
 
 /** Two searches for fixed text instead of `<name>([\s\S]*?)</name>`: with an open tag the lazy
  * pattern restarts at every match position — quadratic. */
-function between(text: string, name: string, ab: number): { inhalt: string; ende: number } | null {
+function between(text: string, name: string, ab: number): { content: string; end: number } | null {
   const auf = new RegExp(`<${name}>`, 'gi');
   auf.lastIndex = ab;
   const a = auf.exec(text);
@@ -32,7 +32,7 @@ function between(text: string, name: string, ab: number): { inhalt: string; ende
   zu.lastIndex = auf.lastIndex;
   const z = zu.exec(text);
   if (!z) return null;
-  return { inhalt: text.slice(auf.lastIndex, z.index), ende: zu.lastIndex };
+  return { content: text.slice(auf.lastIndex, z.index), end: zu.lastIndex };
 }
 
 function field(block: string, name: string): string | null {
@@ -40,7 +40,7 @@ function field(block: string, name: string): string | null {
   if (!m) return null;
   // Only the five predefined entities; &amp; LAST, otherwise
   // "&amp;lt;" would become a "<".
-  return m.inhalt
+  return m.content
     .trim()
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
@@ -55,6 +55,26 @@ export interface ReadResult {
   withoutNumber: number;
 }
 
+/** The values of one ITEM whose kind and number are known. */
+function itemOf(block: string, kind: WantedItem['kind'], blId: string): WantedItem {
+  const colorRaw = field(block, 'COLOR');
+  const color = colorRaw === null ? null : parseInt(colorRaw, 10);
+  const quantityRaw = parseInt(field(block, 'MINQTY') ?? '1', 10);
+  const stateRaw = (field(block, 'CONDITION') ?? '').toUpperCase();
+  const priceRaw = parseFloat(field(block, 'MAXPRICE') ?? '');
+  return {
+    kind,
+    blId,
+    // At BrickLink color 0 is "(Not Applicable)", not a color.
+    blColor: color !== null && Number.isFinite(color) && color > 0 ? color : null,
+    quantity: Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1,
+    // X means "any": null, so that the account's setting decides.
+    condition: stateRaw === 'N' || stateRaw === 'U' ? stateRaw : null,
+    // MAXPRICE is a search limit, not a purchase price — -1 means "none".
+    maxPrice: Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw : null,
+  };
+}
+
 /** Does NOT throw for foreign kinds or missing fields: a list that is nine tenths
  * usable should arrive nine tenths complete; the rest is in the result. */
 export function readWantedList(xml: string): ReadResult {
@@ -62,38 +82,14 @@ export function readWantedList(xml: string): ReadResult {
   const foreignTypes: Record<string, number> = {};
   let withoutNumber = 0;
 
-  for (let m = between(xml, 'ITEM', 0); m !== null; m = between(xml, 'ITEM', m.ende)) {
-    const block = m.inhalt;
+  for (let m = between(xml, 'ITEM', 0); m !== null; m = between(xml, 'ITEM', m.end)) {
+    const block = m.content;
     const type = (field(block, 'ITEMTYPE') ?? '').toUpperCase();
     const kind = KINDS[type];
     const blId = field(block, 'ITEMID');
-
-    if (!blId) {
-      withoutNumber++;
-      continue;
-    }
-    if (!kind) {
-      foreignTypes[type || '(ohne)'] = (foreignTypes[type || '(ohne)'] ?? 0) + 1;
-      continue;
-    }
-
-    const colorRaw = field(block, 'COLOR');
-    const color = colorRaw === null ? null : parseInt(colorRaw, 10);
-    const quantityRaw = parseInt(field(block, 'MINQTY') ?? '1', 10);
-    const stateRaw = (field(block, 'CONDITION') ?? '').toUpperCase();
-    const priceRaw = parseFloat(field(block, 'MAXPRICE') ?? '');
-
-    items.push({
-      kind,
-      blId,
-      // At BrickLink color 0 is "(Not Applicable)", not a color.
-      blColor: color !== null && Number.isFinite(color) && color > 0 ? color : null,
-      quantity: Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1,
-      // X means "any": null, so that the account's setting decides.
-      condition: stateRaw === 'N' || stateRaw === 'U' ? stateRaw : null,
-      // MAXPRICE is a search limit, not a purchase price — -1 means "none".
-      maxPrice: Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw : null,
-    });
+    if (!blId) withoutNumber++;
+    else if (!kind) foreignTypes[type || '(ohne)'] = (foreignTypes[type || '(ohne)'] ?? 0) + 1;
+    else items.push(itemOf(block, kind, blId));
   }
 
   return { items, foreignTypes, withoutNumber };

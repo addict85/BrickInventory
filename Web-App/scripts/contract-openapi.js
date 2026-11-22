@@ -11,8 +11,8 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const DATEI = path.join(ROOT, 'docs', 'openapi.json');
-const DATEI_V2 = path.join(ROOT, 'docs', 'openapi-v2.json');
+const OUT_FILE = path.join(ROOT, 'docs', 'openapi.json');
+const OUT_FILE_V2 = path.join(ROOT, 'docs', 'openapi-v2.json');
 
 /** The text as it should stand in the file. @param {Record<string, unknown>} doc */
 const alsText = doc => JSON.stringify(doc, null, 2) + '\n';
@@ -28,14 +28,14 @@ if (require.main === module) {
     fs.writeFileSync(file, text);
     console.log(`geschrieben: ${path.relative(ROOT, file)}`);
   };
-  write(DATEI, alsText(openapi(1)));
-  write(DATEI_V2, alsText(openapi(2)));
+  write(OUT_FILE, alsText(openapi(1)));
+  write(OUT_FILE_V2, alsText(openapi(2)));
   // The UI speaks v2; its types follow in the same step.
-  const typen = require('./contract-frontend-types.js');
-  write(typen.ZIEL, typen.create(JSON.parse(fs.readFileSync(DATEI_V2, 'utf8'))));
+  const types = require('./contract-frontend-types.js');
+  write(types.TARGET_FILE, types.create(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
   // The app stays on v1 until it moves itself (UPGRADE.md).
   const kotlin = require('./contract-kotlin-dtos.js');
-  write(kotlin.ZIEL, kotlin.create(JSON.parse(fs.readFileSync(DATEI, 'utf8'))));
+  write(kotlin.TARGET_FILE, kotlin.create(JSON.parse(fs.readFileSync(OUT_FILE, 'utf8'))));
 }
 
-module.exports = { DATEI, DATEI_V2, alsText };
+module.exports = { OUT_FILE, OUT_FILE_V2, alsText };

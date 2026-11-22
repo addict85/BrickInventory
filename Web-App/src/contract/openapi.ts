@@ -26,8 +26,8 @@ export function namedSchemas(): Map<string, z.ZodType> {
     ['ErrorBody', ErrorBody],
     ['ErrorCode', ErrorCode],
   ]);
-  for (const [area, modul] of Object.entries(AREAS)) {
-    for (const [name, value] of Object.entries(modul)) {
+  for (const [area, mod] of Object.entries(AREAS)) {
+    for (const [name, value] of Object.entries(mod)) {
       if (!(value instanceof z.ZodType) || from.get(name) === value) continue;
       if (from.has(name)) throw new Error(`Schema ${name} gibt es zweimal (zuletzt in ${area})`);
       from.set(name, value);
@@ -77,8 +77,8 @@ function components(v: Version) {
     named.set(schema, id);
   };
   for (const [name, schema] of namedSchemas()) take(v.schema(schema), v.name(name));
-  for (const modul of Object.values(AREAS))
-    for (const [key, r] of Object.entries(modul.routes as Record<string, Route>)) {
+  for (const mod of Object.values(AREAS))
+    for (const [key, r] of Object.entries(mod.routes as Record<string, Route>)) {
       const id = v
         .key(key)
         .replace(/[^A-Za-z0-9]+/g, '_')
@@ -107,6 +107,63 @@ function pathParameters(v2Path: string, path: string) {
   });
 }
 
+function queryParameters(r: Route, v: Version): Record<string, unknown>[] {
+  const query = v.schema(r.query);
+  if (!query) return [];
+  const s = z.toJSONSchema(query, { io: 'input', unrepresentable: 'any' });
+  const mandatory = new Set(s.required ?? []);
+  return Object.entries(s.properties ?? {}).map(([name, schema]) => ({
+    name,
+    in: 'query',
+    required: mandatory.has(name),
+    schema,
+    ...((schema as { deprecated?: boolean }).deprecated ? { deprecated: true } : {}),
+  }));
+}
+
+function requestBody(r: Route, v: Version): Record<string, unknown> | undefined {
+  const input = v.schema(r.input);
+  const body = input ? z.toJSONSchema(input, { io: 'input', unrepresentable: 'any' }) : undefined;
+  delete body?.$schema;
+  if (r.form)
+    return {
+      content: {
+        'multipart/form-data': {
+          schema: {
+            ...body,
+            type: 'object',
+            properties: { file: { type: 'string', format: 'binary' }, ...body?.properties },
+          },
+        },
+      },
+    };
+  return body ? { content: { 'application/json': { schema: body } } } : undefined;
+}
+
+function operation(
+  r: Route,
+  v: Version,
+  named: Map<z.ZodType, string>,
+  tag: string,
+  parameters: Record<string, unknown>[],
+): Record<string, unknown> {
+  const op: Record<string, unknown> = {
+    tags: [tag],
+    ...(parameters.length ? { parameters } : {}),
+    responses: {
+      200: success(r, v, named),
+      default: { description: 'Error', content: { 'application/json': { schema: { $ref: URI(v.errorSchema) } } } },
+    },
+  };
+  const body = requestBody(r, v);
+  if (body) op.requestBody = body;
+  if (r.confirmation)
+    op[v.x.confirmation] = { [v.x.password]: v.field(r.confirmation.password), code: v.field(r.confirmation.code) };
+  if (r.secret) op[v.x.secret] = true;
+  if (r.small) op[v.x.small] = true;
+  return op;
+}
+
 export function openapi(version: ApiPath = 1): Record<string, unknown> {
   const v = version === 1 ? V1 : V2;
   const { register, named } = components(v);
@@ -117,54 +174,13 @@ export function openapi(version: ApiPath = 1): Record<string, unknown> {
   }
 
   const paths: Record<string, Record<string, unknown>> = {};
-  for (const [area, modul] of Object.entries(AREAS)) {
-    for (const [contractKey, r] of Object.entries(modul.routes as Record<string, Route>)) {
+  for (const [area, mod] of Object.entries(AREAS)) {
+    for (const [contractKey, r] of Object.entries(mod.routes as Record<string, Route>)) {
       const [method = '', path = ''] = v.key(contractKey).split(' ');
-      const parameters = pathParameters(contractKey.split(' ')[1] ?? '', path);
-      const query = v.schema(r.query);
-      if (query) {
-        const s = z.toJSONSchema(query, { io: 'input', unrepresentable: 'any' });
-        const mandatory = new Set(s.required ?? []);
-        for (const [name, schema] of Object.entries(s.properties ?? {}))
-          parameters.push({
-            name,
-            in: 'query',
-            required: mandatory.has(name),
-            schema,
-            ...((schema as { deprecated?: boolean }).deprecated ? { deprecated: true } : {}),
-          });
-      }
-      const op: Record<string, unknown> = {
-        tags: [v.area(area)],
-        ...(parameters.length ? { parameters } : {}),
-        responses: {
-          200: success(r, v, named),
-          default: { description: 'Error', content: { 'application/json': { schema: { $ref: URI(v.errorSchema) } } } },
-        },
-      };
-      const input = v.schema(r.input);
-      const body = input ? z.toJSONSchema(input, { io: 'input', unrepresentable: 'any' }) : undefined;
-      delete body?.$schema;
-      if (r.form)
-        op.requestBody = {
-          content: {
-            'multipart/form-data': {
-              schema: {
-                ...body,
-                type: 'object',
-                properties: { file: { type: 'string', format: 'binary' }, ...body?.properties },
-              },
-            },
-          },
-        };
-      else if (body) op.requestBody = { content: { 'application/json': { schema: body } } };
-      if (r.confirmation)
-        op[v.x.confirmation] = { [v.x.password]: v.field(r.confirmation.password), code: v.field(r.confirmation.code) };
-      if (r.secret) op[v.x.secret] = true;
-      if (r.small) op[v.x.small] = true;
+      const parameters = [...pathParameters(contractKey.split(' ')[1] ?? '', path), ...queryParameters(r, v)];
       const oaPath = path.replace(/:(\w+)/g, '{$1}');
       paths[oaPath] ??= {};
-      paths[oaPath][method.toLowerCase()] = op;
+      paths[oaPath][method.toLowerCase()] = operation(r, v, named, v.area(area), parameters);
     }
   }
   const sorted = <T>(o: Record<string, T>) =>

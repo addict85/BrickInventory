@@ -4,7 +4,7 @@ import type { Db } from '../../db/database';
 import type { Compartments } from '../infra/cache';
 import { imSystem, bound, type Context } from '../infra/area';
 import * as setup from './repository/setup';
-import * as konten from './repository/accounts';
+import * as accounts from './repository/accounts';
 import * as log from './repository/log';
 import * as qrPairing from './repository/qrPairing';
 import * as startAdmin from './repository/startAdmin';
@@ -24,7 +24,7 @@ export interface AccountDependencies {
   config: Readonly<AppConfig>;
   db: Db;
   /** State per access (token cache, session versions); createAccount creates them. */
-  faecher: Compartments;
+  compartments: Compartments;
   settings: SettingsServices;
   jobQueue: JobsServices;
   household: HouseholdServices;
@@ -47,55 +47,55 @@ const ALL_NAMES = 'Fremde Konten: Die Laufzeitrolle sieht nur das eigene und den
 
 /** The setup state of the start page: accounts at all, and whether the start password still applies. */
 const setupAccess = (db: Db) => ({
-  einrichtung: { accountsStatus: imSystem(db, ALL_NAMES, setup.accountsStatus) },
+  setup: { accountsStatus: imSystem(db, ALL_NAMES, setup.accountsStatus) },
 });
 
 /** Accounts and log. */
 const accountAccess = (db: Db) => ({
-  konten: {
-    accountShort: imSystem(db, ALL_NAMES, konten.accountShort),
-    accountToNames: imSystem(db, WITHOUT_ACCOUNT, konten.accountToNames),
-    accountFull: imSystem(db, ADDRESS, konten.accountFull),
-    profileRow: imSystem(db, ADDRESS, konten.profileRow),
-    nameTaken: imSystem(db, ADDRESS, konten.nameTaken),
-    changeNames: bound(db)(konten.changeNames),
-    changeUsernames: imSystem(db, ACCESS, konten.changeUsernames),
-    discardPendingAddress: imSystem(db, ACCESS, konten.discardPendingAddress),
-    rememberEmailNew: imSystem(db, ACCESS, konten.rememberEmailNew),
-    accountToEmailToken: imSystem(db, ADDRESS, konten.accountToEmailToken),
-    adoptEmailNew: imSystem(db, ACCESS, konten.adoptEmailNew),
-    discardEmailNew: imSystem(db, ACCESS, konten.discardEmailNew),
-    nameForEmailToken: imSystem(db, ADDRESS, konten.nameForEmailToken),
-    openRegistrations: imSystem(db, ADDRESS, konten.openRegistrations),
-    switchRegistrationFree: imSystem(db, ACCESS, konten.switchRegistrationFree),
-    pendingWithoutLink: imSystem(db, ADDRESS, konten.pendingWithoutLink),
-    allAccounts: imSystem(db, 'Verwaltung: liest alle Konten', konten.allAccounts),
-    allAddresses: imSystem(db, ADDRESS, konten.allAddresses),
-    activeAdmin: imSystem(db, ADDRESS, konten.activeAdmin),
-    addAccountOne: imSystem(db, ACCESS, konten.addAccountOne),
-    setAdmin: imSystem(db, ACCESS, konten.setAdmin),
-    writeActive: imSystem(db, ACCESS, konten.writeActive),
-    setPasswordHash: imSystem(db, ACCESS, konten.setPasswordHash),
-    setOwnPassword: imSystem(db, ACCESS, konten.setOwnPassword),
-    accountExists: imSystem(db, ALL_NAMES, konten.accountExists),
-    deleteAccount: imSystem(db, ACCESS, konten.deleteAccount),
-    deleteOwnAccount: imSystem(db, ACCESS, konten.deleteOwnAccount),
-    deleteOpenRegistrations: imSystem(db, ACCESS, konten.deleteOpenRegistrations),
-    accountWithEmail: imSystem(db, ADDRESS, konten.accountWithEmail),
-    registerAccount: imSystem(db, ACCESS, konten.registerAccount),
-    activeAccountAfterEmail: imSystem(db, ADDRESS, konten.activeAccountAfterEmail),
-    setResetTokenIfFree: imSystem(db, ACCESS, konten.setResetTokenIfFree),
-    renewEmailTokenIfFree: imSystem(db, ACCESS, konten.renewEmailTokenIfFree),
-    accountAfterResetToken: imSystem(db, ADDRESS, konten.accountAfterResetToken),
-    resetSetPasswordAfter: imSystem(db, ACCESS, konten.resetSetPasswordAfter),
-    accessesOfAccount: bound(db)(konten.accessesOfAccount),
-    tokenStand: imSystem(db, 'Token-Prüfung: sucht über den Hash, ohne Konto', konten.tokenStand),
-    deleteAccess: bound(db)(konten.deleteAccess),
-    deleteOtherAccesses: bound(db)(konten.deleteOtherAccesses),
-    deleteOtherSessions: imSystem(db, SYSTEM_ROLE_ONLY, konten.deleteOtherSessions),
-    mustChangePassword: bound(db)(konten.mustChangePassword),
+  accounts: {
+    accountShort: imSystem(db, ALL_NAMES, accounts.accountShort),
+    accountToNames: imSystem(db, WITHOUT_ACCOUNT, accounts.accountToNames),
+    accountFull: imSystem(db, ADDRESS, accounts.accountFull),
+    profileRow: imSystem(db, ADDRESS, accounts.profileRow),
+    nameTaken: imSystem(db, ADDRESS, accounts.nameTaken),
+    changeNames: bound(db)(accounts.changeNames),
+    changeUsernames: imSystem(db, ACCESS, accounts.changeUsernames),
+    discardPendingAddress: imSystem(db, ACCESS, accounts.discardPendingAddress),
+    rememberEmailNew: imSystem(db, ACCESS, accounts.rememberEmailNew),
+    accountToEmailToken: imSystem(db, ADDRESS, accounts.accountToEmailToken),
+    adoptEmailNew: imSystem(db, ACCESS, accounts.adoptEmailNew),
+    discardEmailNew: imSystem(db, ACCESS, accounts.discardEmailNew),
+    nameForEmailToken: imSystem(db, ADDRESS, accounts.nameForEmailToken),
+    openRegistrations: imSystem(db, ADDRESS, accounts.openRegistrations),
+    switchRegistrationFree: imSystem(db, ACCESS, accounts.switchRegistrationFree),
+    pendingWithoutLink: imSystem(db, ADDRESS, accounts.pendingWithoutLink),
+    allAccounts: imSystem(db, 'Verwaltung: liest alle Konten', accounts.allAccounts),
+    allAddresses: imSystem(db, ADDRESS, accounts.allAddresses),
+    activeAdmin: imSystem(db, ADDRESS, accounts.activeAdmin),
+    addAccountOne: imSystem(db, ACCESS, accounts.addAccountOne),
+    setAdmin: imSystem(db, ACCESS, accounts.setAdmin),
+    writeActive: imSystem(db, ACCESS, accounts.writeActive),
+    setPasswordHash: imSystem(db, ACCESS, accounts.setPasswordHash),
+    setOwnPassword: imSystem(db, ACCESS, accounts.setOwnPassword),
+    accountExists: imSystem(db, ALL_NAMES, accounts.accountExists),
+    deleteAccount: imSystem(db, ACCESS, accounts.deleteAccount),
+    deleteOwnAccount: imSystem(db, ACCESS, accounts.deleteOwnAccount),
+    deleteOpenRegistrations: imSystem(db, ACCESS, accounts.deleteOpenRegistrations),
+    accountWithEmail: imSystem(db, ADDRESS, accounts.accountWithEmail),
+    registerAccount: imSystem(db, ACCESS, accounts.registerAccount),
+    activeAccountAfterEmail: imSystem(db, ADDRESS, accounts.activeAccountAfterEmail),
+    setResetTokenIfFree: imSystem(db, ACCESS, accounts.setResetTokenIfFree),
+    renewEmailTokenIfFree: imSystem(db, ACCESS, accounts.renewEmailTokenIfFree),
+    accountAfterResetToken: imSystem(db, ADDRESS, accounts.accountAfterResetToken),
+    resetSetPasswordAfter: imSystem(db, ACCESS, accounts.resetSetPasswordAfter),
+    accessesOfAccount: bound(db)(accounts.accessesOfAccount),
+    tokenStand: imSystem(db, 'Token-Prüfung: sucht über den Hash, ohne Konto', accounts.tokenStand),
+    deleteAccess: bound(db)(accounts.deleteAccess),
+    deleteOtherAccesses: bound(db)(accounts.deleteOtherAccesses),
+    deleteOtherSessions: imSystem(db, SYSTEM_ROLE_ONLY, accounts.deleteOtherSessions),
+    mustChangePassword: bound(db)(accounts.mustChangePassword),
   },
-  protokoll: {
+  log: {
     logEntry: imSystem(db, ALL_NAMES, log.logEntry),
     lastEntries: imSystem(db, ALL_NAMES, log.lastEntries),
     cleanLogOn: imSystem(db, ALL_ACCOUNTS, log.cleanLogOn),
@@ -115,7 +115,7 @@ const sessionAccess = (db: Db) => ({
     countQrFailedAttempt: imSystem(db, 'wie markiereBestaetigt', qrPairing.countQrFailedAttempt),
     markRejected: imSystem(db, 'Auch das Gerät ohne Konto lehnt ab', qrPairing.markRejected),
   },
-  uebernahmen: {
+  takeovers: {
     scheduleTermination: imSystem(db, TAKEOVER, takeovers.scheduleTermination),
     adminOrJustBeen: imSystem(db, TAKEOVER, takeovers.adminOrJustBeen),
     takeDue: imSystem(db, TAKEOVER, takeovers.takeDue),
@@ -123,7 +123,7 @@ const sessionAccess = (db: Db) => ({
     targetToAbort: imSystem(db, 'Abbruch-Link: Die Anfrage trägt kein Konto', takeovers.targetToAbort),
     announced: imSystem(db, TAKEOVER, takeovers.announced),
   },
-  startVerwalter: {
+  startAdmin: {
     accountsPresent: imSystem(db, ALL_NAMES, startAdmin.accountsPresent),
     openStartPassword: imSystem(db, ALL_NAMES, startAdmin.openStartPassword),
     createAdmin: imSystem(db, ACCESS, startAdmin.createAdmin),

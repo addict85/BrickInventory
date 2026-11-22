@@ -12,5 +12,5 @@ declare module '../jobQueue/jobs' {
 }
 
 export function accountJobTypes(): Login[] {
-  return [jobKind({ kind: 'account_files', payload: AccountFiles, ausfuehren: n => deleteAccountFiles(n.user_id) })];
+  return [jobKind({ kind: 'account_files', payload: AccountFiles, run: n => deleteAccountFiles(n.user_id) })];
 }

@@ -2,7 +2,7 @@ import { forSet, mergeInstructions } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { reportError } from '../infra/error';
 import * as repo from './repository/sets';
-import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../household';
+import { asIds, type Sicht, type ScopeInput as Scope } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../inventory';
 
 // Read queries; condition from the acquisitions.
@@ -13,11 +13,7 @@ import type { SetsContext } from './context';
 
 /** Filtering and sorting on the server, so that they work together with page-wise
  * loading. Without page_size everything — that is how the Android app calls. */
-export async function readSets(
-  sk: SetsContext,
-  userIdChoice: Sicht | Blickfeld,
-  query: Query<'GET /api/v2/sets'> = {},
-) {
+export async function readSets(sk: SetsContext, userIdChoice: Sicht | Scope, query: Query<'GET /api/v2/sets'> = {}) {
   const userId = await sk.household.scopeFrom(userIdChoice);
   // asIds(), so that older callers with a bare ID keep working.
   const uids = asIds(userId);
@@ -30,8 +26,8 @@ export async function readSets(
     theme,
     sort,
     storage: query.storage,
-    seite: size ? { groesse: size, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * size } : null,
-    themen: !!page_size && parseInt(String(page), 10) <= 1,
+    page: size ? { size: size, offset: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * size } : null,
+    themes: !!page_size && parseInt(String(page), 10) <= 1,
   });
 
   // Instructions only for the sets of THIS page; without sets both queries are dropped.
@@ -78,7 +74,7 @@ export async function readSets(
 }
 
 // One used acquisition makes the set used; the rule lives only here.
-export async function conditionAggregate(sk: SetsContext, userId: Blickfeld, setNumber: string) {
+export async function conditionAggregate(sk: SetsContext, userId: Scope, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setEntryMetrics(sk.db, uids, setNumber);
   const acqCount = Number(acq?.acq_count) || 0;
@@ -98,7 +94,7 @@ export async function conditionAggregate(sk: SetsContext, userId: Blickfeld, set
 /** So that the write endpoints update the tile without reloading. */
 export async function withSetAggregate<T extends object>(
   sk: SetsContext,
-  userId: Blickfeld,
+  userId: Scope,
   setNumber: string,
   payload: T,
 ) {
@@ -107,7 +103,7 @@ export async function withSetAggregate<T extends object>(
   return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
 }
 
-export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, setNumber: string) {
+export async function readSet(sk: SetsContext, userIdChoice: Sicht | Scope, setNumber: string) {
   const userId = await sk.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([

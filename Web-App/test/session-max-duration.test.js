@@ -120,10 +120,10 @@ test('administrator sessions have shorter periods', async t => {
   await t.test('administrators never longer than all others', () => {
     const { sessionDeadlines: sitzungsfristen } = _req('src/account/sessionDeadline.js');
     const f = sitzungsfristen({
-      sitzungHoechstStd: 2,
-      sitzungLeerlaufMin: 10,
-      sitzungVerwalterHoechstStd: 12,
-      sitzungVerwalterLeerlaufMin: 30,
+      sessionMaxHours: 2,
+      sessionIdleMin: 10,
+      sessionAdminMaxHours: 12,
+      sessionAdminIdleMin: 30,
     });
     assert.deepEqual(f, {
       maxMs: 2 * 3_600_000,

@@ -58,7 +58,7 @@ test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
     arten: ['csv_import'],
-    taktMs: 50,
+    tickMs: 50,
   });
   t.after(async () => {
     await worker.stop(0);

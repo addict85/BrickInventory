@@ -20,7 +20,7 @@ export interface DevicesDependencies {
 const WITHOUT_ACCOUNT = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 
 export const access = (db: Db, l: DevicesReadContract) => ({
-  geraeteSchluessel: {
+  deviceKeys: {
     familyOfTokens: bound(l)(imSystem(db, WITHOUT_ACCOUNT, deviceKey.familyOfTokens)),
     keyThe: imSystem(db, WITHOUT_ACCOUNT, deviceKey.keyThe),
     entryThe: imSystem(db, WITHOUT_ACCOUNT, deviceKey.entryThe),

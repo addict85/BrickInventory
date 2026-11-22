@@ -47,12 +47,12 @@ export async function verifyEmailToken(
 ): Promise<{ userId: number }> {
   const leer = token === undefined || token === null || String(token).trim() === '';
   const hash = tokenDigest(String(token));
-  const id = leer ? undefined : await k.konten.accountToEmailToken(hash);
-  if (id === undefined) failDomain('ungueltig', 'confirmation_link_invalid');
-  const ok = await accessTransaction(k, t => t.konten.adoptEmailNew(id, hash)).catch(duplicateAs(false));
+  const id = leer ? undefined : await k.accounts.accountToEmailToken(hash);
+  if (id === undefined) failDomain('invalid', 'confirmation_link_invalid');
+  const ok = await accessTransaction(k, t => t.accounts.adoptEmailNew(id, hash)).catch(duplicateAs(false));
   if (!ok) {
-    await k.konten.discardEmailNew(id, hash);
-    failDomain('ungueltig', 'email_taken');
+    await k.accounts.discardEmailNew(id, hash);
+    failDomain('invalid', 'email_taken');
   }
   return { userId: id };
 }
@@ -67,9 +67,9 @@ export const passwordToShort = passwordRule.passwordToShort;
 export function assertLoginAllowed(
   user: AccountState,
 ): { kind: ErrorKind; code: ErrorCode; unverified?: boolean } | null {
-  if (!user.is_active) return { kind: 'verboten', code: 'account_deactivated' };
+  if (!user.is_active) return { kind: 'forbidden', code: 'account_deactivated' };
   if (user.registration_pending === true && !user.is_admin)
-    return { kind: 'verboten', code: 'email_not_confirmed', unverified: true };
+    return { kind: 'forbidden', code: 'email_not_confirmed', unverified: true };
   return null;
 }
 
@@ -85,12 +85,12 @@ export interface LoginRejection {
   /** The client then shows "Resend email". */
   unverified?: boolean;
   /** The password is right; the code of the second factor is missing (or failed). */
-  zweiterFaktor?: boolean;
+  secondFactor?: boolean;
   /** Instead of the code a passkey response works too. */
   passkey?: boolean;
 }
 
-export type LoginResult = { ok: true; user: Record<string, unknown> } | { ok: false; absage: LoginRejection };
+export type LoginResult = { ok: true; user: Record<string, unknown> } | { ok: false; refusal: LoginRejection };
 
 export interface Origin {
   ip?: string | null;
@@ -105,12 +105,12 @@ function refusal(
 ): LoginResult {
   return {
     ok: false,
-    absage: {
+    refusal: {
       kind,
       code,
       ...(vars ? { vars } : {}),
       ...(unverified ? { unverified: true } : {}),
-      ...(secondFactor ? { zweiterFaktor: true } : {}),
+      ...(secondFactor ? { secondFactor: true } : {}),
     },
   };
 }
@@ -126,8 +126,8 @@ export async function checkCredentials(
   code?: string | number | null | undefined,
   passkeyResponse?: unknown,
 ): Promise<LoginResult> {
-  if (!username || !password) return refusal('ungueltig', 'username_password');
-  if (!loginNameValid(username)) return refusal('ungueltig', 'enter_name_or_email');
+  if (!username || !password) return refusal('invalid', 'username_password');
+  if (!loginNameValid(username)) return refusal('invalid', 'enter_name_or_email');
 
   const ip = origin.ip || '?';
   const name = String(username);
@@ -135,17 +135,40 @@ export async function checkCredentials(
   if (locked) {
     reportLoginEvent('anmeldung_gesperrt', {
       ip,
-      konto: (await k.accesses.accountToLogin(name))?.id ?? null,
+      account: (await k.accesses.accountToLogin(name))?.id ?? null,
     });
-    return refusal('zu_viele', locked.code, locked.vars);
+    return refusal('too_many', locked.code, locked.vars);
   }
 
   const user = await k.accesses.accountToLogin(name);
   const withFactor = (passkeyResponse !== undefined && passkeyResponse !== null) || !!String(code ?? '').trim();
   if (await onlyStillWithFactor(k, ip, name, user?.id, withFactor))
-    return refusal('zu_viele', 'account_daily_limit', undefined, false, true);
-  // Even without a hit, against DUMMY_HASH: the same time for unknown names. Whoever last logged in
-  // from here waits at the front under load: a flood of foreign addresses does not lock them out.
+    return refusal('too_many', 'account_daily_limit', undefined, false, true);
+  const passwordRefusal = await checkPassword(k, ip, name, user, password);
+  if (passwordRefusal || !user) return passwordRefusal ?? refusal('not_signed_in', 'credentials_invalid');
+  const factor = await checkSecondFactor(k, { ip, name, uid: user.id }, code, passkeyResponse);
+  if ('refused' in factor) return factor.refused;
+  const method = factor.method;
+  // Only now, after password and second factor: the plaintext only exists on a login.
+  if (needsNewHash(user.password_hash))
+    await k.accesses.replacePasswordHash(user.id, user.password_hash, await hashPassword(password));
+  await loginSucceeded(k, ip, name);
+  reportLogin({ ip, account: Number(user.id), method });
+  return { ok: true, user };
+}
+
+type LoginUser = Awaited<ReturnType<AccountContext['accesses']['accountToLogin']>>;
+
+/** Even without a hit, against DUMMY_HASH: the same time for unknown names. Whoever last logged in
+ * from here waits at the front under load: a flood of foreign addresses does not lock them out.
+ * @returns the refusal, or null when the password fits an account that may log in */
+async function checkPassword(
+  k: AccountContext,
+  ip: string,
+  name: string,
+  user: LoginUser,
+  password: string,
+): Promise<LoginResult | null> {
   const priority = await knownLogin(k, ip, name);
   let passwordMatches: boolean;
   try {
@@ -153,56 +176,58 @@ export async function checkCredentials(
   } catch (e) {
     if (!(e instanceof BcryptOverload)) throw e;
     await giveLoginSpaceFree(k, ip, name);
-    return refusal('nicht_verfuegbar', 'server_busy');
+    return refusal('unavailable', 'server_busy');
   }
   // Locked or unconfirmed like a wrong password: a rejection of its own would reveal that it was right.
   if (!user || !passwordMatches || assertLoginAllowed(user)) {
     await failedAttempt(k, 'anmeldung_fehlgeschlagen', ip, name, user?.id);
     return refusal('not_signed_in', 'credentials_invalid');
   }
+  return null;
+}
 
-  let zugang: LoginMethod = 'passwort';
-  if (await k.factors.isActive(user.id)) {
-    // A passkey replaces the code — bound to THIS account, whose password was right.
-    const withPasskey = passkeyResponse !== undefined && passkeyResponse !== null;
-    zugang = withPasskey ? 'passwort+passkey' : 'passwort+code';
-    const hatPasskey = await k.factors.hasPasskeys(user.id);
-    const supplemented = (e: LoginResult) => {
-      if (!e.ok && hatPasskey) e.absage.passkey = true;
-      return e;
-    };
-    if (!withPasskey && !String(code ?? '').trim()) {
-      // The password was right; only the code is still missing — not a failed attempt.
-      await giveLoginSpaceFree(k, ip, name);
-      return supplemented(refusal('not_signed_in', 'second_factor_required', undefined, false, true));
-    }
-    const onlyFallbackPath = !withPasskey && (await factorCodeLocked(k, user.id));
-    const gilt = withPasskey
-      ? (await k.factors.verifyAuthentication(passkeyResponse, 'second_factor', user.id)) === user.id
-      : await k.factors.checkCode(user.id, code, !onlyFallbackPath);
-    if (!gilt) {
-      await failedAttempt(k, 'second_factor_wrong', ip, name, user.id);
-      // Immediately, not only with the account lock: whoever guesses here knows the password.
-      const reached = !withPasskey && (await factorCodeWrong(k, user.id));
-      if (reached) hintInBackground(k, user.id, 'second_factor_locked');
-      const reason = onlyFallbackPath || reached ? 'second_factor_locked' : 'second_factor_wrong';
-      return supplemented(refusal('not_signed_in', reason, undefined, false, true));
-    }
-    if (gilt === 'wiederherstellung_alt') await oldCodesReport(k, user.id);
+/** The second factor, once the password was right. A passkey replaces the code — bound to THIS
+ * account, whose password was right. */
+async function checkSecondFactor(
+  k: AccountContext,
+  who: { ip: string; name: string; uid: number },
+  code: string | number | null | undefined,
+  passkeyResponse: unknown,
+): Promise<{ refused: LoginResult } | { method: LoginMethod }> {
+  const { ip, name, uid } = who;
+  if (!(await k.factors.isActive(uid))) return { method: 'passwort' };
+  const withPasskey = passkeyResponse !== undefined && passkeyResponse !== null;
+  const hasPasskey = await k.factors.hasPasskeys(uid);
+  const refused = (e: LoginResult) => {
+    if (!e.ok && hasPasskey) e.refusal.passkey = true;
+    return { refused: e };
+  };
+  if (!withPasskey && !String(code ?? '').trim()) {
+    // The password was right; only the code is still missing — not a failed attempt.
+    await giveLoginSpaceFree(k, ip, name);
+    return refused(refusal('not_signed_in', 'second_factor_required', undefined, false, true));
   }
-  // Only now, after password and second factor: the plaintext only exists on a login.
-  if (needsNewHash(user.password_hash))
-    await k.accesses.replacePasswordHash(user.id, user.password_hash, await hashPassword(password));
-  await loginSucceeded(k, ip, name);
-  reportLogin({ ip, konto: Number(user.id), zugang });
-  return { ok: true, user };
+  const onlyFallbackPath = !withPasskey && (await factorCodeLocked(k, uid));
+  const valid = withPasskey
+    ? (await k.factors.verifyAuthentication(passkeyResponse, 'second_factor', uid)) === uid
+    : await k.factors.checkCode(uid, code, !onlyFallbackPath);
+  if (!valid) {
+    await failedAttempt(k, 'second_factor_wrong', ip, name, uid);
+    // Immediately, not only with the account lock: whoever guesses here knows the password.
+    const reached = !withPasskey && (await factorCodeWrong(k, uid));
+    if (reached) hintInBackground(k, uid, 'second_factor_locked');
+    const reason = onlyFallbackPath || reached ? 'second_factor_locked' : 'second_factor_wrong';
+    return refused(refusal('not_signed_in', reason, undefined, false, true));
+  }
+  if (valid === 'wiederherstellung_alt') await oldCodesReport(k, uid);
+  return { method: withPasskey ? 'passwort+passkey' : 'passwort+code' };
 }
 
 /** Whoever logs in with an old-style code learns the deadline. Before login the request
  * carries no account for row-level security yet, hence the system frame. */
 async function oldCodesReport(k: AccountContext, uid: number): Promise<void> {
   const bis = (await inSystemContext('anmeldung: alte Codes', () => k.factors.status(uid))).old_codes_until;
-  if (bis) hintInBackground(k, uid, 'alte_codes_ablauf', undefined, { bis });
+  if (bis) hintInBackground(k, uid, 'old_codes_expiry', undefined, { bis });
 }
 
 /** Above the daily limit only with code or passkey and an active factor. Decided before the password check
@@ -211,24 +236,24 @@ async function onlyStillWithFactor(
   k: AccountContext,
   ip: string,
   name: string,
-  konto: number | undefined,
+  account: number | undefined,
   withFactor: boolean,
 ): Promise<boolean> {
   if (!(await dailyLimitReached(k, ip, name))) return false;
-  if (withFactor && konto !== undefined && (await k.factors.isActive(konto))) return false;
+  if (withFactor && account !== undefined && (await k.factors.isActive(account))) return false;
   await giveLoginSpaceFree(k, ip, name);
-  reportLoginEvent('anmeldung_tagesgrenze', { ip, konto: konto ?? null });
-  if (konto !== undefined) await offerRelease(k, ip, konto);
+  reportLoginEvent('login_daily_limit', { ip, account: account ?? null });
+  if (account !== undefined) await offerRelease(k, ip, account);
   return true;
 }
 
 /** Without a second factor the owner would only have "forgot password" at a new place: one link per
  * address and hour, at most ten a day, so a stranger does not flood the mailbox. */
-async function offerRelease(k: AccountContext, ip: string, konto: number): Promise<void> {
-  if (await k.factors.isActive(konto)) return;
-  if ((await countRequest(k, `freigabe-mail|konto:${konto}`, ip, 3_600_000)).count > 1) return;
-  if (await accountThrottled(k, 'freigabe-mail', konto, 10, TAG_MS)) return;
-  hintInBackground(k, konto, 'anmeldung_freigeben', undefined, { freigabe: releaseToken(k, ip, konto), address: ip });
+async function offerRelease(k: AccountContext, ip: string, account: number): Promise<void> {
+  if (await k.factors.isActive(account)) return;
+  if ((await countRequest(k, `freigabe-mail|konto:${account}`, ip, 3_600_000)).count > 1) return;
+  if (await accountThrottled(k, 'freigabe-mail', account, 10, TAG_MS)) return;
+  hintInBackground(k, account, 'login_release', undefined, { releaseToken: releaseToken(k, ip, account), address: ip });
 }
 
 /** When the account lock is reached, the owner learns about it, at most once a day:
@@ -238,12 +263,12 @@ async function failedAttempt(
   event: LoginEvent,
   ip: string,
   name: string,
-  konto?: number,
+  account?: number,
 ): Promise<void> {
-  reportLoginEvent(event, { ip, konto: konto ?? null });
+  reportLoginEvent(event, { ip, account: account ?? null });
   const { n, dailyLimit } = await loginFailed(k, ip, name);
-  if (konto === undefined) return;
-  if (dailyLimit) hintInBackground(k, konto, 'anmeldung_tagesgrenze');
-  else if (n === MAX_ATTEMPTS && !(await accountThrottled(k, 'sperr-hinweis', konto, 1, TAG_MS)))
-    hintInBackground(k, konto, 'anmeldung_gebremst');
+  if (account === undefined) return;
+  if (dailyLimit) hintInBackground(k, account, 'login_daily_limit');
+  else if (n === MAX_ATTEMPTS && !(await accountThrottled(k, 'sperr-hinweis', account, 1, TAG_MS)))
+    hintInBackground(k, account, 'login_throttled');
 }

@@ -30,14 +30,14 @@ export async function rebuildSummary(k: PartsContext, userId: number, version?: 
 
 /** Per access: account IDs, rebuilds and the follow-up belong to the database they run in. */
 const processState = (k: PartsContext) =>
-  k.faecher.slot('partsSummary', () => ({
+  k.compartments.slot('partsSummary', () => ({
     lastAnalyse: 0,
-    neuaufbau: new Map<number, Promise<void>>(),
+    rebuild: new Map<number, Promise<void>>(),
     followUp: null as ReturnType<typeof runCatalogFollowUp> | null,
   }));
 
 function rebuildInBackground(k: PartsContext, userId: number, v: { v: number }) {
-  const _rebuilding = processState(k).neuaufbau;
+  const _rebuilding = processState(k).rebuild;
   if (_rebuilding.has(userId)) return;
   const p = rebuildSummary(k, userId, v)
     .catch((e: unknown) => reportError('parts-summary:background', e))
@@ -85,8 +85,8 @@ export async function summaryFresh(
  * as a job, because the web system role can't reach other accounts' stock; until then, stale BL numbers. */
 async function catalogFollowUpOnce(k: PartsContext) {
   if (rowsContext().web) {
-    await k.jobQueue.placeJobOne('catalog_followup', {}, { schluessel: 'catalog_followup' });
-    return { konten: 0, gruppen: 0 };
+    await k.jobQueue.placeJobOne('catalog_followup', {}, { key: 'catalog_followup' });
+    return { accounts: 0, groups: 0 };
   }
   const z = processState(k);
   z.followUp ??= runCatalogFollowUp(k).finally(() => {
@@ -99,16 +99,16 @@ const CATALOG_INDIVIDUAL_UP_TO = 5000;
 
 /** Groups with a changed BL number, before and after. Runs in system scope: the queue
  * is global, whoever drains it follows up for all accounts. @returns null if another run is already catching up */
-export function runCatalogFollowUp(k: PartsContext): Promise<{ konten: number; gruppen: number } | null> {
+export function runCatalogFollowUp(k: PartsContext): Promise<{ accounts: number; groups: number } | null> {
   return inSystemContext('catalog-follow-up', () => runCatalogFollowUpInScope(k));
 }
 
-async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ konten: number; gruppen: number } | null> {
+async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ accounts: number; groups: number } | null> {
   return k.transact(async t => {
     if (!(await repo.lockCatalogFollowUp(t.db))) return null;
     const numbers = await repo.pendingNumbers(t.db);
-    if (!numbers.length) return { konten: 0, gruppen: 0 };
-    if (numbers.length > CATALOG_INDIVIDUAL_UP_TO) return { konten: await repo.discardAllStates(t.db), gruppen: -1 };
+    if (!numbers.length) return { accounts: 0, groups: 0 };
+    if (numbers.length > CATALOG_INDIVIDUAL_UP_TO) return { accounts: await repo.discardAllStates(t.db), groups: -1 };
     const affected = await repo.affectedGroups(t.db, numbers);
     const jeAccount = new Map<number, string[]>();
     for (const b of affected) jeAccount.set(b.user_id, [...(jeAccount.get(b.user_id) ?? []), b.part_key]);
@@ -117,13 +117,13 @@ async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ konten: num
       await repo.waitForAccount(t.db, uid);
       await repo.rebuildGroups(t.db, uid, groups);
     }
-    return { konten: jeAccount.size, gruppen: affected.length };
+    return { accounts: jeAccount.size, groups: affected.length };
   });
 }
 
 /** For call sites that need guaranteed current numbers right after (end of a CSV import). */
 export async function rebuildNow(k: PartsContext, userId: number): Promise<void> {
-  const _rebuilding = processState(k).neuaufbau;
+  const _rebuilding = processState(k).rebuild;
   const running = _rebuilding.get(userId);
   if (running) return running;
   const v = await currentVersion(k, userId);

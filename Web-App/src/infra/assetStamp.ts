@@ -8,7 +8,7 @@ import { processWide } from './processWide';
  * restart shows old addresses for minutes. */
 export const STEMPEL_TTL_MS = 30_000;
 
-const Z = processWide('assetStempel', () => ({ satz: null as Map<string, string> | null, zeit: 0 }));
+const Z = processWide('assetStempel', () => ({ stamps: null as Map<string, string> | null, time: 0 }));
 
 /** `null` instead of a placeholder: a missing file must not shake the addresses of the
  * OTHER assets. */
@@ -36,11 +36,11 @@ export function stempleAssets(html: string, wurzel: string): string {
 
 export function stampAssetsCached(html: string, wurzel: string): string {
   const now = Date.now();
-  if (Z.satz === null || now - Z.zeit > STEMPEL_TTL_MS) {
-    Z.satz = new Map();
-    Z.zeit = now;
+  if (Z.stamps === null || now - Z.time > STEMPEL_TTL_MS) {
+    Z.stamps = new Map();
+    Z.time = now;
   }
-  const record = Z.satz;
+  const record = Z.stamps;
   return html.replace(
     /((?:href|src)=")(\/[^"?]+)\?v=[^"]*(")/g,
     (whole, header: string, filePath: string, tail: string) => {

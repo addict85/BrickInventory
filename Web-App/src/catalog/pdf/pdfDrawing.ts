@@ -75,9 +75,9 @@ const START_X = 40;
 
 /** As a stream, not as a buffer: a large collection results in many megabytes.
  * Only the finished file gets its name. */
-async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
+async function buildPdf(sets: PdfSet[], parts: PdfTeil[], target: string): Promise<void> {
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
-  const teil = `${ziel}.teil`;
+  const teil = `${target}.teil`;
   const file = fs.createWriteStream(teil);
   doc.pipe(file);
   const pdfDone = new Promise((resolve, reject) => {
@@ -101,7 +101,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
   seiten.footer();
   doc.end();
   await pdfDone;
-  await fsp.rename(teil, ziel);
+  await fsp.rename(teil, target);
 }
 
 /** Page number at the bottom center; the margin is lifted briefly for it, otherwise pdfkit wraps. */
@@ -218,13 +218,13 @@ function drawPart(doc: Doc, p: Row, images: Map<string, Buffer | null>, newPage:
   doc.y = rowY + rowHeight + 2;
 }
 
-type ThreadJob = { kind: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };
+type ThreadJob = { kind: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; target: string };
 
 /** From the TypeScript sources (tsx) there is no .js file for the thread; then drawing happens here. */
-function drawPdfInThread(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
-  if (__filename.endsWith('.ts')) return buildPdf(sets, parts, ziel);
+function drawPdfInThread(sets: PdfSet[], parts: PdfTeil[], target: string): Promise<void> {
+  if (__filename.endsWith('.ts')) return buildPdf(sets, parts, target);
   return new Promise((resolve, reject) => {
-    const w = new Worker(__filename, { workerData: { kind: 'pdf-zeichnen', sets, parts, ziel } satisfies ThreadJob });
+    const w = new Worker(__filename, { workerData: { kind: 'pdf-zeichnen', sets, parts, target } satisfies ThreadJob });
     w.once('message', (m: { ok: boolean; error?: string }) => (m.ok ? resolve() : reject(new Error(m.error))));
     w.once('error', reject);
     w.once('exit', code => {
@@ -234,9 +234,9 @@ function drawPdfInThread(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promis
 }
 
 if (!isMainThread && parentPort && (workerData as ThreadJob | undefined)?.kind === 'pdf-zeichnen') {
-  const { sets, parts, ziel } = workerData as ThreadJob;
+  const { sets, parts, target } = workerData as ThreadJob;
   const port = parentPort;
-  buildPdf(sets, parts, ziel).then(
+  buildPdf(sets, parts, target).then(
     () => port.postMessage({ ok: true }),
     (e: unknown) => port.postMessage({ ok: false, error: e instanceof Error ? e.message : String(e) }),
   );

@@ -3,7 +3,7 @@
 import type { Sicht } from '../household';
 import { publicError } from '../infra/error';
 import { Degradations, attempts } from '../infra/result';
-import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
+import { csvSharedFields, csvRowsFromRequest, csvFirst, type CsvRow } from '../infra/csvExport';
 import { quantityRequest } from '../inventory';
 import type { Sources } from '../externalSources';
 import * as V from '../infra/validate';
@@ -32,11 +32,11 @@ export async function manualMinifigPurchase(
   );
   return {
     effectiveUnitPrice: r.unitPrice,
-    effectivePurchasePrice: r.kaufpreis,
-    acquisitionPrice: r.erfassungsPreis,
+    effectivePurchasePrice: r.purchasePrice,
+    acquisitionPrice: r.acquisitionPrice,
     effectiveCondition: r.condition,
     priceFromCondition: r.priceFromState,
-    estimated: r.geschaetzt,
+    estimated: r.estimated,
   };
 }
 
@@ -81,7 +81,7 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
       // In the base row, 0 is a display value; in the acquisition it would
       // mean "bought for free".
       price: re.acquisitionPrice,
-      geschaetzt: re.estimated,
+      estimated: re.estimated,
       condition: re.effectiveCondition,
       createdAt: acquiredAt,
     });
@@ -100,14 +100,14 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
   await k.catalog.rememberMinifig(num, found?.fig_name, found?.image_url);
   await k.catalog.rememberMinifig(num, input.name, input.image, null, k.db, uid);
   // Without quantity, price and condition: they sit in the acquisition below.
-  await k.inventory.manuell.createRow('fig', uid, [num]);
+  await k.inventory.manual.createRow('fig', uid, [num]);
   if (blNum) await k.catalog.rememberOwnBlNumber(uid, 'fig', num, blNum);
   // With the price actually used (market price or estimate), so acquisition
   // history and P&L agree.
   await k.inventory.bookDailyEntry('fig', uid, [num], {
     quantity,
     price: acquisitionPrice,
-    geschaetzt: estimated,
+    estimated: estimated,
     condition: effectiveCondition,
     createdAt: acquiredAt,
   });
@@ -211,68 +211,64 @@ export function findManualMinifig(
   return k.manualMinifigs.manualMinifigRow(uid, figNumber);
 }
 
+type FigImportResult = { fig_number: string; action: string; fig_name?: string | null; error?: string };
+
+/** Without Rebrickable, the minifig is entered without a name; the image job won't fetch it later. */
+async function minifigInfo(k: MinifigsContext, figNumber: string, typedName: string | null) {
+  if (typedName) return { figName: typedName, imageUrl: null };
+  const fetch = await attempts('figuren:import-info', k.externalSources.sources.getMinifigInfo(figNumber));
+  const info = fetch.ok ? fetch.wert : null;
+  return { figName: info ? info.fig_name : null, imageUrl: info ? info.image_url : null };
+}
+
+async function importMinifigRow(
+  k: MinifigsContext,
+  uid: number,
+  row: CsvRow,
+  figNumber: string,
+): Promise<FigImportResult> {
+  const blFigNumber = String(row.bl_fig_number || row['BrickLink-Nr'] || '').trim() || null;
+  const { quantity: qty, price: unitPrice, recordedAt: acquiredAt, condition: rawCondition } = csvSharedFields(row);
+  const typed = row.fig_name || row.Name || null;
+  const { figName, imageUrl } = await minifigInfo(k, figNumber, typed);
+  const { acquisitionPrice, effectiveCondition, estimated } = await manualMinifigPurchase(k, uid, {
+    figNumber,
+    blFigNumber,
+    unitPrice,
+    condition: rawCondition,
+  });
+  const acquisition = {
+    quantity: qty,
+    price: acquisitionPrice,
+    estimated: estimated,
+    condition: effectiveCondition || 'N',
+    createdAt: acquiredAt || k.clock.datum().toISOString().slice(0, 10),
+  };
+  if (await findManualMinifig(k, uid, figNumber)) {
+    await k.inventory.bookDailyEntry('fig', uid, [figNumber], acquisition);
+    return { fig_number: figNumber, action: 'updated' };
+  }
+  // A name from the file is an input of this account (katalogPflege.ts).
+  await k.catalog.rememberMinifig(figNumber, figName, imageUrl, null, k.db, typed ? uid : null);
+  await k.inventory.manual.createRow('fig', uid, [figNumber]);
+  if (blFigNumber) await k.catalog.rememberOwnBlNumber(uid, 'fig', figNumber, blFigNumber);
+  await k.inventory.bookDailyEntry('fig', uid, [figNumber], acquisition);
+  return { fig_number: figNumber, action: 'added', fig_name: figName };
+}
+
 /** Same pricing rule as adding by hand, estimate from parts included. */
 export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: string) {
-  const { records, cleaned, uebersprungen } = csvRowsFromRequest(text);
-  let added = 0,
-    updated = 0,
-    errors = 0;
-  const results: Array<{ fig_number: string; action: string; fig_name?: string | null; error?: string }> = [];
-
+  const { records, cleaned, skipped } = csvRowsFromRequest(text);
+  const results: FigImportResult[] = [];
   for (const row of cleaned) {
-    const figNumber = String(row.fig_number || row.Nummer || row.fig_num || Object.values(row)[0] || '').trim();
+    const figNumber = String(csvFirst(row, 'fig_number', 'Nummer', 'fig_num') || Object.values(row)[0] || '').trim();
     if (!figNumber) continue;
-    const blFigNumber = String(row.bl_fig_number || row['BrickLink-Nr'] || '').trim() || null;
-    const { quantity: qty, preis: unitPrice, recordedAt: acquiredAt, condition: rawCondition } = csvSharedFields(row);
-
     try {
-      let figName = row.fig_name || row.Name || null;
-      const typed = !!figName;
-      let imageUrl: string | null = null;
-      if (!figName) {
-        // Without Rebrickable, the minifig is entered without a name; the image job won't fetch it later.
-        const fetch = await attempts('figuren:import-info', k.externalSources.sources.getMinifigInfo(figNumber));
-        const info = fetch.ok ? fetch.wert : null;
-        if (info) {
-          figName = info.fig_name;
-          imageUrl = info.image_url;
-        }
-      }
-      const { acquisitionPrice, effectiveCondition, estimated } = await manualMinifigPurchase(k, uid, {
-        figNumber,
-        blFigNumber,
-        unitPrice,
-        condition: rawCondition,
-      });
-      const acquisition = {
-        quantity: qty,
-        price: acquisitionPrice,
-        geschaetzt: estimated,
-        condition: effectiveCondition || 'N',
-        createdAt: acquiredAt || k.clock.datum().toISOString().slice(0, 10),
-      };
-
-      if (await findManualMinifig(k, uid, figNumber)) {
-        await k.inventory.bookDailyEntry('fig', uid, [figNumber], acquisition);
-        updated++;
-        results.push({ fig_number: figNumber, action: 'updated' });
-        continue;
-      }
-      // A name from the file is an input of this account (katalogPflege.ts).
-      await k.catalog.rememberMinifig(figNumber, figName, imageUrl, null, k.db, typed ? uid : null);
-      await k.inventory.manuell.createRow('fig', uid, [figNumber]);
-      if (blFigNumber) await k.catalog.rememberOwnBlNumber(uid, 'fig', figNumber, blFigNumber);
-      await k.inventory.bookDailyEntry('fig', uid, [figNumber], acquisition);
-      added++;
-      results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
+      results.push(await importMinifigRow(k, uid, row, figNumber));
     } catch (e) {
-      errors++;
-      results.push({
-        fig_number: figNumber,
-        action: 'error',
-        error: publicError(e, 'figuren-csv:zeile').error,
-      });
+      results.push({ fig_number: figNumber, action: 'error', error: publicError(e, 'figuren-csv:zeile').error });
     }
   }
-  return { added, updated, errors, records, results, uebersprungen };
+  const count = (action: string) => results.filter(r => r.action === action).length;
+  return { added: count('added'), updated: count('updated'), errors: count('error'), records, results, skipped };
 }

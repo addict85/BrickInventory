@@ -62,6 +62,33 @@ function files(wurzel, extensions, from) {
   return out;
 }
 
+const OPENS = new Set(['(', '{', '[']);
+const CLOSES = new Set([')', '}', ']']);
+
+/** Index behind the bracket that closes the one opened just before `start`. @param {string} s @param {number} start */
+function closingIndex(s, start) {
+  let depth = 1,
+    i = start;
+  while (i < s.length && depth > 0) {
+    if (OPENS.has(s[i] ?? '')) depth++;
+    else if (CLOSES.has(s[i] ?? '')) depth--;
+    i++;
+  }
+  return i;
+}
+
+/** The text with everything nested blanked out: foreign object shapes stand there. @param {string} text */
+function topLevel(text) {
+  let layer = 0;
+  let top = '';
+  for (const c of text) {
+    if (OPENS.has(c)) layer++;
+    else if (CLOSES.has(c)) layer--;
+    top += layer === 0 ? c : ' ';
+  }
+  return top;
+}
+
 /**
  * Top-level keys from all res.json({…}) of a source — and from
  * `return { success: true, … }`: that is how the services under src/ return the
@@ -71,22 +98,8 @@ function files(wurzel, extensions, from) {
 function responseKey(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g) {
   const found = new Set();
   while (re.exec(s) !== null) {
-    let depth = 1,
-      i = re.lastIndex;
-    while (i < s.length && depth > 0) {
-      const c = s[i];
-      if (c === '(' || c === '{' || c === '[') depth++;
-      else if (c === ')' || c === '}' || c === ']') depth--;
-      i++;
-    }
-    // Hide nested ones — foreign object shapes stand there.
-    let layer = 0;
-    let top = '';
-    for (const c of s.slice(re.lastIndex, i - 1)) {
-      if (c === '(' || c === '{' || c === '[') layer++;
-      else if (c === ')' || c === '}' || c === ']') layer--;
-      top += layer === 0 ? c : ' ';
-    }
+    const i = closingIndex(s, re.lastIndex);
+    const top = topLevel(s.slice(re.lastIndex, i - 1));
     for (const k of top.matchAll(/(?:^|,)\s*([A-Za-z_]\w*)\s*:/g)) found.add(k[1]);
   }
   return found;

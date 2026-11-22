@@ -12,8 +12,8 @@ import { processWide } from './processWide';
 const V1 = 'v1:',
   V2 = 'v2:';
 /** The keys, read and derived once. */
-const S = processWide('datenSchluessel', () => ({
-  geladen: null as Buffer | null,
+const S = processWide('dataKey', () => ({
+  loaded: null as Buffer | null,
   alt: undefined as Buffer | null | undefined,
   altV2: null as Buffer | null,
   v2: null as Buffer | null,
@@ -53,12 +53,12 @@ function warnAlterLocation(alt: string, fresh: string): void {
 /** Order: DATA_KEY, the own file, the old file in the data folder
  * (with a warning); if everything is missing, the own file is created. */
 export function dataKey(): Buffer {
-  if (S.geladen) return S.geladen;
-  const env = config().datenSchluessel;
+  if (S.loaded) return S.loaded;
+  const env = config().dataKey;
   if (env) {
     const k = Buffer.from(env, 'base64');
     if (k.length !== 32) throw new Error('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
-    S.geladen = k;
+    S.loaded = k;
     return k;
   }
   const file = keyFile(),
@@ -74,12 +74,12 @@ export function dataKey(): Buffer {
       console.warn(
         `⚠️  [geheimnis] ${alt} ist eine Kopie von ${file} und liegt in jeder Sicherung von data/ — bitte löschen.`,
       );
-    S.geladen = k;
+    S.loaded = k;
     return k;
   }
   if (altK) {
     warnAlterLocation(alt, file);
-    S.geladen = altK;
+    S.loaded = altK;
     return altK;
   }
   const fresh = crypto.randomBytes(32);
@@ -96,7 +96,7 @@ export function dataKey(): Buffer {
   } finally {
     fs.rmSync(tmp, { force: true });
   }
-  S.geladen = result;
+  S.loaded = result;
   return result;
 }
 
@@ -279,7 +279,7 @@ export function readOldBuffer(data: Buffer, k: Context): Buffer | null {
 }
 
 export function _forgetKey() {
-  S.geladen = null;
+  S.loaded = null;
   S.v2 = null;
   S.alt = undefined;
   S.altV2 = null;

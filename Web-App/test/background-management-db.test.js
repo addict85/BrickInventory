@@ -87,7 +87,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   assert.equal(receipt.id, moved, 'der verschobene Auftrag sollte als erster belegt werden');
   await A.moved(receipt, new Date(Date.now() + 3_600_000), 'Tageskontingent erschöpft', false);
   const aborted = await A.placeJobOne('followup', { schritt: 'vorschauen' });
-  await A.abortAb(aborted);
+  await A.abortJob(aborted);
 
   const wartend = [];
   for (const sn of ['11111-1', '22222-1'])

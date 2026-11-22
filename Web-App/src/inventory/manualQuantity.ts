@@ -13,21 +13,21 @@ import type { InventoryContext } from './context';
 /** A manual entry only disappears via deletion, never via the quantity. */
 const AT_LEAST = 1;
 
-export type QuantityRequest = { absolut: number } | { delta: number };
+export type QuantityRequest = { absolute: number } | { delta: number };
 
 /** quantity_delta wins if both come. */
 export function quantityRequest(body: { quantity?: unknown; quantity_delta?: unknown }): QuantityRequest | null {
   if (body.quantity_delta !== undefined && body.quantity_delta !== null) {
     const delta = Number(body.quantity_delta);
-    if (!Number.isInteger(delta) || Math.abs(delta) > 9999) failDomain('ungueltig', 'value_invalid');
+    if (!Number.isInteger(delta) || Math.abs(delta) > 9999) failDomain('invalid', 'value_invalid');
     return { delta };
   }
-  if (body.quantity !== undefined) return { absolut: inventoryQuantity(body.quantity, AT_LEAST) };
+  if (body.quantity !== undefined) return { absolute: inventoryQuantity(body.quantity, AT_LEAST) };
   return null;
 }
 
 const target = (w: QuantityRequest, bisher: number) =>
-  'absolut' in w ? w.absolut : Math.max(AT_LEAST, bisher + w.delta);
+  'absolute' in w ? w.absolute : Math.max(AT_LEAST, bisher + w.delta);
 
 /** Computed within the inventory lock so that web and app do not overtake each other.
  * @param marketPrice is asked BEFORE the lock and only for an increasing quantity
@@ -44,7 +44,7 @@ export async function adjustManualQuantity(
 ): Promise<number> {
   const upfront = await k.manualQuantities.sumTheEntries(kind, uid, key);
   const mp = target(wish, upfront) > upfront ? await ab.orElse('kaufpreis', marketPrice, null) : null;
-  const sperren = [{ konto: uid, schluessel: inventoryKey(kind, key) }];
+  const locks = [{ account: uid, key: inventoryKey(kind, key) }];
   return k.transact(
     async t => {
       const acquisitions = await repo.entriesNewestFirst(t.db, kind, uid, key);
@@ -55,7 +55,7 @@ export async function adjustManualQuantity(
           quantity: expected - bisher,
           price: mp,
           condition: condition,
-          geschaetzt: true,
+          estimated: true,
         });
       }
       let rest = bisher - expected;
@@ -68,6 +68,6 @@ export async function adjustManualQuantity(
       }
       return expected;
     },
-    { sperren },
+    { locks },
   );
 }

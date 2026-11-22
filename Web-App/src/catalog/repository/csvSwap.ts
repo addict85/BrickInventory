@@ -84,13 +84,13 @@ export async function swap(tx: DbInterface, table: CsvTable, shadow: string, col
  * an account would lose name and image. Afterwards every row has its set_catalog entry (0105). */
 export async function syncSets(
   tx: DbInterface,
-  l: Pick<CatalogReadContract, 'setZaehlt'>,
+  l: Pick<CatalogReadContract, 'setCounts'>,
   shadow: string,
   columns: string[],
 ): Promise<void> {
   const fresh = columns.filter(s => s !== 'set_num');
   const vanished = `NOT EXISTS (SELECT 1 FROM ${shadow} n WHERE n.set_num = rb_sets.set_num)`;
-  const basis = l.setZaehlt('rb_sets.set_num');
+  const basis = l.setCounts('rb_sets.set_num');
   await tx.run(`INSERT INTO rb_sets (${columns.join(',')}, source) SELECT ${columns.join(',')}, 'csv' FROM ${shadow}
                    ON CONFLICT (set_num) DO UPDATE SET ${fresh.map(s => `${s}=EXCLUDED.${s}`).join(',')}, source='csv'
                    WHERE (${fresh.map(s => `rb_sets.${s}`).join(',')}, rb_sets.source)

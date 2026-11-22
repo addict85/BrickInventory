@@ -61,7 +61,7 @@ test('the app attaches the error path, once behind all routers', () => {
   const app = _req('startup/app.js').buildApp({
     pool: q.testAccess().systemPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
+    sessionSecret: 'test-sitzungsgeheimnis-lang-genug',
     dienste: q.testServices(),
     sessionStorage: (/** @type {any} */ _q, /** @type {any} */ _r, /** @type {Function} */ n) => n(),
   });

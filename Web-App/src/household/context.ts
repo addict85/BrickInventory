@@ -11,7 +11,7 @@ export interface HouseholdDependencies {
   clock: Clock;
   db: Db;
   /** The households' memory per access; createHousehold creates it. */
-  faecher: Compartments;
+  compartments: Compartments;
   settings: SettingsServices;
   readContract: HouseholdReadContract;
 }

@@ -63,7 +63,7 @@ test('switching off during a claim', async t => {
         },
       },
     },
-    { deadlineSec: 600, taktMs: 60_000 },
+    { deadlineSec: 600, tickMs: 60_000 },
   );
 
   await sperre.query('BEGIN');

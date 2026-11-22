@@ -58,14 +58,14 @@ const DEFAULT_POOL = 15;
 
 /** What a connection needs; the process reads it once and passes it on. */
 export interface DbConfig {
-  verbindung: PoolConfig;
+  connection: PoolConfig;
   pool: PoolConfig;
-  /** The system role for the system frame; without it the frame runs over `verbindung`. */
+  /** The system role for the system frame; without it the frame runs over `connection`. */
   system?: PoolConfig | null;
   /** The system role for the system frame of HTTP requests (access tables only); without it `system`. */
   systemWeb?: PoolConfig | null;
   /** In tests a fallback value inside a transaction throws even outside the database (src/infra/error.ts). */
-  streng?: boolean;
+  strict?: boolean;
   /** The time zone of the entry day, written into the database at startup (schemaStart.ts). */
   entryTimeZone?: string;
 }
@@ -77,10 +77,10 @@ export interface TxGriff extends TxHandleOf<Db> {}
 export function dbConfigFromEnvironment(): DbConfig {
   const K = config();
   return {
-    verbindung: databaseConnection(),
+    connection: databaseConnection(),
     system: systemConnection(),
     systemWeb: systemWebConnection(),
-    streng: K.nodeEnv === 'test',
+    strict: K.nodeEnv === 'test',
     entryTimeZone: K.entryTimeZone,
     pool: {
       max: K.pgPoolMax ?? DEFAULT_POOL,
@@ -139,25 +139,25 @@ export interface Db extends DbInterface, Access<Db> {
 /** Pool of the runtime role and, if configured, of the system roles. */
 function createPools(k: DbConfig): { pool: Pool; systemPool: Pool; systemWebPool: Pool } {
   // Pipeline: query() sends BEGIN with context, query and COMMIT at once, one round trip instead of three.
-  const pool = new Pool({ ...k.verbindung, ...k.pool, pipeline: true });
+  const pool = new Pool({ ...k.connection, ...k.pool, pipeline: true });
   // Without a listener, the drop of an idle connection would bring down the process.
   pool.on('error', err => {
     console.error('[db-pool] idle client error:', err.message);
   });
-  const weitere: Pool[] = [];
+  const others: Pool[] = [];
   const beside = (c: PoolConfig | null | undefined, name: string, otherwise: Pool): Pool => {
     if (!c) return otherwise;
     const p = new Pool({ ...k.pool, ...c });
     p.on('error', err => console.error(`[db-pool] idle client error (${name}):`, err.message));
-    weitere.push(p);
+    others.push(p);
     return p;
   };
   const systemPool = beside(k.system, 'System', pool);
   const systemWebPool = beside(k.systemWeb, 'System, Web', systemPool);
-  if (weitere.length) {
+  if (others.length) {
     // Whoever closes the access closes pool; the system connections would otherwise keep the process alive.
     const close = pool.end.bind(pool);
-    pool.end = (() => Promise.all([close(), ...weitere.map(p => p.end())]).then(() => undefined)) as Pool['end'];
+    pool.end = (() => Promise.all([close(), ...others.map(p => p.end())]).then(() => undefined)) as Pool['end'];
   }
   return { pool, systemPool, systemWebPool };
 }
@@ -168,7 +168,7 @@ interface Frame {
   pool: Pool;
   systemPool: Pool;
   systemWebPool: Pool;
-  streng: boolean;
+  strict: boolean;
   /** The persistent access per connection (connectionAccess). */
   jeConnection: WeakMap<PoolClient, ConnectionSlot>;
 }
@@ -235,7 +235,7 @@ async function oneTimeTransaction<T>(
 ): Promise<T> {
   const p = poolOfFrame(r);
   const client = await p.connect();
-  const state = newTxStatus({ client, db: r.ich, pool: p, streng: r.streng });
+  const state = newTxStatus({ client, db: r.ich, pool: p, strict: r.strict });
   let kaputt: Error | undefined;
   // If the connection drops in the middle of the transaction, the client reports that
   // as an 'error' event; without a listener it would end the whole process.
@@ -245,12 +245,12 @@ async function oneTimeTransaction<T>(
   client.on('error', teardown);
   try {
     // The context in the same round trip as BEGIN; contextSync() follows changes afterwards.
-    state.kontext = contextSql();
-    await client.query(state.kontext ? `BEGIN; ${state.kontext}` : 'BEGIN');
+    state.context = contextSql();
+    await client.query(state.context ? `BEGIN; ${state.context}` : 'BEGIN');
     const result = await inTransactionPath(state, () => fn(griff(state)));
     await commitCompanion()?.(griff(state));
     state.open = false;
-    if (!rowsContext().system) await client.query(contextCheckSql(state.kontext));
+    if (!rowsContext().system) await client.query(contextCheckSql(state.context));
     await client.query('COMMIT');
     return result;
   } catch (e) {
@@ -300,7 +300,7 @@ function griff(r: Frame, access: Db, counter: { savepoints: number }, state: TxS
     ...q,
     transaction: (fn, o = {}) =>
       innerTransaction(state, point, ++counter.savepoints, name =>
-        lockWith(fn, o.sperren)(griff(r, access, counter, state, name)),
+        lockWith(fn, o.locks)(griff(r, access, counter, state, name)),
       ),
     notification: access.notification.over(q.run),
     inTransaction: () => true,
@@ -347,7 +347,7 @@ function newSpace(r: Frame, access: Db, counter: { savepoints: number }): Connec
       transaction: (fn, o = {}) => {
         const { state } = active();
         return innerTransaction(state, null, ++counter.savepoints, name =>
-          lockWith(fn, o.sperren)(griff(r, access, counter, state, name)),
+          lockWith(fn, o.locks)(griff(r, access, counter, state, name)),
         );
       },
       notification: access.notification.over(q.run),
@@ -366,7 +366,7 @@ export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
     pool,
     systemPool,
     systemWebPool,
-    streng: k.streng === true,
+    strict: k.strict === true,
     jeConnection: new WeakMap(),
   };
   const counter = { savepoints: 0 };
@@ -388,14 +388,14 @@ export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
   async function transaction<T>(body: (tx: TxGriff) => Promise<T>, opt: TxOptions = {}): Promise<T> {
     watch(r);
     return withRetry(
-      () => oneTimeTransaction(r, state => griff(r, access, counter, state, null), lockWith(body, opt.sperren)),
+      () => oneTimeTransaction(r, state => griff(r, access, counter, state, null), lockWith(body, opt.locks)),
       opt,
     );
   }
 
   /** An OWN connection that does NOT come from the pool. */
   async function ownConnection() {
-    const c = new Client({ ...k.verbindung });
+    const c = new Client({ ...k.connection });
     await c.connect();
     return c;
   }
@@ -407,11 +407,11 @@ export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
     systemWebPool,
     systemFrameActs: async () =>
       (
-        await systemPool.query<{ frei: boolean }>(
-          `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS frei
+        await systemPool.query<{ free: boolean }>(
+          `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS free
              FROM pg_roles r, pg_class c WHERE r.rolname = current_user AND c.oid = 'public.sets'::regclass`,
         )
-      ).rows[0]?.frei === true,
+      ).rows[0]?.free === true,
     all,
     get,
     run,
@@ -429,7 +429,7 @@ export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
       ),
     ownConnection,
     withCommitCompanion,
-    notification: new Notification(k.verbindung, (sql, p) => run(sql, p)),
+    notification: new Notification(k.connection, (sql, p) => run(sql, p)),
     changeMaySchema: async () => (await get<{ d: boolean }>(MAY_SCHEMA_CHANGE))?.d === true,
     inTransaction: () => openTx(r) !== null,
     getPoolStats: () => ({

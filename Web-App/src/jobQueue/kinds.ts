@@ -4,21 +4,21 @@ import type { z } from 'zod';
 import type { JobKind, JobContext, JobRow, Payload, PayloadSchema } from './jobs';
 
 export type Schedule =
-  | { taeglich: { setting: string; preset: string } }
-  | { minutes: { setting?: string; preset: number; mindestens?: number } };
+  | { daily: { setting: string; preset: string } }
+  | { minutes: { setting?: string; preset: number; atLeast?: number } };
 
 export interface Handler<A extends JobKind = JobKind> {
-  ausfuehren(payload: Payload<A>, k: JobContext, a: JobRow): Promise<void>;
+  run(payload: Payload<A>, k: JobContext, a: JobRow): Promise<void>;
   givenUp?(payload: Payload<A>, error: string, a: JobRow): Promise<void>;
-  exklusiv?: boolean;
+  exclusive?: boolean;
 }
 
 export interface Login<A extends JobKind = JobKind> extends Handler<A> {
   kind: A;
   payload: PayloadSchema<A>;
   /** Without an account in the system frame, bypassing row security; the reason is here. */
-  kontouebergreifend?: string;
-  zeitplan?: Schedule;
+  crossAccount?: string;
+  schedule?: Schedule;
   /** If it carries an account's data (file content, parts lists), nothing of it stays after success. */
   discardPayload?: boolean;
 }

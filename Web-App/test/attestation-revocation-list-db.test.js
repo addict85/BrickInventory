@@ -49,7 +49,7 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
 
   await t.test('the scheduled job stores the list and schedules the next run', async () => {
     await d.jobQueue.pullPlanBefore('revocation_list', 0);
-    const worker = _req('jobs/startJobs.js').startJobWorker(d, { arten: ['revocation_list'], taktMs: 50 });
+    const worker = _req('jobs/startJobs.js').startJobWorker(d, { arten: ['revocation_list'], tickMs: 50 });
     try {
       await bis(async () => (await gespeichert()) !== null, 10_000);
     } finally {

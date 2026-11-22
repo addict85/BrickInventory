@@ -15,7 +15,7 @@ export interface SaveSettingsOptions {
   uid: number;
   name: string;
   /** Admin, and an app token already has the approval (route). */
-  verwalter: boolean;
+  admin: boolean;
   /** Password and factor; on `false` sends the refusal itself. */
   confirm: (password: string | null | undefined) => Promise<boolean>;
 }
@@ -49,7 +49,7 @@ async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput)
     if (String(e[key]) !== String((await kx.settings.globalValue(key)) ?? '')) changed.push(key);
     await kx.settings.setGlobalValue(key, e[key]);
   }
-  if (changed.length) await kx.account.verwalter.rememberAdminAction(uid, uid, 'settings_changed', changed.join(', '));
+  if (changed.length) await kx.account.admin.rememberAdminAction(uid, uid, 'settings_changed', changed.join(', '));
   // Whoever saved the mail form has seen the hint about the old exception.
   if (GLOBAL_SETTINGS.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.settings.deleteGlobalValues('smtp_insecure_tls');
@@ -58,19 +58,19 @@ async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput)
 /** All writes including the log in one transaction: if one value fails,
  * none of the others is left half saved. @returns false after a refusal */
 export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: SaveSettingsOptions): Promise<boolean> {
-  const global = o.verwalter && hasGlobalValues(e);
+  const global = o.admin && hasGlobalValues(e);
   if (global) {
     if (GLOBAL_SETTINGS.some(k => e[k] !== undefined && !isValidGlobalValue(k, e[k])))
-      failDomain('ungueltig', 'value_invalid');
+      failDomain('invalid', 'value_invalid');
     if (
       String(e.registration_enabled) === '1' &&
       (await kx.settings.globalValue('registration_enabled')) !== '1' &&
       !(await kx.mail.mailReady(e))
     )
-      failDomain('ungueltig', 'registration_needs_mail');
+      failDomain('invalid', 'registration_needs_mail');
   }
   const sensitive = global ? await sensitiveKeys(kx, e) : [];
-  if (sensitive.length && !e.admin_password) failDomain('ungueltig', 'current_password_required');
+  if (sensitive.length && !e.admin_password) failDomain('invalid', 'current_password_required');
   if (sensitive.length && !(await o.confirm(e.admin_password))) return false;
 
   // The currency applies to the whole household and therefore needs the system frame, which
@@ -95,7 +95,7 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   // Only after the COMMIT: a cache would otherwise still read the old value.
   await kx.settings.notifyGlobalChange();
   if (sensitive.some(k => !k.startsWith('smtp_')))
-    kx.account.adminHintInBackground('settings_changed', { konto: sensitive.join(', '), durch: o.name });
+    kx.account.adminHintInBackground('settings_changed', { account: sensitive.join(', '), actor: o.name });
   if (bricksetAlt !== null) await bricksetLimitSet(kx, bricksetAlt, parseInt(String(e.api_limit_brickset), 10));
   return true;
 }

@@ -30,13 +30,13 @@ export function createInventory(a: InventoryDependencies, inspect?: Inspect<Inve
       minifigsAsCsv: bound(k)(inventoryExportService.minifigsCsv),
       usingSets: bound(k)(sharedService.usingSets),
       deleteManual: bound(k)(sharedService.deleteManual),
-      setInhalt: {
+      setContent: {
         enterParts: bound(k)(content.enterParts),
         enterMinifigs: bound(k)(content.enterMinifigs),
         remove: bound(k)(content.removeContent),
         copy: bound(k)(content.copy),
       },
-      manuell: {
+      manual: {
         createRow: bound(k)(content.createRow),
         partsOfAccount: bound(k)(content.partsOfAccount),
         minifigsOfAccount: bound(k)(content.minifigsOfAccount),
@@ -55,7 +55,7 @@ export function createInventory(a: InventoryDependencies, inspect?: Inspect<Inve
       backfillPurchasePrices: bound(k)(purchasePriceBackfill.run),
       locationService: {
         renameStorage: bound(k)(locationService.renameStorage),
-        storages: bound(k)(locationService.lagerorte),
+        storages: bound(k)(locationService.storages),
         createStorage: bound(k)(locationService.createStorage),
         deleteStorage: bound(k)(locationService.deleteStorage),
         locationForNewEntry: bound(k)(locationService.locationForNewEntry),

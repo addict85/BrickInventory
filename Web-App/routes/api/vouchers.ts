@@ -34,8 +34,8 @@ function locked(reason: string, waitSeconds: number): never {
       ? ['too_many_requests', { minutes: min }]
       : reason === 'botschutz'
         ? ['balance_bot_protection', { min }]
-        : ['balance_interval', { sek: GAP_SEC, warten: waitSeconds }];
-  throw new DomainError('zu_viele', code, vars, { reason, waitSeconds });
+        : ['balance_interval', { sek: GAP_SEC, wait: waitSeconds }];
+  throw new DomainError('too_many', code, vars, { reason, waitSeconds });
 }
 
 export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
@@ -50,7 +50,7 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
     fileFilter: (_req, file, cb) => {
       // Literal comparison: no inherited table value to be fooled by.
       if (file.mimetype === 'application/pdf') cb(null, true);
-      else cb(fileError('falscher_typ', 'pdf_only'));
+      else cb(fileError('unsupported_type', 'pdf_only'));
     },
   });
 
@@ -69,15 +69,15 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
     accountGate('voucherPdf'),
     async (req: express.Request, _res: express.Response, next: express.NextFunction) => {
       if (!(await totalSufficesFor(Number(req.headers['content-length']) || 0)))
-        failDomain('speicher_voll', 'upload_total_full', { mb: uploadTotalMb() });
+        failDomain('storage_full', 'upload_total_full', { mb: uploadTotalMb() });
       next();
     },
     upload.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       const r = await d.vouchers.voucherFromPdf(req.apiUser.user_id, req.file.buffer, req.input);
       // Its own block so the frontend can tell from one field which case happened.
-      if (r.kind === 'stapel') return { multiple: r.bericht };
+      if (r.kind === 'stapel') return { multiple: r.report };
       return { voucher: forOuter(r.row), parsed: readAs(r.parsed) };
     },
   );
@@ -92,7 +92,7 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
   router.endpoint('GET /api/v2/vouchers/export/pdf', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     if (!(await d.vouchers.redeemTicket(req.queryArgs.ticket, uid, 'export')))
-      failDomain('verboten', 'pdf_grant_required');
+      failDomain('forbidden', 'pdf_grant_required');
     const { pdf, results } = await d.vouchers.exportVouchers(uid);
     const tag = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/pdf');
@@ -132,7 +132,7 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
   router.endpoint('GET /api/v2/vouchers/:id/pdf', requireToken, async (req, res) => {
     const id = req.pathArgs.id;
     if (!(await d.vouchers.redeemTicket(req.queryArgs.ticket, req.apiUser.user_id, String(id))))
-      failDomain('verboten', 'pdf_grant_required');
+      failDomain('forbidden', 'pdf_grant_required');
     const pdf = await d.vouchers.voucherPdf(req.apiUser.user_id, id);
     res.type('application/pdf');
     // Without the card number: file names end up in download lists and logs.

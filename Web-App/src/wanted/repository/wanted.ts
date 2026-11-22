@@ -1,4 +1,4 @@
-import { setBestand } from '../../../db/inventoryView';
+import { setHoldings } from '../../../db/inventoryView';
 import type { DbInterface, Hit } from '../../../db/database';
 import { marketPriceSql } from '../../../db/moneySql';
 import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSearch';
@@ -95,7 +95,7 @@ export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedS
             pa.direction AS alarm_direction, pa.threshold AS alarm_threshold,
             pa.triggered AS alarm_triggered,
             ${marketPriceSql('pc')} AS market_price,
-            EXISTS (SELECT 1 FROM ${setBestand('= ANY($1)')} s
+            EXISTS (SELECT 1 FROM ${setHoldings('= ANY($1)')} s
                      WHERE s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number

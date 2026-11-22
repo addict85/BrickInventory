@@ -12,7 +12,7 @@ import { attempts } from '../src/infra/result';
 const BASE = 'https://brickset.com/api/v3.asmx';
 
 async function getApiKey(kl: ClientsAccess) {
-  return (await kl.schluessel('brickset_api_key')) || '';
+  return (await kl.key('brickset_api_key')) || '';
 }
 
 /** Network and timeout errors of the helper carry isTransient; the caller then re-queues. */
@@ -20,10 +20,10 @@ async function httpsGetOnce(url: string): Promise<{ status: number; body: string
   const r = await holeHttps(url, {
     hosts: ['brickset.com'],
     maxBytes: 8 * 1024 * 1024,
-    zeitlimitMs: 30_000,
-    kopfzeilen: { 'User-Agent': 'BrickInventory/2026.06.17' },
+    timeoutMs: 30_000,
+    headers: { 'User-Agent': 'BrickInventory/2026.06.17' },
   });
-  return { status: r.status, body: r.koerper.toString('utf8') };
+  return { status: r.status, body: r.body.toString('utf8') };
 }
 
 // A light immediate retry for brief outages before falling back to the (daily)
@@ -92,18 +92,18 @@ function checkStatus(status: number, body: string, label: string) {
 async function enqueueRetry(kl: ClientsAccess, setNumber: string, errorMsg: string | null = null, soon = false) {
   const r = await attempts('brickset:vormerken', kl.bricksetReserve(setNumber, errorMsg || 'Quota exceeded', soon));
   if (!r.ok) return false;
-  const { versuch, vorgemerkt, hoechstens } = r.wert;
-  if (!vorgemerkt) {
-    console.log(`[brickset] ${setNumber}: ${hoechstens} quota retries exceeded — removed from queue, using fallback`);
+  const { attempt, queued, atMost } = r.wert;
+  if (!queued) {
+    console.log(`[brickset] ${setNumber}: ${atMost} quota retries exceeded — removed from queue, using fallback`);
     return false;
   }
-  console.log(`[brickset] ${setNumber} eingereiht (Versuch ${versuch}/${hoechstens}): ${errorMsg || 'Quota exceeded'}`);
+  console.log(`[brickset] ${setNumber} eingereiht (Versuch ${attempt}/${atMost}): ${errorMsg || 'Quota exceeded'}`);
   return true;
 }
 
 async function checkRateLimit(kl: ClientsAccess, setNumber: string) {
   try {
-    const rl = await kl.zaehle('brickset');
+    const rl = await kl.count('brickset');
     if (!rl.allowed) {
       await enqueueRetry(kl, setNumber, `Tageslimit erreicht (${rl.count}/${rl.limit} Aufrufe)`);
       return false;

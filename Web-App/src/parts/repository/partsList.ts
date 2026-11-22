@@ -1,6 +1,6 @@
 import { storages } from '../../../db/inventoryView';
 import type { DbInterface, Hit } from '../../../db/database';
-import { mengeJoin, quantityFrom, teilmengeJoin, subsetFrom } from '../../../db/stockQuantity';
+import { mengeJoin, quantityFrom, quantityJoin, subsetFrom } from '../../../db/stockQuantity';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
 import { teilSichtJoin, TEIL } from '../../../db/catalogView';
 import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
@@ -24,10 +24,10 @@ export function partsOrder(wert: unknown): PartsOrder {
   return wert === 'name' || wert === 'quantity' ? wert : 'color';
 }
 /** The last key makes the pages stable. */
-function orderSql(o: PartsOrder, sp: { farbe: string; name: string; quantity: string; number: string }): string {
-  if (o === 'name') return `${sp.name} ASC, ${sp.farbe} ASC, ${sp.number} ASC`;
+function orderSql(o: PartsOrder, sp: { color: string; name: string; quantity: string; number: string }): string {
+  if (o === 'name') return `${sp.name} ASC, ${sp.color} ASC, ${sp.number} ASC`;
   if (o === 'quantity') return `${sp.quantity} DESC, ${sp.name} ASC, ${sp.number} ASC`;
-  return `${sp.farbe} ASC, ${sp.name} ASC`;
+  return `${sp.color} ASC, ${sp.name} ASC`;
 }
 
 /** `pi` is the placeholder for `%text%`. */
@@ -52,9 +52,9 @@ export interface PartRow {
 }
 
 export interface Page {
-  groesse: number;
-  versatz: number;
-  mitSets: boolean;
+  size: number;
+  offset: number;
+  withSets: boolean;
   order: PartsOrder;
 }
 
@@ -76,12 +76,12 @@ export function stockColors(db: DbInterface, uids: number[], fromSummary: boolea
     );
   return db.all<Color>(
     `
-    SELECT ${TEIL.farbname} AS color_name, COALESCE(${TEIL.farbcode}, rc.rgb) AS color_hex,
+    SELECT ${TEIL.colorName} AS color_name, COALESCE(${TEIL.colorHex}, rc.rgb) AS color_hex,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
            SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int AS total_quantity
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
-    ${teilmengeJoin('p', 'part')}
+    ${quantityJoin('p', 'part')}
     ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
     LEFT JOIN rb_colors rc ON rc.id = p.color_id
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
@@ -123,22 +123,22 @@ export async function pageFromSummary(db: DbInterface, uids: number[], f: PartsF
        MIN(image_local) AS image_local, bool_or(is_spare) AS is_spare,
        SUM(total_quantity)::int AS total_quantity,
        NULLIF(STRING_AGG(DISTINCT storage, ', '), '') AS storage` +
-      (s.mitSets ? ", STRING_AGG(DISTINCT in_sets, ',') AS in_sets" : '')
+      (s.withSets ? ", STRING_AGG(DISTINCT in_sets, ',') AS in_sets" : '')
     : `part_number, bl_part_number, color_id, part_name, color_name, color_hex,
-       category_name, image_url, image_local, is_spare, total_quantity::int, storage` + (s.mitSets ? ', in_sets' : '');
+       category_name, image_url, image_local, is_spare, total_quantity::int, storage` + (s.withSets ? ', in_sets' : '');
   const groupSql = multi ? ' GROUP BY part_key, color_id' : '';
   const orderSqlStr = orderSql(
     s.order,
     multi
       ? {
-          farbe: 'MIN(color_name)',
+          color: 'MIN(color_name)',
           name: 'MIN(part_name)',
           quantity: 'SUM(total_quantity)',
           number: 'part_key, color_id',
         }
-      : { farbe: 'color_name', name: 'part_name', quantity: 'total_quantity', number: 'part_key, color_id' },
+      : { color: 'color_name', name: 'part_name', quantity: 'total_quantity', number: 'part_key, color_id' },
   );
-  const [count, zeilen] = await Promise.all([
+  const [count, rows] = await Promise.all([
     multi
       ? db.get<{ c: number }>(
           `SELECT COUNT(*)::int AS c FROM (
@@ -149,11 +149,11 @@ export async function pageFromSummary(db: DbInterface, uids: number[], f: PartsF
       : db.get<{ c: number }>(`SELECT COUNT(*)::int AS c FROM parts_summary WHERE ${where}`, params),
     db.all<PartRow>(
       `SELECT ${cols} FROM parts_summary WHERE ${where}${groupSql}
-            ORDER BY ${orderSqlStr} LIMIT ${Number(s.groesse)} OFFSET ${Number(s.versatz)}`,
+            ORDER BY ${orderSqlStr} LIMIT ${Number(s.size)} OFFSET ${Number(s.offset)}`,
       params,
     ),
   ]);
-  return { total: count?.c ?? 0, zeilen };
+  return { total: count?.c ?? 0, rows };
 }
 
 function partsWhere(uids: number[], f: PartsFilter) {
@@ -165,15 +165,15 @@ function partsWhere(uids: number[], f: PartsFilter) {
     params.push(f.set_number);
   }
   // Color, category and name live in the catalog views (pc/pcc), the spare-part
-  // flag in the set list (tm_k from teilmengeJoin).
+  // flag in the set list (tm_k from quantityJoin).
   if (f.color) {
-    where += ` AND ${TEIL.farbname} = $${pi++}`;
+    where += ` AND ${TEIL.colorName} = $${pi++}`;
     params.push(f.color);
   }
   // Category also via rb_parts: Rebrickable's set-parts response often has
   // none, so the filter list shows the resolved ID.
   if (f.category) {
-    where += ` AND (${TEIL.kategorie} = $${pi}
+    where += ` AND (${TEIL.category} = $${pi}
                     OR EXISTS (SELECT 1 FROM rb_parts rp
                                 WHERE rp.part_num = p.part_number
                                   AND rp.part_cat_id::text = $${pi}))`;
@@ -206,7 +206,7 @@ export async function pageLive(db: DbInterface, uids: number[], f: PartsFilter, 
     : `SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int`;
   const joinClause =
     (f.set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`) +
-    ` ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}` +
+    ` ${quantityJoin('p', 'part', 'tm', '= ANY($1)')}` +
     ` ${blJoin('p.part_number', 'part', 'p.user_id')}` +
     ` LEFT JOIN ${storages()} lo ON lo.id = p.storage_id` +
     ` ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}`;
@@ -222,16 +222,16 @@ export async function pageLive(db: DbInterface, uids: number[], f: PartsFilter, 
       -- The group combines several Rebrickable numbers under the same BrickLink number.
       MIN(${TEIL.name})      AS part_name,
       p.color_id,
-      MIN(${TEIL.farbname})  AS color_name,
-      MIN(${TEIL.farbcode})  AS color_hex,
-      MIN(${TEIL.kategorie}) AS category_name,
+      MIN(${TEIL.colorName})  AS color_name,
+      MIN(${TEIL.colorHex})  AS color_hex,
+      MIN(${TEIL.category}) AS category_name,
       MIN(${TEIL.image})      AS image_url,
-      MIN(${TEIL.bildDatei}) AS image_local,
+      MIN(${TEIL.imageFile}) AS image_local,
       bool_or(COALESCE(tm_k.is_spare, false)) AS is_spare,
       -- All storage locations: the same part sits in different bins coming from different sets.
       NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
       ${qtyExpr}          AS total_quantity${
-        s.mitSets
+        s.withSets
           ? `,
       STRING_AGG(DISTINCT p.set_number, ',') AS in_sets`
           : ''
@@ -240,16 +240,16 @@ export async function pageLive(db: DbInterface, uids: number[], f: PartsFilter, 
     WHERE ${where}
     GROUP BY ${blNumberSql('p.part_number')}, p.color_id
     ORDER BY ${orderSql(s.order, {
-      farbe: `MIN(${TEIL.farbname})`,
+      color: `MIN(${TEIL.colorName})`,
       name: `MIN(${TEIL.name})`,
       quantity: qtyExpr,
       number: `${blNumberSql('p.part_number')}, p.color_id`,
     })} LIMIT $${pi} OFFSET $${pi + 1}`;
-  const [count, zeilen] = await Promise.all([
+  const [count, rows] = await Promise.all([
     db.get<{ c: number }>(countSql, params),
-    db.all<PartRow>(partsSql, [...params, s.groesse, s.versatz]),
+    db.all<PartRow>(partsSql, [...params, s.size, s.offset]),
   ]);
-  return { total: count?.c ?? 0, zeilen };
+  return { total: count?.c ?? 0, rows };
 }
 
 export function usedManualParts(db: DbInterface, uids: number[]) {
@@ -323,15 +323,15 @@ export function categories(db: DbInterface, uids: number[], fromSummary: boolean
     );
   return db.all<Category>(
     `
-    SELECT ${key(TEIL.kategorie)}                             AS category_name,
-           ${name(TEIL.kategorie)}                                    AS label,
+    SELECT ${key(TEIL.category)}                             AS category_name,
+           ${name(TEIL.category)}                                    AS label,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
            SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int AS total_quantity
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
-    ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}
+    ${quantityJoin('p', 'part', 'tm', '= ANY($1)')}
     ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
-    ${categoryJoin(TEIL.kategorie, 'p.part_number')}
+    ${categoryJoin(TEIL.category, 'p.part_number')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
     ${groupBy}`,
     [uids],
@@ -367,7 +367,7 @@ export async function stats(db: DbInterface, uids: number[], fromSummary: boolea
              FILTER (WHERE COALESCE(p.source, 'set') <> 'manual') AS total_parts
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
-    ${teilmengeJoin('p', 'part')}
+    ${quantityJoin('p', 'part')}
     WHERE p.user_id = ANY($1)`,
         [uids],
       );
@@ -379,7 +379,7 @@ export async function stats(db: DbInterface, uids: number[], fromSummary: boolea
     SELECT SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)}) AS t
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
-    ${teilmengeJoin('p', 'part')}
+    ${quantityJoin('p', 'part')}
     WHERE p.user_id = ANY($1) AND p.source = 'manual'`,
     [uids],
   );
@@ -417,7 +417,7 @@ export function manualParts(
   db: DbInterface,
   uids: number[],
   f: { search?: string | null; storage?: string | null },
-  page: { groesse: number; versatz: number } | null,
+  page: { size: number; offset: number } | null,
 ) {
   const params: unknown[] = [uids];
   let filter = '';
@@ -431,7 +431,7 @@ export function manualParts(
   }
   let limit = '';
   if (page) {
-    params.push(page.groesse, page.versatz);
+    params.push(page.size, page.offset);
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   return db.all<ManualPart>(
@@ -439,10 +439,10 @@ export function manualParts(
     SELECT t.id, t.user_id, t.part_number,
            ${blNumberSql('t.part_number')} AS bl_part_number,
            ${TEIL.name} AS part_name, t.color_id,
-           ${TEIL.farbname} AS color_name, ${TEIL.farbcode} AS color_hex,
-           ${TEIL.kategorie} AS category_name,
+           ${TEIL.colorName} AS color_name, ${TEIL.colorHex} AS color_hex,
+           ${TEIL.category} AS category_name,
            ${subsetFrom('t', 'part')} AS quantity,
-           ${TEIL.image} AS image_url, ${TEIL.bildDatei} AS image_local,
+           ${TEIL.image} AS image_url, ${TEIL.imageFile} AS image_local,
            -- unit_price is the entered price and may be empty, purchase_price
            -- is the display value (0 means "nothing known"), see src/finances/priceRule.ts.
            neu.unit_price,
@@ -453,7 +453,7 @@ export function manualParts(
            -- The name stays as-is externally, so UIs and the app read it unchanged.
            t.added_at AS created_at
     FROM parts t
-    ${teilmengeJoin('t', 'part')}
+    ${quantityJoin('t', 'part')}
     ${blJoin('t.part_number', 'part', 't.user_id')}
     ${teilSichtJoin('t.user_id', 't.part_number', 't.color_id')}
     LEFT JOIN ${storages()} lo ON lo.id = t.storage_id
@@ -488,7 +488,7 @@ export function ownedParts(db: DbInterface, uids: number[], numbers: string[], c
                               THEN ${subsetFrom('p', 'part')} ELSE 0 END), 0)::int AS loose
        FROM parts p
        ${mengeJoin('p', 'sm', '= ANY($1)')}
-       ${teilmengeJoin('p', 'part')}
+       ${quantityJoin('p', 'part')}
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
          ON g.part_number = p.part_number AND g.color_id = p.color_id
       WHERE p.user_id = ANY($1)
@@ -508,7 +508,7 @@ export function ownedMinifigs(db: DbInterface, uids: number[], numbers: string[]
                               THEN ${subsetFrom('m', 'fig')} ELSE 0 END), 0)::int AS loose
        FROM minifigs m
        ${mengeJoin('m', 'sm', '= ANY($1)')}
-       ${teilmengeJoin('m', 'fig')}
+       ${quantityJoin('m', 'fig')}
        JOIN unnest($2::text[]) AS g(fig_number)
          ON g.fig_number = m.fig_number
       WHERE m.user_id = ANY($1)

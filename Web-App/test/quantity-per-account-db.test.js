@@ -119,7 +119,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
   await t.test('sub-account may not change the main account', async () => {
     const vorher = await quantityOf(db, [uid], SN);
     await assert.rejects(changeSet(kid, SN, { quantity_delta: -1, owner_user_id: uid }), {
-      kind: 'verboten',
+      kind: 'forbidden',
     });
     assert.equal(await quantityOf(db, [uid], SN), vorher);
   });

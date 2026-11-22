@@ -17,7 +17,7 @@ const TSC = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32'
 const RUNS = ['tsconfig.frontend.json', 'tsconfig.frontend-scripts.json'];
 
 /** @param {string} config @param {string[]} [extra] @returns {string[]} the messages */
-function pruefe(config, extra = []) {
+function check(config, extra = []) {
   const r = spawnSync(TSC, ['-p', path.join(ROOT, config), ...extra], { cwd: ROOT, encoding: 'utf8' });
   if (r.status === null) throw new Error(`tsc lief nicht: ${r.error?.message}`);
   const messages = (r.stdout + r.stderr).split('\n').filter(z => /error TS\d+:/.test(z));
@@ -30,7 +30,7 @@ if (require.main === module) {
   /** @type {Record<string, string[]>} */
   const result = {};
   for (const c of RUNS) {
-    const m = pruefe(c);
+    const m = check(c);
     result[c] = m;
     sum += m.length;
     if (!process.argv.includes('--json')) {
@@ -42,4 +42,4 @@ if (require.main === module) {
   process.exit(sum ? 1 : 0);
 }
 
-module.exports = { pruefe, RUNS };
+module.exports = { check, RUNS };

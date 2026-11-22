@@ -1,6 +1,6 @@
-import { storages, setBestand } from '../../../db/inventoryView';
+import { storages, setHoldings } from '../../../db/inventoryView';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
-import { quantityFrom, mengeJoin, subsetFrom, teilmengeJoin } from '../../../db/stockQuantity';
+import { quantityFrom, mengeJoin, subsetFrom, quantityJoin } from '../../../db/stockQuantity';
 import type { Row, DbInterface } from '../../../db/database';
 import { minifigViewJoin, MINIFIG } from '../../../db/catalogView';
 import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
@@ -18,7 +18,7 @@ export async function groupedMinifigs(
     search?: string | null;
     source?: string | null;
     setNumber: string | null;
-    seite: { groesse: number; versatz: number } | null;
+    page: { size: number; offset: number } | null;
   },
 ) {
   const { search, source } = f;
@@ -40,12 +40,12 @@ export async function groupedMinifigs(
   }
   const figParams = [...params];
   let figLimit = '';
-  if (f.seite) {
-    figParams.push(f.seite.groesse, f.seite.versatz);
+  if (f.page) {
+    figParams.push(f.page.size, f.page.offset);
     figLimit = ` LIMIT $${figParams.length - 1} OFFSET $${figParams.length}`;
   }
   // The count needs no join on sets.
-  const figCount = f.seite
+  const figCount = f.page
     ? await db.get<{ c: number }>(
         `SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
@@ -67,7 +67,7 @@ export async function groupedMinifigs(
            -- Manually the sum of acquisitions, from a set the catalog count.
            SUM(${subsetFrom('m', 'fig')})::int AS quantity,
            MAX(${MINIFIG.image}) AS image_url,
-           MAX(${MINIFIG.bildDatei}) AS image_local,
+           MAX(${MINIFIG.imageFile}) AS image_local,
            m.source,
            -- Price from the latest acquisition; MAX, because the group merges
            -- several spellings of the same number.
@@ -82,9 +82,9 @@ export async function groupedMinifigs(
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
     ${mengeJoin('m')}
-    ${teilmengeJoin('m', 'fig')}
+    ${quantityJoin('m', 'fig')}
     -- The sets row only for added_at; the quantity comes from mengeJoin().
-    LEFT JOIN ${setBestand()} s ON s.user_id = m.user_id AND s.set_number = m.set_number
+    LEFT JOIN ${setHoldings()} s ON s.user_id = m.user_id AND s.set_number = m.set_number
     -- LEFT JOIN, so a minifig without a location doesn't fall out of the list.
     LEFT JOIN ${storages()} lo ON lo.id = m.storage_id
     -- Over the primary key, so at most one row per match.
@@ -114,18 +114,18 @@ export async function manualMinifigsList(
   db: DbInterface,
   uids: number[],
   search: string | null | undefined,
-  page: { groesse: number; versatz: number } | null,
+  page: { size: number; offset: number } | null,
 ) {
   const params: unknown[] = [uids];
   // Placeholders before LIMIT/OFFSET.
-  let suche = '';
+  let searchSql = '';
   if (search) {
     params.push(containsPattern(search));
-    suche = ` AND ${minifigSearch('m.fig_number', MINIFIG.name, params.length)}`;
+    searchSql = ` AND ${minifigSearch('m.fig_number', MINIFIG.name, params.length)}`;
   }
   let limit = '';
   if (page) {
-    params.push(page.groesse, page.versatz);
+    params.push(page.size, page.offset);
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   const figs = await db.all<Row<{ fig_number: string; image_local: string | null }>>(
@@ -145,10 +145,10 @@ export async function manualMinifigsList(
             neu.unit_price,
             COALESCE(neu.unit_price, 0) AS purchase_price,
             COALESCE(neu.condition, 'N') AS condition,
-            ${MINIFIG.name} AS fig_name, ${MINIFIG.image} AS image_url, ${MINIFIG.bildDatei} AS image_local,
+            ${MINIFIG.name} AS fig_name, ${MINIFIG.image} AS image_url, ${MINIFIG.imageFile} AS image_local,
             lo.name AS storage
        FROM minifigs m
-       ${teilmengeJoin('m', 'fig')}
+       ${quantityJoin('m', 'fig')}
        ${blJoin('m.fig_number', 'fig', 'm.user_id')}
        ${minifigViewJoin('m.user_id', 'm.fig_number')}
        LEFT JOIN ${storages()} lo ON lo.id = m.storage_id
@@ -159,7 +159,7 @@ export async function manualMinifigsList(
           ORDER BY a.created_at DESC, a.id DESC
           LIMIT 1
        ) neu ON TRUE
-      WHERE m.user_id = ANY($1) AND m.source = 'manual'${suche}
+      WHERE m.user_id = ANY($1) AND m.source = 'manual'${searchSql}
       ORDER BY ${MINIFIG.name} ASC, m.fig_number ASC${limit}`,
     params,
   );
@@ -188,7 +188,7 @@ export function minifigStats(db: DbInterface, uids: number[]) {
         SELECT m.source, SUM(${subsetFrom('m', 'fig')} * ${quantityFrom('sm', 1)}) AS quantity
           FROM minifigs m
           ${mengeJoin('m', 'sm', '= ANY($1)')}
-          ${teilmengeJoin('m', 'fig')}
+          ${quantityJoin('m', 'fig')}
          WHERE m.user_id = ANY($1)
          GROUP BY LOWER(TRIM(m.fig_number)), m.source
       ) g`,

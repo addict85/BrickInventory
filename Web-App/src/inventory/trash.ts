@@ -69,8 +69,8 @@ async function restorePurchases(
     if (await purchase.stallEntryOn(tx, 'set', Number(k.id), e.user_id, quantity)) continue;
     const same = await purchase.sameEntryAtTag(tx, 'set', e.user_id, [e.number], String(k.day), -1, {
       condition: String(k.condition ?? 'N'),
-      preis: k.purchase_price == null ? null : Number(k.purchase_price),
-      geschaetzt: !!k.price_estimated,
+      price: k.purchase_price == null ? null : Number(k.purchase_price),
+      estimated: !!k.price_estimated,
       currency: k.currency == null ? null : String(k.currency),
     });
     if (same && (await purchase.stallEntryOn(tx, 'set', same, e.user_id, quantity))) continue;
@@ -125,7 +125,7 @@ export async function restore(k: InventoryContext, uidsChoice: Writer | number[]
       return { type: kind, number: e.number, user_id: e.user_id };
     });
   } catch (err) {
-    if ((err as { code?: string })?.code === '23505') failDomain('konflikt', 'trash_already_exists');
+    if ((err as { code?: string })?.code === '23505') failDomain('conflict', 'trash_already_exists');
     throw err;
   }
 }

@@ -45,10 +45,10 @@ async function bricksetList(k: CatalogContext) {
   return waiting.map(w => ({
     set_number: w.set_number,
     name: names.get(w.set_number) ?? null,
-    attempts: w.versuch,
-    retry_after: tag(new Date(w.faellig_ab)),
+    attempts: w.attempt,
+    retry_after: tag(new Date(w.due_at)),
     last_error: w.error,
-    created_at: w.erstellt,
+    created_at: w.created,
   }));
 }
 

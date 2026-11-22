@@ -20,7 +20,7 @@ export function readRevocationList(raw: Buffer | string): string[] {
 
 export interface SavedList {
   state: string;
-  nummern: string[];
+  numbers: string[];
 }
 
 /** null: no list or older than [atMostDays]; then the server accepts no key. */
@@ -33,6 +33,6 @@ export function applicableList(wert: string | null, atMostDays: number, now: Dat
     return null;
   }
   const alter = now.getTime() - new Date(l?.state).getTime();
-  if (!Array.isArray(l?.nummern) || !(alter >= -CLOCK_SPIEL_MS && alter <= atMostDays * 86_400_000)) return null;
-  return new Set(l.nummern);
+  if (!Array.isArray(l?.numbers) || !(alter >= -CLOCK_SPIEL_MS && alter <= atMostDays * 86_400_000)) return null;
+  return new Set(l.numbers);
 }

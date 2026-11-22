@@ -7,26 +7,26 @@
  */
 
 /** Domain types from core-model: package, empty value, optionally an own serializer (then always nullable). */
-/** @type {Record<string, { paket: string, leer: string, serializer?: string }>} */
-const FACHTYPEN = {
+/** @type {Record<string, { pkg: string, leer: string, serializer?: string }>} */
+const DOMAIN_TYPES = {
   Zustand: {
-    paket: 'ch.brickinventoryapp.model.domain.Zustand',
+    pkg: 'ch.brickinventoryapp.model.domain.Zustand',
     leer: 'Zustand.NEU',
   },
   Waehrung: {
-    paket: 'ch.brickinventoryapp.model.domain.Waehrung',
+    pkg: 'ch.brickinventoryapp.model.domain.Waehrung',
     leer: 'Waehrung.KEINE',
   },
   Laufstatus: {
-    paket: 'ch.brickinventoryapp.model.domain.Laufstatus',
+    pkg: 'ch.brickinventoryapp.model.domain.Laufstatus',
     leer: 'Laufstatus.UNBEKANNT',
   },
   Alarmrichtung: {
-    paket: 'ch.brickinventoryapp.model.domain.Alarmrichtung',
+    pkg: 'ch.brickinventoryapp.model.domain.Alarmrichtung',
     leer: 'Alarmrichtung.UNTER',
   },
   Design: {
-    paket: 'ch.brickinventoryapp.model.ui.theme.Design',
+    pkg: 'ch.brickinventoryapp.model.ui.theme.Design',
     leer: 'null',
     serializer: 'ch.brickinventoryapp.model.ui.theme.DesignOderNichts',
   },
@@ -34,7 +34,7 @@ const FACHTYPEN = {
 
 /** Raw name (schema or `<Parent><Field>`) → Kotlin name. The same name means one shape. */
 /** @type {Record<string, string>} */
-const NAMEN = {
+const NAMES = {
   AnmeldeNutzer: 'User',
   MeResponseUser: 'User',
   PasskeyAnmeldungUser: 'User',
@@ -419,7 +419,7 @@ const CONSTANTS = {
 };
 
 /** Response fields that may be missing and are then null instead of empty. */
-const NULLBAR = new Set([
+const NULLABLE = new Set([
   'QrMeldung.abholung',
   'QrMeldung.code',
   'QrAbholung.username',
@@ -446,7 +446,7 @@ const NULLBAR = new Set([
 ]);
 
 /** Body fields the app always sends, never null: the contract leaves them optional for older clients. */
-const PFLICHT = new Set([
+const REQUIRED = new Set([
   'GeraeteSchluesselAnfrage.kette',
   'MerkpostenRequest.condition',
   'PreisalarmRequest.condition',
@@ -561,7 +561,7 @@ const OMIT = new Set(['Fehlercode']);
 
 /** `<METHOD> <path>` → name of the body the app sends. */
 /** @type {Record<string, string>} */
-const ANFRAGEN = {
+const REQUESTS = {
   'POST /api/v1/minifigs': 'AddMinifigRequest',
   'POST /api/v1/parts': 'AddPartRequest',
   'POST /api/v1/sets': 'AddSetRequest',
@@ -615,14 +615,14 @@ const ANFRAGEN = {
 module.exports = {
   STRICT,
   OMIT,
-  FACHTYPEN,
-  NAMEN,
+  DOMAIN_TYPES,
+  NAMES,
   FIELD_TYPES,
   DEFAULTS,
   PROPERTIES,
   CONSTANTS,
-  NULLBAR,
-  PFLICHT,
+  NULLABLE,
+  REQUIRED,
   NULL_SEND,
-  ANFRAGEN,
+  REQUESTS,
 };

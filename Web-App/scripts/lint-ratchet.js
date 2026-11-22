@@ -15,7 +15,7 @@ if (art !== 'lint' && art !== 'format') {
   console.error('Aufruf: node scripts/lint-ratchet.js lint|format');
   process.exit(2);
 }
-const limitsFile = process.env.LINT_SCHRANKEN || path.join(__dirname, 'lint-limits.json');
+const limitsFile = process.env.LINT_LIMITS || path.join(__dirname, 'lint-limits.json');
 const limit = JSON.parse(fs.readFileSync(limitsFile, 'utf8'))[art];
 
 const biome = path.join(ROOT, 'node_modules', '@biomejs', 'biome', 'bin', 'biome');

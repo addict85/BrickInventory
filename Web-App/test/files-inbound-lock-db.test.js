@@ -72,7 +72,7 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
   const hole = async (uid, weg) => {
     const k = await db.get('SELECT is_admin FROM users WHERE id = $1', [uid]);
     Object.assign(sitzung, { userId: uid, isAdmin: k.is_admin === true });
-    delete sitzung.mussPasswortAendern;
+    delete sitzung.mustChangePassword;
     const r = await fetch(base + weg);
     return { status: r.status, body: await r.text() };
   };

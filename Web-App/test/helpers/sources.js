@@ -153,7 +153,7 @@ function areaPage(bereich) {
  *  itself, so that every path there counts. `ende()` stops again. */
 /** @param {any} [kontext] @returns {{ notes: [string, string][], ende: () => void }} */
 function imageNotes(kontext = testContext('images')) {
-  const puffer = kontext.faecher.slot('image_demand:puffer', () => new Map());
+  const puffer = kontext.compartments.slot('image_demand:puffer', () => new Map());
   /** @type {[string, string][]} */
   const notes = [];
   puffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
@@ -234,7 +234,7 @@ function buildAndRequire() {
     for (const n of Object.keys(K.config()))
       Object.defineProperty(config, n, { enumerable: true, get: () => K.config()[n] });
     const d = V().buildServices(testDb(), {
-      bildwerk: _imageWorker,
+      imageWorker: _imageWorker,
       sources: _sources,
       contexts,
       config,
@@ -315,7 +315,7 @@ function ownerAccess(dbModule, testDb, firstStart) {
   // Like server.ts: the first start creates the first account in the system context.
   const { inSystemContext } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
   const eigen = dbModule.createDb(
-    { ...k, verbindung: { connectionString: url }, system: null },
+    { ...k, connection: { connectionString: url }, system: null },
     { firstStart: () => inSystemContext('start', firstStart) },
   );
   const app = testDb();

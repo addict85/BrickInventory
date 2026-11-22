@@ -145,11 +145,11 @@ test('job table', { concurrency: 1 }, async t => {
       };
       const w1 = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
         parallel: 4,
-        taktMs: 20,
+        tickMs: 20,
       });
       const w2 = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
         parallel: 4,
-        taktMs: 20,
+        tickMs: 20,
       });
       w1.starte();
       w2.starte();
@@ -189,7 +189,7 @@ test('job table', { concurrency: 1 }, async t => {
             },
           },
         },
-        { parallel: 3, taktMs: 20 },
+        { parallel: 3, tickMs: 20 },
       );
       w.starte();
       for (let i = 0; i < 100; i++) {
@@ -251,7 +251,7 @@ test('job table', { concurrency: 1 }, async t => {
       const id = await A.placeJobOne(ART, { marke: MARKE });
       const lauf = w.processOne();
       await started_at;
-      assert.ok(await A.abortAb(id), 'ein laufender Auftrag lässt sich abbrechen');
+      assert.ok(await A.abortJob(id), 'ein laufender Auftrag lässt sich abbrechen');
       aborted();
       await lauf;
       assert.equal(lebt, false, 'der Bearbeiter erfährt vom Abbruch');
@@ -297,7 +297,7 @@ test('job table', { concurrency: 1 }, async t => {
       const jobId = _req('src/catalog/pdf/pdfJobs.js').newJobId(Date.now());
       const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
         arten: ['pdf'],
-        taktMs: 50,
+        tickMs: 50,
       });
       try {
         await A.placeJobOne(

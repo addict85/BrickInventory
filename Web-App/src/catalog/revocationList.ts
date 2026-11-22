@@ -5,7 +5,7 @@ import { REVOCATION_STATE, readRevocationList } from '../devices';
 import type { CatalogContext } from './context';
 
 export async function loadRevocationList(k: CatalogContext, lauf?: JobRun): Promise<void> {
-  const nummern = readRevocationList(await k.externalSources.sources.revocationListFetch(lauf?.signal));
-  await k.jobQueue.setState(REVOCATION_STATE, JSON.stringify({ state: k.clock.datum().toISOString(), nummern }));
-  console.log(`[attestation] Widerrufsliste geladen: ${nummern.length} Seriennummern`);
+  const numbers = readRevocationList(await k.externalSources.sources.revocationListFetch(lauf?.signal));
+  await k.jobQueue.setState(REVOCATION_STATE, JSON.stringify({ state: k.clock.datum().toISOString(), numbers }));
+  console.log(`[attestation] Widerrufsliste geladen: ${numbers.length} Seriennummern`);
 }

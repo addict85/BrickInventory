@@ -72,12 +72,12 @@ async function importWantedXml(
         teil: (u, body) => kx.parts.addManualPart(u, body),
         minifig: (u, body) => kx.minifigs.addManualMinifig(u, body),
         // The purchase price is MAXPRICE from the file.
-        set: (u, sn, quantity, condition, kaufpreis) =>
+        set: (u, sn, quantity, condition, purchasePrice) =>
           kx.sets.acquireSet({
             requester: u,
             setNumber: sn,
             quantity,
-            kaufpreis,
+            purchasePrice,
             condition,
             ifPresent: 'aufstocken',
           }),

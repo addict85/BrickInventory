@@ -18,7 +18,7 @@ export function requestsJeMinute(): number {
 }
 
 const setImageLoaded = (k: ImagesContext) =>
-  k.faecher.slot('setBildGeladen', () => event<[setNummer: string, source: string | null]>('setBildGeladen'));
+  k.compartments.slot('setBildGeladen', () => event<[setNumber: string, source: string | null]>('setBildGeladen'));
 /** The entry on the set is made by the catalog (higher); it listens here instead of the images calling it. */
 export function atSetImageLoaded(k: ImagesContext, fn: (setNumber: string, source: string | null) => unknown) {
   return setImageLoaded(k).listen(fn);
@@ -31,18 +31,18 @@ export function reportSetImageLoaded(k: ImagesContext, setNumber: string, source
 
 /** If one is already open, it stays at one. */
 export async function imageDemandKick(k: ImagesContext): Promise<void> {
-  await k.jobQueue.placeJobOne('image_demand', {}, { schluessel: IMAGE_DEMAND_KEY, maxAttempts: 3 });
+  await k.jobQueue.placeJobOne('image_demand', {}, { key: IMAGE_DEMAND_KEY, maxAttempts: 3 });
 }
 
 /** One INSERT per image request drained the pool with a tile wall. Whatever is in the buffer
  * during a crash is requested again by the next call. */
-const puffer = (k: ImagesContext) => k.faecher.slot('image_demand:puffer', () => new Map<string, string>()); // url → set_number
-const ticks = (k: ImagesContext) => k.faecher.slot('image_demand:takte', (): NodeJS.Timeout[] => []);
+const puffer = (k: ImagesContext) => k.compartments.slot('image_demand:puffer', () => new Map<string, string>()); // url → set_number
+const ticks = (k: ImagesContext) => k.compartments.slot('image_demand:takte', (): NodeJS.Timeout[] => []);
 
 /** Once per set in 15 minutes, at most 5000 remembered: the image proxy asks for every
  * tile, and an account with invented numbers would otherwise fill the notes. */
 export function imageOnceReserve(k: ImagesContext, url: string, setNumber: string): void {
-  const remembered = k.faecher.slot('image_demand:vorgemerkt', () => new Cache<string, true>(5000, 15 * 60_000));
+  const remembered = k.compartments.slot('image_demand:vorgemerkt', () => new Cache<string, true>(5000, 15 * 60_000));
   if (remembered.hole(setNumber)) return;
   remembered.set(setNumber, true);
   rememberUsed(k, url, setNumber);

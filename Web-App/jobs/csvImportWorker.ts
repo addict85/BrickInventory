@@ -1,7 +1,7 @@
 /** A process of its own for the catalog import, so the import's large heap
  * does not hit the job process. The work is done by src/catalog/csvImport.ts. */
 import { errorMessage, logAndContinue } from '../src/infra/error';
-import { LESEVERTRAG } from '../src/services';
+import { READ_CONTRACT } from '../src/services';
 import { createImportAccess, createCatalogImports, csvRow } from '../src/catalog';
 
 // Without an IPC channel to stderr instead of a TypeError.
@@ -12,7 +12,7 @@ function post(msg: Record<string, unknown>) {
 
 const db = createImportAccess();
 const pool = db.pool;
-const TASKS = createCatalogImports(db, post, LESEVERTRAG);
+const TASKS = createCatalogImports(db, post, READ_CONTRACT);
 
 type Aufgabe = keyof typeof TASKS;
 

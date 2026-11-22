@@ -136,12 +136,12 @@ test('the connection pool is wide enough', async () => {
   // 1195 ms; with 32 it is 282 ms, without limit 153 ms.
   // The pool stands in the client (clients/imageCdn.ts), the proxy takes it with `pool: true`.
   // Counter-check (05.11.2026): maxSockets 8 in clients/imageCdn.ts → red.
-  const { oeffneBild } = require('./helpers/sources').buildAndRequire()('clients/imageCdn.js');
+  const { openImage } = require('./helpers/sources').buildAndRequire()('clients/imageCdn.js');
   const { recording } = require('./helpers/https-recording');
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
   const [withPool, withoutPool] = await recording(async () => {
-    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
-    await oeffneBild(url, { maxBytes: 1000 }).catch(() => {});
+    await openImage(url, { maxBytes: 1000, pool: true }).catch(() => {});
+    await openImage(url, { maxBytes: 1000 }).catch(() => {});
   });
   const agent = withPool?.options.agent;
   assert.ok(agent, 'der Proxy-Abruf nimmt den Pool nicht');

@@ -248,12 +248,12 @@ export async function setAdmin(
   db: Db,
   id: number,
   ja: boolean,
-): Promise<{ vorher: boolean } | typeof LAST_ADMIN | undefined> {
+): Promise<{ before: boolean } | typeof LAST_ADMIN | undefined> {
   return belowAdminLock(db, async tx => {
-    const r = await tx.get<{ vorher: boolean }>(
+    const r = await tx.get<{ before: boolean }>(
       `UPDATE users u SET is_admin = $2 FROM users alt
       WHERE u.id = $1 AND alt.id = u.id AND ($2 OR NOT (alt.is_admin AND alt.is_active) OR ${OTHER_ADMIN})
-      RETURNING alt.is_admin AS vorher`,
+      RETURNING alt.is_admin AS before`,
       [id, ja],
     );
     if (r) return r;
@@ -266,12 +266,12 @@ export async function writeActive(
   db: Db,
   id: number,
   ja: boolean,
-): Promise<{ vorher: boolean } | typeof LAST_ADMIN | undefined> {
+): Promise<{ before: boolean } | typeof LAST_ADMIN | undefined> {
   return belowAdminLock(db, async tx => {
-    const r = await tx.get<{ vorher: boolean }>(
+    const r = await tx.get<{ before: boolean }>(
       `UPDATE users u SET is_active = $2 FROM users alt
       WHERE u.id = $1 AND alt.id = u.id AND ($2 OR NOT (alt.is_admin AND alt.is_active) OR ${OTHER_ADMIN})
-      RETURNING alt.is_active AS vorher`,
+      RETURNING alt.is_active AS before`,
       [id, ja],
     );
     if (r) return r;
@@ -555,9 +555,9 @@ export async function mustChangePassword(db: DbInterface, uid: number): Promise<
 }
 
 export function accountToNames(db: DbInterface, name: string) {
-  return db.get<{ kennung: string; id: number | null }>(
+  return db.get<{ identifier: string; id: number | null }>(
     `
-    SELECT lower($1::text) AS kennung,
+    SELECT lower($1::text) AS identifier,
            (SELECT id FROM users WHERE lower(username) = lower($1::text) OR lower(email) = lower($1::text)
              ORDER BY id LIMIT 1) AS id`,
     [name],

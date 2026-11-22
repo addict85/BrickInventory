@@ -32,7 +32,7 @@ export function onlyOwnOrigin(req: Request, res: Response, next: NextFunction) {
   // With a cookie the session decides; a bearer header next to it switches nothing off.
   const withSession = carriesSessionCookie(String(req.headers.cookie || ''));
   if (!withSession && String(req.headers.authorization || '').startsWith('Bearer ')) return next();
-  const fremd = () => sendError(req, res, 'verboten', 'foreign_origin');
+  const fremd = () => sendError(req, res, 'forbidden', 'foreign_origin');
 
   const origin = String(req.headers['sec-fetch-site'] || '');
   if (origin) return origin === 'same-origin' || origin === 'none' ? next() : fremd();
@@ -65,5 +65,5 @@ export function onlyOwnHost(req: Request, res: Response, next: NextFunction) {
   const header = name(String(req.headers.host || ''));
   if (LOOPBACK.has(header) || IP_ADDRESS.test(header) || (address && header === name(hostOf(address) ?? '')))
     return next();
-  sendError(req, res, 'falscher_host', 'foreign_host', { address: address ?? ownIp(req) });
+  sendError(req, res, 'misdirected', 'foreign_host', { address: address ?? ownIp(req) });
 }

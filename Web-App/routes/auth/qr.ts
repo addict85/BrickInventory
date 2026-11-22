@@ -42,7 +42,7 @@ export function buildQrRouter(d: Pick<Services, 'account'>) {
   router.endpoint('POST /api/v2/auth/qr-token', requireLogin, async (req, res) => {
     // Like /token-create: a QR code opens a new, long-lived device
     // access; only from the session, with password and second factor.
-    if (!perSession(req)) failDomain('verboten', 'session_only');
+    if (!perSession(req)) failDomain('forbidden', 'session_only');
     if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.input.password))) return;
     // The lifetime is chosen by the signed-in session, not by the anonymous /qr-login.
     return { ...(await d.account.createQrAccess(signedInUserId(req), req.input.validity)) };
@@ -51,8 +51,8 @@ export function buildQrRouter(d: Pick<Services, 'account'>) {
   // Throttled, because the endpoint writes to the database without login.
   router.endpoint('POST /api/v2/auth/qr-login', ipThrottle(d.account, 'qr-login', 30, 60 * 60 * 1000), async req => {
     const { token, label } = req.input;
-    if (!token?.startsWith('bim:')) failDomain('ungueltig', 'token_invalid');
-    if (!devicesNameContentValid(label)) failDomain('ungueltig', 'device_name_invalid');
+    if (!token?.startsWith('bim:')) failDomain('invalid', 'token_invalid');
+    if (!devicesNameContentValid(label)) failDomain('invalid', 'device_name_invalid');
     const m = await d.account.reportDevice(token, label, req.ip);
     if (!m || !(await signInMay(d, m.uid))) failDomain('not_signed_in', 'token_invalid');
     return { waiting: true, pickup: m.pickup, code: m.code, expires_in: QR_TTL_MS / 1000 } as const;
@@ -64,7 +64,7 @@ export function buildQrRouter(d: Pick<Services, 'account'>) {
     'POST /api/v2/auth/qr-login/collect',
     ipThrottle(d.account, 'qr-abholen', 600, 60 * 60 * 1000),
     async (req, res) => {
-      if (!req.input.pickup) failDomain('ungueltig', 'token_invalid');
+      if (!req.input.pickup) failDomain('invalid', 'token_invalid');
       const a = await d.account.fetchQrToken(
         req.input.pickup,
         req.ip,
@@ -75,9 +75,9 @@ export function buildQrRouter(d: Pick<Services, 'account'>) {
       const user = await d.account.accountShortOf(a.uid);
       if (!user) failDomain('not_signed_in', 'token_invalid');
       if (a.state === 'bereit') return { waiting: false, preview: true, username: user.username } as const;
-      reportLogin({ ip: req.ip, konto: user.id, zugang: 'qr' });
+      reportLogin({ ip: req.ip, account: user.id, method: 'qr' });
       // A login like with password or passkey: the QR code was only available with password and factor.
-      await d.account.verwalter.cancelTakeovers(user.id);
+      await d.account.admin.cancelTakeovers(user.id);
       res.json(await qrPickedUp(d, user, a.token, a.keyNonce));
     },
   );
@@ -86,30 +86,30 @@ export function buildQrRouter(d: Pick<Services, 'account'>) {
     'POST /api/v2/auth/qr-login/discard',
     ipThrottle(d.account, 'qr-abholen', 600, 60 * 60 * 1000),
     async req => {
-      if (!req.input.pickup) failDomain('ungueltig', 'token_invalid');
+      if (!req.input.pickup) failDomain('invalid', 'token_invalid');
       if (!(await d.account.discardPickup(req.input.pickup))) failDomain('not_signed_in', 'token_invalid');
       return {};
     },
   );
 
   router.endpoint('GET /api/v2/auth/qr-pairing/:id', requireLogin, async req => {
-    if (!perSession(req)) failDomain('verboten', 'session_only');
+    if (!perSession(req)) failDomain('forbidden', 'session_only');
     const s = await d.account.pairingState(req.pathArgs.id, signedInUserId(req));
     if (!s) notFound();
     return { ...s };
   });
 
   router.endpoint('POST /api/v2/auth/qr-pairing/:id/confirm', requireLogin, async req => {
-    if (!perSession(req)) failDomain('verboten', 'session_only');
+    if (!perSession(req)) failDomain('forbidden', 'session_only');
     const uid = signedInUserId(req);
     await d.account.confirmPairing(req.pathArgs.id, uid, req.input.code);
     const s = await d.account.pairingState(req.pathArgs.id, uid);
-    d.account.hintInBackground(uid, 'token_neu', s?.device ?? 'qr-login');
+    d.account.hintInBackground(uid, 'token_added', s?.device ?? 'qr-login');
     return {};
   });
 
   router.endpoint('POST /api/v2/auth/qr-pairing/:id/reject', requireLogin, async req => {
-    if (!perSession(req)) failDomain('verboten', 'session_only');
+    if (!perSession(req)) failDomain('forbidden', 'session_only');
     if (!(await d.account.rejectPairing(req.pathArgs.id, signedInUserId(req)))) notFound();
     return {};
   });

@@ -51,7 +51,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   const app = _req('startup/app.js').buildApp({
     pool: db.systemPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 's'.repeat(48),
+    sessionSecret: 's'.repeat(48),
     dienste: require('./helpers/sources').testServices(),
   });
   const srv = app.listen(0);

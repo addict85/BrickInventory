@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
-import { setTimeout as warte } from 'node:timers/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { reportError, logAndContinue } from '../infra/error';
 import { withVersion, withoutVersion } from '../infra/setNumber';
 import { pathSegment } from '../infra/foreignAddresses';
@@ -15,7 +15,7 @@ const PDF_START = Buffer.from('%PDF-');
  * if need be. */
 
 /** So that the queue's tick only waits after real fetches; per set of services. */
-const fetchState = (k: CatalogContext) => k.faecher.slot('anleitungen:abruf', () => ({ extern: false }));
+const fetchState = (k: CatalogContext) => k.compartments.slot('anleitungen:abruf', () => ({ extern: false }));
 export function lastFetchWarExtern(k: CatalogContext): boolean {
   return fetchState(k).extern;
 }
@@ -23,12 +23,12 @@ export function lastFetchWarExtern(k: CatalogContext): boolean {
 // Count, read, delete in one place instead of scattered.
 
 export async function instructionCount(k: CatalogContext, setNumber: string): Promise<number> {
-  const r = await k.anleitungen.countInstructions(withVersion(setNumber));
+  const r = await k.instructions.countInstructions(withVersion(setNumber));
   return Number(r?.c) || 0;
 }
 
 export async function instructionsToSet(k: CatalogContext, setNumber: string) {
-  return k.anleitungen.instructionsOfSets(withVersion(setNumber));
+  return k.instructions.instructionsOfSets(withVersion(setNumber));
 }
 
 /** First the automatically imported ones, then the self-uploaded ones. */
@@ -43,7 +43,7 @@ export async function instructionNewLoadAllowed(k: CatalogContext, setNumber: st
 }
 
 export async function deleteInstructions(k: CatalogContext, setNumber: string) {
-  return k.anleitungen.deleteInstructionsOfSets(withVersion(setNumber));
+  return k.instructions.deleteInstructionsOfSets(withVersion(setNumber));
 }
 
 // One find for creating and searching.
@@ -62,7 +62,7 @@ export async function scrapeInstructionsFromFallback(k: CatalogContext, setNumbe
   const n = withVersion(setNumber);
   const existing = await instructionCount(k, n);
   if (existing > 0) return existing;
-  const biAlreadyTried = await k.anleitungen.hatBrickinstructions(n);
+  const biAlreadyTried = await k.instructions.hatBrickinstructions(n);
   if (biAlreadyTried) return 0;
   try {
     const fund = await brickinstructionsFund(k, n);
@@ -75,7 +75,7 @@ export async function scrapeInstructionsFromFallback(k: CatalogContext, setNumbe
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
       const desc = `Anleitung ${n} (BrickInstructions)`;
-      await k.anleitungen.rememberInstruction(n, pageUrl, desc, null);
+      await k.instructions.rememberInstruction(n, pageUrl, desc, null);
       setImmediate(() => {
         void collectAndBuildPDF(k, baseUrl, hdrs, fund.firstImage, pdfDest, relPath, n).catch(
           logAndContinue('instructions:collectAndBuildPDF'),
@@ -118,7 +118,7 @@ export async function loadSetInstructions(k: CatalogContext, setNumber: string, 
 
   if (!instrList.length && bricksetSucceededEmpty && (await bdpFallback(k, n, ownTick))) return 1;
 
-  const biAlreadyTried = await k.anleitungen.hatBrickinstructions(n);
+  const biAlreadyTried = await k.instructions.hatBrickinstructions(n);
   if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
     const bi = await brickinstructionsSource(k, n);
     if (bi) instrList.push(bi);
@@ -164,15 +164,15 @@ async function bdpFallback(k: CatalogContext, n: string, ownTick: boolean): Prom
     const ok = await k.externalSources.sources.downloadFile(bdpUrl, pdfDest, undefined, PDF_START);
     if (ok) {
       console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
-      await k.anleitungen.rememberInstruction(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath);
-      if (!ownTick) await warte(5000);
+      await k.instructions.rememberInstruction(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath);
+      if (!ownTick) await sleep(5000);
       return true;
     }
   } catch (e) {
     // Exception: the BDP fallback is one of several sources; false lets the next one be asked.
     reportError(`instructions:bdp ${n}`, e);
   }
-  if (!ownTick) await warte(5000);
+  if (!ownTick) await sleep(5000);
   return false;
 }
 
@@ -208,7 +208,7 @@ async function saveInstructions(k: CatalogContext, n: string, instrList: Instruc
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      await k.anleitungen.rememberInstruction(n, instr.url, instr.description ?? null, null);
+      await k.instructions.rememberInstruction(n, instr.url, instr.description ?? null, null);
       saved++;
       const { brickinstructions_base: basis, brickinstructions_hdrs: header, brickinstructions_first: erstes } = instr;
       setImmediate(() => {
@@ -222,9 +222,9 @@ async function saveInstructions(k: CatalogContext, n: string, instrList: Instruc
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
     const ok = await k.externalSources.sources.downloadFile(instr.url, dest, undefined, PDF_START);
-    await k.anleitungen.rememberInstruction(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
+    await k.instructions.rememberInstruction(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
     saved++;
-    if (i < instrList.length - 1) await warte(200);
+    if (i < instrList.length - 1) await sleep(200);
   }
 
   return saved;
@@ -241,7 +241,7 @@ async function collectAndBuildPDF(
 ) {
   const imageBuffers = [firstPageBuf];
   for (let p = 2; p <= 99; p++) {
-    await warte(500);
+    await sleep(500);
     try {
       const r = await k.externalSources.sources.httpsGetRobust(
         `${baseUrl}/${String(p).padStart(3, '0')}.jpg`,
@@ -255,10 +255,10 @@ async function collectAndBuildPDF(
     }
   }
   console.log(`  Building PDF for ${setNumber}: ${imageBuffers.length} pages`);
-  await warte(100);
+  await sleep(100);
   const ok = await buildImagePDF_fromBuffers(imageBuffers, pdfDest);
   if (ok) {
-    await k.anleitungen.setInstructionFile(relPath, setNumber);
+    await k.instructions.setInstructionFile(relPath, setNumber);
     console.log(`  ✅ PDF ready for ${setNumber}`);
   }
 }

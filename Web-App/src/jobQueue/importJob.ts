@@ -135,7 +135,7 @@ export async function startJob(
   return true;
 }
 
-const reported = (k: JobsContext) => k.faecher.slot('importGemeldet', () => new Map<number, number>());
+const reported = (k: JobsContext) => k.compartments.slot('importGemeldet', () => new Map<number, number>());
 
 /** Throttled, so that a fast import does not write every row to the database. */
 export async function reportJob(
@@ -188,6 +188,6 @@ export async function isAborted(k: JobsContext, userId: number): Promise<boolean
 }
 
 /** Wakes when a process wrote an account's state; returns the unsubscribe. */
-export function atImportStatus(k: JobsContext, f: (konto?: string) => void): () => void {
+export function atImportStatus(k: JobsContext, f: (account?: string) => void): () => void {
   return IMPORT_STAND.listen(k.db.notification, f);
 }

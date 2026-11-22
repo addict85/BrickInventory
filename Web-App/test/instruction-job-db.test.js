@@ -106,13 +106,13 @@ test('instructions as a job', { concurrency: 1 }, async t => {
     await zuruecksetzen();
     const { LOCKS } = _req('src/infra/lockNamespaces.js');
     const fremd = await db.pool.connect();
-    await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
+    await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.INSTRUCTION_QUEUE]);
     const vorher = abruf.aufrufe;
     try {
       await assert.rejects(Q.loadInstruction({ set_number: '10004-1' }), e => e instanceof JobMove);
       assert.equal(abruf.aufrufe, vorher, 'trotz fremder Sperre abgerufen');
     } finally {
-      await fremd.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
+      await fremd.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.INSTRUCTION_QUEUE]);
       fremd.release();
     }
     await Q.loadInstruction({ set_number: '10004-1' });

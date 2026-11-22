@@ -371,7 +371,7 @@ test('moving ONLY goes via the purchase price', async () => {
   const { moveSet } = require('./helpers/sources').areaPage('sets');
   await assert.rejects(
     moveSet(1, '10294-1', 1, 2, []),
-    (/** @type {any} */ e) => e.kind === 'ungueltig' && e.code === 'purchase_prices_required',
+    (/** @type {any} */ e) => e.kind === 'invalid' && e.code === 'purchase_prices_required',
     'move ohne acquisition_ids muss abgelehnt werden',
   );
 
@@ -400,7 +400,7 @@ test('manual parts and minifigures also move via the purchase price', () => {
   assert.ok(src.includes('t.inventory.manualEntryReassign(kind, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,
-    /if \(to === null\) failDomain\('verboten', 'no_write_access'\)/,
+    /if \(to === null\) failDomain\('forbidden', 'no_write_access'\)/,
     `${f}: ohne Schreibrecht muss 403 kommen`,
   );
 });

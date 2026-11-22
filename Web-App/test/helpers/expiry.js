@@ -9,7 +9,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8' && !process.env.TEST_AUSLAUF_AK
   const path = require('node:path');
   const datei = path.relative(process.cwd(), process.argv[1] ?? '?');
   const afterLastTest = Number(process.env.TEST_AUSLAUF_MS) || 30_000;
-  const total = Number(process.env.TEST_DATEI_FRIST_MS) || 0;
+  const total = Number(process.env.TEST_FILE_DEADLINE_MS) || 0;
   const beende = (/** @type {string} */ reason) => {
     process.stderr.write(`[auslauf] ${datei}: ${reason} — offen: ${process.getActiveResourcesInfo().join(', ')}\n`);
     process.exit(1);

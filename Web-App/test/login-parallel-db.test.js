@@ -55,7 +55,7 @@ test('login lock under concurrent attempts', { concurrency: 1 }, async t => {
     const anfrage = { ip: '203.0.113.7', socket: {}, headers: {} };
     const r = await Promise.all(Array.from({ length: 20 }, () => checkCredentials(anfrage, NAME, 'falsch')));
     const geprueft = r.filter(x => x.absage?.kind === 'not_signed_in').length;
-    const gesperrt = r.filter(x => x.absage?.kind === 'zu_viele').length;
+    const gesperrt = r.filter(x => x.absage?.kind === 'too_many').length;
     assert.ok(geprueft <= lim.MAX_ATTEMPTS, `${geprueft} Passwortprüfungen, ${gesperrt} gesperrt`);
     assert.equal(geprueft + gesperrt, 20);
   });

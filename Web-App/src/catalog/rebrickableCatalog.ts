@@ -69,7 +69,8 @@ async function setPartsFromCsv(k: CatalogContext, setNumber: string) {
 /** Briefly remember an empty answer (404, abort): otherwise every
  * repeated import of an unknown number costs quota again. */
 const LEER_MS = 10 * 60 * 1000;
-const leer = (k: CatalogContext) => k.faecher.slot('rebrickable:leer', () => new Cache<string, true>(5000, LEER_MS));
+const leer = (k: CatalogContext) =>
+  k.compartments.slot('rebrickable:leer', () => new Cache<string, true>(5000, LEER_MS));
 
 export async function allPartsOfSet(k: CatalogContext, setNumber: string) {
   const csvParts = await setPartsFromCsv(k, setNumber);
@@ -80,9 +81,9 @@ export async function allPartsOfSet(k: CatalogContext, setNumber: string) {
   );
   if (remembered) return remembered;
   if (leer(k).hole(n)) return [];
-  const { parts, verweigert } = await k.externalSources.sources.fetchSetParts(n);
+  const { parts, refused } = await k.externalSources.sources.fetchSetParts(n);
   // A refusal (403) is remembered as an empty list so that not every import asks again.
-  if (parts.length > 0 || verweigert) await k.rebrickableCache.rememberPartList(n, JSON.stringify(parts));
+  if (parts.length > 0 || refused) await k.rebrickableCache.rememberPartList(n, JSON.stringify(parts));
   else leer(k).set(n, true);
   return parts;
 }

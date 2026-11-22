@@ -40,7 +40,7 @@ async function _redownloadSetStatus(k: CatalogContext, obj: Record<string, unkno
 }
 
 async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
-  const lauf_ = k.faecher.slot('bilderNachladen', () => ({ running: false }));
+  const lauf_ = k.compartments.slot('bilderNachladen', () => ({ running: false }));
   if (lauf_.running) return { alreadyRunning: true };
   // Lock on an OWN connection: advisory locks are bound to the session.
   let lockClient: PoolClient;
@@ -199,13 +199,13 @@ async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: 
 async function reloadImage(k: CatalogContext, m: MissingImage): Promise<boolean> {
   let ok = false;
   if (m.image_url) {
-    await k.cdnDrossel.acquire();
+    await k.cdnThrottle.acquire();
     try {
       // An error counts like a fruitless fetch; the counter names both.
       const r = await attempts('teile-enrich:downloadFile', k.externalSources.sources.downloadFile(m.image_url, m.fp));
       ok = r.ok && r.wert === true;
     } finally {
-      k.cdnDrossel.release();
+      k.cdnThrottle.release();
     }
   }
   if (ok) await k.images.createPreview(m.image_local).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));

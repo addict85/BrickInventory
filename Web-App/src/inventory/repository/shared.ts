@@ -19,14 +19,14 @@ export function entryMetrics(db: DbInterface, l: InventoryReadContract, kind: 'p
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
                 SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inAccountCurrency('e')})::numeric
                   / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inAccountCurrency('e')}), 0) AS avg_purchase_price
-           FROM ${l.teilErfassungen('= ANY($1)')} e ${accountCurrencyJoin('e')}
+           FROM ${l.partAcquisitions('= ANY($1)')} e ${accountCurrencyJoin('e')}
           GROUP BY part_number, color_id`
       : `SELECT fig_number,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
                 SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inAccountCurrency('e')})::numeric
                   / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inAccountCurrency('e')}), 0) AS avg_purchase_price
-           FROM ${l.figurErfassungen('= ANY($1)')} e ${accountCurrencyJoin('e')}
+           FROM ${l.figAcquisitions('= ANY($1)')} e ${accountCurrencyJoin('e')}
           GROUP BY fig_number`,
     [uids],
   );
@@ -39,15 +39,15 @@ const SEARCH_COLUMNS = new Set(['part_number', 'color_id', 'fig_number']);
  * deliver the same shape. */
 const HEADER_FIELDS = {
   parts: `x.part_number AS number, MAX(${TEIL.name}) AS name,
-          MAX(x.color_id) AS color_id, MAX(${TEIL.farbname}) AS color_name,
-          MAX(${TEIL.farbcode}) AS color_hex, MAX(${TEIL.kategorie}) AS category_name,
-          MAX(${TEIL.bildDatei}) AS teil_image_local, MAX(${TEIL.image}) AS teil_image_url,
+          MAX(x.color_id) AS color_id, MAX(${TEIL.colorName}) AS color_name,
+          MAX(${TEIL.colorHex}) AS color_hex, MAX(${TEIL.category}) AS category_name,
+          MAX(${TEIL.imageFile}) AS teil_image_local, MAX(${TEIL.image}) AS teil_image_url,
           bool_or(COALESCE(spc.is_spare, false)) AS is_spare,
           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
   minifigs: `x.fig_number AS number, MAX(${MINIFIG.name}) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
-          MAX(${MINIFIG.bildDatei}) AS teil_image_local, MAX(${MINIFIG.image}) AS teil_image_url,
+          MAX(${MINIFIG.imageFile}) AS teil_image_local, MAX(${MINIFIG.image}) AS teil_image_url,
           false AS is_spare, NULL::text AS storage`,
 } as const;
 
@@ -116,7 +116,7 @@ export async function setsWithComponent(
             c.image_url          AS set_image_url,
             ${HEADER_FIELDS[table]}
        FROM ${table} x
-       ${l.teilmengeJoin('x', ART[table])}
+       ${l.quantityJoin('x', ART[table])}
        -- Name und Bild haengen nur an der Setnummer, nicht am Konto.
        LEFT JOIN set_catalog c ON c.set_number = x.set_number
        ${setMasterJoin('x.set_number')}
@@ -193,7 +193,7 @@ export async function createManual(
     ]);
 }
 
-export function loescheTeilZeile(dbh: Pick<DbInterface, 'run'>, ownerId: number, partNumber: string, colorId: number) {
+export function deletePartRow(dbh: Pick<DbInterface, 'run'>, ownerId: number, partNumber: string, colorId: number) {
   return dbh.run("DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'", [
     ownerId,
     partNumber,
@@ -209,7 +209,7 @@ export function setPartLocation(tx: DbInterface, storageId: number, id: number) 
   return tx.run('UPDATE parts SET storage_id = $1 WHERE id = $2', [storageId, id]);
 }
 
-export function loescheTeilzeile(tx: DbInterface, id: number) {
+export function deletePartRowById(tx: DbInterface, id: number) {
   return tx.run('DELETE FROM parts WHERE id = $1', [id]);
 }
 

@@ -51,7 +51,7 @@ export async function noteLookedUp(db: DbInterface, kind: BlArt, rbId: string): 
   await db.run('INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULL) ON CONFLICT DO NOTHING', [kind, rbId]);
 }
 
-/** The own row of the accounts `konten` (in their order) before the shared one. */
+/** The own row of the accounts `accounts` (in their order) before the shared one. */
 const OWN_FIRST = `(SELECT e.bl_id FROM bl_mapping_custom e
       WHERE e.user_id = ANY($3::int[]) AND e.type = $1 AND e.rb_id = q.rb_id
       ORDER BY array_position($3::int[], e.user_id) LIMIT 1)`;
@@ -60,13 +60,13 @@ export async function differingNumber(
   db: DbInterface,
   kind: BlArt,
   rbId: string,
-  konten: number[] = [],
+  accounts: number[] = [],
 ): Promise<string | null> {
-  const z = konten.length
+  const z = accounts.length
     ? await db.get<{ bl_id: string | null }>(
         `SELECT NULLIF(COALESCE(${OWN_FIRST}, g.bl_id), q.rb_id) AS bl_id
          FROM (SELECT $2::text AS rb_id) q LEFT JOIN bl_mapping g ON g.type = $1 AND g.rb_id = q.rb_id`,
-        [kind, rbId, konten],
+        [kind, rbId, accounts],
       )
     : await db.get<{ bl_id: string | null }>('SELECT bl_id FROM bl_mapping WHERE type=$1 AND rb_id=$2', [kind, rbId]);
   return z?.bl_id || null;
@@ -77,9 +77,9 @@ export async function effectiveNumber(
   db: DbInterface,
   kind: BlArt,
   rbId: string,
-  konten: number[] = [],
+  accounts: number[] = [],
 ): Promise<string | null> {
-  if (konten.length) return (await effectiveNumbers(db, kind, [rbId], konten))[0]?.nr ?? null;
+  if (accounts.length) return (await effectiveNumbers(db, kind, [rbId], accounts))[0]?.nr ?? null;
   const z = await db.get<{ nr: string }>(
     'SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_mapping WHERE type=$1 AND rb_id=$2',
     [kind, rbId],
@@ -87,8 +87,8 @@ export async function effectiveNumber(
   return z?.nr || null;
 }
 
-export function effectiveNumbers(db: DbInterface, kind: BlArt, rbIds: string[], konten: number[] = []) {
-  if (!konten.length)
+export function effectiveNumbers(db: DbInterface, kind: BlArt, rbIds: string[], accounts: number[] = []) {
+  if (!accounts.length)
     return db.all<{ rb_id: string; nr: string }>(
       `SELECT rb_id, COALESCE(bl_id, rb_id) AS nr FROM bl_mapping
       WHERE type=$1 AND rb_id = ANY($2)`,
@@ -99,7 +99,7 @@ export function effectiveNumbers(db: DbInterface, kind: BlArt, rbIds: string[], 
        FROM unnest($2::text[]) AS q(rb_id)
        LEFT JOIN bl_mapping g ON g.type = $1 AND g.rb_id = q.rb_id
       WHERE g.rb_id IS NOT NULL OR ${OWN_FIRST} IS NOT NULL`,
-    [kind, rbIds, konten],
+    [kind, rbIds, accounts],
   );
 }
 

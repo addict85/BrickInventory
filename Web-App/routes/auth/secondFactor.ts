@@ -30,10 +30,10 @@ export function buildSecondFactorRouter(d: Pick<Services, 'account' | 'factors'>
     const withoutPassword = req.input.password === undefined || req.input.password === '';
     if (withoutPassword) {
       if (!((await secondFactorRequired(d.account, req)) && consumeGracePeriod(req)))
-        failDomain('ungueltig', 'current_password_required');
+        failDomain('invalid', 'current_password_required');
     } else if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
     const secret = await d.factors.beginSetup(uid);
-    if (!secret) failDomain('konflikt', 'second_factor_already_active');
+    if (!secret) failDomain('conflict', 'second_factor_already_active');
     const u = await d.account.accountShortOf(uid);
     return { secret, otpauth: d.factors.otpauthFor(secret, u?.username ?? String(uid)) };
   });
@@ -45,28 +45,28 @@ export function buildSecondFactorRouter(d: Pick<Services, 'account' | 'factors'>
     const codes = await d.account.confirmSetupThrottled(uid, accessOf(req), req.input.code);
     if (!Array.isArray(codes)) failDomain(codes.kind, codes.code, codes.vars);
     const header = String(req.headers.authorization || '');
-    const { version } = await d.account.sitzungen.endOther(uid, {
-      sitzung: req.session?.userId ? req.sessionID : null,
+    const { version } = await d.account.sessions.endOther(uid, {
+      session: req.session?.userId ? req.sessionID : null,
       token: header.startsWith('Bearer ') ? header.slice(7) : null,
       accesses: true,
     });
     if (req.session?.userId) req.session.sitzungsVersion = version;
-    d.account.hintInBackground(uid, 'zweiter_faktor_eingerichtet');
+    d.account.hintInBackground(uid, 'second_factor_enabled');
     return { codes };
   });
 
   router.endpoint('POST /api/v2/auth/second-factor/disable', requireLogin, async (req, res) => {
     const uid = signedInUserId(req);
-    if (!(await d.factors.isActive(uid))) failDomain('konflikt', 'second_factor_not_active');
+    if (!(await d.factors.isActive(uid))) failDomain('conflict', 'second_factor_not_active');
     if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
     await d.factors.disable(uid);
-    d.account.hintInBackground(uid, 'zweiter_faktor_abgeschaltet');
+    d.account.hintInBackground(uid, 'second_factor_disabled');
     return {};
   });
 
   router.endpoint('POST /api/v2/auth/second-factor/codes', requireLogin, async (req, res) => {
     const uid = signedInUserId(req);
-    if (!(await d.factors.isActive(uid))) failDomain('konflikt', 'second_factor_not_active');
+    if (!(await d.factors.isActive(uid))) failDomain('conflict', 'second_factor_not_active');
     if (!(await confirmCode(d.account, req, res, uid, req.input.code))) return;
     return { codes: await d.factors.renewCodes(uid) };
   });

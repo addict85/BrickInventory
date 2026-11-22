@@ -134,10 +134,10 @@ export async function backfillThumbnails(k: CatalogContext): Promise<void> {
         : null;
   const local = paths.flatMap(web => {
     const d = file(web);
-    return d ? [{ web, datei: d }] : [];
+    return d ? [{ web, file: d }] : [];
   });
   await attempts('followup:vorschauen einpassen', k.images.fitTailoredPreviews(local));
-  for (const { web: localPath, datei: fsPath } of local) {
+  for (const { web: localPath, file: fsPath } of local) {
     const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
     if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
     if ((await attempts('followup:vorschauErzeugenAus', k.images.createPreview(localPath))).ok) generated++;

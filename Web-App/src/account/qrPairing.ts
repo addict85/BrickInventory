@@ -24,7 +24,7 @@ export async function create(
   const nonce = crypto.randomBytes(32).toString('base64url');
   const bis = new Date(k.clock.now() + QR_TTL_MS);
   const pairing = await k.qrPairing.createQrPairing(tokenDigest(nonce), uid, bis, days, OPEN_PAIRINGS_AT_MOST);
-  if (pairing === null) failDomain('nicht_verfuegbar', 'server_busy');
+  if (pairing === null) failDomain('unavailable', 'server_busy');
   return { token: `bim:${nonce}`, pairing };
 }
 
@@ -66,7 +66,7 @@ export async function fetchQrToken(
 ): Promise<Pickup> {
   const z = await rowTo(k, pickup);
   if (z?.state === 'waiting') return { state: 'waiting' };
-  if (z?.state === 'rejected') failDomain('verboten', 'qr_rejected');
+  if (z?.state === 'rejected') failDomain('forbidden', 'qr_rejected');
   if (z?.state !== 'confirmed' || !(await may(z.user_id))) failDomain('not_signed_in', 'token_invalid');
   if (preview) return { state: 'bereit', uid: z.user_id };
   if (!(await k.qrPairing.markPickedUp(z.id))) failDomain('not_signed_in', 'token_invalid');
@@ -106,13 +106,13 @@ export async function confirmPairing(
 ): Promise<void> {
   const z = await k.qrPairing.qrPairingOfAccount(pairing, uid);
   if (!z) failDomain('not_found', 'not_found');
-  if (z.state !== 'waiting') failDomain('konflikt', 'qr_not_pending');
+  if (z.state !== 'waiting') failDomain('conflict', 'qr_not_pending');
   if (!codeFits(z.code_hash, code)) {
-    if ((await k.qrPairing.countQrFailedAttempt(z.id)) < QR_FAILED_ATTEMPTS) failDomain('ungueltig', 'qr_code_wrong');
+    if ((await k.qrPairing.countQrFailedAttempt(z.id)) < QR_FAILED_ATTEMPTS) failDomain('invalid', 'qr_code_wrong');
     await k.qrPairing.markRejected(z.id);
-    failDomain('verboten', 'qr_rejected');
+    failDomain('forbidden', 'qr_rejected');
   }
-  if (!(await k.qrPairing.markConfirmed(z.id))) failDomain('konflikt', 'qr_not_pending');
+  if (!(await k.qrPairing.markConfirmed(z.id))) failDomain('conflict', 'qr_not_pending');
 }
 
 export async function rejectPairing(k: AccountContext, pairing: number, uid: number): Promise<boolean> {

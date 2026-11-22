@@ -274,17 +274,17 @@ export function writeMinifigImageLocal(dbh: Writer, figNumber: string, imageLoca
 export function partFromCatalog(db: DbInterface, partNumber: string, colorId: number | null, forUser: number | null) {
   return db.get<{
     name: string | null;
-    kategorie: string | null;
-    bild_allgemein: string | null;
-    farb_url: string | null;
-    farb_datei: string | null;
+    category: string | null;
+    image_generic: string | null;
+    color_url: string | null;
+    color_file: string | null;
   }>(
     `
     SELECT COALESCE(pc.part_name, rp.name, te.part_name)   AS name,
            COALESCE(pc.category_name, te.category_name)     AS kategorie,
-           rp.part_img_url                                  AS bild_allgemein,
-           COALESCE(pcc.image_url, tfe.image_url)           AS farb_url,
-           pcc.image_local                                  AS farb_datei
+           rp.part_img_url                                  AS image_generic,
+           COALESCE(pcc.image_url, tfe.image_url)           AS color_url,
+           pcc.image_local                                  AS color_file
       FROM (SELECT $1::text AS nr) q
       LEFT JOIN part_catalog       pc  ON pc.part_number  = q.nr
       LEFT JOIN rb_parts           rp  ON rp.part_num     = q.nr

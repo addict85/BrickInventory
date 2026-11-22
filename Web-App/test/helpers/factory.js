@@ -36,7 +36,7 @@ async function setRecorded(besitzer, setNumber, o = {}) {
     ownerWish: besitzer,
     setNumber,
     quantity: o.quantity ?? 1,
-    kaufpreis: o.preis ?? null,
+    purchasePrice: o.preis ?? null,
     condition: o.condition ?? 'N',
     ifPresent: 'aufstocken',
   });

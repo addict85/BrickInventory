@@ -9,7 +9,7 @@ interface ImageRequest {
 
 /** From the disk cache, if present; true means answered. */
 export async function deliverFromCache(
-  images: Pick<ImagesServices, 'cacheTreffer'>,
+  images: Pick<ImagesServices, 'cacheHit'>,
   opts: {
     res: ImageResponse;
     req: ImageRequest;
@@ -22,11 +22,11 @@ export async function deliverFromCache(
   },
 ): Promise<boolean> {
   const { res, req, streamFileToResponse } = opts;
-  const hits = await images.cacheTreffer(opts);
+  const hits = await images.cacheHit(opts);
   if (!hits) return false;
   res.setHeader('Content-Type', hits.typ);
   // Pass the length: a reverse proxy may buffer a chunked response.
-  if (hits.groesse !== null) res.setHeader('Content-Length', String(hits.groesse));
+  if (hits.size !== null) res.setHeader('Content-Length', String(hits.size));
   if (hits.etag) res.setHeader('ETag', hits.etag);
   res.setHeader('Cache-Control', 'private, max-age=86400, must-revalidate');
   // If the browser already knows the file, an empty 304 is enough.
@@ -36,6 +36,6 @@ export async function deliverFromCache(
   }
   // No raw pipe(): cache maintenance can remove the file between check and
   // opening, and a read stream error without listeners ends the process.
-  streamFileToResponse(res, hits.datei, undefined, req);
+  streamFileToResponse(res, hits.file, undefined, req);
   return true;
 }

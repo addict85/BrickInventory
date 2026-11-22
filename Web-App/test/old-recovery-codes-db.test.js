@@ -85,7 +85,7 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
     await waitOnMail();
     assert.deepEqual(
       gesendet.map(g => [g.type, Date.parse(g.bis)]),
-      [['alte_codes_ablauf', bis.getTime()]],
+      [['old_codes_expiry', bis.getTime()]],
     );
     const state = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
     assert.equal(Date.parse(state.old_codes_until), bis.getTime());

@@ -13,7 +13,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const { rollen, asRole } = require(path.join(ROOT, 'test', 'helpers', 'roles.js'));
+const { roles, asRole } = require(path.join(ROOT, 'test', 'helpers', 'roles.js'));
 const args = process.argv.slice(2);
 const serial = args.includes('--serial');
 const coverage = args.includes('--coverage');
@@ -40,10 +40,10 @@ function deadlineAtLast(/** @type {number} */ grund) {
  * A TAP report additionally goes into a file: from it the run reads which
  * files only failed on the deadline.
  * @param {string[]} files @param {number} n @param {Record<string, string>} env @param {number} frist
- * @returns {Promise<{ code: number, frist: string[], andere: number }>}
+ * @returns {Promise<{ code: number, frist: string[], other: number }>}
  */
 function lauf(files, n, env, frist = 60_000) {
-  if (!files.length) return Promise.resolve({ code: 0, frist: [], andere: 0 });
+  if (!files.length) return Promise.resolve({ code: 0, frist: [], other: 0 });
   // text-output.js keeps text out of the stream of the report frames, expiry.js
   // ends a child that does not end (reasoning there).
   const preloader = [
@@ -53,7 +53,7 @@ function lauf(files, n, env, frist = 60_000) {
     path.join(ROOT, 'test', 'helpers', 'expiry.js'),
     ...(env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'own-db.js')] : []),
   ];
-  const bericht = path.join(os.tmpdir(), `test-lauf-${process.pid}-${Date.now()}.tap`);
+  const report = path.join(os.tmpdir(), `test-lauf-${process.pid}-${Date.now()}.tap`);
   const reporter = process.stdout.isTTY ? 'spec' : 'tap';
   return new Promise(finished => {
     const p = spawn(
@@ -66,19 +66,19 @@ function lauf(files, n, env, frist = 60_000) {
         `--test-reporter=${reporter}`,
         '--test-reporter-destination=stdout',
         '--test-reporter=tap',
-        `--test-reporter-destination=${bericht}`,
+        `--test-reporter-destination=${report}`,
         ...files,
       ],
       // The file as a whole may take longer than a test, but not forever.
       {
         cwd: ROOT,
         stdio: 'inherit',
-        env: { TEST_DATEI_FRIST_MS: String(Math.max(600_000, 3 * frist)), ...process.env, ...env },
+        env: { TEST_FILE_DEADLINE_MS: String(Math.max(600_000, 3 * frist)), ...process.env, ...env },
       },
     );
     p.on('exit', code => {
-      const tap = fs.existsSync(bericht) ? fs.readFileSync(bericht, 'utf8') : '';
-      fs.rmSync(bericht, { force: true });
+      const tap = fs.existsSync(report) ? fs.readFileSync(report, 'utf8') : '';
+      fs.rmSync(report, { force: true });
       finished({ code: code ?? 1, ...deadlineError(tap, files) });
     });
   });
@@ -89,7 +89,7 @@ function lauf(files, n, env, frist = 60_000) {
 function deadlineError(tap, files) {
   /** @type {string[]} */
   const frist = [];
-  let andere = 0;
+  let other = 0;
   for (const block of tap.split(/\n(?=(?:not )?ok \d+ - )/).filter(b => b.startsWith('not ok'))) {
     // The name is the file (it itself ran too long) or a test in it (location).
     const name = /^not ok \d+ - (.*)/.exec(block)?.[1]?.trim() ?? '';
@@ -97,9 +97,9 @@ function deadlineError(tap, files) {
     const file = files.find(d => [name, ort].some(x => path.resolve(ROOT, d) === path.resolve(ROOT, x)));
     if (file && /testTimeoutFailure|timed out after/.test(block)) {
       if (!frist.includes(file)) frist.push(file);
-    } else andere++;
+    } else other++;
   }
-  return { frist, andere };
+  return { frist, other };
 }
 
 /** Files that only turned green in the follow-up run: they stand at the end of the run
@@ -111,7 +111,7 @@ const trailing = [];
  * slip, red individually an error. With TEST_NACHLAUF=aus there is no
  * follow-up run, then the deadline overrun is already red. */
 async function withFollowUp(
-  /** @type {{ code: number, frist: string[], andere: number }} */ r,
+  /** @type {{ code: number, frist: string[], other: number }} */ r,
   /** @type {Record<string, string>} */ env,
   /** @type {number} */ frist,
 ) {
@@ -125,7 +125,7 @@ async function withFollowUp(
   const nach = await lauf(r.frist, 1, env, frist * 2);
   console.log(`[test-lauf] Nachlauf ${nach.code === 0 ? 'grün' : 'ROT'}: ${r.frist.length} Dateien`);
   if (nach.code === 0) trailing.push(...r.frist);
-  return r.andere > 0 ? r.code || 1 : nach.code;
+  return r.other > 0 ? r.code || 1 : nach.code;
 }
 
 /** At the end of the run, not between hundreds of test lines. */
@@ -180,7 +180,7 @@ async function main() {
   // A local run without Chrome was green without checking the layout; only an explicit
   // SKIP_BROWSER=1 still allows skipping (children inherit the variable).
   if (process.env.SKIP_BROWSER !== '1') process.env.REQUIRE_BROWSER = '1';
-  if (process.env.TEST_LAUF_GEBAUT !== '1') {
+  if (process.env.TEST_RUN_BUILT !== '1') {
     // a run within a run does not build: parallel files read dist/ and the bundle
     execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], {
       stdio: 'ignore',
@@ -189,14 +189,14 @@ async function main() {
     require('./build-frontend').buildBundle(path.join(ROOT, 'public', 'js', 'app.bundle.js'));
   }
   /** @type {Record<string, string>} */
-  const measurement = { TEST_LAUF_GEBAUT: '1' };
+  const measurement = { TEST_RUN_BUILT: '1' };
   if (coverage) {
     // An own bundle with an embedded source map: the delivered one stays without.
     const withCard = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
     require('./build-frontend').buildBundle(withCard, { sourceMap: true });
     fs.rmSync(COVERAGE, { recursive: true, force: true });
     fs.mkdirSync(path.join(COVERAGE, 'v8'), { recursive: true });
-    Object.assign(measurement, { NODE_V8_COVERAGE: path.join(COVERAGE, 'v8'), TEST_BUENDEL: withCard });
+    Object.assign(measurement, { NODE_V8_COVERAGE: path.join(COVERAGE, 'v8'), TEST_BUNDLE: withCard });
     const done = new Set();
     setInterval(() => require('./coverage').compact(path.join(COVERAGE, 'v8'), done), 5000).unref();
   }
@@ -244,7 +244,7 @@ async function main() {
     await cleanUp(a, vorlage, true);
     await a.query(`CREATE DATABASE ${id(vorlage)}`);
     // As in production: first the roles (db-rolle), then the schema as owner (migration).
-    const r = rollen(vorlage);
+    const r = roles(vorlage);
     createRoles(basis, vorlage, r);
     execFileSync(
       process.execPath,
@@ -255,7 +255,7 @@ async function main() {
       {
         cwd: ROOT,
         stdio: ['ignore', 'ignore', 'inherit'],
-        env: { ...process.env, DATABASE_URL: asRole(withDb(basis, vorlage), r.eigen) },
+        env: { ...process.env, DATABASE_URL: asRole(withDb(basis, vorlage), r.own) },
       },
     );
     // The read role only gets its columns once the tables are in place (as at the next `compose up`).
@@ -294,7 +294,7 @@ async function main() {
 }
 
 /** postgres/app-role.sh against the template, as the base's superuser.
- * @param {string} basis @param {string} vorlage @param {ReturnType<typeof rollen>} r */
+ * @param {string} basis @param {string} vorlage @param {ReturnType<typeof roles>} r */
 function createRoles(basis, vorlage, r) {
   const u = new URL(basis);
   execFileSync('sh', [path.join(ROOT, 'postgres', 'app-role.sh')], {
@@ -308,14 +308,14 @@ function createRoles(basis, vorlage, r) {
       PGPASSWORD: decodeURIComponent(u.password),
       PGDATABASE: vorlage,
       DB_APP_USER: r.app.name,
-      DB_APP_PASSWORD: r.app.passwort,
-      DB_MIGRATION_USER: r.eigen.name,
-      DB_MIGRATION_PASSWORD: r.eigen.passwort,
+      DB_APP_PASSWORD: r.app.password,
+      DB_MIGRATION_USER: r.own.name,
+      DB_MIGRATION_PASSWORD: r.own.password,
       DB_SYSTEM_USER: r.system.name,
-      DB_SYSTEM_PASSWORD: r.system.passwort,
+      DB_SYSTEM_PASSWORD: r.system.password,
       DB_SYSTEM_WEB_USER: r.systemweb.name,
-      DB_SYSTEM_WEB_PASSWORD: r.systemweb.passwort,
-      DB_LESEN_USER: r.lesen.name,
+      DB_SYSTEM_WEB_PASSWORD: r.systemweb.password,
+      DB_LESEN_USER: r.read.name,
       PGWEB_DB_PASSWORD: '',
     },
   });
@@ -332,8 +332,8 @@ async function cleanUp(/** @type {import('pg').Client} */ admin, /** @type {stri
     [vorlage, alsoTemplate],
   );
   for (const r of rows) await admin.query(`DROP DATABASE IF EXISTS ${id(r.datname)} WITH (FORCE)`);
-  const rollen = await admin.query(`SELECT rolname FROM pg_roles WHERE rolname LIKE $1 || '\\_%'`, [vorlage]);
-  for (const r of rollen.rows) {
+  const roles = await admin.query(`SELECT rolname FROM pg_roles WHERE rolname LIKE $1 || '\\_%'`, [vorlage]);
+  for (const r of roles.rows) {
     await admin
       .query(`DROP ROLE IF EXISTS ${id(r.rolname)}`)
       .catch((/** @type {Error} */ e) => console.warn(`[test-lauf] Rolle ${r.rolname} bleibt: ${e.message}`));

@@ -40,6 +40,32 @@ export type Acquisition = {
   account_price: number | null;
   [feld: string]: unknown;
 };
+export type AcquisitionReply = {
+  success: boolean;
+  new_quantity?: number;
+  from_user_id?: number;
+  to_user_id?: number;
+  merged?: boolean;
+  unchanged?: boolean;
+  acquisitions?: number;
+  instructions?: number;
+  set?: {
+    set_number: string;
+    condition: string;
+    acq_count: number;
+    used_count: number;
+    conditions: string[];
+    max_purchase_price: number | null;
+    avg_purchase_price: number | null;
+    [feld: string]: unknown;
+  } | null;
+  parts?: number;
+  minifigs?: number;
+  source_emptied?: boolean;
+  quantity?: number | null;
+  degraded?: string[];
+  [feld: string]: unknown;
+};
 export type AcquisitionsResponse = {
   success: boolean;
   owner_user_id?: number;
@@ -430,32 +456,6 @@ export type Endpoints = {
   api: string;
   version: string;
   endpoints: Record<string, unknown>;
-  [feld: string]: unknown;
-};
-export type Erfassungsantwort = {
-  success: boolean;
-  new_quantity?: number;
-  from_user_id?: number;
-  to_user_id?: number;
-  merged?: boolean;
-  unchanged?: boolean;
-  acquisitions?: number;
-  instructions?: number;
-  set?: {
-    set_number: string;
-    condition: string;
-    acq_count: number;
-    used_count: number;
-    conditions: string[];
-    max_purchase_price: number | null;
-    avg_purchase_price: number | null;
-    [feld: string]: unknown;
-  } | null;
-  parts?: number;
-  minifigs?: number;
-  source_emptied?: boolean;
-  quantity?: number | null;
-  degraded?: string[];
   [feld: string]: unknown;
 };
 export type ErrorBody = {
@@ -1875,27 +1875,6 @@ export type SetExistsResponse = {
   is_self?: boolean;
   [feld: string]: unknown;
 };
-export type SetFigurenResponse = {
-  success: boolean;
-  source: string;
-  figs: Array<{
-    fig_number: string;
-    fig_name: string;
-    quantity: number;
-    total_quantity: number;
-    image_url: string | null;
-    source: string;
-    conditions: string[];
-    owners: {
-      id: number;
-      username: string;
-      [feld: string]: unknown;
-    }[];
-    [feld: string]: unknown;
-  }>;
-  error?: string;
-  [feld: string]: unknown;
-};
 export type SetInfoResponse = {
   image_local?: string | null;
   image_url?: string | null;
@@ -1951,6 +1930,49 @@ export type SetItem = {
   price_comparison_url?: string | null;
   [feld: string]: unknown;
 };
+export type SetMinifigsResponse = {
+  success: boolean;
+  source: string;
+  figs: Array<{
+    fig_number: string;
+    fig_name: string;
+    quantity: number;
+    total_quantity: number;
+    image_url: string | null;
+    source: string;
+    conditions: string[];
+    owners: {
+      id: number;
+      username: string;
+      [feld: string]: unknown;
+    }[];
+    [feld: string]: unknown;
+  }>;
+  error?: string;
+  [feld: string]: unknown;
+};
+export type SetPartsResponse = {
+  source: string | null;
+  success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
+  parts: Array<{
+    part_number: string;
+    bl_part_number: string | null;
+    part_name: string | null;
+    color_id: number;
+    color_name: string | null;
+    color_hex: string | null;
+    image_url: string | null;
+    total_quantity: number;
+    is_spare: boolean;
+    bl_color_id: number | null;
+    [feld: string]: unknown;
+  }>;
+  error?: string;
+  [feld: string]: unknown;
+};
 export type SetPriceResponse = {
   from_cache?: boolean;
   success: boolean;
@@ -1975,28 +1997,6 @@ export type SetsResponse = {
   sets: SetItem[];
   total: number;
   themes?: string[];
-  [feld: string]: unknown;
-};
-export type SetTeileResponse = {
-  source: string | null;
-  success: boolean;
-  total: number;
-  page: number;
-  page_size: number;
-  parts: Array<{
-    part_number: string;
-    bl_part_number: string | null;
-    part_name: string | null;
-    color_id: number;
-    color_name: string | null;
-    color_hex: string | null;
-    image_url: string | null;
-    total_quantity: number;
-    is_spare: boolean;
-    bl_color_id: number | null;
-    [feld: string]: unknown;
-  }>;
-  error?: string;
   [feld: string]: unknown;
 };
 export type SettingsResponse = {
@@ -2561,7 +2561,7 @@ export type Route =
   | { m: 'PUT'; p: `/v2/minifigs/${string}`; a: PieceChanged }
   | { m: 'DELETE'; p: `/v2/minifigs/${string}`; a: DELETE_api_v2_minifigs_figNumber }
   | { m: 'GET'; p: `/v2/minifigs/${string}/acquisitions`; a: AcquisitionsResponse }
-  | { m: 'PUT'; p: `/v2/minifigs/${string}/acquisitions/${string}`; a: Erfassungsantwort }
+  | { m: 'PUT'; p: `/v2/minifigs/${string}/acquisitions/${string}`; a: AcquisitionReply }
   | { m: 'DELETE'; p: `/v2/minifigs/${string}/acquisitions/${string}`; a: DeleteWithQuantityResponse }
   | { m: 'GET'; p: `/v2/minifigs/${string}/parts`; a: MinifigParts }
   | { m: 'GET'; p: `/v2/minifigs/${string}/price-history`; a: PriceHistoryResponse }
@@ -2575,7 +2575,7 @@ export type Route =
   | { m: 'PUT'; p: `/v2/parts/${string}/${string}`; a: PieceChanged }
   | { m: 'DELETE'; p: `/v2/parts/${string}/${string}`; a: DELETE_api_v2_minifigs_figNumber }
   | { m: 'GET'; p: `/v2/parts/${string}/${string}/acquisitions`; a: AcquisitionsResponse }
-  | { m: 'PUT'; p: `/v2/parts/${string}/${string}/acquisitions/${string}`; a: Erfassungsantwort }
+  | { m: 'PUT'; p: `/v2/parts/${string}/${string}/acquisitions/${string}`; a: AcquisitionReply }
   | { m: 'DELETE'; p: `/v2/parts/${string}/${string}/acquisitions/${string}`; a: DeleteWithQuantityResponse }
   | { m: 'PUT'; p: `/v2/parts/${string}/${string}/color`; a: PartColorResponse }
   | { m: 'GET'; p: `/v2/parts/${string}/${string}/price-history`; a: PriceHistoryResponse }
@@ -2595,17 +2595,17 @@ export type Route =
   | { m: 'PUT'; p: `/v2/sets/${string}`; a: QuantityChanged }
   | { m: 'DELETE'; p: `/v2/sets/${string}`; a: DELETE_api_v2_minifigs_figNumber }
   | { m: 'GET'; p: `/v2/sets/${string}/acquisitions`; a: AcquisitionsResponse }
-  | { m: 'PUT'; p: `/v2/sets/${string}/acquisitions/${string}`; a: Erfassungsantwort }
-  | { m: 'DELETE'; p: `/v2/sets/${string}/acquisitions/${string}`; a: Erfassungsantwort }
+  | { m: 'PUT'; p: `/v2/sets/${string}/acquisitions/${string}`; a: AcquisitionReply }
+  | { m: 'DELETE'; p: `/v2/sets/${string}/acquisitions/${string}`; a: AcquisitionReply }
   | { m: 'GET'; p: `/v2/sets/${string}/alert`; a: PriceAlertsResponse }
   | { m: 'PUT'; p: `/v2/sets/${string}/alert`; a: PriceAlertResponse }
   | { m: 'DELETE'; p: `/v2/sets/${string}/alert`; a: PriceAlertResponse }
   | { m: 'POST'; p: `/v2/sets/${string}/instructions`; a: InstructionsLoaded }
   | { m: 'DELETE'; p: `/v2/sets/${string}/instructions/${string}`; a: GenericResponse }
   | { m: 'POST'; p: `/v2/sets/${string}/instructions/upload`; a: InstructionUploaded }
-  | { m: 'GET'; p: `/v2/sets/${string}/minifigs-list`; a: SetFigurenResponse }
+  | { m: 'GET'; p: `/v2/sets/${string}/minifigs-list`; a: SetMinifigsResponse }
   | { m: 'POST'; p: `/v2/sets/${string}/parts`; a: PartsLoaded }
-  | { m: 'GET'; p: `/v2/sets/${string}/parts-list`; a: SetTeileResponse }
+  | { m: 'GET'; p: `/v2/sets/${string}/parts-list`; a: SetPartsResponse }
   | { m: 'GET'; p: `/v2/sets/${string}/price`; a: SetPriceResponse }
   | { m: 'GET'; p: `/v2/sets/${string}/price-history`; a: PriceHistoryResponse }
   | { m: 'PUT'; p: `/v2/sets/${string}/storage`; a: StorageResponse }

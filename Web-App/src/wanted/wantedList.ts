@@ -84,6 +84,31 @@ export interface WantedOptions extends WriteOptions {
 
 /** Preview and the real thing take the same path, so that the preview promises
  * nothing the import does not do. */
+/** Asked every tenth item, not in the preview. */
+async function cancelledAt(opt: WantedOptions, seq: number): Promise<boolean> {
+  return !!opt.cancellation && !opt.preview && seq >= 0 && (seq + 1) % 10 === 0 && (await opt.cancellation());
+}
+
+async function writeRow(
+  uid: number,
+  a: Parameters<typeof writeItem>[1],
+  rbId: string,
+  opt: WantedOptions,
+  row: ReturnType<typeof reportRow>,
+  report: WantedReport,
+): Promise<void> {
+  try {
+    const how = await writeItem(uid, a, rbId, opt);
+    if (how === 'created') report.created++;
+    else report.topped_up++;
+    row.outcome = how;
+  } catch (e: unknown) {
+    report.failed++;
+    row.outcome = 'error';
+    row.reason = e instanceof Error ? e.message : String(e);
+  }
+}
+
 export async function importWantedList(
   k: WantedContext,
   uid: number,
@@ -93,7 +118,7 @@ export async function importWantedList(
   const read = readWantedList(xml);
   const { auf, rebrickable, corrections } = await resolveCompleteOn(k, read.items, uid, opt);
 
-  const bericht: WantedReport = {
+  const report: WantedReport = {
     parsed: read.items.length,
     foreignTypes: read.foreignTypes,
     withoutNumber: read.withoutNumber,
@@ -113,15 +138,13 @@ export async function importWantedList(
   };
 
   let seq = -1;
-  const melde = () => opt.progress?.({ phase: 'write', done: seq + 1, total: auf.length });
+  const reportProgress = () => opt.progress?.({ phase: 'write', done: seq + 1, total: auf.length });
 
   for (const a of auf) {
     // The tick counts over ALL items, otherwise it would depend on how many were resolvable.
-    if (opt.cancellation && !opt.preview && seq >= 0 && (seq + 1) % 10 === 0) {
-      if (await opt.cancellation()) {
-        bericht.aborted = true;
-        break;
-      }
+    if (await cancelledAt(opt, seq)) {
+      report.aborted = true;
+      break;
     }
     // An own binding: TypeScript does not narrow `a.rbId` via a helper variable.
     const rbId = a.rbId;
@@ -131,29 +154,20 @@ export async function importWantedList(
     if (rbId === null || a.colorPending || opt.preview) {
       // In the preview "created" means "would be created".
       if (open) row.outcome = 'open';
-      bericht.items.push(row);
+      report.items.push(row);
       // A skipped item is done too, otherwise the bar would stand still.
-      melde();
+      reportProgress();
       continue;
     }
 
-    try {
-      const how = await writeItem(uid, a, rbId, opt);
-      if (how === 'created') bericht.created++;
-      else bericht.topped_up++;
-      row.outcome = how;
-    } catch (e: unknown) {
-      bericht.failed++;
-      row.outcome = 'error';
-      row.reason = e instanceof Error ? e.message : String(e);
-    }
-    bericht.items.push(row);
+    await writeRow(uid, a, rbId, opt, row, report);
+    report.items.push(row);
     // After success AND failure, otherwise the bar would stand still on errors.
-    melde();
+    reportProgress();
   }
 
-  await describeRows(k, bericht.items, auf);
-  return bericht;
+  await describeRows(k, report.items, auf);
+  return report;
 }
 
 /** After writing too: the dialog redraws the same table with the
@@ -165,6 +179,6 @@ async function describeRows(k: WantedContext, rows: ItemResult[], auf: Resolutio
     if (!b) return;
     row.name = b.name;
     row.image = b.image;
-    row.nameGuessed = b.geraten;
+    row.nameGuessed = b.guessed;
   });
 }

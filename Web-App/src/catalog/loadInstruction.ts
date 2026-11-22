@@ -29,7 +29,7 @@ function nextTag(now: Date): Date {
 /** Two job processes should not share the tick; own connection,
  * because advisory locks are bound to the session. */
 function withLock<T>(k: CatalogContext, lauf: () => Promise<T>): Promise<T> {
-  return withSessionLock(k.db, LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
+  return withSessionLock(k.db, LOCKS.INSTRUCTION_QUEUE, lauf, () => {
     throw new JobMove(new Date(k.clock.now() + TICK_AFTER_FETCH_MS), 'Anleitungen laufen in einem anderen Prozess');
   });
 }
@@ -67,29 +67,32 @@ async function loadInstruction(k: CatalogContext, n: Payload<'instructions'>, la
         );
       await reportInstructions(k, sn, lauf);
     } catch (e) {
-      const f = asFetchError(e);
-      const msg = errorMessage(e) || '';
-      if (f.isCloudflare || msg.includes('1015')) {
-        const level = (await k.jobQueue.liesPause('instructions'))?.level ?? 0;
-        const bis =
-          level < CF_PAUSES_MS.length ? new Date(k.clock.now() + CF_PAUSES_MS[level]!) : nextTag(k.clock.datum());
-        const reason =
-          level < CF_PAUSES_MS.length
-            ? `Cloudflare-Sperre: ${Math.round(CF_PAUSES_MS[level]! / 60000)} min warten (Versuch ${level + 1})`
-            : 'Cloudflare-Sperre: bis morgen pausiert';
-        await k.jobQueue.pauseKind('instructions', bis, reason, level < CF_PAUSES_MS.length ? level + 1 : 0);
-        await lauf?.progress?.({ text: reason });
-        console.log(`[instr-queue] ${reason}`);
-        throw new JobMove(bis, reason);
-      }
-      if (msg.includes('Tageslimit') || msg.includes('rate limit') || msg.includes('429')) {
-        const bis = nextTag(k.clock.datum());
-        await k.jobQueue.pauseKind('instructions', bis, 'Tageskontingent erschöpft');
-        throw new JobMove(bis, 'Tageskontingent erschöpft');
-      }
+      await pauseOnThrottle(k, e, lauf);
       throw e;
     }
   });
+}
+
+/** Cloudflare pauses in growing steps, a daily limit until tomorrow; both postpone the job (JobMove). */
+async function pauseOnThrottle(k: CatalogContext, e: unknown, lauf?: JobRun): Promise<void> {
+  const msg = errorMessage(e) || '';
+  if (asFetchError(e).isCloudflare || msg.includes('1015')) {
+    const level = (await k.jobQueue.liesPause('instructions'))?.level ?? 0;
+    const stepped = level < CF_PAUSES_MS.length;
+    const bis = stepped ? new Date(k.clock.now() + CF_PAUSES_MS[level]!) : nextTag(k.clock.datum());
+    const reason = stepped
+      ? `Cloudflare-Sperre: ${Math.round(CF_PAUSES_MS[level]! / 60000)} min warten (Versuch ${level + 1})`
+      : 'Cloudflare-Sperre: bis morgen pausiert';
+    await k.jobQueue.pauseKind('instructions', bis, reason, stepped ? level + 1 : 0);
+    await lauf?.progress?.({ text: reason });
+    console.log(`[instr-queue] ${reason}`);
+    throw new JobMove(bis, reason);
+  }
+  if (msg.includes('Tageslimit') || msg.includes('rate limit') || msg.includes('429')) {
+    const bis = nextTag(k.clock.datum());
+    await k.jobQueue.pauseKind('instructions', bis, 'Tageskontingent erschöpft');
+    throw new JobMove(bis, 'Tageskontingent erschöpft');
+  }
 }
 
 export { TICK_AFTER_FETCH_MS, CF_PAUSES_MS, nextTag, loadInstruction };

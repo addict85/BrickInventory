@@ -46,7 +46,7 @@
  *      red: “… via db/” ['src/images → price_alerts', 'src/images → sets', 'src/images → wanted']
  *   N  src/catalog/repository/catalogSearch.ts imports mengeJoin again from db/stockQuantity → red:
  *      the same check, ['src/catalog → set_acquisitions']
- *   O  setBestand in db/inventoryView.ts reads `FROM parts` → red at the self-proof „setBestand liest
+ *   O  setHoldings in db/inventoryView.ts reads `FROM parts` → red at the self-proof „setHoldings liest
  *      sets“; if it assembles the name at runtime, it stays green: the result is what is counted.
  *
  * If a file chooses the table name at runtime, what counts is what it reads and writes when called via a recording
@@ -56,7 +56,7 @@
  *      upwards” ['src/inventory → instructions']; the regex on literal names saw neither
  *   Q  cacheNumbers() in src/catalog/repository/catalogCache.ts again counts zaehle('price_cache') →
  *      red: “measured as registered” and “never read upwards” ['src/catalog → price_cache']
- *   R  src/wanted/repository/wanted.ts again reads `FROM sets s` instead of setBestand() → red:
+ *   R  src/wanted/repository/wanted.ts again reads `FROM sets s` instead of setHoldings() → red:
  *      „25 direkte Lesestellen (abwärts), erlaubt sind 24“
  *
  * Every account makes the inputs in its own name (asAccount) as the runtime role, as in
@@ -798,9 +798,9 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     const levels = stufenAusDoku();
     const bausteine = await lesebausteine(_req);
     // Self-proof: what the building blocks read comes from their result, also via constants.
-    assert.deepEqual(bausteine.inventoryView?.setBestand, ['sets'], 'setBestand liest sets');
-    assert.deepEqual(bausteine.accessView?.familieLebt, ['api_tokens']);
-    assert.ok(bausteine.inventoryView?.setZaehlt?.includes('price_alerts'), 'setZaehlt liest über ZAEHLT');
+    assert.deepEqual(bausteine.inventoryView?.setHoldings, ['sets'], 'setBestand liest sets');
+    assert.deepEqual(bausteine.accessView?.familyAlive, ['api_tokens']);
+    assert.ok(bausteine.inventoryView?.setCounts?.includes('price_alerts'), 'setZaehlt liest über ZAEHLT');
     assert.ok(bausteine.stockQuantity?.quantityOfSets?.includes('sets'), 'asynchrone Bausteine zählen');
     const reader = readerViaDb(bausteine);
     assert.ok(reader.includes('src/sets → set_acquisitions'), 'Selbstbeweis: sets liest eigene Käufe über db/');

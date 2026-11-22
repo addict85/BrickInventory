@@ -82,7 +82,7 @@ test('household currency', { concurrency: 1 }, async t => {
     for (const unter of [ids[1], ids[2]]) {
       await assert.rejects(
         setUserSetting(unter, 'currency', 'USD'),
-        (/** @type {any} */ e) => e.code === 'currency_main_account_only' && e.kind === 'verboten',
+        (/** @type {any} */ e) => e.code === 'currency_main_account_only' && e.kind === 'forbidden',
       );
     }
     await setUserSetting(ids[1], 'currency', 'CHF');
@@ -103,7 +103,7 @@ test('household currency', { concurrency: 1 }, async t => {
     // Dragging dora along would give erik's household two currencies: rejected.
     await assert.rejects(
       setUserSetting(ids[4], 'currency', 'CHF'),
-      (/** @type {any} */ e) => e.code === 'currency_shared_sub_account' && e.kind === 'konflikt',
+      (/** @type {any} */ e) => e.code === 'currency_shared_sub_account' && e.kind === 'conflict',
     );
     assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'ein geteiltes Unterkonto …');
     await setUserSetting(ids[6], 'currency', 'EUR');
@@ -122,7 +122,7 @@ test('household currency', { concurrency: 1 }, async t => {
     for (const w of ['GBP', 'EUR', 'CHF', 'SEK']) await setUserSetting(ids[3], 'currency', w);
     await assert.rejects(
       setUserSetting(ids[3], 'currency', 'NOK'),
-      (/** @type {any} */ e) => e.code === 'too_many_requests' && e.kind === 'zu_viele',
+      (/** @type {any} */ e) => e.code === 'too_many_requests' && e.kind === 'too_many',
     );
     await setUserSetting(ids[3], 'currency', 'SEK');
     assert.equal((await currencies())[3], 'SEK', 'ein unveränderter Wert zählt nicht und geht durch');

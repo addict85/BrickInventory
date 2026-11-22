@@ -4,7 +4,7 @@
  * bundle; a rebuild there resulted in „Migration nachträglich geändert“.
  *
  * Counter-check (measured 06.11.2026): in main() the condition
- * `TEST_LAUF_GEBAUT !== '1'` removed → red: „dist/ und Bündel bleiben
+ * `TEST_RUN_BUILT !== '1'` removed → red: „dist/ und Bündel bleiben
  * unberührt“ (mtime of dist/server.js new).
  */
 const test = require('node:test');
@@ -24,14 +24,14 @@ test('a run inside a run does not build', { timeout: 120_000 }, t => {
   const datei = path.join(ordner, 'marke.test.js');
   fs.writeFileSync(
     datei,
-    `require('node:test')('marke', () => require('node:fs').writeFileSync(${JSON.stringify(output)}, String(process.env.TEST_LAUF_GEBAUT)));\n`,
+    `require('node:test')('marke', () => require('node:fs').writeFileSync(${JSON.stringify(output)}, String(process.env.TEST_RUN_BUILT)));\n`,
   );
   const times = () =>
     ['dist/server.js', 'dist/db/migrations', 'public/js/app.bundle.js'].map(
       f => fs.statSync(path.join(ROOT, f)).mtimeMs,
     );
   const vorher = times();
-  const env = { ...process.env, TEST_LAUF_GEBAUT: '1' };
+  const env = { ...process.env, TEST_RUN_BUILT: '1' };
   for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_EIGEN', 'NODE_TEST_CONTEXT'])
     delete env[k];
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), datei], {

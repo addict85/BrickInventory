@@ -22,23 +22,23 @@ function sessionAlive(req: Request): Promise<boolean> {
 }
 
 /** Does the access the request came with still apply now? */
-export async function accessAppliesStill(konto: AccountServices, req: Request): Promise<boolean> {
+export async function accessAppliesStill(account: AccountServices, req: Request): Promise<boolean> {
   const s = req.session;
   if (s?.userId) {
-    if ((await konto.sitzungen.versionFromDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
+    if ((await account.sessions.versionFromDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
     // Logging out only deletes this one session, the version stays.
     return sessionAlive(req);
   }
   const header = String(req.headers.authorization || '');
   if (!header.startsWith('Bearer ')) return false;
-  return konto.tokenGilt(header.slice(7));
+  return account.tokenGilt(header.slice(7));
 }
 
 /** `beenden` runs at most once, as soon as the access no longer applies. A
  * read error ends nothing: the next tick asks again.
  * @returns unsubscribe — call it in the stream's cleanup path. */
 export function watchViaAccess(
-  konto: AccountServices,
+  account: AccountServices,
   req: Request,
   end: () => void,
   tickMs = WATCH_TICK_MS,
@@ -49,7 +49,7 @@ export function watchViaAccess(
     if (from || running) return;
     running = true;
     try {
-      if (!(await accessAppliesStill(konto, req)) && !from) {
+      if (!(await accessAppliesStill(account, req)) && !from) {
         deregister();
         end();
       }

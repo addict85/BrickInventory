@@ -79,8 +79,8 @@ export function reportRow(a: Resolution): ItemResult {
     outcome: a.rbId === null ? 'open' : 'created',
     ...(reason ? { reason } : {}),
     ...(reasonCode ? { reasonCode } : {}),
-    colorName: a.rbFarbName,
-    colorHex: a.rbFarbHex,
+    colorName: a.rbColorName,
+    colorHex: a.rbColorHex,
   };
 }
 
@@ -99,8 +99,8 @@ export async function writeItem(
     feedback = await opt.creator.teil(uid, {
       part_number: rbId,
       color_id: a.rbColor ?? 0,
-      ...(a.rbFarbName ? { color_name: a.rbFarbName } : {}),
-      ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
+      ...(a.rbColorName ? { color_name: a.rbColorName } : {}),
+      ...(a.rbColorHex ? { color_hex: a.rbColorHex } : {}),
       quantity: a.items.quantity,
       condition: a.items.condition ?? undefined,
       // `undefined` instead of `null`: the creators distinguish "nothing specified"

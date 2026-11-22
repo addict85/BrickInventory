@@ -8,7 +8,7 @@ export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farb
 /** A global value is stored as text, even if it comes as a number. */
 const wert = (valid: (v: string) => boolean, json: Record<string, unknown>, code: ErrorCode = 'value_invalid') =>
   input.rule((v): string => {
-    if ((typeof v !== 'string' && typeof v !== 'number') || !valid(String(v))) failDomain('ungueltig', code);
+    if ((typeof v !== 'string' && typeof v !== 'number') || !valid(String(v))) failDomain('invalid', code);
     return String(v);
   }, json);
 const integer = (min: number, max: number, code?: ErrorCode) =>

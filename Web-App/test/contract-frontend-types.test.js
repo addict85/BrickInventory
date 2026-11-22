@@ -24,13 +24,13 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const { QUELLE, ZIEL, create, formatiert } = require('../scripts/contract-frontend-types.js');
+const { SOURCE_FILE, TARGET_FILE, create, formatted } = require('../scripts/contract-frontend-types.js');
 const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
 
 test('the checked-in types are generated from openapi.json', () => {
-  const soll = formatiert(create(JSON.parse(fs.readFileSync(QUELLE, 'utf8'))));
+  const soll = formatted(create(JSON.parse(fs.readFileSync(SOURCE_FILE, 'utf8'))));
   assert.ok(
-    fs.readFileSync(ZIEL, 'utf8') === soll,
+    fs.readFileSync(TARGET_FILE, 'utf8') === soll,
     'frontend-types/contract.d.ts ist veraltet — npm run contract:frontend',
   );
 });

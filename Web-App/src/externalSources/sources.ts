@@ -13,7 +13,7 @@ export { ECB_HISTORY, ECB_DAILY_RATES, firstZipFile, readHistory, readDailyRates
 export { RebrickableLocked, firstBlNumber, parseThrottleWait } from '../../clients/rebrickable';
 export { RbSet, RbSetMinifig, rbPage } from '../../clients/responses';
 import { loadCatalogCsv } from '../../clients/rebrickableCsv';
-import { oeffneBild, fetchImage } from '../../clients/imageCdn';
+import { openImage, fetchImage } from '../../clients/imageCdn';
 import { ecbFetch } from '../../clients/ecb';
 export { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../clients/imageCdn';
 import { legoFetch } from '../../clients/legoBalance';
@@ -45,7 +45,7 @@ export function buildSources(z: ClientsAccess) {
     revocationListFetch,
     downloadFile,
     rebrickableRaw,
-    oeffneBild,
+    openImage,
     fetchImage,
     ecbFetch,
   };

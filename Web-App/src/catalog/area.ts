@@ -27,12 +27,12 @@ import { access, type CatalogDependencies, type CatalogContext } from './context
 export type { CatalogDependencies, CatalogContext } from './context';
 
 export function createCatalog(
-  a: Omit<CatalogDependencies, 'faecher' | 'cdnDrossel'>,
+  a: Omit<CatalogDependencies, 'compartments' | 'cdnThrottle'>,
   inspect?: Inspect<CatalogContext>,
 ) {
-  const cdnDrossel = new ConcurrentRateLimiter(2, 1000, a.clock);
+  const cdnThrottle = new ConcurrentRateLimiter(2, 1000, a.clock);
   const d = buildArea(
-    { ...a, cdnDrossel, faecher: new Compartments() },
+    { ...a, cdnThrottle, compartments: new Compartments() },
     (db: Db) => access(db, a.readContract),
     catalogServices,
     inspect,
@@ -85,14 +85,14 @@ function catalogServices(k: CatalogContext) {
     rememberPart: bound(k)(catalogMaintenance.rememberPart),
     rememberPartColor: bound(k)(catalogMaintenance.rememberPartColor),
     rememberMinifig: bound(k)(catalogMaintenance.rememberMinifig),
-    merkeSetFiguren: bound(k)(catalogMaintenance.merkeSetFiguren),
+    rememberSetMinifigs: bound(k)(catalogMaintenance.rememberSetMinifigs),
     catalogPart: bound(k)(catalogMaintenance.catalogPart),
     catalogMinifig: bound(k)(catalogMaintenance.catalogMinifig),
     minifigsFromCatalog: bound(k)(minifigsImport.minifigsFromCatalog),
     loadSetMinifigs: bound(k)(minifigsImport.loadSetMinifigs),
-    setFigurenMerken: bound(k)(minifigsImport.setFigurenMerken),
+    rememberSetFigs: bound(k)(minifigsImport.rememberSetFigs),
     loadSetParts: bound(k)(partsImport.loadSetParts),
-    rememberSetParts: bound(k)(partsImport.setTeileMerken),
+    rememberSetParts: bound(k)(partsImport.rememberSetParts),
     enqueueSetPartImages: bound(k)(partsImport.enqueueSetPartImages),
     reloadBlNumbers: bound(k)(partsImport.reloadBlNumbers),
     inventoryForCandidates: bound(k)(rbInventory.inventoryForCandidates),

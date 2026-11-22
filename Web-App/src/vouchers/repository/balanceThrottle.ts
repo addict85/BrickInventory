@@ -11,7 +11,7 @@ export function throttleState(tx: DbInterface, GAP_SEC: number) {
                 AS sperre_sek,
               CEIL(GREATEST(0, EXTRACT(EPOCH FROM (
                 last_checked_at + make_interval(secs => $1) - NOW()))))::int
-                AS abstand_sek
+                AS gap_sec
          FROM voucher_balance_throttle
         WHERE id = 1
           FOR UPDATE`,

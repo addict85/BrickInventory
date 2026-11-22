@@ -9,7 +9,7 @@ import * as service from './service';
 import * as content from './content';
 import * as barcode from './barcode';
 import * as prices from './prices';
-import * as anleitungen from './instructions';
+import * as instructions from './instructions';
 import * as csvImport from './csvImport';
 import { setsJobTypes } from './jobTypes';
 import * as setsRepo from './repository/sets';
@@ -46,9 +46,9 @@ export function createSets(a: SetsDependencies, inspect?: Inspect<SetsContext>) 
       deleteAlarmOfSets: bound(sk)(prices.deleteAlarmOfSets),
       startAlarmCsvImport: bound(sk)(prices.startAlarmCsvImport),
       setPriceHistory: bound(sk)(prices.setPriceHistory),
-      rememberInstruction: bound(sk)(anleitungen.rememberInstruction),
-      deleteInstruction: bound(sk)(anleitungen.deleteInstruction),
-      loadInstructionsNew: bound(sk)(anleitungen.loadInstructionsNew),
+      rememberInstruction: bound(sk)(instructions.rememberInstruction),
+      deleteInstruction: bound(sk)(instructions.deleteInstruction),
+      loadInstructionsNew: bound(sk)(instructions.loadInstructionsNew),
       startSetCsvImport: bound(sk)(csvImport.startSetCsvImport),
       cancelSetCsvImport: bound(sk)(csvImport.cancelSetCsvImport),
       csvImportStand: bound(sk)(csvImport.csvImportStand),

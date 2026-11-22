@@ -96,7 +96,7 @@ const IMAGE_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
 const ownershipJoin = (
   l: CatalogReadContract,
 ) => `LEFT JOIN (SELECT s.set_number, SUM(${quantityFrom('sm', 0)})::int AS quantity
-                    FROM ${l.setBestand('= ANY($1)')} s ${l.mengeJoin('s', 'sm', '= ANY($1)')}
+                    FROM ${l.setHoldings('= ANY($1)')} s ${l.mengeJoin('s', 'sm', '= ANY($1)')}
                    GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
 
 export async function catalogCount(db: DbInterface, f: CatalogChoice): Promise<number> {
@@ -110,7 +110,7 @@ export async function catalogCount(db: DbInterface, f: CatalogChoice): Promise<n
 export function catalogRows(
   db: DbInterface,
   l: CatalogReadContract,
-  konten: number[],
+  accounts: number[],
   f: CatalogChoice,
   order: unknown,
   limit: number,
@@ -118,7 +118,7 @@ export function catalogRows(
 ) {
   // fromTable: ?sort=constructor must not yield an inherited property.
   const sortSql = fromTable(ORDERS, order, ORDERS.year_desc);
-  const params: unknown[] = [konten];
+  const params: unknown[] = [accounts];
   const wo = catalogWhere(f, params);
   params.push(limit, offset);
   return db.all<CatalogSet>(
@@ -133,14 +133,14 @@ export function catalogRows(
   );
 }
 
-export function catalogRow(db: DbInterface, l: CatalogReadContract, konten: number[], setNumber: string) {
+export function catalogRow(db: DbInterface, l: CatalogReadContract, accounts: number[], setNumber: string) {
   return db.get<CatalogSet>(
     `SELECT ${SET_COLUMNS}
        FROM rb_sets rb
        ${IMAGE_JOIN}
        ${ownershipJoin(l)}
       WHERE rb.set_num = $2 AND (b.set_number IS NOT NULL OR NOT ${PLACEHOLDER})`,
-    [konten, setNumber],
+    [accounts, setNumber],
   );
 }
 

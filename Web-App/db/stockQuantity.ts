@@ -14,13 +14,13 @@ export function quantityScalar(basis: string): string {
                        AND a.set_number = ${basis}.set_number), 0)`;
 }
 
-/** Quantity as a grouped JOIN source (`<alias>.menge`). `konten`, e.g.
+/** Quantity as a grouped JOIN source (`<alias>.menge`). `accounts`, e.g.
  * `= ANY($1)`, already filters in the subquery: the planner does not pull the
  * account condition of the JOIN inside and would otherwise sum all accounts. */
-export function mengeJoin(basis: string, alias = 'sm', konten?: Konten): string {
-  const filter = konten
+export function mengeJoin(basis: string, alias = 'sm', accounts?: AccountFilter): string {
+  const filter = accounts
     ? `
-                      WHERE ${onAccounts('a.user_id', konten)}`
+                      WHERE ${onAccounts('a.user_id', accounts)}`
     : '';
   return `LEFT JOIN (SELECT a.user_id, a.set_number, ${SUM} AS quantity
                        FROM set_acquisitions a${filter}
@@ -37,18 +37,18 @@ export function quantityFrom(alias = 'sm', isMissing: 0 | 1 = 0): string {
 
 /**
  * The quantity of a set across a whole SCOPE, as a finished query.
- * @param konten 'eines' for one account id, 'blickfeld' for a list.
+ * @param accounts 'eines' for one account id, 'blickfeld' for a list.
  */
-export function quantitySumSql(konten: 'eines' | 'blickfeld'): string {
+export function quantitySumSql(accounts: 'eines' | 'blickfeld'): string {
   return `SELECT COALESCE(${SUM}, 0) AS q
             FROM set_acquisitions a
             JOIN sets s ON s.user_id = a.user_id AND s.set_number = a.set_number
-           WHERE a.user_id ${konten === 'blickfeld' ? '= ANY($1)' : '= $1'}
+           WHERE a.user_id ${accounts === 'blickfeld' ? '= ANY($1)' : '= $1'}
              AND a.set_number = $2`;
 }
 
 import type { DbInterface } from './database';
-import { onAccounts, type Konten } from './accounts';
+import { onAccounts, type AccountFilter } from './accounts';
 import { colorId } from '../src/infra/validate';
 
 /** What a reader needs to be able to do here, and no more: `db` or a transaction. */
@@ -88,41 +88,41 @@ export type StockKind = 'part' | 'fig';
 const ART = {
   part: {
     holding: 'parts',
-    erfassung: 'part_acquisitions',
-    katalog: 'set_parts',
+    acquisition: 'part_acquisitions',
+    catalogTable: 'set_parts',
     number: 'part_number',
     // The color belongs in both keys; "not specified" is 0 in the
     // acquisition, possibly NULL in the inventory row.
-    farbe: true,
+    color: true,
   },
   fig: {
     holding: 'minifigs',
-    erfassung: 'minifig_acquisitions',
-    katalog: 'set_minifigs_catalog',
+    acquisition: 'minifig_acquisitions',
+    catalogTable: 'set_minifigs_catalog',
     number: 'fig_number',
-    farbe: false,
+    color: false,
   },
 } as const;
 
 /** The JOIN sources `<alias>_e` (acquisitions) and `<alias>_k` (catalog) for
- * the quantity of the inventory row `bezug`; `konten` as for [mengeJoin]. */
-export function teilmengeJoin(basis: string, kind: StockKind, alias = 'tm', konten?: Konten): string {
+ * the quantity of the inventory row `bezug`; `accounts` as for [mengeJoin]. */
+export function quantityJoin(basis: string, kind: StockKind, alias = 'tm', accounts?: AccountFilter): string {
   const a = ART[kind];
-  const colorAcq = a.farbe ? `, x.color_id AS fk` : '';
-  const colorCmp = a.farbe ? ` AND ${alias}_e.fk = ${basis}.color_id` : '';
-  const colorCat = a.farbe ? ` AND ${alias}_k.color_id = ${basis}.color_id` : '';
+  const colorAcq = a.color ? `, x.color_id AS fk` : '';
+  const colorCmp = a.color ? ` AND ${alias}_e.fk = ${basis}.color_id` : '';
+  const colorCat = a.color ? ` AND ${alias}_k.color_id = ${basis}.color_id` : '';
   return `LEFT JOIN (SELECT x.user_id, x.${a.number}${colorAcq},
                              SUM(x.quantity)::int AS quantity
-                        FROM ${a.erfassung} x${
-                          konten
+                        FROM ${a.acquisition} x${
+                          accounts
                             ? `
-                       WHERE ${onAccounts('x.user_id', konten)}`
+                       WHERE ${onAccounts('x.user_id', accounts)}`
                             : ''
                         }
-                       GROUP BY x.user_id, x.${a.number}${a.farbe ? ', x.color_id' : ''}) ${alias}_e
+                       GROUP BY x.user_id, x.${a.number}${a.color ? ', x.color_id' : ''}) ${alias}_e
                ON ${alias}_e.user_id = ${basis}.user_id
               AND ${alias}_e.${a.number} = ${basis}.${a.number}${colorCmp}
-    LEFT JOIN ${a.katalog} ${alias}_k
+    LEFT JOIN ${a.catalogTable} ${alias}_k
                ON ${alias}_k.set_number = ${basis}.set_number
               AND ${alias}_k.${a.number} = ${basis}.${a.number}${colorCat}`;
 }
@@ -146,11 +146,11 @@ export async function quantityThePosition(
   dbh: Pick<DbInterface, 'get'>,
 ): Promise<number | null> {
   const a = ART[kind];
-  const color = a.farbe ? ' AND b.color_id = $3' : '';
-  const colorAcq = a.farbe ? ' AND x.color_id = $3' : '';
-  const params = a.farbe ? [userId, keys[0], colorId(keys[1])] : [userId, keys[0]];
+  const color = a.color ? ' AND b.color_id = $3' : '';
+  const colorAcq = a.color ? ' AND x.color_id = $3' : '';
+  const params = a.color ? [userId, keys[0], colorId(keys[1])] : [userId, keys[0]];
   const row = await dbh.get<{ quantity: unknown }>(
-    `SELECT COALESCE((SELECT SUM(x.quantity) FROM ${a.erfassung} x
+    `SELECT COALESCE((SELECT SUM(x.quantity) FROM ${a.acquisition} x
                        WHERE x.user_id = $1 AND x.${a.number} = $2${colorAcq}), 0)::int AS quantity
        FROM ${a.holding} b
       WHERE b.user_id = $1 AND b.${a.number} = $2${color}

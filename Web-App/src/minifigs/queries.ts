@@ -28,7 +28,7 @@ export async function readMinifigs(
     search: search ?? null,
     source: source ?? null,
     setNumber: set_number ? withVersion(set_number) : null,
-    seite: size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
+    page: size ? { size: size, offset: (Math.max(1, page || 1) - 1) * size } : null,
   });
 
   // One "used" acquisition is enough for the minifig to count as used.
@@ -87,7 +87,7 @@ export async function readManualMinifigs(
   const figs = await k.minifigsList.manualMinifigsList(
     uids,
     search,
-    size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
+    size ? { size: size, offset: (Math.max(1, page || 1) - 1) * size } : null,
   );
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
   const withCondition = await k.inventory.setManualCondition(uids, mapped, 'fig');

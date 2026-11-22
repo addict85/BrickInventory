@@ -65,7 +65,7 @@ export async function initSchemaOnce(
     if (!fresh) await checkMinimumVersion(client);
     // Before open migrations a copy of the user data — not for a
     // freshly created, empty database.
-    const applied = await runMigrations(client, { sichern: !fresh });
+    const applied = await runMigrations(client, { backup: !fresh });
     await writeEntryTimeZone(client, timeZone);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!fresh) console.log('✅ Schema aktuell — keine offenen Migrationen');

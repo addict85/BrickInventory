@@ -33,7 +33,7 @@ const pa = require.resolve(path.join(require('./helpers/sources').DIST, 'src/fin
 _req('src/finances/priceAlert.js');
 require.cache[pa].exports = Object.assign({}, require.cache[pa].exports, {
   alertsFromCsv: async () => {
-    throw fileError('ungueltig', 'alert_threshold_invalid');
+    throw fileError('invalid', 'alert_threshold_invalid');
   },
 });
 
@@ -56,8 +56,8 @@ test('import as a job', { concurrency: 1 }, async t => {
 
   await t.test('without a worker the job stays open', async () => {
     await assert.rejects(
-      importAlsAuftrag(uid, 'teile_csv', { text: csv('ohne1') }, { wartenMs: 300 }),
-      (/** @type {any} */ e) => e.code === 'import_still_running' && e.kind === 'zeitueberschreitung',
+      importAlsAuftrag(uid, 'teile_csv', { text: csv('ohne1') }, { waitMs: 300 }),
+      (/** @type {any} */ e) => e.code === 'import_still_running' && e.kind === 'upstream_timeout',
     );
     const a = await db.get(
       `SELECT status, payload->>'source' AS source FROM jobs
@@ -88,7 +88,7 @@ test('import as a job', { concurrency: 1 }, async t => {
     importWorker(tt, _req);
     await assert.rejects(
       importAlsAuftrag(uid, 'alarme_csv', { currency: 'CHF', text: 'set_number\n1-1\n' }),
-      (/** @type {any} */ e) => e.code === 'alert_threshold_invalid' && e.kind === 'ungueltig',
+      (/** @type {any} */ e) => e.code === 'alert_threshold_invalid' && e.kind === 'invalid',
     );
   });
 });

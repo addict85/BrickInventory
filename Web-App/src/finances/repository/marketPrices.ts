@@ -23,14 +23,14 @@ export function partEntryState(
   colorId: number,
 ) {
   return db.get<{ any_used: number | null; cnt: string }>(
-    `SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM ${l.teilErfassungen()} e WHERE user_id=$1 AND part_number=$2 AND color_id=$3`,
+    `SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM ${l.partAcquisitions()} e WHERE user_id=$1 AND part_number=$2 AND color_id=$3`,
     [userId, partNumber, colorId],
   );
 }
 
 export function minifigEntryState(db: DbInterface, l: FinancesReadContract, userId: number, figNumber: string) {
   return db.get<{ any_used: number | null; cnt: string }>(
-    `SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM ${l.figurErfassungen()} e WHERE user_id=$1 AND fig_number=$2`,
+    `SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM ${l.figAcquisitions()} e WHERE user_id=$1 AND fig_number=$2`,
     [userId, figNumber],
   );
 }
@@ -55,7 +55,7 @@ export function partsPricesFromCache(db: DbInterface, numbers: string[], currenc
 
 /** Like estimatedMinifigsPrice for many figures in one query; key `nummer|zustand`. */
 export async function estimatedMinifigsPrices(db: DbInterface, minifigs: string[], currency: string, ttlHours: number) {
-  const from = new Map<string, { preis: number; abdeckung: number | null }>();
+  const from = new Map<string, { price: number; abdeckung: number | null }>();
   if (!minifigs.length) return from;
   const rows = await db.all<{ fig_number: string; condition: string; market_price: string; coverage: string | null }>(
     `SELECT fig_number, condition, ${marketPriceSql()} AS market_price, coverage FROM minifig_price_cache
@@ -65,7 +65,7 @@ export async function estimatedMinifigsPrices(db: DbInterface, minifigs: string[
   );
   for (const z of rows)
     from.set(`${z.fig_number}|${z.condition}`, {
-      preis: Number(z.market_price),
+      price: Number(z.market_price),
       abdeckung: z.coverage == null ? null : Number(z.coverage),
     });
   return from;

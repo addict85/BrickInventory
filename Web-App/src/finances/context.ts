@@ -32,7 +32,7 @@ export interface FinancesDependencies {
   household: HouseholdServices;
   catalog: CatalogServices;
   externalSources: ForeignSourcesServices;
-  faecher: Compartments;
+  compartments: Compartments;
   mail: MailServices;
   readContract: FinancesReadContract;
 }

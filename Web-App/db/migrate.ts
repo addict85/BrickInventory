@@ -11,13 +11,13 @@ import type { DbInterface } from './types';
 /** How long a migration waits for a lock and how often it tries. */
 export interface LockPeriod {
   fristMs: number;
-  versuche: number;
+  attempts: number;
 }
 
 /** If another process holds a table (web process in the middle of a request,
  * open psql session), the migration service would hang silently without a deadline. With a deadline
  * it names the reason, tries again and gives up after the attempts. */
-export const LOCK_PERIOD: LockPeriod = { fristMs: 30_000, versuche: 3 };
+export const LOCK_PERIOD: LockPeriod = { fristMs: 30_000, attempts: 3 };
 
 async function withLockPeriod<T>(was: string, frist: LockPeriod, work: () => Promise<T>): Promise<T> {
   for (let attempt = 1; ; attempt++) {
@@ -28,8 +28,8 @@ async function withLockPeriod<T>(was: string, frist: LockPeriod, work: () => Pro
       const reason =
         `${was}: nach ${frist.fristMs / 1000} s keine Sperre erhalten – eine andere Verbindung hält die ` +
         'Tabelle (welche, zeigt pg_stat_activity).';
-      if (attempt >= frist.versuche) throw new Error(`${reason} Aufgegeben nach ${attempt} Versuchen.`);
-      console.warn(`  ⏳ ${reason} Versuch ${attempt + 1}/${frist.versuche} …`);
+      if (attempt >= frist.attempts) throw new Error(`${reason} Aufgegeben nach ${attempt} Versuchen.`);
+      console.warn(`  ⏳ ${reason} Versuch ${attempt + 1}/${frist.attempts} …`);
     }
   }
 }
@@ -37,7 +37,7 @@ async function withLockPeriod<T>(was: string, frist: LockPeriod, work: () => Pro
 /** All migrations not yet applied; `client` is a connection of its own, not the pool. */
 async function runMigrations(
   client: ClientBase,
-  { sichern = false, sperre = LOCK_PERIOD }: { sichern?: boolean; sperre?: LockPeriod } = {},
+  { backup = false, sperre = LOCK_PERIOD }: { backup?: boolean; sperre?: LockPeriod } = {},
 ): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -62,7 +62,7 @@ async function runMigrations(
   await checkApplied(client, dir, rows);
 
   const open = files.filter(f => !done.has(f));
-  if (open.length && sichern) await secureUserData(client, open, sperre);
+  if (open.length && backup) await secureUserData(client, open, sperre);
 
   const applied: string[] = [];
   for (const file of open) {
@@ -143,16 +143,16 @@ const viaClient = (c: ClientBase): Querier => ({
  * deleted account lives on in them, and the next run of the migration
  * service removes the empty schema. @returns dropped or emptied schemas */
 export async function cleanOldBackupsOn(c: Querier, days = BACKUP_DEADLINE_DAYS): Promise<number> {
-  const rows = await c.all<{ nspname: string; eigen: boolean }>(
+  const rows = await c.all<{ nspname: string; own: boolean }>(
     `
-    SELECT nspname, pg_has_role(nspowner, 'USAGE') AS eigen FROM pg_namespace WHERE nspname ~ '${BACKUP_SCHEMA}'
+    SELECT nspname, pg_has_role(nspowner, 'USAGE') AS own FROM pg_namespace WHERE nspname ~ '${BACKUP_SCHEMA}'
        AND to_timestamp(substr(nspname, 15, 14), 'YYYYMMDDHH24MISS') AT TIME ZONE 'UTC'
            < NOW() - make_interval(days => $1)`,
     [days],
   );
   let n = 0;
-  for (const { nspname, eigen } of rows) {
-    if (eigen) {
+  for (const { nspname, own } of rows) {
+    if (own) {
       await c.run(`DROP SCHEMA "${nspname}" CASCADE`);
       n++;
       continue;

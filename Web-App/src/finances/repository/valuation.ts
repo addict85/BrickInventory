@@ -14,8 +14,8 @@ export interface ManualEntry {
   fig_number?: string;
   quantity: number;
   unit_price: string | null;
-  kaufpreis_fremd: boolean;
-  kaufpreis_umgerechnet: boolean;
+  purchase_price_foreign: boolean;
+  purchase_price_converted: boolean;
   currency: string;
   price_estimated: boolean;
   condition: string;
@@ -34,11 +34,11 @@ export function manualEntries(
       ? `SELECT id, user_id, part_number, color_id, quantity,
               ${purchasePriceColumns('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
-         FROM ${l.teilErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`
+         FROM ${l.partAcquisitions('= ANY($1)')} e ORDER BY created_at ASC, id ASC`
       : `SELECT id, user_id, fig_number, quantity,
               ${purchasePriceColumns('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
-         FROM ${l.figurErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`,
+         FROM ${l.figAcquisitions('= ANY($1)')} e ORDER BY created_at ASC, id ASC`,
     [uids, currency],
   );
 }
@@ -57,10 +57,10 @@ export interface ValuedSet {
 /** Purchase price and condition are stored in the acquisitions. */
 export function setsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<ValuedSet>(
-    `SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
+    `SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.year} AS year,
             ${quantityFrom('sm', 0)}::int AS quantity,
             c.image_local, c.image_url, s.added_at
-       FROM ${l.setBestand('= ANY($1)')} s
+       FROM ${l.setHoldings('= ANY($1)')} s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
        ${setMasterJoin('s.set_number')}
        ${l.mengeJoin('s', 'sm', '= ANY($1)')}
@@ -98,9 +98,9 @@ export function manualMinifigsToValuation(db: DbInterface, l: FinancesReadContra
            ${blNumberSql('m.fig_number', 'blzf')} AS bl_fig_number,
            ${subsetFrom('m', 'fig')} AS quantity,
            m.source, m.storage_id,
-           ${MINIFIG.name} AS fig_name, ${MINIFIG.image} AS image_url, ${MINIFIG.bildDatei} AS image_local
-      FROM ${l.figurBestand('= ANY($1)')} m
-      ${l.teilmengeJoin('m', 'fig')}
+           ${MINIFIG.name} AS fig_name, ${MINIFIG.image} AS image_url, ${MINIFIG.imageFile} AS image_local
+      FROM ${l.figHoldings('= ANY($1)')} m
+      ${l.quantityJoin('m', 'fig')}
       ${blJoin('m.fig_number', 'fig', 'm.user_id', 'blzf')}
       ${minifigViewJoin('m.user_id', 'm.fig_number')}
      WHERE m.user_id = ANY($1) AND m.source='manual'`,
@@ -136,11 +136,11 @@ export function manualPartsToValuation(db: DbInterface, l: FinancesReadContract,
            ${subsetFrom('p', 'part')} AS quantity,
            p.source,
            p.storage_id, p.added_at,
-           ${TEIL.name} AS part_name, ${TEIL.kategorie} AS category_name,
-           ${TEIL.farbname} AS color_name, ${TEIL.farbcode} AS color_hex,
-           ${TEIL.image} AS image_url, ${TEIL.bildDatei} AS image_local
-      FROM ${l.teilBestand('= ANY($1)')} p
-      ${l.teilmengeJoin('p', 'part')}
+           ${TEIL.name} AS part_name, ${TEIL.category} AS category_name,
+           ${TEIL.colorName} AS color_name, ${TEIL.colorHex} AS color_hex,
+           ${TEIL.image} AS image_url, ${TEIL.imageFile} AS image_local
+      FROM ${l.partHoldings('= ANY($1)')} p
+      ${l.quantityJoin('p', 'part')}
       ${blJoin('p.part_number', 'part', 'p.user_id')}
       ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
      WHERE p.user_id = ANY($1) AND p.source = 'manual'`,

@@ -78,12 +78,12 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     const w = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
       parallel: 2,
       deadlineSec: 1,
-      taktMs: 300,
+      tickMs: 300,
     });
     const w2 = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
       parallel: 2,
       deadlineSec: 1,
-      taktMs: 300,
+      tickMs: 300,
     });
     const id = await A.placeJobOne('exchange_rates', {}, { schluessel: `pacht-${process.pid}` });
     const status = async () => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
@@ -139,7 +139,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     const w = createWorker(
       require('./helpers/sources').testServices().jobQueue,
       { csv_sync: EDITOR.csv_sync },
-      { deadlineSec: 60, taktMs: 100 },
+      { deadlineSec: 60, tickMs: 100 },
     );
     const id = await A.placeJobOne('csv_sync', {});
     downloadRunning = false;
@@ -149,7 +149,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     assert.equal(w.running(), 1, 'der Abgleich läuft');
     assert.ok(await bis(() => downloadRunning), 'der Download hat begonnen');
     const start = Date.now();
-    assert.ok(await A.abortAb(id));
+    assert.ok(await A.abortJob(id));
     await bis(() => w.running() === 0);
     const duration = Date.now() - start;
     assert.ok(duration <= 2000, `Abbruch eines csv_sync im Download dauerte ${duration} ms`);

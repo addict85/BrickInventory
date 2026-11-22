@@ -1,6 +1,6 @@
 import { storages } from '../../../db/inventoryView';
 import type { DbInterface } from '../../../db/database';
-import { mengeJoin, quantityFrom, teilmengeJoin, subsetFrom } from '../../../db/stockQuantity';
+import { mengeJoin, quantityFrom, quantityJoin, subsetFrom } from '../../../db/stockQuantity';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
 import { teilSichtJoin, TEIL } from '../../../db/catalogView';
 import { LOCKS } from '../../infra/lockNamespaces';
@@ -34,8 +34,8 @@ function summaryInsert(groupsOnly: boolean): string {
              ${blNumberSql('p.part_number')},
              p.color_id,
              MIN(p.part_number), MIN(${blNumberSql('p.part_number')}),
-             MIN(${TEIL.name}), MIN(${TEIL.farbname}), MIN(${TEIL.farbcode}), MIN(${TEIL.kategorie}),
-             MIN(${TEIL.image}), MIN(${TEIL.bildDatei}),
+             MIN(${TEIL.name}), MIN(${TEIL.colorName}), MIN(${TEIL.colorHex}), MIN(${TEIL.category}),
+             MIN(${TEIL.image}), MIN(${TEIL.imageFile}),
              -- Spare is a property of the set list; the same part can be spare in
              -- one set and required in the next.
              bool_or(COALESCE(tm_k.is_spare, false)),
@@ -45,7 +45,7 @@ function summaryInsert(groupsOnly: boolean): string {
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
         ${mengeJoin('p', 'sm', '= $1')}
-        ${teilmengeJoin('p', 'part', 'tm', '= $1')}
+        ${quantityJoin('p', 'part', 'tm', '= $1')}
         ${blJoin('p.part_number', 'part', 'p.user_id')}
         LEFT JOIN ${storages()} lo ON lo.id = p.storage_id
         ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}

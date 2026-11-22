@@ -17,8 +17,8 @@ export function partsJobKinds(k: PartsContext): Login[] {
     jobKind({
       kind: 'catalog_followup',
       payload: LEER,
-      ausfuehren: async () => void (await runCatalogFollowUp(k)),
-      kontouebergreifend: 'Parts summary of all accounts',
+      run: async () => void (await runCatalogFollowUp(k)),
+      crossAccount: 'Parts summary of all accounts',
     }),
   ];
 }

@@ -41,16 +41,16 @@ test('the checked-in Kotlin types are generated from openapi.json', () => {
 const zuordnung = (mehr = {}) => ({
   OMIT: new Set(),
   STRICT: new Set(),
-  FACHTYPEN: { Zustand: { paket: 'ch.brickinventoryapp.model.domain.Zustand', leer: 'Zustand.NEU' } },
+  DOMAIN_TYPES: { Zustand: { paket: 'ch.brickinventoryapp.model.domain.Zustand', leer: 'Zustand.NEU' } },
   NAMEN: {},
   FIELD_TYPES: {},
   DEFAULTS: {},
   PROPERTIES: {},
   CONSTANTS: {},
-  NULLBAR: new Set(),
-  PFLICHT: new Set(),
+  NULLABLE: new Set(),
+  REQUIRED: new Set(),
   NULL_SEND: new Set(),
-  ANFRAGEN: {},
+  REQUESTS: {},
   ...mehr,
 });
 
@@ -71,7 +71,7 @@ test('every response field has a default: empty value, null only with a null bra
   const nullbar = aus(
     { Probe: { type: 'object', properties: { name: { type: 'string' } } } },
     {
-      NULLBAR: new Set(['Probe.name']),
+      NULLABLE: new Set(['Probe.name']),
     },
   );
   assert.match(nullbar, /val name: String\? = null,/, 'Z.NULLBAR: fehlt heisst null');
@@ -154,7 +154,7 @@ test('shapes with the same name become one: fields merged, required only where a
   assert.match(kt, /val nurA: String = "",/);
   const rumpf = aus(
     {},
-    { ANFRAGEN: { 'POST /a': 'Rumpf', 'PUT /b/{id}': 'Rumpf' } },
+    { REQUESTS: { 'POST /a': 'Rumpf', 'PUT /b/{id}': 'Rumpf' } },
     {
       '/a': { post: { requestBody: bodySchema({ x: { type: 'string' }, y: { type: 'string' } }, ['x', 'y']) } },
       '/b/{nr}': { put: { requestBody: bodySchema({ x: { type: 'string' }, y: { type: 'string' } }, ['y']) } },
@@ -184,10 +184,10 @@ test('an optional body field only goes out when set, unless it should say null',
   const kt = aus(
     {},
     {
-      ANFRAGEN: { 'PUT /r': 'Aenderung' },
+      REQUESTS: { 'PUT /r': 'Aenderung' },
       FIELD_TYPES: { 'Aenderung.menge': 'Int' },
       NULL_SEND: new Set(['Aenderung.lagerort']),
-      PFLICHT: new Set(['Aenderung.name']),
+      REQUIRED: new Set(['Aenderung.name']),
     },
     paths,
   );

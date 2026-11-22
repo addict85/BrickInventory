@@ -43,11 +43,11 @@ export async function startJobs(d: Services): Promise<JobsLauf> {
   await d.jobQueue.pullPlanBefore('image_followup', 30);
   await d.jobQueue.pullPlanBefore('cleanup_daily', 60);
   await d.jobQueue.pullPlanBefore('revocation_list', 0);
-  for (const [schritt, { afterSeconds }] of Object.entries(FOLLOWUP_RUNS) as [FollowUpStep, { afterSeconds: number }][])
+  for (const [step, { afterSeconds }] of Object.entries(FOLLOWUP_RUNS) as [FollowUpStep, { afterSeconds: number }][])
     await d.jobQueue.placeJobOne(
       'followup',
-      { schritt },
-      { schluessel: `followup:${schritt}`, afterSeconds, maxAttempts: 3 },
+      { schritt: step },
+      { key: `followup:${step}`, afterSeconds, maxAttempts: 3 },
     );
   if (await d.images.openImageDemand()) await d.images.imageDemandKick();
   await d.finances.scheduleRateFetch();

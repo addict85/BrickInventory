@@ -39,7 +39,7 @@ function melder(kx: CatalogContext, lauf: CsvLauf) {
       .reportStartState({ ready: false, step, progress, total: TOTAL_STEPS, sub })
       .catch(logAndContinue('rb-csv:start'));
     void lauf
-      .progress?.({ done: progress, total: TOTAL_STEPS, text: sub, schritt: `CSV-Import: ${step}` })
+      .progress?.({ done: progress, total: TOTAL_STEPS, text: sub, step: `CSV-Import: ${step}` })
       .catch(logAndContinue('rb-csv:stand'));
     if (!sub && !step.includes('k)')) log(step);
   };

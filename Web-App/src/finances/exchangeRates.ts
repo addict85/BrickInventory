@@ -6,15 +6,15 @@ import {
   firstZipFile,
   readHistory,
   readDailyRates,
-  type Abruf,
-  type Kurs,
+  type Fetch,
+  type Rate,
 } from '../externalSources';
 import type { FinancesContext } from './context';
 
 const BLOCK = 5000;
 
 /** An existing day is overwritten: the ECB rarely corrects, but it does. */
-export async function saveRates(kx: FinancesContext, rates: Kurs[]): Promise<number> {
+export async function saveRates(kx: FinancesContext, rates: Rate[]): Promise<number> {
   let n = 0;
   for (let i = 0; i < rates.length; i += BLOCK) {
     const teil = rates.slice(i, i + BLOCK);
@@ -30,7 +30,7 @@ export async function saveRates(kx: FinancesContext, rates: Kurs[]): Promise<num
 
 export async function reloadRates(
   k: FinancesContext,
-  download: Abruf = k.externalSources.sources.ecbFetch,
+  download: Fetch = k.externalSources.sources.ecbFetch,
   signal?: AbortSignal,
 ): Promise<{ source: 'historie' | 'tag'; rates: number }> {
   const leer = !(await k.exchangeRates.givesEsRates());
@@ -56,7 +56,7 @@ export async function scheduleRateFetch(
     'exchange_rates',
     {},
     {
-      schluessel: `exchange_rates:${target.toISOString().slice(0, 10)}`,
+      key: `exchange_rates:${target.toISOString().slice(0, 10)}`,
       afterSeconds: morgen ? sec : 0,
       maxAttempts: 6,
     },
@@ -66,7 +66,7 @@ export async function scheduleRateFetch(
 /** Schedule the next day first, then load: if loading fails, the schedule is already in place. */
 export async function rateJob(
   k: FinancesContext,
-  download: Abruf = k.externalSources.sources.ecbFetch,
+  download: Fetch = k.externalSources.sources.ecbFetch,
   lauf?: JobRun,
 ): Promise<void> {
   await scheduleRateFetch(k, k.clock.datum(), true);

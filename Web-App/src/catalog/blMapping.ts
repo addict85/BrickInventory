@@ -26,7 +26,7 @@ export function rememberOwnBlNumber(
   return k.blMapping.writeBlNumberOwn(uid, kind, rbId, blId || rbId);
 }
 
-const konten = (k: number | number[] | null | undefined): number[] => (k == null ? [] : Array.isArray(k) ? k : [k]);
+const accounts = (k: number | number[] | null | undefined): number[] => (k == null ? [] : Array.isArray(k) ? k : [k]);
 
 /** The last entry per number. */
 export async function rememberBlNumbers(
@@ -57,9 +57,9 @@ export function blNumberOf(
   k: CatalogContext,
   kind: BlArt,
   rbId: string,
-  konto?: number | number[] | null,
+  account?: number | number[] | null,
 ): Promise<string | null> {
-  return k.blMapping.differingNumber(kind, rbId, konten(konto));
+  return k.blMapping.differingNumber(kind, rbId, accounts(account));
 }
 
 /** null only if it was never looked up: preloading prices does not remember
@@ -68,9 +68,9 @@ export function blFetchNumber(
   k: CatalogContext,
   kind: BlArt,
   rbId: string,
-  konto?: number | number[] | null,
+  account?: number | number[] | null,
 ): Promise<string | null> {
-  return k.blMapping.effectiveNumber(kind, rbId, konten(konto));
+  return k.blMapping.effectiveNumber(kind, rbId, accounts(account));
 }
 
 // One query for many numbers; every row comes back so that nothing is asked twice.
@@ -78,11 +78,11 @@ export async function blFetchNumbers(
   k: CatalogContext,
   kind: BlArt,
   rbIds: string[],
-  konto?: number | number[] | null,
+  account?: number | number[] | null,
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!rbIds.length) return out;
-  const rows = await k.blMapping.effectiveNumbers(kind, rbIds, konten(konto));
+  const rows = await k.blMapping.effectiveNumbers(kind, rbIds, accounts(account));
   for (const z of rows) out.set(String(z.rb_id), String(z.nr));
   return out;
 }

@@ -41,7 +41,7 @@ export async function placeJobOne<A extends JobKind>(
   payload: PayloadInput<A>,
   o: Enqueue = {},
 ): Promise<string | null> {
-  const id = await k.jobs.addJobOne(kind, k.arten.check(kind, payload), o);
+  const id = await k.jobs.addJobOne(kind, k.kinds.check(kind, payload), o);
   await wakeWorker(k, kind);
   return id;
 }
@@ -54,20 +54,20 @@ export async function placeOwnJobOne<A extends JobKind>(
   payload: PayloadInput<A>,
   o: Enqueue & { userId: number },
 ): Promise<string | null> {
-  const id = await k.jobs.addOwnJobOne(kind, k.arten.check(kind, payload), o);
+  const id = await k.jobs.addOwnJobOne(kind, k.kinds.check(kind, payload), o);
   await wakeWorker(k, kind);
   return id;
 }
 
-/** Per key at most one waiting job that adds the new entries of the list `liste` to
+/** Per key at most one waiting job that adds the new entries of the list `list` to
  * its own: every report extends instead of creating a second job. */
 export async function supplementListenJob<A extends JobKind>(
   k: JobsContext,
   kind: A,
   payload: PayloadInput<A>,
-  o: { schluessel: string; liste: string; hoechstens: number; userId: number },
+  o: { key: string; list: string; atMost: number; userId: number },
 ): Promise<string> {
-  const n = k.arten.check(kind, payload);
+  const n = k.kinds.check(kind, payload);
   const id = await k.jobs.enqueueList(kind, n as object, o);
   await wakeWorker(k, kind);
   return id;
@@ -87,7 +87,7 @@ export async function setProgress(kx: JobsContext, a: Claim, f: Progress, deadli
 }
 
 export async function done(k: JobsContext, a: Claim & Pick<JobRow, 'type'>): Promise<boolean> {
-  const z = await k.jobs.setDone(a, !!k.arten.fromValue(a.type)?.discardPayload);
+  const z = await k.jobs.setDone(a, !!k.kinds.fromValue(a.type)?.discardPayload);
   await reportStatus(k, z);
   return !!z;
 }
@@ -115,7 +115,7 @@ export async function endPause(k: JobsContext, kind: JobKind): Promise<void> {
 }
 
 /** A running one stops at its next sign of life. */
-export async function abortAb(k: JobsContext, id: string): Promise<JobRow | null> {
+export async function abortJob(k: JobsContext, id: string): Promise<JobRow | null> {
   const a = await k.jobs.setAborted(id);
   if (a) await reportStatus(k, { s: a.dedupe_key ?? a.id });
   return a;
@@ -154,9 +154,9 @@ export async function inNamesOfJob<T>(
 }
 
 /** A job without an account: in the system frame only if its kind is registered as
- * cross-account (Anmeldung.kontouebergreifend), otherwise without account and without system frame. */
+ * cross-account (Anmeldung.crossAccount), otherwise without account and without system frame. */
 export function inJobFrame<T>(k: JobsContext, a: Pick<JobRow, 'type'>, f: () => Promise<T>): Promise<T> {
-  const reason = k.arten.fromValue(a.type)?.kontouebergreifend;
+  const reason = k.kinds.fromValue(a.type)?.crossAccount;
   return reason ? inSystemContext(`auftrag ${a.type}: ${reason}`, f) : asRequest({}, f);
 }
 

@@ -7,7 +7,7 @@
 const { generateKeyPairSync, sign } = require('node:crypto');
 const attestation = require('./attestation');
 
-function geraeteSchluessel() {
+function deviceKeys() {
   const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   return { privateKey, public_key: publicKey.export({ format: 'der', type: 'spki' }).toString('base64') };
 }
@@ -55,4 +55,4 @@ async function releaseDevice(ruf, token, action, schluessel) {
   return s;
 }
 
-module.exports = { geraeteSchluessel, signiere, releaseDevice, deposit };
+module.exports = { deviceKeys, signiere, releaseDevice, deposit };

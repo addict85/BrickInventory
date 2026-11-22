@@ -165,7 +165,7 @@ export async function deleteManual(
   const [number = '', color = 0] = key;
   const r =
     kind === 'part'
-      ? await repo.loescheTeilZeile(k.db, ownerId, String(number), Number(color))
+      ? await repo.deletePartRow(k.db, ownerId, String(number), Number(color))
       : await repo.deleteMinifigRow(k.db, ownerId, String(number));
   if (!r.changes) return r;
   if (kind === 'part') await purchases.deletePartEntries(k.db, ownerId, String(number), Number(color) || 0);

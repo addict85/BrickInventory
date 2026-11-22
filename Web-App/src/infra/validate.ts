@@ -75,8 +75,8 @@ export function onceDecoded(text: string): string {
 
 export function numberRequired(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
-  if (!v) failDomain('ungueltig', 'field_required', { field: field });
-  if (!ITEM_NUMBER_RE.test(v)) failDomain('ungueltig', 'field_number_invalid', { field: field });
+  if (!v) failDomain('invalid', 'field_required', { field: field });
+  if (!ITEM_NUMBER_RE.test(v)) failDomain('invalid', 'field_number_invalid', { field: field });
   return v;
 }
 
@@ -95,14 +95,14 @@ export function optionalText(value: unknown, maxLen = 200): string | null {
 export function optionalImageUrl(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   const v = String(value).trim();
-  if (v.length > 2048) failDomain('ungueltig', 'image_url_too_long');
+  if (v.length > 2048) failDomain('invalid', 'image_url_too_long');
   let u: URL;
   try {
     u = new URL(v);
   } catch {
-    failDomain('ungueltig', 'image_url_invalid');
+    failDomain('invalid', 'image_url_invalid');
   }
-  if (u.protocol !== 'https:') failDomain('ungueltig', 'image_url_not_https');
+  if (u.protocol !== 'https:') failDomain('invalid', 'image_url_not_https');
   return u.toString();
 }
 
@@ -116,7 +116,7 @@ export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): numb
  * "quantity 0" and deleted the inventory. */
 export function inventoryQuantity(value: unknown, min = 0, max = 100_000): number {
   const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^\d{1,6}$/.test(raw) || +raw < min || +raw > max) failDomain('ungueltig', 'value_invalid');
+  if (!/^\d{1,6}$/.test(raw) || +raw < min || +raw > max) failDomain('invalid', 'value_invalid');
   return +raw;
 }
 
@@ -163,7 +163,7 @@ export function acquisitionQuantity(value: unknown, fallback = 1): number {
 export function quantitiesDelta(value: unknown): number | null {
   if (value === undefined || value === null) return null;
   const raw = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^-?\d{1,4}$/.test(raw)) failDomain('ungueltig', 'value_invalid');
+  if (!/^-?\d{1,4}$/.test(raw)) failDomain('invalid', 'value_invalid');
   return Number(raw);
 }
 
@@ -171,7 +171,7 @@ export function quantitiesDelta(value: unknown): number | null {
 export function strictBool(value: unknown, field = 'Wert'): boolean {
   if (value === true || value === 'true' || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
-  failDomain('ungueltig', 'field_not_boolean', { field });
+  failDomain('invalid', 'field_not_boolean', { field });
 }
 
 /** Aggregates come as strings, and "0" is truthy in JavaScript. */
@@ -255,9 +255,9 @@ export const input = {
   colorCode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   /** Money (src/infra/money.ts). Described as a number; text with a dot or comma is still accepted by the
    * server (forms), it is not part of the contract. */
-  geld: (field: string, o: { nullbar?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
+  geld: (field: string, o: { nullable?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
     alsSchema(v => moneyInput(v, field, o.max, o.oneCode), {
-      ...(o.nullbar === false ? { type: 'number' } : { anyOf: [{ type: 'number' }, { type: 'null' }] }),
+      ...(o.nullable === false ? { type: 'number' } : { anyOf: [{ type: 'number' }, { type: 'null' }] }),
       minimum: 0,
       maximum: o.max ?? 1_000_000,
       description: 'Amount as a number, at most four decimal places; null or empty: no amount',

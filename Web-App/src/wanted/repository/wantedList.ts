@@ -3,15 +3,15 @@ import type { DbInterface } from '../../../db/database';
 export type Art = 'part' | 'fig' | 'set';
 
 /** Mappings to BrickLink numbers; `bl_id IS NULL` means "noted as identical".
- * The account's own ones come first (`eigen`), so that they take precedence. */
+ * The account's own ones come first (`own`), so that they take precedence. */
 export function mappings(db: DbInterface, blNumbers: string[], uid: number | null = null) {
-  return db.all<{ type: Art; rb_id: string; bl_id: string | null; eigen: boolean }>(
-    `SELECT type, rb_id, NULLIF(bl_id, rb_id) AS bl_id, true AS eigen FROM bl_mapping_custom
+  return db.all<{ type: Art; rb_id: string; bl_id: string | null; own: boolean }>(
+    `SELECT type, rb_id, NULLIF(bl_id, rb_id) AS bl_id, true AS own FROM bl_mapping_custom
       WHERE user_id = $2 AND bl_id = ANY($1)
      UNION ALL
      SELECT type, rb_id, bl_id, false FROM bl_mapping
       WHERE (bl_id = ANY($1) OR (bl_id IS NULL AND rb_id = ANY($1)))
-     ORDER BY eigen DESC`,
+     ORDER BY own DESC`,
     [blNumbers, uid],
   );
 }
@@ -41,11 +41,11 @@ export function colorsToIds(db: DbInterface, ids: number[]) {
 }
 
 export function partsDescription(db: DbInterface, numbers: string[]) {
-  return db.all<{ part_number: string; name: string | null; bild_allgemein: string }>(
+  return db.all<{ part_number: string; name: string | null; image_generic: string }>(
     `
       SELECT p.part_number,
              COALESCE(pc.part_name, rp.name)        AS name,
-             COALESCE(rp.part_img_url, '')          AS bild_allgemein
+             COALESCE(rp.part_img_url, '')          AS image_generic
         FROM (SELECT UNNEST($1::text[]) AS part_number) p
         LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
         LEFT JOIN rb_parts     rp ON rp.part_num    = p.part_number`,

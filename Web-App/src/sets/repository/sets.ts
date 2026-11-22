@@ -87,11 +87,11 @@ export function stateNewestSetEntry(db: DbInterface, ownerId: number, setNumber:
 
 export async function setMenge(
   dbh: Pick<DbInterface, 'get'>,
-  konten: 'eines' | 'blickfeld',
+  accounts: 'eines' | 'blickfeld',
   ids: number | number[],
   setNumber: string,
 ): Promise<number> {
-  return (await dbh.get<{ q: number }>(quantitySumSql(konten), [ids, setNumber]))?.q ?? 0;
+  return (await dbh.get<{ q: number }>(quantitySumSql(accounts), [ids, setNumber]))?.q ?? 0;
 }
 
 // One row per acquisition, so that purchase price, condition and date come back
@@ -160,8 +160,8 @@ export type SetFilter = {
   theme?: unknown;
   storage?: unknown;
   sort?: unknown;
-  seite: { groesse: number; versatz: number } | null;
-  themen: boolean;
+  page: { size: number; offset: number } | null;
+  themes: boolean;
 };
 
 /** The accounts' sets as subquery `s`. In the household one set, ONE row,
@@ -170,7 +170,7 @@ export type SetFilter = {
 function setsSource(uids: number[]): string {
   return uids.length > 1
     ? `(SELECT s.set_number,
-               MIN(${SET.name}) AS name, MIN(${SET.jahr}) AS year, MIN(${SET.thema}) AS theme,
+               MIN(${SET.name}) AS name, MIN(${SET.year}) AS year, MIN(${SET.thema}) AS theme,
                MIN(${SET.parts}) AS pieces, MIN(c.minifigs) AS minifigs,
                -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
                -- sets.quantity geloescht). Die gruppierte Quelle haengt
@@ -213,7 +213,7 @@ function setsSource(uids: number[]): string {
                ${quantityFrom('sm', 0)}::int AS quantity,
                s.added_at, s.updated_at, s.storage_id,
                lo.name AS storage,
-               ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.parts} AS pieces,
+               ${SET.name} AS name, ${SET.year} AS year, ${SET.thema} AS theme, ${SET.parts} AS pieces,
                c.minifigs, c.image_url, c.image_local
           FROM sets s
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
@@ -269,8 +269,8 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
   // Without page_size unlimited.
   const listParams = [...params];
   let limitSql = '';
-  if (f.seite) {
-    listParams.push(f.seite.groesse, f.seite.versatz);
+  if (f.page) {
+    listParams.push(f.page.size, f.page.offset);
     limitSql = ` LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`;
   }
 
@@ -305,12 +305,12 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
       WHERE ${whereSql} ORDER BY ${orderSql}${limitSql}`,
       listParams,
     ),
-    f.seite
+    f.page
       ? db.get<{ c: number }>(`SELECT COUNT(*)::int AS c FROM ${setsFrom} WHERE ${whereSql}`, params)
       : Promise.resolve(null),
     // From ALL sets, otherwise the select field shrinks while paging; only on the
     // first page.
-    f.themen
+    f.themes
       ? db.all<{ theme: string }>(
           `SELECT DISTINCT rt.name AS theme
                   FROM sets s JOIN rb_sets rs ON rs.set_num = s.set_number
@@ -367,7 +367,7 @@ export function setDetailRow(db: DbInterface, uids: number[], setNumber: string,
               -- ohne Migration 0033 braechte s.* ein zweites name mit, und
               -- der Zugriff darauf waere zweideutig (siehe die Begruendung
               -- bei setsFrom weiter oben).
-              ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.parts} AS pieces,
+              ${SET.name} AS name, ${SET.year} AS year, ${SET.thema} AS theme, ${SET.parts} AS pieces,
               c.minifigs, c.image_url, c.image_local,
               -- Die Gesamtmenge im Blickfeld, aus den ERFASSUNGEN. Hier
               -- stand eine Summe ueber sets.quantity; die Spalte ist mit

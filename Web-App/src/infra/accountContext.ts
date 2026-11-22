@@ -14,9 +14,9 @@ export interface AccountSource {
  * against substitute values travels with it in the frame, not as process state. */
 export interface PathTransaction {
   /** Does this error leave it spoiled? A savepoint that caught it does not. */
-  verdirbt(e: unknown): boolean;
+  spoils(e: unknown): boolean;
   /** In tests an error outside the database throws as well, so that the rule applies. */
-  readonly streng: boolean;
+  readonly strict: boolean;
 }
 
 interface Frame {
@@ -25,22 +25,22 @@ interface Frame {
   system: string | null;
   web: boolean;
   /** The open transaction of this call path: only for guards, never a way to it. */
-  transaktion: PathTransaction | null;
+  transaction: PathTransaction | null;
   companion: unknown;
   rid: string | null;
 }
-const LEER: Frame = { source: null, system: null, web: false, transaktion: null, companion: null, rid: null };
+const LEER: Frame = { source: null, system: null, web: false, transaction: null, companion: null, rid: null };
 const frame = new AsyncLocalStorage<Frame>();
 const now = (): Frame => frame.getStore() ?? LEER;
 const withFrame = <T>(teil: Partial<Frame>, f: () => T): T => frame.run({ ...now(), ...teil }, f);
 
-export function currentAccount(): { id: number; verwalter: boolean } | null {
+export function currentAccount(): { id: number; admin: boolean } | null {
   const q = now().source;
   if (!q) return null;
   const id = Number(q.apiUser?.user_id ?? q.session?.userId ?? q.tokenUserId);
   if (!Number.isInteger(id) || id <= 0) return null;
-  const verwalter = q.apiUser ? !!q.apiUser.is_admin : !!q.session?.isAdmin;
-  return { id, verwalter };
+  const admin = q.apiUser ? !!q.apiUser.is_admin : !!q.session?.isAdmin;
+  return { id, admin };
 }
 
 /** Work across account boundaries: queries then go via the system role (BYPASSRLS, migration 0112).
@@ -59,31 +59,31 @@ export function asWebRequest<T>(source: AccountSource, f: () => T): T {
   return withFrame({ system: null, web: true, source }, f);
 }
 
-export function rowsContext(): { system: boolean; web: boolean; konto: number | null } {
+export function rowsContext(): { system: boolean; web: boolean; account: number | null } {
   const r = now();
-  return { system: !!r.system, web: r.web, konto: currentAccount()?.id ?? null };
+  return { system: !!r.system, web: r.web, account: currentAccount()?.id ?? null };
 }
 
 /** A service for an account other than that of the row security would silently see less; others via asRequest. */
 export class ForeignAccount extends Error {
-  constructor(uid: number, konto: number) {
-    super(`Dienst für Konto ${uid} unter dem Zeilenschutz von Konto ${konto}`);
+  constructor(uid: number, account: number) {
+    super(`Dienst für Konto ${uid} unter dem Zeilenschutz von Konto ${account}`);
   }
 }
 
 export function checkRequester(uid: number): void {
   if (now().system) return;
   // Without an account in the frame (startup, before login) no row security filters silently.
-  const konto = currentAccount()?.id;
-  if (konto !== undefined && konto !== uid) throw new ForeignAccount(uid, konto);
+  const account = currentAccount()?.id;
+  if (account !== undefined && account !== uid) throw new ForeignAccount(uid, account);
 }
 
 /** For the database's guards (db/transaction.ts), the idempotency's commit companion and the log. */
-export function inTransactionPath<T>(transaktion: PathTransaction, f: () => T): T {
-  return withFrame({ transaktion }, f);
+export function inTransactionPath<T>(transaction: PathTransaction, f: () => T): T {
+  return withFrame({ transaction }, f);
 }
 export function transactionOfPath(): PathTransaction | null {
-  return now().transaktion;
+  return now().transaction;
 }
 
 export function withCompanion<T>(companion: unknown, f: () => T): T {

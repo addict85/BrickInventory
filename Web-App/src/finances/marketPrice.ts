@@ -55,6 +55,25 @@ export async function partState(k: FinancesContext, userId: number, partNumber: 
   return k.settings.userDefaultCondition(userId);
 }
 
+async function cacheSettings(k: FinancesContext, viewerId: number): Promise<{ currency: string; ttl: number }> {
+  const [currency, ttlRaw] = await Promise.all([
+    k.settings.userValue(viewerId, 'currency', 'EUR'),
+    k.settings.globalValue('price_cache_ttl', '24'),
+  ]);
+  return { currency: String(currency), ttl: Math.max(1, parseInt(String(ttlRaw), 10)) };
+}
+
+/** The first cached price over the keys, the requested condition before the other one. */
+function firstCached(cache: Map<string, number>, keys: string[], condition: unknown): number | undefined {
+  const zst = conditionOf(condition);
+  for (const k of keys)
+    for (const c of [zst, zst === 'N' ? 'U' : 'N']) {
+      const wert = cache.get(`${k}|${c}`);
+      if (wert != null) return wert;
+    }
+  return undefined;
+}
+
 /** Only from the cache, without fetching: the list should not wait for BrickLink. */
 export async function marketPricesFromCacheForMinifigs(
   kx: FinancesContext,
@@ -63,20 +82,16 @@ export async function marketPricesFromCacheForMinifigs(
 ): Promise<Map<string, number>> {
   const hits = new Map<string, number>();
   if (!minifigs.length) return hits;
-
-  const [currency, ttlRaw] = await Promise.all([
-    kx.settings.userValue(viewerId, 'currency', 'EUR'),
-    kx.settings.globalValue('price_cache_ttl', '24'),
-  ]);
-  const ttl = Math.max(1, parseInt(String(ttlRaw), 10));
+  const { currency, ttl } = await cacheSettings(kx, viewerId);
 
   // Both spellings: fetchMinifigPrice() stores under the BL number, the
   // estimate under the RB number.
-  const key = [...new Set(minifigs.flatMap(f => [f.bl_fig_number, f.fig_number].filter(Boolean).map(String)))];
+  const spellings = (f: (typeof minifigs)[number]) => [f.bl_fig_number, f.fig_number].filter(Boolean).map(String);
+  const key = [...new Set(minifigs.flatMap(spellings))];
   if (!key.length) return hits;
 
   // No catch: the list treats the error as `degradiert` (reduced) and shows them without a price.
-  const rows = await kx.marketPrices.minifigsPricesFromCache(key, String(currency), ttl);
+  const rows = await kx.marketPrices.minifigsPricesFromCache(key, currency, ttl);
 
   const cache = new Map<string, number>();
   for (const z of rows) {
@@ -87,50 +102,24 @@ export async function marketPricesFromCacheForMinifigs(
   for (const f of minifigs) {
     const num = String(f.fig_number ?? '');
     if (!num) continue;
-    const zst = conditionOf(f.condition);
-    const anders = zst === 'N' ? 'U' : 'N';
     // Order as in the valuation; for many older figures BrickLink lists
-    // only one of the two conditions.
-    for (const k of [f.bl_fig_number, f.fig_number].filter(Boolean).map(String))
-      for (const c of [zst, anders]) {
-        const wert = cache.get(`${k}|${c}`);
-        if (wert != null) {
-          hits.set(num, wert);
-          break;
-        }
-      }
-    if (hits.has(num)) continue;
+    // only one of the two conditions. A price under the RB number wins over the BL number.
+    const wert = firstCached(cache, spellings(f).reverse(), f.condition);
+    if (wert !== undefined) hits.set(num, wert);
   }
   return hits;
 }
 
-// The parts cache is keyed by BrickLink number and color; both are translated beforehand.
-export async function marketPricesFromCacheForParts(
-  k: FinancesContext,
-  parts: Array<{
-    part_number?: string | null;
-    bl_part_number?: string | null;
-    color_id?: number | null;
-    condition?: string | null;
-  }>,
-  viewerId: number,
-): Promise<Map<string, number>> {
-  const hits = new Map<string, number>();
-  if (!parts.length) return hits;
+type CachePart = {
+  part_number?: string | null;
+  bl_part_number?: string | null;
+  color_id?: number | null;
+  condition?: string | null;
+};
 
-  const [currency, ttlRaw] = await Promise.all([
-    k.settings.userValue(viewerId, 'currency', 'EUR'),
-    k.settings.globalValue('price_cache_ttl', '24'),
-  ]);
-  const ttl = Math.max(1, parseInt(String(ttlRaw), 10));
-
-  await loadBlNumbersBefore(
-    k,
-    parts.map(t => String(t.bl_part_number || t.part_number || '')),
-  );
-
-  // The keys under which fetchPartPrice would have written.
-  const resolution = new Map<string, { number: string; farbe: number }>();
+/** The keys under which fetchPartPrice would have written. */
+async function partCacheKeys(k: FinancesContext, parts: CachePart[]) {
+  const resolution = new Map<string, { number: string; color: number }>();
   for (const t of parts) {
     const raw = String(t.bl_part_number || t.part_number || '');
     if (!raw) continue;
@@ -138,13 +127,31 @@ export async function marketPricesFromCacheForParts(
     if (resolution.has(key)) continue;
     resolution.set(key, {
       number: await resolveBlPartNumber(k, raw),
-      farbe: Number(await resolveBlColorId(k, Number(t.color_id ?? NO_COLOR))) || 0,
+      color: Number(await resolveBlColorId(k, Number(t.color_id ?? NO_COLOR))) || 0,
     });
   }
+  return resolution;
+}
+
+// The parts cache is keyed by BrickLink number and color; both are translated beforehand.
+export async function marketPricesFromCacheForParts(
+  k: FinancesContext,
+  parts: CachePart[],
+  viewerId: number,
+): Promise<Map<string, number>> {
+  const hits = new Map<string, number>();
+  if (!parts.length) return hits;
+  const { currency, ttl } = await cacheSettings(k, viewerId);
+
+  await loadBlNumbersBefore(
+    k,
+    parts.map(t => String(t.bl_part_number || t.part_number || '')),
+  );
+  const resolution = await partCacheKeys(k, parts);
 
   const numbers = [...new Set([...resolution.values()].map(a => a.number))];
   if (!numbers.length) return hits;
-  const rows = await k.marketPrices.partsPricesFromCache(numbers, String(currency), ttl);
+  const rows = await k.marketPrices.partsPricesFromCache(numbers, currency, ttl);
 
   const cache = new Map<string, number>();
   for (const z of rows) {
@@ -156,14 +163,8 @@ export async function marketPricesFromCacheForParts(
     const key = `${t.part_number}|${t.color_id ?? NO_COLOR}`;
     const a = resolution.get(key);
     if (!a) continue;
-    const zst = conditionOf(t.condition);
-    for (const c of [zst, zst === 'N' ? 'U' : 'N']) {
-      const wert = cache.get(`${a.number}|${a.farbe}|${c}`);
-      if (wert != null) {
-        hits.set(key, wert);
-        break;
-      }
-    }
+    const wert = firstCached(cache, [`${a.number}|${a.color}`], t.condition);
+    if (wert !== undefined) hits.set(key, wert);
   }
   return hits;
 }
@@ -183,11 +184,11 @@ export async function marketPriceWithOrigin(
     fetchPartPrice(k, partNumber, colorId, effCond, currency, ttlHours, null, userId),
   );
   const price = marketPriceFrom(priceData);
-  if (price === null) return { preis: null, fromState: null };
+  if (price === null) return { price: null, fromState: null };
   // The fallback to the other condition is adopted, but named: no price
   // at all was worse than a marked one.
   return {
-    preis: price,
+    price: price,
     fromState: priceData?.is_fallback ? priceData.condition_used || null : null,
   };
 }
@@ -199,7 +200,7 @@ export async function currentPartMarketPrice(
   userId: number,
   condition: string | null = null,
 ) {
-  return (await marketPriceWithOrigin(k, partNumber, colorId, userId, condition)).preis;
+  return (await marketPriceWithOrigin(k, partNumber, colorId, userId, condition)).price;
 }
 
 export async function estimateFigPriceFromParts(
@@ -208,7 +209,7 @@ export async function estimateFigPriceFromParts(
   userId: number,
   condition = DEFAULT_PRICE_CONDITION,
 ) {
-  return (await estimateMinifigsPrice(k, figNumber, userId, condition))?.preis ?? null;
+  return (await estimateMinifigsPrice(k, figNumber, userId, condition))?.price ?? null;
 }
 
 /** The coverage (share of parts with a price) says how reliable the number is. */
@@ -217,7 +218,7 @@ export async function estimateMinifigsPrice(
   figNumber: string,
   userId: number,
   condition = DEFAULT_PRICE_CONDITION,
-): Promise<{ preis: number; abdeckung: number | null } | null> {
+): Promise<{ price: number; abdeckung: number | null } | null> {
   try {
     const currency = await k.settings.userValue(userId, 'currency', 'EUR');
     const cond0 = conditionOf(condition, DEFAULT_PRICE_CONDITION);
@@ -225,10 +226,10 @@ export async function estimateMinifigsPrice(
     // Look in the cache first: otherwise every figure would cost one fetch per part.
     const ttl = Math.max(1, parseInt(await k.settings.globalValue('price_cache_ttl', '24'), 10));
     const cached = await k.marketPrices.estimatedMinifigsPrice(figNumber, cond0, currency, ttl);
-    const zwischengespeichert = Number(cached?.market_price) || 0;
-    if (zwischengespeichert > 0)
+    const cachedPrice = Number(cached?.market_price) || 0;
+    if (cachedPrice > 0)
       return {
-        preis: zwischengespeichert,
+        price: cachedPrice,
         abdeckung: cached?.coverage != null ? parseFloat(String(cached.coverage)) : null,
       };
 
@@ -278,12 +279,23 @@ export async function estimateMinifigsPrice(
       await t.marketPrices.rememberEstimatedMinifigsHistory(figNumber, cond, currency, total, abdeckung);
     });
 
-    return { preis: total, abdeckung };
+    return { price: total, abdeckung };
   } catch (e) {
     // Exception: the estimate is an addition to the market price; without it "no price" is shown.
     reportError(`figurenpreis-schaetzung:${figNumber}`, e);
     return null;
   }
+}
+
+/** One "used" acquisition is enough for 'U'; without an acquisition the default. */
+async function minifigCondition(k: FinancesContext, userId: number, figNumber: string): Promise<string> {
+  try {
+    const row = await k.marketPrices.minifigEntryState(userId, figNumber);
+    if (row && parseInt(row.cnt, 10) > 0) return Number(row.any_used) > 0 ? 'U' : 'N';
+  } catch (e) {
+    reportError('minifiguren:zustand-ermitteln', e);
+  }
+  return k.settings.userDefaultCondition(userId);
 }
 
 export async function figMarketPriceWithOrigin(
@@ -294,17 +306,7 @@ export async function figMarketPriceWithOrigin(
   condition: string | null = null,
 ) {
   const currency = await k.settings.userValue(userId, 'currency', 'EUR');
-  // One "used" acquisition is enough for 'U'; without an acquisition the default.
-  let effCond = condition;
-  if (!effCond) {
-    try {
-      const row = await k.marketPrices.minifigEntryState(userId, figNumber);
-      if (row && parseInt(row.cnt, 10) > 0) effCond = Number(row.any_used) > 0 ? 'U' : 'N';
-    } catch (e) {
-      reportError('minifiguren:zustand-ermitteln', e);
-    }
-    if (!effCond) effCond = await k.settings.userDefaultCondition(userId);
-  }
+  const effCond = condition || (await minifigCondition(k, userId, figNumber));
   // BrickLink first, even without an own bl_fig_number: usually the own
   // number matches the BrickLink number.
   for (const num of [blFigNumber, figNumber]) {
@@ -314,18 +316,18 @@ export async function figMarketPriceWithOrigin(
     const price = marketPriceFrom(priceData);
     if (price !== null)
       return {
-        preis: price,
+        price: price,
         fromState: priceData?.is_fallback ? priceData.condition_used || null : null,
-        geschaetzt: false,
+        estimated: false,
       };
     if (num === blFigNumber && blFigNumber === figNumber) break; // do not ask twice
   }
   // Without an origin: the estimate does not come from the other condition.
   const estimate = await estimateMinifigsPrice(k, figNumber, userId, effCond);
   return {
-    preis: estimate?.preis ?? null,
+    price: estimate?.price ?? null,
     fromState: null,
-    geschaetzt: estimate != null,
+    estimated: estimate != null,
     abdeckung: estimate?.abdeckung ?? null,
   };
 }
@@ -337,5 +339,5 @@ export async function currentMinifigMarketPrice(
   blFigNumber?: string | null,
   condition: string | null = null,
 ) {
-  return (await figMarketPriceWithOrigin(k, figNumber, userId, blFigNumber, condition)).preis;
+  return (await figMarketPriceWithOrigin(k, figNumber, userId, blFigNumber, condition)).price;
 }

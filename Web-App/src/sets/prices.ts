@@ -51,20 +51,20 @@ export async function currencyOf(sk: SetsContext, uid: number): Promise<string> 
 }
 
 export function readSetAlerts(sk: SetsContext, uid: number, sn: string) {
-  return sk.finances.preisalarm.alertsFor(uid, normalizeSetNumber(sn));
+  return sk.finances.priceAlert.alertsFor(uid, normalizeSetNumber(sn));
 }
 
 export async function setAlarmOfSets(
   sk: SetsContext,
   uid: number,
   sn: string,
-  input: Parameters<SetsContext['finances']['preisalarm']['setAlert']>[3],
+  input: Parameters<SetsContext['finances']['priceAlert']['setAlert']>[3],
 ) {
-  return sk.finances.preisalarm.setAlert(uid, normalizeSetNumber(sn), await currencyOf(sk, uid), input);
+  return sk.finances.priceAlert.setAlert(uid, normalizeSetNumber(sn), await currencyOf(sk, uid), input);
 }
 
 export function deleteAlarmOfSets(sk: SetsContext, uid: number, sn: string, condition: ConditionState | undefined) {
-  return sk.finances.preisalarm.deleteAlert(uid, normalizeSetNumber(sn), condition ?? 'N');
+  return sk.finances.priceAlert.deleteAlert(uid, normalizeSetNumber(sn), condition ?? 'N');
 }
 
 export async function startAlarmCsvImport(sk: SetsContext, uid: number, text: string) {

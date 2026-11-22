@@ -50,7 +50,7 @@ interface Row {
   id: number;
   user_id: number;
   condition: string | null;
-  preis: number | null;
+  price: number | null;
   price_estimated: boolean;
   currency: string;
   tag: string;
@@ -58,7 +58,7 @@ interface Row {
 
 /** Only for the lock key and price fallback; the query inside the transaction checks the rights. */
 async function beforehand(k: CollectionContext, kind: AcquisitionKind, uid: number, id: number, keys: Keys) {
-  return k.inventory.erfassung.inWriteScope(kind, id, await k.household.writeScope(uid), keys);
+  return k.inventory.acquisition.inWriteScope(kind, id, await k.household.writeScope(uid), keys);
 }
 
 /** 0 "empty" and null "no row" are cleaned up; a read error propagates, a fallback would hide the
@@ -84,7 +84,7 @@ async function rowInWriteScope(
   keys: Keys,
 ): Promise<Row> {
   const a = kinds(t)[kind];
-  const z = await t.inventory.erfassung.inWriteScope(kind, id, wids, keys);
+  const z = await t.inventory.acquisition.inWriteScope(kind, id, wids, keys);
   if (!z) failDomain('not_found', a.notFound);
   return z;
 }
@@ -107,6 +107,92 @@ export interface Change {
   [price: string]: unknown;
 }
 
+/** Like moveSet(): opposite directions lock both accounts' rows in reverse order. */
+async function moveToOwner(
+  k: CollectionContext,
+  kind: AcquisitionKind,
+  uid: number,
+  id: number,
+  keys: Keys,
+  ownerReq: unknown,
+) {
+  const from = await k.household.moveSource(uid, kind, id);
+  const to = await k.household.writeTargetOrNull(uid, ownerReq);
+  if (to === null) failDomain('forbidden', 'no_write_access');
+  if (from === to) return { unchanged: true };
+  const moved = await k.transact(
+    t =>
+      kind === 'set'
+        ? t.sets.setEntriesReassign(String(keys[0]), from, to, [id])
+        : t.inventory.manualEntryReassign(kind, keys, id, from, to),
+    { locks: [{ account: from, key: inventoryKey(kind, keys) }], repeatAtConflict: true },
+  );
+  return { from_user_id: from, to_user_id: to, ...moved };
+}
+
+/** The market-price fallback runs before the transaction, or a network call would
+ * hold the lock and connection open. If the market price doesn't arrive, the price stays
+ * empty; the response says so in `degradiert`. */
+async function incomingPrice(
+  k: CollectionContext,
+  kind: AcquisitionKind,
+  at: { uid: number; id: number; keys: Keys },
+  rawPrice: unknown,
+  condition: unknown,
+  ab: Degradations,
+): Promise<{ value: number | null; estimated: boolean }> {
+  const p = moneyInput(rawPrice, priceColumn(kind) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
+  if (p !== null) return { value: p, estimated: false };
+  const bisher = condition ? null : ((await beforehand(k, kind, at.uid, at.id, at.keys))?.condition ?? null);
+  const market = kinds(k)[kind].resolvePrice(at.uid, at.keys, String(condition || bisher || '') || null);
+  return { value: await ab.orElse('marktpreis', market, null), estimated: true };
+}
+
+function newDateOf(date: unknown): string | null {
+  if (date === undefined || date === null || date === '') return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) failDomain('invalid', 'date_invalid');
+  return String(date);
+}
+
+type Tx = Parameters<Parameters<CollectionContext['transact']>[0]>[0];
+
+async function changeInTransaction(
+  t: Tx,
+  a: Kind,
+  kind: AcquisitionKind,
+  at: { uid: number; id: number; keys: Keys },
+  body: Change,
+  price: { value: number | null; estimated: boolean } | undefined,
+): Promise<void> {
+  const { uid, id, keys } = at;
+  const { quantity, condition } = body;
+  const wids = await t.household.writeScope(uid);
+  const acq = await rowInWriteScope(t, kind, wids, id, keys);
+  // From here on the row's owner counts, not the viewer.
+  const ownerId = Number(acq.user_id);
+  const newDate = newDateOf(body.date);
+  const hasCondition = condition !== undefined && condition !== null;
+  const targetCondition = hasCondition ? conditionOf(condition) : acq.condition || 'N';
+  const targetEstimated = price ? price.estimated && price.value != null : !!acq.price_estimated;
+  // Checked against the values AFTER this change.
+  if (newDate || price || hasCondition) {
+    const clash = await t.inventory.entryAtSameTag(kind, ownerId, keys, newDate || acq.tag, id, targetCondition, {
+      price: price ? price.value : acq.price,
+      estimated: targetEstimated,
+      currency: acq.currency,
+    });
+    if (clash) failDomain('conflict', 'date_taken');
+  }
+  const hasQuantity = quantity !== undefined && quantity !== null;
+  await t.inventory.acquisition.change(kind, id, wids, {
+    ...(hasQuantity ? { quantity: inventoryQuantity(quantity, 1) } : {}),
+    ...(price ? { price: { wert: price.value, estimated: targetEstimated } } : {}),
+    ...(hasCondition ? { condition: targetCondition } : {}),
+    ...(newDate ? { date: newDate } : {}),
+  });
+  if (hasQuantity && isEmpty(await holdingQuantity(t, kind, ownerId, keys))) await a.cleanupWhenEmpty(t, ownerId, keys);
+}
+
 export async function changeAcquisition(
   k: CollectionContext,
   kind: AcquisitionKind,
@@ -116,78 +202,18 @@ export async function changeAcquisition(
   body: Change,
 ) {
   const a = kinds(k)[kind];
-  const { quantity, condition, date } = body;
   const rawPrice = body[priceColumn(kind)];
-
   const ownerReq = body.owner_user_id;
-  if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await k.household.moveSource(uid, kind, id);
-    const to = await k.household.writeTargetOrNull(uid, ownerReq);
-    if (to === null) failDomain('verboten', 'no_write_access');
-    if (from === to) return { unchanged: true };
-    // Like moveSet(): opposite directions lock both accounts' rows in reverse order.
-    const moved = await k.transact(
-      t =>
-        kind === 'set'
-          ? t.sets.setEntriesReassign(String(keys[0]), from, to, [id])
-          : t.inventory.manualEntryReassign(kind, keys, id, from, to),
-      { sperren: [{ konto: from, schluessel: inventoryKey(kind, keys) }], repeatAtConflict: true },
-    );
-    return { from_user_id: from, to_user_id: to, ...moved };
-  }
+  if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '')
+    return moveToOwner(k, kind, uid, id, keys, ownerReq);
 
-  // The market-price fallback runs before the transaction, or a network call would
-  // hold the lock and connection open.
-  let priceVal: number | null = null;
-  let priceEstimated = false;
-  // If the market price doesn't arrive, the price stays empty; the response says so in `degradiert`.
+  const at = { uid, id, keys };
   const ab = new Degradations();
-  if (rawPrice !== undefined) {
-    let p = moneyInput(rawPrice, priceColumn(kind) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
-    if (p === null) {
-      priceEstimated = true;
-      const bisher = condition ? null : ((await beforehand(k, kind, uid, id, keys))?.condition ?? null);
-      p = await ab.orElse('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
-    }
-    priceVal = p;
-  }
-
+  const price = rawPrice !== undefined ? await incomingPrice(k, kind, at, rawPrice, body.condition, ab) : undefined;
   const owner = (await beforehand(k, kind, uid, id, keys))?.user_id ?? uid;
-  await k.transact(
-    async t => {
-      const wids = await t.household.writeScope(uid);
-      const acq = await rowInWriteScope(t, kind, wids, id, keys);
-      // From here on the row's owner counts, not the viewer.
-      const ownerId = Number(acq.user_id);
-      let newDate: string | null = null;
-      if (date !== undefined && date !== null && date !== '') {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) failDomain('ungueltig', 'date_invalid');
-        newDate = String(date);
-      }
-      const hasCondition = condition !== undefined && condition !== null;
-      const targetCondition = hasCondition ? conditionOf(condition) : acq.condition || 'N';
-      const targetEstimated = rawPrice !== undefined ? priceEstimated && priceVal != null : !!acq.price_estimated;
-      // Checked against the values AFTER this change.
-      if (newDate || rawPrice !== undefined || hasCondition) {
-        const clash = await t.inventory.entryAtSameTag(kind, ownerId, keys, newDate || acq.tag, id, targetCondition, {
-          preis: rawPrice !== undefined ? priceVal : acq.preis,
-          geschaetzt: targetEstimated,
-          currency: acq.currency,
-        });
-        if (clash) failDomain('konflikt', 'date_taken');
-      }
-      const hasQuantity = quantity !== undefined && quantity !== null;
-      await t.inventory.erfassung.change(kind, id, wids, {
-        ...(hasQuantity ? { quantity: inventoryQuantity(quantity, 1) } : {}),
-        ...(rawPrice !== undefined ? { preis: { wert: priceVal, geschaetzt: targetEstimated } } : {}),
-        ...(hasCondition ? { condition: targetCondition } : {}),
-        ...(newDate ? { date: newDate } : {}),
-      });
-      if (hasQuantity && isEmpty(await holdingQuantity(t, kind, ownerId, keys)))
-        await a.cleanupWhenEmpty(t, ownerId, keys);
-    },
-    { sperren: [{ konto: owner, schluessel: inventoryKey(kind, keys) }] },
-  );
+  await k.transact(t => changeInTransaction(t, a, kind, at, body, price), {
+    locks: [{ account: owner, key: inventoryKey(kind, keys) }],
+  });
   return response(k, kind, uid, keys, { ...ab.detail() });
 }
 
@@ -205,12 +231,12 @@ export async function deleteAcquisition(
     async t => {
       const acq = await rowInWriteScope(t, kind, await t.household.writeScope(uid), id, keys);
       const ownerId = Number(acq.user_id);
-      await t.inventory.erfassung.remove(kind, id, ownerId);
+      await t.inventory.acquisition.remove(kind, id, ownerId);
       const q = await holdingQuantity(t, kind, ownerId, keys);
       if (isEmpty(q)) await a.cleanupWhenEmpty(t, ownerId, keys);
       return q;
     },
-    { sperren: [{ konto: owner, schluessel: inventoryKey(kind, keys) }] },
+    { locks: [{ account: owner, key: inventoryKey(kind, keys) }] },
   );
   return response(k, kind, uid, keys, { new_quantity: quantity ?? 0 });
 }

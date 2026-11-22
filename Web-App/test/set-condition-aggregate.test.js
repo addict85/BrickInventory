@@ -396,14 +396,14 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
   // Counter-check (05.11.2026): family: 4 deleted from https.get in abruf.ts or from the pool → red.
   const _req = require('./helpers/sources').buildAndRequire();
   const { holeHttps } = _req('src/infra/fetch.js');
-  const { oeffneBild } = _req('clients/imageCdn.js');
+  const { openImage } = _req('clients/imageCdn.js');
   const { recording } = require('./helpers/https-recording');
   const hosts = ['cdn.rebrickable.com'];
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
   const aufrufe = await recording(async () => {
-    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000 }).catch(() => {});
-    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000, methode: 'POST', rumpf: '{}' }).catch(() => {});
-    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
+    await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000 }).catch(() => {});
+    await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000, methode: 'POST', rumpf: '{}' }).catch(() => {});
+    await openImage(url, { maxBytes: 1000, pool: true }).catch(() => {});
   });
   assert.deepEqual(
     aufrufe.map(a => [a.kind, a.options.family]),
@@ -560,7 +560,7 @@ test('both login paths check the same', async () => {
   for (const name of ['a b', "' OR 1=1 --", '@example.com'])
     assert.deepEqual(
       await checkCredentials({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
-      { ok: false, absage: { kind: 'ungueltig', code: 'enter_name_or_email' } },
+      { ok: false, absage: { kind: 'invalid', code: 'enter_name_or_email' } },
       name,
     );
 

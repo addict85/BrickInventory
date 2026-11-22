@@ -40,7 +40,7 @@ function instance(t, uid) {
   const app = _req('startup/app.js').buildApp({
     pool: db.systemWebPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 'zwei-instanzen-geheimnis-lang-genug',
+    sessionSecret: 'zwei-instanzen-geheimnis-lang-genug',
     dienste,
     sessionStorage: (req, _res, next) => {
       req.session = { userId: uid };

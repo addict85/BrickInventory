@@ -46,10 +46,10 @@ export class Cache<K, V> {
  * database, lock connections): one set per factory, not per process. The
  * service creates the compartments on first use; the area does not know their types. */
 export class Compartments {
-  private readonly inhalt = new Map<string, unknown>();
+  private readonly content = new Map<string, unknown>();
 
   slot<T>(name: string, create: () => T): T {
-    if (!this.inhalt.has(name)) this.inhalt.set(name, create());
-    return this.inhalt.get(name) as T;
+    if (!this.content.has(name)) this.content.set(name, create());
+    return this.content.get(name) as T;
   }
 }

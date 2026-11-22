@@ -145,6 +145,6 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.accesses, 2);
     assert.deepEqual([await gilt(x), await gilt(y), await gilt(eigen)], [false, false, true]);
-    assert.equal((await hints('zugaenge_beendet', 1)).length, 1);
+    assert.equal((await hints('accesses_ended', 1)).length, 1);
   });
 });

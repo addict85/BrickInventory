@@ -25,9 +25,9 @@ export function moneyInput(v: unknown, field: string, max = 1_000_000, oneCode?:
   const n =
     typeof v === 'number' ? v : typeof v === 'string' && GELD_TEXT.test(v) ? Number(v.trim().replace(',', '.')) : NaN;
   // An own code (vouchers) applies to every rejection; the apps know it there.
-  if (!Number.isFinite(n)) failDomain('ungueltig', oneCode ?? 'amount_invalid');
-  if (n < 0) failDomain('ungueltig', oneCode ?? 'field_negative', { field });
-  if (n > max) failDomain('ungueltig', oneCode ?? 'field_too_high', { field });
+  if (!Number.isFinite(n)) failDomain('invalid', oneCode ?? 'amount_invalid');
+  if (n < 0) failDomain('invalid', oneCode ?? 'field_negative', { field });
+  if (n > max) failDomain('invalid', oneCode ?? 'field_too_high', { field });
   return Math.round(n * FACTOR) / FACTOR;
 }
 
@@ -44,10 +44,10 @@ export function rowValue(unitPrice: unknown, quantity: number): number | null {
 }
 
 /** Rows without a price do not count. */
-export function sumFrom(rows: Iterable<{ preis: unknown; quantity: number }>): number {
+export function sumFrom(rows: Iterable<{ price: unknown; quantity: number }>): number {
   let z = 0;
   for (const r of rows) {
-    const p = inTenThousandths(r.preis);
+    const p = inTenThousandths(r.price);
     if (p !== null) z += p * r.quantity;
   }
   return aufRappen(z);

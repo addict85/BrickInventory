@@ -74,7 +74,7 @@ export async function manualColorParts(
   l: CatalogReadContract,
 ): Promise<{ id: number; part_number: string; color_id: number }[]> {
   return db.all<Columns<'parts', 'id' | 'part_number' | 'color_id'>>(
-    `SELECT id, part_number, color_id FROM ${l.teilBestand()} p
+    `SELECT id, part_number, color_id FROM ${l.partHoldings()} p
       WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC`,
   );
 }

@@ -39,7 +39,7 @@ const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
  * anyway, and the browser console stays free of error lines. */
 function sendPlaceholder(res: Response) {
   // Once from disk: a few hundred bytes, needed dozens of times while paging.
-  const placeholder = processWide('platzhalterBild', () => {
+  const placeholder = processWide('placeholderImage', () => {
     try {
       return fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg'));
     } catch (e) {
@@ -73,15 +73,15 @@ async function fromCdn(
     { ...IMAGE_HEADERS_WITHOUT_REFERER, 'Accept-Encoding': 'identity' },
   ] as const;
 
-  const openCdn = (kopfzeilen: Record<string, string>) =>
-    d.images.openImage(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
+  const openCdn = (headers: Record<string, string>) =>
+    d.images.openImage(url, { maxBytes: PROXY_CACHE_MAX_BYTES, timeoutMs: 25_000, headers, pool: true });
   let r: FetchStream;
   try {
     r = await openCdn(HEADER_SETS[0]);
     // Follow up once without referer BEFORE the address counts as dead: the
     // hotlink protection likes to answer an unsuitable referer with 404.
     if (r.status === 404 || r.status === 403) {
-      r.verwerfen();
+      r.discard();
       r = await openCdn(HEADER_SETS[1]);
     }
   } catch (e) {
@@ -94,24 +94,24 @@ async function fromCdn(
     if (!res.headersSent) res.status(time ? 504 : 502).end();
     return null;
   }
-  if (r.status !== 200) {
-    r.verwerfen();
-    // Remember ONLY 404: with a tile wall, 403 is often just throttling.
-    if (r.status === 404) {
-      d.images.rememberMissing(cacheKey);
-    }
-    if (r.status === 404) imgProxyFailures.notFound++;
-    else imgProxyFailures.other++;
-    imgProxyFailures.lastError = `HTTP ${r.status} — ${url}`;
-    // 404 is information, not an error: as `error` it would clog the log.
-    const message = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
-    if (r.status === 404) console.info(message);
-    else console.error(message);
-    if (await ersatz()) return null;
-    void (r.status === 404 ? sendPlaceholder(res) : res.status(r.status || 502).end());
-    return null;
-  }
-  return r;
+  if (r.status === 200) return r;
+  r.discard();
+  noteCdnRefusal(d, r.status, url, cacheKey);
+  if (await ersatz()) return null;
+  void (r.status === 404 ? sendPlaceholder(res) : res.status(r.status || 502).end());
+  return null;
+}
+
+/** Remember ONLY 404: with a tile wall, 403 is often just throttling. 404 is information,
+ * not an error: as `error` it would clog the log. */
+function noteCdnRefusal(d: ImageServices, status: number, url: string, cacheKey: string): void {
+  if (status === 404) d.images.rememberMissing(cacheKey);
+  if (status === 404) imgProxyFailures.notFound++;
+  else imgProxyFailures.other++;
+  imgProxyFailures.lastError = `HTTP ${status} — ${url}`;
+  const message = `[img-proxy] CDN antwortete ${status} (auch ohne Referer): ${url}`;
+  if (status === 404) console.info(message);
+  else console.error(message);
 }
 
 /** What the proxy has completely becomes the set image: a second fetch from the CDN
@@ -141,7 +141,7 @@ function intoCache(
     wantThumb: boolean;
     createMay: boolean;
     note: () => void;
-    setNummer: string | null;
+    setNumber: string | null;
   },
 ): void {
   const { url, cacheDir, cacheFile, thumbFile, contentType, enc, expected, wantThumb, createMay, note } = o;
@@ -188,8 +188,8 @@ function intoCache(
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
       rememberCacheGrowth(st.size, d.images.imageLimits().cacheMaxBytes);
-      if (o.setNummer)
-        await setImageFromCache(d, url, o.setNummer, cacheFile).catch(e => countProxyError('img-proxy:setbild', e));
+      if (o.setNumber)
+        await setImageFromCache(d, url, o.setNumber, cacheFile).catch(e => countProxyError('img-proxy:setbild', e));
       // Create it right away, otherwise later for a whole tile wall at once.
       if (wantThumb) {
         if (createMay) d.images.queueThumb(cacheFile, thumbFile);
@@ -286,6 +286,21 @@ async function setImageFromCache(d: ImageServices, url: string, setNumber: strin
   reserveOnce(d, url, setNumber);
 }
 
+/** A set image including preview belongs in images/sets; the image job fetches it
+ * as soon as it was requested once via the proxy. images/sets applies to all accounts and has
+ * no cap: store and reserve only for a set in the account's scope, otherwise an account would
+ * fill the disk with invented numbers. If only the preview is left in the cache (maintenance
+ * deletes the unused original after 30 days), the proxy fetches the original anew: the CDN
+ * rejects the image job's fetch with its own identifier. */
+async function setImagePlan(d: ImageServices, uid: number, url: string, cacheFile: string) {
+  const setNumber = setNumberFromImageAddress(String(url || ''));
+  const setMissing = setNumber ? await setImageMissing(d, setNumber, url) : false;
+  const store = setMissing && !!setNumber && (await d.images.setNumberInScope(uid, setNumber));
+  const originalMissing = store && !(await liesDa(cacheFile));
+  if (store && setNumber && !originalMissing) await setImageFromCache(d, url, setNumber, cacheFile);
+  return { setNumber, setMissing, store, originalMissing };
+}
+
 export async function passThroughImage(d: ImageServices, req: Request, res: Response) {
   // Without mandatory login an open proxy (bandwidth, IP obfuscation).
   const proxyUserId = await userIdTheRequest(d.account, req);
@@ -302,22 +317,11 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
   // gen=0: the request computes nothing, it leaves a note for the
   // job 'image_demand' — throttled and only in the job process.
   const createMay = req.query.gen !== '0';
-  const setNumber = setNumberFromImageAddress(String(url || ''));
   const thumbFile = cacheFile + '_thumb.jpg';
-  // A set image including preview belongs in images/sets; the image job fetches it
-  // as soon as it was requested once via the proxy.
-  const setMissing = setNumber ? await setImageMissing(d, setNumber, url) : false;
-  // images/sets applies to all accounts and has no cap: store and reserve only for a set
-  // in the account's scope, otherwise an account would fill the disk with invented numbers.
-  const store = setMissing && !!setNumber && (await d.images.setNumberInScope(proxyUserId, setNumber));
+  const { setNumber, setMissing, store, originalMissing } = await setImagePlan(d, proxyUserId, url, cacheFile);
   const note = () => {
     if (store && setNumber) d.images.rememberUsed(String(url), setNumber);
   };
-  // If only the preview is left in the cache (maintenance deletes the unused original
-  // after 30 days), the proxy fetches the original anew: the CDN rejects the image job's fetch
-  // with its own identifier; without this path the set would never get a file.
-  const originalMissing = store && !(await liesDa(cacheFile));
-  if (store && setNumber && !originalMissing) await setImageFromCache(d, url, setNumber, cacheFile);
 
   // If the set image including preview lies in images/sets, it comes from there instead of from
   // cache or CDN: maintenance clears the proxy cache after 30 days, images/sets not.
@@ -385,13 +389,13 @@ function forward(
   },
 ) {
   const { url, cacheDir, cacheFile, thumbFile, wantThumb, createMay, note, setTarget } = o;
-  const rawType = String(r.kopf['content-type'] || 'image/jpeg');
+  const rawType = String(r.head['content-type'] || 'image/jpeg');
 
   // Images only: the allowed CDNs partly host user uploads, and an SVG
   // or HTML would otherwise run under our origin.
   const mime = beforeThe(rawType, ';').trim().toLowerCase();
   if (!mime.startsWith('image/') || mime === 'image/svg+xml') {
-    r.verwerfen();
+    r.discard();
     imgProxyFailures.other++;
     imgProxyFailures.lastError = `Kein Bild (${mime}) — ${url}`;
     console.warn(`[img-proxy] Antwort ist kein Bild (${mime}): ${url}`);
@@ -399,13 +403,13 @@ function forward(
   }
 
   // Only a complete file may go into the cache.
-  const expected = parseInt(String(r.kopf['content-length'] || '0'), 10) || 0;
+  const expected = parseInt(String(r.head['content-length'] || '0'), 10) || 0;
   const contentType = imageType(rawType);
   res.setHeader('Content-Type', contentType);
   // With length: a reverse proxy might buffer a chunked response for a long time.
   if (expected > 0) res.setHeader('Content-Length', String(expected));
 
-  const enc = String(r.kopf['content-encoding'] || '').toLowerCase();
+  const enc = String(r.head['content-encoding'] || '').toLowerCase();
   const raw = r.stream();
   const body = unpacked(raw, enc, res, url, expected);
   // Short: streamed unchecked, a long max-age would nail errors in the browser.
@@ -422,7 +426,7 @@ function forward(
     wantThumb,
     createMay,
     note,
-    setNummer: setTarget,
+    setNumber: setTarget,
   });
 
   // Abort while scrolling: the CDN connection must go back to the pool immediately.

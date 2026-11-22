@@ -8,9 +8,9 @@ import { access, type VoucherDependencies, type VoucherContext } from './context
 
 export type { VoucherDependencies, VoucherContext } from './context';
 
-export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, inspect?: Inspect<VoucherContext>) {
+export function createVouchers(a: Omit<VoucherDependencies, 'compartments'>, inspect?: Inspect<VoucherContext>) {
   return buildArea(
-    { ...a, faecher: new Compartments() },
+    { ...a, compartments: new Compartments() },
     access,
     (k: VoucherContext) => ({
       changeVoucher: bound(k)(service.changeVoucher),

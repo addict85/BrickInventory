@@ -40,11 +40,11 @@ const _successKey = (ip: string, key: string) => `login-erfolg|${addressDigest(i
 async function accountKey(k: AccountContext, username: string): Promise<string> {
   // Exception: with a disrupted database the throttle keeps counting in memory
   // (inMemory); without an account then by the name, instead of locking the login.
-  const z = await k.konten
+  const z = await k.accounts
     .accountToNames(singleValue(username))
     .catch(reportAndDeliver('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
-  return `name:${namedDigest(z?.kennung ?? singleValue(username).toLowerCase())}`;
+  return `name:${namedDigest(z?.identifier ?? singleValue(username).toLowerCase())}`;
 }
 
 /** An unknown name is often a mistyped password, and the reading role reads the
@@ -65,14 +65,14 @@ export async function loginAllowed(k: AccountContext, ip: string, username: stri
     _addressKey(ip),
     WINDOW_MIN,
     RUNNING_EXPIRY_S,
-    s => known || s.count + s.laufend < MAX_JE_ADDRESS,
+    s => known || s.count + s.running < MAX_JE_ADDRESS,
   );
   if (!total.ok) return { code: 'too_many_failed_attempts', vars: { minutes: total.state.waitMin } };
   const address = await k.throttle.reserve(
     _key(ip, key),
     WINDOW_MIN,
     RUNNING_EXPIRY_S,
-    s => s.count + s.laufend < MAX_ATTEMPTS,
+    s => s.count + s.running < MAX_ATTEMPTS,
   );
   if (!address.ok) {
     await k.throttle.releaseSlot(_addressKey(ip));
@@ -80,12 +80,12 @@ export async function loginAllowed(k: AccountContext, ip: string, username: stri
   }
   if (known) return null;
   let rest = 0;
-  const konto = await k.throttle.reserve(_nameKey(key), WINDOW_MIN, RUNNING_EXPIRY_S, s => {
+  const account = await k.throttle.reserve(_nameKey(key), WINDOW_MIN, RUNNING_EXPIRY_S, s => {
     rest = waitTimeSeconds(s.count) - s.sinceLast;
     // In the waiting-time phase at most one attempt at a time per account.
-    return rest <= 0 && (s.count < MAX_ATTEMPTS || s.laufend === 0);
+    return rest <= 0 && (s.count < MAX_ATTEMPTS || s.running === 0);
   });
-  if (!konto.ok) {
+  if (!account.ok) {
     await k.throttle.releaseSlot(_key(ip, key));
     await k.throttle.releaseSlot(_addressKey(ip));
     return { code: 'too_many_failed_attempts', vars: { minutes: Math.max(1, Math.ceil(Math.max(rest, 1) / 60)) } };
@@ -142,9 +142,9 @@ export async function approveLogin(k: AccountContext, token: string): Promise<vo
     bis = Number(b);
   const expected = Number.isInteger(uid) && Number.isInteger(bis) ? releaseSignature(uid, fingerprint, bis) : '';
   const echt = expected.length === sig.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
-  if (!echt || bis * 1000 <= k.clock.now()) failDomain('konflikt', 'approval_link_invalid');
+  if (!echt || bis * 1000 <= k.clock.now()) failDomain('conflict', 'approval_link_invalid');
   if ((await k.throttle.countAttempt(`login-freigabe-benutzt|${sig}`, ACCOUNT_WINDOW_MIN)) > 1)
-    failDomain('konflikt', 'approval_link_invalid');
+    failDomain('conflict', 'approval_link_invalid');
   await k.throttle.countAttempt(_releaseKey(`konto:${uid}`, fingerprint), ACCOUNT_WINDOW_MIN);
 }
 export async function dailyLimitReached(k: AccountContext, ip: string, username: string): Promise<boolean> {
@@ -158,35 +158,35 @@ export async function deleteDailyLimit(k: AccountContext, uid: number): Promise<
 export type LoginEvent =
   | 'anmeldung_fehlgeschlagen'
   | 'anmeldung_gesperrt'
-  | 'anmeldung_tagesgrenze'
+  | 'login_daily_limit'
   | 'second_factor_wrong'
   | 'bestaetigung_fehlgeschlagen'
   | 'bestaetigung_gesperrt'
-  | 'bestaetigung_gebremst';
+  | 'confirmation_throttled';
 /** One warning line per event for log, app_logs and fail2ban; never password, code
  * or entered name, because a password sometimes lands in the name field. */
 export function reportLoginEvent(
-  ereignis: LoginEvent,
-  details: { ip?: string; konto?: number | null; kind?: Brake; zugang?: string },
+  event: LoginEvent,
+  details: { ip?: string; account?: number | null; kind?: Brake; method?: string },
 ): void {
-  const { ip, konto, ...rest } = details;
-  console.warn(`[anmeldung] ${ereignis}`, {
-    ereignis,
+  const { ip, account, ...rest } = details;
+  console.warn(`[anmeldung] ${event}`, {
+    event,
     ...(ip ? { address: throttleAddress(ip) } : {}),
-    konto: konto ?? 'unbekannt',
+    account: account ?? 'unbekannt',
     ...rest,
   });
 }
 
 /** Only the success shows whether someone got in after failed attempts, and from where; never the name. */
 export type LoginMethod = 'passwort' | 'passwort+code' | 'passwort+passkey' | 'passkey' | 'qr';
-export function reportLogin(details: { ip?: string | undefined; konto: number; zugang: LoginMethod }): void {
-  const { ip, konto, zugang } = details;
+export function reportLogin(details: { ip?: string | undefined; account: number; method: LoginMethod }): void {
+  const { ip, account, method } = details;
   console.info('[anmeldung] anmeldung_erfolgreich', {
-    ereignis: 'anmeldung_erfolgreich',
+    event: 'anmeldung_erfolgreich',
     ...(ip ? { address: throttleAddress(ip) } : {}),
-    konto,
-    zugang,
+    account,
+    method,
   });
 }
 
@@ -229,8 +229,8 @@ export function countRequest(
  * Codes count separately and longer; only a correct code resets them. */
 export type Brake = 'passwort' | 'faktor';
 const FACTOR_WINDOW_MIN = 60;
-const _confirmationKey = (kind: Brake, uid: number, zugang: string) =>
-  `${kind === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen|${uid}|${zugang}`;
+const _confirmationKey = (kind: Brake, uid: number, method: string) =>
+  `${kind === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen|${uid}|${method}`;
 const window = (kind: Brake) => (kind === 'faktor' ? FACTOR_WINDOW_MIN : WINDOW_MIN);
 
 /** Across all accesses of an account, so several captured accesses do not guess several times;
@@ -244,18 +244,18 @@ export async function confirmationLocked(
   k: AccountContext,
   kind: Brake,
   uid: number,
-  zugang: string,
+  method: string,
 ): Promise<Sperre | null> {
-  const konto = await k.throttle.counterState(_accountConfirmationKey(kind, uid), ACCOUNT_WINDOW_MIN);
-  const accountFull = !!konto && konto.count >= MAX_CONFIRMATION_JE_ACCOUNT;
+  const account = await k.throttle.counterState(_accountConfirmationKey(kind, uid), ACCOUNT_WINDOW_MIN);
+  const accountFull = !!account && account.count >= MAX_CONFIRMATION_JE_ACCOUNT;
   const r = await k.throttle.reserve(
-    _confirmationKey(kind, uid, zugang),
+    _confirmationKey(kind, uid, method),
     window(kind),
     RUNNING_EXPIRY_S,
-    s => s.count + s.laufend < MAX_ATTEMPTS && !(accountFull && s.count > 0),
+    s => s.count + s.running < MAX_ATTEMPTS && !(accountFull && s.count > 0),
   );
   if (r.ok) return null;
-  const minutes = accountFull && r.state.count < MAX_ATTEMPTS ? konto!.waitMin : r.state.waitMin;
+  const minutes = accountFull && r.state.count < MAX_ATTEMPTS ? account!.waitMin : r.state.waitMin;
   return { code: 'too_many_failed_attempts', vars: { minutes } };
 }
 /** @returns true if this failed attempt just reached a brake (access or account) */
@@ -263,9 +263,9 @@ export async function confirmationFailed(
   k: AccountContext,
   kind: Brake,
   uid: number,
-  zugang: string,
+  method: string,
 ): Promise<boolean> {
-  const jeAccess = await k.throttle.countAttempt(_confirmationKey(kind, uid, zugang), window(kind));
+  const jeAccess = await k.throttle.countAttempt(_confirmationKey(kind, uid, method), window(kind));
   const jeAccount = await k.throttle.countAttempt(_accountConfirmationKey(kind, uid), ACCOUNT_WINDOW_MIN);
   return jeAccess === MAX_ATTEMPTS || jeAccount === MAX_CONFIRMATION_JE_ACCOUNT;
 }
@@ -273,9 +273,9 @@ export async function confirmationSucceeded(
   k: AccountContext,
   kind: Brake,
   uid: number,
-  zugang: string,
+  method: string,
 ): Promise<void> {
-  await k.throttle.forgetCounter(_confirmationKey(kind, uid, zugang));
+  await k.throttle.forgetCounter(_confirmationKey(kind, uid, method));
 }
 
 /** Whoever knows the password would otherwise slowly guess the code under every waiting time;

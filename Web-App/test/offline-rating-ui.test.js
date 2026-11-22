@@ -56,7 +56,7 @@ function buildBundle() {
 }
 
 const BUENDEL = buildBundle();
-process.env.TEST_BUENDEL = BUENDEL;
+process.env.TEST_BUNDLE = BUENDEL;
 const { openUi, reiter, sicht, warte } = require('./helpers/ui');
 test.after(() => fs.rmSync(BUENDEL, { force: true }));
 

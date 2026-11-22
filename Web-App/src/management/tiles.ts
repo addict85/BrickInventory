@@ -43,7 +43,7 @@ function asTile(k: { label: string; total: number }, z: LastStatus | undefined):
   if (!z) return { label: k.label, status: 'idle', progress: 0, total: k.total, sub: null, lastRun: null };
   const f = z.progress ?? {};
   return {
-    label: typeof f.schritt === 'string' ? f.schritt : k.label,
+    label: typeof f.step === 'string' ? f.step : k.label,
     status: STATUS[z.status] ?? 'idle',
     progress: toInt(f.done),
     total: toInt(f.total) || k.total,
@@ -58,7 +58,7 @@ export async function tiles(kx: ManagementContext): Promise<Record<string, Tile>
   const from: Record<string, Tile> = { ...WITHOUT_JOB };
   for (const [name, k] of Object.entries(TILES)) from[name] = asTile(k, je.get(k.kind));
   const csv = je.get('csv_sync');
-  if (csv?.status === 'running' && csv.progress?.schritt === 'BrickLink IDs nachladen')
+  if (csv?.status === 'running' && csv.progress?.step === 'BrickLink IDs nachladen')
     from.blIds = { ...asTile({ label: 'BrickLink IDs nachladen', total: 0 }, csv) };
   return from;
 }

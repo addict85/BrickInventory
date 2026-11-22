@@ -8,7 +8,7 @@ export interface Family {
 }
 
 /** An unconfirmed key (registered before the attestation) only applies until [altBis]. */
-/** The family of a token just issued, to the millisecond like familieLebt. */
+/** The family of a token just issued, to the millisecond like familyAlive. */
 export async function familyOfTokens(db: DbInterface, l: DevicesReadContract, hash: string): Promise<Family | null> {
   const z = await db.get<{ uid: number; since: Date }>(l.tokenFamilySql('$1'), [hash]);
   return z ? { uid: z.uid, since: new Date(z.since).toISOString() } : null;
@@ -43,12 +43,12 @@ export async function createKey(
   fristS: number,
 ): Promise<boolean> {
   await db.run(
-    `DELETE FROM device_keys g WHERE g.user_id = $1 AND NOT ${l.familieLebt('g.user_id', 'g.token_family')}`,
+    `DELETE FROM device_keys g WHERE g.user_id = $1 AND NOT ${l.familyAlive('g.user_id', 'g.token_family')}`,
     [f.uid],
   );
   return !!(await db.get<{ user_id: number }>(
     `INSERT INTO device_keys (user_id, token_family, public_key, attested)
-     SELECT $1, $2::timestamptz, $3, true WHERE ${l.familieLebt('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4)
+     SELECT $1, $2::timestamptz, $3, true WHERE ${l.familyAlive('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4)
      ON CONFLICT (user_id, token_family) DO UPDATE SET public_key = EXCLUDED.public_key, attested = true,
        created_at = NOW() WHERE NOT device_keys.attested
      RETURNING user_id`,
@@ -73,7 +73,7 @@ export async function createNonce(
   return !!(await db.get<{ nonce: string }>(
     `INSERT INTO device_nonces (nonce, user_id, token_family, from_qr, expires_at)
      SELECT $3, $1, $2::timestamptz, $5, $2::timestamptz + make_interval(secs => $4)
-      WHERE ${l.familieLebt('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4) RETURNING nonce`,
+      WHERE ${l.familyAlive('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4) RETURNING nonce`,
     [f.uid, f.since, nonce, o.fristS, o.fromQr],
   ));
 }

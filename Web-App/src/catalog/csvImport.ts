@@ -84,11 +84,11 @@ async function streamInsert(
 }
 
 interface Swap {
-  tabelle: repo.CsvTable;
+  table: repo.CsvTable;
   filename: string;
   tmp: string;
   cols: string[];
-  konflikt?: repo.Conflict;
+  conflict?: repo.Conflict;
   chunkSize?: number;
   mapRow: (c: string[]) => unknown[];
   /** Instead of the swap; rb_sets reconciles via upsert. */
@@ -98,30 +98,30 @@ interface Swap {
 // One transaction holds the snapshot for the whole file (minutes for the largest table).
 // That is the price for "old state or new state, nothing in between" without a session lock.
 async function importWithSwap(db: Db, report: (m: Message) => void, s: Swap): Promise<number> {
-  const shadow = `${s.tabelle}_import`;
+  const shadow = `${s.table}_import`;
   const k = buildContext({ db }, () => ({}));
   // Reconciling rb_sets asks whether any account holds a set: across account boundaries, so
   // as system role; without an account the runtime role would see no row and delete it.
   const total = await inSystemContext('katalog-import', () =>
     k.transact(async t => {
-      await repo.lockTable(t.db, s.tabelle);
-      await repo.createShadow(t.db, s.tabelle, shadow);
+      await repo.lockTable(t.db, s.table);
+      await repo.createShadow(t.db, s.table, shadow);
       const n = await streamInsert(
         s.tmp,
         s.chunkSize ?? 100,
         s.mapRow,
-        chunk => repo.addBlockOne(t.db, shadow, s.cols, chunk, s.konflikt),
+        chunk => repo.addBlockOne(t.db, shadow, s.cols, chunk, s.conflict),
         s.filename,
         report,
       );
       // An empty file is an error, not an empty catalog.
       if (n === 0)
         throw new Error(`${s.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
-      await (s.reconcile ?? repo.swap)(t.db, s.tabelle, shadow, s.cols);
+      await (s.reconcile ?? repo.swap)(t.db, s.table, shadow, s.cols);
       return n;
     }),
   );
-  await repo.maintenance(sql => db.systemPool.query(sql), s.tabelle);
+  await repo.maintenance(sql => db.systemPool.query(sql), s.table);
   return total;
 }
 
@@ -136,41 +136,41 @@ export function createImportAccess(): Db {
   });
 }
 
-export function createCatalogImports(db: Db, report: (m: Message) => void, l: Pick<CatalogReadContract, 'setZaehlt'>) {
+export function createCatalogImports(db: Db, report: (m: Message) => void, l: Pick<CatalogReadContract, 'setCounts'>) {
   const swap = (t: Swap) => () => importWithSwap(db, report, t);
   return {
     colors: swap({
-      tabelle: 'rb_colors',
+      table: 'rb_colors',
       filename: 'colors.csv.gz',
       tmp: path.join(DATA_DIR, 'colors.csv.tmp'),
       // bl_color_id comes from the API, not from the CSV — if written along, it would be
       // empty after every swap.
       cols: ['id', 'name', 'rgb', 'is_trans'],
-      konflikt: ['id'],
+      conflict: ['id'],
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2), isJa(sp(c, 3))],
     }),
     part_categories: swap({
-      tabelle: 'rb_part_categories',
+      table: 'rb_part_categories',
       filename: 'part_categories.csv.gz',
       tmp: path.join(DATA_DIR, 'part_categories.csv.tmp'),
       cols: ['id', 'name'],
-      konflikt: ['id'],
+      conflict: ['id'],
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1)],
     }),
     parts: swap({
-      tabelle: 'rb_parts',
+      table: 'rb_parts',
       filename: 'parts.csv.gz',
       tmp: path.join(DATA_DIR, 'parts.csv.tmp'),
       cols: ['part_num', 'name', 'part_cat_id', 'part_img_url'],
-      konflikt: ['part_num'],
+      conflict: ['part_num'],
       mapRow: c => [sp(c, 0), sp(c, 1), parseInt(sp(c, 2), 10) || 0, sp(c, 4)],
     }),
     sets: swap({
-      tabelle: 'rb_sets',
+      table: 'rb_sets',
       filename: 'sets.csv.gz',
       tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
       cols: ['set_num', 'name', 'year', 'theme_id', 'num_parts', 'set_img_url'],
-      konflikt: ['set_num'],
+      conflict: ['set_num'],
       reconcile: (c, _table, shadow, cols) => repo.syncSets(c, l, shadow, cols),
       mapRow: c => [
         sp(c, 0),
@@ -182,31 +182,31 @@ export function createCatalogImports(db: Db, report: (m: Message) => void, l: Pi
       ],
     }),
     inventories: swap({
-      tabelle: 'rb_inventories',
+      table: 'rb_inventories',
       filename: 'inventories.csv.gz',
       tmp: path.join(DATA_DIR, 'inventories.csv.tmp'),
       cols: ['id', 'set_num', 'version'],
-      konflikt: ['id'],
+      conflict: ['id'],
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 2), parseInt(sp(c, 1), 10) || 1],
     }),
     themes: swap({
-      tabelle: 'rb_themes',
+      table: 'rb_themes',
       filename: 'themes.csv.gz',
       tmp: path.join(DATA_DIR, 'themes.csv.tmp'),
       cols: ['id', 'name', 'parent_id'],
-      konflikt: ['id'],
+      conflict: ['id'],
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2) ? parseInt(sp(c, 2), 10) || null : null],
     }),
     inventory_minifigs: swap({
-      tabelle: 'rb_inventory_minifigs',
+      table: 'rb_inventory_minifigs',
       filename: 'inventory_minifigs.csv.gz',
       tmp: path.join(DATA_DIR, 'inventory_minifigs.csv.tmp'),
       cols: ['inventory_id', 'fig_num', 'quantity'],
-      konflikt: 'ignorieren',
+      conflict: 'ignorieren',
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), parseInt(sp(c, 2), 10) || 1],
     }),
     inventory_parts: swap({
-      tabelle: 'rb_inventory_parts',
+      table: 'rb_inventory_parts',
       filename: 'inventory_parts.csv.gz',
       tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
       cols: ['inventory_id', 'part_num', 'color_id', 'quantity', 'is_spare', 'img_url'],

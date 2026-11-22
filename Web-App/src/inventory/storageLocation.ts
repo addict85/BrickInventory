@@ -17,7 +17,7 @@ export type LagerArt = StorageTable;
 export function normalizeLocation(v: unknown): string | null {
   const s = String(v ?? '').trim();
   if (!s) return null;
-  if (s.length > LOCATION_MAX_CHARS) failDomain('ungueltig', 'storage_too_long');
+  if (s.length > LOCATION_MAX_CHARS) failDomain('invalid', 'storage_too_long');
   return s;
 }
 
@@ -31,8 +31,8 @@ export interface Storage {
 
 function nameOrError(v: unknown): string {
   const s = String(v ?? '').trim();
-  if (!s) failDomain('ungueltig', 'storage_empty');
-  if (s.length > LOCATION_MAX_CHARS) failDomain('ungueltig', 'storage_too_long');
+  if (!s) failDomain('invalid', 'storage_empty');
+  if (s.length > LOCATION_MAX_CHARS) failDomain('invalid', 'storage_too_long');
   return s;
 }
 
@@ -60,7 +60,7 @@ export async function createStorage(
   const alt = await places.ortNachName(k.db, userId, n);
   // Without a hit something other than a duplicate went wrong — better a
   // refusal than a silent "already there".
-  if (!alt) failDomain('intern', 'storage_unknown');
+  if (!alt) failDomain('internal', 'storage_unknown');
   return { location: { id: parseInt(String(alt.id), 10), user_id: userId, name: alt.name }, was_new: false };
 }
 
@@ -76,7 +76,7 @@ export async function renameStorage(
   if (!alt) failDomain('not_found', 'storage_unknown');
   // The refusal beforehand is easier to understand than the error at the index.
   const collision = await places.otherLocationSameNamed(k.db, userId, isNew, id);
-  if (collision) failDomain('konflikt', 'storage_duplicate');
+  if (collision) failDomain('conflict', 'storage_duplicate');
   await places.writeLocationNames(k.db, id, userId, isNew);
   return { id, user_id: userId, name: isNew };
 }
@@ -88,13 +88,13 @@ export async function deleteStorage(k: InventoryContext, userId: number, id: num
   if (!location) failDomain('not_found', 'storage_unknown');
   // All three tables, via the ID: otherwise a place could be deleted that
   // only holds figures or is assigned with a different spelling.
-  const belegt = await places.locationOccupancy(k.db, k.readContract, userId, id);
-  if (parseInt(String(belegt?.n ?? 0), 10) > 0) failDomain('konflikt', 'storage_in_use');
+  const occupied = await places.locationOccupancy(k.db, k.readContract, userId, id);
+  if (parseInt(String(occupied?.n ?? 0), 10) > 0) failDomain('conflict', 'storage_in_use');
   await places.removeLocation(k.db, id, userId);
 }
 
 /** ONE query over all tables, so that not every UI merges by itself. */
-export async function lagerorte(k: InventoryContext, scopeChoice: Sicht | ScopeInput) {
+export async function storages(k: InventoryContext, scopeChoice: Sicht | ScopeInput) {
   const scope = await k.household.scopeFrom(scopeChoice);
   const uids = asIds(scope);
   // Grouped by NAME, on purpose: "basement" of grandfather and grandchild

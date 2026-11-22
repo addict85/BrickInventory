@@ -13,7 +13,7 @@ const DEFAULTS: Record<ApiName, number> = { bricklink: 4000, rebrickable: REBRIC
 export const SHARE_JE_ACCOUNT = 0.25;
 
 /** All non-admins together; the other half stays with the admins and the
- * background. Counted in the row `konto = -1`. */
+ * background. Counted in the row `account = -1`. */
 export const SHARE_ALL_ACCOUNTS = 0.5;
 const ALL_ACCOUNTS = -1;
 
@@ -31,7 +31,7 @@ const limitAllAccounts = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_
 export async function checkAndCountQuota(k: ForeignSourcesContext, apiName: ApiName, _default?: number) {
   const limit = await limitTheSource(k, apiName);
   const tag = today(k);
-  const konto = currentAccount();
+  const account = currentAccount();
   const count = async (tx: DbInterface, id: number, limit: number): Promise<number | null> => {
     const z = await repo.countApiCall(tx, tag, apiName, id, limit);
     return z ? Number(z.count) : null;
@@ -41,9 +41,9 @@ export async function checkAndCountQuota(k: ForeignSourcesContext, apiName: ApiN
     .transact(async t => {
       const total = await count(t.db, 0, limit);
       if (total === null) return { allowed: false, count: limit, limit, remaining: 0 };
-      if (konto && !konto.verwalter) {
+      if (account && !account.admin) {
         const all = await count(t.db, ALL_ACCOUNTS, limitAllAccounts(limit));
-        const own = all === null ? null : await count(t.db, konto.id, limitJeAccount(limit));
+        const own = all === null ? null : await count(t.db, account.id, limitJeAccount(limit));
         if (own === null) throw Object.assign(new Error('kontingent_je_konto'), { accountFull: true });
       }
       return { allowed: true, count: total, limit, remaining: limit - total };
@@ -65,12 +65,12 @@ export async function quotaOverview(k: ForeignSourcesContext, apiName: ApiName) 
  * is reported as such instead of as a fetch error. */
 export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
   const s = await quotaOverview(kx, apiName);
-  const konto = currentAccount();
-  if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
-  const z = await kx.apiQuota.callsJeAccount(s.date, apiName, konto.id, ALL_ACCOUNTS);
+  const account = currentAccount();
+  if (!account || account.admin || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
+  const z = await kx.apiQuota.callsJeAccount(s.date, apiName, account.id, ALL_ACCOUNTS);
   const state = (k: number) => Number(z.find(r => Number(r.account_id) === k)?.count || 0);
   return {
-    allowed: state(konto.id) < limitJeAccount(s.limit) && state(ALL_ACCOUNTS) < limitAllAccounts(s.limit),
+    allowed: state(account.id) < limitJeAccount(s.limit) && state(ALL_ACCOUNTS) < limitAllAccounts(s.limit),
     limit: s.limit,
   };
 }

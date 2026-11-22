@@ -28,9 +28,9 @@ import {
 } from './rules';
 
 /** Per set of services: the state counts the changes, the dependents (images) listen in. */
-const state = (k: HouseholdContext) => k.faecher.slot('haushaltStand', () => ({ wert: 0 }));
+const state = (k: HouseholdContext) => k.compartments.slot('haushaltStand', () => ({ wert: 0 }));
 const householdChange = (k: HouseholdContext) =>
-  k.faecher.slot('haushaltsaenderung', () => {
+  k.compartments.slot('haushaltsaenderung', () => {
     const e = processEvent('haushaltsaenderung', HOUSEHOLD_CHANNEL);
     e.listen(() => {
       state(k).wert++;
@@ -52,15 +52,15 @@ export function listenOnChanges(k: HouseholdContext): () => void {
 function memory(k: HouseholdContext): Cache<number, Household> {
   if (k.db.inTransaction()) return new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS);
   const now = state(k).wert;
-  const g = k.faecher.slot('haushalt', () => ({
+  const g = k.compartments.slot('haushalt', () => ({
     state: now,
-    speicher: new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS),
+    store: new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS),
   }));
   if (g.state !== now) {
     g.state = now;
-    g.speicher = new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS);
+    g.store = new Cache<number, Household>(HOUSEHOLD_MAX, HOUSEHOLD_TTL_MS);
   }
-  return g.speicher;
+  return g.store;
 }
 
 /** Here immediately, elsewhere after the COMMIT; a lost signal is healed by the memory's expiry. */
@@ -126,7 +126,7 @@ export async function createInvitation(k: HouseholdContext, uid: number) {
   await k.repository.cleanInvitationsOn();
   // Every open invitation is an access to the household; nobody needs arbitrarily many.
   if ((await repo.openInvitations(k.db, id)) >= OPEN_INVITATIONS_MAX)
-    failDomain('konflikt', 'too_many_invites', { n: OPEN_INVITATIONS_MAX });
+    failDomain('conflict', 'too_many_invites', { n: OPEN_INVITATIONS_MAX });
 
   const code = newCode();
   await repo.insertInvitation(k.db, invitationHash(code), id, new Date(k.clock.now() + INVITE_TTL_MS));
@@ -135,30 +135,30 @@ export async function createInvitation(k: HouseholdContext, uid: number) {
 
 /** Who invites, before anyone agrees with the password; only whoever has the code learns the name. */
 export async function checkInvitation(k: HouseholdContext, uid: number, code: string) {
-  if (typeof code !== 'string' || code.trim().length < 8) failDomain('konflikt', 'invite_code_invalid');
+  if (typeof code !== 'string' || code.trim().length < 8) failDomain('conflict', 'invite_code_invalid');
   const subId = parseInt(String(uid), 10);
   const mainId = await k.repository.inviterToCode(invitationHash(code));
-  if (mainId === null) failDomain('konflikt', 'invite_code_expired');
-  if (mainId === subId) failDomain('konflikt', 'account_with_itself');
-  if (await repo.isLinked(k.db, mainId, subId)) failDomain('konflikt', 'account_already_linked');
-  if (await repo.isLinked(k.db, subId, mainId)) failDomain('konflikt', 'link_creates_cycle');
+  if (mainId === null) failDomain('conflict', 'invite_code_expired');
+  if (mainId === subId) failDomain('conflict', 'account_with_itself');
+  if (await repo.isLinked(k.db, mainId, subId)) failDomain('conflict', 'account_already_linked');
+  if (await repo.isLinked(k.db, subId, mainId)) failDomain('conflict', 'link_creates_cycle');
   return { inviter: { id: mainId, username: (await k.repository.inviterName(mainId)) || String(mainId) } };
 }
 
 // Invalidated atomically, free again on failure.
 export async function redeemInvitation(k: HouseholdContext, uid: number, code: string) {
   const subId = parseInt(String(uid), 10);
-  if (typeof code !== 'string' || code.length < 8) failDomain('konflikt', 'invite_code_invalid');
+  if (typeof code !== 'string' || code.length < 8) failDomain('conflict', 'invite_code_invalid');
   const th = invitationHash(code);
 
   // A read error is not an expired code: it propagates.
   const mainId = await k.repository.receiptsInvitation(th, subId);
-  if (mainId === null) failDomain('konflikt', 'invite_code_expired');
+  if (mainId === null) failDomain('conflict', 'invite_code_expired');
 
   /** A refusal frees the code again. */
   const refusal = async (code: ErrorCode, vars?: Record<string, string>): Promise<never> => {
     await k.repository.giveInvitationFree(th).catch(logAndContinue('haushalt:release'));
-    return failDomain('konflikt', code, vars);
+    return failDomain('conflict', code, vars);
   };
 
   if (mainId === subId) await refusal('account_with_itself');
@@ -184,7 +184,7 @@ export async function redeemInvitation(k: HouseholdContext, uid: number, code: s
         t.settings.userValue(mainId, 'currency', 'EUR'),
         t.settings.userValue(subId, 'currency', 'EUR'),
       ]);
-      if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
+      if (String(curMain) !== String(curSub)) return { main: String(curMain), sub: String(curSub) };
       await t.repository.link(mainId, subId);
       return null;
     }),
@@ -220,9 +220,9 @@ export async function unlinkAccounts(
  * insight and stays. @returns the unlinked main accounts and the discarded invitations */
 export async function unlinkForeignAccess(k: HouseholdContext, uid: number) {
   const r = await k.repository.resolveSubAccountAndInvitations(parseInt(String(uid), 10));
-  const names = r.hauptkonten.length ? await k.repository.accountNames(r.hauptkonten, 'username') : [];
-  if (r.hauptkonten.length || r.einladungen) reportHouseholdChange(k);
-  return { hauptkonten: names.map(n => n.username), einladungen: r.einladungen };
+  const names = r.mainAccounts.length ? await k.repository.accountNames(r.mainAccounts, 'username') : [];
+  if (r.mainAccounts.length || r.invitations) reportHouseholdChange(k);
+  return { mainAccounts: names.map(n => n.username), invitations: r.invitations };
 }
 
 export async function discardSeparated(k: HouseholdContext, uid: number, subUserId: number) {
@@ -275,11 +275,11 @@ export async function scopeIds(k: HouseholdContext, uid: number, mode: ScopeMode
 
 /** IDs only come from inside (jobs, other services); from outside comes a view. */
 export async function scopeFrom(k: HouseholdContext, v: Sicht | ScopeInput): Promise<Scope> {
-  return typeof v === 'object' && !Array.isArray(v) ? scopeIds(k, v.nutzer, scopeKind(v.konten)) : asIds(v);
+  return typeof v === 'object' && !Array.isArray(v) ? scopeIds(k, v.user, scopeKind(v.accounts)) : asIds(v);
 }
 
 export async function writeAreaFrom(k: HouseholdContext, v: Writer | number[]): Promise<number[]> {
-  return Array.isArray(v) ? v : writeScope(k, v.schreiber);
+  return Array.isArray(v) ? v : writeScope(k, v.writer);
 }
 
 /** Main accounts see the files of their sub-accounts, not the other way round. Freshly
@@ -298,7 +298,7 @@ export async function writeTarget(
   refusal: 'no_write_access' | 'no_account_access' = 'no_write_access',
 ): Promise<number> {
   const target = await writeTargetOrNull(k, userRow, wish);
-  if (target === null) failDomain('verboten', refusal);
+  if (target === null) failDomain('forbidden', refusal);
   return target;
 }
 

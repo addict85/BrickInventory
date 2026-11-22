@@ -14,7 +14,7 @@ const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 
 /** index.html and its style hash, last-read theme: once per process. */
 const Z = processWide('indexHtml', () => ({
-  stil: null as { mtime: number; hash: string } | null,
+  style: null as { mtime: number; hash: string } | null,
   html: null as string | null,
   mtime: 0,
   theme: null as string | null,
@@ -24,12 +24,12 @@ const Z = processWide('indexHtml', () => ({
 /** CSP source for the one inline block <style id="start-style"> (start skeleton), else ''. */
 export function startPageStyleHash(production: boolean): string {
   const mtime =
-    production && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
-  if (Z.stil && Z.stil.mtime === mtime) return Z.stil.hash;
+    production && Z.style ? Z.style.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
+  if (Z.style && Z.style.mtime === mtime) return Z.style.hash;
   const m = /<style id="start-style">([\s\S]*?)<\/style>/.exec(
     fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '',
   );
-  Z.stil = {
+  Z.style = {
     mtime,
     hash: m
       ? `'sha256-${createHash('sha256')
@@ -37,7 +37,7 @@ export function startPageStyleHash(production: boolean): string {
           .digest('base64')}'`
       : '',
   };
-  return Z.stil.hash;
+  return Z.style.hash;
 }
 
 // Process-local; simpler than LISTEN/NOTIFY for a setting that rarely changes.

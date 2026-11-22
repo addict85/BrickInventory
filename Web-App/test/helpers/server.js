@@ -36,8 +36,8 @@ function testServer(_req, { sitzung = {}, t } = {}) {
   const app = _req('startup/app.js').buildApp({
     pool: testAccess().systemWebPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
-    dienste: testServices(),
+    sessionSecret: 'test-sitzungsgeheimnis-lang-genug',
+    services: testServices(),
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
       req.session = gestellt;
       next();

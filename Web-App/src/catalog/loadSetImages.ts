@@ -77,11 +77,11 @@ async function loadPartImage(k: CatalogContext, p: repo.ImageRequest): Promise<v
   const rel = `/images/parts/${file}`;
 
   if (!fs.existsSync(dest)) {
-    await k.cdnDrossel.acquire();
+    await k.cdnThrottle.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     const ok = await k.images
       .loadImage(cdnUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS, text => console.warn(`[img-dl] ${p.id}: ${text}`))
-      .finally(() => k.cdnDrossel.release());
+      .finally(() => k.cdnThrottle.release());
     if (!ok) return;
   }
 
@@ -130,7 +130,7 @@ async function fetchImageLock(
 }
 
 // One lock per set: concurrent calls for the same set wait for the first one.
-const locks = (k: CatalogContext) => k.faecher.slot('setBilder:sperren', () => new Map<string, Promise<void>>());
+const locks = (k: CatalogContext) => k.compartments.slot('setBilder:sperren', () => new Map<string, Promise<void>>());
 
 async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBusy = false) {
   const n = withVersion(setNumber);

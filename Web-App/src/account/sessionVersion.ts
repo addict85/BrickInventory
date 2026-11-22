@@ -8,10 +8,10 @@ import type { AccountContext } from './context';
 const CACHE_MS = 5_000;
 /** Per access; `stand` counts every clearing so that an older read state does not get back in. */
 const store = (k: AccountContext) =>
-  k.faecher.slot('sitzungsVersion', () => ({
+  k.compartments.slot('sitzungsVersion', () => ({
     entries: new Map<number, { version: number | null; bis: number }>(),
     state: 0,
-    verteilt: false,
+    distributed: false,
   }));
 const remembered = (k: AccountContext) => store(k).entries;
 
@@ -19,7 +19,7 @@ const remembered = (k: AccountContext) => store(k).entries;
  * is announced via NOTIFY. Without a standing listen connection only the database counts (fail closed). */
 const CHANNEL = 'sitzung_version';
 const increased = (k: AccountContext) =>
-  k.faecher.slot('sitzungsVersionSignal', () => {
+  k.compartments.slot('sitzungsVersionSignal', () => {
     const e = processEvent('sitzungsVersion', CHANNEL);
     e.listen(() => forgetAllSessionVersions(k));
     return e;
@@ -30,16 +30,16 @@ function forgetAllSessionVersions(k: AccountContext): void {
   s.state++;
 }
 export function listenOnSessionVersion(k: AccountContext): void {
-  store(k).verteilt = true;
+  store(k).distributed = true;
   increased(k).connect(k.db.notification);
 }
 function usable(k: AccountContext): boolean {
-  if (store(k).verteilt && k.db.notification.listensTo(CHANNEL)) return true;
+  if (store(k).distributed && k.db.notification.listensTo(CHANNEL)) return true;
   forgetAllSessionVersions(k);
   return false;
 }
 function reportIncrease(k: AccountContext): void {
-  if (store(k).verteilt) void increased(k).report(k.db.notification);
+  if (store(k).distributed) void increased(k).report(k.db.notification);
 }
 
 /** null: account missing or locked. */

@@ -42,6 +42,27 @@ function close(from, rest, indent) {
 }
 
 /**
+ * A row that holds a reference, without it. @param {string[]} from @param {string} z
+ * @returns whether the kept text now ends with a blank line
+ */
+function withoutReference(from, z) {
+  const fresh = z.replace(new RegExp(REFERENCE.source, 'g'), '').replace(/[ \t]+$/, '');
+  const indent = (z.match(/^\s*/) || [''])[0];
+  const t = fresh.trim().replace(/^\*\s+(?=\*\/$)/, '');
+  if (t === '*/' || t === '-->') {
+    close(from, t, indent);
+    return false;
+  }
+  if (EMPTY_ROW.test(fresh)) {
+    // A blank line of the comment directly before it would now stand at the end of the block.
+    if (/^\s*\/\/$/.test(fresh) && /^\s*\/\/$/.test(from[from.length - 1] ?? '')) from.pop();
+    return (from[from.length - 1] ?? '').trim() === '';
+  }
+  from.push(fresh);
+  return false;
+}
+
+/**
  * Removes every reference from a source text; comments without remaining content disappear entirely.
  * @param {string} text
  * @returns {string}
@@ -54,26 +75,12 @@ function removeReferences(text) {
   // If the reference stood alone between two blank lines, one of them goes along.
   let emptyBefore = false;
   for (const z of rows) {
-    if (!REFERENCE.test(z)) {
-      if (!(emptyBefore && z.trim() === '')) from.push(z);
-      emptyBefore = false;
+    if (REFERENCE.test(z)) {
+      emptyBefore = withoutReference(from, z);
       continue;
     }
+    if (!(emptyBefore && z.trim() === '')) from.push(z);
     emptyBefore = false;
-    const fresh = z.replace(new RegExp(REFERENCE.source, 'g'), '').replace(/[ \t]+$/, '');
-    const indent = (z.match(/^\s*/) || [''])[0];
-    const t = fresh.trim().replace(/^\*\s+(?=\*\/$)/, '');
-    if (t === '*/' || t === '-->') {
-      close(from, t, indent);
-      continue;
-    }
-    if (EMPTY_ROW.test(fresh)) {
-      // A blank line of the comment directly before it would now stand at the end of the block.
-      if (/^\s*\/\/$/.test(fresh) && /^\s*\/\/$/.test(from[from.length - 1] ?? '')) from.pop();
-      emptyBefore = (from[from.length - 1] ?? '').trim() === '';
-      continue;
-    }
-    from.push(fresh);
   }
   // Whatever the reference alone filled would otherwise remain as an empty block or empty final line.
   return from

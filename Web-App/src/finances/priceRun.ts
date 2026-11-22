@@ -115,6 +115,18 @@ async function pricePlacesJeAccount(k: FinancesContext): Promise<Map<number, str
   return jeAccount;
 }
 
+/** BrickLink at its daily limit or unreachable: said once per run, the rest follows next run. */
+function noteUnavailable(st: RunState, r: 'rate_limited' | 'nicht_erreichbar'): void {
+  const limit = r === 'rate_limited';
+  if (limit ? !st.limitReached : !st.notReachable)
+    log(
+      `${limit ? 'BrickLink-Tageslimit erreicht' : 'BrickLink nicht erreichbar (Wartung)'} — die übrigen Sets folgen im nächsten Lauf`,
+    );
+  if (limit) st.limitReached = true;
+  else st.notReachable = true;
+  st.omitted++;
+}
+
 /** A set in all conditions it needs; the result counts in `st`. */
 async function refreshSet(
   k: FinancesContext,
@@ -128,19 +140,13 @@ async function refreshSet(
   for (const c of states) {
     try {
       const r = await fetchAndCachePrice(k, sn, c, 'sold', currency, ttl);
+      if (r === 'rate_limited' || r === 'nicht_erreichbar') {
+        noteUnavailable(st, r);
+        return 'rate_limited';
+      }
       if (r === 'updated') {
         st.updated++;
         last = 'updated';
-      } else if (r === 'rate_limited' || r === 'nicht_erreichbar') {
-        const limit = r === 'rate_limited';
-        if (limit ? !st.limitReached : !st.notReachable)
-          log(
-            `${limit ? 'BrickLink-Tageslimit erreicht' : 'BrickLink nicht erreichbar (Wartung)'} — die übrigen Sets folgen im nächsten Lauf`,
-          );
-        if (limit) st.limitReached = true;
-        else st.notReachable = true;
-        st.omitted++;
-        return 'rate_limited';
       } else if (last !== 'updated') st.skipped++;
     } catch (e) {
       st.errors++;
@@ -183,8 +189,8 @@ async function afterTheRun(k: FinancesContext, job?: JobContext) {
     for (const sn of waiting) reported += await checkSet(k, sn, k.mail);
     if (waiting?.length) log(`Preisalarm: ${waiting.length} Sets geprueft, ${reported} gemeldet`);
   });
-  const ohne = [state.ok ? null : 'tagesstand', alerts.ok ? null : 'preisalarme'].filter(x => x !== null);
-  if (ohne.length) await job?.progress({ text: `ohne ${ohne.join(', ')}`, ohne });
+  const without = [state.ok ? null : 'tagesstand', alerts.ok ? null : 'preisalarme'].filter(x => x !== null);
+  if (without.length) await job?.progress({ text: `ohne ${without.join(', ')}`, without });
 }
 
 async function reportResult(kx: FinancesContext, st: RunState, duration: number, k?: JobContext) {

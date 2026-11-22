@@ -5,7 +5,7 @@ export type Entry = {
   status: number | null;
   response: string | null;
   has_effect: boolean;
-  verwaist: boolean;
+  orphaned: boolean;
 };
 
 /** An entry whose first request is still unfinished after `orphanedAfterS`

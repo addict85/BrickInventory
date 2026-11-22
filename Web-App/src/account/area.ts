@@ -26,15 +26,15 @@ import { access, type AccountDependencies, type AccountContext } from './context
 
 export type { AccountDependencies, AccountContext } from './context';
 
-export function createAccount(a: Omit<AccountDependencies, 'faecher'>, inspect?: Inspect<AccountContext>) {
+export function createAccount(a: Omit<AccountDependencies, 'compartments'>, inspect?: Inspect<AccountContext>) {
   return buildArea(
-    { ...a, faecher: new Compartments() },
+    { ...a, compartments: new Compartments() },
     access,
     (k: AccountContext) => ({
       ...loginAndDevices(k),
-      ...konten(k),
-      verwalter: management(k),
-      sitzungen: sessions(k),
+      ...accounts(k),
+      admin: management(k),
+      sessions: sessions(k),
     }),
     inspect,
   );
@@ -60,7 +60,7 @@ function loginAndDevices(k: AccountContext) {
 }
 
 /** Accounts, accesses, administration and settings of the account. */
-function konten(k: AccountContext) {
+function accounts(k: AccountContext) {
   return {
     onCleanupSteps: bound(k)(sideRuns.onCleanupSteps),
     addressHints: bound(k)(sideRuns.addressHints),
@@ -120,8 +120,8 @@ function sessions(k: AccountContext) {
 function management(k: AccountContext) {
   return {
     unlockRegistration: bound(k)(adminActions.unlockRegistration),
-    setActive: bound(k)(adminActions.aktivSetzen),
-    setAdminRole: bound(k)(adminActions.verwalterRolleSetzen),
+    setActive: bound(k)(adminActions.setActive),
+    setAdminRole: bound(k)(adminActions.setAdminRole),
     passwordByAdmin: bound(k)(adminActions.passwordByAdmin),
     factorByAdmin: bound(k)(adminActions.factorByAdmin),
     cancelTakeovers: bound(k)(adminActions.cancelTakeovers),

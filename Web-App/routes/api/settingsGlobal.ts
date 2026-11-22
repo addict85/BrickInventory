@@ -19,13 +19,13 @@ export function buildSettingsGlobalRouter(
   router.endpoint('POST /api/v2/settings', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     // An administrator's global values go through the step guard like every administrator route.
-    const verwalter = isAdmin(req) && hasGlobalValues(req.input);
-    if (verwalter && !(await released(d.account, req, res, 'admin'))) return;
+    const admin = isAdmin(req) && hasGlobalValues(req.input);
+    if (admin && !(await released(d.account, req, res, 'admin'))) return;
     const finished = await d.management.saveSettings(req.input, {
       uid,
-      verwalter,
+      admin,
       name: userName(req) ?? '',
-      confirm: passwort => confirmWithFactor(d.account, req, res, uid, passwort),
+      confirm: password => confirmWithFactor(d.account, req, res, uid, password),
     });
     if (finished) return {};
   });
@@ -38,13 +38,13 @@ export function buildSettingsGlobalRouter(
   });
 
   router.endpoint('GET /api/v2/settings/export', requireToken, async (req, res) => {
-    const verwalter = await asAdmin(d.account, req);
+    const admin = await asAdmin(d.account, req);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0, 10)}.json"`,
     );
-    res.json(await d.management.exportConfig(req.apiUser.user_id, verwalter, userName(req) ?? null));
+    res.json(await d.management.exportConfig(req.apiUser.user_id, admin, userName(req) ?? null));
   });
 
   router.endpoint('GET /api/v2/settings/export/data', requireToken, async (req, res) => {
@@ -69,11 +69,11 @@ export function buildSettingsGlobalRouter(
     accountGate('upload'),
     importUpload.single('file'),
     async (req, res) => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
+      if (!req.file) failDomain('invalid', 'no_file');
       // As administrator the import writes global values and reschedules the jobs.
-      const verwalter = isAdmin(req);
-      if (verwalter && !(await released(d.account, req, res, 'admin'))) return;
-      return { ...(await d.management.importConfig(req.apiUser.user_id, verwalter, req.file.buffer)) };
+      const admin = isAdmin(req);
+      if (admin && !(await released(d.account, req, res, 'admin'))) return;
+      return { ...(await d.management.importConfig(req.apiUser.user_id, admin, req.file.buffer)) };
     },
   );
 
@@ -81,12 +81,12 @@ export function buildSettingsGlobalRouter(
     const uid = req.apiUser.user_id;
     // Otherwise the mail server would be a relay to any address for a captured administrator session.
     const zuOft = await d.account.accountThrottled('smtp-test', uid, 10, 60 * 60 * 1000);
-    if (zuOft) failDomain('zu_viele', 'too_many_requests', { minutes: zuOft.waitMin });
+    if (zuOft) failDomain('too_many', 'too_many_requests', { minutes: zuOft.waitMin });
 
     const own = (await d.account.profile(uid))?.email || '';
     const to = (req.input.to || '').trim() || own;
     if (!emailValid(to)) {
-      failDomain('ungueltig', 'no_target_email');
+      failDomain('invalid', 'no_target_email');
     }
     // Like changing the mail settings: to a foreign address only with password.
     if (
@@ -102,7 +102,7 @@ export function buildSettingsGlobalRouter(
   // is missing — a configured installation never sees the wizard.
   router.endpoint('GET /api/v2/settings/setup', requireAdmin, async req => {
     const wert = async (k: string) => !!(await d.settings.globalValue(k));
-    const passwort = await d.account.passwordSwitchDue(req.apiUser.user_id);
+    const password = await d.account.passwordSwitchDue(req.apiUser.user_id);
     const sources = {
       rebrickable: await wert('rebrickable_api_key'),
       brickset: await wert('brickset_api_key'),
@@ -115,7 +115,7 @@ export function buildSettingsGlobalRouter(
       ).every(Boolean),
     };
     const done = await wert('einrichtung_erledigt');
-    return { open: !done && (passwort || !sources.rebrickable), change_password: passwort, sources };
+    return { open: !done && (password || !sources.rebrickable), change_password: password, sources };
   });
 
   router.endpoint('POST /api/v2/settings/setup/complete', requireAdmin, async _req => {
@@ -128,7 +128,7 @@ export function buildSettingsGlobalRouter(
     const refusal = await d.management.checkSource(req.input.source);
     if (!refusal) return {};
     throw new DomainError(
-      'ungueltig',
+      'invalid',
       refusal.code,
       { source: refusal.source, reason: refusal.reason },
       { details: refusal.reason },

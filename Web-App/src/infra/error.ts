@@ -34,9 +34,9 @@ export function reportAndDeliver<T>(context: string, ersatz: T) {
  * production it is reported loudly because the body keeps computing with the substitute. */
 export function checkFallbackInTransaction(context: string, e: unknown): void {
   const tx = transactionOfPath();
-  if (!tx?.verdirbt(e)) return;
+  if (!tx?.spoils(e)) return;
   if (isDatabaseError(e)) throw e;
-  if (tx.streng) throw new Error(`Ersatzwert in einer Transaktion (${context}): ${errorMessage(e)}`, { cause: e });
+  if (tx.strict) throw new Error(`Ersatzwert in einer Transaktion (${context}): ${errorMessage(e)}`, { cause: e });
   console.error(`[ersatz-in-transaktion] ${context}: ${errorMessage(e)}`);
 }
 

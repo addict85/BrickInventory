@@ -1,6 +1,6 @@
 /** Web UI and app read the same response. */
 import type { JobKind } from './jobs';
-import { pullBefore, repeat, abortAb, endPause } from './service';
+import { pullBefore, repeat, abortJob, endPause } from './service';
 import { hatSchedule, planeNext, pullPlanBefore } from './schedule';
 import { failDomain } from '../infra/errorTexts';
 import type { JobsContext } from './context';
@@ -9,7 +9,7 @@ const HEARTBEAT_APPLIES_SEC = 120;
 const STATUS = ['pending', 'running', 'error', 'cancelled', 'done'] as const;
 
 function checkKind(k: JobsContext, kind: string): JobKind {
-  if (!k.arten.fromValue(kind)) failDomain('ungueltig', 'unknown_job');
+  if (!k.kinds.fromValue(kind)) failDomain('invalid', 'unknown_job');
   return kind as JobKind;
 }
 
@@ -43,18 +43,18 @@ export async function jobsInOverview(
 }
 
 /** For a scheduled kind the next regular appointment is pending afterwards. */
-export async function auftragAbbrechen(k: JobsContext, key: number) {
+export async function cancelJob(k: JobsContext, key: number) {
   // The response names the identifier as text like the overview (bigint).
   const id = String(key);
-  const a = await abortAb(k, id);
-  if (!a) failDomain('konflikt', 'job_not_changeable');
+  const a = await abortJob(k, id);
+  if (!a) failDomain('conflict', 'job_not_changeable');
   await planeNext(k, a.type);
   return { id, status: 'cancelled' };
 }
 
 export async function retryJob(k: JobsContext, key: number) {
   const id = String(key);
-  if (!(await repeat(k, id))) failDomain('konflikt', 'job_not_changeable');
+  if (!(await repeat(k, id))) failDomain('conflict', 'job_not_changeable');
   return { id, status: 'pending' };
 }
 

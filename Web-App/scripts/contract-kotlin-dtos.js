@@ -16,8 +16,8 @@ const STANDARD = require('./contract-kotlin-mapping.js');
 let Z = STANDARD;
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = path.join(ROOT, 'docs', 'openapi.json');
-const ZIEL = path.join(
+const SOURCE_FILE = path.join(ROOT, 'docs', 'openapi.json');
+const TARGET_FILE = path.join(
   ROOT,
   '..',
   'Android-App',
@@ -90,13 +90,35 @@ const constant = w => {
 /**
  * @typedef {{ art: 'grund', name: string } | { art: 'liste', element: Typ } | { art: 'karte', wert: Typ }
  *   | { art: 'klasse', name: string }} TypeKind
- * @typedef {TypeKind & { nullbar: boolean }} Typ
- * @typedef {{ json: string, typ: Typ, pflicht: boolean }} Feld
- * @typedef {{ name: string, felder: Feld[], werte?: string[], anfrage: boolean, quellen: string[] }} Form
+ * @typedef {TypeKind & { nullable: boolean }} Typ
+ * @typedef {{ json: string, typ: Typ, required: boolean }} Feld
+ * @typedef {{ name: string, fields: Feld[], enumValues?: string[], isRequest: boolean, sources: string[] }} Form
  */
 
 /** @param {string} name @returns {Typ} */
-const grund = (name, nullbar = false) => ({ art: 'grund', name, nullbar });
+const grund = (name, nullable = false) => ({ art: 'grund', name, nullable });
+
+/** anyOf/oneOf and type lists: one type besides null stays that type (nullable), more become JsonElement.
+ * @param {any[]} withoutNull @param {boolean} nullable @param {(s: any) => Typ} typeOf @returns {Typ} */
+function oneOrJson(withoutNull, nullable, typeOf) {
+  if (withoutNull.length !== 1) return grund('JsonElement', nullable);
+  const t = typeOf(withoutNull[0]);
+  return { ...t, nullable: nullable || t.nullable };
+}
+
+/** @param {any} s @param {string} suggestion @param {(name: string, s: any) => void} beside @returns {Typ} */
+function objectType(s, suggestion, beside) {
+  if (s.properties && Object.keys(s.properties).length) {
+    beside(suggestion, s);
+    return { art: 'klasse', name: suggestion, nullable: false };
+  }
+  const wert = s.additionalProperties;
+  if (wert && typeof wert === 'object' && Object.keys(wert).length) {
+    const w = type(wert, `${suggestion}Wert`, beside);
+    if (!(w.art === 'grund' && w.name === 'JsonElement')) return { art: 'karte', wert: w, nullable: false };
+  }
+  return grund('JsonObject');
+}
 
 /**
  * The type of a schema; nested objects are collected as a shape of their own [neben],
@@ -109,7 +131,7 @@ function type(s, suggestion, beside) {
     return {
       art: 'klasse',
       name: className(s.$ref.split('/').pop()),
-      nullbar: false,
+      nullable: false,
     };
   if (s.const !== undefined) return grund(baseType(typeof s.const === 'number' ? 'number' : typeof s.const));
   if (s.enum)
@@ -117,37 +139,22 @@ function type(s, suggestion, beside) {
   const branches = s.anyOf || s.oneOf;
   if (branches) {
     const withoutNull = branches.filter((/** @type {any} */ z) => z.type !== 'null');
-    const nullbar = withoutNull.length < branches.length;
-    if (withoutNull.length === 1) {
-      const t = type(withoutNull[0], suggestion, beside);
-      return { ...t, nullbar: nullbar || t.nullbar };
-    }
-    return grund('JsonElement', nullbar);
+    return oneOrJson(withoutNull, withoutNull.length < branches.length, z => type(z, suggestion, beside));
   }
   if (Array.isArray(s.type)) {
     const withoutNull = s.type.filter((/** @type {string} */ t) => t !== 'null');
-    const nullbar = withoutNull.length < s.type.length;
-    if (withoutNull.length === 1) return { ...type({ ...s, type: withoutNull[0] }, suggestion, beside), nullbar };
-    return grund('JsonElement', nullbar);
+    // The single type keeps the nullability of the list, not its own.
+    const nullable = withoutNull.length < s.type.length;
+    if (withoutNull.length === 1) return { ...type({ ...s, type: withoutNull[0] }, suggestion, beside), nullable };
+    return grund('JsonElement', nullable);
   }
   if (s.type === 'array')
     return {
       art: 'liste',
       element: type(s.items, `${suggestion}Eintrag`, beside),
-      nullbar: false,
+      nullable: false,
     };
-  if (s.type === 'object') {
-    if (s.properties && Object.keys(s.properties).length) {
-      beside(suggestion, s);
-      return { art: 'klasse', name: suggestion, nullbar: false };
-    }
-    const wert = s.additionalProperties;
-    if (wert && typeof wert === 'object' && Object.keys(wert).length) {
-      const w = type(wert, `${suggestion}Wert`, beside);
-      if (!(w.art === 'grund' && w.name === 'JsonElement')) return { art: 'karte', wert: w, nullbar: false };
-    }
-    return grund('JsonObject');
-  }
+  if (s.type === 'object') return objectType(s, suggestion, beside);
   // Whole numbers are counters, identifiers and quantities: Int as in the views.
   if (s.type === 'integer') return grund('Int');
   return grund(baseType(s.type));
@@ -167,7 +174,7 @@ function baseType(t) {
 
 /** @param {Typ} t @returns {string} */
 function kotlin(t) {
-  const n = t.nullbar ? '?' : '';
+  const n = t.nullable ? '?' : '';
   if (t.art === 'liste') return `List<${kotlin(t.element)}>${n}`;
   if (t.art === 'karte') return `Map<String, ${kotlin(t.wert)}>${n}`;
   return `${t.name}${n}`;
@@ -175,37 +182,37 @@ function kotlin(t) {
 
 /**
  * Collects all shapes: the schemas under components and the bodies of the
- * requests from Z.ANFRAGEN. Names are still raw (before Z.NAMEN).
+ * requests from Z.REQUESTS. Names are still raw (before Z.NAMES).
  * @param {any} doc @returns {Form[]}
  */
 function collect(doc) {
   /** @type {Form[]} */
   const shapes = [];
-  /** @param {string} name @param {any} s @param {boolean} anfrage */
-  function form(name, s, anfrage) {
-    const beside = (/** @type {string} */ n, /** @type {any} */ x) => form(n, x, anfrage);
+  /** @param {string} name @param {any} s @param {boolean} isRequest */
+  function form(name, s, isRequest) {
+    const beside = (/** @type {string} */ n, /** @type {any} */ x) => form(n, x, isRequest);
     if (s.enum) {
       shapes.push({
         name,
-        felder: [],
-        werte: s.enum,
-        anfrage,
-        quellen: [name],
+        fields: [],
+        enumValues: s.enum,
+        isRequest,
+        sources: [name],
       });
       return;
     }
     const mandatory = new Set(s.required ?? []);
-    const felder = Object.entries(s.properties ?? {}).map(([json, schema]) => ({
+    const fields = Object.entries(s.properties ?? {}).map(([json, schema]) => ({
       json,
       typ: type(schema, name + className(json), beside),
-      pflicht: mandatory.has(json),
+      required: mandatory.has(json),
     }));
-    shapes.push({ name, felder, anfrage, quellen: [name] });
+    shapes.push({ name, fields, isRequest, sources: [name] });
   }
   const schemas = doc.components?.schemas ?? {};
   for (const n of Object.keys(schemas)) if (!Z.OMIT.has(className(n))) form(className(n), schemas[n], false);
   const uniform = (/** @type {string} */ p) => p.replace(/\{\w+\}/g, '{}');
-  for (const [route, name] of Object.entries(Z.ANFRAGEN)) {
+  for (const [route, name] of Object.entries(Z.REQUESTS)) {
     const [method, path] = route.split(' ');
     const op = Object.entries(doc.paths ?? {}).find(([p]) => uniform(p) === uniform(path ?? ''))?.[1];
     const s = op?.[(method ?? '').toLowerCase()]?.requestBody?.content?.['application/json']?.schema;
@@ -216,7 +223,7 @@ function collect(doc) {
 }
 
 /** @param {string} n */
-const endName = n => Z.NAMEN[n] ?? n;
+const endName = n => Z.NAMES[n] ?? n;
 
 /** @param {Typ} t @returns {Typ} */
 function renamed(t) {
@@ -234,11 +241,28 @@ function withSlotType(t, domain) {
     return {
       ...t,
       name: domain,
-      nullbar: t.nullbar || !!Z.FACHTYPEN[domain]?.serializer,
+      nullable: t.nullable || !!Z.DOMAIN_TYPES[domain]?.serializer,
     };
   // An open schema ({} or text|number) gets the type the app sends.
   if (t.art === 'grund' && t.name === 'JsonElement') return { ...t, name: domain };
   throw new Error(`Fachtyp ${domain} nur an Stelle eines String (${kotlin(t)})`);
+}
+
+/**
+ * One field of two shapes with the same name: a JsonElement on either side opens the field, otherwise
+ * the types must agree; required only where both require it.
+ * @param {Feld} x @param {Feld} y @param {(ky: string, kx: string) => string} clash @returns {Feld}
+ */
+function mergedField(x, y, clash) {
+  const open = [x.typ, y.typ].some(t => t.art === 'grund' && t.name === 'JsonElement');
+  if (open) return { ...y, required: false, typ: grund('JsonElement', true) };
+  if (kotlin({ ...x.typ, nullable: false }) !== kotlin({ ...y.typ, nullable: false }))
+    throw new Error(clash(kotlin(y.typ), kotlin(x.typ)));
+  return {
+    ...y,
+    required: y.required && x.required,
+    typ: { ...y.typ, nullable: y.typ.nullable || x.typ.nullable },
+  };
 }
 
 /**
@@ -251,49 +275,33 @@ function unite(shapes) {
   const from = new Map();
   for (const f of shapes) {
     const name = endName(f.name);
-    const felder = f.felder.map(x => {
+    const fields = f.fields.map(x => {
       const domain = Z.FIELD_TYPES[`${name}.${x.json}`];
       const t = renamed(x.typ);
       return { ...x, typ: domain ? withSlotType(t, domain) : t };
     });
     const da = from.get(name);
     if (!da) {
-      from.set(name, { ...f, name, felder });
+      from.set(name, { ...f, name, fields });
       continue;
     }
-    if (da.anfrage !== f.anfrage) throw new Error(`${name}: Anfrage und Antwort in einer Form (${f.name})`);
-    if (da.werte || f.werte) throw new Error(`${name}: Aufzählung lässt sich nicht vereinen`);
-    const all = new Map(da.felder.map(x => [x.json, x]));
-    for (const x of felder) {
+    if (da.isRequest !== f.isRequest) throw new Error(`${name}: Anfrage und Antwort in einer Form (${f.name})`);
+    if (da.enumValues || f.enumValues) throw new Error(`${name}: Aufzählung lässt sich nicht vereinen`);
+    const all = new Map(da.fields.map(x => [x.json, x]));
+    for (const x of fields) {
       const y = all.get(x.json);
-      if (!y) {
-        all.set(x.json, { ...x, pflicht: false });
-        continue;
-      }
-      const open = [x.typ, y.typ].some(t => t.art === 'grund' && t.name === 'JsonElement');
-      if (open) {
-        all.set(x.json, {
-          ...y,
-          pflicht: false,
-          typ: grund('JsonElement', true),
-        });
-        continue;
-      }
-      if (kotlin({ ...x.typ, nullbar: false }) !== kotlin({ ...y.typ, nullbar: false }))
-        throw new Error(
-          `${name}.${x.json}: ${kotlin(y.typ)} in ${da.quellen.join(', ')}, ${kotlin(x.typ)} in ${f.name}`,
-        );
-      all.set(x.json, {
-        ...y,
-        pflicht: y.pflicht && x.pflicht,
-        typ: { ...y.typ, nullbar: y.typ.nullbar || x.typ.nullbar },
-      });
+      all.set(
+        x.json,
+        y
+          ? mergedField(x, y, (ky, kx) => `${name}.${x.json}: ${ky} in ${da.sources.join(', ')}, ${kx} in ${f.name}`)
+          : { ...x, required: false },
+      );
     }
-    for (const [json, y] of all) if (!felder.some(x => x.json === json)) all.set(json, { ...y, pflicht: false });
+    for (const [json, y] of all) if (!fields.some(x => x.json === json)) all.set(json, { ...y, required: false });
     from.set(name, {
       ...da,
-      felder: [...all.values()],
-      quellen: [...da.quellen, f.name],
+      fields: [...all.values()],
+      sources: [...da.sources, f.name],
     });
   }
   return from;
@@ -305,11 +313,11 @@ function unite(shapes) {
  * @param {Typ} t @returns {string}
  */
 function emptyValue(t) {
-  if (t.nullbar) return 'null';
+  if (t.nullable) return 'null';
   if (t.art === 'liste') return 'emptyList()';
   if (t.art === 'karte') return 'emptyMap()';
   if (t.art === 'klasse') return `${t.name}()`;
-  const domain = Z.FACHTYPEN[t.name];
+  const domain = Z.DOMAIN_TYPES[t.name];
   if (domain) return domain.leer;
   return (
     /** @type {Record<string, string>} */ ({
@@ -332,51 +340,51 @@ function emptyValue(t) {
 function bodyField(name, key, f, defaultValue) {
   const t = kotlin(f.typ);
   if (defaultValue !== undefined)
-    return `val ${name}: ${Z.PFLICHT.has(key) ? kotlin({ ...f.typ, nullbar: false }) : t} = ${defaultValue}`;
-  if (f.pflicht) return `val ${name}: ${t}`;
-  if (Z.PFLICHT.has(key)) return `val ${name}: ${kotlin({ ...f.typ, nullbar: false })}`;
-  if (Z.NULL_SEND.has(key)) return `val ${name}: ${kotlin({ ...f.typ, nullbar: true })} = null`;
-  return `@EncodeDefault(EncodeDefault.Mode.NEVER) val ${name}: ${kotlin({ ...f.typ, nullbar: true })} = null`;
+    return `val ${name}: ${Z.REQUIRED.has(key) ? kotlin({ ...f.typ, nullable: false }) : t} = ${defaultValue}`;
+  if (f.required) return `val ${name}: ${t}`;
+  if (Z.REQUIRED.has(key)) return `val ${name}: ${kotlin({ ...f.typ, nullable: false })}`;
+  if (Z.NULL_SEND.has(key)) return `val ${name}: ${kotlin({ ...f.typ, nullable: true })} = null`;
+  return `@EncodeDefault(EncodeDefault.Mode.NEVER) val ${name}: ${kotlin({ ...f.typ, nullable: true })} = null`;
 }
 
 /**
  * A response field that may be missing reads as the empty value, unless it is in
- * Z.NULLBAR: there "missing" means something different from "empty".
+ * Z.NULLABLE: there "missing" means something different from "empty".
  * @param {string} kind @param {Feld} f @returns {Typ}
  */
 function responseType(kind, f) {
-  if (f.pflicht || f.typ.nullbar) return f.typ;
+  if (f.required || f.typ.nullable) return f.typ;
   const withoutEmptyValue = f.typ.art === 'klasse' && STRICT.has(f.typ.name);
-  return withoutEmptyValue || Z.NULLBAR.has(`${kind}.${f.json}`) ? { ...f.typ, nullbar: true } : f.typ;
+  return withoutEmptyValue || Z.NULLABLE.has(`${kind}.${f.json}`) ? { ...f.typ, nullable: true } : f.typ;
 }
 
 /** Response shapes with required fields: they have no empty value `Form()`. */
 let STRICT = new Set();
 /** A required field of such a shape gets no default; the caller names it. @param {Typ} t */
-const withoutEmptyValue = t => t.art === 'klasse' && !t.nullbar && STRICT.has(t.name);
+const withoutEmptyValue = t => t.art === 'klasse' && !t.nullable && STRICT.has(t.name);
 
 /** @param {Form} f @returns {string} */
 function kind(f) {
-  if (f.werte) {
-    const values = f.werte.map(w => `    @SerialName(${JSON.stringify(w)}) ${constant(w)},`);
+  if (f.enumValues) {
+    const values = f.enumValues.map(w => `    @SerialName(${JSON.stringify(w)}) ${constant(w)},`);
     return `@Serializable\nenum class ${f.name} {\n${values.join('\n')}\n}`;
   }
-  if (!f.felder.length) return `@Serializable\nclass ${f.name}`;
-  const felder = f.felder.map(x => {
+  if (!f.fields.length) return `@Serializable\nclass ${f.name}`;
+  const fields = f.fields.map(x => {
     const key = `${f.name}.${x.json}`;
     const name = Z.PROPERTIES[key] ?? property(x.json);
     const defaultValue = Z.DEFAULTS[key];
     const t = responseType(f.name, x);
-    const decl = f.anfrage
+    const decl = f.isRequest
       ? bodyField(name, key, x, defaultValue)
-      : x.pflicht && defaultValue === undefined && (Z.STRICT.has(key) || withoutEmptyValue(t))
+      : x.required && defaultValue === undefined && (Z.STRICT.has(key) || withoutEmptyValue(t))
         ? `val ${name}: ${kotlin(t)}`
         : `val ${name}: ${kotlin(t)} = ${defaultValue ?? emptyValue(t)}`;
-    const ser = x.typ.art === 'grund' ? Z.FACHTYPEN[x.typ.name]?.serializer : undefined;
+    const ser = x.typ.art === 'grund' ? Z.DOMAIN_TYPES[x.typ.name]?.serializer : undefined;
     const serialWith = ser ? `@Serializable(with = ${ser.split('.').pop()}::class) ` : '';
     return `    ${serialWith}@SerialName(${JSON.stringify(x.json)}) ${decl},`;
   });
-  return `@Serializable\ndata class ${f.name}(\n${felder.join('\n')}\n)`;
+  return `@Serializable\ndata class ${f.name}(\n${fields.join('\n')}\n)`;
 }
 
 /**
@@ -397,7 +405,7 @@ function file(doc) {
   const shapes = [...unite(collect(doc)).values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   STRICT = new Set(
     shapes
-      .filter(f => !f.anfrage && f.felder.some(x => x.pflicht && Z.STRICT.has(`${f.name}.${x.json}`)))
+      .filter(f => !f.isRequest && f.fields.some(x => x.required && Z.STRICT.has(`${f.name}.${x.json}`)))
       .map(f => f.name),
   );
   const body = shapes.map(kind).join('\n\n');
@@ -406,8 +414,8 @@ function file(doc) {
     imports.push('kotlinx.serialization.EncodeDefault', 'kotlinx.serialization.ExperimentalSerializationApi');
   for (const j of ['JsonElement', 'JsonNull', 'JsonObject'])
     if (new RegExp(`\\b${j}\\b`).test(body)) imports.push(`kotlinx.serialization.json.${j}`);
-  for (const [n, f] of Object.entries(Z.FACHTYPEN)) {
-    if (new RegExp(`\\b${n}\\b`).test(body)) imports.push(f.paket);
+  for (const [n, f] of Object.entries(Z.DOMAIN_TYPES)) {
+    if (new RegExp(`\\b${n}\\b`).test(body)) imports.push(f.pkg);
     if (f.serializer && body.includes(`${f.serializer.split('.').pop()}::class`)) imports.push(f.serializer);
   }
   for (const [n, pkg] of Object.entries(Z.CONSTANTS)) if (new RegExp(`= ${n}\\b`).test(body)) imports.push(pkg);
@@ -429,19 +437,19 @@ function file(doc) {
 }
 
 if (require.main === module) {
-  const expected = create(JSON.parse(fs.readFileSync(QUELLE, 'utf8')));
+  const expected = create(JSON.parse(fs.readFileSync(SOURCE_FILE, 'utf8')));
   // --pruefen does not write, it only reports a deviation (test and CI).
   if (process.argv.includes('--pruefen')) {
-    const actual = fs.existsSync(ZIEL) ? fs.readFileSync(ZIEL, 'utf8') : '';
+    const actual = fs.existsSync(TARGET_FILE) ? fs.readFileSync(TARGET_FILE, 'utf8') : '';
     if (actual !== expected) {
-      console.error(`${path.relative(ROOT, ZIEL)} ist veraltet — npm run contract:kotlin`);
+      console.error(`${path.relative(ROOT, TARGET_FILE)} ist veraltet — npm run contract:kotlin`);
       process.exit(1);
     }
   } else {
-    fs.mkdirSync(path.dirname(ZIEL), { recursive: true });
-    fs.writeFileSync(ZIEL, expected);
-    console.log(`geschrieben: ${path.relative(ROOT, ZIEL)}`);
+    fs.mkdirSync(path.dirname(TARGET_FILE), { recursive: true });
+    fs.writeFileSync(TARGET_FILE, expected);
+    console.log(`geschrieben: ${path.relative(ROOT, TARGET_FILE)}`);
   }
 }
 
-module.exports = { QUELLE, ZIEL, create, collect, className };
+module.exports = { SOURCE_FILE, TARGET_FILE, create, collect, className };

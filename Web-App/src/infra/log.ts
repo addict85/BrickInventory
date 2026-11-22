@@ -10,7 +10,7 @@ import { requestContext } from './accountContext';
 
 /** No whitespace, no control characters or quotes. */
 const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
-const K = processWide('anfrageKennung', () => ({ sequence: 0 }));
+const K = processWide('requestId', () => ({ sequence: 0 }));
 
 /** Unfiltered, a client could write line breaks or foreign identifiers into the
  * log and fake entries. */
@@ -75,16 +75,16 @@ export function oneLine(s: string): string {
 
 const PLACEHOLDER = /%[sdifjoOc%]/;
 
-export function split(args: unknown[]): { message: string; kontext?: Record<string, unknown> } {
+export function split(args: unknown[]): { message: string; context?: Record<string, unknown> } {
   const parts = [...args];
-  let kontext: Record<string, unknown> | undefined;
+  let context: Record<string, unknown> | undefined;
   const last = parts[parts.length - 1];
   if (parts.length > 1 && isContext(last)) {
-    kontext = last;
+    context = last;
     parts.pop();
   }
   const error = parts.find((t): t is Error => t instanceof Error);
-  if (error) kontext = { ...kontext, error: { name: error.name, message: error.message, stack: error.stack } };
+  if (error) context = { ...context, error: { name: error.name, message: error.message, stack: error.stack } };
   const plain = parts.map(t => (t instanceof Error ? t.message : t));
   // As console does it: placeholders in the first text take the following values.
   const text =
@@ -92,7 +92,7 @@ export function split(args: unknown[]): { message: string; kontext?: Record<stri
       ? format(...plain)
       : plain.map(logText).join(' ');
   const message = oneLine(text).substring(0, MAX_TEXT);
-  return kontext ? { message, kontext } : { message };
+  return context ? { message, context } : { message };
 }
 
 interface State {
@@ -100,31 +100,31 @@ interface State {
   pool: Querier | null;
   puffer: { level: string; message: string }[];
   timer: NodeJS.Timeout | null;
-  fehlgeschlagen: number;
+  failed: number;
   lastError: string;
   lastlyReported: number;
   reportTimer: NodeJS.Timeout | null;
-  onRaeumTick: NodeJS.Timeout | null;
+  onCleanupTick: NodeJS.Timeout | null;
 }
-const P = processWide('protokoll', () => ({ z: null as State | null }));
+const P = processWide('log', () => ({ z: null as State | null }));
 const pidTag = String(process.pid).slice(-4);
 
 /** Fields in a fixed order. */
-export function jsonRow(stufe: Level, args: unknown[], time: number, rid?: string): string {
-  const { message, kontext } = split(args);
+export function jsonRow(level: Level, args: unknown[], time: number, rid?: string): string {
+  const { message, context } = split(args);
   return JSON.stringify({
-    zeit: new Date(time).toISOString(),
-    stufe,
+    time: new Date(time).toISOString(),
+    level,
     message,
     pid: process.pid,
     ...(rid ? { rid } : {}),
-    ...(kontext ? { kontext } : {}),
+    ...(context ? { context } : {}),
   });
 }
 
 function writeError(count: number, e: unknown): void {
   if (!P.z) return;
-  P.z.fehlgeschlagen += count;
+  P.z.failed += count;
   P.z.lastError = e instanceof Error ? e.message : String(e);
   if (P.z.output.now() - P.z.lastlyReported >= REPORT_GAP_MS) {
     reportWriteError();
@@ -143,15 +143,15 @@ export function reportWriteError(): void {
     clearTimeout(P.z.reportTimer);
     P.z.reportTimer = null;
   }
-  if (!P.z.fehlgeschlagen) return;
+  if (!P.z.failed) return;
   P.z.output.err(
     jsonRow(
       'warn',
-      [`app_logs: ${P.z.fehlgeschlagen} Zeile(n) nicht geschrieben`, { last_error: P.z.lastError }],
+      [`app_logs: ${P.z.failed} Zeile(n) nicht geschrieben`, { last_error: P.z.lastError }],
       P.z.output.now(),
     ),
   );
-  P.z.fehlgeschlagen = 0;
+  P.z.failed = 0;
   P.z.lastlyReported = P.z.output.now();
 }
 
@@ -168,14 +168,14 @@ export function logToDatabase(pool: Querier): void {
   if (!P.z) return;
   P.z.pool = pool;
   void emptyLog();
-  if (P.z.onRaeumTick) clearInterval(P.z.onRaeumTick);
-  P.z.onRaeumTick = setInterval(
+  if (P.z.onCleanupTick) clearInterval(P.z.onCleanupTick);
+  P.z.onCleanupTick = setInterval(
     () => {
       logs.deleteOldLogRows(pool).catch((e: unknown) => writeError(0, e));
     },
     6 * 60 * 60 * 1000,
   );
-  P.z.onRaeumTick.unref();
+  P.z.onCleanupTick.unref();
 }
 
 /** Last before closing the pool, so that the messages of the other
@@ -183,11 +183,25 @@ export function logToDatabase(pool: Querier): void {
 export async function stopLog(): Promise<void> {
   if (!P.z) return;
   if (P.z.timer) clearTimeout(P.z.timer);
-  if (P.z.onRaeumTick) clearInterval(P.z.onRaeumTick);
-  P.z.timer = P.z.onRaeumTick = null;
+  if (P.z.onCleanupTick) clearInterval(P.z.onCleanupTick);
+  P.z.timer = P.z.onCleanupTick = null;
   await emptyLog();
   reportWriteError();
   P.z.pool = null;
+}
+
+/** app_logs keeps the previous text format; the log view reads it like that. Without a pool the
+ * buffer would grow without limit; every line is on stdout anyway. */
+function buffer(z: NonNullable<typeof P.z>, level: string, args: unknown[], rid: string | undefined): void {
+  const { message, context } = split(args);
+  const text = `[${pidTag}${rid ? '/' + rid : ''}] ${message}${context ? ' ' + logText(context) : ''}`;
+  z.puffer.push({ level, message: text.substring(0, MAX_TEXT) });
+  if (z.puffer.length > 500) z.puffer.splice(0, z.puffer.length - 500);
+  if (z.timer) clearTimeout(z.timer);
+  z.timer = setTimeout(() => {
+    if (P.z) P.z.timer = null;
+    void emptyLog();
+  }, 1500);
 }
 
 /** Returns a function that restores the old state (tests). */
@@ -198,36 +212,26 @@ export function installLog(output: Output = PROCESS): () => void {
     pool: null,
     puffer: [],
     timer: null,
-    fehlgeschlagen: 0,
+    failed: 0,
     lastError: '',
     lastlyReported: -Infinity,
     reportTimer: null,
-    onRaeumTick: null,
+    onCleanupTick: null,
   };
   for (const name of ['log', ...LEVELS] as const) {
-    const stufe = LOG_LEVEL[name];
+    const level = LOG_LEVEL[name];
     console[name] = (...args: unknown[]) => {
       if (!P.z) return;
       const rid = requestContext.getStore()?.rid;
-      const row = jsonRow(stufe, args, P.z.output.now(), rid);
-      (stufe === 'warn' || stufe === 'error' ? P.z.output.err : P.z.output.out)(row);
-      // app_logs keeps the previous text format; the log view reads it like that.
-      const { message, kontext } = split(args);
-      const text = `[${pidTag}${rid ? '/' + rid : ''}] ${message}${kontext ? ' ' + logText(kontext) : ''}`;
-      P.z.puffer.push({ level: name === 'log' ? 'log' : stufe, message: text.substring(0, MAX_TEXT) });
-      // Without a pool the buffer would grow without limit; every line is on stdout anyway.
-      if (P.z.puffer.length > 500) P.z.puffer.splice(0, P.z.puffer.length - 500);
-      if (P.z.timer) clearTimeout(P.z.timer);
-      P.z.timer = setTimeout(() => {
-        if (P.z) P.z.timer = null;
-        void emptyLog();
-      }, 1500);
+      const row = jsonRow(level, args, P.z.output.now(), rid);
+      (level === 'warn' || level === 'error' ? P.z.output.err : P.z.output.out)(row);
+      buffer(P.z, name === 'log' ? 'log' : level, args, rid);
     };
   }
   return () => {
     if (P.z?.timer) clearTimeout(P.z.timer);
     if (P.z?.reportTimer) clearTimeout(P.z.reportTimer);
-    if (P.z?.onRaeumTick) clearInterval(P.z.onRaeumTick);
+    if (P.z?.onCleanupTick) clearInterval(P.z.onCleanupTick);
     P.z = null;
     Object.assign(console, alt);
   };

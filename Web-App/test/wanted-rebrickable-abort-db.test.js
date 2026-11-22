@@ -49,8 +49,8 @@ const items = n =>
     items: { kind: 'part', blId: `9${i}9${i}`, blColor: null, quantity: 1, condition: null, maxPrice: null },
     rbId: null,
     rbColor: null,
-    rbFarbName: null,
-    rbFarbHex: null,
+    rbColorName: null,
+    rbColorHex: null,
     confidence: null,
     colorPending: false,
   }));

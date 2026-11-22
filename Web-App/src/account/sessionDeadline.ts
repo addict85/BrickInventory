@@ -1,16 +1,16 @@
 // Log out after hours of idleness.
 import { type AppConfig, DEFAULT } from '../infra/config';
 
-export const IDLE_DEFAULT_MIN = DEFAULT.sitzungLeerlaufMin;
+export const IDLE_DEFAULT_MIN = DEFAULT.sessionIdleMin;
 
-export const sessionIdleMs = (k: Pick<AppConfig, 'sitzungLeerlaufMin'>) => k.sitzungLeerlaufMin * 60_000;
+export const sessionIdleMs = (k: Pick<AppConfig, 'sessionIdleMin'>) => k.sessionIdleMin * 60_000;
 
 /** In seconds for connect-pg-simple; computed once instead of in two places. */
-export const sessionIdleSec = (k: Pick<AppConfig, 'sitzungLeerlaufMin'>) => Math.round(sessionIdleMs(k) / 1000);
+export const sessionIdleSec = (k: Pick<AppConfig, 'sessionIdleMin'>) => Math.round(sessionIdleMs(k) / 1000);
 
 // The idle deadline slides: whoever works daily would otherwise stay
 // logged in forever. The maximum duration counts from login.
-export const sessionMaxMs = (k: Pick<AppConfig, 'sitzungHoechstStd'>) => k.sitzungHoechstStd * 3_600_000;
+export const sessionMaxMs = (k: Pick<AppConfig, 'sessionMaxHours'>) => k.sessionMaxHours * 3_600_000;
 
 export interface SessionDeadlines {
   maxMs: number;
@@ -20,14 +20,11 @@ export interface SessionDeadlines {
 
 /** Admins never longer than everyone else, even if someone sets the general deadlines shorter. */
 export const sessionDeadlines = (
-  k: Pick<
-    AppConfig,
-    'sitzungHoechstStd' | 'sitzungLeerlaufMin' | 'sitzungVerwalterHoechstStd' | 'sitzungVerwalterLeerlaufMin'
-  >,
+  k: Pick<AppConfig, 'sessionMaxHours' | 'sessionIdleMin' | 'sessionAdminMaxHours' | 'sessionAdminIdleMin'>,
 ): SessionDeadlines => ({
   maxMs: sessionMaxMs(k),
-  adminMaxMs: Math.min(k.sitzungVerwalterHoechstStd, k.sitzungHoechstStd) * 3_600_000,
-  adminIdleMs: Math.min(k.sitzungVerwalterLeerlaufMin, k.sitzungLeerlaufMin) * 60_000,
+  adminMaxMs: Math.min(k.sessionAdminMaxHours, k.sessionMaxHours) * 3_600_000,
+  adminIdleMs: Math.min(k.sessionAdminIdleMin, k.sessionIdleMin) * 60_000,
 });
 
 type SessionWithDeadline = {

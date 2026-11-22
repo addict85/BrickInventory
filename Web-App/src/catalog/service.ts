@@ -15,7 +15,7 @@ type ThemeNode = repo.Thema;
 type ThemeTree = { byId: Map<number, ThemeNode>; children: Map<number, number[]>; pathName: Map<number, string> };
 const THEME_CACHE_TTL = 60 * 60 * 1000;
 const themesStorage = (k: CatalogContext) =>
-  k.faecher.slot('themenbaum', () => new Cache<0, ThemeTree>(1, THEME_CACHE_TTL));
+  k.compartments.slot('themenbaum', () => new Cache<0, ThemeTree>(1, THEME_CACHE_TTL));
 
 async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
   const remembered = themesStorage(k).hole(0);

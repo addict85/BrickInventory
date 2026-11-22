@@ -4,7 +4,7 @@ import { proxyTrust, withoutV4Shell, inDockerNetwork, isDockerGateway } from '..
 
 /** From here on "always the same client address" no longer counts as the coincidence of a
  * single user, but as a sign of a further proxy in front of Caddy. */
-export const EINE_ADDRESS = { anfragen: 300, ms: 60 * 60_000 };
+export const EINE_ADDRESS = { requests: 300, ms: 60 * 60_000 };
 
 export type ProxyStand =
   | { kind: 'gateway' | 'docker_network'; vars: { ip: string } }
@@ -86,7 +86,7 @@ function onlyClientAddress(
     }
     count++;
     const minutes = Math.floor((clock() - since) / 60_000);
-    if (count < EINE_ADDRESS.anfragen || clock() - since < EINE_ADDRESS.ms) return;
+    if (count < EINE_ADDRESS.requests || clock() - since < EINE_ADDRESS.ms) return;
     finished = true;
     remember({ kind: 'single_address', vars: { ip: withoutV4Shell(ip), minutes, count } });
     warn(

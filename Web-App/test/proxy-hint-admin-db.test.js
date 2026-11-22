@@ -73,7 +73,7 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
     const echt = _req('startup/app.js').buildApp({
       pool: db.systemPool,
       config: _req('src/infra/config.js').config(),
-      sitzungsGeheimnis: 'p'.repeat(48),
+      sessionSecret: 'p'.repeat(48),
       dienste: require('./helpers/sources').testServices(),
     });
     const { proxyHintStatus } = _req('src/http/proxyHint.js');

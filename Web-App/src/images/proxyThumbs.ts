@@ -21,8 +21,8 @@ const THUMB_MAX_PARALLEL = 1;
 const THUMB_MAX_QUEUE = 40;
 /** Queue and lock connection per set of services; the lock itself applies to the server. */
 const state = (k: ImagesContext) =>
-  k.faecher.slot('vorschauen', () => ({
-    laufend: 0,
+  k.compartments.slot('vorschauen', () => ({
+    running: 0,
     _thumbQueue: [] as [string, string][],
     _thumbInFlight: new Set<string>(),
     lockClient: null as Client | null,
@@ -44,13 +44,13 @@ export function queueThumb(k: ImagesContext, srcFile: string, thumbFile: string)
 export function drainThumbQueue(k: ImagesContext) {
   const st = state(k);
   const { _thumbQueue, _thumbInFlight } = st;
-  while (st.laufend < THUMB_MAX_PARALLEL && _thumbQueue.length) {
+  while (st.running < THUMB_MAX_PARALLEL && _thumbQueue.length) {
     const [src, dst] = _thumbQueue.shift()!;
-    st.laufend++;
+    st.running++;
     createProxyPreview(k, src, dst)
       .catch(e => countProxyError('proxy-vorschau:erzeugen', e))
       .finally(() => {
-        st.laufend--;
+        st.running--;
         _thumbInFlight.delete(dst);
         drainThumbQueue(k);
       });

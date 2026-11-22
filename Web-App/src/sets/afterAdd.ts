@@ -20,9 +20,9 @@ async function pullAfter(
   checkAbort(lauf);
   const kind = kindWish === 'ergaenzen' ? 'neu' : kindWish;
   // A failed step does not hold up the others, but it is recorded in the job's state.
-  const ohne: string[] = [];
+  const without: string[] = [];
   const step = async (name: string, work: () => Promise<unknown>) => {
-    if (!(await attempts(`rework:${name} ${setNumber}`, work)).ok) ohne.push(name);
+    if (!(await attempts(`rework:${name} ${setNumber}`, work)).ok) without.push(name);
   };
   // The figures in every branch: the import keeps the storage location of existing
   // figures, and that way a second capture catches up on what failed the first time.
@@ -44,7 +44,7 @@ async function pullAfter(
   if (kind === 'csv') await step('brickset', () => sk.catalog.fillFromBrickset(setNumber));
   checkAbort(lauf);
   await step('bilder', () => sk.catalog.loadSetImages(setNumber));
-  if (ohne.length) await lauf?.progress?.({ text: `ohne ${ohne.join(', ')}`, ohne });
+  if (without.length) await lauf?.progress?.({ text: `ohne ${without.join(', ')}`, without });
 }
 
 async function loadSetImages(k: SetsContext, setNumber: string, lauf?: JobRun): Promise<void> {

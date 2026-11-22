@@ -11,7 +11,7 @@ export interface SettingsDependencies {
   clock: Clock;
   db: Db;
   /** Who listens for changes to global values; createSettings sets it up. */
-  faecher: Compartments;
+  compartments: Compartments;
   throttle: ThrottleServices;
   readContract: SettingsReadContract;
 }

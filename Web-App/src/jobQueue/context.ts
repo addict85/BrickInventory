@@ -13,10 +13,10 @@ import type { Kinds } from './kinds';
 export interface JobsDependencies {
   clock: Clock;
   db: Db;
-  faecher: Compartments;
+  compartments: Compartments;
   settings: SettingsServices;
   /** The registered kinds; shared across all sets of this access. */
-  arten: Kinds;
+  kinds: Kinds;
   readContract: JobsReadContract;
 }
 
@@ -78,7 +78,7 @@ export const access = (db: Db, l: JobsReadContract) => ({
     deleteState: bound(db)(runState.deleteState),
     countState: bound(db)(runState.countState),
   },
-  eigene: {
+  ownRows: {
     ownRow: bound(db)(jobs.ownRow),
     countRunningRows: bound(db)(jobs.countRunningRows),
     deleteOwnRow: bound(db)(jobs.deleteOwnRow),

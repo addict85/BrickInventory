@@ -31,7 +31,7 @@ function dateien(t, browserBody = '') {
 
 /** test-run.js as a child, without a database and without a rebuild; `zusatz` sets the tool variables. */
 function abschluss(t, /** @type {Record<string, string>} */ zusatz, { browserBody = '' } = {}) {
-  const env = { ...process.env, TEST_LAUF_GEBAUT: '1', PATH: path.dirname(process.execPath), ...zusatz };
+  const env = { ...process.env, TEST_RUN_BUILT: '1', PATH: path.dirname(process.execPath), ...zusatz };
   for (const k of [
     'TEST_DATABASE_URL',
     'TEST_DB_VORLAGE',

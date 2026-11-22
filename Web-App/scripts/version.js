@@ -37,11 +37,11 @@ function buildVersion(env = process.env, cwd = ROOT) {
 }
 
 /** @param {string} outdir @param {string} version */
-function schreibe(outdir, version) {
+function writeVersion(outdir, version) {
   fs.mkdirSync(outdir, { recursive: true });
   fs.writeFileSync(
     path.join(outdir, 'version.json'),
-    JSON.stringify({ version, gebaut: new Date().toISOString() }, null, 2) + '\n',
+    JSON.stringify({ version, built: new Date().toISOString() }, null, 2) + '\n',
   );
 }
 
@@ -49,8 +49,8 @@ if (require.main === module) {
   const i = process.argv.indexOf('--outdir');
   const target = i !== -1 ? process.argv[i + 1] : undefined;
   const version = buildVersion();
-  if (target) schreibe(path.resolve(target), version);
+  if (target) writeVersion(path.resolve(target), version);
   console.log(`[version] ${version}`);
 }
 
-module.exports = { buildVersion, schreibe };
+module.exports = { buildVersion, writeVersion };

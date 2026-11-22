@@ -29,7 +29,7 @@ export async function transferAlarm(db: DbInterface, zuId: number, ofId: number,
 }
 
 const owns = (l: FinancesReadContract) =>
-  `EXISTS (SELECT 1 FROM ${l.setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS owns`;
+  `EXISTS (SELECT 1 FROM ${l.setHoldings('= ANY($3)')} s WHERE s.set_number = a.set_number) AS owns`;
 
 export function writeAlarm(
   db: DbInterface,
@@ -82,7 +82,7 @@ export function alertsInScope(db: DbInterface, l: FinancesReadContract, userId: 
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
        -- sets sagt, ob der Haushalt das Set BESITZT (daran haengt die Spalte
        -- besitzt und der Detaildialog), set_catalog liefert das Bild.
-       LEFT JOIN ${l.setBestand('= ANY($2)')} s ON s.set_number = a.set_number
+       LEFT JOIN ${l.setHoldings('= ANY($2)')} s ON s.set_number = a.set_number
        LEFT JOIN set_catalog c ON c.set_number = a.set_number
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,

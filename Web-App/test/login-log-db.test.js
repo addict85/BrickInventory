@@ -162,7 +162,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
       [uid, uid, uid, uid, uid],
     );
     await waitOnMails(1);
-    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'anmeldung_gebremst' }]);
+    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'login_throttled' }]);
   });
 
   await t.test('the lock is in the log', async () => {

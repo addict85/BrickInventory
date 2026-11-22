@@ -2,7 +2,7 @@
 import { errorMessage, reportError, checkFallbackInTransaction } from './error';
 
 export interface Failure {
-  kontext: string;
+  context: string;
   reason: string;
 }
 
@@ -12,13 +12,13 @@ export const succeeded = <T>(wert: T): Result<T, never> => ({ ok: true, wert });
 export const failed = <F>(error: F): Result<never, F> => ({ ok: false, error });
 
 /** Reports the error to the log and passes it on as a result; the caller has to decide. */
-export async function attempts<T>(kontext: string, work: Promise<T> | (() => Promise<T>)): Promise<Result<T>> {
+export async function attempts<T>(context: string, work: Promise<T> | (() => Promise<T>)): Promise<Result<T>> {
   try {
     return succeeded(await (typeof work === 'function' ? work() : work));
   } catch (e) {
-    checkFallbackInTransaction(kontext, e);
-    reportError(kontext, e);
-    return failed({ kontext, reason: errorMessage(e) || 'Unbekannter Fehler' });
+    checkFallbackInTransaction(context, e);
+    reportError(context, e);
+    return failed({ context, reason: errorMessage(e) || 'Unbekannter Fehler' });
   }
 }
 

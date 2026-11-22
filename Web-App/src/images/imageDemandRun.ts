@@ -49,7 +49,7 @@ function pause(): number {
 /** Per set of services instead of per batch, so that the first step of a follow-up batch
  * also keeps its distance. There is no waiting before the VERY FIRST step. */
 async function pauseBeforeWork(k: ImagesContext): Promise<void> {
-  const tick = k.faecher.slot('image_demand:letzteArbeit', () => ({ am: 0 }));
+  const tick = k.compartments.slot('image_demand:letzteArbeit', () => ({ am: 0 }));
   const expected = pause();
   if (tick.am) {
     const since = k.clock.now() - tick.am;
@@ -63,7 +63,7 @@ async function pauseBeforeWork(k: ImagesContext): Promise<void> {
 async function createPreview(k: ImagesContext, relPath: string, key: string): Promise<boolean> {
   if (isKnownMissing(k, 'thumb:' + key)) return false;
   // An error is remembered as well: the file would otherwise come back on every pass.
-  const r = await attempts('bild-job:vorschauErzeugenAus', () => k.bildwerk.createPreview(relPath));
+  const r = await attempts('bild-job:vorschauErzeugenAus', () => k.imageWorker.createPreview(relPath));
   const ok = r.ok && !!r.wert;
   if (!ok) rememberMissing(k, 'thumb:' + key, 'Vorschau konnte nicht erzeugt werden');
   return ok;
@@ -72,9 +72,9 @@ async function createPreview(k: ImagesContext, relPath: string, key: string): Pr
 /** Several counters instead of one number, so that the log shows which exit
  * was taken. */
 export type StackResult = {
-  geholt: number;
+  fetched: number;
   preview: number;
-  uebersprungen: number;
+  skipped: number;
   total: number;
   /** Every path through the loop increments a counter, so that the sum adds up. */
   notLoaded: number;
@@ -92,9 +92,9 @@ export type StackResult = {
 /** One place, so that no counter is forgotten when extending. */
 function emptyResult(): StackResult {
   return {
-    geholt: 0,
+    fetched: 0,
     preview: 0,
-    uebersprungen: 0,
+    skipped: 0,
     total: 0,
     notLoaded: 0,
     noPreview: 0,
@@ -107,7 +107,7 @@ function emptyResult(): StackResult {
 
 /** Only what is NOT zero — otherwise the one important number drowns in zeros. */
 export function message(e: StackResult): string {
-  const parts = [`${e.geholt} geladen`, `${e.preview} Vorschau erzeugt`, `${e.uebersprungen} bereits vorhanden`];
+  const parts = [`${e.fetched} geladen`, `${e.preview} Vorschau erzeugt`, `${e.skipped} bereits vorhanden`];
   if (e.notLoaded) parts.push(`${e.notLoaded} Download fehlgeschlagen`);
   if (e.noPreview) parts.push(`${e.noPreview} Vorschau fehlgeschlagen`);
   if (e.knownMissing) parts.push(`${e.knownMissing} als fehlend bekannt`);
@@ -118,11 +118,11 @@ export function message(e: StackResult): string {
 }
 
 /** In the database too, because the tile reads in another process. */
-export const lastRun: { zeit: number | null; ergebnis: StackResult | null } = { zeit: null, ergebnis: null };
+export const lastRun: { time: number | null; result: StackResult | null } = { time: null, result: null };
 
 function rememberRun(k: ImagesContext, erg: StackResult): void {
-  lastRun.zeit = k.clock.now();
-  lastRun.ergebnis = erg;
+  lastRun.time = k.clock.now();
+  lastRun.result = erg;
 }
 
 /** Once per tick, not per batch: the tile reads minutes, and that spares an SD card. */
@@ -130,7 +130,7 @@ async function saveRun(k: ImagesContext, erg: StackResult): Promise<void> {
   // await: the next tick reads the state via ANOTHER process; without await the tile would report "not
   // run yet".
   await k.jobQueue
-    .setState(RUN_KEY, JSON.stringify({ zeit: k.clock.now(), ergebnis: erg }))
+    .setState(RUN_KEY, JSON.stringify({ time: k.clock.now(), result: erg }))
     .catch(e => reportError('bild-job:setzeZustand', e));
 }
 
@@ -141,7 +141,7 @@ type StackStatus = { erg: StackResult; reasons: string[]; somethingToDo: boolean
  * every webp image would otherwise cost a run on EVERY pass. */
 async function onlyPreview(k: ImagesContext, setNumber: string, preview: string, st: StackStatus): Promise<void> {
   if (fs.existsSync(preview)) {
-    st.erg.uebersprungen++;
+    st.erg.skipped++;
     return;
   }
   if (isKnownMissing(k, 'thumb:' + preview)) {
@@ -189,6 +189,51 @@ async function afterFailure(
   return false;
 }
 
+type ImageRequest = Awaited<ReturnType<typeof takeImageRequests>>[number];
+
+/** One note of the batch; `stop`: the CDN throttles and the rest goes back. */
+async function workRow(k: ImagesContext, r: ImageRequest, st: StackStatus): Promise<'next' | 'stop'> {
+  const erg = st.erg;
+  if (!r.set_number) {
+    erg.withoutNumber++; // no storage location without a set number
+    return 'next';
+  }
+  // The file check is here and not at queuing: 25,000 file accesses in one request would block
+  // weak hardware.
+  const file = path.join(SET_IMAGES_DIR, `${r.set_number}.jpg`);
+  const preview = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
+  if (fs.existsSync(file)) {
+    // no second download
+    await onlyPreview(k, r.set_number, preview, st);
+    if (!(await reportSetImageLoaded(k, r.set_number, r.url))) erg.withoutEntry = (erg.withoutEntry ?? 0) + 1;
+    return 'next';
+  }
+  // Do not fetch images known to be missing, just like the button "fetch catalog images".
+  if (isKnownMissing(k, 'set:' + r.set_number)) {
+    erg.knownMissing++;
+    // Name it: without a set number there is no way to image-diag.
+    const reason = reasonFor(k, 'set:' + r.set_number);
+    st.reasons.push(`${r.set_number}: als fehlend bekannt` + (reason ? ` (${reason})` : ''));
+    return 'next';
+  }
+  // The pause stands BETWEEN two requests to the CDN — not before the first and not for sets whose file
+  // is already there.
+  await pauseBeforeWork(k);
+  st.work++;
+  const info: { status?: number } = {};
+  // An error counts like a futile fetch; afterFailure() decides about the retry.
+  const fetch = await attempts('bild-job:setBildHerunterladen', k.imageWorker.loadSetImage(r.url, r.set_number, info));
+  const local = fetch.ok ? fetch.wert : null;
+  if (!local) return (await afterFailure(k, r.set_number, info, st)) ? 'stop' : 'next';
+  // The preview is NOT created in setBildHerunterladen(); without this call it would stay at the large
+  // original file.
+  await createPreview(k, local, preview);
+  // Only the entry makes the UI load the file instead of the proxy.
+  if (!(await reportSetImageLoaded(k, r.set_number, r.url))) erg.withoutEntry = (erg.withoutEntry ?? 0) + 1;
+  erg.fetched++;
+  return 'next';
+}
+
 async function workStack(k: ImagesContext): Promise<StackResult> {
   const erg = emptyResult();
   const pause = await k.jobQueue.liesPause('image_demand');
@@ -201,64 +246,17 @@ async function workStack(k: ImagesContext): Promise<StackResult> {
 
   const st: StackStatus = { erg, reasons: [], somethingToDo: false, work: 0 };
   for (let idx = 0; idx < rows.length; idx++) {
-    const r = rows[idx]!;
-    if (!r.set_number) {
-      erg.withoutNumber++;
-      continue;
-    } // no storage location without a set number
-
-    // The file check is here and not at queuing: 25,000 file accesses in one request would block
-    // weak hardware.
-    const file = path.join(SET_IMAGES_DIR, `${r.set_number}.jpg`);
-    const preview = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
-    if (fs.existsSync(file)) {
-      // no second download
-      await onlyPreview(k, r.set_number, preview, st);
-      if (!(await reportSetImageLoaded(k, r.set_number, r.url))) erg.withoutEntry = (erg.withoutEntry ?? 0) + 1;
-      continue;
-    }
-
-    // Do not fetch images known to be missing, just like the button "fetch catalog images".
-    if (isKnownMissing(k, 'set:' + r.set_number)) {
-      erg.knownMissing++;
-      // Name it: without a set number there is no way to image-diag.
-      st.reasons.push(
-        `${r.set_number}: als fehlend bekannt` +
-          (reasonFor(k, 'set:' + r.set_number) ? ` (${reasonFor(k, 'set:' + r.set_number)})` : ''),
-      );
-      continue;
-    }
-
-    // The pause stands BETWEEN two requests to the CDN — not before the first and not for sets whose file
-    // is already there.
-    await pauseBeforeWork(k);
-    st.work++;
-
-    const info: { status?: number } = {};
-    // An error counts like a futile fetch; afterFailure() decides about the retry.
-    const fetch = await attempts('bild-job:setBildHerunterladen', k.bildwerk.loadSetImage(r.url, r.set_number, info));
-    const local = fetch.ok ? fetch.wert : null;
-    if (!local) {
-      if (await afterFailure(k, r.set_number, info, st)) {
-        // Put back ALL unprocessed notes: the batch came via DELETE … RETURNING, the rest would otherwise
-        // be lost silently.
-        const rest = rows.slice(idx);
-        await noteImageDemand(
-          k,
-          rest.map(x => x.url),
-          rest.map(x => x.set_number),
-        ); // If putting back fails, it throws: the job fails visibly instead of silently losing notes.
-        erg.setAside = rest.length;
-        break;
-      }
-      continue;
-    }
-    // The preview is NOT created in setBildHerunterladen(); without this call it would stay at the large
-    // original file.
-    await createPreview(k, local, preview);
-    // Only the entry makes the UI load the file instead of the proxy.
-    if (!(await reportSetImageLoaded(k, r.set_number, r.url))) erg.withoutEntry = (erg.withoutEntry ?? 0) + 1;
-    erg.geholt++;
+    if ((await workRow(k, rows[idx]!, st)) === 'next') continue;
+    // Put back ALL unprocessed notes: the batch came via DELETE … RETURNING, the rest would otherwise
+    // be lost silently. If putting back fails, it throws: the job fails visibly instead of silently losing notes.
+    const rest = rows.slice(idx);
+    await noteImageDemand(
+      k,
+      rest.map(x => x.url),
+      rest.map(x => x.set_number),
+    );
+    erg.setAside = rest.length;
+    break;
   }
   // Rows put back are NOT processed.
   erg.total = rows.length - erg.setAside;
@@ -280,9 +278,9 @@ async function tickPass(k: ImagesContext): Promise<StackResult> {
   const sum = emptyResult();
   while (sum.total < PASS_MAX_NOTES && sum.work < BATCH) {
     const e = await workStack(k);
-    sum.geholt += e.geholt;
+    sum.fetched += e.fetched;
     sum.preview += e.preview;
-    sum.uebersprungen += e.uebersprungen;
+    sum.skipped += e.skipped;
     sum.total += e.total;
     sum.work += e.work;
     sum.notLoaded += e.notLoaded;

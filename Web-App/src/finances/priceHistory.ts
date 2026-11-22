@@ -43,6 +43,44 @@ interface StateComparison {
 
 /** @param uid Scope: in the household the set often belongs to a sub-account; with
  *   the bare viewer ID the query would not find it. */
+type HistoryPoint = Awaited<ReturnType<typeof seriesFor>>[number];
+
+/** The purchase as the first point, unless the series already starts earlier. */
+function withPurchasePoint(target: HistoryPoint[], day: string, purchasePrice: number): void {
+  const firstDay = target[0]?.recorded_at;
+  if (firstDay && day > firstDay) return;
+  target.unshift({
+    qty_avg_price: purchasePrice,
+    avg_price: purchasePrice,
+    min_price: null,
+    max_price: null,
+    recorded_at: day,
+    is_purchase_price: true,
+  });
+}
+
+/** null = no purchase price captured, 0 = gift; both without a percentage. */
+function stateComparisons(
+  acqByCond: { condition: string | null; avg_purchase: unknown }[],
+  current: { N: Parameters<typeof marketPriceFrom>[0]; U: Parameters<typeof marketPriceFrom>[0] },
+): Record<string, StateComparison> {
+  const byCondition: Record<string, StateComparison> = {};
+  for (const cond of ['N', 'U'] as const) {
+    const acq = acqByCond.find(r => (r.condition || 'N') === cond);
+    if (!acq) continue; // no purchase price entry → no row
+    const market = marketPriceFrom(cond === 'N' ? current.N : current.U);
+    const base = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
+    const e = developmentPercent(base, market);
+    byCondition[cond] = {
+      market_price: market,
+      purchase_price: base,
+      pnl_pct: e == null ? null : e.toFixed(1),
+      pnl_percent: e == null ? null : Number(e.toFixed(1)),
+    };
+  }
+  return byCondition;
+}
+
 export async function priceHistorySet(
   k: FinancesContext,
   uidChoice: Sicht | number | number[],
@@ -72,20 +110,8 @@ export async function priceHistorySet(
 
   // On the series of ITS condition, otherwise the chart would compare a
   // used purchase with the new price.
-  if (hasCost && set?.added_day) {
-    const target = condition === 'U' ? historyUsed : historyNew;
-    const firstDay = target[0]?.recorded_at;
-    if (!firstDay || set.added_day <= firstDay) {
-      target.unshift({
-        qty_avg_price: purchasePrice,
-        avg_price: purchasePrice,
-        min_price: null,
-        max_price: null,
-        recorded_at: set.added_day,
-        is_purchase_price: true,
-      });
-    }
-  }
+  if (hasCost && set?.added_day)
+    withPurchasePoint(condition === 'U' ? historyUsed : historyNew, set.added_day, purchasePrice);
 
   // Against the CURRENT price in the inventory's condition, not against the
   // higher one in each case; without a purchase price against the oldest market price.
@@ -98,23 +124,7 @@ export async function priceHistorySet(
   const pnlPct = baselineHas ? (developmentPercent(baselinePrice, currentPrice)?.toFixed(1) ?? null) : null;
 
   // Only conditions with an acquisition, otherwise a percentage against nothing would stand there.
-  const acqByCond = await k.priceHistory.purchaseAverageOfSets(uids, setNumber, currency);
-
-  const byCondition: Record<string, StateComparison> = {};
-  for (const cond of ['N', 'U'] as const) {
-    const acq = acqByCond.find(r => (r.condition || 'N') === cond);
-    if (!acq) continue; // no purchase price entry → no row
-    const market = marketPriceFrom(cond === 'N' ? current.N : current.U);
-    // null = no purchase price captured, 0 = gift; both without a percentage.
-    const base = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
-    const e = developmentPercent(base, market);
-    byCondition[cond] = {
-      market_price: market,
-      purchase_price: base,
-      pnl_pct: e == null ? null : e.toFixed(1),
-      pnl_percent: e == null ? null : Number(e.toFixed(1)),
-    };
-  }
+  const byCondition = stateComparisons(await k.priceHistory.purchaseAverageOfSets(uids, setNumber, currency), current);
 
   const statesForChart = statesForHistory(Object.keys(byCondition), [condition]);
   const chart = buildChart(statesForChart.map(c => ({ name: c, rows: c === 'U' ? historyUsed : historyNew })));

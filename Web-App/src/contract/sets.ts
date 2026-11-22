@@ -13,7 +13,7 @@ import {
   MovedToTrash,
 } from './shared';
 
-export { GenericResponse, SetMinifigsResponse as SetFigurenResponse, SetPartsResponse as SetTeileResponse };
+export { GenericResponse, SetMinifigsResponse, SetPartsResponse };
 
 export const AddSetResponse = z.looseObject({
   success: z.boolean(),
@@ -327,7 +327,7 @@ export const routes = {
   'PUT /api/v2/sets/:setNumber/alert': {
     input: z.strictObject({
       direction: v1Values(z.enum(['below', 'above']), V1_ALERT_DIRECTIONS),
-      threshold: input.geld('Schwelle', { nullbar: false }),
+      threshold: input.geld('Schwelle', { nullable: false }),
       condition: CONDITION.optional(),
     }),
     response: PriceAlertResponse,

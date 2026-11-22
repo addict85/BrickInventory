@@ -40,7 +40,7 @@ export interface NewVoucher {
 function amountRule(raw: number | null | undefined, zeroAllowed = false): number {
   const amount = raw ?? Number.NaN;
   if (!Number.isFinite(amount) || amount > 1_000_000 || (zeroAllowed ? amount < 0 : amount <= 0))
-    failDomain('ungueltig', 'amount_invalid');
+    failDomain('invalid', 'amount_invalid');
   return amount;
 }
 
@@ -82,7 +82,7 @@ async function existing(k: VoucherContext, uid: number, id: number): Promise<Vou
 
 /** No row means "already there" — as a success, the user would see nothing happen. */
 export async function createVoucher(k: VoucherContext, uid: number, e: NewVoucher): Promise<VoucherRow> {
-  return (await repo(k).createVoucher(uid, checked(e))) ?? failDomain('konflikt', 'voucher_exists');
+  return (await repo(k).createVoucher(uid, checked(e))) ?? failDomain('conflict', 'voucher_exists');
 }
 
 /** The batch case of a bundle PDF: what already exists gets replaced. */
@@ -118,7 +118,7 @@ export async function createVoucherWithPdf(
   const written: string[] = [];
   try {
     return await k.transact(async t => {
-      const z = (await repo(t).createVoucher(uid, w)) ?? failDomain('konflikt', 'voucher_exists');
+      const z = (await repo(t).createVoucher(uid, w)) ?? failDomain('conflict', 'voucher_exists');
       // File name from the ID, not from the upload: a name from the client would have
       // to be checked against path components.
       const relPath = `${uid}/${z.id}.pdf`;
@@ -134,7 +134,7 @@ export async function createVoucherWithPdf(
 }
 
 export type FromPdf =
-  | { kind: 'stapel'; bericht: Awaited<ReturnType<typeof batchCreate>> }
+  | { kind: 'stapel'; report: Awaited<ReturnType<typeof batchCreate>> }
   | { kind: 'angelegt'; row: VoucherRow; parsed: ParsedVoucher };
 
 /** The form fields: how the frontend prefills them after a rejection. */
@@ -157,15 +157,15 @@ export async function voucherFromPdf(
 ): Promise<FromPdf> {
   const reading = await readInBackground(pdf);
   if (reading.kind === 'zu_viele_seiten')
-    failDomain('nicht_verarbeitbar', 'pdf_too_many_pages', { seiten: reading.seiten, max: MAX_PAGES });
-  if (reading.kind === 'unlesbar') failDomain('nicht_verarbeitbar', 'pdf_unreadable');
-  if (reading.stapel.length >= 2) return { kind: 'stapel', bericht: await batchCreate(k, uid, reading.stapel) };
+    failDomain('unprocessable', 'pdf_too_many_pages', { seiten: reading.seiten, max: MAX_PAGES });
+  if (reading.kind === 'unlesbar') failDomain('unprocessable', 'pdf_unreadable');
+  if (reading.batch.length >= 2) return { kind: 'stapel', report: await batchCreate(k, uid, reading.batch) };
   // The media type is a claim by the client: what is checked is the signature, since
   // the file goes out later as application/pdf. A decompression bomb would otherwise
   // reach pdf-lib, which unpacks without a limit.
-  if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-' || reading.einzeln === 'zu_gross')
-    failDomain('nicht_verarbeitbar', 'pdf_unreadable');
-  const read = typeof reading.einzeln === 'object' ? reading.einzeln : NOTHING_READ;
+  if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-' || reading.single === 'too_large')
+    failDomain('unprocessable', 'pdf_unreadable');
+  const read = typeof reading.single === 'object' ? reading.single : NOTHING_READ;
   const raw = {
     number: typed.number ?? read.number,
     pin: typed.pin ?? read.pin,
@@ -178,9 +178,9 @@ export async function voucherFromPdf(
   const nothingTyped = !typed.number && !typed.pin && !typed.amount;
   const nothingRead = read.number == null && read.amount == null;
   const code: ErrorCode =
-    reading.einzeln === 'fehler' ? 'pdf_unreadable' : nothingRead && nothingTyped ? 'no_voucher_in_pdf' : w.code;
+    reading.single === 'fehler' ? 'pdf_unreadable' : nothingRead && nothingTyped ? 'no_voucher_in_pdf' : w.code;
   // 422: the request was fine, only the PDF did not give up everything; `gelesen` prefills the fields.
-  throw new DomainError('nicht_verarbeitbar', code, undefined, { parsed: readAs(read) });
+  throw new DomainError('unprocessable', code, undefined, { parsed: readAs(read) });
 }
 
 export interface VoucherChange {
@@ -222,7 +222,7 @@ export async function deleteVoucher(k: VoucherContext, uid: number, id: number):
 
 export async function voucherPlaintext(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
   const z = await existing(k, uid, id);
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'voucher_plaintext', masked(z).number);
+  await k.account.admin.rememberAdminAction(uid, uid, 'voucher_plaintext', masked(z).number);
   return z;
 }
 
@@ -230,14 +230,14 @@ export async function voucherPlaintext(k: VoucherContext, uid: number, id: numbe
 export async function releasePdf(k: VoucherContext, uid: number, id: number): Promise<string> {
   const z = await existing(k, uid, id);
   if (!z.pdf_path) failDomain('not_found', 'not_found');
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'voucher_pdf', masked(z).number);
+  await k.account.admin.rememberAdminAction(uid, uid, 'voucher_pdf', masked(z).number);
   return issueTicket(k, uid, String(id));
 }
 
 export async function releaseExport(k: VoucherContext, uid: number): Promise<string> {
   const n = (await voucherList(k, uid)).length;
   if (!n) failDomain('not_found', 'no_vouchers');
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'voucher_export', `${n}`);
+  await k.account.admin.rememberAdminAction(uid, uid, 'voucher_export', `${n}`);
   return issueTicket(k, uid, 'export');
 }
 
@@ -275,15 +275,15 @@ export type BalanceResult =
  * the shop of its issuing country. */
 export async function checkBalance(k: VoucherContext, uid: number, id: number): Promise<BalanceResult> {
   const old = await existing(k, uid, id);
-  if (!old.pin) failDomain('ungueltig', 'balance_pin_missing');
+  if (!old.pin) failDomain('invalid', 'balance_pin_missing');
   const country = String(
     (await k.settings.globalValue('voucher_country', '')) ||
       countryForCurrency(await k.settings.userValue(uid, 'currency', 'EUR')),
   );
-  if (!countryAllowed(country)) failDomain('ungueltig', 'balance_country_invalid');
+  if (!countryAllowed(country)) failDomain('invalid', 'balance_country_invalid');
   const result = await checkBalanceThrottled(k, uid, old.number, old.pin, { locale: country });
   if (result.kind === 'gesperrt') return result;
-  const g = result.guthaben;
+  const g = result.balance;
   // The other side's currency wins; a useless value would otherwise ruin the list's total.
   const currency = /^[A-Z]{3}$/.test(g.currency) ? g.currency : old.currency;
   const row = (await repo(k).rememberBalance(uid, id, g.amount, currency)) ?? failDomain('not_found', 'not_found');

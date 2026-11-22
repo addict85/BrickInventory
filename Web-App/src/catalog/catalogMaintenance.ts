@@ -99,7 +99,7 @@ export async function rememberSetPart(
 export interface SetPartRow {
   partNumber: string;
   partName: string | null;
-  kategorie: string | null;
+  category: string | null;
   colorId: number;
   colorName: string | null;
   colorHex: string | null;
@@ -123,7 +123,12 @@ function jeKey<T>(rows: T[], key: (z: T) => string, mix?: (a: T, b: T) => T): T[
 /** Three statements instead of three per part. ON CONFLICT DO UPDATE must not hit a row
  * twice, so they are merged per key beforehand: the
  * part quantity adds up; it is a spare part only if all of them are. */
-export async function merkeSetTeile(k: CatalogContext, setNumber: string, rows: SetPartRow[], dbh: Writer = k.db) {
+export async function rememberSetPartRows(
+  k: CatalogContext,
+  setNumber: string,
+  rows: SetPartRow[],
+  dbh: Writer = k.db,
+) {
   if (!setNumber || !rows.length) return;
   const parts = jeKey(rows, z => z.partNumber);
   const kat = (v: string | null) => (leer(v) === 'Unknown' ? null : leer(v));
@@ -131,7 +136,7 @@ export async function merkeSetTeile(k: CatalogContext, setNumber: string, rows: 
     dbh,
     parts.map(z => z.partNumber),
     parts.map(z => leer(z.partName)),
-    parts.map(z => kat(z.kategorie)),
+    parts.map(z => kat(z.category)),
   );
 
   const colors = jeKey(rows, z => `${z.partNumber}|${z.colorId}`);
@@ -194,7 +199,7 @@ export async function setPartImageLocal(
   await master.writePartImageLocal(dbh, partNumber, readColor(colorId), imageLocal);
 }
 
-export async function merkeSetFiguren(
+export async function rememberSetMinifigs(
   k: CatalogContext,
   setNumber: string,
   minifigs: { figNumber: string; quantity?: number | null | undefined }[],
@@ -238,13 +243,13 @@ export async function setMinifigImageLocal(
 /** Asked before every Rebrickable lookup so that known data costs nothing. */
 export interface CatalogPart {
   name: string | null;
-  kategorie: string | null;
+  category: string | null;
   /** Only as an https URL; a local path counts for `hatImage`, not here. */
   image: string | null;
   hatImage: boolean;
   /** Set lists carry no images of their own; theirs are attached to the color. */
-  bildQuelle: 'farbe' | 'allgemein' | null;
-  bildDatei: string | null;
+  imageSource: 'farbe' | 'allgemein' | null;
+  imageFile: string | null;
 }
 
 /** `fuer`: only that account's own details count as known; this query does not see
@@ -259,18 +264,18 @@ export async function catalogPart(
   const z = await k.catalogMaster.partFromCatalog(partNumber, colorId, forUser);
   if (!z) return null;
 
-  const source: CatalogPart['bildQuelle'] =
-    z.farb_datei || z.farb_url ? 'farbe' : colorId === null && z.bild_allgemein ? 'allgemein' : null;
-  const url = source === 'farbe' ? z.farb_url : source === 'allgemein' ? z.bild_allgemein : null;
-  const file = source === 'farbe' ? z.farb_datei : null;
+  const source: CatalogPart['imageSource'] =
+    z.color_file || z.color_url ? 'farbe' : colorId === null && z.image_generic ? 'allgemein' : null;
+  const url = source === 'farbe' ? z.color_url : source === 'allgemein' ? z.image_generic : null;
+  const file = source === 'farbe' ? z.color_file : null;
 
   return {
     name: z.name ?? null,
-    kategorie: z.kategorie ?? null,
+    category: z.category ?? null,
     image: url && String(url).startsWith('https:') ? String(url) : null,
     hatImage: source !== null,
-    bildQuelle: source,
-    bildDatei: file ?? null,
+    imageSource: source,
+    imageFile: file ?? null,
   };
 }
 

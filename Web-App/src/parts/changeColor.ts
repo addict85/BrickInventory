@@ -24,7 +24,7 @@ export type ImageSource = 'vorhanden' | 'rebrickable' | null;
  * taking the change down with it. */
 async function fetchImageLater(k: PartsContext, partNumber: string, color: number): Promise<ImageSource> {
   const local = await k.catalog.catalogPart(partNumber, color);
-  if (local?.bildQuelle === 'farbe') return 'vorhanden';
+  if (local?.imageSource === 'farbe') return 'vorhanden';
 
   // The change already stands; a failed fetch only drops the image.
   const info = await attempts('partColor:lookupPart', () => k.externalSources.sources.lookupPart(partNumber, color));
@@ -72,10 +72,10 @@ export async function changePartColor(
 
     const target = await repo.lockManualPartRow(t.db, uid, partNumber, fresh);
 
-    const { united, moved } = await t.inventory.manuell.recolorPartRow(
+    const { united, moved } = await t.inventory.manual.recolorPartRow(
       uid,
       partNumber,
-      { ...source, farbe: alt },
+      { ...source, color: alt },
       target ?? null,
       fresh,
     );

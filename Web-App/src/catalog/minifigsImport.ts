@@ -1,6 +1,6 @@
 import { logAndContinue } from '../infra/error';
 import { withVersion } from '../infra/setNumber';
-import { rememberMinifigs, merkeSetFiguren } from './catalogMaintenance';
+import { rememberMinifigs, rememberSetMinifigs } from './catalogMaintenance';
 import type { CatalogContext } from './context';
 
 // Ask with and without the version suffix, not twice the same spelling.
@@ -11,16 +11,16 @@ export async function minifigsFromCatalog(k: CatalogContext, setNumber: string) 
   });
 }
 
-export type Figur = { fig_number: string; fig_name: string; quantity: number; image_url: string | null };
+export type SetFig = { fig_number: string; fig_name: string; quantity: number; image_url: string | null };
 
 /** A set's figures from the catalog or the source; a figure occurring several times
  * is one row with the sum as catalog quantity. */
 export async function loadSetMinifigs(
   k: CatalogContext,
   setNumber: string,
-): Promise<{ minifigs: Figur[]; fromSource: boolean }> {
+): Promise<{ minifigs: SetFig[]; fromSource: boolean }> {
   const fromCatalog = await minifigsFromCatalog(k, withVersion(setNumber));
-  const raw: Figur[] = fromCatalog.length
+  const raw: SetFig[] = fromCatalog.length
     ? fromCatalog.map(f => ({
         fig_number: f.fig_number,
         fig_name: f.fig_name || f.fig_number,
@@ -28,7 +28,7 @@ export async function loadSetMinifigs(
         image_url: f.image_url || null,
       }))
     : await k.externalSources.sources.getSetMinifigs(setNumber);
-  const jeNumber = new Map<string, Figur>();
+  const jeNumber = new Map<string, SetFig>();
   for (const f of raw) {
     if (!f.fig_number) continue;
     const alt = jeNumber.get(f.fig_number);
@@ -42,14 +42,14 @@ export async function loadSetMinifigs(
 }
 
 /** In the caller's transaction (t.katalog), next to the entry in the inventory. */
-export async function setFigurenMerken(k: CatalogContext, setNumber: string, figs: Figur[], fromSource: boolean) {
+export async function rememberSetFigs(k: CatalogContext, setNumber: string, figs: SetFig[], fromSource: boolean) {
   await rememberMinifigs(
     k,
     figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })),
     k.db,
   );
   if (fromSource)
-    await merkeSetFiguren(
+    await rememberSetMinifigs(
       k,
       setNumber,
       figs.map(f => ({ figNumber: f.fig_number, quantity: f.quantity })),

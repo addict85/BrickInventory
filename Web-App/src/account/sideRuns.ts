@@ -16,7 +16,7 @@ export function onCleanupSteps(k: AccountContext, tick: 'stuendlich' | 'taeglich
     ];
   return [
     ['unbestätigte Registrierungen', () => cleanOpenRegistrationsOn(k)],
-    ['Verwaltungsprotokoll', () => k.protokoll.cleanLogOn()],
+    ['Verwaltungsprotokoll', () => k.log.cleanLogOn()],
   ];
 }
 

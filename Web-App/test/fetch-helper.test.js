@@ -88,7 +88,7 @@ class Umlenker extends https.Agent {
 }
 
 const agent = new https.Agent({ ca: cert });
-const opt = (mehr = {}) => ({ hosts: [`localhost:${port}`], maxBytes: 1000, zeitlimitMs: 3000, agent, ...mehr });
+const opt = (mehr = {}) => ({ hosts: [`localhost:${port}`], maxBytes: 1000, timeoutMs: 3000, agent, ...mehr });
 const basis = () => `https://localhost:${port}`;
 
 test.before(async () => {
@@ -188,7 +188,7 @@ test('body above the limit, announced or without a length', async () => {
 });
 
 test('a silent server runs into the timeout', async () => {
-  assert.equal(await reason(holeHttps(`${basis()}/still`, opt({ zeitlimitMs: 300 }))), 'time_limit');
+  assert.equal(await reason(holeHttps(`${basis()}/still`, opt({ timeoutMs: 300 }))), 'time_limit');
 });
 
 test('downloadSetImage survives every redirect', async t => {

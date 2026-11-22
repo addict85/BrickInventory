@@ -8,7 +8,7 @@ export interface SetMaster {
   image_url: string | null;
   image_local: string | null;
   /** Created by setErfassen without a catalog: only says that some account captured the number. */
-  platzhalter?: boolean;
+  placeholder?: boolean;
 }
 export interface ListenTeil {
   part_number: string;

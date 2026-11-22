@@ -46,7 +46,7 @@ export const REDIRECT_LIMIT = 5;
 
 export interface RedirectTarget {
   url: string;
-  kopfzeilen: Record<string, string>;
+  headers: Record<string, string>;
 }
 
 /** @param allowedHosts  set: the target host is checked. Omitted: not.
@@ -55,7 +55,7 @@ export interface RedirectTarget {
 export function nextRedirect(
   fromValue: string,
   location: string | undefined,
-  kopfzeilen: Record<string, string>,
+  headers: Record<string, string>,
   allowedHosts?: readonly string[],
 ): RedirectTarget | null {
   if (!location) return null;
@@ -82,12 +82,12 @@ export function nextRedirect(
   } catch {
     return null;
   }
-  if (ofHost === target.hostname) return { url: target.href, kopfzeilen };
+  if (ofHost === target.hostname) return { url: target.href, headers };
 
   const filtered: Record<string, string> = {};
-  for (const [k, v] of Object.entries(kopfzeilen))
+  for (const [k, v] of Object.entries(headers))
     if (k.toLowerCase() !== 'authorization' && k.toLowerCase() !== 'cookie') filtered[k] = v;
-  return { url: target.href, kopfzeilen: filtered };
+  return { url: target.href, headers: filtered };
 }
 
 /** Inserted raw, "/", "?" or ".." would leave the path at Rebrickable or

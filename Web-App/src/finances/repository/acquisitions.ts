@@ -10,9 +10,9 @@ export interface SetEntryRow {
   set_number: string;
   quantity: number;
   purchase_price: number | null;
-  kaufpreis_fremd: boolean;
+  purchase_price_foreign: boolean;
   original_purchase_price: number | null;
-  kaufpreis_umgerechnet: boolean;
+  purchase_price_converted: boolean;
   currency: string | null;
   price_estimated: boolean;
   condition: string;
@@ -25,7 +25,7 @@ export function loadSetEntries(db: DbInterface, l: FinancesReadContract, uids: n
             ${purchasePriceColumns('purchase_price', '$2')},
             currency, price_estimated,
             COALESCE(condition, 'N') AS condition, created_at
-       FROM ${l.setErfassungen('= ANY($1)')} e
+       FROM ${l.setAcquisitions('= ANY($1)')} e
       WHERE user_id = ANY($1)
       ORDER BY created_at ASC, id ASC`,
     [uids, currency],

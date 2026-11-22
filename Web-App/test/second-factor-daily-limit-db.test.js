@@ -86,7 +86,7 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
     }
     const r = await anmelden(FALSCH);
     assert.equal(r.absage?.code, 'second_factor_locked', 'der 20. falsche Code erreicht die Schranke');
-    assert.equal(r.absage?.zweiterFaktor, true, 'das Codefeld bleibt offen');
+    assert.equal(r.absage?.secondFactor, true, 'das Codefeld bleibt offen');
     const row = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`faktor-anmeldung-konto|${uid}`]);
     assert.equal(Number(row?.count), lim.MAX_FACTOR_LOGIN_JE_ACCOUNT, 'gezählt in der Datenbank');
   });
