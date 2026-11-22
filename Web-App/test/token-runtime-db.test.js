@@ -175,7 +175,10 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       });
       assert.equal(r.body.token_days, tage, `„${wahl}" ergibt die Höchstdauer aus TOKEN_MAX_DAYS`);
       const ze = await zeile((await koppeln(r.body, keks)).body.token);
-      assert.ok(Math.abs(daysAhead(ze.hard_expires_at) - tage) < 1, `${wahl}: feste Frist ${ze.hard_expires_at}`);
+      assert.ok(
+        Math.abs(daysAhead(ze.hard_expires_at) - Number(tage)) < 1,
+        `${wahl}: feste Frist ${ze.hard_expires_at}`,
+      );
       assert.equal(ze.never_expires, false);
     }
 

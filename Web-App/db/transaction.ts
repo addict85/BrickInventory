@@ -39,6 +39,16 @@ export function contextSql(): string {
 }
 const CONTEXT_EMPTY = "SELECT set_config('app.konto', '', true)";
 
+/** Any SQL can set app.konto (an injection): before COMMIT it must still be what `kontext` set,
+ * otherwise this fails and the transaction ends as ROLLBACK. */
+export function contextCheckSql(kontext: string): string {
+  const konto = /'app\.konto', '(\d*)'/.exec(kontext)?.[1] ?? '';
+  return (
+    `DO $$BEGIN IF COALESCE(current_setting('app.konto', true), '') <> '${konto}' THEN ` +
+    `RAISE EXCEPTION 'app.konto changed within the transaction' USING ERRCODE = '42501'; END IF; END$$`
+  );
+}
+
 /** If the account changes in the middle of the transaction (asRequest), the setting follows. */
 export async function contextSync(stand: TxStand): Promise<void> {
   const soll = contextSql();
