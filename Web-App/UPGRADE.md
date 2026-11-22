@@ -2522,3 +2522,33 @@ Daten, keine Bezeichner, und bleiben unverändert.
 - **Fehlerantworten** tragen neu `request_id` (gleich dem Kopf `X-Request-Id`); App und
   Oberfläche lesen weiter nur `code`.
 - Nichts von Hand zu tun; `docker compose up -d` spielt die Migration ein.
+
+## 72. API v2 auf Englisch, /api/v1 als Alias bis 30.06.2027 (Migration 0136)
+
+- **Neue Adresse `/api/v2`:** Felder, Enum-Werte, Pfade und Fehlercodes sind englisch
+  (`/admin/auftraege/:id/abbrechen` → `/admin/job-queue/:id/cancel`,
+  `/catalog/year-verteilung` → `/catalog/year-distribution`, `code: "nicht_gefunden"` →
+  `"not_found"`). Der Vertrag steht in `docs/openapi-v2.json`; die Weboberfläche spricht nur
+  noch v2.
+- **`/api/v1` bleibt** unverändert erreichbar: Der Server übersetzt Anfragen (Felder, Abfrage-
+  und Pfadwerte) nach v2 und Antworten, Ereignisse und Fehler zurück. `docs/openapi.json` und
+  `shared/app-schnittstelle.json` beschreiben weiter v1 und sind byte-gleich geblieben. Jede
+  v1-Antwort trägt `Deprecation: true`, `Sunset: Wed, 30 Jun 2027 00:00:00 GMT` und
+  `Link: </api/v2/…>; rel="successor-version"`. Nach dem 30.06.2027 fällt v1 weg; eigene
+  Skripte, Überwachung (`/api/v1/health/…`) und Reverse-Proxy-Regeln bis dahin auf v2
+  umstellen. Die Android-App läuft vorerst weiter über v1.
+- **Bilder:** `/api/v1/img-proxy` bleibt die Adresse des Bild-Proxys (gespeicherte
+  Bildadressen zeigen dorthin); sie wird nicht übersetzt und trägt keinen Deprecation-Kopf.
+- **Migration 0136** schreibt die gespeicherten Werte englisch: Auftragsstatus (`offen` →
+  `pending`, `laeuft` → `running`, `erledigt` → `done`, `fehler` → `error`, `abgebrochen` →
+  `cancelled`), Auftragsarten (`preise` → `prices`, `preise_nachladen` → `price_refresh`,
+  `bildbedarf` → `image_demand` …, auch in `job_pauses`, `job_exclusive_locks` und den
+  Schlüsseln `plan:…`), die Schlüssel in `jobs.payload/progress/result` und die Schritte der
+  Gerätefreigabe (`gutschein` → `voucher`, `verwaltung` → `admin`, `zweiter_faktor` →
+  `second_factor`). Die Tabellen sind während der Migration gesperrt; ein laufender Auftrag
+  heisst danach `running` mit demselben Halter und läuft weiter. Ein noch alter Prozess
+  schreibt deutsche Werte und wird von den neuen Prüfungen abgewiesen — `web` und `jobs`
+  deshalb zusammen aktualisieren (`docker compose up -d`).
+- **Eigene Werkzeuge**, die `jobs` direkt lesen (SQL-Abfragen auf `status = 'offen'`),
+  auf die neuen Werte umstellen.
+- Sonst nichts von Hand zu tun.
