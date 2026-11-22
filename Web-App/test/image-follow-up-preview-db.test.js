@@ -5,6 +5,9 @@
  * Counter-checks (22.11.2026, each alone):
  *   A  createPreview(local) deleted in the parts loop → red “parts” (no preview for the part)
  *   B  createPreview(local) deleted in the minifigure loop → red “minifigures”
+ *   C  minifigsWithoutImage() only for source='manual' → red “every owned minifigure …” (set figure missing)
+ *   D  minifigsWithoutImage() without the EXISTS on the holding → red the same test (unowned figure listed)
+ *   E  holdingMinifigImagesOpen() without the EXISTS → red the same test (monitoring counts 3, the run 2)
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -27,7 +30,9 @@ testImageWorker(null, {
 
 const P = process.pid;
 const PART = `ifp${P}`,
-  FIG = `fig-ifp${P}`;
+  FIG = `fig-ifp${P}`,
+  SETFIG = `fig-ifs${P}`,
+  NOBODY = `fig-ifn${P}`;
 
 test('image follow-up: manual parts and minifigures get a preview', { concurrency: 1 }, async t => {
   const db = testData();
@@ -38,7 +43,7 @@ test('image follow-up: manual parts and minifigures get a preview', { concurrenc
     for (const f of files) fs.rmSync(f, { force: true });
     await db.run('DELETE FROM users WHERE username = $1', [`ifp-${P}`]);
     await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [PART]);
-    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIG]);
+    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = ANY($1)', [[FIG, SETFIG, NOBODY]]);
   };
   await weg();
   t.after(async () => {
@@ -57,6 +62,32 @@ test('image follow-up: manual parts and minifigures get a preview', { concurrenc
     FIG,
     `https://cdn.rebrickable.com/media/sets/${FIG}.jpg`,
   ]);
+  // A figure from a set is loaded too; one nobody owns is not.
+  await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1,$2)`, [uid, `7${P}-1`]);
+  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1,$2,$3,'set')`, [
+    uid,
+    `7${P}-1`,
+    SETFIG,
+  ]);
+  for (const f of [SETFIG, NOBODY])
+    await db.run(`INSERT INTO minifigs_catalog (fig_number, image_url) VALUES ($1,$2)`, [
+      f,
+      `https://cdn.rebrickable.com/media/sets/${f}.jpg`,
+    ]);
+
+  await t.test('every owned minifigure without a local image is loaded, and monitoring counts the same', async () => {
+    const { imagesForFollowUp } = _req('src/catalog/imageState.js');
+    const figs = (await imagesForFollowUp()).minifigs.map(f => f.fig_number);
+    assert.deepEqual(
+      [FIG, SETFIG, NOBODY].filter(f => figs.includes(f)),
+      [FIG, SETFIG],
+    );
+    const open = await require('./helpers/sources').testContext('management').management.holdingMinifigImagesOpen();
+    assert.equal(open, figs.length);
+    // Only the files below are local; the run must not reach the network.
+    await db.run('DELETE FROM minifigs_catalog WHERE fig_number = ANY($1)', [[SETFIG, NOBODY]]);
+  });
+
   // The files are there already: the download is skipped, only the follow-up can trigger the preview.
   for (const f of files) {
     fs.mkdirSync(path.dirname(f), { recursive: true });
