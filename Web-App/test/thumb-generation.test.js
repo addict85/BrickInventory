@@ -3,6 +3,8 @@
  *
  * Counter-check (carried out): temporary name turned back to `.tmp` →
  * the first substep turns red (no file, previewFrom delivers null).
+ * 22.11.2026: the same for createProxyPreview turns thumb-atomic.test.js red; the image route
+ * creating a missing preview runs in image-route-db.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,45 +51,4 @@ test('previewFrom() actually creates a smaller file', async () => {
     fs.rmSync(original, { force: true });
     fs.rmSync(preview, { force: true });
   }
-});
-
-test('both generators write temporarily to an IMAGE extension', () => {
-  // The source text rule for the behavior test above: Jimp decides by the
-  // extension, hence the temporary name must end in .jpg.
-  // Location since an earlier round: src/images/proxyThumbs.ts.
-  for (const datei of ['src/images/thumbs.ts', 'src/images/proxyThumbs.ts']) {
-    const src = fs
-      .readFileSync(path.join(ROOT, datei), 'utf8')
-      .split('\n')
-      .filter(l => !l.trim().startsWith('//'))
-      .join('\n');
-    assert.ok(
-      /tmpThumb = .*\.tmp\.jpg`/.test(src),
-      `${datei}: der temporäre Vorschau-Name endet nicht auf .jpg — Jimp wirft dann ` +
-        '„Unsupported MIME type" und die Vorschau entsteht still gar nicht',
-    );
-  }
-});
-
-test('the image route triggers a missing preview itself', () => {
-  // ohneKommentare() instead of a // filter: the filter left
-  // block comments standing, and one of them contained "app.get('/images/*', …)"
-  // as an example. indexOf() thereby landed in the file header instead of at the route.
-  // The image route (routes/pages.ts) delivers via src/images/http/imageDelivery.ts;
-  // originalInsteadOfPreview() triggers the preview there.
-  const src = require('./helpers/sources').ohneKommentare(
-    require('node:fs').readFileSync(path.join(__dirname, '..', 'src/images/http/imageDelivery.ts'), 'utf8'),
-  );
-  const start = src.indexOf('function originalInsteadOfPreview(');
-  assert.ok(
-    start > 0 && src.indexOf('originalInsteadOfPreview(', start + 10) > 0,
-    'die Bildroute ruft den Vorschau-Rückfall nicht',
-  );
-  const block = src.slice(start, start + 4000);
-  assert.ok(
-    /previewFrom/.test(block),
-    'ohne diesen Anstoss bleibt eine einmal verpasste Vorschau für immer aus — ' +
-      'der Bilder-Nachlauf deckt sets nicht ab',
-  );
-  assert.ok(/setImmediate/.test(block), 'die Erzeugung darf die Anfrage nicht aufhalten (rund 150 ms Jimp je Kachel)');
 });

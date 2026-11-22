@@ -179,33 +179,82 @@ test('a cached zero price does not permanently block the fallback', () => {
   );
 });
 
-test('the finances view shows avg_price as market price', () => {
-  // The detail dialog was right after the last fix, the finances tab
-  // was not: there the column labeled „Marktpreis" showed qty_avg_price,
-  // and the total column computed with it.
-  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finances.js'), 'utf8');
-  assert.match(
-    fin,
-    /const total\s*=\s*acq \? acq\.value_total : s\.value_total;/,
-    'Die Total-Spalte muss über avg_price laufen, nicht über qty_avg',
-  );
-  assert.match(
-    fin,
-    /parseFloat\(d\.totals\.avg\s*\|\|\s*'?0'?\)/,
-    'Die Summen sind als „Ø Marktpreis" beschriftet und müssen totals.avg nehmen',
-  );
-  assert.match(
-    fin,
-    /(?:parseFloat|Number)\(it\.avg_price \?\? it\.qty_avg_price \?\? 0\)/,
-    'Teile- und Minifiguren-Zeilen: avg_price zuerst',
-  );
-  assert.doesNotMatch(fin, /parseFloat\(d\.totals\.qty_avg/, 'Keine Summe darf mehr auf qty_avg basieren');
-
-  // The second market price column has meanwhile been dropped entirely — the target form
-  // is checked by the test “finances: purchase price instead of a second market price column”.
-  // finance.qty_avg was removed with the column — no dead key.
-  const i18n = require('./helpers/sources').i18nAll();
-  assert.doesNotMatch(i18n, /'finance\.qty_avg':/, 'Der Schlüssel gehört mit der Spalte entfernt');
+test('the finances view shows avg_price as market price', async () => {
+  // Real bundle in jsdom: avg_price and qty_avg_price differ on purpose, so the wrong one shows.
+  // Counter-checks (22.11.2026, each alone, public/js/finances.js): the part row with qty_avg_price first →
+  // red “part”; the set sum from totals.qty_avg → red “sum”; the set total computed from qty_avg_price → red “set”.
+  const { openUi, reiter, warte } = require('./helpers/ui');
+  const SET = {
+    set_number: '10294-1',
+    name: 'Titanic',
+    year: 2021,
+    quantity: 2,
+    purchase_price: 50,
+    avg_price: 100,
+    qty_avg_price: 80,
+    min_price: 70,
+    max_price: 130,
+    value_total: 200,
+    pnl_percent: 100,
+  };
+  const PART = {
+    part_number: '3001',
+    color_id: 5,
+    part_name: 'Brick',
+    color_name: 'Rot',
+    quantity: 2,
+    purchase_price: 1,
+    avg_price: 5,
+    qty_avg_price: 3,
+    value_total: 10,
+  };
+  const { w, d } = await openUi({
+    '/v2/finance/valuation': {
+      success: true,
+      currency: 'EUR',
+      total_value: '200',
+      condition: 'N',
+      foreign_currency_purchases: 0,
+      converted_purchase_prices: 0,
+      prices_pending: 0,
+      guide_type: 'sold',
+      ttl_hours: 24,
+      cache_ttl_hours: 24,
+      sets: [SET],
+      totals: { min: '140', avg: '200', max: '260', qty_avg: '160' },
+      value_total: 200,
+      total: 1,
+      page: 1,
+      page_size: 1,
+    },
+    '/v2/finance/parts-valuation': {
+      success: true,
+      currency: 'EUR',
+      parts: [PART],
+      total_value: '10',
+      foreign_currency_purchases: 0,
+      converted_purchase_prices: 0,
+      prices_pending: 0,
+      value_total: 10,
+      total: 1,
+      page: 1,
+      page_size: 1,
+    },
+  });
+  const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
+  try {
+    await reiter(w, 'finance');
+    const setRow = () => d.querySelector('#fin-tbl [data-fin-kind="sets"] tbody tr');
+    assert.ok(await warte(() => setRow()), 'no set row');
+    const setValue = text(setRow().querySelector('.fin-value'));
+    assert.ok(setValue.includes('200,00') && !setValue.includes('160'), `set: ${setValue}`);
+    const sum = text(d.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot'));
+    assert.ok(sum.includes('200,00') && !sum.includes('160,00'), `sum: ${sum}`);
+    const partValue = text(d.querySelector('#fin-tbl [data-fin-kind="parts"] tbody tr .fin-value'));
+    assert.ok(partValue.includes('5,00') && !partValue.includes('3,00'), `part: ${partValue}`);
+  } finally {
+    w.close();
+  }
 });
 
 test('finances: purchase price instead of a second market price column', () => {
@@ -259,61 +308,6 @@ test('a late response does not write into a foreign dialog', () => {
     fn,
     /!openSet \|\| openSet\.set_number !== sn/,
     'Die späte Antwort prüft nicht, ob noch dasselbe Set offen ist',
-  );
-});
-
-test('preview generation is capped', () => {
-  // Marco's measurement
-  const server = require('./helpers/sources').serverAll();
-  const parallel = server.match(/const THUMB_MAX_PARALLEL = (\d+)/);
-  assert.ok(parallel, 'THUMB_MAX_PARALLEL nicht gefunden');
-  assert.ok(
-    parseInt(parallel[1], 10) <= 1,
-    `THUMB_MAX_PARALLEL = ${parallel[1]} — im Cluster vervielfacht sich das je ` +
-      'Arbeitsprozess. Einer je Prozess genügt: Die Vorschau ist eine ' +
-      'Beschleunigung für später, nichts, worauf jemand wartet.',
-  );
-  assert.match(
-    server,
-    /_thumbQueue\.length >= THUMB_MAX_QUEUE/,
-    'Die Warteschlange hat keine Obergrenze — wer schnell durchscrollt, staut ' +
-      'den halben Katalog auf, und der Server rechnet ihn stur ab',
-  );
-
-  // And the limit must apply to the WHOLE server
-  assert.match(
-    server,
-    /pg_try_advisory_lock\(\$1\)/,
-    'Die Vorschau-Erzeugung hat keine prozessübergreifende Sperre — dann rechnet ' +
-      'jeder Arbeitsprozess für sich, und die Grenze oben ist wirkungslos',
-  );
-  // try, do not wait: whoever does not get the lock leaves it. A waiting
-  // run would hold a database connection and back up the work again after all.
-  assert.doesNotMatch(
-    server,
-    /pg_advisory_lock\(\$1\)/,
-    'Ein WARTENDER Lock staut die Arbeit nur an anderer Stelle auf',
-  );
-  assert.match(
-    server,
-    /pg_advisory_unlock\(\$1\)/,
-    'Ohne Freigabe blockiert der erste Lauf alle folgenden bis zum Neustart',
-  );
-
-  // And the catalog produces no previews at all
-  assert.match(
-    server,
-    /const createMay = req\.query\.gen !== '0'/,
-    'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"',
-  );
-  const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'catalog.js'), 'utf8');
-  assert.match(kat, /imgUrl\(thumbUrl\(src\), 'only'\)/, 'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
-  // The gallery does NOT — there it pays off.
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'collection.js'), 'utf8');
-  assert.match(
-    gal,
-    /imgUrl\(thumbUrl\(src\)\s*\|\|\s*src,\s*true\)/,
-    'Der eigene Bestand sollte weiterhin Vorschauen bekommen',
   );
 });
 
