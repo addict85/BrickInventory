@@ -334,7 +334,7 @@ CREATE TABLE jobs (
   payload jsonb NOT NULL DEFAULT '{}'::jsonb,
   user_id integer,
   dedupe_key text,
-  status text NOT NULL DEFAULT 'offen'::text,
+  status text NOT NULL DEFAULT 'pending'::text,
   attempts integer NOT NULL DEFAULT 0,
   max_attempts integer NOT NULL DEFAULT 5,
   due_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -349,16 +349,16 @@ CREATE TABLE jobs (
   waiting boolean NOT NULL DEFAULT false,
   CONSTRAINT jobs_max_attempts_check CHECK ((max_attempts > 0)),
   CONSTRAINT jobs_pkey PRIMARY KEY (id),
-  CONSTRAINT jobs_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text]))),
+  CONSTRAINT jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text]))),
   CONSTRAINT jobs_type_fkey FOREIGN KEY (type) REFERENCES job_types(type),
   CONSTRAINT jobs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_jobs_deadline ON jobs USING btree (deadline_at) WHERE (status = 'laeuft'::text);
-CREATE UNIQUE INDEX idx_jobs_key ON jobs USING btree (dedupe_key) WHERE (status = 'offen'::text);
-CREATE INDEX idx_jobs_open_due ON jobs USING btree (due_at) WHERE (status = 'offen'::text);
+CREATE INDEX idx_jobs_deadline ON jobs USING btree (deadline_at) WHERE (status = 'running'::text);
+CREATE UNIQUE INDEX idx_jobs_key ON jobs USING btree (dedupe_key) WHERE (status = 'pending'::text);
+CREATE INDEX idx_jobs_open_due ON jobs USING btree (due_at) WHERE (status = 'pending'::text);
 CREATE INDEX idx_jobs_type ON jobs USING btree (type, status);
 CREATE INDEX idx_jobs_user ON jobs USING btree (user_id) WHERE (user_id IS NOT NULL);
-CREATE TRIGGER job_exclusive BEFORE UPDATE OF status, locked_by ON jobs FOR EACH ROW WHEN (((new.status = 'laeuft'::text) AND (new.locked_by IS DISTINCT FROM old.locked_by))) EXECUTE FUNCTION job_exclusive_claim();
+CREATE TRIGGER job_exclusive BEFORE UPDATE OF status, locked_by ON jobs FOR EACH ROW WHEN (((new.status = 'running'::text) AND (new.locked_by IS DISTINCT FROM old.locked_by))) EXECUTE FUNCTION job_exclusive_claim();
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY row_security ON jobs USING ((user_id = ANY (( SELECT row_security_accounts() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT row_security_accounts() AS zeilenschutz_konten)::integer[])));
 
@@ -1043,7 +1043,7 @@ CREATE TABLE step_up_approvals (
   action text NOT NULL,
   until_at timestamp with time zone NOT NULL,
   max_until timestamp with time zone NOT NULL,
-  CONSTRAINT step_up_approvals_action_check CHECK ((action = ANY (ARRAY['gutschein'::text, 'verwaltung'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT step_up_approvals_action_check CHECK ((action = ANY (ARRAY['voucher'::text, 'admin'::text, 'second_factor'::text]))),
   CONSTRAINT step_up_approvals_pkey PRIMARY KEY (user_id, token_family, action),
   CONSTRAINT step_up_approvals_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -1057,7 +1057,7 @@ CREATE TABLE step_up_challenges (
   action text NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   expires_at timestamp with time zone NOT NULL,
-  CONSTRAINT step_up_challenges_action_check CHECK ((action = ANY (ARRAY['gutschein'::text, 'verwaltung'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT step_up_challenges_action_check CHECK ((action = ANY (ARRAY['voucher'::text, 'admin'::text, 'second_factor'::text]))),
   CONSTRAINT step_up_challenges_pkey PRIMARY KEY (challenge),
   CONSTRAINT step_up_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -1402,7 +1402,7 @@ BEGIN
   -- Another row is holding this type right now: don't wait, just skip it.
   IF NOT pg_try_advisory_xact_lock(59, hashtext(NEW.type)) THEN RETURN NULL; END IF;
   IF EXISTS (SELECT 1 FROM jobs l
-              WHERE l.type = NEW.type AND l.status = 'laeuft' AND l.deadline_at >= NOW() AND l.id <> NEW.id) THEN
+              WHERE l.type = NEW.type AND l.status = 'running' AND l.deadline_at >= NOW() AND l.id <> NEW.id) THEN
     RETURN NULL;
   END IF;
   RETURN NEW;

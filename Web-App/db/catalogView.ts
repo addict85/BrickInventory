@@ -15,7 +15,7 @@ export const TEIL = {
   kategorie: 'COALESCE(pc.category_name, te.category_name)',
   farbname: 'COALESCE(pcc.color_name, tfe.color_name)',
   farbcode: 'COALESCE(pcc.color_hex, tfe.color_hex)',
-  bild: 'COALESCE(pcc.image_url, tfe.image_url)',
+  image: 'COALESCE(pcc.image_url, tfe.image_url)',
   bildDatei: 'pcc.image_local',
 } as const;
 
@@ -27,7 +27,7 @@ export function minifigViewJoin(konto: string, number: string): string {
 
 export const MINIFIG = {
   name: 'COALESCE(mc.fig_name, fe.fig_name)',
-  bild: 'COALESCE(mc.image_url, fe.image_url)',
+  image: 'COALESCE(mc.image_url, fe.image_url)',
   bildDatei: 'mc.image_local',
 } as const;
 
@@ -43,5 +43,5 @@ export const SET = {
   name: 'rs.name',
   jahr: 'NULLIF(rs.year, 0)',
   thema: 'rt.name',
-  teile: 'NULLIF(rs.num_parts, 0)',
+  parts: 'NULLIF(rs.num_parts, 0)',
 } as const;

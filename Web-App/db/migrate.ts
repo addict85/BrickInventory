@@ -25,11 +25,11 @@ async function withLockPeriod<T>(was: string, frist: LockPeriod, work: () => Pro
       return await work();
     } catch (e) {
       if ((e as { code?: string }).code !== '55P03') throw e;
-      const grund =
+      const reason =
         `${was}: nach ${frist.fristMs / 1000} s keine Sperre erhalten – eine andere Verbindung hält die ` +
         'Tabelle (welche, zeigt pg_stat_activity).';
-      if (attempt >= frist.versuche) throw new Error(`${grund} Aufgegeben nach ${attempt} Versuchen.`);
-      console.warn(`  ⏳ ${grund} Versuch ${attempt + 1}/${frist.versuche} …`);
+      if (attempt >= frist.versuche) throw new Error(`${reason} Aufgegeben nach ${attempt} Versuchen.`);
+      console.warn(`  ⏳ ${reason} Versuch ${attempt + 1}/${frist.versuche} …`);
     }
   }
 }

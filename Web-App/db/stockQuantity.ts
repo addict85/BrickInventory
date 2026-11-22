@@ -22,7 +22,7 @@ export function mengeJoin(basis: string, alias = 'sm', konten?: Konten): string 
     ? `
                       WHERE ${onAccounts('a.user_id', konten)}`
     : '';
-  return `LEFT JOIN (SELECT a.user_id, a.set_number, ${SUM} AS menge
+  return `LEFT JOIN (SELECT a.user_id, a.set_number, ${SUM} AS quantity
                        FROM set_acquisitions a${filter}
                       GROUP BY a.user_id, a.set_number) ${alias}
                ON ${alias}.user_id = ${basis}.user_id
@@ -32,7 +32,7 @@ export function mengeJoin(basis: string, alias = 'sm', konten?: Konten): string 
 /** The quantity column for [mengeJoin], never NULL (NULL would make every product
  * NULL). `fehlt`: 0 for a quantity, 1 for a factor. */
 export function quantityFrom(alias = 'sm', isMissing: 0 | 1 = 0): string {
-  return `COALESCE(${alias}.menge, ${isMissing})`;
+  return `COALESCE(${alias}.quantity, ${isMissing})`;
 }
 
 /**
@@ -58,12 +58,12 @@ type Writer = Pick<DbInterface, 'get'>;
  * The quantity of ONE set row — as a number, not as an SQL snippet.
  */
 export async function quantityOfSets(userId: number, setNumber: string, dbh: Writer): Promise<number | null> {
-  const row = await dbh.get<{ menge: unknown }>(
-    `SELECT ${quantityScalar('s')} AS menge
+  const row = await dbh.get<{ quantity: unknown }>(
+    `SELECT ${quantityScalar('s')} AS quantity
        FROM sets s WHERE s.user_id = $1 AND s.set_number = $2`,
     [userId, setNumber],
   );
-  return row ? parseInt(String(row.menge), 10) || 0 : null;
+  return row ? parseInt(String(row.quantity), 10) || 0 : null;
 }
 
 // Parts and minifigs still have a quantity column, because it carries two
@@ -87,44 +87,44 @@ export type StockKind = 'part' | 'fig';
 /** Per kind: tables, keys and column names. Once, as a table. */
 const ART = {
   part: {
-    bestand: 'parts',
+    holding: 'parts',
     erfassung: 'part_acquisitions',
     katalog: 'set_parts',
-    nummer: 'part_number',
+    number: 'part_number',
     // The color belongs in both keys; "not specified" is 0 in the
     // acquisition, possibly NULL in the inventory row.
     farbe: true,
   },
   fig: {
-    bestand: 'minifigs',
+    holding: 'minifigs',
     erfassung: 'minifig_acquisitions',
     katalog: 'set_minifigs_catalog',
-    nummer: 'fig_number',
+    number: 'fig_number',
     farbe: false,
   },
 } as const;
 
 /** The JOIN sources `<alias>_e` (acquisitions) and `<alias>_k` (catalog) for
  * the quantity of the inventory row `bezug`; `konten` as for [mengeJoin]. */
-export function teilmengeJoin(basis: string, art: StockKind, alias = 'tm', konten?: Konten): string {
-  const a = ART[art];
+export function teilmengeJoin(basis: string, kind: StockKind, alias = 'tm', konten?: Konten): string {
+  const a = ART[kind];
   const colorAcq = a.farbe ? `, x.color_id AS fk` : '';
   const colorCmp = a.farbe ? ` AND ${alias}_e.fk = ${basis}.color_id` : '';
   const colorCat = a.farbe ? ` AND ${alias}_k.color_id = ${basis}.color_id` : '';
-  return `LEFT JOIN (SELECT x.user_id, x.${a.nummer}${colorAcq},
-                             SUM(x.quantity)::int AS menge
+  return `LEFT JOIN (SELECT x.user_id, x.${a.number}${colorAcq},
+                             SUM(x.quantity)::int AS quantity
                         FROM ${a.erfassung} x${
                           konten
                             ? `
                        WHERE ${onAccounts('x.user_id', konten)}`
                             : ''
                         }
-                       GROUP BY x.user_id, x.${a.nummer}${a.farbe ? ', x.color_id' : ''}) ${alias}_e
+                       GROUP BY x.user_id, x.${a.number}${a.farbe ? ', x.color_id' : ''}) ${alias}_e
                ON ${alias}_e.user_id = ${basis}.user_id
-              AND ${alias}_e.${a.nummer} = ${basis}.${a.nummer}${colorCmp}
+              AND ${alias}_e.${a.number} = ${basis}.${a.number}${colorCmp}
     LEFT JOIN ${a.katalog} ${alias}_k
                ON ${alias}_k.set_number = ${basis}.set_number
-              AND ${alias}_k.${a.nummer} = ${basis}.${a.nummer}${colorCat}`;
+              AND ${alias}_k.${a.number} = ${basis}.${a.number}${colorCat}`;
 }
 
 /**
@@ -132,7 +132,7 @@ export function teilmengeJoin(basis: string, art: StockKind, alias = 'tm', konte
  */
 export function subsetFrom(basis: string, _art: StockKind, alias = 'tm'): string {
   return `CASE WHEN COALESCE(${basis}.source, 'set') = 'manual'
-               THEN COALESCE(${alias}_e.menge, 0)
+               THEN COALESCE(${alias}_e.quantity, 0)
                ELSE COALESCE(${alias}_k.quantity, 1) END`;
 }
 
@@ -140,24 +140,24 @@ export function subsetFrom(basis: string, _art: StockKind, alias = 'tm'): string
  * The quantity of ONE manual item — as a number, not as a snippet.
  */
 export async function quantityThePosition(
-  art: StockKind,
+  kind: StockKind,
   userId: number,
   keys: (string | number | null)[],
   dbh: Pick<DbInterface, 'get'>,
 ): Promise<number | null> {
-  const a = ART[art];
+  const a = ART[kind];
   const color = a.farbe ? ' AND b.color_id = $3' : '';
   const colorAcq = a.farbe ? ' AND x.color_id = $3' : '';
   const params = a.farbe ? [userId, keys[0], colorId(keys[1])] : [userId, keys[0]];
-  const row = await dbh.get<{ menge: unknown }>(
+  const row = await dbh.get<{ quantity: unknown }>(
     `SELECT COALESCE((SELECT SUM(x.quantity) FROM ${a.erfassung} x
-                       WHERE x.user_id = $1 AND x.${a.nummer} = $2${colorAcq}), 0)::int AS menge
-       FROM ${a.bestand} b
-      WHERE b.user_id = $1 AND b.${a.nummer} = $2${color}
+                       WHERE x.user_id = $1 AND x.${a.number} = $2${colorAcq}), 0)::int AS quantity
+       FROM ${a.holding} b
+      WHERE b.user_id = $1 AND b.${a.number} = $2${color}
         AND b.source = 'manual'`,
     params,
   );
-  return row ? parseInt(String(row.menge), 10) || 0 : null;
+  return row ? parseInt(String(row.quantity), 10) || 0 : null;
 }
 
 /** The day of an acquisition exactly as in the unique index (0070): `day`, for
@@ -188,5 +188,5 @@ export const ENTRY_TABLES = {
   part: { table: 'part_acquisitions', price: 'unit_price', keys: ['part_number', 'color_id'] },
   fig: { table: 'minifig_acquisitions', price: 'unit_price', keys: ['fig_number'] },
 } as const;
-export const priceColumn = (art: AcquisitionKind): string => ENTRY_TABLES[art].price;
-export const keyColumns = (art: AcquisitionKind): readonly string[] => ENTRY_TABLES[art].keys;
+export const priceColumn = (kind: AcquisitionKind): string => ENTRY_TABLES[kind].price;
+export const keyColumns = (kind: AcquisitionKind): readonly string[] => ENTRY_TABLES[kind].keys;

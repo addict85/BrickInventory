@@ -16,7 +16,7 @@ export function purchasePriceColumns(column: string, w: string): string {
   const k = purchasePriceIn(column, w);
   return `${k} AS ${column},
             (currency <> ${w} AND ${column} IS NOT NULL AND ${k} IS NULL) AS kaufpreis_fremd,
-            CASE WHEN currency <> ${w} AND ${k} IS NULL THEN ${column} END AS kaufpreis_original,
+            CASE WHEN currency <> ${w} AND ${k} IS NULL THEN ${column} END AS original_purchase_price,
             (currency <> ${w} AND ${k} IS NOT NULL) AS kaufpreis_umgerechnet`;
 }
 
